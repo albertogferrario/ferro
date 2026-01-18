@@ -1,65 +1,114 @@
+# ==============================================================================
+# APPLICATION
+# ==============================================================================
+# Core application settings
+
 APP_NAME="Ferro Application"
-APP_ENV=local
-APP_DEBUG=true
+APP_ENV=local          # local, staging, production
+APP_DEBUG=true         # Set false in production
 APP_URL=http://localhost:8080
+
+# ==============================================================================
+# SERVER
+# ==============================================================================
+# Development server binding
 
 SERVER_HOST=127.0.0.1
 SERVER_PORT=8080
-
 VITE_PORT=5173
 
-# Build cleanup: auto-remove artifacts older than N days on `ferro serve`
-# Set to 0 to disable automatic cleanup (requires cargo-sweep)
-CARGO_SWEEP_DAYS=7
+# ==============================================================================
+# BUILD CLEANUP
+# ==============================================================================
+# Auto-remove build artifacts on `ferro serve` (requires cargo-sweep)
 
-# Database (SQLite by default, change to postgres://user:pass@localhost:5432/dbname for PostgreSQL)
+CARGO_SWEEP_DAYS=7     # Set 0 to disable
+
+# ==============================================================================
+# DATABASE
+# ==============================================================================
+# SQLite works out of the box. For PostgreSQL:
+# DATABASE_URL=postgres://user:pass@localhost:5432/dbname
+
 DATABASE_URL=sqlite://./database.db
 DB_MAX_CONNECTIONS=10
 DB_MIN_CONNECTIONS=1
 DB_CONNECT_TIMEOUT=30
-DB_LOGGING=false
+DB_LOGGING=false       # Set true to see SQL queries
 
-# Session
-SESSION_LIFETIME=120
+# ==============================================================================
+# SESSION
+# ==============================================================================
+# Session configuration for authentication
+
+SESSION_LIFETIME=120   # Minutes
 SESSION_COOKIE=ferro_session
-SESSION_SECURE=false
+SESSION_SECURE=false   # Set true when using HTTPS
 SESSION_PATH=/
-SESSION_SAME_SITE=Lax
+SESSION_SAME_SITE=Lax  # Strict, Lax, or None
 
-# Redis (for cache, queue, and broadcasting)
+# ==============================================================================
+# REDIS
+# ==============================================================================
+# Required for: redis cache driver, redis queue driver, redis broadcasting
+
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
 REDIS_DATABASE=0
 
-# Cache
+# ==============================================================================
+# CACHE
+# ==============================================================================
+# Drivers: memory (default, no setup), file, redis
+
 CACHE_DRIVER=memory
 CACHE_PREFIX=ferro_cache_
 
-# Queue
+# ==============================================================================
+# QUEUE
+# ==============================================================================
+# Drivers: sync (default, inline), redis (background workers)
+
 QUEUE_CONNECTION=sync
 QUEUE_DEFAULT=default
 QUEUE_RETRY_AFTER=90
 
-# Storage
+# ==============================================================================
+# STORAGE
+# ==============================================================================
+# Disks: local (default), s3
+
 FILESYSTEM_DISK=local
 STORAGE_PATH=storage/app
 
-# AWS S3 (optional, for s3 disk driver)
+# ==============================================================================
+# AWS S3
+# ==============================================================================
+# Required when FILESYSTEM_DISK=s3
+
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_DEFAULT_REGION=us-east-1
 AWS_BUCKET=
-AWS_ENDPOINT=
+AWS_ENDPOINT=          # For S3-compatible services (MinIO, DigitalOcean Spaces)
 
-# Broadcasting
+# ==============================================================================
+# BROADCASTING
+# ==============================================================================
+# Drivers: log (default, for debugging), redis, pusher
+
 BROADCAST_DRIVER=log
 PUSHER_APP_ID=
 PUSHER_APP_KEY=
 PUSHER_APP_SECRET=
 PUSHER_APP_CLUSTER=mt1
 
-# Mail
+# ==============================================================================
+# MAIL
+# ==============================================================================
+# Drivers: smtp, log (for development)
+
 MAIL_DRIVER=smtp
 MAIL_HOST=localhost
 MAIL_PORT=587
@@ -67,3 +116,10 @@ MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM_ADDRESS=hello@example.com
 MAIL_FROM_NAME="Ferro App"
+
+# ==============================================================================
+# AI
+# ==============================================================================
+# For AI-powered features
+
+ANTHROPIC_API_KEY=
