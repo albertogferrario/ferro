@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 35 (CLI Seed Command)
-Plan: 35-01 ready
-Status: Ready to execute
-Last activity: 2026-01-18 — Phase 35 planned
+Plan: 35-01 complete
+Status: Phase complete, milestone complete
+Last activity: 2026-01-18 — Phase 35 plan 01 executed
 
-Progress: ░░░░░░░░░░ 0% (0/1 phases)
+Progress: ██████████ 100% (1/1 phases)
 
 ## Milestone Summary
 
@@ -26,18 +26,18 @@ Progress: ░░░░░░░░░░ 0% (0/1 phases)
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
-| v2.2 CLI Improvements | 35 | 0/1 | 📋 Planned | - |
+| v2.2 CLI Improvements | 35 | 1 | ✅ Complete | 2026-01-18 |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
 
 ## Accumulated Context
 
 ### Key Decisions (v2.2)
 
-None yet — milestone not started.
+1. Follow existing migrate command pattern for db:seed: delegate to cargo run --quiet -- db:seed
 
 ### Pending Todos
 
-None — fresh milestone.
+None — milestone complete.
 
 ### Blockers/Concerns
 
@@ -54,11 +54,11 @@ None — fresh milestone.
 - v2.0.2 Type Generator Fixes complete: 6 phases, 6 plans (Phase 22.4-22.9) (2026-01-17)
 - v2.0.3 DO Apps Deploy complete: 1 phase, 1 plan (Phase 22.10) (2026-01-17)
 - v2.1 Inertia DX & Fixes complete: 2 phases, 4 plans (Phase 33-34) (2026-01-17)
-- v2.2 CLI Improvements: 1 phase planned (Phase 35)
+- v2.2 CLI Improvements complete: 1 phase, 1 plan (Phase 35) (2026-01-18)
 - v3.0 JSON-UI: 10 phases planned (Phases 23-32)
 
 ## Session Continuity
 
 Last session: 2026-01-18
-Stopped at: v2.2 CLI Improvements milestone created, ready to plan phase 35
+Stopped at: v2.2 CLI Improvements milestone complete
 Resume file: None
