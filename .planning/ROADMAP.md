@@ -8,7 +8,23 @@
 - ✅ [**v2.0.2 Type Generator Fixes**](milestones/v2.0.2-ROADMAP.md) — Phase 22.4-22.9 (shipped 2026-01-17)
 - ✅ [**v2.0.3 DO Apps Deploy**](milestones/v2.0.3-ROADMAP.md) — Phase 22.10 (shipped 2026-01-17)
 - ✅ [**v2.1 Inertia DX & Fixes**](milestones/v2.1-ROADMAP.md) — Phases 33-34 (shipped 2026-01-17)
+- 📋 **v2.2 CLI Improvements** — Phase 35 (planned)
 - 📋 **v3.0 JSON-UI** — Phases 23-32 (planned)
+
+---
+
+### 📋 v2.2 CLI Improvements (Planned)
+
+**Milestone Goal:** Add CLI commands for common development workflows.
+
+#### Phase 35: CLI Seed Command
+
+**Goal**: Add `ferro db:seed` command to run database seeders for development data population
+**Depends on**: v2.1 complete
+**Research**: Unlikely (follows existing CLI patterns)
+
+Plans:
+- [ ] 35-01: CLI Seed Command (add `ferro db:seed` command that delegates to app binary)
 
 ---
 
@@ -237,7 +253,14 @@ Plans:
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
+| v2.2 CLI Improvements | 35 | 0/1 | 📋 Planned | - |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
+
+## Progress (v2.2 CLI Improvements)
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 35. CLI Seed Command | 0/1 | Planned | - |
 
 ## Progress (v3.0 JSON-UI)
 

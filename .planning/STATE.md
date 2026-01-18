@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-17)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v3.0 JSON-UI — JSON-based UI rendering without frontend builds
+**Current focus:** v2.2 CLI Improvements — CLI commands for common development workflows
 
 ## Current Position
 
-Phase: 23 (JSON-UI Schema)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-01-17 — v2.1 milestone complete
+Phase: 35 (CLI Seed Command)
+Plan: 35-01 ready
+Status: Ready to execute
+Last activity: 2026-01-18 — Phase 35 planned
 
-Progress: ░░░░░░░░░░ 0% (0/10 phases)
+Progress: ░░░░░░░░░░ 0% (0/1 phases)
 
 ## Milestone Summary
 
@@ -26,11 +26,12 @@ Progress: ░░░░░░░░░░ 0% (0/10 phases)
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
+| v2.2 CLI Improvements | 35 | 0/1 | 📋 Planned | - |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
 
 ## Accumulated Context
 
-### Key Decisions (v3.0)
+### Key Decisions (v2.2)
 
 None yet — milestone not started.
 
@@ -53,10 +54,11 @@ None — fresh milestone.
 - v2.0.2 Type Generator Fixes complete: 6 phases, 6 plans (Phase 22.4-22.9) (2026-01-17)
 - v2.0.3 DO Apps Deploy complete: 1 phase, 1 plan (Phase 22.10) (2026-01-17)
 - v2.1 Inertia DX & Fixes complete: 2 phases, 4 plans (Phase 33-34) (2026-01-17)
+- v2.2 CLI Improvements: 1 phase planned (Phase 35)
 - v3.0 JSON-UI: 10 phases planned (Phases 23-32)
 
 ## Session Continuity
 
-Last session: 2026-01-17
-Stopped at: v2.1 complete, ready for v3.0 JSON-UI
+Last session: 2026-01-18
+Stopped at: v2.2 CLI Improvements milestone created, ready to plan phase 35
 Resume file: None
