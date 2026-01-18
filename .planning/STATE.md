@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 36 (Gitignore Generated Types)
-Plan: 36-01 ready
-Status: Ready to execute
-Last activity: 2026-01-18 — Plan 36-01 created
+Plan: 36-01 complete
+Status: Milestone complete
+Last activity: 2026-01-18 — Plan 36-01 executed
 
-Progress: █████░░░░░ 50% (1/2 phases)
+Progress: ██████████ 100% (2/2 phases)
 
 ## Milestone Summary
 
@@ -26,7 +26,7 @@ Progress: █████░░░░░ 50% (1/2 phases)
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
-| v2.2 CLI Improvements | 35-36 | 1/2 | 🔄 In Progress | - |
+| v2.2 CLI Improvements | 35-36 | 2 | ✅ Complete | 2026-01-18 |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
 
 ## Accumulated Context
@@ -34,6 +34,7 @@ Progress: █████░░░░░ 50% (1/2 phases)
 ### Key Decisions (v2.2)
 
 1. Follow existing migrate command pattern for db:seed: delegate to cargo run --quiet -- db:seed
+2. Exclude entire frontend/src/types/ directory rather than individual files
 
 ### Pending Todos
 
@@ -54,7 +55,7 @@ None — milestone complete.
 - v2.0.2 Type Generator Fixes complete: 6 phases, 6 plans (Phase 22.4-22.9) (2026-01-17)
 - v2.0.3 DO Apps Deploy complete: 1 phase, 1 plan (Phase 22.10) (2026-01-17)
 - v2.1 Inertia DX & Fixes complete: 2 phases, 4 plans (Phase 33-34) (2026-01-17)
-- v2.2 CLI Improvements: Phase 35 complete, Phase 36 added (2026-01-18)
+- v2.2 CLI Improvements complete: 2 phases, 2 plans (Phase 35-36) (2026-01-18)
 - v3.0 JSON-UI: 10 phases planned (Phases 23-32)
 
 ## Session Continuity
