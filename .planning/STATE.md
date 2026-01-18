@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 
 ## Current Position
 
-Phase: 35 (CLI Seed Command)
-Plan: 35-01 complete
-Status: Phase complete, milestone complete
-Last activity: 2026-01-18 — Phase 35 plan 01 executed
+Phase: 36 (Gitignore Generated Types)
+Plan: 36-01 ready
+Status: Ready to execute
+Last activity: 2026-01-18 — Plan 36-01 created
 
-Progress: ██████████ 100% (1/1 phases)
+Progress: █████░░░░░ 50% (1/2 phases)
 
 ## Milestone Summary
 
@@ -26,7 +26,7 @@ Progress: ██████████ 100% (1/1 phases)
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
-| v2.2 CLI Improvements | 35 | 1 | ✅ Complete | 2026-01-18 |
+| v2.2 CLI Improvements | 35-36 | 1/2 | 🔄 In Progress | - |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
 
 ## Accumulated Context
@@ -54,7 +54,7 @@ None — milestone complete.
 - v2.0.2 Type Generator Fixes complete: 6 phases, 6 plans (Phase 22.4-22.9) (2026-01-17)
 - v2.0.3 DO Apps Deploy complete: 1 phase, 1 plan (Phase 22.10) (2026-01-17)
 - v2.1 Inertia DX & Fixes complete: 2 phases, 4 plans (Phase 33-34) (2026-01-17)
-- v2.2 CLI Improvements complete: 1 phase, 1 plan (Phase 35) (2026-01-18)
+- v2.2 CLI Improvements: Phase 35 complete, Phase 36 added (2026-01-18)
 - v3.0 JSON-UI: 10 phases planned (Phases 23-32)
 
 ## Session Continuity
