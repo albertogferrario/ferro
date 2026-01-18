@@ -8,6 +8,10 @@ SERVER_PORT=8080
 
 VITE_PORT=5173
 
+# Build cleanup: auto-remove artifacts older than N days on `ferro serve`
+# Set to 0 to disable automatic cleanup (requires cargo-sweep)
+CARGO_SWEEP_DAYS=7
+
 # Database (SQLite by default, change to postgres://user:pass@localhost:5432/dbname for PostgreSQL)
 DATABASE_URL=sqlite://./database.db
 DB_MAX_CONNECTIONS=10
