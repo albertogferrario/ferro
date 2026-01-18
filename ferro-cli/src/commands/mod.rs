@@ -2,6 +2,7 @@ pub mod boost_install;
 pub mod claude_install;
 pub mod clean;
 pub mod db_query;
+pub mod db_seed;
 pub mod db_sync;
 pub mod do_init;
 pub mod docker_compose;

@@ -199,6 +199,13 @@ enum Commands {
     /// Drop all tables and re-run all migrations
     #[command(name = "migrate:fresh")]
     MigrateFresh,
+    /// Run database seeders
+    #[command(name = "db:seed")]
+    DbSeed {
+        /// Run only a specific seeder
+        #[arg(long)]
+        class: Option<String>,
+    },
     /// Sync database schema to entity files (runs migrations + generates entities)
     #[command(name = "db:sync")]
     DbSync {
@@ -404,6 +411,9 @@ fn main() {
         }
         Commands::MigrateFresh => {
             commands::migrate_fresh::run();
+        }
+        Commands::DbSeed { class } => {
+            commands::db_seed::run(class);
         }
         Commands::DbSync {
             skip_migrations,
