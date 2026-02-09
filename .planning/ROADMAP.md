@@ -97,7 +97,7 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 30-01: TBD
+- [ ] 30-01: AI-powered `make:json-view` command with Anthropic API and static fallback
 
 #### Phase 31: MCP UI Tools
 
