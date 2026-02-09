@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 28 of 32 (HTML Renderer)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-09 — Completed 28-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 28-02-PLAN.md
 
-Progress: ████████░░ 82% (v3.0)
+Progress: █████████░ 86% (v3.0)
 
 ## Milestone Summary
 
@@ -62,6 +62,9 @@ Progress: ████████░░ 82% (v3.0)
 | 28 | GET actions wrap in `<a>`, non-GET render as-is | Only safe HTTP method for link navigation |
 | 28 | Container components get basic SSR in Plan 01 | Full treatment deferred to Plan 02 |
 | 28 | compute_page_range shows max 7 pages with ellipsis | Readable pagination for large datasets |
+| 28 | Modal uses details/summary for no-JS progressive enhancement | Functional SSR without JavaScript |
+| 28 | Tabs SSR renders only default_tab content | Tab switching requires JS, out of scope for Phase 28 |
+| 28 | Framework pre dump replaced with render_to_html output | Real HTML pages instead of JSON placeholder |
 
 ### Pending Todos
 
@@ -88,5 +91,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 28-01-PLAN.md (HTML render engine with leaf component renderers)
+Stopped at: Completed 28-02-PLAN.md (Phase 28 complete — full 20-component HTML renderer)
 Resume file: None
