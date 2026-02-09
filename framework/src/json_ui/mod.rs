@@ -154,6 +154,7 @@ mod tests {
                     title: "Hello".to_string(),
                     description: Some("A test card".to_string()),
                     children: vec![],
+                    footer: vec![],
                 }),
                 action: None,
                 visibility: None,
