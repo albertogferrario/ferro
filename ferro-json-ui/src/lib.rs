@@ -57,7 +57,7 @@ pub use component::{
 };
 pub use config::JsonUiConfig;
 pub use data::{resolve_path, resolve_path_string};
-pub use resolve::{resolve_actions, resolve_actions_strict};
+pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
 pub use view::{JsonUiView, SCHEMA_VERSION};
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
 

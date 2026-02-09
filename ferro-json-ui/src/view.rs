@@ -4,6 +4,8 @@
 //! It contains the schema version, optional layout and title, and the
 //! component tree. Views can be built programmatically or parsed from JSON.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::component::ComponentNode;
@@ -38,6 +40,8 @@ pub struct JsonUiView {
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
     pub data: serde_json::Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub errors: Option<HashMap<String, Vec<String>>>,
     pub components: Vec<ComponentNode>,
 }
 
@@ -49,6 +53,7 @@ impl JsonUiView {
             layout: None,
             title: None,
             data: serde_json::Value::Null,
+            errors: None,
             components: vec![],
         }
     }
@@ -62,6 +67,12 @@ impl JsonUiView {
     /// Set the view data payload.
     pub fn data(mut self, data: serde_json::Value) -> Self {
         self.data = data;
+        self
+    }
+
+    /// Set the validation errors map.
+    pub fn errors(mut self, errors: HashMap<String, Vec<String>>) -> Self {
+        self.errors = Some(errors);
         self
     }
 
@@ -367,5 +378,32 @@ mod tests {
     fn builder_data_method_works() {
         let view = JsonUiView::new().data(serde_json::json!({"key": "value"}));
         assert_eq!(view.data["key"], "value");
+    }
+
+    #[test]
+    fn view_with_errors_serializes() {
+        let mut errors = std::collections::HashMap::new();
+        errors.insert("email".to_string(), vec!["Required".to_string()]);
+        let view = JsonUiView::new().errors(errors);
+        let json = serde_json::to_value(&view).unwrap();
+        assert!(json.get("errors").is_some());
+        assert_eq!(json["errors"]["email"][0], "Required");
+    }
+
+    #[test]
+    fn view_without_errors_omits_field() {
+        let view = JsonUiView::new().title("Empty");
+        let json = serde_json::to_value(&view).unwrap();
+        assert!(json.get("errors").is_none());
+    }
+
+    #[test]
+    fn errors_builder_method() {
+        let mut errors = std::collections::HashMap::new();
+        errors.insert("name".to_string(), vec!["Too short".to_string()]);
+        let view = JsonUiView::new().errors(errors);
+        assert!(view.errors.is_some());
+        let errs = view.errors.unwrap();
+        assert_eq!(errs["name"], vec!["Too short".to_string()]);
     }
 }

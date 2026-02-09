@@ -1,8 +1,10 @@
-//! Action resolver for JSON-UI component trees.
+//! Resolvers for JSON-UI component trees.
 //!
-//! Walks a `JsonUiView`'s component tree and resolves each `Action.handler`
-//! reference to a URL using a caller-provided callback. This keeps
-//! ferro-json-ui decoupled from the framework's route registry.
+//! Walks a `JsonUiView`'s component tree and resolves action handler
+//! references to URLs and validation errors to form field error messages.
+//! Both resolvers keep ferro-json-ui decoupled from the framework.
+
+use std::collections::HashMap;
 
 use crate::action::Action;
 use crate::component::{Component, ComponentNode};
@@ -176,6 +178,111 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         | Component::Text(_)
         | Component::Checkbox(_)
         | Component::Switch(_)
+        | Component::Separator(_)
+        | Component::DescriptionList(_)
+        | Component::Breadcrumb(_)
+        | Component::Pagination(_)
+        | Component::Progress(_)
+        | Component::Avatar(_)
+        | Component::Skeleton(_) => {}
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Validation error resolution
+// ---------------------------------------------------------------------------
+
+/// Walk the component tree and set the first validation error message on each
+/// matching form field component (Input, Select, Checkbox, Switch).
+///
+/// Only fields whose `error` is currently `None` are updated; explicit errors
+/// set by the caller take priority.
+pub fn resolve_errors(view: &mut JsonUiView, errors: &HashMap<String, Vec<String>>) {
+    for node in &mut view.components {
+        resolve_errors_node(node, errors, false);
+    }
+}
+
+/// Walk the component tree and set all validation error messages (joined with
+/// `". "`) on each matching form field component.
+///
+/// Same precedence rule: existing errors are not overwritten.
+pub fn resolve_errors_all(view: &mut JsonUiView, errors: &HashMap<String, Vec<String>>) {
+    for node in &mut view.components {
+        resolve_errors_node(node, errors, true);
+    }
+}
+
+/// Set the error string on a form field if the errors map contains its field name.
+fn set_field_error(
+    error_slot: &mut Option<String>,
+    field: &str,
+    errors: &HashMap<String, Vec<String>>,
+    all: bool,
+) {
+    if error_slot.is_some() {
+        return; // explicit error takes priority
+    }
+    if let Some(messages) = errors.get(field) {
+        if !messages.is_empty() {
+            if all {
+                *error_slot = Some(messages.join(". "));
+            } else {
+                *error_slot = Some(messages[0].clone());
+            }
+        }
+    }
+}
+
+/// Recursively resolve validation errors within a component node.
+fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<String>>, all: bool) {
+    match &mut node.component {
+        Component::Input(props) => {
+            set_field_error(&mut props.error, &props.field, errors, all);
+        }
+        Component::Select(props) => {
+            set_field_error(&mut props.error, &props.field, errors, all);
+        }
+        Component::Checkbox(props) => {
+            set_field_error(&mut props.error, &props.field, errors, all);
+        }
+        Component::Switch(props) => {
+            set_field_error(&mut props.error, &props.field, errors, all);
+        }
+        Component::Card(props) => {
+            for child in &mut props.children {
+                resolve_errors_node(child, errors, all);
+            }
+            for child in &mut props.footer {
+                resolve_errors_node(child, errors, all);
+            }
+        }
+        Component::Form(props) => {
+            for field in &mut props.fields {
+                resolve_errors_node(field, errors, all);
+            }
+        }
+        Component::Modal(props) => {
+            for child in &mut props.children {
+                resolve_errors_node(child, errors, all);
+            }
+            for child in &mut props.footer {
+                resolve_errors_node(child, errors, all);
+            }
+        }
+        Component::Tabs(props) => {
+            for tab in &mut props.tabs {
+                for child in &mut tab.children {
+                    resolve_errors_node(child, errors, all);
+                }
+            }
+        }
+        // Leaf components with no form field semantics.
+        Component::Table(_)
+        | Component::Button(_)
+        | Component::Alert(_)
+        | Component::Badge(_)
+        | Component::Text(_)
         | Component::Separator(_)
         | Component::DescriptionList(_)
         | Component::Breadcrumb(_)
@@ -563,5 +670,281 @@ mod tests {
 
         let result = resolve_actions_strict(&mut view, test_resolver);
         assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // resolve_errors tests
+    // -----------------------------------------------------------------------
+
+    fn make_errors(pairs: &[(&str, &[&str])]) -> HashMap<String, Vec<String>> {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.iter().map(|s| s.to_string()).collect()))
+            .collect()
+    }
+
+    fn make_input_node(key: &str, field: &str) -> ComponentNode {
+        ComponentNode {
+            key: key.to_string(),
+            component: Component::Input(InputProps {
+                field: field.to_string(),
+                label: field.to_string(),
+                input_type: InputType::Text,
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: None,
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    #[test]
+    fn resolve_errors_populates_input_error() {
+        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
+        let errors = make_errors(&[("email", &["Email is required"])]);
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Input(props) => {
+                assert_eq!(props.error, Some("Email is required".to_string()));
+            }
+            _ => panic!("expected Input"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_populates_select_error() {
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "role-select".to_string(),
+            component: Component::Select(SelectProps {
+                field: "role".to_string(),
+                label: "Role".to_string(),
+                options: vec![SelectOption {
+                    value: "admin".to_string(),
+                    label: "Admin".to_string(),
+                }],
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: None,
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let errors = make_errors(&[("role", &["Role is required"])]);
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Select(props) => {
+                assert_eq!(props.error, Some("Role is required".to_string()));
+            }
+            _ => panic!("expected Select"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_populates_checkbox_error() {
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "terms-checkbox".to_string(),
+            component: Component::Checkbox(CheckboxProps {
+                field: "terms".to_string(),
+                label: "Accept Terms".to_string(),
+                description: None,
+                checked: None,
+                data_path: None,
+                required: None,
+                disabled: None,
+                error: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let errors = make_errors(&[("terms", &["You must accept the terms"])]);
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Checkbox(props) => {
+                assert_eq!(props.error, Some("You must accept the terms".to_string()));
+            }
+            _ => panic!("expected Checkbox"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_populates_switch_error() {
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "notif-switch".to_string(),
+            component: Component::Switch(SwitchProps {
+                field: "notifications".to_string(),
+                label: "Notifications".to_string(),
+                description: None,
+                checked: None,
+                data_path: None,
+                required: None,
+                disabled: None,
+                error: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let errors = make_errors(&[("notifications", &["Must enable notifications"])]);
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Switch(props) => {
+                assert_eq!(props.error, Some("Must enable notifications".to_string()));
+            }
+            _ => panic!("expected Switch"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_does_not_overwrite_existing() {
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "email-input".to_string(),
+            component: Component::Input(InputProps {
+                field: "email".to_string(),
+                label: "Email".to_string(),
+                input_type: InputType::Email,
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: Some("Custom error".to_string()),
+                description: None,
+                default_value: None,
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let errors = make_errors(&[("email", &["Validation error"])]);
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Input(props) => {
+                assert_eq!(props.error, Some("Custom error".to_string()));
+            }
+            _ => panic!("expected Input"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_nested_in_form() {
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "form".to_string(),
+            component: Component::Form(FormProps {
+                action: make_action("users.store"),
+                fields: vec![
+                    make_input_node("name-input", "name"),
+                    make_input_node("email-input", "email"),
+                ],
+                method: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let errors = make_errors(&[
+            ("name", &["Name is required"]),
+            ("email", &["Email is invalid"]),
+        ]);
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Form(props) => {
+                match &props.fields[0].component {
+                    Component::Input(p) => {
+                        assert_eq!(p.error, Some("Name is required".to_string()));
+                    }
+                    _ => panic!("expected Input"),
+                }
+                match &props.fields[1].component {
+                    Component::Input(p) => {
+                        assert_eq!(p.error, Some("Email is invalid".to_string()));
+                    }
+                    _ => panic!("expected Input"),
+                }
+            }
+            _ => panic!("expected Form"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_nested_in_card() {
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "card".to_string(),
+            component: Component::Card(CardProps {
+                title: "User".to_string(),
+                description: None,
+                children: vec![make_input_node("name-input", "name")],
+                footer: vec![],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let errors = make_errors(&[("name", &["Name is required"])]);
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Card(props) => match &props.children[0].component {
+                Component::Input(p) => {
+                    assert_eq!(p.error, Some("Name is required".to_string()));
+                }
+                _ => panic!("expected Input"),
+            },
+            _ => panic!("expected Card"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_no_matching_field() {
+        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
+        let errors = make_errors(&[("unknown_field", &["Some error"])]);
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Input(props) => {
+                assert_eq!(props.error, None);
+            }
+            _ => panic!("expected Input"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_all_concatenates_messages() {
+        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
+        let errors = make_errors(&[("email", &["Too short", "Invalid format", "Already taken"])]);
+        resolve_errors_all(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Input(props) => {
+                assert_eq!(
+                    props.error,
+                    Some("Too short. Invalid format. Already taken".to_string())
+                );
+            }
+            _ => panic!("expected Input"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_empty_errors_map() {
+        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
+        let errors: HashMap<String, Vec<String>> = HashMap::new();
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::Input(props) => {
+                assert_eq!(props.error, None);
+            }
+            _ => panic!("expected Input"),
+        }
     }
 }
