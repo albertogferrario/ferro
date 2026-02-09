@@ -9,123 +9,33 @@
 - ✅ [**v2.0.3 DO Apps Deploy**](milestones/v2.0.3-ROADMAP.md) — Phase 22.10 (shipped 2026-01-17)
 - ✅ [**v2.1 Inertia DX & Fixes**](milestones/v2.1-ROADMAP.md) — Phases 33-34 (shipped 2026-01-17)
 - ✅ [**v2.2 CLI Improvements**](milestones/v2.2-ROADMAP.md) — Phases 35-37 (shipped 2026-02-09)
-- 🚧 **v3.0 JSON-UI** — Phases 23-32 (in progress)
-
----
-
-### 🚧 v3.0 JSON-UI (In Progress)
-
-**Milestone Goal:** Add JSON-based UI rendering as an alternative to Inertia for rapid, beautiful UI without frontend builds.
-
-#### Phase 23: JSON-UI Schema
-
-**Goal**: Define core JSON schema for UI elements (components, props, visibility rules, actions)
-**Depends on**: v2.1 complete
-**Research**: Likely (study json-render patterns, JSON schema design)
-**Research topics**: json-render by Vercel, component catalog patterns, action declaration
-
-Plans:
-- [x] 23-01: Core JSON-UI schema types (completed 2026-02-09)
-- [x] 23-02: Framework integration with render API (completed 2026-02-09)
-
-#### Phase 24: Component Catalog
-
-**Goal**: Implement default components: Table, Form, Card, Input, Button, Alert, Badge, Modal, etc.
-**Depends on**: Phase 23
-**Research**: Unlikely (internal patterns)
-
-Plans:
-- [x] 24-01: Enriched component props and shared variant enums (completed 2026-02-09)
-- [x] 24-02: Form field and utility components (completed 2026-02-09)
-- [x] 24-03: Navigation and layout components (completed 2026-02-09)
-
-#### Phase 25: Data Binding
-
-**Goal**: JSONPath-based data binding to handler props and responses
-**Depends on**: Phase 24
-**Research**: Unlikely (internal patterns)
-
-Plans:
-- [x] 25-01: Data path resolver and form field data_path (completed 2026-02-09)
-- [x] 25-02: View data integration and framework re-exports (completed 2026-02-09)
-
-#### Phase 26: Action System
-
-**Goal**: Map declared actions to Ferro handlers with form submissions and confirmations
-**Depends on**: Phase 25
-**Research**: Unlikely (internal patterns)
-
-Plans:
-- [x] 26-01: Action URL field and resolve_actions tree walker (completed 2026-02-09)
-- [x] 26-02: Framework bridge integration (completed 2026-02-09)
-
-#### Phase 27: Validation Integration
-
-**Goal**: Connect to existing Ferro validation system, display errors in components
-**Depends on**: Phase 26
-**Research**: Unlikely (internal patterns)
-
-Plans:
-- [x] 27-01: Error resolver and view errors field (completed 2026-02-09)
-- [x] 27-02: Framework render integration and re-exports (completed 2026-02-09)
-
-#### Phase 28: HTML Renderer
-
-**Goal**: Rust-based JSON→HTML renderer outputting Tailwind classes
-**Depends on**: Phase 27
-**Research**: Likely (templating approaches, HTML generation in Rust)
-**Research topics**: maud, askama, or custom builder patterns
-
-Plans:
-- [x] 28-01: HTML render engine with tree walker and leaf component renderers (completed 2026-02-09)
-- [x] 28-02: Container/form component renderers and framework integration (completed 2026-02-09)
-
-#### Phase 29: Layout System
-
-**Goal**: Layouts, partials, and slots for page structure
-**Depends on**: Phase 28
-**Research**: Unlikely (internal patterns)
-
-Plans:
-- [x] 29-01: Layout trait, registry, default layouts, and partials in ferro-json-ui (completed 2026-02-09)
-- [x] 29-02: Framework integration and re-exports (completed 2026-02-09)
-
-#### Phase 30: CLI Scaffolding
-
-**Goal**: `ferro make:json-view` command to generate JSON view files
-**Depends on**: Phase 29
-**Research**: Retroactive (completed 2026-02-09)
-
-Plans:
-- [x] 30-01: AI-powered `make:json-view` command with Anthropic API and static fallback (completed 2026-02-09)
-- [x] 30-02: Anthropic API best practices — system prompt, prefill, caching, few-shot, Sonnet default (completed 2026-02-09)
-
-#### Phase 31: MCP UI Tools
-
-**Goal**: MCP tools to generate and inspect JSON-UI specs from models/routes
-**Depends on**: Phase 30
-**Research**: Unlikely (internal patterns)
-
-Plans:
-- [x] 31-01: JSON-UI catalog MCP tool (completed 2026-02-09)
-- [x] 31-02: JSON-UI inspect and generate MCP tools (completed 2026-02-09)
-- [x] 31-03: MCP instructions update and existing tool integration (completed 2026-02-09)
-
-#### Phase 32: Documentation
-
-**Goal**: Guides, component reference, and examples for JSON-UI
-**Depends on**: Phase 31
-**Research**: Unlikely (internal patterns)
-
-Plans:
-- [x] 32-01: Navigation structure, feature overview, and getting-started guide (completed 2026-02-09)
-- [x] 32-02: Component reference documentation (completed 2026-02-09)
-- [x] 32-03: Actions, data binding & visibility, and layouts documentation (completed 2026-02-09)
-- [x] 32-04: CLI reference update for make:json-view and db:seed (completed 2026-02-09)
+- ✅ **v3.0 JSON-UI** — Phases 23-32 (shipped 2026-02-09)
 
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v3.0 JSON-UI (Phases 23-32) — SHIPPED 2026-02-09</summary>
+
+**Milestone Goal:** Add JSON-based UI rendering as an alternative to Inertia for rapid, beautiful UI without frontend builds.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 23. JSON-UI Schema | 2/2 | Complete | 2026-02-09 |
+| 24. Component Catalog | 3/3 | Complete | 2026-02-09 |
+| 25. Data Binding | 2/2 | Complete | 2026-02-09 |
+| 26. Action System | 2/2 | Complete | 2026-02-09 |
+| 27. Validation Integration | 2/2 | Complete | 2026-02-09 |
+| 28. HTML Renderer | 2/2 | Complete | 2026-02-09 |
+| 29. Layout System | 2/2 | Complete | 2026-02-09 |
+| 30. CLI Scaffolding | 2/2 | Complete | 2026-02-09 |
+| 31. MCP UI Tools | 3/3 | Complete | 2026-02-09 |
+| 32. Documentation | 4/4 | Complete | 2026-02-09 |
+
+**Total:** 10 phases, 24 plans
+
+</details>
 
 <details>
 <summary>✅ v2.2 CLI Improvements (Phases 35-37) — SHIPPED 2026-02-09</summary>
@@ -270,19 +180,4 @@ Plans:
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 13/? | 🚧 In Progress | - |
-
-## Progress (v3.0 JSON-UI)
-
-| Phase | Plans | Status | Completed |
-|-------|-------|--------|-----------|
-| 23. JSON-UI Schema | 2/2 | Complete | 2026-02-09 |
-| 24. Component Catalog | 3/3 | Complete | 2026-02-09 |
-| 25. Data Binding | 2/2 | Complete | 2026-02-09 |
-| 26. Action System | 2/2 | Complete | 2026-02-09 |
-| 27. Validation Integration | 2/2 | Complete | 2026-02-09 |
-| 28. HTML Renderer | 2/2 | Complete | 2026-02-09 |
-| 29. Layout System | 2/2 | Complete | 2026-02-09 |
-| 30. CLI Scaffolding | 2/2 | Complete | 2026-02-09 |
-| 31. MCP UI Tools | 3/3 | Complete | 2026-02-09 |
-| 32. Documentation | 4/4 | Complete | 2026-02-09 |
+| v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
