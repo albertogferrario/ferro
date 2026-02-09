@@ -193,7 +193,7 @@ pub async fn create(req: Request) -> Response {
         CodeTemplate {
             name: "update_handler".to_string(),
             category: "handler".to_string(),
-            description: "Update resource with validation".to_string(),
+            description: "Update resource with validation using UpdateBuilder".to_string(),
             code: r#"#[handler]
 pub async fn update(req: Request, id: Path<i32>) -> Response {
     let db = req.db();
@@ -209,11 +209,12 @@ pub async fn update(req: Request, id: Path<i32>) -> Response {
         .await?
         .ok_or_else(|| not_found("{{Entity}} not found"))?;
 
-    let mut model: {{entity}}::ActiveModel = existing.into();
-    model.name = Set(data.name);
-    // Update other fields
-
-    let result = model.update(db).await?;
+    let result = existing
+        .update()
+        .set_name(data.name)
+        // Chain other .set_*() calls
+        .save()
+        .await?;
 
     Ok(json!(result))
 }"#
@@ -221,10 +222,7 @@ pub async fn update(req: Request, id: Path<i32>) -> Response {
             imports: vec![
                 "use ferro::prelude::*;".to_string(),
                 "use ferro::validation::{Validator, rules};".to_string(),
-                "use crate::entities::{{entity}};".to_string(),
                 "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
-                "use sea_orm::ActiveModelTrait;".to_string(),
-                "use sea_orm::Set;".to_string(),
             ],
             placeholders: vec![
                 Placeholder {
@@ -372,29 +370,30 @@ impl ActiveModelBehavior for ActiveModel {}"#
         CodeTemplate {
             name: "active_model".to_string(),
             category: "model".to_string(),
-            description: "ActiveModel mutation operations".to_string(),
+            description: "Model create and update operations".to_string(),
             code: r#"use crate::entities::{{entity}};
 use sea_orm::{ActiveModelTrait, Set};
 
-// Create
+// Create (using ActiveModel)
 let model = {{entity}}::ActiveModel {
     name: Set("Example".to_string()),
     ..Default::default()
 };
 let result = model.insert(db).await?;
 
-// Update
-let mut model: {{entity}}::ActiveModel = existing.into();
-model.name = Set("New Name".to_string());
-let result = model.update(db).await?;
+// Update (using UpdateBuilder)
+let result = existing
+    .update()
+    .set_name("New Name")
+    .save()
+    .await?;
 
-// Save (insert or update)
-let model = {{entity}}::ActiveModel {
-    id: Set(some_id),  // If id is set, updates; otherwise inserts
-    name: Set("Example".to_string()),
-    ..Default::default()
-};
-let result = model.save(db).await?;"#
+// Clear an optional field
+let result = existing
+    .update()
+    .clear_description()
+    .save()
+    .await?;"#
                 .to_string(),
             imports: vec![
                 "use crate::entities::{{entity}};".to_string(),

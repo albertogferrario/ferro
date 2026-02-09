@@ -162,15 +162,27 @@ println!("Created user with id: {}", user.id);
 ### Updating Records
 
 ```rust
-use sea_orm::Set;
-use ferro::models::user;
+use ferro::models::user::User;
 
-// Find and update
-let user = user::Entity::find_or_fail(1).await?;
-let mut active: user::ActiveModel = user.into();
-active.name = Set("Updated Name".to_string());
+// Find and update with builder pattern
+let user = User::find_or_fail(1).await?;
+let updated = user
+    .update()
+    .set_name("Updated Name")
+    .save()
+    .await?;
+```
 
-let updated = user::Entity::update_one(active).await?;
+The `UpdateBuilder` tracks which fields were modified and only sends those to the database. It automatically updates the `updated_at` timestamp.
+
+For nullable fields, use `clear_*()` to set a column to NULL:
+
+```rust
+let updated = user
+    .update()
+    .clear_bio()
+    .save()
+    .await?;
 ```
 
 ### Deleting Records
