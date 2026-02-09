@@ -207,6 +207,12 @@ pub struct CodeTemplatesParams {
     pub category: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct JsonUiInspectParams {
+    /// Optional filter — views whose name contains this substring (case-insensitive)
+    pub filter: Option<String>,
+}
+
 #[tool_router(router = tool_router)]
 impl FerroMcpService {
     /// Get application information including framework version, Rust version, models, and installed crates
@@ -994,6 +1000,21 @@ impl FerroMcpService {
     pub async fn code_templates(&self, params: Parameters<CodeTemplatesParams>) -> String {
         let templates = tools::code_templates::execute(params.0.category.as_deref());
         serde_json::to_string_pretty(&templates).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Inspect existing JSON-UI views in the project
+    #[tool(
+        name = "json_ui_inspect",
+        description = "List and inspect existing JSON-UI views in the project's src/views/ directory.\n\n\
+            **When to use:** Understanding existing views before modifying or adding views, \
+            checking which components a view uses, discovering view functions and their metadata.\n\n\
+            **Returns:** View function names, titles, layouts, component types used, and action references.\n\n\
+            **Combine with:** `json_ui_generate` for creating new views, \
+            `get_handler` for the handler that renders the view."
+    )]
+    pub async fn json_ui_inspect(&self, params: Parameters<JsonUiInspectParams>) -> String {
+        let result = tools::json_ui_inspect::execute(&self.project_root, params.0.filter.as_deref());
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
     }
 }
 

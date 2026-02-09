@@ -16,6 +16,7 @@ pub mod generation_context;
 pub mod get_config;
 pub mod get_handler;
 pub mod get_middleware;
+pub mod json_ui_inspect;
 pub mod inspect_props;
 pub mod job_history;
 pub mod last_error;
