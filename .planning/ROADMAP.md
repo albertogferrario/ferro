@@ -87,7 +87,7 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 29-01: Layout trait, registry, default layouts, and partials in ferro-json-ui
+- [x] 29-01: Layout trait, registry, default layouts, and partials in ferro-json-ui (completed 2026-02-09)
 - [ ] 29-02: Framework integration and re-exports
 
 #### Phase 30: CLI Scaffolding
@@ -276,7 +276,7 @@ Plans:
 | 26. Action System | 2/2 | Complete | 2026-02-09 |
 | 27. Validation Integration | 2/2 | Complete | 2026-02-09 |
 | 28. HTML Renderer | 2/2 | Complete | 2026-02-09 |
-| 29. Layout System | 0/2 | Planned | - |
+| 29. Layout System | 1/2 | In Progress | - |
 | 30. CLI Scaffolding | 0/? | Not started | - |
 | 31. MCP UI Tools | 0/? | Not started | - |
 | 32. Documentation | 0/? | Not started | - |

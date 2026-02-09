@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 29 of 32 (Layout System)
-Plan: 0 of 2 in current phase
-Status: Phase planned
-Last activity: 2026-02-09 — Planned 29-layout-system (2 plans, 2 waves)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-09 — Completed 29-01-PLAN.md
 
 Progress: █████████░ 86% (v3.0)
 
@@ -65,6 +65,9 @@ Progress: █████████░ 86% (v3.0)
 | 28 | Modal uses details/summary for no-JS progressive enhancement | Functional SSR without JavaScript |
 | 28 | Tabs SSR renders only default_tab content | Tab switching requires JS, out of scope for Phase 28 |
 | 28 | Framework pre dump replaced with render_to_html output | Real HTML pages instead of JSON placeholder |
+| 29 | All layouts/partials/registry in single layout.rs module | Simpler than separate files for 3 small partial functions |
+| 29 | html_escape made pub(crate) in render.rs | Cross-module reuse without duplication |
+| 29 | AppLayout uses empty partials by default | Users create custom Layout impls with real NavItem data |
 
 ### Pending Todos
 
@@ -91,5 +94,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Planned Phase 29 (Layout System — 2 plans in 2 waves)
+Stopped at: Completed 29-01-PLAN.md (Layout trait, registry, defaults, partials)
 Resume file: None
