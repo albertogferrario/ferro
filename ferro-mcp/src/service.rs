@@ -203,7 +203,7 @@ pub struct GenerationContextParams {
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CodeTemplatesParams {
-    /// Filter by category: handler, model, migration, middleware, validation
+    /// Filter by category: handler, model, migration, middleware, validation, json_view
     pub category: Option<String>,
 }
 
@@ -1007,9 +1007,11 @@ impl FerroMcpService {
     #[tool(
         name = "code_templates",
         description = "Get copy-paste code templates for common Ferro framework patterns.\n\n\
-            **When to use:** Creating new handlers, models, migrations, or middleware from scratch.\n\n\
+            **When to use:** Creating new handlers, models, migrations, middleware, or JSON-UI views from scratch.\n\n\
             **Returns:** Ready-to-use templates with placeholders, required imports, and usage notes.\n\n\
-            **Combine with:** `generation_context` for conventions, `get_handler` for real examples."
+            **Categories:** handler, model, migration, middleware, validation, json_view.\n\n\
+            **Combine with:** `generation_context` for conventions, `get_handler` for real examples, \
+            `json_ui_catalog` for component reference when using json_view templates."
     )]
     pub async fn code_templates(&self, params: Parameters<CodeTemplatesParams>) -> String {
         let templates = tools::code_templates::execute(params.0.category.as_deref());
@@ -1361,5 +1363,5 @@ These workflows show how to combine tools for common tasks.
 
 ### Code Generation (write new code correctly)
 - generation_context: Naming conventions, file structure, patterns, anti-patterns
-- code_templates: Ready-to-use templates for handlers, models, migrations, middleware
+- code_templates: Ready-to-use templates for handlers, models, migrations, middleware, JSON-UI views
 "#;
