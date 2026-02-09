@@ -119,8 +119,8 @@ Plans:
 
 Plans:
 - [x] 32-01: Navigation structure, feature overview, and getting-started guide (completed 2026-02-09)
-- [ ] 32-02: TBD
-- [ ] 32-03: TBD
+- [x] 32-02: Component reference documentation (completed 2026-02-09)
+- [x] 32-03: Actions, data binding & visibility, and layouts documentation (completed 2026-02-09)
 - [x] 32-04: CLI reference update for make:json-view and db:seed (completed 2026-02-09)
 
 ---
@@ -285,4 +285,4 @@ Plans:
 | 29. Layout System | 2/2 | Complete | 2026-02-09 |
 | 30. CLI Scaffolding | 2/2 | Complete | 2026-02-09 |
 | 31. MCP UI Tools | 3/3 | Complete | 2026-02-09 |
-| 32. Documentation | 3/4 | In progress | - |
+| 32. Documentation | 4/4 | Complete | 2026-02-09 |
