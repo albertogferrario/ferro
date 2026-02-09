@@ -119,6 +119,9 @@ Plans:
 
 Plans:
 - [ ] 32-01: TBD
+- [ ] 32-02: TBD
+- [ ] 32-03: TBD
+- [x] 32-04: CLI reference update for make:json-view and db:seed (completed 2026-02-09)
 
 ---
 
@@ -282,4 +285,4 @@ Plans:
 | 29. Layout System | 2/2 | Complete | 2026-02-09 |
 | 30. CLI Scaffolding | 2/2 | Complete | 2026-02-09 |
 | 31. MCP UI Tools | 3/3 | Complete | 2026-02-09 |
-| 32. Documentation | 0/? | Not started | - |
+| 32. Documentation | 1/4 | In progress | - |
