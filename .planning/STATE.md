@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 37 (Model Update Builder)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-09 — Completed 37-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 37-02-PLAN.md
 
-Progress: ████████░░ 85%
+Progress: █████████░ 90%
 
 ## Milestone Summary
 
@@ -36,6 +36,7 @@ Progress: ████████░░ 85%
 1. Follow existing migrate command pattern for db:seed: delegate to cargo run --quiet -- db:seed
 2. Exclude entire frontend/src/types/ directory rather than individual files
 3. UpdateBuilder consumes model (takes self) and uses Option<Option<T>> for nullable field tracking
+4. Keep ActiveValue import in scaffold templates since store handler still uses it for inserts
 
 ### Pending Todos
 
@@ -63,5 +64,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 37-01-PLAN.md
+Stopped at: Completed 37-02-PLAN.md — Phase 37 complete
 Resume file: None

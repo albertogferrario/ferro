@@ -43,6 +43,7 @@ Plans:
 
 Plans:
 - [x] 37-01: Generate UpdateBuilder struct with selective field tracking
+- [x] 37-02: Update scaffold templates, MCP code templates, and documentation
 
 ---
 
@@ -280,7 +281,7 @@ Plans:
 |-------|-------|--------|-----------|
 | 35. CLI Seed Command | 0/1 | Planned | - |
 | 36. Gitignore Generated Types | 0/1 | Planned | - |
-| 37. Model Update Builder | 1/2 | In progress | - |
+| 37. Model Update Builder | 2/2 | Complete | 2026-02-09 |
 
 ## Progress (v3.0 JSON-UI)
 
