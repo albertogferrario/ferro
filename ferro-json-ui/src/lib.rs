@@ -41,6 +41,7 @@
 pub mod action;
 pub mod component;
 pub mod config;
+pub mod data;
 pub mod view;
 pub mod visibility;
 
@@ -54,6 +55,7 @@ pub use component::{
     TextElement, TextProps,
 };
 pub use config::JsonUiConfig;
+pub use data::{resolve_path, resolve_path_string};
 pub use view::{JsonUiView, SCHEMA_VERSION};
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
 
