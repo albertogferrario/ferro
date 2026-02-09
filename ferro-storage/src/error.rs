@@ -31,6 +31,10 @@ pub enum Error {
     #[error("S3 error: {0}")]
     S3(String),
 
+    /// Feature not yet implemented.
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
     /// Serialization error.
     #[error("Serialization error: {0}")]
     Serialization(String),
@@ -55,5 +59,10 @@ impl Error {
     /// Create a disk not configured error.
     pub fn disk_not_configured(disk: impl Into<String>) -> Self {
         Self::DiskNotConfigured(disk.into())
+    }
+
+    /// Create a not implemented error.
+    pub fn not_implemented(feature: impl Into<String>) -> Self {
+        Self::NotImplemented(feature.into())
     }
 }

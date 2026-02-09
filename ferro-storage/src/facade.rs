@@ -199,8 +199,8 @@ impl Storage {
             }
             #[cfg(feature = "s3")]
             DiskDriver::S3 => {
-                // S3 driver initialization would go here
-                unimplemented!("S3 driver requires async initialization")
+                tracing::warn!("S3 driver is not yet implemented; all operations will return errors");
+                Arc::new(crate::drivers::S3Driver)
             }
         }
     }
