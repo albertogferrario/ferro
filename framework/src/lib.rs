@@ -37,6 +37,10 @@ pub use database::{
 // Re-export commonly used SeaORM traits for convenience
 // This saves users from having to add `use sea_orm::*` imports
 pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
+pub use ferro_json_ui::{
+    Action, Component, ComponentNode, JsonUiConfig, JsonUiView, Visibility as JsonUiVisibility,
+    SCHEMA_VERSION,
+};
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{
     json, text, Cookie, CookieOptions, FormRequest, FromParam, FromRequest, HttpResponse,
@@ -44,10 +48,6 @@ pub use http::{
 };
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
 pub use json_ui::JsonUi;
-pub use ferro_json_ui::{
-    JsonUiView, JsonUiConfig, ComponentNode, Component, Action,
-    Visibility as JsonUiVisibility, SCHEMA_VERSION,
-};
 pub use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, PaginatorTrait,
     QueryFilter, QueryOrder, QuerySelect,

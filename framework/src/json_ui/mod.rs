@@ -52,10 +52,12 @@ impl JsonUi {
         data: &serde_json::Value,
         config: &JsonUiConfig,
     ) -> Response {
-        let view_json = serde_json::to_string(view)
-            .map_err(|e| HttpResponse::text(format!("JSON-UI serialization error: {e}")).status(500))?;
-        let data_json = serde_json::to_string(data)
-            .map_err(|e| HttpResponse::text(format!("JSON-UI data serialization error: {e}")).status(500))?;
+        let view_json = serde_json::to_string(view).map_err(|e| {
+            HttpResponse::text(format!("JSON-UI serialization error: {e}")).status(500)
+        })?;
+        let data_json = serde_json::to_string(data).map_err(|e| {
+            HttpResponse::text(format!("JSON-UI data serialization error: {e}")).status(500)
+        })?;
 
         let title = view.title.as_deref().unwrap_or("Ferro");
 
@@ -122,4 +124,175 @@ fn html_escape(s: &str) -> String {
 /// Escape characters for use inside HTML attribute values.
 fn html_escape_attr(s: &str) -> String {
     html_escape(s)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ferro_json_ui::{CardProps, Component, ComponentNode};
+
+    /// Extract the Ok variant from a Response without requiring Debug on HttpResponse.
+    fn ok_response(result: Response) -> HttpResponse {
+        match result {
+            Ok(r) => r,
+            Err(_) => panic!("expected Ok response, got Err"),
+        }
+    }
+
+    fn response_body(response: HttpResponse) -> String {
+        let hyper = response.into_hyper();
+        let body_bytes = hyper.into_body();
+        format!("{:?}", body_bytes)
+    }
+
+    fn sample_view() -> JsonUiView {
+        JsonUiView::new()
+            .title("Test Page")
+            .component(ComponentNode {
+                key: "card".to_string(),
+                component: Component::Card(CardProps {
+                    title: "Hello".to_string(),
+                    description: Some("A test card".to_string()),
+                    children: vec![],
+                }),
+                action: None,
+                visibility: None,
+            })
+    }
+
+    /// Check that a hyper response contains a Content-Type header with the given value.
+    /// Handles the case where multiple Content-Type headers exist (HttpResponse::text()
+    /// sets text/plain, then .header() adds the correct one).
+    fn has_content_type(
+        hyper: &hyper::Response<http_body_util::Full<bytes::Bytes>>,
+        expected: &str,
+    ) -> bool {
+        hyper
+            .headers()
+            .get_all("Content-Type")
+            .iter()
+            .any(|v| v.to_str().map(|s| s == expected).unwrap_or(false))
+    }
+
+    #[test]
+    fn render_produces_valid_html() {
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        assert!(result.is_ok());
+        let response = ok_response(result);
+        assert_eq!(response.status_code(), 200);
+
+        let hyper = response.into_hyper();
+        assert!(has_content_type(&hyper, "text/html; charset=utf-8"));
+
+        let body = format!("{:?}", hyper.into_body());
+        assert!(body.contains("<!DOCTYPE html>"));
+        assert!(body.contains("Test Page"));
+        assert!(body.contains("data-view="));
+        assert!(body.contains("data-props="));
+    }
+
+    #[test]
+    fn render_json_returns_json() {
+        let view = sample_view();
+        let data = serde_json::json!({"users": [1, 2, 3]});
+        let result = JsonUi::render_json(&view, &data);
+
+        assert!(result.is_ok());
+        let response = ok_response(result);
+        assert_eq!(response.status_code(), 200);
+
+        let hyper = response.into_hyper();
+        assert!(has_content_type(&hyper, "application/json"));
+
+        let body = format!("{:?}", hyper.into_body());
+        assert!(body.contains("view"));
+        assert!(body.contains("data"));
+    }
+
+    #[test]
+    fn config_tailwind_disabled() {
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let config = JsonUiConfig::new().tailwind_cdn(false);
+        let result = JsonUi::render_with_config(&view, &data, &config);
+
+        let body = response_body(ok_response(result));
+        assert!(!body.contains("cdn.tailwindcss.com"));
+    }
+
+    #[test]
+    fn config_custom_head() {
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let config =
+            JsonUiConfig::new().custom_head(r#"<link rel="stylesheet" href="/custom.css">"#);
+        let result = JsonUi::render_with_config(&view, &data, &config);
+
+        let body = response_body(ok_response(result));
+        assert!(body.contains("/custom.css"));
+    }
+
+    #[test]
+    fn config_body_class() {
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let config = JsonUiConfig::new().body_class("dark bg-black");
+        let result = JsonUi::render_with_config(&view, &data, &config);
+
+        let body = response_body(ok_response(result));
+        assert!(body.contains("dark bg-black"));
+    }
+
+    #[test]
+    fn html_escaping_prevents_xss_in_title() {
+        let view = JsonUiView::new().title(r#"<script>alert("xss")</script>"#);
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        let body = response_body(ok_response(result));
+        // The raw script tag must not appear unescaped
+        assert!(!body.contains("<script>alert"));
+        assert!(body.contains("&lt;script&gt;"));
+    }
+
+    #[test]
+    fn html_escaping_in_data_attributes() {
+        let view = sample_view();
+        let data = serde_json::json!({"key": "<img src=x onerror=alert(1)>"});
+        let result = JsonUi::render(&view, &data);
+
+        let body = response_body(ok_response(result));
+        // Angle brackets must be escaped in attribute values
+        assert!(!body.contains("<img src=x"));
+        assert!(body.contains("&lt;img"));
+    }
+
+    #[test]
+    fn empty_view_renders_valid_html() {
+        let view = JsonUiView::new();
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        assert!(result.is_ok());
+        let response = ok_response(result);
+        assert_eq!(response.status_code(), 200);
+
+        let body = response_body(response);
+        assert!(body.contains("<!DOCTYPE html>"));
+        // Default title when none set
+        assert!(body.contains("Ferro"));
+    }
+
+    #[test]
+    fn html_escape_fn_handles_all_special_chars() {
+        let input = r#"Hello & "World" <foo> 'bar'"#;
+        let escaped = html_escape(input);
+        assert_eq!(
+            escaped,
+            "Hello &amp; &quot;World&quot; &lt;foo&gt; &#x27;bar&#x27;"
+        );
+    }
 }
