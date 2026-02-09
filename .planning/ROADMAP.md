@@ -47,7 +47,7 @@ Plans:
 
 Plans:
 - [x] 25-01: Data path resolver and form field data_path (completed 2026-02-09)
-- [ ] 25-02: View data integration and framework re-exports
+- [x] 25-02: View data integration and framework re-exports (completed 2026-02-09)
 
 #### Phase 26: Action System
 
@@ -268,7 +268,7 @@ Plans:
 |-------|-------|--------|-----------|
 | 23. JSON-UI Schema | 2/2 | Complete | 2026-02-09 |
 | 24. Component Catalog | 3/3 | Complete | 2026-02-09 |
-| 25. Data Binding | 1/2 | In progress | - |
+| 25. Data Binding | 2/2 | Complete | 2026-02-09 |
 | 26. Action System | 0/? | Not started | - |
 | 27. Validation Integration | 0/? | Not started | - |
 | 28. HTML Renderer | 0/? | Not started | - |

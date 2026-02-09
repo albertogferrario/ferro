@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 25 of 32 (Data Binding)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-09 — Completed 25-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 25-02-PLAN.md
 
-Progress: ██████░░░░ 60% (v3.0)
+Progress: ███████░░░ 70% (v3.0)
 
 ## Milestone Summary
 
@@ -27,7 +27,7 @@ Progress: ██████░░░░ 60% (v3.0)
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 6/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 7/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -49,6 +49,8 @@ Progress: ██████░░░░ 60% (v3.0)
 | 24 | Full re-export of all JSON-UI types from framework | All 20 component types available via `use ferro_rs::*` |
 | 25 | Simple slash-separated paths (not full JSONPath) | Trivial implementation, easy path generation |
 | 25 | data_path on form field components only | Table already has data_path; non-form components don't pre-fill |
+| 25 | data field on JsonUiView after title, before components | Logical ordering: metadata then content |
+| 25 | render_json explicit data wins over embedded | Explicit parameter is "live" handler data; embedded is for self-contained views |
 
 ### Pending Todos
 
@@ -75,5 +77,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 25-01-PLAN.md — Data path resolver and form field data_path
+Stopped at: Completed 25-02-PLAN.md — Phase 25 Data Binding complete
 Resume file: None
