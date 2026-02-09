@@ -407,7 +407,6 @@ impl InertiaResponse {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{}">
     <title>Inertia App</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         import RefreshRuntime from '{}/@react-refresh'
         RefreshRuntime.injectIntoGlobalHook(window)
