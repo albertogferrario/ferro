@@ -1,3 +1,4 @@
+mod ai;
 mod analyzer;
 mod commands;
 mod templates;
