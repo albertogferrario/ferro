@@ -23,6 +23,7 @@
 - [Broadcasting](features/broadcasting.md)
 - [Storage](features/storage.md)
 - [Caching](features/caching.md)
+- [Authentication](features/authentication.md)
 - [Database](features/database.md)
 - [Validation](features/validation.md)
 - [Testing](features/testing.md)
