@@ -39,7 +39,7 @@ Plans:
 Plans:
 - [x] 39-01: User model auth fields + DatabaseUserProvider
 - [ ] 39-02: Auth controllers and routes
-- [ ] 39-03: make:auth CLI command
+- [x] 39-03: make:auth CLI command
 - [x] 39-04: Authentication documentation
 
 #### Phase 40: Auth Middleware
@@ -283,14 +283,14 @@ Plans:
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 3/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 6/? | 🚧 In Progress | - |
 
 ### v4.0 Phase Progress
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
 | 38. Fix Pre-existing Blockers | v4.0 | 2/2 | Complete | 2026-02-09 |
-| 39. Core Authentication | v4.0 | 2/4 | In progress | - |
+| 39. Core Authentication | v4.0 | 3/4 | In progress | - |
 | 40. Auth Middleware | v4.0 | 0/? | Not started | - |
 | 41. API Resources Basics | v4.0 | 0/? | Not started | - |
 | 42. API Resources Advanced | v4.0 | 0/? | Not started | - |
