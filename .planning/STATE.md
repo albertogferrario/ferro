@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v3.0 JSON-UI — JSON-based UI rendering as alternative to Inertia (complete)
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 32 of 32 (Documentation)
-Plan: 4 of 4 in current phase
-Status: Phase complete
-Last activity: 2026-02-09 — Completed 32-03-PLAN.md
+Phase: All complete
+Plan: N/A
+Status: v3.0 JSON-UI milestone shipped
+Last activity: 2026-02-09 — v3.0 milestone complete
 
-Progress: ██████████ 100% (v3.0)
+Progress: ██████████ 100% (all milestones shipped)
 
 ## Milestone Summary
 
@@ -31,58 +31,9 @@ Progress: ██████████ 100% (v3.0)
 
 ## Accumulated Context
 
-### Key Decisions (v3.0)
+### Key Decisions
 
-| Phase | Decision | Rationale |
-|-------|----------|-----------|
-| 23 | Serde tagged enum for Component (`type` field) | Clean JSON with `{"type": "Card", ...}` |
-| 23 | Serde untagged enum for Visibility | Clean `{"and": [...]}` syntax without type field |
-| 23 | ComponentNode wraps Component via flatten | Shared key/action/visibility without duplication |
-| 23 | HttpMethod serializes UPPERCASE | Standard HTTP method format |
-| 23 | Visibility aliased as JsonUiVisibility in framework | Avoids name collision with ferro-storage Visibility |
-| 24 | ButtonVariant aligned to shadcn/ui (6 variants) | CVA pattern consistency with shadcn ecosystem |
-| 24 | BadgeVariant aligned to shadcn/ui (4 variants) | Matches standard component library conventions |
-| 24 | AlertVariant kept as Info/Success/Warning/Error | Pragmatic deviation from shadcn — richer for CRUD apps |
-| 24 | Shared Size enum for cross-component sizing | Avoids variant sprawl across components |
-| 24 | Checkbox/Switch identical props (visual distinction) | Frontend renderer handles visual difference |
-| 24 | DescriptionItem reuses ColumnFormat from Table | Consistent formatting across data display components |
-| 24 | Full re-export of all JSON-UI types from framework | All 20 component types available via `use ferro_rs::*` |
-| 25 | Simple slash-separated paths (not full JSONPath) | Trivial implementation, easy path generation |
-| 25 | data_path on form field components only | Table already has data_path; non-form components don't pre-fill |
-| 25 | data field on JsonUiView after title, before components | Logical ordering: metadata then content |
-| 25 | render_json explicit data wins over embedded | Explicit parameter is "live" handler data; embedded is for self-contained views |
-| 26 | url field added directly to Action struct (Option<String>) | Simpler than separate ResolvedAction type, works for both HTML and JSON output |
-| 26 | Callback-based resolver Fn(&str) -> Option<String> | Keeps ferro-json-ui decoupled from framework route registry |
-| 26 | Clone view before resolution in render pipeline | Immutable API, caller's view never mutated |
-| 26 | Non-strict resolve_actions in render pipeline | Missing routes produce url: None, handled downstream |
-| 27 | Explicit component errors take priority over validation map | Do-not-overwrite rule: resolve_errors skips fields with existing error |
-| 27 | resolve_errors_all joins with ". " separator | Readable concatenation of multiple validation messages |
-| 27 | resolve_with_errors sets view.errors alongside field-level | Dual consumption: component-level + view-level for frontend |
-| 27 | render_validation_error delegates via .all() | Single indirection from framework type to HashMap |
-| 28 | GET actions wrap in `<a>`, non-GET render as-is | Only safe HTTP method for link navigation |
-| 28 | Container components get basic SSR in Plan 01 | Full treatment deferred to Plan 02 |
-| 28 | compute_page_range shows max 7 pages with ellipsis | Readable pagination for large datasets |
-| 28 | Modal uses details/summary for no-JS progressive enhancement | Functional SSR without JavaScript |
-| 28 | Tabs SSR renders only default_tab content | Tab switching requires JS, out of scope for Phase 28 |
-| 28 | Framework pre dump replaced with render_to_html output | Real HTML pages instead of JSON placeholder |
-| 29 | All layouts/partials/registry in single layout.rs module | Simpler than separate files for 3 small partial functions |
-| 29 | html_escape made pub(crate) in render.rs | Cross-module reuse without duplication |
-| 29 | AppLayout uses empty partials by default | Users create custom Layout impls with real NavItem data |
-| 29 | Raw values to LayoutContext, layouts handle escaping | Avoids double-escaping since base_document/ferro_wrapper already escape |
-| 29 | build_response helper for shared render logic | Eliminates duplication between render_with_config and render_with_errors_config |
-| 30 | Blocking reqwest for Anthropic API in CLI | CLI main is synchronous; tokio only used for db commands |
-| 30 | Component catalog as hardcoded const string | Fast, no file I/O, embedded in binary |
-| 30 | Regex-based model scanning (not syn) | Speed and simplicity for AI context assembly |
-| 30 | Graceful AI fallback chain | Missing API key or AI error silently uses static template |
-| 30 | Sonnet default instead of Opus | ~5x cost reduction for code generation |
-| 30 | Assistant prefill //! for code-only output | Eliminates strip_markdown_fences workaround |
-| 30 | System/user prompt separation with cache_control | Cacheable static content, dynamic per-request context |
-| 31 | Regex-based view scanning for json_ui_inspect | Speed and simplicity, views follow predictable patterns |
-| 31 | json_ui_generate returns context, not AI output | Consuming agent IS the LLM, avoids double-LLM calls |
-| 31 | COMPONENT_CATALOG duplicated in MCP crate | Different crate from CLI, cannot share code across workspace |
-| 31 | JSON-UI tools in both Code Generation and separate JSON-UI category | Dual discovery surfaces for maximum agent awareness |
-| 31 | JsonUiViewsStatus counts .rs files excluding mod.rs | Accurate view count without infrastructure files |
-| 32 | Components grouped into 5 categories (Display/Form/Navigation/Feedback/Layout) | Matches actual component purposes better than plan's 4-group layout |
+Archived to PROJECT.md and milestone archive files.
 
 ### Pending Todos
 
@@ -104,10 +55,10 @@ None.
 - v2.0.3 DO Apps Deploy complete: 1 phase, 1 plan (Phase 22.10) (2026-01-17)
 - v2.1 Inertia DX & Fixes complete: 2 phases, 4 plans (Phase 33-34) (2026-01-17)
 - v2.2 CLI Improvements complete: 3 phases, 5 plans (Phase 35-37) (2026-02-09)
-- v3.0 JSON-UI: 10 phases planned (Phases 23-32)
+- v3.0 JSON-UI complete: 10 phases, 24 plans (Phases 23-32) (2026-02-09)
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 32 complete — v3.0 JSON-UI milestone complete
+Stopped at: v3.0 milestone complete
 Resume file: None

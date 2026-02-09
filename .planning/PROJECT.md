@@ -80,6 +80,16 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - ✓ Typed UpdateBuilder pattern for model updates via `model.update().set_field(v).save()` — v2.2
 - ✓ Scaffold templates and MCP code templates updated with builder pattern — v2.2
 
+**v3.0 JSON-UI (shipped 2026-02-09):**
+- ✓ ferro-json-ui crate with 20-component catalog (serde-tagged enums, shadcn/ui-aligned variants) — v3.0
+- ✓ Rust HTML renderer with Tailwind CSS output and XSS prevention — v3.0
+- ✓ Data binding with slash-separated JSON paths and 11 visibility operators — v3.0
+- ✓ Action system with builder API and callback-based URL resolution — v3.0
+- ✓ Layout system with trait-based registry and 3 default layouts — v3.0
+- ✓ AI-powered `ferro make:json-view` CLI command with Anthropic API — v3.0
+- ✓ 3 MCP tools for JSON-UI (catalog, inspect, generate) — v3.0
+- ✓ Comprehensive JSON-UI documentation (6 pages, 2,134 lines) — v3.0
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
@@ -92,22 +102,24 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
 - New major features (payments, subscriptions, etc.) — focus is publishing, not feature expansion
-- Frontend framework changes — React/Inertia stack stays as-is
+- Frontend framework changes — React/Inertia stack stays as-is, JSON-UI is the alternative
 - Database driver changes — SeaORM works, no need to replace
 
 ## Context
 
 **Current State:**
-- 60,000 lines of Rust across 11 crates
+- ~67,000 lines of Rust across 12 crates (ferro-json-ui added in v3.0)
+- JSON-UI: 7,203 lines in ferro-json-ui with 20 components, HTML renderer, layout system
 - Framework ready for crates.io publication
 - Sample application demonstrating all capabilities
-- Comprehensive MCP introspection (30+ tools)
+- Comprehensive MCP introspection (30+ tools, including 3 JSON-UI tools)
 
 **Tech Stack:**
 - Rust 2021 edition
 - Axum web framework
 - SeaORM database layer
-- React/Inertia.js frontend
+- React/Inertia.js frontend (full-stack SPA)
+- JSON-UI server-side rendering (zero-JS alternative)
 - Redis for queue/cache/broadcast
 
 **Primary use case:** Agent-built applications for non-technical users. This requires:
@@ -145,6 +157,11 @@ Reference codebase documentation in `.planning/codebase/`:
 | UpdateBuilder consumes model | Takes self for simpler ownership, matches create pattern | ✓ Good |
 | Option<Option<T>> for nullable fields | None=unchanged, Some(None)=clear, Some(Some(v))=set | ✓ Good |
 | Exclude frontend/src/types/ | Directory-level gitignore over individual files | ✓ Good |
+| Serde tagged enum for Component | Clean JSON with `{"type": "Card", ...}` | ✓ Good |
+| Callback-based URL resolver | Keeps ferro-json-ui decoupled from framework route registry | ✓ Good |
+| Sonnet default for AI generation | ~5x cost reduction vs Opus for CLI code generation | ✓ Good |
+| json_ui_generate returns context | Consuming agent IS the LLM, avoids double-LLM calls | ✓ Good |
+| COMPONENT_CATALOG duplicated | Cannot share code across workspace crates | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-02-09 after v2.2 CLI Improvements milestone*
+*Last updated: 2026-02-09 after v3.0 JSON-UI milestone*

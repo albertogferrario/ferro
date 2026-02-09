@@ -1,5 +1,33 @@
 # Project Milestones: Ferro Framework
 
+## v3.0 JSON-UI (Shipped: 2026-02-09)
+
+**Delivered:** JSON-based UI rendering system as an alternative to Inertia, enabling rapid UI without frontend builds.
+
+**Phases completed:** 23-32 (24 plans total)
+
+**Key accomplishments:**
+- Created ferro-json-ui crate with 20-component catalog (Card, Table, Form, Modal, Tabs, etc.) using serde-tagged enums and shadcn/ui-aligned variants
+- Built complete Rust HTML renderer with Tailwind CSS output, XSS prevention, and progressive enhancement (no-JS modals, SSR tabs)
+- Integrated data binding with slash-separated JSON paths, 11 visibility operators with And/Or/Not composition, and automatic validation error propagation
+- Implemented action system with builder API, callback-based URL resolution, and confirmation/outcome chaining
+- Added layout system with trait-based registry, 3 default layouts (Default/App/Auth), and composable partial functions
+- Built AI-powered `ferro make:json-view` CLI command with Anthropic API and 3 MCP tools (catalog, inspect, generate) for agent-driven development
+- Created comprehensive documentation: getting-started guide, component reference (all 20), actions, data binding, layouts, and CLI reference updates
+
+**Stats:**
+- 336 files changed (+39,266, -1,297 lines)
+- 7,203 lines of Rust (ferro-json-ui crate)
+- 2,134 lines of documentation (6 pages)
+- 10 phases, 24 plans, 241 commits
+- 24 days (2026-01-16 → 2026-02-09)
+
+**Git range:** `2cd48df` → `45e5487`
+
+**What's next:** Publish to crates.io and public announcement.
+
+---
+
 ## v2.2 CLI Improvements (Shipped: 2026-02-09)
 
 **Delivered:** CLI commands for database workflows, gitignore for generated types, and typed UpdateBuilder pattern for model updates.
