@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v3.0 JSON-UI — JSON-based UI rendering as alternative to Inertia
+**Current focus:** v3.0 JSON-UI — JSON-based UI rendering as alternative to Inertia (in progress)
 
 ## Current Position
 
-Phase: 23 (JSON-UI Schema)
+Phase: 23 of 32 (JSON-UI Schema)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-02-09 — v2.2 milestone archived
+Last activity: 2026-02-09 — Milestone v3.0 JSON-UI created
 
 Progress: ░░░░░░░░░░ 0% (v3.0)
 
@@ -27,7 +27,7 @@ Progress: ░░░░░░░░░░ 0% (v3.0)
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
+| v3.0 JSON-UI | 23-32 | 0/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -60,5 +60,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: v2.2 CLI Improvements milestone complete — all 3 phases done
+Stopped at: Milestone v3.0 JSON-UI initialization
 Resume file: None
