@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 39 of 46 (Core Authentication)
-Plan: 3 of 4 in current phase (39-01, 39-03, 39-04 complete)
-Status: In progress
-Last activity: 2026-02-09 - Completed 39-03-PLAN.md (make:auth CLI command)
+Plan: 4 of 4 in current phase (39-01, 39-02, 39-03, 39-04 complete)
+Status: Phase complete
+Last activity: 2026-02-09 - Completed 39-02-PLAN.md (auth controllers and routes)
 
 Progress: █░░░░░░░░░ 15%
 
@@ -44,6 +44,7 @@ Archived to PROJECT.md and milestone archive files.
 | 38-02 | Remove Tailwind CDN entirely (not configurable) | Vite handles CSS; CDN was redundant and assumed Tailwind usage |
 | 39-03 | Instructional output for provider/routes instead of auto-modify | Safer: user may have custom code in those files |
 | 39-03 | ALTER TABLE migration approach for auth fields | Users table likely already exists in projects |
+| 39-02 | Alias ferro::AuthMiddleware as SessionAuthMiddleware | Avoids name conflict with app's existing header-based AuthMiddleware |
 
 ### Pending Todos
 
@@ -65,10 +66,10 @@ None (pre-existing blockers moved to Phase 38 scope).
 - v3.0 JSON-UI complete: 10 phases, 24 plans (Phases 23-32) (2026-02-09)
 - Milestone v4.0 Production Readiness created: auth, API resources, rate limiting, real-time, 9 phases (Phase 38-46)
 - Phase 38 complete: 2 plans, 1 wave — test isolation fixes + storage/Inertia cleanup (2026-02-09)
-- Phase 39 in progress: 39-01 complete (user model + provider), 39-03 complete (make:auth CLI), 39-04 complete (auth docs), 39-02 pending (2026-02-09)
+- Phase 39 complete: 4 plans, 2 waves — user model/provider, auth controllers/routes, make:auth CLI, auth docs (2026-02-09)
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 39-03-PLAN.md
+Stopped at: Completed Phase 39 (all 4 plans)
 Resume file: None
