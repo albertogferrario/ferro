@@ -616,4 +616,242 @@ mod tests {
             assert_eq!(&roundtripped, component);
         }
     }
+
+    #[test]
+    fn size_enum_serialization() {
+        let cases = [
+            (Size::Xs, "xs"),
+            (Size::Sm, "sm"),
+            (Size::Default, "default"),
+            (Size::Lg, "lg"),
+        ];
+        for (size, expected) in &cases {
+            let json = serde_json::to_value(size).unwrap();
+            assert_eq!(json, *expected);
+            let parsed: Size = serde_json::from_value(json).unwrap();
+            assert_eq!(&parsed, size);
+        }
+    }
+
+    #[test]
+    fn icon_position_serialization() {
+        let cases = [(IconPosition::Left, "left"), (IconPosition::Right, "right")];
+        for (pos, expected) in &cases {
+            let json = serde_json::to_value(pos).unwrap();
+            assert_eq!(json, *expected);
+            let parsed: IconPosition = serde_json::from_value(json).unwrap();
+            assert_eq!(&parsed, pos);
+        }
+    }
+
+    #[test]
+    fn sort_direction_serialization() {
+        let cases = [(SortDirection::Asc, "asc"), (SortDirection::Desc, "desc")];
+        for (dir, expected) in &cases {
+            let json = serde_json::to_value(dir).unwrap();
+            assert_eq!(json, *expected);
+            let parsed: SortDirection = serde_json::from_value(json).unwrap();
+            assert_eq!(&parsed, dir);
+        }
+    }
+
+    #[test]
+    fn button_with_size_and_icon() {
+        let button = Component::Button(ButtonProps {
+            label: "Save".to_string(),
+            variant: ButtonVariant::Default,
+            size: Size::Lg,
+            disabled: None,
+            icon: Some("save".to_string()),
+            icon_position: Some(IconPosition::Left),
+        });
+        let json = serde_json::to_value(&button).unwrap();
+        assert_eq!(json["size"], "lg");
+        assert_eq!(json["icon"], "save");
+        assert_eq!(json["icon_position"], "left");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, button);
+    }
+
+    #[test]
+    fn card_with_footer() {
+        let card = Component::Card(CardProps {
+            title: "Actions".to_string(),
+            description: None,
+            children: vec![],
+            footer: vec![ComponentNode {
+                key: "cancel".to_string(),
+                component: Component::Button(ButtonProps {
+                    label: "Cancel".to_string(),
+                    variant: ButtonVariant::Outline,
+                    size: Size::Default,
+                    disabled: None,
+                    icon: None,
+                    icon_position: None,
+                }),
+                action: None,
+                visibility: None,
+            }],
+        });
+        let json = serde_json::to_value(&card).unwrap();
+        assert!(json["footer"].is_array());
+        assert_eq!(json["footer"][0]["label"], "Cancel");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, card);
+    }
+
+    #[test]
+    fn input_with_error_and_description() {
+        let input = Component::Input(InputProps {
+            field: "email".to_string(),
+            label: "Email".to_string(),
+            input_type: InputType::Email,
+            placeholder: None,
+            required: Some(true),
+            disabled: Some(false),
+            error: Some("Invalid email".to_string()),
+            description: Some("Your work email".to_string()),
+            default_value: Some("user@example.com".to_string()),
+        });
+        let json = serde_json::to_value(&input).unwrap();
+        assert_eq!(json["error"], "Invalid email");
+        assert_eq!(json["description"], "Your work email");
+        assert_eq!(json["default_value"], "user@example.com");
+        assert_eq!(json["disabled"], false);
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, input);
+    }
+
+    #[test]
+    fn select_with_default_value() {
+        let select = Component::Select(SelectProps {
+            field: "role".to_string(),
+            label: "Role".to_string(),
+            options: vec![SelectOption {
+                value: "admin".to_string(),
+                label: "Admin".to_string(),
+            }],
+            placeholder: None,
+            required: None,
+            disabled: Some(true),
+            error: Some("Required field".to_string()),
+            description: Some("User role".to_string()),
+            default_value: Some("admin".to_string()),
+        });
+        let json = serde_json::to_value(&select).unwrap();
+        assert_eq!(json["default_value"], "admin");
+        assert_eq!(json["error"], "Required field");
+        assert_eq!(json["description"], "User role");
+        assert_eq!(json["disabled"], true);
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, select);
+    }
+
+    #[test]
+    fn alert_with_title() {
+        let alert = Component::Alert(AlertProps {
+            message: "Something happened".to_string(),
+            variant: AlertVariant::Warning,
+            title: Some("Warning".to_string()),
+        });
+        let json = serde_json::to_value(&alert).unwrap();
+        assert_eq!(json["title"], "Warning");
+        assert_eq!(json["message"], "Something happened");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, alert);
+    }
+
+    #[test]
+    fn modal_with_footer_and_description() {
+        let modal = Component::Modal(ModalProps {
+            title: "Delete Item".to_string(),
+            description: Some("This action cannot be undone.".to_string()),
+            children: vec![],
+            footer: vec![ComponentNode {
+                key: "confirm".to_string(),
+                component: Component::Button(ButtonProps {
+                    label: "Delete".to_string(),
+                    variant: ButtonVariant::Destructive,
+                    size: Size::Default,
+                    disabled: None,
+                    icon: None,
+                    icon_position: None,
+                }),
+                action: None,
+                visibility: None,
+            }],
+            trigger_label: Some("Delete".to_string()),
+        });
+        let json = serde_json::to_value(&modal).unwrap();
+        assert_eq!(json["description"], "This action cannot be undone.");
+        assert!(json["footer"].is_array());
+        assert_eq!(json["footer"][0]["label"], "Delete");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, modal);
+    }
+
+    #[test]
+    fn table_with_sort_props() {
+        let table = Component::Table(TableProps {
+            columns: vec![Column {
+                key: "name".to_string(),
+                label: "Name".to_string(),
+                format: None,
+            }],
+            data_path: "/data/users".to_string(),
+            row_actions: None,
+            empty_message: None,
+            sortable: Some(true),
+            sort_column: Some("name".to_string()),
+            sort_direction: Some(SortDirection::Desc),
+        });
+        let json = serde_json::to_value(&table).unwrap();
+        assert_eq!(json["sortable"], true);
+        assert_eq!(json["sort_column"], "name");
+        assert_eq!(json["sort_direction"], "desc");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, table);
+    }
+
+    #[test]
+    fn aligned_button_variants_serialize() {
+        let cases = [
+            (ButtonVariant::Default, "default"),
+            (ButtonVariant::Secondary, "secondary"),
+            (ButtonVariant::Destructive, "destructive"),
+            (ButtonVariant::Outline, "outline"),
+            (ButtonVariant::Ghost, "ghost"),
+            (ButtonVariant::Link, "link"),
+        ];
+        for (variant, expected) in &cases {
+            let json = serde_json::to_value(variant).unwrap();
+            assert_eq!(
+                json, *expected,
+                "ButtonVariant::{:?} should serialize as {}",
+                variant, expected
+            );
+            let parsed: ButtonVariant = serde_json::from_value(json).unwrap();
+            assert_eq!(&parsed, variant);
+        }
+    }
+
+    #[test]
+    fn aligned_badge_variants_serialize() {
+        let cases = [
+            (BadgeVariant::Default, "default"),
+            (BadgeVariant::Secondary, "secondary"),
+            (BadgeVariant::Destructive, "destructive"),
+            (BadgeVariant::Outline, "outline"),
+        ];
+        for (variant, expected) in &cases {
+            let json = serde_json::to_value(variant).unwrap();
+            assert_eq!(
+                json, *expected,
+                "BadgeVariant::{:?} should serialize as {}",
+                variant, expected
+            );
+            let parsed: BadgeVariant = serde_json::from_value(json).unwrap();
+            assert_eq!(&parsed, variant);
+        }
+    }
 }
