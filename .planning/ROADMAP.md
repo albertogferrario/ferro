@@ -87,7 +87,8 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 29-01: TBD
+- [ ] 29-01: Layout trait, registry, default layouts, and partials in ferro-json-ui
+- [ ] 29-02: Framework integration and re-exports
 
 #### Phase 30: CLI Scaffolding
 
@@ -263,7 +264,7 @@ Plans:
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 11/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 13/? | 🚧 In Progress | - |
 
 ## Progress (v3.0 JSON-UI)
 
@@ -275,7 +276,7 @@ Plans:
 | 26. Action System | 2/2 | Complete | 2026-02-09 |
 | 27. Validation Integration | 2/2 | Complete | 2026-02-09 |
 | 28. HTML Renderer | 2/2 | Complete | 2026-02-09 |
-| 29. Layout System | 0/? | Not started | - |
+| 29. Layout System | 0/2 | Planned | - |
 | 30. CLI Scaffolding | 0/? | Not started | - |
 | 31. MCP UI Tools | 0/? | Not started | - |
 | 32. Documentation | 0/? | Not started | - |
