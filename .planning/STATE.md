@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 31 of 32 (MCP UI Tools)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-09 — Completed 31-01-PLAN.md and 31-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 31-03-PLAN.md
 
-Progress: █████████░ 95% (v3.0)
+Progress: █████████░ 96% (v3.0)
 
 ## Milestone Summary
 
@@ -80,6 +80,8 @@ Progress: █████████░ 95% (v3.0)
 | 31 | Regex-based view scanning for json_ui_inspect | Speed and simplicity, views follow predictable patterns |
 | 31 | json_ui_generate returns context, not AI output | Consuming agent IS the LLM, avoids double-LLM calls |
 | 31 | COMPONENT_CATALOG duplicated in MCP crate | Different crate from CLI, cannot share code across workspace |
+| 31 | JSON-UI tools in both Code Generation and separate JSON-UI category | Dual discovery surfaces for maximum agent awareness |
+| 31 | JsonUiViewsStatus counts .rs files excluding mod.rs | Accurate view count without infrastructure files |
 
 ### Pending Todos
 
@@ -106,5 +108,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 31-01-PLAN.md and 31-02-PLAN.md
+Stopped at: Completed 31-03-PLAN.md (Phase 31 complete)
 Resume file: None
