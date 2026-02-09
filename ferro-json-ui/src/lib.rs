@@ -42,6 +42,7 @@ pub mod action;
 pub mod component;
 pub mod config;
 pub mod data;
+pub mod render;
 pub mod resolve;
 pub mod view;
 pub mod visibility;
@@ -57,6 +58,7 @@ pub use component::{
 };
 pub use config::JsonUiConfig;
 pub use data::{resolve_path, resolve_path_string};
+pub use render::render_to_html;
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
 pub use view::{JsonUiView, SCHEMA_VERSION};
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
