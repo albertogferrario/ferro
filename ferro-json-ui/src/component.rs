@@ -225,3 +225,289 @@ pub struct ComponentNode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub visibility: Option<Visibility>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::action::HttpMethod;
+    use crate::visibility::{VisibilityCondition, VisibilityOperator};
+
+    #[test]
+    fn card_component_tagged_serialization() {
+        let card = Component::Card(CardProps {
+            title: "Test Card".to_string(),
+            description: Some("A description".to_string()),
+            children: vec![],
+        });
+        let json = serde_json::to_value(&card).unwrap();
+        assert_eq!(json["type"], "Card");
+        assert_eq!(json["title"], "Test Card");
+        assert_eq!(json["description"], "A description");
+    }
+
+    #[test]
+    fn button_variant_defaults_to_primary() {
+        let json = r#"{"type": "Button", "label": "Click me"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Button(props) => {
+                assert_eq!(props.variant, ButtonVariant::Primary);
+                assert_eq!(props.label, "Click me");
+            }
+            _ => panic!("expected Button"),
+        }
+    }
+
+    #[test]
+    fn input_type_defaults_to_text() {
+        let json = r#"{"type": "Input", "field": "email", "label": "Email"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Input(props) => {
+                assert_eq!(props.input_type, InputType::Text);
+                assert_eq!(props.field, "email");
+            }
+            _ => panic!("expected Input"),
+        }
+    }
+
+    #[test]
+    fn alert_variant_defaults_to_info() {
+        let json = r#"{"type": "Alert", "message": "Hello"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Alert(props) => assert_eq!(props.variant, AlertVariant::Info),
+            _ => panic!("expected Alert"),
+        }
+    }
+
+    #[test]
+    fn badge_variant_defaults_to_default() {
+        let json = r#"{"type": "Badge", "label": "New"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Badge(props) => assert_eq!(props.variant, BadgeVariant::Default),
+            _ => panic!("expected Badge"),
+        }
+    }
+
+    #[test]
+    fn text_element_defaults_to_p() {
+        let json = r#"{"type": "Text", "content": "Hello world"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Text(props) => {
+                assert_eq!(props.element, TextElement::P);
+                assert_eq!(props.content, "Hello world");
+            }
+            _ => panic!("expected Text"),
+        }
+    }
+
+    #[test]
+    fn table_component_round_trips() {
+        let table = Component::Table(TableProps {
+            columns: vec![
+                Column {
+                    key: "name".to_string(),
+                    label: "Name".to_string(),
+                    format: None,
+                },
+                Column {
+                    key: "created_at".to_string(),
+                    label: "Created".to_string(),
+                    format: Some(ColumnFormat::Date),
+                },
+            ],
+            data_path: "/data/users".to_string(),
+            row_actions: None,
+            empty_message: Some("No users found".to_string()),
+        });
+        let json = serde_json::to_string(&table).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, table);
+    }
+
+    #[test]
+    fn select_component_round_trips() {
+        let select = Component::Select(SelectProps {
+            field: "role".to_string(),
+            label: "Role".to_string(),
+            options: vec![
+                SelectOption {
+                    value: "admin".to_string(),
+                    label: "Administrator".to_string(),
+                },
+                SelectOption {
+                    value: "user".to_string(),
+                    label: "User".to_string(),
+                },
+            ],
+            placeholder: Some("Select a role".to_string()),
+            required: Some(true),
+        });
+        let json = serde_json::to_string(&select).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, select);
+    }
+
+    #[test]
+    fn modal_component_round_trips() {
+        let modal = Component::Modal(ModalProps {
+            title: "Confirm".to_string(),
+            children: vec![ComponentNode {
+                key: "msg".to_string(),
+                component: Component::Text(TextProps {
+                    content: "Are you sure?".to_string(),
+                    element: TextElement::P,
+                }),
+                action: None,
+                visibility: None,
+            }],
+            trigger_label: Some("Open".to_string()),
+        });
+        let json = serde_json::to_string(&modal).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, modal);
+    }
+
+    #[test]
+    fn form_component_round_trips() {
+        let form = Component::Form(FormProps {
+            action: Action {
+                handler: "users.store".to_string(),
+                method: HttpMethod::Post,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+            },
+            fields: vec![ComponentNode {
+                key: "email-input".to_string(),
+                component: Component::Input(InputProps {
+                    field: "email".to_string(),
+                    label: "Email".to_string(),
+                    input_type: InputType::Email,
+                    placeholder: Some("user@example.com".to_string()),
+                    required: Some(true),
+                }),
+                action: None,
+                visibility: None,
+            }],
+            method: None,
+        });
+        let json = serde_json::to_string(&form).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, form);
+    }
+
+    #[test]
+    fn component_node_with_action_and_visibility() {
+        let node = ComponentNode {
+            key: "create-btn".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "Create User".to_string(),
+                variant: ButtonVariant::Primary,
+                disabled: None,
+            }),
+            action: Some(Action {
+                handler: "users.create".to_string(),
+                method: HttpMethod::Post,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+            }),
+            visibility: Some(Visibility::Condition(VisibilityCondition {
+                path: "/auth/user/role".to_string(),
+                operator: VisibilityOperator::Eq,
+                value: Some(serde_json::Value::String("admin".to_string())),
+            })),
+        };
+        let json = serde_json::to_string(&node).unwrap();
+        let parsed: ComponentNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, node);
+
+        // Verify flattened structure includes type
+        let value = serde_json::to_value(&node).unwrap();
+        assert_eq!(value["type"], "Button");
+        assert_eq!(value["key"], "create-btn");
+        assert!(value.get("action").is_some());
+        assert!(value.get("visibility").is_some());
+    }
+
+    #[test]
+    fn all_ten_component_variants_serialize() {
+        let components: Vec<Component> = vec![
+            Component::Card(CardProps {
+                title: "t".to_string(),
+                description: None,
+                children: vec![],
+            }),
+            Component::Table(TableProps {
+                columns: vec![],
+                data_path: "/d".to_string(),
+                row_actions: None,
+                empty_message: None,
+            }),
+            Component::Form(FormProps {
+                action: Action {
+                    handler: "h.m".to_string(),
+                    method: HttpMethod::Post,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                },
+                fields: vec![],
+                method: None,
+            }),
+            Component::Button(ButtonProps {
+                label: "b".to_string(),
+                variant: ButtonVariant::Primary,
+                disabled: None,
+            }),
+            Component::Input(InputProps {
+                field: "f".to_string(),
+                label: "l".to_string(),
+                input_type: InputType::Text,
+                placeholder: None,
+                required: None,
+            }),
+            Component::Select(SelectProps {
+                field: "f".to_string(),
+                label: "l".to_string(),
+                options: vec![],
+                placeholder: None,
+                required: None,
+            }),
+            Component::Alert(AlertProps {
+                message: "m".to_string(),
+                variant: AlertVariant::Info,
+            }),
+            Component::Badge(BadgeProps {
+                label: "b".to_string(),
+                variant: BadgeVariant::Default,
+            }),
+            Component::Modal(ModalProps {
+                title: "t".to_string(),
+                children: vec![],
+                trigger_label: None,
+            }),
+            Component::Text(TextProps {
+                content: "c".to_string(),
+                element: TextElement::P,
+            }),
+        ];
+        let expected_types = [
+            "Card", "Table", "Form", "Button", "Input", "Select", "Alert", "Badge", "Modal", "Text",
+        ];
+        for (component, expected_type) in components.iter().zip(expected_types.iter()) {
+            let json = serde_json::to_value(component).unwrap();
+            assert_eq!(
+                json["type"], *expected_type,
+                "component should serialize with type={}",
+                expected_type
+            );
+            let roundtripped: Component = serde_json::from_value(json).unwrap();
+            assert_eq!(&roundtripped, component);
+        }
+    }
+}

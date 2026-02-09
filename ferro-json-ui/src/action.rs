@@ -78,3 +78,85 @@ pub struct Action {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on_error: Option<ActionOutcome>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn minimal_action_serializes() {
+        let action = Action {
+            handler: "users.store".to_string(),
+            method: HttpMethod::Post,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+        };
+        let json = serde_json::to_value(&action).unwrap();
+        assert_eq!(json["handler"], "users.store");
+        assert_eq!(json["method"], "POST");
+        assert!(json.get("confirm").is_none());
+        assert!(json.get("on_success").is_none());
+    }
+
+    #[test]
+    fn action_with_confirm_dialog() {
+        let action = Action {
+            handler: "users.destroy".to_string(),
+            method: HttpMethod::Delete,
+            confirm: Some(ConfirmDialog {
+                title: "Delete user?".to_string(),
+                message: Some("This cannot be undone.".to_string()),
+                variant: DialogVariant::Danger,
+            }),
+            on_success: Some(ActionOutcome::Redirect {
+                url: "/users".to_string(),
+            }),
+            on_error: Some(ActionOutcome::ShowErrors),
+        };
+        let json = serde_json::to_string(&action).unwrap();
+        let parsed: Action = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, action);
+    }
+
+    #[test]
+    fn action_outcome_variants_serialize() {
+        let redirect = ActionOutcome::Redirect {
+            url: "/dashboard".to_string(),
+        };
+        let json = serde_json::to_value(&redirect).unwrap();
+        assert_eq!(json["type"], "redirect");
+        assert_eq!(json["url"], "/dashboard");
+
+        let show_errors = ActionOutcome::ShowErrors;
+        let json = serde_json::to_value(&show_errors).unwrap();
+        assert_eq!(json["type"], "show_errors");
+
+        let refresh = ActionOutcome::Refresh;
+        let json = serde_json::to_value(&refresh).unwrap();
+        assert_eq!(json["type"], "refresh");
+
+        let notify = ActionOutcome::Notify {
+            message: "Saved!".to_string(),
+            variant: NotifyVariant::Success,
+        };
+        let json = serde_json::to_value(&notify).unwrap();
+        assert_eq!(json["type"], "notify");
+        assert_eq!(json["message"], "Saved!");
+        assert_eq!(json["variant"], "success");
+    }
+
+    #[test]
+    fn http_method_defaults_to_post() {
+        let json = r#"{"handler": "posts.store"}"#;
+        let action: Action = serde_json::from_str(json).unwrap();
+        assert_eq!(action.method, HttpMethod::Post);
+    }
+
+    #[test]
+    fn dialog_variant_defaults_to_default() {
+        let json = r#"{"title": "Confirm?"}"#;
+        let dialog: ConfirmDialog = serde_json::from_str(json).unwrap();
+        assert_eq!(dialog.variant, DialogVariant::Default);
+    }
+}

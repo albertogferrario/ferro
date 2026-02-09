@@ -39,6 +39,8 @@
 
 pub mod action;
 pub mod component;
+pub mod config;
+pub mod view;
 pub mod visibility;
 
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
@@ -47,6 +49,8 @@ pub use component::{
     Column, ColumnFormat, Component, ComponentNode, FormProps, InputProps, InputType, ModalProps,
     SelectOption, SelectProps, TableProps, TextElement, TextProps,
 };
+pub use config::JsonUiConfig;
+pub use view::{JsonUiView, SCHEMA_VERSION};
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
 
 // Re-export serde_json for convenience
