@@ -98,7 +98,7 @@ Plans:
 
 Plans:
 - [x] 30-01: AI-powered `make:json-view` command with Anthropic API and static fallback (completed 2026-02-09)
-- [ ] 30-02: Anthropic API best practices — system prompt, prefill, caching, few-shot, Sonnet default
+- [x] 30-02: Anthropic API best practices — system prompt, prefill, caching, few-shot, Sonnet default (completed 2026-02-09)
 
 #### Phase 31: MCP UI Tools
 
@@ -278,6 +278,6 @@ Plans:
 | 27. Validation Integration | 2/2 | Complete | 2026-02-09 |
 | 28. HTML Renderer | 2/2 | Complete | 2026-02-09 |
 | 29. Layout System | 2/2 | Complete | 2026-02-09 |
-| 30. CLI Scaffolding | 1/2 | In Progress | - |
+| 30. CLI Scaffolding | 2/2 | Complete | 2026-02-09 |
 | 31. MCP UI Tools | 0/? | Not started | - |
 | 32. Documentation | 0/? | Not started | - |

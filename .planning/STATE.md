@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 Phase: 30 of 32 (CLI Scaffolding)
 Plan: 2 of 2 in current phase
-Status: Plan 30-02 ready for execution
-Last activity: 2026-02-09 — Created 30-02-PLAN.md (Anthropic API best practices)
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 30-02-PLAN.md
 
 Progress: █████████░ 93% (v3.0)
 
@@ -74,6 +74,9 @@ Progress: █████████░ 93% (v3.0)
 | 30 | Component catalog as hardcoded const string | Fast, no file I/O, embedded in binary |
 | 30 | Regex-based model scanning (not syn) | Speed and simplicity for AI context assembly |
 | 30 | Graceful AI fallback chain | Missing API key or AI error silently uses static template |
+| 30 | Sonnet default instead of Opus | ~5x cost reduction for code generation |
+| 30 | Assistant prefill //! for code-only output | Eliminates strip_markdown_fences workaround |
+| 30 | System/user prompt separation with cache_control | Cacheable static content, dynamic per-request context |
 
 ### Pending Todos
 
@@ -100,5 +103,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Created 30-02-PLAN.md (Anthropic API best practices improvements)
-Resume file: .planning/phases/30-cli-scaffolding/30-02-PLAN.md
+Stopped at: Completed 30-02-PLAN.md (Phase 30 complete)
+Resume file: None
