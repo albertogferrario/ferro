@@ -82,13 +82,9 @@ pub fn execute(project_root: &Path, filter: Option<&str>) -> JsonUiViewList {
         for fn_cap in fn_re.captures_iter(&content) {
             let name = fn_cap[1].to_string();
 
-            let title = title_re
-                .captures(&content)
-                .map(|c| c[1].to_string());
+            let title = title_re.captures(&content).map(|c| c[1].to_string());
 
-            let layout = layout_re
-                .captures(&content)
-                .map(|c| c[1].to_string());
+            let layout = layout_re.captures(&content).map(|c| c[1].to_string());
 
             let components_used: Vec<String> = component_re
                 .captures_iter(&content)

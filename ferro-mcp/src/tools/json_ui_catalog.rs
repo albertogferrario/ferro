@@ -94,7 +94,12 @@ fn build_catalog() -> Vec<CatalogComponent> {
             description: "Renders text content with semantic HTML element selection.".to_string(),
             props: vec![
                 prop("content", "String", true, "Text content to display"),
-                prop("element", "TextElement", false, "HTML element: h1, h2, h3, span, p (default: p)"),
+                prop(
+                    "element",
+                    "TextElement",
+                    false,
+                    "HTML element: h1, h2, h3, span, p (default: p)",
+                ),
             ],
             variants: None,
         },
@@ -103,11 +108,26 @@ fn build_catalog() -> Vec<CatalogComponent> {
             description: "Interactive button with visual variants and optional icon.".to_string(),
             props: vec![
                 prop("label", "String", true, "Button label text"),
-                prop("variant", "ButtonVariant", false, "Visual style (default: default)"),
+                prop(
+                    "variant",
+                    "ButtonVariant",
+                    false,
+                    "Visual style (default: default)",
+                ),
                 prop("size", "Size", false, "Button size (default: default)"),
-                prop("disabled", "Option<bool>", false, "Whether button is disabled"),
+                prop(
+                    "disabled",
+                    "Option<bool>",
+                    false,
+                    "Whether button is disabled",
+                ),
                 prop("icon", "Option<String>", false, "Icon name"),
-                prop("icon_position", "Option<IconPosition>", false, "Icon placement: left or right (default: left)"),
+                prop(
+                    "icon_position",
+                    "Option<IconPosition>",
+                    false,
+                    "Icon placement: left or right (default: left)",
+                ),
             ],
             variants: Some(vec![
                 "default".to_string(),
@@ -120,26 +140,78 @@ fn build_catalog() -> Vec<CatalogComponent> {
         },
         CatalogComponent {
             name: "Card".to_string(),
-            description: "Container with title, optional description, children, and footer.".to_string(),
+            description: "Container with title, optional description, children, and footer."
+                .to_string(),
             props: vec![
                 prop("title", "String", true, "Card title"),
-                prop("description", "Option<String>", false, "Card description below title"),
-                prop("children", "Vec<ComponentNode>", false, "Nested components inside the card body"),
-                prop("footer", "Vec<ComponentNode>", false, "Components in the card footer"),
+                prop(
+                    "description",
+                    "Option<String>",
+                    false,
+                    "Card description below title",
+                ),
+                prop(
+                    "children",
+                    "Vec<ComponentNode>",
+                    false,
+                    "Nested components inside the card body",
+                ),
+                prop(
+                    "footer",
+                    "Vec<ComponentNode>",
+                    false,
+                    "Components in the card footer",
+                ),
             ],
             variants: None,
         },
         CatalogComponent {
             name: "Table".to_string(),
-            description: "Data table with columns, row actions, sorting, and empty state.".to_string(),
+            description: "Data table with columns, row actions, sorting, and empty state."
+                .to_string(),
             props: vec![
-                prop("columns", "Vec<Column>", true, "Column definitions: { key, label, format? }"),
-                prop("data_path", "String", true, "Data path to the array of rows (e.g., \"/data/users\")"),
-                prop("row_actions", "Option<Vec<Action>>", false, "Actions available for each row"),
-                prop("empty_message", "Option<String>", false, "Message when table has no data"),
-                prop("sortable", "Option<bool>", false, "Whether columns are sortable"),
-                prop("sort_column", "Option<String>", false, "Currently sorted column key"),
-                prop("sort_direction", "Option<SortDirection>", false, "Sort direction: asc or desc"),
+                prop(
+                    "columns",
+                    "Vec<Column>",
+                    true,
+                    "Column definitions: { key, label, format? }",
+                ),
+                prop(
+                    "data_path",
+                    "String",
+                    true,
+                    "Data path to the array of rows (e.g., \"/data/users\")",
+                ),
+                prop(
+                    "row_actions",
+                    "Option<Vec<Action>>",
+                    false,
+                    "Actions available for each row",
+                ),
+                prop(
+                    "empty_message",
+                    "Option<String>",
+                    false,
+                    "Message when table has no data",
+                ),
+                prop(
+                    "sortable",
+                    "Option<bool>",
+                    false,
+                    "Whether columns are sortable",
+                ),
+                prop(
+                    "sort_column",
+                    "Option<String>",
+                    false,
+                    "Currently sorted column key",
+                ),
+                prop(
+                    "sort_direction",
+                    "Option<SortDirection>",
+                    false,
+                    "Sort direction: asc or desc",
+                ),
             ],
             variants: None,
         },
@@ -148,25 +220,61 @@ fn build_catalog() -> Vec<CatalogComponent> {
             description: "Form container with action binding and field components.".to_string(),
             props: vec![
                 prop("action", "Action", true, "Action to execute on form submit"),
-                prop("fields", "Vec<ComponentNode>", true, "Form field components (Input, Select, Checkbox, etc.)"),
-                prop("method", "Option<HttpMethod>", false, "HTTP method override (GET, POST, PUT, PATCH, DELETE)"),
+                prop(
+                    "fields",
+                    "Vec<ComponentNode>",
+                    true,
+                    "Form field components (Input, Select, Checkbox, etc.)",
+                ),
+                prop(
+                    "method",
+                    "Option<HttpMethod>",
+                    false,
+                    "HTTP method override (GET, POST, PUT, PATCH, DELETE)",
+                ),
             ],
             variants: None,
         },
         CatalogComponent {
             name: "Input".to_string(),
-            description: "Text input field with type variants, validation error, and data binding.".to_string(),
+            description: "Text input field with type variants, validation error, and data binding."
+                .to_string(),
             props: vec![
                 prop("field", "String", true, "Form field name for data binding"),
                 prop("label", "String", true, "Input label text"),
-                prop("input_type", "InputType", false, "Input type (default: text)"),
+                prop(
+                    "input_type",
+                    "InputType",
+                    false,
+                    "Input type (default: text)",
+                ),
                 prop("placeholder", "Option<String>", false, "Placeholder text"),
-                prop("required", "Option<bool>", false, "Whether field is required"),
-                prop("disabled", "Option<bool>", false, "Whether field is disabled"),
+                prop(
+                    "required",
+                    "Option<bool>",
+                    false,
+                    "Whether field is required",
+                ),
+                prop(
+                    "disabled",
+                    "Option<bool>",
+                    false,
+                    "Whether field is disabled",
+                ),
                 prop("error", "Option<String>", false, "Validation error message"),
-                prop("description", "Option<String>", false, "Help text below the input"),
+                prop(
+                    "description",
+                    "Option<String>",
+                    false,
+                    "Help text below the input",
+                ),
                 prop("default_value", "Option<String>", false, "Pre-filled value"),
-                prop("data_path", "Option<String>", false, "Data path for pre-filling from handler data"),
+                prop(
+                    "data_path",
+                    "Option<String>",
+                    false,
+                    "Data path for pre-filling from handler data",
+                ),
             ],
             variants: Some(vec![
                 "text".to_string(),
@@ -184,18 +292,49 @@ fn build_catalog() -> Vec<CatalogComponent> {
         },
         CatalogComponent {
             name: "Select".to_string(),
-            description: "Dropdown select field with options, validation error, and data binding.".to_string(),
+            description: "Dropdown select field with options, validation error, and data binding."
+                .to_string(),
             props: vec![
                 prop("field", "String", true, "Form field name for data binding"),
                 prop("label", "String", true, "Select label text"),
-                prop("options", "Vec<SelectOption>", true, "Options: { value, label }"),
+                prop(
+                    "options",
+                    "Vec<SelectOption>",
+                    true,
+                    "Options: { value, label }",
+                ),
                 prop("placeholder", "Option<String>", false, "Placeholder text"),
-                prop("required", "Option<bool>", false, "Whether field is required"),
-                prop("disabled", "Option<bool>", false, "Whether field is disabled"),
+                prop(
+                    "required",
+                    "Option<bool>",
+                    false,
+                    "Whether field is required",
+                ),
+                prop(
+                    "disabled",
+                    "Option<bool>",
+                    false,
+                    "Whether field is disabled",
+                ),
                 prop("error", "Option<String>", false, "Validation error message"),
-                prop("description", "Option<String>", false, "Help text below the select"),
-                prop("default_value", "Option<String>", false, "Pre-selected value"),
-                prop("data_path", "Option<String>", false, "Data path for pre-filling from handler data"),
+                prop(
+                    "description",
+                    "Option<String>",
+                    false,
+                    "Help text below the select",
+                ),
+                prop(
+                    "default_value",
+                    "Option<String>",
+                    false,
+                    "Pre-selected value",
+                ),
+                prop(
+                    "data_path",
+                    "Option<String>",
+                    false,
+                    "Data path for pre-filling from handler data",
+                ),
             ],
             variants: None,
         },
@@ -204,7 +343,12 @@ fn build_catalog() -> Vec<CatalogComponent> {
             description: "Alert message with variant-based styling.".to_string(),
             props: vec![
                 prop("message", "String", true, "Alert message content"),
-                prop("variant", "AlertVariant", false, "Visual style (default: info)"),
+                prop(
+                    "variant",
+                    "AlertVariant",
+                    false,
+                    "Visual style (default: info)",
+                ),
                 prop("title", "Option<String>", false, "Alert title"),
             ],
             variants: Some(vec![
@@ -219,7 +363,12 @@ fn build_catalog() -> Vec<CatalogComponent> {
             description: "Small label with variant-based styling.".to_string(),
             props: vec![
                 prop("label", "String", true, "Badge text"),
-                prop("variant", "BadgeVariant", false, "Visual style (default: default)"),
+                prop(
+                    "variant",
+                    "BadgeVariant",
+                    false,
+                    "Visual style (default: default)",
+                ),
             ],
             variants: Some(vec![
                 "default".to_string(),
@@ -230,27 +379,64 @@ fn build_catalog() -> Vec<CatalogComponent> {
         },
         CatalogComponent {
             name: "Modal".to_string(),
-            description: "Dialog overlay with title, content, footer, and trigger button.".to_string(),
+            description: "Dialog overlay with title, content, footer, and trigger button."
+                .to_string(),
             props: vec![
                 prop("title", "String", true, "Modal title"),
                 prop("description", "Option<String>", false, "Modal description"),
-                prop("children", "Vec<ComponentNode>", false, "Content components inside the modal body"),
-                prop("footer", "Vec<ComponentNode>", false, "Components in the modal footer"),
-                prop("trigger_label", "Option<String>", false, "Label for the trigger button"),
+                prop(
+                    "children",
+                    "Vec<ComponentNode>",
+                    false,
+                    "Content components inside the modal body",
+                ),
+                prop(
+                    "footer",
+                    "Vec<ComponentNode>",
+                    false,
+                    "Components in the modal footer",
+                ),
+                prop(
+                    "trigger_label",
+                    "Option<String>",
+                    false,
+                    "Label for the trigger button",
+                ),
             ],
             variants: None,
         },
         CatalogComponent {
             name: "Checkbox".to_string(),
-            description: "Boolean checkbox field with label, description, and data binding.".to_string(),
+            description: "Boolean checkbox field with label, description, and data binding."
+                .to_string(),
             props: vec![
                 prop("field", "String", true, "Form field name for data binding"),
                 prop("label", "String", true, "Checkbox label text"),
-                prop("description", "Option<String>", false, "Help text below the checkbox"),
+                prop(
+                    "description",
+                    "Option<String>",
+                    false,
+                    "Help text below the checkbox",
+                ),
                 prop("checked", "Option<bool>", false, "Default checked state"),
-                prop("data_path", "Option<String>", false, "Data path for pre-filling from handler data"),
-                prop("required", "Option<bool>", false, "Whether field is required"),
-                prop("disabled", "Option<bool>", false, "Whether field is disabled"),
+                prop(
+                    "data_path",
+                    "Option<String>",
+                    false,
+                    "Data path for pre-filling from handler data",
+                ),
+                prop(
+                    "required",
+                    "Option<bool>",
+                    false,
+                    "Whether field is required",
+                ),
+                prop(
+                    "disabled",
+                    "Option<bool>",
+                    false,
+                    "Whether field is disabled",
+                ),
                 prop("error", "Option<String>", false, "Validation error message"),
             ],
             variants: None,
@@ -261,11 +447,31 @@ fn build_catalog() -> Vec<CatalogComponent> {
             props: vec![
                 prop("field", "String", true, "Form field name for data binding"),
                 prop("label", "String", true, "Switch label text"),
-                prop("description", "Option<String>", false, "Help text below the switch"),
+                prop(
+                    "description",
+                    "Option<String>",
+                    false,
+                    "Help text below the switch",
+                ),
                 prop("checked", "Option<bool>", false, "Default checked state"),
-                prop("data_path", "Option<String>", false, "Data path for pre-filling from handler data"),
-                prop("required", "Option<bool>", false, "Whether field is required"),
-                prop("disabled", "Option<bool>", false, "Whether field is disabled"),
+                prop(
+                    "data_path",
+                    "Option<String>",
+                    false,
+                    "Data path for pre-filling from handler data",
+                ),
+                prop(
+                    "required",
+                    "Option<bool>",
+                    false,
+                    "Whether field is required",
+                ),
+                prop(
+                    "disabled",
+                    "Option<bool>",
+                    false,
+                    "Whether field is disabled",
+                ),
                 prop("error", "Option<String>", false, "Validation error message"),
             ],
             variants: None,
@@ -273,17 +479,30 @@ fn build_catalog() -> Vec<CatalogComponent> {
         CatalogComponent {
             name: "Separator".to_string(),
             description: "Visual divider between content sections.".to_string(),
-            props: vec![
-                prop("orientation", "Option<Orientation>", false, "Direction: horizontal (default) or vertical"),
-            ],
+            props: vec![prop(
+                "orientation",
+                "Option<Orientation>",
+                false,
+                "Direction: horizontal (default) or vertical",
+            )],
             variants: None,
         },
         CatalogComponent {
             name: "DescriptionList".to_string(),
             description: "Key-value pairs displayed as a description list.".to_string(),
             props: vec![
-                prop("items", "Vec<DescriptionItem>", true, "Items: { label, value, format? }"),
-                prop("columns", "Option<u8>", false, "Number of columns for layout"),
+                prop(
+                    "items",
+                    "Vec<DescriptionItem>",
+                    true,
+                    "Items: { label, value, format? }",
+                ),
+                prop(
+                    "columns",
+                    "Option<u8>",
+                    false,
+                    "Number of columns for layout",
+                ),
             ],
             variants: None,
         },
@@ -291,17 +510,30 @@ fn build_catalog() -> Vec<CatalogComponent> {
             name: "Tabs".to_string(),
             description: "Tabbed content with multiple panels.".to_string(),
             props: vec![
-                prop("default_tab", "String", true, "Value of the initially active tab"),
-                prop("tabs", "Vec<Tab>", true, "Tab definitions: { value, label, children }"),
+                prop(
+                    "default_tab",
+                    "String",
+                    true,
+                    "Value of the initially active tab",
+                ),
+                prop(
+                    "tabs",
+                    "Vec<Tab>",
+                    true,
+                    "Tab definitions: { value, label, children }",
+                ),
             ],
             variants: None,
         },
         CatalogComponent {
             name: "Breadcrumb".to_string(),
             description: "Navigation breadcrumb trail.".to_string(),
-            props: vec![
-                prop("items", "Vec<BreadcrumbItem>", true, "Breadcrumb items: { label, url? }"),
-            ],
+            props: vec![prop(
+                "items",
+                "Vec<BreadcrumbItem>",
+                true,
+                "Breadcrumb items: { label, url? }",
+            )],
             variants: None,
         },
         CatalogComponent {
@@ -311,7 +543,12 @@ fn build_catalog() -> Vec<CatalogComponent> {
                 prop("current_page", "u32", true, "Current page number"),
                 prop("per_page", "u32", true, "Items per page"),
                 prop("total", "u32", true, "Total number of items"),
-                prop("base_url", "Option<String>", false, "Base URL for page links"),
+                prop(
+                    "base_url",
+                    "Option<String>",
+                    false,
+                    "Base URL for page links",
+                ),
             ],
             variants: None,
         },
@@ -330,9 +567,24 @@ fn build_catalog() -> Vec<CatalogComponent> {
             description: "User avatar with image, fallback text, and size variants.".to_string(),
             props: vec![
                 prop("src", "Option<String>", false, "Image URL"),
-                prop("alt", "String", true, "Alt text (required for accessibility)"),
-                prop("fallback", "Option<String>", false, "Fallback initials when no image"),
-                prop("size", "Option<Size>", false, "Avatar size: xs, sm, default, lg"),
+                prop(
+                    "alt",
+                    "String",
+                    true,
+                    "Alt text (required for accessibility)",
+                ),
+                prop(
+                    "fallback",
+                    "Option<String>",
+                    false,
+                    "Fallback initials when no image",
+                ),
+                prop(
+                    "size",
+                    "Option<Size>",
+                    false,
+                    "Avatar size: xs, sm, default, lg",
+                ),
             ],
             variants: None,
         },
@@ -340,9 +592,24 @@ fn build_catalog() -> Vec<CatalogComponent> {
             name: "Skeleton".to_string(),
             description: "Loading placeholder with configurable dimensions.".to_string(),
             props: vec![
-                prop("width", "Option<String>", false, "CSS width (e.g., \"100%\", \"200px\")"),
-                prop("height", "Option<String>", false, "CSS height (e.g., \"40px\")"),
-                prop("rounded", "Option<bool>", false, "Whether to use rounded corners"),
+                prop(
+                    "width",
+                    "Option<String>",
+                    false,
+                    "CSS width (e.g., \"100%\", \"200px\")",
+                ),
+                prop(
+                    "height",
+                    "Option<String>",
+                    false,
+                    "CSS height (e.g., \"40px\")",
+                ),
+                prop(
+                    "rounded",
+                    "Option<bool>",
+                    false,
+                    "Whether to use rounded corners",
+                ),
             ],
             variants: None,
         },
@@ -500,7 +767,10 @@ mod tests {
     fn test_button_has_variants() {
         let catalog = execute(Some("Button"));
         let button = &catalog.components[0];
-        let variants = button.variants.as_ref().expect("Button should have variants");
+        let variants = button
+            .variants
+            .as_ref()
+            .expect("Button should have variants");
         assert_eq!(variants.len(), 6);
         assert!(variants.contains(&"default".to_string()));
         assert!(variants.contains(&"destructive".to_string()));

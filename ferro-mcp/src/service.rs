@@ -219,6 +219,14 @@ pub struct JsonUiInspectParams {
     pub filter: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct JsonUiGenerateParams {
+    /// Optional model name — include only this model's fields for focused context
+    pub model: Option<String>,
+    /// Optional view description — passed through to help the agent understand intent
+    pub description: Option<String>,
+}
+
 #[tool_router(router = tool_router)]
 impl FerroMcpService {
     /// Get application information including framework version, Rust version, models, and installed crates
@@ -1036,7 +1044,30 @@ impl FerroMcpService {
             `get_handler` for the handler that renders the view."
     )]
     pub async fn json_ui_inspect(&self, params: Parameters<JsonUiInspectParams>) -> String {
-        let result = tools::json_ui_inspect::execute(&self.project_root, params.0.filter.as_deref());
+        let result =
+            tools::json_ui_inspect::execute(&self.project_root, params.0.filter.as_deref());
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Assemble context for generating a new JSON-UI view
+    #[tool(
+        name = "json_ui_generate",
+        description = "Assemble structured context for creating a new JSON-UI view from models and routes.\n\n\
+            **When to use:** Creating a new JSON-UI view, getting context for view generation, \
+            understanding available models and routes for view building. Does NOT call any AI API — \
+            returns context for the agent to write the view itself.\n\n\
+            **Returns:** Component catalog, model fields, route definitions, existing view names, \
+            a complete view example, and naming/structure conventions.\n\n\
+            **Combine with:** `json_ui_catalog` for detailed component reference, \
+            `list_models` for full model details, \
+            `code_templates` with category=json_view for boilerplate."
+    )]
+    pub async fn json_ui_generate(&self, params: Parameters<JsonUiGenerateParams>) -> String {
+        let result = tools::json_ui_generate::execute(
+            &self.project_root,
+            params.0.model.as_deref(),
+            params.0.description.as_deref(),
+        );
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
     }
 }
