@@ -77,10 +77,10 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
                 let desc = description.as_deref().unwrap_or(&title);
                 println!("{} Generating view with AI...", style("⏳").cyan());
 
-                let prompt = ai::build_view_context(&file_name, desc);
+                let (system, user_prompt) = ai::build_view_context(&file_name, desc);
 
-                match ai::call_anthropic(&prompt) {
-                    Ok(response) => strip_markdown_fences(&response),
+                match ai::call_anthropic(&system, &user_prompt) {
+                    Ok(code) => code,
                     Err(e) => {
                         eprintln!(
                             "{} AI generation failed: {}",
