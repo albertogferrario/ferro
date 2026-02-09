@@ -419,12 +419,11 @@ pub fn test(input: TokenStream) -> TokenStream {
 
 /// Derive macro for reducing SeaORM model boilerplate
 ///
-/// Generates builder pattern, setters, and convenience methods for Ferro models.
+/// Generates create builder, update builder, and convenience methods for Ferro models.
 /// Apply to a SeaORM Model struct to get:
 /// - `Model::query()` - Start a new QueryBuilder
 /// - `Model::create()` - Get a builder for inserting new records
-/// - `model.set_*()` - Chainable setters for updating
-/// - `model.update()` - Save changes to database
+/// - `model.update()` - Get an UpdateBuilder for selective field updates
 /// - `model.delete()` - Delete the record
 ///
 /// # Example
@@ -450,11 +449,19 @@ pub fn test(input: TokenStream) -> TokenStream {
 ///     .insert()
 ///     .await?;
 ///
-/// // Update an existing record
+/// // Update specific fields only (unchanged fields are not sent to DB)
 /// let updated = user
-///     .set_name("John Doe")
-///     .set_bio(Some("Developer"))
 ///     .update()
+///     .set_name("John Doe")
+///     .set_bio("Developer")
+///     .save()
+///     .await?;
+///
+/// // Clear an optional field to NULL
+/// let updated = updated
+///     .update()
+///     .clear_bio()
+///     .save()
 ///     .await?;
 ///
 /// // Query records
