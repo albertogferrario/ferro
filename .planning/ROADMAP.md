@@ -23,10 +23,11 @@
 **Goal**: Stabilize foundation by fixing ferro-storage unimplemented methods, flaky tests, and tailwind test assumption
 **Depends on**: Previous milestone complete
 **Research**: Unlikely (internal bug fixes)
-**Plans**: TBD
+**Plans**: 2 plans, 1 wave
 
 Plans:
-- [ ] 38-01: TBD (run /gsd:plan-phase 38 to break down)
+- [ ] 38-01: Fix test isolation (metrics global state + queue env var safety)
+- [ ] 38-02: Fix storage placeholders + Inertia CDN assumption
 
 #### Phase 39: Core Authentication
 
