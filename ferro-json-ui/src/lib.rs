@@ -28,6 +28,7 @@
 //!             title: "User Management".to_string(),
 //!             description: None,
 //!             children: vec![],
+//!             footer: vec![],
 //!         }),
 //!         action: None,
 //!         visibility: None,
@@ -46,8 +47,8 @@ pub mod visibility;
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
 pub use component::{
     AlertProps, AlertVariant, BadgeProps, BadgeVariant, ButtonProps, ButtonVariant, CardProps,
-    Column, ColumnFormat, Component, ComponentNode, FormProps, InputProps, InputType, ModalProps,
-    SelectOption, SelectProps, TableProps, TextElement, TextProps,
+    Column, ColumnFormat, Component, ComponentNode, FormProps, IconPosition, InputProps, InputType,
+    ModalProps, SelectOption, SelectProps, Size, SortDirection, TableProps, TextElement, TextProps,
 };
 pub use config::JsonUiConfig;
 pub use view::{JsonUiView, SCHEMA_VERSION};

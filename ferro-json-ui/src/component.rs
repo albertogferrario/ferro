@@ -8,15 +8,46 @@ use serde::{Deserialize, Serialize};
 use crate::action::Action;
 use crate::visibility::Visibility;
 
-/// Button visual variants.
+/// Shared size enum for components (Button, Badge, Avatar, Input).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Size {
+    Xs,
+    Sm,
+    #[default]
+    Default,
+    Lg,
+}
+
+/// Icon placement relative to button label.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum IconPosition {
+    #[default]
+    Left,
+    Right,
+}
+
+/// Sort direction for table columns.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SortDirection {
+    #[default]
+    Asc,
+    Desc,
+}
+
+/// Button visual variants (aligned to shadcn/ui).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ButtonVariant {
     #[default]
-    Primary,
+    Default,
     Secondary,
-    Danger,
+    Destructive,
+    Outline,
     Ghost,
+    Link,
 }
 
 /// Input field types.
@@ -30,6 +61,11 @@ pub enum InputType {
     Number,
     Textarea,
     Hidden,
+    Date,
+    Time,
+    Url,
+    Tel,
+    Search,
 }
 
 /// Alert visual variants.
@@ -43,16 +79,15 @@ pub enum AlertVariant {
     Error,
 }
 
-/// Badge visual variants.
+/// Badge visual variants (aligned to shadcn/ui).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BadgeVariant {
     #[default]
     Default,
-    Primary,
-    Success,
-    Warning,
-    Error,
+    Secondary,
+    Destructive,
+    Outline,
 }
 
 /// Text element types for semantic HTML rendering.
@@ -101,6 +136,8 @@ pub struct CardProps {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<ComponentNode>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub footer: Vec<ComponentNode>,
 }
 
 /// Props for Table component.
@@ -112,6 +149,12 @@ pub struct TableProps {
     pub row_actions: Option<Vec<Action>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empty_message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sortable: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sort_column: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sort_direction: Option<SortDirection>,
 }
 
 /// Props for Form component.
@@ -129,8 +172,14 @@ pub struct ButtonProps {
     pub label: String,
     #[serde(default)]
     pub variant: ButtonVariant,
+    #[serde(default)]
+    pub size: Size,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_position: Option<IconPosition>,
 }
 
 /// Props for Input component.
@@ -145,6 +194,14 @@ pub struct InputProps {
     pub placeholder: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_value: Option<String>,
 }
 
 /// Props for Select component.
@@ -158,6 +215,14 @@ pub struct SelectProps {
     pub placeholder: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_value: Option<String>,
 }
 
 /// Props for Alert component.
@@ -166,6 +231,8 @@ pub struct AlertProps {
     pub message: String,
     #[serde(default)]
     pub variant: AlertVariant,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
 }
 
 /// Props for Badge component.
@@ -180,8 +247,12 @@ pub struct BadgeProps {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModalProps {
     pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<ComponentNode>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub footer: Vec<ComponentNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger_label: Option<String>,
 }
@@ -238,6 +309,7 @@ mod tests {
             title: "Test Card".to_string(),
             description: Some("A description".to_string()),
             children: vec![],
+            footer: vec![],
         });
         let json = serde_json::to_value(&card).unwrap();
         assert_eq!(json["type"], "Card");
@@ -246,12 +318,12 @@ mod tests {
     }
 
     #[test]
-    fn button_variant_defaults_to_primary() {
+    fn button_variant_defaults_to_default() {
         let json = r#"{"type": "Button", "label": "Click me"}"#;
         let component: Component = serde_json::from_str(json).unwrap();
         match component {
             Component::Button(props) => {
-                assert_eq!(props.variant, ButtonVariant::Primary);
+                assert_eq!(props.variant, ButtonVariant::Default);
                 assert_eq!(props.label, "Click me");
             }
             _ => panic!("expected Button"),
@@ -322,6 +394,9 @@ mod tests {
             data_path: "/data/users".to_string(),
             row_actions: None,
             empty_message: Some("No users found".to_string()),
+            sortable: None,
+            sort_column: None,
+            sort_direction: None,
         });
         let json = serde_json::to_string(&table).unwrap();
         let parsed: Component = serde_json::from_str(&json).unwrap();
@@ -345,6 +420,10 @@ mod tests {
             ],
             placeholder: Some("Select a role".to_string()),
             required: Some(true),
+            disabled: None,
+            error: None,
+            description: None,
+            default_value: None,
         });
         let json = serde_json::to_string(&select).unwrap();
         let parsed: Component = serde_json::from_str(&json).unwrap();
@@ -355,6 +434,7 @@ mod tests {
     fn modal_component_round_trips() {
         let modal = Component::Modal(ModalProps {
             title: "Confirm".to_string(),
+            description: None,
             children: vec![ComponentNode {
                 key: "msg".to_string(),
                 component: Component::Text(TextProps {
@@ -364,6 +444,7 @@ mod tests {
                 action: None,
                 visibility: None,
             }],
+            footer: vec![],
             trigger_label: Some("Open".to_string()),
         });
         let json = serde_json::to_string(&modal).unwrap();
@@ -389,6 +470,10 @@ mod tests {
                     input_type: InputType::Email,
                     placeholder: Some("user@example.com".to_string()),
                     required: Some(true),
+                    disabled: None,
+                    error: None,
+                    description: None,
+                    default_value: None,
                 }),
                 action: None,
                 visibility: None,
@@ -406,8 +491,11 @@ mod tests {
             key: "create-btn".to_string(),
             component: Component::Button(ButtonProps {
                 label: "Create User".to_string(),
-                variant: ButtonVariant::Primary,
+                variant: ButtonVariant::Default,
+                size: Size::Default,
                 disabled: None,
+                icon: None,
+                icon_position: None,
             }),
             action: Some(Action {
                 handler: "users.create".to_string(),
@@ -441,12 +529,16 @@ mod tests {
                 title: "t".to_string(),
                 description: None,
                 children: vec![],
+                footer: vec![],
             }),
             Component::Table(TableProps {
                 columns: vec![],
                 data_path: "/d".to_string(),
                 row_actions: None,
                 empty_message: None,
+                sortable: None,
+                sort_column: None,
+                sort_direction: None,
             }),
             Component::Form(FormProps {
                 action: Action {
@@ -461,8 +553,11 @@ mod tests {
             }),
             Component::Button(ButtonProps {
                 label: "b".to_string(),
-                variant: ButtonVariant::Primary,
+                variant: ButtonVariant::Default,
+                size: Size::Default,
                 disabled: None,
+                icon: None,
+                icon_position: None,
             }),
             Component::Input(InputProps {
                 field: "f".to_string(),
@@ -470,6 +565,10 @@ mod tests {
                 input_type: InputType::Text,
                 placeholder: None,
                 required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: None,
             }),
             Component::Select(SelectProps {
                 field: "f".to_string(),
@@ -477,10 +576,15 @@ mod tests {
                 options: vec![],
                 placeholder: None,
                 required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: None,
             }),
             Component::Alert(AlertProps {
                 message: "m".to_string(),
                 variant: AlertVariant::Info,
+                title: None,
             }),
             Component::Badge(BadgeProps {
                 label: "b".to_string(),
@@ -488,7 +592,9 @@ mod tests {
             }),
             Component::Modal(ModalProps {
                 title: "t".to_string(),
+                description: None,
                 children: vec![],
+                footer: vec![],
                 trigger_label: None,
             }),
             Component::Text(TextProps {

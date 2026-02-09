@@ -122,6 +122,7 @@ mod tests {
                     title: "User Management".to_string(),
                     description: None,
                     children: vec![],
+                    footer: vec![],
                 }),
                 action: None,
                 visibility: None,
@@ -144,6 +145,7 @@ mod tests {
                 component: Component::Alert(AlertProps {
                     message: "Welcome".to_string(),
                     variant: AlertVariant::Success,
+                    title: None,
                 }),
                 action: None,
                 visibility: None,
@@ -180,7 +182,7 @@ mod tests {
                             "key": "create-btn",
                             "type": "Button",
                             "label": "Create User",
-                            "variant": "primary",
+                            "variant": "default",
                             "action": {
                                 "handler": "users.create",
                                 "method": "POST"
@@ -289,8 +291,11 @@ mod tests {
                 key: "delete-btn".to_string(),
                 component: Component::Button(ButtonProps {
                     label: "Delete All".to_string(),
-                    variant: ButtonVariant::Danger,
+                    variant: ButtonVariant::Destructive,
+                    size: Size::Default,
                     disabled: Some(false),
+                    icon: None,
+                    icon_position: None,
                 }),
                 action: Some(Action {
                     handler: "admin.delete_all".to_string(),
