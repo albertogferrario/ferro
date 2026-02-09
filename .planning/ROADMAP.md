@@ -107,7 +107,9 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 31-01: TBD
+- [x] 31-01: JSON-UI catalog MCP tool (completed 2026-02-09)
+- [x] 31-02: JSON-UI inspect and generate MCP tools (completed 2026-02-09)
+- [ ] 31-03: MCP instructions update and existing tool integration
 
 #### Phase 32: Documentation
 
@@ -279,5 +281,5 @@ Plans:
 | 28. HTML Renderer | 2/2 | Complete | 2026-02-09 |
 | 29. Layout System | 2/2 | Complete | 2026-02-09 |
 | 30. CLI Scaffolding | 2/2 | Complete | 2026-02-09 |
-| 31. MCP UI Tools | 0/? | Not started | - |
+| 31. MCP UI Tools | 2/3 | In progress | - |
 | 32. Documentation | 0/? | Not started | - |

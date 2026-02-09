@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 30 of 32 (CLI Scaffolding)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-09 — Completed 30-02-PLAN.md
+Phase: 31 of 32 (MCP UI Tools)
+Plan: 2 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-09 — Completed 31-02-PLAN.md
 
-Progress: █████████░ 93% (v3.0)
+Progress: █████████░ 95% (v3.0)
 
 ## Milestone Summary
 
@@ -77,6 +77,9 @@ Progress: █████████░ 93% (v3.0)
 | 30 | Sonnet default instead of Opus | ~5x cost reduction for code generation |
 | 30 | Assistant prefill //! for code-only output | Eliminates strip_markdown_fences workaround |
 | 30 | System/user prompt separation with cache_control | Cacheable static content, dynamic per-request context |
+| 31 | Regex-based view scanning for json_ui_inspect | Speed and simplicity, views follow predictable patterns |
+| 31 | json_ui_generate returns context, not AI output | Consuming agent IS the LLM, avoids double-LLM calls |
+| 31 | COMPONENT_CATALOG duplicated in MCP crate | Different crate from CLI, cannot share code across workspace |
 
 ### Pending Todos
 
@@ -103,5 +106,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 30-02-PLAN.md (Phase 30 complete)
+Stopped at: Completed 31-02-PLAN.md
 Resume file: None
