@@ -1096,6 +1096,7 @@ Ferro Framework MCP server. Provides introspection tools for AI-assisted develop
 Ferro is a Laravel-inspired web framework for Rust featuring:
 - SeaORM for database (models in src/models/, migrations in src/migrations/)
 - Inertia.js for full-stack React/TypeScript (frontend in frontend/src/pages/)
+- JSON-UI for server-rendered HTML views without frontend builds (views in src/views/)
 - Background jobs via ferro-queue (jobs in src/jobs/)
 - Event system via ferro-events (events in src/events/, listeners in src/listeners/)
 - Multi-channel notifications (src/notifications/)
@@ -1175,6 +1176,18 @@ These workflows show how to combine tools for common tasks.
 4. `get_handler` - Reference a real example if needed
 5. Implement using templates with correct placeholders
 6. `validate_contracts` - If Inertia, verify types match
+
+### Building a JSON-UI View
+1. `json_ui_catalog` - Browse available components and their props
+2. `json_ui_generate` - Get generation context (models, routes, conventions)
+3. `code_templates` (category: json_view) - Get boilerplate template
+4. Implement the view using context and catalog
+5. `json_ui_inspect` - Verify the view was created correctly
+
+### Inspecting Existing JSON-UI Views
+1. `json_ui_inspect` - List all views with metadata
+2. `json_ui_catalog` (component: "ComponentName") - Look up specific component props
+3. `get_handler` - See the handler that renders the view
 
 ## When to Use These Tools (PROACTIVELY)
 
@@ -1306,6 +1319,24 @@ These workflows show how to combine tools for common tasks.
 - Starting with a working template and customizing
 - Learning the correct structure for Ferro artifacts
 
+**USE json_ui_catalog** when:
+- Building or modifying JSON-UI views
+- Need to know component prop names and types
+- Checking available variants for a component
+- Understanding the component API before writing view code
+
+**USE json_ui_inspect** when:
+- Understanding existing JSON-UI views in a project
+- Before adding new views (check what exists)
+- Finding which components a view uses
+- Checking which actions a view references
+
+**USE json_ui_generate** when:
+- Creating a new JSON-UI view from scratch
+- Need model fields and routes for context
+- Want conventions and a complete example
+- Building views for specific models
+
 ## Tool Categories
 
 ### Domain Understanding (learn the business)
@@ -1364,4 +1395,12 @@ These workflows show how to combine tools for common tasks.
 ### Code Generation (write new code correctly)
 - generation_context: Naming conventions, file structure, patterns, anti-patterns
 - code_templates: Ready-to-use templates for handlers, models, migrations, middleware, JSON-UI views
+- json_ui_catalog: Component reference for JSON-UI view development
+- json_ui_generate: Context assembly for creating JSON-UI views
+
+### JSON-UI (build and inspect views)
+- json_ui_catalog: Component reference with props, variants, and builder API
+- json_ui_inspect: List existing JSON-UI views with metadata
+- json_ui_generate: Generation context (models, routes, catalog, example)
+- code_templates (json_view): Boilerplate view templates
 "#;
