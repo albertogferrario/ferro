@@ -10,6 +10,104 @@
 - ✅ [**v2.1 Inertia DX & Fixes**](milestones/v2.1-ROADMAP.md) — Phases 33-34 (shipped 2026-01-17)
 - ✅ [**v2.2 CLI Improvements**](milestones/v2.2-ROADMAP.md) — Phases 35-37 (shipped 2026-02-09)
 - ✅ [**v3.0 JSON-UI**](milestones/v3.0-ROADMAP.md) — Phases 23-32 (shipped 2026-02-09)
+- 🚧 **v4.0 Production Readiness** — Phases 38-46 (in progress)
+
+---
+
+### 🚧 v4.0 Production Readiness (In Progress)
+
+**Milestone Goal:** Make Ferro production-ready with authentication, API resources, rate limiting, real-time improvements, and stability fixes.
+
+#### Phase 38: Fix Pre-existing Blockers
+
+**Goal**: Stabilize foundation by fixing ferro-storage unimplemented methods, flaky tests, and tailwind test assumption
+**Depends on**: Previous milestone complete
+**Research**: Unlikely (internal bug fixes)
+**Plans**: TBD
+
+Plans:
+- [ ] 38-01: TBD (run /gsd:plan-phase 38 to break down)
+
+#### Phase 39: Core Authentication
+
+**Goal**: Session-based login/register with password hashing (bcrypt/argon2)
+**Depends on**: Phase 38
+**Research**: Unlikely (session auth patterns exist in framework)
+**Plans**: TBD
+
+Plans:
+- [ ] 39-01: TBD
+
+#### Phase 40: Auth Middleware
+
+**Goal**: Route guards, auth/guest middleware, current user extraction
+**Depends on**: Phase 39
+**Research**: Unlikely (middleware patterns established)
+**Plans**: TBD
+
+Plans:
+- [ ] 40-01: TBD
+
+#### Phase 41: API Resources Basics
+
+**Goal**: Model-to-response transformation with field selection (Laravel API Resources pattern)
+**Depends on**: Phase 38
+**Research**: Unlikely (internal patterns, Rust trait-based design)
+**Plans**: TBD
+
+Plans:
+- [ ] 41-01: TBD
+
+#### Phase 42: API Resources Advanced
+
+**Goal**: Relationship inclusion, pagination, and collection resources
+**Depends on**: Phase 41
+**Research**: Unlikely (builds on Phase 41 patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 42-01: TBD
+
+#### Phase 43: Rate Limiting
+
+**Goal**: Throttle middleware with configurable per-route and global limits
+**Depends on**: Phase 38
+**Research**: Unlikely (standard middleware + Redis pattern)
+**Plans**: TBD
+
+Plans:
+- [ ] 43-01: TBD
+
+#### Phase 44: Real-time Improvements
+
+**Goal**: Enhance ferro-broadcast with connection management and channel authorization
+**Depends on**: Phase 40
+**Research**: Likely (need to assess ferro-broadcast current state and gaps)
+**Research topics**: Current ferro-broadcast API surface, WebSocket connection lifecycle, channel auth patterns
+**Plans**: TBD
+
+Plans:
+- [ ] 44-01: TBD
+
+#### Phase 45: DX Polish
+
+**Goal**: CLI ergonomics, error message improvements, documentation updates for new features
+**Depends on**: Phases 39-44
+**Research**: Unlikely (internal improvements)
+**Plans**: TBD
+
+Plans:
+- [ ] 45-01: TBD
+
+#### Phase 46: MCP + CLI Updates
+
+**Goal**: Auth scaffolding commands, introspection tools for auth/resources/rate-limiting
+**Depends on**: Phase 45
+**Research**: Unlikely (established MCP patterns with 30+ tools)
+**Plans**: TBD
+
+Plans:
+- [ ] 46-01: TBD
 
 ---
 
@@ -181,3 +279,18 @@
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
+| v4.0 Production Readiness | 38-46 | 0/? | 🚧 In Progress | - |
+
+### v4.0 Phase Progress
+
+| Phase | Milestone | Plans | Status | Completed |
+|-------|-----------|-------|--------|-----------|
+| 38. Fix Pre-existing Blockers | v4.0 | 0/? | Not started | - |
+| 39. Core Authentication | v4.0 | 0/? | Not started | - |
+| 40. Auth Middleware | v4.0 | 0/? | Not started | - |
+| 41. API Resources Basics | v4.0 | 0/? | Not started | - |
+| 42. API Resources Advanced | v4.0 | 0/? | Not started | - |
+| 43. Rate Limiting | v4.0 | 0/? | Not started | - |
+| 44. Real-time Improvements | v4.0 | 0/? | Not started | - |
+| 45. DX Polish | v4.0 | 0/? | Not started | - |
+| 46. MCP + CLI Updates | v4.0 | 0/? | Not started | - |

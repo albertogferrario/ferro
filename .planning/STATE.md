@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Planning next milestone
+**Current focus:** v4.0 Production Readiness
 
 ## Current Position
 
-Phase: All complete
-Plan: N/A
-Status: v3.0 JSON-UI milestone shipped
-Last activity: 2026-02-09 — v3.0 milestone complete
+Phase: 38 of 46 (Fix Pre-existing Blockers)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-09 - Milestone v4.0 created
 
-Progress: ██████████ 100% (all milestones shipped)
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone Summary
 
@@ -28,6 +28,7 @@ Progress: ██████████ 100% (all milestones shipped)
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
+| v4.0 Production Readiness | 38-46 | 0/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -41,10 +42,7 @@ None.
 
 ### Blockers/Concerns
 
-**Pre-existing (unrelated to milestones):**
-1. ferro-storage has unimplemented trait methods
-2. Flaky shared state in test_different_methods_tracked_separately
-3. test_globals_css_not_empty expects tailwind in CSS
+None (pre-existing blockers moved to Phase 38 scope).
 
 ### Roadmap Evolution
 
@@ -56,9 +54,10 @@ None.
 - v2.1 Inertia DX & Fixes complete: 2 phases, 4 plans (Phase 33-34) (2026-01-17)
 - v2.2 CLI Improvements complete: 3 phases, 5 plans (Phase 35-37) (2026-02-09)
 - v3.0 JSON-UI complete: 10 phases, 24 plans (Phases 23-32) (2026-02-09)
+- Milestone v4.0 Production Readiness created: auth, API resources, rate limiting, real-time, 9 phases (Phase 38-46)
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: v3.0 milestone complete
+Stopped at: Milestone v4.0 initialization
 Resume file: None
