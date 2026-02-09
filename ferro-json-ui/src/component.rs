@@ -211,6 +211,9 @@ pub struct InputProps {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_value: Option<String>,
+    /// Data path for pre-filling from handler data (e.g., "/data/user/name").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
 }
 
 /// Props for Select component.
@@ -232,6 +235,9 @@ pub struct SelectProps {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_value: Option<String>,
+    /// Data path for pre-filling from handler data (e.g., "/data/user/name").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
 }
 
 /// Props for Alert component.
@@ -284,6 +290,9 @@ pub struct CheckboxProps {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub checked: Option<bool>,
+    /// Data path for pre-filling from handler data (e.g., "/data/user/name").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -302,6 +311,9 @@ pub struct SwitchProps {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub checked: Option<bool>,
+    /// Data path for pre-filling from handler data (e.g., "/data/user/name").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -577,6 +589,7 @@ mod tests {
             error: None,
             description: None,
             default_value: None,
+            data_path: None,
         });
         let json = serde_json::to_string(&select).unwrap();
         let parsed: Component = serde_json::from_str(&json).unwrap();
@@ -627,6 +640,7 @@ mod tests {
                     error: None,
                     description: None,
                     default_value: None,
+                    data_path: None,
                 }),
                 action: None,
                 visibility: None,
@@ -722,6 +736,7 @@ mod tests {
                 error: None,
                 description: None,
                 default_value: None,
+                data_path: None,
             }),
             Component::Select(SelectProps {
                 field: "f".to_string(),
@@ -733,6 +748,7 @@ mod tests {
                 error: None,
                 description: None,
                 default_value: None,
+                data_path: None,
             }),
             Component::Alert(AlertProps {
                 message: "m".to_string(),
@@ -759,6 +775,7 @@ mod tests {
                 label: "l".to_string(),
                 description: None,
                 checked: None,
+                data_path: None,
                 required: None,
                 disabled: None,
                 error: None,
@@ -768,6 +785,7 @@ mod tests {
                 label: "l".to_string(),
                 description: None,
                 checked: None,
+                data_path: None,
                 required: None,
                 disabled: None,
                 error: None,
@@ -948,6 +966,7 @@ mod tests {
             error: Some("Invalid email".to_string()),
             description: Some("Your work email".to_string()),
             default_value: Some("user@example.com".to_string()),
+            data_path: None,
         });
         let json = serde_json::to_value(&input).unwrap();
         assert_eq!(json["error"], "Invalid email");
@@ -973,6 +992,7 @@ mod tests {
             error: Some("Required field".to_string()),
             description: Some("User role".to_string()),
             default_value: Some("admin".to_string()),
+            data_path: None,
         });
         let json = serde_json::to_value(&select).unwrap();
         assert_eq!(json["default_value"], "admin");
@@ -1098,6 +1118,7 @@ mod tests {
             label: "Accept Terms".to_string(),
             description: Some("You must accept the terms".to_string()),
             checked: Some(true),
+            data_path: None,
             required: Some(true),
             disabled: Some(false),
             error: None,
@@ -1118,6 +1139,7 @@ mod tests {
             label: "Enable Notifications".to_string(),
             description: Some("Receive email notifications".to_string()),
             checked: Some(false),
+            data_path: None,
             required: None,
             disabled: Some(false),
             error: None,
@@ -1184,6 +1206,7 @@ mod tests {
             label: "I agree".to_string(),
             description: None,
             checked: None,
+            data_path: None,
             required: Some(true),
             disabled: None,
             error: Some("You must agree".to_string()),
@@ -1216,6 +1239,7 @@ mod tests {
                             error: None,
                             description: None,
                             default_value: None,
+                            data_path: None,
                         }),
                         action: None,
                         visibility: None,
@@ -1236,6 +1260,7 @@ mod tests {
                             error: None,
                             description: None,
                             default_value: None,
+                            data_path: None,
                         }),
                         action: None,
                         visibility: None,
@@ -1376,5 +1401,84 @@ mod tests {
             }
             _ => panic!("expected Tabs"),
         }
+    }
+
+    #[test]
+    fn input_data_path_round_trips() {
+        let input = Component::Input(InputProps {
+            field: "name".to_string(),
+            label: "Name".to_string(),
+            input_type: InputType::Text,
+            placeholder: None,
+            required: None,
+            disabled: None,
+            error: None,
+            description: None,
+            default_value: None,
+            data_path: Some("/data/user/name".to_string()),
+        });
+        let json = serde_json::to_value(&input).unwrap();
+        assert_eq!(json["data_path"], "/data/user/name");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, input);
+    }
+
+    #[test]
+    fn select_data_path_round_trips() {
+        let select = Component::Select(SelectProps {
+            field: "role".to_string(),
+            label: "Role".to_string(),
+            options: vec![SelectOption {
+                value: "admin".to_string(),
+                label: "Admin".to_string(),
+            }],
+            placeholder: None,
+            required: None,
+            disabled: None,
+            error: None,
+            description: None,
+            default_value: None,
+            data_path: Some("/data/user/role".to_string()),
+        });
+        let json = serde_json::to_value(&select).unwrap();
+        assert_eq!(json["data_path"], "/data/user/role");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, select);
+    }
+
+    #[test]
+    fn checkbox_data_path_round_trips() {
+        let checkbox = Component::Checkbox(CheckboxProps {
+            field: "terms".to_string(),
+            label: "Accept Terms".to_string(),
+            description: None,
+            checked: None,
+            data_path: Some("/data/user/accepted_terms".to_string()),
+            required: None,
+            disabled: None,
+            error: None,
+        });
+        let json = serde_json::to_value(&checkbox).unwrap();
+        assert_eq!(json["data_path"], "/data/user/accepted_terms");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, checkbox);
+    }
+
+    #[test]
+    fn switch_data_path_round_trips() {
+        let switch = Component::Switch(SwitchProps {
+            field: "notifications".to_string(),
+            label: "Enable Notifications".to_string(),
+            description: None,
+            checked: None,
+            data_path: Some("/data/user/notifications_enabled".to_string()),
+            required: None,
+            disabled: None,
+            error: None,
+        });
+        let json = serde_json::to_value(&switch).unwrap();
+        assert_eq!(json["data_path"], "/data/user/notifications_enabled");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, switch);
     }
 }
