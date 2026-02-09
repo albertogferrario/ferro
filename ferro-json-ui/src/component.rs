@@ -37,6 +37,15 @@ pub enum SortDirection {
     Desc,
 }
 
+/// Separator orientation.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Orientation {
+    #[default]
+    Horizontal,
+    Vertical,
+}
+
 /// Button visual variants (aligned to shadcn/ui).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -265,6 +274,66 @@ pub struct TextProps {
     pub element: TextElement,
 }
 
+/// Props for Checkbox component.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CheckboxProps {
+    /// Form field name for data binding.
+    pub field: String,
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checked: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Props for Switch component.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SwitchProps {
+    /// Form field name for data binding.
+    pub field: String,
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checked: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Props for Separator component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SeparatorProps {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub orientation: Option<Orientation>,
+}
+
+/// A single item in a description list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DescriptionItem {
+    pub label: String,
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<ColumnFormat>,
+}
+
+/// Props for DescriptionList component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DescriptionListProps {
+    pub items: Vec<DescriptionItem>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<u8>,
+}
+
 /// Tagged component enum. Serializes with `"type": "Card"` etc.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -279,6 +348,10 @@ pub enum Component {
     Badge(BadgeProps),
     Modal(ModalProps),
     Text(TextProps),
+    Checkbox(CheckboxProps),
+    Switch(SwitchProps),
+    Separator(SeparatorProps),
+    DescriptionList(DescriptionListProps),
 }
 
 /// A component node wrapping a component with shared fields.
@@ -523,7 +596,7 @@ mod tests {
     }
 
     #[test]
-    fn all_ten_component_variants_serialize() {
+    fn all_component_variants_serialize() {
         let components: Vec<Component> = vec![
             Component::Card(CardProps {
                 title: "t".to_string(),
@@ -601,9 +674,50 @@ mod tests {
                 content: "c".to_string(),
                 element: TextElement::P,
             }),
+            Component::Checkbox(CheckboxProps {
+                field: "f".to_string(),
+                label: "l".to_string(),
+                description: None,
+                checked: None,
+                required: None,
+                disabled: None,
+                error: None,
+            }),
+            Component::Switch(SwitchProps {
+                field: "f".to_string(),
+                label: "l".to_string(),
+                description: None,
+                checked: None,
+                required: None,
+                disabled: None,
+                error: None,
+            }),
+            Component::Separator(SeparatorProps { orientation: None }),
+            Component::DescriptionList(DescriptionListProps {
+                items: vec![DescriptionItem {
+                    label: "k".to_string(),
+                    value: "v".to_string(),
+                    format: None,
+                }],
+                columns: None,
+            }),
         ];
+        assert_eq!(components.len(), 14, "should have 14 component variants");
         let expected_types = [
-            "Card", "Table", "Form", "Button", "Input", "Select", "Alert", "Badge", "Modal", "Text",
+            "Card",
+            "Table",
+            "Form",
+            "Button",
+            "Input",
+            "Select",
+            "Alert",
+            "Badge",
+            "Modal",
+            "Text",
+            "Checkbox",
+            "Switch",
+            "Separator",
+            "DescriptionList",
         ];
         for (component, expected_type) in components.iter().zip(expected_types.iter()) {
             let json = serde_json::to_value(component).unwrap();
@@ -853,5 +967,110 @@ mod tests {
             let parsed: BadgeVariant = serde_json::from_value(json).unwrap();
             assert_eq!(&parsed, variant);
         }
+    }
+
+    #[test]
+    fn checkbox_round_trips() {
+        let checkbox = Component::Checkbox(CheckboxProps {
+            field: "terms".to_string(),
+            label: "Accept Terms".to_string(),
+            description: Some("You must accept the terms".to_string()),
+            checked: Some(true),
+            required: Some(true),
+            disabled: Some(false),
+            error: None,
+        });
+        let json = serde_json::to_value(&checkbox).unwrap();
+        assert_eq!(json["type"], "Checkbox");
+        assert_eq!(json["field"], "terms");
+        assert_eq!(json["checked"], true);
+        assert_eq!(json["description"], "You must accept the terms");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, checkbox);
+    }
+
+    #[test]
+    fn switch_round_trips() {
+        let switch = Component::Switch(SwitchProps {
+            field: "notifications".to_string(),
+            label: "Enable Notifications".to_string(),
+            description: Some("Receive email notifications".to_string()),
+            checked: Some(false),
+            required: None,
+            disabled: Some(false),
+            error: None,
+        });
+        let json = serde_json::to_value(&switch).unwrap();
+        assert_eq!(json["type"], "Switch");
+        assert_eq!(json["field"], "notifications");
+        assert_eq!(json["checked"], false);
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, switch);
+    }
+
+    #[test]
+    fn separator_defaults_to_horizontal() {
+        let json = r#"{"type": "Separator"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Separator(props) => {
+                assert_eq!(props.orientation, None);
+                // When orientation is None, frontend defaults to horizontal.
+                // Explicit horizontal also round-trips correctly:
+                let explicit = Component::Separator(SeparatorProps {
+                    orientation: Some(Orientation::Horizontal),
+                });
+                let v = serde_json::to_value(&explicit).unwrap();
+                assert_eq!(v["orientation"], "horizontal");
+                let parsed: Component = serde_json::from_value(v).unwrap();
+                assert_eq!(parsed, explicit);
+            }
+            _ => panic!("expected Separator"),
+        }
+    }
+
+    #[test]
+    fn description_list_with_format() {
+        let dl = Component::DescriptionList(DescriptionListProps {
+            items: vec![
+                DescriptionItem {
+                    label: "Created".to_string(),
+                    value: "2026-01-15".to_string(),
+                    format: Some(ColumnFormat::Date),
+                },
+                DescriptionItem {
+                    label: "Name".to_string(),
+                    value: "Alice".to_string(),
+                    format: None,
+                },
+            ],
+            columns: Some(2),
+        });
+        let json = serde_json::to_value(&dl).unwrap();
+        assert_eq!(json["type"], "DescriptionList");
+        assert_eq!(json["columns"], 2);
+        assert_eq!(json["items"][0]["format"], "date");
+        assert!(json["items"][1].get("format").is_none());
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, dl);
+    }
+
+    #[test]
+    fn checkbox_with_error() {
+        let checkbox = Component::Checkbox(CheckboxProps {
+            field: "agree".to_string(),
+            label: "I agree".to_string(),
+            description: None,
+            checked: None,
+            required: Some(true),
+            disabled: None,
+            error: Some("You must agree".to_string()),
+        });
+        let json = serde_json::to_value(&checkbox).unwrap();
+        assert_eq!(json["error"], "You must agree");
+        assert!(json.get("description").is_none());
+        assert!(json.get("checked").is_none());
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, checkbox);
     }
 }
