@@ -77,7 +77,8 @@ Plans:
 **Research topics**: maud, askama, or custom builder patterns
 
 Plans:
-- [ ] 28-01: TBD
+- [x] 28-01: HTML render engine with tree walker and leaf component renderers (completed 2026-02-09)
+- [ ] 28-02: Container/form component renderers and framework integration
 
 #### Phase 29: Layout System
 
@@ -273,7 +274,7 @@ Plans:
 | 25. Data Binding | 2/2 | Complete | 2026-02-09 |
 | 26. Action System | 2/2 | Complete | 2026-02-09 |
 | 27. Validation Integration | 2/2 | Complete | 2026-02-09 |
-| 28. HTML Renderer | 0/? | Not started | - |
+| 28. HTML Renderer | 1/2 | In progress | - |
 | 29. Layout System | 0/? | Not started | - |
 | 30. CLI Scaffolding | 0/? | Not started | - |
 | 31. MCP UI Tools | 0/? | Not started | - |

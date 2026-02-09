@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 27 of 32 (Validation Integration)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-09 — Completed 27-02-PLAN.md
+Phase: 28 of 32 (HTML Renderer)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-09 — Completed 28-01-PLAN.md
 
-Progress: ████████░░ 80% (v3.0)
+Progress: ████████░░ 82% (v3.0)
 
 ## Milestone Summary
 
@@ -59,6 +59,9 @@ Progress: ████████░░ 80% (v3.0)
 | 27 | resolve_errors_all joins with ". " separator | Readable concatenation of multiple validation messages |
 | 27 | resolve_with_errors sets view.errors alongside field-level | Dual consumption: component-level + view-level for frontend |
 | 27 | render_validation_error delegates via .all() | Single indirection from framework type to HashMap |
+| 28 | GET actions wrap in `<a>`, non-GET render as-is | Only safe HTTP method for link navigation |
+| 28 | Container components get basic SSR in Plan 01 | Full treatment deferred to Plan 02 |
+| 28 | compute_page_range shows max 7 pages with ellipsis | Readable pagination for large datasets |
 
 ### Pending Todos
 
@@ -85,5 +88,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 27-02-PLAN.md (Framework render integration and re-exports)
+Stopped at: Completed 28-01-PLAN.md (HTML render engine with leaf component renderers)
 Resume file: None
