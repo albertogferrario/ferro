@@ -27,8 +27,10 @@
 //! }
 //! ```
 
+use std::collections::HashMap;
+
 use crate::http::{HttpResponse, Response};
-use ferro_json_ui::{resolve_actions, JsonUiConfig, JsonUiView};
+use ferro_json_ui::{resolve_actions, resolve_errors, JsonUiConfig, JsonUiView};
 
 /// Stateless JSON-UI renderer.
 ///
@@ -124,6 +126,129 @@ impl JsonUi {
             "data": effective_data,
         });
         Ok(HttpResponse::json(payload))
+    }
+
+    /// Clone the view, resolve actions, and populate validation errors on form fields.
+    fn resolve_with_errors(
+        view: &JsonUiView,
+        errors: &HashMap<String, Vec<String>>,
+    ) -> JsonUiView {
+        let mut resolved = view.clone();
+        resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
+        resolve_errors(&mut resolved, errors);
+        resolved.errors = Some(errors.clone());
+        resolved
+    }
+
+    /// Render a JSON-UI view as HTML with validation errors populated on form fields.
+    ///
+    /// Same as `render()` but also populates error messages on matching form field
+    /// components (Input, Select, Checkbox, Switch) and sets `view.errors`.
+    pub fn render_with_errors(
+        view: &JsonUiView,
+        data: &serde_json::Value,
+        errors: &HashMap<String, Vec<String>>,
+    ) -> Response {
+        Self::render_with_errors_config(view, data, errors, &JsonUiConfig::new())
+    }
+
+    /// Render with errors and custom configuration.
+    fn render_with_errors_config(
+        view: &JsonUiView,
+        data: &serde_json::Value,
+        errors: &HashMap<String, Vec<String>>,
+        config: &JsonUiConfig,
+    ) -> Response {
+        let view = Self::resolve_with_errors(view, errors);
+        let view_json = serde_json::to_string(&view).map_err(|e| {
+            HttpResponse::text(format!("JSON-UI serialization error: {e}")).status(500)
+        })?;
+        let data_json = serde_json::to_string(data).map_err(|e| {
+            HttpResponse::text(format!("JSON-UI data serialization error: {e}")).status(500)
+        })?;
+
+        let title = view.title.as_deref().unwrap_or("Ferro");
+
+        let mut head = String::new();
+        if config.tailwind_cdn {
+            head.push_str(r#"<script src="https://cdn.tailwindcss.com"></script>"#);
+        }
+        if let Some(custom) = &config.custom_head {
+            head.push_str(custom);
+        }
+
+        let view_pretty = serde_json::to_string_pretty(&view).unwrap_or_default();
+
+        let html = format!(
+            r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    {head}
+</head>
+<body class="{body_class}">
+    <div id="ferro-json-ui"
+         data-view="{view_escaped}"
+         data-props="{data_escaped}">
+        <!-- JSON-UI placeholder: component rendering implemented in Phase 28 -->
+        <pre style="padding: 1rem; font-size: 0.75rem; color: #666;">{view_pretty}</pre>
+    </div>
+</body>
+</html>"#,
+            title = html_escape(title),
+            head = head,
+            body_class = html_escape(&config.body_class),
+            view_escaped = html_escape_attr(&view_json),
+            data_escaped = html_escape_attr(&data_json),
+            view_pretty = html_escape(&view_pretty),
+        );
+
+        Ok(HttpResponse::text(html)
+            .status(200)
+            .header("Content-Type", "text/html; charset=utf-8"))
+    }
+
+    /// Return the view as JSON with validation errors populated on form fields.
+    ///
+    /// Same as `render_json()` but also populates error messages on matching
+    /// form field components and sets `view.errors`.
+    pub fn render_json_with_errors(
+        view: &JsonUiView,
+        data: &serde_json::Value,
+        errors: &HashMap<String, Vec<String>>,
+    ) -> Response {
+        let view = Self::resolve_with_errors(view, errors);
+        let effective_data = if data.is_null() { &view.data } else { data };
+        let payload = serde_json::json!({
+            "view": view,
+            "data": effective_data,
+        });
+        Ok(HttpResponse::json(payload))
+    }
+
+    /// Render a JSON-UI view as HTML, accepting a framework `ValidationError` directly.
+    ///
+    /// Extracts the error map via `.all()` and delegates to `render_with_errors()`.
+    /// This is the primary convenience method for handlers.
+    pub fn render_validation_error(
+        view: &JsonUiView,
+        data: &serde_json::Value,
+        validation_error: &crate::validation::ValidationError,
+    ) -> Response {
+        Self::render_with_errors(view, data, validation_error.all())
+    }
+
+    /// Return JSON with validation errors from a framework `ValidationError`.
+    ///
+    /// JSON variant of `render_validation_error()`.
+    pub fn render_json_validation_error(
+        view: &JsonUiView,
+        data: &serde_json::Value,
+        validation_error: &crate::validation::ValidationError,
+    ) -> Response {
+        Self::render_json_with_errors(view, data, validation_error.all())
     }
 }
 
@@ -405,5 +530,188 @@ mod tests {
 
         let result = JsonUi::render_json(&view, &data);
         assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // render_with_errors tests
+    // -----------------------------------------------------------------------
+
+    use ferro_json_ui::{FormProps, InputProps, InputType};
+    use std::collections::HashMap;
+
+    fn form_view_with_inputs() -> JsonUiView {
+        JsonUiView::new()
+            .title("Create User")
+            .component(ComponentNode {
+                key: "form".to_string(),
+                component: Component::Form(FormProps {
+                    action: Action {
+                        handler: "users.store".to_string(),
+                        url: None,
+                        method: HttpMethod::Post,
+                        confirm: None,
+                        on_success: None,
+                        on_error: None,
+                    },
+                    fields: vec![
+                        ComponentNode {
+                            key: "name-input".to_string(),
+                            component: Component::Input(InputProps {
+                                field: "name".to_string(),
+                                label: "Name".to_string(),
+                                input_type: InputType::Text,
+                                placeholder: None,
+                                required: None,
+                                disabled: None,
+                                error: None,
+                                description: None,
+                                default_value: None,
+                                data_path: None,
+                            }),
+                            action: None,
+                            visibility: None,
+                        },
+                        ComponentNode {
+                            key: "email-input".to_string(),
+                            component: Component::Input(InputProps {
+                                field: "email".to_string(),
+                                label: "Email".to_string(),
+                                input_type: InputType::Email,
+                                placeholder: None,
+                                required: None,
+                                disabled: None,
+                                error: None,
+                                description: None,
+                                default_value: None,
+                                data_path: None,
+                            }),
+                            action: None,
+                            visibility: None,
+                        },
+                    ],
+                    method: None,
+                }),
+                action: None,
+                visibility: None,
+            })
+    }
+
+    fn make_errors(pairs: &[(&str, &[&str])]) -> HashMap<String, Vec<String>> {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.iter().map(|s| s.to_string()).collect()))
+            .collect()
+    }
+
+    #[test]
+    fn render_with_errors_populates_form_fields() {
+        let view = form_view_with_inputs();
+        let errors = make_errors(&[
+            ("name", &["Name is required"]),
+            ("email", &["Email is invalid"]),
+        ]);
+        let data = serde_json::json!({});
+        let result = JsonUi::render_with_errors(&view, &data, &errors);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+
+        // The HTML data-view attribute should contain the error messages.
+        assert!(
+            body.contains("Name is required"),
+            "body should contain 'Name is required'"
+        );
+        assert!(
+            body.contains("Email is invalid"),
+            "body should contain 'Email is invalid'"
+        );
+    }
+
+    #[test]
+    fn render_json_with_errors_includes_errors_in_response() {
+        let view = form_view_with_inputs();
+        let errors = make_errors(&[("name", &["Name is required"])]);
+        let data = serde_json::json!({});
+        let result = JsonUi::render_json_with_errors(&view, &data, &errors);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+
+        // Field-level error on name input.
+        assert!(
+            body.contains("Name is required"),
+            "body should contain field-level error"
+        );
+        // view.errors map should be present with field entries.
+        assert!(
+            body.contains("name"),
+            "body should contain the error field name"
+        );
+    }
+
+    #[test]
+    fn render_with_errors_empty_map_produces_no_errors() {
+        let view = form_view_with_inputs();
+        let errors: HashMap<String, Vec<String>> = HashMap::new();
+        let data = serde_json::json!({});
+
+        let with_errors = JsonUi::render_with_errors(&view, &data, &errors);
+        let without_errors = JsonUi::render(&view, &data);
+
+        assert!(with_errors.is_ok());
+        assert!(without_errors.is_ok());
+
+        let body_with = response_body(ok_response(with_errors));
+        // With empty errors, form field errors should remain null.
+        // The view.errors field will be Some({}) but field errors are None.
+        assert!(
+            !body_with.contains("Name is required"),
+            "empty errors should not produce field-level messages"
+        );
+    }
+
+    #[test]
+    fn render_validation_error_accepts_framework_type() {
+        let view = form_view_with_inputs();
+        let mut ve = crate::validation::ValidationError::new();
+        ve.add("name", "Name is required");
+        ve.add("email", "Email must be valid");
+
+        let data = serde_json::json!({});
+        let result = JsonUi::render_validation_error(&view, &data, &ve);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Name is required"),
+            "should contain name error"
+        );
+        assert!(
+            body.contains("Email must be valid"),
+            "should contain email error"
+        );
+    }
+
+    #[test]
+    fn render_with_errors_preserves_action_resolution() {
+        crate::routing::register_route_name("users.store", "/users");
+
+        let view = form_view_with_inputs();
+        let errors = make_errors(&[("name", &["Name is required"])]);
+        let data = serde_json::json!({});
+
+        // render_json_with_errors should have both action URL resolved and errors populated.
+        let result = JsonUi::render_json_with_errors(&view, &data, &errors);
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+
+        assert!(
+            body.contains("/users"),
+            "action URL should be resolved"
+        );
+        assert!(
+            body.contains("Name is required"),
+            "field errors should be populated"
+        );
     }
 }
