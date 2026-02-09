@@ -334,6 +334,80 @@ pub struct DescriptionListProps {
     pub columns: Option<u8>,
 }
 
+/// A single tab within a Tabs component.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Tab {
+    pub value: String,
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<ComponentNode>,
+}
+
+/// Props for Tabs component.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TabsProps {
+    pub default_tab: String,
+    pub tabs: Vec<Tab>,
+}
+
+/// A single item in a breadcrumb trail.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BreadcrumbItem {
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+/// Props for Breadcrumb component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BreadcrumbProps {
+    pub items: Vec<BreadcrumbItem>,
+}
+
+/// Props for Pagination component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PaginationProps {
+    pub current_page: u32,
+    pub per_page: u32,
+    pub total: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+}
+
+/// Props for Progress component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProgressProps {
+    /// Percentage value (0-100).
+    pub value: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+}
+
+/// Props for Avatar component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AvatarProps {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub src: Option<String>,
+    pub alt: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<Size>,
+}
+
+/// Props for Skeleton loading placeholder.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SkeletonProps {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rounded: Option<bool>,
+}
+
 /// Tagged component enum. Serializes with `"type": "Card"` etc.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -352,6 +426,12 @@ pub enum Component {
     Switch(SwitchProps),
     Separator(SeparatorProps),
     DescriptionList(DescriptionListProps),
+    Tabs(TabsProps),
+    Breadcrumb(BreadcrumbProps),
+    Pagination(PaginationProps),
+    Progress(ProgressProps),
+    Avatar(AvatarProps),
+    Skeleton(SkeletonProps),
 }
 
 /// A component node wrapping a component with shared fields.
@@ -701,8 +781,44 @@ mod tests {
                 }],
                 columns: None,
             }),
+            Component::Tabs(TabsProps {
+                default_tab: "t1".to_string(),
+                tabs: vec![Tab {
+                    value: "t1".to_string(),
+                    label: "Tab 1".to_string(),
+                    children: vec![],
+                }],
+            }),
+            Component::Breadcrumb(BreadcrumbProps {
+                items: vec![BreadcrumbItem {
+                    label: "Home".to_string(),
+                    url: Some("/".to_string()),
+                }],
+            }),
+            Component::Pagination(PaginationProps {
+                current_page: 1,
+                per_page: 10,
+                total: 100,
+                base_url: None,
+            }),
+            Component::Progress(ProgressProps {
+                value: 50,
+                max: None,
+                label: None,
+            }),
+            Component::Avatar(AvatarProps {
+                src: None,
+                alt: "User".to_string(),
+                fallback: Some("U".to_string()),
+                size: None,
+            }),
+            Component::Skeleton(SkeletonProps {
+                width: None,
+                height: None,
+                rounded: None,
+            }),
         ];
-        assert_eq!(components.len(), 14, "should have 14 component variants");
+        assert_eq!(components.len(), 20, "should have 20 component variants");
         let expected_types = [
             "Card",
             "Table",
@@ -718,6 +834,12 @@ mod tests {
             "Switch",
             "Separator",
             "DescriptionList",
+            "Tabs",
+            "Breadcrumb",
+            "Pagination",
+            "Progress",
+            "Avatar",
+            "Skeleton",
         ];
         for (component, expected_type) in components.iter().zip(expected_types.iter()) {
             let json = serde_json::to_value(component).unwrap();
@@ -1072,5 +1194,187 @@ mod tests {
         assert!(json.get("checked").is_none());
         let parsed: Component = serde_json::from_value(json).unwrap();
         assert_eq!(parsed, checkbox);
+    }
+
+    #[test]
+    fn tabs_round_trips() {
+        let tabs = Component::Tabs(TabsProps {
+            default_tab: "general".to_string(),
+            tabs: vec![
+                Tab {
+                    value: "general".to_string(),
+                    label: "General".to_string(),
+                    children: vec![ComponentNode {
+                        key: "name-input".to_string(),
+                        component: Component::Input(InputProps {
+                            field: "name".to_string(),
+                            label: "Name".to_string(),
+                            input_type: InputType::Text,
+                            placeholder: None,
+                            required: None,
+                            disabled: None,
+                            error: None,
+                            description: None,
+                            default_value: None,
+                        }),
+                        action: None,
+                        visibility: None,
+                    }],
+                },
+                Tab {
+                    value: "security".to_string(),
+                    label: "Security".to_string(),
+                    children: vec![ComponentNode {
+                        key: "password-input".to_string(),
+                        component: Component::Input(InputProps {
+                            field: "password".to_string(),
+                            label: "Password".to_string(),
+                            input_type: InputType::Password,
+                            placeholder: None,
+                            required: None,
+                            disabled: None,
+                            error: None,
+                            description: None,
+                            default_value: None,
+                        }),
+                        action: None,
+                        visibility: None,
+                    }],
+                },
+            ],
+        });
+        let json = serde_json::to_string(&tabs).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, tabs);
+    }
+
+    #[test]
+    fn breadcrumb_round_trips() {
+        let breadcrumb = Component::Breadcrumb(BreadcrumbProps {
+            items: vec![
+                BreadcrumbItem {
+                    label: "Home".to_string(),
+                    url: Some("/".to_string()),
+                },
+                BreadcrumbItem {
+                    label: "Users".to_string(),
+                    url: Some("/users".to_string()),
+                },
+                BreadcrumbItem {
+                    label: "Edit User".to_string(),
+                    url: None,
+                },
+            ],
+        });
+        let json = serde_json::to_string(&breadcrumb).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, breadcrumb);
+
+        // Verify last item has no URL serialized
+        let value = serde_json::to_value(&breadcrumb).unwrap();
+        assert!(value["items"][2].get("url").is_none());
+    }
+
+    #[test]
+    fn pagination_round_trips() {
+        let pagination = Component::Pagination(PaginationProps {
+            current_page: 3,
+            per_page: 25,
+            total: 150,
+            base_url: None,
+        });
+        let json = serde_json::to_string(&pagination).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, pagination);
+    }
+
+    #[test]
+    fn progress_round_trips() {
+        let progress = Component::Progress(ProgressProps {
+            value: 75,
+            max: Some(100),
+            label: Some("Uploading...".to_string()),
+        });
+        let json = serde_json::to_string(&progress).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, progress);
+
+        let value = serde_json::to_value(&progress).unwrap();
+        assert_eq!(value["value"], 75);
+        assert_eq!(value["max"], 100);
+        assert_eq!(value["label"], "Uploading...");
+    }
+
+    #[test]
+    fn avatar_with_fallback() {
+        let avatar = Component::Avatar(AvatarProps {
+            src: None,
+            alt: "John Doe".to_string(),
+            fallback: Some("JD".to_string()),
+            size: Some(Size::Lg),
+        });
+        let json = serde_json::to_string(&avatar).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, avatar);
+
+        let value = serde_json::to_value(&avatar).unwrap();
+        assert!(value.get("src").is_none());
+        assert_eq!(value["fallback"], "JD");
+        assert_eq!(value["size"], "lg");
+    }
+
+    #[test]
+    fn skeleton_round_trips() {
+        let skeleton = Component::Skeleton(SkeletonProps {
+            width: Some("100%".to_string()),
+            height: Some("40px".to_string()),
+            rounded: Some(true),
+        });
+        let json = serde_json::to_string(&skeleton).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, skeleton);
+
+        let value = serde_json::to_value(&skeleton).unwrap();
+        assert_eq!(value["width"], "100%");
+        assert_eq!(value["height"], "40px");
+        assert_eq!(value["rounded"], true);
+    }
+
+    #[test]
+    fn tabs_deserializes_from_json() {
+        let json = r#"{
+            "type": "Tabs",
+            "default_tab": "general",
+            "tabs": [
+                {
+                    "value": "general",
+                    "label": "General",
+                    "children": [
+                        {
+                            "key": "name-input",
+                            "type": "Input",
+                            "field": "name",
+                            "label": "Name"
+                        }
+                    ]
+                },
+                {
+                    "value": "security",
+                    "label": "Security"
+                }
+            ]
+        }"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Tabs(props) => {
+                assert_eq!(props.default_tab, "general");
+                assert_eq!(props.tabs.len(), 2);
+                assert_eq!(props.tabs[0].value, "general");
+                assert_eq!(props.tabs[0].children.len(), 1);
+                assert_eq!(props.tabs[1].value, "security");
+                assert!(props.tabs[1].children.is_empty());
+            }
+            _ => panic!("expected Tabs"),
+        }
     }
 }
