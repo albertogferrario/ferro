@@ -11,10 +11,10 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 Phase: 30 of 32 (CLI Scaffolding)
 Plan: 1 of 1 in current phase
-Status: Plan ready for execution
-Last activity: 2026-02-09 — Created 30-01-PLAN.md
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 30-01-PLAN.md
 
-Progress: █████████░ 90% (v3.0)
+Progress: █████████░ 93% (v3.0)
 
 ## Milestone Summary
 
@@ -70,6 +70,10 @@ Progress: █████████░ 90% (v3.0)
 | 29 | AppLayout uses empty partials by default | Users create custom Layout impls with real NavItem data |
 | 29 | Raw values to LayoutContext, layouts handle escaping | Avoids double-escaping since base_document/ferro_wrapper already escape |
 | 29 | build_response helper for shared render logic | Eliminates duplication between render_with_config and render_with_errors_config |
+| 30 | Blocking reqwest for Anthropic API in CLI | CLI main is synchronous; tokio only used for db commands |
+| 30 | Component catalog as hardcoded const string | Fast, no file I/O, embedded in binary |
+| 30 | Regex-based model scanning (not syn) | Speed and simplicity for AI context assembly |
+| 30 | Graceful AI fallback chain | Missing API key or AI error silently uses static template |
 
 ### Pending Todos
 
@@ -96,5 +100,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Created 30-01-PLAN.md (AI-powered make:json-view CLI command)
+Stopped at: Completed 30-01-PLAN.md (AI-powered make:json-view CLI command)
 Resume file: None

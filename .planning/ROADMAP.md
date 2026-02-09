@@ -97,7 +97,7 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 30-01: AI-powered `make:json-view` command with Anthropic API and static fallback
+- [x] 30-01: AI-powered `make:json-view` command with Anthropic API and static fallback (completed 2026-02-09)
 
 #### Phase 31: MCP UI Tools
 
@@ -277,6 +277,6 @@ Plans:
 | 27. Validation Integration | 2/2 | Complete | 2026-02-09 |
 | 28. HTML Renderer | 2/2 | Complete | 2026-02-09 |
 | 29. Layout System | 2/2 | Complete | 2026-02-09 |
-| 30. CLI Scaffolding | 0/? | Not started | - |
+| 30. CLI Scaffolding | 1/1 | Complete | 2026-02-09 |
 | 31. MCP UI Tools | 0/? | Not started | - |
 | 32. Documentation | 0/? | Not started | - |
