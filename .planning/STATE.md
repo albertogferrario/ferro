@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 29 of 32 (Layout System)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-09 — Completed 29-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 29-02-PLAN.md
 
-Progress: █████████░ 86% (v3.0)
+Progress: █████████░ 88% (v3.0)
 
 ## Milestone Summary
 
@@ -27,7 +27,7 @@ Progress: █████████░ 86% (v3.0)
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 11/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 13/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -68,6 +68,8 @@ Progress: █████████░ 86% (v3.0)
 | 29 | All layouts/partials/registry in single layout.rs module | Simpler than separate files for 3 small partial functions |
 | 29 | html_escape made pub(crate) in render.rs | Cross-module reuse without duplication |
 | 29 | AppLayout uses empty partials by default | Users create custom Layout impls with real NavItem data |
+| 29 | Raw values to LayoutContext, layouts handle escaping | Avoids double-escaping since base_document/ferro_wrapper already escape |
+| 29 | build_response helper for shared render logic | Eliminates duplication between render_with_config and render_with_errors_config |
 
 ### Pending Todos
 
@@ -94,5 +96,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 29-01-PLAN.md (Layout trait, registry, defaults, partials)
+Stopped at: Completed 29-02-PLAN.md (Framework integration and re-exports — Phase 29 complete)
 Resume file: None
