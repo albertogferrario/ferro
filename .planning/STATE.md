@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 
 ## Current Position
 
-Phase: 36 (Gitignore Generated Types)
-Plan: 36-01 complete
-Status: Milestone complete
-Last activity: 2026-01-18 — Plan 36-01 executed
+Phase: 37 (Model Update Builder)
+Plan: Planning complete — 37-01 and 37-02 ready for execution
+Status: Phase planned
+Last activity: 2026-02-09 — Phase 37 planned (2 plans in 2 waves)
 
-Progress: ██████████ 100% (2/2 phases)
+Progress: ████████░░ 80% (2/3 phases complete, 1 planned)
 
 ## Milestone Summary
 
@@ -26,7 +26,7 @@ Progress: ██████████ 100% (2/2 phases)
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
-| v2.2 CLI Improvements | 35-36 | 2 | ✅ Complete | 2026-01-18 |
+| v2.2 CLI Improvements | 35-37 | 2/3 | 🔄 In Progress | - |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
 
 ## Accumulated Context
@@ -38,7 +38,7 @@ Progress: ██████████ 100% (2/2 phases)
 
 ### Pending Todos
 
-None — milestone complete.
+None.
 
 ### Blockers/Concerns
 
@@ -55,11 +55,12 @@ None — milestone complete.
 - v2.0.2 Type Generator Fixes complete: 6 phases, 6 plans (Phase 22.4-22.9) (2026-01-17)
 - v2.0.3 DO Apps Deploy complete: 1 phase, 1 plan (Phase 22.10) (2026-01-17)
 - v2.1 Inertia DX & Fixes complete: 2 phases, 4 plans (Phase 33-34) (2026-01-17)
-- v2.2 CLI Improvements complete: 2 phases, 2 plans (Phase 35-36) (2026-01-18)
+- v2.2 CLI Improvements: 2/3 phases complete (Phase 35-36 done, Phase 37 added)
+- Phase 37 added: Model Update Builder — typed builder pattern for model updates
 - v3.0 JSON-UI: 10 phases planned (Phases 23-32)
 
 ## Session Continuity
 
-Last session: 2026-01-18
-Stopped at: v2.2 CLI Improvements milestone complete
+Last session: 2026-02-09
+Stopped at: Phase 37 planned, ready for execution
 Resume file: None
