@@ -185,20 +185,21 @@ enum Commands {
         quiet: bool,
     },
     /// Run all pending database migrations
-    Migrate,
+    #[command(name = "db:migrate")]
+    DbMigrate,
     /// Rollback the last database migration(s)
-    #[command(name = "migrate:rollback")]
-    MigrateRollback {
+    #[command(name = "db:rollback")]
+    DbRollback {
         /// Number of migrations to rollback
         #[arg(long, default_value = "1")]
         step: u32,
     },
     /// Show the status of all migrations
-    #[command(name = "migrate:status")]
-    MigrateStatus,
+    #[command(name = "db:status")]
+    DbStatus,
     /// Drop all tables and re-run all migrations
-    #[command(name = "migrate:fresh")]
-    MigrateFresh,
+    #[command(name = "db:fresh")]
+    DbFresh,
     /// Run database seeders
     #[command(name = "db:seed")]
     DbSeed {
@@ -400,17 +401,17 @@ fn main() {
                 quiet,
             );
         }
-        Commands::Migrate => {
-            commands::migrate::run();
+        Commands::DbMigrate => {
+            commands::db_migrate::run();
         }
-        Commands::MigrateRollback { step } => {
-            commands::migrate_rollback::run(step);
+        Commands::DbRollback { step } => {
+            commands::db_rollback::run(step);
         }
-        Commands::MigrateStatus => {
-            commands::migrate_status::run();
+        Commands::DbStatus => {
+            commands::db_status::run();
         }
-        Commands::MigrateFresh => {
-            commands::migrate_fresh::run();
+        Commands::DbFresh => {
+            commands::db_fresh::run();
         }
         Commands::DbSeed { class } => {
             commands::db_seed::run(class);

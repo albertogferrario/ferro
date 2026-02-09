@@ -2,7 +2,7 @@ use console::style;
 use std::path::Path;
 use std::process::Command;
 
-pub fn run(step: u32) {
+pub fn run() {
     // Check we're in a Ferro project
     if !Path::new("src/migrations").exists() {
         eprintln!(
@@ -11,31 +11,28 @@ pub fn run(step: u32) {
         );
         eprintln!(
             "{}",
-            style("Make sure you're in a Ferro project root directory.").dim()
+            style("Run 'ferro make:migration <name>' to create your first migration.").dim()
         );
         std::process::exit(1);
     }
 
     println!(
-        "{} Rolling back {} migration(s)...",
-        style("->").cyan(),
-        step
+        "{} Dropping all tables and re-running migrations...",
+        style("!!").yellow()
+    );
+    println!(
+        "{}",
+        style("WARNING: This will delete all data in your database!").red()
     );
 
-    // Run cargo run -- migrate:rollback <step> (unified binary)
+    // Run cargo run -- db:fresh (unified binary)
     let status = Command::new("cargo")
-        .args([
-            "run",
-            "--quiet",
-            "--",
-            "migrate:rollback",
-            &step.to_string(),
-        ])
+        .args(["run", "--quiet", "--", "db:fresh"])
         .status()
         .expect("Failed to execute cargo command");
 
     if !status.success() {
-        eprintln!("{} Rollback failed", style("Error:").red().bold());
+        eprintln!("{} Fresh migration failed", style("Error:").red().bold());
         std::process::exit(1);
     }
 }

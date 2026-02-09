@@ -41,20 +41,21 @@ enum Commands {
         no_migrate: bool,
     },
     /// Run pending database migrations
-    Migrate,
+    #[command(name = "db:migrate")]
+    DbMigrate,
     /// Show migration status
-    #[command(name = "migrate:status")]
-    MigrateStatus,
+    #[command(name = "db:status")]
+    DbStatus,
     /// Rollback the last migration(s)
-    #[command(name = "migrate:rollback")]
-    MigrateRollback {
+    #[command(name = "db:rollback")]
+    DbRollback {
         /// Number of migrations to rollback
         #[arg(default_value = "1")]
         steps: u32,
     },
     /// Drop all tables and re-run all migrations
-    #[command(name = "migrate:fresh")]
-    MigrateFresh,
+    #[command(name = "db:fresh")]
+    DbFresh,
     /// Run database seeders
     #[command(name = "db:seed")]
     DbSeed {
@@ -82,16 +83,16 @@ async fn main() {
         Some(Commands::Serve { no_migrate: true }) => {
             run_server().await;
         }
-        Some(Commands::Migrate) => {
+        Some(Commands::DbMigrate) => {
             run_migrations().await;
         }
-        Some(Commands::MigrateStatus) => {
+        Some(Commands::DbStatus) => {
             show_migration_status().await;
         }
-        Some(Commands::MigrateRollback { steps }) => {
+        Some(Commands::DbRollback { steps }) => {
             rollback_migrations(steps).await;
         }
-        Some(Commands::MigrateFresh) => {
+        Some(Commands::DbFresh) => {
             fresh_migrations().await;
         }
         Some(Commands::DbSeed { class }) => {

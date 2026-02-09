@@ -9,10 +9,10 @@
 //! ./app                    # Run web server with auto-migrate (default)
 //! ./app serve              # Run web server with auto-migrate
 //! ./app serve --no-migrate # Run web server without auto-migrate
-//! ./app migrate            # Run pending migrations
-//! ./app migrate:status     # Show migration status
-//! ./app migrate:rollback   # Rollback last migration
-//! ./app migrate:fresh      # Drop all tables and re-run migrations
+//! ./app db:migrate         # Run pending migrations
+//! ./app db:status          # Show migration status
+//! ./app db:rollback        # Rollback last migration
+//! ./app db:fresh           # Drop all tables and re-run migrations
 //! ./app schedule:work      # Run scheduler daemon
 //! ./app schedule:run       # Run due tasks once
 //! ./app schedule:list      # List registered tasks
@@ -68,20 +68,21 @@ enum Commands {
         no_migrate: bool,
     },
     /// Run pending database migrations
-    Migrate,
+    #[command(name = "db:migrate")]
+    DbMigrate,
     /// Show migration status
-    #[command(name = "migrate:status")]
-    MigrateStatus,
+    #[command(name = "db:status")]
+    DbStatus,
     /// Rollback the last migration(s)
-    #[command(name = "migrate:rollback")]
-    MigrateRollback {
+    #[command(name = "db:rollback")]
+    DbRollback {
         /// Number of migrations to rollback
         #[arg(default_value = "1")]
         steps: u32,
     },
     /// Drop all tables and re-run all migrations
-    #[command(name = "migrate:fresh")]
-    MigrateFresh,
+    #[command(name = "db:fresh")]
+    DbFresh,
     /// Run the scheduler daemon (checks every minute)
     #[command(name = "schedule:work")]
     ScheduleWork,
@@ -113,16 +114,16 @@ async fn main() {
             // Run server without migrations
             run_server().await;
         }
-        Some(Commands::Migrate) => {
+        Some(Commands::DbMigrate) => {
             run_migrations().await;
         }
-        Some(Commands::MigrateStatus) => {
+        Some(Commands::DbStatus) => {
             show_migration_status().await;
         }
-        Some(Commands::MigrateRollback { steps }) => {
+        Some(Commands::DbRollback { steps }) => {
             rollback_migrations(steps).await;
         }
-        Some(Commands::MigrateFresh) => {
+        Some(Commands::DbFresh) => {
             fresh_migrations().await;
         }
         Some(Commands::ScheduleWork) => {
@@ -220,7 +221,7 @@ async fn run_migrations() {
             "Migration failed",
             e,
             &[
-                "Run `./app migrate:status` to see pending migrations",
+                "Run `./app db:status` to see pending migrations",
                 "Check database permissions",
                 "Verify migration files are valid",
             ],
@@ -252,7 +253,7 @@ async fn rollback_migrations(steps: u32) {
             "Rollback failed",
             e,
             &[
-                "Check that there are migrations to rollback with `./app migrate:status`",
+                "Check that there are migrations to rollback with `./app db:status`",
                 "Verify database permissions",
             ],
         )

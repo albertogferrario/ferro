@@ -16,19 +16,16 @@ pub fn run() {
         std::process::exit(1);
     }
 
-    println!("{} Checking migration status...", style("->").cyan());
+    println!("{} Running migrations...", style("->").cyan());
 
-    // Run cargo run -- migrate:status (unified binary)
+    // Run cargo run -- db:migrate (unified binary)
     let status = Command::new("cargo")
-        .args(["run", "--quiet", "--", "migrate:status"])
+        .args(["run", "--quiet", "--", "db:migrate"])
         .status()
         .expect("Failed to execute cargo command");
 
     if !status.success() {
-        eprintln!(
-            "{} Failed to get migration status",
-            style("Error:").red().bold()
-        );
+        eprintln!("{} Migration failed", style("Error:").red().bold());
         std::process::exit(1);
     }
 }
