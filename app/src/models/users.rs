@@ -9,6 +9,7 @@
 pub use super::entities::users::*;
 
 use ferro::Authenticatable;
+use sea_orm::ColumnTrait;
 use std::any::Any;
 
 /// Type alias for convenient access
@@ -20,12 +21,11 @@ pub type User = Model;
 // Add your custom query and mutation methods below
 // ============================================================================
 
-// Example custom finder:
-// impl Model {
-//     pub async fn find_by_email(email: &str) -> Result<Option<Self>, ferro::FrameworkError> {
-//         Self::query().filter(Column::Email.eq(email)).first().await
-//     }
-// }
+impl Model {
+    pub async fn find_by_email(email: &str) -> Result<Option<Self>, ferro::FrameworkError> {
+        Self::query().filter(Column::Email.eq(email)).first().await
+    }
+}
 
 // ============================================================================
 // RELATIONS

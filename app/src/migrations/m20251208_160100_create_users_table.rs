@@ -18,26 +18,10 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(
-                        ColumnDef::new(Users::Name)
-                            .string()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(Users::Email)
-                            .string()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(Users::Password)
-                            .string()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(Users::RememberToken)
-                            .string()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(Users::Name).string().not_null())
+                    .col(ColumnDef::new(Users::Email).string().not_null())
+                    .col(ColumnDef::new(Users::Password).string().not_null())
+                    .col(ColumnDef::new(Users::RememberToken).string().null())
                     .col(
                         ColumnDef::new(Users::CreatedAt)
                             .timestamp()
