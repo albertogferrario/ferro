@@ -26,6 +26,7 @@
 
 Plans:
 - [x] 23-01: Core JSON-UI schema types (completed 2026-02-09)
+- [x] 23-02: Framework integration with render API (completed 2026-02-09)
 
 #### Phase 24: Component Catalog
 
@@ -256,13 +257,13 @@ Plans:
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 0/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 2/? | 🚧 In Progress | - |
 
 ## Progress (v3.0 JSON-UI)
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 23. JSON-UI Schema | 1/1 | Complete | 2026-02-09 |
+| 23. JSON-UI Schema | 2/2 | Complete | 2026-02-09 |
 | 24. Component Catalog | 0/? | Not started | - |
 | 25. Data Binding | 0/? | Not started | - |
 | 26. Action System | 0/? | Not started | - |

@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 23 of 32 (JSON-UI Schema)
-Plan: 1 of 1 in current phase
+Plan: 2 of 2 in current phase
 Status: Phase complete
-Last activity: 2026-02-09 — Completed 23-01-PLAN.md
+Last activity: 2026-02-09 — Completed 23-02-PLAN.md
 
-Progress: █░░░░░░░░░ 10% (v3.0)
+Progress: ██░░░░░░░░ 20% (v3.0)
 
 ## Milestone Summary
 
@@ -27,7 +27,7 @@ Progress: █░░░░░░░░░ 10% (v3.0)
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 1/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 2/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -39,6 +39,7 @@ Progress: █░░░░░░░░░ 10% (v3.0)
 | 23 | Serde untagged enum for Visibility | Clean `{"and": [...]}` syntax without type field |
 | 23 | ComponentNode wraps Component via flatten | Shared key/action/visibility without duplication |
 | 23 | HttpMethod serializes UPPERCASE | Standard HTTP method format |
+| 23 | Visibility aliased as JsonUiVisibility in framework | Avoids name collision with ferro-storage Visibility |
 
 ### Pending Todos
 
@@ -65,5 +66,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 23-01-PLAN.md — Phase 23 complete
+Stopped at: Completed 23-02-PLAN.md — Phase 23 complete
 Resume file: None
