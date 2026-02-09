@@ -54,6 +54,8 @@ pub use ferro_json_ui::{
     Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant,
     // Visibility types
     VisibilityCondition, VisibilityOperator,
+    // Data binding
+    resolve_path, resolve_path_string,
 };
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{
