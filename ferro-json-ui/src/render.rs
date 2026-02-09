@@ -945,7 +945,7 @@ fn render_description_list(props: &DescriptionListProps) -> String {
 // ── HTML escaping ───────────────────────────────────────────────────────
 
 /// Escape special HTML characters to prevent XSS.
-fn html_escape(s: &str) -> String {
+pub(crate) fn html_escape(s: &str) -> String {
     let mut escaped = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
