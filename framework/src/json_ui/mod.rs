@@ -30,7 +30,7 @@
 use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
-use ferro_json_ui::{resolve_actions, resolve_errors, JsonUiConfig, JsonUiView};
+use ferro_json_ui::{render_to_html, resolve_actions, resolve_errors, JsonUiConfig, JsonUiView};
 
 /// Stateless JSON-UI renderer.
 ///
@@ -48,10 +48,10 @@ impl JsonUi {
 
     /// Render a JSON-UI view as an HTML response.
     ///
-    /// Returns the view as a full HTML page with an embedded JSON representation.
-    /// All action handler references are resolved to URLs before output.
-    /// The actual component-to-HTML rendering is implemented in Phase 28 (HTML Renderer);
-    /// this method produces a scaffold with the view JSON for development and testing.
+    /// Returns the view as a full HTML page with rendered component HTML and Tailwind classes.
+    /// All action handler references are resolved to URLs before rendering.
+    /// The view JSON and data are embedded as `data-view` and `data-props` attributes
+    /// on the wrapper div for potential JS hydration.
     pub fn render(view: &JsonUiView, data: &serde_json::Value) -> Response {
         Self::render_with_config(view, data, &JsonUiConfig::new())
     }
@@ -80,7 +80,7 @@ impl JsonUi {
             head.push_str(custom);
         }
 
-        let view_pretty = serde_json::to_string_pretty(&view).unwrap_or_default();
+        let rendered = render_to_html(&view, data);
 
         let html = format!(
             r#"<!DOCTYPE html>
@@ -95,8 +95,7 @@ impl JsonUi {
     <div id="ferro-json-ui"
          data-view="{view_escaped}"
          data-props="{data_escaped}">
-        <!-- JSON-UI placeholder: component rendering implemented in Phase 28 -->
-        <pre style="padding: 1rem; font-size: 0.75rem; color: #666;">{view_pretty}</pre>
+        {rendered}
     </div>
 </body>
 </html>"#,
@@ -105,7 +104,7 @@ impl JsonUi {
             body_class = html_escape(&config.body_class),
             view_escaped = html_escape_attr(&view_json),
             data_escaped = html_escape_attr(&data_json),
-            view_pretty = html_escape(&view_pretty),
+            rendered = rendered,
         );
 
         Ok(HttpResponse::text(html)
@@ -129,10 +128,7 @@ impl JsonUi {
     }
 
     /// Clone the view, resolve actions, and populate validation errors on form fields.
-    fn resolve_with_errors(
-        view: &JsonUiView,
-        errors: &HashMap<String, Vec<String>>,
-    ) -> JsonUiView {
+    fn resolve_with_errors(view: &JsonUiView, errors: &HashMap<String, Vec<String>>) -> JsonUiView {
         let mut resolved = view.clone();
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
         resolve_errors(&mut resolved, errors);
@@ -177,7 +173,7 @@ impl JsonUi {
             head.push_str(custom);
         }
 
-        let view_pretty = serde_json::to_string_pretty(&view).unwrap_or_default();
+        let rendered = render_to_html(&view, data);
 
         let html = format!(
             r#"<!DOCTYPE html>
@@ -192,8 +188,7 @@ impl JsonUi {
     <div id="ferro-json-ui"
          data-view="{view_escaped}"
          data-props="{data_escaped}">
-        <!-- JSON-UI placeholder: component rendering implemented in Phase 28 -->
-        <pre style="padding: 1rem; font-size: 0.75rem; color: #666;">{view_pretty}</pre>
+        {rendered}
     </div>
 </body>
 </html>"#,
@@ -202,7 +197,7 @@ impl JsonUi {
             body_class = html_escape(&config.body_class),
             view_escaped = html_escape_attr(&view_json),
             data_escaped = html_escape_attr(&data_json),
-            view_pretty = html_escape(&view_pretty),
+            rendered = rendered,
         );
 
         Ok(HttpResponse::text(html)
@@ -705,10 +700,7 @@ mod tests {
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
 
-        assert!(
-            body.contains("/users"),
-            "action URL should be resolved"
-        );
+        assert!(body.contains("/users"), "action URL should be resolved");
         assert!(
             body.contains("Name is required"),
             "field errors should be populated"
