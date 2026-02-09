@@ -103,10 +103,14 @@ impl JsonUi {
     }
 
     /// Return the view as JSON (for API consumers or debugging).
+    ///
+    /// If `data` is non-null, it takes precedence over the view's embedded data.
+    /// If `data` is null, falls back to the view's `.data` field.
     pub fn render_json(view: &JsonUiView, data: &serde_json::Value) -> Response {
+        let effective_data = if data.is_null() { &view.data } else { data };
         let payload = serde_json::json!({
             "view": view,
-            "data": data,
+            "data": effective_data,
         });
         Ok(HttpResponse::json(payload))
     }
@@ -295,5 +299,35 @@ mod tests {
             escaped,
             "Hello &amp; &quot;World&quot; &lt;foo&gt; &#x27;bar&#x27;"
         );
+    }
+
+    #[test]
+    fn render_json_uses_explicit_data_over_embedded() {
+        let view = sample_view().data(serde_json::json!({"embedded": true}));
+        let explicit_data = serde_json::json!({"explicit": true});
+        let result = JsonUi::render_json(&view, &explicit_data);
+
+        let response = ok_response(result);
+        let hyper = response.into_hyper();
+        let body = format!("{:?}", hyper.into_body());
+
+        // Explicit data should be used, not the embedded one
+        assert!(body.contains("explicit"));
+        // The view's embedded data is in the "view" key (part of the serialized view)
+        assert!(body.contains("embedded"));
+    }
+
+    #[test]
+    fn render_json_falls_back_to_embedded_data() {
+        let view = sample_view().data(serde_json::json!({"embedded": true}));
+        let null_data = serde_json::Value::Null;
+        let result = JsonUi::render_json(&view, &null_data);
+
+        let response = ok_response(result);
+        let hyper = response.into_hyper();
+        let body = format!("{:?}", hyper.into_body());
+
+        // Should use the view's embedded data
+        assert!(body.contains("embedded"));
     }
 }

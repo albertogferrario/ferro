@@ -36,6 +36,8 @@ pub struct JsonUiView {
     pub layout: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
+    pub data: serde_json::Value,
     pub components: Vec<ComponentNode>,
 }
 
@@ -46,6 +48,7 @@ impl JsonUiView {
             schema: SCHEMA_VERSION.to_string(),
             layout: None,
             title: None,
+            data: serde_json::Value::Null,
             components: vec![],
         }
     }
@@ -53,6 +56,12 @@ impl JsonUiView {
     /// Set the view title.
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+        self
+    }
+
+    /// Set the view data payload.
+    pub fn data(mut self, data: serde_json::Value) -> Self {
+        self.data = data;
         self
     }
 
@@ -314,5 +323,49 @@ mod tests {
         let json = view.to_json().unwrap();
         let parsed = JsonUiView::from_json(&json).unwrap();
         assert_eq!(view, parsed);
+    }
+
+    #[test]
+    fn view_with_data_serializes_data_field() {
+        let view = JsonUiView::new()
+            .title("Users")
+            .data(serde_json::json!({"users": [{"name": "Alice"}]}));
+
+        let json = serde_json::to_value(&view).unwrap();
+        assert!(json.get("data").is_some());
+        assert_eq!(json["data"]["users"][0]["name"], "Alice");
+    }
+
+    #[test]
+    fn view_without_data_omits_data_field() {
+        let view = JsonUiView::new().title("Empty");
+        let json = serde_json::to_value(&view).unwrap();
+        // skip_serializing_if is_null means no data key in output
+        assert!(json.get("data").is_none());
+    }
+
+    #[test]
+    fn round_trip_with_data_preserves_nested_structures() {
+        let data = serde_json::json!({
+            "users": [
+                {"id": 1, "name": "Alice", "roles": ["admin", "user"]},
+                {"id": 2, "name": "Bob", "roles": ["user"]}
+            ],
+            "meta": {"total": 2, "page": 1}
+        });
+        let view = JsonUiView::new().title("Users").data(data);
+
+        let json_str = view.to_json().unwrap();
+        let parsed = JsonUiView::from_json(&json_str).unwrap();
+        assert_eq!(view, parsed);
+        assert_eq!(parsed.data["users"][0]["name"], "Alice");
+        assert_eq!(parsed.data["meta"]["total"], 2);
+    }
+
+    #[test]
+    fn builder_data_method_works() {
+        let view = JsonUiView::new()
+            .data(serde_json::json!({"key": "value"}));
+        assert_eq!(view.data["key"], "value");
     }
 }
