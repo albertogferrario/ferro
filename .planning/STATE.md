@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 37 (Model Update Builder)
-Plan: Planning complete — 37-01 and 37-02 ready for execution
-Status: Phase planned
-Last activity: 2026-02-09 — Phase 37 planned (2 plans in 2 waves)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-09 — Completed 37-01-PLAN.md
 
-Progress: ████████░░ 80% (2/3 phases complete, 1 planned)
+Progress: ████████░░ 85%
 
 ## Milestone Summary
 
@@ -35,6 +35,7 @@ Progress: ████████░░ 80% (2/3 phases complete, 1 planned)
 
 1. Follow existing migrate command pattern for db:seed: delegate to cargo run --quiet -- db:seed
 2. Exclude entire frontend/src/types/ directory rather than individual files
+3. UpdateBuilder consumes model (takes self) and uses Option<Option<T>> for nullable field tracking
 
 ### Pending Todos
 
@@ -62,5 +63,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 37 planned, ready for execution
+Stopped at: Completed 37-01-PLAN.md
 Resume file: None
