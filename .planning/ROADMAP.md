@@ -46,7 +46,8 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 25-01: TBD
+- [ ] 25-01: Data path resolver and form field data_path
+- [ ] 25-02: View data integration and framework re-exports
 
 #### Phase 26: Action System
 
