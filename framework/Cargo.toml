@@ -29,6 +29,7 @@ ferro-broadcast = { path = "../ferro-broadcast", version = "0.1" }
 ferro-storage = { path = "../ferro-storage", version = "0.1" }
 ferro-cache = { path = "../ferro-cache", version = "0.1" }
 ferro-inertia = { path = "../ferro-inertia", version = "0.1" }
+ferro-json-ui = { path = "../ferro-json-ui" }
 dotenvy = "0.15"
 inventory = "0.3"
 sea-orm = { version = "1.0", features = ["sqlx-postgres", "sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }

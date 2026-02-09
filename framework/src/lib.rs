@@ -11,6 +11,7 @@ pub mod error;
 pub mod hashing;
 pub mod http;
 pub mod inertia;
+pub mod json_ui;
 pub mod metrics;
 pub mod middleware;
 pub mod routing;
@@ -42,6 +43,11 @@ pub use http::{
     InertiaRedirect, Redirect, Request, Response, ResponseExt, SameSite,
 };
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
+pub use json_ui::JsonUi;
+pub use ferro_json_ui::{
+    JsonUiView, JsonUiConfig, ComponentNode, Component, Action,
+    Visibility as JsonUiVisibility, SCHEMA_VERSION,
+};
 pub use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, PaginatorTrait,
     QueryFilter, QueryOrder, QuerySelect,
