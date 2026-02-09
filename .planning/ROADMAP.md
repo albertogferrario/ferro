@@ -26,7 +26,7 @@
 **Plans**: 2 plans, 1 wave
 
 Plans:
-- [ ] 38-01: Fix test isolation (metrics global state + queue env var safety)
+- [x] 38-01: Fix test isolation (metrics global state + queue env var safety)
 - [x] 38-02: Fix storage placeholders + Inertia CDN assumption
 
 #### Phase 39: Core Authentication
@@ -280,13 +280,13 @@ Plans:
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 1/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 2/? | 🚧 In Progress | - |
 
 ### v4.0 Phase Progress
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 38. Fix Pre-existing Blockers | v4.0 | 1/2 | In progress | - |
+| 38. Fix Pre-existing Blockers | v4.0 | 2/2 | Complete | 2026-02-09 |
 | 39. Core Authentication | v4.0 | 0/? | Not started | - |
 | 40. Auth Middleware | v4.0 | 0/? | Not started | - |
 | 41. API Resources Basics | v4.0 | 0/? | Not started | - |

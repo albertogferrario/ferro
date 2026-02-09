@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 Phase: 38 of 46 (Fix Pre-existing Blockers)
 Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-02-09 - Completed 38-02-PLAN.md
+Last activity: 2026-02-09 - Completed 38-01-PLAN.md
 
 Progress: █░░░░░░░░░ 5%
 
@@ -38,6 +38,8 @@ Archived to PROJECT.md and milestone archive files.
 
 | Phase | Decision | Rationale |
 |-------|----------|-----------|
+| 38-01 | #[serial] over per-test MetricsStore refactor | Minimal change, same safety guarantee for global state tests |
+| 38-01 | EnvGuard without unsafe blocks | Rust 2021 edition: env::set_var/remove_var are safe |
 | 38-02 | S3 facade returns S3Driver that errors on use | Avoids panic at initialization; defers errors to actual usage |
 
 ### Pending Todos
@@ -63,5 +65,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 38-02-PLAN.md
+Stopped at: Completed 38-01-PLAN.md
 Resume file: None
