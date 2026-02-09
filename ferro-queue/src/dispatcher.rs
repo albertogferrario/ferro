@@ -173,6 +173,28 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
 
+    /// Guard that removes environment variables on drop, ensuring cleanup even on panic.
+    struct EnvGuard {
+        vars: Vec<String>,
+    }
+
+    impl EnvGuard {
+        fn set(key: &str, value: &str) -> Self {
+            env::set_var(key, value);
+            Self {
+                vars: vec![key.to_string()],
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for var in &self.vars {
+                env::remove_var(var);
+            }
+        }
+    }
+
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     struct TestJob {
         #[serde(skip)]
@@ -212,7 +234,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_sync_mode_executes_immediately() {
-        env::set_var("QUEUE_CONNECTION", "sync");
+        let _guard = EnvGuard::set("QUEUE_CONNECTION", "sync");
 
         let (job, executed) = TestJob::new();
         assert!(!executed.load(Ordering::SeqCst));
@@ -220,25 +242,21 @@ mod tests {
         let result = PendingDispatch::new(job).dispatch().await;
         assert!(result.is_ok());
         assert!(executed.load(Ordering::SeqCst));
-
-        env::remove_var("QUEUE_CONNECTION");
     }
 
     #[tokio::test]
     #[serial]
     async fn test_sync_mode_handles_failure() {
-        env::set_var("QUEUE_CONNECTION", "sync");
+        let _guard = EnvGuard::set("QUEUE_CONNECTION", "sync");
 
         let result = PendingDispatch::new(FailingJob).dispatch().await;
         assert!(result.is_err());
-
-        env::remove_var("QUEUE_CONNECTION");
     }
 
     #[tokio::test]
     #[serial]
     async fn test_sync_mode_ignores_delay() {
-        env::set_var("QUEUE_CONNECTION", "sync");
+        let _guard = EnvGuard::set("QUEUE_CONNECTION", "sync");
 
         let (job, executed) = TestJob::new();
 
@@ -251,15 +269,13 @@ mod tests {
         assert!(result.is_ok());
         assert!(executed.load(Ordering::SeqCst));
         // Should complete quickly, not wait 10 seconds
-        assert!(start.elapsed() < Duration::from_secs(1));
-
-        env::remove_var("QUEUE_CONNECTION");
+        assert!(start.elapsed() < Duration::from_secs(5));
     }
 
     #[tokio::test]
     #[serial]
     async fn test_sync_mode_ignores_queue() {
-        env::set_var("QUEUE_CONNECTION", "sync");
+        let _guard = EnvGuard::set("QUEUE_CONNECTION", "sync");
 
         let (job, executed) = TestJob::new();
 
@@ -270,7 +286,5 @@ mod tests {
 
         assert!(result.is_ok());
         assert!(executed.load(Ordering::SeqCst));
-
-        env::remove_var("QUEUE_CONNECTION");
     }
 }

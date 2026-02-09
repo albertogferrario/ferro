@@ -164,6 +164,38 @@ mod tests {
     use super::*;
     use serial_test::serial;
 
+    /// Guard that removes environment variables on drop, ensuring cleanup even on panic.
+    struct EnvGuard {
+        vars: Vec<String>,
+    }
+
+    impl EnvGuard {
+        fn set(key: &str, value: &str) -> Self {
+            env::set_var(key, value);
+            Self {
+                vars: vec![key.to_string()],
+            }
+        }
+
+        fn also_set(&mut self, key: &str, value: &str) {
+            env::set_var(key, value);
+            self.vars.push(key.to_string());
+        }
+
+        fn also_remove(&mut self, key: &str) {
+            env::remove_var(key);
+            self.vars.push(key.to_string());
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for var in &self.vars {
+                env::remove_var(var);
+            }
+        }
+    }
+
     #[test]
     fn test_default_config() {
         let config = QueueConfig::default();
@@ -194,16 +226,17 @@ mod tests {
     #[test]
     #[serial]
     fn test_from_env_defaults() {
-        // Clear any existing env vars
-        env::remove_var("QUEUE_DEFAULT");
-        env::remove_var("QUEUE_PREFIX");
-        env::remove_var("QUEUE_BLOCK_TIMEOUT");
-        env::remove_var("QUEUE_MAX_CONCURRENT");
-        env::remove_var("REDIS_URL");
-        env::remove_var("REDIS_HOST");
-        env::remove_var("REDIS_PORT");
-        env::remove_var("REDIS_PASSWORD");
-        env::remove_var("REDIS_DATABASE");
+        let mut guard = EnvGuard { vars: Vec::new() };
+        // Clear any existing env vars (guard tracks them for cleanup)
+        guard.also_remove("QUEUE_DEFAULT");
+        guard.also_remove("QUEUE_PREFIX");
+        guard.also_remove("QUEUE_BLOCK_TIMEOUT");
+        guard.also_remove("QUEUE_MAX_CONCURRENT");
+        guard.also_remove("REDIS_URL");
+        guard.also_remove("REDIS_HOST");
+        guard.also_remove("REDIS_PORT");
+        guard.also_remove("REDIS_PASSWORD");
+        guard.also_remove("REDIS_DATABASE");
 
         let config = QueueConfig::from_env();
         assert_eq!(config.default_queue, "default");
@@ -215,37 +248,33 @@ mod tests {
     #[test]
     #[serial]
     fn test_from_env_with_redis_url() {
-        env::set_var("REDIS_URL", "redis://custom:6380/5");
+        let _guard = EnvGuard::set("REDIS_URL", "redis://custom:6380/5");
         let config = QueueConfig::from_env();
         assert_eq!(config.redis_url, "redis://custom:6380/5");
-        env::remove_var("REDIS_URL");
     }
 
     #[test]
     #[serial]
     fn test_build_redis_url_with_password() {
-        env::remove_var("REDIS_URL");
-        env::set_var("REDIS_HOST", "redis.example.com");
-        env::set_var("REDIS_PORT", "6380");
-        env::set_var("REDIS_PASSWORD", "secret123");
-        env::set_var("REDIS_DATABASE", "3");
+        let mut guard = EnvGuard { vars: Vec::new() };
+        guard.also_remove("REDIS_URL");
+        guard.also_set("REDIS_HOST", "redis.example.com");
+        guard.also_set("REDIS_PORT", "6380");
+        guard.also_set("REDIS_PASSWORD", "secret123");
+        guard.also_set("REDIS_DATABASE", "3");
 
         let url = QueueConfig::build_redis_url();
         assert_eq!(url, "redis://:secret123@redis.example.com:6380/3");
-
-        env::remove_var("REDIS_HOST");
-        env::remove_var("REDIS_PORT");
-        env::remove_var("REDIS_PASSWORD");
-        env::remove_var("REDIS_DATABASE");
     }
 
     #[test]
     #[serial]
     fn test_is_sync_mode() {
-        env::remove_var("QUEUE_CONNECTION");
+        let mut guard = EnvGuard { vars: Vec::new() };
+        guard.also_remove("QUEUE_CONNECTION");
         assert!(QueueConfig::is_sync_mode()); // default is sync
 
-        env::set_var("QUEUE_CONNECTION", "sync");
+        guard.also_set("QUEUE_CONNECTION", "sync");
         assert!(QueueConfig::is_sync_mode());
 
         env::set_var("QUEUE_CONNECTION", "redis");
@@ -253,7 +282,5 @@ mod tests {
 
         env::set_var("QUEUE_CONNECTION", "SYNC");
         assert!(QueueConfig::is_sync_mode()); // case insensitive
-
-        env::remove_var("QUEUE_CONNECTION");
     }
 }
