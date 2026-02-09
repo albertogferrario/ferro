@@ -159,27 +159,6 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
     println!();
 }
 
-/// Strip markdown code fences if present in AI response.
-fn strip_markdown_fences(s: &str) -> String {
-    let trimmed = s.trim();
-
-    // Check for ```rust or ``` at the start and remove trailing ```
-    let stripped = if let Some(rest) = trimmed.strip_prefix("```rust") {
-        rest
-    } else if let Some(rest) = trimmed.strip_prefix("```") {
-        rest
-    } else {
-        return trimmed.to_string();
-    };
-
-    let stripped = stripped.trim();
-    if let Some(inner) = stripped.strip_suffix("```") {
-        inner.trim().to_string()
-    } else {
-        stripped.to_string()
-    }
-}
-
 fn is_valid_identifier(name: &str) -> bool {
     if name.is_empty() {
         return false;
