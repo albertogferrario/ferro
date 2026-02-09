@@ -633,6 +633,32 @@ ferro db:fresh
 
 **Warning:** This is destructive and will delete all data.
 
+### `ferro db:seed`
+
+Run database seeders to populate the database with test data.
+
+```bash
+# Run all seeders
+ferro db:seed
+
+# Run a specific seeder
+ferro db:seed --class UserSeeder
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--class` | Run only a specific seeder by name |
+
+**How it works:**
+
+The command delegates to `cargo run -- db:seed` in your project, which executes the registered seeders. Seeders are Rust structs implementing the `Seeder` trait, located in `src/seeders/`.
+
+If no seeders directory exists, the command will prompt you to create one with `ferro make:seeder <name>`.
+
+**See also:** [`ferro make:seeder`](#ferro-makeseeder) to generate new seeder files.
+
 ### `ferro db:sync`
 
 Synchronize the database schema and generate entity files.
@@ -879,6 +905,7 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `db:rollback` | Rollback migrations |
 | `db:status` | Show migration status |
 | `db:fresh` | Fresh migrate (drop all) |
+| `db:seed` | Run database seeders |
 | `db:sync` | Sync database schema |
 | `db:query` | Execute raw SQL query |
 | `docker:init` | Initialize Docker files |
