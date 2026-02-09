@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 
 ## Current Position
 
-Phase: 37 (Model Update Builder)
+Phase: 35 (CLI Seed Command)
 Plan: 2 of 2 in current phase
 Status: Phase complete
-Last activity: 2026-02-09 — Completed 37-02-PLAN.md
+Last activity: 2026-02-09 — Completed 35-02-PLAN.md
 
 Progress: █████████░ 90%
 
@@ -37,6 +37,7 @@ Progress: █████████░ 90%
 2. Exclude entire frontend/src/types/ directory rather than individual files
 3. UpdateBuilder consumes model (takes self) and uses Option<Option<T>> for nullable field tracking
 4. Keep ActiveValue import in scaffold templates since store handler still uses it for inserts
+5. Renamed enum variants from MigrateX to DbX for consistency with db: command names
 
 ### Pending Todos
 
@@ -64,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 37-02-PLAN.md — Phase 37 complete
+Stopped at: Completed 35-02-PLAN.md — Phase 35 complete
 Resume file: None

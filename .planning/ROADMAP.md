@@ -24,7 +24,8 @@
 **Research**: Unlikely (follows existing CLI patterns)
 
 Plans:
-- [ ] 35-01: CLI Seed Command (add `ferro db:seed` command that delegates to app binary)
+- [x] 35-01: CLI Seed Command (add `ferro db:seed` command that delegates to app binary)
+- [x] 35-02: Database CLI command normalization (unify migrate commands under db: namespace)
 
 #### Phase 36: Gitignore Generated Types
 
@@ -272,14 +273,14 @@ Plans:
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
-| v2.2 CLI Improvements | 35-37 | 1/3 | 🔄 In Progress | - |
+| v2.2 CLI Improvements | 35-37 | 2/3 | 🔄 In Progress | - |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
 
 ## Progress (v2.2 CLI Improvements)
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 35. CLI Seed Command | 0/1 | Planned | - |
+| 35. CLI Seed Command | 2/2 | Complete | 2026-02-09 |
 | 36. Gitignore Generated Types | 0/1 | Planned | - |
 | 37. Model Update Builder | 2/2 | Complete | 2026-02-09 |
 
