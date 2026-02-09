@@ -47,3 +47,6 @@ base64 = "0.22"
 dashmap = "6"
 clap = { version = "4", features = ["derive"] }
 regex = "1"
+
+[dev-dependencies]
+serial_test = "3"

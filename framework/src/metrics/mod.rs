@@ -196,6 +196,7 @@ pub fn is_enabled() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::time::Duration;
 
     fn setup() {
@@ -203,6 +204,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_record_request_increments_count() {
         setup();
 
@@ -221,6 +223,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_record_request_tracks_duration() {
         setup();
 
@@ -241,6 +244,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_record_request_counts_errors() {
         setup();
 
@@ -262,6 +266,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_different_methods_tracked_separately() {
         setup();
 
@@ -293,6 +298,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_min_duration_none_when_no_requests() {
         setup();
 
@@ -311,6 +317,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_reset_metrics_clears_data() {
         setup();
 
@@ -327,6 +334,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_uptime_tracking() {
         setup();
 
