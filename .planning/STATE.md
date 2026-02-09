@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 26 of 32 (Action System)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-09 — Completed 26-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 26-02-PLAN.md
 
 Progress: ████████░░ 80% (v3.0)
 
@@ -53,6 +53,8 @@ Progress: ████████░░ 80% (v3.0)
 | 25 | render_json explicit data wins over embedded | Explicit parameter is "live" handler data; embedded is for self-contained views |
 | 26 | url field added directly to Action struct (Option<String>) | Simpler than separate ResolvedAction type, works for both HTML and JSON output |
 | 26 | Callback-based resolver Fn(&str) -> Option<String> | Keeps ferro-json-ui decoupled from framework route registry |
+| 26 | Clone view before resolution in render pipeline | Immutable API, caller's view never mutated |
+| 26 | Non-strict resolve_actions in render pipeline | Missing routes produce url: None, handled downstream |
 
 ### Pending Todos
 
@@ -79,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 26-01-PLAN.md (Action URL field and resolver)
+Stopped at: Completed 26-02-PLAN.md (Framework bridge integration)
 Resume file: None

@@ -57,7 +57,7 @@ Plans:
 
 Plans:
 - [x] 26-01: Action URL field and resolve_actions tree walker (completed 2026-02-09)
-- [ ] 26-02: Framework bridge integration
+- [x] 26-02: Framework bridge integration (completed 2026-02-09)
 
 #### Phase 27: Validation Integration
 
@@ -270,7 +270,7 @@ Plans:
 | 23. JSON-UI Schema | 2/2 | Complete | 2026-02-09 |
 | 24. Component Catalog | 3/3 | Complete | 2026-02-09 |
 | 25. Data Binding | 2/2 | Complete | 2026-02-09 |
-| 26. Action System | 1/2 | In progress | - |
+| 26. Action System | 2/2 | Complete | 2026-02-09 |
 | 27. Validation Integration | 0/? | Not started | - |
 | 28. HTML Renderer | 0/? | Not started | - |
 | 29. Layout System | 0/? | Not started | - |
