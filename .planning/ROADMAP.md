@@ -25,7 +25,7 @@
 **Research topics**: json-render by Vercel, component catalog patterns, action declaration
 
 Plans:
-- [ ] 23-01: TBD (run /gsd:plan-phase 23 to break down)
+- [x] 23-01: Core JSON-UI schema types (completed 2026-02-09)
 
 #### Phase 24: Component Catalog
 
@@ -262,7 +262,7 @@ Plans:
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 23. JSON-UI Schema | 0/? | Not started | - |
+| 23. JSON-UI Schema | 1/1 | Complete | 2026-02-09 |
 | 24. Component Catalog | 0/? | Not started | - |
 | 25. Data Binding | 0/? | Not started | - |
 | 26. Action System | 0/? | Not started | - |
