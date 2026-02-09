@@ -638,3 +638,1060 @@ fn html_escape(s: &str) -> String {
     }
     escaped
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::action::{Action, HttpMethod};
+    use crate::component::*;
+    use serde_json::json;
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+
+    fn text_node(key: &str, content: &str, element: TextElement) -> ComponentNode {
+        ComponentNode {
+            key: key.to_string(),
+            component: Component::Text(TextProps {
+                content: content.to_string(),
+                element,
+            }),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    fn button_node(key: &str, label: &str, variant: ButtonVariant, size: Size) -> ComponentNode {
+        ComponentNode {
+            key: key.to_string(),
+            component: Component::Button(ButtonProps {
+                label: label.to_string(),
+                variant,
+                size,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    fn make_action(handler: &str, method: HttpMethod) -> Action {
+        Action {
+            handler: handler.to_string(),
+            url: None,
+            method,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+        }
+    }
+
+    fn make_action_with_url(handler: &str, method: HttpMethod, url: &str) -> Action {
+        Action {
+            handler: handler.to_string(),
+            url: Some(url.to_string()),
+            method,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+        }
+    }
+
+    // ── 1. render_to_html produces wrapper div ──────────────────────────
+
+    #[test]
+    fn render_empty_view_produces_wrapper_div() {
+        let view = JsonUiView::new();
+        let html = render_to_html(&view, &json!({}));
+        assert_eq!(html, "<div></div>");
+    }
+
+    #[test]
+    fn render_view_with_component_wraps_in_div() {
+        let view = JsonUiView::new().component(text_node("t", "Hello", TextElement::P));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.starts_with("<div>"));
+        assert!(html.ends_with("</div>"));
+        assert!(html.contains("<p class=\"text-base text-gray-700\">Hello</p>"));
+    }
+
+    // ── 2. Text variants ────────────────────────────────────────────────
+
+    #[test]
+    fn text_p_variant() {
+        let view = JsonUiView::new().component(text_node("t", "Paragraph", TextElement::P));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<p class=\"text-base text-gray-700\">Paragraph</p>"));
+    }
+
+    #[test]
+    fn text_h1_variant() {
+        let view = JsonUiView::new().component(text_node("t", "Title", TextElement::H1));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<h1 class=\"text-3xl font-bold text-gray-900\">Title</h1>"));
+    }
+
+    #[test]
+    fn text_h2_variant() {
+        let view = JsonUiView::new().component(text_node("t", "Subtitle", TextElement::H2));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<h2 class=\"text-2xl font-semibold text-gray-900\">Subtitle</h2>"));
+    }
+
+    #[test]
+    fn text_h3_variant() {
+        let view = JsonUiView::new().component(text_node("t", "Section", TextElement::H3));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<h3 class=\"text-xl font-semibold text-gray-900\">Section</h3>"));
+    }
+
+    #[test]
+    fn text_span_variant() {
+        let view = JsonUiView::new().component(text_node("t", "Inline", TextElement::Span));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<span class=\"text-base text-gray-700\">Inline</span>"));
+    }
+
+    // ── 3. Button variants ──────────────────────────────────────────────
+
+    #[test]
+    fn button_default_variant() {
+        let view = JsonUiView::new().component(button_node(
+            "b",
+            "Click",
+            ButtonVariant::Default,
+            Size::Default,
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-blue-600 text-white hover:bg-blue-700"));
+        assert!(html.contains(">Click</button>"));
+    }
+
+    #[test]
+    fn button_secondary_variant() {
+        let view = JsonUiView::new().component(button_node(
+            "b",
+            "Click",
+            ButtonVariant::Secondary,
+            Size::Default,
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-gray-100 text-gray-900 hover:bg-gray-200"));
+    }
+
+    #[test]
+    fn button_destructive_variant() {
+        let view = JsonUiView::new().component(button_node(
+            "b",
+            "Delete",
+            ButtonVariant::Destructive,
+            Size::Default,
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-red-600 text-white hover:bg-red-700"));
+    }
+
+    #[test]
+    fn button_outline_variant() {
+        let view = JsonUiView::new().component(button_node(
+            "b",
+            "Click",
+            ButtonVariant::Outline,
+            Size::Default,
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("border border-gray-300 bg-white text-gray-700"));
+    }
+
+    #[test]
+    fn button_ghost_variant() {
+        let view = JsonUiView::new().component(button_node(
+            "b",
+            "Click",
+            ButtonVariant::Ghost,
+            Size::Default,
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("text-gray-700 hover:bg-gray-100"));
+    }
+
+    #[test]
+    fn button_link_variant() {
+        let view = JsonUiView::new().component(button_node(
+            "b",
+            "Click",
+            ButtonVariant::Link,
+            Size::Default,
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("text-blue-600 underline hover:text-blue-700"));
+    }
+
+    #[test]
+    fn button_disabled_state() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "Disabled".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: Some(true),
+                icon: None,
+                icon_position: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("opacity-50 cursor-not-allowed"));
+        assert!(html.contains(" disabled"));
+    }
+
+    #[test]
+    fn button_with_icon_left() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "Save".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: Some("save".to_string()),
+                icon_position: Some(IconPosition::Left),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-icon=\"save\""));
+        // Icon span comes before label.
+        let icon_pos = html.find("data-icon").unwrap();
+        let label_pos = html.find("Save").unwrap();
+        assert!(icon_pos < label_pos);
+    }
+
+    #[test]
+    fn button_with_icon_right() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "Next".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: Some("arrow-right".to_string()),
+                icon_position: Some(IconPosition::Right),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-icon=\"arrow-right\""));
+        // Label comes before icon span.
+        let label_pos = html.find("Next").unwrap();
+        let icon_pos = html.find("data-icon").unwrap();
+        assert!(label_pos < icon_pos);
+    }
+
+    // ── 4. Button sizes ─────────────────────────────────────────────────
+
+    #[test]
+    fn button_size_xs() {
+        let view =
+            JsonUiView::new().component(button_node("b", "X", ButtonVariant::Default, Size::Xs));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("px-2 py-1 text-xs"));
+    }
+
+    #[test]
+    fn button_size_sm() {
+        let view =
+            JsonUiView::new().component(button_node("b", "S", ButtonVariant::Default, Size::Sm));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("px-3 py-1.5 text-sm"));
+    }
+
+    #[test]
+    fn button_size_default() {
+        let view = JsonUiView::new().component(button_node(
+            "b",
+            "D",
+            ButtonVariant::Default,
+            Size::Default,
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("px-4 py-2 text-sm"));
+    }
+
+    #[test]
+    fn button_size_lg() {
+        let view =
+            JsonUiView::new().component(button_node("b", "L", ButtonVariant::Default, Size::Lg));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("px-6 py-3 text-base"));
+    }
+
+    // ── 5. Badge variants ───────────────────────────────────────────────
+
+    #[test]
+    fn badge_default_variant() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bg".to_string(),
+            component: Component::Badge(BadgeProps {
+                label: "New".to_string(),
+                variant: BadgeVariant::Default,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-blue-100 text-blue-800"));
+        assert!(html.contains(">New</span>"));
+    }
+
+    #[test]
+    fn badge_secondary_variant() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bg".to_string(),
+            component: Component::Badge(BadgeProps {
+                label: "Draft".to_string(),
+                variant: BadgeVariant::Secondary,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-gray-100 text-gray-800"));
+    }
+
+    #[test]
+    fn badge_destructive_variant() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bg".to_string(),
+            component: Component::Badge(BadgeProps {
+                label: "Deleted".to_string(),
+                variant: BadgeVariant::Destructive,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-red-100 text-red-800"));
+    }
+
+    #[test]
+    fn badge_outline_variant() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bg".to_string(),
+            component: Component::Badge(BadgeProps {
+                label: "Info".to_string(),
+                variant: BadgeVariant::Outline,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("border border-gray-300 text-gray-700"));
+    }
+
+    #[test]
+    fn badge_has_base_classes() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bg".to_string(),
+            component: Component::Badge(BadgeProps {
+                label: "Test".to_string(),
+                variant: BadgeVariant::Default,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html
+            .contains("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"));
+    }
+
+    // ── 6. Alert variants ───────────────────────────────────────────────
+
+    #[test]
+    fn alert_info_variant() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "a".to_string(),
+            component: Component::Alert(AlertProps {
+                message: "Info message".to_string(),
+                variant: AlertVariant::Info,
+                title: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-blue-50 border-blue-200 text-blue-800"));
+        assert!(html.contains("role=\"alert\""));
+        assert!(html.contains("<p>Info message</p>"));
+    }
+
+    #[test]
+    fn alert_success_variant() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "a".to_string(),
+            component: Component::Alert(AlertProps {
+                message: "Done".to_string(),
+                variant: AlertVariant::Success,
+                title: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-green-50 border-green-200 text-green-800"));
+    }
+
+    #[test]
+    fn alert_warning_variant() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "a".to_string(),
+            component: Component::Alert(AlertProps {
+                message: "Careful".to_string(),
+                variant: AlertVariant::Warning,
+                title: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-yellow-50 border-yellow-200 text-yellow-800"));
+    }
+
+    #[test]
+    fn alert_error_variant() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "a".to_string(),
+            component: Component::Alert(AlertProps {
+                message: "Failed".to_string(),
+                variant: AlertVariant::Error,
+                title: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-red-50 border-red-200 text-red-800"));
+    }
+
+    #[test]
+    fn alert_with_title() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "a".to_string(),
+            component: Component::Alert(AlertProps {
+                message: "Details here".to_string(),
+                variant: AlertVariant::Warning,
+                title: Some("Warning".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<h4 class=\"font-semibold mb-1\">Warning</h4>"));
+        assert!(html.contains("<p>Details here</p>"));
+    }
+
+    #[test]
+    fn alert_without_title() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "a".to_string(),
+            component: Component::Alert(AlertProps {
+                message: "No title".to_string(),
+                variant: AlertVariant::Info,
+                title: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<h4"));
+    }
+
+    // ── 7. Separator orientations ───────────────────────────────────────
+
+    #[test]
+    fn separator_horizontal() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "s".to_string(),
+            component: Component::Separator(SeparatorProps {
+                orientation: Some(Orientation::Horizontal),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<hr class=\"my-4 border-gray-200\">"));
+    }
+
+    #[test]
+    fn separator_vertical() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "s".to_string(),
+            component: Component::Separator(SeparatorProps {
+                orientation: Some(Orientation::Vertical),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<div class=\"mx-4 h-full w-px bg-gray-200\"></div>"));
+    }
+
+    #[test]
+    fn separator_default_is_horizontal() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "s".to_string(),
+            component: Component::Separator(SeparatorProps { orientation: None }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<hr"));
+    }
+
+    // ── 8. Progress ─────────────────────────────────────────────────────
+
+    #[test]
+    fn progress_renders_bar() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "p".to_string(),
+            component: Component::Progress(ProgressProps {
+                value: 50,
+                max: None,
+                label: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("style=\"width: 50%\""));
+        assert!(html.contains("bg-blue-600 h-2.5"));
+    }
+
+    #[test]
+    fn progress_with_label() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "p".to_string(),
+            component: Component::Progress(ProgressProps {
+                value: 75,
+                max: None,
+                label: Some("Uploading...".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("Uploading..."));
+        assert!(html.contains("text-sm text-gray-600"));
+    }
+
+    #[test]
+    fn progress_with_custom_max() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "p".to_string(),
+            component: Component::Progress(ProgressProps {
+                value: 25,
+                max: Some(50),
+                label: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        // 25/50 = 50%
+        assert!(html.contains("style=\"width: 50%\""));
+    }
+
+    // ── 9. Avatar ───────────────────────────────────────────────────────
+
+    #[test]
+    fn avatar_with_src() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "av".to_string(),
+            component: Component::Avatar(AvatarProps {
+                src: Some("/img/user.jpg".to_string()),
+                alt: "User".to_string(),
+                fallback: None,
+                size: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<img"));
+        assert!(html.contains("src=\"/img/user.jpg\""));
+        assert!(html.contains("alt=\"User\""));
+        assert!(html.contains("rounded-full object-cover"));
+    }
+
+    #[test]
+    fn avatar_without_src_uses_fallback() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "av".to_string(),
+            component: Component::Avatar(AvatarProps {
+                src: None,
+                alt: "John Doe".to_string(),
+                fallback: Some("JD".to_string()),
+                size: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<img"));
+        assert!(html.contains("<span"));
+        assert!(html.contains("bg-gray-200 text-gray-600"));
+        assert!(html.contains(">JD</span>"));
+    }
+
+    #[test]
+    fn avatar_without_src_or_fallback_uses_alt_initials() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "av".to_string(),
+            component: Component::Avatar(AvatarProps {
+                src: None,
+                alt: "Alice".to_string(),
+                fallback: None,
+                size: Some(Size::Lg),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains(">Al</span>"));
+        assert!(html.contains("h-12 w-12 text-base"));
+    }
+
+    // ── 10. Skeleton ────────────────────────────────────────────────────
+
+    #[test]
+    fn skeleton_default() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "sk".to_string(),
+            component: Component::Skeleton(SkeletonProps {
+                width: None,
+                height: None,
+                rounded: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("animate-pulse bg-gray-200"));
+        assert!(html.contains("rounded-md"));
+        assert!(html.contains("width: 100%"));
+        assert!(html.contains("height: 1rem"));
+    }
+
+    #[test]
+    fn skeleton_custom_dimensions() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "sk".to_string(),
+            component: Component::Skeleton(SkeletonProps {
+                width: Some("200px".to_string()),
+                height: Some("40px".to_string()),
+                rounded: Some(true),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("rounded-full"));
+        assert!(html.contains("width: 200px"));
+        assert!(html.contains("height: 40px"));
+    }
+
+    // ── 11. Breadcrumb ──────────────────────────────────────────────────
+
+    #[test]
+    fn breadcrumb_items_with_links() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bc".to_string(),
+            component: Component::Breadcrumb(BreadcrumbProps {
+                items: vec![
+                    BreadcrumbItem {
+                        label: "Home".to_string(),
+                        url: Some("/".to_string()),
+                    },
+                    BreadcrumbItem {
+                        label: "Users".to_string(),
+                        url: Some("/users".to_string()),
+                    },
+                    BreadcrumbItem {
+                        label: "Edit".to_string(),
+                        url: None,
+                    },
+                ],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<nav"));
+        assert!(html.contains("<a href=\"/\" class=\"hover:text-gray-700\">Home</a>"));
+        assert!(html.contains("<a href=\"/users\" class=\"hover:text-gray-700\">Users</a>"));
+        // Last item is plain span, not a link.
+        assert!(html.contains("<span class=\"text-gray-900 font-medium\">Edit</span>"));
+        // Separators between items.
+        assert!(html.contains("<span>/</span>"));
+    }
+
+    #[test]
+    fn breadcrumb_single_item() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bc".to_string(),
+            component: Component::Breadcrumb(BreadcrumbProps {
+                items: vec![BreadcrumbItem {
+                    label: "Home".to_string(),
+                    url: Some("/".to_string()),
+                }],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        // Single item is the last item, rendered as font-medium span.
+        assert!(html.contains("<span class=\"text-gray-900 font-medium\">Home</span>"));
+        // No separator.
+        assert!(!html.contains("<span>/</span>"));
+    }
+
+    // ── 12. Pagination ──────────────────────────────────────────────────
+
+    #[test]
+    fn pagination_renders_page_links() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "pg".to_string(),
+            component: Component::Pagination(PaginationProps {
+                current_page: 2,
+                per_page: 10,
+                total: 50,
+                base_url: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<nav"));
+        // Current page has active class.
+        assert!(html.contains("bg-blue-600 text-white\">2</span>"));
+        // Other pages are links.
+        assert!(html.contains("?page=1"));
+        assert!(html.contains("?page=3"));
+    }
+
+    #[test]
+    fn pagination_single_page_produces_no_output() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "pg".to_string(),
+            component: Component::Pagination(PaginationProps {
+                current_page: 1,
+                per_page: 10,
+                total: 5,
+                base_url: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        // Single page: no nav rendered.
+        assert!(!html.contains("<nav"));
+    }
+
+    #[test]
+    fn pagination_prev_and_next_buttons() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "pg".to_string(),
+            component: Component::Pagination(PaginationProps {
+                current_page: 3,
+                per_page: 10,
+                total: 100,
+                base_url: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        // Prev button.
+        assert!(html.contains("?page=2"));
+        // Next button.
+        assert!(html.contains("?page=4"));
+    }
+
+    #[test]
+    fn pagination_no_prev_on_first_page() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "pg".to_string(),
+            component: Component::Pagination(PaginationProps {
+                current_page: 1,
+                per_page: 10,
+                total: 30,
+                base_url: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        // Should not have prev link (&laquo;).
+        assert!(!html.contains("&laquo;"));
+        // Should have next link.
+        assert!(html.contains("&raquo;"));
+    }
+
+    #[test]
+    fn pagination_custom_base_url() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "pg".to_string(),
+            component: Component::Pagination(PaginationProps {
+                current_page: 1,
+                per_page: 10,
+                total: 30,
+                base_url: Some("/users?sort=name&".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("/users?sort=name&amp;page=2"));
+    }
+
+    // ── 13. DescriptionList ─────────────────────────────────────────────
+
+    #[test]
+    fn description_list_renders_dl_dt_dd() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "dl".to_string(),
+            component: Component::DescriptionList(DescriptionListProps {
+                items: vec![
+                    DescriptionItem {
+                        label: "Name".to_string(),
+                        value: "Alice".to_string(),
+                        format: None,
+                    },
+                    DescriptionItem {
+                        label: "Email".to_string(),
+                        value: "alice@example.com".to_string(),
+                        format: None,
+                    },
+                ],
+                columns: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<dl"));
+        assert!(html.contains("grid-cols-1"));
+        assert!(html.contains("<dt class=\"text-sm font-medium text-gray-500\">Name</dt>"));
+        assert!(html.contains("<dd class=\"mt-1 text-sm text-gray-900\">Alice</dd>"));
+        assert!(html.contains("<dt class=\"text-sm font-medium text-gray-500\">Email</dt>"));
+    }
+
+    #[test]
+    fn description_list_with_columns() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "dl".to_string(),
+            component: Component::DescriptionList(DescriptionListProps {
+                items: vec![DescriptionItem {
+                    label: "Status".to_string(),
+                    value: "Active".to_string(),
+                    format: None,
+                }],
+                columns: Some(3),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("grid-cols-3"));
+    }
+
+    // ── 14. XSS prevention ──────────────────────────────────────────────
+
+    #[test]
+    fn xss_script_tags_escaped_in_text() {
+        let view = JsonUiView::new().component(text_node(
+            "t",
+            "<script>alert('xss')</script>",
+            TextElement::P,
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<script>"));
+        assert!(html.contains("&lt;script&gt;"));
+        assert!(html.contains("&#x27;"));
+    }
+
+    #[test]
+    fn xss_quotes_escaped_in_attributes() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "av".to_string(),
+            component: Component::Avatar(AvatarProps {
+                src: Some("x\" onload=\"alert(1)".to_string()),
+                alt: "Test".to_string(),
+                fallback: None,
+                size: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        // Quotes are escaped so the attacker cannot break out of the attribute.
+        assert!(html.contains("&quot;"));
+        // The src attribute value stays intact within quotes (no breakout).
+        assert!(html.contains("src=\"x&quot; onload=&quot;alert(1)\""));
+    }
+
+    #[test]
+    fn xss_in_button_label() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "<img src=x onerror=alert(1)>".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<img"));
+        assert!(html.contains("&lt;img"));
+    }
+
+    #[test]
+    fn xss_ampersand_in_content() {
+        let view = JsonUiView::new().component(text_node("t", "Tom & Jerry", TextElement::P));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("Tom &amp; Jerry"));
+    }
+
+    #[test]
+    fn html_escape_function_covers_all_chars() {
+        let result = html_escape("&<>\"'normal");
+        assert_eq!(result, "&amp;&lt;&gt;&quot;&#x27;normal");
+    }
+
+    // ── 15. Action wrapping ─────────────────────────────────────────────
+
+    #[test]
+    fn get_action_wraps_in_anchor() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "View".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: Some(make_action_with_url(
+                "users.show",
+                HttpMethod::Get,
+                "/users/1",
+            )),
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<a href=\"/users/1\" class=\"block\">"));
+        assert!(html.contains("</a>"));
+        assert!(html.contains("<button"));
+    }
+
+    #[test]
+    fn post_action_does_not_wrap_in_anchor() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "Submit".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: Some(make_action_with_url(
+                "users.store",
+                HttpMethod::Post,
+                "/users",
+            )),
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<a href="));
+        assert!(html.contains("<button"));
+    }
+
+    #[test]
+    fn get_action_without_url_does_not_wrap() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "View".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: Some(make_action("users.show", HttpMethod::Get)),
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<a href="));
+    }
+
+    #[test]
+    fn delete_action_does_not_wrap_in_anchor() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "Delete".to_string(),
+                variant: ButtonVariant::Destructive,
+                size: Size::Default,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: Some(make_action_with_url(
+                "users.destroy",
+                HttpMethod::Delete,
+                "/users/1",
+            )),
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<a href="));
+    }
+
+    #[test]
+    fn action_url_is_html_escaped() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "b".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "View".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: Some(make_action_with_url(
+                "users.show",
+                HttpMethod::Get,
+                "/users?id=1&name=test",
+            )),
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("href=\"/users?id=1&amp;name=test\""));
+    }
+}
