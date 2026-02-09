@@ -4,13 +4,18 @@
 
 use ferro::FerroModel;
 use sea_orm::entity::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, FerroModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize, FerroModel)]
 #[sea_orm(table_name = "users")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub name: String,
+    #[sea_orm(unique)]
+    pub email: String,
+    pub password: String,
+    pub remember_token: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }

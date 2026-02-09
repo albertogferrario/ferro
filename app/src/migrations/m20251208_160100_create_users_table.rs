@@ -19,6 +19,26 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(
+                        ColumnDef::new(Users::Name)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Users::Email)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Users::Password)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Users::RememberToken)
+                            .string()
+                            .null(),
+                    )
+                    .col(
                         ColumnDef::new(Users::CreatedAt)
                             .timestamp()
                             .not_null()
@@ -30,6 +50,17 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_users_email_unique")
+                    .table(Users::Table)
+                    .col(Users::Email)
+                    .unique()
                     .to_owned(),
             )
             .await
@@ -47,6 +78,10 @@ impl MigrationTrait for Migration {
 enum Users {
     Table,
     Id,
+    Name,
+    Email,
+    Password,
+    RememberToken,
     CreatedAt,
     UpdatedAt,
 }
