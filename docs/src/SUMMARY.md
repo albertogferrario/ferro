@@ -27,6 +27,15 @@
 - [Validation](features/validation.md)
 - [Testing](features/testing.md)
 - [Inertia.js](features/inertia.md)
+- [JSON-UI](features/json-ui.md)
+
+# JSON-UI
+
+- [Getting Started](json-ui/getting-started.md)
+- [Components](json-ui/components.md)
+- [Actions](json-ui/actions.md)
+- [Data Binding & Visibility](json-ui/data-binding.md)
+- [Layouts](json-ui/layouts.md)
 
 # Reference
 
