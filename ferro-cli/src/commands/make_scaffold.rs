@@ -917,11 +917,11 @@ fn generate_controller(
 
     let file_path = controllers_dir.join(format!("{}_controller.rs", snake_name));
 
-    // Build update field assignments
+    // Build update field assignments (builder setter calls)
     let mut update_fields = String::new();
     for field in fields {
         update_fields.push_str(&format!(
-            "    model.{} = sea_orm::ActiveValue::Set(form.{}.clone());\n",
+            "        .set_{}(form.{}.clone())\n",
             field.name, field.name
         ));
     }

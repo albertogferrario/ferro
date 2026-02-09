@@ -2404,10 +2404,10 @@ pub async fn update(req: Request, id: i64) -> Response {{
         }});
     }}
 
-    let mut model: {snake_name}::ActiveModel = {snake}.into();
-{update_fields}    model.updated_at = ActiveValue::Set(chrono::Utc::now());
-
-    model.update(db).await
+    {snake}
+        .update()
+{update_fields}        .save()
+        .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
     HttpResponse::redirect(&format!("/{plural}/{{}}", id))
@@ -2585,10 +2585,10 @@ pub async fn update(req: Request, id: i64) -> Response {{
         }});
     }}
 
-    let mut model: {snake_name}::ActiveModel = {snake}.into();
-{update_fields}    model.updated_at = ActiveValue::Set(chrono::Utc::now());
-
-    model.update(db).await
+    {snake}
+        .update()
+{update_fields}        .save()
+        .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
     HttpResponse::redirect(&format!("/{plural}/{{}}", id))
@@ -2741,13 +2741,14 @@ pub async fn update(req: Request) -> Response {{
         }})?
         .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
-    let mut {snake_name}: {snake_name}::ActiveModel = existing.into();
-{update_fields}
-
-    let updated = {snake_name}.update(db).await.map_err(|e| {{
-        tracing::error!("Failed to update {snake_name}: {{:?}}", e);
-        ferro::error_response!(500, "Failed to update {snake_name}")
-    }})?;
+    let updated = existing
+        .update()
+{update_fields}        .save()
+        .await
+        .map_err(|e| {{
+            tracing::error!("Failed to update {snake_name}: {{:?}}", e);
+            ferro::error_response!(500, "Failed to update {snake_name}")
+        }})?;
 
     json_response!({{
         "data": updated,
@@ -3083,13 +3084,14 @@ pub async fn update(req: Request) -> Response {{
         }})?
         .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
-    let mut {snake_name}: {snake_name}::ActiveModel = existing.into();
-{update_fields}
-
-    let updated = {snake_name}.update(db).await.map_err(|e| {{
-        tracing::error!("Failed to update {snake_name}: {{:?}}", e);
-        ferro::error_response!(500, "Failed to update {snake_name}")
-    }})?;
+    let updated = existing
+        .update()
+{update_fields}        .save()
+        .await
+        .map_err(|e| {{
+            tracing::error!("Failed to update {snake_name}: {{:?}}", e);
+            ferro::error_response!(500, "Failed to update {snake_name}")
+        }})?;
 
     json_response!({{
         "data": updated,
@@ -3939,7 +3941,7 @@ mod tests {
             "post",
             "posts",
             "    pub title: String,\n    pub body: String,",
-            "    post.title = sea_orm::ActiveValue::Set(form.title.clone());\n    post.body = sea_orm::ActiveValue::Set(form.body.clone());",
+            "        .set_title(form.title.clone())\n        .set_body(form.body.clone())\n",
             "        title: sea_orm::ActiveValue::Set(form.title.clone()),\n        body: sea_orm::ActiveValue::Set(form.body.clone()),",
         );
         assert!(result.contains("Post API controller"));
@@ -3950,5 +3952,11 @@ mod tests {
         assert!(result.contains("pub async fn destroy"));
         assert!(result.contains("json_response!"));
         assert!(!result.contains("Inertia"));
+        // Verify builder pattern is used in update handler
+        assert!(result.contains(".update()"));
+        assert!(result.contains(".set_title("));
+        assert!(result.contains(".save()"));
+        // Verify old ActiveModel pattern is NOT used in update handler
+        assert!(!result.contains("let mut post: post::ActiveModel"));
     }
 }
