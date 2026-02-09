@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-17)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v2.2 CLI Improvements — CLI commands for common development workflows
+**Current focus:** v3.0 JSON-UI — JSON-based UI rendering as alternative to Inertia
 
 ## Current Position
 
-Phase: 35 (CLI Seed Command)
+Phase: 37 (Model Update Builder)
 Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-09 — Completed 35-02-PLAN.md
+Status: Milestone v2.2 complete
+Last activity: 2026-02-09 — v2.2 CLI Improvements milestone complete
 
-Progress: █████████░ 90%
+Progress: ██████████ 100%
 
 ## Milestone Summary
 
@@ -26,7 +26,7 @@ Progress: █████████░ 90%
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
-| v2.2 CLI Improvements | 35-37 | 2/3 | 🔄 In Progress | - |
+| v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
 
 ## Accumulated Context
@@ -58,12 +58,11 @@ None.
 - v2.0.2 Type Generator Fixes complete: 6 phases, 6 plans (Phase 22.4-22.9) (2026-01-17)
 - v2.0.3 DO Apps Deploy complete: 1 phase, 1 plan (Phase 22.10) (2026-01-17)
 - v2.1 Inertia DX & Fixes complete: 2 phases, 4 plans (Phase 33-34) (2026-01-17)
-- v2.2 CLI Improvements: 2/3 phases complete (Phase 35-36 done, Phase 37 added)
-- Phase 37 added: Model Update Builder — typed builder pattern for model updates
+- v2.2 CLI Improvements complete: 3 phases, 5 plans (Phase 35-37) (2026-02-09)
 - v3.0 JSON-UI: 10 phases planned (Phases 23-32)
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 35-02-PLAN.md — Phase 35 complete
+Stopped at: v2.2 CLI Improvements milestone complete — all 3 phases done
 Resume file: None

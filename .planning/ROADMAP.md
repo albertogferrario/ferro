@@ -8,12 +8,12 @@
 - ✅ [**v2.0.2 Type Generator Fixes**](milestones/v2.0.2-ROADMAP.md) — Phase 22.4-22.9 (shipped 2026-01-17)
 - ✅ [**v2.0.3 DO Apps Deploy**](milestones/v2.0.3-ROADMAP.md) — Phase 22.10 (shipped 2026-01-17)
 - ✅ [**v2.1 Inertia DX & Fixes**](milestones/v2.1-ROADMAP.md) — Phases 33-34 (shipped 2026-01-17)
-- 📋 **v2.2 CLI Improvements** — Phases 35-37 (planned)
+- ✅ **v2.2 CLI Improvements** — Phases 35-37 (shipped 2026-02-09)
 - 📋 **v3.0 JSON-UI** — Phases 23-32 (planned)
 
 ---
 
-### 📋 v2.2 CLI Improvements (Planned)
+### ✅ v2.2 CLI Improvements (Complete)
 
 **Milestone Goal:** Add CLI commands for common development workflows.
 
@@ -34,7 +34,7 @@ Plans:
 **Research**: Unlikely (template update)
 
 Plans:
-- [ ] 36-01: Gitignore Generated Types (exclude frontend/src/types/ from version control)
+- [x] 36-01: Gitignore Generated Types (exclude frontend/src/types/ from version control)
 
 #### Phase 37: Model Update Builder
 
@@ -147,6 +147,21 @@ Plans:
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v2.2 CLI Improvements (Phases 35-37) — SHIPPED 2026-02-09</summary>
+
+**Milestone Goal:** Add CLI commands for common development workflows.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 35. CLI Seed Command | 2/2 | Complete | 2026-02-09 |
+| 36. Gitignore Generated Types | 1/1 | Complete | 2026-02-09 |
+| 37. Model Update Builder | 2/2 | Complete | 2026-02-09 |
+
+**Total:** 3 phases, 5 plans
+
+</details>
 
 <details>
 <summary>✅ v2.1 Inertia DX & Fixes (Phases 33-34) — SHIPPED 2026-01-17</summary>
@@ -273,16 +288,8 @@ Plans:
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
-| v2.2 CLI Improvements | 35-37 | 2/3 | 🔄 In Progress | - |
+| v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
-
-## Progress (v2.2 CLI Improvements)
-
-| Phase | Plans | Status | Completed |
-|-------|-------|--------|-----------|
-| 35. CLI Seed Command | 2/2 | Complete | 2026-02-09 |
-| 36. Gitignore Generated Types | 0/1 | Planned | - |
-| 37. Model Update Builder | 2/2 | Complete | 2026-02-09 |
 
 ## Progress (v3.0 JSON-UI)
 
