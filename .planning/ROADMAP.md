@@ -56,7 +56,8 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 26-01: TBD
+- [x] 26-01: Action URL field and resolve_actions tree walker (completed 2026-02-09)
+- [ ] 26-02: Framework bridge integration
 
 #### Phase 27: Validation Integration
 
@@ -260,7 +261,7 @@ Plans:
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 6/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 8/? | 🚧 In Progress | - |
 
 ## Progress (v3.0 JSON-UI)
 
@@ -269,7 +270,7 @@ Plans:
 | 23. JSON-UI Schema | 2/2 | Complete | 2026-02-09 |
 | 24. Component Catalog | 3/3 | Complete | 2026-02-09 |
 | 25. Data Binding | 2/2 | Complete | 2026-02-09 |
-| 26. Action System | 0/? | Not started | - |
+| 26. Action System | 1/2 | In progress | - |
 | 27. Validation Integration | 0/? | Not started | - |
 | 28. HTML Renderer | 0/? | Not started | - |
 | 29. Layout System | 0/? | Not started | - |
