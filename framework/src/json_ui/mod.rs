@@ -30,7 +30,10 @@
 use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
-use ferro_json_ui::{render_to_html, resolve_actions, resolve_errors, JsonUiConfig, JsonUiView};
+use ferro_json_ui::{
+    render_to_html, resolve_actions, resolve_errors, JsonUiConfig, JsonUiView, LayoutContext,
+    render_layout,
+};
 
 /// Stateless JSON-UI renderer.
 ///
@@ -62,8 +65,21 @@ impl JsonUi {
         data: &serde_json::Value,
         config: &JsonUiConfig,
     ) -> Response {
-        let view = Self::resolve(view);
-        let view_json = serde_json::to_string(&view).map_err(|e| {
+        let resolved = Self::resolve(view);
+        Self::build_response(&resolved, data, config)
+    }
+
+    /// Build an HTML response from a resolved view using the layout system.
+    ///
+    /// Shared implementation for both `render_with_config` and `render_with_errors_config`.
+    /// Serializes view/data, builds head content, renders components, then dispatches
+    /// to the layout registry for the final HTML shell.
+    fn build_response(
+        view: &JsonUiView,
+        data: &serde_json::Value,
+        config: &JsonUiConfig,
+    ) -> Response {
+        let view_json = serde_json::to_string(view).map_err(|e| {
             HttpResponse::text(format!("JSON-UI serialization error: {e}")).status(500)
         })?;
         let data_json = serde_json::to_string(data).map_err(|e| {
@@ -80,32 +96,19 @@ impl JsonUi {
             head.push_str(custom);
         }
 
-        let rendered = render_to_html(&view, data);
+        let rendered = render_to_html(view, data);
 
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
-    {head}
-</head>
-<body class="{body_class}">
-    <div id="ferro-json-ui"
-         data-view="{view_escaped}"
-         data-props="{data_escaped}">
-        {rendered}
-    </div>
-</body>
-</html>"#,
-            title = html_escape(title),
-            head = head,
-            body_class = html_escape(&config.body_class),
-            view_escaped = html_escape_attr(&view_json),
-            data_escaped = html_escape_attr(&data_json),
-            rendered = rendered,
-        );
+        let ctx = LayoutContext {
+            title,
+            content: &rendered,
+            head: &head,
+            body_class: &config.body_class,
+            view_json: &view_json,
+            data_json: &data_json,
+        };
+
+        let layout_name = view.layout.as_deref();
+        let html = render_layout(layout_name, &ctx);
 
         Ok(HttpResponse::text(html)
             .status(200)
@@ -155,54 +158,8 @@ impl JsonUi {
         errors: &HashMap<String, Vec<String>>,
         config: &JsonUiConfig,
     ) -> Response {
-        let view = Self::resolve_with_errors(view, errors);
-        let view_json = serde_json::to_string(&view).map_err(|e| {
-            HttpResponse::text(format!("JSON-UI serialization error: {e}")).status(500)
-        })?;
-        let data_json = serde_json::to_string(data).map_err(|e| {
-            HttpResponse::text(format!("JSON-UI data serialization error: {e}")).status(500)
-        })?;
-
-        let title = view.title.as_deref().unwrap_or("Ferro");
-
-        let mut head = String::new();
-        if config.tailwind_cdn {
-            head.push_str(r#"<script src="https://cdn.tailwindcss.com"></script>"#);
-        }
-        if let Some(custom) = &config.custom_head {
-            head.push_str(custom);
-        }
-
-        let rendered = render_to_html(&view, data);
-
-        let html = format!(
-            r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
-    {head}
-</head>
-<body class="{body_class}">
-    <div id="ferro-json-ui"
-         data-view="{view_escaped}"
-         data-props="{data_escaped}">
-        {rendered}
-    </div>
-</body>
-</html>"#,
-            title = html_escape(title),
-            head = head,
-            body_class = html_escape(&config.body_class),
-            view_escaped = html_escape_attr(&view_json),
-            data_escaped = html_escape_attr(&data_json),
-            rendered = rendered,
-        );
-
-        Ok(HttpResponse::text(html)
-            .status(200)
-            .header("Content-Type", "text/html; charset=utf-8"))
+        let resolved = Self::resolve_with_errors(view, errors);
+        Self::build_response(&resolved, data, config)
     }
 
     /// Return the view as JSON with validation errors populated on form fields.
@@ -247,18 +204,17 @@ impl JsonUi {
     }
 }
 
-/// Escape characters that are meaningful in HTML text content.
+/// Escape characters that are meaningful in HTML text content (test-only).
+///
+/// The layout system handles escaping in production code. This function
+/// is retained for the html_escape unit test.
+#[cfg(test)]
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&#x27;")
-}
-
-/// Escape characters for use inside HTML attribute values.
-fn html_escape_attr(s: &str) -> String {
-    html_escape(s)
 }
 
 #[cfg(test)]
