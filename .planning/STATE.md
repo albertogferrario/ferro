@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 24 of 32 (Component Catalog)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-09 — Completed 24-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 24-03-PLAN.md
 
-Progress: ████░░░░░░ 40% (v3.0)
+Progress: █████░░░░░ 50% (v3.0)
 
 ## Milestone Summary
 
@@ -27,7 +27,7 @@ Progress: ████░░░░░░ 40% (v3.0)
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 4/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 5/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -46,6 +46,7 @@ Progress: ████░░░░░░ 40% (v3.0)
 | 24 | Shared Size enum for cross-component sizing | Avoids variant sprawl across components |
 | 24 | Checkbox/Switch identical props (visual distinction) | Frontend renderer handles visual difference |
 | 24 | DescriptionItem reuses ColumnFormat from Table | Consistent formatting across data display components |
+| 24 | Full re-export of all JSON-UI types from framework | All 20 component types available via `use ferro_rs::*` |
 
 ### Pending Todos
 
@@ -72,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 24-02-PLAN.md — Form field and utility components
+Stopped at: Completed 24-03-PLAN.md — Phase 24 complete (20-component catalog)
 Resume file: None

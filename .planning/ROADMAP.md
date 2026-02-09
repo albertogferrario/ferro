@@ -37,6 +37,7 @@ Plans:
 Plans:
 - [x] 24-01: Enriched component props and shared variant enums (completed 2026-02-09)
 - [x] 24-02: Form field and utility components (completed 2026-02-09)
+- [x] 24-03: Navigation and layout components (completed 2026-02-09)
 
 #### Phase 25: Data Binding
 
@@ -265,7 +266,7 @@ Plans:
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
 | 23. JSON-UI Schema | 2/2 | Complete | 2026-02-09 |
-| 24. Component Catalog | 2/3 | In progress | - |
+| 24. Component Catalog | 3/3 | Complete | 2026-02-09 |
 | 25. Data Binding | 0/? | Not started | - |
 | 26. Action System | 0/? | Not started | - |
 | 27. Validation Integration | 0/? | Not started | - |
