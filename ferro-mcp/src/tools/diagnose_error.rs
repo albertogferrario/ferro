@@ -143,7 +143,7 @@ fn diagnose_database(message: &Option<String>) -> ErrorDiagnosis {
             },
             FixSuggestion {
                 action: "Run pending migrations".to_string(),
-                details: "Execute `ferro migrate` to apply any pending database migrations.".to_string(),
+                details: "Execute `ferro db:migrate` to apply any pending database migrations.".to_string(),
                 priority: 1,
             },
             FixSuggestion {

@@ -523,28 +523,28 @@ frontend/src/pages/
 
 ## Database Commands
 
-### `ferro migrate`
+### `ferro db:migrate`
 
 Run all pending migrations.
 
 ```bash
-ferro migrate
+ferro db:migrate
 ```
 
-### `ferro migrate:rollback`
+### `ferro db:rollback`
 
 Rollback the last batch of migrations.
 
 ```bash
-ferro migrate:rollback
+ferro db:rollback
 ```
 
-### `ferro migrate:status`
+### `ferro db:status`
 
 Show the status of all migrations.
 
 ```bash
-ferro migrate:status
+ferro db:status
 ```
 
 Output:
@@ -559,12 +559,12 @@ Output:
 +------+------------------------------------------------+-------+
 ```
 
-### `ferro migrate:fresh`
+### `ferro db:fresh`
 
 Drop all tables and re-run all migrations.
 
 ```bash
-ferro migrate:fresh
+ferro db:fresh
 ```
 
 **Warning:** This is destructive and will delete all data.
@@ -810,10 +810,10 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `make:error` | Create a custom error |
 | `make:policy` | Create an authorization policy |
 | `make:scaffold` | Create complete CRUD scaffold |
-| `migrate` | Run migrations |
-| `migrate:rollback` | Rollback migrations |
-| `migrate:status` | Show migration status |
-| `migrate:fresh` | Fresh migrate (drop all) |
+| `db:migrate` | Run migrations |
+| `db:rollback` | Rollback migrations |
+| `db:status` | Show migration status |
+| `db:fresh` | Fresh migrate (drop all) |
 | `db:sync` | Sync database schema |
 | `db:query` | Execute raw SQL query |
 | `docker:init` | Initialize Docker files |

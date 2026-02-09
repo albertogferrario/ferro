@@ -476,16 +476,16 @@ enum Posts {
 
 ```bash
 # Run all pending migrations
-ferro migrate
+ferro db:migrate
 
 # Rollback the last batch
-ferro migrate:rollback
+ferro db:rollback
 
 # Rollback all and re-run
-ferro migrate:fresh
+ferro db:fresh
 
 # Check migration status
-ferro migrate:status
+ferro db:status
 ```
 
 ## Testing

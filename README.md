@@ -51,7 +51,7 @@ async fn store(_req: Request) -> Response {
 ## Why Ferro?
 
 - **Familiar patterns** — Routes, controllers, middleware, service container
-- **CLI generators** — `ferro make:controller`, `ferro make:model`, `ferro migrate`
+- **CLI generators** — `ferro make:controller`, `ferro make:model`, `ferro db:migrate`
 - **Database built-in** — Migrations, ORM, query builder
 - **Modern frontend** — First-class Inertia.js + React with automatic TypeScript types
 - **Rust performance** — All the safety and speed, none of the ceremony

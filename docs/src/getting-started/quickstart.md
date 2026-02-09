@@ -50,7 +50,7 @@ enum Users {
 Run the migration:
 
 ```bash
-ferro migrate
+ferro db:migrate
 ```
 
 ## 2. Sync Database to Models

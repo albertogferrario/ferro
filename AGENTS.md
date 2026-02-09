@@ -210,9 +210,9 @@ ferro make:job ProcessPayment
 ferro make:notification OrderShipped
 
 # Database
-ferro migrate
-ferro migrate:rollback
-ferro migrate:fresh
+ferro db:migrate
+ferro db:rollback
+ferro db:fresh
 
 # Development
 ferro serve              # Start dev server
@@ -248,7 +248,7 @@ async fn test_user_creation() {
 
 1. Run `ferro make:model ModelName`
 2. Create migration
-3. Run `ferro migrate`
+3. Run `ferro db:migrate`
 
 ### Adding Background Jobs
 

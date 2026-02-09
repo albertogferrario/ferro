@@ -49,20 +49,21 @@ enum Commands {
         no_migrate: bool,
     },
     /// Run pending database migrations
-    Migrate,
+    #[command(name = "db:migrate")]
+    DbMigrate,
     /// Show migration status
-    #[command(name = "migrate:status")]
-    MigrateStatus,
+    #[command(name = "db:status")]
+    DbStatus,
     /// Rollback the last migration(s)
-    #[command(name = "migrate:rollback")]
-    MigrateRollback {
+    #[command(name = "db:rollback")]
+    DbRollback {
         /// Number of migrations to rollback
         #[arg(default_value = "1")]
         steps: u32,
     },
     /// Drop all tables and re-run all migrations
-    #[command(name = "migrate:fresh")]
-    MigrateFresh,
+    #[command(name = "db:fresh")]
+    DbFresh,
     /// Run the scheduler daemon (checks every minute)
     #[command(name = "schedule:work")]
     ScheduleWork,
@@ -227,10 +228,10 @@ where
     ///
     /// This parses CLI arguments and executes the appropriate command:
     /// - `serve` (default): Run the web server
-    /// - `migrate`: Run pending migrations
-    /// - `migrate:status`: Show migration status
-    /// - `migrate:rollback`: Rollback migrations
-    /// - `migrate:fresh`: Drop and re-run all migrations
+    /// - `db:migrate`: Run pending migrations
+    /// - `db:status`: Show migration status
+    /// - `db:rollback`: Rollback migrations
+    /// - `db:fresh`: Drop and re-run all migrations
     /// - `schedule:*`: Scheduler commands
     pub async fn run(self) {
         let cli = Cli::parse();
@@ -262,16 +263,16 @@ where
                 // Run server without migrations
                 Self::run_server_internal(bootstrap_fn, routes_fn).await;
             }
-            Some(Commands::Migrate) => {
+            Some(Commands::DbMigrate) => {
                 Self::run_migrations::<M>().await;
             }
-            Some(Commands::MigrateStatus) => {
+            Some(Commands::DbStatus) => {
                 Self::show_migration_status::<M>().await;
             }
-            Some(Commands::MigrateRollback { steps }) => {
+            Some(Commands::DbRollback { steps }) => {
                 Self::rollback_migrations::<M>(steps).await;
             }
-            Some(Commands::MigrateFresh) => {
+            Some(Commands::DbFresh) => {
                 Self::fresh_migrations::<M>().await;
             }
             Some(Commands::ScheduleWork) => {

@@ -68,7 +68,7 @@ cancer migrate
 # After
 ferro serve
 ferro make:model User
-ferro migrate
+ferro db:migrate
 ```
 
 Update any scripts, CI configurations, or documentation that reference the CLI.

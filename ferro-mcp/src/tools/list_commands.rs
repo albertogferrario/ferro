@@ -91,19 +91,19 @@ pub fn execute() -> CommandsInfo {
                     .to_string(),
         },
         CommandInfo {
-            name: "migrate".to_string(),
+            name: "db:migrate".to_string(),
             description: "Run all pending database migrations".to_string(),
         },
         CommandInfo {
-            name: "migrate:rollback".to_string(),
+            name: "db:rollback".to_string(),
             description: "Rollback the last database migration(s)".to_string(),
         },
         CommandInfo {
-            name: "migrate:status".to_string(),
+            name: "db:status".to_string(),
             description: "Show the status of all migrations".to_string(),
         },
         CommandInfo {
-            name: "migrate:fresh".to_string(),
+            name: "db:fresh".to_string(),
             description: "Drop all tables and re-run all migrations".to_string(),
         },
         CommandInfo {
