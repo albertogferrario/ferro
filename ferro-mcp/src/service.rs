@@ -208,6 +208,12 @@ pub struct CodeTemplatesParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct JsonUiCatalogParams {
+    /// Optional component name to filter (case-insensitive). Returns all 20 components if omitted.
+    pub component: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct JsonUiInspectParams {
     /// Optional filter — views whose name contains this substring (case-insensitive)
     pub filter: Option<String>,
@@ -1000,6 +1006,23 @@ impl FerroMcpService {
     pub async fn code_templates(&self, params: Parameters<CodeTemplatesParams>) -> String {
         let templates = tools::code_templates::execute(params.0.category.as_deref());
         serde_json::to_string_pretty(&templates).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Get a structured catalog of all 20 JSON-UI components with props, variants, and builder API
+    #[tool(
+        name = "json_ui_catalog",
+        description = "Get a structured reference of all 20 JSON-UI components with their props, types, variants, and builder API.\n\n\
+            **When to use:** Understanding available JSON-UI components before building a view, \
+            checking prop names and types for a specific component, learning the builder pattern \
+            and action API.\n\n\
+            **Returns:** Component definitions with props (name, type, required, description), \
+            available variants, JsonUiView builder API, and Action builder API.\n\n\
+            **Combine with:** `json_ui_inspect` to see existing views, \
+            `code_templates` with category=json_view for copy-paste view boilerplate."
+    )]
+    pub async fn json_ui_catalog(&self, params: Parameters<JsonUiCatalogParams>) -> String {
+        let catalog = tools::json_ui_catalog::execute(params.0.component.as_deref());
+        serde_json::to_string_pretty(&catalog).unwrap_or_else(|_| "{}".to_string())
     }
 
     /// Inspect existing JSON-UI views in the project
