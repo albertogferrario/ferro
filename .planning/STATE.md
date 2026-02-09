@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 23 of 32 (JSON-UI Schema)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-09 — Completed 23-02-PLAN.md
+Phase: 24 of 32 (Component Catalog)
+Plan: 1 of ? in current phase
+Status: In progress
+Last activity: 2026-02-09 — Completed 24-01-PLAN.md
 
-Progress: ██░░░░░░░░ 20% (v3.0)
+Progress: ███░░░░░░░ 30% (v3.0)
 
 ## Milestone Summary
 
@@ -27,7 +27,7 @@ Progress: ██░░░░░░░░ 20% (v3.0)
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 2/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 3/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -40,6 +40,10 @@ Progress: ██░░░░░░░░ 20% (v3.0)
 | 23 | ComponentNode wraps Component via flatten | Shared key/action/visibility without duplication |
 | 23 | HttpMethod serializes UPPERCASE | Standard HTTP method format |
 | 23 | Visibility aliased as JsonUiVisibility in framework | Avoids name collision with ferro-storage Visibility |
+| 24 | ButtonVariant aligned to shadcn/ui (6 variants) | CVA pattern consistency with shadcn ecosystem |
+| 24 | BadgeVariant aligned to shadcn/ui (4 variants) | Matches standard component library conventions |
+| 24 | AlertVariant kept as Info/Success/Warning/Error | Pragmatic deviation from shadcn — richer for CRUD apps |
+| 24 | Shared Size enum for cross-component sizing | Avoids variant sprawl across components |
 
 ### Pending Todos
 
@@ -66,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 23-02-PLAN.md — Phase 23 complete
+Stopped at: Completed 24-01-PLAN.md — Enriched component props
 Resume file: None

@@ -35,7 +35,7 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 24-01: TBD
+- [x] 24-01: Enriched component props and shared variant enums (completed 2026-02-09)
 
 #### Phase 25: Data Binding
 
@@ -264,7 +264,7 @@ Plans:
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
 | 23. JSON-UI Schema | 2/2 | Complete | 2026-02-09 |
-| 24. Component Catalog | 0/? | Not started | - |
+| 24. Component Catalog | 1/? | In progress | - |
 | 25. Data Binding | 0/? | Not started | - |
 | 26. Action System | 0/? | Not started | - |
 | 27. Validation Integration | 0/? | Not started | - |
