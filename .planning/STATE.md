@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 38 of 46 (Fix Pre-existing Blockers)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-09 - Completed 38-01-PLAN.md
+Phase: 38 of 46 (Fix Pre-existing Blockers) — COMPLETE
+Plan: 2/2 complete
+Status: Phase complete, ready to plan Phase 39
+Last activity: 2026-02-09 - Phase 38 executed (2 plans, 1 wave)
 
-Progress: █░░░░░░░░░ 5%
+Progress: █░░░░░░░░░ 11%
 
 ## Milestone Summary
 
@@ -28,7 +28,7 @@ Progress: █░░░░░░░░░ 5%
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 1/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 4/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -41,6 +41,7 @@ Archived to PROJECT.md and milestone archive files.
 | 38-01 | #[serial] over per-test MetricsStore refactor | Minimal change, same safety guarantee for global state tests |
 | 38-01 | EnvGuard without unsafe blocks | Rust 2021 edition: env::set_var/remove_var are safe |
 | 38-02 | S3 facade returns S3Driver that errors on use | Avoids panic at initialization; defers errors to actual usage |
+| 38-02 | Remove Tailwind CDN entirely (not configurable) | Vite handles CSS; CDN was redundant and assumed Tailwind usage |
 
 ### Pending Todos
 
@@ -61,9 +62,10 @@ None (pre-existing blockers moved to Phase 38 scope).
 - v2.2 CLI Improvements complete: 3 phases, 5 plans (Phase 35-37) (2026-02-09)
 - v3.0 JSON-UI complete: 10 phases, 24 plans (Phases 23-32) (2026-02-09)
 - Milestone v4.0 Production Readiness created: auth, API resources, rate limiting, real-time, 9 phases (Phase 38-46)
+- Phase 38 complete: 2 plans, 1 wave — test isolation fixes + storage/Inertia cleanup (2026-02-09)
 
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 38-01-PLAN.md
+Stopped at: Phase 38 complete
 Resume file: None
