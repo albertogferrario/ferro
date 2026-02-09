@@ -95,6 +95,21 @@ enum Commands {
         /// Name of the page (e.g., About, UserProfile)
         name: String,
     },
+    /// Generate a new JSON-UI view (AI-powered)
+    #[command(name = "make:json-view")]
+    MakeJsonView {
+        /// Name of the view (e.g., UserIndex, Dashboard)
+        name: String,
+        /// Description of the desired UI for AI generation
+        #[arg(long, short = 'd')]
+        description: Option<String>,
+        /// Skip AI generation, use static template
+        #[arg(long)]
+        no_ai: bool,
+        /// Layout to use (default: app)
+        #[arg(long, short = 'l')]
+        layout: Option<String>,
+    },
     /// Generate a new domain event
     #[command(name = "make:event")]
     MakeEvent {
@@ -351,6 +366,14 @@ fn main() {
         }
         Commands::MakeInertia { name } => {
             commands::make_inertia::run(name);
+        }
+        Commands::MakeJsonView {
+            name,
+            description,
+            no_ai,
+            layout,
+        } => {
+            commands::make_json_view::run(name, description, no_ai, layout);
         }
         Commands::MakeEvent { name } => {
             commands::make_event::run(name);

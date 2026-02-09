@@ -151,6 +151,48 @@ pub fn inertia_page_template(component_name: &str) -> String {
     )
 }
 
+/// Template for generating a JSON-UI view file (--no-ai fallback).
+pub fn json_view_template(name: &str, title: &str, layout: &str) -> String {
+    format!(
+        r#"//! {title} JSON-UI view
+
+use ferro::{{
+    ComponentNode, Component, CardProps, JsonUiView, TextElement, TextProps,
+}};
+
+/// Build the {title} view.
+pub fn view() -> JsonUiView {{
+    JsonUiView::new()
+        .title("{title}")
+        .layout("{layout}")
+        .component(ComponentNode {{
+            key: "heading".to_string(),
+            component: Component::Text(TextProps {{
+                content: "{title}".to_string(),
+                element: TextElement::H1,
+            }}),
+            action: None,
+            visibility: None,
+        }})
+        .component(ComponentNode {{
+            key: "card".to_string(),
+            component: Component::Card(CardProps {{
+                title: "{title}".to_string(),
+                description: Some("Edit src/views/{name}.rs to customize this view.".to_string()),
+                children: vec![],
+                footer: vec![],
+            }}),
+            action: None,
+            visibility: None,
+        }})
+}}
+"#,
+        name = name,
+        title = title,
+        layout = layout,
+    )
+}
+
 /// Template for generating new error with make:error command
 pub fn error_template(struct_name: &str) -> String {
     // Convert PascalCase to human readable message

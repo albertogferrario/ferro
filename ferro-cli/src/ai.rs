@@ -96,8 +96,7 @@ pub fn call_anthropic(prompt: &str) -> Result<String, String> {
             .to_string()
     })?;
 
-    let model =
-        std::env::var("FERRO_AI_MODEL").unwrap_or_else(|_| "claude-opus-4-6".to_string());
+    let model = std::env::var("FERRO_AI_MODEL").unwrap_or_else(|_| "claude-opus-4-6".to_string());
 
     let body = serde_json::json!({
         "model": model,
@@ -211,10 +210,10 @@ fn scan_models() -> String {
 
     for entry in entries {
         let path = entry.path();
-        if path.extension().map_or(true, |ext| ext != "rs") {
+        if path.extension().is_none_or(|ext| ext != "rs") {
             continue;
         }
-        if path.file_name().map_or(false, |n| n == "mod.rs") {
+        if path.file_name().is_some_and(|n| n == "mod.rs") {
             continue;
         }
 
