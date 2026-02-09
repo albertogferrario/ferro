@@ -98,10 +98,7 @@ mod tests {
     #[test]
     fn array_index_resolution() {
         let data = json!({"users": [{"name": "Carol"}]});
-        assert_eq!(
-            resolve_path(&data, "/users/0/name"),
-            Some(&json!("Carol"))
-        );
+        assert_eq!(resolve_path(&data, "/users/0/name"), Some(&json!("Carol")));
     }
 
     #[test]
@@ -176,10 +173,7 @@ mod tests {
     #[test]
     fn resolve_path_string_for_number() {
         let data = json!({"count": 42});
-        assert_eq!(
-            resolve_path_string(&data, "/count"),
-            Some("42".to_string())
-        );
+        assert_eq!(resolve_path_string(&data, "/count"), Some("42".to_string()));
     }
 
     #[test]

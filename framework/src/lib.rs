@@ -38,24 +38,15 @@ pub use database::{
 // This saves users from having to add `use sea_orm::*` imports
 pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
 pub use ferro_json_ui::{
-    // Core types
-    Component, ComponentNode, JsonUiConfig, JsonUiView, Visibility as JsonUiVisibility,
-    SCHEMA_VERSION,
-    // Component props
-    AlertProps, AvatarProps, BadgeProps, BreadcrumbProps, ButtonProps, CardProps, CheckboxProps,
-    DescriptionListProps, FormProps, InputProps, ModalProps, PaginationProps, ProgressProps,
-    SelectProps, SeparatorProps, SkeletonProps, SwitchProps, TabsProps, TableProps, TextProps,
-    // Supporting types
-    BreadcrumbItem, Column, ColumnFormat, DescriptionItem, SelectOption, Tab,
-    // Enums
-    AlertVariant, BadgeVariant, ButtonVariant, IconPosition, InputType, Orientation, Size,
-    SortDirection, TextElement,
-    // Action types
-    Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant,
-    // Visibility types
-    VisibilityCondition, VisibilityOperator,
-    // Data binding
-    resolve_path, resolve_path_string,
+    resolve_actions, resolve_actions_strict, resolve_path, resolve_path_string, Action,
+    ActionOutcome, AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem,
+    BreadcrumbProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, Column, ColumnFormat,
+    Component, ComponentNode, ConfirmDialog, DescriptionItem, DescriptionListProps, DialogVariant,
+    FormProps, HttpMethod, IconPosition, InputProps, InputType, JsonUiConfig, JsonUiView,
+    ModalProps, NotifyVariant, Orientation, PaginationProps, ProgressProps, SelectOption,
+    SelectProps, SeparatorProps, Size, SkeletonProps, SortDirection, SwitchProps, Tab, TableProps,
+    TabsProps, TextElement, TextProps, Visibility as JsonUiVisibility, VisibilityCondition,
+    VisibilityOperator, SCHEMA_VERSION,
 };
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{

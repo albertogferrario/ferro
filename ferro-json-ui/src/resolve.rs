@@ -101,9 +101,7 @@ pub fn resolve_actions_strict(
 ) -> Result<(), Vec<String>> {
     let mut unresolved: Vec<String> = Vec::new();
 
-    let collecting_resolver = |handler: &str| -> Option<String> {
-        resolver(handler)
-    };
+    let collecting_resolver = |handler: &str| -> Option<String> { resolver(handler) };
 
     // First resolve everything.
     resolve_actions(view, collecting_resolver);

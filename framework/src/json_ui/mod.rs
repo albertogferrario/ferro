@@ -40,9 +40,7 @@ impl JsonUi {
     /// Clone the view and resolve all action handler names to URLs.
     fn resolve(view: &JsonUiView) -> JsonUiView {
         let mut resolved = view.clone();
-        resolve_actions(&mut resolved, |handler| {
-            crate::routing::route(handler, &[])
-        });
+        resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
         resolved
     }
 
@@ -146,7 +144,9 @@ fn html_escape_attr(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ferro_json_ui::{Action, ButtonProps, ButtonVariant, CardProps, Component, ComponentNode, HttpMethod, Size};
+    use ferro_json_ui::{
+        Action, ButtonProps, ButtonVariant, CardProps, Component, ComponentNode, HttpMethod, Size,
+    };
 
     /// Extract the Ok variant from a Response without requiring Debug on HttpResponse.
     fn ok_response(result: Response) -> HttpResponse {
@@ -349,28 +349,26 @@ mod tests {
         // Register a test route name -> path mapping.
         crate::routing::register_route_name("users.index", "/users");
 
-        let view = JsonUiView::new()
-            .title("Users")
-            .component(ComponentNode {
-                key: "btn".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "List Users".to_string(),
-                    variant: ButtonVariant::Default,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                }),
-                action: Some(Action {
-                    handler: "users.index".to_string(),
-                    url: None,
-                    method: HttpMethod::Get,
-                    confirm: None,
-                    on_success: None,
-                    on_error: None,
-                }),
-                visibility: None,
-            });
+        let view = JsonUiView::new().title("Users").component(ComponentNode {
+            key: "btn".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "List Users".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: Some(Action {
+                handler: "users.index".to_string(),
+                url: None,
+                method: HttpMethod::Get,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+            }),
+            visibility: None,
+        });
 
         // render_json should resolve action URLs.
         let result = JsonUi::render_json(&view, &serde_json::json!({}));

@@ -365,8 +365,7 @@ mod tests {
 
     #[test]
     fn builder_data_method_works() {
-        let view = JsonUiView::new()
-            .data(serde_json::json!({"key": "value"}));
+        let view = JsonUiView::new().data(serde_json::json!({"key": "value"}));
         assert_eq!(view.data["key"], "value");
     }
 }
