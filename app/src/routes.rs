@@ -1,4 +1,5 @@
 use ferro::{get, group, post, resource, routes};
+use ferro::{AuthMiddleware as SessionAuthMiddleware, GuestMiddleware};
 
 use crate::controllers;
 use crate::middleware::AuthMiddleware;
@@ -21,4 +22,15 @@ routes! {
         get!("/", controllers::todo::list).name("todos.index"),
         post!("/random", controllers::todo::create_random).name("todos.create_random"),
     }),
+
+    // Auth routes - guest only (redirects authenticated users)
+    group!("/auth", {
+        post!("/register", controllers::auth_controller::register).name("auth.register"),
+        post!("/login", controllers::auth_controller::login).name("auth.login"),
+    }).middleware(GuestMiddleware::redirect_to("/")),
+
+    // Auth routes - authenticated only
+    post!("/auth/logout", controllers::auth_controller::logout)
+        .name("auth.logout")
+        .middleware(SessionAuthMiddleware::new()),
 }
