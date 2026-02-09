@@ -73,6 +73,13 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - ✓ `JsonValue` and `ValidationErrors` utility types in generated TypeScript — v2.1
 - ✓ Documentation URLs corrected to docs.ferro-rs.dev — v2.1
 
+**v2.2 CLI Improvements (shipped 2026-02-09):**
+- ✓ `ferro db:seed` CLI command for running database seeders — v2.2
+- ✓ Unified database commands under `db:` namespace (db:migrate, db:rollback, db:status, db:fresh) — v2.2
+- ✓ Generated TypeScript types excluded from version control in project template — v2.2
+- ✓ Typed UpdateBuilder pattern for model updates via `model.update().set_field(v).save()` — v2.2
+- ✓ Scaffold templates and MCP code templates updated with builder pattern — v2.2
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
@@ -134,6 +141,10 @@ Reference codebase documentation in `.planning/codebase/`:
 | JSON fallback opt-in | `render_with_json_fallback()` per route for security | ✓ Good |
 | accepts_json() on InertiaRequest | Framework-agnostic Accept header detection | ✓ Good |
 | Docs URL: docs.ferro-rs.dev | Dedicated subdomain for documentation | ✓ Good |
+| db: namespace for CLI | All database commands under unified db: prefix | ✓ Good |
+| UpdateBuilder consumes model | Takes self for simpler ownership, matches create pattern | ✓ Good |
+| Option<Option<T>> for nullable fields | None=unchanged, Some(None)=clear, Some(Some(v))=set | ✓ Good |
+| Exclude frontend/src/types/ | Directory-level gitignore over individual files | ✓ Good |
 
 ---
-*Last updated: 2026-01-17 after v2.1 Inertia DX & Fixes milestone*
+*Last updated: 2026-02-09 after v2.2 CLI Improvements milestone*

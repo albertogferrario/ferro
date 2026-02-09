@@ -8,43 +8,8 @@
 - ✅ [**v2.0.2 Type Generator Fixes**](milestones/v2.0.2-ROADMAP.md) — Phase 22.4-22.9 (shipped 2026-01-17)
 - ✅ [**v2.0.3 DO Apps Deploy**](milestones/v2.0.3-ROADMAP.md) — Phase 22.10 (shipped 2026-01-17)
 - ✅ [**v2.1 Inertia DX & Fixes**](milestones/v2.1-ROADMAP.md) — Phases 33-34 (shipped 2026-01-17)
-- ✅ **v2.2 CLI Improvements** — Phases 35-37 (shipped 2026-02-09)
+- ✅ [**v2.2 CLI Improvements**](milestones/v2.2-ROADMAP.md) — Phases 35-37 (shipped 2026-02-09)
 - 📋 **v3.0 JSON-UI** — Phases 23-32 (planned)
-
----
-
-### ✅ v2.2 CLI Improvements (Complete)
-
-**Milestone Goal:** Add CLI commands for common development workflows.
-
-#### Phase 35: CLI Seed Command
-
-**Goal**: Add `ferro db:seed` command to run database seeders for development data population
-**Depends on**: v2.1 complete
-**Research**: Unlikely (follows existing CLI patterns)
-
-Plans:
-- [x] 35-01: CLI Seed Command (add `ferro db:seed` command that delegates to app binary)
-- [x] 35-02: Database CLI command normalization (unify migrate commands under db: namespace)
-
-#### Phase 36: Gitignore Generated Types
-
-**Goal**: Exclude generated TypeScript types from version control since they're derived from Rust source
-**Depends on**: Phase 35
-**Research**: Unlikely (template update)
-
-Plans:
-- [x] 36-01: Gitignore Generated Types (exclude frontend/src/types/ from version control)
-
-#### Phase 37: Model Update Builder
-
-**Goal**: Replace positional `Option` parameters in model `update()` methods with a typed builder pattern for safer, more ergonomic updates
-**Depends on**: Phase 36
-**Research**: Unlikely (derive macro pattern)
-
-Plans:
-- [x] 37-01: Generate UpdateBuilder struct with selective field tracking
-- [x] 37-02: Update scaffold templates, MCP code templates, and documentation
 
 ---
 
@@ -160,6 +125,8 @@ Plans:
 | 37. Model Update Builder | 2/2 | Complete | 2026-02-09 |
 
 **Total:** 3 phases, 5 plans
+
+[Full details →](milestones/v2.2-ROADMAP.md)
 
 </details>
 

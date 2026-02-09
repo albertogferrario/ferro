@@ -1,5 +1,29 @@
 # Project Milestones: Ferro Framework
 
+## v2.2 CLI Improvements (Shipped: 2026-02-09)
+
+**Delivered:** CLI commands for database workflows, gitignore for generated types, and typed UpdateBuilder pattern for model updates.
+
+**Phases completed:** 35-37 (5 plans total)
+
+**Key accomplishments:**
+- Added `ferro db:seed` CLI command completing the seeder workflow
+- Unified all database commands under `db:` namespace (db:migrate, db:rollback, db:status, db:fresh, db:seed)
+- Excluded generated TypeScript types directory from version control in project template
+- Implemented typed UpdateBuilder with selective field tracking via `model.update().set_field(v).save().await`
+- Updated scaffold templates, MCP code templates, and documentation with builder pattern
+
+**Stats:**
+- 40 files modified (+2098, -310 lines)
+- 3 phases, 5 plans, ~11 tasks
+- 22 days (2026-01-18 to 2026-02-09)
+
+**Git range:** `09e01d3` → `3c7dcfb`
+
+**What's next:** v3.0 JSON-UI for JSON-based UI rendering without frontend builds.
+
+---
+
 ## v2.1 Inertia DX & Fixes (Shipped: 2026-01-17)
 
 **Delivered:** Improved Inertia developer experience with JSON API fallback, auto type generation, utility types, and fixed documentation URLs.

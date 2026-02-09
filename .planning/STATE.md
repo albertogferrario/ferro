@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-17)
+See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
 **Current focus:** v3.0 JSON-UI — JSON-based UI rendering as alternative to Inertia
 
 ## Current Position
 
-Phase: 37 (Model Update Builder)
-Plan: 2 of 2 in current phase
-Status: Milestone v2.2 complete
-Last activity: 2026-02-09 — v2.2 CLI Improvements milestone complete
+Phase: 23 (JSON-UI Schema)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-09 — v2.2 milestone archived
 
-Progress: ██████████ 100%
+Progress: ░░░░░░░░░░ 0% (v3.0)
 
 ## Milestone Summary
 
@@ -31,13 +31,9 @@ Progress: ██████████ 100%
 
 ## Accumulated Context
 
-### Key Decisions (v2.2)
+### Key Decisions (v3.0)
 
-1. Follow existing migrate command pattern for db:seed: delegate to cargo run --quiet -- db:seed
-2. Exclude entire frontend/src/types/ directory rather than individual files
-3. UpdateBuilder consumes model (takes self) and uses Option<Option<T>> for nullable field tracking
-4. Keep ActiveValue import in scaffold templates since store handler still uses it for inserts
-5. Renamed enum variants from MigrateX to DbX for consistency with db: command names
+None yet.
 
 ### Pending Todos
 
