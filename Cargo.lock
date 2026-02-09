@@ -1578,6 +1578,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-json-ui"
+version = "0.1.70"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ferro-macros"
 version = "0.1.70"
 dependencies = [
@@ -1664,6 +1672,7 @@ dependencies = [
  "ferro-cache",
  "ferro-events",
  "ferro-inertia",
+ "ferro-json-ui",
  "ferro-macros",
  "ferro-notifications",
  "ferro-queue",
