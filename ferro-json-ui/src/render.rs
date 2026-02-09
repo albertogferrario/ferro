@@ -1,37 +1,42 @@
 //! HTML render engine for JSON-UI views.
 //!
 //! Walks a `JsonUiView` component tree and produces an HTML fragment using
-//! Tailwind CSS utility classes. Container components (Card, Form, Modal, Tabs,
-//! Table) are handled in a follow-up plan; this module covers the tree walker
-//! and all 12 leaf component renderers.
+//! Tailwind CSS utility classes. All 20 component types are supported:
+//! 12 leaf components, 5 container/layout components, and 3 form field components.
 
 use serde_json::Value;
 
 use crate::action::HttpMethod;
 use crate::component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbProps, ButtonProps,
-    ButtonVariant, Component, ComponentNode, DescriptionListProps, IconPosition, Orientation,
-    PaginationProps, ProgressProps, SeparatorProps, Size, SkeletonProps, TextElement, TextProps,
+    ButtonVariant, CardProps, CheckboxProps, Component, ComponentNode, DescriptionListProps,
+    FormProps, IconPosition, InputProps, InputType, ModalProps, Orientation, PaginationProps,
+    ProgressProps, SelectProps, SeparatorProps, Size, SkeletonProps, SwitchProps, TableProps,
+    TabsProps, TextElement, TextProps,
 };
+use crate::data::{resolve_path, resolve_path_string};
 use crate::view::JsonUiView;
 
 /// Render a JSON-UI view to an HTML fragment.
 ///
 /// Walks the component tree and produces a `<div>` containing all rendered
-/// components. This is a fragment, not a full page — the framework wrapper
+/// components. This is a fragment, not a full page -- the framework wrapper
 /// handles `<html>`, `<head>`, and `<body>`.
-pub fn render_to_html(view: &JsonUiView, _data: &Value) -> String {
+///
+/// The `data` parameter is used to resolve `data_path` references on form
+/// fields and table components.
+pub fn render_to_html(view: &JsonUiView, data: &Value) -> String {
     let mut html = String::from("<div>");
     for node in &view.components {
-        html.push_str(&render_node(node));
+        html.push_str(&render_node(node, data));
     }
     html.push_str("</div>");
     html
 }
 
 /// Render a single component node, optionally wrapping in `<a>` for GET actions.
-fn render_node(node: &ComponentNode) -> String {
-    let component_html = render_component(&node.component);
+fn render_node(node: &ComponentNode, data: &Value) -> String {
+    let component_html = render_component(&node.component, data);
 
     // Wrap in <a> if the node has a GET action with a resolved URL.
     if let Some(ref action) = node.action {
@@ -50,7 +55,7 @@ fn render_node(node: &ComponentNode) -> String {
 }
 
 /// Dispatch to the appropriate per-component renderer.
-fn render_component(component: &Component) -> String {
+fn render_component(component: &Component, data: &Value) -> String {
     match component {
         Component::Text(props) => render_text(props),
         Component::Button(props) => render_button(props),
@@ -64,246 +69,562 @@ fn render_component(component: &Component) -> String {
         Component::Pagination(props) => render_pagination(props),
         Component::DescriptionList(props) => render_description_list(props),
 
-        // Container components — rendered as placeholders until Plan 02.
-        Component::Card(props) => {
-            let mut html = format!(
-                "<div class=\"rounded-lg border bg-white p-6 shadow-sm\"><h3 class=\"text-lg font-semibold\">{}</h3>",
-                html_escape(&props.title)
-            );
-            if let Some(ref desc) = props.description {
-                html.push_str(&format!(
-                    "<p class=\"text-sm text-gray-500\">{}</p>",
-                    html_escape(desc)
-                ));
-            }
-            for child in &props.children {
-                html.push_str(&render_node(child));
-            }
-            if !props.footer.is_empty() {
-                html.push_str("<div class=\"mt-4 flex gap-2\">");
-                for child in &props.footer {
-                    html.push_str(&render_node(child));
-                }
-                html.push_str("</div>");
-            }
-            html.push_str("</div>");
-            html
-        }
-        Component::Form(props) => {
-            let method_attr = match props.action.method {
-                HttpMethod::Get => "get",
-                _ => "post",
-            };
-            let action_url = props.action.url.as_deref().unwrap_or("");
-            let mut html = format!(
-                "<form method=\"{}\" action=\"{}\">",
-                method_attr,
-                html_escape(action_url)
-            );
-            for field in &props.fields {
-                html.push_str(&render_node(field));
-            }
-            html.push_str("</form>");
-            html
-        }
-        Component::Modal(props) => {
-            let mut html = format!(
-                "<div class=\"modal\"><h3 class=\"text-lg font-semibold\">{}</h3>",
-                html_escape(&props.title)
-            );
-            if let Some(ref desc) = props.description {
-                html.push_str(&format!(
-                    "<p class=\"text-sm text-gray-500\">{}</p>",
-                    html_escape(desc)
-                ));
-            }
-            for child in &props.children {
-                html.push_str(&render_node(child));
-            }
-            if !props.footer.is_empty() {
-                html.push_str("<div class=\"mt-4 flex gap-2\">");
-                for child in &props.footer {
-                    html.push_str(&render_node(child));
-                }
-                html.push_str("</div>");
-            }
-            html.push_str("</div>");
-            html
-        }
-        Component::Tabs(props) => {
-            let mut html = String::from("<div class=\"tabs\">");
-            html.push_str("<div class=\"flex border-b\">");
-            for tab in &props.tabs {
-                let active = if tab.value == props.default_tab {
-                    " border-b-2 border-blue-600 text-blue-600"
-                } else {
-                    ""
-                };
-                html.push_str(&format!(
-                    "<button class=\"px-4 py-2 text-sm font-medium{}\">{}</button>",
-                    active,
-                    html_escape(&tab.label)
-                ));
-            }
-            html.push_str("</div>");
-            for tab in &props.tabs {
-                let hidden = if tab.value != props.default_tab {
-                    " hidden"
-                } else {
-                    ""
-                };
-                html.push_str(&format!("<div class=\"p-4{}\">", hidden));
-                for child in &tab.children {
-                    html.push_str(&render_node(child));
-                }
-                html.push_str("</div>");
-            }
-            html.push_str("</div>");
-            html
-        }
-        Component::Table(props) => {
-            let mut html =
-                String::from("<table class=\"min-w-full divide-y divide-gray-200\"><thead><tr>");
-            for col in &props.columns {
-                html.push_str(&format!(
-                    "<th class=\"px-4 py-3 text-left text-xs font-medium uppercase text-gray-500\">{}</th>",
-                    html_escape(&col.label)
-                ));
-            }
-            html.push_str("</tr></thead><tbody></tbody></table>");
-            html
-        }
+        // Container components.
+        Component::Card(props) => render_card(props, data),
+        Component::Form(props) => render_form(props, data),
+        Component::Modal(props) => render_modal(props, data),
+        Component::Tabs(props) => render_tabs(props, data),
+        Component::Table(props) => render_table(props, data),
 
-        // Form field components — basic SSR rendering.
-        Component::Input(props) => {
-            let mut html = format!(
-                "<div class=\"mb-4\"><label class=\"block text-sm font-medium text-gray-700 mb-1\">{}</label>",
-                html_escape(&props.label)
-            );
-            let input_type = match props.input_type {
-                crate::component::InputType::Text => "text",
-                crate::component::InputType::Email => "email",
-                crate::component::InputType::Password => "password",
-                crate::component::InputType::Number => "number",
-                crate::component::InputType::Textarea => "textarea",
-                crate::component::InputType::Hidden => "hidden",
-                crate::component::InputType::Date => "date",
-                crate::component::InputType::Time => "time",
-                crate::component::InputType::Url => "url",
-                crate::component::InputType::Tel => "tel",
-                crate::component::InputType::Search => "search",
-            };
+        // Form field components.
+        Component::Input(props) => render_input(props, data),
+        Component::Select(props) => render_select(props, data),
+        Component::Checkbox(props) => render_checkbox(props, data),
+        Component::Switch(props) => render_switch(props, data),
+    }
+}
+
+// ── Container component renderers ───────────────────────────────────────
+
+fn render_card(props: &CardProps, data: &Value) -> String {
+    let mut html = String::from(
+        "<div class=\"rounded-lg border border-gray-200 bg-white shadow-sm\"><div class=\"p-6\">",
+    );
+    html.push_str(&format!(
+        "<h3 class=\"text-lg font-semibold text-gray-900\">{}</h3>",
+        html_escape(&props.title)
+    ));
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"mt-1 text-sm text-gray-500\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+    if !props.children.is_empty() {
+        html.push_str("<div class=\"mt-4 space-y-4\">");
+        for child in &props.children {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div>");
+    }
+    html.push_str("</div>"); // close p-6
+    if !props.footer.is_empty() {
+        html.push_str("<div class=\"border-t border-gray-200 px-6 py-4 flex items-center gap-2\">");
+        for child in &props.footer {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div>");
+    }
+    html.push_str("</div>"); // close outer card
+    html
+}
+
+fn render_modal(props: &ModalProps, data: &Value) -> String {
+    let trigger = props.trigger_label.as_deref().unwrap_or("Open");
+    let mut html = String::from("<details class=\"group\">");
+    html.push_str(&format!(
+        "<summary class=\"inline-flex items-center justify-center rounded-md bg-blue-600 text-white px-4 py-2 text-sm font-medium cursor-pointer\">{}</summary>",
+        html_escape(trigger)
+    ));
+    html.push_str("<div class=\"fixed inset-0 z-50 flex items-center justify-center bg-black/50 group-open:block hidden\">");
+    html.push_str(
+        "<div class=\"relative bg-white rounded-lg shadow-lg max-w-lg w-full mx-4 p-6\">",
+    );
+    html.push_str(&format!(
+        "<h3 class=\"text-lg font-semibold text-gray-900\">{}</h3>",
+        html_escape(&props.title)
+    ));
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"mt-1 text-sm text-gray-500\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+    html.push_str("<div class=\"mt-4 space-y-4\">");
+    for child in &props.children {
+        html.push_str(&render_node(child, data));
+    }
+    html.push_str("</div>");
+    if !props.footer.is_empty() {
+        html.push_str("<div class=\"mt-6 flex items-center justify-end gap-2\">");
+        for child in &props.footer {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div>");
+    }
+    html.push_str("</div></div></details>");
+    html
+}
+
+fn render_tabs(props: &TabsProps, data: &Value) -> String {
+    let mut html = String::from("<div>");
+    html.push_str("<div class=\"border-b border-gray-200\">");
+    html.push_str("<nav class=\"flex -mb-px space-x-4\">");
+    for tab in &props.tabs {
+        if tab.value == props.default_tab {
             html.push_str(&format!(
-                "<input type=\"{}\" name=\"{}\" class=\"w-full rounded-md border border-gray-300 px-3 py-2 text-sm\"",
-                input_type,
-                html_escape(&props.field)
+                "<span class=\"border-b-2 border-blue-600 text-blue-600 px-3 py-2 text-sm font-medium\">{}</span>",
+                html_escape(&tab.label)
+            ));
+        } else {
+            html.push_str(&format!(
+                "<span class=\"border-b-2 border-transparent text-gray-500 px-3 py-2 text-sm font-medium\">{}</span>",
+                html_escape(&tab.label)
+            ));
+        }
+    }
+    html.push_str("</nav></div>");
+    // Render only the default tab's children.
+    for tab in &props.tabs {
+        if tab.value == props.default_tab {
+            html.push_str("<div class=\"pt-4 space-y-4\">");
+            for child in &tab.children {
+                html.push_str(&render_node(child, data));
+            }
+            html.push_str("</div>");
+            break;
+        }
+    }
+    html.push_str("</div>");
+    html
+}
+
+fn render_form(props: &FormProps, data: &Value) -> String {
+    // Determine the effective HTTP method.
+    let effective_method = props
+        .method
+        .as_ref()
+        .unwrap_or(&props.action.method)
+        .clone();
+
+    // For PUT/PATCH/DELETE, use POST with method spoofing.
+    let (form_method, needs_spoofing) = match effective_method {
+        HttpMethod::Get => ("get", false),
+        HttpMethod::Post => ("post", false),
+        HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => ("post", true),
+    };
+
+    let action_url = props.action.url.as_deref().unwrap_or("#");
+    let mut html = format!(
+        "<form action=\"{}\" method=\"{}\" class=\"space-y-4\">",
+        html_escape(action_url),
+        form_method
+    );
+
+    if needs_spoofing {
+        let method_value = match effective_method {
+            HttpMethod::Put => "PUT",
+            HttpMethod::Patch => "PATCH",
+            HttpMethod::Delete => "DELETE",
+            _ => unreachable!(),
+        };
+        html.push_str(&format!(
+            "<input type=\"hidden\" name=\"_method\" value=\"{}\">",
+            method_value
+        ));
+    }
+
+    for field in &props.fields {
+        html.push_str(&render_node(field, data));
+    }
+    html.push_str("</form>");
+    html
+}
+
+fn render_table(props: &TableProps, data: &Value) -> String {
+    let mut html = String::from(
+        "<div class=\"overflow-x-auto\"><table class=\"min-w-full divide-y divide-gray-200\">",
+    );
+
+    // Header.
+    html.push_str("<thead class=\"bg-gray-50\"><tr>");
+    for col in &props.columns {
+        html.push_str(&format!(
+            "<th class=\"px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500\">{}</th>",
+            html_escape(&col.label)
+        ));
+    }
+    if props.row_actions.is_some() {
+        html.push_str("<th class=\"px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500\">Actions</th>");
+    }
+    html.push_str("</tr></thead>");
+
+    // Body.
+    html.push_str("<tbody class=\"divide-y divide-gray-200 bg-white\">");
+
+    let rows = resolve_path(data, &props.data_path);
+    let row_array = rows.and_then(|v| v.as_array());
+
+    if let Some(items) = row_array {
+        if items.is_empty() {
+            if let Some(ref msg) = props.empty_message {
+                let col_count =
+                    props.columns.len() + if props.row_actions.is_some() { 1 } else { 0 };
+                html.push_str(&format!(
+                    "<tr><td colspan=\"{}\" class=\"px-6 py-8 text-center text-sm text-gray-500\">{}</td></tr>",
+                    col_count,
+                    html_escape(msg)
+                ));
+            }
+        } else {
+            for row in items {
+                html.push_str("<tr>");
+                for col in &props.columns {
+                    let cell_value = row.get(&col.key);
+                    let cell_text = match cell_value {
+                        Some(Value::String(s)) => s.clone(),
+                        Some(Value::Number(n)) => n.to_string(),
+                        Some(Value::Bool(b)) => b.to_string(),
+                        Some(Value::Null) | None => String::new(),
+                        Some(v @ Value::Array(_)) | Some(v @ Value::Object(_)) => {
+                            serde_json::to_string(v).unwrap_or_default()
+                        }
+                    };
+                    html.push_str(&format!(
+                        "<td class=\"px-6 py-4 text-sm text-gray-900 whitespace-nowrap\">{}</td>",
+                        html_escape(&cell_text)
+                    ));
+                }
+                if let Some(ref actions) = props.row_actions {
+                    html.push_str("<td class=\"px-6 py-4 text-right text-sm space-x-2\">");
+                    for action in actions {
+                        let url = action.url.as_deref().unwrap_or("#");
+                        let label = action
+                            .handler
+                            .split('.')
+                            .next_back()
+                            .unwrap_or(&action.handler);
+                        html.push_str(&format!(
+                            "<a href=\"{}\" class=\"text-blue-600 hover:text-blue-800\">{}</a>",
+                            html_escape(url),
+                            html_escape(label)
+                        ));
+                    }
+                    html.push_str("</td>");
+                }
+                html.push_str("</tr>");
+            }
+        }
+    } else if let Some(ref msg) = props.empty_message {
+        let col_count = props.columns.len() + if props.row_actions.is_some() { 1 } else { 0 };
+        html.push_str(&format!(
+            "<tr><td colspan=\"{}\" class=\"px-6 py-8 text-center text-sm text-gray-500\">{}</td></tr>",
+            col_count,
+            html_escape(msg)
+        ));
+    }
+
+    html.push_str("</tbody></table></div>");
+    html
+}
+
+// ── Form field component renderers ──────────────────────────────────────
+
+fn render_input(props: &InputProps, data: &Value) -> String {
+    // Resolve the effective value: default_value wins, else data_path, else empty.
+    let resolved_value = if let Some(ref dv) = props.default_value {
+        Some(dv.clone())
+    } else if let Some(ref dp) = props.data_path {
+        resolve_path_string(data, dp)
+    } else {
+        None
+    };
+
+    let has_error = props.error.is_some();
+    let border_class = if has_error {
+        "border-red-500"
+    } else {
+        "border-gray-300"
+    };
+
+    let mut html = String::from("<div class=\"space-y-1\">");
+    html.push_str(&format!(
+        "<label class=\"block text-sm font-medium text-gray-700\" for=\"{}\">{}</label>",
+        html_escape(&props.field),
+        html_escape(&props.label)
+    ));
+
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-gray-500\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+
+    match props.input_type {
+        InputType::Hidden => {
+            let val = resolved_value.as_deref().unwrap_or("");
+            html.push_str(&format!(
+                "<input type=\"hidden\" id=\"{}\" name=\"{}\" value=\"{}\">",
+                html_escape(&props.field),
+                html_escape(&props.field),
+                html_escape(val)
+            ));
+        }
+        InputType::Textarea => {
+            let val = resolved_value.as_deref().unwrap_or("");
+            html.push_str(&format!(
+                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500\"",
+                html_escape(&props.field),
+                html_escape(&props.field),
+                border_class
             ));
             if let Some(ref placeholder) = props.placeholder {
                 html.push_str(&format!(" placeholder=\"{}\"", html_escape(placeholder)));
             }
-            if let Some(ref dv) = props.default_value {
-                html.push_str(&format!(" value=\"{}\"", html_escape(dv)));
-            }
             if props.required == Some(true) {
                 html.push_str(" required");
             }
             if props.disabled == Some(true) {
                 html.push_str(" disabled");
             }
-            html.push('>');
-            if let Some(ref error) = props.error {
-                html.push_str(&format!(
-                    "<p class=\"mt-1 text-sm text-red-600\">{}</p>",
-                    html_escape(error)
-                ));
-            }
-            html.push_str("</div>");
-            html
+            html.push_str(&format!(">{}</textarea>", html_escape(val)));
         }
-        Component::Select(props) => {
-            let mut html = format!(
-                "<div class=\"mb-4\"><label class=\"block text-sm font-medium text-gray-700 mb-1\">{}</label>",
-                html_escape(&props.label)
-            );
+        _ => {
+            let input_type = match props.input_type {
+                InputType::Text => "text",
+                InputType::Email => "email",
+                InputType::Password => "password",
+                InputType::Number => "number",
+                InputType::Date => "date",
+                InputType::Time => "time",
+                InputType::Url => "url",
+                InputType::Tel => "tel",
+                InputType::Search => "search",
+                InputType::Textarea | InputType::Hidden => unreachable!(),
+            };
             html.push_str(&format!(
-                "<select name=\"{}\" class=\"w-full rounded-md border border-gray-300 px-3 py-2 text-sm\"",
-                html_escape(&props.field)
+                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500\"",
+                input_type,
+                html_escape(&props.field),
+                html_escape(&props.field),
+                border_class
             ));
-            if props.required == Some(true) {
-                html.push_str(" required");
-            }
-            if props.disabled == Some(true) {
-                html.push_str(" disabled");
-            }
-            html.push('>');
             if let Some(ref placeholder) = props.placeholder {
-                html.push_str(&format!(
-                    "<option value=\"\">{}</option>",
-                    html_escape(placeholder)
-                ));
+                html.push_str(&format!(" placeholder=\"{}\"", html_escape(placeholder)));
             }
-            for opt in &props.options {
-                let selected = if props.default_value.as_deref() == Some(&opt.value) {
-                    " selected"
-                } else {
-                    ""
-                };
-                html.push_str(&format!(
-                    "<option value=\"{}\"{}>{}</option>",
-                    html_escape(&opt.value),
-                    selected,
-                    html_escape(&opt.label)
-                ));
+            if let Some(ref val) = resolved_value {
+                html.push_str(&format!(" value=\"{}\"", html_escape(val)));
             }
-            html.push_str("</select>");
-            if let Some(ref error) = props.error {
-                html.push_str(&format!(
-                    "<p class=\"mt-1 text-sm text-red-600\">{}</p>",
-                    html_escape(error)
-                ));
-            }
-            html.push_str("</div>");
-            html
-        }
-        Component::Checkbox(props) => {
-            let mut html = String::from("<div class=\"mb-4 flex items-start gap-2\">");
-            html.push_str(&format!(
-                "<input type=\"checkbox\" name=\"{}\" class=\"mt-0.5 rounded border-gray-300\"",
-                html_escape(&props.field)
-            ));
-            if props.checked == Some(true) {
-                html.push_str(" checked");
+            if props.required == Some(true) {
+                html.push_str(" required");
             }
             if props.disabled == Some(true) {
                 html.push_str(" disabled");
             }
-            html.push_str(&format!(
-                "><label class=\"text-sm text-gray-700\">{}</label>",
-                html_escape(&props.label)
-            ));
-            html.push_str("</div>");
-            html
-        }
-        Component::Switch(props) => {
-            let mut html = String::from("<div class=\"mb-4 flex items-center gap-2\">");
-            html.push_str(&format!(
-                "<input type=\"checkbox\" name=\"{}\" role=\"switch\" class=\"rounded-full\"",
-                html_escape(&props.field)
-            ));
-            if props.checked == Some(true) {
-                html.push_str(" checked");
-            }
-            if props.disabled == Some(true) {
-                html.push_str(" disabled");
-            }
-            html.push_str(&format!(
-                "><label class=\"text-sm text-gray-700\">{}</label>",
-                html_escape(&props.label)
-            ));
-            html.push_str("</div>");
-            html
+            html.push('>');
         }
     }
+
+    if let Some(ref error) = props.error {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-red-600\">{}</p>",
+            html_escape(error)
+        ));
+    }
+    html.push_str("</div>");
+    html
+}
+
+fn render_select(props: &SelectProps, data: &Value) -> String {
+    // Resolve the effective selected value.
+    let selected_value = if let Some(ref dv) = props.default_value {
+        Some(dv.clone())
+    } else if let Some(ref dp) = props.data_path {
+        resolve_path_string(data, dp)
+    } else {
+        None
+    };
+
+    let has_error = props.error.is_some();
+    let border_class = if has_error {
+        "border-red-500"
+    } else {
+        "border-gray-300"
+    };
+
+    let mut html = String::from("<div class=\"space-y-1\">");
+    html.push_str(&format!(
+        "<label class=\"block text-sm font-medium text-gray-700\" for=\"{}\">{}</label>",
+        html_escape(&props.field),
+        html_escape(&props.label)
+    ));
+
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-gray-500\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+
+    html.push_str(&format!(
+        "<select id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500\"",
+        html_escape(&props.field),
+        html_escape(&props.field),
+        border_class
+    ));
+    if props.required == Some(true) {
+        html.push_str(" required");
+    }
+    if props.disabled == Some(true) {
+        html.push_str(" disabled");
+    }
+    html.push('>');
+
+    if let Some(ref placeholder) = props.placeholder {
+        html.push_str(&format!(
+            "<option value=\"\">{}</option>",
+            html_escape(placeholder)
+        ));
+    }
+
+    for opt in &props.options {
+        let is_selected = selected_value.as_deref() == Some(&opt.value);
+        let selected_attr = if is_selected { " selected" } else { "" };
+        html.push_str(&format!(
+            "<option value=\"{}\"{}>{}</option>",
+            html_escape(&opt.value),
+            selected_attr,
+            html_escape(&opt.label)
+        ));
+    }
+
+    html.push_str("</select>");
+
+    if let Some(ref error) = props.error {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-red-600\">{}</p>",
+            html_escape(error)
+        ));
+    }
+    html.push_str("</div>");
+    html
+}
+
+fn render_checkbox(props: &CheckboxProps, data: &Value) -> String {
+    // Resolve checked state: explicit `checked` prop wins, else data_path truthy.
+    let is_checked = if let Some(c) = props.checked {
+        c
+    } else if let Some(ref dp) = props.data_path {
+        resolve_path(data, dp)
+            .map(|v| match v {
+                Value::Bool(b) => *b,
+                Value::Number(n) => n.as_f64().map(|f| f != 0.0).unwrap_or(false),
+                Value::String(s) => !s.is_empty() && s != "false" && s != "0",
+                Value::Null => false,
+                _ => true,
+            })
+            .unwrap_or(false)
+    } else {
+        false
+    };
+
+    let mut html = String::from("<div class=\"space-y-1\">");
+    html.push_str("<div class=\"flex items-center gap-2\">");
+    html.push_str(&format!(
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"1\" class=\"h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500\"",
+        html_escape(&props.field),
+        html_escape(&props.field)
+    ));
+    if is_checked {
+        html.push_str(" checked");
+    }
+    if props.required == Some(true) {
+        html.push_str(" required");
+    }
+    if props.disabled == Some(true) {
+        html.push_str(" disabled");
+    }
+    html.push('>');
+    html.push_str(&format!(
+        "<label class=\"text-sm font-medium text-gray-700\" for=\"{}\">{}</label>",
+        html_escape(&props.field),
+        html_escape(&props.label)
+    ));
+    html.push_str("</div>");
+
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"ml-6 text-sm text-gray-500\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+
+    if let Some(ref error) = props.error {
+        html.push_str(&format!(
+            "<p class=\"ml-6 text-sm text-red-600\">{}</p>",
+            html_escape(error)
+        ));
+    }
+    html.push_str("</div>");
+    html
+}
+
+fn render_switch(props: &SwitchProps, data: &Value) -> String {
+    // Resolve checked state: explicit `checked` prop wins, else data_path truthy.
+    let is_checked = if let Some(c) = props.checked {
+        c
+    } else if let Some(ref dp) = props.data_path {
+        resolve_path(data, dp)
+            .map(|v| match v {
+                Value::Bool(b) => *b,
+                Value::Number(n) => n.as_f64().map(|f| f != 0.0).unwrap_or(false),
+                Value::String(s) => !s.is_empty() && s != "false" && s != "0",
+                Value::Null => false,
+                _ => true,
+            })
+            .unwrap_or(false)
+    } else {
+        false
+    };
+
+    let mut html = String::from("<div class=\"space-y-1\">");
+    html.push_str("<div class=\"flex items-center justify-between\">");
+
+    // Left side: label + description.
+    html.push_str("<div>");
+    html.push_str(&format!(
+        "<label class=\"text-sm font-medium text-gray-700\" for=\"{}\">{}</label>",
+        html_escape(&props.field),
+        html_escape(&props.label)
+    ));
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-gray-500\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+    html.push_str("</div>");
+
+    // Right side: toggle.
+    html.push_str("<label class=\"relative inline-flex items-center cursor-pointer\">");
+    html.push_str(&format!(
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"1\" class=\"sr-only peer\"",
+        html_escape(&props.field),
+        html_escape(&props.field)
+    ));
+    if is_checked {
+        html.push_str(" checked");
+    }
+    if props.required == Some(true) {
+        html.push_str(" required");
+    }
+    if props.disabled == Some(true) {
+        html.push_str(" disabled");
+    }
+    html.push('>');
+    html.push_str("<div class=\"w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-300 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>");
+    html.push_str("</label>");
+    html.push_str("</div>");
+
+    if let Some(ref error) = props.error {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-red-600\">{}</p>",
+            html_escape(error)
+        ));
+    }
+    html.push_str("</div>");
+    html
 }
 
 // ── Leaf component renderers ────────────────────────────────────────────
@@ -1693,5 +2014,800 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("href=\"/users?id=1&amp;name=test\""));
+    }
+
+    // ── 16. Card ───────────────────────────────────────────────────────
+
+    #[test]
+    fn card_renders_title_and_description() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "c".to_string(),
+            component: Component::Card(CardProps {
+                title: "My Card".to_string(),
+                description: Some("A description".to_string()),
+                children: vec![],
+                footer: vec![],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("rounded-lg border border-gray-200 bg-white shadow-sm"));
+        assert!(html.contains("<h3 class=\"text-lg font-semibold text-gray-900\">My Card</h3>"));
+        assert!(html.contains("<p class=\"mt-1 text-sm text-gray-500\">A description</p>"));
+    }
+
+    #[test]
+    fn card_renders_children_recursively() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "c".to_string(),
+            component: Component::Card(CardProps {
+                title: "Card".to_string(),
+                description: None,
+                children: vec![text_node("t", "Child content", TextElement::P)],
+                footer: vec![],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("mt-4 space-y-4"));
+        assert!(html.contains("Child content"));
+    }
+
+    #[test]
+    fn card_renders_footer() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "c".to_string(),
+            component: Component::Card(CardProps {
+                title: "Card".to_string(),
+                description: None,
+                children: vec![],
+                footer: vec![button_node(
+                    "btn",
+                    "Save",
+                    ButtonVariant::Default,
+                    Size::Default,
+                )],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("border-t border-gray-200 px-6 py-4 flex items-center gap-2"));
+        assert!(html.contains(">Save</button>"));
+    }
+
+    // ── 17. Modal ──────────────────────────────────────────────────────
+
+    #[test]
+    fn modal_renders_details_summary() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "m".to_string(),
+            component: Component::Modal(ModalProps {
+                title: "Confirm".to_string(),
+                description: Some("Are you sure?".to_string()),
+                children: vec![text_node("t", "Body text", TextElement::P)],
+                footer: vec![button_node(
+                    "ok",
+                    "OK",
+                    ButtonVariant::Default,
+                    Size::Default,
+                )],
+                trigger_label: Some("Open Modal".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<details class=\"group\">"));
+        assert!(html.contains("<summary"));
+        assert!(html.contains("Open Modal</summary>"));
+        assert!(html.contains("<h3 class=\"text-lg font-semibold text-gray-900\">Confirm</h3>"));
+        assert!(html.contains("Are you sure?"));
+        assert!(html.contains("Body text"));
+        assert!(html.contains(">OK</button>"));
+        assert!(html.contains("</details>"));
+    }
+
+    #[test]
+    fn modal_default_trigger_label() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "m".to_string(),
+            component: Component::Modal(ModalProps {
+                title: "Dialog".to_string(),
+                description: None,
+                children: vec![],
+                footer: vec![],
+                trigger_label: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("Open</summary>"));
+    }
+
+    // ── 18. Tabs ───────────────────────────────────────────────────────
+
+    #[test]
+    fn tabs_renders_only_default_tab_content() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "tabs".to_string(),
+            component: Component::Tabs(TabsProps {
+                default_tab: "general".to_string(),
+                tabs: vec![
+                    Tab {
+                        value: "general".to_string(),
+                        label: "General".to_string(),
+                        children: vec![text_node("t1", "General content", TextElement::P)],
+                    },
+                    Tab {
+                        value: "security".to_string(),
+                        label: "Security".to_string(),
+                        children: vec![text_node("t2", "Security content", TextElement::P)],
+                    },
+                ],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        // Active tab styling.
+        assert!(html.contains("border-b-2 border-blue-600 text-blue-600"));
+        assert!(html.contains(">General</span>"));
+        // Inactive tab styling.
+        assert!(html.contains("border-transparent text-gray-500"));
+        assert!(html.contains(">Security</span>"));
+        // Only default tab content rendered.
+        assert!(html.contains("General content"));
+        assert!(!html.contains("Security content"));
+    }
+
+    // ── 19. Form ───────────────────────────────────────────────────────
+
+    #[test]
+    fn form_renders_action_url_and_method() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "f".to_string(),
+            component: Component::Form(FormProps {
+                action: Action {
+                    handler: "users.store".to_string(),
+                    url: Some("/users".to_string()),
+                    method: HttpMethod::Post,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                },
+                fields: vec![],
+                method: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("action=\"/users\""));
+        assert!(html.contains("method=\"post\""));
+        assert!(html.contains("class=\"space-y-4\""));
+    }
+
+    #[test]
+    fn form_method_spoofing_for_delete() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "f".to_string(),
+            component: Component::Form(FormProps {
+                action: Action {
+                    handler: "users.destroy".to_string(),
+                    url: Some("/users/1".to_string()),
+                    method: HttpMethod::Delete,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                },
+                fields: vec![],
+                method: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("method=\"post\""));
+        assert!(html.contains("<input type=\"hidden\" name=\"_method\" value=\"DELETE\">"));
+    }
+
+    #[test]
+    fn form_method_spoofing_for_put() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "f".to_string(),
+            component: Component::Form(FormProps {
+                action: Action {
+                    handler: "users.update".to_string(),
+                    url: Some("/users/1".to_string()),
+                    method: HttpMethod::Put,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                },
+                fields: vec![],
+                method: Some(HttpMethod::Put),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("method=\"post\""));
+        assert!(html.contains("name=\"_method\" value=\"PUT\""));
+    }
+
+    #[test]
+    fn form_get_method_no_spoofing() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "f".to_string(),
+            component: Component::Form(FormProps {
+                action: Action {
+                    handler: "users.index".to_string(),
+                    url: Some("/users".to_string()),
+                    method: HttpMethod::Get,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                },
+                fields: vec![],
+                method: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("method=\"get\""));
+        assert!(!html.contains("_method"));
+    }
+
+    // ── 20. Input ──────────────────────────────────────────────────────
+
+    #[test]
+    fn input_renders_label_and_field() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "i".to_string(),
+            component: Component::Input(InputProps {
+                field: "email".to_string(),
+                label: "Email".to_string(),
+                input_type: InputType::Email,
+                placeholder: Some("user@example.com".to_string()),
+                required: Some(true),
+                disabled: None,
+                error: None,
+                description: Some("Your work email".to_string()),
+                default_value: None,
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("for=\"email\""));
+        assert!(html.contains(">Email</label>"));
+        assert!(html.contains("Your work email"));
+        assert!(html.contains("type=\"email\""));
+        assert!(html.contains("id=\"email\""));
+        assert!(html.contains("name=\"email\""));
+        assert!(html.contains("placeholder=\"user@example.com\""));
+        assert!(html.contains(" required"));
+        assert!(html.contains("border-gray-300"));
+    }
+
+    #[test]
+    fn input_renders_error_with_red_border() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "i".to_string(),
+            component: Component::Input(InputProps {
+                field: "name".to_string(),
+                label: "Name".to_string(),
+                input_type: InputType::Text,
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: Some("Name is required".to_string()),
+                description: None,
+                default_value: None,
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("border-red-500"));
+        assert!(html.contains("<p class=\"text-sm text-red-600\">Name is required</p>"));
+    }
+
+    #[test]
+    fn input_resolves_data_path_for_value() {
+        let data = json!({"user": {"name": "Alice"}});
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "i".to_string(),
+            component: Component::Input(InputProps {
+                field: "name".to_string(),
+                label: "Name".to_string(),
+                input_type: InputType::Text,
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: None,
+                data_path: Some("/user/name".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        assert!(html.contains("value=\"Alice\""));
+    }
+
+    #[test]
+    fn input_default_value_overrides_data_path() {
+        let data = json!({"user": {"name": "Alice"}});
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "i".to_string(),
+            component: Component::Input(InputProps {
+                field: "name".to_string(),
+                label: "Name".to_string(),
+                input_type: InputType::Text,
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: Some("Bob".to_string()),
+                data_path: Some("/user/name".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        assert!(html.contains("value=\"Bob\""));
+        assert!(!html.contains("Alice"));
+    }
+
+    #[test]
+    fn input_textarea_renders_textarea_element() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "i".to_string(),
+            component: Component::Input(InputProps {
+                field: "bio".to_string(),
+                label: "Bio".to_string(),
+                input_type: InputType::Textarea,
+                placeholder: Some("Tell us about yourself".to_string()),
+                required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: Some("Hello world".to_string()),
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<textarea"));
+        assert!(html.contains(">Hello world</textarea>"));
+        assert!(html.contains("placeholder=\"Tell us about yourself\""));
+    }
+
+    #[test]
+    fn input_hidden_renders_hidden_field() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "i".to_string(),
+            component: Component::Input(InputProps {
+                field: "token".to_string(),
+                label: "Token".to_string(),
+                input_type: InputType::Hidden,
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: Some("abc123".to_string()),
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("type=\"hidden\""));
+        assert!(html.contains("value=\"abc123\""));
+    }
+
+    // ── 21. Select ─────────────────────────────────────────────────────
+
+    #[test]
+    fn select_renders_options_with_selected() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "s".to_string(),
+            component: Component::Select(SelectProps {
+                field: "role".to_string(),
+                label: "Role".to_string(),
+                options: vec![
+                    SelectOption {
+                        value: "admin".to_string(),
+                        label: "Admin".to_string(),
+                    },
+                    SelectOption {
+                        value: "user".to_string(),
+                        label: "User".to_string(),
+                    },
+                ],
+                placeholder: Some("Select a role".to_string()),
+                required: Some(true),
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: Some("admin".to_string()),
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("for=\"role\""));
+        assert!(html.contains("id=\"role\""));
+        assert!(html.contains("name=\"role\""));
+        assert!(html.contains("<option value=\"\">Select a role</option>"));
+        assert!(html.contains("<option value=\"admin\" selected>Admin</option>"));
+        assert!(html.contains("<option value=\"user\">User</option>"));
+        assert!(html.contains(" required"));
+    }
+
+    #[test]
+    fn select_resolves_data_path_for_selected() {
+        let data = json!({"user": {"role": "user"}});
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "s".to_string(),
+            component: Component::Select(SelectProps {
+                field: "role".to_string(),
+                label: "Role".to_string(),
+                options: vec![
+                    SelectOption {
+                        value: "admin".to_string(),
+                        label: "Admin".to_string(),
+                    },
+                    SelectOption {
+                        value: "user".to_string(),
+                        label: "User".to_string(),
+                    },
+                ],
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: None,
+                data_path: Some("/user/role".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        assert!(html.contains("<option value=\"user\" selected>User</option>"));
+        assert!(!html.contains("<option value=\"admin\" selected>"));
+    }
+
+    #[test]
+    fn select_renders_error() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "s".to_string(),
+            component: Component::Select(SelectProps {
+                field: "role".to_string(),
+                label: "Role".to_string(),
+                options: vec![],
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: Some("Role is required".to_string()),
+                description: None,
+                default_value: None,
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("border-red-500"));
+        assert!(html.contains("Role is required"));
+    }
+
+    // ── 22. Checkbox ───────────────────────────────────────────────────
+
+    #[test]
+    fn checkbox_renders_checked_state() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "cb".to_string(),
+            component: Component::Checkbox(CheckboxProps {
+                field: "terms".to_string(),
+                label: "Accept Terms".to_string(),
+                description: Some("You must accept".to_string()),
+                checked: Some(true),
+                data_path: None,
+                required: Some(true),
+                disabled: None,
+                error: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("type=\"checkbox\""));
+        assert!(html.contains("id=\"terms\""));
+        assert!(html.contains("name=\"terms\""));
+        assert!(html.contains("value=\"1\""));
+        assert!(html.contains(" checked"));
+        assert!(html.contains(" required"));
+        assert!(html.contains("for=\"terms\""));
+        assert!(html.contains(">Accept Terms</label>"));
+        assert!(html.contains("ml-6 text-sm text-gray-500"));
+        assert!(html.contains("You must accept"));
+    }
+
+    #[test]
+    fn checkbox_resolves_data_path_for_checked() {
+        let data = json!({"user": {"accepted": true}});
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "cb".to_string(),
+            component: Component::Checkbox(CheckboxProps {
+                field: "accepted".to_string(),
+                label: "Accepted".to_string(),
+                description: None,
+                checked: None,
+                data_path: Some("/user/accepted".to_string()),
+                required: None,
+                disabled: None,
+                error: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        assert!(html.contains(" checked"));
+    }
+
+    #[test]
+    fn checkbox_renders_error() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "cb".to_string(),
+            component: Component::Checkbox(CheckboxProps {
+                field: "terms".to_string(),
+                label: "Terms".to_string(),
+                description: None,
+                checked: None,
+                data_path: None,
+                required: None,
+                disabled: None,
+                error: Some("Must accept".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("ml-6 text-sm text-red-600"));
+        assert!(html.contains("Must accept"));
+    }
+
+    // ── 23. Switch ─────────────────────────────────────────────────────
+
+    #[test]
+    fn switch_renders_toggle_structure() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "sw".to_string(),
+            component: Component::Switch(SwitchProps {
+                field: "notifications".to_string(),
+                label: "Notifications".to_string(),
+                description: Some("Get email updates".to_string()),
+                checked: Some(true),
+                data_path: None,
+                required: None,
+                disabled: None,
+                error: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("sr-only peer"));
+        assert!(html.contains("id=\"notifications\""));
+        assert!(html.contains("name=\"notifications\""));
+        assert!(html.contains("value=\"1\""));
+        assert!(html.contains(" checked"));
+        assert!(html.contains("peer-checked:bg-blue-600"));
+        assert!(html.contains("for=\"notifications\""));
+        assert!(html.contains(">Notifications</label>"));
+        assert!(html.contains("Get email updates"));
+    }
+
+    #[test]
+    fn switch_renders_error() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "sw".to_string(),
+            component: Component::Switch(SwitchProps {
+                field: "agree".to_string(),
+                label: "Agree".to_string(),
+                description: None,
+                checked: None,
+                data_path: None,
+                required: None,
+                disabled: None,
+                error: Some("Required".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("text-sm text-red-600"));
+        assert!(html.contains("Required"));
+    }
+
+    // ── 24. Table ──────────────────────────────────────────────────────
+
+    #[test]
+    fn table_renders_headers_and_data_rows() {
+        let data = json!({
+            "users": [
+                {"name": "Alice", "email": "alice@example.com"},
+                {"name": "Bob", "email": "bob@example.com"}
+            ]
+        });
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "t".to_string(),
+            component: Component::Table(TableProps {
+                columns: vec![
+                    Column {
+                        key: "name".to_string(),
+                        label: "Name".to_string(),
+                        format: None,
+                    },
+                    Column {
+                        key: "email".to_string(),
+                        label: "Email".to_string(),
+                        format: None,
+                    },
+                ],
+                data_path: "/users".to_string(),
+                row_actions: None,
+                empty_message: Some("No users".to_string()),
+                sortable: None,
+                sort_column: None,
+                sort_direction: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        // Headers.
+        assert!(html.contains("tracking-wider text-gray-500\">Name</th>"));
+        assert!(html.contains("tracking-wider text-gray-500\">Email</th>"));
+        // Data rows.
+        assert!(html.contains(">Alice</td>"));
+        assert!(html.contains(">alice@example.com</td>"));
+        assert!(html.contains(">Bob</td>"));
+        assert!(html.contains(">bob@example.com</td>"));
+        // Wrapped in overflow container.
+        assert!(html.contains("overflow-x-auto"));
+    }
+
+    #[test]
+    fn table_renders_empty_message() {
+        let data = json!({"users": []});
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "t".to_string(),
+            component: Component::Table(TableProps {
+                columns: vec![Column {
+                    key: "name".to_string(),
+                    label: "Name".to_string(),
+                    format: None,
+                }],
+                data_path: "/users".to_string(),
+                row_actions: None,
+                empty_message: Some("No users found".to_string()),
+                sortable: None,
+                sort_column: None,
+                sort_direction: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        assert!(html.contains("No users found"));
+        assert!(html.contains("text-center text-sm text-gray-500"));
+    }
+
+    #[test]
+    fn table_renders_empty_message_when_path_missing() {
+        let data = json!({});
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "t".to_string(),
+            component: Component::Table(TableProps {
+                columns: vec![Column {
+                    key: "name".to_string(),
+                    label: "Name".to_string(),
+                    format: None,
+                }],
+                data_path: "/users".to_string(),
+                row_actions: None,
+                empty_message: Some("No data".to_string()),
+                sortable: None,
+                sort_column: None,
+                sort_direction: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        assert!(html.contains("No data"));
+    }
+
+    #[test]
+    fn table_renders_row_actions() {
+        let data = json!({"items": [{"name": "Item 1"}]});
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "t".to_string(),
+            component: Component::Table(TableProps {
+                columns: vec![Column {
+                    key: "name".to_string(),
+                    label: "Name".to_string(),
+                    format: None,
+                }],
+                data_path: "/items".to_string(),
+                row_actions: Some(vec![
+                    make_action_with_url("items.edit", HttpMethod::Get, "/items/1/edit"),
+                    make_action_with_url("items.destroy", HttpMethod::Delete, "/items/1"),
+                ]),
+                empty_message: None,
+                sortable: None,
+                sort_column: None,
+                sort_direction: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        // Actions header.
+        assert!(html.contains(">Actions</th>"));
+        // Action links.
+        assert!(html.contains("href=\"/items/1/edit\""));
+        assert!(html.contains(">edit</a>"));
+        assert!(html.contains("href=\"/items/1\""));
+        assert!(html.contains(">destroy</a>"));
+    }
+
+    #[test]
+    fn table_handles_numeric_and_bool_cells() {
+        let data = json!({"rows": [{"count": 42, "active": true}]});
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "t".to_string(),
+            component: Component::Table(TableProps {
+                columns: vec![
+                    Column {
+                        key: "count".to_string(),
+                        label: "Count".to_string(),
+                        format: None,
+                    },
+                    Column {
+                        key: "active".to_string(),
+                        label: "Active".to_string(),
+                        format: None,
+                    },
+                ],
+                data_path: "/rows".to_string(),
+                row_actions: None,
+                empty_message: None,
+                sortable: None,
+                sort_column: None,
+                sort_direction: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &data);
+        assert!(html.contains(">42</td>"));
+        assert!(html.contains(">true</td>"));
     }
 }
