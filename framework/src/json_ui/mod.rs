@@ -28,7 +28,7 @@
 //! ```
 
 use crate::http::{HttpResponse, Response};
-use ferro_json_ui::{JsonUiConfig, JsonUiView};
+use ferro_json_ui::{resolve_actions, JsonUiConfig, JsonUiView};
 
 /// Stateless JSON-UI renderer.
 ///
@@ -37,9 +37,19 @@ use ferro_json_ui::{JsonUiConfig, JsonUiView};
 pub struct JsonUi;
 
 impl JsonUi {
+    /// Clone the view and resolve all action handler names to URLs.
+    fn resolve(view: &JsonUiView) -> JsonUiView {
+        let mut resolved = view.clone();
+        resolve_actions(&mut resolved, |handler| {
+            crate::routing::route(handler, &[])
+        });
+        resolved
+    }
+
     /// Render a JSON-UI view as an HTML response.
     ///
     /// Returns the view as a full HTML page with an embedded JSON representation.
+    /// All action handler references are resolved to URLs before output.
     /// The actual component-to-HTML rendering is implemented in Phase 28 (HTML Renderer);
     /// this method produces a scaffold with the view JSON for development and testing.
     pub fn render(view: &JsonUiView, data: &serde_json::Value) -> Response {
@@ -52,7 +62,8 @@ impl JsonUi {
         data: &serde_json::Value,
         config: &JsonUiConfig,
     ) -> Response {
-        let view_json = serde_json::to_string(view).map_err(|e| {
+        let view = Self::resolve(view);
+        let view_json = serde_json::to_string(&view).map_err(|e| {
             HttpResponse::text(format!("JSON-UI serialization error: {e}")).status(500)
         })?;
         let data_json = serde_json::to_string(data).map_err(|e| {
@@ -69,7 +80,7 @@ impl JsonUi {
             head.push_str(custom);
         }
 
-        let view_pretty = serde_json::to_string_pretty(view).unwrap_or_default();
+        let view_pretty = serde_json::to_string_pretty(&view).unwrap_or_default();
 
         let html = format!(
             r#"<!DOCTYPE html>
@@ -104,9 +115,11 @@ impl JsonUi {
 
     /// Return the view as JSON (for API consumers or debugging).
     ///
+    /// All action handler references are resolved to URLs before output.
     /// If `data` is non-null, it takes precedence over the view's embedded data.
     /// If `data` is null, falls back to the view's `.data` field.
     pub fn render_json(view: &JsonUiView, data: &serde_json::Value) -> Response {
+        let view = Self::resolve(view);
         let effective_data = if data.is_null() { &view.data } else { data };
         let payload = serde_json::json!({
             "view": view,
@@ -133,7 +146,7 @@ fn html_escape_attr(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ferro_json_ui::{CardProps, Component, ComponentNode};
+    use ferro_json_ui::{Action, ButtonProps, ButtonVariant, CardProps, Component, ComponentNode, HttpMethod, Size};
 
     /// Extract the Ok variant from a Response without requiring Debug on HttpResponse.
     fn ok_response(result: Response) -> HttpResponse {
@@ -329,5 +342,70 @@ mod tests {
 
         // Should use the view's embedded data
         assert!(body.contains("embedded"));
+    }
+
+    #[test]
+    fn render_resolves_action_urls() {
+        // Register a test route name -> path mapping.
+        crate::routing::register_route_name("users.index", "/users");
+
+        let view = JsonUiView::new()
+            .title("Users")
+            .component(ComponentNode {
+                key: "btn".to_string(),
+                component: Component::Button(ButtonProps {
+                    label: "List Users".to_string(),
+                    variant: ButtonVariant::Default,
+                    size: Size::Default,
+                    disabled: None,
+                    icon: None,
+                    icon_position: None,
+                }),
+                action: Some(Action {
+                    handler: "users.index".to_string(),
+                    url: None,
+                    method: HttpMethod::Get,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                }),
+                visibility: None,
+            });
+
+        // render_json should resolve action URLs.
+        let result = JsonUi::render_json(&view, &serde_json::json!({}));
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("/users"),
+            "render_json output should contain the resolved URL"
+        );
+
+        // render (HTML) should also resolve action URLs.
+        let result = JsonUi::render(&view, &serde_json::json!({}));
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("/users"),
+            "render output should contain the resolved URL"
+        );
+
+        // Original view must not be mutated (clone semantics).
+        assert_eq!(
+            view.components[0].action.as_ref().unwrap().url,
+            None,
+            "original view should not be mutated"
+        );
+    }
+
+    #[test]
+    fn render_without_actions_still_works() {
+        // Verify views with no actions render without issues (no regression).
+        let view = sample_view();
+        let data = serde_json::json!({"items": [1, 2]});
+
+        let result = JsonUi::render(&view, &data);
+        assert!(result.is_ok());
+
+        let result = JsonUi::render_json(&view, &data);
+        assert!(result.is_ok());
     }
 }
