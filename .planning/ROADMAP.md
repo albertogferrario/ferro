@@ -66,7 +66,8 @@ Plans:
 **Research**: Unlikely (internal patterns)
 
 Plans:
-- [ ] 27-01: TBD
+- [ ] 27-01: Error resolver and view errors field (wave 1)
+- [ ] 27-02: Framework render integration and re-exports (wave 2)
 
 #### Phase 28: HTML Renderer
 
@@ -271,7 +272,7 @@ Plans:
 | 24. Component Catalog | 3/3 | Complete | 2026-02-09 |
 | 25. Data Binding | 2/2 | Complete | 2026-02-09 |
 | 26. Action System | 2/2 | Complete | 2026-02-09 |
-| 27. Validation Integration | 0/? | Not started | - |
+| 27. Validation Integration | 0/2 | Planned | - |
 | 28. HTML Renderer | 0/? | Not started | - |
 | 29. Layout System | 0/? | Not started | - |
 | 30. CLI Scaffolding | 0/? | Not started | - |
