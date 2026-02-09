@@ -272,7 +272,7 @@ Plans:
 | v2.0.2 Type Generator Fixes | 22.4-22.9 | 6 | ✅ Complete | 2026-01-17 |
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
-| v2.2 CLI Improvements | 35-37 | 0/3 | 📋 Planned | - |
+| v2.2 CLI Improvements | 35-37 | 1/3 | 🔄 In Progress | - |
 | v3.0 JSON-UI | 23-32 | 0/? | 📋 Planned | - |
 
 ## Progress (v2.2 CLI Improvements)
