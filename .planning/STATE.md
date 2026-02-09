@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 27 of 32 (Validation Integration)
-Plan: 0 of 2 in current phase
-Status: Phase planned, ready for execution
-Last activity: 2026-02-09 — Planned Phase 27
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-09 — Completed 27-01-PLAN.md
 
 Progress: ████████░░ 80% (v3.0)
 
@@ -55,6 +55,8 @@ Progress: ████████░░ 80% (v3.0)
 | 26 | Callback-based resolver Fn(&str) -> Option<String> | Keeps ferro-json-ui decoupled from framework route registry |
 | 26 | Clone view before resolution in render pipeline | Immutable API, caller's view never mutated |
 | 26 | Non-strict resolve_actions in render pipeline | Missing routes produce url: None, handled downstream |
+| 27 | Explicit component errors take priority over validation map | Do-not-overwrite rule: resolve_errors skips fields with existing error |
+| 27 | resolve_errors_all joins with ". " separator | Readable concatenation of multiple validation messages |
 
 ### Pending Todos
 
@@ -81,5 +83,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Planned Phase 27 (Validation Integration) — 2 plans in 2 waves
+Stopped at: Completed 27-01-PLAN.md (Error resolver and view errors field)
 Resume file: None
