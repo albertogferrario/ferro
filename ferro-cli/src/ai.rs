@@ -84,11 +84,14 @@ Wraps every component: key (String), component (Component variant), action (Opti
 JsonUiView::new().title("Title").layout("app").data(json).component(node).components(vec_of_nodes)
 "#;
 
-/// Call the Anthropic Messages API with the given prompt.
+/// Call the Anthropic Messages API with separate system and user prompts.
 ///
-/// Reads `ANTHROPIC_API_KEY` from environment. Model defaults to `claude-opus-4-6`
+/// Reads `ANTHROPIC_API_KEY` from environment. Model defaults to `claude-sonnet-4-5`
 /// but can be overridden via `FERRO_AI_MODEL`.
-pub fn call_anthropic(prompt: &str) -> Result<String, String> {
+///
+/// Uses Anthropic best practices: system prompt with cache_control, assistant prefill,
+/// temperature 0.2 for deterministic output, and 60-second HTTP timeout.
+pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String> {
     let api_key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| {
         "ANTHROPIC_API_KEY not set. Export it with:\n  \
          export ANTHROPIC_API_KEY=sk-ant-...\n\
@@ -96,17 +99,31 @@ pub fn call_anthropic(prompt: &str) -> Result<String, String> {
             .to_string()
     })?;
 
-    let model = std::env::var("FERRO_AI_MODEL").unwrap_or_else(|_| "claude-opus-4-6".to_string());
+    let model =
+        std::env::var("FERRO_AI_MODEL").unwrap_or_else(|_| "claude-sonnet-4-5".to_string());
 
     let body = serde_json::json!({
         "model": model,
         "max_tokens": 8192,
+        "temperature": 0.2,
+        "system": [
+            {
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"}
+            }
+        ],
         "messages": [
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": user_prompt},
+            {"role": "assistant", "content": "//!"}
         ]
     });
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {e}"))?;
+
     let response = client
         .post("https://api.anthropic.com/v1/messages")
         .header("x-api-key", &api_key)
@@ -128,67 +145,106 @@ pub fn call_anthropic(prompt: &str) -> Result<String, String> {
     let json: serde_json::Value =
         serde_json::from_str(&text).map_err(|e| format!("Failed to parse response JSON: {e}"))?;
 
-    json["content"]
+    let response_text = json["content"]
         .as_array()
         .and_then(|arr| arr.first())
         .and_then(|item| item["text"].as_str())
-        .map(|s| s.to_string())
-        .ok_or_else(|| format!("Unexpected response structure: {text}"))
+        .ok_or_else(|| format!("Unexpected response structure: {text}"))?;
+
+    // Prepend the assistant prefill that is not included in the response
+    Ok(format!("//!{response_text}"))
 }
 
-/// Assemble a prompt with project context for AI view generation.
+/// Assemble system and user prompts for AI view generation.
 ///
-/// Includes:
-/// 1. Component catalog (hardcoded const)
-/// 2. Project models (scanned from `src/models/*.rs`)
-/// 3. Project routes (parsed from `src/routes.rs`)
-pub fn build_view_context(name: &str, description: &str) -> String {
-    let mut prompt = String::new();
-
-    prompt.push_str(
-        "You are a Ferro framework JSON-UI view code generator. \
-         Generate a Rust file that builds a JsonUiView.\n\n",
+/// Returns `(system_prompt, user_prompt)` where:
+/// - System prompt: role, rules, component catalog, few-shot example (static, cacheable)
+/// - User prompt: project models, routes, view name and description (dynamic, per-request)
+pub fn build_view_context(name: &str, description: &str) -> (String, String) {
+    // System prompt: static content that benefits from prompt caching
+    let system = format!(
+        "You are a Ferro framework JSON-UI view code generator. Generate only valid Rust source \
+         code for src/views/ files.\n\n\
+         Rules:\n\
+         - Import only types actually used from `use ferro::{{...}};`\n\
+         - Use the builder pattern: `JsonUiView::new().title().layout().component()`\n\
+         - Use .layout(\"app\") unless the view is for auth (use \"auth\")\n\
+         - Use real route handler names for actions when matching routes exist\n\
+         - Use data_path bindings for form fields when matching model fields exist\n\
+         - Return ONLY Rust source code, no explanation\n\n\
+         {COMPONENT_CATALOG}\n\n\
+         <example>\n\
+         Input: user_list view showing all users in a table with edit and delete actions\n\
+         Output:\n\
+         //! User List JSON-UI view\n\n\
+         use ferro::{{\n\
+             Action, Component, ComponentNode, JsonUiView, TableColumn, TableProps, TextElement, \
+         TextProps,\n\
+         }};\n\n\
+         pub fn view() -> JsonUiView {{\n\
+             JsonUiView::new()\n\
+                 .title(\"User List\")\n\
+                 .layout(\"app\")\n\
+                 .component(ComponentNode {{\n\
+                     key: \"heading\".to_string(),\n\
+                     component: Component::Text(TextProps {{\n\
+                         content: \"User List\".to_string(),\n\
+                         element: TextElement::H1,\n\
+                     }}),\n\
+                     action: None,\n\
+                     visibility: None,\n\
+                 }})\n\
+                 .component(ComponentNode {{\n\
+                     key: \"users_table\".to_string(),\n\
+                     component: Component::Table(TableProps {{\n\
+                         columns: vec![\n\
+                             TableColumn {{ key: \"name\".to_string(), label: \"Name\".to_string(), \
+         format: None }},\n\
+                             TableColumn {{ key: \"email\".to_string(), label: \
+         \"Email\".to_string(), format: None }},\n\
+                         ],\n\
+                         data_path: \"users\".to_string(),\n\
+                         row_actions: Some(vec![\n\
+                             Action::get(\"user_controller.edit\"),\n\
+                             Action::delete(\"user_controller.destroy\").confirm_danger(\"Delete \
+         user\"),\n\
+                         ]),\n\
+                         empty_message: Some(\"No users found.\".to_string()),\n\
+                         sortable: None,\n\
+                         sort_column: None,\n\
+                         sort_direction: None,\n\
+                     }}),\n\
+                     action: None,\n\
+                     visibility: None,\n\
+                 }})\n\
+         }}\n\
+         </example>",
     );
 
-    // Section 1: Component catalog
-    prompt.push_str(COMPONENT_CATALOG);
-    prompt.push('\n');
+    // User prompt: dynamic content that changes per request
+    let mut user_prompt = String::new();
 
-    // Section 2: Project models
     let models = scan_models();
     if !models.is_empty() {
-        prompt.push_str("## Project Models\n");
-        prompt.push_str(&models);
-        prompt.push('\n');
+        user_prompt.push_str("## Project Models\n");
+        user_prompt.push_str(&models);
+        user_prompt.push('\n');
     }
 
-    // Section 3: Project routes
     let routes = scan_routes();
     if !routes.is_empty() {
-        prompt.push_str("## Project Routes\n");
-        prompt.push_str(&routes);
-        prompt.push('\n');
+        user_prompt.push_str("## Project Routes\n");
+        user_prompt.push_str(&routes);
+        user_prompt.push('\n');
     }
 
-    prompt.push_str("## Instructions\n\n");
-    prompt.push_str(&format!(
-        "Generate a Rust file for `src/views/{name}.rs` with:\n\
-         - A `//! {title} JSON-UI view` module doc comment\n\
-         - `use ferro::{{...}};` imports (only import types actually used)\n\
-         - A `pub fn view() -> JsonUiView` function using the builder pattern\n\
-         - Use real route names for action handlers when matching routes exist\n\
-         - Use data_path bindings for form fields when matching model fields exist\n\
-         - Choose appropriate components for the described UI\n\
-         - Use .layout(\"app\") unless the description suggests auth/login (use \"auth\")\n\n\
+    user_prompt.push_str(&format!(
+        "Generate `src/views/{name}.rs`:\n\
          View name: {name}\n\
-         Description: {description}\n\n\
-         Return ONLY the Rust source code. No markdown fences, no explanation.\n",
-        name = name,
-        title = to_title_case(name),
-        description = description,
+         Description: {description}",
     ));
 
-    prompt
+    (system, user_prompt)
 }
 
 /// Scan `src/models/*.rs` and extract struct fields using regex.
@@ -303,20 +359,3 @@ fn scan_routes() -> String {
     output
 }
 
-/// Convert snake_case to Title Case.
-fn to_title_case(s: &str) -> String {
-    s.split('_')
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first) => {
-                    let mut result = first.to_uppercase().to_string();
-                    result.extend(chars);
-                    result
-                }
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
