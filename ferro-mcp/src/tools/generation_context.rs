@@ -21,6 +21,7 @@ pub struct NamingConventions {
     pub routes: String,
     pub middleware: String,
     pub services: String,
+    pub views: String,
 }
 
 /// Expected file locations for different artifact types
@@ -32,6 +33,7 @@ pub struct FileStructure {
     pub migrations: String,
     pub middleware: String,
     pub services: String,
+    pub views: String,
 }
 
 /// Common code patterns with template snippets
@@ -41,6 +43,7 @@ pub struct CommonPatterns {
     pub validation: String,
     pub error_handling: String,
     pub inertia_render: String,
+    pub json_ui_view: String,
 }
 
 /// Common import blocks for different contexts
@@ -49,6 +52,7 @@ pub struct ImportTemplates {
     pub handler: String,
     pub model: String,
     pub validation: String,
+    pub json_ui_view: String,
 }
 
 /// Execute the generation context tool - returns comprehensive framework conventions
@@ -61,6 +65,7 @@ pub fn execute() -> GenerationContext {
             routes: "RESTful lowercase (GET /users, POST /users, GET /users/{id}, PUT /users/{id}, DELETE /users/{id})".to_string(),
             middleware: "PascalCase (AuthMiddleware, RateLimitMiddleware, CorsMiddleware)".to_string(),
             services: "PascalCase with trait+impl (UserService trait, PostgresUserService impl)".to_string(),
+            views: "snake_case singular function (user_list, user_form, dashboard)".to_string(),
         },
         file_structure: FileStructure {
             handlers: "src/controllers/{resource}.rs or src/handlers/{resource}.rs".to_string(),
@@ -69,6 +74,7 @@ pub fn execute() -> GenerationContext {
             migrations: "migration/src/m{timestamp}_{name}.rs".to_string(),
             middleware: "src/middleware/{name}.rs".to_string(),
             services: "src/services/{name}.rs".to_string(),
+            views: "src/views/{name}.rs".to_string(),
         },
         common_patterns: CommonPatterns {
             crud_handler: r#"#[handler]
@@ -107,6 +113,12 @@ let ctx = SavedInertiaContext::from(&req);
 let form = req.input::<CreateForm>().await?;  // Consumes req
 // ... process form ...
 Inertia::render_ctx(&ctx, "Users/Show", UserProps { user })"#.to_string(),
+            json_ui_view: r#"pub fn user_list() -> JsonUiView {
+    JsonUiView::new()
+        .title("Users")
+        .layout("app")
+        .component(Component::Table(Table { /* ... */ }).into_node())
+}"#.to_string(),
         },
         avoid: vec![
             "Don't use unwrap() in handlers - return proper Response errors".to_string(),
@@ -119,6 +131,8 @@ Inertia::render_ctx(&ctx, "Users/Show", UserProps { user })"#.to_string(),
             "Don't use panic! or expect() in request handlers - return errors".to_string(),
             "Don't block async runtime with sync operations - use spawn_blocking if needed".to_string(),
             "Don't store sensitive data in session without encryption".to_string(),
+            "Don't import unused JSON-UI component types - only import what the view actually uses".to_string(),
+            "Don't forget .layout(\"app\") on JSON-UI views - views without layout render as raw HTML".to_string(),
         ],
         imports: ImportTemplates {
             handler: r#"use ferro::prelude::*;
@@ -127,6 +141,7 @@ use crate::models::prelude::*;  // or specific model"#.to_string(),
 use serde::{Deserialize, Serialize};"#.to_string(),
             validation: r#"use ferro::validation::{Validator, rules};
 use ferro::validation::rules::*;  // for individual rules"#.to_string(),
+            json_ui_view: r#"use ferro::{Component, ComponentNode, JsonUiView, /* component-specific types */};"#.to_string(),
         },
     }
 }
@@ -146,6 +161,7 @@ mod tests {
         assert!(!context.naming_conventions.routes.is_empty());
         assert!(!context.naming_conventions.middleware.is_empty());
         assert!(!context.naming_conventions.services.is_empty());
+        assert!(!context.naming_conventions.views.is_empty());
 
         // Verify file structure populated
         assert!(!context.file_structure.handlers.is_empty());
@@ -154,17 +170,20 @@ mod tests {
         assert!(!context.file_structure.migrations.is_empty());
         assert!(!context.file_structure.middleware.is_empty());
         assert!(!context.file_structure.services.is_empty());
+        assert!(!context.file_structure.views.is_empty());
 
         // Verify common patterns populated
         assert!(!context.common_patterns.crud_handler.is_empty());
         assert!(!context.common_patterns.validation.is_empty());
         assert!(!context.common_patterns.error_handling.is_empty());
         assert!(!context.common_patterns.inertia_render.is_empty());
+        assert!(!context.common_patterns.json_ui_view.is_empty());
 
         // Verify imports populated
         assert!(!context.imports.handler.is_empty());
         assert!(!context.imports.model.is_empty());
         assert!(!context.imports.validation.is_empty());
+        assert!(!context.imports.json_ui_view.is_empty());
     }
 
     #[test]
@@ -178,6 +197,7 @@ mod tests {
         assert!(context.naming_conventions.routes.contains("RESTful"));
         assert!(context.naming_conventions.middleware.contains("PascalCase"));
         assert!(context.naming_conventions.services.contains("trait"));
+        assert!(context.naming_conventions.views.contains("snake_case"));
     }
 
     #[test]

@@ -14,6 +14,7 @@ pub struct ApplicationInfo {
     pub environment: String,
     pub installed_crates: Vec<CrateInfo>,
     pub models: Vec<ModelInfo>,
+    pub json_ui_views: JsonUiViewsStatus,
     pub claude_code_skills: ClaudeCodeSkillsStatus,
 }
 
@@ -22,6 +23,14 @@ pub struct ClaudeCodeSkillsStatus {
     pub installed: bool,
     pub skill_count: usize,
     pub install_hint: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct JsonUiViewsStatus {
+    pub available: bool,
+    pub view_count: usize,
+    pub views_dir: String,
+    pub hint: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -56,6 +65,9 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
     // Scan for models
     let models = introspection::models::scan_models(project_root);
 
+    // Scan for JSON-UI views
+    let json_ui_views = scan_json_ui_views(project_root);
+
     // Check Claude Code skills installation
     let claude_code_skills = check_claude_code_skills();
 
@@ -66,6 +78,7 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
         environment,
         installed_crates,
         models,
+        json_ui_views,
         claude_code_skills,
     })
 }
@@ -190,6 +203,48 @@ fn get_installed_crates(project_root: &Path) -> Result<Vec<CrateInfo>> {
     }
 
     Ok(crates)
+}
+
+fn scan_json_ui_views(project_root: &Path) -> JsonUiViewsStatus {
+    let views_dir = project_root.join("src").join("views");
+    let views_dir_display = "src/views/".to_string();
+
+    if !views_dir.exists() {
+        return JsonUiViewsStatus {
+            available: false,
+            view_count: 0,
+            views_dir: views_dir_display,
+            hint: Some(
+                "No src/views/ directory found. Create views with JSON-UI tools: json_ui_generate, json_ui_catalog"
+                    .to_string(),
+            ),
+        };
+    }
+
+    // Count .rs files in src/views/ (excluding mod.rs)
+    let view_count = std::fs::read_dir(&views_dir)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    let path = e.path();
+                    path.extension().map(|ext| ext == "rs").unwrap_or(false)
+                        && path.file_name().map(|f| f != "mod.rs").unwrap_or(false)
+                })
+                .count()
+        })
+        .unwrap_or(0);
+
+    JsonUiViewsStatus {
+        available: true,
+        view_count,
+        views_dir: views_dir_display,
+        hint: if view_count == 0 {
+            Some("Views directory exists but no views found. Use json_ui_generate to create one.".to_string())
+        } else {
+            None
+        },
+    }
 }
 
 fn check_claude_code_skills() -> ClaudeCodeSkillsStatus {
