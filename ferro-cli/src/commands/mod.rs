@@ -14,6 +14,7 @@ pub mod docker_init;
 pub mod generate_routes;
 pub mod generate_types;
 pub mod make_action;
+pub mod make_auth;
 pub mod make_controller;
 pub mod make_error;
 pub mod make_event;

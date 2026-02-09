@@ -35,12 +35,10 @@ pub fn run(force: bool) {
     }
 
     let migrations_dir = migrations_dir.unwrap();
-    println!(
-        "Scaffolding authentication system...\n"
-    );
+    println!("Scaffolding authentication system...\n");
 
     // 1. Generate migration
-    let migration_created = generate_migration(&migrations_dir, force);
+    let migration_created = generate_migration(migrations_dir, force);
 
     // 2. Generate auth controller
     let controller_created = generate_auth_controller(controllers_dir, force);
@@ -245,10 +243,7 @@ fn generate_auth_controller(controllers_dir: &Path, force: bool) -> bool {
         return false;
     }
 
-    println!(
-        "{} src/controllers/auth_controller.rs",
-        style("✓").green()
-    );
+    println!("{} src/controllers/auth_controller.rs", style("✓").green());
     true
 }
 
@@ -320,36 +315,94 @@ fn print_next_steps() {
         style("1.").dim()
     );
     println!();
-    println!("{}", style("     use ferro::{{Auth, Authenticatable, UserProvider, FrameworkError, verify}};").cyan());
-    println!("{}", style("     use crate::models::users::{{self, Entity, Column, Model as User}};").cyan());
+    println!(
+        "{}",
+        style("     use ferro::{{Auth, Authenticatable, UserProvider, FrameworkError, verify}};")
+            .cyan()
+    );
+    println!(
+        "{}",
+        style("     use crate::models::users::{{self, Entity, Column, Model as User}};").cyan()
+    );
     println!("{}", style("     use sea_orm::prelude::*;").cyan());
     println!("{}", style("     use std::sync::Arc;").cyan());
     println!();
     println!("{}", style("     pub struct DatabaseUserProvider;").cyan());
     println!();
     println!("{}", style("     #[async_trait::async_trait]").cyan());
-    println!("{}", style("     impl UserProvider for DatabaseUserProvider {").cyan());
-    println!("{}", style("         async fn retrieve_by_id(&self, id: i64)").cyan());
-    println!("{}", style("             -> Result<Option<Arc<dyn Authenticatable>>, FrameworkError> {").cyan());
+    println!(
+        "{}",
+        style("     impl UserProvider for DatabaseUserProvider {").cyan()
+    );
+    println!(
+        "{}",
+        style("         async fn retrieve_by_id(&self, id: i64)").cyan()
+    );
+    println!(
+        "{}",
+        style("             -> Result<Option<Arc<dyn Authenticatable>>, FrameworkError> {").cyan()
+    );
     println!("{}", style("             let user = User::query()").cyan());
-    println!("{}", style("                 .filter(Column::Id.eq(id as i32))").cyan());
+    println!(
+        "{}",
+        style("                 .filter(Column::Id.eq(id as i32))").cyan()
+    );
     println!("{}", style("                 .first().await?;").cyan());
-    println!("{}", style("             Ok(user.map(|u| Arc::new(u) as Arc<dyn Authenticatable>))").cyan());
+    println!(
+        "{}",
+        style("             Ok(user.map(|u| Arc::new(u) as Arc<dyn Authenticatable>))").cyan()
+    );
     println!("{}", style("         }").cyan());
     println!();
-    println!("{}", style("         async fn retrieve_by_credentials(&self, credentials: &serde_json::Value)").cyan());
-    println!("{}", style("             -> Result<Option<Arc<dyn Authenticatable>>, FrameworkError> {").cyan());
-    println!("{}", style("             let email = credentials[\"email\"].as_str().unwrap_or_default();").cyan());
-    println!("{}", style("             let user = User::find_by_email(email).await?;").cyan());
-    println!("{}", style("             Ok(user.map(|u| Arc::new(u) as Arc<dyn Authenticatable>))").cyan());
+    println!(
+        "{}",
+        style("         async fn retrieve_by_credentials(&self, credentials: &serde_json::Value)")
+            .cyan()
+    );
+    println!(
+        "{}",
+        style("             -> Result<Option<Arc<dyn Authenticatable>>, FrameworkError> {").cyan()
+    );
+    println!(
+        "{}",
+        style("             let email = credentials[\"email\"].as_str().unwrap_or_default();")
+            .cyan()
+    );
+    println!(
+        "{}",
+        style("             let user = User::find_by_email(email).await?;").cyan()
+    );
+    println!(
+        "{}",
+        style("             Ok(user.map(|u| Arc::new(u) as Arc<dyn Authenticatable>))").cyan()
+    );
     println!("{}", style("         }").cyan());
     println!();
-    println!("{}", style("         async fn validate_credentials(&self, user: &dyn Authenticatable,").cyan());
-    println!("{}", style("             credentials: &serde_json::Value) -> Result<bool, FrameworkError> {").cyan());
-    println!("{}", style("             let password = credentials[\"password\"].as_str().unwrap_or_default();").cyan());
-    println!("{}", style("             let user = user.as_any().downcast_ref::<User>()").cyan());
+    println!(
+        "{}",
+        style("         async fn validate_credentials(&self, user: &dyn Authenticatable,").cyan()
+    );
+    println!(
+        "{}",
+        style("             credentials: &serde_json::Value) -> Result<bool, FrameworkError> {")
+            .cyan()
+    );
+    println!(
+        "{}",
+        style(
+            "             let password = credentials[\"password\"].as_str().unwrap_or_default();"
+        )
+        .cyan()
+    );
+    println!(
+        "{}",
+        style("             let user = user.as_any().downcast_ref::<User>()").cyan()
+    );
     println!("{}", style("                 .ok_or_else(|| FrameworkError::internal(\"Invalid user type\".into()))?;").cyan());
-    println!("{}", style("             verify(password, &user.password)").cyan());
+    println!(
+        "{}",
+        style("             verify(password, &user.password)").cyan()
+    );
     println!("{}", style("         }").cyan());
     println!("{}", style("     }").cyan());
 
@@ -358,25 +411,46 @@ fn print_next_steps() {
         style("2.").dim()
     );
     println!();
-    println!("{}", style("     use crate::controllers::auth_controller;").cyan());
-    println!("{}", style("     use ferro::{{AuthMiddleware, GuestMiddleware, group, post}};").cyan());
+    println!(
+        "{}",
+        style("     use crate::controllers::auth_controller;").cyan()
+    );
+    println!(
+        "{}",
+        style("     use ferro::{{AuthMiddleware, GuestMiddleware, group, post}};").cyan()
+    );
     println!();
-    println!("{}", style("     // Guest-only routes (login/register)").cyan());
+    println!(
+        "{}",
+        style("     // Guest-only routes (login/register)").cyan()
+    );
     println!("{}", style("     group!(\"/auth\")").cyan());
-    println!("{}", style("         .middleware(GuestMiddleware::redirect_to(\"/\"))").cyan());
+    println!(
+        "{}",
+        style("         .middleware(GuestMiddleware::redirect_to(\"/\"))").cyan()
+    );
     println!("{}", style("         .routes([").cyan());
-    println!("{}", style("             post!(\"/register\", auth_controller::register),").cyan());
-    println!("{}", style("             post!(\"/login\", auth_controller::login),").cyan());
+    println!(
+        "{}",
+        style("             post!(\"/register\", auth_controller::register),").cyan()
+    );
+    println!(
+        "{}",
+        style("             post!(\"/login\", auth_controller::login),").cyan()
+    );
     println!("{}", style("         ])").cyan());
     println!();
     println!("{}", style("     // Authenticated routes").cyan());
-    println!("{}", style("     post!(\"/auth/logout\", auth_controller::logout)").cyan());
-    println!("{}", style("         .middleware(AuthMiddleware::new())").cyan());
-
     println!(
-        "\n  {} Run the migration:",
-        style("3.").dim()
+        "{}",
+        style("     post!(\"/auth/logout\", auth_controller::logout)").cyan()
     );
+    println!(
+        "{}",
+        style("         .middleware(AuthMiddleware::new())").cyan()
+    );
+
+    println!("\n  {} Run the migration:", style("3.").dim());
     println!("     {}", style("ferro db:migrate").cyan());
     println!();
 }

@@ -83,6 +83,13 @@ enum Commands {
         /// Name of the action (e.g., AddTodo, CreateUser)
         name: String,
     },
+    /// Scaffold a complete authentication system (migration, controller, routes)
+    #[command(name = "make:auth")]
+    MakeAuth {
+        /// Overwrite existing files
+        #[arg(long, short = 'f')]
+        force: bool,
+    },
     /// Generate a new domain error
     #[command(name = "make:error")]
     MakeError {
@@ -360,6 +367,9 @@ fn main() {
         }
         Commands::MakeAction { name } => {
             commands::make_action::run(name);
+        }
+        Commands::MakeAuth { force } => {
+            commands::make_auth::run(force);
         }
         Commands::MakeError { name } => {
             commands::make_error::run(name);
