@@ -38,8 +38,22 @@ pub use database::{
 // This saves users from having to add `use sea_orm::*` imports
 pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
 pub use ferro_json_ui::{
-    Action, Component, ComponentNode, JsonUiConfig, JsonUiView, Visibility as JsonUiVisibility,
+    // Core types
+    Component, ComponentNode, JsonUiConfig, JsonUiView, Visibility as JsonUiVisibility,
     SCHEMA_VERSION,
+    // Component props
+    AlertProps, AvatarProps, BadgeProps, BreadcrumbProps, ButtonProps, CardProps, CheckboxProps,
+    DescriptionListProps, FormProps, InputProps, ModalProps, PaginationProps, ProgressProps,
+    SelectProps, SeparatorProps, SkeletonProps, SwitchProps, TabsProps, TableProps, TextProps,
+    // Supporting types
+    BreadcrumbItem, Column, ColumnFormat, DescriptionItem, SelectOption, Tab,
+    // Enums
+    AlertVariant, BadgeVariant, ButtonVariant, IconPosition, InputType, Orientation, Size,
+    SortDirection, TextElement,
+    // Action types
+    Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant,
+    // Visibility types
+    VisibilityCondition, VisibilityOperator,
 };
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{
