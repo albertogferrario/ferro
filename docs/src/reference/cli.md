@@ -385,6 +385,70 @@ ferro make:inertia Users/Profile
 - `frontend/src/pages/Dashboard.tsx`
 - `src/controllers/` (props struct)
 
+### `ferro make:json-view`
+
+Generate a JSON-UI view file with AI-powered component generation.
+
+```bash
+# Generate a view (AI-powered if ANTHROPIC_API_KEY is set)
+ferro make:json-view UserIndex
+
+# Generate with a description for AI context
+ferro make:json-view UserEdit --description "Edit form for user profile"
+
+# Specify a layout
+ferro make:json-view Login --layout auth
+
+# Skip AI generation, use static template
+ferro make:json-view Dashboard --no-ai
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--description`, `-d` | Description of the desired UI for AI generation |
+| `--layout`, `-l` | Layout to use (default: `app`) |
+| `--no-ai` | Skip AI generation, use static template |
+
+**How it works:**
+
+1. Scans your models and routes for project context
+2. Sends context to Anthropic API (Claude Sonnet) for intelligent view generation
+3. Falls back to a static template if no API key is configured or AI generation fails
+4. Generates a view file in `src/views/` and updates `mod.rs`
+
+**Requirements:**
+
+- Set `ANTHROPIC_API_KEY` in your environment for AI-powered generation
+- Without the key, a static template with common components is generated
+- Model override via `FERRO_AI_MODEL` environment variable
+
+**Generated file:** `src/views/user_index.rs`
+
+```rust
+use ferro::{
+    Action, Component, ComponentNode, JsonUiView, TableColumn, TableProps,
+    TextElement, TextProps,
+};
+
+pub fn view() -> JsonUiView {
+    JsonUiView::new()
+        .title("User Index")
+        .layout("app")
+        .component(ComponentNode {
+            key: "heading".to_string(),
+            component: Component::Text(TextProps {
+                content: "User Index".to_string(),
+                element: TextElement::H1,
+            }),
+            action: None,
+            visibility: None,
+        })
+        // ... additional components based on AI context or static template
+}
+```
+
 ### `ferro make:task`
 
 Generate a scheduled task.
@@ -804,6 +868,7 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `make:notification` | Create a notification |
 | `make:migration` | Create a migration |
 | `make:inertia` | Create an Inertia page |
+| `make:json-view` | Create a JSON-UI view (AI-powered) |
 | `make:task` | Create a scheduled task |
 | `make:seeder` | Create a database seeder |
 | `make:factory` | Create a model factory |
