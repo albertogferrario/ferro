@@ -67,7 +67,7 @@ Plans:
 
 Plans:
 - [x] 27-01: Error resolver and view errors field (completed 2026-02-09)
-- [ ] 27-02: Framework render integration and re-exports (wave 2)
+- [x] 27-02: Framework render integration and re-exports (completed 2026-02-09)
 
 #### Phase 28: HTML Renderer
 
@@ -262,7 +262,7 @@ Plans:
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 9/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 11/? | 🚧 In Progress | - |
 
 ## Progress (v3.0 JSON-UI)
 
@@ -272,7 +272,7 @@ Plans:
 | 24. Component Catalog | 3/3 | Complete | 2026-02-09 |
 | 25. Data Binding | 2/2 | Complete | 2026-02-09 |
 | 26. Action System | 2/2 | Complete | 2026-02-09 |
-| 27. Validation Integration | 1/2 | In progress | - |
+| 27. Validation Integration | 2/2 | Complete | 2026-02-09 |
 | 28. HTML Renderer | 0/? | Not started | - |
 | 29. Layout System | 0/? | Not started | - |
 | 30. CLI Scaffolding | 0/? | Not started | - |

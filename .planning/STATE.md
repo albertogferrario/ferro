@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 27 of 32 (Validation Integration)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-09 — Completed 27-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 27-02-PLAN.md
 
 Progress: ████████░░ 80% (v3.0)
 
@@ -27,7 +27,7 @@ Progress: ████████░░ 80% (v3.0)
 | v2.0.3 DO Apps Deploy | 22.10 | 1 | ✅ Complete | 2026-01-17 |
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
-| v3.0 JSON-UI | 23-32 | 10/? | 🚧 In Progress | - |
+| v3.0 JSON-UI | 23-32 | 11/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -57,6 +57,8 @@ Progress: ████████░░ 80% (v3.0)
 | 26 | Non-strict resolve_actions in render pipeline | Missing routes produce url: None, handled downstream |
 | 27 | Explicit component errors take priority over validation map | Do-not-overwrite rule: resolve_errors skips fields with existing error |
 | 27 | resolve_errors_all joins with ". " separator | Readable concatenation of multiple validation messages |
+| 27 | resolve_with_errors sets view.errors alongside field-level | Dual consumption: component-level + view-level for frontend |
+| 27 | render_validation_error delegates via .all() | Single indirection from framework type to HashMap |
 
 ### Pending Todos
 
@@ -83,5 +85,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Completed 27-01-PLAN.md (Error resolver and view errors field)
+Stopped at: Completed 27-02-PLAN.md (Framework render integration and re-exports)
 Resume file: None
