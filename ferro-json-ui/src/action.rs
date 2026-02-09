@@ -69,6 +69,9 @@ pub enum ActionOutcome {
 pub struct Action {
     /// Handler reference in "controller.method" format.
     pub handler: String,
+    /// Resolved URL for this action. Populated by the resolver at render time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
     #[serde(default)]
     pub method: HttpMethod,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -87,6 +90,7 @@ mod tests {
     fn minimal_action_serializes() {
         let action = Action {
             handler: "users.store".to_string(),
+            url: None,
             method: HttpMethod::Post,
             confirm: None,
             on_success: None,
@@ -103,6 +107,7 @@ mod tests {
     fn action_with_confirm_dialog() {
         let action = Action {
             handler: "users.destroy".to_string(),
+            url: None,
             method: HttpMethod::Delete,
             confirm: Some(ConfirmDialog {
                 title: "Delete user?".to_string(),
@@ -158,5 +163,49 @@ mod tests {
         let json = r#"{"title": "Confirm?"}"#;
         let dialog: ConfirmDialog = serde_json::from_str(json).unwrap();
         assert_eq!(dialog.variant, DialogVariant::Default);
+    }
+
+    #[test]
+    fn action_without_url_omits_url_field() {
+        let action = Action {
+            handler: "users.index".to_string(),
+            url: None,
+            method: HttpMethod::Get,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+        };
+        let json = serde_json::to_value(&action).unwrap();
+        assert!(json.get("url").is_none(), "url should be omitted when None");
+    }
+
+    #[test]
+    fn action_with_url_includes_url_field() {
+        let action = Action {
+            handler: "users.store".to_string(),
+            url: Some("/users".to_string()),
+            method: HttpMethod::Post,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+        };
+        let json = serde_json::to_value(&action).unwrap();
+        assert_eq!(json["url"], "/users");
+    }
+
+    #[test]
+    fn action_url_round_trips() {
+        let action = Action {
+            handler: "users.show".to_string(),
+            url: Some("/users/42".to_string()),
+            method: HttpMethod::Get,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+        };
+        let json = serde_json::to_string(&action).unwrap();
+        let parsed: Action = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.url, Some("/users/42".to_string()));
+        assert_eq!(parsed, action);
     }
 }

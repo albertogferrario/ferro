@@ -308,6 +308,7 @@ mod tests {
                 }),
                 action: Some(Action {
                     handler: "admin.delete_all".to_string(),
+                    url: None,
                     method: HttpMethod::Delete,
                     confirm: None,
                     on_success: None,

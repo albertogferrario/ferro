@@ -623,6 +623,7 @@ mod tests {
         let form = Component::Form(FormProps {
             action: Action {
                 handler: "users.store".to_string(),
+                url: None,
                 method: HttpMethod::Post,
                 confirm: None,
                 on_success: None,
@@ -666,6 +667,7 @@ mod tests {
             }),
             action: Some(Action {
                 handler: "users.create".to_string(),
+                url: None,
                 method: HttpMethod::Post,
                 confirm: None,
                 on_success: None,
@@ -710,6 +712,7 @@ mod tests {
             Component::Form(FormProps {
                 action: Action {
                     handler: "h.m".to_string(),
+                    url: None,
                     method: HttpMethod::Post,
                     confirm: None,
                     on_success: None,
