@@ -31,8 +31,8 @@ use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
 use ferro_json_ui::{
-    render_to_html, resolve_actions, resolve_errors, JsonUiConfig, JsonUiView, LayoutContext,
-    render_layout,
+    render_layout, render_to_html, resolve_actions, resolve_errors, JsonUiConfig, JsonUiView,
+    LayoutContext,
 };
 
 /// Stateless JSON-UI renderer.
@@ -661,5 +661,117 @@ mod tests {
             body.contains("Name is required"),
             "field errors should be populated"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Layout integration tests
+    // -----------------------------------------------------------------------
+
+    use ferro_json_ui::{register_layout, Layout, LayoutContext};
+
+    #[test]
+    fn render_uses_default_layout_when_none_set() {
+        let view = sample_view(); // no .layout() call
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+
+        // DefaultLayout produces valid HTML with the ferro-json-ui wrapper
+        assert!(body.contains("<!DOCTYPE html>"));
+        assert!(body.contains("data-view="));
+        assert!(body.contains("data-props="));
+        assert!(body.contains("ferro-json-ui"));
+        // No nav or sidebar in default layout
+        assert!(!body.contains("<nav"));
+        assert!(!body.contains("<aside"));
+    }
+
+    #[test]
+    fn render_uses_named_layout() {
+        let view = sample_view().layout("app");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+
+        // AppLayout includes nav, sidebar, and main content area
+        assert!(body.contains("<nav"));
+        assert!(body.contains("<aside"));
+        assert!(body.contains("<main"));
+        assert!(body.contains("ferro-json-ui"));
+    }
+
+    #[test]
+    fn render_uses_auth_layout() {
+        let view = sample_view().layout("auth");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+
+        // AuthLayout centers content with max-width card
+        assert!(body.contains("flex items-center justify-center"));
+        assert!(body.contains("max-w-md"));
+        assert!(body.contains("ferro-json-ui"));
+        // No nav or sidebar
+        assert!(!body.contains("<nav"));
+        assert!(!body.contains("<aside"));
+    }
+
+    #[test]
+    fn render_with_errors_uses_layout() {
+        let view = form_view_with_inputs().layout("auth");
+        let errors = make_errors(&[("name", &["Name is required"])]);
+        let data = serde_json::json!({});
+        let result = JsonUi::render_with_errors(&view, &data, &errors);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+
+        // Auth layout structure present
+        assert!(body.contains("flex items-center justify-center"));
+        // Error content present
+        assert!(body.contains("Name is required"));
+    }
+
+    #[test]
+    fn render_custom_layout() {
+        struct TestLayout;
+        impl Layout for TestLayout {
+            fn render(&self, ctx: &LayoutContext) -> String {
+                format!("<custom-layout>{}</custom-layout>", ctx.content)
+            }
+        }
+
+        register_layout("test-custom", TestLayout);
+
+        let view = sample_view().layout("test-custom");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(body.contains("<custom-layout>"));
+        assert!(body.contains("</custom-layout>"));
+    }
+
+    #[test]
+    fn render_unknown_layout_falls_back_to_default() {
+        let view = sample_view().layout("nonexistent-layout-xyz");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+
+        // Falls back to default layout (valid HTML, no nav/sidebar)
+        assert!(body.contains("<!DOCTYPE html>"));
+        assert!(body.contains("ferro-json-ui"));
+        assert!(!body.contains("<nav"));
+        assert!(!body.contains("<aside"));
     }
 }
