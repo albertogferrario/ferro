@@ -19,6 +19,7 @@ mod injectable;
 mod model;
 mod redirect;
 mod request;
+mod resource;
 mod service;
 mod test_macro;
 mod utils;
@@ -507,4 +508,33 @@ pub fn derive_ferro_model(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(ValidateRules, attributes(rule))]
 pub fn derive_validate_rules(input: TokenStream) -> TokenStream {
     validate::validate_impl(input)
+}
+
+/// Derive macro for generating `Resource` trait implementation from struct annotations
+///
+/// Supports struct-level and field-level `#[resource(...)]` attributes:
+///
+/// - `#[resource(model = "path::to::Model")]` (struct-level) — generates `From<Model>` impl
+/// - `#[resource(rename = "new_name")]` (field-level) — use a different key in JSON output
+/// - `#[resource(skip)]` (field-level) — exclude field from JSON output
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ferro::ApiResource;
+///
+/// #[derive(ApiResource)]
+/// #[resource(model = "entities::users::Model")]
+/// pub struct UserResource {
+///     pub id: i32,
+///     pub name: String,
+///     #[resource(rename = "member_since")]
+///     pub created_at: String,
+///     #[resource(skip)]
+///     pub password_hash: String,
+/// }
+/// ```
+#[proc_macro_derive(ApiResource, attributes(resource))]
+pub fn derive_api_resource(input: TokenStream) -> TokenStream {
+    resource::api_resource_impl(input)
 }
