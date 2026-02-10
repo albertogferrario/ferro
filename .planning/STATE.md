@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 46 of 46 (MCP + CLI Updates)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-10 - Completed 46-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-10 - Completed 46-03-PLAN.md
 
-Progress: ████░░░░░░ 40%
+Progress: ██████████ 100%
 
 ## Milestone Summary
 
@@ -28,7 +28,7 @@ Progress: ████░░░░░░ 40%
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 24/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 
 ## Accumulated Context
 
@@ -77,6 +77,7 @@ Archived to PROJECT.md and milestone archive files.
 | 45-01 | Normalize JSON error key from "error" to "message" | Consistency across all error variants |
 | 46-01 | syn visitor for resources, string matching for policies | Consistent with existing tool patterns per artifact type |
 | 46-02 | String matching for rate limiters and broadcast channels | No syn needed for runtime API call scanning; consistent with list_policies |
+| 46-03 | unwrap_or(0) for feature counts in application_info | Graceful fallbacks so application_info never fails due to individual tool errors |
 
 ### Pending Todos
 
@@ -105,9 +106,11 @@ None (pre-existing blockers moved to Phase 38 scope).
 - Phase 43 complete: 3 plans, 2 waves — cache-backed rate limiting, tests, docs + MCP templates (2026-02-10)
 - Phase 44 complete: 4 plans, 3 waves — tokio-tungstenite 0.28, WS upgrade handler, broadcast auth, docs + MCP templates (2026-02-10)
 - Phase 45 complete: 3 plans, 1 wave — actionable error hints, MCP/CLI docs completeness, sample app v4.0 demos (2026-02-10)
+- Phase 46 complete: 3 plans, 3 waves — list_resources + list_policies, list_rate_limiters + list_broadcast_channels, application_info feature counts (2026-02-10)
+- v4.0 Production Readiness milestone complete: 9 phases, 24 plans (2026-02-10)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 46-02-PLAN.md
+Stopped at: Completed 46-03-PLAN.md — Phase 46 and v4.0 milestone complete
 Resume file: None

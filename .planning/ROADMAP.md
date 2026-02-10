@@ -10,11 +10,11 @@
 - ✅ [**v2.1 Inertia DX & Fixes**](milestones/v2.1-ROADMAP.md) — Phases 33-34 (shipped 2026-01-17)
 - ✅ [**v2.2 CLI Improvements**](milestones/v2.2-ROADMAP.md) — Phases 35-37 (shipped 2026-02-09)
 - ✅ [**v3.0 JSON-UI**](milestones/v3.0-ROADMAP.md) — Phases 23-32 (shipped 2026-02-09)
-- 🚧 **v4.0 Production Readiness** — Phases 38-46 (in progress)
+- ✅ **v4.0 Production Readiness** — Phases 38-46 (shipped 2026-02-10)
 
 ---
 
-### 🚧 v4.0 Production Readiness (In Progress)
+### ✅ v4.0 Production Readiness (Complete)
 
 **Milestone Goal:** Make Ferro production-ready with authentication, API resources, rate limiting, real-time improvements, and stability fixes.
 
@@ -124,7 +124,7 @@ Plans:
 Plans:
 - [x] 46-01: list_resources + list_policies MCP tools
 - [x] 46-02: list_rate_limiters + list_broadcast_channels MCP tools + MCP instructions update
-- [ ] 46-03: application_info v4.0 feature counts + list_commands verification
+- [x] 46-03: application_info v4.0 feature counts + list_commands verification
 
 ---
 
@@ -296,7 +296,7 @@ Plans:
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 24/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 
 ### v4.0 Phase Progress
 
@@ -310,4 +310,4 @@ Plans:
 | 43. Rate Limiting | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 44. Real-time Improvements | v4.0 | 4/4 | Complete | 2026-02-10 |
 | 45. DX Polish | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 46. MCP + CLI Updates | v4.0 | 2/3 | In progress | - |
+| 46. MCP + CLI Updates | v4.0 | 3/3 | Complete | 2026-02-10 |
