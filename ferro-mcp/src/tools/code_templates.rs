@@ -30,7 +30,7 @@ pub struct Placeholder {
 /// Execute the code templates tool
 ///
 /// # Arguments
-/// * `category` - Optional filter by category (handler, model, migration, middleware, validation, json_view)
+/// * `category` - Optional filter by category (handler, model, migration, middleware, validation, json_view, rate_limiting)
 pub fn execute(category: Option<&str>) -> CodeTemplates {
     let all_templates = build_templates();
 
@@ -65,6 +65,9 @@ fn build_templates() -> Vec<CodeTemplate> {
 
     // JSON-UI view templates
     templates.extend(json_view_templates());
+
+    // Rate limiting templates
+    templates.extend(rate_limiting_templates());
 
     templates
 }
@@ -1134,6 +1137,87 @@ pub fn view() -> JsonUiView {
     ]
 }
 
+fn rate_limiting_templates() -> Vec<CodeTemplate> {
+    vec![
+        CodeTemplate {
+            name: "define_rate_limiters".to_string(),
+            category: "rate_limiting".to_string(),
+            description: "Define named rate limiters in bootstrap.rs".to_string(),
+            code: r#"use ferro::middleware::{RateLimiter, Limit};
+use ferro::Auth;
+
+pub fn register_rate_limiters() {
+    // API rate limiter: authenticated users get higher limit
+    RateLimiter::define("api", |req| {
+        match Auth::id() {
+            Some(id) => Limit::per_minute(120).by(format!("user:{}", id)),
+            None => Limit::per_minute(60),
+        }
+    });
+
+    // Auth rate limiter: strict per-IP limit on login attempts
+    RateLimiter::define("auth", |req| {
+        let ip = req.header("X-Forwarded-For")
+            .and_then(|s| s.split(',').next())
+            .unwrap_or("unknown")
+            .trim()
+            .to_string();
+        Limit::per_minute(5).by(ip)
+    });
+}"#
+            .to_string(),
+            imports: vec![
+                "use ferro::middleware::{RateLimiter, Limit};".to_string(),
+                "use ferro::Auth;".to_string(),
+            ],
+            placeholders: vec![],
+        },
+        CodeTemplate {
+            name: "throttle_routes".to_string(),
+            category: "rate_limiting".to_string(),
+            description: "Apply named throttle middleware to route groups".to_string(),
+            code: r#"use ferro::middleware::Throttle;
+
+routes! {
+    group!("/api", {
+        get!("/{{entity}}s", controllers::{{entity}}s::index),
+        get!("/{{entity}}s/{id}", controllers::{{entity}}s::show),
+    }).middleware(Throttle::named("api")),
+
+    group!("/auth", {
+        post!("/login", controllers::auth::login),
+        post!("/register", controllers::auth::register),
+    }).middleware(Throttle::named("auth")),
+}"#
+            .to_string(),
+            imports: vec!["use ferro::middleware::Throttle;".to_string()],
+            placeholders: vec![Placeholder {
+                name: "{{entity}}".to_string(),
+                description: "Entity name in snake_case".to_string(),
+                example: "user".to_string(),
+            }],
+        },
+        CodeTemplate {
+            name: "inline_throttle".to_string(),
+            category: "rate_limiting".to_string(),
+            description: "Apply inline rate limit without named registration".to_string(),
+            code: r#"use ferro::middleware::Throttle;
+
+// Inline throttle: no need to register with RateLimiter::define()
+get!("/health", controllers::health::check)
+    .middleware(Throttle::per_minute(10))
+
+// Other inline options:
+// Throttle::per_second(5)
+// Throttle::per_hour(1000)
+// Throttle::per_day(10000)"#
+                .to_string(),
+            imports: vec!["use ferro::middleware::Throttle;".to_string()],
+            placeholders: vec![],
+        },
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1168,6 +1252,10 @@ mod tests {
         assert!(
             categories.contains("json_view"),
             "Should have json_view templates"
+        );
+        assert!(
+            categories.contains("rate_limiting"),
+            "Should have rate_limiting templates"
         );
     }
 
