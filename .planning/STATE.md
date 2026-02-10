@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Planning next milestone
+**Current focus:** v5.0 Proximity — JSON-UI Field Test
 
 ## Current Position
 
-Phase: 46 of 46 (all milestones complete)
+Phase: 47 of 52 (JSON-UI Map Component)
 Plan: N/A
-Status: Ready to plan next milestone
-Last activity: 2026-02-10 — v4.0 milestone complete
+Status: Ready to plan
+Last activity: 2026-02-10 — v5.0 milestone created
 
-Progress: ██████████ 100%
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone Summary
 
@@ -29,6 +29,7 @@ Progress: ██████████ 100%
 | v2.2 CLI Improvements | 35-37 | 5 | Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | Complete | 2026-02-09 |
 | v4.0 Production Readiness | 38-46 | 24 | Complete | 2026-02-10 |
+| v5.0 Proximity — JSON-UI Field Test | 47-52 | TBD | In Progress | — |
 
 ## Accumulated Context
 
@@ -46,10 +47,10 @@ None.
 
 ### Roadmap Evolution
 
-All milestones through v4.0 complete. See .planning/MILESTONES.md for full history.
+v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of JSON-UI and v4.0 features via a map-based social network app.
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: v4.0 Production Readiness milestone archived
+Stopped at: v5.0 milestone created, ready to plan Phase 47
 Resume file: None

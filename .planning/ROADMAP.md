@@ -11,6 +11,27 @@
 - ✅ [**v2.2 CLI Improvements**](milestones/v2.2-ROADMAP.md) — Phases 35-37 (shipped 2026-02-09)
 - ✅ [**v3.0 JSON-UI**](milestones/v3.0-ROADMAP.md) — Phases 23-32 (shipped 2026-02-09)
 - ✅ [**v4.0 Production Readiness**](milestones/v4.0-ROADMAP.md) — Phases 38-46 (shipped 2026-02-10)
+- 🚧 **v5.0 Proximity — JSON-UI Field Test** — Phases 47-52 (in progress)
+
+---
+
+## 🚧 v5.0 Proximity — JSON-UI Field Test (Phases 47-52)
+
+**Milestone Goal:** Build a map-based social network app as the first real-world validation of JSON-UI and v4.0 features.
+
+**Constraints:**
+- App lives as a new workspace crate (`app-proximity/`)
+- JSON-UI is the only rendering approach — no Inertia, no custom HTML
+- JSON-UI fixes happen inline as blockers are discovered
+
+| Phase | Goal | Depends on | Research | Plans |
+|-------|------|------------|----------|-------|
+| 47. JSON-UI Map Component | Add Map component to ferro-json-ui with Leaflet/Mapbox rendering | — | Likely (third-party JS library integration) | TBD |
+| 48. App Scaffold + Auth & Profiles | New workspace crate, user model with location fields, auth setup, profile views | 47 | Unlikely (existing patterns) | TBD |
+| 49. Map View & Nearby Users | Geospatial queries, map rendering with user markers, proximity discovery | 48 | Likely (geospatial queries) | TBD |
+| 50. Location Posts & Check-ins | Post model, location-tagged content, nearby feed, JSON-UI forms/actions | 49 | Unlikely (standard patterns) | TBD |
+| 51. Real-time Presence | WebSocket broadcasting for live nearby-user updates, presence indicators | 50 | Unlikely (existing ferro-broadcast) | TBD |
+| 52. Polish & JSON-UI Fixes | Address accumulated JSON-UI issues, UI polish, final integration testing | 51 | Unlikely (internal work) | TBD |
 
 ---
 
@@ -206,4 +227,5 @@
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
+| v5.0 Proximity — JSON-UI Field Test | 47-52 | TBD | 🚧 In Progress | — |
 
