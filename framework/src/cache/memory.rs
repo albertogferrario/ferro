@@ -186,3 +186,61 @@ impl CacheStore for InMemoryCache {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_expire_sets_ttl() {
+        let cache = InMemoryCache::new();
+
+        // Increment a key so it exists
+        cache.increment("counter", 1).await.unwrap();
+
+        // Set a 1-second TTL
+        let result = cache.expire("counter", Duration::from_secs(1)).await.unwrap();
+        assert!(result, "expire should return true for existing key");
+
+        // Key should still be accessible immediately
+        let val = cache.get_raw("counter").await.unwrap();
+        assert_eq!(val, Some("1".to_string()));
+
+        // Wait for TTL to expire
+        tokio::time::sleep(Duration::from_millis(1100)).await;
+
+        // Key should now be expired
+        let val = cache.get_raw("counter").await.unwrap();
+        assert!(val.is_none(), "key should be expired after TTL");
+
+        // Increment should treat it as new (returns 1)
+        let new_val = cache.increment("counter", 1).await.unwrap();
+        assert_eq!(new_val, 1, "increment on expired key should return 1");
+    }
+
+    #[tokio::test]
+    async fn test_expire_missing_key() {
+        let cache = InMemoryCache::new();
+
+        let result = cache.expire("nonexistent", Duration::from_secs(10)).await.unwrap();
+        assert!(!result, "expire on missing key should return false");
+    }
+
+    #[tokio::test]
+    async fn test_increment_then_expire_preserves_value() {
+        let cache = InMemoryCache::new();
+
+        // Increment to 5
+        for _ in 0..5 {
+            cache.increment("counter", 1).await.unwrap();
+        }
+
+        // Set TTL (long enough not to expire during test)
+        let result = cache.expire("counter", Duration::from_secs(10)).await.unwrap();
+        assert!(result);
+
+        // Increment again should return 6 (not 1)
+        let val = cache.increment("counter", 1).await.unwrap();
+        assert_eq!(val, 6, "expire should not reset the value");
+    }
+}
