@@ -63,7 +63,7 @@ Plans:
 Plans:
 - [x] 41-01: Resource trait + ResourceMap builder
 - [x] 41-02: ApiResource derive macro
-- [ ] 41-03: CLI make:resource + docs + sample app
+- [x] 41-03: CLI make:resource + docs + sample app
 
 #### Phase 42: API Resources Advanced
 
@@ -295,7 +295,7 @@ Plans:
 | 38. Fix Pre-existing Blockers | v4.0 | 2/2 | Complete | 2026-02-09 |
 | 39. Core Authentication | v4.0 | 4/4 | Complete | 2026-02-09 |
 | 40. Auth Middleware | v4.0 | 2/2 | Complete | 2026-02-10 |
-| 41. API Resources Basics | v4.0 | 2/3 | In progress | - |
+| 41. API Resources Basics | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 42. API Resources Advanced | v4.0 | 0/? | Not started | - |
 | 43. Rate Limiting | v4.0 | 0/? | Not started | - |
 | 44. Real-time Improvements | v4.0 | 0/? | Not started | - |

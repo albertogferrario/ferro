@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 41 of 46 (API Resources Basics)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-10 - Completed 41-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-10 - Completed 41-03-PLAN.md
 
-Progress: ██░░░░░░░░ 18%
+Progress: ██░░░░░░░░ 20%
 
 ## Milestone Summary
 
@@ -51,6 +51,8 @@ Archived to PROJECT.md and milestone archive files.
 | 41-01 | TCP loopback helper for Request in unit tests | hyper::body::Incoming has no public constructor; TCP loopback creates real Request |
 | 41-02 | ferro:: prefix in generated macro code | Matches existing macro patterns (handler, model); uses framework re-exports |
 | 41-02 | From<Model> copies all fields including skipped | Skip only affects JSON output; users can access skipped fields programmatically |
+| 41-03 | Profile handler uses Auth::user_as instead of AuthUser extractor | AuthUser consumes Request; Auth::user_as allows access to both req and user |
+| 41-03 | Skip MCP application_info update | No structured feature list exists; deferred to Phase 46 |
 
 ### Pending Todos
 
@@ -74,9 +76,10 @@ None (pre-existing blockers moved to Phase 38 scope).
 - Phase 38 complete: 2 plans, 1 wave — test isolation fixes + storage/Inertia cleanup (2026-02-09)
 - Phase 39 complete: 4 plans, 2 waves — user model/provider, auth controllers/routes, make:auth CLI, auth docs (2026-02-09)
 - Phase 40 complete: 2 plans, 2 waves — AuthUser/OptionalUser extractors + sample app, templates, docs (2026-02-10)
+- Phase 41 complete: 3 plans, 3 waves — Resource trait + ResourceMap, ApiResource derive macro, CLI + docs + sample app (2026-02-10)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 41-02-PLAN.md (ApiResource derive macro)
+Stopped at: Completed 41-03-PLAN.md (CLI, docs, sample app) — Phase 41 complete
 Resume file: None
