@@ -294,7 +294,7 @@ Plans:
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 21/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 24/? | 🚧 In Progress | - |
 
 ### v4.0 Phase Progress
 

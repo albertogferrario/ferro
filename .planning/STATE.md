@@ -28,7 +28,7 @@ Progress: ████░░░░░░ 38%
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 13/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 24/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -102,9 +102,10 @@ None (pre-existing blockers moved to Phase 38 scope).
 - Phase 42 complete: 3 plans, 2 waves — PaginationMeta/ResourceCollection, when_loaded/collection(), docs + MCP templates (2026-02-10)
 - Phase 43 complete: 3 plans, 2 waves — cache-backed rate limiting, tests, docs + MCP templates (2026-02-10)
 - Phase 44 complete: 4 plans, 3 waves — tokio-tungstenite 0.28, WS upgrade handler, broadcast auth, docs + MCP templates (2026-02-10)
+- Phase 45 complete: 3 plans, 1 wave — actionable error hints, MCP/CLI docs completeness, sample app v4.0 demos (2026-02-10)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 45-01-PLAN.md (Phase 45 complete)
+Stopped at: Completed Phase 45 (all 3 plans)
 Resume file: None
