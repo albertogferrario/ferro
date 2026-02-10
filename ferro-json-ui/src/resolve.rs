@@ -77,7 +77,8 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
         | Component::Pagination(_)
         | Component::Progress(_)
         | Component::Avatar(_)
-        | Component::Skeleton(_) => {}
+        | Component::Skeleton(_)
+        | Component::Plugin(_) => {}
     }
 }
 
@@ -184,7 +185,8 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         | Component::Pagination(_)
         | Component::Progress(_)
         | Component::Avatar(_)
-        | Component::Skeleton(_) => {}
+        | Component::Skeleton(_)
+        | Component::Plugin(_) => {}
     }
 }
 
@@ -289,7 +291,8 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::Pagination(_)
         | Component::Progress(_)
         | Component::Avatar(_)
-        | Component::Skeleton(_) => {}
+        | Component::Skeleton(_)
+        | Component::Plugin(_) => {}
     }
 }
 

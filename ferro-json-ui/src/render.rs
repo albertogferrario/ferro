@@ -11,8 +11,8 @@ use crate::component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbProps, ButtonProps,
     ButtonVariant, CardProps, CheckboxProps, Component, ComponentNode, DescriptionListProps,
     FormProps, IconPosition, InputProps, InputType, ModalProps, Orientation, PaginationProps,
-    ProgressProps, SelectProps, SeparatorProps, Size, SkeletonProps, SwitchProps, TableProps,
-    TabsProps, TextElement, TextProps,
+    PluginProps, ProgressProps, SelectProps, SeparatorProps, Size, SkeletonProps, SwitchProps,
+    TableProps, TabsProps, TextElement, TextProps,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::view::JsonUiView;
@@ -81,7 +81,24 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::Select(props) => render_select(props, data),
         Component::Checkbox(props) => render_checkbox(props, data),
         Component::Switch(props) => render_switch(props, data),
+
+        // Plugin components (rendered via plugin registry).
+        Component::Plugin(props) => render_plugin(props, data),
     }
+}
+
+// ── Plugin component renderer ───────────────────────────────────────────
+
+fn render_plugin(props: &PluginProps, data: &Value) -> String {
+    crate::plugin::with_plugin(&props.plugin_type, |plugin| {
+        plugin.render(&props.props, data)
+    })
+    .unwrap_or_else(|| {
+        format!(
+            "<div class=\"p-4 bg-red-50 text-red-600 rounded\">Unknown plugin component: {}</div>",
+            html_escape(&props.plugin_type)
+        )
+    })
 }
 
 // ── Container component renderers ───────────────────────────────────────

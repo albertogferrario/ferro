@@ -468,8 +468,7 @@ mod tests {
         register_plugin(TestPlugin);
 
         // Requesting same plugin type twice should not duplicate assets.
-        let assets =
-            collect_plugin_assets(&["TestWidget".to_string(), "TestWidget".to_string()]);
+        let assets = collect_plugin_assets(&["TestWidget".to_string(), "TestWidget".to_string()]);
         assert_eq!(assets.css.len(), 1);
         assert_eq!(assets.js.len(), 1);
     }

@@ -3,6 +3,8 @@
 //! Defines the available UI components with typed props. Each component
 //! uses serde's tagged enum representation so JSON includes `"type": "Card"`.
 
+use serde::de::{self, Deserializer};
+use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::action::Action;
@@ -420,9 +422,62 @@ pub struct SkeletonProps {
     pub rounded: Option<bool>,
 }
 
-/// Tagged component enum. Serializes with `"type": "Card"` etc.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type")]
+/// Props for a plugin component.
+///
+/// The `plugin_type` field holds the original `"type"` value from JSON,
+/// and `props` holds the remaining fields. Used for custom interactive
+/// components registered via the plugin system.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PluginProps {
+    /// The plugin component type name (e.g., "Map").
+    pub plugin_type: String,
+    /// Raw props passed to the plugin's render function.
+    pub props: serde_json::Value,
+}
+
+impl Serialize for PluginProps {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // Flatten plugin_type back as "type" and merge in the props object.
+        let obj = self.props.as_object();
+        let extra_len = obj.map_or(0, |m| m.len());
+        let mut map = serializer.serialize_map(Some(1 + extra_len))?;
+        map.serialize_entry("type", &self.plugin_type)?;
+        if let Some(obj) = obj {
+            for (k, v) in obj {
+                if k != "type" {
+                    map.serialize_entry(k, v)?;
+                }
+            }
+        }
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for PluginProps {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut value = serde_json::Value::deserialize(deserializer)?;
+        let plugin_type = value
+            .get("type")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| de::Error::missing_field("type"))?;
+        // Remove "type" from the props to avoid redundancy.
+        if let Some(obj) = value.as_object_mut() {
+            obj.remove("type");
+        }
+        Ok(PluginProps {
+            plugin_type,
+            props: value,
+        })
+    }
+}
+
+/// Component catalog enum. Built-in types are deserialized by name,
+/// unknown types fall through to the `Plugin` variant.
+///
+/// Serializes built-in variants with `"type": "Card"` etc. The Plugin
+/// variant serializes with the plugin's own type name.
+#[derive(Debug, Clone, PartialEq)]
 pub enum Component {
     Card(CardProps),
     Table(TableProps),
@@ -444,6 +499,138 @@ pub enum Component {
     Progress(ProgressProps),
     Avatar(AvatarProps),
     Skeleton(SkeletonProps),
+    Plugin(PluginProps),
+}
+
+// ── Custom Serialize for Component ───────────────────────────────────────
+
+/// Helper: serialize a built-in variant by serializing its props, then
+/// injecting `"type": "<name>"` into the resulting JSON object.
+fn serialize_tagged<S: Serializer, T: Serialize>(
+    serializer: S,
+    type_name: &str,
+    props: &T,
+) -> Result<S::Ok, S::Error> {
+    let mut value = serde_json::to_value(props).map_err(serde::ser::Error::custom)?;
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert(
+            "type".to_string(),
+            serde_json::Value::String(type_name.to_string()),
+        );
+    }
+    value.serialize(serializer)
+}
+
+impl Serialize for Component {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Component::Card(p) => serialize_tagged(serializer, "Card", p),
+            Component::Table(p) => serialize_tagged(serializer, "Table", p),
+            Component::Form(p) => serialize_tagged(serializer, "Form", p),
+            Component::Button(p) => serialize_tagged(serializer, "Button", p),
+            Component::Input(p) => serialize_tagged(serializer, "Input", p),
+            Component::Select(p) => serialize_tagged(serializer, "Select", p),
+            Component::Alert(p) => serialize_tagged(serializer, "Alert", p),
+            Component::Badge(p) => serialize_tagged(serializer, "Badge", p),
+            Component::Modal(p) => serialize_tagged(serializer, "Modal", p),
+            Component::Text(p) => serialize_tagged(serializer, "Text", p),
+            Component::Checkbox(p) => serialize_tagged(serializer, "Checkbox", p),
+            Component::Switch(p) => serialize_tagged(serializer, "Switch", p),
+            Component::Separator(p) => serialize_tagged(serializer, "Separator", p),
+            Component::DescriptionList(p) => serialize_tagged(serializer, "DescriptionList", p),
+            Component::Tabs(p) => serialize_tagged(serializer, "Tabs", p),
+            Component::Breadcrumb(p) => serialize_tagged(serializer, "Breadcrumb", p),
+            Component::Pagination(p) => serialize_tagged(serializer, "Pagination", p),
+            Component::Progress(p) => serialize_tagged(serializer, "Progress", p),
+            Component::Avatar(p) => serialize_tagged(serializer, "Avatar", p),
+            Component::Skeleton(p) => serialize_tagged(serializer, "Skeleton", p),
+            Component::Plugin(p) => p.serialize(serializer),
+        }
+    }
+}
+
+// ── Custom Deserialize for Component ─────────────────────────────────────
+
+impl<'de> Deserialize<'de> for Component {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let type_str = value
+            .get("type")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| de::Error::missing_field("type"))?;
+
+        match type_str {
+            "Card" => serde_json::from_value::<CardProps>(value)
+                .map(Component::Card)
+                .map_err(de::Error::custom),
+            "Table" => serde_json::from_value::<TableProps>(value)
+                .map(Component::Table)
+                .map_err(de::Error::custom),
+            "Form" => serde_json::from_value::<FormProps>(value)
+                .map(Component::Form)
+                .map_err(de::Error::custom),
+            "Button" => serde_json::from_value::<ButtonProps>(value)
+                .map(Component::Button)
+                .map_err(de::Error::custom),
+            "Input" => serde_json::from_value::<InputProps>(value)
+                .map(Component::Input)
+                .map_err(de::Error::custom),
+            "Select" => serde_json::from_value::<SelectProps>(value)
+                .map(Component::Select)
+                .map_err(de::Error::custom),
+            "Alert" => serde_json::from_value::<AlertProps>(value)
+                .map(Component::Alert)
+                .map_err(de::Error::custom),
+            "Badge" => serde_json::from_value::<BadgeProps>(value)
+                .map(Component::Badge)
+                .map_err(de::Error::custom),
+            "Modal" => serde_json::from_value::<ModalProps>(value)
+                .map(Component::Modal)
+                .map_err(de::Error::custom),
+            "Text" => serde_json::from_value::<TextProps>(value)
+                .map(Component::Text)
+                .map_err(de::Error::custom),
+            "Checkbox" => serde_json::from_value::<CheckboxProps>(value)
+                .map(Component::Checkbox)
+                .map_err(de::Error::custom),
+            "Switch" => serde_json::from_value::<SwitchProps>(value)
+                .map(Component::Switch)
+                .map_err(de::Error::custom),
+            "Separator" => serde_json::from_value::<SeparatorProps>(value)
+                .map(Component::Separator)
+                .map_err(de::Error::custom),
+            "DescriptionList" => serde_json::from_value::<DescriptionListProps>(value)
+                .map(Component::DescriptionList)
+                .map_err(de::Error::custom),
+            "Tabs" => serde_json::from_value::<TabsProps>(value)
+                .map(Component::Tabs)
+                .map_err(de::Error::custom),
+            "Breadcrumb" => serde_json::from_value::<BreadcrumbProps>(value)
+                .map(Component::Breadcrumb)
+                .map_err(de::Error::custom),
+            "Pagination" => serde_json::from_value::<PaginationProps>(value)
+                .map(Component::Pagination)
+                .map_err(de::Error::custom),
+            "Progress" => serde_json::from_value::<ProgressProps>(value)
+                .map(Component::Progress)
+                .map_err(de::Error::custom),
+            "Avatar" => serde_json::from_value::<AvatarProps>(value)
+                .map(Component::Avatar)
+                .map_err(de::Error::custom),
+            "Skeleton" => serde_json::from_value::<SkeletonProps>(value)
+                .map(Component::Skeleton)
+                .map_err(de::Error::custom),
+            _ => {
+                // Unknown type: treat as a plugin component.
+                let plugin_type = type_str.to_string();
+                let mut props = value;
+                if let Some(obj) = props.as_object_mut() {
+                    obj.remove("type");
+                }
+                Ok(Component::Plugin(PluginProps { plugin_type, props }))
+            }
+        }
+    }
 }
 
 /// A component node wrapping a component with shared fields.
@@ -1483,5 +1670,144 @@ mod tests {
         assert_eq!(json["data_path"], "/data/user/notifications_enabled");
         let parsed: Component = serde_json::from_value(json).unwrap();
         assert_eq!(parsed, switch);
+    }
+
+    // ─── Plugin variant tests ────────────────────────────────────────
+
+    #[test]
+    fn unknown_type_deserializes_as_plugin() {
+        let json = r#"{"type": "Map", "center": [40.7, -74.0], "zoom": 12}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Plugin(props) => {
+                assert_eq!(props.plugin_type, "Map");
+                assert_eq!(props.props["center"][0], 40.7);
+                assert_eq!(props.props["center"][1], -74.0);
+                assert_eq!(props.props["zoom"], 12);
+                // "type" should be removed from props
+                assert!(props.props.get("type").is_none());
+            }
+            _ => panic!("expected Plugin"),
+        }
+    }
+
+    #[test]
+    fn plugin_round_trips() {
+        let plugin = Component::Plugin(PluginProps {
+            plugin_type: "Chart".to_string(),
+            props: serde_json::json!({"data": [1, 2, 3], "style": "bar"}),
+        });
+        let json = serde_json::to_value(&plugin).unwrap();
+        assert_eq!(json["type"], "Chart");
+        assert_eq!(json["data"], serde_json::json!([1, 2, 3]));
+        assert_eq!(json["style"], "bar");
+
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, plugin);
+    }
+
+    #[test]
+    fn plugin_serializes_with_type_field() {
+        let plugin = Component::Plugin(PluginProps {
+            plugin_type: "Map".to_string(),
+            props: serde_json::json!({"lat": 51.5, "lng": -0.1}),
+        });
+        let json = serde_json::to_value(&plugin).unwrap();
+        assert_eq!(json["type"], "Map");
+        assert_eq!(json["lat"], 51.5);
+        assert_eq!(json["lng"], -0.1);
+    }
+
+    #[test]
+    fn plugin_with_empty_props() {
+        let json = r#"{"type": "CustomWidget"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Plugin(props) => {
+                assert_eq!(props.plugin_type, "CustomWidget");
+                assert!(props.props.as_object().unwrap().is_empty());
+            }
+            _ => panic!("expected Plugin"),
+        }
+    }
+
+    #[test]
+    fn plugin_in_component_node() {
+        let node = ComponentNode {
+            key: "map-1".to_string(),
+            component: Component::Plugin(PluginProps {
+                plugin_type: "Map".to_string(),
+                props: serde_json::json!({"center": [0.0, 0.0]}),
+            }),
+            action: None,
+            visibility: None,
+        };
+        let json = serde_json::to_string(&node).unwrap();
+        let parsed: ComponentNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, node);
+
+        let value = serde_json::to_value(&node).unwrap();
+        assert_eq!(value["type"], "Map");
+        assert_eq!(value["key"], "map-1");
+    }
+
+    #[test]
+    fn known_types_not_treated_as_plugin() {
+        // All known type names must still deserialize to their specific variants.
+        let known_types = [
+            "Card",
+            "Table",
+            "Form",
+            "Button",
+            "Input",
+            "Select",
+            "Alert",
+            "Badge",
+            "Modal",
+            "Text",
+            "Checkbox",
+            "Switch",
+            "Separator",
+            "DescriptionList",
+            "Tabs",
+            "Breadcrumb",
+            "Pagination",
+            "Progress",
+            "Avatar",
+            "Skeleton",
+        ];
+        for type_name in &known_types {
+            // Construct minimal valid JSON for each type (using the
+            // all_component_variants_serialize test data format).
+            let json_str = match *type_name {
+                "Card" => r#"{"type":"Card","title":"t"}"#,
+                "Table" => r#"{"type":"Table","columns":[],"data_path":"/d"}"#,
+                "Form" => r#"{"type":"Form","action":{"handler":"h","method":"POST"},"fields":[]}"#,
+                "Button" => r#"{"type":"Button","label":"b"}"#,
+                "Input" => r#"{"type":"Input","field":"f","label":"l"}"#,
+                "Select" => r#"{"type":"Select","field":"f","label":"l","options":[]}"#,
+                "Alert" => r#"{"type":"Alert","message":"m"}"#,
+                "Badge" => r#"{"type":"Badge","label":"b"}"#,
+                "Modal" => r#"{"type":"Modal","title":"t"}"#,
+                "Text" => r#"{"type":"Text","content":"c"}"#,
+                "Checkbox" => r#"{"type":"Checkbox","field":"f","label":"l"}"#,
+                "Switch" => r#"{"type":"Switch","field":"f","label":"l"}"#,
+                "Separator" => r#"{"type":"Separator"}"#,
+                "DescriptionList" => r#"{"type":"DescriptionList","items":[]}"#,
+                "Tabs" => r#"{"type":"Tabs","default_tab":"t","tabs":[]}"#,
+                "Breadcrumb" => r#"{"type":"Breadcrumb","items":[]}"#,
+                "Pagination" => r#"{"type":"Pagination","current_page":1,"per_page":10,"total":0}"#,
+                "Progress" => r#"{"type":"Progress","value":0}"#,
+                "Avatar" => r#"{"type":"Avatar","alt":"a"}"#,
+                "Skeleton" => r#"{"type":"Skeleton"}"#,
+                _ => unreachable!(),
+            };
+            let component: Component = serde_json::from_str(json_str).unwrap();
+            assert!(
+                !matches!(component, Component::Plugin(_)),
+                "type {} should not deserialize as Plugin",
+                type_name
+            );
+        }
     }
 }
