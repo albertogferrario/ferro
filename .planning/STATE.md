@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 41 of 46 (API Resources Basics)
-Plan: 0 of 3 in current phase
-Status: Phase planned, ready for execution
-Last activity: 2026-02-10 - Planned Phase 41
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-10 - Completed 41-01-PLAN.md
 
-Progress: ██░░░░░░░░ 16%
+Progress: ██░░░░░░░░ 17%
 
 ## Milestone Summary
 
@@ -47,6 +47,8 @@ Archived to PROJECT.md and milestone archive files.
 | 39-02 | Alias ferro::AuthMiddleware as SessionAuthMiddleware | Avoids name conflict with app's existing header-based AuthMiddleware |
 | 40-01 | 401 via FrameworkError::domain not Unauthorized | Unauthorized is 403 (authorization); 401 is authentication failure |
 | 40-01 | AuthUser counts as one FromRequest param per handler | Existing framework constraint: one body-consuming extractor per handler |
+| 41-01 | Enable serde_json preserve_order feature | ResourceMap needs insertion-order field output; BTreeMap default sorts alphabetically |
+| 41-01 | TCP loopback helper for Request in unit tests | hyper::body::Incoming has no public constructor; TCP loopback creates real Request |
 
 ### Pending Todos
 
@@ -74,5 +76,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Planned Phase 41 (3 plans, 3 waves)
+Stopped at: Completed 41-01-PLAN.md (Resource trait + ResourceMap builder)
 Resume file: None
