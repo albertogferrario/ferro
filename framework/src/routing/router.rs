@@ -124,6 +124,7 @@ enum Method {
     Get,
     Post,
     Put,
+    Patch,
     Delete,
 }
 
@@ -139,6 +140,7 @@ pub struct Router {
     get_routes: MatchitRouter<RouteValue>,
     post_routes: MatchitRouter<RouteValue>,
     put_routes: MatchitRouter<RouteValue>,
+    patch_routes: MatchitRouter<RouteValue>,
     delete_routes: MatchitRouter<RouteValue>,
     /// Middleware assignments: path -> boxed middleware instances
     route_middleware: HashMap<String, Vec<BoxedMiddleware>>,
@@ -154,6 +156,7 @@ impl Router {
             get_routes: MatchitRouter::new(),
             post_routes: MatchitRouter::new(),
             put_routes: MatchitRouter::new(),
+            patch_routes: MatchitRouter::new(),
             delete_routes: MatchitRouter::new(),
             route_middleware: HashMap::new(),
             fallback_handler: None,
@@ -213,6 +216,14 @@ impl Router {
             .insert(path, (handler, path.to_string()))
             .ok();
         register_route("PUT", path);
+    }
+
+    /// Insert a PATCH route with a pre-boxed handler (internal use for groups)
+    pub(crate) fn insert_patch(&mut self, path: &str, handler: Arc<BoxedHandler>) {
+        self.patch_routes
+            .insert(path, (handler, path.to_string()))
+            .ok();
+        register_route("PATCH", path);
     }
 
     /// Insert a DELETE route with a pre-boxed handler (internal use for groups)
@@ -277,6 +288,24 @@ impl Router {
         }
     }
 
+    /// Register a PATCH route
+    pub fn patch<H, Fut>(mut self, path: &str, handler: H) -> RouteBuilder
+    where
+        H: Fn(Request) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    {
+        let handler: BoxedHandler = Box::new(move |req| Box::pin(handler(req)));
+        self.patch_routes
+            .insert(path, (Arc::new(handler), path.to_string()))
+            .ok();
+        register_route("PATCH", path);
+        RouteBuilder {
+            router: self,
+            last_path: path.to_string(),
+            _last_method: Method::Patch,
+        }
+    }
+
     /// Register a DELETE route
     pub fn delete<H, Fut>(mut self, path: &str, handler: H) -> RouteBuilder
     where
@@ -308,6 +337,7 @@ impl Router {
             hyper::Method::GET => &self.get_routes,
             hyper::Method::POST => &self.post_routes,
             hyper::Method::PUT => &self.put_routes,
+            hyper::Method::PATCH => &self.patch_routes,
             hyper::Method::DELETE => &self.delete_routes,
             _ => return None,
         };
@@ -404,6 +434,15 @@ impl RouteBuilder {
         Fut: Future<Output = Response> + Send + 'static,
     {
         self.router.put(path, handler)
+    }
+
+    /// Register a PATCH route (for chaining without .name())
+    pub fn patch<H, Fut>(self, path: &str, handler: H) -> RouteBuilder
+    where
+        H: Fn(Request) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    {
+        self.router.patch(path, handler)
     }
 
     /// Register a DELETE route (for chaining without .name())

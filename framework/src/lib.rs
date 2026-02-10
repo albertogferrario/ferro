@@ -81,6 +81,7 @@ pub use routing::{
     __delete_impl,
     __fallback_impl,
     __get_impl,
+    __patch_impl,
     __post_impl,
     __put_impl,
     get_registered_routes,

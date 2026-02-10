@@ -80,6 +80,7 @@ pub enum HttpMethod {
     Get,
     Post,
     Put,
+    Patch,
     Delete,
 }
 
@@ -130,6 +131,7 @@ where
             HttpMethod::Get => router.get(&converted_path, self.handler),
             HttpMethod::Post => router.post(&converted_path, self.handler),
             HttpMethod::Put => router.put(&converted_path, self.handler),
+            HttpMethod::Patch => router.patch(&converted_path, self.handler),
             HttpMethod::Delete => router.delete(&converted_path, self.handler),
         };
 
@@ -230,6 +232,34 @@ where
     Fut: Future<Output = Response> + Send + 'static,
 {
     RouteDefBuilder::new(HttpMethod::Put, path, handler)
+}
+
+/// Create a PATCH route definition with compile-time path validation
+///
+/// # Example
+/// ```rust,ignore
+/// patch!("/users/{id}", controllers::user::patch).name("users.patch")
+/// ```
+///
+/// # Compile Error
+///
+/// Fails to compile if path doesn't start with '/'.
+#[macro_export]
+macro_rules! patch {
+    ($path:expr, $handler:expr) => {{
+        const _: &str = $crate::validate_route_path($path);
+        $crate::__patch_impl($path, $handler)
+    }};
+}
+
+/// Internal implementation for PATCH routes (used by the patch! macro)
+#[doc(hidden)]
+pub fn __patch_impl<H, Fut>(path: &'static str, handler: H) -> RouteDefBuilder<H>
+where
+    H: Fn(Request) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Response> + Send + 'static,
+{
+    RouteDefBuilder::new(HttpMethod::Patch, path, handler)
 }
 
 /// Create a DELETE route definition with compile-time path validation
@@ -521,6 +551,9 @@ impl GroupDef {
                         }
                         HttpMethod::Put => {
                             router.insert_put(full_path, route.handler);
+                        }
+                        HttpMethod::Patch => {
+                            router.insert_patch(full_path, route.handler);
                         }
                         HttpMethod::Delete => {
                             router.insert_delete(full_path, route.handler);
@@ -839,6 +872,9 @@ impl ResourceDef {
                 }
                 HttpMethod::Put => {
                     router.insert_put(full_path, route.handler);
+                }
+                HttpMethod::Patch => {
+                    router.insert_patch(full_path, route.handler);
                 }
                 HttpMethod::Delete => {
                     router.insert_delete(full_path, route.handler);

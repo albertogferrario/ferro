@@ -9,6 +9,7 @@ pub use macros::{
     __delete_impl,
     __fallback_impl,
     __get_impl,
+    __patch_impl,
     __post_impl,
     __put_impl,
     validate_route_path,
