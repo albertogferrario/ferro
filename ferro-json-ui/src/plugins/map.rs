@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-ferro-map]').forEach(function(el) {
     try {
       var cfg = JSON.parse(el.getAttribute('data-ferro-map'));
-      var map = L.map(el).setView(cfg.center, cfg.zoom || 13);
+      var map = L.map(el);
 
       var tileUrl = cfg.tile_url || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
       var attribution = cfg.attribution || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -236,13 +236,23 @@ document.addEventListener('DOMContentLoaded', function() {
         maxZoom: maxZoom
       }).addTo(map);
 
+      var allMarkers = [];
       if (cfg.markers) {
         cfg.markers.forEach(function(m) {
           var marker = L.marker([m.lat, m.lng]).addTo(map);
           if (m.popup) {
             marker.bindPopup(m.popup);
           }
+          allMarkers.push(marker);
         });
+      }
+
+      if (cfg.fit_bounds && allMarkers.length > 0) {
+        map.fitBounds(L.featureGroup(allMarkers).getBounds(), { padding: [50, 50] });
+      } else if (cfg.center) {
+        map.setView(cfg.center, cfg.zoom || 13);
+      } else {
+        map.setView([0, 0], 2);
       }
 
       if (typeof IntersectionObserver !== 'undefined') {
@@ -415,6 +425,14 @@ mod tests {
         assert!(
             script.contains("IntersectionObserver"),
             "script should use IntersectionObserver"
+        );
+        assert!(
+            script.contains("fitBounds"),
+            "script should support fitBounds auto-zoom"
+        );
+        assert!(
+            script.contains("featureGroup"),
+            "script should use featureGroup for bounds calculation"
         );
     }
 
