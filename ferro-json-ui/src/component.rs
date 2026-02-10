@@ -218,6 +218,9 @@ pub struct InputProps {
     /// Data path for pre-filling from handler data (e.g., "/data/user/name").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_path: Option<String>,
+    /// HTML step attribute for number inputs (e.g., "any", "0.01").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step: Option<String>,
 }
 
 /// Props for Select component.
@@ -831,6 +834,7 @@ mod tests {
                     description: None,
                     default_value: None,
                     data_path: None,
+                    step: None,
                 }),
                 action: None,
                 visibility: None,
@@ -929,6 +933,7 @@ mod tests {
                 description: None,
                 default_value: None,
                 data_path: None,
+                step: None,
             }),
             Component::Select(SelectProps {
                 field: "f".to_string(),
@@ -1159,6 +1164,7 @@ mod tests {
             description: Some("Your work email".to_string()),
             default_value: Some("user@example.com".to_string()),
             data_path: None,
+            step: None,
         });
         let json = serde_json::to_value(&input).unwrap();
         assert_eq!(json["error"], "Invalid email");
@@ -1432,6 +1438,7 @@ mod tests {
                             description: None,
                             default_value: None,
                             data_path: None,
+                            step: None,
                         }),
                         action: None,
                         visibility: None,
@@ -1453,6 +1460,7 @@ mod tests {
                             description: None,
                             default_value: None,
                             data_path: None,
+                            step: None,
                         }),
                         action: None,
                         visibility: None,
@@ -1608,6 +1616,7 @@ mod tests {
             description: None,
             default_value: None,
             data_path: Some("/data/user/name".to_string()),
+            step: None,
         });
         let json = serde_json::to_value(&input).unwrap();
         assert_eq!(json["data_path"], "/data/user/name");

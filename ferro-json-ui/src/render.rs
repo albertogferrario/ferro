@@ -584,6 +584,9 @@ fn render_input(props: &InputProps, data: &Value) -> String {
             if let Some(ref val) = resolved_value {
                 html.push_str(&format!(" value=\"{}\"", html_escape(val)));
             }
+            if let Some(ref step) = props.step {
+                html.push_str(&format!(" step=\"{}\"", html_escape(step)));
+            }
             if props.required == Some(true) {
                 html.push_str(" required");
             }
@@ -2465,6 +2468,7 @@ mod tests {
                 description: Some("Your work email".to_string()),
                 default_value: None,
                 data_path: None,
+                step: None,
             }),
             action: None,
             visibility: None,
@@ -2496,6 +2500,7 @@ mod tests {
                 description: None,
                 default_value: None,
                 data_path: None,
+                step: None,
             }),
             action: None,
             visibility: None,
@@ -2521,6 +2526,7 @@ mod tests {
                 description: None,
                 default_value: None,
                 data_path: Some("/user/name".to_string()),
+                step: None,
             }),
             action: None,
             visibility: None,
@@ -2545,6 +2551,7 @@ mod tests {
                 description: None,
                 default_value: Some("Bob".to_string()),
                 data_path: Some("/user/name".to_string()),
+                step: None,
             }),
             action: None,
             visibility: None,
@@ -2569,6 +2576,7 @@ mod tests {
                 description: None,
                 default_value: Some("Hello world".to_string()),
                 data_path: None,
+                step: None,
             }),
             action: None,
             visibility: None,
@@ -2594,6 +2602,7 @@ mod tests {
                 description: None,
                 default_value: Some("abc123".to_string()),
                 data_path: None,
+                step: None,
             }),
             action: None,
             visibility: None,
