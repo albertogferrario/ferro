@@ -104,11 +104,7 @@ fn extract_auth_route(content: &str, path: &str, auth_route: &mut Option<String>
                     if let Some(q1) = after.find('"') {
                         let rest = &after[q1 + 1..];
                         if let Some(q2) = rest.find('"') {
-                            *auth_route = Some(format!(
-                                "{} ({})",
-                                &rest[..q2],
-                                path
-                            ));
+                            *auth_route = Some(format!("{} ({})", &rest[..q2], path));
                             return;
                         }
                     }

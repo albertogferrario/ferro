@@ -203,7 +203,7 @@ pub struct GenerationContextParams {
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CodeTemplatesParams {
-    /// Filter by category: handler, model, migration, middleware, validation, json_view
+    /// Filter by category: handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting
     pub category: Option<String>,
 }
 
@@ -468,6 +468,40 @@ impl FerroMcpService {
             Ok(policies) => {
                 serde_json::to_string_pretty(&policies).unwrap_or_else(|_| "{}".to_string())
             }
+            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+        }
+    }
+
+    /// List all configured rate limiters and their usage in routes
+    #[tool(
+        name = "list_rate_limiters",
+        description = "List all configured rate limiters and their usage in routes.\n\n\
+            **When to use:** Understanding rate limiting configuration, checking which routes are throttled, \
+            planning new rate limits.\n\n\
+            **Returns:** Named rate limiters with limits, route groups using Throttle middleware.\n\n\
+            **Combine with:** `list_routes` to see full middleware chain, \
+            `code_templates` (category: rate_limiting) for configuration patterns."
+    )]
+    pub async fn list_rate_limiters(&self) -> String {
+        match tools::list_rate_limiters::execute(&self.project_root) {
+            Ok(info) => serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string()),
+            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+        }
+    }
+
+    /// List broadcast channel configuration and usage
+    #[tool(
+        name = "list_broadcast_channels",
+        description = "List broadcast channel configuration and usage in the project.\n\n\
+            **When to use:** Understanding WebSocket broadcasting setup, checking channel names, \
+            planning new broadcast events.\n\n\
+            **Returns:** Broadcasting configuration status, auth route, channel names and types.\n\n\
+            **Combine with:** `list_routes` to find WebSocket endpoints, \
+            `code_templates` (category: broadcasting) for setup patterns."
+    )]
+    pub async fn list_broadcast_channels(&self) -> String {
+        match tools::list_broadcast_channels::execute(&self.project_root) {
+            Ok(info) => serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string()),
             Err(e) => format!("{{\"error\": \"{}\"}}", e),
         }
     }
@@ -1046,7 +1080,7 @@ impl FerroMcpService {
         description = "Get copy-paste code templates for common Ferro framework patterns.\n\n\
             **When to use:** Creating new handlers, models, migrations, middleware, or JSON-UI views from scratch.\n\n\
             **Returns:** Ready-to-use templates with placeholders, required imports, and usage notes.\n\n\
-            **Categories:** handler, model, migration, middleware, validation, json_view.\n\n\
+            **Categories:** handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting.\n\n\
             **Combine with:** `generation_context` for conventions, `get_handler` for real examples, \
             `json_ui_catalog` for component reference when using json_view templates."
     )]
@@ -1228,6 +1262,13 @@ These workflows show how to combine tools for common tasks.
 2. `json_ui_catalog` (component: "ComponentName") - Look up specific component props
 3. `get_handler` - See the handler that renders the view
 
+### Configuring Rate Limiting
+1. `list_rate_limiters` - See existing configuration
+2. `code_templates` (category: rate_limiting) - Get templates
+3. `list_routes` - Find routes to throttle
+4. Implement rate limiting
+5. `list_rate_limiters` - Verify configuration
+
 ## When to Use These Tools (PROACTIVELY)
 
 **USE application_info FIRST** when starting work on a Ferro project to understand:
@@ -1273,6 +1314,16 @@ These workflows show how to combine tools for common tasks.
 - Checking which models have policies
 - Planning new authorization logic
 - Reviewing available abilities (view, create, update, delete)
+
+**USE list_rate_limiters** when:
+- Understanding rate limiting configuration
+- Checking which routes are throttled
+- Before adding or modifying rate limits
+
+**USE list_broadcast_channels** when:
+- Understanding broadcasting setup
+- Checking existing channel names
+- Before adding real-time features
 
 **USE db_schema** when:
 - You need exact column names and types
@@ -1405,6 +1456,12 @@ These workflows show how to combine tools for common tasks.
 - list_events: Event/listener mappings
 - list_jobs: Background job definitions
 - list_migrations: Database migration status
+
+### Middleware & Infrastructure (rate limiting, broadcasting)
+- list_rate_limiters: Configured rate limiters and throttled routes
+- list_broadcast_channels: Broadcasting configuration and channels
+- list_policies: Authorization policies and abilities
+- list_resources: API resources and field transformations
 
 ### Database (query and inspect)
 - db_schema: Table structures

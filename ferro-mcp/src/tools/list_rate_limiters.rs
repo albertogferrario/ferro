@@ -79,11 +79,7 @@ fn scan_directory(
 }
 
 /// Extract `RateLimiter::define("name", ...)` calls from file content.
-fn extract_limiter_definitions(
-    content: &str,
-    path: &str,
-    limiters: &mut Vec<RateLimiterInfo>,
-) {
+fn extract_limiter_definitions(content: &str, path: &str, limiters: &mut Vec<RateLimiterInfo>) {
     for (line_idx, line) in content.lines().enumerate() {
         let trimmed = line.trim();
 
@@ -94,8 +90,7 @@ fn extract_limiter_definitions(
             // Extract name from first quoted string argument
             if let Some(name) = extract_quoted_string(after) {
                 // Try to extract Limit configuration from surrounding context
-                let (max_requests, window_seconds) =
-                    extract_limit_from_context(content, line_idx);
+                let (max_requests, window_seconds) = extract_limit_from_context(content, line_idx);
 
                 limiters.push(RateLimiterInfo {
                     name,
@@ -114,11 +109,7 @@ fn extract_limiter_definitions(
 /// Looks for:
 /// - `Throttle::named("name")` - named limiter reference
 /// - `Throttle::per_minute(N)` / `Throttle::per_hour(N)` etc. - inline throttles
-fn extract_throttle_usage(
-    content: &str,
-    path: &str,
-    route_usage: &mut Vec<ThrottleUsage>,
-) {
+fn extract_throttle_usage(content: &str, path: &str, route_usage: &mut Vec<ThrottleUsage>) {
     for (line_idx, line) in content.lines().enumerate() {
         let trimmed = line.trim();
 
