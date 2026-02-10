@@ -53,6 +53,8 @@ Archived to PROJECT.md and milestone archive files.
 | 41-02 | From<Model> copies all fields including skipped | Skip only affects JSON output; users can access skipped fields programmatically |
 | 41-03 | Profile handler uses Auth::user_as instead of AuthUser extractor | AuthUser consumes Request; Auth::user_as allows access to both req and user |
 | 41-03 | Skip MCP application_info update | No structured feature list exists; deferred to Phase 46 |
+| 42-01 | Relative URLs for pagination links | Works behind reverse proxies without host configuration |
+| 42-01 | form_urlencoded for pagination URL building | Already a framework dependency; proper encoding |
 
 ### Pending Todos
 
@@ -81,5 +83,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 42-02-PLAN.md (when_loaded/when_loaded_many + collection)
+Stopped at: Completed 42-01-PLAN.md (PaginationMeta, PaginationLinks, ResourceCollection)
 Resume file: None
