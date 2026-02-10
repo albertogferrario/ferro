@@ -205,6 +205,7 @@ pub use ferro_macros::injectable;
 pub use ferro_macros::redirect;
 pub use ferro_macros::request;
 pub use ferro_macros::service;
+pub use ferro_macros::ApiResource;
 pub use ferro_macros::FerroModel;
 pub use ferro_macros::FormRequest as FormRequestDerive;
 pub use ferro_macros::InertiaProps;
