@@ -240,6 +240,40 @@ impl CreateOrder {
 }
 ```
 
+### `ferro make:auth`
+
+Scaffold a complete authentication system with migration, controller, and setup instructions.
+
+```bash
+# Generate auth scaffolding
+ferro make:auth
+
+# Force overwrite existing files
+ferro make:auth --force
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--force`, `-f` | Overwrite existing auth controller and migration |
+
+**Generated Files:**
+
+- `src/migrations/m{timestamp}_add_auth_fields_to_users.rs` -- ALTER TABLE migration adding `password`, `remember_token`, and `email_verified_at` fields to the existing users table
+- `src/controllers/auth_controller.rs` -- Controller with `register`, `login`, and `logout` handlers
+
+**What it does:**
+
+1. Generates an ALTER TABLE migration (assumes `users` table already exists)
+2. Creates an auth controller with register/login/logout handlers
+3. Registers the controller module in `src/controllers/mod.rs`
+4. Prints setup instructions for the auth provider and route registration
+
+The command uses an ALTER TABLE approach because most projects already have a users table with basic fields. The migration adds only the authentication-specific columns.
+
+**See also:** [Authentication guide](../authentication.md) for the complete auth setup walkthrough.
+
 ### `ferro make:event`
 
 Generate an event struct for the event dispatcher.
@@ -540,6 +574,56 @@ Generate a custom error type.
 ferro make:error PaymentFailed
 ferro make:error ValidationError
 ```
+
+### `ferro make:resource`
+
+Generate an API resource for transforming models into structured JSON responses.
+
+```bash
+# Basic resource (generates struct with placeholder fields)
+ferro make:resource UserResource
+
+# Auto-append "Resource" suffix if not present
+ferro make:resource User
+
+# With model path for automatic From<Model> implementation
+ferro make:resource UserResource --model entities::users::Model
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--model`, `-m` | Model path for auto-generating `From<Model>` implementation |
+
+**Generated file:** `src/resources/user_resource.rs`
+
+```rust
+use ferro::{ApiResource, Resource, ResourceMap, Request};
+
+#[derive(ApiResource)]
+pub struct UserResource {
+    pub id: i32,
+    // Add fields from your model here
+    // #[resource(rename = "display_name")]
+    // pub name: String,
+    // #[resource(skip)]
+    // pub password_hash: String,
+}
+```
+
+**Field attributes:**
+
+| Attribute | Description |
+|-----------|-------------|
+| `#[resource(rename = "name")]` | Rename field in JSON output |
+| `#[resource(skip)]` | Exclude field from JSON output |
+
+The `#[derive(ApiResource)]` macro generates the `Resource` trait implementation, which provides `to_resource()` and `to_json()` methods. When `--model` is specified, a `From<Model>` implementation is generated to map model fields to resource fields.
+
+**After generation**, add `pub mod user_resource;` to `src/resources/mod.rs`.
+
+**See also:** [API Resources guide](../api-resources.md) for the complete resource system documentation.
 
 ### `ferro make:scaffold`
 
@@ -888,6 +972,7 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `make:controller` | Create a controller |
 | `make:middleware` | Create middleware |
 | `make:action` | Create an action class |
+| `make:auth` | Scaffold authentication system |
 | `make:event` | Create an event |
 | `make:listener` | Create a listener |
 | `make:job` | Create a background job |
@@ -900,6 +985,7 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `make:factory` | Create a model factory |
 | `make:error` | Create a custom error |
 | `make:policy` | Create an authorization policy |
+| `make:resource` | Create an API resource |
 | `make:scaffold` | Create complete CRUD scaffold |
 | `db:migrate` | Run migrations |
 | `db:rollback` | Rollback migrations |
