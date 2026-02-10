@@ -51,11 +51,13 @@
 //! ```
 
 pub mod authenticatable;
+pub mod extract;
 pub mod guard;
 pub mod middleware;
 pub mod provider;
 
 pub use authenticatable::Authenticatable;
+pub use extract::{AuthUser, OptionalUser};
 pub use guard::Auth;
 pub use middleware::{AuthMiddleware, GuestMiddleware};
 pub use provider::UserProvider;
