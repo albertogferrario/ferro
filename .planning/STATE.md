@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 41 of 46 (API Resources Basics)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-10 - Completed 41-01-PLAN.md
+Last activity: 2026-02-10 - Completed 41-02-PLAN.md
 
-Progress: ██░░░░░░░░ 17%
+Progress: ██░░░░░░░░ 18%
 
 ## Milestone Summary
 
@@ -49,6 +49,8 @@ Archived to PROJECT.md and milestone archive files.
 | 40-01 | AuthUser counts as one FromRequest param per handler | Existing framework constraint: one body-consuming extractor per handler |
 | 41-01 | Enable serde_json preserve_order feature | ResourceMap needs insertion-order field output; BTreeMap default sorts alphabetically |
 | 41-01 | TCP loopback helper for Request in unit tests | hyper::body::Incoming has no public constructor; TCP loopback creates real Request |
+| 41-02 | ferro:: prefix in generated macro code | Matches existing macro patterns (handler, model); uses framework re-exports |
+| 41-02 | From<Model> copies all fields including skipped | Skip only affects JSON output; users can access skipped fields programmatically |
 
 ### Pending Todos
 
@@ -76,5 +78,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 41-01-PLAN.md (Resource trait + ResourceMap builder)
+Stopped at: Completed 41-02-PLAN.md (ApiResource derive macro)
 Resume file: None
