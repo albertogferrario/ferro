@@ -44,6 +44,7 @@ pub mod config;
 pub mod data;
 pub mod layout;
 pub mod plugin;
+pub mod plugins;
 pub mod render;
 pub mod resolve;
 pub mod view;
@@ -68,6 +69,7 @@ pub use plugin::{
     collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
 };
+pub use plugins::{register_built_in_plugins, MapPlugin};
 pub use render::{collect_plugin_types, render_to_html, render_to_html_with_plugins, RenderResult};
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
 pub use view::{JsonUiView, SCHEMA_VERSION};

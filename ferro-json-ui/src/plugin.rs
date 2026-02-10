@@ -148,9 +148,13 @@ static GLOBAL_PLUGIN_REGISTRY: OnceLock<RwLock<PluginRegistry>> = OnceLock::new(
 
 /// Access the global plugin registry.
 ///
-/// Lazily initialized on first call as an empty registry.
+/// Lazily initialized on first call with built-in plugins registered.
 pub fn global_plugin_registry() -> &'static RwLock<PluginRegistry> {
-    GLOBAL_PLUGIN_REGISTRY.get_or_init(|| RwLock::new(PluginRegistry::new()))
+    GLOBAL_PLUGIN_REGISTRY.get_or_init(|| {
+        let mut registry = PluginRegistry::new();
+        registry.register(crate::plugins::MapPlugin);
+        RwLock::new(registry)
+    })
 }
 
 /// Register a plugin in the global registry.
