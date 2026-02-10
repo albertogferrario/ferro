@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 39 of 46 (Core Authentication)
-Plan: 4 of 4 in current phase (39-01, 39-02, 39-03, 39-04 complete)
-Status: Phase complete
-Last activity: 2026-02-09 - Completed 39-02-PLAN.md (auth controllers and routes)
+Phase: 40 of 46 (Auth Middleware)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-10 - Completed 40-01-PLAN.md
 
 Progress: █░░░░░░░░░ 15%
 
@@ -28,7 +28,7 @@ Progress: █░░░░░░░░░ 15%
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 6/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 8/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -45,6 +45,8 @@ Archived to PROJECT.md and milestone archive files.
 | 39-03 | Instructional output for provider/routes instead of auto-modify | Safer: user may have custom code in those files |
 | 39-03 | ALTER TABLE migration approach for auth fields | Users table likely already exists in projects |
 | 39-02 | Alias ferro::AuthMiddleware as SessionAuthMiddleware | Avoids name conflict with app's existing header-based AuthMiddleware |
+| 40-01 | 401 via FrameworkError::domain not Unauthorized | Unauthorized is 403 (authorization); 401 is authentication failure |
+| 40-01 | AuthUser counts as one FromRequest param per handler | Existing framework constraint: one body-consuming extractor per handler |
 
 ### Pending Todos
 
@@ -70,6 +72,6 @@ None (pre-existing blockers moved to Phase 38 scope).
 
 ## Session Continuity
 
-Last session: 2026-02-09
-Stopped at: Completed Phase 39 (all 4 plans)
+Last session: 2026-02-10
+Stopped at: Completed 40-01-PLAN.md
 Resume file: None
