@@ -92,6 +92,31 @@ impl Middleware for {struct_name} {{
     )
 }
 
+/// Template for generating new resource with make:resource command
+pub fn resource_template(name: &str, model: Option<&str>) -> String {
+    let model_attribute = match model {
+        Some(path) => format!("#[resource(model = \"{}\")]\n", path),
+        None => String::new(),
+    };
+
+    format!(
+        r#"use ferro::{{ApiResource, Resource, ResourceMap, Request}};
+
+#[derive(ApiResource)]
+{model_attribute}pub struct {name} {{
+    pub id: i32,
+    // Add fields from your model here
+    // #[resource(rename = "display_name")]
+    // pub name: String,
+    // #[resource(skip)]
+    // pub password_hash: String,
+}}
+"#,
+        model_attribute = model_attribute,
+        name = name
+    )
+}
+
 /// Template for generating new controller with make:controller command
 pub fn controller_template(name: &str) -> String {
     format!(

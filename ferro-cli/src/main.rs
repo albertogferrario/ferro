@@ -165,6 +165,15 @@ enum Commands {
         #[arg(long, short = 'm')]
         model: Option<String>,
     },
+    /// Generate a new API resource
+    #[command(name = "make:resource")]
+    MakeResource {
+        /// Name of the resource (e.g., UserResource, User)
+        name: String,
+        /// Model path for From<Model> generation (e.g., entities::users::Model)
+        #[arg(long, short = 'm')]
+        model: Option<String>,
+    },
     /// Generate a new scheduled task
     #[command(name = "make:task")]
     MakeTask {
@@ -405,6 +414,9 @@ fn main() {
         }
         Commands::MakePolicy { name, model } => {
             commands::make_policy::run(name, model);
+        }
+        Commands::MakeResource { name, model } => {
+            commands::make_resource::run(name, model);
         }
         Commands::MakeTask { name } => {
             commands::make_task::run(name);
