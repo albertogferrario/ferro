@@ -23,7 +23,9 @@ pub mod testing;
 pub mod validation;
 
 pub use app::Application;
-pub use auth::{Auth, AuthMiddleware, Authenticatable, GuestMiddleware, UserProvider};
+pub use auth::{
+    Auth, AuthMiddleware, AuthUser, Authenticatable, GuestMiddleware, OptionalUser, UserProvider,
+};
 pub use authorization::{AuthResponse, Authorizable, AuthorizationError, Authorize, Gate, Policy};
 pub use cache::{Cache, CacheConfig, CacheStore, InMemoryCache, RedisCache};
 pub use config::{env, env_optional, env_required, AppConfig, Config, Environment, ServerConfig};

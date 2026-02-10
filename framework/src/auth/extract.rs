@@ -71,14 +71,16 @@ where
         match user {
             None => Err(FrameworkError::domain("Unauthenticated.", 401)),
             Some(arc_user) => {
-                let concrete = arc_user.as_any().downcast_ref::<T>().cloned().ok_or_else(
-                    || {
+                let concrete = arc_user
+                    .as_any()
+                    .downcast_ref::<T>()
+                    .cloned()
+                    .ok_or_else(|| {
                         FrameworkError::internal(format!(
                             "AuthUser downcast failed: user is not of type {}",
                             std::any::type_name::<T>()
                         ))
-                    },
-                )?;
+                    })?;
                 Ok(AuthUser(concrete))
             }
         }
