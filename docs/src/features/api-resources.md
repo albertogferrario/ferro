@@ -194,3 +194,284 @@ The generated file includes the derive macro template with commented examples fo
 - Computed fields not present in the model
 - Merging data from multiple sources
 - Dynamic field inclusion logic
+
+## Resource Collections
+
+`ResourceCollection` wraps a `Vec<T: Resource>` and produces a standard JSON envelope. Use it for any endpoint returning a list of resources.
+
+### Simple Collection
+
+```rust
+use ferro::{handler, Request, Resource, ResourceCollection, Response};
+use crate::resources::UserResource;
+
+#[handler]
+pub async fn index(req: Request) -> Response {
+    let db = req.db();
+    let users = User::find().all(db).await?;
+
+    let resources: Vec<UserResource> = users.into_iter()
+        .map(UserResource::from)
+        .collect();
+
+    let collection = ResourceCollection::new(resources);
+    Ok(collection.to_response(&req))
+}
+```
+
+Output:
+
+```json
+{
+  "data": [
+    {"id": 1, "name": "Alice", "email": "alice@example.com"},
+    {"id": 2, "name": "Bob", "email": "bob@example.com"}
+  ]
+}
+```
+
+### Additional Metadata
+
+Add extra top-level fields alongside `data` with `.additional()`:
+
+```rust
+let collection = ResourceCollection::new(resources)
+    .additional(json!({"meta": {"version": "v1"}}));
+
+Ok(collection.to_response(&req))
+// Output: {"data": [...], "meta": {"version": "v1"}}
+```
+
+### Collection Mapping Shortcut
+
+`Resource::collection()` maps a slice of resources to their JSON representations without constructing a full `ResourceCollection`:
+
+```rust
+let users: Vec<UserResource> = /* ... */;
+let json_values = UserResource::collection(&users, &req);
+// Returns: Vec<serde_json::Value>
+```
+
+| Constructor | Output |
+|-------------|--------|
+| `ResourceCollection::new(items)` | `{"data": [...]}` |
+| `ResourceCollection::paginated(items, meta)` | `{"data": [...], "meta": {...}, "links": {...}}` |
+| `.additional(json!({...}))` | Merges fields at top level |
+
+## Pagination
+
+`PaginationMeta` computes page metadata and `ResourceCollection::paginated()` produces the standard paginated envelope. Integrates with SeaORM's `PaginatorTrait`.
+
+### PaginationMeta
+
+```rust
+use ferro::PaginationMeta;
+
+let meta = PaginationMeta::new(page, per_page, total);
+```
+
+`PaginationMeta::new()` accepts a 1-indexed page number (the value from API query parameters). It computes `last_page`, `from`, and `to` automatically. SeaORM's `fetch_page()` is 0-indexed -- pass `page - 1` to SeaORM and the raw page to `PaginationMeta`.
+
+### Paginated Handler
+
+```rust
+use ferro::{handler, PaginationMeta, Request, Resource, ResourceCollection, Response};
+use sea_orm::PaginatorTrait;
+use crate::resources::UserResource;
+
+#[handler]
+pub async fn index(req: Request) -> Response {
+    let db = req.db();
+    let page: u64 = req.query("page").unwrap_or(1);
+    let per_page: u64 = req.query("per_page").unwrap_or(15);
+
+    let paginator = User::find()
+        .order_by_desc(users::Column::Id)
+        .paginate(db, per_page);
+
+    let items = paginator.fetch_page(page - 1).await?;  // 0-indexed
+    let total = paginator.num_items().await?;
+
+    let resources: Vec<UserResource> = items.into_iter()
+        .map(UserResource::from)
+        .collect();
+
+    let meta = PaginationMeta::new(page, per_page, total);  // 1-indexed
+    Ok(ResourceCollection::paginated(resources, meta).to_response(&req))
+}
+```
+
+### JSON Output Format
+
+```json
+{
+  "data": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}],
+  "meta": {
+    "current_page": 1,
+    "per_page": 15,
+    "total": 42,
+    "last_page": 3,
+    "from": 1,
+    "to": 15
+  },
+  "links": {
+    "first": "/users?page=1",
+    "last": "/users?page=3",
+    "prev": null,
+    "next": "/users?page=2"
+  }
+}
+```
+
+Pagination links are relative URLs. Existing query parameters (e.g., `sort=name`) are preserved in links.
+
+## Relationship Inclusion
+
+Ferro uses explicit batch-loading for relationships. All related data is loaded before resource construction -- never inside `to_resource()`. This prevents N+1 queries by design.
+
+### when_loaded (belongs_to / has_one)
+
+`when_loaded()` looks up a key in a `HashMap`. If the key exists, the field is included in the output. If absent, the field is omitted.
+
+```rust
+use ferro::{Resource, ResourceMap, Request};
+use std::collections::HashMap;
+use serde_json::{json, Value};
+
+struct PostResource {
+    post: posts::Model,
+    authors: HashMap<i32, users::Model>,
+}
+
+impl Resource for PostResource {
+    fn to_resource(&self, req: &Request) -> Value {
+        ResourceMap::new()
+            .field("id", json!(self.post.id))
+            .field("title", json!(self.post.title))
+            .when_loaded("author", &self.post.author_id, &self.authors, |user| {
+                json!({"id": user.id, "name": &user.name})
+            })
+            .build()
+    }
+}
+```
+
+### when_loaded_many (has_many)
+
+`when_loaded_many()` operates on `HashMap<K, Vec<M>>`. An empty vec is still included (loaded but empty); a missing key means the field is omitted entirely.
+
+```rust
+struct UserResource {
+    user: users::Model,
+    posts: HashMap<i32, Vec<posts::Model>>,
+}
+
+impl Resource for UserResource {
+    fn to_resource(&self, req: &Request) -> Value {
+        ResourceMap::new()
+            .field("id", json!(self.user.id))
+            .field("name", json!(self.user.name))
+            .when_loaded_many("posts", &self.user.id, &self.posts, |items| {
+                json!(items.iter().map(|p| {
+                    json!({"id": p.id, "title": &p.title})
+                }).collect::<Vec<_>>())
+            })
+            .build()
+    }
+}
+```
+
+### Complete Paginated Handler with Relationships
+
+```rust
+use ferro::{handler, PaginationMeta, Request, Resource, ResourceCollection, ResourceMap, Response};
+use sea_orm::PaginatorTrait;
+use std::collections::HashMap;
+use serde_json::{json, Value};
+
+struct UserWithPostsResource {
+    user: users::Model,
+    posts_map: HashMap<i32, Vec<posts::Model>>,
+}
+
+impl Resource for UserWithPostsResource {
+    fn to_resource(&self, _req: &Request) -> Value {
+        ResourceMap::new()
+            .field("id", json!(self.user.id))
+            .field("name", json!(self.user.name))
+            .when_loaded_many("posts", &self.user.id, &self.posts_map, |items| {
+                json!(items.iter().map(|p| {
+                    json!({"id": p.id, "title": &p.title})
+                }).collect::<Vec<_>>())
+            })
+            .build()
+    }
+}
+
+#[handler]
+pub async fn index(req: Request) -> Response {
+    let db = req.db();
+    let page: u64 = req.query("page").unwrap_or(1);
+    let per_page: u64 = 15;
+
+    // 1. Paginate parent entity
+    let paginator = User::find()
+        .order_by_asc(users::Column::Id)
+        .paginate(db, per_page);
+    let users = paginator.fetch_page(page - 1).await?;
+    let total = paginator.num_items().await?;
+
+    // 2. Batch load relations for this page
+    let user_ids: Vec<i32> = users.iter().map(|u| u.id).collect();
+    let posts_map: HashMap<i32, Vec<posts::Model>> = Post::find()
+        .filter(posts::Column::UserId.is_in(user_ids))
+        .all(db)
+        .await?
+        .into_iter()
+        .fold(HashMap::new(), |mut map, post| {
+            map.entry(post.user_id).or_default().push(post);
+            map
+        });
+
+    // 3. Map to resources with relations
+    let resources: Vec<UserWithPostsResource> = users.into_iter()
+        .map(|u| UserWithPostsResource {
+            user: u,
+            posts_map: posts_map.clone(),
+        })
+        .collect();
+
+    // 4. Return paginated collection
+    let meta = PaginationMeta::new(page, per_page, total);
+    Ok(ResourceCollection::paginated(resources, meta).to_response(&req))
+}
+```
+
+### Anti-Patterns
+
+**N+1 inside to_resource():** Never call database queries inside `to_resource()`. All data must be loaded before resource construction.
+
+```rust
+// BAD: queries the database for every resource
+impl Resource for UserResource {
+    fn to_resource(&self, req: &Request) -> Value {
+        let posts = Post::find()  // N+1 query!
+            .filter(posts::Column::UserId.eq(self.user.id))
+            .all(db).await;
+        // ...
+    }
+}
+```
+
+**Paginating joined queries:** SeaORM's `find_with_related()` (`SelectTwoMany`) does not support `.paginate()`. Always paginate the parent entity first, then batch-load relations for the fetched page.
+
+```rust
+// BAD: won't compile
+let results = User::find()
+    .find_with_related(Post)
+    .paginate(db, 15);  // SelectTwoMany has no PaginatorTrait
+
+// GOOD: paginate parent, then batch load
+let users = User::find().paginate(db, 15).fetch_page(0).await?;
+// Then load posts for these users in a second query
+```
