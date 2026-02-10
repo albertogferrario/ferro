@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 40 of 46 (Auth Middleware)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-10 - Completed 40-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-10 - Completed 40-02-PLAN.md
 
-Progress: █░░░░░░░░░ 15%
+Progress: ██░░░░░░░░ 16%
 
 ## Milestone Summary
 
@@ -28,7 +28,7 @@ Progress: █░░░░░░░░░ 15%
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 8/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 10/? | 🚧 In Progress | - |
 
 ## Accumulated Context
 
@@ -69,9 +69,10 @@ None (pre-existing blockers moved to Phase 38 scope).
 - Milestone v4.0 Production Readiness created: auth, API resources, rate limiting, real-time, 9 phases (Phase 38-46)
 - Phase 38 complete: 2 plans, 1 wave — test isolation fixes + storage/Inertia cleanup (2026-02-09)
 - Phase 39 complete: 4 plans, 2 waves — user model/provider, auth controllers/routes, make:auth CLI, auth docs (2026-02-09)
+- Phase 40 complete: 2 plans, 2 waves — AuthUser/OptionalUser extractors + sample app, templates, docs (2026-02-10)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 40-01-PLAN.md
+Stopped at: Completed 40-02-PLAN.md (Phase 40 complete)
 Resume file: None

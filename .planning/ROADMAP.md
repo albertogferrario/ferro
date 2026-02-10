@@ -51,7 +51,7 @@ Plans:
 
 Plans:
 - [x] 40-01: AuthUser<T> and OptionalUser<T> extractors
-- [ ] 40-02: TBD
+- [x] 40-02: Sample app, templates, and docs integration
 
 #### Phase 41: API Resources Basics
 
@@ -292,7 +292,7 @@ Plans:
 |-------|-----------|-------|--------|-----------|
 | 38. Fix Pre-existing Blockers | v4.0 | 2/2 | Complete | 2026-02-09 |
 | 39. Core Authentication | v4.0 | 4/4 | Complete | 2026-02-09 |
-| 40. Auth Middleware | v4.0 | 1/2 | In progress | - |
+| 40. Auth Middleware | v4.0 | 2/2 | Complete | 2026-02-10 |
 | 41. API Resources Basics | v4.0 | 0/? | Not started | - |
 | 42. API Resources Advanced | v4.0 | 0/? | Not started | - |
 | 43. Rate Limiting | v4.0 | 0/? | Not started | - |
