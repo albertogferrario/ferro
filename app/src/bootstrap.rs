@@ -28,7 +28,7 @@
 //! ```
 
 #[allow(unused_imports)]
-use ferro::{bind, global_middleware, singleton, App, UserProvider, DB};
+use ferro::{bind, global_middleware, singleton, App, Limit, RateLimiter, UserProvider, DB};
 
 use crate::middleware;
 use crate::providers::DatabaseUserProvider;
@@ -60,6 +60,9 @@ pub async fn register() {
 
     // Register the user provider for Auth::user()
     bind!(dyn UserProvider, DatabaseUserProvider);
+
+    // Define named rate limiters for API routes
+    RateLimiter::define("api", |_req| Limit::per_minute(60));
 
     // Example: Register a trait binding with runtime config
     // bind!(dyn Database, PostgresDB::new());

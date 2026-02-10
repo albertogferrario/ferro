@@ -1,4 +1,10 @@
-use ferro::{handler, json_response, redirect, route, HttpResponse, Response};
+use ferro::{
+    handler, json_response, redirect, route, HttpResponse, PaginationMeta, Request,
+    ResourceCollection, Response,
+};
+
+use crate::models::users;
+use crate::resources::UserResource;
 
 /// GET /users - List all users
 #[handler]
@@ -72,4 +78,28 @@ pub async fn redirect_example() -> Response {
         .query("page", "1")
         .query("sort", "name")
         .into()
+}
+
+/// GET /api/users - Paginated user list as ResourceCollection
+///
+/// Demonstrates paginated API responses with ResourceCollection and PaginationMeta.
+/// Accepts `page` and `per_page` query parameters.
+#[handler]
+pub async fn api_index(req: Request) -> Response {
+    let page: u64 = req.query_as("page").unwrap_or(1).max(1);
+    let per_page: u64 = req.query_as("per_page").unwrap_or(15).min(100);
+
+    let total = users::Model::query().count().await?;
+    let offset = (page - 1) * per_page;
+    let items = users::Model::query()
+        .offset(offset)
+        .limit(per_page)
+        .all()
+        .await?;
+
+    let resources: Vec<UserResource> = items.into_iter().map(UserResource::from).collect();
+    let meta = PaginationMeta::new(page, per_page, total);
+    let collection = ResourceCollection::paginated(resources, meta);
+
+    Ok(collection.to_response(&req))
 }
