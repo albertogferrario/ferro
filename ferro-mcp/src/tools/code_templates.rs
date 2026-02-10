@@ -74,12 +74,12 @@ fn handler_templates() -> Vec<CodeTemplate> {
         CodeTemplate {
             name: "index_handler".to_string(),
             category: "handler".to_string(),
-            description: "List all resources with pagination".to_string(),
+            description: "List all resources with pagination using ResourceCollection".to_string(),
             code: r#"#[handler]
 pub async fn index(req: Request) -> Response {
     let db = req.db();
-    let page = req.query::<PaginationQuery>().page.unwrap_or(1);
-    let per_page = req.query::<PaginationQuery>().per_page.unwrap_or(20);
+    let page: u64 = req.query("page").unwrap_or(1);
+    let per_page: u64 = req.query("per_page").unwrap_or(20);
 
     let paginator = {{Entity}}::find()
         .order_by_desc({{entity}}::Column::Id)
@@ -88,20 +88,20 @@ pub async fn index(req: Request) -> Response {
     let items = paginator.fetch_page(page - 1).await?;
     let total = paginator.num_items().await?;
 
-    Ok(json!({
-        "data": items,
-        "meta": {
-            "page": page,
-            "per_page": per_page,
-            "total": total
-        }
-    }))
+    let resources: Vec<{{Entity}}Resource> = items.into_iter()
+        .map({{Entity}}Resource::from)
+        .collect();
+
+    let meta = PaginationMeta::new(page, per_page, total);
+    Ok(ResourceCollection::paginated(resources, meta).to_response(&req))
 }"#
             .to_string(),
             imports: vec![
                 "use ferro::prelude::*;".to_string(),
+                "use ferro::{PaginationMeta, ResourceCollection};".to_string(),
                 "use crate::entities::{{entity}};".to_string(),
                 "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
+                "use crate::resources::{{Entity}}Resource;".to_string(),
             ],
             placeholders: vec![
                 Placeholder {
