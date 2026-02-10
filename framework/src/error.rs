@@ -456,3 +456,157 @@ impl From<sea_orm::DbErr> for FrameworkError {
         Self::Database(e.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::http::HttpResponse;
+
+    /// Helper: convert a FrameworkError to HttpResponse and parse its JSON body.
+    fn error_to_json(err: FrameworkError) -> serde_json::Value {
+        let resp: HttpResponse = err.into();
+        serde_json::from_str(resp.body()).expect("response body should be valid JSON")
+    }
+
+    #[test]
+    fn service_not_found_includes_hint() {
+        let err = FrameworkError::service_not_found::<String>();
+        let json = error_to_json(err);
+
+        assert!(json.get("message").is_some(), "should have 'message' key");
+        let hint = json
+            .get("hint")
+            .and_then(|v| v.as_str())
+            .expect("should have 'hint' key");
+        assert!(
+            hint.contains("App::bind"),
+            "hint should mention App::bind, got: {hint}"
+        );
+    }
+
+    #[test]
+    fn param_error_includes_hint() {
+        let err = FrameworkError::param("user_id");
+        let json = error_to_json(err);
+
+        assert!(json.get("message").is_some());
+        let hint = json
+            .get("hint")
+            .and_then(|v| v.as_str())
+            .expect("should have hint");
+        assert!(
+            hint.contains(":user_id"),
+            "hint should reference param name, got: {hint}"
+        );
+    }
+
+    #[test]
+    fn model_not_found_includes_hint() {
+        let err = FrameworkError::model_not_found("User");
+        let json = error_to_json(err);
+
+        assert_eq!(json["message"], "User not found");
+        let hint = json
+            .get("hint")
+            .and_then(|v| v.as_str())
+            .expect("should have hint");
+        assert!(hint.contains("User"), "hint should reference model name");
+    }
+
+    #[test]
+    fn param_parse_includes_hint() {
+        let err = FrameworkError::param_parse("abc", "i32");
+        let json = error_to_json(err);
+
+        let hint = json
+            .get("hint")
+            .and_then(|v| v.as_str())
+            .expect("should have hint");
+        assert!(hint.contains("abc"), "hint should include received value");
+        assert!(hint.contains("i32"), "hint should include expected type");
+    }
+
+    #[test]
+    fn database_error_includes_hint() {
+        let err = FrameworkError::database("connection refused");
+        let json = error_to_json(err);
+
+        let hint = json
+            .get("hint")
+            .and_then(|v| v.as_str())
+            .expect("should have hint");
+        assert!(
+            hint.contains("DATABASE_URL"),
+            "hint should mention DATABASE_URL"
+        );
+    }
+
+    #[test]
+    fn unauthorized_includes_hint() {
+        let err = FrameworkError::Unauthorized;
+        let json = error_to_json(err);
+
+        assert_eq!(json["message"], "This action is unauthorized.");
+        let hint = json
+            .get("hint")
+            .and_then(|v| v.as_str())
+            .expect("should have hint");
+        assert!(
+            hint.contains("authorize()"),
+            "hint should mention authorize()"
+        );
+    }
+
+    #[test]
+    fn internal_error_has_no_hint() {
+        let err = FrameworkError::internal("something broke");
+        let json = error_to_json(err);
+
+        assert!(json.get("message").is_some());
+        assert!(
+            json.get("hint").is_none(),
+            "Internal errors should not have hints"
+        );
+    }
+
+    #[test]
+    fn domain_error_has_no_hint() {
+        let err = FrameworkError::domain("custom message", 409);
+        let json = error_to_json(err);
+
+        assert_eq!(json["message"], "custom message");
+        assert!(
+            json.get("hint").is_none(),
+            "Domain errors should not have hints"
+        );
+    }
+
+    #[test]
+    fn validation_errors_have_no_hint() {
+        let mut errors = ValidationErrors::new();
+        errors.add("email", "Email is required");
+        let err = FrameworkError::validation_errors(errors);
+        let json = error_to_json(err);
+
+        assert!(
+            json.get("hint").is_none(),
+            "Validation errors should not have hints"
+        );
+        assert!(json.get("errors").is_some(), "should have errors field");
+    }
+
+    #[test]
+    fn status_codes_are_correct() {
+        assert_eq!(
+            FrameworkError::service_not_found::<String>().status_code(),
+            500
+        );
+        assert_eq!(FrameworkError::param("x").status_code(), 400);
+        assert_eq!(FrameworkError::model_not_found("X").status_code(), 404);
+        assert_eq!(FrameworkError::param_parse("x", "i32").status_code(), 400);
+        assert_eq!(FrameworkError::database("err").status_code(), 500);
+        assert_eq!(FrameworkError::internal("err").status_code(), 500);
+        assert_eq!(FrameworkError::domain("err", 409).status_code(), 409);
+        assert_eq!(FrameworkError::Unauthorized.status_code(), 403);
+    }
+}
