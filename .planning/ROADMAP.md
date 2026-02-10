@@ -107,10 +107,12 @@ Plans:
 **Goal**: CLI ergonomics, error message improvements, documentation updates for new features
 **Depends on**: Phases 39-44
 **Research**: Unlikely (internal improvements)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 45-01: TBD
+- [ ] 45-01: Error message improvements
+- [ ] 45-02: CLI completeness and documentation catch-up
+- [x] 45-03: Sample app v4.0 feature demonstrations
 
 #### Phase 46: MCP + CLI Updates
 
@@ -305,5 +307,5 @@ Plans:
 | 42. API Resources Advanced | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 43. Rate Limiting | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 44. Real-time Improvements | v4.0 | 4/4 | Complete | 2026-02-10 |
-| 45. DX Polish | v4.0 | 0/? | Not started | - |
+| 45. DX Polish | v4.0 | 1/3 | In progress | - |
 | 46. MCP + CLI Updates | v4.0 | 0/? | Not started | - |

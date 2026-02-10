@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 44 of 46 (Real-time Improvements)
-Plan: 4 of 4 in current phase
-Status: Phase complete
-Last activity: 2026-02-10 - Completed 44-04-PLAN.md
+Phase: 45 of 46 (DX Polish)
+Plan: 3 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-10 - Completed 45-03-PLAN.md
 
 Progress: ████░░░░░░ 38%
 
@@ -70,6 +70,9 @@ Archived to PROJECT.md and milestone archive files.
 | 44-03 | req.input() for broadcast auth body parsing | Supports both JSON and form-urlencoded content types |
 | 44-04 | Rewrite broadcasting.md (not append) | Old docs referenced non-existent APIs like App::set_broadcaster |
 | 44-04 | Add BroadcastConfig to framework re-exports | User-facing setup code needs this import from ferro:: |
+| 45-02 | Added `clean` command to MCP beyond plan's 7 | CLI has 40 commands total; plan counted 39 |
+| 45-03 | QueryBuilder offset/limit for pagination instead of SeaORM paginator | Framework's QueryBuilder wraps SeaORM internally; cleaner API |
+| 45-03 | Broadcasting auth as commented placeholder | Sample app has no broadcasting configured in bootstrap |
 
 ### Pending Todos
 
@@ -101,5 +104,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 44-04-PLAN.md (Phase 44 complete)
+Stopped at: Completed 45-03-PLAN.md
 Resume file: None
