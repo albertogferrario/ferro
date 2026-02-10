@@ -43,6 +43,7 @@ pub mod component;
 pub mod config;
 pub mod data;
 pub mod layout;
+pub mod plugin;
 pub mod render;
 pub mod resolve;
 pub mod view;
@@ -62,6 +63,10 @@ pub use data::{resolve_path, resolve_path_string};
 pub use layout::{
     footer, global_registry, navigation, register_layout, render_layout, sidebar, AppLayout,
     AuthLayout, DefaultLayout, Layout, LayoutContext, LayoutRegistry, NavItem, SidebarSection,
+};
+pub use plugin::{
+    collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
+    with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
 };
 pub use render::render_to_html;
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
