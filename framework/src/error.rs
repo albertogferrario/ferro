@@ -414,6 +414,40 @@ impl FrameworkError {
             expected_type,
         }
     }
+
+    /// Returns an actionable hint guiding the developer toward a fix.
+    ///
+    /// Hints are included in JSON error responses during development to help
+    /// developers quickly resolve common issues. Variants with user-provided
+    /// messages (Internal, Domain) or self-describing content (Validation,
+    /// ValidationError) return `None`.
+    pub fn hint(&self) -> Option<String> {
+        match self {
+            Self::ServiceNotFound { type_name } => Some(format!(
+                "Register with App::bind::<{type_name}>() in your bootstrap.rs or a service provider"
+            )),
+            Self::ParamError { param_name } => Some(format!(
+                "Check your route definition includes :{param_name} or verify the request body contains this field"
+            )),
+            Self::ModelNotFound { model_name } => Some(format!(
+                "Verify the {model_name} exists in the database, or check that the route parameter matches a valid ID"
+            )),
+            Self::ParamParse {
+                param,
+                expected_type,
+            } => Some(format!(
+                "Route received '{param}' but expected a valid {expected_type}. Check the URL parameter format."
+            )),
+            Self::Database(_) => Some(
+                "Check DATABASE_URL in .env and verify the database is running".to_string(),
+            ),
+            Self::Unauthorized => Some(
+                "Check that the handler's form request authorize() returns true, or verify the user has the required permissions".to_string(),
+            ),
+            // No hints for user-provided or self-describing errors
+            Self::Internal { .. } | Self::Domain { .. } | Self::ValidationError { .. } | Self::Validation(_) => None,
+        }
+    }
 }
 
 // Implement From<DbErr> for automatic error conversion with ?

@@ -239,20 +239,24 @@ impl From<RedirectRouteBuilder> for Response {
 ///
 /// This enables using the `?` operator in controller handlers to propagate
 /// framework errors as appropriate HTTP responses.
+///
+/// When a hint is available (via `FrameworkError::hint()`), the JSON response
+/// includes a `"hint"` field with actionable guidance for the developer.
 impl From<crate::error::FrameworkError> for HttpResponse {
     fn from(err: crate::error::FrameworkError) -> HttpResponse {
         let status = err.status_code();
-        let body = match &err {
+        let hint = err.hint();
+        let mut body = match &err {
             crate::error::FrameworkError::ParamError { param_name } => {
                 serde_json::json!({
-                    "error": format!("Missing required parameter: {}", param_name)
+                    "message": format!("Missing required parameter: {}", param_name)
                 })
             }
             crate::error::FrameworkError::ValidationError { field, message } => {
                 serde_json::json!({
-                    "error": "Validation failed",
+                    "message": "Validation failed",
                     "field": field,
-                    "message": message
+                    "error": message
                 })
             }
             crate::error::FrameworkError::Validation(errors) => {
@@ -266,10 +270,15 @@ impl From<crate::error::FrameworkError> for HttpResponse {
             }
             _ => {
                 serde_json::json!({
-                    "error": err.to_string()
+                    "message": err.to_string()
                 })
             }
         };
+        if let Some(hint_text) = hint {
+            if let Some(obj) = body.as_object_mut() {
+                obj.insert("hint".to_string(), serde_json::Value::String(hint_text));
+            }
+        }
         HttpResponse::json(body).status(status)
     }
 }
