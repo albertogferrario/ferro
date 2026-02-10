@@ -111,6 +111,8 @@ pub enum TextElement {
     H2,
     H3,
     Span,
+    Div,
+    Section,
 }
 
 /// Column display format for tables.

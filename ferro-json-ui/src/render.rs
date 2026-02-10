@@ -824,6 +824,13 @@ fn render_text(props: &TextProps) -> String {
             content
         ),
         TextElement::Span => format!("<span class=\"text-base text-gray-700\">{}</span>", content),
+        TextElement::Div => format!("<div class=\"text-base text-gray-700\">{}</div>", content),
+        TextElement::Section => {
+            format!(
+                "<section class=\"text-base text-gray-700\">{}</section>",
+                content
+            )
+        }
     }
 }
 
