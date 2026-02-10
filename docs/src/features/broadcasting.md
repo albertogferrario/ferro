@@ -1,47 +1,28 @@
 # Broadcasting
 
-Ferro provides a Laravel Echo-inspired WebSocket broadcasting system for real-time communication. Push updates to clients instantly through public, private, and presence channels.
+Ferro provides a WebSocket broadcasting system for real-time communication. Push events to connected clients through public, private, and presence channels. The server handles WebSocket connections at `/_ferro/ws` with automatic heartbeat, timeout, and subscription management.
 
-## Configuration
+## Setup
 
-### Environment Variables
+### Registering the Broadcaster
 
-Configure broadcasting in your `.env` file:
-
-```env
-# Optional limits (0 = unlimited)
-BROADCAST_MAX_SUBSCRIBERS=100
-BROADCAST_MAX_CHANNELS=50
-
-# Connection settings (in seconds)
-BROADCAST_HEARTBEAT_INTERVAL=30
-BROADCAST_CLIENT_TIMEOUT=60
-
-# Allow client-to-client messages
-BROADCAST_ALLOW_CLIENT_EVENTS=true
-```
-
-### Bootstrap Setup
-
-In `src/bootstrap.rs`, create the broadcaster:
+In `bootstrap.rs`, create a `Broadcaster` and register it as a singleton. The broadcaster manages all connected clients and channel subscriptions.
 
 ```rust
-use ferro::{App, Broadcaster, BroadcastConfig};
-use std::sync::Arc;
+use ferro::{Broadcaster, BroadcastConfig};
+use ferro::container::App;
 
 pub async fn register() {
-    // ... other setup ...
-
-    // Create broadcaster with environment config
-    let config = BroadcastConfig::from_env();
-    let broadcaster = Arc::new(Broadcaster::with_config(config));
-
-    // Store in app state for handlers to access
-    App::set_broadcaster(broadcaster);
+    let broadcaster = Broadcaster::with_config(BroadcastConfig::from_env());
+    App::singleton(broadcaster);
 }
 ```
 
+The framework automatically intercepts WebSocket upgrade requests to `/_ferro/ws` when a `Broadcaster` is registered. No additional route configuration is needed for the WebSocket endpoint itself.
+
 ### Manual Configuration
+
+Instead of reading from environment variables, configure the broadcaster directly:
 
 ```rust
 use ferro::{Broadcaster, BroadcastConfig};
@@ -59,124 +40,334 @@ let broadcaster = Broadcaster::with_config(config);
 
 ## Channel Types
 
-Channels are determined by their name prefix:
+Channel type is determined by the channel name prefix:
 
 | Type | Prefix | Authorization | Use Case |
 |------|--------|---------------|----------|
-| Public | none | No | Public updates (news feed) |
-| Private | `private-` | Yes | User-specific data |
-| Presence | `presence-` | Yes | Track online users |
-
-### Examples
+| Public | none | No | News feeds, global notifications |
+| Private | `private-` | Yes | User-specific data, order updates |
+| Presence | `presence-` | Yes | Online status, who's typing |
 
 ```rust
-// Public channel - anyone can subscribe
+// Public - anyone can subscribe
 "orders"
 "notifications"
 
-// Private channel - requires authorization
+// Private - requires authorization
 "private-orders.123"
 "private-user.456"
 
-// Presence channel - tracks members
+// Presence - tracks online members
 "presence-chat.1"
 "presence-room.gaming"
 ```
 
-## Broadcasting Messages
-
-### Basic Broadcast
-
-```rust
-use ferro::Broadcast;
-
-// In a controller or service
-let broadcast = Broadcast::new(broadcaster.clone());
-
-broadcast
-    .channel("orders.123")
-    .event("OrderUpdated")
-    .data(&order)
-    .send()
-    .await?;
-```
-
-### Excluding the Sender
-
-When a client triggers an action, exclude them from the broadcast:
-
-```rust
-broadcast
-    .channel("chat.1")
-    .event("NewMessage")
-    .data(&message)
-    .except(&socket_id)  // Don't send to this client
-    .send()
-    .await?;
-```
-
-### Direct Broadcaster API
-
-```rust
-// Broadcast to all subscribers
-broadcaster
-    .broadcast("orders", "OrderCreated", &order)
-    .await?;
-
-// Broadcast excluding a client
-broadcaster
-    .broadcast_except("chat.1", "MessageSent", &msg, &sender_socket_id)
-    .await?;
-```
-
 ## Channel Authorization
 
-Private and presence channels require authorization.
+Private and presence channels require an authorizer. Implement the `ChannelAuthorizer` trait and attach it to the broadcaster.
 
-### Implementing an Authorizer
+### Implementing a Channel Authorizer
 
 ```rust
-use ferro::{AuthData, ChannelAuthorizer, async_trait};
+use ferro::{AuthData, ChannelAuthorizer};
 
-pub struct MyAuthorizer {
-    // Database connection, etc.
-}
+pub struct AppChannelAuth;
 
-#[async_trait]
-impl ChannelAuthorizer for MyAuthorizer {
+#[async_trait::async_trait]
+impl ChannelAuthorizer for AppChannelAuth {
     async fn authorize(&self, data: &AuthData) -> bool {
-        // data.socket_id - The client's socket ID
-        // data.channel - The channel being accessed
-        // data.auth_token - Optional auth token from client
+        // data.socket_id   - client's WebSocket connection ID
+        // data.channel     - channel name being requested
+        // data.auth_token  - user ID from session auth (set by broadcasting_auth)
 
-        // Example: Parse user ID from channel name
-        if data.channel.starts_with("private-orders.") {
-            let order_id: i64 = data.channel
-                .strip_prefix("private-orders.")
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0);
-
-            // Verify user owns this order
-            return self.user_owns_order(data.auth_token.as_deref(), order_id).await;
+        match data.channel.as_str() {
+            c if c.starts_with("private-orders.") => {
+                let order_id: i64 = c
+                    .strip_prefix("private-orders.")
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
+                // Check if user owns this order
+                check_order_ownership(data.auth_token.as_deref(), order_id).await
+            }
+            c if c.starts_with("presence-chat.") => {
+                // Allow all authenticated users to join chat
+                data.auth_token.is_some()
+            }
+            _ => false,
         }
-
-        false
     }
 }
 ```
 
 ### Registering the Authorizer
 
+Chain `.with_authorizer()` when creating the broadcaster:
+
 ```rust
-let authorizer = MyAuthorizer::new(db_pool);
-let broadcaster = Broadcaster::new().with_authorizer(authorizer);
+let broadcaster = Broadcaster::with_config(BroadcastConfig::from_env())
+    .with_authorizer(AppChannelAuth);
+App::singleton(broadcaster);
+```
+
+## Auth Endpoint
+
+Clients connecting to private or presence channels must authenticate through an HTTP endpoint. Ferro provides `broadcasting_auth`, a handler that bridges session authentication with channel authorization.
+
+### Registering the Auth Route
+
+```rust
+use ferro::broadcasting_auth;
+
+Route::post("/broadcasting/auth", broadcasting_auth)
+    .middleware(SessionAuthMiddleware);
+```
+
+The handler:
+
+1. Verifies the user is authenticated via session (`Auth::id()`)
+2. Receives `channel_name` and `socket_id` from the client
+3. Calls `Broadcaster::check_auth()` with the user's ID as the auth token
+4. Returns 200 with auth confirmation if authorized, 401 if unauthenticated, 403 if unauthorized
+5. For presence channels, includes `channel_data` with `user_id`
+
+### Private Channel Auth Flow
+
+The full authorization flow for private and presence channels:
+
+1. Client connects to `ws://host/_ferro/ws` and receives a `socket_id`
+2. Client sends HTTP POST to `/broadcasting/auth` with `channel_name` and `socket_id`
+3. Server validates session auth and calls the registered `ChannelAuthorizer`
+4. If authorized, client receives auth confirmation
+5. Client sends a `subscribe` message over WebSocket with the `auth` token
+6. Server subscribes the client to the channel
+
+## Broadcasting from Handlers
+
+### Fluent Builder API
+
+The `Broadcast` builder provides a chainable interface for sending events:
+
+```rust
+use ferro::{Broadcast, Broadcaster};
+use ferro::container::App;
+use std::sync::Arc;
+
+#[handler]
+pub async fn update_order(req: Request, id: Path<i32>) -> Response {
+    let db = req.db();
+    let order = update_order_in_db(db, *id).await?;
+
+    let broadcaster = App::get::<Broadcaster>().unwrap();
+    let broadcast = Broadcast::new(Arc::new(broadcaster));
+
+    broadcast
+        .channel(&format!("orders.{}", id))
+        .event("OrderUpdated")
+        .data(&order)
+        .send()
+        .await
+        .ok();
+
+    Ok(json!(order))
+}
+```
+
+### Excluding the Sender
+
+When a client triggers an action, exclude them from the broadcast to avoid echo:
+
+```rust
+broadcast
+    .channel("chat.1")
+    .event("NewMessage")
+    .data(&message)
+    .except(&socket_id)
+    .send()
+    .await?;
+```
+
+### Direct Broadcaster API
+
+For simpler cases, call `broadcast()` or `broadcast_except()` directly:
+
+```rust
+let broadcaster = App::get::<Broadcaster>().unwrap();
+
+// Broadcast to all subscribers
+broadcaster.broadcast("orders", "OrderCreated", &order).await?;
+
+// Broadcast excluding a specific client
+broadcaster
+    .broadcast_except("chat.1", "MessageSent", &msg, &sender_socket_id)
+    .await?;
+```
+
+## Client Connection
+
+Clients connect via standard WebSocket to the `/_ferro/ws` endpoint. All messages use JSON.
+
+### JavaScript Client
+
+```javascript
+const ws = new WebSocket('ws://localhost:8080/_ferro/ws');
+
+ws.onopen = () => {
+    console.log('Connected');
+};
+
+ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+
+    switch (msg.type) {
+        case 'connected':
+            console.log('Socket ID:', msg.socket_id);
+            // Subscribe to public channel
+            ws.send(JSON.stringify({
+                type: 'subscribe',
+                channel: 'orders'
+            }));
+            break;
+
+        case 'subscribed':
+            console.log('Subscribed to:', msg.channel);
+            break;
+
+        case 'subscription_error':
+            console.error('Failed:', msg.channel, msg.error);
+            break;
+
+        case 'event':
+            console.log('Event:', msg.event, msg.data);
+            break;
+
+        case 'member_added':
+            console.log('Joined:', msg.user_id, msg.user_info);
+            break;
+
+        case 'member_removed':
+            console.log('Left:', msg.user_id);
+            break;
+
+        case 'pong':
+            // Keepalive response
+            break;
+
+        case 'error':
+            console.error('Error:', msg.message);
+            break;
+    }
+};
+```
+
+### Subscribing to Private Channels
+
+Private channels require an auth token. The client first authenticates via the HTTP endpoint, then includes the token in the subscribe message:
+
+```javascript
+async function subscribePrivate(ws, socketId, channel) {
+    // Step 1: Get auth token from server
+    const res = await fetch('/broadcasting/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Send session cookie
+        body: JSON.stringify({
+            channel_name: channel,
+            socket_id: socketId
+        })
+    });
+
+    if (!res.ok) {
+        throw new Error('Authorization failed');
+    }
+
+    const data = await res.json();
+
+    // Step 2: Subscribe with auth token
+    ws.send(JSON.stringify({
+        type: 'subscribe',
+        channel: channel,
+        auth: data.auth
+    }));
+}
+```
+
+## Whisper (Client Events)
+
+Whisper messages are client-to-client events forwarded through the server. They are useful for ephemeral state like typing indicators and cursor positions. The sender is excluded from receiving the message.
+
+```javascript
+// Send a whisper
+ws.send(JSON.stringify({
+    type: 'whisper',
+    channel: 'private-chat.1',
+    event: 'typing',
+    data: { name: 'Alice' }
+}));
+```
+
+Whisper requires `allow_client_events: true` in configuration (enabled by default) and the sender must be subscribed to the channel.
+
+## Message Protocol
+
+### Client to Server
+
+All client messages are JSON with a `type` field:
+
+```json
+// Subscribe to a channel
+{"type": "subscribe", "channel": "orders"}
+
+// Subscribe to a private channel with auth
+{"type": "subscribe", "channel": "private-orders.1", "auth": "token"}
+
+// Unsubscribe
+{"type": "unsubscribe", "channel": "orders"}
+
+// Whisper (client event)
+{"type": "whisper", "channel": "chat", "event": "typing", "data": {"name": "Alice"}}
+
+// Keepalive ping
+{"type": "ping"}
+```
+
+### Server to Client
+
+```json
+// Connection established
+{"type": "connected", "socket_id": "uuid-v4-here"}
+
+// Subscription confirmed
+{"type": "subscribed", "channel": "orders"}
+
+// Subscription failed
+{"type": "subscription_error", "channel": "private-secret", "error": "Authorization required"}
+
+// Unsubscribed
+{"type": "unsubscribed", "channel": "orders"}
+
+// Broadcast event
+{"type": "event", "event": "OrderUpdated", "channel": "orders", "data": {"id": 1}}
+
+// Presence member joined
+{"type": "member_added", "channel": "presence-chat.1", "user_id": "42", "user_info": {"name": "Alice"}}
+
+// Presence member left
+{"type": "member_removed", "channel": "presence-chat.1", "user_id": "42"}
+
+// Keepalive response
+{"type": "pong"}
+
+// Error
+{"type": "error", "message": "Invalid message format"}
 ```
 
 ## Presence Channels
 
-Presence channels track which users are online.
+Presence channels extend private channels with member tracking. When users join or leave, events are automatically broadcast to all channel members.
 
 ### Subscribing with Member Info
+
+On the server side, presence subscriptions include member metadata:
 
 ```rust
 use ferro::PresenceMember;
@@ -194,26 +385,12 @@ broadcaster
 
 ### Member Events
 
-When members join or leave, events are automatically broadcast:
+The server automatically broadcasts when members join or leave:
 
-```json
-// Member joined
-{
-    "type": "member_added",
-    "channel": "presence-chat.1",
-    "user_id": "123",
-    "user_info": {"name": "Alice", "avatar": "..."}
-}
+- `member_added` -- includes `user_id` and `user_info`
+- `member_removed` -- includes `user_id`
 
-// Member left
-{
-    "type": "member_removed",
-    "channel": "presence-chat.1",
-    "user_id": "123"
-}
-```
-
-### Getting Channel Members
+### Querying Channel Members
 
 ```rust
 if let Some(channel) = broadcaster.get_channel("presence-chat.1") {
@@ -223,179 +400,39 @@ if let Some(channel) = broadcaster.get_channel("presence-chat.1") {
 }
 ```
 
-## Message Types
+## Configuration
 
-### Server to Client
+### Environment Variables
 
-```rust
-pub enum ServerMessage {
-    // Connection established
-    Connected { socket_id: String },
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BROADCAST_MAX_SUBSCRIBERS` | Max subscribers per channel (0 = unlimited) | 0 |
+| `BROADCAST_MAX_CHANNELS` | Max total channels (0 = unlimited) | 0 |
+| `BROADCAST_HEARTBEAT_INTERVAL` | Heartbeat interval in seconds | 30 |
+| `BROADCAST_CLIENT_TIMEOUT` | Client timeout in seconds (disconnect if no activity) | 60 |
+| `BROADCAST_ALLOW_CLIENT_EVENTS` | Allow whisper messages (`true`/`false`) | true |
 
-    // Subscription confirmed
-    Subscribed { channel: String },
+### Connection Management
 
-    // Subscription failed
-    SubscriptionError { channel: String, error: String },
+The WebSocket connection handler runs a `tokio::select!` loop that manages:
 
-    // Unsubscribed
-    Unsubscribed { channel: String },
+- **Incoming frames** -- client messages dispatched to the broadcaster
+- **Server messages** -- broadcast events forwarded to the client
+- **Heartbeat** -- periodic ping/pong to detect stale connections
 
-    // Broadcast event
-    Event(BroadcastMessage),
-
-    // Presence: member joined
-    MemberAdded { channel: String, user_id: String, user_info: Value },
-
-    // Presence: member left
-    MemberRemoved { channel: String, user_id: String },
-
-    // Keepalive response
-    Pong,
-
-    // Error
-    Error { message: String },
-}
-```
-
-### Client to Server
-
-```rust
-pub enum ClientMessage {
-    // Subscribe to channel
-    Subscribe { channel: String, auth: Option<String> },
-
-    // Unsubscribe from channel
-    Unsubscribe { channel: String },
-
-    // Client event (whisper)
-    Whisper { channel: String, event: String, data: Value },
-
-    // Keepalive
-    Ping,
-}
-```
-
-## WebSocket Handler Example
-
-```rust
-use ferro::{Broadcaster, ClientMessage, ServerMessage};
-use tokio::sync::mpsc;
-use tokio_tungstenite::tungstenite::Message;
-
-async fn handle_websocket(
-    ws_stream: WebSocketStream,
-    broadcaster: Arc<Broadcaster>,
-) {
-    let socket_id = generate_socket_id();
-    let (tx, mut rx) = mpsc::channel::<ServerMessage>(32);
-
-    // Register client
-    broadcaster.add_client(socket_id.clone(), tx);
-
-    // Send connection confirmation
-    let connected = ServerMessage::Connected {
-        socket_id: socket_id.clone()
-    };
-    // ... send to client
-
-    // Handle messages
-    loop {
-        tokio::select! {
-            // Message from client
-            Some(msg) = ws_stream.next() => {
-                match parse_client_message(msg) {
-                    ClientMessage::Subscribe { channel, auth } => {
-                        match broadcaster.subscribe(&socket_id, &channel, auth.as_deref(), None).await {
-                            Ok(_) => { /* send Subscribed */ }
-                            Err(e) => { /* send SubscriptionError */ }
-                        }
-                    }
-                    ClientMessage::Unsubscribe { channel } => {
-                        broadcaster.unsubscribe(&socket_id, &channel).await;
-                    }
-                    ClientMessage::Ping => {
-                        // send Pong
-                    }
-                    _ => {}
-                }
-            }
-
-            // Message to send to client
-            Some(msg) = rx.recv() => {
-                // Send to WebSocket
-            }
-        }
-    }
-
-    // Cleanup on disconnect
-    broadcaster.remove_client(&socket_id);
-}
-```
-
-## Example: Real-time Chat
-
-```rust
-// When a message is sent
-async fn send_message(
-    broadcaster: Arc<Broadcaster>,
-    room_id: i64,
-    user: &User,
-    content: String,
-    socket_id: &str,
-) -> Result<Message, Error> {
-    // Save to database
-    let message = Message::create(room_id, user.id, &content).await?;
-
-    // Broadcast to room (except sender)
-    Broadcast::new(broadcaster)
-        .channel(&format!("presence-chat.{}", room_id))
-        .event("NewMessage")
-        .data(serde_json::json!({
-            "id": message.id,
-            "user": {
-                "id": user.id,
-                "name": user.name,
-            },
-            "content": content,
-            "created_at": message.created_at,
-        }))
-        .except(socket_id)
-        .send()
-        .await?;
-
-    Ok(message)
-}
-```
+Clients that exceed `BROADCAST_CLIENT_TIMEOUT` without activity are disconnected. The server sends Close frames on clean shutdown and removes the client from all subscribed channels.
 
 ## Monitoring
 
 ```rust
-// Get connection stats
-let client_count = broadcaster.client_count();
-let channel_count = broadcaster.channel_count();
+let broadcaster = App::get::<Broadcaster>().unwrap();
 
-// Get specific channel info
+// Connection stats
+let clients = broadcaster.client_count();
+let channels = broadcaster.channel_count();
+
+// Channel details
 if let Some(channel) = broadcaster.get_channel("orders") {
-    println!("Subscribers: {}", channel.subscriber_count());
+    println!("{} subscribers", channel.subscriber_count());
 }
 ```
-
-## Environment Variables Reference
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BROADCAST_MAX_SUBSCRIBERS` | Max subscribers per channel (0=unlimited) | 0 |
-| `BROADCAST_MAX_CHANNELS` | Max total channels (0=unlimited) | 0 |
-| `BROADCAST_HEARTBEAT_INTERVAL` | Heartbeat interval (seconds) | 30 |
-| `BROADCAST_CLIENT_TIMEOUT` | Client timeout (seconds) | 60 |
-| `BROADCAST_ALLOW_CLIENT_EVENTS` | Allow whisper messages | true |
-
-## Best Practices
-
-1. **Use meaningful channel names** - `orders.{id}` not `channel1`
-2. **Authorize private data** - Always use private channels for user-specific data
-3. **Use presence for online status** - Track who's viewing/editing
-4. **Exclude senders when appropriate** - Avoid echo effects
-5. **Set reasonable limits** - Prevent resource exhaustion with config limits
-6. **Handle disconnects gracefully** - Clean up subscriptions on disconnect

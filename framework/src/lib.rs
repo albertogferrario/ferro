@@ -131,9 +131,9 @@ pub use ferro_notifications::{
 
 // Re-export ferro-broadcast for real-time WebSocket channels
 pub use ferro_broadcast::{
-    AuthData, Broadcast, BroadcastBuilder, BroadcastMessage, Broadcaster, ChannelAuthorizer,
-    ChannelInfo, ChannelType, Client as BroadcastClient, ClientMessage, Error as BroadcastError,
-    PresenceMember, ServerMessage,
+    AuthData, Broadcast, BroadcastBuilder, BroadcastConfig, BroadcastMessage, Broadcaster,
+    ChannelAuthorizer, ChannelInfo, ChannelType, Client as BroadcastClient, ClientMessage,
+    Error as BroadcastError, PresenceMember, ServerMessage,
 };
 
 // Re-export broadcasting auth handler
