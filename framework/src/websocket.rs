@@ -5,7 +5,7 @@
 
 use crate::container::App;
 use bytes::Bytes;
-use ferro_broadcast::{Broadcaster, ClientMessage, ServerMessage};
+use ferro_broadcast::{Broadcaster, ClientMessage, PresenceMember, ServerMessage};
 use futures_util::{SinkExt, StreamExt};
 use http_body_util::Full;
 use hyper_tungstenite::tungstenite::Message as WsMsg;
@@ -159,9 +159,26 @@ async fn handle_client_message<S>(
     };
 
     match client_msg {
-        ClientMessage::Subscribe { channel, auth } => {
+        ClientMessage::Subscribe {
+            channel,
+            auth,
+            channel_data,
+        } => {
+            let member_info = if channel.starts_with("presence-") {
+                channel_data.and_then(|data| {
+                    let user_id = data.get("user_id")?.as_str()?.to_string();
+                    let user_info = data
+                        .get("user_info")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null);
+                    Some(PresenceMember::new(socket_id, user_id).with_info(user_info))
+                })
+            } else {
+                None
+            };
+
             match broadcaster
-                .subscribe(socket_id, &channel, auth.as_deref(), None)
+                .subscribe(socket_id, &channel, auth.as_deref(), member_info)
                 .await
             {
                 Ok(()) => {

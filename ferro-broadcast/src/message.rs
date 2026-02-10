@@ -55,6 +55,9 @@ pub enum ClientMessage {
         channel: String,
         #[serde(default)]
         auth: Option<String>,
+        /// Optional member data for presence channels (e.g. `{"user_id": "42", "user_info": {"name": "Alice"}}`).
+        #[serde(default)]
+        channel_data: Option<Value>,
     },
     /// Unsubscribe from a channel.
     Unsubscribe { channel: String },
@@ -132,6 +135,7 @@ mod tests {
         let msg = ClientMessage::Subscribe {
             channel: "private-orders.1".into(),
             auth: Some("auth_token".into()),
+            channel_data: None,
         };
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains("subscribe"));
