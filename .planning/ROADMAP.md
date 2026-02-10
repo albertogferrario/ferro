@@ -10,125 +10,34 @@
 - ✅ [**v2.1 Inertia DX & Fixes**](milestones/v2.1-ROADMAP.md) — Phases 33-34 (shipped 2026-01-17)
 - ✅ [**v2.2 CLI Improvements**](milestones/v2.2-ROADMAP.md) — Phases 35-37 (shipped 2026-02-09)
 - ✅ [**v3.0 JSON-UI**](milestones/v3.0-ROADMAP.md) — Phases 23-32 (shipped 2026-02-09)
-- ✅ **v4.0 Production Readiness** — Phases 38-46 (shipped 2026-02-10)
-
----
-
-### ✅ v4.0 Production Readiness (Complete)
-
-**Milestone Goal:** Make Ferro production-ready with authentication, API resources, rate limiting, real-time improvements, and stability fixes.
-
-#### Phase 38: Fix Pre-existing Blockers
-
-**Goal**: Stabilize foundation by fixing ferro-storage unimplemented methods, flaky tests, and tailwind test assumption
-**Depends on**: Previous milestone complete
-**Research**: Unlikely (internal bug fixes)
-**Plans**: 2 plans, 1 wave
-
-Plans:
-- [x] 38-01: Fix test isolation (metrics global state + queue env var safety)
-- [x] 38-02: Fix storage placeholders + Inertia CDN assumption
-
-#### Phase 39: Core Authentication
-
-**Goal**: Session-based login/register with password hashing (bcrypt/argon2)
-**Depends on**: Phase 38
-**Research**: Unlikely (session auth patterns exist in framework)
-**Plans**: 4 plans, 2 waves
-
-Plans:
-- [x] 39-01: User model auth fields + DatabaseUserProvider
-- [x] 39-02: Auth controllers and routes
-- [x] 39-03: make:auth CLI command
-- [x] 39-04: Authentication documentation
-
-#### Phase 40: Auth Middleware
-
-**Goal**: Route guards, auth/guest middleware, current user extraction
-**Depends on**: Phase 39
-**Research**: Unlikely (middleware patterns established)
-**Plans**: 2 plans, 2 waves
-
-Plans:
-- [x] 40-01: AuthUser<T> and OptionalUser<T> extractors
-- [x] 40-02: Sample app, templates, and docs integration
-
-#### Phase 41: API Resources Basics
-
-**Goal**: Model-to-response transformation with field selection (Laravel API Resources pattern)
-**Depends on**: Phase 38
-**Research**: Complete (41-RESEARCH.md)
-**Plans**: 3 plans, 3 waves
-
-Plans:
-- [x] 41-01: Resource trait + ResourceMap builder
-- [x] 41-02: ApiResource derive macro
-- [x] 41-03: CLI make:resource + docs + sample app
-
-#### Phase 42: API Resources Advanced
-
-**Goal**: Relationship inclusion, pagination, and collection resources
-**Depends on**: Phase 41
-**Research**: Unlikely (builds on Phase 41 patterns)
-**Plans**: 3 plans, 1 wave
-
-Plans:
-- [x] 42-01: Pagination structs + ResourceCollection
-- [x] 42-02: when_loaded/when_loaded_many + Resource::collection()
-- [x] 42-03: Documentation + MCP templates
-
-#### Phase 43: Rate Limiting
-
-**Goal**: Throttle middleware with configurable per-route and global limits
-**Depends on**: Phase 38
-**Research**: Complete (43-RESEARCH.md)
-**Plans**: 3 plans, 2 waves
-
-Plans:
-- [x] 43-01: Cache-backed rate limiting with Limit/RateLimiter::define/Throttle::named
-- [x] 43-02: Rate limiting tests
-- [x] 43-03: Rate limiting documentation + MCP templates
-
-#### Phase 44: Real-time Improvements
-
-**Goal**: Enhance ferro-broadcast with connection management and channel authorization
-**Depends on**: Phase 40
-**Research**: Complete (44-RESEARCH.md)
-**Plans**: 4 plans, 3 waves
-
-Plans:
-- [x] 44-01: tokio-tungstenite 0.28 bump + message helpers + whisper forwarding
-- [x] 44-02: WebSocket upgrade handler + connection message loop
-- [x] 44-03: Broadcasting auth endpoint + Broadcaster::check_auth
-- [x] 44-04: Broadcasting documentation + MCP templates
-
-#### Phase 45: DX Polish
-
-**Goal**: CLI ergonomics, error message improvements, documentation updates for new features
-**Depends on**: Phases 39-44
-**Research**: Unlikely (internal improvements)
-**Plans**: 3 plans
-
-Plans:
-- [x] 45-01: Actionable error hints for FrameworkError variants
-- [x] 45-02: MCP list_commands completeness
-- [x] 45-03: Sample app v4.0 feature demonstrations
-
-#### Phase 46: MCP + CLI Updates
-
-**Goal**: MCP introspection tools for auth/resources/rate-limiting/broadcasting
-**Depends on**: Phase 45
-**Research**: Unlikely (established MCP patterns with 30+ tools)
-**Plans**: 3 plans, 3 waves
-
-Plans:
-- [x] 46-01: list_resources + list_policies MCP tools
-- [x] 46-02: list_rate_limiters + list_broadcast_channels MCP tools + MCP instructions update
-- [x] 46-03: application_info v4.0 feature counts + list_commands verification
+- ✅ [**v4.0 Production Readiness**](milestones/v4.0-ROADMAP.md) — Phases 38-46 (shipped 2026-02-10)
 
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v4.0 Production Readiness (Phases 38-46) — SHIPPED 2026-02-10</summary>
+
+**Milestone Goal:** Make Ferro production-ready with authentication, API resources, rate limiting, real-time improvements, and stability fixes.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 38. Fix Pre-existing Blockers | 2/2 | Complete | 2026-02-09 |
+| 39. Core Authentication | 4/4 | Complete | 2026-02-09 |
+| 40. Auth Middleware | 2/2 | Complete | 2026-02-10 |
+| 41. API Resources Basics | 3/3 | Complete | 2026-02-10 |
+| 42. API Resources Advanced | 3/3 | Complete | 2026-02-10 |
+| 43. Rate Limiting | 3/3 | Complete | 2026-02-10 |
+| 44. Real-time Improvements | 4/4 | Complete | 2026-02-10 |
+| 45. DX Polish | 3/3 | Complete | 2026-02-10 |
+| 46. MCP + CLI Updates | 3/3 | Complete | 2026-02-10 |
+
+**Total:** 9 phases, 24 plans
+
+[Full details →](milestones/v4.0-ROADMAP.md)
+
+</details>
 
 <details>
 <summary>✅ v3.0 JSON-UI (Phases 23-32) — SHIPPED 2026-02-09</summary>
@@ -298,16 +207,3 @@ Plans:
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 
-### v4.0 Phase Progress
-
-| Phase | Milestone | Plans | Status | Completed |
-|-------|-----------|-------|--------|-----------|
-| 38. Fix Pre-existing Blockers | v4.0 | 2/2 | Complete | 2026-02-09 |
-| 39. Core Authentication | v4.0 | 4/4 | Complete | 2026-02-09 |
-| 40. Auth Middleware | v4.0 | 2/2 | Complete | 2026-02-10 |
-| 41. API Resources Basics | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 42. API Resources Advanced | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 43. Rate Limiting | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 44. Real-time Improvements | v4.0 | 4/4 | Complete | 2026-02-10 |
-| 45. DX Polish | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 46. MCP + CLI Updates | v4.0 | 3/3 | Complete | 2026-02-10 |

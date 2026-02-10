@@ -1,5 +1,31 @@
 # Project Milestones: Ferro Framework
 
+## v4.0 Production Readiness (Shipped: 2026-02-10)
+
+**Delivered:** Authentication, API resources, rate limiting, real-time WebSocket broadcasting, and DX polish to make Ferro production-ready.
+
+**Phases completed:** 38-46 (24 plans total)
+
+**Key accomplishments:**
+- Complete session-based authentication system with bcrypt hashing, Auth facade, AuthUser/OptionalUser extractors, middleware guards, and `ferro make:auth` CLI scaffolding
+- Production-ready API Resources with derive macro, ResourceMap builder, pagination envelope, collection mapping, and batch-loaded relationship support
+- Cache-backed rate limiting with RateLimiter::define() and Throttle middleware supporting named limiters, multiple limits per route, and fail-open behavior
+- Real-time WebSocket broadcasting with upgrade handler, heartbeat/timeout, channel authorization, and whisper support for client-to-client messaging
+- Enhanced DX with actionable error hints, comprehensive MCP introspection (list_resources, list_policies, list_rate_limiters, list_broadcast_channels), and v4.0 feature documentation
+- Stabilized foundation: fixed flaky tests, replaced S3 driver panics, removed CDN dependencies, added 100+ unit tests across all new features
+
+**Stats:**
+- 128 files changed (+16,105, -878 lines)
+- ~80,900 lines of Rust (total codebase)
+- 9 phases, 24 plans
+- 2 days (2026-02-09 → 2026-02-10)
+
+**Git range:** `94c73c1` → `a9dcd8a`
+
+**What's next:** Publish to crates.io and public announcement.
+
+---
+
 ## v3.0 JSON-UI (Shipped: 2026-02-09)
 
 **Delivered:** JSON-based UI rendering system as an alternative to Inertia, enabling rapid UI without frontend builds.

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A developer experience and agent-friendliness optimized web framework for Rust. Ferro enables AI agents to build complete web applications from natural language descriptions — with reduced boilerplate, deep introspection via MCP, and intelligent CLI scaffolding.
+A production-ready, agent-first web framework for Rust. Ferro enables AI agents to build complete web applications from natural language descriptions — with reduced boilerplate, deep introspection via MCP, intelligent CLI scaffolding, session authentication, API resources, rate limiting, and real-time WebSocket broadcasting.
 
 ## Core Value
 
@@ -90,6 +90,19 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - ✓ 3 MCP tools for JSON-UI (catalog, inspect, generate) — v3.0
 - ✓ Comprehensive JSON-UI documentation (6 pages, 2,134 lines) — v3.0
 
+**v4.0 Production Readiness (shipped 2026-02-10):**
+- ✓ Session-based authentication with bcrypt hashing, Auth facade, login/register/logout — v4.0
+- ✓ AuthUser<T> and OptionalUser<T> handler extractors with middleware guards — v4.0
+- ✓ `ferro make:auth` CLI command for scaffolding complete auth system — v4.0
+- ✓ API Resources with derive macro, ResourceMap builder, conditional fields — v4.0
+- ✓ Pagination envelope (PaginationMeta/Links) and ResourceCollection — v4.0
+- ✓ Batch-loaded relationship support via when_loaded/when_loaded_many — v4.0
+- ✓ Cache-backed rate limiting with RateLimiter::define() and Throttle middleware — v4.0
+- ✓ WebSocket upgrade handler with heartbeat, channel authorization, and whisper — v4.0
+- ✓ Actionable error hints with fix guidance in JSON error responses — v4.0
+- ✓ 4 new MCP tools (list_resources, list_policies, list_rate_limiters, list_broadcast_channels) — v4.0
+- ✓ Comprehensive documentation for auth, API resources, rate limiting, and broadcasting — v4.0
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
@@ -108,11 +121,11 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 ## Context
 
 **Current State:**
-- ~67,000 lines of Rust across 12 crates (ferro-json-ui added in v3.0)
-- JSON-UI: 7,203 lines in ferro-json-ui with 20 components, HTML renderer, layout system
-- Framework ready for crates.io publication
-- Sample application demonstrating all capabilities
-- Comprehensive MCP introspection (30+ tools, including 3 JSON-UI tools)
+- ~80,900 lines of Rust across 12 crates
+- v4.0 added: authentication, API resources, rate limiting, WebSocket broadcasting
+- Framework production-ready for crates.io publication
+- Sample application demonstrating all capabilities including v4.0 features
+- Comprehensive MCP introspection (34+ tools, including auth, resources, rate limiting, broadcasting)
 
 **Tech Stack:**
 - Rust 2021 edition
@@ -162,6 +175,11 @@ Reference codebase documentation in `.planning/codebase/`:
 | Sonnet default for AI generation | ~5x cost reduction vs Opus for CLI code generation | ✓ Good |
 | json_ui_generate returns context | Consuming agent IS the LLM, avoids double-LLM calls | ✓ Good |
 | COMPONENT_CATALOG duplicated | Cannot share code across workspace crates | ⚠️ Revisit |
+| serde_json preserve_order | ResourceMap needs insertion-order field output | ✓ Good |
+| Fail-open rate limiting | Availability over strictness; never block on infra failure | ✓ Good |
+| WS upgrade before middleware | Upgrade needs raw hyper Request, not framework Request | ✓ Good |
+| Always include error hints | Errors are developer-facing APIs, not user-facing | ✓ Good |
+| 401 via FrameworkError::domain | 401 is authentication failure; Unauthorized is 403 | ✓ Good |
 
 ---
-*Last updated: 2026-02-09 after v3.0 JSON-UI milestone*
+*Last updated: 2026-02-10 after v4.0 Production Readiness milestone*
