@@ -93,12 +93,14 @@ Plans:
 
 **Goal**: Enhance ferro-broadcast with connection management and channel authorization
 **Depends on**: Phase 40
-**Research**: Likely (need to assess ferro-broadcast current state and gaps)
-**Research topics**: Current ferro-broadcast API surface, WebSocket connection lifecycle, channel auth patterns
-**Plans**: TBD
+**Research**: Complete (44-RESEARCH.md)
+**Plans**: 4 plans, 3 waves
 
 Plans:
-- [ ] 44-01: TBD
+- [ ] 44-01: tokio-tungstenite 0.28 bump + message helpers + whisper forwarding
+- [ ] 44-02: WebSocket upgrade handler + connection message loop
+- [ ] 44-03: Broadcasting auth endpoint + Broadcaster::check_auth
+- [ ] 44-04: Broadcasting documentation + MCP templates
 
 #### Phase 45: DX Polish
 
@@ -290,7 +292,7 @@ Plans:
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 17/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 21/? | 🚧 In Progress | - |
 
 ### v4.0 Phase Progress
 
@@ -302,6 +304,6 @@ Plans:
 | 41. API Resources Basics | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 42. API Resources Advanced | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 43. Rate Limiting | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 44. Real-time Improvements | v4.0 | 0/? | Not started | - |
+| 44. Real-time Improvements | v4.0 | 0/4 | Planned | - |
 | 45. DX Polish | v4.0 | 0/? | Not started | - |
 | 46. MCP + CLI Updates | v4.0 | 0/? | Not started | - |
