@@ -37,6 +37,12 @@ pub fn execute() -> CommandsInfo {
             description: "Generate a new action".to_string(),
         },
         CommandInfo {
+            name: "make:auth".to_string(),
+            description:
+                "Scaffold complete authentication system (migration, controller, routes, middleware)"
+                    .to_string(),
+        },
+        CommandInfo {
             name: "make:middleware".to_string(),
             description: "Generate a new middleware".to_string(),
         },
@@ -69,6 +75,11 @@ pub fn execute() -> CommandsInfo {
             description: "Generate a new authorization policy".to_string(),
         },
         CommandInfo {
+            name: "make:resource".to_string(),
+            description:
+                "Generate an API resource for model-to-response transformation".to_string(),
+        },
+        CommandInfo {
             name: "make:task".to_string(),
             description: "Generate a new scheduled task".to_string(),
         },
@@ -79,6 +90,11 @@ pub fn execute() -> CommandsInfo {
         CommandInfo {
             name: "make:inertia".to_string(),
             description: "Generate a new Inertia page".to_string(),
+        },
+        CommandInfo {
+            name: "make:json-view".to_string(),
+            description:
+                "Generate a JSON-UI view using AI (requires ANTHROPIC_API_KEY)".to_string(),
         },
         CommandInfo {
             name: "make:seeder".to_string(),
@@ -97,6 +113,10 @@ pub fn execute() -> CommandsInfo {
         CommandInfo {
             name: "db:rollback".to_string(),
             description: "Rollback the last database migration(s)".to_string(),
+        },
+        CommandInfo {
+            name: "db:seed".to_string(),
+            description: "Run database seeders".to_string(),
         },
         CommandInfo {
             name: "db:status".to_string(),
@@ -132,6 +152,11 @@ pub fn execute() -> CommandsInfo {
                 .to_string(),
         },
         CommandInfo {
+            name: "do:init".to_string(),
+            description: "Initialize DigitalOcean App Platform deployment configuration"
+                .to_string(),
+        },
+        CommandInfo {
             name: "docker:init".to_string(),
             description: "Generate a production-ready Dockerfile".to_string(),
         },
@@ -146,6 +171,18 @@ pub fn execute() -> CommandsInfo {
         CommandInfo {
             name: "boost:install".to_string(),
             description: "Install AI development boost features".to_string(),
+        },
+        CommandInfo {
+            name: "claude:install".to_string(),
+            description: "Install Claude Code skill files for AI-assisted development".to_string(),
+        },
+        CommandInfo {
+            name: "clean".to_string(),
+            description: "Clean build artifacts using cargo-sweep".to_string(),
+        },
+        CommandInfo {
+            name: "validate:contracts".to_string(),
+            description: "Validate API contracts between Rust types and TypeScript".to_string(),
         },
     ];
 
