@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 47 of 52 (JSON-UI Map Component)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-10 — Completed 47-01-PLAN.md
+Last activity: 2026-02-10 — Completed 47-02-PLAN.md
 
-Progress: █░░░░░░░░░ 5%
+Progress: ██░░░░░░░░ 10%
 
 ## Milestone Summary
 
@@ -41,6 +41,8 @@ Archived to PROJECT.md and milestone archive files.
 |-------|----------|-----------|
 | 47-01 | with_plugin closure API for global plugin lookup | Avoids RwLock lifetime issues with Deref approach |
 | 47-01 | PluginRegistry starts empty (no built-in plugins) | Plugins registered at app startup; Map plugin is first built-in in Plan 03 |
+| 47-02 | Custom Deserialize over serde untagged for Component enum | serde's untagged within tagged enums is unreliable; manual match is deterministic |
+| 47-02 | Plugin components are leaf nodes in resolve.rs | No framework-visible children; internal structure opaque to framework |
 
 ### Pending Todos
 
@@ -57,5 +59,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 47-01-PLAN.md
+Stopped at: Completed 47-02-PLAN.md
 Resume file: None
