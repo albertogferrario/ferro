@@ -46,6 +46,24 @@ pub trait Resource {
         HttpResponse::json(serde_json::json!({"data": self.to_resource(req)}))
     }
 
+    /// Map a slice of resources to their JSON representations.
+    ///
+    /// Convenience for `items.iter().map(|item| item.to_resource(req)).collect()`.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let users: Vec<UserResource> = /* ... */;
+    /// let json_array = UserResource::collection(&users, &req);
+    /// // Returns: Vec<serde_json::Value>
+    /// ```
+    fn collection(items: &[Self], req: &Request) -> Vec<serde_json::Value>
+    where
+        Self: Sized,
+    {
+        items.iter().map(|item| item.to_resource(req)).collect()
+    }
+
     /// Return a wrapped response with additional top-level fields merged.
     ///
     /// # Example
@@ -186,5 +204,42 @@ mod tests {
         let status =
             with_test_request(move |req| user.to_wrapped_response(&req).status_code()).await;
         assert_eq!(status, 200);
+    }
+
+    #[tokio::test]
+    async fn test_resource_collection() {
+        let users = vec![
+            TestUser {
+                id: 1,
+                name: "Alice".to_string(),
+                email: "alice@example.com".to_string(),
+            },
+            TestUser {
+                id: 2,
+                name: "Bob".to_string(),
+                email: "bob@example.com".to_string(),
+            },
+            TestUser {
+                id: 3,
+                name: "Charlie".to_string(),
+                email: "charlie@example.com".to_string(),
+            },
+        ];
+
+        let result = with_test_request(move |req| TestUser::collection(&users, &req)).await;
+
+        assert_eq!(result.len(), 3);
+        assert_eq!(
+            result[0],
+            json!({"id": 1, "name": "Alice", "email": "alice@example.com"})
+        );
+        assert_eq!(
+            result[1],
+            json!({"id": 2, "name": "Bob", "email": "bob@example.com"})
+        );
+        assert_eq!(
+            result[2],
+            json!({"id": 3, "name": "Charlie", "email": "charlie@example.com"})
+        );
     }
 }
