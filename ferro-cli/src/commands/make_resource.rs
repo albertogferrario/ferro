@@ -64,11 +64,7 @@ pub fn run(name: String, model: Option<String>) {
         );
         std::process::exit(1);
     }
-    println!(
-        "{} Created {}",
-        style("✓").green(),
-        resource_file.display()
-    );
+    println!("{} Created {}", style("✓").green(), resource_file.display());
 
     println!();
     println!(

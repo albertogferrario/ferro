@@ -24,6 +24,7 @@
 - [Storage](features/storage.md)
 - [Caching](features/caching.md)
 - [Authentication](features/authentication.md)
+- [API Resources](features/api-resources.md)
 - [Database](features/database.md)
 - [Validation](features/validation.md)
 - [Testing](features/testing.md)

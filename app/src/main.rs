@@ -47,6 +47,7 @@ mod middleware;
 mod migrations;
 mod models;
 mod providers;
+mod resources;
 mod routes;
 
 use migrations::Migrator;

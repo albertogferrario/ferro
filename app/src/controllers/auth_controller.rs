@@ -1,14 +1,15 @@
 use ferro::database::ModelMut;
 use ferro::serde_json::json;
 use ferro::{
-    confirmed, email, handler, hash, json_response, min, required, verify, Auth, AuthUser,
-    HttpResponse, Request, Response, ResponseExt, Validator,
+    confirmed, email, handler, hash, json_response, min, required, verify, Auth, HttpResponse,
+    Request, Resource, Response, ResponseExt, Validator,
 };
 use sea_orm::Set;
 use serde::Deserialize;
 
 use crate::models::users;
 use crate::models::users::User;
+use crate::resources::UserResource;
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
@@ -166,15 +167,13 @@ pub async fn logout(_req: Request) -> Response {
 
 /// GET /auth/profile
 ///
-/// Returns the authenticated user's profile using the AuthUser extractor.
-/// Automatically returns 401 if not authenticated.
+/// Returns the authenticated user's profile as a UserResource.
+/// Uses AuthUser extractor (auto 401) and API Resource for response shaping.
 #[handler]
-pub async fn profile(user: AuthUser<users::Model>) -> Response {
-    Ok(HttpResponse::json(json!({
-        "user": {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email
-        }
-    })))
+pub async fn profile(req: Request) -> Response {
+    let user = Auth::user_as::<users::Model>()
+        .await?
+        .ok_or_else(|| HttpResponse::json(json!({"message": "Unauthenticated."})).status(401))?;
+    let resource = UserResource::from(user);
+    Ok(resource.to_wrapped_response(&req))
 }
