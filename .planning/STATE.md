@@ -66,6 +66,8 @@ Archived to PROJECT.md and milestone archive files.
 | 44-01 | Drop DashMap guard before async in whisper() | Consistent with subscribe pattern; prevents deadlocks |
 | 44-02 | WS upgrade intercept before middleware chain | Upgrade needs raw hyper Request, not framework Request |
 | 44-02 | hyper_tungstenite re-export for tungstenite types | Avoids adding tokio-tungstenite as direct framework dep |
+| 44-03 | Plain function instead of #[handler] macro in framework crate | Macro generates ::ferro:: paths that don't resolve inside the framework crate |
+| 44-03 | req.input() for broadcast auth body parsing | Supports both JSON and form-urlencoded content types |
 
 ### Pending Todos
 
@@ -96,5 +98,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 44-02-PLAN.md
+Stopped at: Completed 44-03-PLAN.md
 Resume file: None
