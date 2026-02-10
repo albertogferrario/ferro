@@ -217,6 +217,67 @@ if let Some(user) = Auth::user_as::<User>().await? {
 | `Auth::user()` | `Result<Option<Arc<dyn Authenticatable>>>` | Current user (trait object) |
 | `Auth::user_as::<T>()` | `Result<Option<T>>` | Current user (concrete type) |
 
+## Handler Extractors
+
+For ergonomic access to the current user in handler signatures, Ferro provides typed extractors that work as handler parameters.
+
+### AuthUser\<T\>
+
+Injects the authenticated user directly into the handler. Returns `401 Unauthenticated` if no user is logged in.
+
+```rust
+use ferro::{handler, AuthUser, Response, HttpResponse};
+use crate::models::users;
+
+#[handler]
+pub async fn profile(user: AuthUser<users::Model>) -> Response {
+    Ok(HttpResponse::json(serde_json::json!({
+        "id": user.id,
+        "name": user.name,
+        "email": user.email
+    })))
+}
+```
+
+### OptionalUser\<T\>
+
+Same as `AuthUser<T>`, but returns `None` for guests instead of a 401 error.
+
+```rust
+use ferro::{handler, OptionalUser, Response, HttpResponse};
+use crate::models::users;
+
+#[handler]
+pub async fn home(user: OptionalUser<users::Model>) -> Response {
+    let greeting = match user.as_ref() {
+        Some(u) => format!("Welcome back, {}!", u.name),
+        None => "Welcome, guest!".to_string(),
+    };
+    Ok(HttpResponse::json(serde_json::json!({"greeting": greeting})))
+}
+```
+
+### Deref Behavior
+
+Both `AuthUser<T>` and `OptionalUser<T>` implement `Deref`, so you access fields directly on the wrapper:
+
+- `AuthUser<T>` derefs to `T` -- use `user.name`, not `user.0.name`
+- `OptionalUser<T>` derefs to `Option<T>` -- use `user.as_ref()`, `user.is_some()`, etc.
+
+### Limitations
+
+`AuthUser` and `OptionalUser` count as a `FromRequest` parameter. Only one `FromRequest` parameter is allowed per handler signature, so they cannot be combined with `FormRequest` types in the same handler. If you need both the authenticated user and the request body, use `Request` and call `Auth::user_as::<T>()` manually:
+
+```rust
+#[handler]
+pub async fn update_profile(req: Request) -> Response {
+    let user: users::Model = Auth::user_as::<users::Model>().await?
+        .ok_or_else(|| HttpResponse::json(serde_json::json!({"error": "Unauthenticated"})).status(401))?;
+    let input: UpdateInput = req.json().await?;
+    // ... use both user and input
+}
+```
+
 ## Password Hashing
 
 Ferro provides bcrypt hashing functions re-exported at the crate root.

@@ -3274,6 +3274,15 @@ pub fn auth_controller_template() -> String {
     r#"//! Authentication controller
 //!
 //! Handles user registration, login, and logout.
+//!
+//! Tip: Use AuthUser<users::Model> to auto-extract the authenticated user:
+//!
+//!   use ferro::AuthUser;
+//!
+//!   #[handler]
+//!   pub async fn profile(user: AuthUser<users::Model>) -> Response {
+//!       Ok(HttpResponse::json(serde_json::json!({"user": user.name})))
+//!   }
 
 use ferro::database::ModelMut;
 use ferro::http::{HttpResponse, Request, Response};
