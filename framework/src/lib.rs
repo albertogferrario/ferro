@@ -56,7 +56,7 @@ pub use ferro_json_ui::{
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{
     json, text, Cookie, CookieOptions, FormRequest, FromParam, FromRequest, HttpResponse,
-    InertiaRedirect, Redirect, Request, Response, ResponseExt, SameSite,
+    InertiaRedirect, Redirect, Request, Resource, ResourceMap, Response, ResponseExt, SameSite,
 };
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
 pub use json_ui::JsonUi;

@@ -11,6 +11,7 @@ pub use cookie::{parse_cookies, Cookie, CookieOptions, SameSite};
 pub use extract::{FromParam, FromRequest};
 pub use form_request::FormRequest;
 pub use request::{Request, RequestParts};
+pub use resources::{Resource, ResourceMap};
 pub use response::{
     HttpResponse, InertiaRedirect, Redirect, RedirectRouteBuilder, Response, ResponseExt,
 };
