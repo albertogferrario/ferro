@@ -116,13 +116,15 @@ Plans:
 
 #### Phase 46: MCP + CLI Updates
 
-**Goal**: Auth scaffolding commands, introspection tools for auth/resources/rate-limiting
+**Goal**: MCP introspection tools for auth/resources/rate-limiting/broadcasting
 **Depends on**: Phase 45
 **Research**: Unlikely (established MCP patterns with 30+ tools)
-**Plans**: TBD
+**Plans**: 3 plans, 3 waves
 
 Plans:
-- [ ] 46-01: TBD
+- [ ] 46-01: list_resources + list_policies MCP tools
+- [ ] 46-02: list_rate_limiters + list_broadcast_channels MCP tools + MCP instructions update
+- [ ] 46-03: application_info v4.0 feature counts + list_commands verification
 
 ---
 
@@ -308,4 +310,4 @@ Plans:
 | 43. Rate Limiting | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 44. Real-time Improvements | v4.0 | 4/4 | Complete | 2026-02-10 |
 | 45. DX Polish | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 46. MCP + CLI Updates | v4.0 | 0/? | Not started | - |
+| 46. MCP + CLI Updates | v4.0 | 0/3 | Not started | - |
