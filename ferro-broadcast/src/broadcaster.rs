@@ -328,6 +328,30 @@ impl Broadcaster {
         }
     }
 
+    /// Check if a client would be authorized for a channel.
+    ///
+    /// Returns true if:
+    /// - Channel is public (no auth needed)
+    /// - Channel is private/presence AND authorizer returns true
+    ///
+    /// Returns false if:
+    /// - Channel is private/presence AND no authorizer registered
+    /// - Channel is private/presence AND authorizer denies access
+    ///
+    /// Used by the broadcasting auth HTTP endpoint to validate authorization
+    /// without subscribing the client.
+    pub async fn check_auth(&self, auth_data: &AuthData) -> bool {
+        let channel_type = ChannelType::from_name(&auth_data.channel);
+        if !channel_type.requires_auth() {
+            return true;
+        }
+        if let Some(authorizer) = &self.inner.authorizer {
+            authorizer.authorize(auth_data).await
+        } else {
+            false
+        }
+    }
+
     /// Get channel info.
     pub fn get_channel(&self, name: &str) -> Option<ChannelInfo> {
         self.inner.channels.get(name).map(|c| c.clone())
@@ -481,6 +505,104 @@ mod tests {
             .await;
 
         assert!(result.is_err());
+    }
+
+    struct MockAuthorizer {
+        allowed_channels: Vec<String>,
+    }
+
+    #[async_trait::async_trait]
+    impl ChannelAuthorizer for MockAuthorizer {
+        async fn authorize(&self, data: &AuthData) -> bool {
+            self.allowed_channels.contains(&data.channel)
+        }
+    }
+
+    #[tokio::test]
+    async fn test_check_auth_public_channel_always_authorized() {
+        let broadcaster = Broadcaster::new();
+        let auth_data = AuthData {
+            socket_id: "socket_1".to_string(),
+            channel: "orders".to_string(),
+            auth_token: None,
+        };
+        assert!(broadcaster.check_auth(&auth_data).await);
+    }
+
+    #[tokio::test]
+    async fn test_check_auth_public_channel_authorized_without_authorizer() {
+        // Even with no authorizer, public channels pass
+        let broadcaster = Broadcaster::new();
+        let auth_data = AuthData {
+            socket_id: "socket_1".to_string(),
+            channel: "chat".to_string(),
+            auth_token: Some("user_42".to_string()),
+        };
+        assert!(broadcaster.check_auth(&auth_data).await);
+    }
+
+    #[tokio::test]
+    async fn test_check_auth_private_channel_denied_without_authorizer() {
+        let broadcaster = Broadcaster::new();
+        let auth_data = AuthData {
+            socket_id: "socket_1".to_string(),
+            channel: "private-orders".to_string(),
+            auth_token: Some("user_42".to_string()),
+        };
+        assert!(!broadcaster.check_auth(&auth_data).await);
+    }
+
+    #[tokio::test]
+    async fn test_check_auth_private_channel_allowed_by_authorizer() {
+        let authorizer = MockAuthorizer {
+            allowed_channels: vec!["private-orders".to_string()],
+        };
+        let broadcaster = Broadcaster::new().with_authorizer(authorizer);
+        let auth_data = AuthData {
+            socket_id: "socket_1".to_string(),
+            channel: "private-orders".to_string(),
+            auth_token: Some("user_42".to_string()),
+        };
+        assert!(broadcaster.check_auth(&auth_data).await);
+    }
+
+    #[tokio::test]
+    async fn test_check_auth_private_channel_denied_by_authorizer() {
+        let authorizer = MockAuthorizer {
+            allowed_channels: vec!["private-orders".to_string()],
+        };
+        let broadcaster = Broadcaster::new().with_authorizer(authorizer);
+        let auth_data = AuthData {
+            socket_id: "socket_1".to_string(),
+            channel: "private-admin".to_string(),
+            auth_token: Some("user_42".to_string()),
+        };
+        assert!(!broadcaster.check_auth(&auth_data).await);
+    }
+
+    #[tokio::test]
+    async fn test_check_auth_presence_channel_denied_without_authorizer() {
+        let broadcaster = Broadcaster::new();
+        let auth_data = AuthData {
+            socket_id: "socket_1".to_string(),
+            channel: "presence-chat".to_string(),
+            auth_token: Some("user_42".to_string()),
+        };
+        assert!(!broadcaster.check_auth(&auth_data).await);
+    }
+
+    #[tokio::test]
+    async fn test_check_auth_presence_channel_allowed_by_authorizer() {
+        let authorizer = MockAuthorizer {
+            allowed_channels: vec!["presence-chat".to_string()],
+        };
+        let broadcaster = Broadcaster::new().with_authorizer(authorizer);
+        let auth_data = AuthData {
+            socket_id: "socket_1".to_string(),
+            channel: "presence-chat".to_string(),
+            auth_token: Some("user_42".to_string()),
+        };
+        assert!(broadcaster.check_auth(&auth_data).await);
     }
 
     #[tokio::test]
