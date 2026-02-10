@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 Phase: 45 of 46 (DX Polish)
 Plan: 3 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-10 - Completed 45-03-PLAN.md
+Status: Phase complete
+Last activity: 2026-02-10 - Completed 45-01-PLAN.md
 
 Progress: ████░░░░░░ 38%
 
@@ -73,6 +73,8 @@ Archived to PROJECT.md and milestone archive files.
 | 45-02 | Added `clean` command to MCP beyond plan's 7 | CLI has 40 commands total; plan counted 39 |
 | 45-03 | QueryBuilder offset/limit for pagination instead of SeaORM paginator | Framework's QueryBuilder wraps SeaORM internally; cleaner API |
 | 45-03 | Broadcasting auth as commented placeholder | Sample app has no broadcasting configured in bootstrap |
+| 45-01 | Always include hints (no production env check) | Errors are developer-facing APIs, not user-facing endpoints |
+| 45-01 | Normalize JSON error key from "error" to "message" | Consistency across all error variants |
 
 ### Pending Todos
 
@@ -104,5 +106,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 45-03-PLAN.md
+Stopped at: Completed 45-01-PLAN.md (Phase 45 complete)
 Resume file: None
