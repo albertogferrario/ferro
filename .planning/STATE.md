@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 47 of 52 (JSON-UI Map Component)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-02-10 — Completed 47-03-PLAN.md
+Plan: 4 of 4 in current phase
+Status: Phase complete
+Last activity: 2026-02-10 — Completed 47-04-PLAN.md
 
-Progress: ██░░░░░░░░ 15%
+Progress: ██░░░░░░░░ 17%
 
 ## Milestone Summary
 
@@ -45,6 +45,8 @@ Archived to PROJECT.md and milestone archive files.
 | 47-02 | Plugin components are leaf nodes in resolve.rs | No framework-visible children; internal structure opaque to framework |
 | 47-03 | data-ferro-map attribute for map config | Decouples render from init; config stored as JSON in data attribute |
 | 47-03 | Built-in plugins registered in OnceLock init | Auto-registered without explicit user call; always available |
+| 47-04 | Separate plugin_components field in MCP catalog | Explicit distinction between built-in and plugin components for agents |
+| 47-04 | Component param on json_ui_inspect for schema lookup | Reuse existing tool instead of creating separate MCP tool |
 
 ### Pending Todos
 
@@ -61,5 +63,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 47-03-PLAN.md
+Stopped at: Completed 47-04-PLAN.md (Phase 47 complete)
 Resume file: None

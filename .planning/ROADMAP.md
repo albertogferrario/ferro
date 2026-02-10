@@ -26,7 +26,7 @@
 
 | Phase | Goal | Depends on | Research | Plans |
 |-------|------|------------|----------|-------|
-| 47. JSON-UI Map Component | Add Map component to ferro-json-ui with Leaflet/Mapbox rendering | — | Likely (third-party JS library integration) | 3/4 |
+| 47. JSON-UI Map Component | Add Map component to ferro-json-ui with Leaflet/Mapbox rendering | — | Complete | 4/4 |
 | 48. App Scaffold + Auth & Profiles | New workspace crate, user model with location fields, auth setup, profile views | 47 | Unlikely (existing patterns) | TBD |
 | 49. Map View & Nearby Users | Geospatial queries, map rendering with user markers, proximity discovery | 48 | Likely (geospatial queries) | TBD |
 | 50. Location Posts & Check-ins | Post model, location-tagged content, nearby feed, JSON-UI forms/actions | 49 | Unlikely (standard patterns) | TBD |
