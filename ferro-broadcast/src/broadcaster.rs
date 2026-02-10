@@ -241,6 +241,44 @@ impl Broadcaster {
         Ok(())
     }
 
+    /// Forward a client event (whisper) to other subscribers of the same channel.
+    ///
+    /// Used for client-to-client messaging such as typing indicators and cursor positions.
+    /// Only works when `allow_client_events` is enabled in configuration.
+    /// The sender is excluded from receiving the whispered message.
+    pub async fn whisper(
+        &self,
+        socket_id: &str,
+        channel_name: &str,
+        event: &str,
+        data: serde_json::Value,
+    ) -> Result<(), Error> {
+        if !self.inner.config.allow_client_events {
+            return Err(Error::Other("Client events are not allowed".into()));
+        }
+
+        // Verify client is subscribed to the channel
+        let channel = self
+            .inner
+            .channels
+            .get(channel_name)
+            .ok_or_else(|| Error::ChannelNotFound(channel_name.to_string()))?;
+        if !channel.subscribers.contains(socket_id) {
+            return Err(Error::ClientNotConnected(format!(
+                "Client {} is not subscribed to {}",
+                socket_id, channel_name
+            )));
+        }
+        drop(channel); // Release DashMap guard before await
+
+        let msg = BroadcastMessage::with_data(channel_name, event, data);
+        let server_msg = ServerMessage::Event(msg);
+        self.send_to_channel_except(channel_name, socket_id, &server_msg)
+            .await;
+
+        Ok(())
+    }
+
     /// Broadcast to a channel, excluding a specific client.
     pub async fn broadcast_except<T: Serialize>(
         &self,
@@ -370,6 +408,105 @@ mod tests {
         broadcaster.add_client("socket_1".into(), tx);
         let result = broadcaster
             .subscribe("socket_1", "private-orders.1", None, None)
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_whisper_forwards_to_others() {
+        let broadcaster = Broadcaster::new();
+
+        let (tx1, mut rx1) = mpsc::channel(32);
+        let (tx2, mut rx2) = mpsc::channel(32);
+
+        broadcaster.add_client("socket_1".into(), tx1);
+        broadcaster.add_client("socket_2".into(), tx2);
+
+        // Subscribe both to public channel
+        broadcaster
+            .subscribe("socket_1", "chat", None, None)
+            .await
+            .unwrap();
+        broadcaster
+            .subscribe("socket_2", "chat", None, None)
+            .await
+            .unwrap();
+
+        // Client 1 whispers
+        broadcaster
+            .whisper(
+                "socket_1",
+                "chat",
+                "typing",
+                serde_json::json!({"user": "alice"}),
+            )
+            .await
+            .unwrap();
+
+        // Client 2 receives the whisper
+        let msg = rx2.try_recv().unwrap();
+        match msg {
+            ServerMessage::Event(broadcast_msg) => {
+                assert_eq!(broadcast_msg.event, "typing");
+                assert_eq!(broadcast_msg.channel, "chat");
+                assert_eq!(broadcast_msg.data, serde_json::json!({"user": "alice"}));
+            }
+            other => panic!("Expected Event, got {:?}", other),
+        }
+
+        // Client 1 does NOT receive it
+        assert!(rx1.try_recv().is_err());
+    }
+
+    #[tokio::test]
+    async fn test_whisper_rejected_when_disabled() {
+        let config = BroadcastConfig::new().allow_client_events(false);
+        let broadcaster = Broadcaster::with_config(config);
+
+        let (tx, _rx) = mpsc::channel(32);
+        broadcaster.add_client("socket_1".into(), tx);
+        broadcaster
+            .subscribe("socket_1", "chat", None, None)
+            .await
+            .unwrap();
+
+        let result = broadcaster
+            .whisper(
+                "socket_1",
+                "chat",
+                "typing",
+                serde_json::json!({}),
+            )
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_whisper_rejected_when_not_subscribed() {
+        let broadcaster = Broadcaster::new();
+
+        let (tx1, _rx1) = mpsc::channel(32);
+        let (tx2, _rx2) = mpsc::channel(32);
+
+        broadcaster.add_client("socket_1".into(), tx1);
+        broadcaster.add_client("socket_2".into(), tx2);
+
+        // Only socket_2 subscribes
+        broadcaster
+            .subscribe("socket_2", "chat", None, None)
+            .await
+            .unwrap();
+
+        // socket_1 tries to whisper without subscribing
+        let result = broadcaster
+            .whisper(
+                "socket_1",
+                "chat",
+                "typing",
+                serde_json::json!({}),
+            )
             .await;
 
         assert!(result.is_err());
