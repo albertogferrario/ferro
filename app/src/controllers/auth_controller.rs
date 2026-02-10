@@ -1,8 +1,8 @@
 use ferro::database::ModelMut;
 use ferro::serde_json::json;
 use ferro::{
-    confirmed, email, handler, hash, json_response, min, required, verify, Auth, HttpResponse,
-    Request, Response, ResponseExt, Validator,
+    confirmed, email, handler, hash, json_response, min, required, verify, Auth, AuthUser,
+    HttpResponse, Request, Response, ResponseExt, Validator,
 };
 use sea_orm::Set;
 use serde::Deserialize;
@@ -162,4 +162,19 @@ pub async fn logout(_req: Request) -> Response {
     json_response!({
         "message": "Logged out successfully."
     })
+}
+
+/// GET /auth/profile
+///
+/// Returns the authenticated user's profile using the AuthUser extractor.
+/// Automatically returns 401 if not authenticated.
+#[handler]
+pub async fn profile(user: AuthUser<users::Model>) -> Response {
+    Ok(HttpResponse::json(json!({
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email
+        }
+    })))
 }

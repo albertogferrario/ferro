@@ -30,7 +30,8 @@ routes! {
     }).middleware(GuestMiddleware::redirect_to("/")),
 
     // Auth routes - authenticated only
-    post!("/auth/logout", controllers::auth_controller::logout)
-        .name("auth.logout")
-        .middleware(SessionAuthMiddleware::new()),
+    group!("/auth", {
+        get!("/profile", controllers::auth_controller::profile).name("auth.profile"),
+        post!("/logout", controllers::auth_controller::logout).name("auth.logout"),
+    }).middleware(SessionAuthMiddleware::new()),
 }
