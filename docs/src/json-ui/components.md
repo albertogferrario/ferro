@@ -468,6 +468,7 @@ Text input field with type variants, validation error display, and data binding.
 | `description` | `Option<String>` | No | `None` | Help text below the input |
 | `default_value` | `Option<String>` | No | `None` | Pre-filled value |
 | `data_path` | `Option<String>` | No | `None` | Data path for pre-filling from handler data (e.g., `"/data/user/name"`) |
+| `step` | `Option<String>` | No | `None` | HTML step attribute for number inputs (e.g., `"any"`, `"0.01"`). Controls valid increment granularity. |
 
 **InputType** variants:
 
@@ -501,6 +502,7 @@ ComponentNode {
         description: Some("Your work email".to_string()),
         default_value: None,
         data_path: Some("/data/user/email".to_string()),
+        step: None,
     }),
     action: None,
     visibility: None,
