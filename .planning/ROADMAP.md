@@ -86,7 +86,7 @@ Plans:
 
 Plans:
 - [x] 43-01: Cache-backed rate limiting with Limit/RateLimiter::define/Throttle::named
-- [ ] 43-02: Rate limiting tests
+- [x] 43-02: Rate limiting tests
 - [x] 43-03: Rate limiting documentation + MCP templates
 
 #### Phase 44: Real-time Improvements
@@ -301,7 +301,7 @@ Plans:
 | 40. Auth Middleware | v4.0 | 2/2 | Complete | 2026-02-10 |
 | 41. API Resources Basics | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 42. API Resources Advanced | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 43. Rate Limiting | v4.0 | 2/3 | In Progress | - |
+| 43. Rate Limiting | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 44. Real-time Improvements | v4.0 | 0/? | Not started | - |
 | 45. DX Polish | v4.0 | 0/? | Not started | - |
 | 46. MCP + CLI Updates | v4.0 | 0/? | Not started | - |

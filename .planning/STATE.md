@@ -11,10 +11,10 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 Phase: 43 of 46 (Rate Limiting)
 Plan: 3 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-10 - Completed 43-03-PLAN.md
+Status: Phase complete
+Last activity: 2026-02-10 - Completed 43-02-PLAN.md
 
-Progress: ███░░░░░░░ 30%
+Progress: ███░░░░░░░ 33%
 
 ## Milestone Summary
 
@@ -59,6 +59,8 @@ Archived to PROJECT.md and milestone archive files.
 | 43-01 | OnceLock<DashMap> for limiter registry | Static, thread-safe, no initialization order dependency |
 | 43-01 | Fail-open on cache errors and missing limiters | Availability over strictness; never block requests due to infra failure |
 | 43-03 | Rate limiting docs after API Resources in nav | Keeps middleware-related features grouped in docs |
+| 43-02 | TCP loopback for test Request in rate_limit tests | Consistent with resource test patterns; hyper::body::Incoming has no public constructor |
+| 43-02 | In-module #[cfg(test)] for private function access | Tests access check_rate_limit without pub(crate) visibility change |
 | 43-03 | Three MCP templates (define, routes, inline) | Matches granularity of other template categories |
 
 ### Pending Todos
@@ -85,9 +87,10 @@ None (pre-existing blockers moved to Phase 38 scope).
 - Phase 40 complete: 2 plans, 2 waves — AuthUser/OptionalUser extractors + sample app, templates, docs (2026-02-10)
 - Phase 41 complete: 3 plans, 3 waves — Resource trait + ResourceMap, ApiResource derive macro, CLI + docs + sample app (2026-02-10)
 - Phase 42 complete: 3 plans, 2 waves — PaginationMeta/ResourceCollection, when_loaded/collection(), docs + MCP templates (2026-02-10)
+- Phase 43 complete: 3 plans, 2 waves — cache-backed rate limiting, tests, docs + MCP templates (2026-02-10)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 43-03-PLAN.md
+Stopped at: Completed 43-02-PLAN.md (Phase 43 complete)
 Resume file: None
