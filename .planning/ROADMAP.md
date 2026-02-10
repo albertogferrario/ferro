@@ -70,10 +70,12 @@ Plans:
 **Goal**: Relationship inclusion, pagination, and collection resources
 **Depends on**: Phase 41
 **Research**: Unlikely (builds on Phase 41 patterns)
-**Plans**: TBD
+**Plans**: 3 plans, 1 wave
 
 Plans:
-- [ ] 42-01: TBD
+- [ ] 42-01: Pagination structs + ResourceCollection
+- [x] 42-02: when_loaded/when_loaded_many + Resource::collection()
+- [ ] 42-03: TBD
 
 #### Phase 43: Rate Limiting
 
@@ -286,7 +288,7 @@ Plans:
 | v2.1 Inertia DX & Fixes | 33-34 | 4 | ✅ Complete | 2026-01-17 |
 | v2.2 CLI Improvements | 35-37 | 5 | ✅ Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
-| v4.0 Production Readiness | 38-46 | 10/? | 🚧 In Progress | - |
+| v4.0 Production Readiness | 38-46 | 14/? | 🚧 In Progress | - |
 
 ### v4.0 Phase Progress
 
@@ -296,7 +298,7 @@ Plans:
 | 39. Core Authentication | v4.0 | 4/4 | Complete | 2026-02-09 |
 | 40. Auth Middleware | v4.0 | 2/2 | Complete | 2026-02-10 |
 | 41. API Resources Basics | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 42. API Resources Advanced | v4.0 | 0/? | Not started | - |
+| 42. API Resources Advanced | v4.0 | 1/3 | In progress | - |
 | 43. Rate Limiting | v4.0 | 0/? | Not started | - |
 | 44. Real-time Improvements | v4.0 | 0/? | Not started | - |
 | 45. DX Polish | v4.0 | 0/? | Not started | - |

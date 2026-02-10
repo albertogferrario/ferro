@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 41 of 46 (API Resources Basics)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-10 - Completed 41-03-PLAN.md
+Phase: 42 of 46 (API Resources Advanced)
+Plan: 2 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-10 - Completed 42-02-PLAN.md
 
-Progress: ██░░░░░░░░ 20%
+Progress: ██░░░░░░░░ 22%
 
 ## Milestone Summary
 
@@ -81,5 +81,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 41-03-PLAN.md (CLI, docs, sample app) — Phase 41 complete
+Stopped at: Completed 42-02-PLAN.md (when_loaded/when_loaded_many + collection)
 Resume file: None
