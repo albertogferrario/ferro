@@ -27,14 +27,16 @@
 //! # Rate Limiting
 //!
 //! ```rust,ignore
-//! use ferro_rs::middleware::RateLimiter;
+//! use ferro::middleware::{RateLimiter, Limit, Throttle};
 //!
-//! // 60 requests per minute
-//! let limiter = RateLimiter::per_minute(60);
+//! // Register named limiter
+//! RateLimiter::define("api", |req| Limit::per_minute(60));
 //!
-//! // Or use the Throttle builder
-//! use ferro_rs::middleware::Throttle;
-//! let throttle = Throttle::requests(100).per_hour();
+//! // Apply to routes
+//! get!("/api/users", handler).middleware(Throttle::named("api"))
+//!
+//! // Inline limit
+//! get!("/health", handler).middleware(Throttle::per_minute(120))
 //! ```
 
 mod chain;
@@ -45,9 +47,7 @@ mod registry;
 pub use metrics::MetricsMiddleware;
 
 pub use chain::MiddlewareChain;
-pub use rate_limit::{
-    RateLimitConfig, RateLimitStore, RateLimiter, RateLimiters, Throttle, ThrottleBuilder,
-};
+pub use rate_limit::{Limit, LimiterResponse, RateLimiter, Throttle};
 pub use registry::get_global_middleware_info;
 pub use registry::register_global_middleware;
 pub use registry::MiddlewareRegistry;
