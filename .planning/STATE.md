@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 44 of 46 (Real-time Improvements)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-02-10 - Completed 44-03-PLAN.md
+Plan: 4 of 4 in current phase
+Status: Phase complete
+Last activity: 2026-02-10 - Completed 44-04-PLAN.md
 
-Progress: ████░░░░░░ 36%
+Progress: ████░░░░░░ 38%
 
 ## Milestone Summary
 
@@ -68,6 +68,8 @@ Archived to PROJECT.md and milestone archive files.
 | 44-02 | hyper_tungstenite re-export for tungstenite types | Avoids adding tokio-tungstenite as direct framework dep |
 | 44-03 | Plain function instead of #[handler] macro in framework crate | Macro generates ::ferro:: paths that don't resolve inside the framework crate |
 | 44-03 | req.input() for broadcast auth body parsing | Supports both JSON and form-urlencoded content types |
+| 44-04 | Rewrite broadcasting.md (not append) | Old docs referenced non-existent APIs like App::set_broadcaster |
+| 44-04 | Add BroadcastConfig to framework re-exports | User-facing setup code needs this import from ferro:: |
 
 ### Pending Todos
 
@@ -94,9 +96,10 @@ None (pre-existing blockers moved to Phase 38 scope).
 - Phase 41 complete: 3 plans, 3 waves — Resource trait + ResourceMap, ApiResource derive macro, CLI + docs + sample app (2026-02-10)
 - Phase 42 complete: 3 plans, 2 waves — PaginationMeta/ResourceCollection, when_loaded/collection(), docs + MCP templates (2026-02-10)
 - Phase 43 complete: 3 plans, 2 waves — cache-backed rate limiting, tests, docs + MCP templates (2026-02-10)
+- Phase 44 complete: 4 plans, 3 waves — tokio-tungstenite 0.28, WS upgrade handler, broadcast auth, docs + MCP templates (2026-02-10)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 44-03-PLAN.md
+Stopped at: Completed 44-04-PLAN.md (Phase 44 complete)
 Resume file: None

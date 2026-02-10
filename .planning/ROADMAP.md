@@ -100,7 +100,7 @@ Plans:
 - [x] 44-01: tokio-tungstenite 0.28 bump + message helpers + whisper forwarding
 - [x] 44-02: WebSocket upgrade handler + connection message loop
 - [x] 44-03: Broadcasting auth endpoint + Broadcaster::check_auth
-- [ ] 44-04: Broadcasting documentation + MCP templates
+- [x] 44-04: Broadcasting documentation + MCP templates
 
 #### Phase 45: DX Polish
 
@@ -304,6 +304,6 @@ Plans:
 | 41. API Resources Basics | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 42. API Resources Advanced | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 43. Rate Limiting | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 44. Real-time Improvements | v4.0 | 3/4 | In progress | - |
+| 44. Real-time Improvements | v4.0 | 4/4 | Complete | 2026-02-10 |
 | 45. DX Polish | v4.0 | 0/? | Not started | - |
 | 46. MCP + CLI Updates | v4.0 | 0/? | Not started | - |
