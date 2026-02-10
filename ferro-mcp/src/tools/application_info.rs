@@ -15,7 +15,15 @@ pub struct ApplicationInfo {
     pub installed_crates: Vec<CrateInfo>,
     pub models: Vec<ModelInfo>,
     pub json_ui_views: JsonUiViewsStatus,
+    pub broadcasting: BroadcastingStatus,
     pub claude_code_skills: ClaudeCodeSkillsStatus,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BroadcastingStatus {
+    pub available: bool,
+    pub ws_endpoint: String,
+    pub hint: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -68,6 +76,9 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
     // Scan for JSON-UI views
     let json_ui_views = scan_json_ui_views(project_root);
 
+    // Check broadcasting status
+    let broadcasting = check_broadcasting(&installed_crates, project_root);
+
     // Check Claude Code skills installation
     let claude_code_skills = check_claude_code_skills();
 
@@ -79,6 +90,7 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
         installed_crates,
         models,
         json_ui_views,
+        broadcasting,
         claude_code_skills,
     })
 }
@@ -240,9 +252,47 @@ fn scan_json_ui_views(project_root: &Path) -> JsonUiViewsStatus {
         view_count,
         views_dir: views_dir_display,
         hint: if view_count == 0 {
-            Some("Views directory exists but no views found. Use json_ui_generate to create one.".to_string())
+            Some(
+                "Views directory exists but no views found. Use json_ui_generate to create one."
+                    .to_string(),
+            )
         } else {
             None
+        },
+    }
+}
+
+fn check_broadcasting(installed_crates: &[CrateInfo], project_root: &Path) -> BroadcastingStatus {
+    let has_crate = installed_crates.iter().any(|c| c.name == "ferro-broadcast");
+
+    if !has_crate {
+        return BroadcastingStatus {
+            available: false,
+            ws_endpoint: "/_ferro/ws".to_string(),
+            hint: Some(
+                "Add ferro-broadcast to dependencies for real-time WebSocket broadcasting"
+                    .to_string(),
+            ),
+        };
+    }
+
+    // Check if bootstrap.rs mentions Broadcaster registration
+    let bootstrap_path = project_root.join("src").join("bootstrap.rs");
+    let configured = bootstrap_path.exists()
+        && std::fs::read_to_string(&bootstrap_path)
+            .map(|c| c.contains("Broadcaster"))
+            .unwrap_or(false);
+
+    BroadcastingStatus {
+        available: true,
+        ws_endpoint: "/_ferro/ws".to_string(),
+        hint: if configured {
+            None
+        } else {
+            Some(
+                "ferro-broadcast is available. Register a Broadcaster in bootstrap.rs to enable WebSocket connections at /_ferro/ws. Use code_templates category=broadcasting for setup examples."
+                    .to_string(),
+            )
         },
     }
 }

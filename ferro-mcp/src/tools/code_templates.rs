@@ -30,7 +30,7 @@ pub struct Placeholder {
 /// Execute the code templates tool
 ///
 /// # Arguments
-/// * `category` - Optional filter by category (handler, model, migration, middleware, validation, json_view, rate_limiting)
+/// * `category` - Optional filter by category (handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting)
 pub fn execute(category: Option<&str>) -> CodeTemplates {
     let all_templates = build_templates();
 
@@ -68,6 +68,9 @@ fn build_templates() -> Vec<CodeTemplate> {
 
     // Rate limiting templates
     templates.extend(rate_limiting_templates());
+
+    // Broadcasting templates
+    templates.extend(broadcasting_templates());
 
     templates
 }
@@ -1218,6 +1221,124 @@ get!("/health", controllers::health::check)
     ]
 }
 
+fn broadcasting_templates() -> Vec<CodeTemplate> {
+    vec![
+        CodeTemplate {
+            name: "broadcasting_setup".to_string(),
+            category: "broadcasting".to_string(),
+            description: "Register Broadcaster with ChannelAuthorizer in bootstrap.rs".to_string(),
+            code: r#"use ferro::{Broadcaster, BroadcastConfig, AuthData, ChannelAuthorizer};
+use ferro::container::App;
+
+pub struct AppChannelAuth;
+
+#[async_trait::async_trait]
+impl ChannelAuthorizer for AppChannelAuth {
+    async fn authorize(&self, data: &AuthData) -> bool {
+        match data.channel.as_str() {
+            c if c.starts_with("private-{{entity}}s.") => {
+                // Verify user has access to this resource
+                data.auth_token.is_some()
+            }
+            c if c.starts_with("presence-") => {
+                // Allow all authenticated users
+                data.auth_token.is_some()
+            }
+            _ => false,
+        }
+    }
+}
+
+pub async fn register() {
+    let broadcaster = Broadcaster::with_config(BroadcastConfig::from_env())
+        .with_authorizer(AppChannelAuth);
+    App::singleton(broadcaster);
+}"#
+            .to_string(),
+            imports: vec![
+                "use ferro::{Broadcaster, BroadcastConfig, AuthData, ChannelAuthorizer};".to_string(),
+                "use ferro::container::App;".to_string(),
+            ],
+            placeholders: vec![Placeholder {
+                name: "{{entity}}".to_string(),
+                description: "Entity name in snake_case for channel prefix".to_string(),
+                example: "order".to_string(),
+            }],
+        },
+        CodeTemplate {
+            name: "broadcasting_routes".to_string(),
+            category: "broadcasting".to_string(),
+            description: "Register broadcasting auth endpoint with session middleware".to_string(),
+            code: r#"use ferro::broadcasting_auth;
+
+// In routes.rs - add to your route definitions
+Route::post("/broadcasting/auth", broadcasting_auth)
+    .middleware(SessionAuthMiddleware);
+
+// WebSocket endpoint is automatic at /_ferro/ws
+// No route registration needed for WebSocket connections"#
+                .to_string(),
+            imports: vec!["use ferro::broadcasting_auth;".to_string()],
+            placeholders: vec![],
+        },
+        CodeTemplate {
+            name: "broadcasting_send".to_string(),
+            category: "broadcasting".to_string(),
+            description: "Send broadcast events from handlers using Broadcast builder".to_string(),
+            code: r#"use ferro::{Broadcast, Broadcaster};
+use ferro::container::App;
+use std::sync::Arc;
+
+#[handler]
+pub async fn update(req: Request, id: Path<i32>) -> Response {
+    let db = req.db();
+    let {{entity}} = update_{{entity}}_in_db(db, *id).await?;
+
+    // Broadcast the update to channel subscribers
+    let broadcaster = App::get::<Broadcaster>().unwrap();
+    let broadcast = Broadcast::new(Arc::new(broadcaster));
+
+    broadcast
+        .channel(&format!("{{entity}}s.{}", id))
+        .event("{{Entity}}Updated")
+        .data(&{{entity}})
+        .send()
+        .await
+        .ok();
+
+    Ok(json!({{entity}}))
+}
+
+// To exclude the triggering client from the broadcast:
+// broadcast
+//     .channel("{{entity}}s.1")
+//     .event("{{Entity}}Updated")
+//     .data(&{{entity}})
+//     .except(&socket_id)
+//     .send()
+//     .await?;"#
+                .to_string(),
+            imports: vec![
+                "use ferro::{Broadcast, Broadcaster};".to_string(),
+                "use ferro::container::App;".to_string(),
+                "use std::sync::Arc;".to_string(),
+            ],
+            placeholders: vec![
+                Placeholder {
+                    name: "{{Entity}}".to_string(),
+                    description: "Entity name in PascalCase".to_string(),
+                    example: "Order".to_string(),
+                },
+                Placeholder {
+                    name: "{{entity}}".to_string(),
+                    description: "Entity name in snake_case".to_string(),
+                    example: "order".to_string(),
+                },
+            ],
+        },
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1256,6 +1377,10 @@ mod tests {
         assert!(
             categories.contains("rate_limiting"),
             "Should have rate_limiting templates"
+        );
+        assert!(
+            categories.contains("broadcasting"),
+            "Should have broadcasting templates"
         );
     }
 
