@@ -14,7 +14,7 @@ use crate::commands::generate_routes;
 const COMPONENT_CATALOG: &str = r#"## Component Catalog
 
 ### Text
-Props: content (String), element (h1|h2|h3|span|p)
+Props: content (String), element (h1|h2|h3|span|div|section|p)
 
 ### Button
 Props: label (String), variant (default|secondary|destructive|outline|ghost|link), size (xs|sm|default|lg), disabled (Option<bool>), icon (Option<String>), icon_position (Option<left|right>)

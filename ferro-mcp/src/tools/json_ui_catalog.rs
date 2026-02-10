@@ -108,7 +108,7 @@ fn build_catalog() -> Vec<CatalogComponent> {
                     "element",
                     "TextElement",
                     false,
-                    "HTML element: h1, h2, h3, span, p (default: p)",
+                    "HTML element: h1, h2, h3, span, div, section, p (default: p)",
                 ),
             ],
             variants: None,
