@@ -11,7 +11,7 @@ use std::path::Path;
 /// Complete context for generating a new JSON-UI view
 #[derive(Debug, Serialize)]
 pub struct JsonUiGenerationContext {
-    /// Full component catalog text (all 20 components with props)
+    /// Full component catalog text (20 built-in + plugin components with props)
     pub component_catalog: String,
     /// Models discovered in the project
     pub models: Vec<ModelContext>,
@@ -63,7 +63,7 @@ pub struct ViewConventions {
     pub layout_default: String,
 }
 
-/// Concise reference of all 20 JSON-UI components with their props, types, and variants.
+/// Concise reference of all JSON-UI components (20 built-in + plugin components).
 const COMPONENT_CATALOG: &str = r#"## Component Catalog
 
 ### Text
@@ -125,6 +125,15 @@ Props: src (Option<String>), alt (String), fallback (Option<String>), size (Opti
 
 ### Skeleton
 Props: width (Option<String>), height (Option<String>), rounded (Option<bool>)
+
+## Plugin Components
+
+Plugin components use the same JSON syntax as built-in components. Their JS/CSS assets are loaded automatically.
+
+### Map
+Props: center ([f64; 2] required), zoom (u8 0-18, default 13), height (String, default "400px"), markers (Vec<{lat, lng, popup?}>), tile_url (Option<String>), attribution (Option<String>), max_zoom (Option<u8>)
+Example JSON: {"type": "Map", "center": [51.505, -0.09], "zoom": 13, "markers": [{"lat": 51.5, "lng": -0.09, "popup": "Hello"}]}
+Note: Leaflet CSS/JS loaded via CDN automatically. Works inside Tabs/Modals (IntersectionObserver handles resize).
 
 ## Action
 Props: handler (String "controller.method" format), method (GET|POST|PUT|PATCH|DELETE), confirm (Option<ConfirmDialog {title, message?, variant: default|danger}>), on_success (Option<ActionOutcome>), on_error (Option<ActionOutcome>)

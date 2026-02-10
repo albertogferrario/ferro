@@ -1607,6 +1607,7 @@ dependencies = [
  "chrono",
  "dirs",
  "dotenvy",
+ "ferro-json-ui",
  "once_cell",
  "quote",
  "redis",

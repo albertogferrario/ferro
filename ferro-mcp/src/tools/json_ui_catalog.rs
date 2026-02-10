@@ -1,4 +1,5 @@
-//! JSON-UI component catalog tool — structured reference of all 20 components.
+//! JSON-UI component catalog tool — structured reference of all 20 built-in
+//! components plus plugin components (Map, etc.).
 
 use serde::Serialize;
 
@@ -6,6 +7,7 @@ use serde::Serialize;
 #[derive(Debug, Serialize)]
 pub struct JsonUiCatalog {
     pub components: Vec<CatalogComponent>,
+    pub plugin_components: Vec<CatalogComponent>,
     pub builder_api: String,
     pub action_api: String,
 }
@@ -34,19 +36,27 @@ pub struct PropInfo {
 /// When None, returns the full catalog.
 pub fn execute(component: Option<&str>) -> JsonUiCatalog {
     let all = build_catalog();
+    let all_plugins = build_plugin_catalog();
 
-    let components = match component {
+    let (components, plugin_components) = match component {
         Some(name) => {
             let lower = name.to_lowercase();
-            all.into_iter()
+            let filtered: Vec<_> = all
+                .into_iter()
                 .filter(|c| c.name.to_lowercase() == lower)
-                .collect()
+                .collect();
+            let filtered_plugins: Vec<_> = all_plugins
+                .into_iter()
+                .filter(|c| c.name.to_lowercase() == lower)
+                .collect();
+            (filtered, filtered_plugins)
         }
-        None => all,
+        None => (all, all_plugins),
     };
 
     JsonUiCatalog {
         components,
+        plugin_components,
         builder_api: BUILDER_API.to_string(),
         action_api: ACTION_API.to_string(),
     }
@@ -616,6 +626,67 @@ fn build_catalog() -> Vec<CatalogComponent> {
     ]
 }
 
+/// Plugin components registered in the framework.
+///
+/// Plugin components use the same `{"type": "Map", ...}` JSON syntax as
+/// built-in components. They are rendered by the plugin system which also
+/// handles loading their required JS/CSS assets.
+fn build_plugin_catalog() -> Vec<CatalogComponent> {
+    vec![CatalogComponent {
+        name: "Map".to_string(),
+        description:
+            "Interactive map powered by Leaflet. Renders markers, custom tiles, and popups. \
+             Assets loaded via CDN automatically. Plugin component — uses the same JSON syntax \
+             as built-in components."
+                .to_string(),
+        props: vec![
+            prop(
+                "center",
+                "[f64; 2]",
+                true,
+                "Map center as [latitude, longitude]",
+            ),
+            prop(
+                "zoom",
+                "u8",
+                false,
+                "Zoom level 0-18 (default: 13)",
+            ),
+            prop(
+                "height",
+                "String",
+                false,
+                "CSS height of the map container (default: \"400px\")",
+            ),
+            prop(
+                "markers",
+                "Vec<MapMarker {lat, lng, popup?}>",
+                false,
+                "Markers to display on the map",
+            ),
+            prop(
+                "tile_url",
+                "Option<String>",
+                false,
+                "Custom tile layer URL template (default: OpenStreetMap)",
+            ),
+            prop(
+                "attribution",
+                "Option<String>",
+                false,
+                "Tile layer attribution text",
+            ),
+            prop(
+                "max_zoom",
+                "Option<u8>",
+                false,
+                "Maximum zoom level for the tile layer",
+            ),
+        ],
+        variants: None,
+    }]
+}
+
 fn prop(name: &str, type_name: &str, required: bool, description: &str) -> PropInfo {
     PropInfo {
         name: name.to_string(),
@@ -635,7 +706,7 @@ mod tests {
         assert_eq!(
             catalog.components.len(),
             20,
-            "Catalog should contain all 20 components, got {}",
+            "Catalog should contain all 20 built-in components, got {}",
             catalog.components.len()
         );
 
@@ -668,10 +739,31 @@ mod tests {
     }
 
     #[test]
+    fn test_plugin_components_present() {
+        let catalog = execute(None);
+        assert_eq!(
+            catalog.plugin_components.len(),
+            1,
+            "Catalog should contain 1 plugin component (Map), got {}",
+            catalog.plugin_components.len()
+        );
+        assert_eq!(catalog.plugin_components[0].name, "Map");
+    }
+
+    #[test]
     fn test_filter_by_component() {
         let catalog = execute(Some("Button"));
         assert_eq!(catalog.components.len(), 1);
         assert_eq!(catalog.components[0].name, "Button");
+        assert!(catalog.plugin_components.is_empty());
+    }
+
+    #[test]
+    fn test_filter_by_plugin_component() {
+        let catalog = execute(Some("Map"));
+        assert!(catalog.components.is_empty());
+        assert_eq!(catalog.plugin_components.len(), 1);
+        assert_eq!(catalog.plugin_components[0].name, "Map");
     }
 
     #[test]
@@ -702,9 +794,11 @@ mod tests {
 
         let json_str = json.unwrap();
         assert!(json_str.contains("components"));
+        assert!(json_str.contains("plugin_components"));
         assert!(json_str.contains("builder_api"));
         assert!(json_str.contains("action_api"));
         assert!(json_str.contains("Button"));
+        assert!(json_str.contains("Map"));
         assert!(json_str.contains("props"));
     }
 

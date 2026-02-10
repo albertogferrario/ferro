@@ -209,7 +209,7 @@ pub struct CodeTemplatesParams {
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct JsonUiCatalogParams {
-    /// Optional component name to filter (case-insensitive). Returns all 20 components if omitted.
+    /// Optional component name to filter (case-insensitive). Returns all components (20 built-in + plugins) if omitted.
     pub component: Option<String>,
 }
 
@@ -217,6 +217,8 @@ pub struct JsonUiCatalogParams {
 pub struct JsonUiInspectParams {
     /// Optional filter — views whose name contains this substring (case-insensitive)
     pub filter: Option<String>,
+    /// Optional component type name to inspect (e.g., "Map", "Button"). Returns props schema for the component.
+    pub component: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -1089,16 +1091,18 @@ impl FerroMcpService {
         serde_json::to_string_pretty(&templates).unwrap_or_else(|_| "{}".to_string())
     }
 
-    /// Get a structured catalog of all 20 JSON-UI components with props, variants, and builder API
+    /// Get a structured catalog of all JSON-UI components (20 built-in + plugin components like Map)
     #[tool(
         name = "json_ui_catalog",
-        description = "Get a structured reference of all 20 JSON-UI components with their props, types, variants, and builder API.\n\n\
+        description = "Get a structured reference of all JSON-UI components: 20 built-in components \
+            plus plugin components (Map, etc.) with their props, types, variants, and builder API.\n\n\
             **When to use:** Understanding available JSON-UI components before building a view, \
             checking prop names and types for a specific component, learning the builder pattern \
-            and action API.\n\n\
-            **Returns:** Component definitions with props (name, type, required, description), \
-            available variants, JsonUiView builder API, and Action builder API.\n\n\
-            **Combine with:** `json_ui_inspect` to see existing views, \
+            and action API. Use component=\"Map\" to inspect the Map plugin.\n\n\
+            **Returns:** Built-in component definitions, plugin component definitions, \
+            props (name, type, required, description), available variants, \
+            JsonUiView builder API, and Action builder API.\n\n\
+            **Combine with:** `json_ui_inspect` to see existing views or inspect a specific component schema, \
             `code_templates` with category=json_view for copy-paste view boilerplate."
     )]
     pub async fn json_ui_catalog(&self, params: Parameters<JsonUiCatalogParams>) -> String {
@@ -1106,17 +1110,29 @@ impl FerroMcpService {
         serde_json::to_string_pretty(&catalog).unwrap_or_else(|_| "{}".to_string())
     }
 
-    /// Inspect existing JSON-UI views in the project
+    /// Inspect existing JSON-UI views or look up component schemas (including plugin components)
     #[tool(
         name = "json_ui_inspect",
-        description = "List and inspect existing JSON-UI views in the project's src/views/ directory.\n\n\
+        description = "List and inspect existing JSON-UI views, or look up the props schema for a \
+            specific component type (built-in or plugin).\n\n\
             **When to use:** Understanding existing views before modifying or adding views, \
-            checking which components a view uses, discovering view functions and their metadata.\n\n\
-            **Returns:** View function names, titles, layouts, component types used, and action references.\n\n\
+            checking which components a view uses, discovering view functions and their metadata, \
+            or inspecting a specific component's props schema (e.g., component=\"Map\" returns the \
+            Map plugin's JSON Schema).\n\n\
+            **Returns:** When filtering views: view function names, titles, layouts, component \
+            types used, and action references. When inspecting a component: props schema, \
+            whether it's a plugin or built-in, and catalog entry.\n\n\
             **Combine with:** `json_ui_generate` for creating new views, \
+            `json_ui_catalog` for the full component listing, \
             `get_handler` for the handler that renders the view."
     )]
     pub async fn json_ui_inspect(&self, params: Parameters<JsonUiInspectParams>) -> String {
+        // If a component type is specified, return its schema
+        if let Some(ref component) = params.0.component {
+            let info = tools::json_ui_inspect::inspect_component(component);
+            return serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string());
+        }
+
         let result =
             tools::json_ui_inspect::execute(&self.project_root, params.0.filter.as_deref());
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
