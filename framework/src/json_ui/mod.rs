@@ -782,4 +782,56 @@ mod tests {
         assert!(!body.contains("<nav"));
         assert!(!body.contains("<aside"));
     }
+
+    // -----------------------------------------------------------------------
+    // Plugin integration tests
+    // -----------------------------------------------------------------------
+
+    use ferro_json_ui::PluginProps;
+
+    #[test]
+    fn test_plugin_component_renders_in_full_page() {
+        // MapPlugin is auto-registered via the global registry OnceLock init.
+        let view = JsonUiView::new()
+            .title("Map Page")
+            .component(ComponentNode {
+                key: "map".to_string(),
+                component: Component::Plugin(PluginProps {
+                    plugin_type: "Map".to_string(),
+                    props: serde_json::json!({
+                        "center": [51.505, -0.09],
+                        "zoom": 13,
+                        "markers": [{"lat": 51.5, "lng": -0.09, "popup": "London"}]
+                    }),
+                }),
+                action: None,
+                visibility: None,
+            });
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        assert!(result.is_ok(), "render should succeed");
+        let body = response_body(ok_response(result));
+
+        // Leaflet CSS in head area.
+        assert!(
+            body.contains("leaflet.css"),
+            "should include Leaflet CSS link"
+        );
+        // Leaflet JS before body close.
+        assert!(
+            body.contains("leaflet.js"),
+            "should include Leaflet JS script"
+        );
+        // Map container with data attribute.
+        assert!(
+            body.contains("data-ferro-map"),
+            "should contain map data attribute"
+        );
+        // Init script with DOMContentLoaded.
+        assert!(
+            body.contains("DOMContentLoaded"),
+            "should contain init script"
+        );
+    }
 }

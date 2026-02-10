@@ -245,3 +245,182 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn empty_data() -> Value {
+        serde_json::json!({})
+    }
+
+    fn basic_props() -> Value {
+        serde_json::json!({
+            "center": [51.505, -0.09],
+            "zoom": 13,
+            "markers": [
+                {"lat": 51.5, "lng": -0.09, "popup": "Hello"},
+                {"lat": 51.51, "lng": -0.1}
+            ]
+        })
+    }
+
+    #[test]
+    fn test_map_renders_container_with_data_attribute() {
+        let plugin = MapPlugin;
+        let html = plugin.render(&basic_props(), &empty_data());
+
+        assert!(
+            html.contains("data-ferro-map"),
+            "output should contain data-ferro-map attribute"
+        );
+        assert!(
+            html.contains("51.505"),
+            "output should contain center latitude"
+        );
+        assert!(
+            html.contains("-0.09"),
+            "output should contain center longitude"
+        );
+        assert!(
+            html.contains("style=\"height: 400px"),
+            "output should use default 400px height"
+        );
+    }
+
+    #[test]
+    fn test_map_custom_height() {
+        let plugin = MapPlugin;
+        let props = serde_json::json!({
+            "center": [40.7128, -74.0060],
+            "height": "600px"
+        });
+        let html = plugin.render(&props, &empty_data());
+
+        assert!(
+            html.contains("style=\"height: 600px"),
+            "output should use custom 600px height"
+        );
+    }
+
+    #[test]
+    fn test_map_with_markers() {
+        let plugin = MapPlugin;
+        let html = plugin.render(&basic_props(), &empty_data());
+
+        // The data attribute should contain marker coordinates and popup.
+        assert!(html.contains("51.5"), "should contain marker lat");
+        assert!(html.contains("-0.09"), "should contain marker lng");
+        assert!(html.contains("Hello"), "should contain popup text");
+    }
+
+    #[test]
+    fn test_map_invalid_props_shows_error() {
+        let plugin = MapPlugin;
+        // Missing required `center` field.
+        let props = serde_json::json!({"zoom": 10});
+        let html = plugin.render(&props, &empty_data());
+
+        assert!(
+            html.contains("Map error:"),
+            "should show error message for invalid props"
+        );
+        assert!(html.contains("bg-red-50"), "should use error styling");
+        // Must not panic.
+    }
+
+    #[test]
+    fn test_map_props_schema_valid() {
+        let plugin = MapPlugin;
+        let schema = plugin.props_schema();
+
+        assert_eq!(schema["type"], "object", "schema type should be 'object'");
+        assert!(
+            schema["properties"].is_object(),
+            "schema should have 'properties'"
+        );
+        assert!(
+            schema["properties"]["center"].is_object(),
+            "schema should describe 'center' property"
+        );
+        assert_eq!(
+            schema["required"],
+            serde_json::json!(["center"]),
+            "center should be required"
+        );
+    }
+
+    #[test]
+    fn test_map_assets_have_sri() {
+        let plugin = MapPlugin;
+
+        let css = plugin.css_assets();
+        assert_eq!(css.len(), 1);
+        assert!(
+            css[0].integrity.is_some(),
+            "CSS asset should have integrity hash"
+        );
+        assert!(
+            css[0].integrity.as_ref().unwrap().starts_with("sha256-"),
+            "integrity should be sha256"
+        );
+
+        let js = plugin.js_assets();
+        assert_eq!(js.len(), 1);
+        assert!(
+            js[0].integrity.is_some(),
+            "JS asset should have integrity hash"
+        );
+        assert!(
+            js[0].integrity.as_ref().unwrap().starts_with("sha256-"),
+            "integrity should be sha256"
+        );
+    }
+
+    #[test]
+    fn test_map_init_script_present() {
+        let plugin = MapPlugin;
+        let script = plugin.init_script();
+
+        assert!(script.is_some(), "init_script should return Some");
+        let script = script.unwrap();
+        assert!(
+            script.contains("DOMContentLoaded"),
+            "script should listen for DOMContentLoaded"
+        );
+        assert!(
+            script.contains("data-ferro-map"),
+            "script should query data-ferro-map elements"
+        );
+        assert!(
+            script.contains("IntersectionObserver"),
+            "script should use IntersectionObserver"
+        );
+    }
+
+    #[test]
+    fn test_map_component_type() {
+        let plugin = MapPlugin;
+        assert_eq!(plugin.component_type(), "Map");
+    }
+
+    #[test]
+    fn test_map_unique_ids() {
+        let plugin = MapPlugin;
+        let props = serde_json::json!({"center": [0.0, 0.0]});
+
+        let html1 = plugin.render(&props, &empty_data());
+        let html2 = plugin.render(&props, &empty_data());
+
+        // Extract IDs: they should differ.
+        assert_ne!(html1, html2, "two renders should produce different IDs");
+        assert!(
+            html1.contains("ferro-map-"),
+            "should have ferro-map- prefix"
+        );
+        assert!(
+            html2.contains("ferro-map-"),
+            "should have ferro-map- prefix"
+        );
+    }
+}
