@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 44 of 46 (Real-time Improvements)
-Plan: 1 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-10 - Completed 44-01-PLAN.md
+Last activity: 2026-02-10 - Completed 44-03-PLAN.md
 
-Progress: ███░░░░░░░ 34%
+Progress: ████░░░░░░ 36%
 
 ## Milestone Summary
 
@@ -64,6 +64,8 @@ Archived to PROJECT.md and milestone archive files.
 | 43-03 | Three MCP templates (define, routes, inline) | Matches granularity of other template categories |
 | 44-01 | WS conversion helpers on message types, not handler | Keeps connection handler clean; centralizes serialization |
 | 44-01 | Drop DashMap guard before async in whisper() | Consistent with subscribe pattern; prevents deadlocks |
+| 44-02 | WS upgrade intercept before middleware chain | Upgrade needs raw hyper Request, not framework Request |
+| 44-02 | hyper_tungstenite re-export for tungstenite types | Avoids adding tokio-tungstenite as direct framework dep |
 
 ### Pending Todos
 
@@ -94,5 +96,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 44-01-PLAN.md
+Stopped at: Completed 44-02-PLAN.md
 Resume file: None
