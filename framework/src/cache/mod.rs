@@ -234,6 +234,20 @@ impl Cache {
         store.decrement(key, amount).await
     }
 
+    /// Set a TTL on an existing key
+    ///
+    /// Returns `true` if the key existed and TTL was set, `false` if key not found.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// Cache::expire("counter", Duration::from_secs(60)).await?;
+    /// ```
+    pub async fn expire(key: &str, ttl: Duration) -> Result<bool, FrameworkError> {
+        let store = Self::store()?;
+        store.expire(key, ttl).await
+    }
+
     /// Get an item or store a default value if it doesn't exist
     ///
     /// If the key exists, returns the cached value.

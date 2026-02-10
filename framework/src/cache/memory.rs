@@ -169,4 +169,20 @@ impl CacheStore for InMemoryCache {
     async fn decrement(&self, key: &str, amount: i64) -> Result<i64, FrameworkError> {
         self.increment(key, -amount).await
     }
+
+    async fn expire(&self, key: &str, ttl: Duration) -> Result<bool, FrameworkError> {
+        let key = self.prefixed_key(key);
+
+        let mut store = self
+            .store
+            .write()
+            .map_err(|_| FrameworkError::internal("Cache lock poisoned"))?;
+
+        if let Some(entry) = store.get_mut(&key) {
+            entry.expires_at = Some(Instant::now() + ttl);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
 }

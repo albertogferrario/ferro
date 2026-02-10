@@ -42,4 +42,9 @@ pub trait CacheStore: Send + Sync {
     ///
     /// Returns the new value after decrementing.
     async fn decrement(&self, key: &str, amount: i64) -> Result<i64, FrameworkError>;
+
+    /// Set a TTL on an existing key
+    ///
+    /// Returns `true` if the key existed and TTL was set, `false` if key not found.
+    async fn expire(&self, key: &str, ttl: Duration) -> Result<bool, FrameworkError>;
 }

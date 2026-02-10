@@ -155,4 +155,16 @@ impl CacheStore for RedisCache {
 
         Ok(value)
     }
+
+    async fn expire(&self, key: &str, ttl: Duration) -> Result<bool, FrameworkError> {
+        let mut conn = self.conn.clone();
+        let key = self.prefixed_key(key);
+
+        let result: bool = conn
+            .expire(&key, ttl.as_secs() as i64)
+            .await
+            .map_err(|e| FrameworkError::internal(format!("Cache expire error: {}", e)))?;
+
+        Ok(result)
+    }
 }
