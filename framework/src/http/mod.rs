@@ -3,6 +3,7 @@ pub mod cookie;
 mod extract;
 mod form_request;
 mod request;
+pub mod resources;
 mod response;
 
 pub use body::{collect_body, parse_form, parse_json};
