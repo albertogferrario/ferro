@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 47 of 52 (JSON-UI Map Component)
-Plan: N/A
-Status: Ready to plan
-Last activity: 2026-02-10 — v5.0 milestone created
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-02-10 — Completed 47-01-PLAN.md
 
-Progress: ░░░░░░░░░░ 0%
+Progress: █░░░░░░░░░ 5%
 
 ## Milestone Summary
 
@@ -37,6 +37,11 @@ Progress: ░░░░░░░░░░ 0%
 
 Archived to PROJECT.md and milestone archive files.
 
+| Phase | Decision | Rationale |
+|-------|----------|-----------|
+| 47-01 | with_plugin closure API for global plugin lookup | Avoids RwLock lifetime issues with Deref approach |
+| 47-01 | PluginRegistry starts empty (no built-in plugins) | Plugins registered at app startup; Map plugin is first built-in in Plan 03 |
+
 ### Pending Todos
 
 None.
@@ -52,5 +57,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: v5.0 milestone created, ready to plan Phase 47
+Stopped at: Completed 47-01-PLAN.md
 Resume file: None
