@@ -47,6 +47,9 @@ base64 = "0.22"
 dashmap = "6"
 clap = { version = "4", features = ["derive"] }
 regex = "1"
+hyper-tungstenite = "0.19"
+uuid = { version = "1", features = ["v4"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 
 [dev-dependencies]
 serial_test = "3"

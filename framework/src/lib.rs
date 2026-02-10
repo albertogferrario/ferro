@@ -1,6 +1,7 @@
 pub mod app;
 pub mod auth;
 pub mod authorization;
+pub mod broadcast;
 pub mod cache;
 pub mod config;
 pub mod container;
@@ -21,6 +22,7 @@ pub mod server;
 pub mod session;
 pub mod testing;
 pub mod validation;
+mod websocket;
 
 pub use app::Application;
 pub use auth::{
@@ -133,6 +135,9 @@ pub use ferro_broadcast::{
     ChannelInfo, ChannelType, Client as BroadcastClient, ClientMessage, Error as BroadcastError,
     PresenceMember, ServerMessage,
 };
+
+// Re-export broadcasting auth handler
+pub use broadcast::broadcasting_auth;
 
 // Re-export ferro-storage for file storage abstraction
 pub use ferro_storage::{

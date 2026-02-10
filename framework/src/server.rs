@@ -4,6 +4,7 @@ use crate::container::App;
 use crate::http::{HttpResponse, Request};
 use crate::middleware::{Middleware, MiddlewareChain, MiddlewareRegistry};
 use crate::routing::Router;
+use crate::websocket::handle_ws_upgrade;
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::server::conn::http1;
@@ -105,7 +106,11 @@ impl Server {
                     async move { Ok::<_, Infallible>(handle_request(router, middleware, req).await) }
                 });
 
-                if let Err(err) = http1::Builder::new().serve_connection(io, service).await {
+                if let Err(err) = http1::Builder::new()
+                    .serve_connection(io, service)
+                    .with_upgrades()
+                    .await
+                {
                     eprintln!("Error serving connection: {:?}", err);
                 }
             });
@@ -121,6 +126,11 @@ async fn handle_request(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     let query = req.uri().query().unwrap_or("");
+
+    // WebSocket upgrade at /_ferro/ws (must run before middleware/routing)
+    if path == "/_ferro/ws" && hyper_tungstenite::is_upgrade_request(&req) {
+        return handle_ws_upgrade(req);
+    }
 
     // Built-in framework endpoints at /_ferro/*
     // Uses framework prefix to avoid conflicts with user-defined routes
