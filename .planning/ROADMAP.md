@@ -75,7 +75,7 @@ Plans:
 Plans:
 - [x] 42-01: Pagination structs + ResourceCollection
 - [x] 42-02: when_loaded/when_loaded_many + Resource::collection()
-- [ ] 42-03: TBD
+- [x] 42-03: Documentation + MCP templates
 
 #### Phase 43: Rate Limiting
 
@@ -298,7 +298,7 @@ Plans:
 | 39. Core Authentication | v4.0 | 4/4 | Complete | 2026-02-09 |
 | 40. Auth Middleware | v4.0 | 2/2 | Complete | 2026-02-10 |
 | 41. API Resources Basics | v4.0 | 3/3 | Complete | 2026-02-10 |
-| 42. API Resources Advanced | v4.0 | 2/3 | In progress | - |
+| 42. API Resources Advanced | v4.0 | 3/3 | Complete | 2026-02-10 |
 | 43. Rate Limiting | v4.0 | 0/? | Not started | - |
 | 44. Real-time Improvements | v4.0 | 0/? | Not started | - |
 | 45. DX Polish | v4.0 | 0/? | Not started | - |

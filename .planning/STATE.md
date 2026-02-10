@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 42 of 46 (API Resources Advanced)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-10 - Completed 42-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-10 - Completed 42-03-PLAN.md
 
-Progress: ██░░░░░░░░ 22%
+Progress: ██░░░░░░░░ 24%
 
 ## Milestone Summary
 
@@ -79,9 +79,10 @@ None (pre-existing blockers moved to Phase 38 scope).
 - Phase 39 complete: 4 plans, 2 waves — user model/provider, auth controllers/routes, make:auth CLI, auth docs (2026-02-09)
 - Phase 40 complete: 2 plans, 2 waves — AuthUser/OptionalUser extractors + sample app, templates, docs (2026-02-10)
 - Phase 41 complete: 3 plans, 3 waves — Resource trait + ResourceMap, ApiResource derive macro, CLI + docs + sample app (2026-02-10)
+- Phase 42 complete: 3 plans, 2 waves — PaginationMeta/ResourceCollection, when_loaded/collection(), docs + MCP templates (2026-02-10)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 42-01-PLAN.md (PaginationMeta, PaginationLinks, ResourceCollection)
+Stopped at: Completed 42-03-PLAN.md (Phase 42 complete)
 Resume file: None
