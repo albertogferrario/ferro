@@ -1256,7 +1256,8 @@ pub async fn register() {
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::{Broadcaster, BroadcastConfig, AuthData, ChannelAuthorizer};".to_string(),
+                "use ferro::{Broadcaster, BroadcastConfig, AuthData, ChannelAuthorizer};"
+                    .to_string(),
                 "use ferro::container::App;".to_string(),
             ],
             placeholders: vec![Placeholder {

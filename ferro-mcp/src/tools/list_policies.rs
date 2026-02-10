@@ -139,13 +139,13 @@ fn extract_abilities_from_impl(lines: &[&str], start_line: usize) -> Vec<String>
 
         // Check for fn declarations that match known abilities
         let trimmed = line.trim();
-        if trimmed.starts_with("fn ") || trimmed.starts_with("pub fn ") {
-            let fn_part = if trimmed.starts_with("pub fn ") {
-                &trimmed["pub fn ".len()..]
-            } else {
-                &trimmed["fn ".len()..]
-            };
+        let fn_part = if let Some(stripped) = trimmed.strip_prefix("pub fn ") {
+            Some(stripped)
+        } else {
+            trimmed.strip_prefix("fn ")
+        };
 
+        if let Some(fn_part) = fn_part {
             // Extract function name
             if let Some(paren) = fn_part.find('(') {
                 let fn_name = fn_part[..paren].trim();

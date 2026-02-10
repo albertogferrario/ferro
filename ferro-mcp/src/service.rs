@@ -454,6 +454,24 @@ impl FerroMcpService {
         }
     }
 
+    /// List all authorization policies
+    #[tool(
+        name = "list_policies",
+        description = "List all authorization policies (impl Policy<Model>) in the project.\n\n\
+            **When to use:** Understanding authorization rules, checking which models have policies, \
+            planning new authorization logic.\n\n\
+            **Returns:** Policy names, guarded models, available abilities (method names).\n\n\
+            **Combine with:** `list_middleware` to see auth middleware, `get_handler` to check policy usage in handlers."
+    )]
+    pub async fn list_policies(&self) -> String {
+        match tools::list_policies::execute(&self.project_root) {
+            Ok(policies) => {
+                serde_json::to_string_pretty(&policies).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+        }
+    }
+
     /// Get handler source code for a specific route
     #[tool(
         name = "get_handler",
@@ -564,6 +582,25 @@ impl FerroMcpService {
     pub async fn list_props(&self, params: Parameters<ListPropsParams>) -> String {
         match tools::list_props::execute(&self.project_root, params.0.filter.as_deref()) {
             Ok(props) => serde_json::to_string_pretty(&props).unwrap_or_else(|_| "{}".to_string()),
+            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+        }
+    }
+
+    /// List all API resources
+    #[tool(
+        name = "list_resources",
+        description = "List all API resources (#[derive(ApiResource)]) in the project.\n\n\
+            **When to use:** Understanding API response transformations, checking which models have \
+            resource representations, planning new API endpoints.\n\n\
+            **Returns:** Resource names, field counts, field details (name, type, skip/rename attributes).\n\n\
+            **Combine with:** `list_models` to compare model fields with resource fields, \
+            `code_templates` (category: handler) for API endpoint patterns."
+    )]
+    pub async fn list_resources(&self) -> String {
+        match tools::list_resources::execute(&self.project_root) {
+            Ok(resources) => {
+                serde_json::to_string_pretty(&resources).unwrap_or_else(|_| "{}".to_string())
+            }
             Err(e) => format!("{{\"error\": \"{}\"}}", e),
         }
     }
@@ -1139,8 +1176,10 @@ These workflows show how to combine tools for common tasks.
 1. `domain_glossary` - Learn domain terms
 2. `list_routes` - See existing patterns
 3. `list_models` - Understand data structures
-4. `explain_model` - For models you'll interact with
-5. `list_services` - Available services to use
+4. `list_resources` - See existing API resource transformations
+5. `list_policies` - Check authorization rules
+6. `explain_model` - For models you'll interact with
+7. `list_services` - Available services to use
 
 ### Onboarding to a Codebase
 1. `application_info` - Project overview
@@ -1222,6 +1261,18 @@ These workflows show how to combine tools for common tasks.
 - User mentions a model name
 - Creating migrations or seeders
 - Understanding data relationships
+
+**USE list_resources** when:
+- Understanding API response transformations
+- Checking which models have resource representations
+- Planning new API endpoints
+- Comparing resource fields with model fields
+
+**USE list_policies** when:
+- Understanding authorization rules for models
+- Checking which models have policies
+- Planning new authorization logic
+- Reviewing available abilities (view, create, update, delete)
 
 **USE db_schema** when:
 - You need exact column names and types
@@ -1348,6 +1399,8 @@ These workflows show how to combine tools for common tasks.
 - application_info: Start here - get overview
 - list_routes: All HTTP endpoints
 - list_models: Database models and fields
+- list_resources: API resource structs with field details
+- list_policies: Authorization policies with abilities
 - list_middleware: Request pipeline
 - list_events: Event/listener mappings
 - list_jobs: Background job definitions
