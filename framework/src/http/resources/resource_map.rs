@@ -43,29 +43,18 @@ impl ResourceMap {
 
     /// Include field only when `condition` is true.
     /// The value closure is only evaluated when the condition holds.
-    pub fn when(
-        mut self,
-        key: &str,
-        condition: bool,
-        value: impl FnOnce() -> Value,
-    ) -> Self {
+    pub fn when(mut self, key: &str, condition: bool, value: impl FnOnce() -> Value) -> Self {
         if condition {
             self.fields
                 .push((key.to_string(), ResourceValue::Present(value())));
         } else {
-            self.fields
-                .push((key.to_string(), ResourceValue::Missing));
+            self.fields.push((key.to_string(), ResourceValue::Missing));
         }
         self
     }
 
     /// Include field only when `condition` is false (opposite of `when`).
-    pub fn unless(
-        self,
-        key: &str,
-        condition: bool,
-        value: impl FnOnce() -> Value,
-    ) -> Self {
+    pub fn unless(self, key: &str, condition: bool, value: impl FnOnce() -> Value) -> Self {
         self.when(key, !condition, value)
     }
 
@@ -90,13 +79,10 @@ impl ResourceMap {
         if let Some(v) = value {
             self.fields.push((
                 key.to_string(),
-                ResourceValue::Present(
-                    serde_json::to_value(v).unwrap_or(Value::Null),
-                ),
+                ResourceValue::Present(serde_json::to_value(v).unwrap_or(Value::Null)),
             ));
         } else {
-            self.fields
-                .push((key.to_string(), ResourceValue::Missing));
+            self.fields.push((key.to_string(), ResourceValue::Missing));
         }
         self
     }
@@ -117,5 +103,115 @@ impl ResourceMap {
 impl Default for ResourceMap {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_field_basic() {
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .field("name", json!("Alice"))
+            .build();
+
+        assert_eq!(value, json!({"id": 1, "name": "Alice"}));
+    }
+
+    #[test]
+    fn test_when_true() {
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .when("email", true, || json!("a@b.com"))
+            .build();
+
+        assert_eq!(value, json!({"id": 1, "email": "a@b.com"}));
+    }
+
+    #[test]
+    fn test_when_false() {
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .when("email", false, || json!("a@b.com"))
+            .build();
+
+        assert_eq!(value, json!({"id": 1}));
+    }
+
+    #[test]
+    fn test_unless_true() {
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .unless("debug", true, || json!(true))
+            .build();
+
+        assert_eq!(value, json!({"id": 1}));
+    }
+
+    #[test]
+    fn test_unless_false() {
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .unless("debug", false, || json!(true))
+            .build();
+
+        assert_eq!(value, json!({"id": 1, "debug": true}));
+    }
+
+    #[test]
+    fn test_merge_when_true() {
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .merge_when(true, || vec![("a", json!(1)), ("b", json!(2))])
+            .build();
+
+        assert_eq!(value, json!({"id": 1, "a": 1, "b": 2}));
+    }
+
+    #[test]
+    fn test_merge_when_false() {
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .merge_when(false, || vec![("a", json!(1)), ("b", json!(2))])
+            .build();
+
+        assert_eq!(value, json!({"id": 1}));
+    }
+
+    #[test]
+    fn test_when_some_present() {
+        let bio: Option<&str> = Some("hello");
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .when_some("bio", &bio)
+            .build();
+
+        assert_eq!(value, json!({"id": 1, "bio": "hello"}));
+    }
+
+    #[test]
+    fn test_when_some_none() {
+        let bio: Option<String> = None;
+        let value = ResourceMap::new()
+            .field("id", json!(1))
+            .when_some("bio", &bio)
+            .build();
+
+        assert_eq!(value, json!({"id": 1}));
+    }
+
+    #[test]
+    fn test_field_order_preserved() {
+        let value = ResourceMap::new()
+            .field("c", json!(3))
+            .field("a", json!(1))
+            .field("b", json!(2))
+            .build();
+
+        let keys: Vec<&String> = value.as_object().unwrap().keys().collect();
+        assert_eq!(keys, vec!["c", "a", "b"]);
     }
 }
