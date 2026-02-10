@@ -25,14 +25,18 @@ fn default_height() -> String {
 /// Typed props for the Map component.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MapProps {
-    /// Map center as `[lat, lng]`.
-    pub center: [f64; 2],
+    /// Map center as `[lat, lng]`. Optional when using `fit_bounds`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub center: Option<[f64; 2]>,
     /// Zoom level (default: 13).
     #[serde(default = "default_zoom")]
     pub zoom: u8,
     /// CSS height of the container (default: "400px").
     #[serde(default = "default_height")]
     pub height: String,
+    /// Auto-zoom to fit all markers. When true, center/zoom are ignored if markers exist.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fit_bounds: Option<bool>,
     /// Markers to place on the map.
     #[serde(default)]
     pub markers: Vec<MapMarker>,
@@ -86,11 +90,11 @@ impl JsonUiPlugin for MapPlugin {
         serde_json::json!({
             "type": "object",
             "description": "Interactive map component using Leaflet. Renders a map with configurable center, zoom, markers, and tile layer.",
-            "required": ["center"],
+            "required": [],
             "properties": {
                 "center": {
                     "type": "array",
-                    "description": "Map center as [latitude, longitude]",
+                    "description": "Map center as [latitude, longitude]. Optional when fit_bounds is true.",
                     "items": { "type": "number" },
                     "minItems": 2,
                     "maxItems": 2,
@@ -108,6 +112,11 @@ impl JsonUiPlugin for MapPlugin {
                     "description": "CSS height of the map container",
                     "default": "400px",
                     "examples": ["400px", "100vh", "600px"]
+                },
+                "fit_bounds": {
+                    "type": "boolean",
+                    "description": "Auto-zoom to fit all markers. When true, center/zoom are ignored if markers exist.",
+                    "default": false
                 },
                 "markers": {
                     "type": "array",
@@ -162,14 +171,21 @@ impl JsonUiPlugin for MapPlugin {
         };
 
         // Build the config JSON stored in the data attribute.
-        let config = serde_json::json!({
-            "center": map_props.center,
+        let mut config = serde_json::json!({
             "zoom": map_props.zoom,
             "markers": map_props.markers,
             "tile_url": map_props.tile_url,
             "attribution": map_props.attribution,
             "max_zoom": map_props.max_zoom,
         });
+
+        if let Some(center) = &map_props.center {
+            config["center"] = serde_json::json!(center);
+        }
+
+        if let Some(true) = map_props.fit_bounds {
+            config["fit_bounds"] = serde_json::json!(true);
+        }
 
         let config_json = serde_json::to_string(&config).unwrap_or_default();
         let id = MAP_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
@@ -317,8 +333,8 @@ mod tests {
     #[test]
     fn test_map_invalid_props_shows_error() {
         let plugin = MapPlugin;
-        // Missing required `center` field.
-        let props = serde_json::json!({"zoom": 10});
+        // center must be an array of numbers, not a string.
+        let props = serde_json::json!({"center": "not-an-array"});
         let html = plugin.render(&props, &empty_data());
 
         assert!(
@@ -343,10 +359,14 @@ mod tests {
             schema["properties"]["center"].is_object(),
             "schema should describe 'center' property"
         );
+        assert!(
+            schema["properties"]["fit_bounds"].is_object(),
+            "schema should describe 'fit_bounds' property"
+        );
         assert_eq!(
             schema["required"],
-            serde_json::json!(["center"]),
-            "center should be required"
+            serde_json::json!([]),
+            "no properties should be required"
         );
     }
 
@@ -421,6 +441,32 @@ mod tests {
         assert!(
             html2.contains("ferro-map-"),
             "should have ferro-map- prefix"
+        );
+    }
+
+    #[test]
+    fn test_map_renders_without_center() {
+        let plugin = MapPlugin;
+        let props = serde_json::json!({
+            "fit_bounds": true,
+            "markers": [
+                {"lat": 51.5, "lng": -0.09, "popup": "A"},
+                {"lat": 51.51, "lng": -0.1, "popup": "B"}
+            ]
+        });
+        let html = plugin.render(&props, &empty_data());
+
+        assert!(
+            html.contains("data-ferro-map"),
+            "should render map container without center"
+        );
+        assert!(
+            !html.contains("Map error:"),
+            "should not show error when center is omitted with fit_bounds"
+        );
+        assert!(
+            html.contains("fit_bounds"),
+            "config should contain fit_bounds"
         );
     }
 }
