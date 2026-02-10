@@ -1,8 +1,11 @@
 //! HTML render engine for JSON-UI views.
 //!
 //! Walks a `JsonUiView` component tree and produces an HTML fragment using
-//! Tailwind CSS utility classes. All 20 component types are supported:
-//! 12 leaf components, 5 container/layout components, and 3 form field components.
+//! Tailwind CSS utility classes. All 20 built-in component types plus plugin
+//! components are supported. Plugin components are dispatched to the plugin
+//! registry; their CSS/JS assets are collected and returned separately.
+
+use std::collections::HashSet;
 
 use serde_json::Value;
 
@@ -15,6 +18,7 @@ use crate::component::{
     TableProps, TabsProps, TextElement, TextProps,
 };
 use crate::data::{resolve_path, resolve_path_string};
+use crate::plugin::{collect_plugin_assets, Asset};
 use crate::view::JsonUiView;
 
 /// Render a JSON-UI view to an HTML fragment.
@@ -32,6 +36,163 @@ pub fn render_to_html(view: &JsonUiView, data: &Value) -> String {
     }
     html.push_str("</div>");
     html
+}
+
+/// Result of rendering a view with plugin support.
+///
+/// Contains the rendered HTML fragment plus CSS and JS tags collected
+/// from plugins used on the page.
+pub struct RenderResult {
+    /// The rendered HTML fragment (same as `render_to_html` output).
+    pub html: String,
+    /// CSS `<link>` tags to inject into `<head>`.
+    pub css_head: String,
+    /// JS `<script>` tags and init scripts to inject before `</body>`.
+    pub scripts: String,
+}
+
+/// Render a JSON-UI view to HTML and collect plugin assets.
+///
+/// Scans the component tree for plugin components, renders everything to
+/// HTML (including plugin components via the registry), then collects and
+/// deduplicates CSS/JS assets from the plugins used on the page.
+pub fn render_to_html_with_plugins(view: &JsonUiView, data: &Value) -> RenderResult {
+    let html = render_to_html(view, data);
+
+    let plugin_types = collect_plugin_types(view);
+    if plugin_types.is_empty() {
+        return RenderResult {
+            html,
+            css_head: String::new(),
+            scripts: String::new(),
+        };
+    }
+
+    let type_names: Vec<String> = plugin_types.into_iter().collect();
+    let assets = collect_plugin_assets(&type_names);
+
+    let css_head = render_css_tags(&assets.css);
+    let scripts = render_js_tags(&assets.js, &assets.init_scripts);
+
+    RenderResult {
+        html,
+        css_head,
+        scripts,
+    }
+}
+
+/// Walk the component tree and collect unique plugin type names.
+pub fn collect_plugin_types(view: &JsonUiView) -> HashSet<String> {
+    let mut types = HashSet::new();
+    for node in &view.components {
+        collect_plugin_types_node(node, &mut types);
+    }
+    types
+}
+
+/// Recursively collect plugin type names from a component node.
+fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) {
+    match &node.component {
+        Component::Plugin(props) => {
+            types.insert(props.plugin_type.clone());
+        }
+        Component::Card(props) => {
+            for child in &props.children {
+                collect_plugin_types_node(child, types);
+            }
+            for child in &props.footer {
+                collect_plugin_types_node(child, types);
+            }
+        }
+        Component::Form(props) => {
+            for field in &props.fields {
+                collect_plugin_types_node(field, types);
+            }
+        }
+        Component::Modal(props) => {
+            for child in &props.children {
+                collect_plugin_types_node(child, types);
+            }
+            for child in &props.footer {
+                collect_plugin_types_node(child, types);
+            }
+        }
+        Component::Tabs(props) => {
+            for tab in &props.tabs {
+                for child in &tab.children {
+                    collect_plugin_types_node(child, types);
+                }
+            }
+        }
+        // Leaf components have no children to recurse into.
+        Component::Table(_)
+        | Component::Button(_)
+        | Component::Input(_)
+        | Component::Select(_)
+        | Component::Alert(_)
+        | Component::Badge(_)
+        | Component::Text(_)
+        | Component::Checkbox(_)
+        | Component::Switch(_)
+        | Component::Separator(_)
+        | Component::DescriptionList(_)
+        | Component::Breadcrumb(_)
+        | Component::Pagination(_)
+        | Component::Progress(_)
+        | Component::Avatar(_)
+        | Component::Skeleton(_) => {}
+    }
+}
+
+/// Render CSS assets as `<link>` tags.
+fn render_css_tags(assets: &[Asset]) -> String {
+    let mut out = String::new();
+    for asset in assets {
+        out.push_str("<link rel=\"stylesheet\" href=\"");
+        out.push_str(&html_escape(&asset.url));
+        out.push('"');
+        if let Some(ref integrity) = asset.integrity {
+            out.push_str(" integrity=\"");
+            out.push_str(&html_escape(integrity));
+            out.push('"');
+        }
+        if let Some(ref co) = asset.crossorigin {
+            out.push_str(" crossorigin=\"");
+            out.push_str(&html_escape(co));
+            out.push('"');
+        }
+        out.push('>');
+    }
+    out
+}
+
+/// Render JS assets as `<script>` tags followed by inline init scripts.
+fn render_js_tags(assets: &[Asset], init_scripts: &[String]) -> String {
+    let mut out = String::new();
+    for asset in assets {
+        out.push_str("<script src=\"");
+        out.push_str(&html_escape(&asset.url));
+        out.push('"');
+        if let Some(ref integrity) = asset.integrity {
+            out.push_str(" integrity=\"");
+            out.push_str(&html_escape(integrity));
+            out.push('"');
+        }
+        if let Some(ref co) = asset.crossorigin {
+            out.push_str(" crossorigin=\"");
+            out.push_str(&html_escape(co));
+            out.push('"');
+        }
+        out.push_str("></script>");
+    }
+    if !init_scripts.is_empty() {
+        out.push_str("<script>");
+        for script in init_scripts {
+            out.push_str(script);
+        }
+        out.push_str("</script>");
+    }
+    out
 }
 
 /// Render a single component node, optionally wrapping in `<a>` for GET actions.
@@ -2826,5 +2987,152 @@ mod tests {
         let html = render_to_html(&view, &data);
         assert!(html.contains(">42</td>"));
         assert!(html.contains(">true</td>"));
+    }
+
+    // ── Plugin rendering tests ────────────────────────────────────────
+
+    #[test]
+    fn plugin_renders_error_div_when_not_registered() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "map-1".to_string(),
+            component: Component::Plugin(PluginProps {
+                plugin_type: "UnknownPluginXyz".to_string(),
+                props: json!({"lat": 0}),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("Unknown plugin component: UnknownPluginXyz"));
+        assert!(html.contains("bg-red-50"));
+    }
+
+    #[test]
+    fn collect_plugin_types_finds_top_level_plugins() {
+        let view = JsonUiView::new()
+            .component(ComponentNode {
+                key: "map".to_string(),
+                component: Component::Plugin(PluginProps {
+                    plugin_type: "Map".to_string(),
+                    props: json!({}),
+                }),
+                action: None,
+                visibility: None,
+            })
+            .component(ComponentNode {
+                key: "text".to_string(),
+                component: Component::Text(TextProps {
+                    content: "Hello".to_string(),
+                    element: TextElement::P,
+                }),
+                action: None,
+                visibility: None,
+            });
+        let types = collect_plugin_types(&view);
+        assert_eq!(types.len(), 1);
+        assert!(types.contains("Map"));
+    }
+
+    #[test]
+    fn collect_plugin_types_finds_nested_in_card() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "card".to_string(),
+            component: Component::Card(CardProps {
+                title: "Test".to_string(),
+                description: None,
+                children: vec![ComponentNode {
+                    key: "chart".to_string(),
+                    component: Component::Plugin(PluginProps {
+                        plugin_type: "Chart".to_string(),
+                        props: json!({}),
+                    }),
+                    action: None,
+                    visibility: None,
+                }],
+                footer: vec![],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let types = collect_plugin_types(&view);
+        assert!(types.contains("Chart"));
+    }
+
+    #[test]
+    fn collect_plugin_types_deduplicates() {
+        let view = JsonUiView::new()
+            .component(ComponentNode {
+                key: "map1".to_string(),
+                component: Component::Plugin(PluginProps {
+                    plugin_type: "Map".to_string(),
+                    props: json!({}),
+                }),
+                action: None,
+                visibility: None,
+            })
+            .component(ComponentNode {
+                key: "map2".to_string(),
+                component: Component::Plugin(PluginProps {
+                    plugin_type: "Map".to_string(),
+                    props: json!({"zoom": 5}),
+                }),
+                action: None,
+                visibility: None,
+            });
+        let types = collect_plugin_types(&view);
+        assert_eq!(types.len(), 1);
+    }
+
+    #[test]
+    fn collect_plugin_types_empty_for_builtin_only() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "text".to_string(),
+            component: Component::Text(TextProps {
+                content: "Hello".to_string(),
+                element: TextElement::P,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let types = collect_plugin_types(&view);
+        assert!(types.is_empty());
+    }
+
+    #[test]
+    fn render_to_html_with_plugins_returns_empty_assets_for_builtin_only() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "text".to_string(),
+            component: Component::Text(TextProps {
+                content: "Hello".to_string(),
+                element: TextElement::P,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let result = render_to_html_with_plugins(&view, &json!({}));
+        assert!(result.css_head.is_empty());
+        assert!(result.scripts.is_empty());
+        assert!(result.html.contains("Hello"));
+    }
+
+    #[test]
+    fn render_css_tags_generates_link_elements() {
+        let assets = vec![Asset::new("https://cdn.example.com/style.css")
+            .integrity("sha256-abc")
+            .crossorigin("")];
+        let tags = render_css_tags(&assets);
+        assert!(tags.contains("rel=\"stylesheet\""));
+        assert!(tags.contains("href=\"https://cdn.example.com/style.css\""));
+        assert!(tags.contains("integrity=\"sha256-abc\""));
+        assert!(tags.contains("crossorigin=\"\""));
+    }
+
+    #[test]
+    fn render_js_tags_generates_script_elements() {
+        let assets = vec![Asset::new("https://cdn.example.com/lib.js")];
+        let init = vec!["initLib();".to_string()];
+        let tags = render_js_tags(&assets, &init);
+        assert!(tags.contains("src=\"https://cdn.example.com/lib.js\""));
+        assert!(tags.contains("<script>initLib();</script>"));
     }
 }

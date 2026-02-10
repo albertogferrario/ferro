@@ -68,7 +68,7 @@ pub use plugin::{
     collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
 };
-pub use render::render_to_html;
+pub use render::{collect_plugin_types, render_to_html, render_to_html_with_plugins, RenderResult};
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
 pub use view::{JsonUiView, SCHEMA_VERSION};
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};

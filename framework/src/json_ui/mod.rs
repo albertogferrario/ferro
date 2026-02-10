@@ -31,8 +31,8 @@ use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
 use ferro_json_ui::{
-    render_layout, render_to_html, resolve_actions, resolve_errors, JsonUiConfig, JsonUiView,
-    LayoutContext,
+    render_layout, render_to_html_with_plugins, resolve_actions, resolve_errors, JsonUiConfig,
+    JsonUiView, LayoutContext,
 };
 
 /// Stateless JSON-UI renderer.
@@ -96,20 +96,23 @@ impl JsonUi {
             head.push_str(custom);
         }
 
-        let rendered = render_to_html(view, data);
+        let result = render_to_html_with_plugins(view, data);
 
-        // Plugin asset collection will be wired up once the Component
-        // enum has the Plugin variant (Plan 02). Empty for now.
-        let scripts = String::new();
+        // Append plugin CSS assets to the head string.
+        let full_head = if result.css_head.is_empty() {
+            head
+        } else {
+            format!("{}{}", head, result.css_head)
+        };
 
         let ctx = LayoutContext {
             title,
-            content: &rendered,
-            head: &head,
+            content: &result.html,
+            head: &full_head,
             body_class: &config.body_class,
             view_json: &view_json,
             data_json: &data_json,
-            scripts: &scripts,
+            scripts: &result.scripts,
         };
 
         let layout_name = view.layout.as_deref();
