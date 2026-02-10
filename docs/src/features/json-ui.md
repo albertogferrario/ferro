@@ -86,6 +86,126 @@ pub async fn index() -> Response {
 
 - **[Layouts](../json-ui/layouts.md)** -- Page structure with navigation. Built-in `"app"` layout includes sidebar and header; `"auth"` layout centers content. Custom layouts via the `Layout` trait.
 
+## Plugin System
+
+JSON-UI supports plugin components that extend the built-in set with interactive widgets requiring client-side JS/CSS. Plugin components use the same `{"type": "Map", ...}` JSON syntax as built-in components.
+
+### JsonUiPlugin Trait
+
+Each plugin implements the `JsonUiPlugin` trait:
+
+```rust
+use ferro_json_ui::plugin::{Asset, JsonUiPlugin};
+use serde_json::Value;
+
+pub struct ChartPlugin;
+
+impl JsonUiPlugin for ChartPlugin {
+    fn component_type(&self) -> &str {
+        "Chart"
+    }
+
+    fn props_schema(&self) -> Value {
+        serde_json::json!({
+            "type": "object",
+            "required": ["data"],
+            "properties": {
+                "data": { "type": "array" }
+            }
+        })
+    }
+
+    fn render(&self, props: &Value, _data: &Value) -> String {
+        format!("<div class=\"chart\">{}</div>", props)
+    }
+
+    fn css_assets(&self) -> Vec<Asset> {
+        vec![Asset::new("https://cdn.example.com/chart.css")]
+    }
+
+    fn js_assets(&self) -> Vec<Asset> {
+        vec![Asset::new("https://cdn.example.com/chart.js")]
+    }
+
+    fn init_script(&self) -> Option<String> {
+        Some("initCharts();".to_string())
+    }
+}
+```
+
+### Asset Loading
+
+Plugin assets are injected into the page automatically:
+
+- **CSS assets** go in `<head>` as `<link>` tags
+- **JS assets** go before `</body>` as `<script>` tags
+- **Init scripts** run after assets load as inline `<script>` blocks
+- Assets are deduplicated by URL when multiple instances of the same plugin appear on a page
+- SRI integrity hashes are supported via `Asset::new(url).integrity("sha256-...")`
+
+### Registering a Plugin
+
+Register custom plugins at application startup:
+
+```rust
+use ferro_json_ui::plugin::register_plugin;
+
+register_plugin(ChartPlugin);
+```
+
+Built-in plugins (like Map) are registered automatically and require no manual setup.
+
+## Map Component
+
+The Map component renders interactive maps using [Leaflet 1.9.4](https://leafletjs.com/). Leaflet CSS and JS are loaded via CDN with SRI integrity verification.
+
+### Props
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `center` | `[f64; 2]` | Yes | -- | Map center as `[latitude, longitude]` |
+| `zoom` | `u8` | No | `13` | Zoom level (0-18) |
+| `height` | `String` | No | `"400px"` | CSS height of the map container |
+| `markers` | `Vec<MapMarker>` | No | `[]` | Markers to display |
+| `tile_url` | `String` | No | OpenStreetMap | Custom tile layer URL template |
+| `attribution` | `String` | No | OSM attribution | Tile layer attribution text |
+| `max_zoom` | `u8` | No | `19` | Maximum zoom level |
+
+Each `MapMarker` has: `lat` (f64), `lng` (f64), `popup` (optional String).
+
+### Basic Example
+
+```json
+{
+  "type": "Map",
+  "center": [51.505, -0.09],
+  "zoom": 13,
+  "markers": [
+    {"lat": 51.5, "lng": -0.09, "popup": "London"}
+  ]
+}
+```
+
+### Custom Tiles and Height
+
+```json
+{
+  "type": "Map",
+  "center": [40.7128, -74.0060],
+  "zoom": 12,
+  "height": "600px",
+  "tile_url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+  "attribution": "Map data: OpenTopoMap",
+  "max_zoom": 17
+}
+```
+
+### Notes
+
+- **Tabs and Modals:** Maps inside hidden containers (Tabs, Modals) are handled automatically. An `IntersectionObserver` calls `invalidateSize()` when the map becomes visible.
+- **Multiple maps:** Each map container gets a unique ID. Multiple maps on the same page work independently.
+- **CSP requirements:** If using Content Security Policy headers, allow `https://unpkg.com` for scripts and `https://*.tile.openstreetmap.org` for tile images.
+
 ## CLI Support
 
 Scaffold views with the CLI:

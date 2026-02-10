@@ -10,7 +10,7 @@ use std::path::Path;
 
 use crate::commands::generate_routes;
 
-/// Concise reference of all 20 JSON-UI components with their props, types, and variants.
+/// Concise reference of all JSON-UI components (20 built-in + plugin components).
 const COMPONENT_CATALOG: &str = r#"## Component Catalog
 
 ### Text
@@ -73,6 +73,15 @@ Props: src (Option<String>), alt (String), fallback (Option<String>), size (Opti
 ### Skeleton
 Props: width (Option<String>), height (Option<String>), rounded (Option<bool>)
 
+## Plugin Components
+
+Plugin components use the same JSON syntax as built-in components. Their JS/CSS assets are loaded automatically.
+
+### Map
+Props: center ([f64; 2] required), zoom (u8 0-18, default 13), height (String, default "400px"), markers (Vec<{lat, lng, popup?}>), tile_url (Option<String>), attribution (Option<String>), max_zoom (Option<u8>)
+Example JSON: {"type": "Map", "center": [51.505, -0.09], "zoom": 13, "markers": [{"lat": 51.5, "lng": -0.09, "popup": "Hello"}]}
+Note: Leaflet CSS/JS loaded via CDN automatically. Works inside Tabs/Modals (IntersectionObserver handles resize).
+
 ## Action
 Props: handler (String "controller.method" format), method (GET|POST|PUT|PATCH|DELETE), confirm (Option<ConfirmDialog {title, message?, variant: default|danger}>), on_success (Option<ActionOutcome>), on_error (Option<ActionOutcome>)
 Builders: Action::new("handler") (POST), Action::get("handler"), Action::delete("handler"), .confirm("title"), .confirm_danger("title")
@@ -99,8 +108,7 @@ pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String>
             .to_string()
     })?;
 
-    let model =
-        std::env::var("FERRO_AI_MODEL").unwrap_or_else(|_| "claude-sonnet-4-5".to_string());
+    let model = std::env::var("FERRO_AI_MODEL").unwrap_or_else(|_| "claude-sonnet-4-5".to_string());
 
     let body = serde_json::json!({
         "model": model,
@@ -358,4 +366,3 @@ fn scan_routes() -> String {
 
     output
 }
-
