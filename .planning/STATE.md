@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 44 of 46 (Real-time Improvements)
-Plan: 0 of 4 in current phase
-Status: Planning complete, ready for execution
-Last activity: 2026-02-10 - Phase 44 planned (4 plans, 3 waves)
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-02-10 - Completed 44-01-PLAN.md
 
-Progress: ███░░░░░░░ 33%
+Progress: ███░░░░░░░ 34%
 
 ## Milestone Summary
 
@@ -62,6 +62,8 @@ Archived to PROJECT.md and milestone archive files.
 | 43-02 | TCP loopback for test Request in rate_limit tests | Consistent with resource test patterns; hyper::body::Incoming has no public constructor |
 | 43-02 | In-module #[cfg(test)] for private function access | Tests access check_rate_limit without pub(crate) visibility change |
 | 43-03 | Three MCP templates (define, routes, inline) | Matches granularity of other template categories |
+| 44-01 | WS conversion helpers on message types, not handler | Keeps connection handler clean; centralizes serialization |
+| 44-01 | Drop DashMap guard before async in whisper() | Consistent with subscribe pattern; prevents deadlocks |
 
 ### Pending Todos
 
@@ -92,5 +94,5 @@ None (pre-existing blockers moved to Phase 38 scope).
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Phase 44 planned, ready for execution
+Stopped at: Completed 44-01-PLAN.md
 Resume file: None
