@@ -98,6 +98,10 @@ impl JsonUi {
 
         let rendered = render_to_html(view, data);
 
+        // Plugin asset collection will be wired up once the Component
+        // enum has the Plugin variant (Plan 02). Empty for now.
+        let scripts = String::new();
+
         let ctx = LayoutContext {
             title,
             content: &rendered,
@@ -105,6 +109,7 @@ impl JsonUi {
             body_class: &config.body_class,
             view_json: &view_json,
             data_json: &data_json,
+            scripts: &scripts,
         };
 
         let layout_name = view.layout.as_deref();

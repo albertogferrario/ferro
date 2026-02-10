@@ -34,6 +34,8 @@ pub struct LayoutContext<'a> {
     pub view_json: &'a str,
     /// Serialized data JSON for the `data-props` attribute.
     pub data_json: &'a str,
+    /// JS assets and init scripts for plugins, injected before closing body tag.
+    pub scripts: &'a str,
 }
 
 // ── Layout trait ────────────────────────────────────────────────────────
@@ -55,7 +57,13 @@ pub trait Layout: Send + Sync {
 /// All three built-in layouts delegate to this function to avoid duplicating
 /// the HTML/head/body boilerplate. The `body_content` parameter receives the
 /// inner body HTML which varies per layout.
-fn base_document(title: &str, head: &str, body_class: &str, body_content: &str) -> String {
+fn base_document(
+    title: &str,
+    head: &str,
+    body_class: &str,
+    body_content: &str,
+    scripts: &str,
+) -> String {
     format!(
         r#"<!DOCTYPE html>
 <html lang="en">
@@ -67,12 +75,14 @@ fn base_document(title: &str, head: &str, body_class: &str, body_content: &str) 
 </head>
 <body class="{body_class}">
     {body_content}
+    {scripts}
 </body>
 </html>"#,
         title = html_escape(title),
         head = head,
         body_class = html_escape(body_class),
         body_content = body_content,
+        scripts = scripts,
     )
 }
 
@@ -98,7 +108,7 @@ pub struct DefaultLayout;
 impl Layout for DefaultLayout {
     fn render(&self, ctx: &LayoutContext) -> String {
         let wrapper = ferro_wrapper(ctx);
-        base_document(ctx.title, ctx.head, ctx.body_class, &wrapper)
+        base_document(ctx.title, ctx.head, ctx.body_class, &wrapper, ctx.scripts)
     }
 }
 
@@ -132,7 +142,7 @@ impl Layout for AppLayout {
             wrapper = wrapper,
         );
 
-        base_document(ctx.title, ctx.head, ctx.body_class, &body)
+        base_document(ctx.title, ctx.head, ctx.body_class, &body, ctx.scripts)
     }
 }
 
@@ -159,7 +169,7 @@ impl Layout for AuthLayout {
             wrapper = wrapper,
         );
 
-        base_document(ctx.title, ctx.head, ctx.body_class, &body)
+        base_document(ctx.title, ctx.head, ctx.body_class, &body, ctx.scripts)
     }
 }
 
@@ -381,6 +391,7 @@ mod tests {
             body_class: "bg-white",
             view_json: "{\"schema\":\"v1\"}",
             data_json: "{\"key\":\"value\"}",
+            scripts: "",
         }
     }
 
@@ -388,7 +399,7 @@ mod tests {
 
     #[test]
     fn base_document_produces_valid_html_structure() {
-        let html = base_document("Title", "<style></style>", "my-class", "<p>body</p>");
+        let html = base_document("Title", "<style></style>", "my-class", "<p>body</p>", "");
         assert!(html.starts_with("<!DOCTYPE html>"));
         assert!(html.contains("<html lang=\"en\">"));
         assert!(html.contains("<meta charset=\"UTF-8\">"));
@@ -402,13 +413,13 @@ mod tests {
 
     #[test]
     fn base_document_escapes_title() {
-        let html = base_document("Tom & Jerry <script>", "", "", "");
+        let html = base_document("Tom & Jerry <script>", "", "", "", "");
         assert!(html.contains("<title>Tom &amp; Jerry &lt;script&gt;</title>"));
     }
 
     #[test]
     fn base_document_escapes_body_class() {
-        let html = base_document("T", "", "a\"b", "");
+        let html = base_document("T", "", "a\"b", "", "");
         assert!(html.contains("class=\"a&quot;b\""));
     }
 
