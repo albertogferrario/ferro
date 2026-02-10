@@ -11,7 +11,7 @@ categories = ["web-programming", "asynchronous"]
 [dependencies]
 async-trait = "0.1"
 tokio = { version = "1", features = ["sync", "rt", "time", "macros"] }
-tokio-tungstenite = "0.26"
+tokio-tungstenite = "0.28"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 tracing = "0.1"
 thiserror = "2"

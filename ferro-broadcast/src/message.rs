@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tokio_tungstenite::tungstenite::protocol::Message as WsMessage;
 
 /// A message that can be broadcast to channels.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +38,12 @@ impl BroadcastMessage {
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
     }
+
+    /// Convert to a WebSocket text message.
+    pub fn to_ws_message(&self) -> Result<WsMessage, serde_json::Error> {
+        let json = serde_json::to_string(self)?;
+        Ok(WsMessage::Text(json.into()))
+    }
 }
 
 /// A client-to-server message.
@@ -59,6 +66,13 @@ pub enum ClientMessage {
     },
     /// Ping to keep connection alive.
     Ping,
+}
+
+impl ClientMessage {
+    /// Parse a client message from WebSocket text payload.
+    pub fn from_ws_text(text: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(text)
+    }
 }
 
 /// A server-to-client message.
@@ -93,6 +107,12 @@ impl ServerMessage {
     /// Serialize to JSON string.
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
+    }
+
+    /// Convert to a WebSocket text message.
+    pub fn to_ws_message(&self) -> Result<WsMessage, serde_json::Error> {
+        let json = serde_json::to_string(self)?;
+        Ok(WsMessage::Text(json.into()))
     }
 }
 
