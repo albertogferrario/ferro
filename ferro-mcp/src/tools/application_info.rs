@@ -2,6 +2,7 @@
 
 use crate::error::{McpError, Result};
 use crate::introspection;
+use crate::tools;
 use serde::Serialize;
 use std::path::Path;
 use std::process::Command;
@@ -15,8 +16,17 @@ pub struct ApplicationInfo {
     pub installed_crates: Vec<CrateInfo>,
     pub models: Vec<ModelInfo>,
     pub json_ui_views: JsonUiViewsStatus,
+    pub features: FeatureSummary,
     pub broadcasting: BroadcastingStatus,
     pub claude_code_skills: ClaudeCodeSkillsStatus,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FeatureSummary {
+    pub api_resources: usize,
+    pub policies: usize,
+    pub rate_limiters: usize,
+    pub broadcast_channels: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -76,6 +86,9 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
     // Scan for JSON-UI views
     let json_ui_views = scan_json_ui_views(project_root);
 
+    // Scan v4.0 feature counts
+    let features = scan_feature_counts(project_root);
+
     // Check broadcasting status
     let broadcasting = check_broadcasting(&installed_crates, project_root);
 
@@ -90,6 +103,7 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
         installed_crates,
         models,
         json_ui_views,
+        features,
         broadcasting,
         claude_code_skills,
     })
@@ -294,6 +308,35 @@ fn check_broadcasting(installed_crates: &[CrateInfo], project_root: &Path) -> Br
                     .to_string(),
             )
         },
+    }
+}
+
+fn scan_feature_counts(project_root: &Path) -> FeatureSummary {
+    let api_resources = tools::list_resources::execute(project_root)
+        .ok()
+        .map(|r| r.resources.len())
+        .unwrap_or(0);
+
+    let policies = tools::list_policies::execute(project_root)
+        .ok()
+        .map(|r| r.policies.len())
+        .unwrap_or(0);
+
+    let rate_limiters = tools::list_rate_limiters::execute(project_root)
+        .ok()
+        .map(|r| r.limiters.len())
+        .unwrap_or(0);
+
+    let broadcast_channels = tools::list_broadcast_channels::execute(project_root)
+        .ok()
+        .map(|r| r.channels.len())
+        .unwrap_or(0);
+
+    FeatureSummary {
+        api_resources,
+        policies,
+        rate_limiters,
+        broadcast_channels,
     }
 }
 
