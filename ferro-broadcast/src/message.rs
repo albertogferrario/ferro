@@ -143,6 +143,40 @@ mod tests {
     }
 
     #[test]
+    fn test_subscribe_with_channel_data() {
+        let json = r#"{"type":"subscribe","channel":"presence-nearby","auth":"ok","channel_data":{"user_id":"42","user_info":{"name":"Alice"}}}"#;
+        let msg: ClientMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ClientMessage::Subscribe {
+                channel,
+                auth,
+                channel_data,
+            } => {
+                assert_eq!(channel, "presence-nearby");
+                assert_eq!(auth.unwrap(), "ok");
+                let data = channel_data.unwrap();
+                assert_eq!(data["user_id"], "42");
+                assert_eq!(data["user_info"]["name"], "Alice");
+            }
+            _ => panic!("Expected Subscribe"),
+        }
+    }
+
+    #[test]
+    fn test_subscribe_without_channel_data() {
+        let json = r#"{"type":"subscribe","channel":"presence-nearby","auth":"ok"}"#;
+        let msg: ClientMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            ClientMessage::Subscribe {
+                channel_data, ..
+            } => {
+                assert!(channel_data.is_none());
+            }
+            _ => panic!("Expected Subscribe"),
+        }
+    }
+
+    #[test]
     fn test_server_message_serialize() {
         let msg = ServerMessage::Connected {
             socket_id: "abc123".into(),
