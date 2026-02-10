@@ -50,6 +50,11 @@ impl HttpResponse {
         self.status
     }
 
+    /// Get the response body as a string slice.
+    pub fn body(&self) -> &str {
+        &self.body
+    }
+
     /// Add a header to the response
     pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.push((name.into(), value.into()));
