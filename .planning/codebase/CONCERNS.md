@@ -1,124 +1,80 @@
 # Technical Concerns
 
-**Analysis Date:** 2026-01-15
+**Analysis Date:** 2026-02-13
 
 ## Error Handling Risks
 
-**Unhandled Panics:**
+**Schedule Expression Unwraps:**
 
-| File | Pattern | Risk | Recommendation |
-|------|---------|------|----------------|
-| `app/src/main.rs` | Multiple `.expect()` calls | Panic on startup failure | Convert to Result propagation |
-| `app/src/bootstrap.rs` | `.expect()` calls | Panic during bootstrap | Use `?` with context |
-| `framework/src/schedule/expression.rs` | `.unwrap()` calls | Panic on cron parse | Return Result<T, ParseError> |
+| File | Count | Nature |
+|------|-------|--------|
+| `framework/src/schedule/expression.rs` | 18 | Builder convenience methods passing known-valid cron strings |
 
-**Specific Locations:**
-```
-app/src/main.rs:15-30 - Service initialization expects
-app/src/bootstrap.rs:45-80 - Database and cache setup expects
-framework/src/schedule/expression.rs:100-150 - Cron parsing unwraps
-```
+15 of the 18 `.unwrap()` calls are in builder methods (`every_minute()`, `hourly()`, `daily()`, etc.) that pass hardcoded, known-valid cron format strings to `Self::parse()`. 1 is in a doc comment example, 2 are in tests. The risk of runtime panic is minimal since the inputs are compile-time constants.
 
-**Impact:** Application crashes instead of graceful error handling
-
-## Missing Configuration
-
-**Environment File:**
-- `.env.example` file not present
-- Developers must guess required environment variables
-- Risk: Misconfiguration in deployment
-
-**Required Variables (undocumented):**
-- `DATABASE_URL` - Required
-- `REDIS_URL` - Optional but affects functionality
-- `MAIL_*` - Mail configuration
-- `APP_URL` - Application URL
-- `FERRO_DEBUG_ENDPOINTS` - Debug routes toggle
-
-**Recommendation:** Create `.env.example` with all variables and defaults
+**Priority:** P3 (Low effort, Low impact)
 
 ## Incomplete Features
 
-**TODO Items:**
+**Active TODOs:**
 
 | Location | Description | Priority |
 |----------|-------------|----------|
-| `app/src/middleware/share_inertia.rs` | Incomplete Inertia data sharing | Medium |
-| `framework/src/testing/http.rs:52` | Router integration for test client | High |
+| `app/src/middleware/share_inertia.rs:33` | Add authenticated user sharing to Inertia props | Low |
+| `app/src/middleware/share_inertia.rs:42` | Add flash messages to Inertia props | Low |
+| `framework/src/testing/http.rs:211` | Route TestClient requests through actual handlers | Low |
 
-**Pattern:** Search codebase with `// TODO:`
+The sample app TODOs are non-blocking — the auth system works independently via `AuthUser<T>` extractor. The testing TODO documents a known limitation of `TestClient` when not using `with_router()`.
 
-## Code Quality Concerns
+Template TODOs in `ferro-cli/src/templates/make.rs` and `scaffold.rs` are intentional user-facing placeholders in generated code, not incomplete features.
 
-**Large Files:**
+**Priority:** P3 (Low effort, Low impact — sample app and test infrastructure only)
 
-| File | Lines | Concern |
-|------|-------|---------|
-| `ferro-cli/src/templates/mod.rs` | 2,713 | Large, consider splitting |
-| `framework/src/testing/factory.rs` | 1,274 | Complex test factories |
-| `framework/src/testing/http.rs` | 739 | Could be modularized |
+## COMPONENT_CATALOG Duplication
 
-**Recommendation:** Split large files into focused modules
+The `COMPONENT_CATALOG` constant is duplicated in two locations:
 
-**Documentation Gaps:**
-- `ferro-cli/src/templates/mod.rs` - Minimal documentation for template system
-- Internal framework modules lack comprehensive doc comments
+| Location | Lines |
+|----------|-------|
+| `ferro-cli/src/ai.rs:14` | Used by `ferro make:json-view` AI generation |
+| `ferro-mcp/src/tools/json_ui_generate.rs:67` | Used by MCP `json_ui_generate` tool |
 
-## Security Considerations
+**Drift detected:**
+- CLI version: Text element has `div|section` in element options; Input lacks `step` parameter
+- MCP version: Text element missing `div|section`; Input has `step (Option<String>)`
 
-**Session Security:**
-- Session storage in database or memory
-- No documented session rotation on auth events
-- Cookie security depends on configuration
+Cannot share code directly between workspace binary crates. Options: extract to shared crate, generate from source of truth at build time, or consolidate in `ferro-json-ui`.
 
-**Input Validation:**
-- Validation framework exists and is comprehensive
-- Ensure all user input paths use validation
-
-**Dependency Security:**
-- Regular `cargo audit` recommended
-- Pin dependency versions for reproducibility
+**Priority:** P2 (Medium effort, Medium impact — drift causes inconsistent AI generation)
 
 ## Performance Considerations
 
 **Database:**
-- No connection pool size optimization documented
-- `DB_MAX_CONNECTIONS` default may not suit production
-
-**Caching:**
+- Connection pool size configurable via `DB_MAX_CONNECTIONS` (documented in `.env.example` template since Phase 54)
 - Redis connection pooling via `deadpool-redis`
-- Consider cache warming strategies for frequently accessed data
 
-**Async Operations:**
-- Proper use of `tokio::spawn` for background tasks
-- Event dispatcher uses async handlers
+**Infrastructure (v4.0+):**
+- Rate limiting backed by cache store with fail-open semantics
+- WebSocket broadcasting with channel authorization and heartbeat
+- Cache warming strategies not implemented (future recommendation)
 
 ## Testing Gaps
 
-**Coverage Areas:**
-- No E2E test suite (HTTP test client has TODO for router integration)
-- Integration tests limited to utility functions
+**Current State:**
+- `TestClient::with_router()` enables router integration testing
+- Factory patterns in `framework/src/testing/factory.rs` (1,281 lines)
+- HTTP test helpers in `framework/src/testing/http.rs` (736 lines)
+
+**Remaining Gaps:**
+- No E2E test suite
 - No load/stress testing framework
+- Integration tests limited to utility functions
 
-**Test Infrastructure:**
-- `framework/src/testing/` provides good foundation
-- Missing: Database fixtures, factory patterns beyond basics
-
-## Technical Debt Tracking
-
-**Priority Matrix:**
-
-| Item | Effort | Impact | Priority |
-|------|--------|--------|----------|
-| Add `.env.example` | Low | High | P1 |
-| Replace `.expect()` with Results | Medium | High | P1 |
-| Split large template file | Medium | Medium | P2 |
-| Complete HTTP test client | High | Medium | P2 |
-| Document all public APIs | High | Medium | P3 |
+Acceptable for current project stage (pre-publication).
 
 ## Monitoring Recommendations
 
-**Add:**
+**Future additions:**
 - Structured error logging with context
 - Request tracing across service boundaries
 - Database query performance metrics
@@ -129,7 +85,49 @@ framework/src/schedule/expression.rs:100-150 - Cron parsing unwraps
 - Debug endpoints at `/_ferro/metrics`
 - No external monitoring integration
 
+## Priority Matrix
+
+| Item | Effort | Impact | Priority |
+|------|--------|--------|----------|
+| COMPONENT_CATALOG consolidation | Medium | Medium | P2 |
+| Schedule expression unwraps | Low | Low | P3 |
+| Share inertia TODOs | Low | Low | P3 |
+| TestClient handler routing TODO | Low | Low | P3 |
+
+<details>
+<summary>Resolved Concerns (click to expand)</summary>
+
+### Error Handling — app/main.rs and bootstrap.rs
+
+**Resolved:** No `.expect()` calls remain in `app/src/main.rs` or `app/src/bootstrap.rs`. Both files use proper `Result` propagation.
+
+### Missing Configuration (.env.example)
+
+**Resolved in Phase 54:** `ferro-cli/src/templates/files/root/env.example.tpl` provides all framework environment variables with documentation. Generated into new projects via `ferro new`.
+
+### Code Quality — Large Template File
+
+**Resolved in Phase 55:** `ferro-cli/src/templates/mod.rs` reduced from 2,713 to 831 lines, split into 7 focused submodules (`project.rs`, `make.rs`, `entity.rs`, `docker.rs`, `ai_boost.rs`, `scaffold.rs`, `auth.rs`).
+
+### Code Quality — Testing Files
+
+**Removed from concerns:** `framework/src/testing/factory.rs` (1,281 lines) and `framework/src/testing/http.rs` (736 lines) are acceptable sizes for test infrastructure modules.
+
+### Security — Session Rotation
+
+**Resolved in v4.0:** `regenerate_session_id()` in `framework/src/session/middleware.rs` is called on login via `framework/src/auth/guard.rs`. CSRF token regenerated on login/logout. `logout_and_invalidate()` provides complete session destruction.
+
+### Input Validation
+
+**Status:** Validation framework is comprehensive and actively used across all user input paths. Not an actionable concern.
+
+### Dependency Security
+
+**Status:** Ongoing practice. `cargo audit` recommended as part of CI. Not an actionable concern.
+
+</details>
+
 ---
 
-*Concern analysis: 2026-01-15*
+*Concern analysis: 2026-02-13*
 *Review quarterly and update priorities*
