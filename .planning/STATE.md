@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** All milestones complete. Ready for crates.io publication.
+**Current focus:** v6.0 ferro-lang — Localization
 
 ## Current Position
 
-Phase: 57 of 57 (Deployment Template Fixes)
-Plan: 1 of 1 in current phase
-Status: Milestone v5.1 complete
-Last activity: 2026-02-13 — Completed 57-01-PLAN.md
+Phase: 58 of 66 (Core Translator)
+Plan: 58-01 planned (1 plan, 1 wave)
+Status: Ready to execute
+Last activity: 2026-02-13 — Phase 58 planned
 
-Progress: ██████████ 100%
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone Summary
 
@@ -31,6 +31,7 @@ Progress: ██████████ 100%
 | v4.0 Production Readiness | 38-46 | 24 | Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | Complete | 2026-02-13 |
+| v6.0 ferro-lang | 58-66 | 0/1 | In Progress | - |
 
 ## Accumulated Context
 
@@ -40,8 +41,8 @@ Archived to PROJECT.md and milestone archive files.
 
 ### Roadmap Evolution
 
-- All planned milestones complete (v1.0 through v5.1)
-- 11 milestones, 126 plans shipped
+- All planned milestones v1.0–v5.1 complete (11 milestones, 126 plans shipped)
+- Milestone v6.0 created: ferro-lang localization, 9 phases (Phase 58-66)
 
 ### Pending Todos
 
@@ -58,5 +59,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 57-01-PLAN.md — v5.1 Housekeeping milestone complete
-Resume file: None
+Stopped at: Phase 58 planned, ready to execute
+Resume file: .planning/phases/58-core-translator/58-01-PLAN.md

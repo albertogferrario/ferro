@@ -13,6 +13,103 @@
 - ✅ [**v4.0 Production Readiness**](milestones/v4.0-ROADMAP.md) — Phases 38-46 (shipped 2026-02-10)
 - ✅ [**v5.0 Proximity — JSON-UI Field Test**](milestones/v5.0-ROADMAP.md) — Phases 47-53 (shipped 2026-02-10)
 - ✅ **v5.1 Housekeeping** — Phases 54-57 (shipped 2026-02-13)
+- 🚧 **v6.0 ferro-lang — Localization** — Phases 58-66 (in progress)
+
+---
+
+### 🚧 v6.0 ferro-lang — Localization (In Progress)
+
+**Milestone Goal:** Add localization infrastructure via ferro-lang crate: JSON translations, per-request locale detection, validation message localization, CLI scaffolding.
+
+#### Phase 58: Core Translator
+
+**Goal**: New ferro-lang crate with JSON file loading, interpolation, pluralization, fallback chain
+**Depends on**: Previous milestone complete
+**Research**: Complete (58-RESEARCH.md)
+**Plans**: 1
+
+Plans:
+- [ ] 58-01: ferro-lang crate — Translator with JSON loading, interpolation, pluralization, tests
+
+#### Phase 59: Config & Error Types
+
+**Goal**: LangConfig with from_env(), LangError enum, workspace integration
+**Depends on**: Phase 58
+**Research**: Unlikely (internal patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 59-01: TBD
+
+#### Phase 60: Locale Context
+
+**Goal**: task_local! locale, locale()/set_locale() functions, LangMiddleware
+**Depends on**: Phase 59
+**Research**: Unlikely (follows session middleware pattern)
+**Plans**: TBD
+
+Plans:
+- [ ] 60-01: TBD
+
+#### Phase 61: Validation Bridge
+
+**Goal**: OnceLock callback in validation/mod.rs, decouple from ferro-lang
+**Depends on**: Phase 60
+**Research**: Unlikely (internal patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 61-01: TBD
+
+#### Phase 62: Validation Rules Update
+
+**Goal**: Update 21 rules to use translate_validation(), default English JSON
+**Depends on**: Phase 61
+**Research**: Unlikely (internal patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 62-01: TBD
+
+#### Phase 63: Framework Integration
+
+**Goal**: framework/src/lang/ module, lib.rs re-exports, init() function
+**Depends on**: Phase 62
+**Research**: Unlikely (internal patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 63-01: TBD
+
+#### Phase 64: CLI Scaffolding
+
+**Goal**: make:lang command, update ferro new templates, .env.example
+**Depends on**: Phase 63
+**Research**: Unlikely (internal patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 64-01: TBD
+
+#### Phase 65: MCP & Documentation
+
+**Goal**: ferro-mcp introspection for locales/keys, docs/src/localization.md
+**Depends on**: Phase 64
+**Research**: Unlikely (internal patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 65-01: TBD
+
+#### Phase 66: Tests & Polish
+
+**Goal**: Comprehensive tests for translator, middleware, validation bridge, sample app update
+**Depends on**: Phase 65
+**Research**: Unlikely (internal patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 66-01: TBD
 
 ---
 
@@ -247,6 +344,7 @@
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
+| v6.0 ferro-lang | 58-66 | 0/? | 🚧 In Progress | - |
 
 **Total: 11 milestones shipped, 126 plans.**
 
