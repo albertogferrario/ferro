@@ -17,7 +17,7 @@ use std::sync::OnceLock;
 ///   falls back to English)
 pub type TranslatorFn = fn(&str, &[(&str, &str)]) -> Option<String>;
 
-static VALIDATION_TRANSLATOR: OnceLock<TranslatorFn> = OnceLock::new();
+pub(crate) static VALIDATION_TRANSLATOR: OnceLock<TranslatorFn> = OnceLock::new();
 
 /// Register a translation function for validation messages.
 ///

@@ -960,4 +960,83 @@ mod tests {
             .validate("website", &json!("not-a-url"), &data)
             .is_err());
     }
+
+    #[test]
+    fn test_rules_call_translate_validation() {
+        fn mock(key: &str, params: &[(&str, &str)]) -> Option<String> {
+            let attr = params
+                .iter()
+                .find(|(k, _)| *k == "attribute")
+                .map(|(_, v)| *v)
+                .unwrap_or("?");
+            Some(format!("[translated] {}: attr={}", key, attr))
+        }
+
+        // OnceLock: if already set by another test, skip gracefully
+        let was_set = crate::validation::bridge::VALIDATION_TRANSLATOR
+            .set(mock as crate::validation::TranslatorFn)
+            .is_ok();
+
+        let result = required().validate("email", &json!(null), &json!({}));
+        assert!(result.is_err());
+
+        if was_set {
+            let msg = result.unwrap_err();
+            assert!(
+                msg.contains("[translated]"),
+                "Expected translated message, got: {}",
+                msg
+            );
+            assert!(
+                msg.contains("validation.required"),
+                "Expected key in message, got: {}",
+                msg
+            );
+        }
+    }
+
+    #[test]
+    fn test_size_type_key_selection() {
+        // String values use "string" subkey
+        assert_eq!(
+            get_size_type_key("min", &json!("hello")),
+            "validation.min.string"
+        );
+        assert_eq!(
+            get_size_type_key("max", &json!("hello")),
+            "validation.max.string"
+        );
+        assert_eq!(
+            get_size_type_key("between", &json!("hello")),
+            "validation.between.string"
+        );
+
+        // Numeric values use "numeric" subkey
+        assert_eq!(
+            get_size_type_key("min", &json!(42)),
+            "validation.min.numeric"
+        );
+        assert_eq!(
+            get_size_type_key("max", &json!(42)),
+            "validation.max.numeric"
+        );
+        assert_eq!(
+            get_size_type_key("between", &json!(42)),
+            "validation.between.numeric"
+        );
+
+        // Array values use "array" subkey
+        assert_eq!(
+            get_size_type_key("min", &json!([1, 2, 3])),
+            "validation.min.array"
+        );
+        assert_eq!(
+            get_size_type_key("max", &json!([1, 2, 3])),
+            "validation.max.array"
+        );
+        assert_eq!(
+            get_size_type_key("between", &json!([1, 2, 3])),
+            "validation.between.array"
+        );
+    }
 }
