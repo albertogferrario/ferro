@@ -185,6 +185,9 @@ pub use validator::Validate;
 
 // Re-export our Laravel-style validation module
 pub use validation::{
+    // Bridge
+    register_validation_translator,
+    TranslatorFn,
     // Rules
     accepted,
     alpha,

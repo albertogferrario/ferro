@@ -23,12 +23,15 @@
 //! }
 //! ```
 
+mod bridge;
 mod error;
 mod rule;
 mod rules;
 mod validatable;
 mod validator;
 
+pub use bridge::{register_validation_translator, TranslatorFn};
+pub(crate) use bridge::translate_validation;
 pub use error::ValidationError;
 pub use rule::Rule;
 pub use rules::*;
