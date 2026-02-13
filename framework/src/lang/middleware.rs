@@ -30,7 +30,7 @@ pub struct LangMiddleware;
 #[async_trait]
 impl Middleware for LangMiddleware {
     async fn handle(&self, request: Request, next: Next) -> Response {
-        let config = Config::get::<LangConfig>().unwrap_or_else(LangConfig::default);
+        let config = Config::get::<LangConfig>().unwrap_or_default();
 
         let detected = detect_locale(&request, &config);
 
@@ -81,4 +81,51 @@ fn parse_accept_language(header: &str) -> Option<String> {
         return None;
     }
     Some(normalize_locale(lang))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_accept_language_full_header() {
+        let result = parse_accept_language("en-US,en;q=0.9,fr;q=0.8");
+        assert_eq!(result, Some("en-us".to_string()));
+    }
+
+    #[test]
+    fn parse_accept_language_single_tag() {
+        let result = parse_accept_language("fr");
+        assert_eq!(result, Some("fr".to_string()));
+    }
+
+    #[test]
+    fn parse_accept_language_with_quality() {
+        let result = parse_accept_language("de-DE;q=0.8");
+        assert_eq!(result, Some("de-de".to_string()));
+    }
+
+    #[test]
+    fn parse_accept_language_normalizes_underscore() {
+        let result = parse_accept_language("pt_BR,en;q=0.5");
+        assert_eq!(result, Some("pt-br".to_string()));
+    }
+
+    #[test]
+    fn parse_accept_language_empty() {
+        let result = parse_accept_language("");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn parse_accept_language_wildcard() {
+        let result = parse_accept_language("*");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn parse_accept_language_trims_whitespace() {
+        let result = parse_accept_language("  es-MX , en;q=0.5 ");
+        assert_eq!(result, Some("es-mx".to_string()));
+    }
 }

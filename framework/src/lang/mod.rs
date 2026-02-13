@@ -87,3 +87,63 @@ where
 {
     LOCALE_CONTEXT.scope(ctx, f).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn locale_returns_default_outside_scope() {
+        // Outside any middleware scope, locale() should return "en"
+        let result = locale();
+        assert_eq!(result, "en");
+    }
+
+    #[tokio::test]
+    async fn locale_returns_value_within_scope() {
+        let ctx = locale_scope();
+        {
+            let mut guard = ctx.write().await;
+            *guard = Some("fr".to_string());
+        }
+
+        let result = with_locale_scope(ctx, async { locale() }).await;
+        assert_eq!(result, "fr");
+    }
+
+    #[tokio::test]
+    async fn set_locale_normalizes_before_storing() {
+        let ctx = locale_scope();
+
+        let result = with_locale_scope(ctx, async {
+            set_locale("en_US");
+            locale()
+        })
+        .await;
+
+        assert_eq!(result, "en-us");
+    }
+
+    #[tokio::test]
+    async fn set_locale_normalizes_uppercase() {
+        let ctx = locale_scope();
+
+        let result = with_locale_scope(ctx, async {
+            set_locale("PT-BR");
+            locale()
+        })
+        .await;
+
+        assert_eq!(result, "pt-br");
+    }
+
+    #[tokio::test]
+    async fn locale_returns_default_when_not_set_in_scope() {
+        let ctx = locale_scope();
+
+        let result = with_locale_scope(ctx, async { locale() }).await;
+
+        // No locale was set, and no Config registered, so falls back to "en"
+        assert_eq!(result, "en");
+    }
+}

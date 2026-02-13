@@ -15,6 +15,7 @@ pub mod http;
 pub mod inertia;
 #[cfg(feature = "json-ui")]
 pub mod json_ui;
+pub mod lang;
 pub mod metrics;
 pub mod middleware;
 pub mod routing;
@@ -71,6 +72,7 @@ pub use http::{
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
 #[cfg(feature = "json-ui")]
 pub use json_ui::JsonUi;
+pub use lang::{locale, set_locale, LangMiddleware};
 pub use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, PaginatorTrait,
     QueryFilter, QueryOrder, QuerySelect,
