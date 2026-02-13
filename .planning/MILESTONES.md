@@ -1,5 +1,79 @@
 # Project Milestones: Ferro Framework
 
+## v6.0 ferro-lang — Localization (Shipped: 2026-02-13)
+
+**Delivered:** Added localization infrastructure via new ferro-lang crate with JSON translations, per-request locale detection, validation message localization, CLI scaffolding, MCP introspection, and comprehensive test coverage.
+
+**Phases completed:** 58-66 (11 plans total)
+
+**Key accomplishments:**
+- Created ferro-lang crate with JSON translation loading, :param interpolation, and pipe-separated pluralization with range syntax
+- Per-request locale detection via task_local! with LangMiddleware (Accept-Language + query param)
+- OnceLock-based validation bridge decoupling all 22 rules from ferro-lang with English fallback
+- Framework integration with t()/trans()/choice() helpers auto-booted in Application::run()
+- CLI scaffolding: make:lang command + ferro new templates with localization defaults
+- MCP introspection (list_lang_files) + comprehensive documentation page (253 lines)
+
+**Stats:**
+- 69 files changed (+6,811, -85 lines)
+- 9 phases, 11 plans, 48 commits
+- 1 day (2026-02-13)
+
+**Git range:** `d99fbcd` → `5073fc2`
+
+**What's next:** Publish to crates.io and public announcement.
+
+---
+
+## v5.1 Housekeeping (Shipped: 2026-02-13)
+
+**Delivered:** Resolved technical debt and improved project hygiene: fixed deployment templates, split oversized template files, updated env defaults, and audited concerns.
+
+**Phases completed:** 54-57 (5 plans total)
+
+**Key accomplishments:**
+- Updated env.example.tpl to match all 63 framework env vars (removed 8 phantom, added 23 missing)
+- Split templates/mod.rs from 2,987 to 831 lines across 7 focused modules
+- Audited CONCERNS.md: resolved 6/8 items, rebuilt priority matrix to 4 remaining
+- Fixed deployment templates: health check path, Rust image version, deployment tip text
+
+**Stats:**
+- 26 files changed (+4,821, -3,669 lines)
+- 4 phases, 5 plans, 17 commits
+- 1 day (2026-02-13)
+
+**Git range:** `3f5e0e1` → `fa1375f`
+
+**What's next:** v6.0 ferro-lang — Localization.
+
+---
+
+## v5.0 Proximity — JSON-UI Field Test (Shipped: 2026-02-10)
+
+**Delivered:** Built a complete map-based social network app (app-proximity) as the first real-world validation of JSON-UI and v4.0 features, including a plugin system, geospatial queries, real-time presence, and end-to-end UI polish.
+
+**Phases completed:** 47-53 (20 plans total)
+
+**Key accomplishments:**
+- JSON-UI plugin system with trait-based extensibility, global registry, and Map plugin with Leaflet rendering
+- app-proximity workspace crate — complete social network with auth, geo profiles, location posts, and nearby feeds
+- Geospatial proximity queries with bounding-box + Haversine filtering, nearby users map, and nearby posts feed
+- Real-time presence via WebSocket broadcasting with channel authorization, presence data, and live location/post events
+- UI polish with ProximityLayout navigation, Avatar/Badge/DescriptionList components, and relative timestamps
+- JSON-UI field validation: discovered and fixed issues (Div/Section variants, SQLite Haversine in Rust, input step attribute)
+
+**Stats:**
+- 104 files changed (+11,900, -77 lines)
+- 3,042 lines of Rust (app-proximity)
+- 7 phases, 20 plans, 82 commits
+- 1 day (2026-02-10)
+
+**Git range:** `dbdb0f0` → `24fecfe`
+
+**What's next:** Publish to crates.io and public announcement.
+
+---
+
 ## v4.0 Production Readiness (Shipped: 2026-02-10)
 
 **Delivered:** Authentication, API resources, rate limiting, real-time WebSocket broadcasting, and DX polish to make Ferro production-ready.

@@ -103,6 +103,30 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - ✓ 4 new MCP tools (list_resources, list_policies, list_rate_limiters, list_broadcast_channels) — v4.0
 - ✓ Comprehensive documentation for auth, API resources, rate limiting, and broadcasting — v4.0
 
+**v5.0 Proximity — JSON-UI Field Test (shipped 2026-02-10):**
+- ✓ JSON-UI plugin system with trait-based extensibility, global registry, and asset injection — v5.0
+- ✓ Map plugin with Leaflet rendering, fitBounds auto-zoom, and data-attribute config — v5.0
+- ✓ Proximity reference app: map-based social network with auth, geo profiles, location posts (separate repo) — v5.0
+- ✓ Geospatial proximity queries with bounding-box + Haversine filtering — v5.0
+- ✓ Real-time presence via WebSocket broadcasting with channel authorization and presence data — v5.0
+- ✓ JSON-UI improvements: Div/Section text elements, input step attribute, SQLite-compatible geo — v5.0
+- ✓ End-to-end JSON-UI validation proving zero-JS app development workflow — v5.0
+
+**v5.1 Housekeeping (shipped 2026-02-13):**
+- ✓ Env template updated to match all 63 framework env vars — v5.1
+- ✓ Template module split from 2,987 to 831 lines across 7 focused modules — v5.1
+- ✓ Concerns audit: 6/8 items resolved, priority matrix rebuilt — v5.1
+- ✓ Deployment template fixes: health check path, Rust image version — v5.1
+
+**v6.0 ferro-lang — Localization (shipped 2026-02-13):**
+- ✓ ferro-lang crate with JSON translation loading, :param interpolation, pluralization — v6.0
+- ✓ Per-request locale detection via task_local! with LangMiddleware — v6.0
+- ✓ OnceLock validation bridge decoupling 22 rules from ferro-lang — v6.0
+- ✓ t()/trans()/choice() helpers auto-booted in Application::run() — v6.0
+- ✓ make:lang CLI command + ferro new templates with localization defaults — v6.0
+- ✓ list_lang_files MCP tool for locale/key/coverage introspection — v6.0
+- ✓ Comprehensive localization documentation (253 lines) — v6.0
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
@@ -121,11 +145,14 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 ## Context
 
 **Current State:**
-- ~80,900 lines of Rust across 12 crates
+- ~88,000 lines of Rust across 13 crates (including ferro-lang)
+- v6.0 added: ferro-lang localization crate with JSON translations, per-request locale detection, validation bridge
+- v5.1 added: template module split, env template cleanup, deployment fixes, concerns audit
+- v5.0 added: JSON-UI plugin system, Map plugin, validated via Proximity reference app
 - v4.0 added: authentication, API resources, rate limiting, WebSocket broadcasting
 - Framework production-ready for crates.io publication
-- Sample application demonstrating all capabilities including v4.0 features
-- Comprehensive MCP introspection (34+ tools, including auth, resources, rate limiting, broadcasting)
+- Sample application (app/) demonstrating Inertia integration with localization
+- Comprehensive MCP introspection (35+ tools, including localization coverage)
 
 **Tech Stack:**
 - Rust 2021 edition
@@ -175,6 +202,12 @@ Reference codebase documentation in `.planning/codebase/`:
 | Sonnet default for AI generation | ~5x cost reduction vs Opus for CLI code generation | ✓ Good |
 | json_ui_generate returns context | Consuming agent IS the LLM, avoids double-LLM calls | ✓ Good |
 | COMPONENT_CATALOG duplicated | Cannot share code across workspace crates | ⚠️ Revisit |
+| Separate ferro-lang crate | Follows ferro-cache/ferro-events pattern, keeps i18n decoupled | ✓ Good |
+| Pre-merge fallback at load time | O(1) runtime lookup, no fallback chain per request | ✓ Good |
+| OnceLock validation bridge | Zero coupling: validation has no ferro-lang dependency | ✓ Good |
+| task_local! for locale | Async-safe per-request context, matches session middleware pattern | ✓ Good |
+| fn pointer for TranslatorFn | No state capture needed, simpler than Box<dyn Fn> | ✓ Good |
+| lang::init() after config_fn() | User can override LangConfig before translator loads | ✓ Good |
 | serde_json preserve_order | ResourceMap needs insertion-order field output | ✓ Good |
 | Fail-open rate limiting | Availability over strictness; never block on infra failure | ✓ Good |
 | WS upgrade before middleware | Upgrade needs raw hyper Request, not framework Request | ✓ Good |
@@ -182,4 +215,4 @@ Reference codebase documentation in `.planning/codebase/`:
 | 401 via FrameworkError::domain | 401 is authentication failure; Unauthorized is 403 | ✓ Good |
 
 ---
-*Last updated: 2026-02-10 after v4.0 Production Readiness milestone*
+*Last updated: 2026-02-13 after v6.0 ferro-lang — Localization milestone*

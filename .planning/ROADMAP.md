@@ -12,111 +12,35 @@
 - ✅ [**v3.0 JSON-UI**](milestones/v3.0-ROADMAP.md) — Phases 23-32 (shipped 2026-02-09)
 - ✅ [**v4.0 Production Readiness**](milestones/v4.0-ROADMAP.md) — Phases 38-46 (shipped 2026-02-10)
 - ✅ [**v5.0 Proximity — JSON-UI Field Test**](milestones/v5.0-ROADMAP.md) — Phases 47-53 (shipped 2026-02-10)
-- ✅ **v5.1 Housekeeping** — Phases 54-57 (shipped 2026-02-13)
-- ✅ **v6.0 ferro-lang — Localization** — Phases 58-66 (shipped 2026-02-13)
-
----
-
-### ✅ v6.0 ferro-lang — Localization (Complete)
-
-**Milestone Goal:** Add localization infrastructure via ferro-lang crate: JSON translations, per-request locale detection, validation message localization, CLI scaffolding.
-
-#### Phase 58: Core Translator
-
-**Goal**: New ferro-lang crate with JSON file loading, interpolation, pluralization, fallback chain
-**Depends on**: Previous milestone complete
-**Research**: Complete (58-RESEARCH.md)
-**Plans**: 1
-
-Plans:
-- [x] 58-01: ferro-lang crate — Translator with JSON loading, interpolation, pluralization, tests (2026-02-13)
-
-#### Phase 59: Config & Error Types
-
-**Goal**: LangConfig with from_env(), LangError enum, workspace integration
-**Depends on**: Phase 58
-**Research**: Unlikely (internal patterns)
-**Plans**: 1
-
-Plans:
-- [x] 59-01: LangConfig with from_env()/builder, enriched LangError, framework integration (2026-02-13)
-
-#### Phase 60: Locale Context
-
-**Goal**: task_local! locale, locale()/set_locale() functions, LangMiddleware
-**Depends on**: Phase 59
-**Research**: Unlikely (follows session middleware pattern)
-**Plans**: 1
-
-Plans:
-- [x] 60-01: Per-request locale context via task_local!, locale()/set_locale(), LangMiddleware (2026-02-13)
-
-#### Phase 61: Validation Bridge
-
-**Goal**: OnceLock callback in validation/mod.rs, decouple from ferro-lang
-**Depends on**: Phase 60
-**Research**: Complete (61-RESEARCH.md)
-**Plans**: 1
-
-Plans:
-- [x] 61-01: OnceLock TranslatorFn bridge with register/translate helpers, tests (2026-02-13)
-
-#### Phase 62: Validation Rules Update
-
-**Goal**: Update 22 rules to use translate_validation(), default English JSON
-**Depends on**: Phase 61
-**Research**: Unlikely (internal patterns)
-**Plans**: 1
-
-Plans:
-- [x] 62-01: Update all validation rules to use translate_validation() bridge, create English JSON, add integration tests (2026-02-13)
-
-#### Phase 63: Framework Integration
-
-**Goal**: framework/src/lang/ module, lib.rs re-exports, init() function
-**Depends on**: Phase 62
-**Research**: Unlikely (internal patterns)
-**Plans**: 1
-
-Plans:
-- [x] 63-01: Wire lang::init() with t()/trans()/choice() into Application boot, auto-register validation bridge (2026-02-13)
-
-#### Phase 64: CLI Scaffolding
-
-**Goal**: make:lang command, update ferro new templates, .env.example
-**Depends on**: Phase 63
-**Research**: Unlikely (internal patterns)
-**Plans**: 1
-
-Plans:
-- [x] 64-01: make:lang command and updated ferro new templates with localization defaults (2026-02-13)
-
-#### Phase 65: MCP & Documentation
-
-**Goal**: ferro-mcp introspection for locales/keys, docs/src/localization.md
-**Depends on**: Phase 64
-**Research**: Unlikely (internal patterns)
-**Plans**: 2
-
-Plans:
-- [x] 65-01: list_lang_files MCP tool, updated list_commands/application_info/MCP instructions (2026-02-13)
-- [x] 65-02: Localization documentation page with SUMMARY.md update (2026-02-13)
-
-#### Phase 66: Tests & Polish
-
-**Goal**: Comprehensive tests for translator, middleware, validation bridge, sample app update
-**Depends on**: Phase 65
-**Research**: Unlikely (internal patterns)
-**Plans**: 3
-
-Plans:
-- [x] 66-01: Loader, validation bridge, and lang::init tests (2026-02-13)
-- [x] 66-02: Complete test coverage for all 23 validation rules (2026-02-13)
-- [x] 66-03: is_valid_locale unit tests + sample app localization setup (2026-02-13)
+- ✅ [**v5.1 Housekeeping**](milestones/v5.1-ROADMAP.md) — Phases 54-57 (shipped 2026-02-13)
+- ✅ [**v6.0 ferro-lang — Localization**](milestones/v6.0-ROADMAP.md) — Phases 58-66 (shipped 2026-02-13)
 
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v6.0 ferro-lang — Localization (Phases 58-66) — SHIPPED 2026-02-13</summary>
+
+**Milestone Goal:** Add localization infrastructure via ferro-lang crate: JSON translations, per-request locale detection, validation message localization, CLI scaffolding.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 58. Core Translator | 1/1 | Complete | 2026-02-13 |
+| 59. Config & Error Types | 1/1 | Complete | 2026-02-13 |
+| 60. Locale Context | 1/1 | Complete | 2026-02-13 |
+| 61. Validation Bridge | 1/1 | Complete | 2026-02-13 |
+| 62. Validation Rules Update | 1/1 | Complete | 2026-02-13 |
+| 63. Framework Integration | 1/1 | Complete | 2026-02-13 |
+| 64. CLI Scaffolding | 1/1 | Complete | 2026-02-13 |
+| 65. MCP & Documentation | 2/2 | Complete | 2026-02-13 |
+| 66. Tests & Polish | 3/3 | Complete | 2026-02-13 |
+
+**Total:** 9 phases, 11 plans
+
+[Full details →](milestones/v6.0-ROADMAP.md)
+
+</details>
 
 <details>
 <summary>✅ v5.1 Housekeeping (Phases 54-57) — SHIPPED 2026-02-13</summary>
@@ -131,6 +55,8 @@ Plans:
 | 57. Deployment Template Fixes | 1/1 | Complete | 2026-02-13 |
 
 **Total:** 4 phases, 5 plans
+
+[Full details →](milestones/v5.1-ROADMAP.md)
 
 </details>
 
@@ -347,7 +273,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 11 | ✅ Complete | 2026-02-13 |
+| v6.0 ferro-lang — Localization | 58-66 | 11 | ✅ Complete | 2026-02-13 |
 
 **Total: 12 milestones shipped, 145 plans.**
 
