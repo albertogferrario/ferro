@@ -46,10 +46,10 @@ Plans:
 **Goal**: task_local! locale, locale()/set_locale() functions, LangMiddleware
 **Depends on**: Phase 59
 **Research**: Unlikely (follows session middleware pattern)
-**Plans**: TBD
+**Plans**: 1
 
 Plans:
-- [ ] 60-01: TBD
+- [x] 60-01: Per-request locale context via task_local!, locale()/set_locale(), LangMiddleware (2026-02-13)
 
 #### Phase 61: Validation Bridge
 
@@ -344,7 +344,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 2/? | 🚧 In Progress | - |
+| v6.0 ferro-lang | 58-66 | 3/? | 🚧 In Progress | - |
 
-**Total: 11 milestones shipped, 127 plans.**
+**Total: 11 milestones shipped, 128 plans.**
 
