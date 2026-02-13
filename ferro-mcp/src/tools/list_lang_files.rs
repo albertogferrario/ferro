@@ -28,10 +28,7 @@ pub struct CoverageReport {
     pub missing_keys: HashMap<String, Vec<String>>,
 }
 
-pub fn execute(
-    project_root: &Path,
-    locale_filter: Option<&str>,
-) -> Result<LangFilesInfo, String> {
+pub fn execute(project_root: &Path, locale_filter: Option<&str>) -> Result<LangFilesInfo, String> {
     // Read .env for locale configuration
     let (default_locale, fallback_locale, lang_path) = read_env_config(project_root);
 
@@ -47,8 +44,8 @@ pub fn execute(
     let mut locale_keys: HashMap<String, HashMap<String, String>> = HashMap::new();
     let mut locale_files: HashMap<String, Vec<String>> = HashMap::new();
 
-    let entries = fs::read_dir(&lang_dir)
-        .map_err(|e| format!("Failed to read lang directory: {}", e))?;
+    let entries =
+        fs::read_dir(&lang_dir).map_err(|e| format!("Failed to read lang directory: {}", e))?;
 
     for entry in entries.flatten() {
         if !entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
@@ -108,10 +105,7 @@ pub fn execute(
         .keys()
         .map(|locale| {
             let key_count = locale_keys.get(locale).map(|m| m.len()).unwrap_or(0);
-            let files = locale_files
-                .get(locale)
-                .cloned()
-                .unwrap_or_default();
+            let files = locale_files.get(locale).cloned().unwrap_or_default();
             LocaleInfo {
                 locale: locale.clone(),
                 files,
@@ -160,9 +154,7 @@ fn read_env_config(project_root: &Path) -> (String, String, String) {
 }
 
 /// Scan a single locale directory, returning flattened keys and file names.
-fn scan_locale_dir(
-    dir: &Path,
-) -> Result<(HashMap<String, String>, Vec<String>), String> {
+fn scan_locale_dir(dir: &Path) -> Result<(HashMap<String, String>, Vec<String>), String> {
     let mut keys = HashMap::new();
     let mut files = Vec::new();
 
@@ -181,8 +173,8 @@ fn scan_locale_dir(
             .unwrap_or_default();
         files.push(file_name);
 
-        let content =
-            fs::read_to_string(&path).map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+        let content = fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
         let parsed: HashMap<String, serde_json::Value> = serde_json::from_str(&content)
             .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;

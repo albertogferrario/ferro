@@ -97,6 +97,10 @@ pub fn execute() -> CommandsInfo {
                 "Generate a JSON-UI view using AI (requires ANTHROPIC_API_KEY)".to_string(),
         },
         CommandInfo {
+            name: "make:lang".to_string(),
+            description: "Generate translation files for a new locale".to_string(),
+        },
+        CommandInfo {
             name: "make:seeder".to_string(),
             description: "Generate a new database seeder".to_string(),
         },

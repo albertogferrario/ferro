@@ -1213,6 +1213,7 @@ Ferro is a Laravel-inspired web framework for Rust featuring:
 - WebSocket broadcasting (ferro-broadcast)
 - File storage abstraction (ferro-storage)
 - Caching with tags (ferro-cache)
+- Localization via ferro-lang (translation files in lang/{locale}/*.json)
 
 ## Mobile App Development
 
@@ -1308,6 +1309,12 @@ These workflows show how to combine tools for common tasks.
 4. Implement rate limiting
 5. `list_rate_limiters` - Verify configuration
 
+### Adding Localization
+1. `list_lang_files` - See available locales and coverage
+2. `get_config` - Check locale configuration
+3. `list_commands` - Find make:lang for adding locales
+4. `code_templates` - Get translation file templates
+
 ## When to Use These Tools (PROACTIVELY)
 
 **USE application_info FIRST** when starting work on a Ferro project to understand:
@@ -1363,6 +1370,12 @@ These workflows show how to combine tools for common tasks.
 - Understanding broadcasting setup
 - Checking existing channel names
 - Before adding real-time features
+
+**USE list_lang_files** when:
+- Understanding available locales and translations
+- Checking translation coverage across locales
+- Finding missing translation keys
+- Before adding a new locale
 
 **USE db_schema** when:
 - You need exact column names and types
@@ -1501,6 +1514,9 @@ These workflows show how to combine tools for common tasks.
 - list_broadcast_channels: Broadcasting configuration and channels
 - list_policies: Authorization policies and abilities
 - list_resources: API resources and field transformations
+
+### Localization (translation management)
+- list_lang_files: Available locales, translation keys, and coverage
 
 ### Database (query and inspect)
 - db_schema: Table structures

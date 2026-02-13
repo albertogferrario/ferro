@@ -4,6 +4,7 @@ use crate::error::{McpError, Result};
 use crate::introspection;
 use crate::tools;
 use serde::Serialize;
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 
@@ -27,6 +28,15 @@ pub struct FeatureSummary {
     pub policies: usize,
     pub rate_limiters: usize,
     pub broadcast_channels: usize,
+    pub localization: LocalizationStatus,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LocalizationStatus {
+    pub available: bool,
+    pub locale_count: usize,
+    pub default_locale: String,
+    pub hint: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -332,11 +342,74 @@ fn scan_feature_counts(project_root: &Path) -> FeatureSummary {
         .map(|r| r.channels.len())
         .unwrap_or(0);
 
+    let localization = scan_localization(project_root);
+
     FeatureSummary {
         api_resources,
         policies,
         rate_limiters,
         broadcast_channels,
+        localization,
+    }
+}
+
+fn scan_localization(project_root: &Path) -> LocalizationStatus {
+    // Read lang path from .env (default: "lang")
+    let env_path = project_root.join(".env");
+    let mut lang_path = "lang".to_string();
+    let mut default_locale = "en".to_string();
+
+    if let Ok(content) = fs::read_to_string(&env_path) {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((key, value)) = line.split_once('=') {
+                let value = value.trim().trim_matches('"');
+                match key.trim() {
+                    "LANG_PATH" => lang_path = value.to_string(),
+                    "APP_LOCALE" => default_locale = value.to_string(),
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    let lang_dir = project_root.join(&lang_path);
+    if !lang_dir.exists() {
+        return LocalizationStatus {
+            available: false,
+            locale_count: 0,
+            default_locale,
+            hint: Some(
+                "No lang/ directory found. Run `ferro make:lang <locale>` to add localization."
+                    .to_string(),
+            ),
+        };
+    }
+
+    let locale_count = fs::read_dir(&lang_dir)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+                .count()
+        })
+        .unwrap_or(0);
+
+    LocalizationStatus {
+        available: locale_count > 0,
+        locale_count,
+        default_locale,
+        hint: if locale_count == 0 {
+            Some(
+                "lang/ directory exists but no locale subdirectories found. Run `ferro make:lang <locale>`."
+                    .to_string(),
+            )
+        } else {
+            None
+        },
     }
 }
 
