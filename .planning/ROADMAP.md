@@ -36,10 +36,10 @@ Plans:
 **Goal**: LangConfig with from_env(), LangError enum, workspace integration
 **Depends on**: Phase 58
 **Research**: Unlikely (internal patterns)
-**Plans**: TBD
+**Plans**: 1
 
 Plans:
-- [ ] 59-01: TBD
+- [x] 59-01: LangConfig with from_env()/builder, enriched LangError, framework integration (2026-02-13)
 
 #### Phase 60: Locale Context
 
@@ -344,7 +344,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 1/? | 🚧 In Progress | - |
+| v6.0 ferro-lang | 58-66 | 2/? | 🚧 In Progress | - |
 
-**Total: 11 milestones shipped, 126 plans.**
+**Total: 11 milestones shipped, 127 plans.**
 
