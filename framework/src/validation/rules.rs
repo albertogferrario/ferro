@@ -996,6 +996,98 @@ mod tests {
     }
 
     #[test]
+    fn test_string() {
+        let rule = string();
+        let data = json!({});
+
+        assert!(rule.validate("name", &json!("hello"), &data).is_ok());
+        assert!(rule.validate("name", &json!(""), &data).is_ok());
+        assert!(rule.validate("name", &json!(42), &data).is_err());
+        assert!(rule.validate("name", &json!(true), &data).is_err());
+        assert!(rule.validate("name", &json!([1, 2]), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("name", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_integer() {
+        let rule = integer();
+        let data = json!({});
+
+        assert!(rule.validate("age", &json!(42), &data).is_ok());
+        assert!(rule.validate("age", &json!(0), &data).is_ok());
+        assert!(rule.validate("age", &json!(-5), &data).is_ok());
+        // String integers are accepted
+        assert!(rule.validate("age", &json!("123"), &data).is_ok());
+        // Floats are not integers
+        assert!(rule.validate("age", &json!(3.14), &data).is_err());
+        assert!(rule.validate("age", &json!("hello"), &data).is_err());
+        assert!(rule.validate("age", &json!(true), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("age", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_numeric() {
+        let rule = numeric();
+        let data = json!({});
+
+        assert!(rule.validate("price", &json!(42), &data).is_ok());
+        assert!(rule.validate("price", &json!(3.14), &data).is_ok());
+        assert!(rule.validate("price", &json!(-10), &data).is_ok());
+        // String numbers are accepted
+        assert!(rule.validate("price", &json!("42.5"), &data).is_ok());
+        assert!(rule.validate("price", &json!("hello"), &data).is_err());
+        assert!(rule.validate("price", &json!(true), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("price", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_boolean() {
+        let rule = boolean();
+        let data = json!({});
+
+        assert!(rule.validate("active", &json!(true), &data).is_ok());
+        assert!(rule.validate("active", &json!(false), &data).is_ok());
+        // String booleans are accepted
+        assert!(rule.validate("active", &json!("true"), &data).is_ok());
+        assert!(rule.validate("active", &json!("false"), &data).is_ok());
+        assert!(rule.validate("active", &json!("yes"), &data).is_ok());
+        assert!(rule.validate("active", &json!("no"), &data).is_ok());
+        assert!(rule.validate("active", &json!("1"), &data).is_ok());
+        assert!(rule.validate("active", &json!("0"), &data).is_ok());
+        // Integer 0 and 1 are accepted
+        assert!(rule.validate("active", &json!(1), &data).is_ok());
+        assert!(rule.validate("active", &json!(0), &data).is_ok());
+        // Non-boolean strings rejected
+        assert!(rule.validate("active", &json!("maybe"), &data).is_err());
+        // Other integers rejected
+        assert!(rule.validate("active", &json!(42), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("active", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_array() {
+        let rule = array();
+        let data = json!({});
+
+        assert!(rule.validate("items", &json!([1, 2, 3]), &data).is_ok());
+        assert!(rule.validate("items", &json!([]), &data).is_ok());
+        assert!(rule
+            .validate("items", &json!(["a", "b"]), &data)
+            .is_ok());
+        assert!(rule
+            .validate("items", &json!("not array"), &data)
+            .is_err());
+        assert!(rule.validate("items", &json!(42), &data).is_err());
+        assert!(rule.validate("items", &json!(true), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("items", &json!(null), &data).is_ok());
+    }
+
+    #[test]
     fn test_size_type_key_selection() {
         // String values use "string" subkey
         assert_eq!(
