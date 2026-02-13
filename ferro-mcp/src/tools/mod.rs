@@ -26,6 +26,7 @@ pub mod list_broadcast_channels;
 pub mod list_commands;
 pub mod list_events;
 pub mod list_jobs;
+pub mod list_lang_files;
 pub mod list_middleware;
 pub mod list_migrations;
 pub mod list_models;

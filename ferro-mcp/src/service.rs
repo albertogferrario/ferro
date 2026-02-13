@@ -208,6 +208,12 @@ pub struct CodeTemplatesParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct ListLangFilesParams {
+    /// Optional locale to filter (e.g., "en", "es"). Returns all locales if omitted.
+    pub locale: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct JsonUiCatalogParams {
     /// Optional component name to filter (case-insensitive). Returns all components (20 built-in + plugins) if omitted.
     pub component: Option<String>,
@@ -361,6 +367,23 @@ impl FerroMcpService {
     pub async fn list_jobs(&self) -> String {
         match tools::list_jobs::execute(&self.project_root) {
             Ok(jobs) => serde_json::to_string_pretty(&jobs).unwrap_or_else(|_| "[]".to_string()),
+            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+        }
+    }
+
+    /// List available translation files, locales, keys, and coverage report
+    #[tool(
+        name = "list_lang_files",
+        description = "List available translation files, locales, keys, and coverage report.\n\n\
+            **When to use:** Understanding localization setup, checking available locales, \
+            finding missing translations, verifying translation coverage.\n\n\
+            **Returns:** Available locales with file names and key counts, default/fallback locale config, \
+            missing key report per locale.\n\n\
+            **Combine with:** `get_config` for locale settings, `list_commands` for make:lang CLI."
+    )]
+    pub async fn list_lang_files(&self, params: Parameters<ListLangFilesParams>) -> String {
+        match tools::list_lang_files::execute(&self.project_root, params.0.locale.as_deref()) {
+            Ok(info) => serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string()),
             Err(e) => format!("{{\"error\": \"{}\"}}", e),
         }
     }
