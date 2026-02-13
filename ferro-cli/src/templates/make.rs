@@ -773,6 +773,18 @@ impl Policy<{model_name}> for {struct_name} {{
     )
 }
 
+// Lang templates
+
+/// Template for lang/{locale}/validation.json (English validation messages)
+pub fn lang_validation_json() -> &'static str {
+    include_str!("files/lang/validation.json.tpl")
+}
+
+/// Template for lang/{locale}/app.json (starter application translations)
+pub fn lang_app_json() -> &'static str {
+    include_str!("files/lang/app.json.tpl")
+}
+
 /// Template for policies/mod.rs
 pub fn policies_mod() -> &'static str {
     r#"//! Authorization policies

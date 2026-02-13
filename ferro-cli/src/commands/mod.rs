@@ -22,6 +22,7 @@ pub mod make_factory;
 pub mod make_inertia;
 pub mod make_job;
 pub mod make_json_view;
+pub mod make_lang;
 pub mod make_listener;
 pub mod make_middleware;
 pub mod make_migration;

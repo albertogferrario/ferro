@@ -138,6 +138,12 @@ enum Commands {
         #[arg(long, short = 'e')]
         event: Option<String>,
     },
+    /// Generate translation files for a new locale
+    #[command(name = "make:lang")]
+    MakeLang {
+        /// Locale code (e.g., en, fr, de, pt-br)
+        name: String,
+    },
     /// Generate a new background job
     #[command(name = "make:job")]
     MakeJob {
@@ -394,6 +400,9 @@ fn main() {
         }
         Commands::MakeListener { name, event } => {
             commands::make_listener::run(name, event);
+        }
+        Commands::MakeLang { name } => {
+            commands::make_lang::run(name);
         }
         Commands::MakeJob { name } => {
             commands::make_job::run(name);
