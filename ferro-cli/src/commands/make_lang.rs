@@ -117,3 +117,73 @@ fn is_valid_locale(s: &str) -> bool {
 
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_locale_simple() {
+        assert!(is_valid_locale("en"));
+        assert!(is_valid_locale("fr"));
+        assert!(is_valid_locale("de"));
+        assert!(is_valid_locale("ja"));
+    }
+
+    #[test]
+    fn test_valid_locale_with_region() {
+        assert!(is_valid_locale("pt-br"));
+        assert!(is_valid_locale("zh-hans"));
+        assert!(is_valid_locale("en-us"));
+        assert!(is_valid_locale("en-gb"));
+    }
+
+    #[test]
+    fn test_valid_locale_multi_part() {
+        assert!(is_valid_locale("zh-hans-cn"));
+    }
+
+    #[test]
+    fn test_invalid_locale_empty() {
+        assert!(!is_valid_locale(""));
+    }
+
+    #[test]
+    fn test_invalid_locale_uppercase() {
+        assert!(!is_valid_locale("EN"));
+        assert!(!is_valid_locale("pt-BR"));
+        assert!(!is_valid_locale("Fr"));
+    }
+
+    #[test]
+    fn test_invalid_locale_numbers() {
+        assert!(!is_valid_locale("12"));
+        assert!(!is_valid_locale("en1"));
+        assert!(!is_valid_locale("e1"));
+    }
+
+    #[test]
+    fn test_invalid_locale_single_char() {
+        assert!(!is_valid_locale("e"));
+        assert!(!is_valid_locale("f"));
+    }
+
+    #[test]
+    fn test_invalid_locale_three_chars_base() {
+        assert!(!is_valid_locale("eng"));
+        assert!(!is_valid_locale("fra"));
+    }
+
+    #[test]
+    fn test_invalid_locale_single_char_subtag() {
+        assert!(!is_valid_locale("en-a"));
+        assert!(!is_valid_locale("pt-b"));
+    }
+
+    #[test]
+    fn test_invalid_locale_special_chars() {
+        assert!(!is_valid_locale("en_us"));
+        assert!(!is_valid_locale("en.us"));
+        assert!(!is_valid_locale("en/us"));
+    }
+}
