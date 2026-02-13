@@ -133,3 +133,236 @@ fn flatten_json(obj: &HashMap<String, Value>, prefix: &str, out: &mut HashMap<St
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    // ── normalize_locale ──────────────────────────────────────────────
+
+    #[test]
+    fn normalize_locale_lowercase() {
+        assert_eq!(normalize_locale("en"), "en");
+    }
+
+    #[test]
+    fn normalize_locale_underscore() {
+        assert_eq!(normalize_locale("en_US"), "en-us");
+    }
+
+    #[test]
+    fn normalize_locale_uppercase() {
+        assert_eq!(normalize_locale("pt-BR"), "pt-br");
+    }
+
+    #[test]
+    fn normalize_locale_mixed() {
+        assert_eq!(normalize_locale("zh_Hans_CN"), "zh-hans-cn");
+    }
+
+    // ── flatten_json (tested via load_translations) ───────────────────
+
+    #[test]
+    fn flatten_simple_object() {
+        let dir = tempdir().unwrap();
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("messages.json"),
+            serde_json::json!({"key": "val"}).to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+        assert_eq!(t["en"]["key"], "val");
+    }
+
+    #[test]
+    fn flatten_nested_object() {
+        let dir = tempdir().unwrap();
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("messages.json"),
+            serde_json::json!({"a": {"b": "c"}}).to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+        assert_eq!(t["en"]["a.b"], "c");
+    }
+
+    #[test]
+    fn flatten_deeply_nested() {
+        let dir = tempdir().unwrap();
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("messages.json"),
+            serde_json::json!({"a": {"b": {"c": "deep"}}}).to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+        assert_eq!(t["en"]["a.b.c"], "deep");
+    }
+
+    #[test]
+    fn flatten_skips_non_string_leaves() {
+        let dir = tempdir().unwrap();
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("messages.json"),
+            serde_json::json!({
+                "valid": "hello",
+                "number": 42,
+                "boolean": true
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+        assert_eq!(t["en"]["valid"], "hello");
+        assert!(!t["en"].contains_key("number"));
+        assert!(!t["en"].contains_key("boolean"));
+    }
+
+    // ── load_locale_dir (tested via load_translations) ────────────────
+
+    #[test]
+    fn load_locale_dir_single_file() {
+        let dir = tempdir().unwrap();
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("auth.json"),
+            serde_json::json!({"login": "Login", "register": "Register"}).to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+        assert_eq!(t["en"]["login"], "Login");
+        assert_eq!(t["en"]["register"], "Register");
+    }
+
+    #[test]
+    fn load_locale_dir_multiple_files() {
+        let dir = tempdir().unwrap();
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("auth.json"),
+            serde_json::json!({"login": "Login"}).to_string(),
+        )
+        .unwrap();
+        fs::write(
+            en.join("messages.json"),
+            serde_json::json!({"welcome": "Welcome"}).to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+        assert_eq!(t["en"]["login"], "Login");
+        assert_eq!(t["en"]["welcome"], "Welcome");
+    }
+
+    #[test]
+    fn load_locale_dir_ignores_non_json() {
+        let dir = tempdir().unwrap();
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("messages.json"),
+            serde_json::json!({"hello": "Hello"}).to_string(),
+        )
+        .unwrap();
+        fs::write(en.join("notes.txt"), "should be ignored").unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+        assert_eq!(t["en"].len(), 1);
+        assert_eq!(t["en"]["hello"], "Hello");
+    }
+
+    // ── load_translations ─────────────────────────────────────────────
+
+    #[test]
+    fn load_translations_single_locale() {
+        let dir = tempdir().unwrap();
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("messages.json"),
+            serde_json::json!({"greeting": "Hi"}).to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+        assert_eq!(t.len(), 1);
+        assert!(t.contains_key("en"));
+    }
+
+    #[test]
+    fn load_translations_fallback_premerge() {
+        let dir = tempdir().unwrap();
+
+        let en = dir.path().join("en");
+        fs::create_dir_all(&en).unwrap();
+        fs::write(
+            en.join("messages.json"),
+            serde_json::json!({"greeting": "Hello", "farewell": "Goodbye"}).to_string(),
+        )
+        .unwrap();
+
+        let es = dir.path().join("es");
+        fs::create_dir_all(&es).unwrap();
+        fs::write(
+            es.join("messages.json"),
+            serde_json::json!({"greeting": "Hola"}).to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en").unwrap();
+
+        // es has its own "greeting"
+        assert_eq!(t["es"]["greeting"], "Hola");
+        // es got "farewell" from fallback pre-merge
+        assert_eq!(t["es"]["farewell"], "Goodbye");
+        // en still has both
+        assert_eq!(t["en"]["greeting"], "Hello");
+        assert_eq!(t["en"]["farewell"], "Goodbye");
+    }
+
+    #[test]
+    fn load_translations_empty_dir_errors() {
+        let dir = tempdir().unwrap();
+        // No locale subdirectories
+        let result = load_translations(dir.path().to_str().unwrap(), "en");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, LangError::NoTranslationsLoaded),
+            "expected NoTranslationsLoaded, got: {err}"
+        );
+    }
+
+    #[test]
+    fn load_translations_normalizes_locale_dirs() {
+        let dir = tempdir().unwrap();
+        let en_us = dir.path().join("en_US");
+        fs::create_dir_all(&en_us).unwrap();
+        fs::write(
+            en_us.join("messages.json"),
+            serde_json::json!({"color": "Color"}).to_string(),
+        )
+        .unwrap();
+
+        let t = load_translations(dir.path().to_str().unwrap(), "en_US").unwrap();
+        // Directory "en_US" should be normalized to "en-us" key
+        assert!(t.contains_key("en-us"));
+        assert_eq!(t["en-us"]["color"], "Color");
+    }
+}
