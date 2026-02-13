@@ -29,7 +29,7 @@
 **Plans**: 1
 
 Plans:
-- [ ] 58-01: ferro-lang crate — Translator with JSON loading, interpolation, pluralization, tests
+- [x] 58-01: ferro-lang crate — Translator with JSON loading, interpolation, pluralization, tests (2026-02-13)
 
 #### Phase 59: Config & Error Types
 
@@ -344,7 +344,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 0/? | 🚧 In Progress | - |
+| v6.0 ferro-lang | 58-66 | 1/? | 🚧 In Progress | - |
 
 **Total: 11 milestones shipped, 126 plans.**
 
