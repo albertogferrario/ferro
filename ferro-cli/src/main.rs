@@ -314,19 +314,11 @@ enum Commands {
         #[arg(long, short = 'l')]
         list: bool,
     },
-    /// Clean build artifacts using cargo-sweep
+    /// Clean build artifacts
     Clean {
-        /// Remove artifacts older than N days (default: 30)
-        #[arg(short, long, default_value = "30")]
-        days: u32,
-
-        /// Also remove artifacts from old toolchains
-        #[arg(short, long)]
-        toolchains: bool,
-
-        /// Skip cargo-sweep installation check
+        /// Remove only artifacts older than N days (requires cargo-sweep)
         #[arg(long)]
-        skip_install_check: bool,
+        sweep: Option<u32>,
     },
     /// Validate Inertia frontend/backend prop contracts
     #[command(name = "validate:contracts")]
@@ -504,12 +496,8 @@ fn main() {
         Commands::ClaudeInstall { force, list } => {
             commands::claude_install::run(force, list);
         }
-        Commands::Clean {
-            days,
-            toolchains,
-            skip_install_check,
-        } => {
-            commands::clean::run(days, toolchains, skip_install_check);
+        Commands::Clean { sweep } => {
+            commands::clean::run(sweep);
         }
         Commands::ValidateContracts { filter, json } => {
             commands::validate_contracts::run(filter, json);
