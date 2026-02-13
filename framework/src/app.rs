@@ -253,6 +253,9 @@ where
             config_fn();
         }
 
+        // Initialize translator (after config so user can override LangConfig)
+        crate::lang::init::init();
+
         match cli.command {
             None | Some(Commands::Serve { no_migrate: false }) => {
                 // Default: run server with auto-migrate

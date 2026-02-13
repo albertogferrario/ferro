@@ -72,7 +72,7 @@ pub use http::{
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
 #[cfg(feature = "json-ui")]
 pub use json_ui::JsonUi;
-pub use lang::{locale, set_locale, LangMiddleware};
+pub use lang::{lang_choice, lang_init, locale, set_locale, t, trans, LangMiddleware};
 pub use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, PaginatorTrait,
     QueryFilter, QueryOrder, QuerySelect,
