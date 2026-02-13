@@ -9,6 +9,15 @@ APP_DEBUG=true         # Set false in production
 APP_URL=http://localhost:8080
 
 # ==============================================================================
+# LOCALIZATION
+# ==============================================================================
+# Language and locale configuration
+
+APP_LOCALE=en              # Default locale for the application
+APP_FALLBACK_LOCALE=en     # Fallback when translation key is missing
+LANG_PATH=lang             # Path to translation files (relative to project root)
+
+# ==============================================================================
 # SERVER
 # ==============================================================================
 # HTTP server binding and limits

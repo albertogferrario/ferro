@@ -183,6 +183,7 @@ fn create_directories(project_path: &Path) -> Result<(), String> {
         "src/factories",
         "storage/app/public",
         "storage/logs",
+        "lang/en",
     ];
 
     let frontend_dirs = [
@@ -349,6 +350,14 @@ fn write_backend_files(
     // Storage gitkeep files
     write_file(project_path, "storage/app/.gitkeep", "")?;
     write_file(project_path, "storage/logs/.gitkeep", "")?;
+
+    // Language files
+    write_file(
+        project_path,
+        "lang/en/validation.json",
+        templates::lang_validation_json(),
+    )?;
+    write_file(project_path, "lang/en/app.json", templates::lang_app_json())?;
 
     Ok(())
 }
