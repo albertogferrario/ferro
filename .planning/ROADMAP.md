@@ -28,7 +28,7 @@
 **Plans**: TBD
 
 Plans:
-- [ ] 54-01: TBD (run /gsd:plan-phase 54 to break down)
+- [x] 54-01: Update env.example.tpl to match codebase (completed 2026-02-13)
 
 #### Phase 55: Split Templates
 
