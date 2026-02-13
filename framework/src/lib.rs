@@ -11,7 +11,9 @@ pub mod debug;
 pub mod error;
 pub mod hashing;
 pub mod http;
+#[cfg(feature = "inertia")]
 pub mod inertia;
+#[cfg(feature = "json-ui")]
 pub mod json_ui;
 pub mod metrics;
 pub mod middleware;
@@ -41,6 +43,7 @@ pub use database::{
 // Re-export commonly used SeaORM traits for convenience
 // This saves users from having to add `use sea_orm::*` imports
 pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
+#[cfg(feature = "json-ui")]
 pub use ferro_json_ui::{
     footer, global_registry, navigation, register_layout, render_layout, render_to_html,
     resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all, resolve_path,
@@ -61,7 +64,9 @@ pub use http::{
     InertiaRedirect, PaginationLinks, PaginationMeta, Redirect, Request, Resource,
     ResourceCollection, ResourceMap, Response, ResponseExt, SameSite,
 };
+#[cfg(feature = "inertia")]
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
+#[cfg(feature = "json-ui")]
 pub use json_ui::JsonUi;
 pub use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, PaginatorTrait,
@@ -71,6 +76,7 @@ pub use session::{
     session, session_mut, SessionConfig, SessionData, SessionMiddleware, SessionStore,
 };
 // Deprecated - kept for backward compatibility
+#[cfg(feature = "inertia")]
 #[allow(deprecated)]
 pub use inertia::InertiaContext;
 pub use metrics::{get_metrics, MetricsSnapshot, RouteMetrics, RouteMetricsView};
