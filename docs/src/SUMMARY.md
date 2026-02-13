@@ -28,6 +28,7 @@
 - [Rate Limiting](features/rate-limiting.md)
 - [Database](features/database.md)
 - [Validation](features/validation.md)
+- [Localization](features/localization.md)
 - [Testing](features/testing.md)
 - [Inertia.js](features/inertia.md)
 - [JSON-UI](features/json-ui.md)
