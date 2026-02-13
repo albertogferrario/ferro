@@ -55,11 +55,11 @@ Plans:
 
 **Goal**: OnceLock callback in validation/mod.rs, decouple from ferro-lang
 **Depends on**: Phase 60
-**Research**: Unlikely (internal patterns)
-**Plans**: TBD
+**Research**: Complete (61-RESEARCH.md)
+**Plans**: 1
 
 Plans:
-- [ ] 61-01: TBD
+- [x] 61-01: OnceLock TranslatorFn bridge with register/translate helpers, tests (2026-02-13)
 
 #### Phase 62: Validation Rules Update
 
@@ -344,7 +344,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 3/? | 🚧 In Progress | - |
+| v6.0 ferro-lang | 58-66 | 4/? | 🚧 In Progress | - |
 
-**Total: 11 milestones shipped, 128 plans.**
+**Total: 11 milestones shipped, 129 plans.**
 
