@@ -1075,16 +1075,202 @@ mod tests {
 
         assert!(rule.validate("items", &json!([1, 2, 3]), &data).is_ok());
         assert!(rule.validate("items", &json!([]), &data).is_ok());
-        assert!(rule
-            .validate("items", &json!(["a", "b"]), &data)
-            .is_ok());
-        assert!(rule
-            .validate("items", &json!("not array"), &data)
-            .is_err());
+        assert!(rule.validate("items", &json!(["a", "b"]), &data).is_ok());
+        assert!(rule.validate("items", &json!("not array"), &data).is_err());
         assert!(rule.validate("items", &json!(42), &data).is_err());
         assert!(rule.validate("items", &json!(true), &data).is_err());
         // Null passthrough
         assert!(rule.validate("items", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_required_if() {
+        let data = json!({"role": "admin"});
+
+        // role == admin, so name is required
+        assert!(required_if("role", "admin")
+            .validate("name", &json!(null), &data)
+            .is_err());
+        assert!(required_if("role", "admin")
+            .validate("name", &json!(""), &data)
+            .is_err());
+        assert!(required_if("role", "admin")
+            .validate("name", &json!("Alice"), &data)
+            .is_ok());
+
+        // role != "user", so name is not required
+        assert!(required_if("role", "user")
+            .validate("name", &json!(null), &data)
+            .is_ok());
+        assert!(required_if("role", "user")
+            .validate("name", &json!(""), &data)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_different() {
+        let data = json!({"other_field": "b"});
+
+        // Different values pass
+        assert!(different("other_field")
+            .validate("field", &json!("a"), &data)
+            .is_ok());
+        // Same values fail
+        assert!(different("other_field")
+            .validate("field", &json!("b"), &data)
+            .is_err());
+        // Null passthrough
+        assert!(different("other_field")
+            .validate("field", &json!(null), &data)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_same() {
+        let data = json!({"other_field": "a"});
+
+        // Same values pass
+        assert!(same("other_field")
+            .validate("field", &json!("a"), &data)
+            .is_ok());
+        // Different values fail
+        assert!(same("other_field")
+            .validate("field", &json!("b"), &data)
+            .is_err());
+        // Null passthrough
+        assert!(same("other_field")
+            .validate("field", &json!(null), &data)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_regex() {
+        let rule = regex(r"^\d{3}-\d{4}$");
+        let data = json!({});
+
+        assert!(rule.validate("phone", &json!("123-4567"), &data).is_ok());
+        assert!(rule.validate("phone", &json!("abc"), &data).is_err());
+        assert!(rule.validate("phone", &json!("12-345"), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("phone", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_alpha() {
+        let rule = alpha();
+        let data = json!({});
+
+        assert!(rule.validate("name", &json!("Hello"), &data).is_ok());
+        assert!(rule.validate("name", &json!("abc"), &data).is_ok());
+        assert!(rule.validate("name", &json!("Hello123"), &data).is_err());
+        assert!(rule.validate("name", &json!("hello world"), &data).is_err());
+        // Empty string does not match alpha regex
+        assert!(rule.validate("name", &json!(""), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("name", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_alpha_num() {
+        let rule = alpha_num();
+        let data = json!({});
+
+        assert!(rule.validate("code", &json!("Hello123"), &data).is_ok());
+        assert!(rule.validate("code", &json!("abc"), &data).is_ok());
+        assert!(rule.validate("code", &json!("123"), &data).is_ok());
+        assert!(rule.validate("code", &json!("Hello!@#"), &data).is_err());
+        assert!(rule.validate("code", &json!("hello world"), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("code", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_alpha_dash() {
+        let rule = alpha_dash();
+        let data = json!({});
+
+        assert!(rule
+            .validate("slug", &json!("hello-world_123"), &data)
+            .is_ok());
+        assert!(rule.validate("slug", &json!("abc"), &data).is_ok());
+        assert!(rule.validate("slug", &json!("a-b_c"), &data).is_ok());
+        assert!(rule.validate("slug", &json!("hello world"), &data).is_err());
+        assert!(rule.validate("slug", &json!("hello!@#"), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("slug", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_not_in() {
+        let rule = not_in(["banned", "blocked"]);
+        let data = json!({});
+
+        assert!(rule.validate("status", &json!("active"), &data).is_ok());
+        assert!(rule.validate("status", &json!("approved"), &data).is_ok());
+        assert!(rule.validate("status", &json!("banned"), &data).is_err());
+        assert!(rule.validate("status", &json!("blocked"), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("status", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_date() {
+        let rule = date();
+        let data = json!({});
+
+        // ISO date format
+        assert!(rule
+            .validate("birthday", &json!("2024-01-15"), &data)
+            .is_ok());
+        // RFC3339 datetime
+        assert!(rule
+            .validate("created", &json!("2024-01-15T10:30:00Z"), &data)
+            .is_ok());
+        // Invalid strings
+        assert!(rule
+            .validate("birthday", &json!("not-a-date"), &data)
+            .is_err());
+        assert!(rule
+            .validate("birthday", &json!("2024-13-01"), &data)
+            .is_err());
+        // Non-string
+        assert!(rule.validate("birthday", &json!(42), &data).is_err());
+        // Null passthrough
+        assert!(rule.validate("birthday", &json!(null), &data).is_ok());
+    }
+
+    #[test]
+    fn test_nullable() {
+        let rule = nullable();
+        let data = json!({});
+
+        // Nullable always passes - it's a marker rule
+        assert!(rule.validate("field", &json!(null), &data).is_ok());
+        assert!(rule.validate("field", &json!("value"), &data).is_ok());
+        assert!(rule.validate("field", &json!(42), &data).is_ok());
+        assert!(rule.validate("field", &json!(true), &data).is_ok());
+    }
+
+    #[test]
+    fn test_accepted() {
+        let rule = accepted();
+        let data = json!({});
+
+        // Accepted values
+        assert!(rule.validate("terms", &json!(true), &data).is_ok());
+        assert!(rule.validate("terms", &json!("yes"), &data).is_ok());
+        assert!(rule.validate("terms", &json!("on"), &data).is_ok());
+        assert!(rule.validate("terms", &json!("1"), &data).is_ok());
+        assert!(rule.validate("terms", &json!("true"), &data).is_ok());
+        assert!(rule.validate("terms", &json!(1), &data).is_ok());
+
+        // Rejected values
+        assert!(rule.validate("terms", &json!(false), &data).is_err());
+        assert!(rule.validate("terms", &json!("no"), &data).is_err());
+        assert!(rule.validate("terms", &json!("off"), &data).is_err());
+        assert!(rule.validate("terms", &json!(0), &data).is_err());
+        assert!(rule.validate("terms", &json!(null), &data).is_err());
+        assert!(rule.validate("terms", &json!("false"), &data).is_err());
     }
 
     #[test]
