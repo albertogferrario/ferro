@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v5.1 Housekeeping — resolve technical debt and project hygiene
+**Current focus:** All milestones complete. Ready for crates.io publication.
 
 ## Current Position
 
-Phase: 56 of 57 (Update Concerns)
+Phase: 57 of 57 (Deployment Template Fixes)
 Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-02-13 — Completed 56-01-PLAN.md
+Status: Milestone v5.1 complete
+Last activity: 2026-02-13 — Completed 57-01-PLAN.md
 
-Progress: ███████░░░ 75%
+Progress: ██████████ 100%
 
 ## Milestone Summary
 
@@ -30,7 +30,7 @@ Progress: ███████░░░ 75%
 | v3.0 JSON-UI | 23-32 | 24 | Complete | 2026-02-09 |
 | v4.0 Production Readiness | 38-46 | 24 | Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | Complete | 2026-02-10 |
-| v5.1 Housekeeping | 54-57 | TBD | In Progress | - |
+| v5.1 Housekeeping | 54-57 | 5 | Complete | 2026-02-13 |
 
 ## Accumulated Context
 
@@ -40,8 +40,8 @@ Archived to PROJECT.md and milestone archive files.
 
 ### Roadmap Evolution
 
-- Milestone v5.1 created: housekeeping, 3 phases (Phase 54-56)
-- Phase 57 added: Deployment template fixes (from mkmenu-ferro field report)
+- All planned milestones complete (v1.0 through v5.1)
+- 11 milestones, 126 plans shipped
 
 ### Pending Todos
 
@@ -58,5 +58,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 56-01-PLAN.md — Phase 56 complete
+Stopped at: Completed 57-01-PLAN.md — v5.1 Housekeeping milestone complete
 Resume file: None

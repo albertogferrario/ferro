@@ -12,58 +12,48 @@
 - ✅ [**v3.0 JSON-UI**](milestones/v3.0-ROADMAP.md) — Phases 23-32 (shipped 2026-02-09)
 - ✅ [**v4.0 Production Readiness**](milestones/v4.0-ROADMAP.md) — Phases 38-46 (shipped 2026-02-10)
 - ✅ [**v5.0 Proximity — JSON-UI Field Test**](milestones/v5.0-ROADMAP.md) — Phases 47-53 (shipped 2026-02-10)
-- 🚧 **v5.1 Housekeeping** — Phases 54-57 (in progress)
-
----
-
-### 🚧 v5.1 Housekeeping (In Progress)
-
-**Milestone Goal:** Resolve technical debt and improve project hygiene discovered during v5.0 field test.
-
-#### Phase 54: Env Example
-
-**Goal**: Create `.env.example` with all required and optional environment variables documented
-**Depends on**: Previous milestone complete
-**Research**: Unlikely (internal patterns)
-**Plans**: TBD
-
-Plans:
-- [x] 54-01: Update env.example.tpl to match codebase (completed 2026-02-13)
-
-#### Phase 55: Split Templates
-
-**Goal**: Split `ferro-cli/src/templates/mod.rs` (4,331 lines) into focused modules
-**Depends on**: Phase 54
-**Research**: Unlikely (internal refactor)
-**Plans**: TBD
-
-Plans:
-- [x] 55-01: Split project, make, and entity templates into submodules (completed 2026-02-13)
-- [x] 55-02: Split docker, AI boost, scaffold, and auth templates into submodules (completed 2026-02-13)
-
-#### Phase 56: Update Concerns
-
-**Goal**: Update CONCERNS.md to reflect current state, close resolved items, document new findings
-**Depends on**: Phase 55
-**Research**: Unlikely (documentation)
-**Plans**: TBD
-
-Plans:
-- [x] 56-01: Update CONCERNS.md to reflect current codebase state (completed 2026-02-13)
-
-#### Phase 57: Deployment Template Fixes
-
-**Goal**: Fix deployment template bugs reported from mkmenu-ferro field test (health check path, Rust version, Dockerfile caching, misleading CLI tips)
-**Depends on**: Phase 56
-**Research**: Unlikely (bug fixes)
-**Plans**: TBD
-
-Plans:
-- [ ] 57-01: Fix deployment template bugs (health path, Rust version, misleading tip)
+- ✅ **v5.1 Housekeeping** — Phases 54-57 (shipped 2026-02-13)
 
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v5.1 Housekeeping (Phases 54-57) — SHIPPED 2026-02-13</summary>
+
+**Milestone Goal:** Resolve technical debt and improve project hygiene discovered during v5.0 field test.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 54. Env Example | 1/1 | Complete | 2026-02-13 |
+| 55. Split Templates | 2/2 | Complete | 2026-02-13 |
+| 56. Update Concerns | 1/1 | Complete | 2026-02-13 |
+| 57. Deployment Template Fixes | 1/1 | Complete | 2026-02-13 |
+
+**Total:** 4 phases, 5 plans
+
+</details>
+
+<details>
+<summary>✅ v5.0 Proximity — JSON-UI Field Test (Phases 47-53) — SHIPPED 2026-02-10</summary>
+
+**Milestone Goal:** Build a map-based social network app as the first real-world validation of JSON-UI and v4.0 features.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 47. JSON-UI Map Component | 4/4 | Complete | 2026-02-10 |
+| 48. App Scaffold + Auth & Profiles | 3/3 | Complete | 2026-02-10 |
+| 49. Map View & Nearby Users | 2/2 | Complete | 2026-02-10 |
+| 50. Location Posts & Check-ins | 3/3 | Complete | 2026-02-10 |
+| 51. Real-time Presence | 3/3 | Complete | 2026-02-10 |
+| 52. Polish & JSON-UI Fixes | 4/4 | Complete | 2026-02-10 |
+| 53. Solve Known Issues | 1/1 | Complete | 2026-02-10 |
+
+**Total:** 7 phases, 20 plans
+
+[Full details →](milestones/v5.0-ROADMAP.md)
+
+</details>
 
 <details>
 <summary>✅ v4.0 Production Readiness (Phases 38-46) — SHIPPED 2026-02-10</summary>
@@ -256,6 +246,7 @@ Plans:
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
-| v5.1 Housekeeping | 54-57 | TBD | 🚧 In Progress | - |
+| v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
 
-**Total: 10 milestones shipped, 121 plans. v5.1 in progress.**
+**Total: 11 milestones shipped, 126 plans.**
+
