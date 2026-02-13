@@ -76,10 +76,10 @@ Plans:
 **Goal**: framework/src/lang/ module, lib.rs re-exports, init() function
 **Depends on**: Phase 62
 **Research**: Unlikely (internal patterns)
-**Plans**: TBD
+**Plans**: 1
 
 Plans:
-- [ ] 63-01: TBD
+- [x] 63-01: Wire lang::init() with t()/trans()/choice() into Application boot, auto-register validation bridge (2026-02-13)
 
 #### Phase 64: CLI Scaffolding
 
@@ -344,7 +344,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 5/? | 🚧 In Progress | - |
+| v6.0 ferro-lang | 58-66 | 6/? | 🚧 In Progress | - |
 
-**Total: 11 milestones shipped, 130 plans.**
+**Total: 11 milestones shipped, 131 plans.**
 
