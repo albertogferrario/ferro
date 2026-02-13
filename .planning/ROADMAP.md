@@ -63,13 +63,13 @@ Plans:
 
 #### Phase 62: Validation Rules Update
 
-**Goal**: Update 21 rules to use translate_validation(), default English JSON
+**Goal**: Update 22 rules to use translate_validation(), default English JSON
 **Depends on**: Phase 61
 **Research**: Unlikely (internal patterns)
-**Plans**: TBD
+**Plans**: 1
 
 Plans:
-- [ ] 62-01: TBD
+- [x] 62-01: Update all validation rules to use translate_validation() bridge, create English JSON, add integration tests (2026-02-13)
 
 #### Phase 63: Framework Integration
 
@@ -344,7 +344,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 4/? | 🚧 In Progress | - |
+| v6.0 ferro-lang | 58-66 | 5/? | 🚧 In Progress | - |
 
-**Total: 11 milestones shipped, 129 plans.**
+**Total: 11 milestones shipped, 130 plans.**
 

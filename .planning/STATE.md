@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 ## Current Position
 
-Phase: 61 of 66 (Validation Bridge)
+Phase: 62 of 66 (Validation Rules Update)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-13 — Completed 61-01-PLAN.md
+Last activity: 2026-02-13 — Completed 62-01-PLAN.md
 
-Progress: ████░░░░░░ 44%
+Progress: █████░░░░░ 55%
 
 ## Milestone Summary
 
@@ -31,7 +31,7 @@ Progress: ████░░░░░░ 44%
 | v4.0 Production Readiness | 38-46 | 24 | Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 4/? | In Progress | - |
+| v6.0 ferro-lang | 58-66 | 5/? | In Progress | - |
 
 ## Accumulated Context
 
@@ -52,6 +52,8 @@ Archived to PROJECT.md and milestone archive files.
 | 61 | fn pointer over Box<dyn Fn> for TranslatorFn | No state capture needed, simpler type |
 | 61 | OnceLock without RwLock | Translator set once at boot, never changes |
 | 61 | pub(crate) translate_validation | Only validation rules call it, not external code |
+| 62 | Nested keys for size rules (min.string/numeric/array) | Matches Laravel convention for type-specific messages |
+| 62 | VALIDATION_TRANSLATOR pub(crate) | Enables integration tests within the crate |
 
 ### Roadmap Evolution
 
@@ -61,6 +63,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 59 complete: LangConfig, enriched LangError, framework integration
 - Phase 60 complete: task_local locale context, LangMiddleware, locale()/set_locale()
 - Phase 61 complete: OnceLock validation bridge with TranslatorFn callback
+- Phase 62 complete: All 22 rules use translate_validation() with English fallback, default JSON
 
 ### Pending Todos
 
@@ -77,5 +80,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 61-01-PLAN.md — Phase 61 complete
+Stopped at: Completed 62-01-PLAN.md — Phase 62 complete
 Resume file: None
