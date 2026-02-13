@@ -96,10 +96,10 @@ Plans:
 **Goal**: ferro-mcp introspection for locales/keys, docs/src/localization.md
 **Depends on**: Phase 64
 **Research**: Unlikely (internal patterns)
-**Plans**: TBD
+**Plans**: 2
 
 Plans:
-- [ ] 65-01: TBD
+- [x] 65-01: list_lang_files MCP tool, updated list_commands/application_info/MCP instructions (2026-02-13)
 - [x] 65-02: Localization documentation page with SUMMARY.md update (2026-02-13)
 
 #### Phase 66: Tests & Polish
@@ -345,7 +345,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 6/? | 🚧 In Progress | - |
+| v6.0 ferro-lang | 58-66 | 9/? |  In Progress | - |
 
-**Total: 11 milestones shipped, 131 plans.**
+**Total: 11 milestones shipped, 134 plans.**
 

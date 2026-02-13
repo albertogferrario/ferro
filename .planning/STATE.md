@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 Phase: 65 of 66 (MCP & Documentation)
 Plan: 2 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-13 — Completed 65-02-PLAN.md
+Status: Phase complete
+Last activity: 2026-02-13 — Completed 65-01-PLAN.md (phase 65 complete)
 
 Progress: █████████░ 98%
 
@@ -59,6 +59,8 @@ Archived to PROJECT.md and milestone archive files.
 | 63 | lang_choice/lang_init aliases for re-exports | Avoid name collisions in ferro:: namespace |
 | 64 | Locale validation: 2-letter base + optional hyphenated subtags | Locale codes differ from Rust identifiers |
 | 64 | Template files via include_str! in make.rs | Consistent with all other make: commands |
+| 65 | Lightweight .env parsing in MCP tool | No dependency added, consistent with other MCP tools |
+| 65 | Coverage report compares against fallback locale | Single reference locale for missing key detection |
 
 ### Roadmap Evolution
 
@@ -71,6 +73,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 62 complete: All 22 rules use translate_validation() with English fallback, default JSON
 - Phase 63 complete: lang::init() with t()/trans()/choice() helpers, auto-boot, validation bridge wired
 - Phase 64 complete: make:lang CLI command, ferro new templates with lang/en/ and locale env vars
+- Phase 65 plan 01 complete: list_lang_files MCP tool, updated list_commands/application_info/MCP instructions
 - Phase 65 plan 02 complete: Localization documentation page in docs/src/features/
 
 ### Pending Todos
@@ -88,5 +91,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 65-02-PLAN.md
+Stopped at: Completed 65-01-PLAN.md — Phase 65 complete (both plans done)
 Resume file: None
