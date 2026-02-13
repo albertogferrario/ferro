@@ -1,5 +1,6 @@
 //! Built-in validation rules.
 
+use crate::validation::translate_validation;
 use crate::validation::Rule;
 use regex::Regex;
 use serde_json::Value;
@@ -27,7 +28,10 @@ impl Rule for Required {
         };
 
         if is_empty {
-            Err(format!("The {} field is required.", field))
+            Err(
+                translate_validation("validation.required", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field is required.", field)),
+            )
         } else {
             Ok(())
         }
@@ -82,7 +86,10 @@ impl Rule for IsString {
         if value.is_null() || value.is_string() {
             Ok(())
         } else {
-            Err(format!("The {} field must be a string.", field))
+            Err(
+                translate_validation("validation.string", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field must be a string.", field)),
+            )
         }
     }
 
@@ -106,10 +113,16 @@ impl Rule for IsInteger {
             if s.parse::<i64>().is_ok() {
                 Ok(())
             } else {
-                Err(format!("The {} field must be an integer.", field))
+                Err(
+                    translate_validation("validation.integer", &[("attribute", field)])
+                        .unwrap_or_else(|| format!("The {} field must be an integer.", field)),
+                )
             }
         } else {
-            Err(format!("The {} field must be an integer.", field))
+            Err(
+                translate_validation("validation.integer", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field must be an integer.", field)),
+            )
         }
     }
 
@@ -133,10 +146,16 @@ impl Rule for Numeric {
             if s.parse::<f64>().is_ok() {
                 Ok(())
             } else {
-                Err(format!("The {} field must be a number.", field))
+                Err(
+                    translate_validation("validation.numeric", &[("attribute", field)])
+                        .unwrap_or_else(|| format!("The {} field must be a number.", field)),
+                )
             }
         } else {
-            Err(format!("The {} field must be a number.", field))
+            Err(
+                translate_validation("validation.numeric", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field must be a number.", field)),
+            )
         }
     }
 
@@ -159,16 +178,25 @@ impl Rule for IsBoolean {
         } else if let Some(s) = value.as_str() {
             match s.to_lowercase().as_str() {
                 "true" | "false" | "1" | "0" | "yes" | "no" => Ok(()),
-                _ => Err(format!("The {} field must be true or false.", field)),
+                _ => Err(
+                    translate_validation("validation.boolean", &[("attribute", field)])
+                        .unwrap_or_else(|| format!("The {} field must be true or false.", field)),
+                ),
             }
         } else if let Some(n) = value.as_i64() {
             if n == 0 || n == 1 {
                 Ok(())
             } else {
-                Err(format!("The {} field must be true or false.", field))
+                Err(
+                    translate_validation("validation.boolean", &[("attribute", field)])
+                        .unwrap_or_else(|| format!("The {} field must be true or false.", field)),
+                )
             }
         } else {
-            Err(format!("The {} field must be true or false.", field))
+            Err(
+                translate_validation("validation.boolean", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field must be true or false.", field)),
+            )
         }
     }
 
@@ -189,7 +217,10 @@ impl Rule for IsArray {
         if value.is_null() || value.is_array() {
             Ok(())
         } else {
-            Err(format!("The {} field must be an array.", field))
+            Err(
+                translate_validation("validation.array", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field must be an array.", field)),
+            )
         }
     }
 
@@ -220,10 +251,17 @@ impl Rule for Min {
         let size = get_size(value);
         if size < self.min {
             let unit = get_size_unit(value);
-            Err(format!(
-                "The {} field must be at least {} {}.",
-                field, self.min as i64, unit
-            ))
+            let type_key = get_size_type_key("min", value);
+            let min_str = format!("{}", self.min as i64);
+            Err(
+                translate_validation(&type_key, &[("attribute", field), ("min", &min_str)])
+                    .unwrap_or_else(|| {
+                        format!(
+                            "The {} field must be at least {} {}.",
+                            field, self.min as i64, unit
+                        )
+                    }),
+            )
         } else {
             Ok(())
         }
@@ -252,10 +290,17 @@ impl Rule for Max {
         let size = get_size(value);
         if size > self.max {
             let unit = get_size_unit(value);
-            Err(format!(
-                "The {} field must not be greater than {} {}.",
-                field, self.max as i64, unit
-            ))
+            let type_key = get_size_type_key("max", value);
+            let max_str = format!("{}", self.max as i64);
+            Err(
+                translate_validation(&type_key, &[("attribute", field), ("max", &max_str)])
+                    .unwrap_or_else(|| {
+                        format!(
+                            "The {} field must not be greater than {} {}.",
+                            field, self.max as i64, unit
+                        )
+                    }),
+            )
         } else {
             Ok(())
         }
@@ -288,10 +333,19 @@ impl Rule for Between {
         let size = get_size(value);
         if size < self.min || size > self.max {
             let unit = get_size_unit(value);
-            Err(format!(
-                "The {} field must be between {} and {} {}.",
-                field, self.min as i64, self.max as i64, unit
-            ))
+            let type_key = get_size_type_key("between", value);
+            let min_str = format!("{}", self.min as i64);
+            let max_str = format!("{}", self.max as i64);
+            Err(translate_validation(
+                &type_key,
+                &[("attribute", field), ("min", &min_str), ("max", &max_str)],
+            )
+            .unwrap_or_else(|| {
+                format!(
+                    "The {} field must be between {} and {} {}.",
+                    field, self.min as i64, self.max as i64, unit
+                )
+            }))
         } else {
             Ok(())
         }
@@ -324,10 +378,11 @@ impl Rule for Email {
 
         match value.as_str() {
             Some(s) if EMAIL_REGEX.is_match(s) => Ok(()),
-            _ => Err(format!(
-                "The {} field must be a valid email address.",
-                field
-            )),
+            _ => Err(
+                translate_validation("validation.email", &[("attribute", field)]).unwrap_or_else(
+                    || format!("The {} field must be a valid email address.", field),
+                ),
+            ),
         }
     }
 
@@ -354,7 +409,10 @@ impl Rule for Url {
 
         match value.as_str() {
             Some(s) if URL_REGEX.is_match(s) => Ok(()),
-            _ => Err(format!("The {} field must be a valid URL.", field)),
+            _ => Err(
+                translate_validation("validation.url", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field must be a valid URL.", field)),
+            ),
         }
     }
 
@@ -382,7 +440,10 @@ impl Rule for Regex_ {
 
         match value.as_str() {
             Some(s) if self.pattern.is_match(s) => Ok(()),
-            _ => Err(format!("The {} field format is invalid.", field)),
+            _ => Err(
+                translate_validation("validation.regex", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field format is invalid.", field)),
+            ),
         }
     }
 
@@ -408,7 +469,10 @@ impl Rule for Alpha {
 
         match value.as_str() {
             Some(s) if ALPHA_REGEX.is_match(s) => Ok(()),
-            _ => Err(format!("The {} field must only contain letters.", field)),
+            _ => Err(
+                translate_validation("validation.alpha", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field must only contain letters.", field)),
+            ),
         }
     }
 
@@ -434,10 +498,12 @@ impl Rule for AlphaNum {
 
         match value.as_str() {
             Some(s) if ALPHA_NUM_REGEX.is_match(s) => Ok(()),
-            _ => Err(format!(
-                "The {} field must only contain letters and numbers.",
-                field
-            )),
+            _ => Err(
+                translate_validation("validation.alpha_num", &[("attribute", field)])
+                    .unwrap_or_else(|| {
+                        format!("The {} field must only contain letters and numbers.", field)
+                    }),
+            ),
         }
     }
 
@@ -464,10 +530,15 @@ impl Rule for AlphaDash {
 
         match value.as_str() {
             Some(s) if ALPHA_DASH_REGEX.is_match(s) => Ok(()),
-            _ => Err(format!(
-                "The {} field must only contain letters, numbers, dashes, and underscores.",
-                field
-            )),
+            _ => Err(
+                translate_validation("validation.alpha_dash", &[("attribute", field)])
+                    .unwrap_or_else(|| {
+                        format!(
+                    "The {} field must only contain letters, numbers, dashes, and underscores.",
+                    field
+                )
+                    }),
+            ),
         }
     }
 
@@ -507,7 +578,10 @@ impl Rule for Confirmed {
         if confirmation_value == Some(value) {
             Ok(())
         } else {
-            Err(format!("The {} confirmation does not match.", field))
+            Err(
+                translate_validation("validation.confirmed", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} confirmation does not match.", field)),
+            )
         }
     }
 
@@ -540,7 +614,10 @@ impl Rule for In {
         if self.values.contains(value) {
             Ok(())
         } else {
-            Err(format!("The selected {} is invalid.", field))
+            Err(
+                translate_validation("validation.in", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The selected {} is invalid.", field)),
+            )
         }
     }
 
@@ -571,7 +648,10 @@ impl Rule for NotIn {
         }
 
         if self.values.contains(value) {
-            Err(format!("The selected {} is invalid.", field))
+            Err(
+                translate_validation("validation.not_in", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The selected {} is invalid.", field)),
+            )
         } else {
             Ok(())
         }
@@ -601,10 +681,13 @@ impl Rule for Different {
 
         let other_value = data.get(&self.other);
         if other_value == Some(value) {
-            Err(format!(
-                "The {} and {} fields must be different.",
-                field, self.other
-            ))
+            Err(translate_validation(
+                "validation.different",
+                &[("attribute", field), ("other", &self.other)],
+            )
+            .unwrap_or_else(|| {
+                format!("The {} and {} fields must be different.", field, self.other)
+            }))
         } else {
             Ok(())
         }
@@ -634,10 +717,11 @@ impl Rule for Same {
 
         let other_value = data.get(&self.other);
         if other_value != Some(value) {
-            Err(format!(
-                "The {} and {} fields must match.",
-                field, self.other
-            ))
+            Err(translate_validation(
+                "validation.same",
+                &[("attribute", field), ("other", &self.other)],
+            )
+            .unwrap_or_else(|| format!("The {} and {} fields must match.", field, self.other)))
         } else {
             Ok(())
         }
@@ -676,7 +760,10 @@ impl Rule for Date {
             }
         }
 
-        Err(format!("The {} field must be a valid date.", field))
+        Err(
+            translate_validation("validation.date", &[("attribute", field)])
+                .unwrap_or_else(|| format!("The {} field must be a valid date.", field)),
+        )
     }
 
     fn name(&self) -> &'static str {
@@ -727,7 +814,10 @@ impl Rule for Accepted {
         if accepted {
             Ok(())
         } else {
-            Err(format!("The {} field must be accepted.", field))
+            Err(
+                translate_validation("validation.accepted", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {} field must be accepted.", field)),
+            )
         }
     }
 
@@ -759,6 +849,16 @@ fn get_size_unit(value: &Value) -> &'static str {
         Value::Object(_) => "items",
         _ => "",
     }
+}
+
+/// Get the type-specific translation key for size rules (min, max, between).
+fn get_size_type_key(rule: &str, value: &Value) -> String {
+    let suffix = match value {
+        Value::String(_) => "string",
+        Value::Array(_) | Value::Object(_) => "array",
+        _ => "numeric",
+    };
+    format!("validation.{}.{}", rule, suffix)
 }
 
 #[cfg(test)]
