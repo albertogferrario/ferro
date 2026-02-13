@@ -23,7 +23,9 @@ pub mod providers;
 pub mod repository;
 
 pub use env::{env, env_optional, env_required, load_dotenv, Environment};
-pub use providers::{AppConfig, AppConfigBuilder, ServerConfig, ServerConfigBuilder};
+pub use providers::{
+    AppConfig, AppConfigBuilder, LangConfig, LangConfigBuilder, ServerConfig, ServerConfigBuilder,
+};
 
 use std::path::Path;
 
@@ -62,6 +64,7 @@ impl Config {
         // Register default configs
         repository::register(AppConfig::from_env());
         repository::register(ServerConfig::from_env());
+        repository::register(LangConfig::from_env());
 
         env
     }

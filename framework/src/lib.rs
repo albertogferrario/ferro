@@ -32,7 +32,10 @@ pub use auth::{
 };
 pub use authorization::{AuthResponse, Authorizable, AuthorizationError, Authorize, Gate, Policy};
 pub use cache::{Cache, CacheConfig, CacheStore, InMemoryCache, RedisCache};
-pub use config::{env, env_optional, env_required, AppConfig, Config, Environment, ServerConfig};
+pub use config::{
+    env, env_optional, env_required, AppConfig, Config, Environment, LangConfig, LangConfigBuilder,
+    ServerConfig,
+};
 pub use container::{App, Container};
 pub use csrf::{csrf_field, csrf_meta_tag, csrf_token, CsrfMiddleware};
 pub use database::{
@@ -156,6 +159,9 @@ pub use ferro_cache::{
     Cache as TaggableCache, CacheConfig as TaggableCacheConfig, CacheStore as TaggableCacheStore,
     Error as TaggableCacheError, MemoryStore as TaggableCacheMemoryStore, TaggedCache,
 };
+
+// Re-export ferro-lang for localization
+pub use ferro_lang::{LangError, Translator};
 
 // Re-export async_trait for middleware implementations
 pub use async_trait::async_trait;

@@ -1587,6 +1587,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-lang"
+version = "0.1.70"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tracing",
+]
+
+[[package]]
 name = "ferro-macros"
 version = "0.1.70"
 dependencies = [
@@ -1675,6 +1685,7 @@ dependencies = [
  "ferro-events",
  "ferro-inertia",
  "ferro-json-ui",
+ "ferro-lang",
  "ferro-macros",
  "ferro-notifications",
  "ferro-queue",

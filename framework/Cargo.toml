@@ -33,6 +33,7 @@ ferro-notifications = { path = "../ferro-notifications", version = "0.1" }
 ferro-broadcast = { path = "../ferro-broadcast", version = "0.1" }
 ferro-storage = { path = "../ferro-storage", version = "0.1" }
 ferro-cache = { path = "../ferro-cache", version = "0.1" }
+ferro-lang = { path = "../ferro-lang", version = "0.1" }
 ferro-inertia = { path = "../ferro-inertia", version = "0.1", optional = true }
 ferro-json-ui = { path = "../ferro-json-ui", optional = true }
 dotenvy = "0.15"
