@@ -12,7 +12,7 @@
 - ✅ [**v3.0 JSON-UI**](milestones/v3.0-ROADMAP.md) — Phases 23-32 (shipped 2026-02-09)
 - ✅ [**v4.0 Production Readiness**](milestones/v4.0-ROADMAP.md) — Phases 38-46 (shipped 2026-02-10)
 - ✅ [**v5.0 Proximity — JSON-UI Field Test**](milestones/v5.0-ROADMAP.md) — Phases 47-53 (shipped 2026-02-10)
-- 🚧 **v5.1 Housekeeping** — Phases 54-56 (in progress)
+- 🚧 **v5.1 Housekeeping** — Phases 54-57 (in progress)
 
 ---
 
@@ -49,6 +49,16 @@ Plans:
 
 Plans:
 - [ ] 56-01: TBD (run /gsd:plan-phase 56 to break down)
+
+#### Phase 57: Deployment Template Fixes
+
+**Goal**: Fix deployment template bugs reported from mkmenu-ferro field test (health check path, Rust version, Dockerfile caching, misleading CLI tips)
+**Depends on**: Phase 56
+**Research**: Unlikely (bug fixes)
+**Plans**: TBD
+
+Plans:
+- [ ] 57-01: Fix deployment template bugs (health path, Rust version, misleading tip)
 
 ---
 
@@ -245,6 +255,6 @@ Plans:
 | v3.0 JSON-UI | 23-32 | 24 | ✅ Complete | 2026-02-09 |
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
-| v5.1 Housekeeping | 54-56 | TBD | 🚧 In Progress | - |
+| v5.1 Housekeeping | 54-57 | TBD | 🚧 In Progress | - |
 
 **Total: 10 milestones shipped, 121 plans. v5.1 in progress.**
