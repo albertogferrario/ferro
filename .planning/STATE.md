@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 ## Current Position
 
-Phase: 54 of 56 (Env Example)
-Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-02-13 — Completed 54-01-PLAN.md
+Phase: 55 of 57 (Split Templates)
+Plan: Planning complete — 2 plans in 2 waves
+Status: Ready for execution
+Last activity: 2026-02-13 — Planned phase 55
 
 Progress: ███░░░░░░░ 33%
 
@@ -41,6 +41,7 @@ Archived to PROJECT.md and milestone archive files.
 ### Roadmap Evolution
 
 - Milestone v5.1 created: housekeeping, 3 phases (Phase 54-56)
+- Phase 57 added: Deployment template fixes (from mkmenu-ferro field report)
 
 ### Pending Todos
 
@@ -57,5 +58,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 54-01-PLAN.md
+Stopped at: Planned phase 55 (Split Templates) — 2 plans ready
 Resume file: None

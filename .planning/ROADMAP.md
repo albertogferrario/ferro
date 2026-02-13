@@ -38,7 +38,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 55-01: TBD (run /gsd:plan-phase 55 to break down)
+- [ ] 55-01: Split project, make, and entity templates into submodules
+- [ ] 55-02: Split docker, AI boost, scaffold, and auth templates into submodules
 
 #### Phase 56: Update Concerns
 
