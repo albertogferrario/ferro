@@ -100,6 +100,7 @@ Plans:
 
 Plans:
 - [ ] 65-01: TBD
+- [x] 65-02: Localization documentation page with SUMMARY.md update (2026-02-13)
 
 #### Phase 66: Tests & Polish
 

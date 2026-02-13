@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 ## Current Position
 
-Phase: 64 of 66 (CLI Scaffolding)
-Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-02-13 — Completed 64-01-PLAN.md
+Phase: 65 of 66 (MCP & Documentation)
+Plan: 2 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-13 — Completed 65-02-PLAN.md
 
-Progress: ███████░░░ 77%
+Progress: █████████░ 98%
 
 ## Milestone Summary
 
@@ -71,6 +71,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 62 complete: All 22 rules use translate_validation() with English fallback, default JSON
 - Phase 63 complete: lang::init() with t()/trans()/choice() helpers, auto-boot, validation bridge wired
 - Phase 64 complete: make:lang CLI command, ferro new templates with lang/en/ and locale env vars
+- Phase 65 plan 02 complete: Localization documentation page in docs/src/features/
 
 ### Pending Todos
 
@@ -87,5 +88,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 64-01-PLAN.md — Phase 64 complete
+Stopped at: Completed 65-02-PLAN.md
 Resume file: None
