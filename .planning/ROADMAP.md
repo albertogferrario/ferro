@@ -39,7 +39,7 @@ Plans:
 
 Plans:
 - [x] 55-01: Split project, make, and entity templates into submodules (completed 2026-02-13)
-- [ ] 55-02: Split docker, AI boost, scaffold, and auth templates into submodules
+- [x] 55-02: Split docker, AI boost, scaffold, and auth templates into submodules (completed 2026-02-13)
 
 #### Phase 56: Update Concerns
 
