@@ -1592,6 +1592,7 @@ version = "0.1.70"
 dependencies = [
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.17",
  "tracing",
 ]
