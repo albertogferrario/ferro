@@ -14,39 +14,42 @@ COPY frontend/ ./
 RUN npm run build
 
 # ==========================================
-# Stage 2: Build Rust Backend
+# Stage 2: Cargo Chef Base
 # ==========================================
-FROM rust:1.88-slim-bookworm AS backend-builder
+FROM rust:1.88-slim-bookworm AS chef
 
-WORKDIR /app
-
-# Install build dependencies
+RUN cargo install cargo-chef
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a new empty shell project for dependency caching
-RUN cargo new --bin {package_name}
-WORKDIR /app/{package_name}
-
-# Copy manifests
-COPY Cargo.toml Cargo.lock ./
-
-# Build dependencies only (for caching)
-RUN cargo build --release && rm src/*.rs
-
-# Copy actual source code
-COPY src/ ./src/
-
-# Copy frontend build output to public directory
-COPY --from=frontend-builder /app/frontend/dist ./public/assets
-
-# Build the application (single unified binary)
-RUN rm ./target/release/deps/{package_name}* 2>/dev/null || true && cargo build --release
+WORKDIR /app
 
 # ==========================================
-# Stage 3: Runtime Image
+# Stage 3: Prepare Dependency Recipe
+# ==========================================
+FROM chef AS planner
+
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ==========================================
+# Stage 4: Build Rust Backend
+# ==========================================
+FROM chef AS backend-builder
+
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+COPY --from=frontend-builder /app/frontend/dist ./public/assets
+RUN cargo build --release
+
+# ==========================================
+# Stage 5: Runtime Image
 # ==========================================
 FROM debian:bookworm-slim AS runtime
 
@@ -62,10 +65,10 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -m -u 1000 appuser
 
 # Copy the compiled binary
-COPY --from=backend-builder /app/{package_name}/target/release/{package_name} ./app
+COPY --from=backend-builder /app/target/release/{package_name} ./app
 
 # Copy public assets
-COPY --from=backend-builder /app/{package_name}/public ./public
+COPY --from=backend-builder /app/public ./public
 
 # Set ownership
 RUN chown -R appuser:appuser /app
