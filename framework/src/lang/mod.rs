@@ -22,8 +22,10 @@
 //! set_locale("fr");
 //! ```
 
+pub mod init;
 pub mod middleware;
 
+pub use init::{choice as lang_choice, init as lang_init, t, trans};
 pub use middleware::LangMiddleware;
 
 use crate::config::Config;
