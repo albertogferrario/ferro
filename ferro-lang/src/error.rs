@@ -14,4 +14,18 @@ pub enum LangError {
     /// No translation files found in the given path.
     #[error("no translations loaded from the given path")]
     NoTranslationsLoaded,
+
+    /// Requested locale is not loaded.
+    #[error("invalid locale: {locale}")]
+    InvalidLocale {
+        /// The locale identifier that was not found.
+        locale: String,
+    },
+
+    /// Configuration-level error (e.g. lang path does not exist).
+    #[error("lang config error: {message}")]
+    ConfigError {
+        /// Description of the configuration problem.
+        message: String,
+    },
 }

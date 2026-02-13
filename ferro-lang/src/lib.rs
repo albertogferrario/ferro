@@ -22,11 +22,13 @@
 //! assert_eq!(msg, "5 items");
 //! ```
 
+pub mod config;
 mod error;
 mod interpolation;
 mod loader;
 mod pluralization;
 mod translator;
 
+pub use config::{LangConfig, LangConfigBuilder};
 pub use error::LangError;
 pub use translator::Translator;
