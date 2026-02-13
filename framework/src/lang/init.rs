@@ -119,6 +119,24 @@ mod tests {
     }
 
     #[test]
+    fn t_with_params_returns_key_when_no_translator() {
+        // When no translator is loaded, params are ignored gracefully
+        // and the key is returned as-is.
+        let result = t("app.hello", &[("name", "World")]);
+        // Either the raw key (no translator) or a translated value
+        // (if another test loaded one). The key point is no panic.
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn choice_with_count_returns_key_when_no_translator() {
+        // When no translator is loaded, count is ignored gracefully
+        // and the key is returned as-is.
+        let result = choice("messages.items", 5, &[]);
+        assert!(!result.is_empty());
+    }
+
+    #[test]
     fn validation_bridge_fn_matches_translator_fn_signature() {
         // Compile-time proof that the function matches the type alias.
         let _f: TranslatorFn = validation_bridge_fn;

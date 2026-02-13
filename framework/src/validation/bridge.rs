@@ -69,4 +69,28 @@ mod tests {
         let result = f("validation.required", &[("attribute", "name")]);
         assert_eq!(result, Some("translated: validation.required".to_string()));
     }
+
+    #[test]
+    fn test_register_double_registration_is_noop() {
+        fn first(_key: &str, _params: &[(&str, &str)]) -> Option<String> {
+            Some("first".to_string())
+        }
+        fn second(_key: &str, _params: &[(&str, &str)]) -> Option<String> {
+            Some("second".to_string())
+        }
+
+        // Register twice. The second call should be silently ignored
+        // because OnceLock only accepts the first value.
+        register_validation_translator(first);
+        register_validation_translator(second);
+
+        // If a translator is set, it must be the first one (or one
+        // set by a previous test in this process). Either way the
+        // second registration must not panic or replace the first.
+        if let Some(f) = VALIDATION_TRANSLATOR.get() {
+            let result = f("key", &[]);
+            // Must not be "second" — OnceLock ignores subsequent sets.
+            assert_ne!(result, Some("second".to_string()));
+        }
+    }
 }
