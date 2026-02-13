@@ -28,7 +28,9 @@
 //! ```
 
 #[allow(unused_imports)]
-use ferro::{bind, global_middleware, singleton, App, Limit, RateLimiter, UserProvider, DB};
+use ferro::{
+    bind, global_middleware, singleton, App, LangMiddleware, Limit, RateLimiter, UserProvider, DB,
+};
 
 use crate::middleware;
 use crate::providers::DatabaseUserProvider;
@@ -57,6 +59,7 @@ pub async fn register() {
     // Global middleware (runs on every request in registration order)
     global_middleware!(middleware::LoggingMiddleware);
     global_middleware!(middleware::ShareInertiaData);
+    global_middleware!(LangMiddleware);
 
     // Register the user provider for Auth::user()
     bind!(dyn UserProvider, DatabaseUserProvider);
