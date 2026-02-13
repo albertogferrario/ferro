@@ -13,11 +13,11 @@
 - ✅ [**v4.0 Production Readiness**](milestones/v4.0-ROADMAP.md) — Phases 38-46 (shipped 2026-02-10)
 - ✅ [**v5.0 Proximity — JSON-UI Field Test**](milestones/v5.0-ROADMAP.md) — Phases 47-53 (shipped 2026-02-10)
 - ✅ **v5.1 Housekeeping** — Phases 54-57 (shipped 2026-02-13)
-- 🚧 **v6.0 ferro-lang — Localization** — Phases 58-66 (in progress)
+- ✅ **v6.0 ferro-lang — Localization** — Phases 58-66 (shipped 2026-02-13)
 
 ---
 
-### 🚧 v6.0 ferro-lang — Localization (In Progress)
+### ✅ v6.0 ferro-lang — Localization (Complete)
 
 **Milestone Goal:** Add localization infrastructure via ferro-lang crate: JSON translations, per-request locale detection, validation message localization, CLI scaffolding.
 
@@ -347,7 +347,7 @@ Plans:
 | v4.0 Production Readiness | 38-46 | 24 | ✅ Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 9/? |  In Progress | - |
+| v6.0 ferro-lang | 58-66 | 11 | ✅ Complete | 2026-02-13 |
 
-**Total: 11 milestones shipped, 134 plans.**
+**Total: 12 milestones shipped, 145 plans.**
 

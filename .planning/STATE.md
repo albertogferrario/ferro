@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v6.0 ferro-lang — Localization
+**Current focus:** v6.0 ferro-lang — Localization (COMPLETE)
 
 ## Current Position
 
 Phase: 66 of 66 (Tests & Polish)
 Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-13 — Completed 66-03-PLAN.md
+Status: Milestone complete
+Last activity: 2026-02-13 — Phase 66 complete, v6.0 milestone shipped
 
 Progress: ██████████ 100%
 
@@ -31,7 +31,7 @@ Progress: ██████████ 100%
 | v4.0 Production Readiness | 38-46 | 24 | Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 7/? | In Progress | - |
+| v6.0 ferro-lang | 58-66 | 11 | Complete | 2026-02-13 |
 
 ## Accumulated Context
 
@@ -94,5 +94,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 66-03-PLAN.md — Phase 66 complete (all 3 plans done)
+Stopped at: v6.0 ferro-lang milestone complete — all 9 phases, 11 plans shipped
 Resume file: None
