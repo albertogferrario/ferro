@@ -153,7 +153,7 @@ pub fn execute() -> CommandsInfo {
         },
         CommandInfo {
             name: "do:init".to_string(),
-            description: "Initialize DigitalOcean App Platform deployment configuration"
+            description: "Initialize DigitalOcean App Platform deployment (generates .do/app.yaml, Dockerfile, and .dockerignore)"
                 .to_string(),
         },
         CommandInfo {

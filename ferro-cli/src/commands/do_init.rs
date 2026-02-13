@@ -67,13 +67,21 @@ pub fn run(github_repo: Option<String>) {
 
     println!(
         "{} Created .do/app.yaml for DigitalOcean App Platform",
-        style("Success:").green().bold()
+        style("✓").green()
     );
+
+    // Generate Dockerfile and .dockerignore if they don't exist
+    if !super::docker_init::generate() {
+        println!(
+            "{} Dockerfile already exists, skipping generation",
+            style("✓").green()
+        );
+    }
+
     println!();
     println!("Next steps:");
     println!("  1. Review and customize .do/app.yaml");
-    println!("  2. Ensure Dockerfile exists (run 'ferro docker:init' if needed)");
-    println!("  3. Push to GitHub and connect to DigitalOcean App Platform");
+    println!("  2. Push to GitHub and connect to DigitalOcean App Platform");
     println!();
     println!(
         "{}",

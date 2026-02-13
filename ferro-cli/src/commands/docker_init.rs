@@ -7,8 +7,44 @@ use toml::Value;
 
 use crate::templates;
 
+/// Generate Dockerfile and .dockerignore. Returns true if files were created.
+pub fn generate() -> bool {
+    let package_name = get_package_name();
+    let dockerfile_path = Path::new("Dockerfile");
+    let dockerignore_path = Path::new(".dockerignore");
+
+    if dockerfile_path.exists() {
+        return false;
+    }
+
+    let dockerfile_content = templates::dockerfile_template(&package_name);
+    if let Err(e) = fs::write(dockerfile_path, dockerfile_content) {
+        eprintln!(
+            "{} Failed to write Dockerfile: {}",
+            style("Error:").red().bold(),
+            e
+        );
+        return false;
+    }
+    println!("{} Created Dockerfile", style("✓").green());
+
+    if !dockerignore_path.exists() {
+        let dockerignore_content = templates::dockerignore_template();
+        if let Err(e) = fs::write(dockerignore_path, dockerignore_content) {
+            eprintln!(
+                "{} Failed to write .dockerignore: {}",
+                style("Error:").red().bold(),
+                e
+            );
+        } else {
+            println!("{} Created .dockerignore", style("✓").green());
+        }
+    }
+
+    true
+}
+
 pub fn run() {
-    // Verify we're in a Ferro project directory
     if !Path::new("Cargo.toml").exists() {
         eprintln!("{} Cargo.toml not found", style("Error:").red().bold());
         eprintln!(
@@ -18,14 +54,7 @@ pub fn run() {
         std::process::exit(1);
     }
 
-    // Extract package name from Cargo.toml
-    let package_name = get_package_name();
-
-    let dockerfile_path = Path::new("Dockerfile");
-    let dockerignore_path = Path::new(".dockerignore");
-
-    // Check if Dockerfile already exists
-    if dockerfile_path.exists() {
+    if !generate() {
         eprintln!(
             "{} Dockerfile already exists",
             style("Info:").yellow().bold()
@@ -37,33 +66,7 @@ pub fn run() {
         std::process::exit(0);
     }
 
-    // Generate Dockerfile
-    let dockerfile_content = templates::dockerfile_template(&package_name);
-    if let Err(e) = fs::write(dockerfile_path, dockerfile_content) {
-        eprintln!(
-            "{} Failed to write Dockerfile: {}",
-            style("Error:").red().bold(),
-            e
-        );
-        std::process::exit(1);
-    }
-    println!("{} Created Dockerfile", style("✓").green());
-
-    // Generate .dockerignore (only if it doesn't exist)
-    if !dockerignore_path.exists() {
-        let dockerignore_content = templates::dockerignore_template();
-        if let Err(e) = fs::write(dockerignore_path, dockerignore_content) {
-            eprintln!(
-                "{} Failed to write .dockerignore: {}",
-                style("Error:").red().bold(),
-                e
-            );
-            std::process::exit(1);
-        }
-        println!("{} Created .dockerignore", style("✓").green());
-    }
-
-    // Print usage instructions
+    let package_name = get_package_name();
     println!();
     println!(
         "{}",

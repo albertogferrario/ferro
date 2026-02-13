@@ -807,11 +807,29 @@ ferro db:query "SELECT COUNT(*) FROM posts"
 - Verifying migration results
 - Ad-hoc queries without external tools
 
+## Deployment Commands
+
+### `ferro do:init`
+
+Initialize DigitalOcean App Platform deployment. Generates the app spec and Dockerfile in one step.
+
+```bash
+ferro do:init --repo owner/repo
+```
+
+**Generated files:**
+- `.do/app.yaml` — App Platform spec with service, database, and Redis config
+- `Dockerfile` — Production-ready multi-stage build (if not present)
+- `.dockerignore` — Excludes build artifacts (if not present)
+
+**Options:**
+- `--repo`, `-r` — GitHub repository in `owner/repo` format (required)
+
 ## Docker Commands
 
 ### `ferro docker:init`
 
-Initialize Docker configuration files.
+Generate a production-ready Dockerfile. Also called automatically by `do:init` if no Dockerfile exists.
 
 ```bash
 ferro docker:init
@@ -819,7 +837,6 @@ ferro docker:init
 
 **Generated files:**
 - `Dockerfile`
-- `docker-compose.yml`
 - `.dockerignore`
 
 ### `ferro docker:compose`
@@ -994,7 +1011,8 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `db:seed` | Run database seeders |
 | `db:sync` | Sync database schema |
 | `db:query` | Execute raw SQL query |
-| `docker:init` | Initialize Docker files |
+| `do:init` | Initialize DigitalOcean App Platform deployment |
+| `docker:init` | Generate Dockerfile and .dockerignore |
 | `docker:compose` | Manage Docker Compose |
 | `schedule:run` | Run due scheduled tasks |
 | `schedule:work` | Start scheduler worker |
