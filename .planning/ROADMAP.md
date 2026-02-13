@@ -86,10 +86,10 @@ Plans:
 **Goal**: make:lang command, update ferro new templates, .env.example
 **Depends on**: Phase 63
 **Research**: Unlikely (internal patterns)
-**Plans**: TBD
+**Plans**: 1
 
 Plans:
-- [ ] 64-01: TBD
+- [x] 64-01: make:lang command and updated ferro new templates with localization defaults (2026-02-13)
 
 #### Phase 65: MCP & Documentation
 

@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 ## Current Position
 
-Phase: 63 of 66 (Framework Integration)
+Phase: 64 of 66 (CLI Scaffolding)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-13 — Completed 63-01-PLAN.md
+Last activity: 2026-02-13 — Completed 64-01-PLAN.md
 
-Progress: ██████░░░░ 66%
+Progress: ███████░░░ 77%
 
 ## Milestone Summary
 
@@ -31,7 +31,7 @@ Progress: ██████░░░░ 66%
 | v4.0 Production Readiness | 38-46 | 24 | Complete | 2026-02-10 |
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | Complete | 2026-02-13 |
-| v6.0 ferro-lang | 58-66 | 6/? | In Progress | - |
+| v6.0 ferro-lang | 58-66 | 7/? | In Progress | - |
 
 ## Accumulated Context
 
@@ -57,6 +57,8 @@ Archived to PROJECT.md and milestone archive files.
 | 63 | init() after config_fn() in Application::run() | User can override LangConfig before translator loads |
 | 63 | Validation bridge registered inside init() | Automatic wiring, no separate registration step |
 | 63 | lang_choice/lang_init aliases for re-exports | Avoid name collisions in ferro:: namespace |
+| 64 | Locale validation: 2-letter base + optional hyphenated subtags | Locale codes differ from Rust identifiers |
+| 64 | Template files via include_str! in make.rs | Consistent with all other make: commands |
 
 ### Roadmap Evolution
 
@@ -68,6 +70,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 61 complete: OnceLock validation bridge with TranslatorFn callback
 - Phase 62 complete: All 22 rules use translate_validation() with English fallback, default JSON
 - Phase 63 complete: lang::init() with t()/trans()/choice() helpers, auto-boot, validation bridge wired
+- Phase 64 complete: make:lang CLI command, ferro new templates with lang/en/ and locale env vars
 
 ### Pending Todos
 
@@ -84,5 +87,5 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 63-01-PLAN.md — Phase 63 complete
+Stopped at: Completed 64-01-PLAN.md — Phase 64 complete
 Resume file: None
