@@ -85,7 +85,7 @@ pub fn run(github_repo: Option<String>) {
     println!();
     println!(
         "{}",
-        style("Tip: Add a /health endpoint for health checks").dim()
+        style("Tip: Health checks use the built-in /_ferro/health endpoint").dim()
     );
 }
 

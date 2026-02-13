@@ -17,7 +17,7 @@ services:
     instance_size_slug: apps-s-1vcpu-0.5gb
     instance_count: 1
     health_check:
-      http_path: /health
+      http_path: /_ferro/health
       initial_delay_seconds: 10
       period_seconds: 10
     envs:
