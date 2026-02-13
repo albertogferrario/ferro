@@ -31,4 +31,5 @@ mod translator;
 
 pub use config::{LangConfig, LangConfigBuilder};
 pub use error::LangError;
+pub use loader::normalize_locale;
 pub use translator::Translator;

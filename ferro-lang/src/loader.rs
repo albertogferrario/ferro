@@ -63,7 +63,9 @@ pub fn load_translations(
                 continue;
             }
             for (key, value) in &fallback_map {
-                locale_map.entry(key.clone()).or_insert_with(|| value.clone());
+                locale_map
+                    .entry(key.clone())
+                    .or_insert_with(|| value.clone());
             }
         }
     }
