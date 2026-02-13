@@ -538,9 +538,10 @@ mod tests {
                         if let Some(tx) = tx_holder.lock().unwrap().take() {
                             let _ = tx.send(Request::new(req));
                         }
-                        Ok::<_, hyper::Error>(
-                            hyper::Response::new(http_body_util::Empty::<bytes::Bytes>::new()),
-                        )
+                        Ok::<_, hyper::Error>(hyper::Response::new(http_body_util::Empty::<
+                            bytes::Bytes,
+                        >::new(
+                        )))
                     }
                 });
 
@@ -554,9 +555,10 @@ mod tests {
         let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
         let io = TokioIo::new(stream);
 
-        let (mut sender, conn) =
-            hyper::client::conn::http1::handshake(io).await.unwrap();
-        tokio::spawn(async move { conn.await.ok(); });
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await.unwrap();
+        tokio::spawn(async move {
+            conn.await.ok();
+        });
 
         let req = hyper::Request::builder()
             .uri("/test")
@@ -609,9 +611,8 @@ mod tests {
 
     #[test]
     fn test_limit_response_factory() {
-        let limit = Limit::per_minute(60).response(|| {
-            HttpResponse::json(serde_json::json!({"error": "custom"})).status(429)
-        });
+        let limit = Limit::per_minute(60)
+            .response(|| HttpResponse::json(serde_json::json!({"error": "custom"})).status(429));
         assert!(limit.response_fn.is_some());
     }
 
@@ -653,10 +654,7 @@ mod tests {
         limiter_registry().clear();
 
         RateLimiter::define("login", |_req| {
-            vec![
-                Limit::per_minute(500),
-                Limit::per_minute(5).by("email"),
-            ]
+            vec![Limit::per_minute(500), Limit::per_minute(5).by("email")]
         });
 
         let req = test_request().await;
@@ -811,8 +809,7 @@ mod tests {
 
     #[test]
     fn test_limiter_response_multiple() {
-        let response: LimiterResponse =
-            vec![Limit::per_minute(60), Limit::per_hour(1000)].into();
+        let response: LimiterResponse = vec![Limit::per_minute(60), Limit::per_hour(1000)].into();
         let limits = response.into_vec();
         assert_eq!(limits.len(), 2);
         assert_eq!(limits[0].max_requests, 60);

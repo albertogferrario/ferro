@@ -199,7 +199,9 @@ impl Storage {
             }
             #[cfg(feature = "s3")]
             DiskDriver::S3 => {
-                tracing::warn!("S3 driver is not yet implemented; all operations will return errors");
+                tracing::warn!(
+                    "S3 driver is not yet implemented; all operations will return errors"
+                );
                 Arc::new(crate::drivers::S3Driver)
             }
         }

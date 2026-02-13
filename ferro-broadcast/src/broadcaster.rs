@@ -496,12 +496,7 @@ mod tests {
             .unwrap();
 
         let result = broadcaster
-            .whisper(
-                "socket_1",
-                "chat",
-                "typing",
-                serde_json::json!({}),
-            )
+            .whisper("socket_1", "chat", "typing", serde_json::json!({}))
             .await;
 
         assert!(result.is_err());
@@ -623,12 +618,7 @@ mod tests {
 
         // socket_1 tries to whisper without subscribing
         let result = broadcaster
-            .whisper(
-                "socket_1",
-                "chat",
-                "typing",
-                serde_json::json!({}),
-            )
+            .whisper("socket_1", "chat", "typing", serde_json::json!({}))
             .await;
 
         assert!(result.is_err());

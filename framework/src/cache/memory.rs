@@ -199,7 +199,10 @@ mod tests {
         cache.increment("counter", 1).await.unwrap();
 
         // Set a 1-second TTL
-        let result = cache.expire("counter", Duration::from_secs(1)).await.unwrap();
+        let result = cache
+            .expire("counter", Duration::from_secs(1))
+            .await
+            .unwrap();
         assert!(result, "expire should return true for existing key");
 
         // Key should still be accessible immediately
@@ -222,7 +225,10 @@ mod tests {
     async fn test_expire_missing_key() {
         let cache = InMemoryCache::new();
 
-        let result = cache.expire("nonexistent", Duration::from_secs(10)).await.unwrap();
+        let result = cache
+            .expire("nonexistent", Duration::from_secs(10))
+            .await
+            .unwrap();
         assert!(!result, "expire on missing key should return false");
     }
 
@@ -236,7 +242,10 @@ mod tests {
         }
 
         // Set TTL (long enough not to expire during test)
-        let result = cache.expire("counter", Duration::from_secs(10)).await.unwrap();
+        let result = cache
+            .expire("counter", Duration::from_secs(10))
+            .await
+            .unwrap();
         assert!(result);
 
         // Increment again should return 6 (not 1)
