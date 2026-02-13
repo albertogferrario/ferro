@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v5.0 Proximity — JSON-UI Field Test
+**Current focus:** v5.1 Housekeeping — resolve technical debt and project hygiene
 
 ## Current Position
 
-Phase: 47 of 52 (JSON-UI Map Component)
-Plan: 4 of 4 in current phase
-Status: Phase complete
-Last activity: 2026-02-10 — Completed 47-04-PLAN.md
+Phase: 54 of 56 (Env Example)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-13 — Milestone v5.1 created
 
-Progress: ██░░░░░░░░ 17%
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone Summary
 
@@ -29,7 +29,8 @@ Progress: ██░░░░░░░░ 17%
 | v2.2 CLI Improvements | 35-37 | 5 | Complete | 2026-02-09 |
 | v3.0 JSON-UI | 23-32 | 24 | Complete | 2026-02-09 |
 | v4.0 Production Readiness | 38-46 | 24 | Complete | 2026-02-10 |
-| v5.0 Proximity — JSON-UI Field Test | 47-52 | TBD | In Progress | — |
+| v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | Complete | 2026-02-10 |
+| v5.1 Housekeeping | 54-56 | TBD | In Progress | - |
 
 ## Accumulated Context
 
@@ -37,16 +38,9 @@ Progress: ██░░░░░░░░ 17%
 
 Archived to PROJECT.md and milestone archive files.
 
-| Phase | Decision | Rationale |
-|-------|----------|-----------|
-| 47-01 | with_plugin closure API for global plugin lookup | Avoids RwLock lifetime issues with Deref approach |
-| 47-01 | PluginRegistry starts empty (no built-in plugins) | Plugins registered at app startup; Map plugin is first built-in in Plan 03 |
-| 47-02 | Custom Deserialize over serde untagged for Component enum | serde's untagged within tagged enums is unreliable; manual match is deterministic |
-| 47-02 | Plugin components are leaf nodes in resolve.rs | No framework-visible children; internal structure opaque to framework |
-| 47-03 | data-ferro-map attribute for map config | Decouples render from init; config stored as JSON in data attribute |
-| 47-03 | Built-in plugins registered in OnceLock init | Auto-registered without explicit user call; always available |
-| 47-04 | Separate plugin_components field in MCP catalog | Explicit distinction between built-in and plugin components for agents |
-| 47-04 | Component param on json_ui_inspect for schema lookup | Reuse existing tool instead of creating separate MCP tool |
+### Roadmap Evolution
+
+- Milestone v5.1 created: housekeeping, 3 phases (Phase 54-56)
 
 ### Pending Todos
 
@@ -62,6 +56,6 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 
 ## Session Continuity
 
-Last session: 2026-02-10
-Stopped at: Completed 47-04-PLAN.md (Phase 47 complete)
+Last session: 2026-02-13
+Stopped at: Milestone v5.1 initialization
 Resume file: None
