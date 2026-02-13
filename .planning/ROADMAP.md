@@ -110,7 +110,7 @@ Plans:
 **Plans**: 3
 
 Plans:
-- [ ] 66-01: TBD
+- [x] 66-01: Loader, validation bridge, and lang::init tests (2026-02-13)
 - [x] 66-02: Complete test coverage for all 23 validation rules (2026-02-13)
 - [ ] 66-03: TBD
 
