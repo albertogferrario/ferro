@@ -2,6 +2,7 @@ use super::clean;
 use console::style;
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::io::{BufRead, BufReader};
+use std::net::TcpListener;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -31,8 +32,24 @@ impl ProcessManager {
         prefix: &str,
         color: console::Color,
     ) -> Result<(), String> {
+        self.spawn_with_prefix_env(command, args, cwd, prefix, color, &[])
+    }
+
+    fn spawn_with_prefix_env(
+        &mut self,
+        command: &str,
+        args: &[&str],
+        cwd: Option<&Path>,
+        prefix: &str,
+        color: console::Color,
+        env_vars: &[(&str, &str)],
+    ) -> Result<(), String> {
         let mut cmd = Command::new(command);
         cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
+
+        for (key, value) in env_vars {
+            cmd.env(key, value);
+        }
 
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
@@ -177,6 +194,16 @@ fn ensure_npm_dependencies() -> Result<(), String> {
     Ok(())
 }
 
+fn find_available_port(start: u16, max_attempts: u16) -> u16 {
+    for offset in 0..max_attempts {
+        let port = start + offset;
+        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
+            return port;
+        }
+    }
+    start
+}
+
 pub fn run(
     port: u16,
     frontend_port: u16,
@@ -202,7 +229,7 @@ pub fn run(
             .unwrap_or(8080)
     };
 
-    let vite_port = if frontend_port != 5173 {
+    let requested_vite_port = if frontend_port != 5173 {
         // CLI argument was explicitly provided
         frontend_port
     } else {
@@ -212,6 +239,19 @@ pub fn run(
             .and_then(|v| v.parse().ok())
             .unwrap_or(frontend_port)
     };
+
+    let vite_port = find_available_port(requested_vite_port, 10);
+    if vite_port != requested_vite_port {
+        println!(
+            "{} Port {} in use, using {} instead",
+            style("[frontend]").cyan().bold(),
+            requested_vite_port,
+            vite_port
+        );
+    }
+
+    // Set VITE_DEV_SERVER so InertiaConfig picks up the resolved port
+    std::env::set_var("VITE_DEV_SERVER", format!("http://localhost:{}", vite_port));
 
     // Auto-cleanup old build artifacts (silent, non-blocking)
     // Configurable via CARGO_SWEEP_DAYS (default: 7, set to 0 to disable)
@@ -338,13 +378,15 @@ pub fn run(
         );
 
         let frontend_path = Path::new("frontend");
+        let vite_port_str = vite_port.to_string();
 
-        if let Err(e) = manager.spawn_with_prefix(
+        if let Err(e) = manager.spawn_with_prefix_env(
             "npm",
-            &["run", "dev"],
+            &["run", "dev", "--", "--port", &vite_port_str, "--strictPort"],
             Some(frontend_path),
             "[frontend]",
             console::Color::Cyan,
+            &[],
         ) {
             eprintln!("{} {}", style("Error:").red().bold(), e);
             manager.shutdown_all();

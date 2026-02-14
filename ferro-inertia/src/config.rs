@@ -36,8 +36,11 @@ pub struct InertiaConfig {
 
 impl Default for InertiaConfig {
     fn default() -> Self {
+        let vite_dev_server = std::env::var("VITE_DEV_SERVER")
+            .unwrap_or_else(|_| "http://localhost:5173".to_string());
+
         Self {
-            vite_dev_server: "http://localhost:5173".to_string(),
+            vite_dev_server,
             entry_point: "src/main.tsx".to_string(),
             version: "1.0".to_string(),
             development: true,
