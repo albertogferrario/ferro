@@ -61,6 +61,15 @@ pub struct MapMarker {
     /// Optional popup content (plain text).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub popup: Option<String>,
+    /// Hex color for DivIcon pin (e.g., "#3B82F6"). When set, renders as colored CSS pin.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// HTML content for popup (alternative to plain text popup).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub popup_html: Option<String>,
+    /// URL to navigate to on marker click.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub href: Option<String>,
 }
 
 /// Global counter for unique map container IDs.
@@ -136,6 +145,18 @@ impl JsonUiPlugin for MapPlugin {
                             "popup": {
                                 "type": "string",
                                 "description": "Optional popup text shown on marker click"
+                            },
+                            "color": {
+                                "type": "string",
+                                "description": "Hex color for DivIcon pin (e.g., '#3B82F6'). When set, renders as colored CSS pin instead of default marker."
+                            },
+                            "popup_html": {
+                                "type": "string",
+                                "description": "HTML content for popup. Takes priority over plain text popup."
+                            },
+                            "href": {
+                                "type": "string",
+                                "description": "URL to navigate to on marker click."
                             }
                         }
                     }
