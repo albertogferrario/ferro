@@ -242,11 +242,20 @@ impl JsonUiPlugin for MapPlugin {
 /// and creates Leaflet maps. Uses `IntersectionObserver` to handle maps
 /// inside hidden containers (tabs, modals).
 const INIT_SCRIPT: &str = r#"
+(function() {
+  if (!document.getElementById('ferro-map-pin-css')) {
+    var s = document.createElement('style');
+    s.id = 'ferro-map-pin-css';
+    s.textContent = '.poi-marker{background:transparent;border:none;}.marker-pin{width:30px;height:30px;border-radius:50% 50% 50% 0;position:absolute;transform:rotate(-45deg);left:50%;top:50%;margin:-15px 0 0 -15px;}.marker-pin::after{content:"";width:18px;height:18px;margin:6px 0 0 6px;background:rgba(255,255,255,0.4);position:absolute;border-radius:50%;}';
+    document.head.appendChild(s);
+  }
+})();
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-ferro-map]').forEach(function(el) {
     try {
       var cfg = JSON.parse(el.getAttribute('data-ferro-map'));
       var map = L.map(el);
+      el._leaflet_map = map;
 
       var tileUrl = cfg.tile_url || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
       var attribution = cfg.attribution || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -260,9 +269,27 @@ document.addEventListener('DOMContentLoaded', function() {
       var allMarkers = [];
       if (cfg.markers) {
         cfg.markers.forEach(function(m) {
-          var marker = L.marker([m.lat, m.lng]).addTo(map);
-          if (m.popup) {
+          var opts = {};
+          if (m.color) {
+            opts.icon = L.divIcon({
+              className: 'poi-marker',
+              html: '<div class="marker-pin" style="background:' + m.color + '"></div>',
+              iconSize: [30, 42],
+              iconAnchor: [15, 42],
+              popupAnchor: [0, -42]
+            });
+          }
+          var marker = L.marker([m.lat, m.lng], opts).addTo(map);
+          if (m.popup_html) {
+            marker.bindPopup(m.popup_html);
+          } else if (m.popup) {
             marker.bindPopup(m.popup);
+          }
+          if (m.href) {
+            marker.on('click', function(e) {
+              L.DomEvent.stopPropagation(e);
+              window.location.href = m.href;
+            });
           }
           allMarkers.push(marker);
         });
