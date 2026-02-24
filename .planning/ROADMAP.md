@@ -14,10 +14,32 @@
 - ✅ [**v5.0 Proximity — JSON-UI Field Test**](milestones/v5.0-ROADMAP.md) — Phases 47-53 (shipped 2026-02-10)
 - ✅ [**v5.1 Housekeeping**](milestones/v5.1-ROADMAP.md) — Phases 54-57 (shipped 2026-02-13)
 - ✅ [**v6.0 ferro-lang — Localization**](milestones/v6.0-ROADMAP.md) — Phases 58-66 (shipped 2026-02-13)
+- ✅ **v6.1 Fix Known Issues** — Phase 67 (shipped 2026-02-24)
 
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v6.1 Fix Known Issues (Phase 67) — SHIPPED 2026-02-24</summary>
+
+**Milestone Goal:** Fix all known issues discovered during production readiness assessment.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 67. Fix Known Issues | 1/1 | Complete | 2026-02-24 |
+
+**Total:** 1 phase, 1 plan
+
+**Issues fixed:**
+- COMPONENT_CATALOG drift between CLI and MCP (synced Text element options, added Input.step to CLI, updated Map props in both)
+- Flaky validator test `test_validator_custom_attribute` (OnceLock race with translator)
+- Flaky lang config test `from_env_reads_env_vars` (env var race between parallel tests)
+- Scheduler `.unwrap()` calls replaced with `expect()` + input validation on factory methods
+- Clippy `approx_constant` errors in validation test data (3.14 → 3.17)
+
+</details>
+
 
 <details>
 <summary>✅ v6.0 ferro-lang — Localization (Phases 58-66) — SHIPPED 2026-02-13</summary>
@@ -274,6 +296,7 @@
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | ✅ Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
 | v6.0 ferro-lang — Localization | 58-66 | 11 | ✅ Complete | 2026-02-13 |
+| v6.1 Fix Known Issues | 67 | 1 | ✅ Complete | 2026-02-24 |
 
-**Total: 12 milestones shipped, 145 plans.**
+**Total: 13 milestones shipped, 146 plans.**
 

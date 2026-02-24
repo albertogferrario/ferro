@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Planning next milestone
+**Current focus:** Ready for production push
 
 ## Current Position
 
-Phase: 66 of 66 (all phases complete)
+Phase: 67 of 67 (all phases complete)
 Plan: All plans complete
 Status: Ready to plan next milestone
-Last activity: 2026-02-13 — v6.0 ferro-lang milestone archived
+Last activity: 2026-02-24 — v6.1 Fix Known Issues shipped
 
 Progress: ██████████ 100%
 
@@ -32,6 +32,7 @@ Progress: ██████████ 100%
 | v5.0 Proximity — JSON-UI Field Test | 47-53 | 20 | Complete | 2026-02-10 |
 | v5.1 Housekeeping | 54-57 | 5 | Complete | 2026-02-13 |
 | v6.0 ferro-lang — Localization | 58-66 | 11 | Complete | 2026-02-13 |
+| v6.1 Fix Known Issues | 67 | 1 | Complete | 2026-02-24 |
 
 ## Accumulated Context
 
@@ -41,8 +42,8 @@ Archived to PROJECT.md and milestone archive files.
 
 ### Roadmap Evolution
 
-- All planned milestones v1.0–v6.0 complete (12 milestones, 137 plans shipped)
-- v5.1 and v6.0 archived with full milestone archive files
+- All planned milestones v1.0–v6.1 complete (13 milestones, 146 plans shipped)
+- v6.1 shipped: catalog drift, flaky tests, scheduler unwraps, clippy fixes
 
 ### Pending Todos
 
@@ -58,6 +59,6 @@ v5.0 Proximity milestone created with 6 phases (47-52). First real-world test of
 
 ## Session Continuity
 
-Last session: 2026-02-13
-Stopped at: v5.1 and v6.0 milestones archived
+Last session: 2026-02-24
+Stopped at: v6.1 Fix Known Issues shipped, ready for production push
 Resume file: None

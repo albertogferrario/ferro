@@ -29,7 +29,7 @@ Props: columns (Vec<Column {key, label, format?}>), data_path (String), row_acti
 Props: action (Action), fields (Vec<ComponentNode>), method (Option<GET|POST|PUT|PATCH|DELETE>)
 
 ### Input
-Props: field (String), label (String), input_type (text|email|password|number|textarea|hidden|date|time|url|tel|search), placeholder (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>), description (Option<String>), default_value (Option<String>), data_path (Option<String>)
+Props: field (String), label (String), input_type (text|email|password|number|textarea|hidden|date|time|url|tel|search), placeholder (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>), description (Option<String>), default_value (Option<String>), data_path (Option<String>), step (Option<String>)
 
 ### Select
 Props: field (String), label (String), options (Vec<SelectOption {value, label}>), placeholder (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>), description (Option<String>), default_value (Option<String>), data_path (Option<String>)
@@ -78,8 +78,8 @@ Props: width (Option<String>), height (Option<String>), rounded (Option<bool>)
 Plugin components use the same JSON syntax as built-in components. Their JS/CSS assets are loaded automatically.
 
 ### Map
-Props: center ([f64; 2] required), zoom (u8 0-18, default 13), height (String, default "400px"), markers (Vec<{lat, lng, popup?}>), tile_url (Option<String>), attribution (Option<String>), max_zoom (Option<u8>)
-Example JSON: {"type": "Map", "center": [51.505, -0.09], "zoom": 13, "markers": [{"lat": 51.5, "lng": -0.09, "popup": "Hello"}]}
+Props: center (Option<[f64; 2]>), zoom (u8 0-18, default 13), height (String, default "400px"), fit_bounds (Option<bool>), markers (Vec<{lat, lng, popup?, color?, popup_html?, href?}>), tile_url (Option<String>), attribution (Option<String>), max_zoom (Option<u8>)
+Example JSON: {"type": "Map", "fit_bounds": true, "markers": [{"lat": 51.5, "lng": -0.09, "popup": "Hello"}]}
 Note: Leaflet CSS/JS loaded via CDN automatically. Works inside Tabs/Modals (IntersectionObserver handles resize).
 
 ## Action

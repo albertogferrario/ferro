@@ -67,7 +67,7 @@ pub struct ViewConventions {
 const COMPONENT_CATALOG: &str = r#"## Component Catalog
 
 ### Text
-Props: content (String), element (h1|h2|h3|span|p)
+Props: content (String), element (h1|h2|h3|span|div|section|p)
 
 ### Button
 Props: label (String), variant (default|secondary|destructive|outline|ghost|link), size (xs|sm|default|lg), disabled (Option<bool>), icon (Option<String>), icon_position (Option<left|right>)
@@ -131,8 +131,8 @@ Props: width (Option<String>), height (Option<String>), rounded (Option<bool>)
 Plugin components use the same JSON syntax as built-in components. Their JS/CSS assets are loaded automatically.
 
 ### Map
-Props: center ([f64; 2] required), zoom (u8 0-18, default 13), height (String, default "400px"), markers (Vec<{lat, lng, popup?}>), tile_url (Option<String>), attribution (Option<String>), max_zoom (Option<u8>)
-Example JSON: {"type": "Map", "center": [51.505, -0.09], "zoom": 13, "markers": [{"lat": 51.5, "lng": -0.09, "popup": "Hello"}]}
+Props: center (Option<[f64; 2]>), zoom (u8 0-18, default 13), height (String, default "400px"), fit_bounds (Option<bool>), markers (Vec<{lat, lng, popup?, color?, popup_html?, href?}>), tile_url (Option<String>), attribution (Option<String>), max_zoom (Option<u8>)
+Example JSON: {"type": "Map", "fit_bounds": true, "markers": [{"lat": 51.5, "lng": -0.09, "popup": "Hello"}]}
 Note: Leaflet CSS/JS loaded via CDN automatically. Works inside Tabs/Modals (IntersectionObserver handles resize).
 
 ## Action

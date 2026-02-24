@@ -237,36 +237,47 @@ impl CronExpression {
 
     /// Every minute: `* * * * *`
     pub fn every_minute() -> Self {
-        Self::parse("* * * * *").unwrap()
+        Self::parse("* * * * *").expect("valid cron: every minute")
     }
 
     /// Every N minutes: `*/N * * * *`
+    ///
+    /// # Panics
+    /// Panics if `n` is 0.
     pub fn every_n_minutes(n: u32) -> Self {
-        Self::parse(&format!("*/{} * * * *", n)).unwrap()
+        assert!(n > 0, "interval must be > 0");
+        Self::parse(&format!("*/{} * * * *", n)).expect("valid cron: every N minutes")
     }
 
     /// Every hour at minute 0: `0 * * * *`
     pub fn hourly() -> Self {
-        Self::parse("0 * * * *").unwrap()
+        Self::parse("0 * * * *").expect("valid cron: hourly")
     }
 
     /// Every hour at specific minute: `M * * * *`
+    ///
+    /// # Panics
+    /// Panics if `minute` >= 60.
     pub fn hourly_at(minute: u32) -> Self {
-        Self::parse(&format!("{} * * * *", minute)).unwrap()
+        assert!(minute < 60, "minute must be 0-59, got {}", minute);
+        Self::parse(&format!("{} * * * *", minute)).expect("valid cron: hourly at")
     }
 
     /// Daily at midnight: `0 0 * * *`
     pub fn daily() -> Self {
-        Self::parse("0 0 * * *").unwrap()
+        Self::parse("0 0 * * *").expect("valid cron: daily")
     }
 
     /// Daily at specific time: `M H * * *`
+    ///
+    /// Accepts `"HH:MM"` format. Falls back to midnight on invalid input.
     pub fn daily_at(time: &str) -> Self {
         let parts: Vec<&str> = time.split(':').collect();
         if parts.len() == 2 {
-            let hour = parts[0].parse().unwrap_or(0);
-            let minute = parts[1].parse().unwrap_or(0);
-            Self::parse(&format!("{} {} * * *", minute, hour)).unwrap()
+            let hour: u32 = parts[0].parse().unwrap_or(0);
+            let minute: u32 = parts[1].parse().unwrap_or(0);
+            Self::parse(&format!("{} {} * * *", minute.min(59), hour.min(23)))
+                .expect("valid cron: daily at")
         } else {
             Self::daily()
         }
@@ -274,48 +285,56 @@ impl CronExpression {
 
     /// Weekly on Sunday at midnight: `0 0 * * 0`
     pub fn weekly() -> Self {
-        Self::parse("0 0 * * 0").unwrap()
+        Self::parse("0 0 * * 0").expect("valid cron: weekly")
     }
 
     /// Weekly on specific day at midnight: `0 0 * * D`
     pub fn weekly_on(day: DayOfWeek) -> Self {
-        Self::parse(&format!("0 0 * * {}", day as u32)).unwrap()
+        Self::parse(&format!("0 0 * * {}", day as u32)).expect("valid cron: weekly on")
     }
 
-    /// On specific days of the week at midnight
+    /// On specific days of the week at midnight.
+    ///
+    /// # Panics
+    /// Panics if `days` is empty.
     pub fn on_days(days: &[DayOfWeek]) -> Self {
+        assert!(!days.is_empty(), "days must not be empty");
         let days_str: Vec<String> = days.iter().map(|d| (*d as u32).to_string()).collect();
-        Self::parse(&format!("0 0 * * {}", days_str.join(","))).unwrap()
+        Self::parse(&format!("0 0 * * {}", days_str.join(","))).expect("valid cron: on days")
     }
 
     /// Monthly on the first day at midnight: `0 0 1 * *`
     pub fn monthly() -> Self {
-        Self::parse("0 0 1 * *").unwrap()
+        Self::parse("0 0 1 * *").expect("valid cron: monthly")
     }
 
     /// Monthly on specific day at midnight: `0 0 D * *`
+    ///
+    /// # Panics
+    /// Panics if `day` is 0 or > 31.
     pub fn monthly_on(day: u32) -> Self {
-        Self::parse(&format!("0 0 {} * *", day)).unwrap()
+        assert!(day >= 1 && day <= 31, "day must be 1-31, got {}", day);
+        Self::parse(&format!("0 0 {} * *", day)).expect("valid cron: monthly on")
     }
 
     /// Quarterly on the first day of each quarter at midnight
     pub fn quarterly() -> Self {
-        Self::parse("0 0 1 1,4,7,10 *").unwrap()
+        Self::parse("0 0 1 1,4,7,10 *").expect("valid cron: quarterly")
     }
 
     /// Yearly on January 1st at midnight: `0 0 1 1 *`
     pub fn yearly() -> Self {
-        Self::parse("0 0 1 1 *").unwrap()
+        Self::parse("0 0 1 1 *").expect("valid cron: yearly")
     }
 
     /// On weekdays (Monday-Friday) at midnight
     pub fn weekdays() -> Self {
-        Self::parse("0 0 * * 1-5").unwrap()
+        Self::parse("0 0 * * 1-5").expect("valid cron: weekdays")
     }
 
     /// On weekends (Saturday-Sunday) at midnight
     pub fn weekends() -> Self {
-        Self::parse("0 0 * * 0,6").unwrap()
+        Self::parse("0 0 * * 0,6").expect("valid cron: weekends")
     }
 }
 

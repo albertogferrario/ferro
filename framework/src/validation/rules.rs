@@ -1020,7 +1020,7 @@ mod tests {
         // String integers are accepted
         assert!(rule.validate("age", &json!("123"), &data).is_ok());
         // Floats are not integers
-        assert!(rule.validate("age", &json!(3.14), &data).is_err());
+        assert!(rule.validate("age", &json!(3.17), &data).is_err());
         assert!(rule.validate("age", &json!("hello"), &data).is_err());
         assert!(rule.validate("age", &json!(true), &data).is_err());
         // Null passthrough
@@ -1033,7 +1033,7 @@ mod tests {
         let data = json!({});
 
         assert!(rule.validate("price", &json!(42), &data).is_ok());
-        assert!(rule.validate("price", &json!(3.14), &data).is_ok());
+        assert!(rule.validate("price", &json!(3.17), &data).is_ok());
         assert!(rule.validate("price", &json!(-10), &data).is_ok());
         // String numbers are accepted
         assert!(rule.validate("price", &json!("42.5"), &data).is_ok());
