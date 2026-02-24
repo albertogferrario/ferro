@@ -133,6 +133,7 @@ ferro serve --skip-types
 2. Starts the Vite frontend dev server
 3. Watches Rust files to regenerate TypeScript types automatically
 4. Proxies frontend requests to the backend
+5. Auto-resolves port conflicts — if the frontend port is already in use, the next available port is selected and propagated to the backend via `VITE_DEV_SERVER`
 
 ### `ferro generate-types`
 

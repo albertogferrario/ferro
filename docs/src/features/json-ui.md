@@ -1,5 +1,7 @@
 # JSON-UI
 
+> **Experimental:** JSON-UI is functional and field-tested but the component schema and plugin interface may evolve. Pin your Ferro version in production.
+
 JSON-UI is a server-driven UI system that renders Tailwind-styled HTML from Rust data structures. No frontend build step, no React, no Node.js -- define your interface as a component tree and the framework renders it to HTML.
 
 ## How It Works
@@ -163,15 +165,27 @@ The Map component renders interactive maps using [Leaflet 1.9.4](https://leaflet
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `center` | `[f64; 2]` | Yes | -- | Map center as `[latitude, longitude]` |
+| `center` | `Option<[f64; 2]>` | No* | -- | Map center as `[latitude, longitude]` |
 | `zoom` | `u8` | No | `13` | Zoom level (0-18) |
 | `height` | `String` | No | `"400px"` | CSS height of the map container |
+| `fit_bounds` | `Option<bool>` | No | -- | Auto-zoom to fit all markers. When `true`, `center`/`zoom` are ignored if markers exist |
 | `markers` | `Vec<MapMarker>` | No | `[]` | Markers to display |
 | `tile_url` | `String` | No | OpenStreetMap | Custom tile layer URL template |
 | `attribution` | `String` | No | OSM attribution | Tile layer attribution text |
 | `max_zoom` | `u8` | No | `19` | Maximum zoom level |
 
-Each `MapMarker` has: `lat` (f64), `lng` (f64), `popup` (optional String).
+*`center` is optional when `fit_bounds` is `true` and markers are provided.
+
+#### MapMarker
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `lat` | `f64` | Yes | Latitude |
+| `lng` | `f64` | Yes | Longitude |
+| `popup` | `Option<String>` | No | Plain text popup content |
+| `color` | `Option<String>` | No | Hex color for a colored CSS pin (e.g., `"#3B82F6"`). Renders as a DivIcon instead of the default marker |
+| `popup_html` | `Option<String>` | No | HTML content for the popup (alternative to plain text `popup`) |
+| `href` | `Option<String>` | No | URL to navigate to on marker click |
 
 ### Basic Example
 
@@ -185,6 +199,33 @@ Each `MapMarker` has: `lat` (f64), `lng` (f64), `popup` (optional String).
   ]
 }
 ```
+
+### Colored Markers with HTML Popups
+
+```json
+{
+  "type": "Map",
+  "fit_bounds": true,
+  "markers": [
+    {
+      "lat": 45.464,
+      "lng": 9.190,
+      "color": "#3B82F6",
+      "popup_html": "<strong>Milan</strong><br>Fashion capital",
+      "href": "/places/milan"
+    },
+    {
+      "lat": 41.902,
+      "lng": 12.496,
+      "color": "#EF4444",
+      "popup_html": "<strong>Rome</strong><br>Eternal city",
+      "href": "/places/rome"
+    }
+  ]
+}
+```
+
+When `fit_bounds` is `true`, the map auto-zooms to fit all markers. Colored markers render as CSS DivIcon pins. Clicking a marker with `href` navigates to that URL.
 
 ### Custom Tiles and Height
 

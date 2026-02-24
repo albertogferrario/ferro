@@ -1,5 +1,7 @@
 //! # Ferro JSON-UI
 //!
+//! **Experimental:** The component schema and plugin interface may evolve.
+//!
 //! JSON-based server-driven UI schema types for the Ferro framework.
 //!
 //! This crate defines the typed foundation for JSON-UI: a declarative
