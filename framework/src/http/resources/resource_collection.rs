@@ -191,7 +191,7 @@ mod tests {
         let result = with_test_request_uri("/items", move |req| {
             let collection = ResourceCollection::new(items);
             let response = collection.to_response(&req);
-            let body: Value = serde_json::from_str(&response.body()).unwrap();
+            let body: Value = serde_json::from_str(response.body()).unwrap();
             body
         })
         .await;
@@ -214,7 +214,7 @@ mod tests {
             let meta = PaginationMeta::new(1, 2, 6);
             let collection = ResourceCollection::paginated(items, meta);
             let response = collection.to_response(&req);
-            let body: Value = serde_json::from_str(&response.body()).unwrap();
+            let body: Value = serde_json::from_str(response.body()).unwrap();
             body
         })
         .await;
@@ -245,7 +245,7 @@ mod tests {
         let result = with_test_request_uri("/items", move |req| {
             let collection = ResourceCollection::new(items).additional(json!({"version": "v1"}));
             let response = collection.to_response(&req);
-            let body: Value = serde_json::from_str(&response.body()).unwrap();
+            let body: Value = serde_json::from_str(response.body()).unwrap();
             body
         })
         .await;
@@ -261,7 +261,7 @@ mod tests {
         let result = with_test_request_uri("/items", move |req| {
             let collection = ResourceCollection::new(items);
             let response = collection.to_response(&req);
-            let body: Value = serde_json::from_str(&response.body()).unwrap();
+            let body: Value = serde_json::from_str(response.body()).unwrap();
             body
         })
         .await;

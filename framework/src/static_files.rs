@@ -163,7 +163,7 @@ mod tests {
     #[tokio::test]
     async fn root_file_gets_must_revalidate_cache() {
         let dir = TempDir::new().unwrap();
-        fs::write(dir.path().join("favicon.ico"), &[0u8; 4]).unwrap();
+        fs::write(dir.path().join("favicon.ico"), [0u8; 4]).unwrap();
 
         let resp = try_serve_from_dir(dir.path(), "/favicon.ico")
             .await
