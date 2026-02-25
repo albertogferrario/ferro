@@ -17,21 +17,22 @@
 - ✅ **v6.1 Fix Known Issues** — Phase 67 (shipped 2026-02-24)
 - ✅ **v7.0 Resend Integration** — Phase 68 (shipped 2026-02-25)
 - 🔧 **v7.1 Static File Serving** — Phase 69
+- 🔧 **v7.2 CI Stability** — Phase 70
 
 ---
 
 ## Active Milestone
 
-### v7.1 Static File Serving (Phase 69)
+### v7.2 CI Stability (Phase 70)
 
-**Milestone Goal:** Add built-in static file serving so production binaries serve Vite build output from `public/` without manual route setup.
+**Milestone Goal:** Fix flaky notification dispatcher tests and ensure CI passes reliably.
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 69. Static File Serving | TBD | Pending | - |
+| 70. CI Stability | 1 | Pending | - |
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 69 to break down)
+- [ ] 70-01: Fix flaky env var tests in ferro-notifications dispatcher
 
 ---
 
