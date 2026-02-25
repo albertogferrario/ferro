@@ -176,7 +176,7 @@ enum Commands {
     MakeResource {
         /// Name of the resource (e.g., UserResource, User)
         name: String,
-        /// Model path for From<Model> generation (e.g., entities::users::Model)
+        /// Model path for `From<Model>` generation (e.g., `entities::users::Model`)
         #[arg(long, short = 'm')]
         model: Option<String>,
     },

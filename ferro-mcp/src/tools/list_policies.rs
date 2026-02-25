@@ -1,4 +1,4 @@
-//! List authorization policies tool - scan for impl Policy<Model> patterns
+//! List authorization policies tool - scan for impl `Policy<Model>` patterns
 
 use crate::error::Result;
 use serde::Serialize;
