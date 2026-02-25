@@ -49,6 +49,7 @@
 //! - Hyper
 
 mod config;
+mod manifest;
 mod request;
 mod response;
 mod shared;

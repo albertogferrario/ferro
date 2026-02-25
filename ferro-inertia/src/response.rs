@@ -1,6 +1,7 @@
 //! Inertia response generation.
 
 use crate::config::InertiaConfig;
+use crate::manifest::resolve_assets;
 use crate::request::InertiaRequest;
 use crate::shared::InertiaShared;
 use serde::Serialize;
@@ -429,6 +430,15 @@ impl InertiaResponse {
                 page_json
             )
         } else {
+            let assets = resolve_assets(&self.config.manifest_path, &self.config.entry_point);
+
+            let css_tags: String = assets
+                .css
+                .iter()
+                .map(|href| format!(r#"    <link rel="stylesheet" href="{href}">"#))
+                .collect::<Vec<_>>()
+                .join("\n");
+
             format!(
                 r#"<!DOCTYPE html>
 <html lang="en">
@@ -437,13 +447,14 @@ impl InertiaResponse {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{csrf}">
     <title>Inertia App</title>
-    <script type="module" src="/assets/main.js"></script>
-    <link rel="stylesheet" href="/assets/main.css">
+    <script type="module" src="{js_src}"></script>
+{css_tags}
 </head>
 <body>
     <div id="app" data-page="{page_json}"></div>
 </body>
-</html>"#
+</html>"#,
+                js_src = assets.js,
             )
         };
 

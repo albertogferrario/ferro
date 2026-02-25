@@ -32,6 +32,8 @@ pub struct InertiaConfig {
     pub development: bool,
     /// Custom HTML template (if None, uses default)
     pub html_template: Option<String>,
+    /// Path to Vite's manifest.json for resolving hashed asset filenames
+    pub manifest_path: String,
 }
 
 impl Default for InertiaConfig {
@@ -50,6 +52,7 @@ impl Default for InertiaConfig {
             version: "1.0".to_string(),
             development: is_dev,
             html_template: None,
+            manifest_path: "public/assets/.vite/manifest.json".to_string(),
         }
     }
 }
@@ -87,6 +90,12 @@ impl InertiaConfig {
     /// Enable development mode (enables Vite dev server integration).
     pub fn development(mut self) -> Self {
         self.development = true;
+        self
+    }
+
+    /// Set the path to Vite's manifest.json.
+    pub fn manifest_path(mut self, path: impl Into<String>) -> Self {
+        self.manifest_path = path.into();
         self
     }
 
