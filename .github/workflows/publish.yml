@@ -54,7 +54,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      workflows: write
     outputs:
       version: ${{ needs.check-version.outputs.new_version }}
     steps:
@@ -117,7 +116,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      workflows: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -220,7 +218,9 @@ jobs:
       - name: Create and push tag
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push origin "v$VERSION"
+          SHA=$(git rev-parse HEAD)
+          gh api repos/${{ github.repository }}/git/refs \
+            -f ref="refs/tags/v$VERSION" \
+            -f sha="$SHA"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
