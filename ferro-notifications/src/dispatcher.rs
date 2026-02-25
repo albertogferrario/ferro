@@ -5,6 +5,7 @@ use crate::channels::{MailMessage, SlackMessage};
 use crate::notifiable::Notifiable;
 use crate::notification::Notification;
 use crate::Error;
+use serde::Serialize;
 use std::env;
 use std::sync::OnceLock;
 use tracing::{error, info};
@@ -182,9 +183,7 @@ impl MailConfig {
 
         match driver_str.to_lowercase().as_str() {
             "resend" => {
-                let api_key = env::var("RESEND_API_KEY")
-                    .ok()
-                    .filter(|s| !s.is_empty())?;
+                let api_key = env::var("RESEND_API_KEY").ok().filter(|s| !s.is_empty())?;
 
                 Some(Self {
                     driver: MailDriver::Resend,
@@ -203,10 +202,8 @@ impl MailConfig {
                     .and_then(|p| p.parse().ok())
                     .unwrap_or(587);
 
-                let username =
-                    env::var("MAIL_USERNAME").ok().filter(|s| !s.is_empty());
-                let password =
-                    env::var("MAIL_PASSWORD").ok().filter(|s| !s.is_empty());
+                let username = env::var("MAIL_USERNAME").ok().filter(|s| !s.is_empty());
+                let password = env::var("MAIL_PASSWORD").ok().filter(|s| !s.is_empty());
 
                 let tls = env::var("MAIL_ENCRYPTION")
                     .map(|v| v.to_lowercase() != "none")
@@ -256,6 +253,24 @@ impl MailConfig {
         }
         self
     }
+}
+
+/// Resend API email payload.
+#[derive(Serialize)]
+struct ResendEmailPayload {
+    from: String,
+    to: Vec<String>,
+    subject: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    html: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    text: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    cc: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    bcc: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reply_to: Option<String>,
 }
 
 /// The notification dispatcher.
@@ -314,7 +329,7 @@ impl NotificationDispatcher {
         Ok(())
     }
 
-    /// Send a mail notification.
+    /// Send a mail notification, dispatching to the configured driver.
     async fn send_mail<N: Notifiable + ?Sized>(
         notifiable: &N,
         message: &MailMessage,
@@ -330,12 +345,23 @@ impl NotificationDispatcher {
 
         info!(to = %to, subject = %message.subject, "Sending mail notification");
 
+        match config.driver {
+            MailDriver::Smtp => Self::send_mail_smtp(&to, message, config).await,
+            MailDriver::Resend => Self::send_mail_resend(&to, message, config).await,
+        }
+    }
+
+    /// Send mail via SMTP using lettre.
+    async fn send_mail_smtp(
+        to: &str,
+        message: &MailMessage,
+        config: &MailConfig,
+    ) -> Result<(), Error> {
         let smtp = config
             .smtp
             .as_ref()
-            .ok_or_else(|| Error::mail("SMTP config missing for SMTP driver".to_string()))?;
+            .ok_or_else(|| Error::mail("SMTP config missing for SMTP driver"))?;
 
-        // Build the email
         use lettre::message::{header::ContentType, Mailbox};
         use lettre::transport::smtp::authentication::Credentials;
         use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
@@ -360,7 +386,6 @@ impl NotificationDispatcher {
             .to(to_mailbox)
             .subject(&message.subject);
 
-        // Add reply-to if specified
         if let Some(ref reply_to) = message.reply_to {
             let reply_to_mailbox: Mailbox = reply_to
                 .parse()
@@ -368,7 +393,6 @@ impl NotificationDispatcher {
             email_builder = email_builder.reply_to(reply_to_mailbox);
         }
 
-        // Add CC recipients
         for cc in &message.cc {
             let cc_mailbox: Mailbox = cc
                 .parse()
@@ -376,7 +400,6 @@ impl NotificationDispatcher {
             email_builder = email_builder.cc(cc_mailbox);
         }
 
-        // Add BCC recipients
         for bcc in &message.bcc {
             let bcc_mailbox: Mailbox = bcc
                 .parse()
@@ -384,7 +407,6 @@ impl NotificationDispatcher {
             email_builder = email_builder.bcc(bcc_mailbox);
         }
 
-        // Build the message body
         let email = if let Some(ref html) = message.html {
             email_builder
                 .header(ContentType::TEXT_HTML)
@@ -397,7 +419,6 @@ impl NotificationDispatcher {
                 .map_err(|e| Error::mail(format!("Failed to build email: {}", e)))?
         };
 
-        // Build the transport
         let transport = if smtp.tls {
             AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp.host)
                 .map_err(|e| Error::mail(format!("Failed to create transport: {}", e)))?
@@ -407,22 +428,77 @@ impl NotificationDispatcher {
 
         let transport = transport.port(smtp.port);
 
-        let transport =
-            if let (Some(ref user), Some(ref pass)) = (&smtp.username, &smtp.password) {
-                transport.credentials(Credentials::new(user.clone(), pass.clone()))
-            } else {
-                transport
-            };
+        let transport = if let (Some(ref user), Some(ref pass)) = (&smtp.username, &smtp.password) {
+            transport.credentials(Credentials::new(user.clone(), pass.clone()))
+        } else {
+            transport
+        };
 
         let mailer = transport.build();
 
-        // Send the email
         mailer
             .send(email)
             .await
             .map_err(|e| Error::mail(format!("Failed to send email: {}", e)))?;
 
-        info!(to = %to, "Mail notification sent");
+        info!(to = %to, "Mail notification sent via SMTP");
+        Ok(())
+    }
+
+    /// Send mail via Resend HTTP API.
+    async fn send_mail_resend(
+        to: &str,
+        message: &MailMessage,
+        config: &MailConfig,
+    ) -> Result<(), Error> {
+        let resend = config
+            .resend
+            .as_ref()
+            .ok_or_else(|| Error::mail("Resend config missing for Resend driver"))?;
+
+        let from = message.from.clone().unwrap_or_else(|| {
+            if let Some(ref name) = config.from_name {
+                format!("{} <{}>", name, config.from)
+            } else {
+                config.from.clone()
+            }
+        });
+
+        let payload = ResendEmailPayload {
+            from,
+            to: vec![to.to_string()],
+            subject: message.subject.clone(),
+            html: message.html.clone(),
+            text: if message.html.is_some() {
+                None
+            } else {
+                Some(message.body.clone())
+            },
+            cc: message.cc.clone(),
+            bcc: message.bcc.clone(),
+            reply_to: message.reply_to.clone(),
+        };
+
+        let client = reqwest::Client::new();
+        let response = client
+            .post("https://api.resend.com/emails")
+            .bearer_auth(&resend.api_key)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| Error::mail(format!("Resend HTTP request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            error!(status = %status, body = %body, "Resend API error");
+            return Err(Error::mail(format!(
+                "Resend API error {}: {}",
+                status, body
+            )));
+        }
+
+        info!(to = %to, "Mail notification sent via Resend");
         Ok(())
     }
 
@@ -510,8 +586,7 @@ mod tests {
 
     #[test]
     fn test_mail_config_resend_builder() {
-        let config = MailConfig::resend("re_123456", "noreply@example.com")
-            .from_name("My App");
+        let config = MailConfig::resend("re_123456", "noreply@example.com").from_name("My App");
 
         assert!(matches!(config.driver, MailDriver::Resend));
         assert_eq!(config.from, "noreply@example.com");
@@ -524,8 +599,7 @@ mod tests {
 
     #[test]
     fn test_mail_config_no_tls() {
-        let config = MailConfig::new("smtp.example.com", 587, "noreply@example.com")
-            .no_tls();
+        let config = MailConfig::new("smtp.example.com", 587, "noreply@example.com").no_tls();
 
         let smtp = config.smtp.as_ref().unwrap();
         assert!(!smtp.tls);
