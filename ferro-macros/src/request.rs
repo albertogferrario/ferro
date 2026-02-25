@@ -75,7 +75,7 @@ pub fn derive_request_impl(input: TokenStream) -> TokenStream {
 /// This expands to:
 ///
 /// ```rust,ignore
-/// #[derive(serde::Deserialize, validator::Validate)]
+/// #[derive(ferro::serde::Deserialize, ferro::validator::Validate)]
 /// pub struct CreateUserRequest {
 ///     #[validate(email)]
 ///     pub email: String,
@@ -119,7 +119,7 @@ pub fn request_attr_impl(_attr: TokenStream, input: TokenStream) -> TokenStream 
 
     let output = quote! {
         #(#attrs)*
-        #[derive(serde::Deserialize, validator::Validate)]
+        #[derive(#ferro::serde::Deserialize, #ferro::validator::Validate)]
         #vis struct #name #generics #fields
 
         impl #impl_generics #ferro::FormRequest for #name #ty_generics #where_clause {}
