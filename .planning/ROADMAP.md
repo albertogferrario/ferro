@@ -18,21 +18,22 @@
 - ✅ **v7.0 Resend Integration** — Phase 68 (shipped 2026-02-25)
 - 🔧 **v7.1 Static File Serving** — Phase 69
 - 🔧 **v7.2 CI Stability** — Phase 70
+- 🔧 **v7.3 Vite Manifest** — Phase 71
 
 ---
 
 ## Active Milestone
 
-### v7.2 CI Stability (Phase 70)
+### v7.3 Vite Manifest (Phase 71)
 
-**Milestone Goal:** Fix flaky notification dispatcher tests and ensure CI passes reliably.
+**Milestone Goal:** Read Vite manifest.json in production to resolve hashed asset filenames instead of hardcoding paths.
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 70. CI Stability | 1 | Pending | - |
+| 71. Vite Manifest | 1 | Pending | - |
 
 Plans:
-- [ ] 70-01: Fix flaky env var tests in ferro-notifications dispatcher
+- [ ] 71-01: Read Vite manifest for production asset paths
 
 ---
 
