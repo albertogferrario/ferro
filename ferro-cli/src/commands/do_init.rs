@@ -82,10 +82,11 @@ pub fn run(github_repo: Option<String>) {
     println!("Next steps:");
     println!("  1. Review and customize .do/app.yaml");
     println!("  2. Push to GitHub and connect to DigitalOcean App Platform");
+    println!("  3. Upload environment variables in the DO App Platform dashboard");
     println!();
     println!(
         "{}",
-        style("Tip: Health checks use the built-in /_ferro/health endpoint").dim()
+        style("Tip: Use your .env file as reference for required variables").dim()
     );
 }
 

@@ -819,7 +819,7 @@ ferro do:init --repo owner/repo
 ```
 
 **Generated files:**
-- `.do/app.yaml` — App Platform spec with service, database, and Redis config
+- `.do/app.yaml` — App Platform spec with service config (add env vars via dashboard)
 - `Dockerfile` — Production-ready multi-stage build (if not present)
 - `.dockerignore` — Excludes build artifacts (if not present)
 

@@ -132,7 +132,7 @@ BROADCAST_ALLOW_CLIENT_EVENTS=true  # Allow client-to-client whisper (default: t
 # ==============================================================================
 # Mail configuration
 
-MAIL_DRIVER=smtp       # smtp or resend
+MAIL_DRIVER=resend     # smtp or resend
 MAIL_HOST=localhost
 MAIL_PORT=587
 MAIL_USERNAME=

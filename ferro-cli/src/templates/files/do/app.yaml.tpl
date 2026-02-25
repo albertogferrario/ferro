@@ -20,25 +20,3 @@ services:
       http_path: /_ferro/health
       initial_delay_seconds: 10
       period_seconds: 10
-    envs:
-      - key: APP_ENV
-        value: production
-      - key: APP_URL
-        scope: RUN_TIME
-        value: ${APP_URL}
-      - key: DATABASE_URL
-        scope: RUN_TIME
-        value: ${db.DATABASE_URL}
-      - key: REDIS_URL
-        scope: RUN_TIME
-        value: ${redis.REDIS_URL}
-
-databases:
-  - name: db
-    engine: PG
-    production: false
-    cluster_name: {package_name}-db
-
-  - name: redis
-    engine: REDIS
-    production: false
