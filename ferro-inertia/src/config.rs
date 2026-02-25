@@ -39,11 +39,16 @@ impl Default for InertiaConfig {
         let vite_dev_server = std::env::var("VITE_DEV_SERVER")
             .unwrap_or_else(|_| "http://localhost:5173".to_string());
 
+        let is_dev = !matches!(
+            std::env::var("APP_ENV").ok().as_deref(),
+            Some("production") | Some("staging")
+        );
+
         Self {
             vite_dev_server,
             entry_point: "src/main.tsx".to_string(),
             version: "1.0".to_string(),
-            development: true,
+            development: is_dev,
             html_template: None,
         }
     }
