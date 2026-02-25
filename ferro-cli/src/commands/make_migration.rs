@@ -219,13 +219,13 @@ impl MigrationTrait for Migration {{
                     )
                     .col(
                         ColumnDef::new({table_enum_name}::CreatedAt)
-                            .timestamp()
+                            .timestamp_with_time_zone()
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )
                     .col(
                         ColumnDef::new({table_enum_name}::UpdatedAt)
-                            .timestamp()
+                            .timestamp_with_time_zone()
                             .not_null()
                             .default(Expr::current_timestamp()),
                     )

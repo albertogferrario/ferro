@@ -67,8 +67,9 @@ RUN useradd -m -u 1000 appuser
 # Copy the compiled binary
 COPY --from=backend-builder /app/target/release/{package_name} ./app
 
-# Copy public assets
+# Copy public assets and translations
 COPY --from=backend-builder /app/public ./public
+COPY --from=backend-builder /app/lang ./lang
 
 # Set ownership
 RUN chown -R appuser:appuser /app
