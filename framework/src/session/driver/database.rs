@@ -41,7 +41,7 @@ impl SessionStore for DatabaseSessionDriver {
 
         if let Some(session) = result {
             // Check if expired
-            let now = chrono::Utc::now().naive_utc();
+            let now = chrono::Utc::now();
             let expiry =
                 session.last_activity + chrono::Duration::seconds(self.lifetime.as_secs() as i64);
 
@@ -73,7 +73,7 @@ impl SessionStore for DatabaseSessionDriver {
         let payload = serde_json::to_string(&session.data)
             .map_err(|e| FrameworkError::internal(format!("Session serialize error: {e}")))?;
 
-        let now = chrono::Utc::now().naive_utc();
+        let now = chrono::Utc::now();
 
         // Check if session exists
         let existing = sessions::Entity::find_by_id(&session.id)
@@ -128,7 +128,7 @@ impl SessionStore for DatabaseSessionDriver {
     async fn gc(&self) -> Result<u64, FrameworkError> {
         let db = DB::connection()?;
 
-        let threshold = chrono::Utc::now().naive_utc()
+        let threshold = chrono::Utc::now()
             - chrono::Duration::seconds(self.lifetime.as_secs() as i64);
 
         let result = sessions::Entity::delete_many()
@@ -154,7 +154,7 @@ pub mod sessions {
         #[sea_orm(column_type = "Text")]
         pub payload: String,
         pub csrf_token: String,
-        pub last_activity: chrono::NaiveDateTime,
+        pub last_activity: chrono::DateTime<chrono::Utc>,
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
