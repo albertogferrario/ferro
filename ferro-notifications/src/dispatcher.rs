@@ -561,6 +561,7 @@ impl NotificationDispatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_mail_config_smtp_builder() {
@@ -641,6 +642,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_mail_config_smtp_from_env() {
         clean_mail_env();
         with_env_vars(
@@ -671,6 +673,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_mail_config_resend_from_env() {
         clean_mail_env();
         with_env_vars(
@@ -694,6 +697,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_mail_config_default_driver() {
         clean_mail_env();
         with_env_vars(
@@ -711,6 +715,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_mail_config_resend_missing_api_key() {
         clean_mail_env();
         with_env_vars(
