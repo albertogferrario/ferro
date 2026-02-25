@@ -68,8 +68,8 @@ pub fn execute(project_root: &Path, locale_filter: Option<&str>) -> Result<LangF
     }
 
     if locale_keys.is_empty() {
-        return Err(if locale_filter.is_some() {
-            format!("No locale matching '{}' found", locale_filter.unwrap())
+        return Err(if let Some(filter) = &locale_filter {
+            format!("No locale matching '{}' found", filter)
         } else {
             "No locale directories found in lang/".to_string()
         });
