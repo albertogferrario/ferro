@@ -135,9 +135,9 @@ pub use ferro_queue::{
 // Re-export ferro-notifications for multi-channel notifications
 pub use ferro_notifications::{
     Channel as NotificationChannel, ChannelResult, DatabaseMessage, DatabaseNotificationStore,
-    Error as NotificationError, MailConfig, MailMessage, Notifiable, Notification,
-    NotificationConfig, NotificationDispatcher, SlackAttachment, SlackField, SlackMessage,
-    StoredNotification,
+    Error as NotificationError, MailConfig, MailDriver, MailMessage, Notifiable, Notification,
+    NotificationConfig, NotificationDispatcher, ResendConfig, SlackAttachment, SlackField,
+    SlackMessage, SmtpConfig, StoredNotification,
 };
 
 // Re-export ferro-broadcast for real-time WebSocket channels

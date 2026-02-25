@@ -61,7 +61,9 @@ mod notification;
 
 pub use channel::Channel;
 pub use channels::{DatabaseMessage, MailMessage, SlackAttachment, SlackField, SlackMessage};
-pub use dispatcher::{MailConfig, NotificationConfig, NotificationDispatcher};
+pub use dispatcher::{
+    MailConfig, MailDriver, NotificationConfig, NotificationDispatcher, ResendConfig, SmtpConfig,
+};
 pub use error::Error;
 pub use notifiable::{ChannelResult, DatabaseNotificationStore, Notifiable, StoredNotification};
 pub use notification::Notification;
