@@ -77,3 +77,134 @@ pub(crate) async fn try_serve_static_file(
 ) -> Option<hyper::Response<Full<Bytes>>> {
     try_serve_from_dir(Path::new("public"), request_path).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http_body_util::BodyExt;
+    use std::fs;
+    use tempfile::TempDir;
+
+    // --- Path validation tests (no filesystem needed) ---
+
+    #[tokio::test]
+    async fn empty_path_returns_none() {
+        let dir = TempDir::new().unwrap();
+        assert!(try_serve_from_dir(dir.path(), "").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn null_byte_path_returns_none() {
+        let dir = TempDir::new().unwrap();
+        assert!(try_serve_from_dir(dir.path(), "/file\0.txt")
+            .await
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn dotfile_path_returns_none() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join(".env"), "SECRET=x").unwrap();
+        assert!(try_serve_from_dir(dir.path(), "/.env").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn hidden_directory_returns_none() {
+        let dir = TempDir::new().unwrap();
+        let git_dir = dir.path().join(".git");
+        fs::create_dir(&git_dir).unwrap();
+        fs::write(git_dir.join("config"), "data").unwrap();
+        assert!(try_serve_from_dir(dir.path(), "/.git/config")
+            .await
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn dotdot_segment_returns_none() {
+        let dir = TempDir::new().unwrap();
+        // ".." starts with "." so it's caught by the dotfile check
+        assert!(try_serve_from_dir(dir.path(), "/../etc/passwd")
+            .await
+            .is_none());
+    }
+
+    // --- Filesystem integration tests ---
+
+    #[tokio::test]
+    async fn serves_existing_file_with_correct_content_type() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("style.css"), "body {}").unwrap();
+
+        let resp = try_serve_from_dir(dir.path(), "/style.css").await.unwrap();
+        assert_eq!(resp.status(), 200);
+        assert_eq!(resp.headers()["Content-Type"], "text/css");
+        assert_eq!(resp.headers()["Content-Length"], "7");
+
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(&body[..], b"body {}");
+    }
+
+    #[tokio::test]
+    async fn assets_path_gets_immutable_cache() {
+        let dir = TempDir::new().unwrap();
+        let assets_dir = dir.path().join("assets");
+        fs::create_dir(&assets_dir).unwrap();
+        fs::write(assets_dir.join("main.js"), "console.log()").unwrap();
+
+        let resp = try_serve_from_dir(dir.path(), "/assets/main.js")
+            .await
+            .unwrap();
+        assert_eq!(
+            resp.headers()["Cache-Control"],
+            "public, max-age=31536000, immutable"
+        );
+    }
+
+    #[tokio::test]
+    async fn root_file_gets_must_revalidate_cache() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("favicon.ico"), &[0u8; 4]).unwrap();
+
+        let resp = try_serve_from_dir(dir.path(), "/favicon.ico")
+            .await
+            .unwrap();
+        assert_eq!(
+            resp.headers()["Cache-Control"],
+            "public, max-age=0, must-revalidate"
+        );
+    }
+
+    #[tokio::test]
+    async fn nonexistent_file_returns_none() {
+        let dir = TempDir::new().unwrap();
+        assert!(try_serve_from_dir(dir.path(), "/nope.txt").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn directory_path_returns_none() {
+        let dir = TempDir::new().unwrap();
+        let sub = dir.path().join("subdir");
+        fs::create_dir(&sub).unwrap();
+        assert!(try_serve_from_dir(dir.path(), "/subdir").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn binary_file_not_corrupted() {
+        let dir = TempDir::new().unwrap();
+        // Write bytes that are invalid UTF-8
+        let binary_data: Vec<u8> = (0..=255).collect();
+        fs::write(dir.path().join("data.bin"), &binary_data).unwrap();
+
+        let resp = try_serve_from_dir(dir.path(), "/data.bin").await.unwrap();
+        assert_eq!(resp.headers()["Content-Type"], "application/octet-stream");
+
+        let body = resp.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(&body[..], &binary_data[..]);
+    }
+
+    #[tokio::test]
+    async fn nonexistent_base_dir_returns_none() {
+        let result = try_serve_from_dir(Path::new("/nonexistent/dir"), "/file.txt").await;
+        assert!(result.is_none());
+    }
+}

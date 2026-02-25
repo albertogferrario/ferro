@@ -60,3 +60,4 @@ mime_guess = "2"
 
 [dev-dependencies]
 serial_test = "3"
+tempfile = "3"

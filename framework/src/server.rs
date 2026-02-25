@@ -175,6 +175,13 @@ async fn handle_request(
             http_response.into_hyper()
         }
         None => {
+            // Try static file serving before fallback (only GET/HEAD)
+            if method == hyper::Method::GET || method == hyper::Method::HEAD {
+                if let Some(response) = crate::static_files::try_serve_static_file(&path).await {
+                    return response;
+                }
+            }
+
             // Check for fallback handler
             if let Some((fallback_handler, fallback_middleware)) = router.get_fallback() {
                 let request = Request::new(req).with_params(std::collections::HashMap::new());
