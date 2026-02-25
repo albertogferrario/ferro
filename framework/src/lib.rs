@@ -23,6 +23,7 @@ pub mod schedule;
 pub mod seeder;
 pub mod server;
 pub mod session;
+pub(crate) mod static_files;
 pub mod testing;
 pub mod validation;
 mod websocket;
