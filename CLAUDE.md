@@ -74,12 +74,13 @@ Component paths validated at compile-time.
 4. **Update documentation** in `docs/src/` (required)
 5. **Update ferro-mcp** if the feature affects introspection (new commands, routes, models, etc.)
 
-### Testing
+### Testing & Linting (MUST run before every commit)
 ```bash
+cargo fmt --all -- --check
+cargo clippy --all --all-targets -- -D warnings
 cargo test --all-features
-cargo fmt --check
-cargo clippy
 ```
+`--all-targets` is required — it catches issues in test code that `--all` alone misses. CI enforces `-D warnings` so any warning is a build failure.
 
 ### Documentation
 - User docs: `docs/src/`
@@ -101,7 +102,7 @@ cargo clippy
 ## Notes
 
 - Never add co-author attribution to commits
-- Run lint/tests before committing
+- **Run fmt + clippy + tests before every commit** — see Testing & Linting section for exact commands
 - Prefer editing existing files over creating new ones
 - Keep changes focused and minimal
 - **Always update docs when framework changes** - `docs/src/` must reflect current features
