@@ -243,7 +243,7 @@ mod tests {
     fn response_body(response: HttpResponse) -> String {
         let hyper = response.into_hyper();
         let body_bytes = hyper.into_body();
-        format!("{:?}", body_bytes)
+        format!("{body_bytes:?}")
     }
 
     fn sample_view() -> JsonUiView {
