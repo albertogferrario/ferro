@@ -52,7 +52,7 @@ impl Default for InertiaConfig {
             version: "1.0".to_string(),
             development: is_dev,
             html_template: None,
-            manifest_path: "public/assets/.vite/manifest.json".to_string(),
+            manifest_path: "public/.vite/manifest.json".to_string(),
         }
     }
 }

@@ -9,7 +9,7 @@ export default defineConfig({
     cors: true,
   },
   build: {
-    outDir: '../public/assets',
+    outDir: '../public',
     manifest: true,
     rollupOptions: {
       input: 'src/main.tsx',

@@ -45,7 +45,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
-COPY --from=frontend-builder /app/frontend/dist ./public/assets
+COPY --from=frontend-builder /app/public ./public
 RUN cargo build --release
 
 # ==========================================
