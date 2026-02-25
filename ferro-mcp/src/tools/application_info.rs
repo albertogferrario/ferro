@@ -127,7 +127,7 @@ fn get_framework_version(project_root: &Path) -> Result<String> {
     // Parse Cargo.toml
     let parsed: toml::Value = content
         .parse()
-        .map_err(|e| McpError::ParseError(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| McpError::ParseError(format!("Failed to parse Cargo.toml: {e}")))?;
 
     // Try to get version from package section
     if let Some(package) = parsed.get("package") {
@@ -210,7 +210,7 @@ fn get_installed_crates(project_root: &Path) -> Result<Vec<CrateInfo>> {
 
     let parsed: toml::Value = content
         .parse()
-        .map_err(|e| McpError::ParseError(format!("Failed to parse Cargo.toml: {}", e)))?;
+        .map_err(|e| McpError::ParseError(format!("Failed to parse Cargo.toml: {e}")))?;
 
     let mut crates = Vec::new();
 

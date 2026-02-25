@@ -153,7 +153,7 @@ impl Cookie {
         }
 
         if let Some(ref domain) = self.options.domain {
-            parts.push(format!("Domain={}", domain));
+            parts.push(format!("Domain={domain}"));
         }
 
         if let Some(max_age) = self.options.max_age {

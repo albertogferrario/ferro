@@ -32,7 +32,7 @@ pub async fn execute(project_root: &Path, table_filter: Option<&str>) -> Result<
     // Connect to database
     let db: DatabaseConnection = Database::connect(&database_url)
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {e}")))?;
 
     let tables = match db.get_database_backend() {
         DatabaseBackend::Sqlite => get_sqlite_schema(&db, table_filter).await?,
@@ -52,8 +52,7 @@ async fn get_sqlite_schema(
     // Get all tables
     let table_query = if let Some(filter) = table_filter {
         format!(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='{}' AND name NOT LIKE 'sqlite_%'",
-            filter
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='{filter}' AND name NOT LIKE 'sqlite_%'"
         )
     } else {
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'".to_string()
@@ -62,22 +61,22 @@ async fn get_sqlite_schema(
     let table_rows = db
         .query_all(Statement::from_string(DatabaseBackend::Sqlite, table_query))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to get tables: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to get tables: {e}")))?;
 
     for row in table_rows {
         let table_name: String = row
             .try_get_by("name")
-            .map_err(|e| McpError::DatabaseError(format!("Failed to get table name: {}", e)))?;
+            .map_err(|e| McpError::DatabaseError(format!("Failed to get table name: {e}")))?;
 
         // Get columns for this table
-        let column_query = format!("PRAGMA table_info('{}')", table_name);
+        let column_query = format!("PRAGMA table_info('{table_name}')");
         let column_rows = db
             .query_all(Statement::from_string(
                 DatabaseBackend::Sqlite,
                 column_query,
             ))
             .await
-            .map_err(|e| McpError::DatabaseError(format!("Failed to get columns: {}", e)))?;
+            .map_err(|e| McpError::DatabaseError(format!("Failed to get columns: {e}")))?;
 
         let columns: Vec<ColumnInfo> = column_rows
             .iter()
@@ -117,8 +116,7 @@ async fn get_postgres_schema(
     let table_query = if let Some(filter) = table_filter {
         format!(
             "SELECT table_name FROM information_schema.tables
-             WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name = '{}'",
-            filter
+             WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name = '{filter}'"
         )
     } else {
         "SELECT table_name FROM information_schema.tables
@@ -132,20 +130,19 @@ async fn get_postgres_schema(
             table_query,
         ))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to get tables: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to get tables: {e}")))?;
 
     for row in table_rows {
         let table_name: String = row
             .try_get_by("table_name")
-            .map_err(|e| McpError::DatabaseError(format!("Failed to get table name: {}", e)))?;
+            .map_err(|e| McpError::DatabaseError(format!("Failed to get table name: {e}")))?;
 
         // Get columns for this table
         let column_query = format!(
             "SELECT column_name, data_type, is_nullable, column_default
              FROM information_schema.columns
-             WHERE table_schema = 'public' AND table_name = '{}'
-             ORDER BY ordinal_position",
-            table_name
+             WHERE table_schema = 'public' AND table_name = '{table_name}'
+             ORDER BY ordinal_position"
         );
 
         let column_rows = db
@@ -154,15 +151,14 @@ async fn get_postgres_schema(
                 column_query,
             ))
             .await
-            .map_err(|e| McpError::DatabaseError(format!("Failed to get columns: {}", e)))?;
+            .map_err(|e| McpError::DatabaseError(format!("Failed to get columns: {e}")))?;
 
         // Get primary key columns
         let pk_query = format!(
             "SELECT a.attname
              FROM pg_index i
              JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-             WHERE i.indrelid = '{}'::regclass AND i.indisprimary",
-            table_name
+             WHERE i.indrelid = '{table_name}'::regclass AND i.indisprimary"
         );
 
         let pk_rows = db
@@ -215,7 +211,7 @@ async fn get_mysql_schema(
             "SELECT DATABASE()".to_string(),
         ))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to get database name: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to get database name: {e}")))?;
 
     let db_name: String = db_name_result
         .and_then(|row| row.try_get_by_index::<String>(0).ok())
@@ -225,41 +221,38 @@ async fn get_mysql_schema(
     let table_query = if let Some(filter) = table_filter {
         format!(
             "SELECT table_name FROM information_schema.tables
-             WHERE table_schema = '{}' AND table_type = 'BASE TABLE' AND table_name = '{}'",
-            db_name, filter
+             WHERE table_schema = '{db_name}' AND table_type = 'BASE TABLE' AND table_name = '{filter}'"
         )
     } else {
         format!(
             "SELECT table_name FROM information_schema.tables
-             WHERE table_schema = '{}' AND table_type = 'BASE TABLE'",
-            db_name
+             WHERE table_schema = '{db_name}' AND table_type = 'BASE TABLE'"
         )
     };
 
     let table_rows = db
         .query_all(Statement::from_string(DatabaseBackend::MySql, table_query))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to get tables: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to get tables: {e}")))?;
 
     for row in table_rows {
         let table_name: String = row
             .try_get_by("table_name")
             .or_else(|_| row.try_get_by("TABLE_NAME"))
-            .map_err(|e| McpError::DatabaseError(format!("Failed to get table name: {}", e)))?;
+            .map_err(|e| McpError::DatabaseError(format!("Failed to get table name: {e}")))?;
 
         // Get columns for this table
         let column_query = format!(
             "SELECT column_name, data_type, is_nullable, column_default, column_key
              FROM information_schema.columns
-             WHERE table_schema = '{}' AND table_name = '{}'
-             ORDER BY ordinal_position",
-            db_name, table_name
+             WHERE table_schema = '{db_name}' AND table_name = '{table_name}'
+             ORDER BY ordinal_position"
         );
 
         let column_rows = db
             .query_all(Statement::from_string(DatabaseBackend::MySql, column_query))
             .await
-            .map_err(|e| McpError::DatabaseError(format!("Failed to get columns: {}", e)))?;
+            .map_err(|e| McpError::DatabaseError(format!("Failed to get columns: {e}")))?;
 
         let columns: Vec<ColumnInfo> = column_rows
             .iter()

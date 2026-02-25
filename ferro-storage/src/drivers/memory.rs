@@ -148,7 +148,7 @@ impl StorageDriver for MemoryDriver {
         let path = Self::normalize_path(path);
         match &self.url_base {
             Some(base) => Ok(format!("{}/{}", base.trim_end_matches('/'), path)),
-            None => Ok(format!("memory://{}", path)),
+            None => Ok(format!("memory://{path}")),
         }
     }
 
@@ -165,7 +165,7 @@ impl StorageDriver for MemoryDriver {
         let prefix = if dir.is_empty() {
             String::new()
         } else {
-            format!("{}/", dir)
+            format!("{dir}/")
         };
 
         let mut files = Vec::new();
@@ -188,7 +188,7 @@ impl StorageDriver for MemoryDriver {
         let prefix = if dir.is_empty() {
             String::new()
         } else {
-            format!("{}/", dir)
+            format!("{dir}/")
         };
 
         let mut files = Vec::new();
@@ -210,7 +210,7 @@ impl StorageDriver for MemoryDriver {
         let prefix = if dir.is_empty() {
             String::new()
         } else {
-            format!("{}/", dir)
+            format!("{dir}/")
         };
 
         let mut dirs: HashSet<String> = HashSet::new();
@@ -234,7 +234,7 @@ impl StorageDriver for MemoryDriver {
 
     async fn delete_directory(&self, path: &str) -> Result<(), Error> {
         let dir = Self::normalize_path(path);
-        let prefix = format!("{}/", dir);
+        let prefix = format!("{dir}/");
 
         let keys_to_remove: Vec<String> = self
             .files

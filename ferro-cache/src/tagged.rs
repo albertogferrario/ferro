@@ -28,7 +28,7 @@ impl TaggedCache {
     fn tagged_key(&self, key: &str) -> String {
         let tag_prefix: String = self.tags.join(":");
         if self.config.prefix.is_empty() {
-            format!("tag:{}:{}", tag_prefix, key)
+            format!("tag:{tag_prefix}:{key}")
         } else {
             format!("{}:tag:{}:{}", self.config.prefix, tag_prefix, key)
         }
@@ -62,7 +62,7 @@ impl TaggedCache {
 
         // Associate with all tags
         for tag in &self.tags {
-            let tag_set_key = format!("tag_set:{}", tag);
+            let tag_set_key = format!("tag_set:{tag}");
             self.store.tag_add(&tag_set_key, &tagged_key).await?;
         }
 
@@ -94,7 +94,7 @@ impl TaggedCache {
     /// Flush all cache entries with any of the configured tags.
     pub async fn flush(&self) -> Result<(), Error> {
         for tag in &self.tags {
-            let tag_set_key = format!("tag_set:{}", tag);
+            let tag_set_key = format!("tag_set:{tag}");
             self.store.tag_flush(&tag_set_key).await?;
         }
         Ok(())

@@ -15,7 +15,7 @@ pub fn run(relative: bool) {
     if !storage_path.exists() {
         println!("Creating storage/app/public directory...");
         if let Err(e) = fs::create_dir_all(&storage_path) {
-            eprintln!("❌ Failed to create storage directory: {}", e);
+            eprintln!("❌ Failed to create storage directory: {e}");
             std::process::exit(1);
         }
     }
@@ -37,7 +37,7 @@ pub fn run(relative: bool) {
     if !public_dir.exists() {
         println!("Creating public directory...");
         if let Err(e) = fs::create_dir_all(&public_dir) {
-            eprintln!("❌ Failed to create public directory: {}", e);
+            eprintln!("❌ Failed to create public directory: {e}");
             std::process::exit(1);
         }
     }
@@ -53,7 +53,7 @@ pub fn run(relative: bool) {
     #[cfg(unix)]
     {
         if let Err(e) = std::os::unix::fs::symlink(&target, &public_path) {
-            eprintln!("❌ Failed to create symbolic link: {}", e);
+            eprintln!("❌ Failed to create symbolic link: {e}");
             std::process::exit(1);
         }
     }

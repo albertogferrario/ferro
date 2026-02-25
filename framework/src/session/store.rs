@@ -84,12 +84,12 @@ impl SessionData {
     /// session.flash("success", "Item saved successfully!");
     /// ```
     pub fn flash<T: Serialize>(&mut self, key: &str, value: T) {
-        self.put(&format!("_flash.new.{}", key), value);
+        self.put(&format!("_flash.new.{key}"), value);
     }
 
     /// Get a flashed value (clears it after reading)
     pub fn get_flash<T: DeserializeOwned>(&mut self, key: &str) -> Option<T> {
-        let flash_key = format!("_flash.old.{}", key);
+        let flash_key = format!("_flash.old.{key}");
         let value = self.get(&flash_key);
         if value.is_some() {
             self.forget(&flash_key);

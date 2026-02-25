@@ -31,7 +31,7 @@ pub async fn execute(project_root: &Path, query: &str) -> Result<QueryResult> {
     // Connect to database
     let db: DatabaseConnection = Database::connect(&database_url)
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {e}")))?;
 
     // Execute query
     let result = db
@@ -40,7 +40,7 @@ pub async fn execute(project_root: &Path, query: &str) -> Result<QueryResult> {
             query.to_string(),
         ))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Query failed: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Query failed: {e}")))?;
 
     if result.is_empty() {
         return Ok(QueryResult {

@@ -113,7 +113,7 @@ pub struct FailedJobInfo {
 
 /// Try to fetch jobs from the running application
 async fn fetch_runtime_jobs(base_url: &str) -> Option<QueueJobsSnapshot> {
-    let url = format!("{}/_ferro/queue/jobs", base_url);
+    let url = format!("{base_url}/_ferro/queue/jobs");
 
     let client = reqwest::Client::builder()
         .timeout(HTTP_TIMEOUT)
@@ -136,7 +136,7 @@ async fn fetch_runtime_jobs(base_url: &str) -> Option<QueueJobsSnapshot> {
 
 /// Try to fetch stats from the running application
 async fn fetch_runtime_stats(base_url: &str) -> Option<QueueStatsSnapshot> {
-    let url = format!("{}/_ferro/queue/stats", base_url);
+    let url = format!("{base_url}/_ferro/queue/stats");
 
     let client = reqwest::Client::builder()
         .timeout(HTTP_TIMEOUT)
@@ -323,7 +323,7 @@ mod tests {
             stats: None,
             source: QueueSource::Unavailable,
         };
-        assert!(format!("{:?}", info).contains("QueueStatusInfo"));
+        assert!(format!("{info:?}").contains("QueueStatusInfo"));
     }
 
     #[test]

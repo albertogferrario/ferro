@@ -43,7 +43,7 @@ fn is_reserved_keyword(name: &str) -> bool {
 /// Escape a column name if it's a reserved keyword
 fn escape_column_name(name: &str) -> String {
     if is_reserved_keyword(name) {
-        format!("r#{}", name)
+        format!("r#{name}")
     } else {
         name.to_string()
     }
@@ -70,7 +70,7 @@ pub fn entity_template(table_name: &str, columns: &[ColumnInfo]) -> String {
                 attrs.push(format!("    #[sea_orm(column_name = \"{}\")]", col.name));
             }
 
-            let field = format!("    pub {}: {},", field_name, rust_type);
+            let field = format!("    pub {field_name}: {rust_type},");
             if attrs.is_empty() {
                 field
             } else {
@@ -144,8 +144,7 @@ impl ferro::auth::Authenticatable for Model {{
         self
     }}
 }}
-"#,
-            pk_field = pk_field
+"#
         )
     } else {
         String::new()
@@ -205,9 +204,6 @@ pub type {struct_name} = Model;
 //     }}
 // }}
 {authenticatable_impl}"#,
-        struct_name = struct_name,
-        table_name = table_name,
-        authenticatable_impl = authenticatable_impl,
     )
 }
 
@@ -266,7 +262,7 @@ fn sql_type_to_rust_type(col: &ColumnInfo) -> String {
     };
 
     if col.is_nullable {
-        format!("Option<{}>", base_type)
+        format!("Option<{base_type}>")
     } else {
         base_type.to_string()
     }
@@ -291,7 +287,7 @@ pub(crate) fn to_pascal_case(s: &str) -> String {
 
 fn singularize(word: &str) -> String {
     if let Some(stem) = word.strip_suffix("ies") {
-        format!("{}y", stem)
+        format!("{stem}y")
     } else if let Some(stem) = word.strip_suffix("es") {
         if word.ends_with("ses") || word.ends_with("xes") {
             word.to_string()

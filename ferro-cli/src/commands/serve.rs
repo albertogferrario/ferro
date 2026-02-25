@@ -57,7 +57,7 @@ impl ProcessManager {
 
         let mut child = cmd
             .spawn()
-            .map_err(|e| format!("Failed to spawn {}: {}", command, e))?;
+            .map_err(|e| format!("Failed to spawn {command}: {e}"))?;
 
         let stdout = child.stdout.take().unwrap();
         let stderr = child.stderr.take().unwrap();
@@ -116,11 +116,11 @@ impl ProcessManager {
 fn get_package_name() -> Result<String, String> {
     let cargo_toml = Path::new("Cargo.toml");
     let content = std::fs::read_to_string(cargo_toml)
-        .map_err(|e| format!("Failed to read Cargo.toml: {}", e))?;
+        .map_err(|e| format!("Failed to read Cargo.toml: {e}"))?;
 
     let parsed: toml::Value = content
         .parse()
-        .map_err(|e| format!("Failed to parse Cargo.toml: {}", e))?;
+        .map_err(|e| format!("Failed to parse Cargo.toml: {e}"))?;
 
     parsed
         .get("package")
@@ -159,7 +159,7 @@ fn ensure_cargo_watch() -> Result<(), String> {
             let install = Command::new("cargo")
                 .args(["install", "cargo-watch"])
                 .status()
-                .map_err(|e| format!("Failed to install cargo-watch: {}", e))?;
+                .map_err(|e| format!("Failed to install cargo-watch: {e}"))?;
 
             if !install.success() {
                 return Err("Failed to install cargo-watch".into());
@@ -180,7 +180,7 @@ fn ensure_npm_dependencies() -> Result<(), String> {
             .args(["install"])
             .current_dir(frontend_path)
             .status()
-            .map_err(|e| format!("Failed to run npm install: {}", e))?;
+            .map_err(|e| format!("Failed to run npm install: {e}"))?;
 
         if !npm_install.success() {
             return Err("Failed to install npm dependencies".into());
@@ -251,7 +251,7 @@ pub fn run(
     }
 
     // Set VITE_DEV_SERVER so InertiaConfig picks up the resolved port
-    std::env::set_var("VITE_DEV_SERVER", format!("http://localhost:{}", vite_port));
+    std::env::set_var("VITE_DEV_SERVER", format!("http://localhost:{vite_port}"));
 
     // Auto-cleanup old build artifacts (silent, non-blocking)
     // Configurable via CARGO_SWEEP_DAYS (default: 7, set to 0 to disable)
@@ -356,7 +356,7 @@ pub fn run(
             backend_port
         );
 
-        let run_cmd = format!("run --bin {}", package_name);
+        let run_cmd = format!("run --bin {package_name}");
         if let Err(e) = manager.spawn_with_prefix(
             "cargo",
             &["watch", "-x", &run_cmd],

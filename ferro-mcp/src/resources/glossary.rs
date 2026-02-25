@@ -155,7 +155,7 @@ fn generate_model_intent(name: &str) -> String {
 /// Check if a route path relates to a model
 fn route_relates_to_model(path: &str, model_name: &str) -> bool {
     let snake = to_snake_case(model_name);
-    let plural = format!("{}s", snake);
+    let plural = format!("{snake}s");
 
     // Check path segments
     let path_lower = path.to_lowercase();
@@ -196,7 +196,7 @@ fn generate_route_term_definition(term: &str) -> String {
         "settings" => "Application settings management".to_string(),
         "search" => "Search functionality endpoint".to_string(),
         "health" => "Health check endpoint for monitoring".to_string(),
-        _ => format!("Feature related to {}", term),
+        _ => format!("Feature related to {term}"),
     }
 }
 
@@ -208,7 +208,7 @@ fn generate_route_term_intent(term: &str) -> String {
         "profile" | "settings" => "User customization features".to_string(),
         "search" => "Content discovery".to_string(),
         "health" => "System monitoring and operations".to_string(),
-        _ => format!("Functionality for {} feature", term),
+        _ => format!("Functionality for {term} feature"),
     }
 }
 

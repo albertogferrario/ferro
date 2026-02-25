@@ -212,7 +212,7 @@ fn print_instructions(project_name: &str, has_mailpit: bool, has_minio: bool) {
     println!();
     println!(
         "{}",
-        style(format!("Network: {}_network", project_name)).dim()
+        style(format!("Network: {project_name}_network")).dim()
     );
     println!();
 }

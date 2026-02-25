@@ -137,9 +137,6 @@ impl Layout for AppLayout {
             {wrapper}
         </main>
     </div>"#,
-            nav = nav,
-            side = side,
-            wrapper = wrapper,
         );
 
         base_document(ctx.title, ctx.head, ctx.body_class, &body, ctx.scripts)
@@ -166,7 +163,6 @@ impl Layout for AuthLayout {
             </div>
         </div>
     </div>"#,
-            wrapper = wrapper,
         );
 
         base_document(ctx.title, ctx.head, ctx.body_class, &body, ctx.scripts)

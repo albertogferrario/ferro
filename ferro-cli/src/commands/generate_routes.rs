@@ -411,7 +411,7 @@ pub fn scan_routes(project_path: &Path) -> Result<Vec<GeneratedRoute>, String> {
     }
 
     let routes_content =
-        fs::read_to_string(&routes_file).map_err(|e| format!("Failed to read routes.rs: {}", e))?;
+        fs::read_to_string(&routes_file).map_err(|e| format!("Failed to read routes.rs: {e}"))?;
 
     let route_definitions = parse_routes_file(&routes_content);
 
@@ -513,7 +513,7 @@ pub fn generate_typescript(routes: &[GeneratedRoute]) -> String {
         output.push_str("// Path parameter types\n");
         for route in &routes_with_params {
             let interface_name = generate_params_interface_name(route);
-            output.push_str(&format!("export interface {} {{\n", interface_name));
+            output.push_str(&format!("export interface {interface_name} {{\n"));
             for param in &route.definition.path_params {
                 output.push_str(&format!("  {}: string;\n", param.name));
             }
@@ -537,7 +537,7 @@ pub fn generate_typescript(routes: &[GeneratedRoute]) -> String {
 
     for (i, module_name) in module_names.iter().enumerate() {
         let module_routes = modules.get(*module_name).unwrap();
-        output.push_str(&format!("  {}: {{\n", module_name));
+        output.push_str(&format!("  {module_name}: {{\n"));
 
         // Track used function names to handle duplicates
         let mut used_names: HashMap<String, usize> = HashMap::new();
@@ -580,20 +580,17 @@ pub fn generate_typescript(routes: &[GeneratedRoute]) -> String {
                 let params_type = generate_params_interface_name(route);
                 let data_type = route.request_struct.as_ref().unwrap().name.clone();
                 (
-                    format!("params: {}, data: {}", params_type, data_type),
-                    format!("RouteConfig<{}>", data_type),
+                    format!("params: {params_type}, data: {data_type}"),
+                    format!("RouteConfig<{data_type}>"),
                 )
             } else if has_params {
                 let params_type = generate_params_interface_name(route);
-                (
-                    format!("params: {}", params_type),
-                    "RouteConfig".to_string(),
-                )
+                (format!("params: {params_type}"), "RouteConfig".to_string())
             } else if has_data {
                 let data_type = route.request_struct.as_ref().unwrap().name.clone();
                 (
-                    format!("data: {}", data_type),
-                    format!("RouteConfig<{}>", data_type),
+                    format!("data: {data_type}"),
+                    format!("RouteConfig<{data_type}>"),
                 )
             } else {
                 (String::new(), "RouteConfig".to_string())
@@ -611,13 +608,12 @@ pub fn generate_typescript(routes: &[GeneratedRoute]) -> String {
 
             let comma = if j < module_routes.len() - 1 { "," } else { "" };
             output.push_str(&format!(
-                "    {}: ({}): {} => ({{ url: {}, method: '{}'{} }}){}\n",
-                fn_name, params_signature, return_type, url, method, data_prop, comma
+                "    {fn_name}: ({params_signature}): {return_type} => ({{ url: {url}, method: '{method}'{data_prop} }}){comma}\n"
             ));
         }
 
         let comma = if i < module_names.len() - 1 { "," } else { "" };
-        output.push_str(&format!("  }}{}\n", comma));
+        output.push_str(&format!("  }}{comma}\n"));
     }
 
     output.push_str("} as const;\n\n");
@@ -638,8 +634,7 @@ pub fn generate_typescript(routes: &[GeneratedRoute]) -> String {
             let fn_name = &route.definition.handler_fn;
             let comma = if i < named_routes.len() - 1 { "," } else { "" };
             output.push_str(&format!(
-                "  '{}': controllers.{}.{}{}\n",
-                name, module, fn_name, comma
+                "  '{name}': controllers.{module}.{fn_name}{comma}\n"
             ));
         }
 
@@ -706,10 +701,10 @@ fn generate_url_with_params(path: &str) -> String {
     for cap in param_pattern.captures_iter(path) {
         let full_match = cap.get(0).unwrap().as_str();
         let param_name = cap.get(1).unwrap().as_str();
-        result = result.replace(full_match, &format!("${{params.{}}}", param_name));
+        result = result.replace(full_match, &format!("${{params.{param_name}}}"));
     }
 
-    format!("`{}`", result)
+    format!("`{result}`")
 }
 
 /// Generate routes and write to the output file
@@ -723,12 +718,12 @@ pub fn generate_routes_to_file(project_path: &Path, output_path: &Path) -> Resul
     // Ensure output directory exists
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create output directory: {}", e))?;
+            .map_err(|e| format!("Failed to create output directory: {e}"))?;
     }
 
     let typescript = generate_typescript(&routes);
     fs::write(output_path, typescript)
-        .map_err(|e| format!("Failed to write TypeScript file: {}", e))?;
+        .map_err(|e| format!("Failed to write TypeScript file: {e}"))?;
 
     Ok(routes.len())
 }

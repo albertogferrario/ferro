@@ -108,7 +108,7 @@ impl TestDatabase {
         // 3. Run migrations
         M::up(conn.inner(), None)
             .await
-            .map_err(|e| FrameworkError::database(format!("Migration failed: {}", e)))?;
+            .map_err(|e| FrameworkError::database(format!("Migration failed: {e}")))?;
 
         // 4. Register in TestContainer - this is the key integration!
         // Any code calling DB::connection() or App::resolve::<DbConnection>()

@@ -152,8 +152,7 @@ mod tests {
             let json = serde_json::to_value(&op).unwrap();
             assert_eq!(
                 json, expected,
-                "operator {:?} should serialize to {}",
-                op, expected
+                "operator {op:?} should serialize to {expected}"
             );
         }
     }

@@ -44,7 +44,7 @@ pub fn execute(
         .ok_or_else(|| McpError::FileNotFound("browser.log".to_string()))?;
 
     let content = std::fs::read_to_string(log_path)
-        .map_err(|e| McpError::FileNotFound(format!("Failed to read browser.log: {}", e)))?;
+        .map_err(|e| McpError::FileNotFound(format!("Failed to read browser.log: {e}")))?;
 
     let mut entries: Vec<BrowserLogEntry> = Vec::new();
 

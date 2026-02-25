@@ -55,7 +55,7 @@ impl std::fmt::Display for Environment {
             Self::Staging => write!(f, "staging"),
             Self::Production => write!(f, "production"),
             Self::Testing => write!(f, "testing"),
-            Self::Custom(name) => write!(f, "{}", name),
+            Self::Custom(name) => write!(f, "{name}"),
         }
     }
 }
@@ -76,13 +76,13 @@ pub fn load_dotenv(project_root: &Path) -> Environment {
 
     // 4. Environment-specific local (e.g., .env.production.local) - highest file priority
     if let Some(suffix) = env.env_file_suffix() {
-        let path = project_root.join(format!(".env.{}.local", suffix));
+        let path = project_root.join(format!(".env.{suffix}.local"));
         let _ = dotenvy::from_path(&path);
     }
 
     // 3. Environment-specific (e.g., .env.production)
     if let Some(suffix) = env.env_file_suffix() {
-        let path = project_root.join(format!(".env.{}", suffix));
+        let path = project_root.join(format!(".env.{suffix}"));
         let _ = dotenvy::from_path(&path);
     }
 
@@ -126,12 +126,7 @@ pub fn env_required<T: std::str::FromStr>(key: &str) -> T {
     std::env::var(key)
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or_else(|| {
-            panic!(
-                "Required environment variable {} is not set or invalid",
-                key
-            )
-        })
+        .unwrap_or_else(|| panic!("Required environment variable {key} is not set or invalid"))
 }
 
 /// Get an optional environment variable

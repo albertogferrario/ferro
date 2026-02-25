@@ -355,7 +355,7 @@ fn scan_routes() -> String {
         let name_suffix = route
             .name
             .as_ref()
-            .map(|n| format!(" (name: \"{}\")", n))
+            .map(|n| format!(" (name: \"{n}\")"))
             .unwrap_or_default();
 
         output.push_str(&format!(

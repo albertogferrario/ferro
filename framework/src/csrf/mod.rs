@@ -73,7 +73,7 @@ pub fn csrf_token() -> Option<String> {
 /// ```
 pub fn csrf_meta_tag() -> String {
     csrf_token()
-        .map(|token| format!(r#"<meta name="csrf-token" content="{}">"#, token))
+        .map(|token| format!(r#"<meta name="csrf-token" content="{token}">"#))
         .unwrap_or_default()
 }
 
@@ -89,6 +89,6 @@ pub fn csrf_meta_tag() -> String {
 /// ```
 pub fn csrf_field() -> String {
     csrf_token()
-        .map(|token| format!(r#"<input type="hidden" name="_token" value="{}">"#, token))
+        .map(|token| format!(r#"<input type="hidden" name="_token" value="{token}">"#))
         .unwrap_or_default()
 }

@@ -99,7 +99,7 @@ impl CronField {
         if let Some(step_str) = s.strip_prefix("*/") {
             let step: u32 = step_str
                 .parse()
-                .map_err(|_| format!("Invalid step value in '{}'", s))?;
+                .map_err(|_| format!("Invalid step value in '{s}'"))?;
             return Ok(CronField::Step(step));
         }
 
@@ -109,10 +109,10 @@ impl CronField {
             if parts.len() == 2 {
                 let start: u32 = parts[0]
                     .parse()
-                    .map_err(|_| format!("Invalid start value in '{}'", s))?;
+                    .map_err(|_| format!("Invalid start value in '{s}'"))?;
                 let step: u32 = parts[1]
                     .parse()
-                    .map_err(|_| format!("Invalid step value in '{}'", s))?;
+                    .map_err(|_| format!("Invalid step value in '{s}'"))?;
                 return Ok(CronField::StepFrom(start, step));
             }
         }
@@ -121,7 +121,7 @@ impl CronField {
         if s.contains(',') {
             let values: Result<Vec<u32>, _> = s.split(',').map(|v| v.trim().parse()).collect();
             return Ok(CronField::List(
-                values.map_err(|_| format!("Invalid list value in '{}'", s))?,
+                values.map_err(|_| format!("Invalid list value in '{s}'"))?,
             ));
         }
 
@@ -131,16 +131,16 @@ impl CronField {
             if parts.len() == 2 {
                 let start: u32 = parts[0]
                     .parse()
-                    .map_err(|_| format!("Invalid range start in '{}'", s))?;
+                    .map_err(|_| format!("Invalid range start in '{s}'"))?;
                 let end: u32 = parts[1]
                     .parse()
-                    .map_err(|_| format!("Invalid range end in '{}'", s))?;
+                    .map_err(|_| format!("Invalid range end in '{s}'"))?;
                 return Ok(CronField::Range(start, end));
             }
         }
 
         // Handle single value
-        let value: u32 = s.parse().map_err(|_| format!("Invalid value in '{}'", s))?;
+        let value: u32 = s.parse().map_err(|_| format!("Invalid value in '{s}'"))?;
         Ok(CronField::Value(value))
     }
 }
@@ -149,17 +149,17 @@ impl std::fmt::Display for CronField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CronField::Any => write!(f, "*"),
-            CronField::Value(v) => write!(f, "{}", v),
-            CronField::Range(s, e) => write!(f, "{}-{}", s, e),
-            CronField::Step(s) => write!(f, "*/{}", s),
-            CronField::StepFrom(start, step) => write!(f, "{}/{}", start, step),
+            CronField::Value(v) => write!(f, "{v}"),
+            CronField::Range(s, e) => write!(f, "{s}-{e}"),
+            CronField::Step(s) => write!(f, "*/{s}"),
+            CronField::StepFrom(start, step) => write!(f, "{start}/{step}"),
             CronField::List(l) => {
                 let s: String = l
                     .iter()
                     .map(|v| v.to_string())
                     .collect::<Vec<_>>()
                     .join(",");
-                write!(f, "{}", s)
+                write!(f, "{s}")
             }
         }
     }
@@ -246,7 +246,7 @@ impl CronExpression {
     /// Panics if `n` is 0.
     pub fn every_n_minutes(n: u32) -> Self {
         assert!(n > 0, "interval must be > 0");
-        Self::parse(&format!("*/{} * * * *", n)).expect("valid cron: every N minutes")
+        Self::parse(&format!("*/{n} * * * *")).expect("valid cron: every N minutes")
     }
 
     /// Every hour at minute 0: `0 * * * *`
@@ -259,8 +259,8 @@ impl CronExpression {
     /// # Panics
     /// Panics if `minute` >= 60.
     pub fn hourly_at(minute: u32) -> Self {
-        assert!(minute < 60, "minute must be 0-59, got {}", minute);
-        Self::parse(&format!("{} * * * *", minute)).expect("valid cron: hourly at")
+        assert!(minute < 60, "minute must be 0-59, got {minute}");
+        Self::parse(&format!("{minute} * * * *")).expect("valid cron: hourly at")
     }
 
     /// Daily at midnight: `0 0 * * *`
@@ -313,8 +313,8 @@ impl CronExpression {
     /// # Panics
     /// Panics if `day` is 0 or > 31.
     pub fn monthly_on(day: u32) -> Self {
-        assert!((1..=31).contains(&day), "day must be 1-31, got {}", day);
-        Self::parse(&format!("0 0 {} * *", day)).expect("valid cron: monthly on")
+        assert!((1..=31).contains(&day), "day must be 1-31, got {day}");
+        Self::parse(&format!("0 0 {day} * *")).expect("valid cron: monthly on")
     }
 
     /// Quarterly on the first day of each quarter at midnight

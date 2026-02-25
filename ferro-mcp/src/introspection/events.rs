@@ -152,7 +152,7 @@ pub fn scan_events(project_root: &Path) -> Vec<EventInfo> {
                         // Try to find which event this listener handles
                         // This is a simple heuristic - look for impl Listener<EventName>
                         for (event_name, (_, listeners)) in &mut events_map {
-                            if content.contains(&format!("Listener<{}>", event_name)) {
+                            if content.contains(&format!("Listener<{event_name}>")) {
                                 listeners.push(ListenerInfo {
                                     name: listener_name.clone(),
                                     queued: is_queued,

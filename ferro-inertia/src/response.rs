@@ -254,7 +254,7 @@ impl Inertia {
         let mut props_value = match serde_json::to_value(&props) {
             Ok(v) => v,
             Err(e) => {
-                return InertiaHttpResponse::html(format!("Failed to serialize props: {}", e))
+                return InertiaHttpResponse::html(format!("Failed to serialize props: {e}"))
                     .status(500);
             }
         };
@@ -435,16 +435,15 @@ impl InertiaResponse {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{}">
+    <meta name="csrf-token" content="{csrf}">
     <title>Inertia App</title>
     <script type="module" src="/assets/main.js"></script>
     <link rel="stylesheet" href="/assets/main.css">
 </head>
 <body>
-    <div id="app" data-page="{}"></div>
+    <div id="app" data-page="{page_json}"></div>
 </body>
-</html>"#,
-                csrf, page_json
+</html>"#
             )
         };
 

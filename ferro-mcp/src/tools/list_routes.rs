@@ -59,7 +59,7 @@ struct RuntimeRouteInfo {
 
 /// Try to fetch routes from the running application
 async fn fetch_runtime_routes(base_url: &str) -> Option<Vec<RouteInfo>> {
-    let url = format!("{}/_ferro/routes", base_url);
+    let url = format!("{base_url}/_ferro/routes");
 
     let client = reqwest::Client::builder()
         .timeout(HTTP_TIMEOUT)
@@ -211,7 +211,7 @@ fn parse_routes(content: &str) -> Vec<RouteInfo> {
                 .unwrap_or_default();
             let name = nested_cap.get(4).map(|m| m.as_str().to_string());
 
-            let full_path = format!("{}{}", prefix, path);
+            let full_path = format!("{prefix}{path}");
 
             routes.push(RouteInfo {
                 method,

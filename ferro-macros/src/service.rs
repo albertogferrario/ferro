@@ -49,7 +49,7 @@ impl Parse for ServiceArgs {
                     _ => {
                         return Err(syn::Error::new(
                             name.span(),
-                            format!("unknown parameter '{}', expected 'impl' or 'fake'", name),
+                            format!("unknown parameter '{name}', expected 'impl' or 'fake'"),
                         ))
                     }
                 }

@@ -43,7 +43,7 @@ pub async fn register() {
     // Initialize database connection
     DB::init().await.unwrap_or_else(|e| {
         eprintln!("Error: Failed to connect to database");
-        eprintln!("  Cause: {}", e);
+        eprintln!("  Cause: {e}");
         eprintln!();
         eprintln!("How to fix:");
         eprintln!("  1. Check DATABASE_URL is set in .env");

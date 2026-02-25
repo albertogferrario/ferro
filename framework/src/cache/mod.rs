@@ -125,7 +125,7 @@ impl Cache {
         match store.get_raw(key).await? {
             Some(json) => {
                 let value = serde_json::from_str(&json).map_err(|e| {
-                    FrameworkError::internal(format!("Cache deserialize error: {}", e))
+                    FrameworkError::internal(format!("Cache deserialize error: {e}"))
                 })?;
                 Ok(Some(value))
             }
@@ -149,7 +149,7 @@ impl Cache {
     ) -> Result<(), FrameworkError> {
         let store = Self::store()?;
         let json = serde_json::to_string(value)
-            .map_err(|e| FrameworkError::internal(format!("Cache serialize error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Cache serialize error: {e}")))?;
         store.put_raw(key, &json, ttl).await
     }
 

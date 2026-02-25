@@ -153,7 +153,7 @@ impl Middleware for SessionMiddleware {
                 SessionData::new(session_id.clone(), generate_csrf_token())
             }
             Err(e) => {
-                eprintln!("Session read error: {}", e);
+                eprintln!("Session read error: {e}");
                 SessionData::new(session_id.clone(), generate_csrf_token())
             }
         };
@@ -177,7 +177,7 @@ impl Middleware for SessionMiddleware {
         if let Some(session) = session {
             // Always save to update last_activity
             if let Err(e) = self.store.write(&session).await {
-                eprintln!("Session write error: {}", e);
+                eprintln!("Session write error: {e}");
             }
 
             // Add session cookie to response

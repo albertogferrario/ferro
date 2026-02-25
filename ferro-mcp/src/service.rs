@@ -249,7 +249,7 @@ impl FerroMcpService {
     pub async fn application_info(&self) -> String {
         match tools::application_info::execute(&self.project_root) {
             Ok(info) => serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -265,7 +265,7 @@ impl FerroMcpService {
     pub async fn db_query(&self, params: Parameters<DbQueryParams>) -> String {
         match tools::database_query::execute(&self.project_root, &params.0.query).await {
             Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -283,7 +283,7 @@ impl FerroMcpService {
             Ok(schema) => {
                 serde_json::to_string_pretty(&schema).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -301,7 +301,7 @@ impl FerroMcpService {
             Ok(routes) => {
                 serde_json::to_string_pretty(&routes).unwrap_or_else(|_| "[]".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -333,7 +333,7 @@ impl FerroMcpService {
             Ok(migrations) => {
                 serde_json::to_string_pretty(&migrations).unwrap_or_else(|_| "[]".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -351,7 +351,7 @@ impl FerroMcpService {
             Ok(events) => {
                 serde_json::to_string_pretty(&events).unwrap_or_else(|_| "[]".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -367,7 +367,7 @@ impl FerroMcpService {
     pub async fn list_jobs(&self) -> String {
         match tools::list_jobs::execute(&self.project_root) {
             Ok(jobs) => serde_json::to_string_pretty(&jobs).unwrap_or_else(|_| "[]".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -384,7 +384,7 @@ impl FerroMcpService {
     pub async fn list_lang_files(&self, params: Parameters<ListLangFilesParams>) -> String {
         match tools::list_lang_files::execute(&self.project_root, params.0.locale.as_deref()) {
             Ok(info) => serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -402,7 +402,7 @@ impl FerroMcpService {
             Ok(middleware) => {
                 serde_json::to_string_pretty(&middleware).unwrap_or_else(|_| "[]".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -420,7 +420,7 @@ impl FerroMcpService {
             Ok(services) => {
                 serde_json::to_string_pretty(&services).unwrap_or_else(|_| "[]".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -438,7 +438,7 @@ impl FerroMcpService {
             Ok(metrics) => {
                 serde_json::to_string_pretty(&metrics).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -457,7 +457,7 @@ impl FerroMcpService {
             Ok(status) => {
                 serde_json::to_string_pretty(&status).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -475,7 +475,7 @@ impl FerroMcpService {
             Ok(models) => {
                 serde_json::to_string_pretty(&models).unwrap_or_else(|_| "[]".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -493,7 +493,7 @@ impl FerroMcpService {
             Ok(policies) => {
                 serde_json::to_string_pretty(&policies).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -510,7 +510,7 @@ impl FerroMcpService {
     pub async fn list_rate_limiters(&self) -> String {
         match tools::list_rate_limiters::execute(&self.project_root) {
             Ok(info) => serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -527,7 +527,7 @@ impl FerroMcpService {
     pub async fn list_broadcast_channels(&self) -> String {
         match tools::list_broadcast_channels::execute(&self.project_root) {
             Ok(info) => serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -545,7 +545,7 @@ impl FerroMcpService {
             Ok(handler) => {
                 serde_json::to_string_pretty(&handler).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -565,7 +565,7 @@ impl FerroMcpService {
             params.0.level.as_deref(),
         ) {
             Ok(logs) => serde_json::to_string_pretty(&logs).unwrap_or_else(|_| "[]".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -586,7 +586,7 @@ impl FerroMcpService {
             Ok(error) => {
                 serde_json::to_string_pretty(&error).unwrap_or_else(|_| "null".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -604,7 +604,7 @@ impl FerroMcpService {
             Ok(config) => {
                 serde_json::to_string_pretty(&config).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -625,7 +625,7 @@ impl FerroMcpService {
             params.0.dry_run.unwrap_or(false),
         ) {
             Ok(info) => serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -641,7 +641,7 @@ impl FerroMcpService {
     pub async fn list_props(&self, params: Parameters<ListPropsParams>) -> String {
         match tools::list_props::execute(&self.project_root, params.0.filter.as_deref()) {
             Ok(props) => serde_json::to_string_pretty(&props).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -660,7 +660,7 @@ impl FerroMcpService {
             Ok(resources) => {
                 serde_json::to_string_pretty(&resources).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -678,7 +678,7 @@ impl FerroMcpService {
             Ok(result) => {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -696,7 +696,7 @@ impl FerroMcpService {
             Ok(results) => {
                 serde_json::to_string_pretty(&results).unwrap_or_else(|_| "[]".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -715,7 +715,7 @@ impl FerroMcpService {
             Ok(result) => {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -735,7 +735,7 @@ impl FerroMcpService {
             params.0.level.as_deref(),
         ) {
             Ok(logs) => serde_json::to_string_pretty(&logs).unwrap_or_else(|_| "[]".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -755,7 +755,7 @@ impl FerroMcpService {
             Ok(sessions) => {
                 serde_json::to_string_pretty(&sessions).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -774,7 +774,7 @@ impl FerroMcpService {
             Ok(relations) => {
                 serde_json::to_string_pretty(&relations).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -791,7 +791,7 @@ impl FerroMcpService {
     pub async fn cache_inspect(&self, params: Parameters<CacheInspectParams>) -> String {
         match tools::cache_inspect::execute(&self.project_root, params.0.key_pattern.as_deref()) {
             Ok(cache) => serde_json::to_string_pretty(&cache).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -815,7 +815,7 @@ impl FerroMcpService {
             Ok(history) => {
                 serde_json::to_string_pretty(&history).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -834,7 +834,7 @@ impl FerroMcpService {
             Ok(middleware) => {
                 serde_json::to_string_pretty(&middleware).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -861,7 +861,7 @@ impl FerroMcpService {
             Ok(result) => {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -882,7 +882,7 @@ impl FerroMcpService {
             Ok(result) => {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -913,7 +913,7 @@ impl FerroMcpService {
             Ok(result) => {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -953,7 +953,7 @@ impl FerroMcpService {
             Ok(explanation) => {
                 serde_json::to_string_pretty(&explanation).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -971,7 +971,7 @@ impl FerroMcpService {
             Ok(explanation) => {
                 serde_json::to_string_pretty(&explanation).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -1043,7 +1043,7 @@ impl FerroMcpService {
     pub async fn route_dependencies(&self, params: Parameters<RouteDependenciesParams>) -> String {
         match tools::route_dependencies::execute(&self.project_root, &params.0.route).await {
             Ok(deps) => serde_json::to_string_pretty(&deps).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -1063,7 +1063,7 @@ impl FerroMcpService {
             Ok(usages) => {
                 serde_json::to_string_pretty(&usages).unwrap_or_else(|_| "{}".to_string())
             }
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 
@@ -1081,7 +1081,7 @@ impl FerroMcpService {
     pub async fn dependency_graph(&self, _params: Parameters<DependencyGraphParams>) -> String {
         match tools::dependency_graph::execute(&self.project_root).await {
             Ok(graph) => serde_json::to_string_pretty(&graph).unwrap_or_else(|_| "{}".to_string()),
-            Err(e) => format!("{{\"error\": \"{}\"}}", e),
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
     }
 

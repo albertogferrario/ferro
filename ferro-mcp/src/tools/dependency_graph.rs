@@ -132,8 +132,8 @@ pub async fn execute(project_root: &Path) -> Result<DependencyGraph> {
             let from_model = table_to_model_name(&relation.from_table);
             let to_model = table_to_model_name(&relation.to_table);
 
-            let from_id = format!("model:{}", from_model);
-            let to_id = format!("model:{}", to_model);
+            let from_id = format!("model:{from_model}");
+            let to_id = format!("model:{to_model}");
 
             // Ensure both nodes exist
             if !seen_nodes.contains(&from_id) {
@@ -249,7 +249,7 @@ pub async fn execute(project_root: &Path) -> Result<DependencyGraph> {
 
             // Add edge for Inertia component
             if let Some(ref component) = deps.inertia_component {
-                let component_id = format!("component:{}", component);
+                let component_id = format!("component:{component}");
 
                 // Add component node if not already added
                 if !component_nodes.contains(&component_id) {
@@ -260,7 +260,7 @@ pub async fn execute(project_root: &Path) -> Result<DependencyGraph> {
                         node_type: NodeType::Component,
                         label: component.clone(),
                         metadata: Some(NodeMetadata {
-                            path: Some(format!("frontend/src/pages/{}.tsx", component)),
+                            path: Some(format!("frontend/src/pages/{component}.tsx")),
                             method: None,
                             table: None,
                         }),

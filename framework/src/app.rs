@@ -300,7 +300,7 @@ where
         // Initialize database connection for seeders
         let config = crate::database::DatabaseConfig::from_env();
         if let Err(e) = crate::database::DB::init_with(config).await {
-            eprintln!("Failed to connect to database: {}", e);
+            eprintln!("Failed to connect to database: {e}");
             std::process::exit(1);
         }
 
@@ -319,7 +319,7 @@ where
         };
 
         if let Err(e) = result {
-            eprintln!("Seeding failed: {}", e);
+            eprintln!("Seeding failed: {e}");
             std::process::exit(1);
         }
     }
@@ -365,7 +365,7 @@ where
                 std::fs::File::create(path).ok();
             }
 
-            format!("sqlite:{}?mode=rwc", path)
+            format!("sqlite:{path}?mode=rwc")
         } else {
             database_url
         };
@@ -378,7 +378,7 @@ where
     async fn run_migrations_silent<Migrator: MigratorTrait>() {
         let db = Self::get_database_connection().await;
         if let Err(e) = Migrator::up(&db, None).await {
-            eprintln!("Warning: Migration failed: {}", e);
+            eprintln!("Warning: Migration failed: {e}");
         }
     }
 
@@ -400,7 +400,7 @@ where
     }
 
     async fn rollback_migrations<Migrator: MigratorTrait>(steps: u32) {
-        println!("Rolling back {} migration(s)...", steps);
+        println!("Rolling back {steps} migration(s)...");
         let db = Self::get_database_connection().await;
         Migrator::down(&db, Some(steps))
             .await

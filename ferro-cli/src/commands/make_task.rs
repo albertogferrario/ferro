@@ -14,7 +14,7 @@ pub fn run(name: String) {
     let struct_name = if struct_name.ends_with("Task") {
         struct_name
     } else {
-        format!("{}Task", struct_name)
+        format!("{struct_name}Task")
     };
 
     // Convert to snake_case for file name
@@ -31,7 +31,7 @@ pub fn run(name: String) {
     }
 
     let tasks_dir = Path::new("src/tasks");
-    let task_file = tasks_dir.join(format!("{}.rs", file_name));
+    let task_file = tasks_dir.join(format!("{file_name}.rs"));
     let mod_file = tasks_dir.join("mod.rs");
     let schedule_file = Path::new("src/schedule.rs");
 
@@ -104,8 +104,8 @@ pub fn run(name: String) {
     // Check if module is already declared in mod.rs
     if mod_file.exists() {
         let mod_content = fs::read_to_string(&mod_file).unwrap_or_default();
-        let mod_decl = format!("mod {};", file_name);
-        let pub_mod_decl = format!("pub mod {};", file_name);
+        let mod_decl = format!("mod {file_name};");
+        let pub_mod_decl = format!("pub mod {file_name};");
         if mod_content.contains(&mod_decl) || mod_content.contains(&pub_mod_decl) {
             eprintln!(
                 "{} Module '{}' is already declared in src/tasks/mod.rs",
@@ -160,11 +160,11 @@ pub fn run(name: String) {
     );
     println!(
         "     {}",
-        style(format!("use crate::tasks::{};", file_name)).cyan()
+        style(format!("use crate::tasks::{file_name};")).cyan()
     );
     println!(
         "     {}",
-        style(format!("schedule.task({}::new());", struct_name)).cyan()
+        style(format!("schedule.task({struct_name}::new());")).cyan()
     );
     println!();
     println!("  {} Run the scheduler:", style("3.").dim());
@@ -225,10 +225,10 @@ fn to_pascal_case(s: &str) -> String {
 
 fn update_mod_file(mod_file: &Path, file_name: &str, struct_name: &str) -> Result<(), String> {
     let content =
-        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {}", e))?;
+        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
 
-    let pub_mod_decl = format!("pub mod {};", file_name);
-    let pub_use_decl = format!("pub use {}::{};", file_name, struct_name);
+    let pub_mod_decl = format!("pub mod {file_name};");
+    let pub_use_decl = format!("pub use {file_name}::{struct_name};");
 
     // Find position to insert declarations
     let lines: Vec<&str> = content.lines().collect();
@@ -297,10 +297,10 @@ fn update_mod_file(mod_file: &Path, file_name: &str, struct_name: &str) -> Resul
     let new_content = if new_content.ends_with('\n') {
         new_content
     } else {
-        format!("{}\n", new_content)
+        format!("{new_content}\n")
     };
 
-    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
 
     Ok(())
 }

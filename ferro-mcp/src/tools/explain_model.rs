@@ -55,7 +55,7 @@ pub async fn execute(project_root: &Path, model_name: &str) -> Result<ModelExpla
     let model = models
         .iter()
         .find(|m| m.name.to_lowercase() == model_name.to_lowercase())
-        .ok_or_else(|| McpError::NotFound(format!("Model '{}' not found", model_name)))?;
+        .ok_or_else(|| McpError::NotFound(format!("Model '{model_name}' not found")))?;
 
     // Get routes for finding related routes
     let routes = list_routes(project_root)
@@ -219,7 +219,7 @@ fn infer_field_meaning(name: &str, field_type: &str) -> String {
     } else if name_lower.ends_with("_id") || name_lower.ends_with("id") && name_lower != "id" {
         // Foreign key pattern
         let related = name_lower.trim_end_matches("_id").trim_end_matches("id");
-        format!("Foreign key reference to {} record", related)
+        format!("Foreign key reference to {related} record")
     } else if name_lower.contains("count") || name_lower.contains("quantity") {
         "Numeric count or quantity".to_string()
     } else if name_lower.contains("amount")
@@ -263,7 +263,7 @@ fn infer_relationships(fields: &[FieldInfo], all_models: &[ModelDetails]) -> Vec
             // Try to find matching model
             let related_model = all_models.iter().find(|m| {
                 m.name.to_lowercase() == related_name
-                    || m.name.to_lowercase() == format!("{}s", related_name)
+                    || m.name.to_lowercase() == format!("{related_name}s")
             });
 
             if let Some(model) = related_model {
@@ -281,7 +281,7 @@ fn infer_relationships(fields: &[FieldInfo], all_models: &[ModelDetails]) -> Vec
                     })
                     .collect::<Vec<_>>()
                     .join("");
-                relationships.push(format!("belongs_to: {} (inferred)", capitalized));
+                relationships.push(format!("belongs_to: {capitalized} (inferred)"));
             }
         }
     }
@@ -292,7 +292,7 @@ fn infer_relationships(fields: &[FieldInfo], all_models: &[ModelDetails]) -> Vec
 /// Find routes related to this model
 fn find_related_routes(model_name: &str, routes: &[RouteInfo]) -> Vec<String> {
     let snake_name = to_snake_case(model_name);
-    let plural = format!("{}s", snake_name);
+    let plural = format!("{snake_name}s");
 
     routes
         .iter()
@@ -316,7 +316,7 @@ fn generate_common_queries(_model_name: &str, fields: &[FieldInfo]) -> Vec<Strin
             queries.push("find_by_email".to_string());
         }
         if name_lower == "name" || name_lower == "username" {
-            queries.push(format!("find_by_{}", name_lower));
+            queries.push(format!("find_by_{name_lower}"));
         }
         if name_lower.contains("status") {
             queries.push("find_by_status".to_string());
@@ -324,7 +324,7 @@ fn generate_common_queries(_model_name: &str, fields: &[FieldInfo]) -> Vec<Strin
         }
         if name_lower.ends_with("_id") && name_lower != "id" {
             let related = name_lower.trim_end_matches("_id");
-            queries.push(format!("find_by_{}", related));
+            queries.push(format!("find_by_{related}"));
         }
         if name_lower.contains("slug") {
             queries.push("find_by_slug".to_string());

@@ -21,7 +21,7 @@ pub fn run(name: String, model: Option<String>) {
     let struct_name = if name.ends_with("Policy") {
         name.clone()
     } else {
-        format!("{}Policy", name)
+        format!("{name}Policy")
     };
     let file_name = to_snake_case(name.trim_end_matches("Policy"));
 
@@ -33,7 +33,7 @@ pub fn run(name: String, model: Option<String>) {
     });
 
     let policies_dir = Path::new("src/policies");
-    let policy_file = policies_dir.join(format!("{}_policy.rs", file_name));
+    let policy_file = policies_dir.join(format!("{file_name}_policy.rs"));
     let mod_file = policies_dir.join("mod.rs");
 
     // Check if policies directory exists
@@ -75,7 +75,7 @@ pub fn run(name: String, model: Option<String>) {
     println!("{} Created {}", style("✓").green(), policy_file.display());
 
     // Update mod.rs
-    let module_name = format!("{}_policy", file_name);
+    let module_name = format!("{file_name}_policy");
     if mod_file.exists() {
         if let Err(e) = update_mod_file(&mod_file, &module_name, &struct_name) {
             eprintln!(
@@ -123,10 +123,10 @@ pub fn run(name: String, model: Option<String>) {
     );
     println!();
     println!("Example:");
-    println!("  use crate::policies::{};", struct_name);
+    println!("  use crate::policies::{struct_name};");
     println!("  use ferro::authorization::Policy;");
     println!();
-    println!("  let policy = {};", struct_name);
+    println!("  let policy = {struct_name};");
     println!("  if policy.update(&user, &model).allowed() {{");
     println!("      // Proceed with update");
     println!("  }}");
@@ -184,12 +184,12 @@ fn to_pascal_case(s: &str) -> String {
 
 fn update_mod_file(mod_file: &Path, file_name: &str, struct_name: &str) -> Result<(), String> {
     let content =
-        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {}", e))?;
+        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
 
     // Check if module already declared
-    let mod_decl = format!("mod {};", file_name);
+    let mod_decl = format!("mod {file_name};");
     if content.contains(&mod_decl) {
-        return Err(format!("Module '{}' already declared in mod.rs", file_name));
+        return Err(format!("Module '{file_name}' already declared in mod.rs"));
     }
 
     // Find position to insert mod declaration (after other mod declarations)
@@ -222,7 +222,7 @@ fn update_mod_file(mod_file: &Path, file_name: &str, struct_name: &str) -> Resul
     lines.insert(mod_insert_idx, &mod_decl);
 
     // Find position to insert pub use (after other pub use declarations)
-    let pub_use_decl = format!("pub use {}::{};", file_name, struct_name);
+    let pub_use_decl = format!("pub use {file_name}::{struct_name};");
     let mut last_pub_use_idx = None;
     for (i, line) in lines.iter().enumerate() {
         if line.trim().starts_with("pub use ") {
@@ -252,7 +252,7 @@ fn update_mod_file(mod_file: &Path, file_name: &str, struct_name: &str) -> Resul
     }
 
     let new_content = lines.join("\n");
-    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
 
     Ok(())
 }

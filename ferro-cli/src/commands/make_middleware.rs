@@ -21,12 +21,12 @@ pub fn run(name: String) {
     let struct_name = if name.ends_with("Middleware") {
         name.clone()
     } else {
-        format!("{}Middleware", name)
+        format!("{name}Middleware")
     };
     let file_name = to_snake_case(name.trim_end_matches("Middleware"));
 
     let middleware_dir = Path::new("src/middleware");
-    let middleware_file = middleware_dir.join(format!("{}.rs", file_name));
+    let middleware_file = middleware_dir.join(format!("{file_name}.rs"));
     let mod_file = middleware_dir.join("mod.rs");
 
     // Check if middleware directory exists
@@ -85,8 +85,7 @@ pub fn run(name: String) {
     } else {
         // Create mod.rs if it doesn't exist
         let mod_content = format!(
-            "//! Application middleware\n\nmod {};\n\npub use {}::{};\n",
-            file_name, file_name, struct_name
+            "//! Application middleware\n\nmod {file_name};\n\npub use {file_name}::{struct_name};\n"
         );
         if let Err(e) = fs::write(&mod_file, mod_content) {
             eprintln!(
@@ -107,11 +106,11 @@ pub fn run(name: String) {
     println!();
     println!("Usage:");
     println!("  {} Import and use in routes:", style("1.").dim());
-    println!("     use crate::middleware::{};", struct_name);
-    println!("     .get(\"/path\", handler).middleware({})", struct_name);
+    println!("     use crate::middleware::{struct_name};");
+    println!("     .get(\"/path\", handler).middleware({struct_name})");
     println!();
     println!("  {} Or apply globally in main.rs:", style("2.").dim());
-    println!("     .middleware(middleware::{})", struct_name);
+    println!("     .middleware(middleware::{struct_name})");
     println!();
 }
 
@@ -149,12 +148,12 @@ fn to_snake_case(s: &str) -> String {
 
 fn update_mod_file(mod_file: &Path, file_name: &str, struct_name: &str) -> Result<(), String> {
     let content =
-        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {}", e))?;
+        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
 
     // Check if module already declared
-    let mod_decl = format!("mod {};", file_name);
+    let mod_decl = format!("mod {file_name};");
     if content.contains(&mod_decl) {
-        return Err(format!("Module '{}' already declared in mod.rs", file_name));
+        return Err(format!("Module '{file_name}' already declared in mod.rs"));
     }
 
     // Find position to insert mod declaration (after other mod declarations)
@@ -187,7 +186,7 @@ fn update_mod_file(mod_file: &Path, file_name: &str, struct_name: &str) -> Resul
     lines.insert(mod_insert_idx, &mod_decl);
 
     // Find position to insert pub use (after other pub use declarations)
-    let pub_use_decl = format!("pub use {}::{};", file_name, struct_name);
+    let pub_use_decl = format!("pub use {file_name}::{struct_name};");
     let mut last_pub_use_idx = None;
     for (i, line) in lines.iter().enumerate() {
         if line.trim().starts_with("pub use ") {
@@ -217,7 +216,7 @@ fn update_mod_file(mod_file: &Path, file_name: &str, struct_name: &str) -> Resul
     }
 
     let new_content = lines.join("\n");
-    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
 
     Ok(())
 }

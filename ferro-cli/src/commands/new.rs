@@ -20,7 +20,7 @@ pub fn run(name: Option<String>, no_interaction: bool, no_git: bool) {
     println!();
     println!(
         "{}",
-        style(format!("Creating project '{}'...", project_name)).dim()
+        style(format!("Creating project '{project_name}'...")).dim()
     );
 
     if let Err(e) = create_project(&project_name, &package_name, &description, &author, no_git) {
@@ -111,7 +111,7 @@ fn get_git_author() -> Option<String> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())?;
 
-    Some(format!("{} <{}>", name, email))
+    Some(format!("{name} <{email}>"))
 }
 
 fn to_snake_case(s: &str) -> String {
@@ -142,7 +142,7 @@ fn create_project(
     let project_path = Path::new(project_name);
 
     if project_path.exists() {
-        return Err(format!("Directory '{}' already exists", project_name));
+        return Err(format!("Directory '{project_name}' already exists"));
     }
 
     // Create directory structure
@@ -160,7 +160,7 @@ fn create_project(
             .args(["init"])
             .current_dir(project_path)
             .output()
-            .map_err(|e| format!("Failed to initialize git repository: {}", e))?;
+            .map_err(|e| format!("Failed to initialize git repository: {e}"))?;
     }
 
     Ok(())
@@ -197,7 +197,7 @@ fn create_directories(project_path: &Path) -> Result<(), String> {
 
     for dir in backend_dirs.iter().chain(frontend_dirs.iter()) {
         fs::create_dir_all(project_path.join(dir))
-            .map_err(|e| format!("Failed to create directory {}: {}", dir, e))?;
+            .map_err(|e| format!("Failed to create directory {dir}: {e}"))?;
     }
 
     Ok(())
@@ -466,5 +466,5 @@ fn write_frontend_files(project_path: &Path, project_name: &str) -> Result<(), S
 
 fn write_file(project_path: &Path, relative_path: &str, content: &str) -> Result<(), String> {
     let full_path = project_path.join(relative_path);
-    fs::write(&full_path, content).map_err(|e| format!("Failed to write {}: {}", relative_path, e))
+    fs::write(&full_path, content).map_err(|e| format!("Failed to write {relative_path}: {e}"))
 }

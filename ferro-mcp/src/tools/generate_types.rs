@@ -99,7 +99,7 @@ pub fn execute(
         return Ok(GenerateTypesResult {
             success: true,
             output_path: Some(output.to_string()),
-            message: format!("Dry run: would generate {} interface(s)", types_generated),
+            message: format!("Dry run: would generate {types_generated} interface(s)"),
             types_generated,
             interfaces,
             preview,
@@ -118,7 +118,7 @@ pub fn execute(
     Ok(GenerateTypesResult {
         success: true,
         output_path: Some(output.to_string()),
-        message: format!("Generated {} interface(s) to {}", types_generated, output),
+        message: format!("Generated {types_generated} interface(s) to {output}"),
         types_generated,
         interfaces,
         preview,
@@ -677,7 +677,7 @@ fn generate_namespaced_name(module_path: &str, struct_name: &str) -> String {
         return struct_name.to_string();
     }
     let namespace: String = module_path.split("::").map(snake_to_pascal).collect();
-    format!("{}{}", namespace, struct_name)
+    format!("{namespace}{struct_name}")
 }
 
 /// Build a map from original struct name to namespaced name, with collision detection
@@ -698,8 +698,7 @@ fn build_name_map(structs: &[&PropsStruct]) -> HashMap<String, String> {
     for (namespaced, sources) in &reverse_map {
         if sources.len() > 1 {
             eprintln!(
-                "Warning: TypeScript name collision detected for '{}': {:?}",
-                namespaced, sources
+                "Warning: TypeScript name collision detected for '{namespaced}': {sources:?}"
             );
         }
     }
@@ -764,7 +763,7 @@ fn apply_serde_rename(field_name: &str, rename_all: Option<&str>) -> String {
 }
 
 fn generate_interface(name: &str, fields: &[PropsField], serde_rename_all: Option<&str>) -> String {
-    let mut ts = format!("export interface {} {{\n", name);
+    let mut ts = format!("export interface {name} {{\n");
     for field in fields {
         let optional_marker = if field.optional { "?" } else { "" };
         // Per-field rename takes precedence over rename_all
@@ -789,7 +788,7 @@ fn generate_interface_with_mapping(
     serde_rename_all: Option<&str>,
     name_map: &HashMap<String, String>,
 ) -> String {
-    let mut ts = format!("export interface {} {{\n", name);
+    let mut ts = format!("export interface {name} {{\n");
     for field in fields {
         let optional_marker = if field.optional { "?" } else { "" };
         // Per-field rename takes precedence over rename_all
@@ -800,10 +799,7 @@ fn generate_interface_with_mapping(
         };
         // Use namespaced type references
         let ts_type = rust_type_to_ts_with_mapping(&field.rust_type, name_map);
-        ts.push_str(&format!(
-            "  {}{}: {};\n",
-            ts_field_name, optional_marker, ts_type
-        ));
+        ts.push_str(&format!("  {ts_field_name}{optional_marker}: {ts_type};\n"));
     }
     ts.push('}');
     ts

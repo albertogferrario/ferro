@@ -57,7 +57,7 @@ pub struct RouteMetricsView {
 
 /// Try to fetch metrics from the running application
 async fn fetch_runtime_metrics(base_url: &str) -> Option<MetricsSnapshot> {
-    let url = format!("{}/_ferro/metrics", base_url);
+    let url = format!("{base_url}/_ferro/metrics");
 
     let client = reqwest::Client::builder()
         .timeout(HTTP_TIMEOUT)
@@ -182,7 +182,7 @@ mod tests {
             metrics: MetricsSnapshot::default(),
             source: MetricsSource::Unavailable,
         };
-        assert!(format!("{:?}", info).contains("MetricsInfo"));
+        assert!(format!("{info:?}").contains("MetricsInfo"));
     }
 
     #[test]

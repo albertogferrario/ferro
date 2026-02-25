@@ -355,7 +355,7 @@ mod tests {
         assert_eq!(results.len(), 2);
 
         for (name, result) in results {
-            assert!(result.is_ok(), "Task {} failed", name);
+            assert!(result.is_ok(), "Task {name} failed");
         }
     }
 }

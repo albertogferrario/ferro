@@ -78,7 +78,7 @@ impl SmartDefaults {
         if !self.field_inferences.is_empty() {
             println!("\n   Field type inference:");
             for (name, field_type, reason) in &self.field_inferences {
-                println!("     {} → {} ({})", name, field_type, reason);
+                println!("     {name} → {field_type} ({reason})");
             }
         }
 
@@ -111,8 +111,7 @@ pub fn run(
     // Validate resource name
     if !is_valid_identifier(&name) {
         eprintln!(
-            "Error: '{}' is not a valid identifier. Use PascalCase (e.g., Post, UserProfile)",
-            name
+            "Error: '{name}' is not a valid identifier. Use PascalCase (e.g., Post, UserProfile)"
         );
         std::process::exit(1);
     }
@@ -121,7 +120,7 @@ pub fn run(
     let parsed_fields = match parse_fields(&fields, &mut smart_defaults, no_smart_defaults) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("Error parsing fields: {}", e);
+            eprintln!("Error parsing fields: {e}");
             std::process::exit(1);
         }
     };
@@ -148,7 +147,7 @@ pub fn run(
         }
     }
 
-    println!("🚀 Scaffolding {}...\n", name);
+    println!("🚀 Scaffolding {name}...\n");
 
     // Detect foreign keys from field names
     let analyzer = ProjectAnalyzer::current_dir();
@@ -215,9 +214,9 @@ pub fn run(
     }
 
     if api_only {
-        println!("\n✅ API scaffold for {} created successfully!", name);
+        println!("\n✅ API scaffold for {name} created successfully!");
     } else {
-        println!("\n✅ Scaffold for {} created successfully!", name);
+        println!("\n✅ Scaffold for {name} created successfully!");
     }
 }
 
@@ -252,7 +251,7 @@ impl FieldType {
             "datetime" | "timestamp" => Ok(FieldType::DateTime),
             "date" => Ok(FieldType::Date),
             "uuid" => Ok(FieldType::Uuid),
-            _ => Err(format!("Unknown field type: '{}'. Valid types: string, text, integer, bigint, float, bool, datetime, date, uuid", s)),
+            _ => Err(format!("Unknown field type: '{s}'. Valid types: string, text, integer, bigint, float, bool, datetime, date, uuid")),
         }
     }
 
@@ -371,8 +370,7 @@ fn parse_fields(
                 let name = parts[0].to_string();
                 if !is_valid_field_name(&name) {
                     return Err(format!(
-                        "Invalid field name: '{}'. Use snake_case (e.g., user_id)",
-                        name
+                        "Invalid field name: '{name}'. Use snake_case (e.g., user_id)"
                     ));
                 }
                 let (field_type, reason) = infer_field_type(&name);
@@ -390,8 +388,7 @@ fn parse_fields(
                 let name = parts[0].to_string();
                 if !is_valid_field_name(&name) {
                     return Err(format!(
-                        "Invalid field name: '{}'. Use snake_case (e.g., user_id)",
-                        name
+                        "Invalid field name: '{name}'. Use snake_case (e.g., user_id)"
                     ));
                 }
                 let field_type = FieldType::from_str(parts[1])?;
@@ -399,8 +396,7 @@ fn parse_fields(
             }
             _ => {
                 return Err(format!(
-                    "Invalid field format: '{}'. Expected format: name or name:type (e.g., title or title:string)",
-                    field_str
+                    "Invalid field format: '{field_str}'. Expected format: name or name:type (e.g., title or title:string)"
                 ));
             }
         };
@@ -499,7 +495,7 @@ fn to_pascal_case(name: &str) -> String {
 fn pluralize(name: &str) -> String {
     // Simple pluralization rules
     if name.ends_with('s') || name.ends_with('x') || name.ends_with("ch") || name.ends_with("sh") {
-        format!("{}es", name)
+        format!("{name}es")
     } else if name.ends_with('y')
         && !name.ends_with("ay")
         && !name.ends_with("ey")
@@ -508,7 +504,7 @@ fn pluralize(name: &str) -> String {
     {
         format!("{}ies", &name[..name.len() - 1])
     } else {
-        format!("{}s", name)
+        format!("{name}s")
     }
 }
 
@@ -532,8 +528,8 @@ fn generate_migration(
 
     // Generate timestamp
     let timestamp = chrono::Utc::now().format("%Y%m%d%H%M%S").to_string();
-    let migration_name = format!("m{}_create_{}_table", timestamp, plural_snake);
-    let file_name = format!("{}.rs", migration_name);
+    let migration_name = format!("m{timestamp}_create_{plural_snake}_table");
+    let file_name = format!("{migration_name}.rs");
     let file_path = migrations_dir.join(&file_name);
 
     // Build column definitions
@@ -686,7 +682,7 @@ fn update_migrations_mod(migration_name: &str) {
     let content = fs::read_to_string(mod_path).expect("Failed to read mod.rs");
 
     // Add module declaration
-    let mod_declaration = format!("pub mod {};", migration_name);
+    let mod_declaration = format!("pub mod {migration_name};");
     if content.contains(&mod_declaration) {
         return;
     }
@@ -704,7 +700,7 @@ fn update_migrations_mod(migration_name: &str) {
     lines.insert(insert_index, &mod_declaration);
 
     // Also add to Migrator
-    let migrator_addition = format!("            Box::new({}::Migration),", migration_name);
+    let migrator_addition = format!("            Box::new({migration_name}::Migration),");
 
     let mut updated_lines = Vec::new();
     for line in lines {
@@ -717,10 +713,7 @@ fn update_migrations_mod(migration_name: &str) {
     // Simple approach: find "]" line in migrations() and insert before it
     let content = updated_lines.join("\n");
     let content = if content.contains("vec![]") {
-        content.replace(
-            "vec![]",
-            &format!("vec![\n{}\n        ]", migrator_addition),
-        )
+        content.replace("vec![]", &format!("vec![\n{migrator_addition}\n        ]"))
     } else if content.contains("vec![") {
         // Find last ] in migrations function and insert before it
         let mut result = String::new();
@@ -763,7 +756,7 @@ fn generate_model(name: &str, snake_name: &str, fields: &[Field], foreign_keys: 
         fs::create_dir_all(models_dir).expect("Failed to create models directory");
     }
 
-    let file_path = models_dir.join(format!("{}.rs", snake_name));
+    let file_path = models_dir.join(format!("{snake_name}.rs"));
 
     // Build field definitions for the entity
     let mut field_defs = String::new();
@@ -802,8 +795,7 @@ fn generate_model(name: &str, snake_name: &str, fields: &[Field], foreign_keys: 
             .collect();
 
         format!(
-            "#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]\npub enum Relation {{\n{}}}\n",
-            variants
+            "#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]\npub enum Relation {{\n{variants}}}\n"
         )
     };
 
@@ -872,32 +864,26 @@ impl Model {{
     // Update mod.rs
     update_models_mod(snake_name);
 
-    println!("   📦 Created model: src/models/{}.rs", snake_name);
+    println!("   📦 Created model: src/models/{snake_name}.rs");
 }
 
 fn update_models_mod(snake_name: &str) {
     let mod_path = Path::new("src/models/mod.rs");
 
     if !mod_path.exists() {
-        let content = format!(
-            "pub mod {snake};\npub use {snake}::*;\n",
-            snake = snake_name
-        );
+        let content = format!("pub mod {snake_name};\npub use {snake_name}::*;\n");
         fs::write(mod_path, content).expect("Failed to write mod.rs");
         return;
     }
 
     let content = fs::read_to_string(mod_path).expect("Failed to read mod.rs");
-    let mod_declaration = format!("pub mod {};", snake_name);
+    let mod_declaration = format!("pub mod {snake_name};");
 
     if content.contains(&mod_declaration) {
         return;
     }
 
-    let updated = format!(
-        "{}{}\npub use {}::*;\n",
-        content, mod_declaration, snake_name
-    );
+    let updated = format!("{content}{mod_declaration}\npub use {snake_name}::*;\n");
     fs::write(mod_path, updated).expect("Failed to write mod.rs");
 }
 
@@ -915,7 +901,7 @@ fn generate_controller(
         fs::create_dir_all(controllers_dir).expect("Failed to create controllers directory");
     }
 
-    let file_path = controllers_dir.join(format!("{}_controller.rs", snake_name));
+    let file_path = controllers_dir.join(format!("{snake_name}_controller.rs"));
 
     // Build update field assignments (builder setter calls)
     let mut update_fields = String::new();
@@ -1013,30 +999,27 @@ fn generate_controller(
     } else {
         "controller"
     };
-    println!(
-        "   📦 Created {}: src/controllers/{}_controller.rs",
-        controller_type, snake_name
-    );
+    println!("   📦 Created {controller_type}: src/controllers/{snake_name}_controller.rs");
 }
 
 fn update_controllers_mod(snake_name: &str) {
     let mod_path = Path::new("src/controllers/mod.rs");
-    let module_name = format!("{}_controller", snake_name);
+    let module_name = format!("{snake_name}_controller");
 
     if !mod_path.exists() {
-        let content = format!("pub mod {};\n", module_name);
+        let content = format!("pub mod {module_name};\n");
         fs::write(mod_path, content).expect("Failed to write mod.rs");
         return;
     }
 
     let content = fs::read_to_string(mod_path).expect("Failed to read mod.rs");
-    let mod_declaration = format!("pub mod {};", module_name);
+    let mod_declaration = format!("pub mod {module_name};");
 
     if content.contains(&mod_declaration) {
         return;
     }
 
-    let updated = format!("{}{}\n", content, mod_declaration);
+    let updated = format!("{content}{mod_declaration}\n");
     fs::write(mod_path, updated).expect("Failed to write mod.rs");
 }
 
@@ -1079,10 +1062,7 @@ fn generate_inertia_pages(
         foreign_keys,
     );
 
-    println!(
-        "   📦 Created Inertia pages: frontend/src/pages/{}/",
-        plural_snake
-    );
+    println!("   📦 Created Inertia pages: frontend/src/pages/{plural_snake}/");
 }
 
 fn generate_index_page(
@@ -1483,7 +1463,7 @@ export default function Create({{ {fk_destructure}errors: serverErrors }}: Props
 
   const handleSubmit = (e: React.FormEvent) => {{
     e.preventDefault();
-    post('/{plural}');
+    post('/{plural_snake}');
   }};
 
   return (
@@ -1491,7 +1471,7 @@ export default function Create({{ {fk_destructure}errors: serverErrors }}: Props
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Create {name}</h1>
-          <Link href="/{plural}" className="text-gray-500 hover:underline">
+          <Link href="/{plural_snake}" className="text-gray-500 hover:underline">
             Back to list
           </Link>
         </div>
@@ -1512,14 +1492,7 @@ export default function Create({{ {fk_destructure}errors: serverErrors }}: Props
     </div>
   );
 }}
-"#,
-        name = name,
-        plural = plural_snake,
-        form_inputs = form_inputs,
-        initial_data = initial_data,
-        fk_interfaces = fk_interfaces,
-        fk_props = fk_props,
-        fk_destructure = fk_destructure
+"#
     );
 
     fs::write(file_path, content).expect("Failed to write Create.tsx");
@@ -1764,19 +1737,16 @@ export default function Edit({{ {snake}, {fk_destructure}errors: serverErrors }}
 fn print_route_instructions(name: &str, snake_name: &str, plural_snake: &str) {
     println!("\n📝 Add these routes to src/routes.rs:\n");
     println!(
-        r#"use crate::controllers::{snake}_controller;
+        r#"use crate::controllers::{snake_name}_controller;
 
 // {name} routes
-route("/{plural}", {snake}_controller::index);
-route("/{plural}/create", {snake}_controller::create);
-route_post("/{plural}", {snake}_controller::store);
-route("/{plural}/{{id}}", {snake}_controller::show);
-route("/{plural}/{{id}}/edit", {snake}_controller::edit);
-route_put("/{plural}/{{id}}", {snake}_controller::update);
-route_delete("/{plural}/{{id}}", {snake}_controller::destroy);"#,
-        name = name,
-        snake = snake_name,
-        plural = plural_snake
+route("/{plural_snake}", {snake_name}_controller::index);
+route("/{plural_snake}/create", {snake_name}_controller::create);
+route_post("/{plural_snake}", {snake_name}_controller::store);
+route("/{plural_snake}/{{id}}", {snake_name}_controller::show);
+route("/{plural_snake}/{{id}}/edit", {snake_name}_controller::edit);
+route_put("/{plural_snake}/{{id}}", {snake_name}_controller::update);
+route_delete("/{plural_snake}/{{id}}", {snake_name}_controller::destroy);"#
     );
 }
 
@@ -1791,9 +1761,9 @@ fn register_routes(snake_name: &str, plural_snake: &str, skip_confirm: bool) {
     let content = fs::read_to_string(routes_path).expect("Failed to read routes.rs");
 
     // Check if resource already registered
-    let resource_pattern = format!("resource!(\"/{}\"", plural_snake);
+    let resource_pattern = format!("resource!(\"/{plural_snake}\"");
     if content.contains(&resource_pattern) {
-        println!("   ⏭️  Route already registered for /{}", plural_snake);
+        println!("   ⏭️  Route already registered for /{plural_snake}");
         return;
     }
 
@@ -1807,10 +1777,7 @@ fn register_routes(snake_name: &str, plural_snake: &str, skip_confirm: bool) {
     let use_statement = format!("{}::{}_controller", "controllers", snake_name);
 
     println!("\n📝 Route registration:");
-    println!(
-        "   Will add: resource!(\"/{}\", controllers::{})",
-        plural_snake, snake_name
-    );
+    println!("   Will add: resource!(\"/{plural_snake}\", controllers::{snake_name})");
 
     if !skip_confirm {
         let confirmed = Confirm::new()
@@ -1879,7 +1846,7 @@ fn generate_tests(
         fs::create_dir_all(tests_dir).expect("Failed to create tests directory");
     }
 
-    let file_path = tests_dir.join(format!("{}_controller_test.rs", snake_name));
+    let file_path = tests_dir.join(format!("{snake_name}_controller_test.rs"));
 
     // Choose template based on whether factory is also being generated
     let test_content = if with_factory {
@@ -1912,30 +1879,27 @@ fn generate_tests(
     } else {
         "test"
     };
-    println!(
-        "   📦 Created {}: src/tests/{}_controller_test.rs",
-        test_type, snake_name
-    );
+    println!("   📦 Created {test_type}: src/tests/{snake_name}_controller_test.rs");
 }
 
 fn update_tests_mod(snake_name: &str) {
     let mod_path = Path::new("src/tests/mod.rs");
-    let module_name = format!("{}_controller_test", snake_name);
+    let module_name = format!("{snake_name}_controller_test");
 
     if !mod_path.exists() {
-        let content = format!("pub mod {};\n", module_name);
+        let content = format!("pub mod {module_name};\n");
         fs::write(mod_path, content).expect("Failed to write mod.rs");
         return;
     }
 
     let content = fs::read_to_string(mod_path).expect("Failed to read mod.rs");
-    let mod_declaration = format!("pub mod {};", module_name);
+    let mod_declaration = format!("pub mod {module_name};");
 
     if content.contains(&mod_declaration) {
         return;
     }
 
-    let updated = format!("{}{}\n", content, mod_declaration);
+    let updated = format!("{content}{mod_declaration}\n");
     fs::write(mod_path, updated).expect("Failed to write mod.rs");
 }
 
@@ -1951,9 +1915,9 @@ fn generate_scaffold_factory(
         fs::create_dir_all(factories_dir).expect("Failed to create factories directory");
     }
 
-    let file_name = format!("{}_factory", snake_name);
-    let struct_name = format!("{}Factory", name);
-    let file_path = factories_dir.join(format!("{}.rs", file_name));
+    let file_name = format!("{snake_name}_factory");
+    let struct_name = format!("{name}Factory");
+    let file_path = factories_dir.join(format!("{file_name}.rs"));
 
     // Convert Field to ScaffoldField for template
     let scaffold_fields: Vec<templates::ScaffoldField> = fields
@@ -1988,7 +1952,7 @@ fn generate_scaffold_factory(
     // Update factories/mod.rs
     update_factories_mod(&file_name);
 
-    println!("   📦 Created factory: src/factories/{}.rs", file_name);
+    println!("   📦 Created factory: src/factories/{file_name}.rs");
 }
 
 fn update_factories_mod(file_name: &str) {
@@ -2006,16 +1970,13 @@ fn update_factories_mod(file_name: &str) {
     }
 
     let content = fs::read_to_string(mod_path).expect("Failed to read mod.rs");
-    let mod_declaration = format!("pub mod {};", file_name);
+    let mod_declaration = format!("pub mod {file_name};");
 
     if content.contains(&mod_declaration) {
         return;
     }
 
-    let updated = format!(
-        "{}{}\npub use {}::*;\n",
-        content, mod_declaration, file_name
-    );
+    let updated = format!("{content}{mod_declaration}\npub use {file_name}::*;\n");
     fs::write(mod_path, updated).expect("Failed to write mod.rs");
 }
 

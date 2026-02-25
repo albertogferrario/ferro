@@ -116,7 +116,7 @@ fn build_url(path: &str, query: Option<&str>, page: u64) -> String {
         .extend_pairs(&params)
         .finish();
 
-    format!("{}?{}", path, encoded)
+    format!("{path}?{encoded}")
 }
 
 #[cfg(test)]

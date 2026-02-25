@@ -265,8 +265,7 @@ impl Broadcaster {
             .ok_or_else(|| Error::ChannelNotFound(channel_name.to_string()))?;
         if !channel.subscribers.contains(socket_id) {
             return Err(Error::ClientNotConnected(format!(
-                "Client {} is not subscribed to {}",
-                socket_id, channel_name
+                "Client {socket_id} is not subscribed to {channel_name}"
             )));
         }
         drop(channel); // Release DashMap guard before await
@@ -476,7 +475,7 @@ mod tests {
                 assert_eq!(broadcast_msg.channel, "chat");
                 assert_eq!(broadcast_msg.data, serde_json::json!({"user": "alice"}));
             }
-            other => panic!("Expected Event, got {:?}", other),
+            other => panic!("Expected Event, got {other:?}"),
         }
 
         // Client 1 does NOT receive it

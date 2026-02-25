@@ -23,7 +23,7 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
     }
 
     let views_dir = Path::new("src/views");
-    let view_file = views_dir.join(format!("{}.rs", file_name));
+    let view_file = views_dir.join(format!("{file_name}.rs"));
     let mod_file = views_dir.join("mod.rs");
 
     // Create views directory if it doesn't exist
@@ -53,8 +53,8 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
     // Check if module is already declared in mod.rs
     if mod_file.exists() {
         let mod_content = fs::read_to_string(&mod_file).unwrap_or_default();
-        let mod_decl = format!("mod {};", file_name);
-        let pub_mod_decl = format!("pub mod {};", file_name);
+        let mod_decl = format!("mod {file_name};");
+        let pub_mod_decl = format!("pub mod {file_name};");
         if mod_content.contains(&mod_decl) || mod_content.contains(&pub_mod_decl) {
             eprintln!(
                 "{} Module '{}' is already declared in src/views/mod.rs",
@@ -128,7 +128,7 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
         }
         println!("{} Updated src/views/mod.rs", style("✓").green());
     } else {
-        let mod_content = format!("pub mod {};\n", file_name);
+        let mod_content = format!("pub mod {file_name};\n");
         if let Err(e) = fs::write(&mod_file, mod_content) {
             eprintln!(
                 "{} Failed to create mod.rs: {}",
@@ -148,13 +148,10 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
     println!();
     println!("Usage:");
     println!("  {} Use the view in a handler:", style("1.").dim());
-    println!("     use crate::views::{};", file_name);
+    println!("     use crate::views::{file_name};");
     println!();
     println!("     pub async fn index() -> Response {{");
-    println!(
-        "         JsonUi::render(&{}::view(), &json!({{}}))",
-        file_name
-    );
+    println!("         JsonUi::render(&{file_name}::view(), &json!({{}}))");
     println!("     }}");
     println!();
 }
@@ -208,9 +205,9 @@ fn to_title_case(s: &str) -> String {
 
 fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     let content =
-        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {}", e))?;
+        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
 
-    let pub_mod_decl = format!("pub mod {};", file_name);
+    let pub_mod_decl = format!("pub mod {file_name};");
 
     let mut lines: Vec<&str> = content.lines().collect();
 
@@ -239,7 +236,7 @@ fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     lines.insert(insert_idx, &pub_mod_decl);
 
     let new_content = lines.join("\n");
-    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
 
     Ok(())
 }

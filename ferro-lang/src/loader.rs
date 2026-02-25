@@ -112,7 +112,7 @@ fn flatten_json(obj: &HashMap<String, Value>, prefix: &str, out: &mut HashMap<St
         let full_key = if prefix.is_empty() {
             key.clone()
         } else {
-            format!("{}.{}", prefix, key)
+            format!("{prefix}.{key}")
         };
 
         match value {

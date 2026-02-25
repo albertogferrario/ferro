@@ -54,7 +54,7 @@ impl DbConnection {
             }
 
             // Use the file path format that SQLite prefers with create mode
-            format!("sqlite:{}?mode=rwc", path)
+            format!("sqlite:{path}?mode=rwc")
         } else {
             config.url.clone()
         };

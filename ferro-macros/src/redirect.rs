@@ -72,16 +72,16 @@ fn validate_route_exists(route_name: &str, span: Span) -> Result<(), syn::Error>
     }
 
     if !available_routes.contains(&route_name.to_string()) {
-        let mut error_msg = format!("Route '{}' not found.", route_name);
+        let mut error_msg = format!("Route '{route_name}' not found.");
 
         error_msg.push_str("\n\nAvailable routes:");
         for route in &available_routes {
-            error_msg.push_str(&format!("\n  - {}", route));
+            error_msg.push_str(&format!("\n  - {route}"));
         }
 
         // Suggest similar route names
         if let Some(suggestion) = find_similar_route(route_name, &available_routes) {
-            error_msg.push_str(&format!("\n\nDid you mean '{}'?", suggestion));
+            error_msg.push_str(&format!("\n\nDid you mean '{suggestion}'?"));
         }
 
         return Err(syn::Error::new(span, error_msg));
@@ -142,7 +142,7 @@ fn extract_route_names(project_root: &Path) -> Vec<String> {
                             for action in actions_str.as_str().split(',') {
                                 let action = action.trim();
                                 if !action.is_empty() {
-                                    routes.push(format!("{}.{}", name_prefix, action));
+                                    routes.push(format!("{name_prefix}.{action}"));
                                 }
                             }
                         }
@@ -152,7 +152,7 @@ fn extract_route_names(project_root: &Path) -> Vec<String> {
                     for action in &[
                         "index", "create", "store", "show", "edit", "update", "destroy",
                     ] {
-                        routes.push(format!("{}.{}", name_prefix, action));
+                        routes.push(format!("{name_prefix}.{action}"));
                     }
                 }
             } else {
@@ -160,7 +160,7 @@ fn extract_route_names(project_root: &Path) -> Vec<String> {
                 for action in &[
                     "index", "create", "store", "show", "edit", "update", "destroy",
                 ] {
-                    routes.push(format!("{}.{}", name_prefix, action));
+                    routes.push(format!("{name_prefix}.{action}"));
                 }
             }
         }

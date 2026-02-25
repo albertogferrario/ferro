@@ -50,8 +50,7 @@ pub fn execute(project_root: &Path, key_pattern: Option<&str>) -> Result<CacheIn
             },
         }),
         _ => Err(McpError::ConfigError(format!(
-            "Unknown cache driver: {}",
-            cache_driver
+            "Unknown cache driver: {cache_driver}"
         ))),
     }
 }
@@ -194,7 +193,7 @@ fn inspect_redis_cache(key_pattern: Option<&str>) -> Result<CacheInfo> {
                 }
                 Err(e) => Ok(CacheInfo {
                     driver: "redis".to_string(),
-                    status: format!("connection failed: {}", e),
+                    status: format!("connection failed: {e}"),
                     entries: vec![],
                     stats: CacheStats {
                         total_entries: 0,
@@ -206,7 +205,7 @@ fn inspect_redis_cache(key_pattern: Option<&str>) -> Result<CacheInfo> {
         }
         Err(e) => Ok(CacheInfo {
             driver: "redis".to_string(),
-            status: format!("client creation failed: {}", e),
+            status: format!("client creation failed: {e}"),
             entries: vec![],
             stats: CacheStats {
                 total_entries: 0,

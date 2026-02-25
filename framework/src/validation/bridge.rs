@@ -62,7 +62,7 @@ mod tests {
     fn test_translator_fn_signature() {
         // Verify a concrete function matches the TranslatorFn signature.
         fn mock_translator(key: &str, _params: &[(&str, &str)]) -> Option<String> {
-            Some(format!("translated: {}", key))
+            Some(format!("translated: {key}"))
         }
 
         let f: TranslatorFn = mock_translator;

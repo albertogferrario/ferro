@@ -136,7 +136,7 @@ fn print_results(rows: &[sea_orm::QueryResult]) {
         .map(|w| "-".repeat(*w + 2))
         .collect::<Vec<_>>()
         .join("+");
-    println!("+{}+", separator);
+    println!("+{separator}+");
 
     // Print rows
     for row in &table_data {
@@ -145,13 +145,13 @@ fn print_results(rows: &[sea_orm::QueryResult]) {
             .enumerate()
             .map(|(i, cell)| {
                 let width = col_widths.get(i).copied().unwrap_or(10);
-                format!(" {:width$} ", cell, width = width)
+                format!(" {cell:width$} ")
             })
             .collect();
         println!("|{}|", formatted.join("|"));
     }
 
-    println!("+{}+", separator);
+    println!("+{separator}+");
     println!("\n{} {} row(s)", style("→").cyan(), table_data.len());
 }
 
@@ -214,7 +214,7 @@ mod tests {
             .enumerate()
             .map(|(i, cell)| {
                 let width = col_widths.get(i).copied().unwrap_or(10);
-                format!(" {:width$} ", cell, width = width)
+                format!(" {cell:width$} ")
             })
             .collect();
 

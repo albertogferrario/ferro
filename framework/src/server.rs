@@ -88,7 +88,7 @@ impl Server {
         let addr: SocketAddr = self.get_addr();
         let listener = TcpListener::bind(addr).await?;
 
-        println!("Ferro server running on http://{}", addr);
+        println!("Ferro server running on http://{addr}");
 
         let router = self.router;
         let middleware = Arc::new(self.middleware);
@@ -111,7 +111,7 @@ impl Server {
                     .with_upgrades()
                     .await
                 {
-                    eprintln!("Error serving connection: {:?}", err);
+                    eprintln!("Error serving connection: {err:?}");
                 }
             });
         }
@@ -264,7 +264,7 @@ async fn check_database_health() -> Result<(), String> {
     conn.inner()
         .execute_unprepared("SELECT 1")
         .await
-        .map_err(|e| format!("Database query failed: {}", e))?;
+        .map_err(|e| format!("Database query failed: {e}"))?;
 
     Ok(())
 }

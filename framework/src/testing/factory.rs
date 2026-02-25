@@ -183,7 +183,7 @@ pub trait DatabaseFactory: Factory + IntoActiveModel<Self::ActiveModel> {
         let db = DB::get()?;
         let active_model: Self::ActiveModel = model.into_active_model();
         let result = active_model.insert(db.inner()).await.map_err(|e| {
-            FrameworkError::internal(format!("Failed to insert factory model: {}", e))
+            FrameworkError::internal(format!("Failed to insert factory model: {e}"))
         })?;
         Ok(result)
     }
@@ -915,7 +915,7 @@ impl Fake {
 
     /// Generate a random image URL (placeholder)
     pub fn image_url(width: u32, height: u32) -> String {
-        format!("https://via.placeholder.com/{}x{}", width, height)
+        format!("https://via.placeholder.com/{width}x{height}")
     }
 
     /// Generate a random hex color
@@ -1056,7 +1056,7 @@ impl Fake {
     pub fn hex(length: usize) -> String {
         Self::bytes(length / 2 + 1)
             .iter()
-            .map(|b| format!("{:02x}", b))
+            .map(|b| format!("{b:02x}"))
             .collect::<String>()
             .chars()
             .take(length)

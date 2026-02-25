@@ -12,7 +12,7 @@ pub fn run(name: String) {
     let struct_name = if struct_name.ends_with("Action") {
         struct_name
     } else {
-        format!("{}Action", struct_name)
+        format!("{struct_name}Action")
     };
 
     // Convert to snake_case for file name
@@ -29,7 +29,7 @@ pub fn run(name: String) {
     }
 
     let actions_dir = Path::new("src/actions");
-    let action_file = actions_dir.join(format!("{}.rs", file_name));
+    let action_file = actions_dir.join(format!("{file_name}.rs"));
     let mod_file = actions_dir.join("mod.rs");
 
     // Check if actions directory exists
@@ -63,8 +63,8 @@ pub fn run(name: String) {
     // Check if module is already declared in mod.rs
     if mod_file.exists() {
         let mod_content = fs::read_to_string(&mod_file).unwrap_or_default();
-        let mod_decl = format!("mod {};", file_name);
-        let pub_mod_decl = format!("pub mod {};", file_name);
+        let mod_decl = format!("mod {file_name};");
+        let pub_mod_decl = format!("pub mod {file_name};");
         if mod_content.contains(&mod_decl) || mod_content.contains(&pub_mod_decl) {
             eprintln!(
                 "{} Module '{}' is already declared in src/actions/mod.rs",
@@ -102,7 +102,7 @@ pub fn run(name: String) {
         println!("{} Updated src/actions/mod.rs", style("✓").green());
     } else {
         // Create mod.rs if it doesn't exist
-        let mod_content = format!("pub mod {};\n", file_name);
+        let mod_content = format!("pub mod {file_name};\n");
         if let Err(e) = fs::write(&mod_file, mod_content) {
             eprintln!(
                 "{} Failed to create mod.rs: {}",
@@ -125,7 +125,7 @@ pub fn run(name: String) {
         "  {} Resolve from container in your controller:",
         style("1.").dim()
     );
-    println!("     let action: {} = App::get().unwrap();", struct_name);
+    println!("     let action: {struct_name} = App::get().unwrap();");
     println!("     action.execute();");
     println!();
 }
@@ -181,9 +181,9 @@ fn to_pascal_case(s: &str) -> String {
 
 fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     let content =
-        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {}", e))?;
+        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
 
-    let pub_mod_decl = format!("pub mod {};", file_name);
+    let pub_mod_decl = format!("pub mod {file_name};");
 
     // Find position to insert pub mod declaration (after other pub mod declarations)
     let mut lines: Vec<&str> = content.lines().collect();
@@ -215,7 +215,7 @@ fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     lines.insert(insert_idx, &pub_mod_decl);
 
     let new_content = lines.join("\n");
-    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
 
     Ok(())
 }

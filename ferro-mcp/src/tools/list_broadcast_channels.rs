@@ -112,7 +112,7 @@ fn extract_auth_route(content: &str, path: &str, auth_route: &mut Option<String>
             }
             // Fallback: just note the file
             if auth_route.is_none() {
-                *auth_route = Some(format!("(found in {})", path));
+                *auth_route = Some(format!("(found in {path})"));
             }
         }
     }

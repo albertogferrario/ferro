@@ -376,7 +376,7 @@ fn generate_typescript_interface(
     fields: &[PropsField],
     serde_rename_all: Option<&str>,
 ) -> String {
-    let mut ts = format!("export interface {} {{\n", name);
+    let mut ts = format!("export interface {name} {{\n");
     for field in fields {
         let optional_marker = if field.optional { "?" } else { "" };
         // Per-field rename takes precedence over rename_all

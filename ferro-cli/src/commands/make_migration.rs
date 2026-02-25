@@ -38,8 +38,8 @@ pub fn run(name: String) {
 
     // Generate timestamp-based filename: m{YYYYMMDD}_{HHMMSS}_{name}.rs
     let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let migration_file_name = format!("m{}_{}", timestamp, file_name);
-    let migration_file = migrations_dir.join(format!("{}.rs", migration_file_name));
+    let migration_file_name = format!("m{timestamp}_{file_name}");
+    let migration_file = migrations_dir.join(format!("{migration_file_name}.rs"));
     let mod_file = migrations_dir.join("mod.rs");
 
     // Check if migration file already exists (unlikely with timestamp)
@@ -249,9 +249,7 @@ enum {table_enum_name} {{
     CreatedAt,
     UpdatedAt,
 }}
-"#,
-        table_name = table_name,
-        table_enum_name = table_enum_name
+"#
     )
 }
 
@@ -271,16 +269,15 @@ impl MigratorTrait for Migrator {{
         ]
     }}
 }}
-"#,
-        migration_name = migration_name
+"#
     )
 }
 
 fn update_mod_file(mod_file: &Path, migration_name: &str) -> Result<(), String> {
     let content =
-        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {}", e))?;
+        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
 
-    let mod_decl = format!("mod {};", migration_name);
+    let mod_decl = format!("mod {migration_name};");
 
     // Check if already declared
     if content.contains(&mod_decl) {
@@ -316,17 +313,16 @@ fn update_mod_file(mod_file: &Path, migration_name: &str) -> Result<(), String> 
     lines.insert(insert_idx, mod_decl);
 
     // Update migrations() vec to include the new migration
-    let box_new_line = format!("            Box::new({}::Migration),", migration_name);
+    let box_new_line = format!("            Box::new({migration_name}::Migration),");
     let mut insert_vec_idx = None;
 
     for (i, line) in lines.iter().enumerate() {
         // Handle empty vec![] on single line
         if line.contains("vec![]") {
             // Replace vec![] with vec![\n    Box::new(...)\n]
-            lines[i] = line.replace("vec![]", &format!("vec![\n{}\n        ]", box_new_line));
+            lines[i] = line.replace("vec![]", &format!("vec![\n{box_new_line}\n        ]"));
             let new_content = lines.join("\n");
-            fs::write(mod_file, new_content)
-                .map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+            fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
             return Ok(());
         }
         // Handle multi-line vec![ ... ]
@@ -347,7 +343,7 @@ fn update_mod_file(mod_file: &Path, migration_name: &str) -> Result<(), String> 
     }
 
     let new_content = lines.join("\n");
-    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
 
     Ok(())
 }

@@ -18,10 +18,9 @@ impl CreateRandomTodoAction {
             % 10000;
 
         let new_todo = todos::ActiveModel {
-            title: Set(format!("Todo #{}", random_num)),
+            title: Set(format!("Todo #{random_num}")),
             description: Set(Some(format!(
-                "This is a random todo created at timestamp {}",
-                random_num
+                "This is a random todo created at timestamp {random_num}"
             ))),
             ..Default::default()
         };

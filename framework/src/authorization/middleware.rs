@@ -58,7 +58,7 @@ impl Middleware for Authorize {
                 .status(401));
             }
             Err(e) => {
-                eprintln!("Failed to retrieve user for authorization: {}", e);
+                eprintln!("Failed to retrieve user for authorization: {e}");
                 return Err(HttpResponse::json(serde_json::json!({
                     "message": "Authentication error."
                 }))

@@ -211,7 +211,7 @@ impl TaskBuilder {
     /// ```
     pub fn twice_daily(mut self, first_hour: u32, second_hour: u32) -> Self {
         self.expression =
-            CronExpression::parse(&format!("0 {},{} * * *", first_hour, second_hour)).unwrap();
+            CronExpression::parse(&format!("0 {first_hour},{second_hour} * * *")).unwrap();
         self
     }
 
@@ -384,7 +384,7 @@ impl TaskBuilder {
     pub(crate) fn build(self, task_index: usize) -> TaskEntry {
         let name = self
             .name
-            .unwrap_or_else(|| format!("closure-task-{}", task_index));
+            .unwrap_or_else(|| format!("closure-task-{task_index}"));
 
         TaskEntry {
             name,

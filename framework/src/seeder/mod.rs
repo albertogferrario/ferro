@@ -173,7 +173,7 @@ impl SeederRegistry {
         let entry = self
             .seeders
             .iter()
-            .find(|e| e.name == name || e.name.ends_with(&format!("::{}", name)))
+            .find(|e| e.name == name || e.name.ends_with(&format!("::{name}")))
             .ok_or_else(|| {
                 FrameworkError::internal(format!(
                     "Seeder '{}' not found. Available: {:?}",

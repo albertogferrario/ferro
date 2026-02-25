@@ -71,7 +71,7 @@ pub async fn destroy(_id: i32) -> Response {
 pub async fn redirect_example() -> Response {
     // Generate a URL using route()
     let url = route("users.show", &[("id", "42")]);
-    println!("Generated URL: {:?}", url);
+    println!("Generated URL: {url:?}");
 
     // Redirect with query parameters (compile-time validated!)
     redirect!("users.index")

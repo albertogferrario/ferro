@@ -50,7 +50,7 @@ pub fn execute(
 
     let output = cmd
         .output()
-        .map_err(|e| format!("Failed to execute ferro new: {}", e))?;
+        .map_err(|e| format!("Failed to execute ferro new: {e}"))?;
 
     if output.status.success() {
         let project_path = if target_dir == Path::new(".") {

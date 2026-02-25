@@ -109,7 +109,7 @@ fn parse_route_groups(content: &str, routes: &mut Vec<RouteInfo>) {
                 .unwrap_or_default();
             let name = nested_cap.get(4).map(|m| m.as_str().to_string());
 
-            let full_path = format!("{}{}", prefix, path);
+            let full_path = format!("{prefix}{path}");
 
             routes.push(RouteInfo {
                 method,

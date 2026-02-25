@@ -6,7 +6,7 @@ pub fn cargo_toml(package_name: &str, description: &str, author: &str) -> String
     let authors_line = if author.is_empty() {
         String::new()
     } else {
-        format!("authors = [\"{}\"]\n", author)
+        format!("authors = [\"{author}\"]\n")
     };
 
     format!(

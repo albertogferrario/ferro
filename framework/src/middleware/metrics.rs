@@ -82,13 +82,13 @@ mod tests {
     #[test]
     fn test_metrics_middleware_new() {
         let middleware = MetricsMiddleware::new();
-        assert!(format!("{:?}", middleware).contains("MetricsMiddleware"));
+        assert!(format!("{middleware:?}").contains("MetricsMiddleware"));
     }
 
     #[test]
     fn test_metrics_middleware_default() {
         let middleware = MetricsMiddleware;
-        assert!(format!("{:?}", middleware).contains("MetricsMiddleware"));
+        assert!(format!("{middleware:?}").contains("MetricsMiddleware"));
     }
 
     #[test]
@@ -96,7 +96,7 @@ mod tests {
         let middleware = MetricsMiddleware::new();
         let cloned = middleware;
         // Both should exist and be the same type
-        assert!(format!("{:?}", cloned).contains("MetricsMiddleware"));
+        assert!(format!("{cloned:?}").contains("MetricsMiddleware"));
     }
 
     #[test]
@@ -104,7 +104,7 @@ mod tests {
         let middleware = MetricsMiddleware::new();
         let copied: MetricsMiddleware = middleware; // Copy semantics
         let _original = middleware; // Original still usable
-        assert!(format!("{:?}", copied).contains("MetricsMiddleware"));
+        assert!(format!("{copied:?}").contains("MetricsMiddleware"));
     }
 
     // Note: Full middleware behavior (request handling, timing, error detection)

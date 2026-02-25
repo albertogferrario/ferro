@@ -131,7 +131,7 @@ fn extract_throttle_usage(content: &str, path: &str, route_usage: &mut Vec<Throt
 
         // Match inline throttles: Throttle::per_minute(N), per_hour(N), per_second(N), per_day(N)
         for method in &["per_minute", "per_hour", "per_second", "per_day"] {
-            let pattern = format!("Throttle::{}(", method);
+            let pattern = format!("Throttle::{method}(");
             if let Some(pos) = trimmed.find(&pattern) {
                 let after = &trimmed[pos + pattern.len()..];
                 if let Some(paren_end) = after.find(')') {
@@ -140,7 +140,7 @@ fn extract_throttle_usage(content: &str, path: &str, route_usage: &mut Vec<Throt
 
                     route_usage.push(ThrottleUsage {
                         limiter_name: None,
-                        inline_description: Some(format!("{}({})", method, value_str)),
+                        inline_description: Some(format!("{method}({value_str})")),
                         route_group,
                         source_file: path.to_string(),
                         line: line_idx + 1,
@@ -178,7 +178,7 @@ fn extract_limit_from_context(content: &str, define_line: usize) -> (Option<u64>
         ("per_hour", 3600u64),
         ("per_day", 86400u64),
     ] {
-        let pattern = format!("Limit::{}(", method);
+        let pattern = format!("Limit::{method}(");
         if let Some(pos) = context.find(&pattern) {
             let after = &context[pos + pattern.len()..];
             if let Some(paren_end) = after.find(')') {

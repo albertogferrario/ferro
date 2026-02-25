@@ -281,13 +281,13 @@ async fn check_rate_limit(limit: &Limit, name: &str, identifier: &str) -> RateLi
         .unwrap_or_default()
         .as_secs();
     let window_number = now_secs / limit.window_seconds;
-    let key = format!("rate_limit:{}:{}:{}", name, identifier, window_number);
+    let key = format!("rate_limit:{name}:{identifier}:{window_number}");
 
     // Atomic increment; fail-open if cache unavailable
     let count = match Cache::increment(&key, 1).await {
         Ok(c) => c as u32,
         Err(e) => {
-            eprintln!("[ferro] Rate limiter cache error (fail-open): {}", e);
+            eprintln!("[ferro] Rate limiter cache error (fail-open): {e}");
             return RateLimitResult {
                 allowed: true,
                 limit: limit.max_requests,
@@ -301,7 +301,7 @@ async fn check_rate_limit(limit: &Limit, name: &str, identifier: &str) -> RateLi
     if count == 1 {
         let ttl = Duration::from_secs(limit.window_seconds + 1);
         if let Err(e) = Cache::expire(&key, ttl).await {
-            eprintln!("[ferro] Rate limiter expire error: {}", e);
+            eprintln!("[ferro] Rate limiter expire error: {e}");
         }
     }
 
@@ -410,8 +410,7 @@ impl Middleware for Throttle {
                 Some(limits) => (name.clone(), limits),
                 None => {
                     eprintln!(
-                        "[ferro] Rate limiter '{}' not registered (fail-open, allowing request)",
-                        name
+                        "[ferro] Rate limiter '{name}' not registered (fail-open, allowing request)"
                     );
                     return next(request).await;
                 }
@@ -678,7 +677,7 @@ mod tests {
         let limit = Limit::per_minute(10);
         for i in 1..=5 {
             let result = check_rate_limit(&limit, "test_allow", "ip:127.0.0.1").await;
-            assert!(result.allowed, "request {} should be allowed", i);
+            assert!(result.allowed, "request {i} should be allowed");
             assert_eq!(result.remaining, 10 - i);
             assert_eq!(result.limit, 10);
         }
@@ -693,7 +692,7 @@ mod tests {
         // First 3 should be allowed
         for i in 1..=3 {
             let result = check_rate_limit(&limit, "test_exceed", "ip:10.0.0.1").await;
-            assert!(result.allowed, "request {} should be allowed", i);
+            assert!(result.allowed, "request {i} should be allowed");
         }
         // 4th should be exceeded
         let result = check_rate_limit(&limit, "test_exceed", "ip:10.0.0.1").await;

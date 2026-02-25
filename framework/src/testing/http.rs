@@ -139,15 +139,15 @@ impl<'a> TestRequestBuilder<'a> {
 
     /// Add a bearer token authorization header
     pub fn bearer_token(self, token: &str) -> Self {
-        self.header("Authorization", &format!("Bearer {}", token))
+        self.header("Authorization", &format!("Bearer {token}"))
     }
 
     /// Add basic auth header
     pub fn basic_auth(self, username: &str, password: &str) -> Self {
         use base64::Engine;
         let credentials =
-            base64::engine::general_purpose::STANDARD.encode(format!("{}:{}", username, password));
-        self.header("Authorization", &format!("Basic {}", credentials))
+            base64::engine::general_purpose::STANDARD.encode(format!("{username}:{password}"));
+        self.header("Authorization", &format!("Basic {credentials}"))
     }
 
     /// Add a query parameter
@@ -193,7 +193,7 @@ impl<'a> TestRequestBuilder<'a> {
             let query = self
                 .query_params
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>()
                 .join("&");
             format!("{}?{}", self.path, query)
@@ -359,9 +359,7 @@ impl TestResponse {
             Some(location) if location.contains(expected_path) => self,
             Some(location) => {
                 panic!(
-                    "\nRedirect Location Assertion Failed\n\n  Expected to contain: {}\n  Received: {}\n",
-                    expected_path,
-                    location
+                    "\nRedirect Location Assertion Failed\n\n  Expected to contain: {expected_path}\n  Received: {location}\n"
                 );
             }
             None => {
@@ -420,8 +418,7 @@ impl TestResponse {
             Some(actual) if actual == expected => self,
             Some(actual) => {
                 panic!(
-                    "\nHeader Assertion Failed\n\n  Header: {}\n  Expected: {}\n  Received: {}\n",
-                    name, expected, actual
+                    "\nHeader Assertion Failed\n\n  Header: {name}\n  Expected: {expected}\n  Received: {actual}\n"
                 );
             }
             None => {
@@ -451,8 +448,7 @@ impl TestResponse {
         let content_type = self.header("content-type").unwrap_or("");
         if !content_type.contains("application/json") {
             panic!(
-                "\nContent-Type Assertion Failed\n\n  Expected: application/json\n  Received: {}\n",
-                content_type
+                "\nContent-Type Assertion Failed\n\n  Expected: application/json\n  Received: {content_type}\n"
             );
         }
         self
@@ -490,8 +486,7 @@ impl TestResponse {
                     Some(actual) if actual == &expected_value => self,
                     Some(actual) => {
                         panic!(
-                            "\nJSON Value Assertion Failed\n\n  Key: {}\n  Expected: {:?}\n  Received: {:?}\n",
-                            key, expected_value, actual
+                            "\nJSON Value Assertion Failed\n\n  Key: {key}\n  Expected: {expected_value:?}\n  Received: {actual:?}\n"
                         );
                     }
                     None => {
@@ -523,15 +518,11 @@ impl TestResponse {
                 Some(value) if predicate(value) => self,
                 Some(value) => {
                     panic!(
-                            "\nJSON Predicate Assertion Failed\n\n  Key: {}\n  Value: {:?}\n  The predicate returned false\n",
-                            key, value
+                            "\nJSON Predicate Assertion Failed\n\n  Key: {key}\n  Value: {value:?}\n  The predicate returned false\n"
                         );
                 }
                 None => {
-                    panic!(
-                        "\nJSON Assertion Failed\n\n  Key '{}' not found in JSON\n",
-                        key
-                    );
+                    panic!("\nJSON Assertion Failed\n\n  Key '{key}' not found in JSON\n");
                 }
             },
             Err(e) => {
@@ -572,10 +563,7 @@ impl TestResponse {
     pub fn assert_see(self, needle: &str) -> Self {
         let body = self.text();
         if !body.contains(needle) {
-            panic!(
-                "\nBody Assertion Failed\n\n  Expected to see: {}\n  Body:\n{}\n",
-                needle, body
-            );
+            panic!("\nBody Assertion Failed\n\n  Expected to see: {needle}\n  Body:\n{body}\n");
         }
         self
     }
@@ -584,10 +572,7 @@ impl TestResponse {
     pub fn assert_dont_see(self, needle: &str) -> Self {
         let body = self.text();
         if body.contains(needle) {
-            panic!(
-                "\nBody Assertion Failed\n\n  Expected NOT to see: {}\n  Body:\n{}\n",
-                needle, body
-            );
+            panic!("\nBody Assertion Failed\n\n  Expected NOT to see: {needle}\n  Body:\n{body}\n");
         }
         self
     }
@@ -662,10 +647,7 @@ impl TestResponse {
                     );
                 }
                 None => {
-                    panic!(
-                        "\nJSON Count Assertion Failed\n\n  Key '{}' not found\n",
-                        key
-                    );
+                    panic!("\nJSON Count Assertion Failed\n\n  Key '{key}' not found\n");
                 }
             },
             Err(e) => {

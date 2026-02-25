@@ -62,8 +62,7 @@ pub fn execute(project_root: &Path, middleware_name: &str) -> Result<MiddlewareS
     }
 
     Err(McpError::FileNotFound(format!(
-        "Middleware '{}' not found",
-        middleware_name
+        "Middleware '{middleware_name}' not found"
     )))
 }
 
@@ -246,7 +245,7 @@ impl Middleware for Throttle {
     builtin.map(|(name, desc, code)| MiddlewareSource {
         name: name.to_string(),
         file_path: "framework/src/middleware.rs (built-in)".to_string(),
-        source_code: format!("// {}\n{}", desc, code),
+        source_code: format!("// {desc}\n{code}"),
         handle_method: Some(code.to_string()),
         dependencies: vec!["ferro::Middleware".to_string()],
     })

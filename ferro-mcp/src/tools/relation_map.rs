@@ -33,7 +33,7 @@ pub async fn execute(project_root: &Path) -> Result<RelationMapInfo> {
 
     let db: DatabaseConnection = Database::connect(&database_url)
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {e}")))?;
 
     let relations = match db.get_database_backend() {
         DatabaseBackend::Sqlite => get_sqlite_relations(&db).await?,
@@ -71,15 +71,15 @@ async fn get_sqlite_relations(db: &DatabaseConnection) -> Result<Vec<Relation>> 
             table_query.to_string(),
         ))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to get tables: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to get tables: {e}")))?;
 
     for row in table_rows {
         let table_name: String = row
             .try_get_by("name")
-            .map_err(|e| McpError::DatabaseError(format!("Failed to get table name: {}", e)))?;
+            .map_err(|e| McpError::DatabaseError(format!("Failed to get table name: {e}")))?;
 
         // Get foreign keys for this table
-        let fk_query = format!("PRAGMA foreign_key_list('{}')", table_name);
+        let fk_query = format!("PRAGMA foreign_key_list('{table_name}')");
         let fk_rows = db
             .query_all(Statement::from_string(DatabaseBackend::Sqlite, fk_query))
             .await
@@ -108,7 +108,7 @@ async fn get_sqlite_relations(db: &DatabaseConnection) -> Result<Vec<Relation>> 
         }
 
         // Also infer relations from column naming conventions (_id suffix)
-        let column_query = format!("PRAGMA table_info('{}')", table_name);
+        let column_query = format!("PRAGMA table_info('{table_name}')");
         let column_rows = db
             .query_all(Statement::from_string(
                 DatabaseBackend::Sqlite,
@@ -132,8 +132,7 @@ async fn get_sqlite_relations(db: &DatabaseConnection) -> Result<Vec<Relation>> 
                 if !already_exists {
                     // Check if the inferred table actually exists
                     let check_query = format!(
-                        "SELECT name FROM sqlite_master WHERE type='table' AND name='{}'",
-                        potential_table
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name='{potential_table}'"
                     );
                     if let Ok(rows) = db
                         .query_all(Statement::from_string(DatabaseBackend::Sqlite, check_query))
@@ -184,7 +183,7 @@ async fn get_postgres_relations(db: &DatabaseConnection) -> Result<Vec<Relation>
             query.to_string(),
         ))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to get relations: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to get relations: {e}")))?;
 
     let relations = rows
         .iter()
@@ -217,7 +216,7 @@ async fn get_mysql_relations(db: &DatabaseConnection) -> Result<Vec<Relation>> {
             "SELECT DATABASE()".to_string(),
         ))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to get database name: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to get database name: {e}")))?;
 
     let db_name: String = db_name_result
         .and_then(|row| row.try_get_by_index::<String>(0).ok())
@@ -232,17 +231,16 @@ async fn get_mysql_relations(db: &DatabaseConnection) -> Result<Vec<Relation>> {
             REFERENCED_COLUMN_NAME AS to_column,
             CONSTRAINT_NAME AS constraint_name
         FROM information_schema.KEY_COLUMN_USAGE
-        WHERE TABLE_SCHEMA = '{}'
+        WHERE TABLE_SCHEMA = '{db_name}'
             AND REFERENCED_TABLE_NAME IS NOT NULL
         ORDER BY TABLE_NAME, COLUMN_NAME
-        "#,
-        db_name
+        "#
     );
 
     let rows = db
         .query_all(Statement::from_string(DatabaseBackend::MySql, query))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to get relations: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to get relations: {e}")))?;
 
     let relations = rows
         .iter()

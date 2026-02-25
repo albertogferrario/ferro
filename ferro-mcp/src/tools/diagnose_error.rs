@@ -78,8 +78,7 @@ fn diagnose_validation(message: &Option<String>) -> ErrorDiagnosis {
             FixSuggestion {
                 action: "Check validation rules on the struct".to_string(),
                 details: format!(
-                    "{}. Look for #[rule(...)] attributes on the input struct fields.",
-                    field_context
+                    "{field_context}. Look for #[rule(...)] attributes on the input struct fields."
                 ),
                 priority: 1,
             },

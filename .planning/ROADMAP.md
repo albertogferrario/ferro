@@ -16,6 +16,22 @@
 - ✅ [**v6.0 ferro-lang — Localization**](milestones/v6.0-ROADMAP.md) — Phases 58-66 (shipped 2026-02-13)
 - ✅ **v6.1 Fix Known Issues** — Phase 67 (shipped 2026-02-24)
 - ✅ **v7.0 Resend Integration** — Phase 68 (shipped 2026-02-25)
+- 🔧 **v7.1 Static File Serving** — Phase 69
+
+---
+
+## Active Milestone
+
+### v7.1 Static File Serving (Phase 69)
+
+**Milestone Goal:** Add built-in static file serving so production binaries serve Vite build output from `public/` without manual route setup.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 69. Static File Serving | TBD | Pending | - |
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 69 to break down)
 
 ---
 

@@ -536,7 +536,7 @@ impl GroupDef {
                         // Prefix is just "/", use route path directly
                         converted_route_path.to_string()
                     } else {
-                        format!("{}{}", full_prefix, converted_route_path)
+                        format!("{full_prefix}{converted_route_path}")
                     };
                     // We need to leak the string to get a 'static str for the router
                     let full_path: &'static str = Box::leak(full_path.into_boxed_str());

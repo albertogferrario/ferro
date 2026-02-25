@@ -99,7 +99,7 @@ fn get_store() -> &'static RwLock<MetricsStore> {
 
 /// Generate a unique key for route metrics
 fn route_key(method: &str, route: &str) -> String {
-    format!("{}:{}", method, route)
+    format!("{method}:{route}")
 }
 
 /// Record a request completion

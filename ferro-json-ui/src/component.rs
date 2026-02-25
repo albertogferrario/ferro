@@ -1060,8 +1060,7 @@ mod tests {
             let json = serde_json::to_value(component).unwrap();
             assert_eq!(
                 json["type"], *expected_type,
-                "component should serialize with type={}",
-                expected_type
+                "component should serialize with type={expected_type}"
             );
             let roundtripped: Component = serde_json::from_value(json).unwrap();
             assert_eq!(&roundtripped, component);
@@ -1281,8 +1280,7 @@ mod tests {
             let json = serde_json::to_value(variant).unwrap();
             assert_eq!(
                 json, *expected,
-                "ButtonVariant::{:?} should serialize as {}",
-                variant, expected
+                "ButtonVariant::{variant:?} should serialize as {expected}"
             );
             let parsed: ButtonVariant = serde_json::from_value(json).unwrap();
             assert_eq!(&parsed, variant);
@@ -1301,8 +1299,7 @@ mod tests {
             let json = serde_json::to_value(variant).unwrap();
             assert_eq!(
                 json, *expected,
-                "BadgeVariant::{:?} should serialize as {}",
-                variant, expected
+                "BadgeVariant::{variant:?} should serialize as {expected}"
             );
             let parsed: BadgeVariant = serde_json::from_value(json).unwrap();
             assert_eq!(&parsed, variant);
@@ -1816,8 +1813,7 @@ mod tests {
             let component: Component = serde_json::from_str(json_str).unwrap();
             assert!(
                 !matches!(component, Component::Plugin(_)),
-                "type {} should not deserialize as Plugin",
-                type_name
+                "type {type_name} should not deserialize as Plugin"
             );
         }
     }

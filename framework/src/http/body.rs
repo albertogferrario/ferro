@@ -13,17 +13,17 @@ pub async fn collect_body(body: Incoming) -> Result<Bytes, FrameworkError> {
     body.collect()
         .await
         .map(|collected| collected.to_bytes())
-        .map_err(|e| FrameworkError::internal(format!("Failed to read request body: {}", e)))
+        .map_err(|e| FrameworkError::internal(format!("Failed to read request body: {e}")))
 }
 
 /// Parse bytes as JSON into the target type
 pub fn parse_json<T: DeserializeOwned>(bytes: &Bytes) -> Result<T, FrameworkError> {
     serde_json::from_slice(bytes)
-        .map_err(|e| FrameworkError::internal(format!("Failed to parse JSON body: {}", e)))
+        .map_err(|e| FrameworkError::internal(format!("Failed to parse JSON body: {e}")))
 }
 
 /// Parse bytes as form-urlencoded into the target type
 pub fn parse_form<T: DeserializeOwned>(bytes: &Bytes) -> Result<T, FrameworkError> {
     serde_urlencoded::from_bytes(bytes)
-        .map_err(|e| FrameworkError::internal(format!("Failed to parse form body: {}", e)))
+        .map_err(|e| FrameworkError::internal(format!("Failed to parse form body: {e}")))
 }

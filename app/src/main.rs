@@ -26,8 +26,8 @@ use std::path::Path;
 
 /// Print actionable error and exit
 fn fail_with(context: &str, error: impl std::fmt::Display, how_to_fix: &[&str]) -> ! {
-    eprintln!("Error: {}", context);
-    eprintln!("  Cause: {}", error);
+    eprintln!("Error: {context}");
+    eprintln!("  Cause: {error}");
     eprintln!();
     if !how_to_fix.is_empty() {
         eprintln!("How to fix:");
@@ -186,7 +186,7 @@ async fn get_database_connection() -> sea_orm::DatabaseConnection {
             std::fs::File::create(path).ok();
         }
 
-        format!("sqlite:{}?mode=rwc", path)
+        format!("sqlite:{path}?mode=rwc")
     } else {
         database_url.clone()
     };
@@ -196,7 +196,7 @@ async fn get_database_connection() -> sea_orm::DatabaseConnection {
         .await
         .unwrap_or_else(|e| {
             fail_with(
-                &format!("Failed to connect to database at {}", url_for_error),
+                &format!("Failed to connect to database at {url_for_error}"),
                 e,
                 &[
                     "Check that the database server is running",
@@ -210,7 +210,7 @@ async fn get_database_connection() -> sea_orm::DatabaseConnection {
 async fn run_migrations_silent() {
     let db = get_database_connection().await;
     if let Err(e) = Migrator::up(&db, None).await {
-        eprintln!("Warning: Migration failed: {}", e);
+        eprintln!("Warning: Migration failed: {e}");
     }
 }
 
@@ -247,7 +247,7 @@ async fn show_migration_status() {
 }
 
 async fn rollback_migrations(steps: u32) {
-    println!("Rolling back {} migration(s)...", steps);
+    println!("Rolling back {steps} migration(s)...");
     let db = get_database_connection().await;
     Migrator::down(&db, Some(steps)).await.unwrap_or_else(|e| {
         fail_with(

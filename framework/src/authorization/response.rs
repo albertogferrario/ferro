@@ -106,7 +106,7 @@ impl fmt::Display for AuthResponse {
             Self::Allow => write!(f, "Allowed"),
             Self::Deny {
                 message: Some(msg), ..
-            } => write!(f, "Denied: {}", msg),
+            } => write!(f, "Denied: {msg}"),
             Self::Deny { message: None, .. } => write!(f, "Denied"),
         }
     }

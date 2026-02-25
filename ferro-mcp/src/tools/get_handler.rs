@@ -38,7 +38,7 @@ pub async fn execute(project_root: &Path, route_path: &str) -> Result<HandlerInf
         .routes
         .iter()
         .find(|r| r.path == route_path)
-        .ok_or_else(|| McpError::NotFound(format!("Route not found: {}", route_path)))?;
+        .ok_or_else(|| McpError::NotFound(format!("Route not found: {route_path}")))?;
 
     let handler = &route.handler;
 
@@ -46,8 +46,7 @@ pub async fn execute(project_root: &Path, route_path: &str) -> Result<HandlerInf
     let parts: Vec<&str> = handler.split("::").collect();
     if parts.len() < 2 {
         return Err(McpError::ParseError(format!(
-            "Invalid handler path: {}",
-            handler
+            "Invalid handler path: {handler}"
         )));
     }
 
@@ -109,10 +108,10 @@ fn extract_handler(
                 if next.is_empty() || next.starts_with("#[") {
                     continue;
                 }
-                if next.contains(&format!("fn {}", function_name))
-                    || next.contains(&format!("pub fn {}", function_name))
-                    || next.contains(&format!("pub async fn {}", function_name))
-                    || next.contains(&format!("async fn {}", function_name))
+                if next.contains(&format!("fn {function_name}"))
+                    || next.contains(&format!("pub fn {function_name}"))
+                    || next.contains(&format!("pub async fn {function_name}"))
+                    || next.contains(&format!("async fn {function_name}"))
                 {
                     line_start = Some(i);
                     in_handler = true;

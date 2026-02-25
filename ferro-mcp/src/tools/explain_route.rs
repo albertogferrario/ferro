@@ -48,7 +48,7 @@ pub async fn execute(project_root: &Path, route_path: &str) -> Result<RouteExpla
                 .iter()
                 .find(|r| r.path.trim_start_matches('/') == normalized)
         })
-        .ok_or_else(|| McpError::NotFound(format!("Route '{}' not found", route_path)))?;
+        .ok_or_else(|| McpError::NotFound(format!("Route '{route_path}' not found")))?;
 
     // Find related routes (same resource or prefix)
     let related = find_related_routes(&routes, &route.path);
@@ -77,25 +77,25 @@ fn infer_purpose(method: &str, path: &str, handler: &str) -> String {
 
     match (method, handler_fn) {
         ("GET", "index") | ("GET", "list") => {
-            format!("List all {} records", resource)
+            format!("List all {resource} records")
         }
         ("GET", "show") | ("GET", "get") => {
-            format!("Display a single {} by ID", resource)
+            format!("Display a single {resource} by ID")
         }
         ("GET", "create") | ("GET", "new") => {
-            format!("Show form to create a new {}", resource)
+            format!("Show form to create a new {resource}")
         }
         ("GET", "edit") => {
-            format!("Show form to edit an existing {}", resource)
+            format!("Show form to edit an existing {resource}")
         }
         ("POST", "store") | ("POST", "create") => {
-            format!("Create a new {} record", resource)
+            format!("Create a new {resource} record")
         }
         ("PUT", "update") | ("PATCH", "update") => {
-            format!("Update an existing {} record", resource)
+            format!("Update an existing {resource} record")
         }
         ("DELETE", "destroy") | ("DELETE", "delete") => {
-            format!("Delete a {} record", resource)
+            format!("Delete a {resource} record")
         }
         _ => {
             // Infer from path patterns
@@ -112,7 +112,7 @@ fn infer_purpose(method: &str, path: &str, handler: &str) -> String {
             } else if path.contains("settings") {
                 "Manage application settings".to_string()
             } else if path.contains("search") {
-                format!("Search {} records", resource)
+                format!("Search {resource} records")
             } else if path.contains("health") || path.contains("status") {
                 "Health check endpoint for monitoring".to_string()
             } else if path.contains("{id}") || path.contains(":id") {
@@ -139,7 +139,7 @@ fn infer_business_context(path: &str, handler: &str) -> String {
     } else if path_lower.contains("admin") {
         "Administrative functions requiring elevated privileges".to_string()
     } else if path_lower.contains("api") {
-        format!("API endpoint for programmatic {} access", resource)
+        format!("API endpoint for programmatic {resource} access")
     } else if path_lower.contains("auth")
         || path_lower.contains("login")
         || path_lower.contains("logout")
@@ -174,10 +174,10 @@ fn infer_business_context(path: &str, handler: &str) -> String {
                     parts.get(1).unwrap_or(&"application")
                 )
             } else {
-                format!("Core {} functionality", resource)
+                format!("Core {resource} functionality")
             }
         } else {
-            format!("Domain functionality for {}", resource)
+            format!("Domain functionality for {resource}")
         }
     }
 }
@@ -228,19 +228,18 @@ fn generate_usage_examples(method: &str, path: &str) -> Vec<String> {
         .replace(":slug", "example-slug")
         .replace("{uuid}", "550e8400-e29b-41d4-a716-446655440000");
 
-    examples.push(format!("{} {}", method, example_path));
+    examples.push(format!("{method} {example_path}"));
 
     // Add curl example for non-GET methods
     if method != "GET" {
         match method {
             "POST" | "PUT" | "PATCH" => {
                 examples.push(format!(
-                    "curl -X {} {} -H 'Content-Type: application/json' -d '{{}}",
-                    method, example_path
+                    "curl -X {method} {example_path} -H 'Content-Type: application/json' -d '{{}}"
                 ));
             }
             "DELETE" => {
-                examples.push(format!("curl -X DELETE {}", example_path));
+                examples.push(format!("curl -X DELETE {example_path}"));
             }
             _ => {}
         }
@@ -274,9 +273,7 @@ fn extract_prefix(path: &str) -> String {
         .iter()
         .find(|s| !s.starts_with('{') && !s.starts_with(':'));
 
-    first_resource
-        .map(|s| format!("/{}", s))
-        .unwrap_or_default()
+    first_resource.map(|s| format!("/{s}")).unwrap_or_default()
 }
 
 /// Capitalize first letter of a string

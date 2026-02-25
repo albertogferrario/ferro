@@ -162,7 +162,7 @@ impl Redirect {
             let query = self
                 .query_params
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>()
                 .join("&");
             format!("{}?{}", self.location, query)
@@ -214,10 +214,10 @@ impl RedirectRouteBuilder {
             let query = self
                 .query_params
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>()
                 .join("&");
-            url = format!("{}?{}", url, query);
+            url = format!("{url}?{query}");
         }
         Some(url)
     }
@@ -340,7 +340,7 @@ impl<'a> InertiaRedirect<'a> {
             let query = self
                 .query_params
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>()
                 .join("&");
             format!("{}?{}", self.location, query)

@@ -211,7 +211,7 @@ async fn discover_sqlite_columns(
     db: &sea_orm::DatabaseConnection,
     table_name: &str,
 ) -> Vec<ColumnInfo> {
-    let query = format!("PRAGMA table_info({})", table_name);
+    let query = format!("PRAGMA table_info({table_name})");
     let rows = db
         .query_all(Statement::from_string(DbBackend::Sqlite, query))
         .await
@@ -278,12 +278,11 @@ async fn discover_postgres_columns(
             JOIN information_schema.key_column_usage ku
                 ON tc.constraint_name = ku.constraint_name
             WHERE tc.constraint_type = 'PRIMARY KEY'
-                AND tc.table_name = '{}'
+                AND tc.table_name = '{table_name}'
         ) pk ON c.column_name = pk.column_name
-        WHERE c.table_name = '{}'
+        WHERE c.table_name = '{table_name}'
         ORDER BY c.ordinal_position
-        "#,
-        table_name, table_name
+        "#
     );
 
     let rows = db
@@ -444,7 +443,7 @@ fn to_pascal_case(s: &str) -> String {
 fn singularize(word: &str) -> String {
     // Basic singularization
     if let Some(stem) = word.strip_suffix("ies") {
-        format!("{}y", stem)
+        format!("{stem}y")
     } else if let Some(stem) = word.strip_suffix("es") {
         if word.ends_with("ses") || word.ends_with("xes") {
             word.to_string()

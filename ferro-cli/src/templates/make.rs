@@ -17,16 +17,14 @@ impl Middleware for {struct_name} {{
         next(request).await
     }}
 }}
-"#,
-        name = name,
-        struct_name = struct_name
+"#
     )
 }
 
 /// Template for generating new resource with make:resource command
 pub fn resource_template(name: &str, model: Option<&str>) -> String {
     let model_attribute = match model {
-        Some(path) => format!("#[resource(model = \"{}\")]\n", path),
+        Some(path) => format!("#[resource(model = \"{path}\")]\n"),
         None => String::new(),
     };
 
@@ -42,9 +40,7 @@ pub fn resource_template(name: &str, model: Option<&str>) -> String {
     // #[resource(skip)]
     // pub password_hash: String,
 }}
-"#,
-        model_attribute = model_attribute,
-        name = name
+"#
     )
 }
 
@@ -61,8 +57,7 @@ pub async fn invoke(_req: Request) -> Response {{
         "controller": "{name}"
     }})
 }}
-"#,
-        name = name
+"#
     )
 }
 
@@ -83,9 +78,7 @@ impl {struct_name} {{
         // TODO: Implement action logic
     }}
 }}
-"#,
-        name = name,
-        struct_name = struct_name
+"#
     )
 }
 
@@ -102,8 +95,7 @@ pub fn inertia_page_template(component_name: &str) -> String {
     </div>
   )
 }}
-"#,
-        component_name = component_name
+"#
     )
 }
 
@@ -143,9 +135,6 @@ pub fn view() -> JsonUiView {{
         }})
 }}
 "#,
-        name = name,
-        title = title,
-        layout = layout,
     )
 }
 
@@ -169,9 +158,7 @@ use ferro::domain_error;
 
 #[domain_error(status = 500, message = "{message}")]
 pub struct {struct_name};
-"#,
-        struct_name = struct_name,
-        message = message
+"#
     )
 }
 
@@ -227,9 +214,7 @@ impl Task for {struct_name} {{
         Ok(())
     }}
 }}
-"#,
-        file_name = file_name,
-        struct_name = struct_name
+"#
     )
 }
 
@@ -273,9 +258,7 @@ impl Event for {struct_name} {{
         "{struct_name}"
     }}
 }}
-"#,
-        file_name = file_name,
-        struct_name = struct_name
+"#
     )
 }
 
@@ -327,10 +310,7 @@ impl Listener<{event_type}> for {struct_name} {{
         Ok(())
     }}
 }}
-"#,
-        file_name = file_name,
-        struct_name = struct_name,
-        event_type = event_type
+"#
     )
 }
 
@@ -404,9 +384,7 @@ impl Job for {struct_name} {{
         std::time::Duration::from_secs(2u64.pow(attempt))
     }}
 }}
-"#,
-        file_name = file_name,
-        struct_name = struct_name
+"#
     )
 }
 
@@ -471,9 +449,7 @@ impl Notification for {struct_name} {{
         )
     }}
 }}
-"#,
-        file_name = file_name,
-        struct_name = struct_name
+"#
     )
 }
 
@@ -532,9 +508,7 @@ impl Seeder for {struct_name} {{
         Ok(())
     }}
 }}
-"#,
-        file_name = file_name,
-        struct_name = struct_name
+"#
     )
 }
 
@@ -631,10 +605,7 @@ impl Factory for {struct_name} {{
 //
 // // Create multiple:
 // let models = {struct_name}::factory().count(5).create_many().await?;
-"#,
-        file_name = file_name,
-        struct_name = struct_name,
-        model_name = model_name
+"#
     )
 }
 
@@ -766,10 +737,7 @@ impl Policy<{model_name}> for {struct_name} {{
 //     fn auth_identifier(&self) -> i64 {{ 0 }}
 //     fn as_any(&self) -> &dyn std::any::Any {{ self }}
 // }}
-"#,
-        file_name = file_name,
-        struct_name = struct_name,
-        model_name = model_name
+"#
     )
 }
 

@@ -33,7 +33,7 @@ pub(crate) fn handle_ws_upgrade(
     let (response, ws_future) = match hyper_tungstenite::upgrade(&mut req, None) {
         Ok(pair) => pair,
         Err(e) => {
-            eprintln!("WebSocket upgrade failed: {}", e);
+            eprintln!("WebSocket upgrade failed: {e}");
             return hyper::Response::builder()
                 .status(400)
                 .body(Full::new(Bytes::from("WebSocket upgrade failed")))
@@ -47,7 +47,7 @@ pub(crate) fn handle_ws_upgrade(
                 handle_connection(ws_stream, broadcaster).await;
             }
             Err(e) => {
-                eprintln!("WebSocket connection failed: {}", e);
+                eprintln!("WebSocket connection failed: {e}");
             }
         }
     });

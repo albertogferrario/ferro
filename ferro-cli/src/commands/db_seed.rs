@@ -34,7 +34,7 @@ pub fn run(class: Option<String>) {
 
     let class_arg;
     if let Some(name) = &class {
-        class_arg = format!("--class={}", name);
+        class_arg = format!("--class={name}");
         args.push(&class_arg);
     }
 

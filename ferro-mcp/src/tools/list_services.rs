@@ -52,7 +52,7 @@ struct RuntimeServiceInfo {
 
 /// Try to fetch services from the running application
 async fn fetch_runtime_services(base_url: &str) -> Option<Vec<ServiceItem>> {
-    let url = format!("{}/_ferro/services", base_url);
+    let url = format!("{base_url}/_ferro/services");
 
     let client = reqwest::Client::builder()
         .timeout(HTTP_TIMEOUT)

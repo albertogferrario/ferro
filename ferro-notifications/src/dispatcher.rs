@@ -369,17 +369,17 @@ impl NotificationDispatcher {
         let from: Mailbox = if let Some(ref name) = config.from_name {
             format!("{} <{}>", name, config.from)
                 .parse()
-                .map_err(|e| Error::mail(format!("Invalid from address: {}", e)))?
+                .map_err(|e| Error::mail(format!("Invalid from address: {e}")))?
         } else {
             config
                 .from
                 .parse()
-                .map_err(|e| Error::mail(format!("Invalid from address: {}", e)))?
+                .map_err(|e| Error::mail(format!("Invalid from address: {e}")))?
         };
 
         let to_mailbox: Mailbox = to
             .parse()
-            .map_err(|e| Error::mail(format!("Invalid to address: {}", e)))?;
+            .map_err(|e| Error::mail(format!("Invalid to address: {e}")))?;
 
         let mut email_builder = Message::builder()
             .from(from)
@@ -389,21 +389,21 @@ impl NotificationDispatcher {
         if let Some(ref reply_to) = message.reply_to {
             let reply_to_mailbox: Mailbox = reply_to
                 .parse()
-                .map_err(|e| Error::mail(format!("Invalid reply-to address: {}", e)))?;
+                .map_err(|e| Error::mail(format!("Invalid reply-to address: {e}")))?;
             email_builder = email_builder.reply_to(reply_to_mailbox);
         }
 
         for cc in &message.cc {
             let cc_mailbox: Mailbox = cc
                 .parse()
-                .map_err(|e| Error::mail(format!("Invalid CC address: {}", e)))?;
+                .map_err(|e| Error::mail(format!("Invalid CC address: {e}")))?;
             email_builder = email_builder.cc(cc_mailbox);
         }
 
         for bcc in &message.bcc {
             let bcc_mailbox: Mailbox = bcc
                 .parse()
-                .map_err(|e| Error::mail(format!("Invalid BCC address: {}", e)))?;
+                .map_err(|e| Error::mail(format!("Invalid BCC address: {e}")))?;
             email_builder = email_builder.bcc(bcc_mailbox);
         }
 
@@ -411,17 +411,17 @@ impl NotificationDispatcher {
             email_builder
                 .header(ContentType::TEXT_HTML)
                 .body(html.clone())
-                .map_err(|e| Error::mail(format!("Failed to build email: {}", e)))?
+                .map_err(|e| Error::mail(format!("Failed to build email: {e}")))?
         } else {
             email_builder
                 .header(ContentType::TEXT_PLAIN)
                 .body(message.body.clone())
-                .map_err(|e| Error::mail(format!("Failed to build email: {}", e)))?
+                .map_err(|e| Error::mail(format!("Failed to build email: {e}")))?
         };
 
         let transport = if smtp.tls {
             AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp.host)
-                .map_err(|e| Error::mail(format!("Failed to create transport: {}", e)))?
+                .map_err(|e| Error::mail(format!("Failed to create transport: {e}")))?
         } else {
             AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&smtp.host)
         };
@@ -439,7 +439,7 @@ impl NotificationDispatcher {
         mailer
             .send(email)
             .await
-            .map_err(|e| Error::mail(format!("Failed to send email: {}", e)))?;
+            .map_err(|e| Error::mail(format!("Failed to send email: {e}")))?;
 
         info!(to = %to, "Mail notification sent via SMTP");
         Ok(())
@@ -486,16 +486,13 @@ impl NotificationDispatcher {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| Error::mail(format!("Resend HTTP request failed: {}", e)))?;
+            .map_err(|e| Error::mail(format!("Resend HTTP request failed: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             error!(status = %status, body = %body, "Resend API error");
-            return Err(Error::mail(format!(
-                "Resend API error {}: {}",
-                status, body
-            )));
+            return Err(Error::mail(format!("Resend API error {status}: {body}")));
         }
 
         info!(to = %to, "Mail notification sent via Resend");
@@ -547,13 +544,13 @@ impl NotificationDispatcher {
             .json(message)
             .send()
             .await
-            .map_err(|e| Error::slack(format!("HTTP request failed: {}", e)))?;
+            .map_err(|e| Error::slack(format!("HTTP request failed: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             error!(status = %status, body = %body, "Slack webhook failed");
-            return Err(Error::slack(format!("Slack returned {}: {}", status, body)));
+            return Err(Error::slack(format!("Slack returned {status}: {body}")));
         }
 
         info!("Slack notification sent");

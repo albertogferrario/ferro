@@ -79,7 +79,7 @@ impl std::fmt::Display for ValidationError {
         let messages: Vec<String> = self
             .errors
             .iter()
-            .flat_map(|(field, msgs)| msgs.iter().map(move |m| format!("{}: {}", field, m)))
+            .flat_map(|(field, msgs)| msgs.iter().map(move |m| format!("{field}: {m}")))
             .collect();
         write!(f, "{}", messages.join(", "))
     }

@@ -21,14 +21,14 @@ impl RedisCache {
     /// Create a new Redis cache connection with a 2-second timeout
     pub async fn connect(config: &CacheConfig) -> Result<Self, FrameworkError> {
         let client = Client::open(config.url.as_str())
-            .map_err(|e| FrameworkError::internal(format!("Redis connection error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Redis connection error: {e}")))?;
 
         // Timeout after 2 seconds to avoid hanging when Redis is unavailable
         let conn = tokio::time::timeout(Duration::from_secs(2), ConnectionManager::new(client))
             .await
             .map_err(|_| FrameworkError::internal("Redis connection timeout".to_string()))?
             .map_err(|e| {
-                FrameworkError::internal(format!("Redis connection manager error: {}", e))
+                FrameworkError::internal(format!("Redis connection manager error: {e}"))
             })?;
 
         let default_ttl = if config.default_ttl > 0 {
@@ -58,7 +58,7 @@ impl CacheStore for RedisCache {
         let value: Option<String> = conn
             .get(&key)
             .await
-            .map_err(|e| FrameworkError::internal(format!("Cache get error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Cache get error: {e}")))?;
 
         Ok(value)
     }
@@ -77,11 +77,11 @@ impl CacheStore for RedisCache {
         if let Some(duration) = effective_ttl {
             conn.set_ex::<_, _, ()>(&key, value, duration.as_secs())
                 .await
-                .map_err(|e| FrameworkError::internal(format!("Cache set error: {}", e)))?;
+                .map_err(|e| FrameworkError::internal(format!("Cache set error: {e}")))?;
         } else {
             conn.set::<_, _, ()>(&key, value)
                 .await
-                .map_err(|e| FrameworkError::internal(format!("Cache set error: {}", e)))?;
+                .map_err(|e| FrameworkError::internal(format!("Cache set error: {e}")))?;
         }
 
         Ok(())
@@ -94,7 +94,7 @@ impl CacheStore for RedisCache {
         let exists: bool = conn
             .exists(&key)
             .await
-            .map_err(|e| FrameworkError::internal(format!("Cache exists error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Cache exists error: {e}")))?;
 
         Ok(exists)
     }
@@ -106,7 +106,7 @@ impl CacheStore for RedisCache {
         let deleted: i64 = conn
             .del(&key)
             .await
-            .map_err(|e| FrameworkError::internal(format!("Cache delete error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Cache delete error: {e}")))?;
 
         Ok(deleted > 0)
     }
@@ -121,12 +121,12 @@ impl CacheStore for RedisCache {
             .arg(&pattern)
             .query_async(&mut conn)
             .await
-            .map_err(|e| FrameworkError::internal(format!("Cache flush scan error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Cache flush scan error: {e}")))?;
 
         if !keys.is_empty() {
-            conn.del::<_, ()>(keys).await.map_err(|e| {
-                FrameworkError::internal(format!("Cache flush delete error: {}", e))
-            })?;
+            conn.del::<_, ()>(keys)
+                .await
+                .map_err(|e| FrameworkError::internal(format!("Cache flush delete error: {e}")))?;
         }
 
         Ok(())
@@ -139,7 +139,7 @@ impl CacheStore for RedisCache {
         let value: i64 = conn
             .incr(&key, amount)
             .await
-            .map_err(|e| FrameworkError::internal(format!("Cache increment error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Cache increment error: {e}")))?;
 
         Ok(value)
     }
@@ -151,7 +151,7 @@ impl CacheStore for RedisCache {
         let value: i64 = conn
             .decr(&key, amount)
             .await
-            .map_err(|e| FrameworkError::internal(format!("Cache decrement error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Cache decrement error: {e}")))?;
 
         Ok(value)
     }
@@ -163,7 +163,7 @@ impl CacheStore for RedisCache {
         let result: bool = conn
             .expire(&key, ttl.as_secs() as i64)
             .await
-            .map_err(|e| FrameworkError::internal(format!("Cache expire error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Cache expire error: {e}")))?;
 
         Ok(result)
     }

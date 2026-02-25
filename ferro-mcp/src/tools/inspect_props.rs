@@ -232,11 +232,8 @@ fn find_actual_typescript(project_root: &Path, props_name: &str) -> Option<TypeS
         project_root.join("frontend/src/types/index.ts"),
     ];
 
-    let interface_pattern = Regex::new(&format!(
-        r#"(?:export\s+)?interface\s+{}\s*\{{"#,
-        props_name
-    ))
-    .ok()?;
+    let interface_pattern =
+        Regex::new(&format!(r#"(?:export\s+)?interface\s+{props_name}\s*\{{"#)).ok()?;
 
     for type_file in &type_files {
         if !type_file.exists() {
@@ -328,8 +325,7 @@ fn validate_props(props: &PropsStruct, actual_ts: Option<&TypeScriptMatch>) -> V
         let camel = to_camel_case(field);
         if !actual.fields.iter().any(|f| f.name == camel) {
             issues.push(format!(
-                "Field '{}' exists in Rust but not in TypeScript interface",
-                field
+                "Field '{field}' exists in Rust but not in TypeScript interface"
             ));
         }
     }
@@ -342,8 +338,7 @@ fn validate_props(props: &PropsStruct, actual_ts: Option<&TypeScriptMatch>) -> V
             let ts_field = actual.fields.iter().find(|f| f.name == *field).unwrap();
             if !ts_field.optional {
                 issues.push(format!(
-                    "Required field '{}' in TypeScript but not in Rust struct",
-                    field
+                    "Required field '{field}' in TypeScript but not in Rust struct"
                 ));
             }
         }

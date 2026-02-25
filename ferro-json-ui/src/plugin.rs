@@ -273,7 +273,7 @@ mod tests {
                 .get("label")
                 .and_then(|v| v.as_str())
                 .unwrap_or("default");
-            format!("<div class=\"test-widget\">{}</div>", label)
+            format!("<div class=\"test-widget\">{label}</div>")
         }
 
         fn css_assets(&self) -> Vec<Asset> {

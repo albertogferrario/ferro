@@ -473,7 +473,7 @@ fn generate_namespaced_name(module_path: &str, struct_name: &str) -> String {
     // Convert module path segments to PascalCase and join with struct name
     let namespace: String = module_path.split("::").map(snake_to_pascal).collect();
 
-    format!("{}{}", namespace, struct_name)
+    format!("{namespace}{struct_name}")
 }
 
 /// Scan all Rust files for Serialize structs matching the target type names
@@ -770,11 +770,11 @@ pub fn generate_typescript_with_options(
 
     for s in sorted {
         let interface_name = name_map.get(&s.name).unwrap_or(&s.name);
-        output.push_str(&format!("export interface {} {{\n", interface_name));
+        output.push_str(&format!("export interface {interface_name} {{\n"));
         for field in &s.fields {
             let ts_type = rust_type_to_ts_with_mapping(&field.ty, &name_map);
             let ts_name = apply_field_rename(field, s.rename_all);
-            output.push_str(&format!("  {}: {};\n", ts_name, ts_type));
+            output.push_str(&format!("  {ts_name}: {ts_type};\n"));
         }
         output.push_str("}\n\n");
     }
@@ -802,7 +802,7 @@ fn build_name_map(structs: &[InertiaPropsStruct]) -> HashMap<String, String> {
         if sources.len() > 1 {
             let collision_info: Vec<String> = sources
                 .iter()
-                .map(|(name, path)| format!("{}::{}", path, name))
+                .map(|(name, path)| format!("{path}::{name}"))
                 .collect();
             eprintln!(
                 "Warning: TypeScript name collision detected for '{}'. Sources: {}",
@@ -909,14 +909,14 @@ pub fn generate_types_to_file_with_options(
     // Ensure output directory exists
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create output directory: {}", e))?;
+            .map_err(|e| format!("Failed to create output directory: {e}"))?;
     }
 
     // Use the version with imports and re-exports
     let typescript =
         generate_typescript_with_options(&structs, Some(project_path), include_reexports);
     fs::write(output_path, typescript)
-        .map_err(|e| format!("Failed to write TypeScript file: {}", e))?;
+        .map_err(|e| format!("Failed to write TypeScript file: {e}"))?;
 
     Ok(structs.len())
 }
@@ -1025,11 +1025,11 @@ fn start_watcher(project_path: &Path, output_path: &Path) -> Result<(), String> 
         },
         Config::default().with_poll_interval(Duration::from_secs(1)),
     )
-    .map_err(|e| format!("Failed to create watcher: {}", e))?;
+    .map_err(|e| format!("Failed to create watcher: {e}"))?;
 
     watcher
         .watch(&src_path, RecursiveMode::Recursive)
-        .map_err(|e| format!("Failed to watch directory: {}", e))?;
+        .map_err(|e| format!("Failed to watch directory: {e}"))?;
 
     println!(
         "{} Watching {} for changes",
@@ -1062,7 +1062,7 @@ fn start_watcher(project_path: &Path, output_path: &Path) -> Result<(), String> 
                 }
             }
             Err(e) => {
-                return Err(format!("Watch error: {}", e));
+                return Err(format!("Watch error: {e}"));
             }
         }
     }

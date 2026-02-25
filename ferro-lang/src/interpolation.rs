@@ -34,7 +34,7 @@ pub fn interpolate(template: &str, params: &[(&str, &str)]) -> String {
         }
 
         // :key — as-is
-        let placeholder = format!(":{}", key);
+        let placeholder = format!(":{key}");
         if result.contains(&placeholder) {
             result = result.replace(&placeholder, value);
         }

@@ -33,7 +33,7 @@ pub async fn execute(project_root: &Path, session_id: Option<&str>) -> Result<Se
 
     let db: DatabaseConnection = Database::connect(&database_url)
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {e}")))?;
 
     let query = if let Some(id) = session_id {
         format!(
@@ -47,7 +47,7 @@ pub async fn execute(project_root: &Path, session_id: Option<&str>) -> Result<Se
     let result = db
         .query_all(Statement::from_string(db.get_database_backend(), query))
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Query failed: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Query failed: {e}")))?;
 
     let mut sessions = Vec::new();
     let mut authenticated_count = 0;

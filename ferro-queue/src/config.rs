@@ -99,8 +99,8 @@ impl QueueConfig {
         let database = env::var("REDIS_DATABASE").unwrap_or_else(|_| "0".to_string());
 
         match password {
-            Some(pass) => format!("redis://:{}@{}:{}/{}", pass, host, port, database),
-            None => format!("redis://{}:{}/{}", host, port, database),
+            Some(pass) => format!("redis://:{pass}@{host}:{port}/{database}"),
+            None => format!("redis://{host}:{port}/{database}"),
         }
     }
 

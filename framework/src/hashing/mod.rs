@@ -42,7 +42,7 @@ pub fn hash(password: &str) -> Result<String, FrameworkError> {
 /// ```
 pub fn hash_with_cost(password: &str, cost: u32) -> Result<String, FrameworkError> {
     bcrypt::hash(password, cost)
-        .map_err(|e| FrameworkError::internal(format!("Password hash error: {}", e)))
+        .map_err(|e| FrameworkError::internal(format!("Password hash error: {e}")))
 }
 
 /// Verify a password against a bcrypt hash
@@ -59,7 +59,7 @@ pub fn hash_with_cost(password: &str, cost: u32) -> Result<String, FrameworkErro
 /// ```
 pub fn verify(password: &str, hash: &str) -> Result<bool, FrameworkError> {
     bcrypt::verify(password, hash)
-        .map_err(|e| FrameworkError::internal(format!("Password verify error: {}", e)))
+        .map_err(|e| FrameworkError::internal(format!("Password verify error: {e}")))
 }
 
 /// Check if a hash needs to be rehashed (e.g., if cost factor changed)

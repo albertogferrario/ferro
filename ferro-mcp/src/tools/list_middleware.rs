@@ -44,7 +44,7 @@ struct RuntimeMiddlewareInfo {
 
 /// Try to fetch middleware from the running application
 async fn fetch_runtime_middleware(base_url: &str) -> Option<Vec<MiddlewareItem>> {
-    let url = format!("{}/_ferro/middleware", base_url);
+    let url = format!("{base_url}/_ferro/middleware");
 
     let client = reqwest::Client::builder()
         .timeout(HTTP_TIMEOUT)

@@ -729,7 +729,7 @@ mod tests {
             "Skeleton",
         ];
         for name in &expected {
-            assert!(names.contains(name), "Missing component: {}", name);
+            assert!(names.contains(name), "Missing component: {name}");
         }
     }
 

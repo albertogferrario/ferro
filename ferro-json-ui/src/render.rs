@@ -397,8 +397,7 @@ fn render_form(props: &FormProps, data: &Value) -> String {
             _ => unreachable!(),
         };
         html.push_str(&format!(
-            "<input type=\"hidden\" name=\"_method\" value=\"{}\">",
-            method_value
+            "<input type=\"hidden\" name=\"_method\" value=\"{method_value}\">"
         ));
     }
 
@@ -813,26 +812,18 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
 fn render_text(props: &TextProps) -> String {
     let content = html_escape(&props.content);
     match props.element {
-        TextElement::P => format!("<p class=\"text-base text-gray-700\">{}</p>", content),
-        TextElement::H1 => format!(
-            "<h1 class=\"text-3xl font-bold text-gray-900\">{}</h1>",
-            content
-        ),
-        TextElement::H2 => format!(
-            "<h2 class=\"text-2xl font-semibold text-gray-900\">{}</h2>",
-            content
-        ),
-        TextElement::H3 => format!(
-            "<h3 class=\"text-xl font-semibold text-gray-900\">{}</h3>",
-            content
-        ),
-        TextElement::Span => format!("<span class=\"text-base text-gray-700\">{}</span>", content),
-        TextElement::Div => format!("<div class=\"text-base text-gray-700\">{}</div>", content),
+        TextElement::P => format!("<p class=\"text-base text-gray-700\">{content}</p>"),
+        TextElement::H1 => format!("<h1 class=\"text-3xl font-bold text-gray-900\">{content}</h1>"),
+        TextElement::H2 => {
+            format!("<h2 class=\"text-2xl font-semibold text-gray-900\">{content}</h2>")
+        }
+        TextElement::H3 => {
+            format!("<h3 class=\"text-xl font-semibold text-gray-900\">{content}</h3>")
+        }
+        TextElement::Span => format!("<span class=\"text-base text-gray-700\">{content}</span>"),
+        TextElement::Div => format!("<div class=\"text-base text-gray-700\">{content}</div>"),
         TextElement::Section => {
-            format!(
-                "<section class=\"text-base text-gray-700\">{}</section>",
-                content
-            )
+            format!("<section class=\"text-base text-gray-700\">{content}</section>")
         }
     }
 }
@@ -879,16 +870,15 @@ fn render_button(props: &ButtonProps) -> String {
         );
         let position = props.icon_position.as_ref().cloned().unwrap_or_default();
         match position {
-            IconPosition::Left => format!("{} {}", icon_span, label),
-            IconPosition::Right => format!("{} {}", label, icon_span),
+            IconPosition::Left => format!("{icon_span} {label}"),
+            IconPosition::Right => format!("{label} {icon_span}"),
         }
     } else {
         label
     };
 
     format!(
-        "<button class=\"{} {} {}{}\"{}>{}</button>",
-        base, variant_classes, size_classes, disabled_classes, disabled_attr, content
+        "<button class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
     )
 }
 
@@ -915,10 +905,8 @@ fn render_alert(props: &AlertProps) -> String {
         AlertVariant::Warning => "bg-yellow-50 border-yellow-200 text-yellow-800",
         AlertVariant::Error => "bg-red-50 border-red-200 text-red-800",
     };
-    let mut html = format!(
-        "<div role=\"alert\" class=\"rounded-md border p-4 {}\">",
-        variant_classes
-    );
+    let mut html =
+        format!("<div role=\"alert\" class=\"rounded-md border p-4 {variant_classes}\">");
     if let Some(ref title) = props.title {
         html.push_str(&format!(
             "<h4 class=\"font-semibold mb-1\">{}</h4>",
@@ -954,8 +942,7 @@ fn render_progress(props: &ProgressProps) -> String {
         ));
     }
     html.push_str(&format!(
-        "<div class=\"w-full rounded-full bg-gray-200 h-2.5\"><div class=\"rounded-full bg-blue-600 h-2.5\" style=\"width: {}%\"></div></div>",
-        pct
+        "<div class=\"w-full rounded-full bg-gray-200 h-2.5\"><div class=\"rounded-full bg-blue-600 h-2.5\" style=\"width: {pct}%\"></div></div>"
     ));
     html.push_str("</div>");
     html
@@ -1001,8 +988,7 @@ fn render_skeleton(props: &SkeletonProps) -> String {
         "rounded-md"
     };
     format!(
-        "<div class=\"animate-pulse bg-gray-200 {}\" style=\"width: {}; height: {}\"></div>",
-        rounded, width, height
+        "<div class=\"animate-pulse bg-gray-200 {rounded}\" style=\"width: {width}; height: {height}\"></div>"
     )
 }
 
@@ -1067,8 +1053,7 @@ fn render_pagination(props: &PaginationProps) -> String {
         }
         if page == current {
             html.push_str(&format!(
-                "<span class=\"px-3 py-1 rounded-md bg-blue-600 text-white\">{}</span>",
-                page
+                "<span class=\"px-3 py-1 rounded-md bg-blue-600 text-white\">{page}</span>"
             ));
         } else {
             html.push_str(&format!(
@@ -1118,7 +1103,7 @@ fn compute_page_range(current: u32, total: u32) -> Vec<u32> {
 
 fn render_description_list(props: &DescriptionListProps) -> String {
     let columns = props.columns.unwrap_or(1);
-    let mut html = format!("<dl class=\"grid grid-cols-{} gap-4\">", columns);
+    let mut html = format!("<dl class=\"grid grid-cols-{columns} gap-4\">");
     for item in &props.items {
         html.push_str(&format!(
             "<div><dt class=\"text-sm font-medium text-gray-500\">{}</dt><dd class=\"mt-1 text-sm text-gray-900\">{}</dd></div>",

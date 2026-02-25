@@ -101,8 +101,8 @@ fn generate_migration(migrations_dir: &Path, force: bool) -> bool {
     }
 
     let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let migration_name = format!("m{}_add_auth_fields_to_users", timestamp);
-    let file_path = migrations_dir.join(format!("{}.rs", migration_name));
+    let migration_name = format!("m{timestamp}_add_auth_fields_to_users");
+    let file_path = migrations_dir.join(format!("{migration_name}.rs"));
 
     let content = templates::auth_migration_template();
 
@@ -146,7 +146,7 @@ fn register_migration(migrations_dir: &Path, migration_name: &str) {
         }
     };
 
-    let mod_decl = format!("mod {};", migration_name);
+    let mod_decl = format!("mod {migration_name};");
     if content.contains(&mod_decl) {
         return;
     }
@@ -181,12 +181,12 @@ fn register_migration(migrations_dir: &Path, migration_name: &str) {
     lines.insert(insert_idx, mod_decl);
 
     // Add to migrations() vec
-    let box_new_line = format!("            Box::new({}::Migration),", migration_name);
+    let box_new_line = format!("            Box::new({migration_name}::Migration),");
     let mut insert_vec_idx = None;
 
     for (i, line) in lines.iter().enumerate() {
         if line.contains("vec![]") {
-            lines[i] = line.replace("vec![]", &format!("vec![\n{}\n        ]", box_new_line));
+            lines[i] = line.replace("vec![]", &format!("vec![\n{box_new_line}\n        ]"));
             if let Err(e) = fs::write(&mod_path, lines.join("\n")) {
                 eprintln!(
                     "{} Failed to update mod.rs: {}",

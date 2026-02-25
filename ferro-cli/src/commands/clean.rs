@@ -15,7 +15,7 @@ fn run_cargo_clean() {
     let output = match Command::new("cargo").arg("clean").output() {
         Ok(o) => o,
         Err(e) => {
-            eprintln!("Failed to run cargo clean: {}", e);
+            eprintln!("Failed to run cargo clean: {e}");
             return;
         }
     };
@@ -24,7 +24,7 @@ fn run_cargo_clean() {
         println!("Build artifacts removed.");
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("cargo clean failed: {}", stderr);
+        eprintln!("cargo clean failed: {stderr}");
     }
 }
 
@@ -35,7 +35,7 @@ fn run_sweep(days: u32) {
         return;
     }
 
-    println!("Cleaning build artifacts older than {} days...", days);
+    println!("Cleaning build artifacts older than {days} days...");
 
     let output = match Command::new("cargo")
         .args(["sweep", "--time", &days.to_string()])
@@ -43,7 +43,7 @@ fn run_sweep(days: u32) {
     {
         Ok(o) => o,
         Err(e) => {
-            eprintln!("Failed to run cargo sweep: {}", e);
+            eprintln!("Failed to run cargo sweep: {e}");
             return;
         }
     };
@@ -51,13 +51,13 @@ fn run_sweep(days: u32) {
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
         if let Some(cleaned) = parse_sweep_output(&stdout) {
-            println!("{}", cleaned);
+            println!("{cleaned}");
         } else {
             println!("Cleanup complete.");
         }
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("Sweep failed: {}", stderr);
+        eprintln!("Sweep failed: {stderr}");
     }
 }
 

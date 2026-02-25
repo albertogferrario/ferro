@@ -180,7 +180,7 @@ mod tests {
         (1..=count)
             .map(|i| TestItem {
                 id: i as i32,
-                name: format!("Item {}", i),
+                name: format!("Item {i}"),
             })
             .collect()
     }

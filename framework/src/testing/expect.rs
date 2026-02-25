@@ -24,9 +24,9 @@ fn get_test_name() -> Option<String> {
 /// Format the assertion failure header
 fn format_header(location: &str) -> String {
     if let Some(name) = get_test_name() {
-        format!("\nTest: \"{}\"\n  at {}\n", name, location)
+        format!("\nTest: \"{name}\"\n  at {location}\n")
     } else {
-        format!("\nassertion failed at {}\n", location)
+        format!("\nassertion failed at {location}\n")
     }
 }
 

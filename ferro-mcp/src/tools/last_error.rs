@@ -273,7 +273,7 @@ fn find_related_routes(message: &str, route_context: &Option<RouteContext>) -> V
             let parts: Vec<&str> = path.split('/').collect();
             if parts.len() > 1 {
                 let base = format!("/{}", parts.get(1).unwrap_or(&""));
-                related.push(format!("Routes under {}/...", base));
+                related.push(format!("Routes under {base}/..."));
             }
         }
     }

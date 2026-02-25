@@ -25,7 +25,7 @@ pub fn execute(project_root: &Path, code: &str) -> Result<TinkerResult> {
         std::fs::remove_dir_all(&temp_dir).ok();
     }
     std::fs::create_dir_all(&temp_dir)
-        .map_err(|e| McpError::ExecutionError(format!("Failed to create temp dir: {}", e)))?;
+        .map_err(|e| McpError::ExecutionError(format!("Failed to create temp dir: {e}")))?;
 
     // Get the app crate name from Cargo.toml
     let app_name = get_app_name(project_root).unwrap_or_else(|| "app".to_string());
@@ -48,11 +48,11 @@ serde_json = "1"
     );
 
     std::fs::write(temp_dir.join("Cargo.toml"), cargo_toml)
-        .map_err(|e| McpError::ExecutionError(format!("Failed to write Cargo.toml: {}", e)))?;
+        .map_err(|e| McpError::ExecutionError(format!("Failed to write Cargo.toml: {e}")))?;
 
     // Create src directory
     std::fs::create_dir_all(temp_dir.join("src"))
-        .map_err(|e| McpError::ExecutionError(format!("Failed to create src dir: {}", e)))?;
+        .map_err(|e| McpError::ExecutionError(format!("Failed to create src dir: {e}")))?;
 
     // Wrap user code in a main function if it doesn't have one
     let wrapped_code = if code.contains("fn main") || code.contains("async fn main") {
@@ -68,14 +68,12 @@ async fn main() {{
     }};
     println!("{{:?}}", result);
 }}
-"#,
-            app_name = app_name,
-            code = code
+"#
         )
     };
 
     std::fs::write(temp_dir.join("src/main.rs"), &wrapped_code)
-        .map_err(|e| McpError::ExecutionError(format!("Failed to write main.rs: {}", e)))?;
+        .map_err(|e| McpError::ExecutionError(format!("Failed to write main.rs: {e}")))?;
 
     // Run cargo run
     let output = Command::new("cargo")
@@ -83,7 +81,7 @@ async fn main() {{
         .arg("--release")
         .current_dir(&temp_dir)
         .output()
-        .map_err(|e| McpError::ExecutionError(format!("Failed to run cargo: {}", e)))?;
+        .map_err(|e| McpError::ExecutionError(format!("Failed to run cargo: {e}")))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();

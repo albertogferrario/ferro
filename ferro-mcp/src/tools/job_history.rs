@@ -67,8 +67,7 @@ pub async fn execute(
             },
         }),
         _ => Err(McpError::ConfigError(format!(
-            "Unknown queue driver: {}",
-            queue_driver
+            "Unknown queue driver: {queue_driver}"
         ))),
     }
 }
@@ -82,19 +81,13 @@ async fn get_database_job_history(
 
     let db: DatabaseConnection = Database::connect(&database_url)
         .await
-        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {}", e)))?;
+        .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {e}")))?;
 
     // Get pending jobs
     let pending_query = if let Some(queue) = queue_filter {
-        format!(
-            "SELECT * FROM jobs WHERE queue = '{}' ORDER BY created_at DESC LIMIT {}",
-            queue, limit
-        )
+        format!("SELECT * FROM jobs WHERE queue = '{queue}' ORDER BY created_at DESC LIMIT {limit}")
     } else {
-        format!(
-            "SELECT * FROM jobs ORDER BY created_at DESC LIMIT {}",
-            limit
-        )
+        format!("SELECT * FROM jobs ORDER BY created_at DESC LIMIT {limit}")
     };
 
     let pending_jobs = match db
@@ -136,14 +129,10 @@ async fn get_database_job_history(
     // Get failed jobs
     let failed_query = if let Some(queue) = queue_filter {
         format!(
-            "SELECT * FROM failed_jobs WHERE queue = '{}' ORDER BY failed_at DESC LIMIT {}",
-            queue, limit
+            "SELECT * FROM failed_jobs WHERE queue = '{queue}' ORDER BY failed_at DESC LIMIT {limit}"
         )
     } else {
-        format!(
-            "SELECT * FROM failed_jobs ORDER BY failed_at DESC LIMIT {}",
-            limit
-        )
+        format!("SELECT * FROM failed_jobs ORDER BY failed_at DESC LIMIT {limit}")
     };
 
     let failed_jobs = match db
@@ -231,7 +220,7 @@ fn get_redis_job_history(queue_filter: Option<&str>, _limit: usize) -> Result<Jo
                         std::collections::HashMap::new();
 
                     for queue in &queues {
-                        let queue_key = format!("queues:{}", queue);
+                        let queue_key = format!("queues:{queue}");
                         let jobs: Vec<String> = redis::cmd("LRANGE")
                             .arg(&queue_key)
                             .arg(0)
@@ -244,7 +233,7 @@ fn get_redis_job_history(queue_filter: Option<&str>, _limit: usize) -> Result<Jo
                         for (idx, payload) in jobs.iter().enumerate() {
                             let job_type = extract_job_type(payload);
                             pending_jobs.push(JobInfo {
-                                id: format!("{}:{}", queue, idx),
+                                id: format!("{queue}:{idx}"),
                                 queue: queue.clone(),
                                 job_type,
                                 payload_preview: truncate_payload(payload, 200),
@@ -268,14 +257,12 @@ fn get_redis_job_history(queue_filter: Option<&str>, _limit: usize) -> Result<Jo
                     })
                 }
                 Err(e) => Err(McpError::DatabaseError(format!(
-                    "Redis connection failed: {}",
-                    e
+                    "Redis connection failed: {e}"
                 ))),
             }
         }
         Err(e) => Err(McpError::DatabaseError(format!(
-            "Redis client creation failed: {}",
-            e
+            "Redis client creation failed: {e}"
         ))),
     }
 }

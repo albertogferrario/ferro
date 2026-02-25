@@ -71,7 +71,7 @@ impl SessionStore for DatabaseSessionDriver {
         let db = DB::connection()?;
 
         let payload = serde_json::to_string(&session.data)
-            .map_err(|e| FrameworkError::internal(format!("Session serialize error: {}", e)))?;
+            .map_err(|e| FrameworkError::internal(format!("Session serialize error: {e}")))?;
 
         let now = chrono::Utc::now().naive_utc();
 

@@ -146,9 +146,7 @@ pub fn scaffold_factory_template(
 {create_relations}        let mut result = self.clone();
 {set_fk_fields}        result
     }}
-"#,
-            create_relations = create_relations,
-            set_fk_fields = set_fk_fields
+"#
         )
     };
 
@@ -611,8 +609,7 @@ pub fn scaffold_controller_with_fk_template(
             .collect::<Vec<_>>()
             .join("\n");
         format!(
-            "\n// TODO: The following FK fields have no corresponding model:\n{}\n// Create these models to enable relationship loading.\n",
-            fk_list
+            "\n// TODO: The following FK fields have no corresponding model:\n{fk_list}\n// Create these models to enable relationship loading.\n"
         )
     } else {
         String::new()
@@ -1134,12 +1131,6 @@ pub async fn destroy(req: Request) -> Response {{
     }})
 }}
 "#,
-        name = name,
-        snake_name = snake_name,
-        plural_snake = plural_snake,
-        form_fields = form_fields,
-        update_fields = update_fields,
-        insert_fields = insert_fields,
     )
 }
 
@@ -1226,9 +1217,7 @@ pub fn api_controller_with_fk_template(
             }})
         }})
         .collect();
-"#,
-            plural_snake = plural_snake,
-            enrichments = enrichments
+"#
         )
     } else {
         String::new()
@@ -1266,10 +1255,7 @@ pub fn api_controller_with_fk_template(
             .filter(|fk| fk.validated)
             .map(|fk| {
                 let target_snake = to_snake_case(&fk.target_model);
-                format!(
-                    r#"            "{}": related_{},"#,
-                    target_snake, target_snake
-                )
+                format!(r#"            "{target_snake}": related_{target_snake},"#)
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -1280,16 +1266,13 @@ pub fn api_controller_with_fk_template(
             ..serde_json::to_value(&{snake_name}).unwrap_or_default().as_object().cloned().unwrap_or_default(),
 {nested_fields}
         }}
-    }})"#,
-            snake_name = snake_name,
-            nested_fields = nested_fields
+    }})"#
         )
     } else {
         format!(
             r#"json_response!({{
         "data": {snake_name}
-    }})"#,
-            snake_name = snake_name
+    }})"#
         )
     };
 
@@ -1307,8 +1290,7 @@ pub fn api_controller_with_fk_template(
             .collect::<Vec<_>>()
             .join("\n");
         format!(
-            "\n// TODO: The following FK fields have no corresponding model:\n{}\n// Create these models to enable nested data in responses.\n",
-            fk_list
+            "\n// TODO: The following FK fields have no corresponding model:\n{fk_list}\n// Create these models to enable nested data in responses.\n"
         )
     } else {
         String::new()
@@ -1477,18 +1459,5 @@ pub async fn destroy(req: Request) -> Response {{
     }})
 }}
 "#,
-        name = name,
-        snake_name = snake_name,
-        plural_snake = plural_snake,
-        form_fields = form_fields,
-        update_fields = update_fields,
-        insert_fields = insert_fields,
-        fk_imports = fk_imports,
-        fk_index_fetches = fk_index_fetches,
-        fk_index_enrich = fk_index_enrich,
-        fk_show_fetches = fk_show_fetches,
-        fk_show_response = fk_show_response,
-        unvalidated_comment = unvalidated_comment,
-        index_data_var = index_data_var,
     )
 }

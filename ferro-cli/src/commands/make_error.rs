@@ -22,7 +22,7 @@ pub fn run(name: String) {
     }
 
     let errors_dir = Path::new("src/errors");
-    let error_file = errors_dir.join(format!("{}.rs", file_name));
+    let error_file = errors_dir.join(format!("{file_name}.rs"));
     let mod_file = errors_dir.join("mod.rs");
 
     // Check if we're in a Ferro project (src directory should exist)
@@ -65,8 +65,8 @@ pub fn run(name: String) {
     // Check if module is already declared in mod.rs
     if mod_file.exists() {
         let mod_content = fs::read_to_string(&mod_file).unwrap_or_default();
-        let mod_decl = format!("mod {};", file_name);
-        let pub_mod_decl = format!("pub mod {};", file_name);
+        let mod_decl = format!("mod {file_name};");
+        let pub_mod_decl = format!("pub mod {file_name};");
         if mod_content.contains(&mod_decl) || mod_content.contains(&pub_mod_decl) {
             eprintln!(
                 "{} Module '{}' is already declared in src/errors/mod.rs",
@@ -104,7 +104,7 @@ pub fn run(name: String) {
         println!("{} Updated src/errors/mod.rs", style("✓").green());
     } else {
         // Create mod.rs if it doesn't exist
-        let mod_content = format!("pub mod {};\n", file_name);
+        let mod_content = format!("pub mod {file_name};\n");
         if let Err(e) = fs::write(&mod_file, mod_content) {
             eprintln!(
                 "{} Failed to create mod.rs: {}",
@@ -124,10 +124,10 @@ pub fn run(name: String) {
     println!();
     println!("Usage:");
     println!("  {} Import in your controller:", style("1.").dim());
-    println!("     use crate::errors::{}::{};", file_name, struct_name);
+    println!("     use crate::errors::{file_name}::{struct_name};");
     println!();
     println!("  {} Return as error:", style("2.").dim());
-    println!("     Err({})?", struct_name);
+    println!("     Err({struct_name})?");
     println!();
 
     // If we created the directory, remind user to add module declaration
@@ -191,9 +191,9 @@ fn to_pascal_case(s: &str) -> String {
 
 fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     let content =
-        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {}", e))?;
+        fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
 
-    let pub_mod_decl = format!("pub mod {};", file_name);
+    let pub_mod_decl = format!("pub mod {file_name};");
 
     // Find position to insert pub mod declaration (after other pub mod declarations)
     let mut lines: Vec<&str> = content.lines().collect();
@@ -225,7 +225,7 @@ fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     lines.insert(insert_idx, &pub_mod_decl);
 
     let new_content = lines.join("\n");
-    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+    fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
 
     Ok(())
 }

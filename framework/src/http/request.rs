@@ -102,7 +102,7 @@ impl Request {
     {
         let value = self.param(name)?;
         value.parse::<T>().map_err(|e| ParamError {
-            param_name: format!("{} (parse error: {})", name, e),
+            param_name: format!("{name} (parse error: {e})"),
         })
     }
 

@@ -76,7 +76,7 @@ pub async fn execute(project_root: &Path, params: TestRouteParams) -> Result<Rou
         for (key, value) in headers {
             request_headers.insert(key.clone(), value.clone());
             curl_args.push("-H".to_string());
-            curl_args.push(format!("{}: {}", key, value));
+            curl_args.push(format!("{key}: {value}"));
         }
     }
 
@@ -101,7 +101,7 @@ pub async fn execute(project_root: &Path, params: TestRouteParams) -> Result<Rou
     let output = Command::new("curl")
         .args(&curl_args)
         .output()
-        .map_err(|e| McpError::ExecutionError(format!("Failed to execute curl: {}", e)))?;
+        .map_err(|e| McpError::ExecutionError(format!("Failed to execute curl: {e}")))?;
 
     let timing_ms = start.elapsed().as_millis() as u64;
 

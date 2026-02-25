@@ -777,11 +777,8 @@ mod tests {
 
             let result = entity_template("test_table", &columns);
             assert!(
-                result.contains(&format!("pub test_col: {}", expected_rust_type)),
-                "Failed for SQL type '{}': expected Rust type '{}' not found in:\n{}",
-                sql_type,
-                expected_rust_type,
-                result
+                result.contains(&format!("pub test_col: {expected_rust_type}")),
+                "Failed for SQL type '{sql_type}': expected Rust type '{expected_rust_type}' not found in:\n{result}"
             );
         }
     }

@@ -67,13 +67,13 @@ where
         .inner()
         .begin()
         .await
-        .map_err(|e| FrameworkError::database(format!("Failed to begin transaction: {}", e)))?;
+        .map_err(|e| FrameworkError::database(format!("Failed to begin transaction: {e}")))?;
 
     match f(&txn).await {
         Ok(result) => {
             txn.commit()
                 .await
-                .map_err(|e| FrameworkError::database(format!("Failed to commit: {}", e)))?;
+                .map_err(|e| FrameworkError::database(format!("Failed to commit: {e}")))?;
             Ok(result)
         }
         Err(e) => {
@@ -109,13 +109,13 @@ where
         .inner()
         .begin_with_config(Some(isolation_level), Some(AccessMode::ReadWrite))
         .await
-        .map_err(|e| FrameworkError::database(format!("Failed to begin transaction: {}", e)))?;
+        .map_err(|e| FrameworkError::database(format!("Failed to begin transaction: {e}")))?;
 
     match f(&txn).await {
         Ok(result) => {
             txn.commit()
                 .await
-                .map_err(|e| FrameworkError::database(format!("Failed to commit: {}", e)))?;
+                .map_err(|e| FrameworkError::database(format!("Failed to commit: {e}")))?;
             Ok(result)
         }
         Err(e) => Err(e),
@@ -166,13 +166,13 @@ impl TransactionExt for DatabaseConnection {
         let txn = self
             .begin()
             .await
-            .map_err(|e| FrameworkError::database(format!("Failed to begin transaction: {}", e)))?;
+            .map_err(|e| FrameworkError::database(format!("Failed to begin transaction: {e}")))?;
 
         match f(&txn).await {
             Ok(result) => {
                 txn.commit()
                     .await
-                    .map_err(|e| FrameworkError::database(format!("Failed to commit: {}", e)))?;
+                    .map_err(|e| FrameworkError::database(format!("Failed to commit: {e}")))?;
                 Ok(result)
             }
             Err(e) => Err(e),
@@ -192,13 +192,13 @@ impl TransactionExt for DatabaseConnection {
         let txn = self
             .begin_with_config(Some(isolation_level), Some(AccessMode::ReadWrite))
             .await
-            .map_err(|e| FrameworkError::database(format!("Failed to begin transaction: {}", e)))?;
+            .map_err(|e| FrameworkError::database(format!("Failed to begin transaction: {e}")))?;
 
         match f(&txn).await {
             Ok(result) => {
                 txn.commit()
                     .await
-                    .map_err(|e| FrameworkError::database(format!("Failed to commit: {}", e)))?;
+                    .map_err(|e| FrameworkError::database(format!("Failed to commit: {e}")))?;
                 Ok(result)
             }
             Err(e) => Err(e),

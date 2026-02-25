@@ -101,8 +101,7 @@ pub async fn execute(project_root: &Path, model_name: &str) -> Result<ModelUsage
 
     if route_usages.is_empty() {
         return Err(McpError::NotFound(format!(
-            "No routes found using model '{}'",
-            model_name
+            "No routes found using model '{model_name}'"
         )));
     }
 

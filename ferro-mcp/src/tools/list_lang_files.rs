@@ -35,8 +35,7 @@ pub fn execute(project_root: &Path, locale_filter: Option<&str>) -> Result<LangF
     let lang_dir = project_root.join(&lang_path);
     if !lang_dir.exists() {
         return Err(format!(
-            "Language directory '{}' not found. Run `ferro make:lang <locale>` to create one.",
-            lang_path
+            "Language directory '{lang_path}' not found. Run `ferro make:lang <locale>` to create one."
         ));
     }
 
@@ -45,7 +44,7 @@ pub fn execute(project_root: &Path, locale_filter: Option<&str>) -> Result<LangF
     let mut locale_files: HashMap<String, Vec<String>> = HashMap::new();
 
     let entries =
-        fs::read_dir(&lang_dir).map_err(|e| format!("Failed to read lang directory: {}", e))?;
+        fs::read_dir(&lang_dir).map_err(|e| format!("Failed to read lang directory: {e}"))?;
 
     for entry in entries.flatten() {
         if !entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
@@ -69,7 +68,7 @@ pub fn execute(project_root: &Path, locale_filter: Option<&str>) -> Result<LangF
 
     if locale_keys.is_empty() {
         return Err(if let Some(filter) = &locale_filter {
-            format!("No locale matching '{}' found", filter)
+            format!("No locale matching '{filter}' found")
         } else {
             "No locale directories found in lang/".to_string()
         });
@@ -158,8 +157,7 @@ fn scan_locale_dir(dir: &Path) -> Result<(HashMap<String, String>, Vec<String>),
     let mut keys = HashMap::new();
     let mut files = Vec::new();
 
-    let entries =
-        fs::read_dir(dir).map_err(|e| format!("Failed to read locale directory: {}", e))?;
+    let entries = fs::read_dir(dir).map_err(|e| format!("Failed to read locale directory: {e}"))?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -199,7 +197,7 @@ fn flatten_json(
         let full_key = if prefix.is_empty() {
             key.clone()
         } else {
-            format!("{}.{}", prefix, key)
+            format!("{prefix}.{key}")
         };
 
         match value {

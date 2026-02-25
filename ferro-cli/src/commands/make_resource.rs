@@ -9,7 +9,7 @@ pub fn run(name: String, model: Option<String>) {
     let name = if name.ends_with("Resource") {
         name
     } else {
-        format!("{}Resource", name)
+        format!("{name}Resource")
     };
 
     // Convert to snake_case for file name
@@ -26,7 +26,7 @@ pub fn run(name: String, model: Option<String>) {
     }
 
     let resources_dir = Path::new("src/resources");
-    let resource_file = resources_dir.join(format!("{}.rs", file_name));
+    let resource_file = resources_dir.join(format!("{file_name}.rs"));
 
     // Check if resources directory exists; create if not
     if !resources_dir.exists() {

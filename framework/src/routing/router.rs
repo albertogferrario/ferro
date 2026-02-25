@@ -101,7 +101,7 @@ pub fn route(name: &str, params: &[(&str, &str)]) -> Option<String> {
 
     let mut url = path_pattern.clone();
     for (key, value) in params {
-        url = url.replace(&format!("{{{}}}", key), value);
+        url = url.replace(&format!("{{{key}}}"), value);
     }
     Some(url)
 }
@@ -113,7 +113,7 @@ pub fn route_with_params(name: &str, params: &HashMap<String, String>) -> Option
 
     let mut url = path_pattern.clone();
     for (key, value) in params {
-        url = url.replace(&format!("{{{}}}", key), value);
+        url = url.replace(&format!("{{{key}}}"), value);
     }
     Some(url)
 }

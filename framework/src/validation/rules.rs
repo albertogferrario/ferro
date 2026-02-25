@@ -30,7 +30,7 @@ impl Rule for Required {
         if is_empty {
             Err(
                 translate_validation("validation.required", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field is required.", field)),
+                    .unwrap_or_else(|| format!("The {field} field is required.")),
             )
         } else {
             Ok(())
@@ -88,7 +88,7 @@ impl Rule for IsString {
         } else {
             Err(
                 translate_validation("validation.string", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field must be a string.", field)),
+                    .unwrap_or_else(|| format!("The {field} field must be a string.")),
             )
         }
     }
@@ -115,13 +115,13 @@ impl Rule for IsInteger {
             } else {
                 Err(
                     translate_validation("validation.integer", &[("attribute", field)])
-                        .unwrap_or_else(|| format!("The {} field must be an integer.", field)),
+                        .unwrap_or_else(|| format!("The {field} field must be an integer.")),
                 )
             }
         } else {
             Err(
                 translate_validation("validation.integer", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field must be an integer.", field)),
+                    .unwrap_or_else(|| format!("The {field} field must be an integer.")),
             )
         }
     }
@@ -148,13 +148,13 @@ impl Rule for Numeric {
             } else {
                 Err(
                     translate_validation("validation.numeric", &[("attribute", field)])
-                        .unwrap_or_else(|| format!("The {} field must be a number.", field)),
+                        .unwrap_or_else(|| format!("The {field} field must be a number.")),
                 )
             }
         } else {
             Err(
                 translate_validation("validation.numeric", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field must be a number.", field)),
+                    .unwrap_or_else(|| format!("The {field} field must be a number.")),
             )
         }
     }
@@ -180,7 +180,7 @@ impl Rule for IsBoolean {
                 "true" | "false" | "1" | "0" | "yes" | "no" => Ok(()),
                 _ => Err(
                     translate_validation("validation.boolean", &[("attribute", field)])
-                        .unwrap_or_else(|| format!("The {} field must be true or false.", field)),
+                        .unwrap_or_else(|| format!("The {field} field must be true or false.")),
                 ),
             }
         } else if let Some(n) = value.as_i64() {
@@ -189,13 +189,13 @@ impl Rule for IsBoolean {
             } else {
                 Err(
                     translate_validation("validation.boolean", &[("attribute", field)])
-                        .unwrap_or_else(|| format!("The {} field must be true or false.", field)),
+                        .unwrap_or_else(|| format!("The {field} field must be true or false.")),
                 )
             }
         } else {
             Err(
                 translate_validation("validation.boolean", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field must be true or false.", field)),
+                    .unwrap_or_else(|| format!("The {field} field must be true or false.")),
             )
         }
     }
@@ -219,7 +219,7 @@ impl Rule for IsArray {
         } else {
             Err(
                 translate_validation("validation.array", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field must be an array.", field)),
+                    .unwrap_or_else(|| format!("The {field} field must be an array.")),
             )
         }
     }
@@ -379,9 +379,8 @@ impl Rule for Email {
         match value.as_str() {
             Some(s) if EMAIL_REGEX.is_match(s) => Ok(()),
             _ => Err(
-                translate_validation("validation.email", &[("attribute", field)]).unwrap_or_else(
-                    || format!("The {} field must be a valid email address.", field),
-                ),
+                translate_validation("validation.email", &[("attribute", field)])
+                    .unwrap_or_else(|| format!("The {field} field must be a valid email address.")),
             ),
         }
     }
@@ -411,7 +410,7 @@ impl Rule for Url {
             Some(s) if URL_REGEX.is_match(s) => Ok(()),
             _ => Err(
                 translate_validation("validation.url", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field must be a valid URL.", field)),
+                    .unwrap_or_else(|| format!("The {field} field must be a valid URL.")),
             ),
         }
     }
@@ -442,7 +441,7 @@ impl Rule for Regex_ {
             Some(s) if self.pattern.is_match(s) => Ok(()),
             _ => Err(
                 translate_validation("validation.regex", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field format is invalid.", field)),
+                    .unwrap_or_else(|| format!("The {field} field format is invalid.")),
             ),
         }
     }
@@ -471,7 +470,7 @@ impl Rule for Alpha {
             Some(s) if ALPHA_REGEX.is_match(s) => Ok(()),
             _ => Err(
                 translate_validation("validation.alpha", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field must only contain letters.", field)),
+                    .unwrap_or_else(|| format!("The {field} field must only contain letters.")),
             ),
         }
     }
@@ -501,7 +500,7 @@ impl Rule for AlphaNum {
             _ => Err(
                 translate_validation("validation.alpha_num", &[("attribute", field)])
                     .unwrap_or_else(|| {
-                        format!("The {} field must only contain letters and numbers.", field)
+                        format!("The {field} field must only contain letters and numbers.")
                     }),
             ),
         }
@@ -534,8 +533,7 @@ impl Rule for AlphaDash {
                 translate_validation("validation.alpha_dash", &[("attribute", field)])
                     .unwrap_or_else(|| {
                         format!(
-                    "The {} field must only contain letters, numbers, dashes, and underscores.",
-                    field
+                    "The {field} field must only contain letters, numbers, dashes, and underscores."
                 )
                     }),
             ),
@@ -569,7 +567,7 @@ impl Rule for Confirmed {
         }
 
         let confirmation_field = if self.confirmation_field.is_empty() {
-            format!("{}_confirmation", field)
+            format!("{field}_confirmation")
         } else {
             self.confirmation_field.clone()
         };
@@ -580,7 +578,7 @@ impl Rule for Confirmed {
         } else {
             Err(
                 translate_validation("validation.confirmed", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} confirmation does not match.", field)),
+                    .unwrap_or_else(|| format!("The {field} confirmation does not match.")),
             )
         }
     }
@@ -616,7 +614,7 @@ impl Rule for In {
         } else {
             Err(
                 translate_validation("validation.in", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The selected {} is invalid.", field)),
+                    .unwrap_or_else(|| format!("The selected {field} is invalid.")),
             )
         }
     }
@@ -650,7 +648,7 @@ impl Rule for NotIn {
         if self.values.contains(value) {
             Err(
                 translate_validation("validation.not_in", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The selected {} is invalid.", field)),
+                    .unwrap_or_else(|| format!("The selected {field} is invalid.")),
             )
         } else {
             Ok(())
@@ -762,7 +760,7 @@ impl Rule for Date {
 
         Err(
             translate_validation("validation.date", &[("attribute", field)])
-                .unwrap_or_else(|| format!("The {} field must be a valid date.", field)),
+                .unwrap_or_else(|| format!("The {field} field must be a valid date.")),
         )
     }
 
@@ -816,7 +814,7 @@ impl Rule for Accepted {
         } else {
             Err(
                 translate_validation("validation.accepted", &[("attribute", field)])
-                    .unwrap_or_else(|| format!("The {} field must be accepted.", field)),
+                    .unwrap_or_else(|| format!("The {field} field must be accepted.")),
             )
         }
     }
@@ -858,7 +856,7 @@ fn get_size_type_key(rule: &str, value: &Value) -> String {
         Value::Array(_) | Value::Object(_) => "array",
         _ => "numeric",
     };
-    format!("validation.{}.{}", rule, suffix)
+    format!("validation.{rule}.{suffix}")
 }
 
 #[cfg(test)]
@@ -969,7 +967,7 @@ mod tests {
                 .find(|(k, _)| *k == "attribute")
                 .map(|(_, v)| *v)
                 .unwrap_or("?");
-            Some(format!("[translated] {}: attr={}", key, attr))
+            Some(format!("[translated] {key}: attr={attr}"))
         }
 
         // OnceLock: if already set by another test, skip gracefully
@@ -984,13 +982,11 @@ mod tests {
             let msg = result.unwrap_err();
             assert!(
                 msg.contains("[translated]"),
-                "Expected translated message, got: {}",
-                msg
+                "Expected translated message, got: {msg}"
             );
             assert!(
                 msg.contains("validation.required"),
-                "Expected key in message, got: {}",
-                msg
+                "Expected key in message, got: {msg}"
             );
         }
     }

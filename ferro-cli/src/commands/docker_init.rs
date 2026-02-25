@@ -76,15 +76,14 @@ pub fn run() {
     println!("Build your image:");
     println!(
         "  {}",
-        style(format!("docker build -t {} .", package_name)).cyan()
+        style(format!("docker build -t {package_name} .")).cyan()
     );
     println!();
     println!("Run your container:");
     println!(
         "  {}",
         style(format!(
-            "docker run -p 8080:8080 --env-file .env.production {}",
-            package_name
+            "docker run -p 8080:8080 --env-file .env.production {package_name}"
         ))
         .cyan()
     );

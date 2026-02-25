@@ -265,26 +265,25 @@ fn validate_component_exists(component_name: &str, span: Span) -> Result<(), syn
         .join("frontend")
         .join("src")
         .join("pages")
-        .join(format!("{}.tsx", component_name));
+        .join(format!("{component_name}.tsx"));
 
     if !component_path.exists() {
         // Build helpful error message with available components
         let available = list_available_components(&project_root);
 
         let mut error_msg = format!(
-            "Inertia component '{}' not found.\nExpected file: frontend/src/pages/{}.tsx",
-            component_name, component_name
+            "Inertia component '{component_name}' not found.\nExpected file: frontend/src/pages/{component_name}.tsx"
         );
 
         if !available.is_empty() {
             error_msg.push_str("\n\nAvailable components:");
             for comp in &available {
-                error_msg.push_str(&format!("\n  - {}", comp));
+                error_msg.push_str(&format!("\n  - {comp}"));
             }
 
             // Suggest similar components (fuzzy matching)
             if let Some(suggestion) = find_similar_component(component_name, &available) {
-                error_msg.push_str(&format!("\n\nDid you mean '{}'?", suggestion));
+                error_msg.push_str(&format!("\n\nDid you mean '{suggestion}'?"));
             }
         } else {
             error_msg.push_str("\n\nNo components found in frontend/src/pages/");

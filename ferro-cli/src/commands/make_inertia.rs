@@ -19,7 +19,7 @@ pub fn run(name: String) {
     }
 
     let pages_dir = Path::new("frontend/src/pages");
-    let page_file = pages_dir.join(format!("{}.tsx", page_name));
+    let page_file = pages_dir.join(format!("{page_name}.tsx"));
 
     // Check if frontend/src/pages directory exists
     if !pages_dir.exists() {
@@ -67,7 +67,7 @@ pub fn run(name: String) {
     println!();
     println!("Usage:");
     println!("  {} Use the page in a controller:", style("1.").dim());
-    println!("     inertia_response!(\"{}\", props)", page_name);
+    println!("     inertia_response!(\"{page_name}\", props)");
     println!();
 }
 
@@ -113,6 +113,6 @@ fn to_page_name(input: &str) -> String {
     if pascal.ends_with("Page") {
         pascal
     } else {
-        format!("{}Page", pascal)
+        format!("{pascal}Page")
     }
 }

@@ -128,17 +128,15 @@ pub fn execute(
     let mut summary = Vec::new();
     if failed > 0 {
         summary.push(format!(
-            "{} contract(s) have mismatches that need attention",
-            failed
+            "{failed} contract(s) have mismatches that need attention"
         ));
     }
     if passed > 0 {
-        summary.push(format!("{} contract(s) validated successfully", passed));
+        summary.push(format!("{passed} contract(s) validated successfully"));
     }
     if skipped > 0 {
         summary.push(format!(
-            "{} route(s) skipped (no props or component found)",
-            skipped
+            "{skipped} route(s) skipped (no props or component found)"
         ));
     }
 
@@ -165,7 +163,7 @@ fn parse_routes_with_components(
     }
 
     let content =
-        fs::read_to_string(&routes_file).map_err(|e| format!("Failed to read routes.rs: {}", e))?;
+        fs::read_to_string(&routes_file).map_err(|e| format!("Failed to read routes.rs: {e}"))?;
     let mut routes = Vec::new();
 
     // Pattern to match route definitions
@@ -215,8 +213,7 @@ fn find_component_for_handler(project_path: &Path, handler: &str) -> Option<Stri
 
     // Find the inertia_response! call in the handler
     let inertia_pattern = Regex::new(&format!(
-        r#"fn\s+{}\s*\([^)]*\)[^{{]*\{{[^}}]*inertia_response!\s*\(\s*"([^"]+)""#,
-        function_name
+        r#"fn\s+{function_name}\s*\([^)]*\)[^{{]*\{{[^}}]*inertia_response!\s*\(\s*"([^"]+)""#
     ))
     .ok()?;
 
@@ -225,7 +222,7 @@ fn find_component_for_handler(project_path: &Path, handler: &str) -> Option<Stri
     }
 
     // Fallback: search for any inertia_response! after the function definition
-    let func_start = content.find(&format!("fn {}", function_name))?;
+    let func_start = content.find(&format!("fn {function_name}"))?;
     let after_func = &content[func_start..];
 
     let simple_pattern = Regex::new(r#"inertia_response!\s*\(\s*"([^"]+)""#).ok()?;
@@ -305,7 +302,7 @@ fn extract_rust_props(project_path: &Path, handler: &str) -> Option<PropsInfo> {
     let content = fs::read_to_string(&file_path).ok()?;
 
     // Find the handler function and extract what it returns
-    let func_start = content.find(&format!("fn {}", function_name))?;
+    let func_start = content.find(&format!("fn {function_name}"))?;
     let after_func = &content[func_start..];
 
     // Look for the Props struct being used in inertia_response!
@@ -343,8 +340,7 @@ fn extract_rust_props(project_path: &Path, handler: &str) -> Option<PropsInfo> {
 /// Find a props struct definition in source code
 fn find_props_struct(content: &str, name: &str, source_file: &Path) -> Option<PropsInfo> {
     let struct_pattern = Regex::new(&format!(
-        r#"(?:#\[derive\([^\)]*\)\]\s*)*struct\s+{}\s*\{{\s*([^}}]+)\}}"#,
-        name
+        r#"(?:#\[derive\([^\)]*\)\]\s*)*struct\s+{name}\s*\{{\s*([^}}]+)\}}"#
     ))
     .ok()?;
 
@@ -441,7 +437,7 @@ fn parse_inline_fields(fields_str: &str) -> Vec<PropField> {
 fn extract_typescript_props(project_path: &Path, component: &str) -> Option<PropsInfo> {
     let component_path = project_path
         .join("frontend/src/pages")
-        .join(format!("{}.tsx", component));
+        .join(format!("{component}.tsx"));
 
     if !component_path.exists() {
         return None;
@@ -696,7 +692,7 @@ fn compare_fields(rust_fields: &[PropField], ts_fields: &[PropField], path: &str
         let field_path = if path.is_empty() {
             name.clone()
         } else {
-            format!("{}.{}", path, name)
+            format!("{path}.{name}")
         };
 
         // Check if the TS field exists in Rust (direct match or snake_case version)
@@ -746,7 +742,7 @@ fn compare_fields(rust_fields: &[PropField], ts_fields: &[PropField], path: &str
             mismatches.push(Mismatch {
                 kind: MismatchKind::MissingInBackend,
                 field: field_path,
-                details: format!("Frontend expects '{}' but backend doesn't send it", name),
+                details: format!("Frontend expects '{name}' but backend doesn't send it"),
             });
         }
     }
@@ -756,7 +752,7 @@ fn compare_fields(rust_fields: &[PropField], ts_fields: &[PropField], path: &str
         let field_path = if path.is_empty() {
             name.clone()
         } else {
-            format!("{}.{}", path, name)
+            format!("{path}.{name}")
         };
 
         if !ts_map.contains_key(name) {
@@ -766,8 +762,7 @@ fn compare_fields(rust_fields: &[PropField], ts_fields: &[PropField], path: &str
                     kind: MismatchKind::MissingInFrontend,
                     field: field_path,
                     details: format!(
-                        "Backend sends '{}' but frontend doesn't use it (might be intentional)",
-                        name
+                        "Backend sends '{name}' but frontend doesn't use it (might be intentional)"
                     ),
                 });
             }
@@ -836,7 +831,7 @@ fn print_results(result: &ContractValidationResult) {
             println!(
                 "       {} {} - {}",
                 style("->").red(),
-                style(format!("[{}]", kind_label)).yellow(),
+                style(format!("[{kind_label}]")).yellow(),
                 mismatch.details
             );
         }
@@ -901,7 +896,7 @@ pub fn run(filter: Option<String>, json: bool) {
 
                 // Output JSON for programmatic use
                 match serde_json::to_string_pretty(&result) {
-                    Ok(json_output) => println!("{}", json_output),
+                    Ok(json_output) => println!("{json_output}"),
                     Err(e) => {
                         eprintln!(
                             "{} Failed to serialize results: {}",
