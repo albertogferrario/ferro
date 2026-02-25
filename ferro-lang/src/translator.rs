@@ -119,7 +119,7 @@ mod tests {
     }
 
     /// Write the standard en + es fixture into the given directory.
-    fn write_fixtures(dir: &PathBuf) {
+    fn write_fixtures(dir: &Path) {
         let en_dir = dir.join("en");
         fs::create_dir_all(&en_dir).unwrap();
         fs::write(

@@ -313,7 +313,7 @@ impl CronExpression {
     /// # Panics
     /// Panics if `day` is 0 or > 31.
     pub fn monthly_on(day: u32) -> Self {
-        assert!(day >= 1 && day <= 31, "day must be 1-31, got {}", day);
+        assert!((1..=31).contains(&day), "day must be 1-31, got {}", day);
         Self::parse(&format!("0 0 {} * *", day)).expect("valid cron: monthly on")
     }
 
