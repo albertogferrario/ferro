@@ -1,9 +1,9 @@
 use ferro::env;
 
-/// Mail configuration
+/// Mail configuration for SMTP and Resend drivers.
 #[derive(Debug, Clone)]
 pub struct MailConfig {
-    /// Mail driver (smtp, resend, sendgrid, etc.)
+    /// Mail driver: "smtp" or "resend"
     pub driver: String,
     /// SMTP host
     pub host: String,
@@ -13,6 +13,8 @@ pub struct MailConfig {
     pub username: String,
     /// SMTP password
     pub password: String,
+    /// Resend API key (when driver=resend)
+    pub resend_api_key: String,
     /// Default from email address
     pub from_address: String,
     /// Default from name
@@ -28,6 +30,7 @@ impl MailConfig {
             port: env("MAIL_PORT", 587),
             username: env("MAIL_USERNAME", "".to_string()),
             password: env("MAIL_PASSWORD", "".to_string()),
+            resend_api_key: env("RESEND_API_KEY", "".to_string()),
             from_address: env("MAIL_FROM_ADDRESS", "hello@example.com".to_string()),
             from_name: env("MAIL_FROM_NAME", "Ferro App".to_string()),
         }

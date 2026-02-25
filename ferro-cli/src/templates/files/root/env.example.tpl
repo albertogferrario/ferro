@@ -130,9 +130,9 @@ BROADCAST_ALLOW_CLIENT_EVENTS=true  # Allow client-to-client whisper (default: t
 # ==============================================================================
 # MAIL
 # ==============================================================================
-# SMTP configuration for notifications
+# Mail configuration
 
-MAIL_DRIVER=smtp       # Used by scaffolded app config
+MAIL_DRIVER=smtp       # smtp or resend
 MAIL_HOST=localhost
 MAIL_PORT=587
 MAIL_USERNAME=
@@ -140,6 +140,9 @@ MAIL_PASSWORD=
 MAIL_FROM_ADDRESS=hello@example.com
 MAIL_FROM_NAME="Ferro App"
 MAIL_ENCRYPTION=tls    # "tls" or "none" (default: "tls")
+
+# Resend (when MAIL_DRIVER=resend)
+RESEND_API_KEY=
 
 # ==============================================================================
 # SLACK
