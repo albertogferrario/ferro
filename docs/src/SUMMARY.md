@@ -30,6 +30,7 @@
 - [Validation](features/validation.md)
 - [Localization](features/localization.md)
 - [Testing](features/testing.md)
+- [Static Files](features/static-files.md)
 - [Inertia.js](features/inertia.md)
 - [JSON-UI](features/json-ui.md)
 
