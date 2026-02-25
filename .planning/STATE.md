@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v7.0 Resend Integration
+**Current focus:** v7.1 Static File Serving — complete
 
 ## Current Position
 
-Phase: 68 of 68 (Resend Mail Driver)
-Plan: 03 of 03 complete
-Status: Phase 68 complete (all plans done)
-Last activity: 2026-02-25 — Plan 02 executed (Resend transport and tests)
+Phase: 69 of 69 (Static File Serving)
+Plan: 1 of 1
+Status: Phase 69 complete — static file serving shipped
+Last activity: 2026-02-25 — Phase 69 plan 01 executed
 
 Progress: ██████████ 100%
 
@@ -34,6 +34,7 @@ Progress: ██████████ 100%
 | v6.0 ferro-lang — Localization | 58-66 | 11 | Complete | 2026-02-13 |
 | v6.1 Fix Known Issues | 67 | 1 | Complete | 2026-02-24 |
 | v7.0 Resend Integration | 68 | 3 | Complete | 2026-02-25 |
+| v7.1 Static File Serving | 69 | 1 | Complete | 2026-02-25 |
 
 ## Accumulated Context
 
@@ -41,10 +42,13 @@ Progress: ██████████ 100%
 
 Archived to PROJECT.md and milestone archive files.
 
+- Static file responses use hyper::Response<Full<Bytes>> directly (not HttpResponse) to preserve binary file integrity
+- Static files checked before fallback handler in handle_request() to prevent SPA catch-all from intercepting asset requests
+
 ### Roadmap Evolution
 
-- All planned milestones v1.0–v7.0 complete (14 milestones, 149 plans shipped)
-- Milestone v7.0 complete: Resend mail driver integration (Phase 68, all 3 plans done)
+- All planned milestones v1.0–v7.1 complete (15 milestones, 150 plans shipped)
+- Milestone v7.1 complete: Static file serving from public/ with immutable caching and security protections
 
 ### Pending Todos
 
@@ -57,5 +61,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Phase 68 complete — all plans shipped
+Stopped at: Phase 69 complete — all plans shipped
 Resume file: None
