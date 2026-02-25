@@ -459,19 +459,32 @@ fn compute_module_path(file_path: &Path, src_path: &Path) -> String {
 /// Generate a unique namespaced TypeScript interface name from module path and struct name.
 ///
 /// Combines the module path with the struct name using PascalCase.
+/// Skips the prefix when the struct name already starts with it to avoid
+/// redundant names like `MenuMenuListProps`.
 ///
 /// Examples:
 /// - ("shelter::applications", "ShowProps") -> "ShelterApplicationsShowProps"
 /// - ("adopter::applications", "ShowProps") -> "AdopterApplicationsShowProps"
 /// - ("user", "IndexProps") -> "UserIndexProps"
+/// - ("menu", "MenuListProps") -> "MenuListProps" (already prefixed)
+/// - ("public::menu", "PublicMenuProps") -> "PublicMenuProps" (already prefixed)
 /// - ("", "GlobalProps") -> "GlobalProps" (root-level, no namespace)
 fn generate_namespaced_name(module_path: &str, struct_name: &str) -> String {
     if module_path.is_empty() {
         return struct_name.to_string();
     }
 
-    // Convert module path segments to PascalCase and join with struct name
+    // Convert module path segments to PascalCase and join
     let namespace: String = module_path.split("::").map(snake_to_pascal).collect();
+
+    // Skip prefix if struct name already starts with the namespace
+    // (case-insensitive to handle QRCode vs Qrcode, etc.)
+    if struct_name
+        .to_lowercase()
+        .starts_with(&namespace.to_lowercase())
+    {
+        return struct_name.to_string();
+    }
 
     format!("{namespace}{struct_name}")
 }
@@ -707,23 +720,34 @@ pub fn generate_typescript_with_options(
     // Parse shared.ts types
     let shared_types = project_path.map(parse_shared_types).unwrap_or_default();
 
+    // Types defined inline by the generator (not to be imported/re-exported)
+    let inline_types: HashSet<&str> = ["JsonValue", "ValidationErrors"].into_iter().collect();
+
     // Find types to import from shared.ts (only referenced ones)
     let mut imports_needed = Vec::new();
     if project_path.is_some() && !shared_types.is_empty() {
         let referenced_types = collect_referenced_types(structs);
 
-        // Types that are referenced but not defined in this file
+        // Types that are referenced but not defined in this file (skip inline types)
         let mut to_import: Vec<_> = referenced_types
             .iter()
-            .filter(|t| shared_types.contains(*t) && !defined_types.contains(*t))
+            .filter(|t| {
+                shared_types.contains(*t)
+                    && !defined_types.contains(*t)
+                    && !inline_types.contains(t.as_str())
+            })
             .cloned()
             .collect();
         to_import.sort();
         imports_needed = to_import;
     }
 
-    // Collect all shared types for re-export (sorted for consistency)
-    let mut reexport_types: Vec<_> = shared_types.iter().cloned().collect();
+    // Collect all shared types for re-export (sorted, skip inline types)
+    let mut reexport_types: Vec<_> = shared_types
+        .iter()
+        .filter(|t| !inline_types.contains(t.as_str()))
+        .cloned()
+        .collect();
     reexport_types.sort();
 
     let mut output = String::new();
@@ -1728,6 +1752,35 @@ mod tests {
         assert_eq!(
             generate_namespaced_name("user_profile", "EditProps"),
             "UserProfileEditProps"
+        );
+    }
+
+    #[test]
+    fn test_generate_namespaced_name_skips_redundant_prefix() {
+        // menu + MenuListProps -> MenuListProps (already prefixed)
+        assert_eq!(
+            generate_namespaced_name("menu", "MenuListProps"),
+            "MenuListProps"
+        );
+        // public::menu + PublicMenuProps -> PublicMenuProps (already prefixed)
+        assert_eq!(
+            generate_namespaced_name("public::menu", "PublicMenuProps"),
+            "PublicMenuProps"
+        );
+        // category + CategoryDetail -> CategoryDetail (already prefixed)
+        assert_eq!(
+            generate_namespaced_name("category", "CategoryDetail"),
+            "CategoryDetail"
+        );
+        // qrcode + QRCodeListProps -> QRCodeListProps (case-insensitive match)
+        assert_eq!(
+            generate_namespaced_name("qrcode", "QRCodeListProps"),
+            "QRCodeListProps"
+        );
+        // auth + AuthRegisterProps -> AuthRegisterProps
+        assert_eq!(
+            generate_namespaced_name("auth", "AuthRegisterProps"),
+            "AuthRegisterProps"
         );
     }
 
