@@ -7,6 +7,7 @@ ignore = [
     # Only pulled in via sqlx-mysql which Ferro does not use (Postgres/SQLite only).
     "RUSTSEC-2023-0071",
 
-    # lru: IterMut Stacked Borrows unsoundness. In lockfile but not compiled for our targets.
+    # lru: IterMut Stacked Borrows unsoundness. Only used by aws-sdk-s3,
+    # never calling IterMut in our code path.
     "RUSTSEC-2026-0002",
 ]

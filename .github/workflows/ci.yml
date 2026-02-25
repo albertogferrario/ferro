@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo install cargo-audit --locked
-      - run: cargo audit
+      - run: cargo audit --config audit.toml
 
   deny:
     name: Dependency Check
