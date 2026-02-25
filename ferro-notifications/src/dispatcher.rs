@@ -611,4 +611,169 @@ mod tests {
         assert!(config.mail.is_none());
         assert!(config.slack_webhook.is_none());
     }
+
+    /// Helper to run env-based tests with clean env var state.
+    fn with_env_vars<F: FnOnce()>(vars: &[(&str, &str)], f: F) {
+        // Set vars
+        for (key, val) in vars {
+            unsafe { env::set_var(key, val) };
+        }
+        f();
+        // Clean up
+        for (key, _) in vars {
+            unsafe { env::remove_var(key) };
+        }
+    }
+
+    /// Helper to ensure env vars are clean before a test.
+    fn clean_mail_env() {
+        let keys = [
+            "MAIL_DRIVER",
+            "MAIL_FROM_ADDRESS",
+            "MAIL_FROM_NAME",
+            "MAIL_HOST",
+            "MAIL_PORT",
+            "MAIL_USERNAME",
+            "MAIL_PASSWORD",
+            "MAIL_ENCRYPTION",
+            "RESEND_API_KEY",
+        ];
+        for key in keys {
+            unsafe { env::remove_var(key) };
+        }
+    }
+
+    #[test]
+    fn test_mail_config_smtp_from_env() {
+        clean_mail_env();
+        with_env_vars(
+            &[
+                ("MAIL_FROM_ADDRESS", "noreply@example.com"),
+                ("MAIL_FROM_NAME", "Test App"),
+                ("MAIL_HOST", "smtp.example.com"),
+                ("MAIL_PORT", "465"),
+                ("MAIL_USERNAME", "user@example.com"),
+                ("MAIL_PASSWORD", "secret"),
+                ("MAIL_ENCRYPTION", "tls"),
+            ],
+            || {
+                let config = MailConfig::from_env().expect("should parse SMTP config");
+                assert!(matches!(config.driver, MailDriver::Smtp));
+                assert_eq!(config.from, "noreply@example.com");
+                assert_eq!(config.from_name, Some("Test App".to_string()));
+
+                let smtp = config.smtp.as_ref().expect("smtp config present");
+                assert_eq!(smtp.host, "smtp.example.com");
+                assert_eq!(smtp.port, 465);
+                assert_eq!(smtp.username, Some("user@example.com".to_string()));
+                assert_eq!(smtp.password, Some("secret".to_string()));
+                assert!(smtp.tls);
+                assert!(config.resend.is_none());
+            },
+        );
+    }
+
+    #[test]
+    fn test_mail_config_resend_from_env() {
+        clean_mail_env();
+        with_env_vars(
+            &[
+                ("MAIL_DRIVER", "resend"),
+                ("MAIL_FROM_ADDRESS", "noreply@example.com"),
+                ("MAIL_FROM_NAME", "Test App"),
+                ("RESEND_API_KEY", "re_test_123456"),
+            ],
+            || {
+                let config = MailConfig::from_env().expect("should parse Resend config");
+                assert!(matches!(config.driver, MailDriver::Resend));
+                assert_eq!(config.from, "noreply@example.com");
+                assert_eq!(config.from_name, Some("Test App".to_string()));
+
+                let resend = config.resend.as_ref().expect("resend config present");
+                assert_eq!(resend.api_key, "re_test_123456");
+                assert!(config.smtp.is_none());
+            },
+        );
+    }
+
+    #[test]
+    fn test_mail_config_default_driver() {
+        clean_mail_env();
+        with_env_vars(
+            &[
+                ("MAIL_FROM_ADDRESS", "noreply@example.com"),
+                ("MAIL_HOST", "smtp.example.com"),
+            ],
+            || {
+                let config = MailConfig::from_env().expect("should default to SMTP");
+                assert!(matches!(config.driver, MailDriver::Smtp));
+                assert_eq!(config.smtp.as_ref().unwrap().host, "smtp.example.com");
+                assert_eq!(config.smtp.as_ref().unwrap().port, 587); // default port
+            },
+        );
+    }
+
+    #[test]
+    fn test_mail_config_resend_missing_api_key() {
+        clean_mail_env();
+        with_env_vars(
+            &[
+                ("MAIL_DRIVER", "resend"),
+                ("MAIL_FROM_ADDRESS", "noreply@example.com"),
+            ],
+            || {
+                let config = MailConfig::from_env();
+                assert!(
+                    config.is_none(),
+                    "should return None when RESEND_API_KEY missing"
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_resend_payload_serialization() {
+        let payload = ResendEmailPayload {
+            from: "sender@example.com".into(),
+            to: vec!["recipient@example.com".into()],
+            subject: "Test".into(),
+            html: Some("<p>Hello</p>".into()),
+            text: None,
+            cc: vec![],
+            bcc: vec![],
+            reply_to: None,
+        };
+
+        let json = serde_json::to_value(&payload).unwrap();
+        assert_eq!(json["from"], "sender@example.com");
+        assert_eq!(json["to"][0], "recipient@example.com");
+        assert_eq!(json["subject"], "Test");
+        assert_eq!(json["html"], "<p>Hello</p>");
+        // skip_serializing_if fields should be absent
+        assert!(json.get("text").is_none());
+        assert!(json.get("cc").is_none());
+        assert!(json.get("bcc").is_none());
+        assert!(json.get("reply_to").is_none());
+    }
+
+    #[test]
+    fn test_resend_payload_text_fallback() {
+        let payload = ResendEmailPayload {
+            from: "sender@example.com".into(),
+            to: vec!["recipient@example.com".into()],
+            subject: "Test".into(),
+            html: None,
+            text: Some("Plain text body".into()),
+            cc: vec!["cc@example.com".into()],
+            bcc: vec!["bcc@example.com".into()],
+            reply_to: Some("reply@example.com".into()),
+        };
+
+        let json = serde_json::to_value(&payload).unwrap();
+        assert!(json.get("html").is_none());
+        assert_eq!(json["text"], "Plain text body");
+        assert_eq!(json["cc"][0], "cc@example.com");
+        assert_eq!(json["bcc"][0], "bcc@example.com");
+        assert_eq!(json["reply_to"], "reply@example.com");
+    }
 }
