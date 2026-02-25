@@ -15,15 +15,25 @@ static CONFIG: OnceLock<NotificationConfig> = OnceLock::new();
 /// Configuration for the notification dispatcher.
 #[derive(Clone, Default)]
 pub struct NotificationConfig {
-    /// SMTP configuration for mail notifications.
+    /// Mail configuration (supports SMTP and Resend drivers).
     pub mail: Option<MailConfig>,
     /// Slack webhook URL.
     pub slack_webhook: Option<String>,
 }
 
-/// SMTP mail configuration.
+/// Mail transport driver.
+#[derive(Debug, Clone, Default)]
+pub enum MailDriver {
+    /// SMTP via lettre (default).
+    #[default]
+    Smtp,
+    /// Resend HTTP API.
+    Resend,
+}
+
+/// SMTP-specific configuration.
 #[derive(Clone)]
-pub struct MailConfig {
+pub struct SmtpConfig {
     /// SMTP host.
     pub host: String,
     /// SMTP port.
@@ -32,12 +42,30 @@ pub struct MailConfig {
     pub username: Option<String>,
     /// SMTP password.
     pub password: Option<String>,
-    /// Default from address.
-    pub from: String,
-    /// Default from name.
-    pub from_name: Option<String>,
     /// Use TLS.
     pub tls: bool,
+}
+
+/// Resend-specific configuration.
+#[derive(Clone)]
+pub struct ResendConfig {
+    /// Resend API key.
+    pub api_key: String,
+}
+
+/// Mail configuration supporting multiple drivers.
+#[derive(Clone)]
+pub struct MailConfig {
+    /// Which driver to use.
+    pub driver: MailDriver,
+    /// Default from address (shared across all drivers).
+    pub from: String,
+    /// Default from name (shared across all drivers).
+    pub from_name: Option<String>,
+    /// SMTP-specific config (only when driver = Smtp).
+    pub smtp: Option<SmtpConfig>,
+    /// Resend-specific config (only when driver = Resend).
+    pub resend: Option<ResendConfig>,
 }
 
 impl NotificationConfig {
@@ -83,31 +111,54 @@ impl NotificationConfig {
 }
 
 impl MailConfig {
-    /// Create a new mail config.
+    /// Create a new SMTP mail config (backwards compatible).
     pub fn new(host: impl Into<String>, port: u16, from: impl Into<String>) -> Self {
         Self {
-            host: host.into(),
-            port,
-            username: None,
-            password: None,
+            driver: MailDriver::Smtp,
             from: from.into(),
             from_name: None,
-            tls: true,
+            smtp: Some(SmtpConfig {
+                host: host.into(),
+                port,
+                username: None,
+                password: None,
+                tls: true,
+            }),
+            resend: None,
+        }
+    }
+
+    /// Create a new Resend mail config.
+    pub fn resend(api_key: impl Into<String>, from: impl Into<String>) -> Self {
+        Self {
+            driver: MailDriver::Resend,
+            from: from.into(),
+            from_name: None,
+            smtp: None,
+            resend: Some(ResendConfig {
+                api_key: api_key.into(),
+            }),
         }
     }
 
     /// Create mail configuration from environment variables.
     ///
-    /// Returns `None` if `MAIL_HOST` is not set.
+    /// Returns `None` if required variables are missing.
     ///
     /// Reads the following environment variables:
+    /// - `MAIL_DRIVER`: "smtp" (default) or "resend"
+    /// - `MAIL_FROM_ADDRESS`: Default from email address (required for all drivers)
+    /// - `MAIL_FROM_NAME`: Default from name (optional)
+    ///
+    /// SMTP driver variables:
     /// - `MAIL_HOST`: SMTP server host (required)
     /// - `MAIL_PORT`: SMTP server port (default: 587)
     /// - `MAIL_USERNAME`: SMTP username (optional)
     /// - `MAIL_PASSWORD`: SMTP password (optional)
-    /// - `MAIL_FROM_ADDRESS`: Default from email address (required)
-    /// - `MAIL_FROM_NAME`: Default from name (optional)
     /// - `MAIL_ENCRYPTION`: "tls" or "none" (default: "tls")
+    ///
+    /// Resend driver variables:
+    /// - `RESEND_API_KEY`: Resend API key (required)
     ///
     /// # Example
     ///
@@ -119,39 +170,76 @@ impl MailConfig {
     /// }
     /// ```
     pub fn from_env() -> Option<Self> {
-        let host = env::var("MAIL_HOST").ok().filter(|s| !s.is_empty())?;
         let from = env::var("MAIL_FROM_ADDRESS")
             .ok()
             .filter(|s| !s.is_empty())?;
-
-        let port = env::var("MAIL_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(587);
-
-        let username = env::var("MAIL_USERNAME").ok().filter(|s| !s.is_empty());
-        let password = env::var("MAIL_PASSWORD").ok().filter(|s| !s.is_empty());
         let from_name = env::var("MAIL_FROM_NAME").ok().filter(|s| !s.is_empty());
 
-        let tls = env::var("MAIL_ENCRYPTION")
-            .map(|v| v.to_lowercase() != "none")
-            .unwrap_or(true);
+        let driver_str = env::var("MAIL_DRIVER")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "smtp".into());
 
-        Some(Self {
-            host,
-            port,
-            username,
-            password,
-            from,
-            from_name,
-            tls,
-        })
+        match driver_str.to_lowercase().as_str() {
+            "resend" => {
+                let api_key = env::var("RESEND_API_KEY")
+                    .ok()
+                    .filter(|s| !s.is_empty())?;
+
+                Some(Self {
+                    driver: MailDriver::Resend,
+                    from,
+                    from_name,
+                    smtp: None,
+                    resend: Some(ResendConfig { api_key }),
+                })
+            }
+            _ => {
+                // Default: SMTP (backwards compatible)
+                let host = env::var("MAIL_HOST").ok().filter(|s| !s.is_empty())?;
+
+                let port = env::var("MAIL_PORT")
+                    .ok()
+                    .and_then(|p| p.parse().ok())
+                    .unwrap_or(587);
+
+                let username =
+                    env::var("MAIL_USERNAME").ok().filter(|s| !s.is_empty());
+                let password =
+                    env::var("MAIL_PASSWORD").ok().filter(|s| !s.is_empty());
+
+                let tls = env::var("MAIL_ENCRYPTION")
+                    .map(|v| v.to_lowercase() != "none")
+                    .unwrap_or(true);
+
+                Some(Self {
+                    driver: MailDriver::Smtp,
+                    from,
+                    from_name,
+                    smtp: Some(SmtpConfig {
+                        host,
+                        port,
+                        username,
+                        password,
+                        tls,
+                    }),
+                    resend: None,
+                })
+            }
+        }
     }
 
     /// Set SMTP credentials.
     pub fn credentials(mut self, username: impl Into<String>, password: impl Into<String>) -> Self {
-        self.username = Some(username.into());
-        self.password = Some(password.into());
+        let smtp = self.smtp.get_or_insert(SmtpConfig {
+            host: String::new(),
+            port: 587,
+            username: None,
+            password: None,
+            tls: true,
+        });
+        smtp.username = Some(username.into());
+        smtp.password = Some(password.into());
         self
     }
 
@@ -161,9 +249,11 @@ impl MailConfig {
         self
     }
 
-    /// Disable TLS.
+    /// Disable TLS (SMTP only).
     pub fn no_tls(mut self) -> Self {
-        self.tls = false;
+        if let Some(ref mut smtp) = self.smtp {
+            smtp.tls = false;
+        }
         self
     }
 }
@@ -240,6 +330,11 @@ impl NotificationDispatcher {
 
         info!(to = %to, subject = %message.subject, "Sending mail notification");
 
+        let smtp = config
+            .smtp
+            .as_ref()
+            .ok_or_else(|| Error::mail("SMTP config missing for SMTP driver".to_string()))?;
+
         // Build the email
         use lettre::message::{header::ContentType, Mailbox};
         use lettre::transport::smtp::authentication::Credentials;
@@ -303,17 +398,17 @@ impl NotificationDispatcher {
         };
 
         // Build the transport
-        let transport = if config.tls {
-            AsyncSmtpTransport::<Tokio1Executor>::relay(&config.host)
+        let transport = if smtp.tls {
+            AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp.host)
                 .map_err(|e| Error::mail(format!("Failed to create transport: {}", e)))?
         } else {
-            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.host)
+            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&smtp.host)
         };
 
-        let transport = transport.port(config.port);
+        let transport = transport.port(smtp.port);
 
         let transport =
-            if let (Some(ref user), Some(ref pass)) = (&config.username, &config.password) {
+            if let (Some(ref user), Some(ref pass)) = (&smtp.username, &smtp.password) {
                 transport.credentials(Credentials::new(user.clone(), pass.clone()))
             } else {
                 transport
@@ -395,18 +490,45 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_mail_config_builder() {
+    fn test_mail_config_smtp_builder() {
         let config = MailConfig::new("smtp.example.com", 587, "noreply@example.com")
             .credentials("user", "pass")
             .from_name("My App");
 
-        assert_eq!(config.host, "smtp.example.com");
-        assert_eq!(config.port, 587);
+        assert!(matches!(config.driver, MailDriver::Smtp));
         assert_eq!(config.from, "noreply@example.com");
-        assert_eq!(config.username, Some("user".to_string()));
-        assert_eq!(config.password, Some("pass".to_string()));
         assert_eq!(config.from_name, Some("My App".to_string()));
-        assert!(config.tls);
+
+        let smtp = config.smtp.as_ref().unwrap();
+        assert_eq!(smtp.host, "smtp.example.com");
+        assert_eq!(smtp.port, 587);
+        assert_eq!(smtp.username, Some("user".to_string()));
+        assert_eq!(smtp.password, Some("pass".to_string()));
+        assert!(smtp.tls);
+        assert!(config.resend.is_none());
+    }
+
+    #[test]
+    fn test_mail_config_resend_builder() {
+        let config = MailConfig::resend("re_123456", "noreply@example.com")
+            .from_name("My App");
+
+        assert!(matches!(config.driver, MailDriver::Resend));
+        assert_eq!(config.from, "noreply@example.com");
+        assert_eq!(config.from_name, Some("My App".to_string()));
+
+        let resend = config.resend.as_ref().unwrap();
+        assert_eq!(resend.api_key, "re_123456");
+        assert!(config.smtp.is_none());
+    }
+
+    #[test]
+    fn test_mail_config_no_tls() {
+        let config = MailConfig::new("smtp.example.com", 587, "noreply@example.com")
+            .no_tls();
+
+        let smtp = config.smtp.as_ref().unwrap();
+        assert!(!smtp.tls);
     }
 
     #[test]
