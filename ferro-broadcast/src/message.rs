@@ -167,9 +167,7 @@ mod tests {
         let json = r#"{"type":"subscribe","channel":"presence-nearby","auth":"ok"}"#;
         let msg: ClientMessage = serde_json::from_str(json).unwrap();
         match msg {
-            ClientMessage::Subscribe {
-                channel_data, ..
-            } => {
+            ClientMessage::Subscribe { channel_data, .. } => {
                 assert!(channel_data.is_none());
             }
             _ => panic!("Expected Subscribe"),

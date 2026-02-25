@@ -646,12 +646,7 @@ fn build_plugin_catalog() -> Vec<CatalogComponent> {
                 true,
                 "Map center as [latitude, longitude]",
             ),
-            prop(
-                "zoom",
-                "u8",
-                false,
-                "Zoom level 0-18 (default: 13)",
-            ),
+            prop("zoom", "u8", false, "Zoom level 0-18 (default: 13)"),
             prop(
                 "height",
                 "String",
