@@ -93,8 +93,9 @@ jobs:
       - name: Pull latest changes
         run: git pull origin master
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.88.0"
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
@@ -124,7 +125,9 @@ jobs:
       - name: Pull latest changes
         run: git pull origin master
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88.0"
 
       - uses: Swatinem/rust-cache@v2
 
@@ -144,7 +147,7 @@ jobs:
           echo "Publishing Wave 1 crates..."
 
           # Wave 1: Crates with no internal dependencies
-          WAVE1_CRATES="ferro-macros ferro-events ferro-queue ferro-notifications ferro-broadcast ferro-storage ferro-cache ferro-inertia"
+          WAVE1_CRATES="ferro-macros ferro-events ferro-queue ferro-notifications ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-json-ui ferro-inertia"
 
           for crate in $WAVE1_CRATES; do
             echo "Publishing $crate..."
