@@ -2,6 +2,8 @@
 name = "app"
 version.workspace = true
 edition.workspace = true
+publish = false
+license = "MIT"
 
 [[bin]]
 name = "app"
