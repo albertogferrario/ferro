@@ -33,7 +33,7 @@ pub fn resource_template(name: &str, model: Option<&str>) -> String {
 
 #[derive(ApiResource)]
 {model_attribute}pub struct {name} {{
-    pub id: i32,
+    pub id: i64,
     // Add fields from your model here
     // #[resource(rename = "display_name")]
     // pub name: String,
@@ -556,7 +556,7 @@ use ferro::testing::{{Factory, FactoryTraits, Fake}};
 #[derive(Clone)]
 pub struct {struct_name} {{
     // Add fields matching your model
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     pub email: String,
     pub created_at: String,
