@@ -15,10 +15,32 @@
 - ✅ [**v5.1 Housekeeping**](milestones/v5.1-ROADMAP.md) — Phases 54-57 (shipped 2026-02-13)
 - ✅ [**v6.0 ferro-lang — Localization**](milestones/v6.0-ROADMAP.md) — Phases 58-66 (shipped 2026-02-13)
 - ✅ **v6.1 Fix Known Issues** — Phase 67 (shipped 2026-02-24)
+- ✅ **v7.0 Resend Integration** — Phase 68 (shipped 2026-02-25)
 
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v7.0 Resend Integration (Phase 68) — SHIPPED 2026-02-25</summary>
+
+**Milestone Goal:** Add Resend as a mail driver in ferro-notifications alongside SMTP, with env-based driver selection.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 68. Resend Mail Driver | 3/3 | Complete | 2026-02-25 |
+
+**Total:** 1 phase, 3 plans
+
+**What was built:**
+- Multi-driver mail architecture (MailDriver enum, SmtpConfig, ResendConfig)
+- Resend HTTP API transport via reqwest
+- Driver-based dispatch (`MAIL_DRIVER=smtp|resend`)
+- CLI scaffold templates updated with Resend config
+- Documentation updated with driver setup guide
+- 23 notification tests passing
+
+</details>
 
 <details>
 <summary>✅ v6.1 Fix Known Issues (Phase 67) — SHIPPED 2026-02-24</summary>
@@ -297,6 +319,7 @@
 | v5.1 Housekeeping | 54-57 | 5 | ✅ Complete | 2026-02-13 |
 | v6.0 ferro-lang — Localization | 58-66 | 11 | ✅ Complete | 2026-02-13 |
 | v6.1 Fix Known Issues | 67 | 1 | ✅ Complete | 2026-02-24 |
+| v7.0 Resend Integration | 68 | 3 | ✅ Complete | 2026-02-25 |
 
-**Total: 13 milestones shipped, 146 plans.**
+**Total: 14 milestones shipped, 149 plans.**
 
