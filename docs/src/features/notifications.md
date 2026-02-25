@@ -9,14 +9,22 @@ Ferro provides a Laravel-inspired multi-channel notification system. Send notifi
 Configure notifications in your `.env` file:
 
 ```env
-# Mail (SMTP)
+# Mail Driver: smtp (default) or resend
+MAIL_DRIVER=smtp
+
+# SMTP Configuration (when MAIL_DRIVER=smtp)
 MAIL_HOST=smtp.example.com
 MAIL_PORT=587
 MAIL_USERNAME=your-username
 MAIL_PASSWORD=your-password
+MAIL_ENCRYPTION=tls
+
+# Resend Configuration (when MAIL_DRIVER=resend)
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+
+# Shared (all drivers)
 MAIL_FROM_ADDRESS=noreply@example.com
 MAIL_FROM_NAME="My App"
-MAIL_ENCRYPTION=tls
 
 # Slack
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/xxx/yyy/zzz
@@ -43,6 +51,7 @@ pub async fn register() {
 ```rust
 use ferro::{NotificationConfig, MailConfig, NotificationDispatcher};
 
+// SMTP (default)
 let config = NotificationConfig::new()
     .mail(
         MailConfig::new("smtp.example.com", 587, "noreply@example.com")
@@ -50,6 +59,15 @@ let config = NotificationConfig::new()
             .from_name("My App")
     )
     .slack_webhook("https://hooks.slack.com/services/...");
+
+NotificationDispatcher::configure(config);
+
+// Resend
+let config = NotificationConfig::new()
+    .mail(
+        MailConfig::resend("re_xxxxxxxxxxxxx", "noreply@example.com")
+            .from_name("My App")
+    );
 
 NotificationDispatcher::configure(config);
 ```
@@ -154,7 +172,7 @@ user.notify(OrderShipped {
 
 ### Mail Channel
 
-Send emails via SMTP:
+Send emails via SMTP or Resend:
 
 ```rust
 impl Notification for WelcomeEmail {
@@ -361,13 +379,18 @@ user.notify(OrderShipped {
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `MAIL_DRIVER` | Mail transport driver | smtp |
+| **SMTP** (when `MAIL_DRIVER=smtp`) | | |
 | `MAIL_HOST` | SMTP server host | Required |
 | `MAIL_PORT` | SMTP server port | 587 |
 | `MAIL_USERNAME` | SMTP username | - |
 | `MAIL_PASSWORD` | SMTP password | - |
+| `MAIL_ENCRYPTION` | "tls" or "none" | tls |
+| **Resend** (when `MAIL_DRIVER=resend`) | | |
+| `RESEND_API_KEY` | Resend API key | Required |
+| **Shared** | | |
 | `MAIL_FROM_ADDRESS` | Default from email | Required |
 | `MAIL_FROM_NAME` | Default from name | - |
-| `MAIL_ENCRYPTION` | "tls" or "none" | tls |
 | `SLACK_WEBHOOK_URL` | Slack incoming webhook | - |
 
 ## Best Practices
