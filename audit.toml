@@ -1,0 +1,12 @@
+# cargo-audit configuration
+# https://github.com/rustsec/rustsec/tree/main/cargo-audit
+
+[advisories]
+ignore = [
+    # rsa: Marvin Attack timing sidechannel. No fix available.
+    # Only pulled in via sqlx-mysql which Ferro does not use (Postgres/SQLite only).
+    "RUSTSEC-2023-0071",
+
+    # lru: IterMut Stacked Borrows unsoundness. In lockfile but not compiled for our targets.
+    "RUSTSEC-2026-0002",
+]
