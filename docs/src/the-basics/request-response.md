@@ -212,15 +212,22 @@ Ok(HttpResponse::json(data)
         .max_age(Duration::days(30))))
 ```
 
-### File Downloads
+### Binary Responses
+
+Serve raw binary data (images, PDFs, generated files):
 
 ```rust
-// Download file
-Ok(HttpResponse::download("path/to/file.pdf", "report.pdf"))
+// Serve binary with explicit content type
+Ok(HttpResponse::bytes(png_bytes)
+    .header("Content-Type", "image/png"))
 
-// Stream file
-Ok(HttpResponse::file("path/to/video.mp4"))
+// File download with Content-Disposition
+Ok(HttpResponse::download(pdf_bytes, "report.pdf"))
 ```
+
+`download()` auto-detects Content-Type from the filename extension and sets the `Content-Disposition: attachment` header.
+
+For static files served from `public/`, use the built-in static file serving (no handler needed).
 
 ## Error Handling
 
