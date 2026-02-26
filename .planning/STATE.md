@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Security Hardening — Phase 72 plan 01 complete
+**Current focus:** Security Hardening — Phase 73 plan 01 complete
 
 ## Current Position
 
-Phase: 72 (Binary Response Type)
+Phase: 73 (Security Headers)
 Plan: 1 of 1
-Status: Phase 72 plan 01 complete — binary response type shipped
-Last activity: 2026-02-26 — Phase 72 plan 01 executed
+Status: Phase 73 plan 01 complete — SecurityHeaders middleware shipped
+Last activity: 2026-02-26 — Phase 73 plan 01 executed
 
 ## Milestone Summary
 
@@ -33,7 +33,7 @@ Last activity: 2026-02-26 — Phase 72 plan 01 executed
 | v6.1 Fix Known Issues | 67 | 1 | Complete | 2026-02-24 |
 | v7.0 Resend Integration | 68 | 3 | Complete | 2026-02-25 |
 | v7.1 Static File Serving | 69 | 1 | Complete | 2026-02-25 |
-| Security Hardening | 72 | 1 | In progress | — |
+| Security Hardening | 72-73 | 2 | In progress | — |
 
 ## Accumulated Context
 
@@ -45,12 +45,16 @@ Archived to PROJECT.md and milestone archive files.
 - Static files checked before fallback handler in handle_request() to prevent SPA catch-all from intercepting asset requests
 - HttpResponse body changed from String to Bytes; body() returns &str with from_utf8 fallback for backward compatibility
 - bytes() constructor sets no default Content-Type; download() auto-detects from filename extension
+- SecurityHeaders HSTS off by default to avoid breaking localhost over HTTP
+- X-XSS-Protection set to 0 per OWASP (XSS Auditor can create vulnerabilities)
+- CSP includes unsafe-inline/unsafe-eval for Inertia.js and Vite SPA compatibility
 
 ### Roadmap Evolution
 
 - All planned milestones v1.0–v7.1 complete (15 milestones, 150 plans shipped)
 - Security hardening phases 72-74 added to roadmap
 - Phase 72 plan 01 complete: binary-safe HttpResponse with bytes()/download() constructors
+- Phase 73 plan 01 complete: SecurityHeaders middleware with OWASP defaults and builder API
 
 ### Pending Todos
 
@@ -63,5 +67,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Phase 72 plan 01 complete — binary response type shipped
+Stopped at: Phase 73 plan 01 complete — SecurityHeaders middleware shipped
 Resume file: None
