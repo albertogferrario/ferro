@@ -57,3 +57,10 @@ pub fn text(body: impl Into<String>) -> Response {
 pub fn json(body: serde_json::Value) -> Response {
     Ok(HttpResponse::json(body))
 }
+
+/// Create a binary response from raw bytes.
+///
+/// No default Content-Type is set; add one via `.header()` on the inner `HttpResponse`.
+pub fn bytes(body: impl Into<bytes::Bytes>) -> Response {
+    Ok(HttpResponse::bytes(body))
+}

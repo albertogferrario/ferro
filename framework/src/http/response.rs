@@ -5,7 +5,7 @@ use http_body_util::Full;
 /// HTTP Response builder providing Laravel-like response creation
 pub struct HttpResponse {
     status: u16,
-    body: String,
+    body: Bytes,
     headers: Vec<(String, String)>,
 }
 
@@ -16,16 +16,17 @@ impl HttpResponse {
     pub fn new() -> Self {
         Self {
             status: 200,
-            body: String::new(),
+            body: Bytes::new(),
             headers: Vec::new(),
         }
     }
 
     /// Create a response with a string body
     pub fn text(body: impl Into<String>) -> Self {
+        let s: String = body.into();
         Self {
             status: 200,
-            body: body.into(),
+            body: Bytes::from(s),
             headers: vec![("Content-Type".to_string(), "text/plain".to_string())],
         }
     }
@@ -34,14 +35,56 @@ impl HttpResponse {
     pub fn json(body: serde_json::Value) -> Self {
         Self {
             status: 200,
-            body: body.to_string(),
+            body: Bytes::from(body.to_string()),
             headers: vec![("Content-Type".to_string(), "application/json".to_string())],
+        }
+    }
+
+    /// Create a response with raw binary data.
+    ///
+    /// No default Content-Type is set; the caller must add one via `.header()`.
+    pub fn bytes(body: impl Into<Bytes>) -> Self {
+        Self {
+            status: 200,
+            body: body.into(),
+            headers: vec![],
+        }
+    }
+
+    /// Create a file download response with Content-Disposition header.
+    ///
+    /// Auto-detects Content-Type from the filename extension using `mime_guess`.
+    /// Falls back to `application/octet-stream` for unknown extensions.
+    /// The filename is sanitized against header injection (control characters
+    /// and quote marks are stripped).
+    pub fn download(body: impl Into<Bytes>, filename: &str) -> Self {
+        let safe_name: String = filename
+            .chars()
+            .filter(|c| !c.is_control() && *c != '"' && *c != '\\')
+            .collect();
+
+        let content_type = mime_guess::from_path(&safe_name)
+            .first()
+            .map(|m| m.to_string())
+            .unwrap_or_else(|| "application/octet-stream".to_string());
+
+        Self {
+            status: 200,
+            body: body.into(),
+            headers: vec![
+                ("Content-Type".to_string(), content_type),
+                (
+                    "Content-Disposition".to_string(),
+                    format!("attachment; filename=\"{safe_name}\""),
+                ),
+            ],
         }
     }
 
     /// Set the response body
     pub fn set_body(mut self, body: impl Into<String>) -> Self {
-        self.body = body.into();
+        let s: String = body.into();
+        self.body = Bytes::from(s);
         self
     }
 
@@ -57,7 +100,15 @@ impl HttpResponse {
     }
 
     /// Get the response body as a string slice.
+    ///
+    /// Returns an empty string for non-UTF-8 bodies (e.g. binary data).
+    /// Use `body_bytes()` to access raw binary data.
     pub fn body(&self) -> &str {
+        std::str::from_utf8(&self.body).unwrap_or("")
+    }
+
+    /// Get the response body as raw bytes.
+    pub fn body_bytes(&self) -> &Bytes {
         &self.body
     }
 
@@ -96,7 +147,7 @@ impl HttpResponse {
             builder = builder.header(name, value);
         }
 
-        builder.body(Full::new(Bytes::from(self.body))).unwrap()
+        builder.body(Full::new(self.body)).unwrap()
     }
 }
 

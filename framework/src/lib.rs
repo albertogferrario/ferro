@@ -65,7 +65,7 @@ pub use ferro_json_ui::{
 };
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{
-    json, text, Cookie, CookieOptions, FormRequest, FromParam, FromRequest, HttpResponse,
+    bytes, json, text, Cookie, CookieOptions, FormRequest, FromParam, FromRequest, HttpResponse,
     InertiaRedirect, PaginationLinks, PaginationMeta, Redirect, Request, Resource,
     ResourceCollection, ResourceMap, Response, ResponseExt, SameSite,
 };
