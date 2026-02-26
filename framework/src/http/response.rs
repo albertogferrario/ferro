@@ -431,3 +431,118 @@ impl From<InertiaRedirect<'_>> for Response {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bytes_constructor() {
+        let resp = HttpResponse::bytes(vec![0xFF, 0xFE, 0x00]);
+        assert_eq!(resp.body_bytes().as_ref(), &[0xFF, 0xFE, 0x00]);
+        assert_eq!(resp.status_code(), 200);
+        assert!(
+            resp.headers.is_empty(),
+            "bytes() should set no default headers"
+        );
+    }
+
+    #[test]
+    fn test_bytes_from_vec_u8() {
+        let resp = HttpResponse::bytes(vec![1, 2, 3]);
+        assert_eq!(resp.body_bytes().len(), 3);
+    }
+
+    #[test]
+    fn test_bytes_with_content_type() {
+        let resp = HttpResponse::bytes(b"PNG data".to_vec()).header("Content-Type", "image/png");
+        let ct = resp
+            .headers
+            .iter()
+            .find(|(k, _)| k == "Content-Type")
+            .map(|(_, v)| v.as_str());
+        assert_eq!(ct, Some("image/png"));
+    }
+
+    #[test]
+    fn test_download_constructor() {
+        let resp = HttpResponse::download(b"pdf content".to_vec(), "report.pdf");
+        let ct = resp
+            .headers
+            .iter()
+            .find(|(k, _)| k == "Content-Type")
+            .map(|(_, v)| v.as_str());
+        assert_eq!(ct, Some("application/pdf"));
+
+        let cd = resp
+            .headers
+            .iter()
+            .find(|(k, _)| k == "Content-Disposition")
+            .map(|(_, v)| v.as_str());
+        assert_eq!(cd, Some("attachment; filename=\"report.pdf\""));
+    }
+
+    #[test]
+    fn test_download_unknown_extension() {
+        let resp = HttpResponse::download(b"data".to_vec(), "file.zzqx");
+        let ct = resp
+            .headers
+            .iter()
+            .find(|(k, _)| k == "Content-Type")
+            .map(|(_, v)| v.as_str());
+        assert_eq!(ct, Some("application/octet-stream"));
+    }
+
+    #[test]
+    fn test_download_filename_sanitization() {
+        let resp = HttpResponse::download(b"data".to_vec(), "evil\"file\nname.pdf");
+        let cd = resp
+            .headers
+            .iter()
+            .find(|(k, _)| k == "Content-Disposition")
+            .map(|(_, v)| v.as_str())
+            .unwrap();
+        assert!(
+            !cd.contains('"') || cd.matches('"').count() == 2,
+            "filename should be properly quoted"
+        );
+        assert!(!cd.contains('\n'), "filename should not contain newlines");
+    }
+
+    #[test]
+    fn test_text_still_works() {
+        let resp = HttpResponse::text("hello");
+        assert_eq!(resp.body(), "hello");
+        assert_eq!(resp.body_bytes().as_ref(), b"hello");
+    }
+
+    #[test]
+    fn test_json_still_works() {
+        let resp = HttpResponse::json(serde_json::json!({"ok": true}));
+        let body = resp.body();
+        assert!(!body.is_empty(), "json body should not be empty");
+        let parsed: serde_json::Value = serde_json::from_str(body).unwrap();
+        assert_eq!(parsed["ok"], true);
+        assert!(!resp.body_bytes().is_empty());
+    }
+
+    #[test]
+    fn test_body_returns_empty_for_binary() {
+        let resp = HttpResponse::bytes(vec![0xFF, 0xFE]);
+        assert_eq!(resp.body(), "");
+    }
+
+    #[test]
+    fn test_into_hyper_preserves_binary() {
+        use http_body_util::BodyExt;
+
+        let data = vec![0xFF, 0x00, 0xFE];
+        let resp = HttpResponse::bytes(data.clone());
+        let hyper_resp = resp.into_hyper();
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let collected =
+            rt.block_on(async { hyper_resp.into_body().collect().await.unwrap().to_bytes() });
+        assert_eq!(collected.as_ref(), &data);
+    }
+}
