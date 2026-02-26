@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Security Hardening — Phase 73 plan 01 complete
+**Current focus:** Security Hardening — Phase 73 complete
 
 ## Current Position
 
 Phase: 73 (Security Headers)
-Plan: 1 of 1
-Status: Phase 73 plan 01 complete — SecurityHeaders middleware shipped
-Last activity: 2026-02-26 — Phase 73 plan 01 executed
+Plan: 2 of 2
+Status: Phase 73 complete — SecurityHeaders middleware shipped, integrated in CLI template, documented
+Last activity: 2026-02-26 — Phase 73 plan 02 executed
 
 ## Milestone Summary
 
@@ -48,6 +48,7 @@ Archived to PROJECT.md and milestone archive files.
 - SecurityHeaders HSTS off by default to avoid breaking localhost over HTTP
 - X-XSS-Protection set to 0 per OWASP (XSS Auditor can create vulnerabilities)
 - CSP includes unsafe-inline/unsafe-eval for Inertia.js and Vite SPA compatibility
+- SecurityHeaders placed after CSRF middleware in bootstrap so headers apply to all responses including CSRF rejections
 
 ### Roadmap Evolution
 
@@ -55,6 +56,7 @@ Archived to PROJECT.md and milestone archive files.
 - Security hardening phases 72-74 added to roadmap
 - Phase 72 plan 01 complete: binary-safe HttpResponse with bytes()/download() constructors
 - Phase 73 plan 01 complete: SecurityHeaders middleware with OWASP defaults and builder API
+- Phase 73 plan 02 complete: SecurityHeaders in CLI bootstrap template and middleware documentation
 
 ### Pending Todos
 
@@ -67,5 +69,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Phase 73 plan 01 complete — SecurityHeaders middleware shipped
+Stopped at: Phase 73 complete — SecurityHeaders middleware, CLI integration, and documentation shipped
 Resume file: None
