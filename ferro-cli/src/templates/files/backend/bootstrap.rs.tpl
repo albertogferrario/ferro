@@ -29,7 +29,7 @@
 #[allow(unused_imports)]
 use ferro::{
     bind, global_middleware, singleton, App, CsrfMiddleware,
-    SessionConfig, SessionMiddleware, DB,
+    SecurityHeaders, SessionConfig, SessionMiddleware, DB,
     // Events
     EventDispatcher,
     // Queue
@@ -71,6 +71,11 @@ pub async fn register() {
 
     // CSRF protection (validates tokens on POST/PUT/PATCH/DELETE)
     global_middleware!(CsrfMiddleware::new());
+
+    // Security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.)
+    global_middleware!(SecurityHeaders::new());
+    // For production with HTTPS, enable HSTS:
+    // global_middleware!(SecurityHeaders::new().with_hsts());
 
     // =========================================================================
     // Event Listeners
