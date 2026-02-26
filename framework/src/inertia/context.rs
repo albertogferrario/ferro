@@ -205,14 +205,10 @@ impl Inertia {
 
     /// Convert an InertiaHttpResponse to Ferro's HttpResponse.
     fn convert_response(inertia_response: ferro_inertia::InertiaHttpResponse) -> HttpResponse {
-        let mut response = match inertia_response.content_type {
-            "application/json" => HttpResponse::text(inertia_response.body),
-            "text/html; charset=utf-8" => HttpResponse::text(inertia_response.body),
-            _ => HttpResponse::text(inertia_response.body),
-        };
-
-        response = response.status(inertia_response.status);
-        response = response.header("Content-Type", inertia_response.content_type);
+        let mut response = HttpResponse::new()
+            .header("Content-Type", inertia_response.content_type)
+            .set_body(inertia_response.body)
+            .status(inertia_response.status);
 
         for (name, value) in inertia_response.headers {
             response = response.header(name, value);

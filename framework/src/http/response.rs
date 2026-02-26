@@ -39,6 +39,12 @@ impl HttpResponse {
         }
     }
 
+    /// Set the response body
+    pub fn set_body(mut self, body: impl Into<String>) -> Self {
+        self.body = body.into();
+        self
+    }
+
     /// Set the HTTP status code
     pub fn status(mut self, status: u16) -> Self {
         self.status = status;
