@@ -5,16 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v7.1 Static File Serving — complete
+**Current focus:** Security Hardening — Phase 72 plan 01 complete
 
 ## Current Position
 
-Phase: 69 of 69 (Static File Serving)
+Phase: 72 (Binary Response Type)
 Plan: 1 of 1
-Status: Phase 69 complete — static file serving shipped
-Last activity: 2026-02-25 — Phase 69 plan 01 executed
-
-Progress: ██████████ 100%
+Status: Phase 72 plan 01 complete — binary response type shipped
+Last activity: 2026-02-26 — Phase 72 plan 01 executed
 
 ## Milestone Summary
 
@@ -35,6 +33,7 @@ Progress: ██████████ 100%
 | v6.1 Fix Known Issues | 67 | 1 | Complete | 2026-02-24 |
 | v7.0 Resend Integration | 68 | 3 | Complete | 2026-02-25 |
 | v7.1 Static File Serving | 69 | 1 | Complete | 2026-02-25 |
+| Security Hardening | 72 | 1 | In progress | — |
 
 ## Accumulated Context
 
@@ -44,11 +43,14 @@ Archived to PROJECT.md and milestone archive files.
 
 - Static file responses use hyper::Response<Full<Bytes>> directly (not HttpResponse) to preserve binary file integrity
 - Static files checked before fallback handler in handle_request() to prevent SPA catch-all from intercepting asset requests
+- HttpResponse body changed from String to Bytes; body() returns &str with from_utf8 fallback for backward compatibility
+- bytes() constructor sets no default Content-Type; download() auto-detects from filename extension
 
 ### Roadmap Evolution
 
 - All planned milestones v1.0–v7.1 complete (15 milestones, 150 plans shipped)
-- Milestone v7.1 complete: Static file serving from public/ with immutable caching and security protections
+- Security hardening phases 72-74 added to roadmap
+- Phase 72 plan 01 complete: binary-safe HttpResponse with bytes()/download() constructors
 
 ### Pending Todos
 
@@ -60,6 +62,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-25
-Stopped at: Phase 69 complete — all plans shipped
+Last session: 2026-02-26
+Stopped at: Phase 72 plan 01 complete — binary response type shipped
 Resume file: None
