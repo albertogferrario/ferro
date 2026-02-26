@@ -51,7 +51,8 @@ DB_LOGGING=false       # Set true to see SQL queries
 # ==============================================================================
 # Session configuration for authentication
 
-SESSION_LIFETIME=120   # Minutes
+SESSION_LIFETIME=120   # Minutes (idle timeout)
+SESSION_ABSOLUTE_LIFETIME=43200  # Minutes (30 days). Absolute session expiry regardless of activity.
 SESSION_COOKIE=ferro_session
 SESSION_SECURE=true    # Set false for local HTTP development
 SESSION_PATH=/

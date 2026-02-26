@@ -25,7 +25,8 @@ Authentication state is stored in server-side sessions. Configure via environmen
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SESSION_LIFETIME` | `120` | Session lifetime in minutes |
+| `SESSION_LIFETIME` | `120` | Idle timeout in minutes (expires after inactivity) |
+| `SESSION_ABSOLUTE_LIFETIME` | `43200` | Absolute timeout in minutes (30 days; expires regardless of activity) |
 | `SESSION_COOKIE` | `ferro_session` | Cookie name |
 | `SESSION_SECURE` | `true` | HTTPS-only cookies |
 | `SESSION_PATH` | `/` | Cookie path |

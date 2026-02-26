@@ -171,4 +171,20 @@ pub trait SessionStore: Send + Sync {
     ///
     /// Returns the number of sessions cleaned up.
     async fn gc(&self) -> Result<u64, FrameworkError>;
+
+    /// Destroy all sessions for a user, optionally keeping one session.
+    ///
+    /// Used for "logout other devices" (pass current session ID to keep) or
+    /// "logout everywhere" (pass None). Returns the number of destroyed sessions.
+    ///
+    /// Default implementation returns an error; override in drivers that support it.
+    async fn destroy_for_user(
+        &self,
+        _user_id: i64,
+        _except_session_id: Option<&str>,
+    ) -> Result<u64, FrameworkError> {
+        Err(FrameworkError::internal(
+            "destroy_for_user not supported by this session driver".to_string(),
+        ))
+    }
 }

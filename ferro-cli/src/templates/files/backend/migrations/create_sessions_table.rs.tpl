@@ -20,6 +20,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Sessions::UserId).big_integer().null())
                     .col(ColumnDef::new(Sessions::Payload).text().not_null())
                     .col(ColumnDef::new(Sessions::CsrfToken).string().not_null())
+                    .col(ColumnDef::new(Sessions::CreatedAt).timestamp_with_time_zone().null())
                     .col(ColumnDef::new(Sessions::LastActivity).timestamp_with_time_zone().not_null())
                     .to_owned(),
             )
@@ -62,5 +63,6 @@ enum Sessions {
     UserId,
     Payload,
     CsrfToken,
+    CreatedAt,
     LastActivity,
 }

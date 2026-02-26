@@ -164,6 +164,27 @@ impl SessionStore for DatabaseSessionDriver {
 
         Ok(result.rows_affected)
     }
+
+    async fn destroy_for_user(
+        &self,
+        user_id: i64,
+        except_session_id: Option<&str>,
+    ) -> Result<u64, FrameworkError> {
+        let db = DB::connection()?;
+
+        let mut condition = Condition::all().add(sessions::Column::UserId.eq(user_id));
+        if let Some(except_id) = except_session_id {
+            condition = condition.add(sessions::Column::Id.ne(except_id));
+        }
+
+        let result = sessions::Entity::delete_many()
+            .filter(condition)
+            .exec(db.inner())
+            .await
+            .map_err(|e| FrameworkError::database(e.to_string()))?;
+
+        Ok(result.rows_affected)
+    }
 }
 
 /// Sessions table entity for SeaORM
@@ -187,4 +208,46 @@ pub mod sessions {
     pub enum Relation {}
 
     impl ActiveModelBehavior for ActiveModel {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn new_stores_both_lifetimes() {
+        let idle = Duration::from_secs(7200);
+        let absolute = Duration::from_secs(2_592_000);
+        let driver = DatabaseSessionDriver::new(idle, absolute);
+        assert_eq!(driver.idle_lifetime, idle);
+        assert_eq!(driver.absolute_lifetime, absolute);
+    }
+
+    #[test]
+    fn sessions_model_has_created_at() {
+        // Compile-time verification: created_at field exists on Model
+        let model = sessions::Model {
+            id: "test".to_string(),
+            user_id: None,
+            payload: "{}".to_string(),
+            csrf_token: "token".to_string(),
+            created_at: Some(chrono::Utc::now()),
+            last_activity: chrono::Utc::now(),
+        };
+        assert!(model.created_at.is_some());
+    }
+
+    #[test]
+    fn sessions_model_created_at_nullable() {
+        let model = sessions::Model {
+            id: "test".to_string(),
+            user_id: None,
+            payload: "{}".to_string(),
+            csrf_token: "token".to_string(),
+            created_at: None,
+            last_activity: chrono::Utc::now(),
+        };
+        assert!(model.created_at.is_none());
+    }
 }
