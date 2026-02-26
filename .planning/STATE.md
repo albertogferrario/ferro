@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Security Hardening — Phase 74 plan 01 complete
+**Current focus:** Security Hardening — Phase 74 complete
 
 ## Current Position
 
 Phase: 74 (Session Absolute Expiry)
-Plan: 1 of 1
-Status: Phase 74 plan 01 complete — dual timeout (idle + absolute) session enforcement shipped
-Last activity: 2026-02-26 — Phase 74 plan 01 executed
+Plan: 2 of 2
+Status: Phase 74 complete — Auth facade, session invalidation API, and documentation shipped
+Last activity: 2026-02-26 — Phase 74 plan 02 executed
 
 ## Milestone Summary
 
@@ -33,7 +33,7 @@ Last activity: 2026-02-26 — Phase 74 plan 01 executed
 | v6.1 Fix Known Issues | 67 | 1 | Complete | 2026-02-24 |
 | v7.0 Resend Integration | 68 | 3 | Complete | 2026-02-25 |
 | v7.1 Static File Serving | 69 | 1 | Complete | 2026-02-25 |
-| Security Hardening | 72-74 | 3 | In progress | — |
+| Security Hardening | 72-74 | 5 | Complete | 2026-02-26 |
 
 ## Accumulated Context
 
@@ -52,6 +52,8 @@ Archived to PROJECT.md and milestone archive files.
 - Nullable created_at for backward compat with existing sessions tables (NULL skips absolute check)
 - destroy_for_user default trait impl returns error rather than panic
 - Cookie max_age uses max(idle, absolute) so cookie outlives both server-side checks
+- DatabaseSessionDriver with zero-duration lifetimes in logout_other_devices (destroy_for_user never reads them)
+- DatabaseSessionDriver and SessionStore re-exported from framework root for admin flows
 
 ### Roadmap Evolution
 
@@ -61,6 +63,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 73 plan 01 complete: SecurityHeaders middleware with OWASP defaults and builder API
 - Phase 73 plan 02 complete: SecurityHeaders in CLI bootstrap template and middleware documentation
 - Phase 74 plan 01 complete: dual timeout session enforcement with created_at tracking and destroy_for_user
+- Phase 74 plan 02 complete: Auth::logout_other_devices(), invalidate_all_for_user(), and dual-timeout documentation
 
 ### Pending Todos
 
@@ -73,5 +76,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Phase 74 plan 01 complete — dual timeout session enforcement, bulk invalidation, CLI template, docs
+Stopped at: Phase 74 complete — all session absolute expiry features shipped (dual timeout, invalidation API, docs)
 Resume file: None
