@@ -2,11 +2,17 @@
 
 use std::time::Duration;
 
-/// Session configuration
+/// Session configuration with dual timeout support (idle + absolute).
+///
+/// Idle timeout expires sessions after inactivity. Absolute timeout expires sessions
+/// after a fixed period since creation, regardless of activity. Both are enforced
+/// server-side per OWASP session management guidelines.
 #[derive(Clone, Debug)]
 pub struct SessionConfig {
-    /// Session lifetime
-    pub lifetime: Duration,
+    /// Idle timeout: session expires after this duration of inactivity
+    pub idle_lifetime: Duration,
+    /// Absolute timeout: session expires this duration after creation, regardless of activity
+    pub absolute_lifetime: Duration,
     /// Cookie name for the session ID
     pub cookie_name: String,
     /// Cookie path
@@ -24,7 +30,8 @@ pub struct SessionConfig {
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
-            lifetime: Duration::from_secs(120 * 60), // 2 hours (120 minutes)
+            idle_lifetime: Duration::from_secs(120 * 60), // 2 hours (120 minutes)
+            absolute_lifetime: Duration::from_secs(43200 * 60), // 30 days (43200 minutes)
             cookie_name: "ferro_session".to_string(),
             cookie_path: "/".to_string(),
             cookie_secure: true,
@@ -44,22 +51,28 @@ impl SessionConfig {
     /// Load session configuration from environment variables
     ///
     /// Environment variables:
-    /// - `SESSION_LIFETIME`: Session lifetime in minutes (default: 120)
+    /// - `SESSION_LIFETIME`: Idle timeout in minutes (default: 120)
+    /// - `SESSION_ABSOLUTE_LIFETIME`: Absolute timeout in minutes (default: 43200 / 30 days)
     /// - `SESSION_COOKIE`: Cookie name (default: ferro_session)
     /// - `SESSION_SECURE`: Set Secure flag (default: true)
     /// - `SESSION_PATH`: Cookie path (default: /)
     /// - `SESSION_SAME_SITE`: SameSite attribute (default: Lax)
     pub fn from_env() -> Self {
-        let lifetime_minutes: u64 = crate::env_optional("SESSION_LIFETIME")
+        let idle_lifetime_minutes: u64 = crate::env_optional("SESSION_LIFETIME")
             .and_then(|s: String| s.parse().ok())
             .unwrap_or(120);
+
+        let absolute_lifetime_minutes: u64 = crate::env_optional("SESSION_ABSOLUTE_LIFETIME")
+            .and_then(|s: String| s.parse().ok())
+            .unwrap_or(43200);
 
         let cookie_secure = crate::env_optional("SESSION_SECURE")
             .map(|s: String| s.to_lowercase() == "true" || s == "1")
             .unwrap_or(true);
 
         Self {
-            lifetime: Duration::from_secs(lifetime_minutes * 60),
+            idle_lifetime: Duration::from_secs(idle_lifetime_minutes * 60),
+            absolute_lifetime: Duration::from_secs(absolute_lifetime_minutes * 60),
             cookie_name: crate::env_optional("SESSION_COOKIE")
                 .unwrap_or_else(|| "ferro_session".to_string()),
             cookie_path: crate::env_optional("SESSION_PATH").unwrap_or_else(|| "/".to_string()),
@@ -71,9 +84,15 @@ impl SessionConfig {
         }
     }
 
-    /// Set the session lifetime
-    pub fn lifetime(mut self, duration: Duration) -> Self {
-        self.lifetime = duration;
+    /// Set the idle timeout duration
+    pub fn idle_lifetime(mut self, duration: Duration) -> Self {
+        self.idle_lifetime = duration;
+        self
+    }
+
+    /// Set the absolute timeout duration
+    pub fn absolute_lifetime(mut self, duration: Duration) -> Self {
+        self.absolute_lifetime = duration;
         self
     }
 

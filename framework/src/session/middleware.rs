@@ -111,7 +111,10 @@ pub struct SessionMiddleware {
 impl SessionMiddleware {
     /// Create a new session middleware with the given configuration
     pub fn new(config: SessionConfig) -> Self {
-        let store = Arc::new(DatabaseSessionDriver::new(config.lifetime));
+        let store = Arc::new(DatabaseSessionDriver::new(
+            config.idle_lifetime,
+            config.absolute_lifetime,
+        ));
         Self { config, store }
     }
 
@@ -125,7 +128,10 @@ impl SessionMiddleware {
             .http_only(self.config.cookie_http_only)
             .secure(self.config.cookie_secure)
             .path(&self.config.cookie_path)
-            .max_age(self.config.lifetime);
+            .max_age(std::cmp::max(
+                self.config.idle_lifetime,
+                self.config.absolute_lifetime,
+            ));
 
         cookie = match self.config.cookie_same_site.to_lowercase().as_str() {
             "strict" => cookie.same_site(SameSite::Strict),

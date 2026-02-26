@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use sea_orm::entity::prelude::*;
-use sea_orm::{QueryFilter, Set};
+use sea_orm::{Condition, QueryFilter, Set};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -12,20 +12,23 @@ use crate::session::store::{SessionData, SessionStore};
 
 /// Database session driver using SeaORM
 ///
-/// Stores sessions in a `sessions` table with the following schema:
-/// - id: VARCHAR (primary key) - session ID
-/// - user_id: BIGINT (nullable) - authenticated user ID
-/// - payload: TEXT - JSON serialized session data
-/// - csrf_token: VARCHAR - CSRF protection token
-/// - last_activity: TIMESTAMP - last access time
+/// Stores sessions in a `sessions` table with dual timeout enforcement:
+/// - Idle timeout: expires after inactivity (based on `last_activity`)
+/// - Absolute timeout: expires after creation time (based on `created_at`)
+///
+/// Both timeouts are checked on every `read()` and enforced during `gc()`.
 pub struct DatabaseSessionDriver {
-    lifetime: Duration,
+    idle_lifetime: Duration,
+    absolute_lifetime: Duration,
 }
 
 impl DatabaseSessionDriver {
-    /// Create a new database session driver
-    pub fn new(lifetime: Duration) -> Self {
-        Self { lifetime }
+    /// Create a new database session driver with dual timeout configuration
+    pub fn new(idle_lifetime: Duration, absolute_lifetime: Duration) -> Self {
+        Self {
+            idle_lifetime,
+            absolute_lifetime,
+        }
     }
 }
 
@@ -40,15 +43,24 @@ impl SessionStore for DatabaseSessionDriver {
             .map_err(|e| FrameworkError::database(e.to_string()))?;
 
         if let Some(session) = result {
-            // Check if expired
             let now = chrono::Utc::now();
-            let expiry =
-                session.last_activity + chrono::Duration::seconds(self.lifetime.as_secs() as i64);
 
-            if now > expiry {
-                // Session expired, clean it up
+            // Check idle timeout
+            let idle_expiry = session.last_activity
+                + chrono::Duration::seconds(self.idle_lifetime.as_secs() as i64);
+            if now > idle_expiry {
                 let _ = self.destroy(id).await;
                 return Ok(None);
+            }
+
+            // Check absolute timeout (skip if created_at is NULL for backward compat)
+            if let Some(created) = session.created_at {
+                let absolute_expiry =
+                    created + chrono::Duration::seconds(self.absolute_lifetime.as_secs() as i64);
+                if now > absolute_expiry {
+                    let _ = self.destroy(id).await;
+                    return Ok(None);
+                }
             }
 
             // Parse the payload
@@ -82,12 +94,13 @@ impl SessionStore for DatabaseSessionDriver {
             .map_err(|e| FrameworkError::database(e.to_string()))?;
 
         if existing.is_some() {
-            // Update existing session
+            // Update existing session — preserve original created_at
             let update = sessions::ActiveModel {
                 id: Set(session.id.clone()),
                 user_id: Set(session.user_id),
                 payload: Set(payload),
                 csrf_token: Set(session.csrf_token.clone()),
+                created_at: sea_orm::NotSet,
                 last_activity: Set(now),
             };
 
@@ -96,12 +109,13 @@ impl SessionStore for DatabaseSessionDriver {
                 .await
                 .map_err(|e| FrameworkError::database(e.to_string()))?;
         } else {
-            // Insert new session
+            // Insert new session with created_at set to now
             let model = sessions::ActiveModel {
                 id: Set(session.id.clone()),
                 user_id: Set(session.user_id),
                 payload: Set(payload),
                 csrf_token: Set(session.csrf_token.clone()),
+                created_at: Set(Some(now)),
                 last_activity: Set(now),
             };
 
@@ -128,11 +142,22 @@ impl SessionStore for DatabaseSessionDriver {
     async fn gc(&self) -> Result<u64, FrameworkError> {
         let db = DB::connection()?;
 
-        let threshold =
-            chrono::Utc::now() - chrono::Duration::seconds(self.lifetime.as_secs() as i64);
+        let now = chrono::Utc::now();
+        let idle_threshold = now - chrono::Duration::seconds(self.idle_lifetime.as_secs() as i64);
+        let absolute_threshold =
+            now - chrono::Duration::seconds(self.absolute_lifetime.as_secs() as i64);
+
+        // Delete sessions expired by idle OR absolute timeout
+        let condition = Condition::any()
+            .add(sessions::Column::LastActivity.lt(idle_threshold))
+            .add(
+                Condition::all()
+                    .add(sessions::Column::CreatedAt.is_not_null())
+                    .add(sessions::Column::CreatedAt.lt(absolute_threshold)),
+            );
 
         let result = sessions::Entity::delete_many()
-            .filter(sessions::Column::LastActivity.lt(threshold))
+            .filter(condition)
             .exec(db.inner())
             .await
             .map_err(|e| FrameworkError::database(e.to_string()))?;
@@ -154,6 +179,7 @@ pub mod sessions {
         #[sea_orm(column_type = "Text")]
         pub payload: String,
         pub csrf_token: String,
+        pub created_at: Option<chrono::DateTime<chrono::Utc>>,
         pub last_activity: chrono::DateTime<chrono::Utc>,
     }
 
