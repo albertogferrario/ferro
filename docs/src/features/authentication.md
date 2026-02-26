@@ -40,6 +40,48 @@ use ferro::session::SessionConfig;
 let config = SessionConfig::from_env();
 ```
 
+### Session Expiry
+
+Ferro enforces two independent session timeouts per OWASP recommendations:
+
+- **Idle timeout** (`SESSION_LIFETIME`): Sessions expire after a period of inactivity. Default: 2 hours.
+- **Absolute timeout** (`SESSION_ABSOLUTE_LIFETIME`): Sessions expire after a fixed duration regardless of activity. Default: 30 days. Prevents stolen sessions from being kept alive indefinitely.
+
+Both timeouts are enforced server-side. The session cookie's `Max-Age` is set to the longer of the two values.
+
+For high-security applications, OWASP recommends shorter values:
+
+| Security Level | Idle Timeout | Absolute Timeout |
+|---------------|-------------|-----------------|
+| Standard web app | 30-60 min | 4-8 hours |
+| Financial/medical | 5-15 min | 1-2 hours |
+| Framework default | 120 min | 30 days |
+
+### Session Invalidation
+
+Destroy sessions for security-sensitive operations like password changes:
+
+```rust
+// Logout all other devices (keeps current session)
+if let Some(result) = Auth::logout_other_devices().await {
+    let destroyed_count = result?;
+}
+
+// Logout and invalidate current session
+Auth::logout_and_invalidate();
+```
+
+Use `logout_other_devices()` after password changes to invalidate potentially compromised sessions on other devices.
+
+For admin/security flows that need to invalidate sessions for any user:
+
+```rust
+use ferro::session::{invalidate_all_for_user, DatabaseSessionDriver};
+
+let store = DatabaseSessionDriver::new(idle_lifetime, absolute_lifetime);
+let destroyed = invalidate_all_for_user(&store, user_id, None).await?;
+```
+
 ### Password Hashing
 
 Ferro uses bcrypt with a default cost factor of 12 (same as Laravel). The cost factor is not configurable via environment variables -- change it by calling `hashing::hash_with_cost()` directly.
@@ -213,6 +255,7 @@ if let Some(user) = Auth::user_as::<User>().await? {
 | `Auth::login_remember(id, token)` | `()` | Log in with remember-me |
 | `Auth::logout()` | `()` | Clear auth state, regenerate CSRF |
 | `Auth::logout_and_invalidate()` | `()` | Destroy entire session |
+| `Auth::logout_other_devices()` | `Option<Result<u64>>` | Destroy all sessions except current |
 | `Auth::attempt(validator)` | `Result<Option<i64>>` | Validate + auto-login |
 | `Auth::validate(validator)` | `Result<bool>` | Validate without login |
 | `Auth::user()` | `Result<Option<Arc<dyn Authenticatable>>>` | Current user (trait object) |
@@ -473,4 +516,6 @@ Ferro's auth system applies these protections:
 | Cross-site requests | `SameSite=Lax` cookie attribute by default |
 | HTTPS enforcement | `Secure` cookie flag on by default |
 | Session hijacking | Database-backed sessions with configurable lifetime |
+| Session expiry | Dual idle + absolute timeouts per OWASP |
+| Session invalidation | Direct DB deletion on password change via `Auth::logout_other_devices()` |
 | Password storage | Bcrypt with cost factor 12 (adaptive hashing) |
