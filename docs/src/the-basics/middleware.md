@@ -300,6 +300,68 @@ impl Middleware for TimingMiddleware {
 }
 ```
 
+## Security Headers
+
+The `SecurityHeaders` middleware adds OWASP-recommended HTTP security headers to all responses. It is registered by default in new projects generated with `ferro new`.
+
+### Default Headers
+
+| Header | Default Value | Purpose |
+|--------|---------------|---------|
+| X-Content-Type-Options | `nosniff` | Prevents MIME-type sniffing |
+| X-Frame-Options | `DENY` | Prevents clickjacking |
+| Content-Security-Policy | `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'` | Controls resource loading |
+| Referrer-Policy | `strict-origin-when-cross-origin` | Controls referer header |
+| Permissions-Policy | `geolocation=(), camera=(), microphone=()` | Restricts browser features |
+| Cross-Origin-Opener-Policy | `same-origin` | Isolates browsing context |
+| X-XSS-Protection | `0` | Disables legacy XSS auditor (per OWASP) |
+| Strict-Transport-Security | *(not set)* | Enable with `.with_hsts()` |
+
+### Customization
+
+```rust
+use ferro::{global_middleware, SecurityHeaders};
+
+// Default (recommended for most apps)
+global_middleware!(SecurityHeaders::new());
+
+// Production with HTTPS
+global_middleware!(SecurityHeaders::new().with_hsts());
+
+// Custom frame options (allow same-origin iframes)
+global_middleware!(SecurityHeaders::new()
+    .x_frame_options("SAMEORIGIN"));
+
+// Custom CSP for specific needs
+global_middleware!(SecurityHeaders::new()
+    .content_security_policy("default-src 'self'; script-src 'self'"));
+
+// Disable a specific header
+global_middleware!(SecurityHeaders::new()
+    .without("X-Frame-Options"));
+```
+
+### HSTS
+
+HSTS (HTTP Strict Transport Security) is **off by default** because it breaks localhost development over HTTP. Enable it in production:
+
+```rust
+// Standard HSTS (max-age=1year, includeSubDomains)
+global_middleware!(SecurityHeaders::new().with_hsts());
+
+// HSTS with preload directive
+global_middleware!(SecurityHeaders::new().with_hsts_preload());
+```
+
+`with_hsts_preload()` adds the `preload` directive. Only enable this if you have submitted your domain to the [HSTS preload list](https://hstspreload.org/). Preload is permanent -- removing a domain takes months.
+
+### Notes
+
+- The default CSP includes `'unsafe-inline'` and `'unsafe-eval'` for compatibility with Inertia.js and Vite. Tighten these directives for production if your setup allows it.
+- Security headers apply to both success and error responses.
+- Headers are applied during response post-processing (after the route handler runs).
+- Static files served directly by Ferro bypass middleware. Use a reverse proxy (e.g., nginx) for static file headers in production.
+
 ## File Organization
 
 The recommended file structure for middleware:
