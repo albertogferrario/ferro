@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Build Frontend
 # ==========================================
-FROM node:20-alpine AS frontend-builder
+FROM node:22-slim AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -56,7 +56,7 @@ FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
@@ -65,14 +65,14 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -m -u 1000 appuser
 
 # Copy the compiled binary
-COPY --from=backend-builder /app/target/release/{package_name} ./app
+COPY --from=backend-builder --chown=appuser:appuser /app/target/release/{package_name} /usr/local/bin/app
 
 # Copy public assets and translations
-COPY --from=backend-builder /app/public ./public
-COPY --from=backend-builder /app/lang ./lang
+COPY --from=backend-builder --chown=appuser:appuser /app/public ./public
+COPY --from=backend-builder --chown=appuser:appuser /app/lang ./lang
 
-# Set ownership
-RUN chown -R appuser:appuser /app
+# Create storage directory for file uploads
+RUN mkdir -p storage/app/public && chown -R appuser:appuser storage
 
 USER appuser
 
@@ -83,9 +83,4 @@ ENV SERVER_PORT=8080
 
 EXPOSE 8080
 
-# Default: Run web server with auto-migrations
-# Override with different commands for other modes:
-#   docker run myapp ./app serve --no-migrate  # Skip migrations
-#   docker run myapp ./app migrate             # Run migrations only
-#   docker run myapp ./app schedule:work       # Run scheduler daemon
-CMD ["./app"]
+ENTRYPOINT ["/usr/local/bin/app"]
