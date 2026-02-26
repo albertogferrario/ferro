@@ -79,8 +79,7 @@ impl SecurityHeaders {
     /// Safe for production use. Does not include `preload` because preload
     /// submission is permanent and affects all subdomains.
     pub fn with_hsts(mut self) -> Self {
-        self.strict_transport_security =
-            Some("max-age=31536000; includeSubDomains".to_string());
+        self.strict_transport_security = Some("max-age=31536000; includeSubDomains".to_string());
         self
     }
 
@@ -203,5 +202,211 @@ impl Middleware for SecurityHeaders {
             Ok(resp) => Ok(self.apply_headers(resp)),
             Err(resp) => Err(self.apply_headers(resp)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_headers() {
+        let sh = SecurityHeaders::new();
+
+        assert_eq!(sh.x_content_type_options.as_deref(), Some("nosniff"));
+        assert_eq!(sh.x_frame_options.as_deref(), Some("DENY"));
+        assert!(sh
+            .content_security_policy
+            .as_ref()
+            .unwrap()
+            .contains("default-src 'self'"));
+        assert!(sh
+            .content_security_policy
+            .as_ref()
+            .unwrap()
+            .contains("frame-ancestors 'none'"));
+        assert_eq!(
+            sh.referrer_policy.as_deref(),
+            Some("strict-origin-when-cross-origin")
+        );
+        assert_eq!(
+            sh.permissions_policy.as_deref(),
+            Some("geolocation=(), camera=(), microphone=()")
+        );
+        assert_eq!(
+            sh.cross_origin_opener_policy.as_deref(),
+            Some("same-origin")
+        );
+        assert_eq!(sh.x_xss_protection.as_deref(), Some("0"));
+        assert!(sh.strict_transport_security.is_none());
+    }
+
+    #[test]
+    fn test_with_hsts() {
+        let sh = SecurityHeaders::new().with_hsts();
+
+        let hsts = sh.strict_transport_security.as_ref().unwrap();
+        assert!(hsts.contains("max-age=31536000"));
+        assert!(hsts.contains("includeSubDomains"));
+        assert!(!hsts.contains("preload"));
+    }
+
+    #[test]
+    fn test_with_hsts_preload() {
+        let sh = SecurityHeaders::new().with_hsts_preload();
+
+        let hsts = sh.strict_transport_security.as_ref().unwrap();
+        assert!(hsts.contains("max-age=31536000"));
+        assert!(hsts.contains("includeSubDomains"));
+        assert!(hsts.contains("preload"));
+    }
+
+    #[test]
+    fn test_builder_overrides() {
+        let sh = SecurityHeaders::new().x_frame_options("SAMEORIGIN");
+        assert_eq!(sh.x_frame_options.as_deref(), Some("SAMEORIGIN"));
+
+        let sh = SecurityHeaders::new().content_security_policy("default-src 'none'");
+        assert_eq!(
+            sh.content_security_policy.as_deref(),
+            Some("default-src 'none'")
+        );
+
+        let sh = SecurityHeaders::new().referrer_policy("no-referrer");
+        assert_eq!(sh.referrer_policy.as_deref(), Some("no-referrer"));
+
+        let sh = SecurityHeaders::new().permissions_policy("camera=(self)");
+        assert_eq!(sh.permissions_policy.as_deref(), Some("camera=(self)"));
+
+        let sh = SecurityHeaders::new().cross_origin_opener_policy("unsafe-none");
+        assert_eq!(
+            sh.cross_origin_opener_policy.as_deref(),
+            Some("unsafe-none")
+        );
+    }
+
+    #[test]
+    fn test_without_disables_header() {
+        let sh = SecurityHeaders::new().without("X-Frame-Options");
+        assert!(sh.x_frame_options.is_none());
+
+        // Other headers remain set
+        assert!(sh.x_content_type_options.is_some());
+        assert!(sh.content_security_policy.is_some());
+    }
+
+    #[test]
+    fn test_without_case_insensitive() {
+        let sh = SecurityHeaders::new().without("x-frame-options");
+        assert!(sh.x_frame_options.is_none());
+
+        let sh = SecurityHeaders::new().without("PERMISSIONS-POLICY");
+        assert!(sh.permissions_policy.is_none());
+    }
+
+    #[test]
+    fn test_without_unknown_header_is_noop() {
+        let sh = SecurityHeaders::new().without("X-Unknown-Header");
+        // All defaults still set
+        assert!(sh.x_content_type_options.is_some());
+        assert!(sh.x_frame_options.is_some());
+        assert!(sh.content_security_policy.is_some());
+    }
+
+    #[test]
+    fn test_apply_headers() {
+        let sh = SecurityHeaders::new();
+        let resp = HttpResponse::text("ok");
+        let resp = sh.apply_headers(resp);
+        let hyper_resp = resp.into_hyper();
+
+        assert_eq!(
+            hyper_resp.headers().get("X-Content-Type-Options").unwrap(),
+            "nosniff"
+        );
+        assert_eq!(hyper_resp.headers().get("X-Frame-Options").unwrap(), "DENY");
+        assert!(hyper_resp
+            .headers()
+            .get("Content-Security-Policy")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .contains("default-src 'self'"));
+        assert_eq!(
+            hyper_resp.headers().get("Referrer-Policy").unwrap(),
+            "strict-origin-when-cross-origin"
+        );
+        assert_eq!(
+            hyper_resp.headers().get("Permissions-Policy").unwrap(),
+            "geolocation=(), camera=(), microphone=()"
+        );
+        assert_eq!(
+            hyper_resp
+                .headers()
+                .get("Cross-Origin-Opener-Policy")
+                .unwrap(),
+            "same-origin"
+        );
+        assert_eq!(hyper_resp.headers().get("X-XSS-Protection").unwrap(), "0");
+        // HSTS should not be present by default
+        assert!(hyper_resp
+            .headers()
+            .get("Strict-Transport-Security")
+            .is_none());
+    }
+
+    #[test]
+    fn test_apply_headers_with_hsts() {
+        let sh = SecurityHeaders::new().with_hsts();
+        let resp = HttpResponse::text("ok");
+        let resp = sh.apply_headers(resp);
+        let hyper_resp = resp.into_hyper();
+
+        assert!(hyper_resp
+            .headers()
+            .get("Strict-Transport-Security")
+            .is_some());
+    }
+
+    #[test]
+    fn test_apply_headers_without_disabled() {
+        let sh = SecurityHeaders::new()
+            .without("X-Frame-Options")
+            .without("Permissions-Policy");
+        let resp = HttpResponse::text("ok");
+        let resp = sh.apply_headers(resp);
+        let hyper_resp = resp.into_hyper();
+
+        assert!(hyper_resp.headers().get("X-Frame-Options").is_none());
+        assert!(hyper_resp.headers().get("Permissions-Policy").is_none());
+        // Others still present
+        assert!(hyper_resp.headers().get("X-Content-Type-Options").is_some());
+    }
+
+    #[test]
+    fn test_default_impl() {
+        let from_new = SecurityHeaders::new();
+        let from_default = SecurityHeaders::default();
+
+        assert_eq!(
+            from_new.x_content_type_options,
+            from_default.x_content_type_options
+        );
+        assert_eq!(from_new.x_frame_options, from_default.x_frame_options);
+        assert_eq!(
+            from_new.content_security_policy,
+            from_default.content_security_policy
+        );
+        assert_eq!(from_new.referrer_policy, from_default.referrer_policy);
+        assert_eq!(from_new.permissions_policy, from_default.permissions_policy);
+        assert_eq!(
+            from_new.cross_origin_opener_policy,
+            from_default.cross_origin_opener_policy
+        );
+        assert_eq!(from_new.x_xss_protection, from_default.x_xss_protection);
+        assert_eq!(
+            from_new.strict_transport_security,
+            from_default.strict_transport_security
+        );
     }
 }

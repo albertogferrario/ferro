@@ -88,7 +88,7 @@ pub use inertia::InertiaContext;
 pub use metrics::{get_metrics, MetricsSnapshot, RouteMetrics, RouteMetricsView};
 pub use middleware::{
     register_global_middleware, Limit, LimiterResponse, MetricsMiddleware, Middleware,
-    MiddlewareFuture, MiddlewareRegistry, Next, RateLimiter, Throttle,
+    MiddlewareFuture, MiddlewareRegistry, Next, RateLimiter, SecurityHeaders, Throttle,
 };
 pub use routing::{
     // Internal functions used by macros (hidden from docs)

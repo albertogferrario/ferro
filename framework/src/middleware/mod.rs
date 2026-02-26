@@ -43,8 +43,10 @@ mod chain;
 mod metrics;
 mod rate_limit;
 mod registry;
+mod security_headers;
 
 pub use metrics::MetricsMiddleware;
+pub use security_headers::SecurityHeaders;
 
 pub use chain::MiddlewareChain;
 pub use rate_limit::{Limit, LimiterResponse, RateLimiter, Throttle};
