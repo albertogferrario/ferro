@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Security Hardening — Phase 73 complete
+**Current focus:** Security Hardening — Phase 74 plan 01 complete
 
 ## Current Position
 
-Phase: 73 (Security Headers)
-Plan: 2 of 2
-Status: Phase 73 complete — SecurityHeaders middleware shipped, integrated in CLI template, documented
-Last activity: 2026-02-26 — Phase 73 plan 02 executed
+Phase: 74 (Session Absolute Expiry)
+Plan: 1 of 1
+Status: Phase 74 plan 01 complete — dual timeout (idle + absolute) session enforcement shipped
+Last activity: 2026-02-26 — Phase 74 plan 01 executed
 
 ## Milestone Summary
 
@@ -33,7 +33,7 @@ Last activity: 2026-02-26 — Phase 73 plan 02 executed
 | v6.1 Fix Known Issues | 67 | 1 | Complete | 2026-02-24 |
 | v7.0 Resend Integration | 68 | 3 | Complete | 2026-02-25 |
 | v7.1 Static File Serving | 69 | 1 | Complete | 2026-02-25 |
-| Security Hardening | 72-73 | 2 | In progress | — |
+| Security Hardening | 72-74 | 3 | In progress | — |
 
 ## Accumulated Context
 
@@ -49,6 +49,9 @@ Archived to PROJECT.md and milestone archive files.
 - X-XSS-Protection set to 0 per OWASP (XSS Auditor can create vulnerabilities)
 - CSP includes unsafe-inline/unsafe-eval for Inertia.js and Vite SPA compatibility
 - SecurityHeaders placed after CSRF middleware in bootstrap so headers apply to all responses including CSRF rejections
+- Nullable created_at for backward compat with existing sessions tables (NULL skips absolute check)
+- destroy_for_user default trait impl returns error rather than panic
+- Cookie max_age uses max(idle, absolute) so cookie outlives both server-side checks
 
 ### Roadmap Evolution
 
@@ -57,6 +60,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 72 plan 01 complete: binary-safe HttpResponse with bytes()/download() constructors
 - Phase 73 plan 01 complete: SecurityHeaders middleware with OWASP defaults and builder API
 - Phase 73 plan 02 complete: SecurityHeaders in CLI bootstrap template and middleware documentation
+- Phase 74 plan 01 complete: dual timeout session enforcement with created_at tracking and destroy_for_user
 
 ### Pending Todos
 
@@ -69,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Phase 73 complete — SecurityHeaders middleware, CLI integration, and documentation shipped
+Stopped at: Phase 74 plan 01 complete — dual timeout session enforcement, bulk invalidation, CLI template, docs
 Resume file: None
