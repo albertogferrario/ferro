@@ -248,3 +248,20 @@ pub fn clear_auth_user() {
         session.dirty = true;
     });
 }
+
+/// Destroy all sessions for a user, with optional exception for the current session.
+///
+/// Uses the session store's `destroy_for_user` method for direct DB deletion.
+/// This is auth-method-agnostic — works for password-based, OAuth, or any auth.
+///
+/// # Arguments
+/// * `store` - The session store to use
+/// * `user_id` - The user whose sessions to destroy
+/// * `except_session_id` - Optional session ID to preserve (current session)
+pub async fn invalidate_all_for_user(
+    store: &dyn super::store::SessionStore,
+    user_id: i64,
+    except_session_id: Option<&str>,
+) -> Result<u64, crate::error::FrameworkError> {
+    store.destroy_for_user(user_id, except_session_id).await
+}

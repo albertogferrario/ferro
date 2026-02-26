@@ -79,7 +79,8 @@ pub use sea_orm::{
     QueryFilter, QueryOrder, QuerySelect,
 };
 pub use session::{
-    session, session_mut, SessionConfig, SessionData, SessionMiddleware, SessionStore,
+    invalidate_all_for_user, session, session_mut, DatabaseSessionDriver, SessionConfig,
+    SessionData, SessionMiddleware, SessionStore,
 };
 // Deprecated - kept for backward compatibility
 #[cfg(feature = "inertia")]

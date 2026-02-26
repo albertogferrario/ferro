@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use crate::container::App;
 use crate::session::{
-    auth_user_id, clear_auth_user, generate_csrf_token, regenerate_session_id, session_mut,
-    set_auth_user,
+    auth_user_id, clear_auth_user, generate_csrf_token, regenerate_session_id, session,
+    session_mut, set_auth_user, DatabaseSessionDriver, SessionStore,
 };
 
 use super::authenticatable::Authenticatable;
@@ -127,6 +127,27 @@ impl Auth {
             session.flush();
             session.csrf_token = generate_csrf_token();
         });
+    }
+
+    /// Log out all other sessions for the current user.
+    ///
+    /// Destroys all sessions for the authenticated user except the current one.
+    /// Use after password changes or security-sensitive operations.
+    ///
+    /// Returns the number of destroyed sessions, or None if not authenticated.
+    pub async fn logout_other_devices() -> Option<Result<u64, crate::error::FrameworkError>> {
+        let user_id = Self::id()?;
+        let current_session_id = session().map(|s| s.id);
+        // Lifetime values are irrelevant here — destroy_for_user only deletes by user_id.
+        let store = DatabaseSessionDriver::new(
+            std::time::Duration::from_secs(0),
+            std::time::Duration::from_secs(0),
+        );
+        Some(
+            store
+                .destroy_for_user(user_id, current_session_id.as_deref())
+                .await,
+        )
     }
 
     /// Attempt to authenticate with a validator function
