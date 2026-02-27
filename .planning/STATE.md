@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Phase 75 complete — generate-types circular import fixed
+**Current focus:** Phase 76 planned — Default API scaffold for MCP agent data access
 
 ## Current Position
 
-Phase: 75 (Fix generate-types circular import)
-Plan: 1 of 1
-Status: Phase 75 complete
-Last activity: 2026-02-27 — Phase 75 plan 01 executed
+Phase: 76 (Default API Scaffold)
+Plan: 0 of 4
+Status: Phase 76 planned (4 plans in 3 waves)
+Last activity: 2026-02-27 — Phase 76 plans created
 
 ## Milestone Summary
 
@@ -63,6 +63,7 @@ Archived to PROJECT.md and milestone archive files.
 - All planned milestones v1.0–v7.1 complete (15 milestones, 150 plans shipped)
 - Security hardening phases 72-74 added to roadmap
 - Phase 75 complete: generate-types output made self-contained (no shared.ts imports/re-exports)
+- Phase 76 added: Default API scaffold for MCP agent data access
 
 ### Pending Todos
 
@@ -75,5 +76,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Phase 75 complete — generate-types circular import fixed, inertia-props.ts now self-contained
+Stopped at: Phase 76 planned — 4 plans in 3 waves (API key + OpenAPI, MCP CRUD, CLI make:api, Documentation)
 Resume file: None
