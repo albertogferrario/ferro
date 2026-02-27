@@ -75,6 +75,7 @@ Archived to PROJECT.md and milestone archive files.
 - Security hardening phases 72-74 added to roadmap
 - Phase 75 complete: generate-types output made self-contained (no shared.ts imports/re-exports)
 - Phase 76 complete: Default API scaffold with API key auth, OpenAPI, MCP CRUD, CLI make:api, and documentation
+- Phase 77 added: Validate & fix API scaffold — audit found missing tests, potential generated code bugs, zero MCP integration testing
 
 ### Pending Todos
 

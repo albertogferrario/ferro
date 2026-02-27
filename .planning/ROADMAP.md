@@ -22,6 +22,24 @@
 - ✅ **v7.4 Security Hardening** — Phases 72-74 (shipped 2026-02-26)
 - ✅ **v7.5 Type Generator Fix** — Phase 75 (shipped 2026-02-27)
 - ✅ **v7.6 Default API Scaffold** — Phase 76 (shipped 2026-02-27)
+- 🔧 **v7.7 Validate & Fix API Scaffold** — Phase 77
+
+---
+
+## Active Milestone
+
+### v7.7 Validate & Fix API Scaffold (Phase 77)
+
+**Milestone Goal:** Fix bugs found during audit of Phase 76, add missing tests, and validate end-to-end with a real generated app and MCP server.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 77. Validate & Fix API Scaffold | 3 | Pending | - |
+
+Plans:
+- [ ] 77-01: Fix generated code templates + framework API tests (wave 1)
+- [ ] 77-02: MCP CRUD operations tests + edge case fixes (wave 1)
+- [ ] 77-03: End-to-end make:api validation against real models (wave 2, depends on 77-01)
 
 ---
 
