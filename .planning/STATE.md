@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 76 (Default API Scaffold)
-Plan: 2 of 4 (plans 01 and 02 complete)
-Status: Plans 01 + 02 complete — API key, OpenAPI, MCP CRUD tools
-Last activity: 2026-02-27 — Plan 01 executed (API key module + OpenAPI spec builder)
+Plan: 3 of 4 (plans 01, 02, and 03 complete)
+Status: Plans 01 + 02 + 03 complete — API key, OpenAPI, MCP CRUD tools, CLI make:api command
+Last activity: 2026-02-27 — Plan 03 executed (ferro make:api CLI command)
 
 ## Milestone Summary
 
@@ -64,6 +64,9 @@ Archived to PROJECT.md and milestone archive files.
 - OnceLock caching for OpenAPI spec and ReDoc HTML (generated once on first call)
 - ApiKeyProvider resolved from service container via App::make (storage-agnostic)
 - utoipa and utoipa-redoc re-exported from framework root for advanced customization
+- make:api reuses syn AST visitor pattern from ferro-mcp list_models for model detection consistency
+- Generated update handlers use conditional builder pattern (if let Some) for partial updates
+- quote crate added as ferro-cli dependency for syn ToTokens trait
 
 ### Roadmap Evolution
 
@@ -83,5 +86,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Phase 76 plans 01+02 complete — API key + OpenAPI foundation, MCP CRUD tools
+Stopped at: Phase 76 plans 01+02+03 complete — API key + OpenAPI foundation, MCP CRUD tools, CLI make:api command
 Resume file: None
