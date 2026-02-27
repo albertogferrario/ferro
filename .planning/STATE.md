@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 77 (Validate & Fix API Scaffold)
-Plan: 1 of 3 complete
-Status: Plan 01 complete — fixed generated code template bugs (DB::connection().await and ResourceCollection type mismatch)
-Last activity: 2026-02-28 — Plan 01 executed (template bug fixes)
+Plan: 2 of 3 complete
+Status: Plan 02 complete — 43 unit tests for CRUD operations, fixed per_page=0 edge case
+Last activity: 2026-02-28 — Plan 02 executed (CRUD operations test coverage)
 
 ## Milestone Summary
 
@@ -69,6 +69,8 @@ Archived to PROJECT.md and milestone archive files.
 - Generated update handlers use conditional builder pattern (if let Some) for partial updates
 - quote crate added as ferro-cli dependency for syn ToTokens trait
 - DB::connection() errors in generated templates use map_err for consistent error handling
+- Extracted normalize_page, normalize_per_page, find_missing_required_field as testable pure functions
+- Per-page clamped to [1, 100] with .clamp() instead of .min(100) to prevent LIMIT 0
 
 ### Roadmap Evolution
 
@@ -89,5 +91,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 77 Plan 01 complete — template bugs fixed, Plan 02 (test coverage) next
+Stopped at: Phase 77 Plan 02 complete — CRUD operations tested with 43 unit tests, Plan 03 next
 Resume file: None
