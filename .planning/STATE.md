@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Security Hardening — Phase 74 complete
+**Current focus:** Type Generator Fix — Phase 75 planning
 
 ## Current Position
 
-Phase: 74 (Session Absolute Expiry)
-Plan: 2 of 2
-Status: Phase 74 complete — Auth facade, session invalidation API, and documentation shipped
-Last activity: 2026-02-26 — Phase 74 plan 02 executed
+Phase: 75 (Fix generate-types circular import)
+Plan: 1 of 1
+Status: Phase 75 planned — 1 plan in 1 wave
+Last activity: 2026-02-27 — Phase 75 plan 01 created
 
 ## Milestone Summary
 
@@ -59,6 +59,7 @@ Archived to PROJECT.md and milestone archive files.
 
 - All planned milestones v1.0–v7.1 complete (15 milestones, 150 plans shipped)
 - Security hardening phases 72-74 added to roadmap
+- Phase 75 added: Fix generate-types circular import (JsonValue/ValidationErrors imported from shared.ts creates TS2440/TS2484 in strict mode)
 - Phase 72 plan 01 complete: binary-safe HttpResponse with bytes()/download() constructors
 - Phase 73 plan 01 complete: SecurityHeaders middleware with OWASP defaults and builder API
 - Phase 73 plan 02 complete: SecurityHeaders in CLI bootstrap template and middleware documentation
