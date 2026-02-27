@@ -1544,6 +1544,7 @@ dependencies = [
  "ferro-mcp",
  "notify",
  "notify-debouncer-mini",
+ "quote",
  "regex",
  "reqwest",
  "sea-orm",
