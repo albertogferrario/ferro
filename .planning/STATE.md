@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Phase 76 complete — Default API scaffold for MCP agent data access
+**Current focus:** Phase 77 in progress — Validate & fix API scaffold
 
 ## Current Position
 
-Phase: 76 (Default API Scaffold)
-Plan: 4 of 4 (all plans complete)
-Status: Phase 76 complete — API key, OpenAPI, MCP CRUD tools, CLI make:api, documentation
-Last activity: 2026-02-27 — Plan 04 executed (documentation and MCP code templates)
+Phase: 77 (Validate & Fix API Scaffold)
+Plan: 1 of 3 complete
+Status: Plan 01 complete — fixed generated code template bugs (DB::connection().await and ResourceCollection type mismatch)
+Last activity: 2026-02-28 — Plan 01 executed (template bug fixes)
 
 ## Milestone Summary
 
@@ -68,6 +68,7 @@ Archived to PROJECT.md and milestone archive files.
 - make:api reuses syn AST visitor pattern from ferro-mcp list_models for model detection consistency
 - Generated update handlers use conditional builder pattern (if let Some) for partial updates
 - quote crate added as ferro-cli dependency for syn ToTokens trait
+- DB::connection() errors in generated templates use map_err for consistent error handling
 
 ### Roadmap Evolution
 
@@ -87,6 +88,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Phase 76 complete — all 4 plans shipped (API key, OpenAPI, MCP CRUD, CLI make:api, documentation)
+Last session: 2026-02-28
+Stopped at: Phase 77 Plan 01 complete — template bugs fixed, Plan 02 (test coverage) next
 Resume file: None
