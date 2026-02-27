@@ -20,10 +20,33 @@
 - 🔧 **v7.2 CI Stability** — Phase 70
 - 🔧 **v7.3 Vite Manifest** — Phase 71
 - ✅ **v7.4 Security Hardening** — Phases 72-74 (shipped 2026-02-26)
+- 🔧 **v7.5 Type Generator Fix** — Phase 75
 
 ---
 
 ## Active Milestone
+
+### v7.5 Type Generator Fix (Phase 75)
+
+**Milestone Goal:** Fix circular import in `ferro generate-types` output. Generated `inertia-props.ts` imports `JsonValue`/`ValidationErrors` from `shared.ts`, but `shared.ts` re-exports types from `inertia-props.ts` — creating a circular dependency that fails under TS strict mode.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 75. Fix generate-types circular import | 0 | Pending | - |
+
+**Bug:** `ferro generate-types` emits:
+```ts
+import type { JsonValue, ValidationErrors } from './shared';
+export type { JsonValue, ValidationErrors };
+```
+Since `shared.ts` re-exports from `inertia-props.ts`, this creates TS2440/TS2484 errors.
+
+**Fix:** Generator should define `JsonValue` and `ValidationErrors` inline in the generated file instead of importing from `shared.ts`. The generated file must be self-contained.
+
+Plans:
+- [ ] 75-01: Make generate-types emit self-contained utility types (run /gsd:plan-phase 75)
+
+---
 
 ### v7.3 Vite Manifest (Phase 71)
 
