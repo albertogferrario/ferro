@@ -30,7 +30,7 @@ pub struct Placeholder {
 /// Execute the code templates tool
 ///
 /// # Arguments
-/// * `category` - Optional filter by category (handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting)
+/// * `category` - Optional filter by category (handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting, api)
 pub fn execute(category: Option<&str>) -> CodeTemplates {
     let all_templates = build_templates();
 
@@ -71,6 +71,9 @@ fn build_templates() -> Vec<CodeTemplate> {
 
     // Broadcasting templates
     templates.extend(broadcasting_templates());
+
+    // API scaffold templates
+    templates.extend(api_templates());
 
     templates
 }
@@ -1340,6 +1343,199 @@ pub async fn update(req: Request, id: Path<i32>) -> Response {
     ]
 }
 
+fn api_templates() -> Vec<CodeTemplate> {
+    vec![
+        CodeTemplate {
+            name: "api_controller".to_string(),
+            category: "api".to_string(),
+            description: "CRUD API controller with pagination, resource responses, and error handling"
+                .to_string(),
+            code: r#"use ferro::{handler, Request, Response, HttpResponse};
+use crate::models::{{entity}}::{self, Entity as {{Entity}}};
+use sea_orm::{EntityTrait, PaginatorTrait};
+use crate::resources::{{entity}}_resource::{{Entity}}Resource;
+use crate::requests::{{entity}}_request::{Create{{Entity}}Request, Update{{Entity}}Request};
+
+#[handler]
+pub async fn index(req: Request) -> Response {
+    let page: u64 = req.query("page").unwrap_or(1);
+    let per_page: u64 = req.query("per_page").unwrap_or(15).min(100);
+    let paginator = {{Entity}}::find().paginate(&ferro::DB::connection().await, per_page);
+    let total = paginator.num_items().await
+        .map_err(|e| HttpResponse::json(serde_json::json!({"error": e.to_string()})).status(500))?;
+    let items = paginator.fetch_page(page - 1).await
+        .map_err(|e| HttpResponse::json(serde_json::json!({"error": e.to_string()})).status(500))?;
+    let resources: Vec<serde_json::Value> = items.iter()
+        .map(|m| ferro::Resource::to_resource(&{{Entity}}Resource::from(m), &req))
+        .collect();
+    let meta = ferro::PaginationMeta::new(page, per_page, total);
+    Ok(ferro::ResourceCollection::paginated(resources, meta).to_response(&req))
+}
+
+#[handler]
+pub async fn show(req: Request, {{entity}}: {{entity}}::Model) -> Response {
+    Ok(ferro::Resource::to_wrapped_response(&{{Entity}}Resource::from(&{{entity}}), &req))
+}
+
+#[handler]
+pub async fn store(req: Request, form: Create{{Entity}}Request) -> Response {
+    let model = {{Entity}}::create()
+        // .set_field(form.field.clone())
+        .insert()
+        .await
+        .map_err(|e| HttpResponse::json(serde_json::json!({"error": e.to_string()})).status(500))?;
+    Ok(ferro::Resource::to_wrapped_response(&{{Entity}}Resource::from(&model), &req).status(201))
+}
+
+#[handler]
+pub async fn update(req: Request, {{entity}}: {{entity}}::Model, form: Update{{Entity}}Request) -> Response {
+    let mut builder = {{entity}}.update();
+    // if let Some(ref v) = form.field { builder = builder.set_field(v.clone()); }
+    let updated = builder.save().await
+        .map_err(|e| HttpResponse::json(serde_json::json!({"error": e.to_string()})).status(500))?;
+    Ok(ferro::Resource::to_wrapped_response(&{{Entity}}Resource::from(&updated), &req))
+}
+
+#[handler]
+pub async fn destroy({{entity}}: {{entity}}::Model) -> Response {
+    {{entity}}.delete().await
+        .map_err(|e| HttpResponse::json(serde_json::json!({"error": e.to_string()})).status(500))?;
+    Ok(HttpResponse::json(serde_json::json!({"message": "Deleted"})).status(200))
+}"#
+            .to_string(),
+            imports: vec![
+                "use ferro::{handler, Request, Response, HttpResponse};".to_string(),
+                "use sea_orm::{EntityTrait, PaginatorTrait};".to_string(),
+            ],
+            placeholders: vec![
+                Placeholder {
+                    name: "{{Entity}}".to_string(),
+                    description: "Entity name in PascalCase".to_string(),
+                    example: "User".to_string(),
+                },
+                Placeholder {
+                    name: "{{entity}}".to_string(),
+                    description: "Entity name in snake_case".to_string(),
+                    example: "user".to_string(),
+                },
+            ],
+        },
+        CodeTemplate {
+            name: "api_key_middleware".to_string(),
+            category: "api".to_string(),
+            description: "API key middleware configuration with optional scope requirements"
+                .to_string(),
+            code: r#"use ferro::ApiKeyMiddleware;
+
+// Require any valid API key
+group!("/api/v1")
+    .middleware(ApiKeyMiddleware::new())
+    .routes([...]);
+
+// Require specific scopes
+group!("/api/v1/admin")
+    .middleware(ApiKeyMiddleware::scopes(&["admin"]))
+    .routes([...]);
+
+// Access key info in handlers
+use ferro::ApiKeyInfo;
+
+#[handler]
+pub async fn index(req: Request) -> Response {
+    let key_info = req.get::<ApiKeyInfo>().unwrap();
+    println!("Key: {} (scopes: {:?})", key_info.name, key_info.scopes);
+    // ...
+}"#
+            .to_string(),
+            imports: vec!["use ferro::ApiKeyMiddleware;".to_string()],
+            placeholders: vec![],
+        },
+        CodeTemplate {
+            name: "api_route_group".to_string(),
+            category: "api".to_string(),
+            description:
+                "API route group with ApiKeyMiddleware and Throttle for CRUD resources"
+                    .to_string(),
+            code: r#"use ferro::*;
+use crate::api::*;
+
+pub fn api_routes() -> GroupBuilder {
+    group!("/api/v1")
+        .middleware(ApiKeyMiddleware::new())
+        .middleware(Throttle::named("api"))
+        .routes([
+            // {{Entity}} CRUD
+            get!("/{{entities}}", {{entity}}_api::index).name("api.{{entities}}.index"),
+            post!("/{{entities}}", {{entity}}_api::store).name("api.{{entities}}.store"),
+            get!("/{{entities}}/:id", {{entity}}_api::show).name("api.{{entities}}.show"),
+            put!("/{{entities}}/:id", {{entity}}_api::update).name("api.{{entities}}.update"),
+            delete!("/{{entities}}/:id", {{entity}}_api::destroy).name("api.{{entities}}.destroy"),
+        ])
+}"#
+            .to_string(),
+            imports: vec!["use ferro::*;".to_string()],
+            placeholders: vec![
+                Placeholder {
+                    name: "{{Entity}}".to_string(),
+                    description: "Entity name in PascalCase".to_string(),
+                    example: "User".to_string(),
+                },
+                Placeholder {
+                    name: "{{entity}}".to_string(),
+                    description: "Entity name in snake_case".to_string(),
+                    example: "user".to_string(),
+                },
+                Placeholder {
+                    name: "{{entities}}".to_string(),
+                    description: "Plural entity name for URL paths".to_string(),
+                    example: "users".to_string(),
+                },
+            ],
+        },
+        CodeTemplate {
+            name: "api_openapi_docs".to_string(),
+            category: "api".to_string(),
+            description: "OpenAPI documentation handlers with ReDoc UI and JSON spec endpoints"
+                .to_string(),
+            code: r#"use ferro::*;
+
+pub fn docs_routes() -> Vec<RouteDefBuilder> {
+    vec![
+        get!("/api/docs", api_docs).name("api.docs"),
+        get!("/api/openapi.json", openapi_json).name("api.openapi"),
+    ]
+}
+
+#[handler]
+pub async fn api_docs() -> Response {
+    let config = OpenApiConfig {
+        title: ferro::env("APP_NAME", "API"),
+        version: "1.0.0".to_string(),
+        description: Some("Auto-generated API documentation".to_string()),
+        api_prefix: "/api/".to_string(),
+    };
+    let routes = get_registered_routes();
+    Ok(openapi_docs_response(&config, &routes))
+}
+
+#[handler]
+pub async fn openapi_json() -> Response {
+    let config = OpenApiConfig {
+        title: ferro::env("APP_NAME", "API"),
+        version: "1.0.0".to_string(),
+        description: Some("Auto-generated API documentation".to_string()),
+        api_prefix: "/api/".to_string(),
+    };
+    let routes = get_registered_routes();
+    Ok(openapi_json_response(&config, &routes))
+}"#
+            .to_string(),
+            imports: vec!["use ferro::*;".to_string()],
+            placeholders: vec![],
+        },
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1383,6 +1579,7 @@ mod tests {
             categories.contains("broadcasting"),
             "Should have broadcasting templates"
         );
+        assert!(categories.contains("api"), "Should have api templates");
     }
 
     #[test]

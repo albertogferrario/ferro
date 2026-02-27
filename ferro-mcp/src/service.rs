@@ -1143,7 +1143,7 @@ impl FerroMcpService {
         description = "Get copy-paste code templates for common Ferro framework patterns.\n\n\
             **When to use:** Creating new handlers, models, migrations, middleware, or JSON-UI views from scratch.\n\n\
             **Returns:** Ready-to-use templates with placeholders, required imports, and usage notes.\n\n\
-            **Categories:** handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting.\n\n\
+            **Categories:** handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting, api.\n\n\
             **Combine with:** `generation_context` for conventions, `get_handler` for real examples, \
             `json_ui_catalog` for component reference when using json_view templates."
     )]

@@ -25,6 +25,7 @@
 - [Caching](features/caching.md)
 - [Authentication](features/authentication.md)
 - [API Resources](features/api-resources.md)
+- [REST API](features/api.md)
 - [Rate Limiting](features/rate-limiting.md)
 - [Database](features/database.md)
 - [Validation](features/validation.md)
