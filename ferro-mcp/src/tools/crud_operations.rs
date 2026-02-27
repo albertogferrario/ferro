@@ -29,18 +29,18 @@ pub struct CrudListResult {
 // Model metadata
 // ---------------------------------------------------------------------------
 
-struct ModelMeta {
-    table_name: String,
-    primary_key: String,
-    fields: Vec<FieldMeta>,
+pub(crate) struct ModelMeta {
+    pub(crate) table_name: String,
+    pub(crate) primary_key: String,
+    pub(crate) fields: Vec<FieldMeta>,
 }
 
-struct FieldMeta {
-    name: String,
-    column_name: String,
-    field_type: String,
-    is_nullable: bool,
-    is_primary_key: bool,
+pub(crate) struct FieldMeta {
+    pub(crate) name: String,
+    pub(crate) column_name: String,
+    pub(crate) field_type: String,
+    pub(crate) is_nullable: bool,
+    pub(crate) is_primary_key: bool,
 }
 
 fn get_model_metadata(project_root: &Path, model_name: &str) -> Result<ModelMeta> {
@@ -78,7 +78,7 @@ fn get_model_metadata(project_root: &Path, model_name: &str) -> Result<ModelMeta
     })
 }
 
-fn find_model<'a>(models: &'a [ModelDetails], name: &str) -> Result<&'a ModelDetails> {
+pub(crate) fn find_model<'a>(models: &'a [ModelDetails], name: &str) -> Result<&'a ModelDetails> {
     let lower = name.to_lowercase();
     models
         .iter()
@@ -111,7 +111,7 @@ async fn connect_db(project_root: &Path) -> Result<DatabaseConnection> {
 }
 
 /// Convert a serde_json::Value to a sea_orm::Value appropriate for the field type.
-fn json_to_sea_value(val: &serde_json::Value, field_type: &str) -> sea_orm::Value {
+pub(crate) fn json_to_sea_value(val: &serde_json::Value, field_type: &str) -> sea_orm::Value {
     match val {
         serde_json::Value::Null => sea_orm::Value::String(None),
         serde_json::Value::Bool(b) => sea_orm::Value::Bool(Some(*b)),
@@ -137,7 +137,7 @@ fn json_to_sea_value(val: &serde_json::Value, field_type: &str) -> sea_orm::Valu
 }
 
 /// Build a parameter placeholder for the given backend and 1-based index.
-fn placeholder(backend: DatabaseBackend, index: usize) -> String {
+pub(crate) fn placeholder(backend: DatabaseBackend, index: usize) -> String {
     match backend {
         DatabaseBackend::Postgres => format!("${index}"),
         _ => "?".to_string(),
@@ -187,7 +187,7 @@ fn rows_to_json(rows: &[sea_orm::QueryResult]) -> Vec<serde_json::Value> {
 
 /// Validate that a column name exists in model metadata. Returns the column name
 /// if valid, or an error describing the mismatch.
-fn validate_column(meta: &ModelMeta, name: &str) -> Result<String> {
+pub(crate) fn validate_column(meta: &ModelMeta, name: &str) -> Result<String> {
     meta.fields
         .iter()
         .find(|f| f.name == name || f.column_name == name)
@@ -203,10 +203,48 @@ fn validate_column(meta: &ModelMeta, name: &str) -> Result<String> {
 }
 
 /// Find the FieldMeta for a given field name.
-fn find_field<'a>(meta: &'a ModelMeta, name: &str) -> Option<&'a FieldMeta> {
+pub(crate) fn find_field<'a>(meta: &'a ModelMeta, name: &str) -> Option<&'a FieldMeta> {
     meta.fields
         .iter()
         .find(|f| f.name == name || f.column_name == name)
+}
+
+// ---------------------------------------------------------------------------
+// Pagination helpers
+// ---------------------------------------------------------------------------
+
+/// Normalize page number: clamp to minimum of 1.
+pub(crate) fn normalize_page(page: Option<u64>) -> u64 {
+    page.unwrap_or(1).max(1)
+}
+
+/// Normalize per-page count: default 25, clamp to [1, 100].
+pub(crate) fn normalize_per_page(per_page: Option<u64>) -> u64 {
+    per_page.unwrap_or(25).clamp(1, 100)
+}
+
+// ---------------------------------------------------------------------------
+// Required field validation
+// ---------------------------------------------------------------------------
+
+/// Validate that all required fields are present in the data object.
+/// Returns the name of the first missing required field, or None if all present.
+pub(crate) fn find_missing_required_field<'a>(
+    fields: &'a [FieldMeta],
+    data_keys: &[&str],
+) -> Option<&'a str> {
+    for field in fields {
+        if field.is_primary_key || field.is_nullable {
+            continue;
+        }
+        if field.name == "created_at" || field.name == "updated_at" {
+            continue;
+        }
+        if !data_keys.contains(&field.name.as_str()) {
+            return Some(&field.name);
+        }
+    }
+    None
 }
 
 // ---------------------------------------------------------------------------
@@ -227,20 +265,11 @@ pub async fn create(
         .ok_or_else(|| McpError::ToolError("data must be a JSON object".to_string()))?;
 
     // Validate required fields (non-nullable, non-PK fields that lack defaults)
-    for field in &meta.fields {
-        if field.is_primary_key || field.is_nullable {
-            continue;
-        }
-        // Heuristic: created_at/updated_at often have defaults
-        if field.name == "created_at" || field.name == "updated_at" {
-            continue;
-        }
-        if !obj.contains_key(&field.name) {
-            return Err(McpError::ToolError(format!(
-                "Missing required field '{}' for model '{}'",
-                field.name, model
-            )));
-        }
+    let data_keys: Vec<&str> = obj.keys().map(|k| k.as_str()).collect();
+    if let Some(missing) = find_missing_required_field(&meta.fields, &data_keys) {
+        return Err(McpError::ToolError(format!(
+            "Missing required field '{missing}' for model '{model}'"
+        )));
     }
 
     // Build column and placeholder lists from provided data
@@ -317,8 +346,8 @@ pub async fn list(
     let db = connect_db(project_root).await?;
     let backend = db.get_database_backend();
 
-    let page = page.unwrap_or(1).max(1);
-    let per_page = per_page.unwrap_or(25).min(100);
+    let page = normalize_page(page);
+    let per_page = normalize_per_page(per_page);
     let offset = (page - 1) * per_page;
 
     let mut where_clauses = Vec::new();
@@ -535,4 +564,458 @@ pub async fn delete(
         })),
         message: format!("{model} record deleted"),
     })
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tools::list_models::{FieldInfo, ModelDetails};
+    use sea_orm::DatabaseBackend;
+    use serde_json::json;
+
+    /// Build a ModelMeta for testing with the given fields.
+    fn test_meta(fields: Vec<FieldMeta>) -> ModelMeta {
+        ModelMeta {
+            table_name: "users".to_string(),
+            primary_key: "id".to_string(),
+            fields,
+        }
+    }
+
+    fn field(name: &str, field_type: &str, nullable: bool, pk: bool) -> FieldMeta {
+        FieldMeta {
+            name: name.to_string(),
+            column_name: name.to_string(),
+            field_type: field_type.to_string(),
+            is_nullable: nullable,
+            is_primary_key: pk,
+        }
+    }
+
+    fn test_models() -> Vec<ModelDetails> {
+        vec![
+            ModelDetails {
+                name: "User".to_string(),
+                table: Some("users".to_string()),
+                path: "src/models/user.rs".to_string(),
+                fields: vec![
+                    FieldInfo {
+                        name: "id".to_string(),
+                        field_type: "i32".to_string(),
+                        is_primary_key: true,
+                        is_nullable: false,
+                    },
+                    FieldInfo {
+                        name: "email".to_string(),
+                        field_type: "String".to_string(),
+                        is_primary_key: false,
+                        is_nullable: false,
+                    },
+                ],
+            },
+            ModelDetails {
+                name: "Post".to_string(),
+                table: Some("posts".to_string()),
+                path: "src/models/post.rs".to_string(),
+                fields: vec![FieldInfo {
+                    name: "id".to_string(),
+                    field_type: "i64".to_string(),
+                    is_primary_key: true,
+                    is_nullable: false,
+                }],
+            },
+        ]
+    }
+
+    // -----------------------------------------------------------------------
+    // json_to_sea_value tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn json_to_sea_value_string() {
+        let val = json!("hello");
+        let result = json_to_sea_value(&val, "String");
+        assert_eq!(
+            result,
+            sea_orm::Value::String(Some(Box::new("hello".to_string())))
+        );
+    }
+
+    #[test]
+    fn json_to_sea_value_bool() {
+        let val = json!(true);
+        let result = json_to_sea_value(&val, "bool");
+        assert_eq!(result, sea_orm::Value::Bool(Some(true)));
+    }
+
+    #[test]
+    fn json_to_sea_value_null() {
+        let val = json!(null);
+        let result = json_to_sea_value(&val, "String");
+        assert_eq!(result, sea_orm::Value::String(None));
+    }
+
+    #[test]
+    fn json_to_sea_value_i64_field() {
+        let val = json!(42);
+        let result = json_to_sea_value(&val, "i64");
+        assert_eq!(result, sea_orm::Value::BigInt(Some(42)));
+    }
+
+    #[test]
+    fn json_to_sea_value_i32_field() {
+        let val = json!(42);
+        let result = json_to_sea_value(&val, "i32");
+        assert_eq!(result, sea_orm::Value::Int(Some(42)));
+    }
+
+    #[test]
+    fn json_to_sea_value_i16_field() {
+        let val = json!(7);
+        let result = json_to_sea_value(&val, "i16");
+        assert_eq!(result, sea_orm::Value::Int(Some(7)));
+    }
+
+    #[test]
+    fn json_to_sea_value_f64_field() {
+        let val = json!(2.71);
+        let result = json_to_sea_value(&val, "f64");
+        assert_eq!(result, sea_orm::Value::Double(Some(2.71)));
+    }
+
+    #[test]
+    fn json_to_sea_value_f32_field() {
+        let val = json!(2.5);
+        let result = json_to_sea_value(&val, "f32");
+        assert_eq!(result, sea_orm::Value::Double(Some(2.5)));
+    }
+
+    #[test]
+    fn json_to_sea_value_option_i64() {
+        // Option<i64> contains "i64", so should match the i64 branch
+        let val = json!(99);
+        let result = json_to_sea_value(&val, "Option<i64>");
+        assert_eq!(result, sea_orm::Value::BigInt(Some(99)));
+    }
+
+    #[test]
+    fn json_to_sea_value_option_i32() {
+        // Option<i32> contains "i32", should match the i32 branch
+        let val = json!(10);
+        let result = json_to_sea_value(&val, "Option<i32>");
+        assert_eq!(result, sea_orm::Value::Int(Some(10)));
+    }
+
+    #[test]
+    fn json_to_sea_value_option_null() {
+        // Null with any Option type should produce String(None)
+        let val = json!(null);
+        let result = json_to_sea_value(&val, "Option<i64>");
+        assert_eq!(result, sea_orm::Value::String(None));
+    }
+
+    #[test]
+    fn json_to_sea_value_number_unknown_type_integer() {
+        // Unknown field type with integer JSON defaults to BigInt
+        let val = json!(100);
+        let result = json_to_sea_value(&val, "");
+        assert_eq!(result, sea_orm::Value::BigInt(Some(100)));
+    }
+
+    #[test]
+    fn json_to_sea_value_number_unknown_type_float() {
+        // Unknown field type with float JSON defaults to Double
+        let val = json!(1.5);
+        let result = json_to_sea_value(&val, "");
+        assert_eq!(result, sea_orm::Value::Double(Some(1.5)));
+    }
+
+    #[test]
+    fn json_to_sea_value_json_object_serializes_to_string() {
+        let val = json!({"key": "value"});
+        let result = json_to_sea_value(&val, "String");
+        match result {
+            sea_orm::Value::String(Some(s)) => {
+                assert!(s.contains("key"));
+            }
+            other => panic!("Expected String, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn json_to_sea_value_json_array_serializes_to_string() {
+        let val = json!([1, 2, 3]);
+        let result = json_to_sea_value(&val, "String");
+        match result {
+            sea_orm::Value::String(Some(s)) => {
+                assert!(s.contains("[1,2,3]"));
+            }
+            other => panic!("Expected String, got {other:?}"),
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // placeholder tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn placeholder_postgres_format() {
+        assert_eq!(placeholder(DatabaseBackend::Postgres, 1), "$1");
+        assert_eq!(placeholder(DatabaseBackend::Postgres, 2), "$2");
+        assert_eq!(placeholder(DatabaseBackend::Postgres, 10), "$10");
+    }
+
+    #[test]
+    fn placeholder_sqlite_format() {
+        assert_eq!(placeholder(DatabaseBackend::Sqlite, 1), "?");
+        assert_eq!(placeholder(DatabaseBackend::Sqlite, 5), "?");
+    }
+
+    #[test]
+    fn placeholder_mysql_format() {
+        assert_eq!(placeholder(DatabaseBackend::MySql, 1), "?");
+        assert_eq!(placeholder(DatabaseBackend::MySql, 3), "?");
+    }
+
+    // -----------------------------------------------------------------------
+    // find_model tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn find_model_exact_match() {
+        let models = test_models();
+        let result = find_model(&models, "User");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().name, "User");
+    }
+
+    #[test]
+    fn find_model_case_insensitive() {
+        let models = test_models();
+        let result = find_model(&models, "user");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().name, "User");
+    }
+
+    #[test]
+    fn find_model_uppercase() {
+        let models = test_models();
+        let result = find_model(&models, "USER");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().name, "User");
+    }
+
+    #[test]
+    fn find_model_not_found_lists_available() {
+        let models = test_models();
+        let result = find_model(&models, "Comment");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Comment"));
+        assert!(err_msg.contains("User"));
+        assert!(err_msg.contains("Post"));
+    }
+
+    #[test]
+    fn find_model_empty_list() {
+        let models: Vec<ModelDetails> = vec![];
+        let result = find_model(&models, "User");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("User"));
+    }
+
+    // -----------------------------------------------------------------------
+    // validate_column tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn validate_column_known_field() {
+        let meta = test_meta(vec![
+            field("id", "i32", false, true),
+            field("email", "String", false, false),
+        ]);
+        let result = validate_column(&meta, "email");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "email");
+    }
+
+    #[test]
+    fn validate_column_unknown_field_lists_available() {
+        let meta = test_meta(vec![
+            field("id", "i32", false, true),
+            field("email", "String", false, false),
+        ]);
+        let result = validate_column(&meta, "unknown_col");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("unknown_col"));
+        assert!(err_msg.contains("id"));
+        assert!(err_msg.contains("email"));
+    }
+
+    // -----------------------------------------------------------------------
+    // find_field tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn find_field_by_name() {
+        let meta = test_meta(vec![
+            field("id", "i32", false, true),
+            field("email", "String", false, false),
+        ]);
+        let result = find_field(&meta, "email");
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().field_type, "String");
+    }
+
+    #[test]
+    fn find_field_not_found() {
+        let meta = test_meta(vec![field("id", "i32", false, true)]);
+        let result = find_field(&meta, "nonexistent");
+        assert!(result.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // normalize_page tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn normalize_page_none_defaults_to_1() {
+        assert_eq!(normalize_page(None), 1);
+    }
+
+    #[test]
+    fn normalize_page_zero_clamped_to_1() {
+        assert_eq!(normalize_page(Some(0)), 1);
+    }
+
+    #[test]
+    fn normalize_page_valid_value_unchanged() {
+        assert_eq!(normalize_page(Some(5)), 5);
+    }
+
+    #[test]
+    fn normalize_page_large_value_unchanged() {
+        assert_eq!(normalize_page(Some(1000)), 1000);
+    }
+
+    // -----------------------------------------------------------------------
+    // normalize_per_page tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn normalize_per_page_none_defaults_to_25() {
+        assert_eq!(normalize_per_page(None), 25);
+    }
+
+    #[test]
+    fn normalize_per_page_zero_clamped_to_1() {
+        assert_eq!(normalize_per_page(Some(0)), 1);
+    }
+
+    #[test]
+    fn normalize_per_page_over_100_capped() {
+        assert_eq!(normalize_per_page(Some(200)), 100);
+    }
+
+    #[test]
+    fn normalize_per_page_exactly_100() {
+        assert_eq!(normalize_per_page(Some(100)), 100);
+    }
+
+    #[test]
+    fn normalize_per_page_valid_value_unchanged() {
+        assert_eq!(normalize_per_page(Some(50)), 50);
+    }
+
+    // -----------------------------------------------------------------------
+    // find_missing_required_field tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn required_field_missing_non_nullable() {
+        let fields = vec![
+            field("id", "i32", false, true),
+            field("email", "String", false, false),
+            field("name", "String", false, false),
+        ];
+        let data_keys = vec!["email"];
+        let result = find_missing_required_field(&fields, &data_keys);
+        assert_eq!(result, Some("name"));
+    }
+
+    #[test]
+    fn required_field_nullable_can_be_omitted() {
+        let fields = vec![
+            field("id", "i32", false, true),
+            field("email", "String", false, false),
+            field("bio", "Option<String>", true, false),
+        ];
+        let data_keys = vec!["email"];
+        let result = find_missing_required_field(&fields, &data_keys);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn required_field_primary_key_not_required() {
+        let fields = vec![
+            field("id", "i32", false, true),
+            field("email", "String", false, false),
+        ];
+        let data_keys = vec!["email"];
+        let result = find_missing_required_field(&fields, &data_keys);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn required_field_created_at_not_required() {
+        let fields = vec![
+            field("id", "i32", false, true),
+            field("email", "String", false, false),
+            field("created_at", "DateTime", false, false),
+            field("updated_at", "DateTime", false, false),
+        ];
+        let data_keys = vec!["email"];
+        let result = find_missing_required_field(&fields, &data_keys);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn required_field_all_present() {
+        let fields = vec![
+            field("id", "i32", false, true),
+            field("email", "String", false, false),
+            field("name", "String", false, false),
+        ];
+        let data_keys = vec!["email", "name"];
+        let result = find_missing_required_field(&fields, &data_keys);
+        assert!(result.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // Type matching order: i32 vs i64 correctness
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn type_matching_i32_does_not_match_i64_branch() {
+        // "i32" does not contain "i64", so i32 should not go through BigInt path
+        let val = json!(42);
+        let i32_result = json_to_sea_value(&val, "i32");
+        let i64_result = json_to_sea_value(&val, "i64");
+        assert_eq!(i32_result, sea_orm::Value::Int(Some(42)));
+        assert_eq!(i64_result, sea_orm::Value::BigInt(Some(42)));
+    }
+
+    #[test]
+    fn type_matching_option_i32_does_not_match_i64() {
+        // "Option<i32>" does not contain "i64"
+        let val = json!(42);
+        let result = json_to_sea_value(&val, "Option<i32>");
+        assert_eq!(result, sea_orm::Value::Int(Some(42)));
+    }
 }
