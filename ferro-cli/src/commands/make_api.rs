@@ -279,7 +279,9 @@ use crate::requests::{snake_name}_request::{{Create{pascal}Request, Update{pasca
 pub async fn index(req: Request) -> Response {{
     let page: u64 = req.query("page").unwrap_or(1);
     let per_page: u64 = req.query("per_page").unwrap_or(15).min(100);
-    let paginator = {pascal}::find().paginate(&ferro::DB::connection().await, per_page);
+    let db = ferro::DB::connection()
+        .map_err(|e| HttpResponse::json(serde_json::json!({{"error": e.to_string()}})).status(500))?;
+    let paginator = {pascal}::find().paginate(&db, per_page);
     let total = paginator
         .num_items()
         .await
@@ -1211,9 +1213,10 @@ impl ApiKeyProvider for ApiKeyProviderImpl {
     async fn verify_key(&self, raw_key: &str) -> Result<ApiKeyInfo, ()> {
         let prefix = &raw_key[..16.min(raw_key.len())];
 
+        let db = ferro::DB::connection().map_err(|_| ())?;
         let record = ApiKey::find()
             .filter(api_key::Column::Prefix.eq(prefix))
-            .one(&ferro::DB::connection().await)
+            .one(&db)
             .await
             .map_err(|_| ())?
             .ok_or(())?;

@@ -529,9 +529,11 @@ Load related data in the controller before constructing resources:
 ```rust
 #[handler]
 pub async fn show(req: Request, user: user::Model) -> Response {
+    let db = ferro::DB::connection()
+        .map_err(|e| HttpResponse::json(json!({"error": e.to_string()})).status(500))?;
     let posts = Post::find()
         .filter(posts::Column::UserId.eq(user.id))
-        .all(&ferro::DB::connection().await)
+        .all(&db)
         .await
         .map_err(|e| HttpResponse::json(json!({"error": e.to_string()})).status(500))?;
 

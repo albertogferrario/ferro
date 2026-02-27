@@ -1360,7 +1360,9 @@ use crate::requests::{{entity}}_request::{Create{{Entity}}Request, Update{{Entit
 pub async fn index(req: Request) -> Response {
     let page: u64 = req.query("page").unwrap_or(1);
     let per_page: u64 = req.query("per_page").unwrap_or(15).min(100);
-    let paginator = {{Entity}}::find().paginate(&ferro::DB::connection().await, per_page);
+    let db = ferro::DB::connection()
+        .map_err(|e| HttpResponse::json(serde_json::json!({"error": e.to_string()})).status(500))?;
+    let paginator = {{Entity}}::find().paginate(&db, per_page);
     let total = paginator.num_items().await
         .map_err(|e| HttpResponse::json(serde_json::json!({"error": e.to_string()})).status(500))?;
     let items = paginator.fetch_page(page - 1).await
