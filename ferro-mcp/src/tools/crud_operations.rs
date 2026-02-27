@@ -145,9 +145,7 @@ fn placeholder(backend: DatabaseBackend, index: usize) -> String {
 }
 
 /// Extract query result rows into JSON objects.
-fn rows_to_json(
-    rows: &[sea_orm::QueryResult],
-) -> Vec<serde_json::Value> {
+fn rows_to_json(rows: &[sea_orm::QueryResult]) -> Vec<serde_json::Value> {
     if rows.is_empty() {
         return Vec::new();
     }
@@ -476,7 +474,10 @@ pub async fn update(
         return Ok(CrudResult {
             success: false,
             data: None,
-            message: format!("No {} record found with {} = {}", model, meta.primary_key, id),
+            message: format!(
+                "No {} record found with {} = {}",
+                model, meta.primary_key, id
+            ),
         });
     }
 
@@ -519,7 +520,10 @@ pub async fn delete(
         return Ok(CrudResult {
             success: false,
             data: None,
-            message: format!("No {} record found with {} = {}", model, meta.primary_key, id),
+            message: format!(
+                "No {} record found with {} = {}",
+                model, meta.primary_key, id
+            ),
         });
     }
 

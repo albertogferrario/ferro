@@ -235,6 +235,44 @@ pub struct JsonUiGenerateParams {
     pub description: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct CrudCreateParams {
+    /// Model name (e.g., "User", "Post"). Case-insensitive, matches against project models.
+    pub model: String,
+    /// Field values as JSON object (e.g., {"name": "Alice", "email": "alice@example.com"})
+    pub data: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct CrudListParams {
+    /// Model name (e.g., "User", "Post")
+    pub model: String,
+    /// Optional filter conditions as JSON object (e.g., {"status": "active"})
+    pub filters: Option<serde_json::Value>,
+    /// Page number (default: 1)
+    pub page: Option<u64>,
+    /// Results per page (default: 25, max: 100)
+    pub per_page: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct CrudUpdateParams {
+    /// Model name (e.g., "User", "Post")
+    pub model: String,
+    /// Primary key value of the record to update
+    pub id: serde_json::Value,
+    /// Fields to update as JSON object (e.g., {"name": "Bob"})
+    pub data: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct CrudDeleteParams {
+    /// Model name (e.g., "User", "Post")
+    pub model: String,
+    /// Primary key value of the record to delete
+    pub id: serde_json::Value,
+}
+
 #[tool_router(router = tool_router)]
 impl FerroMcpService {
     /// Get application information including framework version, Rust version, models, and installed crates
@@ -1181,6 +1219,93 @@ impl FerroMcpService {
             params.0.description.as_deref(),
         );
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Create a new record for a model
+    #[tool(
+        name = "crud_create",
+        description = "Create a new record for a model.\n\n\
+            **When to use:** Adding data to any model table — users, posts, settings, etc.\n\n\
+            **Returns:** The created record as JSON.\n\n\
+            **Combine with:** `list_models` to see available models and their fields."
+    )]
+    pub async fn crud_create(&self, params: Parameters<CrudCreateParams>) -> String {
+        match tools::crud_operations::create(&self.project_root, &params.0.model, &params.0.data)
+            .await
+        {
+            Ok(result) => {
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
+    }
+
+    /// List records from a model with optional filtering and pagination
+    #[tool(
+        name = "crud_list",
+        description = "List records from a model with optional filtering and pagination.\n\n\
+            **When to use:** Reading data from any model table, searching with filters.\n\n\
+            **Returns:** Array of records with pagination info.\n\n\
+            **Combine with:** `list_models` to see fields for filtering."
+    )]
+    pub async fn crud_list(&self, params: Parameters<CrudListParams>) -> String {
+        match tools::crud_operations::list(
+            &self.project_root,
+            &params.0.model,
+            params.0.filters.as_ref(),
+            params.0.page,
+            params.0.per_page,
+        )
+        .await
+        {
+            Ok(result) => {
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
+    }
+
+    /// Update an existing record by primary key
+    #[tool(
+        name = "crud_update",
+        description = "Update an existing record by primary key.\n\n\
+            **When to use:** Modifying data in any model table.\n\n\
+            **Returns:** The updated record as JSON.\n\n\
+            **Combine with:** `crud_list` to find the record ID first."
+    )]
+    pub async fn crud_update(&self, params: Parameters<CrudUpdateParams>) -> String {
+        match tools::crud_operations::update(
+            &self.project_root,
+            &params.0.model,
+            &params.0.id,
+            &params.0.data,
+        )
+        .await
+        {
+            Ok(result) => {
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
+    }
+
+    /// Delete a record by primary key
+    #[tool(
+        name = "crud_delete",
+        description = "Delete a record by primary key.\n\n\
+            **When to use:** Removing data from any model table.\n\n\
+            **Returns:** Confirmation of deletion.\n\n\
+            **Combine with:** `crud_list` to find the record ID first."
+    )]
+    pub async fn crud_delete(&self, params: Parameters<CrudDeleteParams>) -> String {
+        match tools::crud_operations::delete(&self.project_root, &params.0.model, &params.0.id)
+            .await
+        {
+            Ok(result) => {
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
     }
 }
 
