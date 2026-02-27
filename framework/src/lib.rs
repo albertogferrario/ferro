@@ -33,6 +33,8 @@ pub use api::api_key::{
     generate_api_key, hash_api_key, verify_api_key_hash, ApiKeyInfo, ApiKeyMiddleware,
     ApiKeyProvider, GeneratedApiKey,
 };
+pub use api::openapi::{build_openapi_spec, OpenApiConfig};
+
 pub use app::Application;
 pub use auth::{
     Auth, AuthMiddleware, AuthUser, Authenticatable, GuestMiddleware, OptionalUser, UserProvider,
@@ -49,6 +51,9 @@ pub use database::{
     AutoRouteBinding, Database, DatabaseConfig, DatabaseType, DbConnection, Model, ModelMut,
     RouteBinding, DB,
 };
+// Re-export utoipa and utoipa-redoc for advanced OpenAPI customization
+pub use utoipa;
+pub use utoipa_redoc;
 
 // Re-export commonly used SeaORM traits for convenience
 // This saves users from having to add `use sea_orm::*` imports
