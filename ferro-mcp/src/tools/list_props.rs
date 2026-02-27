@@ -315,7 +315,9 @@ fn rust_to_typescript(rust_type: &str) -> String {
         "i8" | "i16" | "i32" | "i64" | "i128" | "isize" | "u8" | "u16" | "u32" | "u64" | "u128"
         | "usize" | "f32" | "f64" => "number".to_string(),
         "bool" => "boolean".to_string(),
-        "Value" | "serde_json::Value" => "unknown".to_string(),
+        "Value" | "Json" | "serde_json::Value" | "sea_orm::Json" | "sea_orm::JsonValue"
+        | "JsonValue" => "unknown".to_string(),
+        "ValidationErrors" | "ferro::ValidationErrors" => "Record<string, string[]>".to_string(),
         // Custom types pass through
         _ => ty.to_string(),
     }
@@ -378,7 +380,6 @@ fn generate_typescript_interface(
 ) -> String {
     let mut ts = format!("export interface {name} {{\n");
     for field in fields {
-        let optional_marker = if field.optional { "?" } else { "" };
         // Per-field rename takes precedence over rename_all
         let ts_field_name = if let Some(ref rename) = field.serde_rename {
             rename.clone()
@@ -386,8 +387,8 @@ fn generate_typescript_interface(
             apply_serde_rename(&field.name, serde_rename_all)
         };
         ts.push_str(&format!(
-            "  {}{}: {};\n",
-            ts_field_name, optional_marker, field.typescript_type
+            "  {}: {};\n",
+            ts_field_name, field.typescript_type
         ));
     }
     ts.push('}');

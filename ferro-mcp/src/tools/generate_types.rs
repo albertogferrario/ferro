@@ -557,8 +557,9 @@ fn rust_to_typescript(rust_type: &str) -> String {
         "i8" | "i16" | "i32" | "i64" | "i128" | "isize" | "u8" | "u16" | "u32" | "u64" | "u128"
         | "usize" | "f32" | "f64" => "number".to_string(),
         "bool" => "boolean".to_string(),
-        "Value" | "serde_json::Value" => "JsonValue".to_string(),
-        "ValidationErrors" | "ferro::ValidationErrors" => "ValidationErrors".to_string(),
+        "Value" | "Json" | "serde_json::Value" | "sea_orm::Json" | "sea_orm::JsonValue"
+        | "JsonValue" => "unknown".to_string(),
+        "ValidationErrors" | "ferro::ValidationErrors" => "Record<string, string[]>".to_string(),
         // Chrono datetime types serialize to ISO8601 strings
         "DateTime" | "NaiveDateTime" | "NaiveDate" | "NaiveTime" | "DateTimeUtc"
         | "DateTimeLocal" | "Date" | "Time" => "string".to_string(),
@@ -677,8 +678,9 @@ fn rust_type_to_ts_with_mapping(rust_type: &str, name_map: &HashMap<String, Stri
         "i8" | "i16" | "i32" | "i64" | "i128" | "isize" | "u8" | "u16" | "u32" | "u64" | "u128"
         | "usize" | "f32" | "f64" => "number".to_string(),
         "bool" => "boolean".to_string(),
-        "Value" | "serde_json::Value" => "JsonValue".to_string(),
-        "ValidationErrors" | "ferro::ValidationErrors" => "ValidationErrors".to_string(),
+        "Value" | "Json" | "serde_json::Value" | "sea_orm::Json" | "sea_orm::JsonValue"
+        | "JsonValue" => "unknown".to_string(),
+        "ValidationErrors" | "ferro::ValidationErrors" => "Record<string, string[]>".to_string(),
         // Check if it's a known custom type that needs namespacing
         _ => name_map.get(ty).cloned().unwrap_or_else(|| ty.to_string()),
     }
@@ -699,7 +701,6 @@ fn apply_serde_rename(field_name: &str, rename_all: Option<&str>) -> String {
 fn generate_interface(name: &str, fields: &[PropsField], serde_rename_all: Option<&str>) -> String {
     let mut ts = format!("export interface {name} {{\n");
     for field in fields {
-        let optional_marker = if field.optional { "?" } else { "" };
         // Per-field rename takes precedence over rename_all
         let ts_field_name = if let Some(ref rename) = field.serde_rename {
             rename.clone()
@@ -707,8 +708,8 @@ fn generate_interface(name: &str, fields: &[PropsField], serde_rename_all: Optio
             apply_serde_rename(&field.name, serde_rename_all)
         };
         ts.push_str(&format!(
-            "  {}{}: {};\n",
-            ts_field_name, optional_marker, field.typescript_type
+            "  {}: {};\n",
+            ts_field_name, field.typescript_type
         ));
     }
     ts.push('}');
@@ -724,7 +725,6 @@ fn generate_interface_with_mapping(
 ) -> String {
     let mut ts = format!("export interface {name} {{\n");
     for field in fields {
-        let optional_marker = if field.optional { "?" } else { "" };
         // Per-field rename takes precedence over rename_all
         let ts_field_name = if let Some(ref rename) = field.serde_rename {
             rename.clone()
@@ -733,7 +733,7 @@ fn generate_interface_with_mapping(
         };
         // Use namespaced type references
         let ts_type = rust_type_to_ts_with_mapping(&field.rust_type, name_map);
-        ts.push_str(&format!("  {ts_field_name}{optional_marker}: {ts_type};\n"));
+        ts.push_str(&format!("  {ts_field_name}: {ts_type};\n"));
     }
     ts.push('}');
     ts
