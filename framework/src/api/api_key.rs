@@ -144,7 +144,10 @@ pub fn hash_api_key(raw_key: &str) -> String {
 /// Prevents timing attacks by using `subtle::ConstantTimeEq`.
 pub fn verify_api_key_hash(raw_key: &str, stored_hash: &str) -> bool {
     let incoming_hash = hash_api_key(raw_key);
-    incoming_hash.as_bytes().ct_eq(stored_hash.as_bytes()).into()
+    incoming_hash
+        .as_bytes()
+        .ct_eq(stored_hash.as_bytes())
+        .into()
 }
 
 /// Middleware that authenticates requests via API key in the Authorization header.
@@ -311,9 +314,7 @@ mod tests {
     fn generate_api_key_base62_chars_only() {
         let key = generate_api_key("live");
         let random_part = &key.raw_key[8..]; // skip "fe_live_"
-        assert!(random_part
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric()));
+        assert!(random_part.chars().all(|c| c.is_ascii_alphanumeric()));
     }
 
     #[test]
