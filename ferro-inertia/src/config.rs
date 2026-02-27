@@ -22,6 +22,8 @@
 /// ```
 #[derive(Debug, Clone)]
 pub struct InertiaConfig {
+    /// Application name used in the HTML title tag
+    pub app_name: String,
     /// Vite dev server URL (e.g., "http://localhost:5173")
     pub vite_dev_server: String,
     /// Entry point for the frontend (e.g., "src/main.tsx")
@@ -46,7 +48,10 @@ impl Default for InertiaConfig {
             Some("production") | Some("staging")
         );
 
+        let app_name = std::env::var("APP_NAME").unwrap_or_else(|_| "Ferro".to_string());
+
         Self {
+            app_name,
             vite_dev_server,
             entry_point: "src/main.tsx".to_string(),
             version: "1.0".to_string(),
@@ -90,6 +95,12 @@ impl InertiaConfig {
     /// Enable development mode (enables Vite dev server integration).
     pub fn development(mut self) -> Self {
         self.development = true;
+        self
+    }
+
+    /// Set the application name used in the HTML title tag.
+    pub fn app_name(mut self, name: impl Into<String>) -> Self {
+        self.app_name = name.into();
         self
     }
 

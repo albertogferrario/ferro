@@ -407,7 +407,7 @@ impl InertiaResponse {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{}">
-    <title>Inertia App</title>
+    <title>{}</title>
     <script type="module">
         import RefreshRuntime from '{}/@react-refresh'
         RefreshRuntime.injectIntoGlobalHook(window)
@@ -423,6 +423,7 @@ impl InertiaResponse {
 </body>
 </html>"#,
                 csrf,
+                self.config.app_name,
                 self.config.vite_dev_server,
                 self.config.vite_dev_server,
                 self.config.vite_dev_server,
@@ -446,7 +447,7 @@ impl InertiaResponse {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{csrf}">
-    <title>Inertia App</title>
+    <title>{app_name}</title>
     <script type="module" src="{js_src}"></script>
 {css_tags}
 </head>
@@ -454,6 +455,7 @@ impl InertiaResponse {
     <div id="app" data-page="{page_json}"></div>
 </body>
 </html>"#,
+                app_name = self.config.app_name,
                 js_src = assets.js,
             )
         };
