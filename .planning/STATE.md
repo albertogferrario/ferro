@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Phase 76 planned — Default API scaffold for MCP agent data access
+**Current focus:** Phase 76 in progress — Default API scaffold for MCP agent data access
 
 ## Current Position
 
 Phase: 76 (Default API Scaffold)
-Plan: 0 of 4
-Status: Phase 76 planned (4 plans in 3 waves)
-Last activity: 2026-02-27 — Phase 76 plans created
+Plan: 2 of 4
+Status: Plan 02 complete — MCP CRUD tools implemented
+Last activity: 2026-02-27 — Plan 02 executed (4 MCP CRUD tools)
 
 ## Milestone Summary
 
@@ -57,6 +57,8 @@ Archived to PROJECT.md and milestone archive files.
 - DatabaseSessionDriver and SessionStore re-exported from framework root for admin flows
 - Generated TypeScript files are fully self-contained (no shared.ts imports/re-exports) to prevent circular imports
 - parse_shared_types kept for resolve_nested_types filtering (avoids regenerating user-defined types)
+- MCP CRUD tools: column names derived from field names (SeaORM default), Postgres RETURNING / SQLite last_insert_rowid fallback
+- Per-page capped at 100, created_at/updated_at skipped from required-field validation
 
 ### Roadmap Evolution
 
@@ -76,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Phase 76 planned — 4 plans in 3 waves (API key + OpenAPI, MCP CRUD, CLI make:api, Documentation)
+Stopped at: Phase 76 plan 02 complete — MCP CRUD tools (crud_create, crud_list, crud_update, crud_delete)
 Resume file: None
