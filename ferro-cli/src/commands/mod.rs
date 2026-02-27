@@ -14,7 +14,6 @@ pub mod docker_init;
 pub mod generate_routes;
 pub mod generate_types;
 pub mod make_action;
-#[allow(dead_code)]
 pub mod make_api;
 pub mod make_auth;
 pub mod make_controller;

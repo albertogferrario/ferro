@@ -45,9 +45,7 @@ struct ModelVisitor {
 
 impl ModelVisitor {
     fn new() -> Self {
-        Self {
-            models: Vec::new(),
-        }
+        Self { models: Vec::new() }
     }
 
     fn has_model_derive(attrs: &[Attribute]) -> bool {
@@ -165,11 +163,7 @@ fn scan_models(project_root: &Path) -> Vec<(String, ModelInfo)> {
     for entry in WalkDir::new(&models_dir)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| {
-            e.path()
-                .extension()
-                .is_some_and(|ext| ext == "rs")
-        })
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
     {
         let file_stem = entry
             .path()
@@ -260,10 +254,7 @@ fn generate_controller(snake_name: &str, model: &ModelInfo) {
 
     let pascal = &model.name;
     let plural_default = pluralize(snake_name);
-    let plural = model
-        .table_name
-        .as_deref()
-        .unwrap_or(&plural_default);
+    let plural = model.table_name.as_deref().unwrap_or(&plural_default);
 
     // Build set_field calls for store (non-PK, non-auto fields)
     let store_fields = build_store_fields(&model.fields);
@@ -634,11 +625,7 @@ fn to_pascal_case(name: &str) -> String {
 }
 
 fn pluralize(name: &str) -> String {
-    if name.ends_with('s')
-        || name.ends_with('x')
-        || name.ends_with("ch")
-        || name.ends_with("sh")
-    {
+    if name.ends_with('s') || name.ends_with('x') || name.ends_with("ch") || name.ends_with("sh") {
         format!("{name}es")
     } else if name.ends_with('y')
         && !name.ends_with("ay")
@@ -685,10 +672,7 @@ pub fn run(models: Vec<String>, all: bool, yes: bool) {
     let selected = resolve_models(&models, all, &available);
 
     if selected.is_empty() {
-        eprintln!(
-            "{} No matching models found",
-            style("Error:").red().bold()
-        );
+        eprintln!("{} No matching models found", style("Error:").red().bold());
         std::process::exit(1);
     }
 
@@ -719,11 +703,7 @@ pub fn run(models: Vec<String>, all: bool, yes: bool) {
     let mut generated_files: Vec<String> = Vec::new();
 
     for (snake_name, model) in &selected {
-        println!(
-            "  {} {}",
-            style("Model:").bold(),
-            style(&model.name).cyan()
-        );
+        println!("  {} {}", style("Model:").bold(), style(&model.name).cyan());
         generate_controller(snake_name, model);
         generate_resource(snake_name, model);
         generate_request(snake_name, model);
@@ -750,10 +730,7 @@ pub fn run(models: Vec<String>, all: bool, yes: bool) {
     );
     println!("\n  Generated files:");
     for (snake_name, _) in &selected {
-        println!(
-            "    {}  src/api/{snake_name}_api.rs",
-            style("—").dim()
-        );
+        println!("    {}  src/api/{snake_name}_api.rs", style("—").dim());
         println!(
             "    {}  src/resources/{snake_name}_resource.rs",
             style("—").dim()
@@ -763,22 +740,10 @@ pub fn run(models: Vec<String>, all: bool, yes: bool) {
             style("—").dim()
         );
     }
-    println!(
-        "    {}  src/api/mod.rs",
-        style("—").dim()
-    );
-    println!(
-        "    {}  src/api/routes.rs",
-        style("—").dim()
-    );
-    println!(
-        "    {}  src/api/docs.rs",
-        style("—").dim()
-    );
-    println!(
-        "    {}  src/models/api_key.rs",
-        style("—").dim()
-    );
+    println!("    {}  src/api/mod.rs", style("—").dim());
+    println!("    {}  src/api/routes.rs", style("—").dim());
+    println!("    {}  src/api/docs.rs", style("—").dim());
+    println!("    {}  src/models/api_key.rs", style("—").dim());
     println!(
         "    {}  src/providers/api_key_provider.rs",
         style("—").dim()
@@ -831,10 +796,7 @@ fn generate_api_mod(models: &[(String, ModelInfo)]) {
         if !additions.is_empty() {
             let updated = format!("{existing}{additions}");
             fs::write(&mod_path, updated).expect("Failed to update src/api/mod.rs");
-            println!(
-                "   {} Updated src/api/mod.rs",
-                style("✓").green()
-            );
+            println!("   {} Updated src/api/mod.rs", style("✓").green());
         } else {
             println!(
                 "   {} src/api/mod.rs (already up-to-date)",
@@ -849,10 +811,7 @@ fn generate_api_mod(models: &[(String, ModelInfo)]) {
         content.push_str("pub mod routes;\n");
         content.push_str("pub mod docs;\n");
         fs::write(&mod_path, content).expect("Failed to write src/api/mod.rs");
-        println!(
-            "   {} Created src/api/mod.rs",
-            style("✓").green()
-        );
+        println!("   {} Created src/api/mod.rs", style("✓").green());
     }
 }
 
@@ -870,10 +829,7 @@ fn generate_api_routes(models: &[(String, ModelInfo)]) {
     let mut route_blocks = String::new();
     for (snake_name, model) in models {
         let plural_default = pluralize(snake_name);
-        let plural = model
-            .table_name
-            .as_deref()
-            .unwrap_or(&plural_default);
+        let plural = model.table_name.as_deref().unwrap_or(&plural_default);
         let pk = model
             .fields
             .iter()
@@ -912,10 +868,7 @@ pub fn api_routes() -> GroupBuilder {{
     );
 
     fs::write(file_path, content).expect("Failed to write src/api/routes.rs");
-    println!(
-        "   {} Created src/api/routes.rs",
-        style("✓").green()
-    );
+    println!("   {} Created src/api/routes.rs", style("✓").green());
 }
 
 /// Generate src/api/docs.rs with OpenAPI documentation handlers.
@@ -970,10 +923,7 @@ pub async fn openapi_json() -> Response {
 "#;
 
     fs::write(file_path, content).expect("Failed to write src/api/docs.rs");
-    println!(
-        "   {} Created src/api/docs.rs",
-        style("✓").green()
-    );
+    println!("   {} Created src/api/docs.rs", style("✓").green());
 }
 
 /// Generate the API keys migration.
@@ -1124,10 +1074,7 @@ fn update_migrations_mod(migration_name: &str) {
     let mut result = lines.join("\n");
 
     if result.contains("vec![]") {
-        result = result.replace(
-            "vec![]",
-            &format!("vec![\n{migrator_addition}\n        ]"),
-        );
+        result = result.replace("vec![]", &format!("vec![\n{migrator_addition}\n        ]"));
     } else if result.contains("vec![") {
         let mut final_result = String::new();
         let mut in_migrations = false;
@@ -1224,10 +1171,7 @@ impl Model {
         }
     }
 
-    println!(
-        "   {} Created src/models/api_key.rs",
-        style("✓").green()
-    );
+    println!("   {} Created src/models/api_key.rs", style("✓").green());
 }
 
 /// Generate src/providers/api_key_provider.rs.

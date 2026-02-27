@@ -79,6 +79,18 @@ enum Commands {
         /// Name of the action (e.g., AddTodo, CreateUser)
         name: String,
     },
+    /// Scaffold a complete REST API layer for existing models
+    #[command(name = "make:api")]
+    MakeApi {
+        /// Model names to generate API for (e.g., User Post)
+        models: Vec<String>,
+        /// Generate API for all detected models
+        #[arg(long)]
+        all: bool,
+        /// Skip confirmation prompts
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
     /// Scaffold a complete authentication system (migration, controller, routes)
     #[command(name = "make:auth")]
     MakeAuth {
@@ -366,6 +378,9 @@ fn main() {
         }
         Commands::MakeAction { name } => {
             commands::make_action::run(name);
+        }
+        Commands::MakeApi { models, all, yes } => {
+            commands::make_api::run(models, all, yes);
         }
         Commands::MakeAuth { force } => {
             commands::make_auth::run(force);
