@@ -5,6 +5,7 @@ pub mod browser_logs;
 pub mod cache_inspect;
 pub mod code_templates;
 pub mod create_project;
+pub mod crud_operations;
 pub mod database_query;
 pub mod database_schema;
 pub mod dependency_graph;
