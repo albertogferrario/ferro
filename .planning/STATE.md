@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Type Generator Fix — Phase 75 planning
+**Current focus:** Phase 75 complete — generate-types circular import fixed
 
 ## Current Position
 
 Phase: 75 (Fix generate-types circular import)
 Plan: 1 of 1
-Status: Phase 75 planned — 1 plan in 1 wave
-Last activity: 2026-02-27 — Phase 75 plan 01 created
+Status: Phase 75 complete
+Last activity: 2026-02-27 — Phase 75 plan 01 executed
 
 ## Milestone Summary
 
@@ -34,6 +34,7 @@ Last activity: 2026-02-27 — Phase 75 plan 01 created
 | v7.0 Resend Integration | 68 | 3 | Complete | 2026-02-25 |
 | v7.1 Static File Serving | 69 | 1 | Complete | 2026-02-25 |
 | Security Hardening | 72-74 | 5 | Complete | 2026-02-26 |
+| Type Generator Fix | 75 | 1 | Complete | 2026-02-27 |
 
 ## Accumulated Context
 
@@ -54,17 +55,14 @@ Archived to PROJECT.md and milestone archive files.
 - Cookie max_age uses max(idle, absolute) so cookie outlives both server-side checks
 - DatabaseSessionDriver with zero-duration lifetimes in logout_other_devices (destroy_for_user never reads them)
 - DatabaseSessionDriver and SessionStore re-exported from framework root for admin flows
+- Generated TypeScript files are fully self-contained (no shared.ts imports/re-exports) to prevent circular imports
+- parse_shared_types kept for resolve_nested_types filtering (avoids regenerating user-defined types)
 
 ### Roadmap Evolution
 
 - All planned milestones v1.0–v7.1 complete (15 milestones, 150 plans shipped)
 - Security hardening phases 72-74 added to roadmap
-- Phase 75 added: Fix generate-types circular import (JsonValue/ValidationErrors imported from shared.ts creates TS2440/TS2484 in strict mode)
-- Phase 72 plan 01 complete: binary-safe HttpResponse with bytes()/download() constructors
-- Phase 73 plan 01 complete: SecurityHeaders middleware with OWASP defaults and builder API
-- Phase 73 plan 02 complete: SecurityHeaders in CLI bootstrap template and middleware documentation
-- Phase 74 plan 01 complete: dual timeout session enforcement with created_at tracking and destroy_for_user
-- Phase 74 plan 02 complete: Auth::logout_other_devices(), invalidate_all_for_user(), and dual-timeout documentation
+- Phase 75 complete: generate-types output made self-contained (no shared.ts imports/re-exports)
 
 ### Pending Todos
 
@@ -76,6 +74,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-26
-Stopped at: Phase 74 complete — all session absolute expiry features shipped (dual timeout, invalidation API, docs)
+Last session: 2026-02-27
+Stopped at: Phase 75 complete — generate-types circular import fixed, inertia-props.ts now self-contained
 Resume file: None
