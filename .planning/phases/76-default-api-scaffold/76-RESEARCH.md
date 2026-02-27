@@ -1,0 +1,514 @@
+# Phase 76: Default API Scaffold - Research
+
+**Researched:** 2026-02-27
+**Domain:** Auto-generated REST API with OpenAPI docs and API key auth for Rust/Ferro
+**Confidence:** HIGH
+
+<research_summary>
+## Summary
+
+Researched the ecosystem for auto-generating RESTful CRUD endpoints from SeaORM models in Ferro, automatic OpenAPI documentation generation, and API key authentication middleware.
+
+Ferro already has strong foundations: `FerroModel` derive with CRUD methods, `ApiResource` derive for JSON serialization, `#[request]` macro for validation, route registration with introspection, and middleware system with rate limiting. Phase 76 builds on all of these.
+
+The key ecosystem finding: **utoipa** (v5.4) is the clear winner for OpenAPI generation. It's framework-agnostic and provides a full programmatic builder API — Ferro can auto-generate specs without requiring users to annotate every handler. For API key auth, the industry pattern (Stripe, GitHub, OpenAI) is SHA-256 hashing with prefix-based lookup, which integrates naturally with Ferro's existing middleware and rate limiter.
+
+**Primary recommendation:** Build a `ferro make:api` CLI command that scaffolds CRUD controllers, resources, request types, and routes for all models. Add a `ferro-openapi` module using utoipa's builder API to auto-generate specs from route metadata. Add `ApiKeyMiddleware` for machine-to-machine auth.
+</research_summary>
+
+<standard_stack>
+## Standard Stack
+
+### Core
+| Library | Version | Purpose | Why Standard |
+|---------|---------|---------|--------------|
+| utoipa | 5.4 | OpenAPI spec generation | Framework-agnostic, full builder API, dominant in Rust ecosystem |
+| utoipa-redoc | latest | API docs UI | Zero-config HTML generation, completely framework-independent |
+| sha2 | 0.10 | API key hashing | Standard SHA-256 for high-entropy key verification |
+| rand | 0.9 | API key generation | Cryptographic random for key material |
+
+### Supporting
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| utoipa-swagger-ui | 9.0 | Interactive API docs | If interactive "try it" UI desired beyond ReDoc |
+| subtle | 2.5 | Constant-time comparison | API key verification to prevent timing attacks |
+| base62 | - | Key encoding | URL-safe key encoding (no special chars) |
+
+### Alternatives Considered
+| Instead of | Could Use | Tradeoff |
+|------------|-----------|----------|
+| utoipa | aide | aide is axum-specific, not usable for custom frameworks |
+| utoipa | paperclip | WIP, actix-focused, OpenAPI v2 only |
+| utoipa-redoc | utoipa-swagger-ui | Swagger UI needs asset serving; ReDoc is a single HTML string |
+| SHA-256 | bcrypt | bcrypt is too slow for per-request verification of high-entropy keys |
+
+### What Ferro Already Has (No New Dependencies Needed)
+| Capability | Existing Component |
+|------------|-------------------|
+| CRUD model methods | `#[derive(FerroModel)]` — `all()`, `find_by_pk()`, `create()`, `update()`, `delete()` |
+| JSON serialization | `#[derive(ApiResource)]` — `to_resource()`, `to_response()`, `collection()` |
+| Request validation | `#[request]` macro — auto-validation with 422 errors |
+| Route registration | `get!()`, `post!()`, `put!()`, `delete!()` with `group!()` |
+| Middleware | `Middleware` trait with `handle(request, next)` |
+| Rate limiting | `RateLimiter::define()` with `Limit::by()` for per-key limits |
+| Resource collections | `ResourceCollection` with pagination (`PaginationMeta`) |
+| MCP introspection | 30+ tools including `list_routes`, `list_models`, `database_schema` |
+
+**Installation (new deps only):**
+```toml
+# framework/Cargo.toml
+utoipa = { version = "5.4", default-features = false }
+utoipa-redoc = "..."
+sha2 = "0.10"
+# rand already a dependency
+```
+</standard_stack>
+
+<architecture_patterns>
+## Architecture Patterns
+
+### Recommended Architecture
+
+```
+framework/src/
+├── api/                      # NEW: Auto-API scaffold system
+│   ├── mod.rs                # Public API
+│   ├── api_key.rs            # ApiKeyMiddleware + key generation
+│   └── openapi.rs            # OpenAPI spec builder from route metadata
+├── http/resources/           # EXISTING: Resource system
+│   ├── resource.rs           # Resource trait (already exists)
+│   └── resource_collection.rs # Collections with pagination (already exists)
+├── middleware/               # EXISTING: Middleware system
+│   └── ...                   # ApiKeyMiddleware registered here
+└── routing/                  # EXISTING: Route system
+    └── ...                   # Route metadata used for OpenAPI generation
+
+ferro-cli/src/commands/
+├── make_api.rs               # NEW: Generate full REST API scaffold
+└── ...
+```
+
+### Pattern 1: Auto-Generated CRUD Controller
+**What:** CLI generates a complete REST controller per model with standard CRUD operations
+**When to use:** Any model that needs REST API access
+
+```rust
+// Generated by `ferro make:api` for User model
+// src/api/user_api.rs
+
+#[handler]
+pub async fn index(req: Request) -> Response {
+    let page = req.query("page").unwrap_or(1);
+    let per_page = req.query("per_page").unwrap_or(15);
+    let (users, total) = User::paginate(page, per_page).await?;
+    let resources: Vec<UserResource> = users.into_iter().map(Into::into).collect();
+    let meta = PaginationMeta::new(page, per_page, total);
+    Ok(ResourceCollection::paginated(resources, meta).to_response(&req))
+}
+
+#[handler]
+pub async fn show(user: user::Model) -> Response {
+    Ok(UserResource::from(user).to_wrapped_response(&req))
+}
+
+#[handler]
+pub async fn store(form: CreateUserRequest) -> Response {
+    let user = User::create()
+        .set_name(form.name)
+        .set_email(form.email)
+        .insert().await?;
+    Ok(UserResource::from(user).to_wrapped_response(&req).status(201))
+}
+
+#[handler]
+pub async fn update(user: user::Model, form: UpdateUserRequest) -> Response {
+    let updated = user.update()
+        .set_name(form.name)
+        .set_email(form.email)
+        .save().await?;
+    Ok(UserResource::from(updated).to_wrapped_response(&req))
+}
+
+#[handler]
+pub async fn destroy(user: user::Model) -> Response {
+    user.delete().await?;
+    Ok(HttpResponse::json(json!({"message": "Deleted"})).status(204))
+}
+```
+
+### Pattern 2: OpenAPI Spec from Route Metadata (Programmatic)
+**What:** Build OpenAPI spec at app startup using utoipa's builder API, no user annotations needed
+**When to use:** Always — the framework generates this automatically
+
+```rust
+use utoipa::openapi::{OpenApiBuilder, InfoBuilder, PathsBuilder, PathItemBuilder};
+use utoipa::openapi::path::OperationBuilder;
+
+pub fn build_openapi_spec(routes: &[RouteInfo], models: &[ModelMeta]) -> utoipa::openapi::OpenApi {
+    let mut paths = PathsBuilder::new();
+
+    for route in routes.iter().filter(|r| r.path.starts_with("/api/")) {
+        let operation = OperationBuilder::new()
+            .operation_id(Some(&route.name.unwrap_or_default()))
+            .tag(extract_tag(&route.path))
+            .summary(Some(&auto_summary(&route.method, &route.path)))
+            // ... build responses, params from route metadata
+            .build();
+
+        paths = paths.path(&route.path, PathItemBuilder::new()
+            .operation(parse_method(&route.method), operation)
+            .build());
+    }
+
+    OpenApiBuilder::new()
+        .info(InfoBuilder::new()
+            .title("API Documentation")
+            .version("1.0.0")
+            .build())
+        .paths(paths.build())
+        .build()
+}
+```
+
+### Pattern 3: API Key Middleware
+**What:** Middleware that authenticates requests via API key in Authorization header
+**When to use:** All `/api/` routes
+
+```rust
+pub struct ApiKeyMiddleware {
+    required_scopes: Vec<String>,
+}
+
+impl ApiKeyMiddleware {
+    pub fn new() -> Self { Self { required_scopes: vec![] } }
+    pub fn scopes(scopes: &[&str]) -> Self {
+        Self { required_scopes: scopes.iter().map(|s| s.to_string()).collect() }
+    }
+}
+
+#[async_trait]
+impl Middleware for ApiKeyMiddleware {
+    async fn handle(&self, request: Request, next: Next) -> Response {
+        let raw_key = extract_api_key(&request)?;
+        let record = lookup_and_verify(raw_key).await?;
+        check_scopes(&record, &self.required_scopes)?;
+        // Attach to request for downstream use
+        next(request).await
+    }
+}
+```
+
+### Pattern 4: API Route Group
+**What:** All auto-generated API routes grouped under `/api/v1/` with API key middleware
+
+```rust
+// Generated route registration
+group!("/api/v1")
+    .middleware(ApiKeyMiddleware::new())
+    .routes([
+        get!("/users", user_api::index).name("api.users.index"),
+        post!("/users", user_api::store).name("api.users.store"),
+        get!("/users/:id", user_api::show).name("api.users.show"),
+        put!("/users/:id", user_api::update).name("api.users.update"),
+        delete!("/users/:id", user_api::destroy).name("api.users.destroy"),
+    ]);
+```
+
+### Anti-Patterns to Avoid
+- **Hand-rolling OpenAPI JSON:** Use utoipa's builder API — manual JSON is brittle and drifts from code
+- **Per-handler OpenAPI annotations:** For auto-generated CRUD, build the spec programmatically from route metadata
+- **Bcrypt for API keys:** SHA-256 is correct for high-entropy keys; bcrypt creates per-request bottleneck
+- **Storing raw API keys:** Always hash; show the raw key exactly once at creation
+- **Global API routes without versioning:** Always prefix with `/api/v1/` for future compatibility
+</architecture_patterns>
+
+<dont_hand_roll>
+## Don't Hand-Roll
+
+| Problem | Don't Build | Use Instead | Why |
+|---------|-------------|-------------|-----|
+| OpenAPI spec format | Custom JSON builder | utoipa `OpenApiBuilder` | OpenAPI spec is complex (paths, schemas, refs, security schemes); utoipa handles all edge cases |
+| API docs UI | Custom HTML docs page | utoipa-redoc `Redoc::to_html()` | ReDoc renders beautiful, searchable docs from OpenAPI JSON; one function call |
+| Schema generation | Manual JSON schema per model | utoipa `ObjectBuilder` or `ToSchema` derive | Type mapping (Rust→JSON Schema) has many edge cases (Option→nullable, Vec→array, DateTime→string) |
+| API key hashing | Custom hash function | `sha2::Sha256` | Standard, audited, correct for high-entropy key material |
+| Constant-time compare | Manual byte comparison | `subtle::ConstantTimeEq` | Timing attacks are real; subtle is the standard crate |
+| CRUD handler logic | Unique per model | Template-based generation | All CRUD follows the same pattern; generate from model metadata |
+
+**Key insight:** Ferro already has 90% of the building blocks (FerroModel, ApiResource, #[request], routing, middleware, rate limiting). Phase 76 is about wiring these together with a CLI command and adding OpenAPI + API key as the two genuinely new capabilities.
+</dont_hand_roll>
+
+<common_pitfalls>
+## Common Pitfalls
+
+### Pitfall 1: OpenAPI Schema Name Collisions
+**What goes wrong:** SeaORM generates `Model` structs with identical names across entities — `user::Model`, `post::Model` all appear as "Model" in OpenAPI
+**Why it happens:** Rust module system disambiguates, but OpenAPI schemas are flat
+**How to avoid:** Use `#[schema(as = UserModel)]` or programmatically set unique schema names when building with `ObjectBuilder`
+**Warning signs:** OpenAPI validator errors about duplicate schema names
+
+### Pitfall 2: API Key Prefix Too Short
+**What goes wrong:** Multiple keys share same prefix, prefix lookup returns many rows
+**Why it happens:** Using only 4-5 chars of prefix for lookup
+**How to avoid:** Store full format prefix (`fe_live_` + first 8 chars of random part = 16+ chars for unique identification). The prefix column stores enough to narrow to 1 row.
+**Warning signs:** Slow key verification under load
+
+### Pitfall 3: Forgetting Rate Limiting on API Routes
+**What goes wrong:** API keys with no rate limits allow unlimited requests, enabling abuse
+**Why it happens:** API key middleware handles auth but rate limiting is separate
+**How to avoid:** Apply both `ApiKeyMiddleware` and `RateLimiter` to the API route group. Ferro already has `Throttle` middleware — just apply it.
+**Warning signs:** Unexpected traffic spikes, resource exhaustion
+
+### Pitfall 4: OpenAPI Spec Drift
+**What goes wrong:** OpenAPI docs don't match actual API behavior
+**Why it happens:** Manually maintaining OpenAPI spec separate from code
+**How to avoid:** Generate spec at startup from route registry + model metadata. Never hand-write OpenAPI JSON. The spec is always derived from the code.
+**Warning signs:** API consumers report docs don't match responses
+
+### Pitfall 5: No Pagination by Default
+**What goes wrong:** `GET /api/v1/users` returns all 100,000 users
+**Why it happens:** Index endpoint doesn't enforce pagination
+**How to avoid:** Always paginate collection endpoints. Default to page=1, per_page=15. Ferro's `ResourceCollection::paginated()` already handles this.
+**Warning signs:** Slow API responses, memory spikes on large tables
+
+### Pitfall 6: Showing Raw API Key After Creation
+**What goes wrong:** Key shown in dashboard, stored in logs, or retrievable via API
+**Why it happens:** Treating API keys like passwords you can "view"
+**How to avoid:** Show raw key exactly once at creation. Store only SHA-256 hash. Make it clear this is the only time the key will be visible.
+**Warning signs:** Keys appearing in logs, API responses, or debug output
+</common_pitfalls>
+
+<code_examples>
+## Code Examples
+
+### API Key Generation (Rust)
+```rust
+// Source: Industry pattern (Stripe/GitHub format) + sha2 crate
+use sha2::{Sha256, Digest};
+use rand::Rng;
+
+const BASE62: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+pub struct GeneratedKey {
+    pub raw_key: String,      // Show once, then discard
+    pub prefix: String,       // Store in DB (unhashed, for lookup)
+    pub hashed_key: String,   // Store in DB (SHA-256 hex)
+}
+
+pub fn generate_api_key(environment: &str) -> GeneratedKey {
+    let prefix_str = format!("fe_{}_", environment); // "fe_live_" or "fe_test_"
+    let mut rng = rand::rng();
+    let random: String = (0..43)
+        .map(|_| BASE62[rng.random_range(0..62)] as char)
+        .collect();
+
+    let raw_key = format!("{prefix_str}{random}");
+    let lookup_prefix = raw_key[..16].to_string(); // enough to uniquely identify
+
+    let mut hasher = Sha256::new();
+    hasher.update(raw_key.as_bytes());
+    let hashed = format!("{:x}", hasher.finalize());
+
+    GeneratedKey { raw_key, prefix: lookup_prefix, hashed_key: hashed }
+}
+```
+
+### API Key Verification
+```rust
+// Source: Industry pattern + subtle crate for constant-time comparison
+use sha2::{Sha256, Digest};
+use subtle::ConstantTimeEq;
+
+pub async fn verify_api_key(raw_key: &str) -> Result<ApiKeyRecord, HttpResponse> {
+    let prefix = &raw_key[..16.min(raw_key.len())];
+
+    let record = ApiKey::find()
+        .filter(api_key::Column::Prefix.eq(prefix))
+        .filter(api_key::Column::RevokedAt.is_null())
+        .one(&db())
+        .await
+        .map_err(|_| HttpResponse::json(json!({"error": "Internal error"})).status(500))?
+        .ok_or_else(|| HttpResponse::json(json!({"error": "Invalid API key"})).status(401))?;
+
+    // Check expiration
+    if let Some(expires_at) = record.expires_at {
+        if expires_at < chrono::Utc::now() {
+            return Err(HttpResponse::json(json!({"error": "API key expired"})).status(401));
+        }
+    }
+
+    // Constant-time hash comparison
+    let mut hasher = Sha256::new();
+    hasher.update(raw_key.as_bytes());
+    let incoming_hash = format!("{:x}", hasher.finalize());
+
+    if incoming_hash.as_bytes().ct_eq(record.hashed_key.as_bytes()).into() {
+        Ok(record)
+    } else {
+        Err(HttpResponse::json(json!({"error": "Invalid API key"})).status(401))
+    }
+}
+```
+
+### OpenAPI Spec Generation with utoipa Builder
+```rust
+// Source: utoipa docs — programmatic builder API
+use utoipa::openapi::{
+    OpenApiBuilder, InfoBuilder, PathsBuilder, PathItemBuilder,
+    path::{OperationBuilder, HttpMethod},
+    response::ResponseBuilder,
+    content::ContentBuilder,
+    schema::ObjectBuilder,
+    ComponentsBuilder,
+    security::{SecurityScheme, ApiKey, ApiKeyValue},
+};
+
+pub fn build_spec(app_name: &str, routes: &[RouteInfo]) -> utoipa::openapi::OpenApi {
+    let mut paths = PathsBuilder::new();
+    let mut components = ComponentsBuilder::new();
+
+    // Add security scheme for API keys
+    components = components.security_scheme(
+        "api_key",
+        SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("Authorization"))),
+    );
+
+    for route in routes.iter().filter(|r| r.path.starts_with("/api/")) {
+        let tag = route.path.split('/').nth(3).unwrap_or("default");
+        let op = OperationBuilder::new()
+            .tag(tag)
+            .summary(Some(auto_summary(&route.method, &route.path)))
+            .build();
+
+        let method = match route.method.as_str() {
+            "GET" => HttpMethod::Get,
+            "POST" => HttpMethod::Post,
+            "PUT" => HttpMethod::Put,
+            "DELETE" => HttpMethod::Delete,
+            _ => HttpMethod::Get,
+        };
+
+        paths = paths.path(&route.path,
+            PathItemBuilder::new().operation(method, op).build());
+    }
+
+    OpenApiBuilder::new()
+        .info(InfoBuilder::new().title(app_name).version("1.0.0").build())
+        .paths(paths.build())
+        .components(Some(components.build()))
+        .build()
+}
+```
+
+### Serving OpenAPI Docs (ReDoc)
+```rust
+// Source: utoipa-redoc docs — single HTML string, no asset serving
+use utoipa_redoc::Redoc;
+
+#[handler]
+pub async fn api_docs() -> Response {
+    let spec = get_openapi_spec(); // cached at startup
+    let html = Redoc::new(spec).to_html();
+    Ok(HttpResponse::html(html))
+}
+
+#[handler]
+pub async fn openapi_json() -> Response {
+    let spec = get_openapi_spec();
+    Ok(HttpResponse::json_raw(spec.to_json().unwrap()))
+}
+```
+</code_examples>
+
+<sota_updates>
+## State of the Art (2025-2026)
+
+| Old Approach | Current Approach | When Changed | Impact |
+|--------------|------------------|--------------|--------|
+| paperclip for OpenAPI | utoipa 5.x | 2024 | utoipa is dominant, paperclip effectively abandoned |
+| Manual OpenAPI annotations | Programmatic builder API | utoipa 5.0+ | Frameworks can auto-generate specs without user annotations |
+| bcrypt for API keys | SHA-256 for high-entropy keys | Industry consensus | bcrypt creates bottleneck on every API request |
+| Single API key per user | Multi-key with scopes | Industry standard | Stripe/GitHub pattern: named keys with granular permissions |
+| Swagger UI only | ReDoc as lightweight alternative | 2024+ | ReDoc is single HTML string, no asset serving needed |
+| API keys in query params | Authorization: Bearer header | OWASP recommendation | Query params leak in logs, referer headers, browser history |
+
+**New tools/patterns to consider:**
+- **utoipa programmatic builders**: Build entire OpenAPI specs from framework metadata without macros
+- **utoipa-redoc**: Generate complete docs UI as a single HTML string — zero framework integration needed
+- **Prefix-based key lookup**: Store unhashed prefix for O(1) database lookup instead of scanning all keys
+
+**Deprecated/outdated:**
+- **paperclip**: Effectively unmaintained, WIP status, actix-only
+- **aide**: Axum-specific, not usable for custom frameworks
+- **bcrypt for API keys**: Only appropriate for low-entropy passwords, not high-entropy random keys
+</sota_updates>
+
+<open_questions>
+## Open Questions
+
+1. **MCP Integration Depth**
+   - What we know: ferro-mcp already has introspection tools for routes, models, schema
+   - What's unclear: Should MCP tools call the REST API directly (HTTP), or call Ferro model methods in-process?
+   - Recommendation: In-process calls are simpler and faster; HTTP adds network overhead for same-process communication. But HTTP means MCP can work with any Ferro app remotely. Decide during planning.
+
+2. **API Versioning Strategy**
+   - What we know: `/api/v1/` prefix is standard
+   - What's unclear: How to handle breaking changes when models evolve
+   - Recommendation: Start with v1, defer versioning strategy. Most apps never need v2. URL-based versioning (`/api/v1/`, `/api/v2/`) is simplest when needed.
+
+3. **OpenAPI Spec Caching**
+   - What we know: Spec should be generated at startup, not per-request
+   - What's unclear: Should it regenerate when routes change (hot reload)?
+   - Recommendation: Generate once at startup, store in `OnceCell`. In dev mode, regenerate on each request (acceptable perf cost for DX).
+
+4. **Scope Granularity**
+   - What we know: Coarse-grained scopes (`read`, `write`, `admin`) are simpler
+   - What's unclear: Whether per-resource scopes (`users:read`, `posts:write`) are needed for MCP use case
+   - Recommendation: Start with `read`, `write`, `*`. Add per-resource scopes only if MCP agents need them.
+</open_questions>
+
+<sources>
+## Sources
+
+### Primary (HIGH confidence)
+- utoipa 5.4 docs (docs.rs/utoipa) — builder API, schema generation, framework-agnostic design
+- utoipa-redoc docs — HTML generation for API docs
+- utoipa-swagger-ui docs — `serve` function for custom frameworks
+- Ferro codebase analysis — existing patterns for handlers, models, resources, middleware, routing, MCP tools
+- sha2 crate — standard SHA-256 implementation
+
+### Secondary (MEDIUM confidence)
+- Stripe API key documentation — key format, prefix pattern, rotation strategy
+- GitHub API key documentation — secret scanning, prefix conventions
+- Google Cloud API key best practices — storage, rotation, revocation
+- OWASP API Security guidelines — header-based auth, avoiding query params
+- Multiple industry articles on API key design (freeCodeCamp, DEV Community, Zuplo)
+
+### Tertiary (LOW confidence - needs validation)
+- utoipa SeaORM integration specifics — need to verify `ToSchema` derive works alongside `DeriveEntityModel`
+- `subtle` crate constant-time comparison — standard recommendation but verify it integrates with SHA-256 hex output
+</sources>
+
+<metadata>
+## Metadata
+
+**Research scope:**
+- Core technology: Ferro framework auto-API generation
+- Ecosystem: utoipa for OpenAPI, sha2/rand for API keys
+- Patterns: Auto-CRUD generation, programmatic OpenAPI, API key middleware
+- Pitfalls: Schema collisions, key storage, rate limiting, pagination defaults
+
+**Confidence breakdown:**
+- Standard stack: HIGH — utoipa is clearly dominant, SHA-256 is industry standard
+- Architecture: HIGH — builds on existing Ferro patterns verified in codebase
+- Pitfalls: HIGH — well-documented across multiple authoritative sources
+- Code examples: HIGH — from official crate docs and industry patterns
+
+**Research date:** 2026-02-27
+**Valid until:** 2026-03-27 (30 days — stable ecosystem)
+</metadata>
+
+---
+
+*Phase: 76-default-api-scaffold*
+*Research completed: 2026-02-27*
+*Ready for planning: yes*
