@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Phase 76 in progress — Default API scaffold for MCP agent data access
+**Current focus:** Phase 76 complete — Default API scaffold for MCP agent data access
 
 ## Current Position
 
 Phase: 76 (Default API Scaffold)
-Plan: 3 of 4 (plans 01, 02, and 03 complete)
-Status: Plans 01 + 02 + 03 complete — API key, OpenAPI, MCP CRUD tools, CLI make:api command
-Last activity: 2026-02-27 — Plan 03 executed (ferro make:api CLI command)
+Plan: 4 of 4 (all plans complete)
+Status: Phase 76 complete — API key, OpenAPI, MCP CRUD tools, CLI make:api, documentation
+Last activity: 2026-02-27 — Plan 04 executed (documentation and MCP code templates)
 
 ## Milestone Summary
 
@@ -35,6 +35,7 @@ Last activity: 2026-02-27 — Plan 03 executed (ferro make:api CLI command)
 | v7.1 Static File Serving | 69 | 1 | Complete | 2026-02-25 |
 | Security Hardening | 72-74 | 5 | Complete | 2026-02-26 |
 | Type Generator Fix | 75 | 1 | Complete | 2026-02-27 |
+| Default API Scaffold | 76 | 4 | Complete | 2026-02-27 |
 
 ## Accumulated Context
 
@@ -73,7 +74,7 @@ Archived to PROJECT.md and milestone archive files.
 - All planned milestones v1.0–v7.1 complete (15 milestones, 150 plans shipped)
 - Security hardening phases 72-74 added to roadmap
 - Phase 75 complete: generate-types output made self-contained (no shared.ts imports/re-exports)
-- Phase 76 added: Default API scaffold for MCP agent data access
+- Phase 76 complete: Default API scaffold with API key auth, OpenAPI, MCP CRUD, CLI make:api, and documentation
 
 ### Pending Todos
 
@@ -86,5 +87,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Phase 76 plans 01+02+03 complete — API key + OpenAPI foundation, MCP CRUD tools, CLI make:api command
+Stopped at: Phase 76 complete — all 4 plans shipped (API key, OpenAPI, MCP CRUD, CLI make:api, documentation)
 Resume file: None

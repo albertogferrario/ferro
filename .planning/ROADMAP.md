@@ -20,44 +20,8 @@
 - 🔧 **v7.2 CI Stability** — Phase 70
 - 🔧 **v7.3 Vite Manifest** — Phase 71
 - ✅ **v7.4 Security Hardening** — Phases 72-74 (shipped 2026-02-26)
-- 🔧 **v7.5 Type Generator Fix** — Phase 75
-
----
-
-## Active Milestone
-
-### v7.5 Inertia Template Fixes (Phase 75)
-
-**Milestone Goal:** Fix two bugs in Ferro's Inertia scaffolding discovered during mkmenu production deployment.
-
-| Phase | Plans | Status | Completed |
-|-------|-------|--------|-----------|
-| 75. Inertia Template Fixes | 0 | Pending | - |
-
-**Bug 1 — generate-types circular import:**
-`ferro generate-types` emits:
-```ts
-import type { JsonValue, ValidationErrors } from './shared';
-export type { JsonValue, ValidationErrors };
-```
-Since `shared.ts` re-exports from `inertia-props.ts`, this creates TS2440/TS2484 errors.
-
-**Fix:** Generator should define `JsonValue` and `ValidationErrors` inline in the generated file instead of importing from `shared.ts`. The generated file must be self-contained.
-
-**Bug 2 — import.meta.glob includes test files:**
-CLI template `main.tsx.tpl` uses:
-```ts
-import.meta.glob(['./pages/*.tsx', './pages/**/*.tsx'], { eager: true })
-```
-This matches `*.test.tsx` files, pulling vitest, @testing-library, chai, and aria-query into the production bundle (1024KB → 480KB after fix).
-
-**Fix:** Add `'!**/*.test.tsx'` exclusion to the glob pattern in:
-- `ferro-cli/src/templates/files/frontend/src/main.tsx.tpl`
-- `app/frontend/src/main.tsx`
-- `docs/src/features/inertia.md`
-
-Plans:
-- [ ] 75-01: Fix both issues (run /gsd:plan-phase 75)
+- ✅ **v7.5 Type Generator Fix** — Phase 75 (shipped 2026-02-27)
+- ✅ **v7.6 Default API Scaffold** — Phase 76 (shipped 2026-02-27)
 
 ---
 
@@ -77,6 +41,43 @@ Plans:
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v7.6 Default API Scaffold (Phase 76) — SHIPPED 2026-02-27</summary>
+
+**Milestone Goal:** Scaffold a default API layer that MCP agents can use to manage dashboard data programmatically.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 76. Default API Scaffold | 4/4 | Complete | 2026-02-27 |
+
+**Total:** 1 phase, 4 plans
+
+**What was built:**
+- API key auth with SHA-256 hashing and constant-time verification (Phase 76, Plan 01)
+- OpenAPI spec builder from route metadata with ReDoc UI (Phase 76, Plan 01)
+- MCP CRUD tools: crud_create, crud_list, crud_update, crud_delete (Phase 76, Plan 02)
+- `ferro make:api` CLI command scaffolding complete REST API from models (Phase 76, Plan 03)
+- Comprehensive documentation and MCP code templates (Phase 76, Plan 04)
+
+</details>
+
+<details>
+<summary>✅ v7.5 Type Generator Fix (Phase 75) — SHIPPED 2026-02-27</summary>
+
+**Milestone Goal:** Fix two bugs in Ferro's Inertia scaffolding discovered during mkmenu production deployment.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 75. Inertia Template Fixes | 1/1 | Complete | 2026-02-27 |
+
+**Total:** 1 phase, 1 plan
+
+**What was built:**
+- Self-contained TypeScript type generation (no shared.ts circular imports)
+- Test file exclusion from Inertia page glob patterns
+
+</details>
 
 <details>
 <summary>✅ v7.4 Security Hardening (Phases 72-74) — SHIPPED 2026-02-26</summary>
@@ -400,6 +401,8 @@ Plans:
 | v6.1 Fix Known Issues | 67 | 1 | ✅ Complete | 2026-02-24 |
 | v7.0 Resend Integration | 68 | 3 | ✅ Complete | 2026-02-25 |
 | v7.4 Security Hardening | 72-74 | 5 | ✅ Complete | 2026-02-26 |
+| v7.5 Type Generator Fix | 75 | 1 | ✅ Complete | 2026-02-27 |
+| v7.6 Default API Scaffold | 76 | 4 | ✅ Complete | 2026-02-27 |
 
-**Total: 15 milestones shipped, 157 plans.**
+**Total: 17 milestones shipped, 162 plans.**
 
