@@ -290,10 +290,7 @@ pub async fn index(req: Request) -> Response {{
         .fetch_page(page - 1)
         .await
         .map_err(|e| HttpResponse::json(serde_json::json!({{"error": e.to_string()}})).status(500))?;
-    let resources: Vec<serde_json::Value> = items
-        .iter()
-        .map(|m| ferro::Resource::to_resource(&{pascal}Resource::from(m), &req))
-        .collect();
+    let resources: Vec<{pascal}Resource> = items.iter().map(|m| {pascal}Resource::from(m)).collect();
     let meta = ferro::PaginationMeta::new(page, per_page, total);
     Ok(ferro::ResourceCollection::paginated(resources, meta).to_response(&req))
 }}
