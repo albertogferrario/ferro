@@ -15,7 +15,7 @@ if (csrfToken) {
 createInertiaApp({
   resolve: (name) => {
     // Match both root-level and nested page components
-    const pages = import.meta.glob(['./pages/*.tsx', './pages/**/*.tsx'], { eager: true })
+    const pages = import.meta.glob(['./pages/**/*.tsx', '!**/*.test.tsx'], { eager: true })
     return pages[`./pages/${name}.tsx`]
   },
   setup({ el, App, props }) {

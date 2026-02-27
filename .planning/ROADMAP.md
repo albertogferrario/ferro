@@ -26,15 +26,16 @@
 
 ## Active Milestone
 
-### v7.5 Type Generator Fix (Phase 75)
+### v7.5 Inertia Template Fixes (Phase 75)
 
-**Milestone Goal:** Fix circular import in `ferro generate-types` output. Generated `inertia-props.ts` imports `JsonValue`/`ValidationErrors` from `shared.ts`, but `shared.ts` re-exports types from `inertia-props.ts` — creating a circular dependency that fails under TS strict mode.
+**Milestone Goal:** Fix two bugs in Ferro's Inertia scaffolding discovered during mkmenu production deployment.
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 75. Fix generate-types circular import | 0 | Pending | - |
+| 75. Inertia Template Fixes | 0 | Pending | - |
 
-**Bug:** `ferro generate-types` emits:
+**Bug 1 — generate-types circular import:**
+`ferro generate-types` emits:
 ```ts
 import type { JsonValue, ValidationErrors } from './shared';
 export type { JsonValue, ValidationErrors };
@@ -43,8 +44,20 @@ Since `shared.ts` re-exports from `inertia-props.ts`, this creates TS2440/TS2484
 
 **Fix:** Generator should define `JsonValue` and `ValidationErrors` inline in the generated file instead of importing from `shared.ts`. The generated file must be self-contained.
 
+**Bug 2 — import.meta.glob includes test files:**
+CLI template `main.tsx.tpl` uses:
+```ts
+import.meta.glob(['./pages/*.tsx', './pages/**/*.tsx'], { eager: true })
+```
+This matches `*.test.tsx` files, pulling vitest, @testing-library, chai, and aria-query into the production bundle (1024KB → 480KB after fix).
+
+**Fix:** Add `'!**/*.test.tsx'` exclusion to the glob pattern in:
+- `ferro-cli/src/templates/files/frontend/src/main.tsx.tpl`
+- `app/frontend/src/main.tsx`
+- `docs/src/features/inertia.md`
+
 Plans:
-- [ ] 75-01: Make generate-types emit self-contained utility types (run /gsd:plan-phase 75)
+- [ ] 75-01: Fix both issues (run /gsd:plan-phase 75)
 
 ---
 
