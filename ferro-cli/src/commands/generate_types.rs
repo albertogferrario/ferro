@@ -687,68 +687,13 @@ fn apply_field_rename(field: &StructField, rename_all: SerdeCase) -> String {
     rename_all.apply(&field.name)
 }
 
-/// Generate TypeScript interfaces from the structs
-/// Optionally imports types from shared.ts if project_path is provided
-#[allow(dead_code)]
+/// Generate TypeScript interfaces from the structs (self-contained, no shared.ts imports)
 pub fn generate_typescript(structs: &[InertiaPropsStruct]) -> String {
-    generate_typescript_with_imports(structs, None)
-}
-
-/// Generate TypeScript interfaces with imports from shared.ts
-pub fn generate_typescript_with_imports(
-    structs: &[InertiaPropsStruct],
-    project_path: Option<&Path>,
-) -> String {
-    generate_typescript_with_options(structs, project_path, true)
-}
-
-/// Generate TypeScript interfaces with full control over imports and re-exports
-pub fn generate_typescript_with_options(
-    structs: &[InertiaPropsStruct],
-    project_path: Option<&Path>,
-    include_reexports: bool,
-) -> String {
     let sorted = topological_sort(structs);
 
     // Build name mapping: original name -> namespaced name
     // Also check for collisions
     let name_map = build_name_map(structs);
-
-    // Collect struct names (types defined in this file) - use namespaced names
-    let defined_types: HashSet<String> = name_map.values().cloned().collect();
-
-    // Parse shared.ts types
-    let shared_types = project_path.map(parse_shared_types).unwrap_or_default();
-
-    // Types defined inline by the generator (not to be imported/re-exported)
-    let inline_types: HashSet<&str> = ["JsonValue", "ValidationErrors"].into_iter().collect();
-
-    // Find types to import from shared.ts (only referenced ones)
-    let mut imports_needed = Vec::new();
-    if project_path.is_some() && !shared_types.is_empty() {
-        let referenced_types = collect_referenced_types(structs);
-
-        // Types that are referenced but not defined in this file (skip inline types)
-        let mut to_import: Vec<_> = referenced_types
-            .iter()
-            .filter(|t| {
-                shared_types.contains(*t)
-                    && !defined_types.contains(*t)
-                    && !inline_types.contains(t.as_str())
-            })
-            .cloned()
-            .collect();
-        to_import.sort();
-        imports_needed = to_import;
-    }
-
-    // Collect all shared types for re-export (sorted, skip inline types)
-    let mut reexport_types: Vec<_> = shared_types
-        .iter()
-        .filter(|t| !inline_types.contains(t.as_str()))
-        .cloned()
-        .collect();
-    reexport_types.sort();
 
     let mut output = String::new();
 
@@ -774,23 +719,6 @@ pub fn generate_typescript_with_options(
     output.push_str("export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };\n\n");
     output.push_str("/** Validation error messages keyed by field name */\n");
     output.push_str("export type ValidationErrors = Record<string, string[]>;\n\n");
-
-    // Add import statement if we need types from shared.ts
-    if !imports_needed.is_empty() {
-        output.push_str(&format!(
-            "import type {{ {} }} from './shared';\n\n",
-            imports_needed.join(", ")
-        ));
-    }
-
-    // Add re-export statement for all shared.ts types
-    if include_reexports && !reexport_types.is_empty() {
-        output.push_str("// Re-exports from shared.ts for convenience\n");
-        output.push_str(&format!(
-            "export type {{ {} }} from './shared';\n\n",
-            reexport_types.join(", ")
-        ));
-    }
 
     for s in sorted {
         let interface_name = name_map.get(&s.name).unwrap_or(&s.name);
@@ -908,22 +836,13 @@ pub fn resolve_nested_types(
 
 /// Generate types and write to the output file
 pub fn generate_types_to_file(project_path: &Path, output_path: &Path) -> Result<usize, String> {
-    generate_types_to_file_with_options(project_path, output_path, true)
-}
-
-/// Generate types and write to the output file with options
-pub fn generate_types_to_file_with_options(
-    project_path: &Path,
-    output_path: &Path,
-    include_reexports: bool,
-) -> Result<usize, String> {
     let mut structs = scan_inertia_props(project_path);
 
     if structs.is_empty() {
         return Ok(0);
     }
 
-    // Parse shared.ts types (used to avoid regenerating)
+    // Parse shared.ts types (used to avoid regenerating types already in shared.ts)
     let shared_types = parse_shared_types(project_path);
 
     // Resolve nested types
@@ -936,9 +855,8 @@ pub fn generate_types_to_file_with_options(
             .map_err(|e| format!("Failed to create output directory: {e}"))?;
     }
 
-    // Use the version with imports and re-exports
-    let typescript =
-        generate_typescript_with_options(&structs, Some(project_path), include_reexports);
+    // Generate self-contained TypeScript (no shared.ts imports/re-exports)
+    let typescript = generate_typescript(&structs);
     fs::write(output_path, typescript)
         .map_err(|e| format!("Failed to write TypeScript file: {e}"))?;
 
@@ -946,7 +864,7 @@ pub fn generate_types_to_file_with_options(
 }
 
 /// Main entry point for the generate-types command
-pub fn run(output: Option<String>, watch: bool, no_reexports: bool) {
+pub fn run(output: Option<String>, watch: bool) {
     let project_path = Path::new(".");
 
     // Validate Ferro project
@@ -965,9 +883,7 @@ pub fn run(output: Option<String>, watch: bool, no_reexports: bool) {
 
     println!("{}", style("Scanning for InertiaProps structs...").cyan());
 
-    // include_reexports is the opposite of no_reexports
-    let include_reexports = !no_reexports;
-    match generate_types_to_file_with_options(project_path, &output_path, include_reexports) {
+    match generate_types_to_file(project_path, &output_path) {
         Ok(0) => {
             println!("{}", style("No InertiaProps structs found.").yellow());
         }
@@ -1305,8 +1221,8 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_typescript_with_imports() {
-        // Create structs that reference external types
+    fn test_generate_typescript_is_self_contained() {
+        // Generated output should never contain import/re-export from shared.ts
         let structs = vec![InertiaPropsStruct {
             name: "DiscoverProps".to_string(),
             fields: vec![
@@ -1325,14 +1241,16 @@ mod tests {
             module_path: String::new(),
         }];
 
-        // Test without project path (no imports)
         let typescript = generate_typescript(&structs);
-        assert!(!typescript.contains("import type"));
 
-        // Test with project path but no shared.ts file (tempdir scenario)
-        let typescript =
-            generate_typescript_with_imports(&structs, Some(std::path::Path::new("/nonexistent")));
+        // Must NOT contain any imports or re-exports from shared.ts
         assert!(!typescript.contains("import type"));
+        assert!(!typescript.contains("from './shared'"));
+        assert!(!typescript.contains("export type {"));
+
+        // Must contain inline utility types
+        assert!(typescript.contains("export type JsonValue ="));
+        assert!(typescript.contains("export type ValidationErrors ="));
     }
 
     #[test]

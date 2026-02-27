@@ -60,10 +60,6 @@ enum Commands {
         /// Watch for changes and regenerate
         #[arg(long, short = 'w')]
         watch: bool,
-
-        /// Disable re-exports from shared.ts
-        #[arg(long)]
-        no_reexports: bool,
     },
     /// Generate a new middleware
     #[command(name = "make:middleware")]
@@ -359,12 +355,8 @@ fn main() {
         } => {
             commands::serve::run(port, frontend_port, backend_only, frontend_only, skip_types);
         }
-        Commands::GenerateTypes {
-            output,
-            watch,
-            no_reexports,
-        } => {
-            commands::generate_types::run(output, watch, no_reexports);
+        Commands::GenerateTypes { output, watch } => {
+            commands::generate_types::run(output, watch);
         }
         Commands::MakeMiddleware { name } => {
             commands::make_middleware::run(name);
