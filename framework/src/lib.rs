@@ -1,3 +1,4 @@
+pub mod api;
 pub mod app;
 pub mod auth;
 pub mod authorization;
@@ -28,6 +29,10 @@ pub mod testing;
 pub mod validation;
 mod websocket;
 
+pub use api::api_key::{
+    generate_api_key, hash_api_key, verify_api_key_hash, ApiKeyInfo, ApiKeyMiddleware,
+    ApiKeyProvider, GeneratedApiKey,
+};
 pub use app::Application;
 pub use auth::{
     Auth, AuthMiddleware, AuthUser, Authenticatable, GuestMiddleware, OptionalUser, UserProvider,
