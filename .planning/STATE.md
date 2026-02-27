@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 76 (Default API Scaffold)
-Plan: 2 of 4
-Status: Plan 02 complete — MCP CRUD tools implemented
-Last activity: 2026-02-27 — Plan 02 executed (4 MCP CRUD tools)
+Plan: 2 of 4 (plans 01 and 02 complete)
+Status: Plans 01 + 02 complete — API key, OpenAPI, MCP CRUD tools
+Last activity: 2026-02-27 — Plan 01 executed (API key module + OpenAPI spec builder)
 
 ## Milestone Summary
 
@@ -59,6 +59,11 @@ Archived to PROJECT.md and milestone archive files.
 - parse_shared_types kept for resolve_nested_types filtering (avoids regenerating user-defined types)
 - MCP CRUD tools: column names derived from field names (SeaORM default), Postgres RETURNING / SQLite last_insert_rowid fallback
 - Per-page capped at 100, created_at/updated_at skipped from required-field validation
+- SHA-256 for API key hashing (not bcrypt) — correct for high-entropy random keys
+- Constant-time comparison via subtle crate for API key hash verification
+- OnceLock caching for OpenAPI spec and ReDoc HTML (generated once on first call)
+- ApiKeyProvider resolved from service container via App::make (storage-agnostic)
+- utoipa and utoipa-redoc re-exported from framework root for advanced customization
 
 ### Roadmap Evolution
 
@@ -78,5 +83,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Phase 76 plan 02 complete — MCP CRUD tools (crud_create, crud_list, crud_update, crud_delete)
+Stopped at: Phase 76 plans 01+02 complete — API key + OpenAPI foundation, MCP CRUD tools
 Resume file: None
