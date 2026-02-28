@@ -4,6 +4,32 @@ use serde_json::Value;
 use crate::error::Error;
 use crate::types::{ApiOperation, ApiParam, ParamLocation};
 
+/// Metadata extracted from an OpenAPI spec's info and servers sections.
+pub struct SpecMetadata {
+    /// The API title from `info.title`, or "API" if missing.
+    pub title: String,
+    /// The first server URL from `servers[0].url`, if present.
+    pub server_url: Option<String>,
+}
+
+/// Extract metadata (title, server URL) from an OpenAPI spec JSON string.
+///
+/// This is a lightweight parse that only reads the `info` and `servers`
+/// sections, independent of the full `parse_spec` operation.
+pub fn extract_metadata(json: &str) -> Result<SpecMetadata, Error> {
+    let spec: OpenAPI = serde_json::from_str(json).map_err(|e| Error::SpecParse(e.to_string()))?;
+
+    let title = if spec.info.title.is_empty() {
+        "API".to_string()
+    } else {
+        spec.info.title.clone()
+    };
+
+    let server_url = spec.servers.first().map(|s| s.url.clone());
+
+    Ok(SpecMetadata { title, server_url })
+}
+
 /// Fetch an OpenAPI spec from a URL.
 ///
 /// Returns the raw JSON string for parsing with `parse_spec`.
