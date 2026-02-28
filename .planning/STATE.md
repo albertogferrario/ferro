@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 79 (ferro-api-mcp Core)
-Plan: 01 complete
+Plan: 03 complete
 Status: In progress
-Last activity: 2026-02-28 — Plan 01 shipped (crate scaffold, types, errors, CLI)
+Last activity: 2026-02-28 — Plan 03 shipped (schema bridge, HTTP client)
 
 ## Milestone Summary
 
@@ -88,6 +88,10 @@ Archived to PROJECT.md and milestone archive files.
 - ferro-api-mcp as standalone workspace binary (not library dependency of framework)
 - ApiOperation::new() defaults input_schema to empty object schema for schema module to populate
 - CLI uses EnvFilter with fallback to --log-level arg for tracing configuration
+- Request body nested under "body" key in MCP input_schema to prevent name collisions with path/query params
+- Pure helper functions (interpolate_path, build_query_params) for testability without HTTP mocking
+- Missing path params leave {param} placeholder unchanged (graceful degradation)
+- Non-JSON success responses wrapped as Value::String
 
 ### Roadmap Evolution
 
@@ -99,6 +103,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 78 complete: Memory leak audit — Plan 01 fixes metrics 404 explosion, Plan 02 replaces InMemoryCache with moka, Plan 03 fixes ferro-cache TTL/tags/counters
 - Milestone v8.0 created: Consumer MCP — OpenAPI Bridge, 4 phases (79-82)
 - Phase 79 Plan 01 complete: ferro-api-mcp crate scaffold with types, errors, and clap CLI
+- Phase 79 Plan 03 complete: schema bridge (OpenAPI params to MCP JSON Schema) and HTTP client
 
 ### Pending Todos
 
@@ -111,5 +116,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 79, Plan 01 complete — ready for Plan 02
+Stopped at: Phase 79, Plan 03 complete — ready for Plan 04
 Resume file: None
