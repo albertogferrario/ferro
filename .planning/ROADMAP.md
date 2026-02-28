@@ -56,11 +56,16 @@ Plans:
 - [x] 85-01: StateMachine, StateDef, Transition, Warning types with builder APIs, BFS validation, ServiceDef integration
 - [x] 85-02: Comprehensive test suite (49 unit tests + 2 doctests)
 
-#### Phase 85.1: Architecture Refinement (INSERTED)
+#### Phase 85.1: Architecture Refinement (INSERTED) ✅
 
 **Goal**: Incorporate prior art insights. Add schemars JSON Schema derives. Refine Phase 86-93 descriptions shifting from "map SAP floorplans" to "derive intent from structure." Descope Phase 94 to protocol documentation only.
 **Depends on**: Phase 85
-**Plans**: 2
+**Completed**: 2026-02-28
+**Plans**: 2/2
+
+Plans:
+- [x] 85.1-01: schemars JSON Schema derives on 7 public types + 4 schema tests
+- [x] 85.1-02: Refined Phase 86-93 descriptions with structural intent derivation principles
 
 #### Phase 86: Actions & Preconditions
 
