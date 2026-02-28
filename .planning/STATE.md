@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 82 (E2E Validation)
-Plan: 01
-Status: In Progress
-Last activity: 2026-02-28 — Plan 01 complete (sample app API layer)
+Plan: 02
+Status: Complete
+Last activity: 2026-02-28 — Plan 02 complete (E2E integration tests)
 
 ## Milestone Summary
 
@@ -118,6 +118,9 @@ Archived to PROJECT.md and milestone archive files.
 - Entity/model split for api_keys: entity in entities/ (auto-generated pattern), model in models/ (custom code with re-export)
 - Request types inline in API controller files when no separate requests module exists
 - openapi_docs_response and openapi_json_response re-exported from framework root for direct use in app code
+- OpenAPI spec version check relaxed from 3.0.x to 3.x (utoipa 5.x generates 3.1.0)
+- Path parameters require schema in OpenAPI spec for openapiv3 crate compatibility
+- Route params must match handler variable names for AutoRouteBinding (:user not :id for user: Model)
 
 ### Roadmap Evolution
 
@@ -137,6 +140,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 81 Plan 02 complete: Input validation & error DX — pre-flight arg validation (8 tests), categorized errors with actionable suggestions
 - Phase 81 Plan 03 complete: Consumer-facing ferro-api-mcp documentation — setup, MCP host configs, x-mcp extensions, troubleshooting
 - Phase 82 Plan 01 complete: Sample app API layer — user CRUD at /api/v1/users, API key auth, OpenAPI spec at /api/openapi.json
+- Phase 82 Plan 02 complete: E2E integration tests — 3 tests validate full pipeline (OpenAPI spec, MCP tool discovery, CRUD operations)
 
 ### Pending Todos
 
@@ -149,5 +153,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 82 Plan 01 complete — sample app API layer shipped
+Stopped at: Phase 82 Plan 02 complete — E2E integration tests shipped, v8.0 milestone fully validated
 Resume file: None
