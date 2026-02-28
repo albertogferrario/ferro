@@ -16,6 +16,7 @@ members = [
     "ferro-json-ui",
     "ferro-lang",
     "ferro-api-mcp",
+    "ferro-projections",
 ]
 
 [workspace.package]
