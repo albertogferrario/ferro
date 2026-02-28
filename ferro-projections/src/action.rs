@@ -206,9 +206,7 @@ mod tests {
                 DataType::Integer,
                 FieldMeaning::Identifier,
             ))
-            .input(
-                InputDef::new("notes", DataType::String, FieldMeaning::FreeText).required(false),
-            )
+            .input(InputDef::new("notes", DataType::String, FieldMeaning::FreeText).required(false))
             .precondition("has_items")
             .precondition("payment_valid")
             .effect("notify_customer")
@@ -217,7 +215,10 @@ mod tests {
 
         assert_eq!(action.name, "submit_order");
         assert_eq!(action.display_name.as_deref(), Some("Submit Order"));
-        assert_eq!(action.description.as_deref(), Some("Submits a customer order"));
+        assert_eq!(
+            action.description.as_deref(),
+            Some("Submits a customer order")
+        );
         assert_eq!(action.inputs.len(), 2);
         assert!(action.inputs[0].required);
         assert!(!action.inputs[1].required);
@@ -308,8 +309,7 @@ mod tests {
 
     #[test]
     fn input_def_defaults() {
-        let json =
-            r#"{"name":"total","data_type":"float","meaning":"money"}"#;
+        let json = r#"{"name":"total","data_type":"float","meaning":"money"}"#;
         let parsed: InputDef = serde_json::from_str(json).unwrap();
         assert!(parsed.required);
         assert!(parsed.description.is_none());
@@ -324,7 +324,10 @@ mod tests {
             .expect("InputDef schema must have properties");
         let obj = props.as_object().unwrap();
         assert!(obj.contains_key("name"), "missing 'name' property");
-        assert!(obj.contains_key("data_type"), "missing 'data_type' property");
+        assert!(
+            obj.contains_key("data_type"),
+            "missing 'data_type' property"
+        );
         assert!(obj.contains_key("meaning"), "missing 'meaning' property");
     }
 

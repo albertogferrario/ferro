@@ -474,8 +474,11 @@ mod tests {
 
     #[test]
     fn write_only_field_builder() {
-        let service = ServiceDef::new("user")
-            .write_only_field("password", DataType::String, FieldMeaning::Sensitive);
+        let service = ServiceDef::new("user").write_only_field(
+            "password",
+            DataType::String,
+            FieldMeaning::Sensitive,
+        );
 
         assert_eq!(service.fields.len(), 1);
         let f = &service.fields[0];
