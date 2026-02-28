@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 85 (State Machines)
-Plan: 01 complete
-Status: Ready for plan 02
-Last activity: 2026-02-28 — Plan 85-01 complete (2 tasks, 2 commits)
+Plan: 02 complete
+Status: Ready for plan 03
+Last activity: 2026-02-28 — Plan 85-02 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 85-01 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-93 | 5/25 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 5/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -61,10 +61,15 @@ Archived to PROJECT.md and milestone archive files.
 - Removed Eq from ServiceDef (serde_json::Value in StateDef.metadata doesn't implement Eq)
 - BFS reachability from initial state for validation
 
+**Phase 85-02:**
+- Orphan states produce both UnreachableState and DeadEndState warnings (correct behavior)
+- 49 ferro-projections tests total (23 state + 11 service + 15 field) + 2 doctests
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
 - v9.0 created: Service Projections — ServiceDef→IntentGraph→Renderer architecture, 10 phases (Phase 84-93)
+- Phase 94 added: Protocol & Patent — standardized protocol definition + patent preparation
 
 ### Pending Todos
 
@@ -77,5 +82,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 85 plan 01 complete — StateMachine schema types + ServiceDef integration, 39 tests passing
+Stopped at: Phase 85 plan 02 complete — comprehensive test suite for state machine types, 49 tests passing
 Resume file: None
