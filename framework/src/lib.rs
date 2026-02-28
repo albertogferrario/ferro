@@ -33,7 +33,9 @@ pub use api::api_key::{
     generate_api_key, hash_api_key, verify_api_key_hash, ApiKeyInfo, ApiKeyMiddleware,
     ApiKeyProvider, GeneratedApiKey,
 };
-pub use api::openapi::{build_openapi_spec, OpenApiConfig};
+pub use api::openapi::{
+    build_openapi_spec, openapi_docs_response, openapi_json_response, OpenApiConfig,
+};
 
 pub use app::Application;
 pub use auth::{
