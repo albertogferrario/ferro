@@ -36,7 +36,7 @@
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 79. ferro-api-mcp Core | 0/4 | Planned | - |
+| 79. ferro-api-mcp Core | 4/4 | Complete | 2026-02-28 |
 | 80. x-mcp OpenAPI Extensions | TBD | Not started | - |
 | 81. Consumer DX & Polish | TBD | Not started | - |
 | 82. End-to-End Validation | TBD | Not started | - |
@@ -48,10 +48,10 @@
 **Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 79-01: Crate scaffold + types + CLI (Wave 1)
-- [ ] 79-02: OpenAPI spec parser — TDD (Wave 2)
-- [ ] 79-03: Schema bridge + HTTP client (Wave 2, parallel with 02)
-- [ ] 79-04: MCP service + server integration (Wave 3)
+- [x] 79-01: Crate scaffold + types + CLI (Wave 1)
+- [x] 79-02: OpenAPI spec parser — TDD (Wave 2)
+- [x] 79-03: Schema bridge + HTTP client (Wave 2, parallel with 02)
+- [x] 79-04: MCP service + server integration (Wave 3)
 
 #### Phase 80: x-mcp OpenAPI Extensions
 **Goal**: Define `x-mcp` extension schema for OpenAPI operations. Update `ferro make:api` to emit enriched tool names, descriptions, and usage hints in generated specs.
