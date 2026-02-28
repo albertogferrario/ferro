@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 79 (ferro-api-mcp Core)
-Plan: 03 complete
+Plan: 01-03 complete
 Status: In progress
-Last activity: 2026-02-28 — Plan 03 shipped (schema bridge, HTTP client)
+Last activity: 2026-02-28 — Plan 02 shipped (OpenAPI spec parser, TDD, 22 tests)
 
 ## Milestone Summary
 
@@ -92,6 +92,10 @@ Archived to PROJECT.md and milestone archive files.
 - Pure helper functions (interpolate_path, build_query_params) for testability without HTTP mocking
 - Missing path params leave {param} placeholder unchanged (graceful degradation)
 - Non-JSON success responses wrapped as Value::String
+- openapiv3 Schema serialized to serde_json::Value via serde_json::to_value for downstream consumption
+- Unresolvable $ref in spec parser returns None with tracing::warn (graceful degradation, not error)
+- Cookie parameters skipped in spec parser extraction (not relevant for MCP tool inputs)
+- Tool name fallback excludes {param} path segments for cleaner names
 
 ### Roadmap Evolution
 
@@ -103,6 +107,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 78 complete: Memory leak audit — Plan 01 fixes metrics 404 explosion, Plan 02 replaces InMemoryCache with moka, Plan 03 fixes ferro-cache TTL/tags/counters
 - Milestone v8.0 created: Consumer MCP — OpenAPI Bridge, 4 phases (79-82)
 - Phase 79 Plan 01 complete: ferro-api-mcp crate scaffold with types, errors, and clap CLI
+- Phase 79 Plan 02 complete: OpenAPI spec parser with TDD (22 tests, version validation, $ref resolution)
 - Phase 79 Plan 03 complete: schema bridge (OpenAPI params to MCP JSON Schema) and HTTP client
 
 ### Pending Todos
@@ -116,5 +121,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 79, Plan 03 complete — ready for Plan 04
+Stopped at: Phase 79, Plans 01-03 complete — ready for Plan 04
 Resume file: None
