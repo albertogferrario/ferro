@@ -519,6 +519,110 @@ mod tests {
     }
 
     #[test]
+    fn state_machine_json_structure() {
+        let machine = sample_machine();
+        let json = serde_json::to_string(&machine).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert!(value.get("name").is_some());
+        assert!(value.get("initial_state").is_some());
+        assert!(value.get("states").is_some());
+        assert!(value.get("transitions").is_some());
+
+        let states = value["states"].as_array().unwrap();
+        assert_eq!(states.len(), 4);
+
+        let transitions = value["transitions"].as_array().unwrap();
+        assert_eq!(transitions.len(), 3);
+    }
+
+    #[test]
+    fn state_machine_builder_chain() {
+        let machine = StateMachine::new("workflow")
+            .display_name("Workflow")
+            .description("A test workflow")
+            .initial("start")
+            .state(StateDef::new("start"))
+            .state(StateDef::new("end").final_state())
+            .transition(Transition::new("start", "go", "end"));
+
+        assert_eq!(machine.name, "workflow");
+        assert_eq!(machine.display_name.as_deref(), Some("Workflow"));
+        assert_eq!(machine.description.as_deref(), Some("A test workflow"));
+        assert_eq!(machine.initial_state, "start");
+        assert_eq!(machine.states.len(), 2);
+        assert_eq!(machine.transitions.len(), 1);
+    }
+
+    #[test]
+    fn state_def_builder_chain() {
+        let state = StateDef::new("processing")
+            .display_name("Processing")
+            .description("Order is being processed")
+            .final_state()
+            .on_enter(vec!["start_timer", "notify"])
+            .on_exit(vec!["stop_timer"])
+            .metadata(serde_json::json!({"color": "blue", "icon": "gear"}));
+
+        assert_eq!(state.name, "processing");
+        assert_eq!(state.display_name.as_deref(), Some("Processing"));
+        assert_eq!(state.description.as_deref(), Some("Order is being processed"));
+        assert!(state.is_final);
+        assert_eq!(state.on_enter, vec!["start_timer", "notify"]);
+        assert_eq!(state.on_exit, vec!["stop_timer"]);
+        assert!(state.metadata.is_some());
+    }
+
+    #[test]
+    fn transition_builder_chain() {
+        let transition = Transition::new("draft", "submit", "pending")
+            .guard("has_required_fields")
+            .actions(vec!["validate", "log_submission"])
+            .description("Submit draft for review");
+
+        assert_eq!(transition.from, "draft");
+        assert_eq!(transition.event, "submit");
+        assert_eq!(transition.to, "pending");
+        assert_eq!(transition.guard.as_deref(), Some("has_required_fields"));
+        assert_eq!(transition.actions, vec!["validate", "log_submission"]);
+        assert_eq!(
+            transition.description.as_deref(),
+            Some("Submit draft for review")
+        );
+    }
+
+    #[test]
+    fn state_def_defaults() {
+        let state = StateDef::new("x");
+        assert_eq!(state.name, "x");
+        assert!(!state.is_final);
+        assert!(state.on_enter.is_empty());
+        assert!(state.on_exit.is_empty());
+        assert!(state.display_name.is_none());
+        assert!(state.description.is_none());
+        assert!(state.metadata.is_none());
+    }
+
+    #[test]
+    fn validate_all_warnings_combined() {
+        // Machine with unreachable + dead-end + no final states.
+        // "orphan" is both unreachable and a dead-end (no outgoing transitions, not final).
+        let machine = StateMachine::new("test")
+            .initial("a")
+            .state(StateDef::new("a"))
+            .state(StateDef::new("b"))
+            .state(StateDef::new("orphan"))
+            .transition(Transition::new("a", "go", "b"));
+
+        let warnings = machine.validate().unwrap();
+        assert!(warnings.contains(&Warning::UnreachableState("orphan".into())));
+        assert!(warnings.contains(&Warning::DeadEndState("b".into())));
+        assert!(warnings.contains(&Warning::DeadEndState("orphan".into())));
+        assert!(warnings.contains(&Warning::NoFinalStates));
+        assert_eq!(warnings.len(), 4);
+    }
+
+    #[test]
     fn full_order_lifecycle() {
         let machine = StateMachine::new("order_lifecycle")
             .display_name("Order Lifecycle")
