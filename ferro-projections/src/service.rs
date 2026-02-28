@@ -238,4 +238,155 @@ mod tests {
         let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
         assert_eq!(service, parsed);
     }
+
+    // -- StateMachine integration tests --
+
+    use crate::state::{StateDef, StateMachine, Transition};
+
+    #[test]
+    fn service_def_with_state_machine() {
+        let machine = StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft"))
+            .state(StateDef::new("completed").final_state())
+            .transition(Transition::new("draft", "complete", "completed"));
+
+        let service = ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .state_machine(machine);
+
+        assert!(service.state_machine.is_some());
+        let sm = service.state_machine.as_ref().unwrap();
+        assert_eq!(sm.states.len(), 2);
+        assert_eq!(sm.transitions.len(), 1);
+    }
+
+    #[test]
+    fn service_def_state_machine_serde_round_trip() {
+        let machine = StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft").display_name("Draft"))
+            .state(
+                StateDef::new("completed")
+                    .display_name("Completed")
+                    .final_state(),
+            )
+            .transition(
+                Transition::new("draft", "complete", "completed")
+                    .guard("is_valid")
+                    .actions(vec!["notify"]),
+            );
+
+        let service = ServiceDef::new("order")
+            .display_name("Order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .state_machine(machine);
+
+        let json = serde_json::to_string_pretty(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+    }
+
+    #[test]
+    fn service_def_without_state_machine_json() {
+        let service =
+            ServiceDef::new("user").field("id", DataType::Integer, FieldMeaning::Identifier);
+
+        let json = serde_json::to_string(&service).unwrap();
+        assert!(!json.contains("state_machine"));
+    }
+
+    #[test]
+    fn order_service_full_example() {
+        let machine = StateMachine::new("order_lifecycle")
+            .display_name("Order Lifecycle")
+            .description("Tracks an order from creation to fulfillment")
+            .initial("draft")
+            .state(
+                StateDef::new("draft")
+                    .display_name("Draft")
+                    .description("Order is being prepared"),
+            )
+            .state(
+                StateDef::new("submitted")
+                    .display_name("Submitted")
+                    .on_enter(vec!["validate_inventory", "calculate_totals"]),
+            )
+            .state(
+                StateDef::new("processing")
+                    .display_name("Processing")
+                    .on_enter(vec!["charge_payment", "reserve_inventory"]),
+            )
+            .state(
+                StateDef::new("shipped")
+                    .display_name("Shipped")
+                    .on_enter(vec!["generate_tracking", "notify_customer"]),
+            )
+            .state(
+                StateDef::new("delivered")
+                    .display_name("Delivered")
+                    .final_state(),
+            )
+            .state(
+                StateDef::new("cancelled")
+                    .display_name("Cancelled")
+                    .final_state()
+                    .on_enter(vec!["refund_payment", "release_inventory"]),
+            )
+            .transition(
+                Transition::new("draft", "submit", "submitted")
+                    .guard("has_items")
+                    .description("Customer submits the order"),
+            )
+            .transition(
+                Transition::new("submitted", "process", "processing")
+                    .guard("payment_valid")
+                    .actions(vec!["lock_prices"]),
+            )
+            .transition(
+                Transition::new("processing", "ship", "shipped").guard("inventory_fulfilled"),
+            )
+            .transition(Transition::new("shipped", "deliver", "delivered"))
+            .transition(Transition::new("draft", "cancel", "cancelled"))
+            .transition(
+                Transition::new("submitted", "cancel", "cancelled").guard("cancellation_allowed"),
+            )
+            .transition(
+                Transition::new("processing", "cancel", "cancelled")
+                    .guard("cancellation_allowed")
+                    .actions(vec!["reverse_payment"]),
+            );
+
+        let service = ServiceDef::new("order")
+            .display_name("Order")
+            .description("Manages customer orders and fulfillment")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_id", DataType::Integer, FieldMeaning::ForeignKey)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("email", DataType::String, FieldMeaning::Email)
+            .field("notes", DataType::String, FieldMeaning::FreeText)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt)
+            .state_machine(machine);
+
+        // Field assertions
+        assert_eq!(service.fields.len(), 8);
+
+        // State machine assertions
+        let sm = service.state_machine.as_ref().unwrap();
+        assert_eq!(sm.states.len(), 6);
+        assert_eq!(sm.transitions.len(), 7);
+        assert_eq!(sm.initial_state, "draft");
+
+        // Validation passes cleanly
+        let warnings = sm.validate().unwrap();
+        assert!(warnings.is_empty());
+
+        // Serde round-trip
+        let json = serde_json::to_string_pretty(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+    }
 }

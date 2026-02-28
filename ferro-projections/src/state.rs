@@ -566,7 +566,10 @@ mod tests {
 
         assert_eq!(state.name, "processing");
         assert_eq!(state.display_name.as_deref(), Some("Processing"));
-        assert_eq!(state.description.as_deref(), Some("Order is being processed"));
+        assert_eq!(
+            state.description.as_deref(),
+            Some("Order is being processed")
+        );
         assert!(state.is_final);
         assert_eq!(state.on_enter, vec!["start_timer", "notify"]);
         assert_eq!(state.on_exit, vec!["stop_timer"]);
