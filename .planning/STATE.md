@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 86 (Actions & Preconditions)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-28 — Phase 85 complete (2 plans, 6 commits)
+Phase: 85.1 (Architecture Refinement)
+Plan: 01 complete, 02 pending
+Status: In progress
+Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Phase 85 complete (2 plans, 6 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 6/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 7/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -65,11 +65,18 @@ Archived to PROJECT.md and milestone archive files.
 - Orphan states produce both UnreachableState and DeadEndState warnings (correct behavior)
 - 49 ferro-projections tests total (23 state + 11 service + 15 field) + 2 doctests
 
+**Phase 85.1-01:**
+- schemars 1.x for JSON Schema derivation on all 7 public types
+- FieldMeaning description annotation documents known variants (mitigates anyOf shadowing by Custom(String))
+- JsonSchema not added to Error/Warning (internal types, not protocol contract)
+- 53 ferro-projections unit tests + 2 doctests = 55 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
 - v9.0 created: Service Projections — ServiceDef→IntentGraph→Renderer architecture, 10 phases (Phase 84-93)
 - Phase 94 added: Protocol & Patent — standardized protocol definition + patent preparation
+- Phase 85.1 inserted after Phase 85: Architecture Refinement (URGENT) — incorporate prior art insights, add schemars, refine Phases 86-93, descope Phase 94 (drop patent)
 
 ### Pending Todos
 
@@ -82,5 +89,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 85 complete — state machine schema types + 49 tests, ready for Phase 86
+Stopped at: Phase 85.1 Plan 01 complete — schemars JsonSchema on all public types, Plan 02 (roadmap refinement) next
 Resume file: None
