@@ -23,28 +23,11 @@
 - ✅ **v7.5 Type Generator Fix** — Phase 75 (shipped 2026-02-27)
 - ✅ **v7.6 Default API Scaffold** — Phase 76 (shipped 2026-02-27)
 - ✅ **v7.7 Validate & Fix API Scaffold** — Phase 77 (shipped 2026-02-28)
-- 🔧 **v7.8 Memory Leak Fixes** — Phase 78
+- ✅ **v7.8 Memory Leak Fixes** — Phase 78 (shipped 2026-02-28)
 
 ---
 
 ## Active Milestone
-
-### v7.8 Memory Leak Fixes (Phase 78)
-
-**Milestone Goal:** Fix four unbounded in-memory data structures that grow indefinitely in long-running Ferro servers — metrics 404 explosion, framework InMemoryCache, ferro-cache tags/counters.
-
-| Phase | Plans | Status | Completed |
-|-------|-------|--------|-----------|
-| 78. Memory Leak Fixes | 3 | Pending | - |
-
-Plans:
-- [ ] 78-01: Fix metrics 404 path explosion (wave 1)
-- [ ] 78-02: Replace framework InMemoryCache with Moka (wave 1)
-- [ ] 78-03: Fix ferro-cache MemoryStore leaks (wave 1)
-
----
-
----
 
 ### v7.3 Vite Manifest (Phase 71)
 
@@ -62,6 +45,24 @@ Plans:
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v7.8 Memory Leak Fixes (Phase 78) — SHIPPED 2026-02-28</summary>
+
+**Milestone Goal:** Fix four unbounded in-memory data structures that grow indefinitely in long-running Ferro servers.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 78. Memory Leak Fixes | 3/3 | Complete | 2026-02-28 |
+
+**Total:** 1 phase, 3 plans
+
+**What was built:**
+- Unmatched routes normalized to "UNMATCHED" bucket + MAX_ROUTE_ENTRIES=1000 cap (Plan 01)
+- Framework InMemoryCache replaced with moka::sync::Cache — bounded capacity, per-entry TTL, proactive eviction (Plan 02)
+- ferro-cache MemoryStore: per-entry TTL fixed, tags deduplicated with HashSet, stale tag cleanup on eviction, counters bounded with moka (Plan 03)
+
+</details>
 
 <details>
 <summary>✅ v7.7 Validate & Fix API Scaffold (Phase 77) — SHIPPED 2026-02-28</summary>
@@ -445,6 +446,7 @@ Plans:
 | v7.5 Type Generator Fix | 75 | 1 | ✅ Complete | 2026-02-27 |
 | v7.6 Default API Scaffold | 76 | 4 | ✅ Complete | 2026-02-27 |
 | v7.7 Validate & Fix API Scaffold | 77 | 3 | ✅ Complete | 2026-02-28 |
+| v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 
-**Total: 18 milestones shipped, 165 plans.**
+**Total: 19 milestones shipped, 168 plans.**
 
