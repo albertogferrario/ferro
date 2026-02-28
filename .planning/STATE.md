@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 Phase: 81 (Consumer DX & Polish)
 Plan: 02/03
 Status: In progress
-Last activity: 2026-02-28 — Plan 02 complete (input validation & error DX)
+Last activity: 2026-02-28 — Plan 01 complete (startup diagnostics & categorized spec errors)
 
 ## Milestone Summary
 
@@ -107,6 +107,10 @@ Archived to PROJECT.md and milestone archive files.
 - x-mcp-hidden uses continue to skip operations at parse time (not post-filtering)
 - Hint text appended to description as "\n\nHint: {hint}" for AI agent visibility without MCP protocol changes
 - hint stored as separate field on ApiOperation for clean parser→service data flow
+- categorize_reqwest_error inspects is_connect/is_timeout/is_decode for specific diagnostic messages
+- fetch_spec validates HTTP status and JSON validity before returning body
+- format_spec_fetch_error in main.rs categorizes error strings for user-facing presentation
+- --dry-run prints tool summary and exits without starting MCP server
 - validate_args as pure function returning Vec<String> for testability (no side effects)
 - Validation runs before HTTP call to avoid unnecessary network requests
 - HTTP status suggestions appended to body text to keep Error enum stable (no new variants)
@@ -126,6 +130,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 79 Plan 03 complete: schema bridge (OpenAPI params to MCP JSON Schema) and HTTP client
 - Phase 79 Plan 04 complete: MCP service with dynamic ToolRouter, stdio server, full CLI-to-serve pipeline
 - Phase 80 complete: x-mcp OpenAPI extensions — framework emits x-mcp-tool-name/x-mcp-description, ferro-api-mcp consumes x-mcp-tool-name/description/hint/hidden
+- Phase 81 Plan 01 complete: Startup diagnostics & categorized spec fetch errors — --dry-run flag, connectivity check, categorized error messages
 - Phase 81 Plan 02 complete: Input validation & error DX — pre-flight arg validation (8 tests), categorized errors with actionable suggestions
 
 ### Pending Todos
