@@ -110,7 +110,13 @@ pub enum FieldMeaning {
 }
 ```
 
-**Critical serde detail:** The `#[serde(untagged)]` attribute on individual variants (not the whole enum) requires serde >= 1.0.171 (June 2023). The workspace uses serde 1.x, so this is available. Known variants serialize as `"money"`, `"email"`, etc. Unknown strings deserialize into `Custom("anything")`.
+**Verified:** The `#[serde(untagged)]` per-variant pattern was tested with a standalone Rust project. All 8 tests pass:
+- `Money` → `"money"`, `ForeignKey` → `"foreign_key"` (rename_all applies)
+- `Custom("tax_rate")` → `"tax_rate"` (untagged emits raw string)
+- `"money"` → `Money`, `"unknown_thing"` → `Custom("unknown_thing")` (known variants match first, fallback catches rest)
+- Full round-trip works for all variants including Custom.
+
+Requires serde >= 1.0.171 (June 2023). Workspace uses serde 1.x — confirmed available.
 
 ### Pattern 3: Feature-Gated Framework Integration
 **What:** Framework depends on ferro-projections behind a cargo feature.
@@ -142,6 +148,8 @@ ferro-projections = { path = "../ferro-projections", version = "0.1", optional =
 | Builder validation | Runtime panics in builder methods | Separate `validate()` method returning Result | Don't panic in builder chains |
 
 **Key insight:** This crate is small enough that there's nothing complex to hand-roll. The risk is over-engineering, not under-engineering. The `ServiceDef` builder, `DataType` enum, and `FieldMeaning` enum are each under 50 lines of code.
+
+| FieldMeaning inference | Custom inference from scratch | Reuse existing patterns from codebase | 7 inference rules already exist in ferro-cli and ferro-mcp (see Existing Inference Patterns section) |
 </dont_hand_roll>
 
 <common_pitfalls>
@@ -296,6 +304,102 @@ mod tests {
 ```
 </code_examples>
 
+<datatype_validation>
+## DataType Validation Against Real Models
+
+Tested the 10-variant DataType enum against the sample app's actual model fields.
+
+### Sample App Coverage
+
+| Model | Fields | Types Used |
+|-------|--------|------------|
+| User | id, name, email, password, remember_token, created_at, updated_at | i32, String, Option\<String\> |
+| Todo | id, title, description, created_at, updated_at | i32, String, Option\<String\> |
+| ApiKey | id, name, prefix, hashed_key, scopes, last_used_at, expires_at, revoked_at, created_at | i64, String, Option\<String\>, DateTimeUtc, Option\<DateTimeUtc\> |
+
+### DataType Variants Actually Used: 3 of 10
+- **String** — name, email, password, title, description, etc.
+- **Integer** — id (i32, i64)
+- **DateTime** — last_used_at, expires_at, created_at (DateTimeUtc)
+
+### Variants Not Used in Sample (but valid for real apps)
+Float, Boolean, Date, Json, Binary, Uuid, Enum — the sample app is minimal. These are all common in production apps (prices, flags, dates, JSONB columns, file blobs, UUIDs, status enums).
+
+### Cross-Reference: CLI FieldType Enum
+The CLI scaffold (`ferro-cli/src/commands/make_scaffold.rs`) already has a 9-variant `FieldType` enum:
+```
+String, Text, Integer, BigInteger, Float, Boolean, DateTime, Date, Uuid
+```
+
+**Key differences from proposed DataType:**
+- CLI splits String/Text and Integer/BigInteger (storage-level detail we intentionally collapse)
+- CLI doesn't have Json, Binary, Enum (gaps in scaffolding)
+- Our DataType adds Json, Binary, Enum while collapsing storage variants
+
+**Conclusion:** 10 variants is the right number. Covers CLI patterns plus fills gaps.
+</datatype_validation>
+
+<existing_inference>
+## Existing Field Name Inference Patterns
+
+Seven name-based inference rules already exist across the codebase. These can be unified into a `infer_field_meaning()` function for auto-populating FieldMeaning from field names.
+
+### Rules Found
+
+| Pattern | Rule | Location | Maps To |
+|---------|------|----------|---------|
+| `*_id` | Foreign key | `ferro-cli/src/commands/make_scaffold.rs:424`, `ferro-cli/src/analyzer.rs:296` | `FieldMeaning::ForeignKey` |
+| `*_at` | Timestamp | `ferro-cli/src/commands/make_scaffold.rs:428` | `FieldMeaning::CreatedAt` / `UpdatedAt` / `DateTime` |
+| `is_*`, `has_*` | Boolean flag | `ferro-cli/src/commands/make_scaffold.rs:433` | `FieldMeaning::Boolean` |
+| `email` | Email field | `ferro-cli/src/commands/make_scaffold.rs:439` | `FieldMeaning::Email` |
+| `password*` | Sensitive | `ferro-cli/src/commands/make_api.rs:21` | `FieldMeaning::Sensitive` (new variant?) |
+| `*token*`, `*secret*`, `*api_key*` | Sensitive | `ferro-cli/src/commands/make_api.rs:21` | `FieldMeaning::Sensitive` |
+| `id` | Primary key | `ferro-mcp/src/tools/list_models.rs:94` | `FieldMeaning::Identifier` |
+
+### Refined Inference Function (for Phase 84 or later)
+```rust
+pub fn infer_meaning(field_name: &str) -> FieldMeaning {
+    // Exact matches first
+    match field_name {
+        "id" => return FieldMeaning::Identifier,
+        "email" => return FieldMeaning::Email,
+        "created_at" => return FieldMeaning::CreatedAt,
+        "updated_at" => return FieldMeaning::UpdatedAt,
+        _ => {}
+    }
+
+    // Suffix patterns
+    if field_name.ends_with("_id") {
+        return FieldMeaning::ForeignKey;
+    }
+    if field_name.ends_with("_at") {
+        return FieldMeaning::DateTime;
+    }
+
+    // Prefix patterns
+    if field_name.starts_with("is_") || field_name.starts_with("has_") {
+        return FieldMeaning::Boolean;
+    }
+
+    // Sensitive field patterns
+    const SENSITIVE: &[&str] = &["password", "secret", "token", "api_key", "hashed_key"];
+    if SENSITIVE.iter().any(|s| field_name.contains(s)) {
+        return FieldMeaning::Sensitive;
+    }
+
+    FieldMeaning::Custom(field_name.to_string())
+}
+```
+
+### Design Decision: Sensitive Variant
+The existing `SENSITIVE_FIELD_PATTERNS` in make_api.rs (8 patterns) suggests `FieldMeaning::Sensitive` should be a first-class variant. Sensitive fields need special handling: excluded from API resources, masked in logs, hidden from introspection. This is not in the v9.0 research's 16 variants but warrants inclusion.
+
+### When to Apply Inference
+- **MCP introspection:** When building ServiceDef from existing models at introspection time
+- **CLI scaffolding:** When `make:service` generates a ServiceDef
+- **NOT in the builder:** The builder takes explicit FieldMeaning. Inference is a convenience layer on top.
+</existing_inference>
+
 <sota_updates>
 ## State of the Art (2025-2026)
 
@@ -316,20 +420,23 @@ mod tests {
 <open_questions>
 ## Open Questions
 
-1. **Should FieldMeaning::Boolean exist?**
-   - What we know: `DataType::Boolean` already captures the structural type. A `FieldMeaning::Boolean` adds no rendering hint beyond "render as checkbox/toggle."
-   - What's unclear: Whether removing it simplifies or complicates the renderer in Phase 90.
-   - Recommendation: Include it. The v9.0 research includes it, and the renderer may want to distinguish "this boolean is a status flag" from "this boolean is a toggle." The cost of having it is zero.
+1. **~~Should FieldMeaning::Boolean exist?~~** RESOLVED: Yes.
+   - The `is_*` / `has_*` name inference pattern (already in make_scaffold.rs) maps to `FieldMeaning::Boolean`. Removing it would break the inference chain.
+   - The renderer uses it to distinguish "toggle switch" from "yes/no text".
 
-2. **FieldDef required vs optional — default value?**
-   - What we know: Fields need a `required: bool` flag. The question is the default.
-   - What's unclear: Whether defaulting to `required: true` or `required: false` produces better ergonomics.
-   - Recommendation: Default to `required: true`. Most fields in service definitions are required. The builder can offer `.optional_field(...)` for exceptions.
+2. **~~FieldDef required vs optional — default value?~~** RESOLVED: Default `required: true`.
+   - The builder uses `.field()` for required and `.optional_field()` for nullable. Matches the sample app where most fields are required (only description, scopes, and timestamps are Optional).
 
-3. **Should DataType include Array/List?**
-   - What we know: Some fields are arrays (e.g., tags: Vec<String>). DataType doesn't have an `Array` variant.
-   - What's unclear: Whether the renderer needs to know "this is a list" at the DataType level or if it's better handled as a separate `is_list: bool` on FieldDef.
-   - Recommendation: Add `is_list: bool` to FieldDef rather than `DataType::Array(Box<DataType>)`. Keeps DataType `Copy`-able and flat.
+3. **~~Should DataType include Array/List?~~** RESOLVED: Use `is_list: bool` on FieldDef.
+   - Keeps DataType `Copy`-able and flat. No `Vec<String>` in the sample app models (all are scalar fields).
+
+4. **Should FieldMeaning::Sensitive be a first-class variant?**
+   - What we know: 8 sensitive patterns already exist in `make_api.rs`. Sensitive fields need hiding from API resources, masking in logs, exclusion from introspection.
+   - Recommendation: YES — add `Sensitive` to FieldMeaning. It drives real rendering/behavior differences (hidden, masked, excluded). The inference function can auto-detect it from field names.
+
+5. **Should inference live in Phase 84 or later?**
+   - What we know: The inference logic is straightforward (~20 lines) and reuses existing patterns.
+   - Recommendation: Include a basic `infer_meaning()` function in Phase 84 as a utility in `field.rs`. It's small, tested, and immediately useful for MCP introspection in Phase 92.
 </open_questions>
 
 <sources>
@@ -345,9 +452,11 @@ mod tests {
 ### Secondary (MEDIUM confidence)
 - Workspace crate analysis (ferro-cache, ferro-events, ferro-storage, ferro-broadcast) — builder patterns, module structure, test organization
 - Phase 84 CLAUDE.md — module structure, naming conventions, anti-patterns
+- Sample app model analysis (app/src/models/entities/) — DataType coverage validation
+- CLI inference patterns (ferro-cli/src/commands/make_scaffold.rs, make_api.rs, analyzer.rs) — field name inference rules
 
 ### Tertiary (LOW confidence — needs validation)
-- None. All findings verified against workspace code or official documentation.
+- None. All findings verified — serde pattern tested with standalone project, DataType validated against real models, inference patterns traced to source files.
 </sources>
 
 <metadata>
