@@ -252,3 +252,112 @@ pub fn run(url: String, api_key: Option<String>, spec_path: String) {
         println!("    ferro-api-mcp --spec-url {spec_url} --api-key <your-key>");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn valid_spec_returns_correct_info() {
+        let spec = json!({
+            "openapi": "3.1.0",
+            "info": { "title": "Test", "version": "1.0" },
+            "paths": {
+                "/users": {
+                    "get": { "summary": "List users" },
+                    "post": { "summary": "Create user" }
+                },
+                "/users/{id}": {
+                    "get": { "summary": "Get user" },
+                    "put": { "summary": "Update user" },
+                    "delete": { "summary": "Delete user" }
+                }
+            }
+        });
+
+        let info = validate_openapi_json(&spec).unwrap();
+        assert_eq!(info.version, "3.1.0");
+        assert_eq!(info.path_count, 2);
+        assert_eq!(info.operation_count, 5);
+    }
+
+    #[test]
+    fn missing_openapi_field_errors() {
+        let spec = json!({
+            "info": { "title": "Test" },
+            "paths": { "/x": { "get": {} } }
+        });
+
+        let err = validate_openapi_json(&spec).unwrap_err();
+        assert!(err.contains("missing `openapi` field"), "got: {err}");
+    }
+
+    #[test]
+    fn missing_paths_field_errors() {
+        let spec = json!({
+            "openapi": "3.1.0",
+            "info": { "title": "Test" }
+        });
+
+        let err = validate_openapi_json(&spec).unwrap_err();
+        assert!(err.contains("missing `paths` field"), "got: {err}");
+    }
+
+    #[test]
+    fn empty_paths_errors() {
+        let spec = json!({
+            "openapi": "3.1.0",
+            "info": { "title": "Test" },
+            "paths": {}
+        });
+
+        let err = validate_openapi_json(&spec).unwrap_err();
+        assert!(err.contains("no API paths defined"), "got: {err}");
+    }
+
+    #[test]
+    fn non_3x_version_errors() {
+        let spec = json!({
+            "openapi": "2.0",
+            "info": { "title": "Test" },
+            "paths": { "/x": { "get": {} } }
+        });
+
+        let err = validate_openapi_json(&spec).unwrap_err();
+        assert!(err.contains("not supported"), "got: {err}");
+    }
+
+    #[test]
+    fn multiple_methods_per_path_counted_correctly() {
+        let spec = json!({
+            "openapi": "3.0.3",
+            "info": { "title": "Test", "version": "1.0" },
+            "paths": {
+                "/a": { "get": {}, "post": {}, "put": {} },
+                "/b": { "delete": {} },
+                "/c": { "get": {}, "patch": {} }
+            }
+        });
+
+        let info = validate_openapi_json(&spec).unwrap();
+        assert_eq!(info.version, "3.0.3");
+        assert_eq!(info.path_count, 3);
+        assert_eq!(info.operation_count, 6);
+    }
+
+    #[test]
+    fn paths_with_no_operations_errors() {
+        let spec = json!({
+            "openapi": "3.1.0",
+            "info": { "title": "Test" },
+            "paths": {
+                "/a": { "parameters": [] },
+                "/b": { "summary": "just metadata" }
+            }
+        });
+
+        let err = validate_openapi_json(&spec).unwrap_err();
+        assert!(err.contains("no operations defined"), "got: {err}");
+    }
+}
