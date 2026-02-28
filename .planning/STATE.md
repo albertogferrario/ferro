@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 79 (ferro-api-mcp Core)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-28 — Milestone v8.0 created (4 phases, 79-82)
+Plan: 01 complete
+Status: In progress
+Last activity: 2026-02-28 — Plan 01 shipped (crate scaffold, types, errors, CLI)
 
 ## Milestone Summary
 
@@ -85,6 +85,9 @@ Archived to PROJECT.md and milestone archive files.
 - ferro-cache tags: HashSet instead of Vec prevents duplicates structurally
 - moka 0.12 eviction listener fires on explicit removal/size eviction but not TTL expiry; lazy cleanup in tag_members as complement
 - ferro-cache counters: bounded moka cache instead of unbounded DashMap
+- ferro-api-mcp as standalone workspace binary (not library dependency of framework)
+- ApiOperation::new() defaults input_schema to empty object schema for schema module to populate
+- CLI uses EnvFilter with fallback to --log-level arg for tracing configuration
 
 ### Roadmap Evolution
 
@@ -95,6 +98,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 77 complete: Validate & fix API scaffold — 5 template bugs fixed, 75 regression tests added
 - Phase 78 complete: Memory leak audit — Plan 01 fixes metrics 404 explosion, Plan 02 replaces InMemoryCache with moka, Plan 03 fixes ferro-cache TTL/tags/counters
 - Milestone v8.0 created: Consumer MCP — OpenAPI Bridge, 4 phases (79-82)
+- Phase 79 Plan 01 complete: ferro-api-mcp crate scaffold with types, errors, and clap CLI
 
 ### Pending Todos
 
@@ -107,5 +111,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Milestone v8.0 initialization
+Stopped at: Phase 79, Plan 01 complete — ready for Plan 02
 Resume file: None
