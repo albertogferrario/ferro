@@ -67,16 +67,16 @@ Plans:
 - [x] 85.1-01: schemars JSON Schema derives on 7 public types + 4 schema tests
 - [x] 85.1-02: Refined Phase 86-93 descriptions with structural intent derivation principles
 
-#### Phase 86: Actions & Preconditions
+#### Phase 86: Actions & Preconditions ✅
 
 **Goal**: Add Siren-inspired ActionDef with inputs reusing DataType/FieldMeaning. Add readable/writable to FieldDef for intent derivation.
 **Depends on**: Phase 85.1
-**Research**: Unlikely (Siren action format well-documented)
-**Plans**: 2
+**Completed**: 2026-02-28
+**Plans**: 2/2
 
 Plans:
-- [ ] 86-01: TBD
-- [ ] 86-02: TBD
+- [x] 86-01: ActionDef, InputDef, GuardDef types with builder APIs + readable/writable on FieldDef (78 tests)
+- [x] 86-02: ServiceDef integration, cross-phase validate(), comprehensive test suite (97 tests total)
 
 #### Phase 87: Service Relationships
 
@@ -627,7 +627,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 6/28 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 8/28 | 🚧 In Progress | - |
 
 **Total: 21 milestones shipped, 184 plans. 1 milestone in progress (28 plans).**
 

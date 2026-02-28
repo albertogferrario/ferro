@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 02 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 11/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 8/28 | In Progress | - |
 
 ## Accumulated Context
 
