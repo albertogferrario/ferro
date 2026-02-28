@@ -37,7 +37,7 @@
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
 | 79. ferro-api-mcp Core | 4/4 | Complete | 2026-02-28 |
-| 80. x-mcp OpenAPI Extensions | TBD | Not started | - |
+| 80. x-mcp OpenAPI Extensions | 2 | Planned | - |
 | 81. Consumer DX & Polish | TBD | Not started | - |
 | 82. End-to-End Validation | TBD | Not started | - |
 
@@ -54,13 +54,14 @@ Plans:
 - [x] 79-04: MCP service + server integration (Wave 3)
 
 #### Phase 80: x-mcp OpenAPI Extensions
-**Goal**: Define `x-mcp` extension schema for OpenAPI operations. Update `ferro make:api` to emit enriched tool names, descriptions, and usage hints in generated specs.
+**Goal**: Define `x-mcp` extension schema for OpenAPI operations. Emit enriched tool names and descriptions in framework's `build_openapi_spec()`. Consume extensions in ferro-api-mcp's parser.
 **Depends on**: Phase 79
-**Research**: Unlikely (extending existing make:api patterns)
-**Plans**: TBD
+**Research**: Complete (80-RESEARCH.md — utoipa Extensions API, openapiv3 extensions field, industry x-mcp patterns)
+**Plans**: 2 plans in 1 wave
 
 Plans:
-- [ ] 80-01: TBD
+- [ ] 80-01: Framework x-mcp extension emission (Wave 1)
+- [ ] 80-02: ferro-api-mcp x-mcp extension consumption (Wave 1, parallel with 01)
 
 #### Phase 81: Consumer DX & Polish
 **Goal**: Connection diagnostics, input validation from JSON Schema, helpful error messages when tools fail, and consumer-facing setup documentation.
