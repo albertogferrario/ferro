@@ -40,8 +40,13 @@ impl ApiMcpService {
             let annotations = annotations_for_method(&op.method);
             let input_schema = input_schema_to_arc_map(&op.input_schema);
 
-            let tool = Tool::new(op.tool_name.clone(), op.description.clone(), input_schema)
-                .annotate(annotations);
+            let description = match &op.hint {
+                Some(hint) => format!("{}\n\nHint: {hint}", op.description),
+                None => op.description.clone(),
+            };
+
+            let tool =
+                Tool::new(op.tool_name.clone(), description, input_schema).annotate(annotations);
 
             let client = Arc::clone(&http_client);
             let route = ToolRoute::new_dyn(tool, move |ctx: ToolCallContext<'_, Self>| {

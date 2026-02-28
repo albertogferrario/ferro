@@ -27,6 +27,7 @@
 use crate::http::HttpResponse;
 use crate::routing::RouteInfo;
 use std::sync::OnceLock;
+use utoipa::openapi::extensions::ExtensionsBuilder;
 use utoipa::openapi::path::{HttpMethod, OperationBuilder, ParameterBuilder, ParameterIn};
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::openapi::{
@@ -90,6 +91,16 @@ pub fn build_openapi_spec(
                     .build(),
             );
         }
+
+        // Emit x-mcp vendor extensions for AI tool discovery
+        let extensions = ExtensionsBuilder::new()
+            .add("x-mcp-tool-name", mcp_tool_name(&route.method, &route.path))
+            .add(
+                "x-mcp-description",
+                mcp_description(&route.method, &route.path),
+            )
+            .build();
+        op = op.extensions(Some(extensions));
 
         let operation = op.build();
 
@@ -245,6 +256,47 @@ fn singularize(word: &str) -> String {
     }
 }
 
+/// Generate a snake_case tool name for MCP consumption.
+///
+/// Examples:
+/// - ("GET", "/api/v1/users") -> "list_users"
+/// - ("GET", "/api/v1/users/{id}") -> "get_user"
+/// - ("POST", "/api/v1/users") -> "create_user"
+/// - ("DELETE", "/api/v1/users/{id}") -> "delete_user"
+fn mcp_tool_name(method: &str, path: &str) -> String {
+    let resource = extract_resource_name(path);
+    let singular = singularize(&resource);
+
+    match (method, has_path_param(path)) {
+        ("GET", false) => format!("list_{resource}"),
+        ("GET", true) => format!("get_{singular}"),
+        ("POST", _) => format!("create_{singular}"),
+        ("PUT" | "PATCH", _) => format!("update_{singular}"),
+        ("DELETE", _) => format!("delete_{singular}"),
+        _ => format!("{}_{resource}", method.to_lowercase()),
+    }
+}
+
+/// Generate an AI-optimized description for MCP consumption.
+///
+/// Examples:
+/// - ("GET", "/api/v1/users") -> "List all users with optional pagination."
+/// - ("GET", "/api/v1/users/{id}") -> "Get a single user by ID."
+/// - ("POST", "/api/v1/users") -> "Create a new user."
+fn mcp_description(method: &str, path: &str) -> String {
+    let resource = extract_resource_name(path);
+    let singular = singularize(&resource);
+
+    match (method, has_path_param(path)) {
+        ("GET", false) => format!("List all {resource} with optional pagination."),
+        ("GET", true) => format!("Get a single {singular} by ID."),
+        ("POST", _) => format!("Create a new {singular}."),
+        ("PUT" | "PATCH", _) => format!("Update an existing {singular} by ID."),
+        ("DELETE", _) => format!("Permanently delete a {singular} by ID."),
+        _ => format!("{method} {path}"),
+    }
+}
+
 /// Extract path parameter names from `{param}` patterns.
 fn extract_path_params(path: &str) -> Vec<String> {
     path.split('/')
@@ -372,6 +424,113 @@ mod tests {
     }
 
     #[test]
+    fn mcp_tool_name_list() {
+        assert_eq!(mcp_tool_name("GET", "/api/v1/users"), "list_users");
+    }
+
+    #[test]
+    fn mcp_tool_name_get() {
+        assert_eq!(mcp_tool_name("GET", "/api/v1/users/{id}"), "get_user");
+    }
+
+    #[test]
+    fn mcp_tool_name_create() {
+        assert_eq!(mcp_tool_name("POST", "/api/v1/users"), "create_user");
+    }
+
+    #[test]
+    fn mcp_tool_name_update_put() {
+        assert_eq!(mcp_tool_name("PUT", "/api/v1/users/{id}"), "update_user");
+    }
+
+    #[test]
+    fn mcp_tool_name_update_patch() {
+        assert_eq!(mcp_tool_name("PATCH", "/api/v1/users/{id}"), "update_user");
+    }
+
+    #[test]
+    fn mcp_tool_name_delete() {
+        assert_eq!(mcp_tool_name("DELETE", "/api/v1/users/{id}"), "delete_user");
+    }
+
+    #[test]
+    fn mcp_tool_name_nested() {
+        assert_eq!(
+            mcp_tool_name("GET", "/api/v1/posts/{id}/comments"),
+            "list_comments"
+        );
+    }
+
+    #[test]
+    fn mcp_tool_name_fallback() {
+        assert_eq!(mcp_tool_name("OPTIONS", "/api/v1/health"), "options_health");
+    }
+
+    #[test]
+    fn mcp_description_list() {
+        assert_eq!(
+            mcp_description("GET", "/api/v1/users"),
+            "List all users with optional pagination."
+        );
+    }
+
+    #[test]
+    fn mcp_description_get() {
+        assert_eq!(
+            mcp_description("GET", "/api/v1/users/{id}"),
+            "Get a single user by ID."
+        );
+    }
+
+    #[test]
+    fn mcp_description_create() {
+        assert_eq!(
+            mcp_description("POST", "/api/v1/users"),
+            "Create a new user."
+        );
+    }
+
+    #[test]
+    fn mcp_description_update_put() {
+        assert_eq!(
+            mcp_description("PUT", "/api/v1/users/{id}"),
+            "Update an existing user by ID."
+        );
+    }
+
+    #[test]
+    fn mcp_description_update_patch() {
+        assert_eq!(
+            mcp_description("PATCH", "/api/v1/users/{id}"),
+            "Update an existing user by ID."
+        );
+    }
+
+    #[test]
+    fn mcp_description_delete() {
+        assert_eq!(
+            mcp_description("DELETE", "/api/v1/users/{id}"),
+            "Permanently delete a user by ID."
+        );
+    }
+
+    #[test]
+    fn mcp_description_nested() {
+        assert_eq!(
+            mcp_description("GET", "/api/v1/posts/{id}/comments"),
+            "List all comments with optional pagination."
+        );
+    }
+
+    #[test]
+    fn mcp_description_fallback() {
+        assert_eq!(
+            mcp_description("OPTIONS", "/api/v1/health"),
+            "OPTIONS /api/v1/health"
+        );
+    }
+
+    #[test]
     fn build_spec_basic() {
         let config = OpenApiConfig {
             title: "Test API".to_string(),
@@ -442,6 +601,29 @@ mod tests {
         assert_eq!(params.len(), 1);
         assert_eq!(params[0].name, "id");
 
+        // Check x-mcp extensions on GET /api/v1/users
+        let get_ext = get_op.extensions.as_ref().unwrap();
+        assert_eq!(
+            get_ext.get("x-mcp-tool-name").unwrap(),
+            &serde_json::Value::String("list_users".to_string())
+        );
+        assert_eq!(
+            get_ext.get("x-mcp-description").unwrap(),
+            &serde_json::Value::String("List all users with optional pagination.".to_string())
+        );
+
+        // Check x-mcp extensions on DELETE /api/v1/users/{id}
+        let delete_op = user_path.delete.as_ref().unwrap();
+        let delete_ext = delete_op.extensions.as_ref().unwrap();
+        assert_eq!(
+            delete_ext.get("x-mcp-tool-name").unwrap(),
+            &serde_json::Value::String("delete_user".to_string())
+        );
+        assert_eq!(
+            delete_ext.get("x-mcp-description").unwrap(),
+            &serde_json::Value::String("Permanently delete a user by ID.".to_string())
+        );
+
         // Check security scheme
         let components = spec.components.as_ref().unwrap();
         assert!(components.security_schemes.contains_key("api_key"));
@@ -505,5 +687,41 @@ mod tests {
         assert!(json.contains("\"info\""));
         assert!(json.contains("\"paths\""));
         assert!(json.contains("/api/v1/health"));
+    }
+
+    #[test]
+    fn spec_extensions_in_json() {
+        let config = OpenApiConfig::default();
+        let routes = vec![
+            RouteInfo {
+                method: "GET".to_string(),
+                path: "/api/v1/users".to_string(),
+                name: Some("users.index".to_string()),
+                middleware: vec![],
+            },
+            RouteInfo {
+                method: "POST".to_string(),
+                path: "/api/v1/users".to_string(),
+                name: Some("users.store".to_string()),
+                middleware: vec![],
+            },
+        ];
+
+        let spec = build_openapi_spec(&config, &routes);
+        let json_str = spec.to_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        // Verify GET operation has x-mcp extensions
+        let get_op = &parsed["paths"]["/api/v1/users"]["get"];
+        assert_eq!(get_op["x-mcp-tool-name"], "list_users");
+        assert_eq!(
+            get_op["x-mcp-description"],
+            "List all users with optional pagination."
+        );
+
+        // Verify POST operation has x-mcp extensions
+        let post_op = &parsed["paths"]["/api/v1/users"]["post"];
+        assert_eq!(post_op["x-mcp-tool-name"], "create_user");
+        assert_eq!(post_op["x-mcp-description"], "Create a new user.");
     }
 }
