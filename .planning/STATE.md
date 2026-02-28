@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 81 (Consumer DX & Polish)
-Plan: 00/03
-Status: Planned
-Last activity: 2026-02-28 — Phase 81 planned (3 plans in 2 waves)
+Plan: 02/03
+Status: In progress
+Last activity: 2026-02-28 — Plan 02 complete (input validation & error DX)
 
 ## Milestone Summary
 
@@ -107,6 +107,10 @@ Archived to PROJECT.md and milestone archive files.
 - x-mcp-hidden uses continue to skip operations at parse time (not post-filtering)
 - Hint text appended to description as "\n\nHint: {hint}" for AI agent visibility without MCP protocol changes
 - hint stored as separate field on ApiOperation for clean parser→service data flow
+- validate_args as pure function returning Vec<String> for testability (no side effects)
+- Validation runs before HTTP call to avoid unnecessary network requests
+- HTTP status suggestions appended to body text to keep Error enum stable (no new variants)
+- url_str captured before Url is moved into request builder (Rust ownership)
 
 ### Roadmap Evolution
 
@@ -122,6 +126,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 79 Plan 03 complete: schema bridge (OpenAPI params to MCP JSON Schema) and HTTP client
 - Phase 79 Plan 04 complete: MCP service with dynamic ToolRouter, stdio server, full CLI-to-serve pipeline
 - Phase 80 complete: x-mcp OpenAPI extensions — framework emits x-mcp-tool-name/x-mcp-description, ferro-api-mcp consumes x-mcp-tool-name/description/hint/hidden
+- Phase 81 Plan 02 complete: Input validation & error DX — pre-flight arg validation (8 tests), categorized errors with actionable suggestions
 
 ### Pending Todos
 
@@ -134,5 +139,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 81 planned — ready for execution
+Stopped at: Phase 81 Plan 02 complete — Plan 03 next (wave 2)
 Resume file: None
