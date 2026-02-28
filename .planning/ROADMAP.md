@@ -38,7 +38,7 @@
 |-------|-------|--------|-----------|
 | 79. ferro-api-mcp Core | 4/4 | Complete | 2026-02-28 |
 | 80. x-mcp OpenAPI Extensions | 2/2 | Complete | 2026-02-28 |
-| 81. Consumer DX & Polish | TBD | Not started | - |
+| 81. Consumer DX & Polish | 3/3 | Complete | 2026-02-28 |
 | 82. End-to-End Validation | TBD | Not started | - |
 
 #### Phase 79: ferro-api-mcp Core
@@ -70,9 +70,9 @@ Plans:
 **Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 81-01: Startup diagnostics & dry-run (Wave 1)
-- [ ] 81-02: Input validation & error messages (Wave 1, parallel with 01)
-- [ ] 81-03: Consumer setup documentation (Wave 2, depends: 01, 02)
+- [x] 81-01: Startup diagnostics & dry-run (Wave 1)
+- [x] 81-02: Input validation & error messages (Wave 1, parallel with 01)
+- [x] 81-03: Consumer setup documentation (Wave 2, depends: 01, 02)
 
 #### Phase 82: End-to-End Validation
 **Goal**: Full pipeline test — make:api generates API, start app, connect ferro-api-mcp, verify all tools work through MCP protocol against real data.
