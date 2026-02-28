@@ -1,6 +1,8 @@
 use ferro::{get, group, post, resource, routes};
-use ferro::{AuthMiddleware as SessionAuthMiddleware, GuestMiddleware, Throttle};
+use ferro::{AuthMiddleware as SessionAuthMiddleware, GuestMiddleware};
 
+use crate::api::docs::docs_routes;
+use crate::api::routes::api_routes;
 use crate::controllers;
 use crate::middleware::AuthMiddleware;
 
@@ -35,10 +37,11 @@ routes! {
         post!("/logout", controllers::auth_controller::logout).name("auth.logout"),
     }).middleware(SessionAuthMiddleware::new()),
 
-    // API routes - rate limited with named "api" limiter (60 req/min)
-    group!("/api", {
-        get!("/users", controllers::user::api_index).name("api.users.index"),
-    }).middleware(Throttle::named("api")),
+    // API CRUD routes - protected by API key middleware
+    api_routes(),
+
+    // API documentation and OpenAPI spec
+    docs_routes(),
 
     // Broadcasting auth (uncomment when broadcasting is configured in bootstrap):
     // post!("/broadcasting/auth", ferro::broadcasting_auth),

@@ -40,6 +40,7 @@ fn fail_with(context: &str, error: impl std::fmt::Display, how_to_fix: &[&str]) 
 }
 
 mod actions;
+mod api;
 mod bootstrap;
 mod config;
 mod controllers;
