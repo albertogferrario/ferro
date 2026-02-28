@@ -127,6 +127,14 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - ✓ list_lang_files MCP tool for locale/key/coverage introspection — v6.0
 - ✓ Comprehensive localization documentation (253 lines) — v6.0
 
+**v8.1 API DX Polish (shipped 2026-02-28):**
+- ✓ `ferro make:api-key` CLI command for API key generation without code — v8.1
+- ✓ Route-level x-MCP customization API (.mcp_tool_name, .mcp_description, .mcp_hint, .mcp_hidden) — v8.1
+- ✓ Sensitive field auto-exclusion in make:api with --exclude/--include-all flags — v8.1
+- ✓ `ferro api:check` local API verification command — v8.1
+- ✓ Post-scaffold guidance with MCP config snippets for Claude Desktop/Code — v8.1
+- ✓ Complete API-to-MCP documentation (Quick Start Workflow, Route Customization) — v8.1
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
@@ -145,14 +153,15 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 ## Context
 
 **Current State:**
-- ~88,000 lines of Rust across 13 crates (including ferro-lang)
+- ~90,000 lines of Rust across 14 crates (including ferro-api-mcp)
+- v8.1 added: API DX polish — make:api-key, api:check, field exclusion, x-MCP route API, post-scaffold guidance
+- v8.0 added: ferro-api-mcp standalone binary — OpenAPI-to-MCP bridge for consumer AI agents
+- v7.8 added: Memory leak fixes — moka-based bounded caches, metrics 404 explosion fix
+- v7.4 added: Security hardening — binary responses, security headers, session absolute expiry
 - v6.0 added: ferro-lang localization crate with JSON translations, per-request locale detection, validation bridge
-- v5.1 added: template module split, env template cleanup, deployment fixes, concerns audit
-- v5.0 added: JSON-UI plugin system, Map plugin, validated via Proximity reference app
-- v4.0 added: authentication, API resources, rate limiting, WebSocket broadcasting
 - Framework production-ready for crates.io publication
-- Sample application (app/) demonstrating Inertia integration with localization
-- Comprehensive MCP introspection (35+ tools, including localization coverage)
+- Sample application (app/) demonstrating Inertia integration with API layer
+- Comprehensive MCP introspection (35+ tools) + consumer MCP bridge (ferro-api-mcp)
 
 **Tech Stack:**
 - Rust 2021 edition
@@ -215,4 +224,4 @@ Reference codebase documentation in `.planning/codebase/`:
 | 401 via FrameworkError::domain | 401 is authentication failure; Unauthorized is 403 | ✓ Good |
 
 ---
-*Last updated: 2026-02-13 after v6.0 ferro-lang — Localization milestone*
+*Last updated: 2026-02-28 after v8.1 API DX Polish milestone*

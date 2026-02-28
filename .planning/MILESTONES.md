@@ -1,5 +1,30 @@
 # Project Milestones: Ferro Framework
 
+## v8.1 API DX Polish (Shipped: 2026-02-28)
+
+**Delivered:** Closed the DX gaps between `ferro make:api` scaffold and a working MCP integration with five targeted improvements.
+
+**Phases completed:** 83 (5 plans total)
+
+**Key accomplishments:**
+- `ferro make:api-key` CLI command generates API keys with SHA-256 hashing, SQL/Rust code snippets (8 tests)
+- Route-level x-MCP builder API: .mcp_tool_name(), .mcp_description(), .mcp_hint(), .mcp_hidden() with group-level defaults (5 tests)
+- Sensitive field auto-exclusion in make:api with --exclude/--include-all flags and 8 known patterns (8 tests)
+- `ferro api:check` validates server connectivity, OpenAPI spec, and API key auth with actionable error messages (7 tests)
+- Enhanced post-scaffold guidance with setup steps, MCP config snippets for Claude Desktop and Claude Code
+- Complete API-to-MCP documentation: Quick Start Workflow and Route Customization guides
+
+**Stats:**
+- 20 files changed (+1,995, -78 lines)
+- 1 phase, 5 plans, 10 tasks
+- 1 day (2026-02-28)
+
+**Git range:** `495edd9` → `7aae50e`
+
+**What's next:** Planning next milestone.
+
+---
+
 ## v6.0 ferro-lang — Localization (Shipped: 2026-02-13)
 
 **Delivered:** Added localization infrastructure via new ferro-lang crate with JSON translations, per-request locale detection, validation message localization, CLI scaffolding, MCP introspection, and comprehensive test coverage.

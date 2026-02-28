@@ -2,17 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-13)
+See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v8.1 API DX Polish
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 83 (API DX Polish)
-Plan: 01 + 02 + 03 + 04 + 05 complete
-Status: Phase 83 complete (all 5 plans shipped)
-Last activity: 2026-02-28 — Plan 05 complete (post-scaffold guidance & documentation)
+Phase: 83 complete
+Plan: All complete
+Status: v8.1 milestone shipped
+Last activity: 2026-02-28 — v8.1 API DX Polish milestone complete
 
 ## Milestone Summary
 
@@ -33,11 +33,12 @@ Last activity: 2026-02-28 — Plan 05 complete (post-scaffold guidance & documen
 | v6.1 Fix Known Issues | 67 | 1 | Complete | 2026-02-24 |
 | v7.0 Resend Integration | 68 | 3 | Complete | 2026-02-25 |
 | v7.1 Static File Serving | 69 | 1 | Complete | 2026-02-25 |
-| Security Hardening | 72-74 | 5 | Complete | 2026-02-26 |
-| Type Generator Fix | 75 | 1 | Complete | 2026-02-27 |
-| Default API Scaffold | 76 | 4 | Complete | 2026-02-27 |
-| Validate & Fix API Scaffold | 77 | 3 | Complete | 2026-02-28 |
-| Memory Leak Audit | 78 | 3 | Complete | 2026-02-28 |
+| v7.4 Security Hardening | 72-74 | 5 | Complete | 2026-02-26 |
+| v7.5 Type Generator Fix | 75 | 1 | Complete | 2026-02-27 |
+| v7.6 Default API Scaffold | 76 | 4 | Complete | 2026-02-27 |
+| v7.7 Validate & Fix API Scaffold | 77 | 3 | Complete | 2026-02-28 |
+| v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
+| v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
 
 ## Accumulated Context
@@ -46,121 +47,12 @@ Last activity: 2026-02-28 — Plan 05 complete (post-scaffold guidance & documen
 
 Archived to PROJECT.md and milestone archive files.
 
-- Static file responses use hyper::Response<Full<Bytes>> directly (not HttpResponse) to preserve binary file integrity
-- Static files checked before fallback handler in handle_request() to prevent SPA catch-all from intercepting asset requests
-- HttpResponse body changed from String to Bytes; body() returns &str with from_utf8 fallback for backward compatibility
-- bytes() constructor sets no default Content-Type; download() auto-detects from filename extension
-- SecurityHeaders HSTS off by default to avoid breaking localhost over HTTP
-- X-XSS-Protection set to 0 per OWASP (XSS Auditor can create vulnerabilities)
-- CSP includes unsafe-inline/unsafe-eval for Inertia.js and Vite SPA compatibility
-- SecurityHeaders placed after CSRF middleware in bootstrap so headers apply to all responses including CSRF rejections
-- Nullable created_at for backward compat with existing sessions tables (NULL skips absolute check)
-- destroy_for_user default trait impl returns error rather than panic
-- Cookie max_age uses max(idle, absolute) so cookie outlives both server-side checks
-- DatabaseSessionDriver with zero-duration lifetimes in logout_other_devices (destroy_for_user never reads them)
-- DatabaseSessionDriver and SessionStore re-exported from framework root for admin flows
-- Generated TypeScript files are fully self-contained (no shared.ts imports/re-exports) to prevent circular imports
-- parse_shared_types kept for resolve_nested_types filtering (avoids regenerating user-defined types)
-- MCP CRUD tools: column names derived from field names (SeaORM default), Postgres RETURNING / SQLite last_insert_rowid fallback
-- Per-page capped at 100, created_at/updated_at skipped from required-field validation
-- SHA-256 for API key hashing (not bcrypt) — correct for high-entropy random keys
-- Constant-time comparison via subtle crate for API key hash verification
-- OnceLock caching for OpenAPI spec and ReDoc HTML (generated once on first call)
-- ApiKeyProvider resolved from service container via App::make (storage-agnostic)
-- utoipa and utoipa-redoc re-exported from framework root for advanced customization
-- make:api reuses syn AST visitor pattern from ferro-mcp list_models for model detection consistency
-- Generated update handlers use conditional builder pattern (if let Some) for partial updates
-- quote crate added as ferro-cli dependency for syn ToTokens trait
-- DB::connection() errors in generated templates use map_err for consistent error handling
-- Extracted normalize_page, normalize_per_page, find_missing_required_field as testable pure functions
-- Per-page clamped to [1, 100] with .clamp() instead of .min(100) to prevent LIMIT 0
-- Entity file stems singularized for correct model names (users.rs -> User, not Users)
-- module_name separated from model name for correct crate::models:: import paths
-- Generated resources use From<Model> (owned) for ApiResource derive macro compatibility
-- Unmatched routes normalized to "UNMATCHED" bucket to prevent 404 path explosion DoS
-- MAX_ROUTE_ENTRIES = 1000 cap as defense-in-depth for metrics HashMap
-- InMemoryCache: moka::sync::Cache (not future) since CacheStore async_trait wraps synchronous operations
-- Default capacity 10,000 entries matching ferro-cache MemoryStore convention
-- CacheValue wrapper struct embeds optional TTL for Expiry trait per-entry reads
-- ferro-cache: CacheValue wrapper with TTL for moka::future::Cache per-entry expiry via Expiry trait
-- ferro-cache tags: HashSet instead of Vec prevents duplicates structurally
-- moka 0.12 eviction listener fires on explicit removal/size eviction but not TTL expiry; lazy cleanup in tag_members as complement
-- ferro-cache counters: bounded moka cache instead of unbounded DashMap
-- ferro-api-mcp as standalone workspace binary (not library dependency of framework)
-- ApiOperation::new() defaults input_schema to empty object schema for schema module to populate
-- CLI uses EnvFilter with fallback to --log-level arg for tracing configuration
-- Request body nested under "body" key in MCP input_schema to prevent name collisions with path/query params
-- Pure helper functions (interpolate_path, build_query_params) for testability without HTTP mocking
-- Missing path params leave {param} placeholder unchanged (graceful degradation)
-- Non-JSON success responses wrapped as Value::String
-- openapiv3 Schema serialized to serde_json::Value via serde_json::to_value for downstream consumption
-- Unresolvable $ref in spec parser returns None with tracing::warn (graceful degradation, not error)
-- Cookie parameters skipped in spec parser extraction (not relevant for MCP tool inputs)
-- Tool name fallback excludes {param} path segments for cleaner names
-- Dynamic ToolRouter built at runtime from Vec<ApiOperation> (not compile-time macros)
-- Tool annotations based on HTTP method: GET=readOnly+idempotent, POST=mutable, PUT/PATCH=idempotent, DELETE=destructive
-- Base URL resolved with three-tier fallback: --base-url flag > spec servers[0].url > spec_url origin
-- All diagnostic output to stderr; stdout reserved for MCP JSON-RPC transport
-- SpecMetadata extracted separately from parse_spec for separation of concerns
-- x-mcp extensions use ExtensionsBuilder.add() which auto-handles x- prefix
-- mcp_tool_name/mcp_description helpers mirror auto_summary pattern with method+path dispatch
-- x-mcp extensions are optional overrides with fallback to existing behavior in ferro-api-mcp
-- x-mcp-hidden uses continue to skip operations at parse time (not post-filtering)
-- Hint text appended to description as "\n\nHint: {hint}" for AI agent visibility without MCP protocol changes
-- hint stored as separate field on ApiOperation for clean parser→service data flow
-- categorize_reqwest_error inspects is_connect/is_timeout/is_decode for specific diagnostic messages
-- fetch_spec validates HTTP status and JSON validity before returning body
-- format_spec_fetch_error in main.rs categorizes error strings for user-facing presentation
-- --dry-run prints tool summary and exits without starting MCP server
-- validate_args as pure function returning Vec<String> for testability (no side effects)
-- Validation runs before HTTP call to avoid unnecessary network requests
-- HTTP status suggestions appended to body text to keep Error enum stable (no new variants)
-- url_str captured before Url is moved into request builder (Rust ownership)
-- Entity/model split for api_keys: entity in entities/ (auto-generated pattern), model in models/ (custom code with re-export)
-- Request types inline in API controller files when no separate requests module exists
-- openapi_docs_response and openapi_json_response re-exported from framework root for direct use in app code
-- OpenAPI spec version check relaxed from 3.0.x to 3.x (utoipa 5.x generates 3.1.0)
-- Path parameters require schema in OpenAPI spec for openapiv3 crate compatibility
-- Route params must match handler variable names for AutoRouteBinding (:user not :id for user: Model)
-- validate_openapi_json extracted as pub fn for testability without HTTP mocking
-- find_first_endpoint prefers GET endpoints for auth test safety
-- Sensitive field auto-exclusion uses exact match only (not substring) to avoid false positives
-- filter_resource_fields is pub(crate) for testability; FieldInfo visibility raised to pub(crate)
-- --include-all disables auto-exclusion but --exclude custom fields still apply
-- make:api-key replicates key generation logic (~20 lines) to keep ferro-cli independent from framework crate
-- generate_api_key returns Option (None for invalid env) instead of panicking
-- RouteInfo derives Default for ergonomic test construction with ..Default::default()
-- McpDefaults internal struct propagates group MCP settings to children; child overrides take precedence
-- Hidden routes emit only x-mcp-hidden: true with no tool name or description in OpenAPI spec
-- update_route_mcp remains pub(crate) since it is only used within the routing module
-- Post-scaffold output reads app name from ./Cargo.toml with "my-app" fallback for personalized MCP config snippets
+See .planning/milestones/v8.1-ROADMAP.md for Phase 83 decisions.
 
 ### Roadmap Evolution
 
-- All planned milestones v1.0–v7.1 complete (15 milestones, 150 plans shipped)
-- Security hardening phases 72-74 added to roadmap
-- Phase 75 complete: generate-types output made self-contained (no shared.ts imports/re-exports)
-- Phase 76 complete: Default API scaffold with API key auth, OpenAPI, MCP CRUD, CLI make:api, and documentation
-- Phase 77 complete: Validate & fix API scaffold — 5 template bugs fixed, 75 regression tests added
-- Phase 78 complete: Memory leak audit — Plan 01 fixes metrics 404 explosion, Plan 02 replaces InMemoryCache with moka, Plan 03 fixes ferro-cache TTL/tags/counters
-- Milestone v8.0 created: Consumer MCP — OpenAPI Bridge, 4 phases (79-82)
-- Phase 79 Plan 01 complete: ferro-api-mcp crate scaffold with types, errors, and clap CLI
-- Phase 79 Plan 02 complete: OpenAPI spec parser with TDD (22 tests, version validation, $ref resolution)
-- Phase 79 Plan 03 complete: schema bridge (OpenAPI params to MCP JSON Schema) and HTTP client
-- Phase 79 Plan 04 complete: MCP service with dynamic ToolRouter, stdio server, full CLI-to-serve pipeline
-- Phase 80 complete: x-mcp OpenAPI extensions — framework emits x-mcp-tool-name/x-mcp-description, ferro-api-mcp consumes x-mcp-tool-name/description/hint/hidden
-- Phase 81 Plan 01 complete: Startup diagnostics & categorized spec fetch errors — --dry-run flag, connectivity check, categorized error messages
-- Phase 81 Plan 02 complete: Input validation & error DX — pre-flight arg validation (8 tests), categorized errors with actionable suggestions
-- Phase 81 Plan 03 complete: Consumer-facing ferro-api-mcp documentation — setup, MCP host configs, x-mcp extensions, troubleshooting
-- Phase 82 Plan 01 complete: Sample app API layer — user CRUD at /api/v1/users, API key auth, OpenAPI spec at /api/openapi.json
-- Phase 82 Plan 02 complete: E2E integration tests — 3 tests validate full pipeline (OpenAPI spec, MCP tool discovery, CRUD operations)
-- Phase 83 added: API DX Polish — CLI key generation, model selection, x-mcp route API, post-scaffold guidance, local verification
-- Phase 83 planned: 5 plans in 2 waves — Plans 01-04 parallel (Wave 1), Plan 05 sequential (Wave 2, depends on 01+04)
-- Phase 83 Plan 03 complete: make:api field exclusion — auto-excludes sensitive fields from API resources, --exclude and --include-all flags, 8 unit tests
-- Phase 83 Plan 04 complete: ferro api:check CLI command — 4 sequential checks (connectivity, spec available, spec valid, auth), 7 unit tests
-- Phase 83 Plan 01 complete: ferro make:api-key CLI command — generates fe_{env}_{random} keys with SHA-256, SQL/Rust snippets, 8 unit tests
-- Phase 83 Plan 02 complete: x-mcp route customization API — .mcp_tool_name(), .mcp_description(), .mcp_hint(), .mcp_hidden() builder methods, OpenAPI spec consumption, 5 new tests
-- Phase 83 Plan 05 complete: Post-scaffold guidance with MCP config snippets, complete API-to-MCP documentation
+- 21 milestones shipped, 184 plans total
+- v8.1 complete: API DX Polish — make:api-key, api:check, field exclusion, x-MCP route API, post-scaffold guidance
 
 ### Pending Todos
 
@@ -173,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 83 complete — all 5 plans shipped
+Stopped at: v8.1 milestone complete — ready for next milestone planning
 Resume file: None
