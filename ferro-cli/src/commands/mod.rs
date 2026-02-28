@@ -1,3 +1,4 @@
+pub mod api_check;
 pub mod boost_install;
 pub mod claude_install;
 pub mod clean;
@@ -15,6 +16,7 @@ pub mod generate_routes;
 pub mod generate_types;
 pub mod make_action;
 pub mod make_api;
+pub mod make_api_key;
 pub mod make_auth;
 pub mod make_controller;
 pub mod make_error;
