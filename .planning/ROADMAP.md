@@ -24,13 +24,20 @@
 - ✅ **v7.6 Default API Scaffold** — Phase 76 (shipped 2026-02-27)
 - ✅ **v7.7 Validate & Fix API Scaffold** — Phase 77 (shipped 2026-02-28)
 - ✅ **v7.8 Memory Leak Fixes** — Phase 78 (shipped 2026-02-28)
-- 🚧 **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (in progress)
+- ✅ **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (shipped 2026-02-28)
 
 ---
 
 ## Active Milestone
 
-### v8.0 Consumer MCP — OpenAPI Bridge (Phases 79-82)
+None — all milestones complete.
+
+---
+
+## Completed Milestones
+
+<details>
+<summary>✅ v8.0 Consumer MCP — OpenAPI Bridge (Phases 79-82) — SHIPPED 2026-02-28</summary>
 
 **Milestone Goal:** Let consumers interact with any Ferro web service through natural language via a standalone MCP server that auto-discovers API operations from OpenAPI specs.
 
@@ -39,66 +46,17 @@
 | 79. ferro-api-mcp Core | 4/4 | Complete | 2026-02-28 |
 | 80. x-mcp OpenAPI Extensions | 2/2 | Complete | 2026-02-28 |
 | 81. Consumer DX & Polish | 3/3 | Complete | 2026-02-28 |
-| 82. End-to-End Validation | TBD | Not started | - |
+| 82. End-to-End Validation | 2/2 | Complete | 2026-02-28 |
 
-#### Phase 79: ferro-api-mcp Core
-**Goal**: New crate — standalone MCP server binary that fetches an OpenAPI spec from a URL, parses operations, and dynamically registers MCP tools. HTTP client with API key auth header.
-**Depends on**: Phase 76-77 (API scaffold + fixes)
-**Research**: Complete (79-RESEARCH.md — rmcp 0.12 ToolRoute::new_dyn, openapiv3 2.2.0, reqwest HTTP client)
-**Plans**: 4 plans in 3 waves
+**Total:** 4 phases, 11 plans
 
-Plans:
-- [x] 79-01: Crate scaffold + types + CLI (Wave 1)
-- [x] 79-02: OpenAPI spec parser — TDD (Wave 2)
-- [x] 79-03: Schema bridge + HTTP client (Wave 2, parallel with 02)
-- [x] 79-04: MCP service + server integration (Wave 3)
+**What was built:**
+- ferro-api-mcp standalone binary: fetches OpenAPI spec, parses operations, registers dynamic MCP tools (Phase 79)
+- x-mcp OpenAPI extensions: framework emits x-mcp-tool-name/description/hint/hidden, ferro-api-mcp consumes them (Phase 80)
+- Consumer DX: startup diagnostics, --dry-run, input validation, categorized errors, setup documentation (Phase 81)
+- E2E validation: sample app API layer + 3 integration tests proving full pipeline works (Phase 82)
 
-#### Phase 80: x-mcp OpenAPI Extensions
-**Goal**: Define `x-mcp` extension schema for OpenAPI operations. Emit enriched tool names and descriptions in framework's `build_openapi_spec()`. Consume extensions in ferro-api-mcp's parser.
-**Depends on**: Phase 79
-**Research**: Complete (80-RESEARCH.md — utoipa Extensions API, openapiv3 extensions field, industry x-mcp patterns)
-**Plans**: 2 plans in 1 wave
-
-Plans:
-- [x] 80-01: Framework x-mcp extension emission (Wave 1)
-- [x] 80-02: ferro-api-mcp x-mcp extension consumption (Wave 1, parallel with 01)
-
-#### Phase 81: Consumer DX & Polish
-**Goal**: Connection diagnostics, input validation from JSON Schema, helpful error messages when tools fail, and consumer-facing setup documentation.
-**Depends on**: Phase 80
-**Research**: None needed (internal patterns)
-**Plans**: 3 plans in 2 waves
-
-Plans:
-- [x] 81-01: Startup diagnostics & dry-run (Wave 1)
-- [x] 81-02: Input validation & error messages (Wave 1, parallel with 01)
-- [x] 81-03: Consumer setup documentation (Wave 2, depends: 01, 02)
-
-#### Phase 82: End-to-End Validation
-**Goal**: Full pipeline test — make:api generates API, start app, connect ferro-api-mcp, verify all tools work through MCP protocol against real data.
-**Depends on**: Phase 81
-**Research**: Unlikely (internal validation)
-**Plans**: TBD
-
-Plans:
-- [ ] 82-01: TBD
-
----
-
-### v7.3 Vite Manifest (Phase 71)
-
-**Milestone Goal:** Read Vite manifest.json in production to resolve hashed asset filenames instead of hardcoding paths.
-
-| Phase | Plans | Status | Completed |
-|-------|-------|--------|-----------|
-| 71. Vite Manifest | 1 | Pending | - |
-
-Plans:
-- [ ] 71-01: Read Vite manifest for production asset paths
-
----
-
-## Completed Milestones
+</details>
 
 <details>
 <summary>✅ v7.8 Memory Leak Fixes (Phase 78) — SHIPPED 2026-02-28</summary>
@@ -501,6 +459,7 @@ Plans:
 | v7.6 Default API Scaffold | 76 | 4 | ✅ Complete | 2026-02-27 |
 | v7.7 Validate & Fix API Scaffold | 77 | 3 | ✅ Complete | 2026-02-28 |
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
+| v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 
-**Total: 19 milestones shipped, 168 plans.**
+**Total: 20 milestones shipped, 179 plans.**
 
