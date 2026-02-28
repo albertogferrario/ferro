@@ -9,9 +9,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 87 (Service Relationships) — Plan 01 COMPLETE
+Phase: 88 (Intent Core Types) — Plan 01 COMPLETE
 Plan: 01/01 complete
-Status: Phase 87 complete — RelationshipDef + Cardinality + NavigationHint + ServiceDef integration + validation + 118 tests
+Status: Phase 88 complete — Intent + IntentScore + IntentHint + ServiceDef integration + validation + 143 tests
 Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 9/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 10/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -99,6 +99,14 @@ Archived to PROJECT.md and milestone archive files.
 - Warning::DuplicateRelationship and Warning::ManyToManyWithForeignKey validation warnings
 - 113 ferro-projections unit tests + 5 doctests = 118 total
 
+**Phase 88-01:**
+- Intent enum: 7 structurally-derivable variants (Browse, Focus, Collect, Process, Summarize, Analyze, Track) + Custom(String) untagged fallback
+- IntentScore: confidence-scored derivation result with matching_signals (NOT Eq, f64 confidence)
+- IntentHint: Primary/Exclude manual override for structural analysis, externally tagged serde
+- ServiceDef gains intent_hints field with .intent_hint() builder method
+- Warning::ConflictingIntentHints and Warning::MultiplePrimaryIntentHints validation warnings
+- 138 ferro-projections unit tests + 5 doctests = 143 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -118,5 +126,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 87 Plan 01 COMPLETE — RelationshipDef + ServiceDef integration + validation + 118 tests
+Stopped at: Phase 88 Plan 01 COMPLETE — Intent + IntentScore + IntentHint + ServiceDef integration + validation + 143 tests
 Resume file: None
