@@ -33,15 +33,48 @@ pub fn extract_metadata(json: &str) -> Result<SpecMetadata, Error> {
 /// Fetch an OpenAPI spec from a URL.
 ///
 /// Returns the raw JSON string for parsing with `parse_spec`.
+/// Categorizes fetch errors for actionable diagnostics:
+/// connection refused, timeout, decode errors, non-2xx status, non-JSON content.
 pub async fn fetch_spec(url: &str) -> Result<String, Error> {
     let response = reqwest::get(url)
         .await
-        .map_err(|e| Error::SpecFetch(e.to_string()))?;
+        .map_err(|e| categorize_reqwest_error(url, &e))?;
 
-    response
+    let status = response.status();
+    if !status.is_success() {
+        return Err(Error::SpecFetch(format!(
+            "HTTP {status} — expected 200 with OpenAPI JSON"
+        )));
+    }
+
+    let body = response
         .text()
         .await
-        .map_err(|e| Error::SpecFetch(e.to_string()))
+        .map_err(|e| categorize_reqwest_error(url, &e))?;
+
+    // Quick JSON validity check before returning
+    if serde_json::from_str::<Value>(&body).is_err() {
+        return Err(Error::SpecFetch(
+            "response is not valid JSON — expected an OpenAPI 3.0.x JSON document".into(),
+        ));
+    }
+
+    Ok(body)
+}
+
+/// Categorize a reqwest error into a specific diagnostic message.
+fn categorize_reqwest_error(url: &str, e: &reqwest::Error) -> Error {
+    if e.is_connect() {
+        Error::SpecFetch(format!(
+            "connection refused — is the server running at {url}?"
+        ))
+    } else if e.is_timeout() {
+        Error::SpecFetch("request timed out — check network connectivity".into())
+    } else if e.is_decode() {
+        Error::SpecFetch("failed to decode response body".into())
+    } else {
+        Error::SpecFetch(e.to_string())
+    }
 }
 
 /// Parse an OpenAPI 3.0.x JSON spec into a list of API operations.
