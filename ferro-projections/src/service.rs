@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::field::{DataType, FieldDef, FieldMeaning};
@@ -17,7 +18,7 @@ use crate::state::StateMachine;
 ///     .field("total", DataType::Float, FieldMeaning::Money)
 ///     .optional_field("notes", DataType::String, FieldMeaning::FreeText);
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct ServiceDef {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]

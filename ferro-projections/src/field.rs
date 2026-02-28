@@ -1,10 +1,11 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Abstract data type categories for service fields.
 ///
 /// Represents structural types independent of database storage details.
 /// Maps from database column types at introspection time.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DataType {
     String,
@@ -26,8 +27,9 @@ pub enum DataType {
 /// meanings not covered by built-in variants.
 ///
 /// `Custom(String)` must remain the last variant for correct serde deserialization.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+#[schemars(description = "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning.")]
 pub enum FieldMeaning {
     Identifier,
     ForeignKey,
@@ -52,7 +54,7 @@ pub enum FieldMeaning {
 }
 
 /// A field definition within a service projection.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct FieldDef {
     pub name: String,
     pub data_type: DataType,
