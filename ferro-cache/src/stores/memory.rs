@@ -5,13 +5,57 @@ use crate::error::Error;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use moka::future::Cache as MokaCache;
+use moka::policy::Expiry;
+use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// Wrapper that stores data alongside its per-entry TTL.
+#[derive(Clone)]
+struct CacheValue {
+    data: Vec<u8>,
+    ttl: Duration,
+}
+
+/// Per-entry expiry policy: each entry expires after its own TTL.
+struct PerEntryExpiry;
+
+impl Expiry<String, CacheValue> for PerEntryExpiry {
+    fn expire_after_create(
+        &self,
+        _key: &String,
+        value: &CacheValue,
+        _created_at: Instant,
+    ) -> Option<Duration> {
+        Some(value.ttl)
+    }
+
+    fn expire_after_update(
+        &self,
+        _key: &String,
+        value: &CacheValue,
+        _updated_at: Instant,
+        _duration_until_expiry: Option<Duration>,
+    ) -> Option<Duration> {
+        Some(value.ttl)
+    }
+
+    fn expire_after_read(
+        &self,
+        _key: &String,
+        _value: &CacheValue,
+        _read_at: Instant,
+        duration_until_expiry: Option<Duration>,
+        _last_modified_at: Instant,
+    ) -> Option<Duration> {
+        duration_until_expiry
+    }
+}
 
 /// In-memory cache store.
 pub struct MemoryStore {
-    cache: MokaCache<String, Vec<u8>>,
-    tags: Arc<DashMap<String, Vec<String>>>,
+    cache: MokaCache<String, CacheValue>,
+    tags: Arc<DashMap<String, HashSet<String>>>,
     counters: Arc<DashMap<String, i64>>,
 }
 
@@ -24,18 +68,28 @@ impl Default for MemoryStore {
 impl MemoryStore {
     /// Create a new memory store.
     pub fn new() -> Self {
-        Self {
-            cache: MokaCache::builder().max_capacity(10_000).build(),
-            tags: Arc::new(DashMap::new()),
-            counters: Arc::new(DashMap::new()),
-        }
+        Self::with_capacity(10_000)
     }
 
     /// Create with custom capacity.
     pub fn with_capacity(capacity: u64) -> Self {
+        let tags: Arc<DashMap<String, HashSet<String>>> = Arc::new(DashMap::new());
+        let tags_clone = tags.clone();
+
+        let cache = MokaCache::builder()
+            .max_capacity(capacity)
+            .expire_after(PerEntryExpiry)
+            .eviction_listener(move |key: Arc<String>, _value, _cause| {
+                tags_clone.retain(|_tag, members| {
+                    members.remove(key.as_str());
+                    !members.is_empty()
+                });
+            })
+            .build();
+
         Self {
-            cache: MokaCache::builder().max_capacity(capacity).build(),
-            tags: Arc::new(DashMap::new()),
+            cache,
+            tags,
             counters: Arc::new(DashMap::new()),
         }
     }
@@ -44,17 +98,12 @@ impl MemoryStore {
 #[async_trait]
 impl CacheStore for MemoryStore {
     async fn get_raw(&self, key: &str) -> Result<Option<Vec<u8>>, Error> {
-        Ok(self.cache.get(key).await)
+        Ok(self.cache.get(key).await.map(|cv| cv.data))
     }
 
     async fn put_raw(&self, key: &str, value: Vec<u8>, ttl: Duration) -> Result<(), Error> {
-        self.cache.insert(key.to_string(), value).await;
-
-        // Moka handles TTL through expiration, but we need to set it per-entry
-        // For simplicity, we'll use the builder-level TTL
-        // In production, you'd want per-entry TTL using a wrapper or different approach
-        let _ = ttl; // TTL is handled at cache level for moka
-
+        let cv = CacheValue { data: value, ttl };
+        self.cache.insert(key.to_string(), cv).await;
         Ok(())
     }
 
@@ -92,12 +141,16 @@ impl CacheStore for MemoryStore {
         self.tags
             .entry(tag.to_string())
             .or_default()
-            .push(key.to_string());
+            .insert(key.to_string());
         Ok(())
     }
 
     async fn tag_members(&self, tag: &str) -> Result<Vec<String>, Error> {
-        Ok(self.tags.get(tag).map(|v| v.clone()).unwrap_or_default())
+        Ok(self
+            .tags
+            .get(tag)
+            .map(|set| set.iter().cloned().collect())
+            .unwrap_or_default())
     }
 
     async fn tag_flush(&self, tag: &str) -> Result<(), Error> {
