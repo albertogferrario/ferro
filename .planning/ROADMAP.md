@@ -26,8 +26,131 @@
 - ✅ **v7.8 Memory Leak Fixes** — Phase 78 (shipped 2026-02-28)
 - ✅ **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (shipped 2026-02-28)
 - ✅ **v8.1 API DX Polish** — Phase 83 (shipped 2026-02-28)
+- 🚧 **v9.0 Service Projections** — Phases 84-93 (in progress)
 
 ---
+
+### 🚧 v9.0 Service Projections (In Progress)
+
+**Milestone Goal:** Introduce a three-layer architecture where services describe business capabilities and UI is generated from those descriptions: Model → ServiceDef → IntentGraph → Renderer → Output.
+
+#### Phase 84: Service Identity & Field Semantics
+
+**Goal**: Create `ferro-projections` crate with `ServiceDef` and `FieldMeaning`.
+**Depends on**: Previous milestone complete
+**Research**: Unlikely (internal patterns)
+**Plans**: 2
+
+Plans:
+- [ ] 84-01: TBD
+- [ ] 84-02: TBD
+
+#### Phase 85: State Machines
+
+**Goal**: Add state machine definitions — states, transitions, guards, side effects as schema.
+**Depends on**: Phase 84
+**Research**: Unlikely (internal patterns)
+**Plans**: 2
+
+Plans:
+- [ ] 85-01: TBD
+- [ ] 85-02: TBD
+
+#### Phase 86: Actions & Preconditions
+
+**Goal**: Add action definitions — inputs, guards, preconditions, transition triggers.
+**Depends on**: Phase 85
+**Research**: Unlikely (internal patterns)
+**Plans**: 2
+
+Plans:
+- [ ] 86-01: TBD
+- [ ] 86-02: TBD
+
+#### Phase 87: Service Relationships
+
+**Goal**: Declare how services relate to each other with cardinality and navigation hints.
+**Depends on**: Phase 84 (parallel with 85-86)
+**Research**: Unlikely (internal patterns)
+**Plans**: 1
+
+Plans:
+- [ ] 87-01: TBD
+
+#### Phase 88: Intent Layer — Core Types
+
+**Goal**: Build the Intent vocabulary — universal UI operations for any medium.
+**Depends on**: Phase 84, Phase 86
+**Research**: Likely (intent taxonomy needs careful design across rendering scenarios)
+**Research topics**: Intent taxonomy design, medium-agnostic UI operations, prior art in abstract UI description
+**Plans**: 3
+
+Plans:
+- [ ] 88-01: TBD
+- [ ] 88-02: TBD
+- [ ] 88-03: TBD
+
+#### Phase 89: Intent Graph Generation
+
+**Goal**: ServiceDef + current state/context → IntentGraph.
+**Depends on**: Phase 88
+**Research**: Likely (graph generation algorithm is the intellectual core)
+**Research topics**: Directed graph generation from schema, cycle handling, state-dependent edge filtering
+**Plans**: 3
+
+Plans:
+- [ ] 89-01: TBD
+- [ ] 89-02: TBD
+- [ ] 89-03: TBD
+
+#### Phase 90: Renderer Trait & JSON-UI Renderer
+
+**Goal**: Define Renderer trait, implement first renderer mapping intents to JSON-UI components.
+**Depends on**: Phase 89
+**Research**: Likely (validates the whole architecture — if mapping feels forced, intent taxonomy needs revision)
+**Research topics**: ferro-json-ui component API, plugin registry pattern, FieldMeaning→component mapping
+**Plans**: 3
+
+Plans:
+- [ ] 90-01: TBD
+- [ ] 90-02: TBD
+- [ ] 90-03: TBD
+
+#### Phase 91: Framework Integration
+
+**Goal**: Wire ferro-projections into the framework — re-exports, handler helpers, route generation.
+**Depends on**: Phase 90
+**Research**: Unlikely (established integration patterns)
+**Plans**: 3
+
+Plans:
+- [ ] 91-01: TBD
+- [ ] 91-02: TBD
+- [ ] 91-03: TBD
+
+#### Phase 92: MCP Introspection & CLI
+
+**Goal**: MCP tools for service discovery, CLI scaffolding.
+**Depends on**: Phase 91
+**Research**: Unlikely (established MCP/CLI patterns)
+**Plans**: 3
+
+Plans:
+- [ ] 92-01: TBD
+- [ ] 92-02: TBD
+- [ ] 92-03: TBD
+
+#### Phase 93: Field Test & Polish
+
+**Goal**: Build complete Order Management service exercising full stack. Fix issues, polish API.
+**Depends on**: Phase 92
+**Research**: Unlikely (validation of existing implementation)
+**Plans**: 3
+
+Plans:
+- [ ] 93-01: TBD
+- [ ] 93-02: TBD
+- [ ] 93-03: TBD
 
 ## Completed Milestones
 
@@ -481,6 +604,7 @@
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
+| v9.0 Service Projections | 84-93 | 0/25 | 🚧 In Progress | - |
 
-**Total: 21 milestones shipped, 184 plans.**
+**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (25 plans).**
 

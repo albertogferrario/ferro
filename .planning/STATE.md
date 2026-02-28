@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Planning next milestone
+**Current focus:** v9.0 Service Projections
 
 ## Current Position
 
-Phase: 83 complete
-Plan: All complete
-Status: v8.1 milestone shipped
-Last activity: 2026-02-28 — v8.1 API DX Polish milestone complete
+Phase: 84 (Service Identity & Field Semantics)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-28 — Milestone v9.0 created
 
 ## Milestone Summary
 
@@ -40,6 +40,7 @@ Last activity: 2026-02-28 — v8.1 API DX Polish milestone complete
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
+| v9.0 Service Projections | 84-93 | 0/25 | In Progress | - |
 
 ## Accumulated Context
 
@@ -47,12 +48,10 @@ Last activity: 2026-02-28 — v8.1 API DX Polish milestone complete
 
 Archived to PROJECT.md and milestone archive files.
 
-See .planning/milestones/v8.1-ROADMAP.md for Phase 83 decisions.
-
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
-- v8.1 complete: API DX Polish — make:api-key, api:check, field exclusion, x-MCP route API, post-scaffold guidance
+- v9.0 created: Service Projections — ServiceDef→IntentGraph→Renderer architecture, 10 phases (Phase 84-93)
 
 ### Pending Todos
 
@@ -65,5 +64,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: v8.1 milestone complete — ready for next milestone planning
+Stopped at: Milestone v9.0 initialization — ready to plan Phase 84
 Resume file: None
