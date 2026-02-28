@@ -1318,4 +1318,101 @@ mod tests {
             "missing 'intent_hints' property"
         );
     }
+
+    // -- Phase 88-02 tests: full integration with intent hints --
+
+    #[test]
+    fn full_service_with_intent_hints() {
+        let machine = StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft").display_name("Draft"))
+            .state(
+                StateDef::new("submitted")
+                    .display_name("Submitted")
+                    .on_enter(vec!["validate_inventory"]),
+            )
+            .state(
+                StateDef::new("shipped")
+                    .display_name("Shipped")
+                    .final_state(),
+            )
+            .state(
+                StateDef::new("cancelled")
+                    .display_name("Cancelled")
+                    .final_state(),
+            )
+            .transition(Transition::new("draft", "submit", "submitted").guard("has_items"))
+            .transition(
+                Transition::new("submitted", "ship", "shipped").guard("inventory_fulfilled"),
+            )
+            .transition(
+                Transition::new("draft", "cancel", "cancelled").guard("cancellation_allowed"),
+            )
+            .transition(
+                Transition::new("submitted", "cancel", "cancelled").guard("cancellation_allowed"),
+            );
+
+        let service = ServiceDef::new("order")
+            .display_name("Order")
+            .description("Full order management with all features including intent hints")
+            .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_id", DataType::Integer, FieldMeaning::ForeignKey)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .read_only_field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .guard(GuardDef::new("has_items"))
+            .guard(GuardDef::new("inventory_fulfilled"))
+            .guard(GuardDef::new("cancellation_allowed"))
+            .action(
+                ActionDef::new("submit_order")
+                    .precondition("has_items")
+                    .transition_trigger("submit"),
+            )
+            .action(
+                ActionDef::new("ship_order")
+                    .precondition("inventory_fulfilled")
+                    .transition_trigger("ship"),
+            )
+            .action(
+                ActionDef::new("cancel_order")
+                    .precondition("cancellation_allowed")
+                    .transition_trigger("cancel"),
+            )
+            .belongs_to("customer", "customer")
+            .has_many("line_items", "order_line_item")
+            .has_one("invoice", "invoice")
+            .intent_hint(IntentHint::Primary(Intent::Process))
+            .intent_hint(IntentHint::Exclude(Intent::Summarize))
+            .state_machine(machine);
+
+        // Validate passes with no warnings
+        let warnings = service.validate().unwrap();
+        assert!(
+            warnings.is_empty(),
+            "expected no warnings, got: {warnings:?}"
+        );
+
+        // All pieces present
+        assert_eq!(service.fields.len(), 5);
+        assert_eq!(service.guards.len(), 3);
+        assert_eq!(service.actions.len(), 3);
+        assert_eq!(service.relationships.len(), 3);
+        assert_eq!(service.intent_hints.len(), 2);
+        assert!(service.state_machine.is_some());
+
+        // Intent hints correct
+        assert_eq!(
+            service.intent_hints[0],
+            IntentHint::Primary(Intent::Process)
+        );
+        assert_eq!(
+            service.intent_hints[1],
+            IntentHint::Exclude(Intent::Summarize)
+        );
+
+        // Serde round-trip
+        let json = serde_json::to_string_pretty(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+    }
 }
