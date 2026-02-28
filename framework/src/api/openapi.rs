@@ -95,13 +95,29 @@ pub fn build_openapi_spec(
         }
 
         // Emit x-mcp vendor extensions for AI tool discovery
-        let extensions = ExtensionsBuilder::new()
-            .add("x-mcp-tool-name", mcp_tool_name(&route.method, &route.path))
-            .add(
-                "x-mcp-description",
-                mcp_description(&route.method, &route.path),
-            )
-            .build();
+        let extensions = if route.mcp_hidden {
+            // Hidden routes only emit x-mcp-hidden, no tool name or description
+            ExtensionsBuilder::new().add("x-mcp-hidden", true).build()
+        } else {
+            let tool_name = route
+                .mcp_tool_name
+                .clone()
+                .unwrap_or_else(|| mcp_tool_name(&route.method, &route.path));
+            let description = route
+                .mcp_description
+                .clone()
+                .unwrap_or_else(|| mcp_description(&route.method, &route.path));
+
+            let mut ext = ExtensionsBuilder::new()
+                .add("x-mcp-tool-name", tool_name)
+                .add("x-mcp-description", description);
+
+            if let Some(hint) = &route.mcp_hint {
+                ext = ext.add("x-mcp-hint", hint.clone());
+            }
+
+            ext.build()
+        };
         op = op.extensions(Some(extensions));
 
         let operation = op.build();
@@ -736,5 +752,130 @@ mod tests {
         let post_op = &parsed["paths"]["/api/v1/users"]["post"];
         assert_eq!(post_op["x-mcp-tool-name"], "create_user");
         assert_eq!(post_op["x-mcp-description"], "Create a new user.");
+    }
+
+    #[test]
+    fn spec_explicit_mcp_tool_name_override() {
+        let config = OpenApiConfig::default();
+        let routes = vec![RouteInfo {
+            method: "GET".to_string(),
+            path: "/api/v1/users".to_string(),
+            name: None,
+            middleware: vec![],
+            mcp_tool_name: Some("fetch_all_users".to_string()),
+            ..Default::default()
+        }];
+
+        let spec = build_openapi_spec(&config, &routes);
+        let json_str = spec.to_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let get_op = &parsed["paths"]["/api/v1/users"]["get"];
+        assert_eq!(get_op["x-mcp-tool-name"], "fetch_all_users");
+        // Description should still be auto-generated
+        assert_eq!(
+            get_op["x-mcp-description"],
+            "List all users with optional pagination."
+        );
+    }
+
+    #[test]
+    fn spec_mcp_hidden_route() {
+        let config = OpenApiConfig::default();
+        let routes = vec![RouteInfo {
+            method: "GET".to_string(),
+            path: "/api/v1/internal/health".to_string(),
+            name: None,
+            middleware: vec![],
+            mcp_hidden: true,
+            ..Default::default()
+        }];
+
+        let spec = build_openapi_spec(&config, &routes);
+        let json_str = spec.to_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let get_op = &parsed["paths"]["/api/v1/internal/health"]["get"];
+        assert_eq!(get_op["x-mcp-hidden"], true);
+        // Hidden routes must not emit tool-name or description
+        assert!(get_op.get("x-mcp-tool-name").is_none());
+        assert!(get_op.get("x-mcp-description").is_none());
+    }
+
+    #[test]
+    fn spec_mcp_hint_extension() {
+        let config = OpenApiConfig::default();
+        let routes = vec![RouteInfo {
+            method: "POST".to_string(),
+            path: "/api/v1/users".to_string(),
+            name: None,
+            middleware: vec![],
+            mcp_hint: Some("Requires admin role. Email must be unique.".to_string()),
+            ..Default::default()
+        }];
+
+        let spec = build_openapi_spec(&config, &routes);
+        let json_str = spec.to_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let post_op = &parsed["paths"]["/api/v1/users"]["post"];
+        assert_eq!(
+            post_op["x-mcp-hint"],
+            "Requires admin role. Email must be unique."
+        );
+        // Tool name and description should still be present
+        assert_eq!(post_op["x-mcp-tool-name"], "create_user");
+        assert_eq!(post_op["x-mcp-description"], "Create a new user.");
+    }
+
+    #[test]
+    fn spec_no_mcp_overrides_uses_auto_generated() {
+        let config = OpenApiConfig::default();
+        let routes = vec![RouteInfo {
+            method: "DELETE".to_string(),
+            path: "/api/v1/users/{id}".to_string(),
+            name: None,
+            middleware: vec![],
+            ..Default::default()
+        }];
+
+        let spec = build_openapi_spec(&config, &routes);
+        let json_str = spec.to_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let delete_op = &parsed["paths"]["/api/v1/users/{id}"]["delete"];
+        assert_eq!(delete_op["x-mcp-tool-name"], "delete_user");
+        assert_eq!(
+            delete_op["x-mcp-description"],
+            "Permanently delete a user by ID."
+        );
+        // No hint or hidden flags
+        assert!(delete_op.get("x-mcp-hint").is_none());
+        assert!(delete_op.get("x-mcp-hidden").is_none());
+    }
+
+    #[test]
+    fn spec_mcp_description_override() {
+        let config = OpenApiConfig::default();
+        let routes = vec![RouteInfo {
+            method: "GET".to_string(),
+            path: "/api/v1/users".to_string(),
+            name: None,
+            middleware: vec![],
+            mcp_description: Some("Retrieve all active users, sorted by name.".to_string()),
+            ..Default::default()
+        }];
+
+        let spec = build_openapi_spec(&config, &routes);
+        let json_str = spec.to_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let get_op = &parsed["paths"]["/api/v1/users"]["get"];
+        assert_eq!(
+            get_op["x-mcp-description"],
+            "Retrieve all active users, sorted by name."
+        );
+        // Tool name should still be auto-generated
+        assert_eq!(get_op["x-mcp-tool-name"], "list_users");
     }
 }
