@@ -301,6 +301,25 @@ impl ServiceDef {
             }
         }
 
+        // 8. Warn about duplicate relationship names
+        {
+            let mut seen = HashSet::new();
+            for rel in &self.relationships {
+                if !seen.insert(rel.name.as_str()) {
+                    warnings.push(Warning::DuplicateRelationship(rel.name.clone()));
+                }
+            }
+        }
+
+        // 9. Warn if ManyToMany relationship has foreign_key set
+        for rel in &self.relationships {
+            if rel.cardinality == Cardinality::ManyToMany && rel.foreign_key.is_some() {
+                warnings.push(Warning::ManyToManyWithForeignKey {
+                    relationship: rel.name.clone(),
+                });
+            }
+        }
+
         Ok(warnings)
     }
 }
@@ -943,5 +962,194 @@ mod tests {
         let obj = props.as_object().unwrap();
         assert!(obj.contains_key("actions"), "missing 'actions' property");
         assert!(obj.contains_key("guards"), "missing 'guards' property");
+    }
+
+    // -- Phase 87-01 tests: relationships --
+
+    use crate::relationship::{Cardinality, NavigationHint, RelationshipDef};
+
+    #[test]
+    fn service_def_with_relationships_builder() {
+        let service = ServiceDef::new("order").relationship(
+            RelationshipDef::new("customer", "customer", Cardinality::ManyToOne)
+                .foreign_key("customer_id"),
+        );
+
+        assert_eq!(service.relationships.len(), 1);
+        assert_eq!(service.relationships[0].name, "customer");
+        assert_eq!(service.relationships[0].target, "customer");
+        assert_eq!(service.relationships[0].cardinality, Cardinality::ManyToOne);
+    }
+
+    #[test]
+    fn service_def_belongs_to_convenience() {
+        let service = ServiceDef::new("order").belongs_to("customer", "customer");
+
+        assert_eq!(service.relationships.len(), 1);
+        let rel = &service.relationships[0];
+        assert_eq!(rel.name, "customer");
+        assert_eq!(rel.target, "customer");
+        assert_eq!(rel.cardinality, Cardinality::ManyToOne);
+        assert_eq!(rel.navigation, NavigationHint::Link);
+    }
+
+    #[test]
+    fn service_def_has_many_convenience() {
+        let service = ServiceDef::new("order").has_many("line_items", "order_line_item");
+
+        assert_eq!(service.relationships.len(), 1);
+        let rel = &service.relationships[0];
+        assert_eq!(rel.name, "line_items");
+        assert_eq!(rel.target, "order_line_item");
+        assert_eq!(rel.cardinality, Cardinality::OneToMany);
+        assert_eq!(rel.navigation, NavigationHint::Nested);
+    }
+
+    #[test]
+    fn service_def_has_one_convenience() {
+        let service = ServiceDef::new("user").has_one("profile", "user_profile");
+
+        assert_eq!(service.relationships.len(), 1);
+        let rel = &service.relationships[0];
+        assert_eq!(rel.name, "profile");
+        assert_eq!(rel.target, "user_profile");
+        assert_eq!(rel.cardinality, Cardinality::OneToOne);
+        assert_eq!(rel.navigation, NavigationHint::Inline);
+    }
+
+    #[test]
+    fn service_def_belongs_to_many_convenience() {
+        let service = ServiceDef::new("post").belongs_to_many("tags", "tag");
+
+        assert_eq!(service.relationships.len(), 1);
+        let rel = &service.relationships[0];
+        assert_eq!(rel.name, "tags");
+        assert_eq!(rel.target, "tag");
+        assert_eq!(rel.cardinality, Cardinality::ManyToMany);
+        assert_eq!(rel.navigation, NavigationHint::Nested);
+    }
+
+    #[test]
+    fn service_def_json_omits_empty_relationships() {
+        let service = ServiceDef::new("user");
+        let json = serde_json::to_string(&service).unwrap();
+        assert!(!json.contains("relationships"));
+    }
+
+    #[test]
+    fn service_def_relationships_serde_round_trip() {
+        let service = ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .belongs_to("customer", "customer")
+            .has_many("line_items", "order_line_item")
+            .has_one("invoice", "invoice")
+            .belongs_to_many("tags", "tag");
+
+        let json = serde_json::to_string_pretty(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+        assert_eq!(parsed.relationships.len(), 4);
+    }
+
+    // -- Validation tests --
+
+    #[test]
+    fn validate_warns_duplicate_relationship_names() {
+        let service = ServiceDef::new("order")
+            .belongs_to("customer", "customer")
+            .belongs_to("customer", "other_customer");
+
+        let warnings = service.validate().unwrap();
+        assert!(warnings.contains(&Warning::DuplicateRelationship("customer".into())));
+    }
+
+    #[test]
+    fn validate_warns_many_to_many_with_foreign_key() {
+        let service = ServiceDef::new("post").relationship(
+            RelationshipDef::new("tags", "tag", Cardinality::ManyToMany).foreign_key("tag_id"),
+        );
+
+        let warnings = service.validate().unwrap();
+        assert!(warnings.contains(&Warning::ManyToManyWithForeignKey {
+            relationship: "tags".into()
+        }));
+    }
+
+    #[test]
+    fn validate_passes_with_valid_relationships() {
+        let service = ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .belongs_to("customer", "customer")
+            .has_many("line_items", "order_line_item");
+
+        let warnings = service.validate().unwrap();
+        assert!(
+            warnings.is_empty(),
+            "expected no warnings, got: {warnings:?}"
+        );
+    }
+
+    #[test]
+    fn order_service_with_relationships_full_example() {
+        let machine = StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft").display_name("Draft"))
+            .state(
+                StateDef::new("submitted")
+                    .display_name("Submitted")
+                    .final_state(),
+            )
+            .transition(Transition::new("draft", "submit", "submitted").guard("has_items"));
+
+        let service = ServiceDef::new("order")
+            .display_name("Order")
+            .description("Full order management with relationships")
+            .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_id", DataType::Integer, FieldMeaning::ForeignKey)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .guard(GuardDef::new("has_items"))
+            .action(
+                ActionDef::new("submit_order")
+                    .precondition("has_items")
+                    .transition_trigger("submit"),
+            )
+            .belongs_to("customer", "customer")
+            .has_many("line_items", "order_line_item")
+            .has_one("invoice", "invoice")
+            .state_machine(machine);
+
+        // Validate passes with no warnings
+        let warnings = service.validate().unwrap();
+        assert!(
+            warnings.is_empty(),
+            "expected no warnings, got: {warnings:?}"
+        );
+
+        // All pieces present
+        assert_eq!(service.fields.len(), 4);
+        assert_eq!(service.guards.len(), 1);
+        assert_eq!(service.actions.len(), 1);
+        assert_eq!(service.relationships.len(), 3);
+        assert!(service.state_machine.is_some());
+
+        // Serde round-trip
+        let json = serde_json::to_string_pretty(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+    }
+
+    #[test]
+    fn service_def_json_schema_includes_relationships() {
+        let schema = schemars::schema_for!(ServiceDef);
+        let value = schema.to_value();
+        let props = value
+            .get("properties")
+            .expect("ServiceDef schema must have properties");
+        let obj = props.as_object().unwrap();
+        assert!(
+            obj.contains_key("relationships"),
+            "missing 'relationships' property"
+        );
     }
 }

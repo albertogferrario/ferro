@@ -105,6 +105,10 @@ pub enum Warning {
     UnusedGuard(String),
     /// An action has a transition_trigger but the service has no state machine.
     TransitionTriggerWithoutStateMachine(String),
+    /// Multiple relationships share the same name within a service.
+    DuplicateRelationship(String),
+    /// A many-to-many relationship has a foreign_key set (join tables have no single FK).
+    ManyToManyWithForeignKey { relationship: String },
 }
 
 impl StateMachine {

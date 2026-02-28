@@ -128,3 +128,187 @@ impl RelationshipDef {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -- Type construction --
+
+    #[test]
+    fn relationship_def_new_sets_defaults() {
+        let rel = RelationshipDef::new("customer", "customer", Cardinality::ManyToOne);
+        assert_eq!(rel.name, "customer");
+        assert_eq!(rel.target, "customer");
+        assert_eq!(rel.cardinality, Cardinality::ManyToOne);
+        assert_eq!(rel.navigation, NavigationHint::Link);
+        assert!(rel.foreign_key.is_none());
+        assert!(rel.inverse.is_none());
+        assert!(rel.description.is_none());
+    }
+
+    #[test]
+    fn relationship_def_builder_chain() {
+        let rel = RelationshipDef::new("customer", "customer", Cardinality::ManyToOne)
+            .foreign_key("customer_id")
+            .inverse("orders")
+            .navigation(NavigationHint::Tab)
+            .description("Customer who placed this order");
+
+        assert_eq!(rel.name, "customer");
+        assert_eq!(rel.target, "customer");
+        assert_eq!(rel.cardinality, Cardinality::ManyToOne);
+        assert_eq!(rel.navigation, NavigationHint::Tab);
+        assert_eq!(rel.foreign_key.as_deref(), Some("customer_id"));
+        assert_eq!(rel.inverse.as_deref(), Some("orders"));
+        assert_eq!(
+            rel.description.as_deref(),
+            Some("Customer who placed this order")
+        );
+    }
+
+    #[test]
+    fn cardinality_default_navigation() {
+        assert_eq!(
+            Cardinality::OneToOne.default_navigation(),
+            NavigationHint::Inline
+        );
+        assert_eq!(
+            Cardinality::ManyToOne.default_navigation(),
+            NavigationHint::Link
+        );
+        assert_eq!(
+            Cardinality::OneToMany.default_navigation(),
+            NavigationHint::Nested
+        );
+        assert_eq!(
+            Cardinality::ManyToMany.default_navigation(),
+            NavigationHint::Nested
+        );
+    }
+
+    // -- Serde round-trip --
+
+    #[test]
+    fn relationship_def_serde_round_trip() {
+        let rel = RelationshipDef::new("customer", "customer", Cardinality::ManyToOne)
+            .foreign_key("customer_id")
+            .inverse("orders")
+            .navigation(NavigationHint::Link)
+            .description("Customer who placed this order");
+
+        let json = serde_json::to_string(&rel).unwrap();
+        let parsed: RelationshipDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(rel, parsed);
+    }
+
+    #[test]
+    fn relationship_def_json_omits_none_fields() {
+        let rel = RelationshipDef::new("items", "item", Cardinality::OneToMany);
+        let json = serde_json::to_string(&rel).unwrap();
+        assert!(!json.contains("foreign_key"));
+        assert!(!json.contains("inverse"));
+        assert!(!json.contains("description"));
+        // Required fields are present
+        assert!(json.contains("name"));
+        assert!(json.contains("target"));
+        assert!(json.contains("cardinality"));
+        assert!(json.contains("navigation"));
+    }
+
+    #[test]
+    fn cardinality_serde_values() {
+        assert_eq!(
+            serde_json::to_string(&Cardinality::OneToOne).unwrap(),
+            r#""one_to_one""#
+        );
+        assert_eq!(
+            serde_json::to_string(&Cardinality::OneToMany).unwrap(),
+            r#""one_to_many""#
+        );
+        assert_eq!(
+            serde_json::to_string(&Cardinality::ManyToOne).unwrap(),
+            r#""many_to_one""#
+        );
+        assert_eq!(
+            serde_json::to_string(&Cardinality::ManyToMany).unwrap(),
+            r#""many_to_many""#
+        );
+
+        // Round-trip all variants
+        for card in [
+            Cardinality::OneToOne,
+            Cardinality::OneToMany,
+            Cardinality::ManyToOne,
+            Cardinality::ManyToMany,
+        ] {
+            let json = serde_json::to_string(&card).unwrap();
+            let parsed: Cardinality = serde_json::from_str(&json).unwrap();
+            assert_eq!(card, parsed);
+        }
+    }
+
+    #[test]
+    fn navigation_hint_serde_values() {
+        assert_eq!(
+            serde_json::to_string(&NavigationHint::Inline).unwrap(),
+            r#""inline""#
+        );
+        assert_eq!(
+            serde_json::to_string(&NavigationHint::Link).unwrap(),
+            r#""link""#
+        );
+        assert_eq!(
+            serde_json::to_string(&NavigationHint::Tab).unwrap(),
+            r#""tab""#
+        );
+        assert_eq!(
+            serde_json::to_string(&NavigationHint::Nested).unwrap(),
+            r#""nested""#
+        );
+        assert_eq!(
+            serde_json::to_string(&NavigationHint::Hidden).unwrap(),
+            r#""hidden""#
+        );
+
+        // Round-trip all variants
+        for hint in [
+            NavigationHint::Inline,
+            NavigationHint::Link,
+            NavigationHint::Tab,
+            NavigationHint::Nested,
+            NavigationHint::Hidden,
+        ] {
+            let json = serde_json::to_string(&hint).unwrap();
+            let parsed: NavigationHint = serde_json::from_str(&json).unwrap();
+            assert_eq!(hint, parsed);
+        }
+    }
+
+    // -- JSON Schema --
+
+    #[test]
+    fn relationship_def_json_schema() {
+        let schema = schemars::schema_for!(RelationshipDef);
+        let value = schema.to_value();
+        let props = value
+            .get("properties")
+            .expect("RelationshipDef schema must have properties");
+        let obj = props.as_object().unwrap();
+        assert!(obj.contains_key("name"), "missing 'name' property");
+        assert!(obj.contains_key("target"), "missing 'target' property");
+        assert!(
+            obj.contains_key("cardinality"),
+            "missing 'cardinality' property"
+        );
+        assert!(
+            obj.contains_key("navigation"),
+            "missing 'navigation' property"
+        );
+        assert!(
+            obj.contains_key("foreign_key"),
+            "missing 'foreign_key' property"
+        );
+        assert!(obj.contains_key("inverse"), "missing 'inverse' property");
+    }
+}
