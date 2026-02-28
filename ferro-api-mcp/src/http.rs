@@ -50,6 +50,7 @@ impl HttpClient {
             .parse()
             .map_err(|e| Error::HttpClient(format!("invalid HTTP method: {e}")))?;
 
+        let url_str = url.as_str().to_string();
         let mut request = self.client.request(method.clone(), url);
 
         if let Some(key) = &self.api_key {
@@ -71,10 +72,19 @@ impl HttpClient {
             }
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(|e| Error::HttpClient(e.to_string()))?;
+        let response = request.send().await.map_err(|e| {
+            if e.is_connect() {
+                Error::HttpClient(format!(
+                    "cannot connect to API at {url_str}. Is the server running? ({e})"
+                ))
+            } else if e.is_timeout() {
+                Error::HttpClient(format!(
+                    "request to {url_str} timed out. The API may be slow or overloaded."
+                ))
+            } else {
+                Error::HttpClient(e.to_string())
+            }
+        })?;
 
         let status = response.status();
         let body_text = response
@@ -88,9 +98,18 @@ impl HttpClient {
                 Err(_) => Ok(Value::String(body_text)),
             }
         } else {
+            let suggestion = match status.as_u16() {
+                401 => " Check the --api-key flag.",
+                403 => " The API key may lack permissions for this operation.",
+                404 => " The endpoint may not exist. Verify the API is running and the spec is current.",
+                422 => " The request body may have validation errors. Check the required fields.",
+                429 => " Rate limited. Wait before retrying.",
+                500..=599 => " The API is experiencing server errors.",
+                _ => "",
+            };
             Err(Error::ApiError {
                 status: status.as_u16(),
-                body: body_text,
+                body: format!("{body_text}{suggestion}"),
             })
         }
     }

@@ -74,9 +74,18 @@ impl ApiMcpService {
                                 .unwrap_or_else(|_| response.to_string());
                             Ok(CallToolResult::success(vec![Content::text(text)]))
                         }
-                        Err(err) => Ok(CallToolResult::error(vec![Content::text(format!(
-                            "API call failed: {err}"
-                        ))])),
+                        Err(err) => {
+                            let msg = match &err {
+                                crate::error::Error::ApiError { status, body } => {
+                                    format!("API returned HTTP {status}:\n{body}")
+                                }
+                                crate::error::Error::HttpClient(detail) => {
+                                    format!("Connection error: {detail}")
+                                }
+                                other => format!("Error: {other}"),
+                            };
+                            Ok(CallToolResult::error(vec![Content::text(msg)]))
+                        }
                     }
                 })
             });
