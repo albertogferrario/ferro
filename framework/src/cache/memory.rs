@@ -1,32 +1,61 @@
-//! In-memory cache implementation for testing and fallback
+//! In-memory cache implementation backed by moka
 //!
-//! Provides a thread-safe in-memory cache that mimics Redis behavior.
-//! Supports TTL expiration.
+//! Provides a thread-safe in-memory cache with bounded capacity,
+//! per-entry TTL via the Expiry trait, and proactive eviction.
 
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::RwLock;
+use moka::sync::Cache;
+use moka::Expiry;
 use std::time::{Duration, Instant};
 
 use super::store::CacheStore;
 use crate::error::FrameworkError;
 
-/// In-memory cache entry with optional expiration
+/// Cache value with optional per-entry TTL
 #[derive(Clone)]
-struct CacheEntry {
+struct CacheValue {
     value: String,
-    expires_at: Option<Instant>,
+    ttl: Option<Duration>,
 }
 
-impl CacheEntry {
-    fn is_expired(&self) -> bool {
-        self.expires_at.map(|t| Instant::now() > t).unwrap_or(false)
+/// Expiry policy that reads TTL from each CacheValue
+struct CacheTtlExpiry;
+
+impl Expiry<String, CacheValue> for CacheTtlExpiry {
+    fn expire_after_create(
+        &self,
+        _key: &String,
+        value: &CacheValue,
+        _created_at: Instant,
+    ) -> Option<Duration> {
+        value.ttl
+    }
+
+    fn expire_after_read(
+        &self,
+        _key: &String,
+        _value: &CacheValue,
+        _read_at: Instant,
+        duration_until_expiry: Option<Duration>,
+        _last_modified_at: Instant,
+    ) -> Option<Duration> {
+        duration_until_expiry
+    }
+
+    fn expire_after_update(
+        &self,
+        _key: &String,
+        value: &CacheValue,
+        _updated_at: Instant,
+        _duration_until_expiry: Option<Duration>,
+    ) -> Option<Duration> {
+        value.ttl
     }
 }
 
 /// In-memory cache implementation
 ///
-/// Thread-safe cache that stores values in memory with optional TTL.
+/// Bounded cache backed by moka with per-entry TTL and LRU eviction.
 /// Use this as a fallback when Redis is unavailable, or in tests.
 ///
 /// # Example
@@ -37,15 +66,23 @@ impl CacheEntry {
 /// let cache = InMemoryCache::new();
 /// ```
 pub struct InMemoryCache {
-    store: RwLock<HashMap<String, CacheEntry>>,
+    cache: Cache<String, CacheValue>,
     prefix: String,
 }
 
 impl InMemoryCache {
-    /// Create a new empty in-memory cache
+    /// Create a new in-memory cache with default capacity (10,000 entries)
     pub fn new() -> Self {
+        Self::with_capacity(10_000)
+    }
+
+    /// Create with a custom maximum capacity
+    pub fn with_capacity(capacity: u64) -> Self {
         Self {
-            store: RwLock::new(HashMap::new()),
+            cache: Cache::builder()
+                .max_capacity(capacity)
+                .expire_after(CacheTtlExpiry)
+                .build(),
             prefix: "ferro_cache:".to_string(),
         }
     }
@@ -53,7 +90,10 @@ impl InMemoryCache {
     /// Create with a custom prefix
     pub fn with_prefix(prefix: impl Into<String>) -> Self {
         Self {
-            store: RwLock::new(HashMap::new()),
+            cache: Cache::builder()
+                .max_capacity(10_000)
+                .expire_after(CacheTtlExpiry)
+                .build(),
             prefix: prefix.into(),
         }
     }
@@ -73,16 +113,7 @@ impl Default for InMemoryCache {
 impl CacheStore for InMemoryCache {
     async fn get_raw(&self, key: &str) -> Result<Option<String>, FrameworkError> {
         let key = self.prefixed_key(key);
-
-        let store = self
-            .store
-            .read()
-            .map_err(|_| FrameworkError::internal("Cache lock poisoned"))?;
-
-        match store.get(&key) {
-            Some(entry) if !entry.is_expired() => Ok(Some(entry.value.clone())),
-            _ => Ok(None),
-        }
+        Ok(self.cache.get(&key).map(|cv| cv.value))
     }
 
     async fn put_raw(
@@ -92,74 +123,49 @@ impl CacheStore for InMemoryCache {
         ttl: Option<Duration>,
     ) -> Result<(), FrameworkError> {
         let key = self.prefixed_key(key);
-
-        let entry = CacheEntry {
-            value: value.to_string(),
-            expires_at: ttl.map(|d| Instant::now() + d),
-        };
-
-        let mut store = self
-            .store
-            .write()
-            .map_err(|_| FrameworkError::internal("Cache lock poisoned"))?;
-
-        store.insert(key, entry);
+        self.cache.insert(
+            key,
+            CacheValue {
+                value: value.to_string(),
+                ttl,
+            },
+        );
         Ok(())
     }
 
     async fn has(&self, key: &str) -> Result<bool, FrameworkError> {
         let key = self.prefixed_key(key);
-
-        let store = self
-            .store
-            .read()
-            .map_err(|_| FrameworkError::internal("Cache lock poisoned"))?;
-
-        Ok(store.get(&key).map(|e| !e.is_expired()).unwrap_or(false))
+        Ok(self.cache.contains_key(&key))
     }
 
     async fn forget(&self, key: &str) -> Result<bool, FrameworkError> {
         let key = self.prefixed_key(key);
-
-        let mut store = self
-            .store
-            .write()
-            .map_err(|_| FrameworkError::internal("Cache lock poisoned"))?;
-
-        Ok(store.remove(&key).is_some())
+        let existed = self.cache.contains_key(&key);
+        self.cache.remove(&key);
+        Ok(existed)
     }
 
     async fn flush(&self) -> Result<(), FrameworkError> {
-        let mut store = self
-            .store
-            .write()
-            .map_err(|_| FrameworkError::internal("Cache lock poisoned"))?;
-
-        store.clear();
+        self.cache.invalidate_all();
         Ok(())
     }
 
     async fn increment(&self, key: &str, amount: i64) -> Result<i64, FrameworkError> {
         let key = self.prefixed_key(key);
 
-        let mut store = self
-            .store
-            .write()
-            .map_err(|_| FrameworkError::internal("Cache lock poisoned"))?;
-
-        let current: i64 = store
+        let current: i64 = self
+            .cache
             .get(&key)
-            .filter(|e| !e.is_expired())
-            .and_then(|e| e.value.parse().ok())
+            .and_then(|cv| cv.value.parse().ok())
             .unwrap_or(0);
 
         let new_value = current + amount;
 
-        store.insert(
+        self.cache.insert(
             key,
-            CacheEntry {
+            CacheValue {
                 value: new_value.to_string(),
-                expires_at: None,
+                ttl: None,
             },
         );
 
@@ -173,16 +179,18 @@ impl CacheStore for InMemoryCache {
     async fn expire(&self, key: &str, ttl: Duration) -> Result<bool, FrameworkError> {
         let key = self.prefixed_key(key);
 
-        let mut store = self
-            .store
-            .write()
-            .map_err(|_| FrameworkError::internal("Cache lock poisoned"))?;
-
-        if let Some(entry) = store.get_mut(&key) {
-            entry.expires_at = Some(Instant::now() + ttl);
-            Ok(true)
-        } else {
-            Ok(false)
+        match self.cache.get(&key) {
+            Some(cv) => {
+                self.cache.insert(
+                    key,
+                    CacheValue {
+                        value: cv.value,
+                        ttl: Some(ttl),
+                    },
+                );
+                Ok(true)
+            }
+            None => Ok(false),
         }
     }
 }
