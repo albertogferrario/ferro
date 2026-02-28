@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Phase 77 in progress — Validate & fix API scaffold
+**Current focus:** Phase 77 complete — Validate & fix API scaffold
 
 ## Current Position
 
 Phase: 77 (Validate & Fix API Scaffold)
-Plan: 2 of 3 complete
-Status: Plan 02 complete — 43 unit tests for CRUD operations, fixed per_page=0 edge case
-Last activity: 2026-02-28 — Plan 02 executed (CRUD operations test coverage)
+Plan: 3 of 3 complete
+Status: Phase 77 complete — all 3 plans executed, make:api generates compilable code with 75 tests
+Last activity: 2026-02-28 — Plan 03 executed (end-to-end validation + 32 regression tests)
 
 ## Milestone Summary
 
@@ -36,6 +36,7 @@ Last activity: 2026-02-28 — Plan 02 executed (CRUD operations test coverage)
 | Security Hardening | 72-74 | 5 | Complete | 2026-02-26 |
 | Type Generator Fix | 75 | 1 | Complete | 2026-02-27 |
 | Default API Scaffold | 76 | 4 | Complete | 2026-02-27 |
+| Validate & Fix API Scaffold | 77 | 3 | Complete | 2026-02-28 |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Archived to PROJECT.md and milestone archive files.
 - DB::connection() errors in generated templates use map_err for consistent error handling
 - Extracted normalize_page, normalize_per_page, find_missing_required_field as testable pure functions
 - Per-page clamped to [1, 100] with .clamp() instead of .min(100) to prevent LIMIT 0
+- Entity file stems singularized for correct model names (users.rs -> User, not Users)
+- module_name separated from model name for correct crate::models:: import paths
+- Generated resources use From<Model> (owned) for ApiResource derive macro compatibility
 
 ### Roadmap Evolution
 
@@ -78,7 +82,7 @@ Archived to PROJECT.md and milestone archive files.
 - Security hardening phases 72-74 added to roadmap
 - Phase 75 complete: generate-types output made self-contained (no shared.ts imports/re-exports)
 - Phase 76 complete: Default API scaffold with API key auth, OpenAPI, MCP CRUD, CLI make:api, and documentation
-- Phase 77 added: Validate & fix API scaffold — audit found missing tests, potential generated code bugs, zero MCP integration testing
+- Phase 77 complete: Validate & fix API scaffold — 5 template bugs fixed, 75 regression tests added
 
 ### Pending Todos
 
@@ -91,5 +95,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 77 Plan 02 complete — CRUD operations tested with 43 unit tests, Plan 03 next
+Stopped at: Phase 77 complete — all 3 plans shipped
 Resume file: None
