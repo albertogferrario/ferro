@@ -166,4 +166,66 @@ mod tests {
         assert!(!json.contains("display_name"));
         assert!(!json.contains("description"));
     }
+
+    #[test]
+    fn service_def_multiple_fields() {
+        let service = ServiceDef::new("product")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("price", DataType::Float, FieldMeaning::Money)
+            .field("sku", DataType::String, FieldMeaning::Custom("sku".into()))
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+
+        assert_eq!(service.fields.len(), 5);
+        // Order preserved
+        assert_eq!(service.fields[0].name, "id");
+        assert_eq!(service.fields[1].name, "name");
+        assert_eq!(service.fields[2].name, "price");
+        assert_eq!(service.fields[3].name, "sku");
+        assert_eq!(service.fields[4].name, "created_at");
+    }
+
+    #[test]
+    fn service_def_json_structure() {
+        let service = ServiceDef::new("order")
+            .display_name("Order")
+            .description("Customer orders")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .optional_field("notes", DataType::String, FieldMeaning::FreeText);
+
+        let json = serde_json::to_string(&service).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert!(value.get("name").is_some());
+        assert!(value.get("display_name").is_some());
+        assert!(value.get("description").is_some());
+        assert!(value.get("fields").is_some());
+
+        let fields = value["fields"].as_array().unwrap();
+        assert_eq!(fields.len(), 2);
+    }
+
+    #[test]
+    fn order_service_example() {
+        let service = ServiceDef::new("order")
+            .display_name("Order")
+            .description("Manages customer orders and fulfillment")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_id", DataType::Integer, FieldMeaning::ForeignKey)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("email", DataType::String, FieldMeaning::Email)
+            .field("notes", DataType::String, FieldMeaning::FreeText)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt);
+
+        assert_eq!(service.fields.len(), 8);
+        assert_eq!(service.fields[2].meaning, FieldMeaning::Money);
+        assert_eq!(service.fields[3].meaning, FieldMeaning::Status);
+
+        // Serde round-trip
+        let json = serde_json::to_string(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+    }
 }
