@@ -54,7 +54,7 @@ impl ServiceDef {
         self
     }
 
-    /// Adds a required field.
+    /// Adds a required read-write field.
     pub fn field(
         mut self,
         name: impl Into<String>,
@@ -67,11 +67,13 @@ impl ServiceDef {
             meaning,
             required: true,
             is_list: false,
+            readable: true,
+            writable: true,
         });
         self
     }
 
-    /// Adds an optional (nullable) field.
+    /// Adds an optional (nullable) read-write field.
     pub fn optional_field(
         mut self,
         name: impl Into<String>,
@@ -84,11 +86,13 @@ impl ServiceDef {
             meaning,
             required: false,
             is_list: false,
+            readable: true,
+            writable: true,
         });
         self
     }
 
-    /// Adds a required list field.
+    /// Adds a required read-write list field.
     pub fn list_field(
         mut self,
         name: impl Into<String>,
@@ -101,6 +105,50 @@ impl ServiceDef {
             meaning,
             required: true,
             is_list: true,
+            readable: true,
+            writable: true,
+        });
+        self
+    }
+
+    /// Adds a required read-only field (readable but not writable).
+    ///
+    /// For system-assigned or computed fields like id, created_at, or totals.
+    pub fn read_only_field(
+        mut self,
+        name: impl Into<String>,
+        data_type: DataType,
+        meaning: FieldMeaning,
+    ) -> Self {
+        self.fields.push(FieldDef {
+            name: name.into(),
+            data_type,
+            meaning,
+            required: true,
+            is_list: false,
+            readable: true,
+            writable: false,
+        });
+        self
+    }
+
+    /// Adds a required write-only field (writable but not readable).
+    ///
+    /// For sensitive inputs like passwords or API keys that should not be read back.
+    pub fn write_only_field(
+        mut self,
+        name: impl Into<String>,
+        data_type: DataType,
+        meaning: FieldMeaning,
+    ) -> Self {
+        self.fields.push(FieldDef {
+            name: name.into(),
+            data_type,
+            meaning,
+            required: true,
+            is_list: false,
+            readable: false,
+            writable: true,
         });
         self
     }
@@ -405,5 +453,71 @@ mod tests {
             obj.contains_key("state_machine"),
             "missing 'state_machine' property"
         );
+    }
+
+    // -- readable/writable builder tests --
+
+    #[test]
+    fn read_only_field_builder() {
+        let service = ServiceDef::new("order")
+            .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
+            .read_only_field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+
+        assert_eq!(service.fields.len(), 2);
+        for f in &service.fields {
+            assert!(f.readable);
+            assert!(!f.writable);
+            assert!(f.required);
+            assert!(!f.is_list);
+        }
+    }
+
+    #[test]
+    fn write_only_field_builder() {
+        let service = ServiceDef::new("user")
+            .write_only_field("password", DataType::String, FieldMeaning::Sensitive);
+
+        assert_eq!(service.fields.len(), 1);
+        let f = &service.fields[0];
+        assert!(!f.readable);
+        assert!(f.writable);
+        assert!(f.required);
+        assert!(!f.is_list);
+    }
+
+    #[test]
+    fn mixed_access_fields_serde_round_trip() {
+        let service = ServiceDef::new("user")
+            .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .write_only_field("password", DataType::String, FieldMeaning::Sensitive)
+            .read_only_field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+
+        let json = serde_json::to_string(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+
+        // Verify access modes survived round-trip
+        assert!(parsed.fields[0].readable);
+        assert!(!parsed.fields[0].writable);
+        assert!(parsed.fields[1].readable);
+        assert!(parsed.fields[1].writable);
+        assert!(!parsed.fields[2].readable);
+        assert!(parsed.fields[2].writable);
+        assert!(parsed.fields[3].readable);
+        assert!(!parsed.fields[3].writable);
+    }
+
+    #[test]
+    fn existing_field_builders_default_read_write() {
+        let service = ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .optional_field("notes", DataType::String, FieldMeaning::FreeText)
+            .list_field("tags", DataType::String, FieldMeaning::Category);
+
+        for f in &service.fields {
+            assert!(f.readable, "field '{}' should be readable", f.name);
+            assert!(f.writable, "field '{}' should be writable", f.name);
+        }
     }
 }

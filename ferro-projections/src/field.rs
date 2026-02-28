@@ -65,6 +65,10 @@ pub struct FieldDef {
     pub required: bool,
     #[serde(default)]
     pub is_list: bool,
+    #[serde(default = "default_true")]
+    pub readable: bool,
+    #[serde(default = "default_true")]
+    pub writable: bool,
 }
 
 fn default_true() -> bool {
@@ -213,6 +217,8 @@ mod tests {
             meaning: FieldMeaning::Money,
             required: true,
             is_list: false,
+            readable: true,
+            writable: true,
         };
         let json = serde_json::to_string(&field).unwrap();
         let parsed: FieldDef = serde_json::from_str(&json).unwrap();
@@ -221,11 +227,29 @@ mod tests {
 
     #[test]
     fn field_def_defaults() {
-        // Verify that omitting required/is_list uses correct defaults
+        // Verify that omitting required/is_list/readable/writable uses correct defaults
         let json = r#"{"name":"total","data_type":"float","meaning":"money"}"#;
         let parsed: FieldDef = serde_json::from_str(json).unwrap();
         assert!(parsed.required);
         assert!(!parsed.is_list);
+        assert!(parsed.readable);
+        assert!(parsed.writable);
+    }
+
+    #[test]
+    fn field_def_read_only() {
+        let json = r#"{"name":"id","data_type":"integer","meaning":"identifier","readable":true,"writable":false}"#;
+        let parsed: FieldDef = serde_json::from_str(json).unwrap();
+        assert!(parsed.readable);
+        assert!(!parsed.writable);
+    }
+
+    #[test]
+    fn field_def_write_only() {
+        let json = r#"{"name":"password","data_type":"string","meaning":"sensitive","readable":false,"writable":true}"#;
+        let parsed: FieldDef = serde_json::from_str(json).unwrap();
+        assert!(!parsed.readable);
+        assert!(parsed.writable);
     }
 
     #[test]
