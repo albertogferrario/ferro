@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 83 (API DX Polish)
-Plan: 01 + 02 + 03 + 04 complete
-Status: Wave 1 complete (Plans 01-04 done), Wave 2 ready
-Last activity: 2026-02-28 — Plan 02 complete (x-mcp route customization API)
+Plan: 01 + 02 + 03 + 04 + 05 complete
+Status: Phase 83 complete (all 5 plans shipped)
+Last activity: 2026-02-28 — Plan 05 complete (post-scaffold guidance & documentation)
 
 ## Milestone Summary
 
@@ -38,6 +38,7 @@ Last activity: 2026-02-28 — Plan 02 complete (x-mcp route customization API)
 | Default API Scaffold | 76 | 4 | Complete | 2026-02-27 |
 | Validate & Fix API Scaffold | 77 | 3 | Complete | 2026-02-28 |
 | Memory Leak Audit | 78 | 3 | Complete | 2026-02-28 |
+| v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
 
 ## Accumulated Context
 
@@ -132,6 +133,7 @@ Archived to PROJECT.md and milestone archive files.
 - McpDefaults internal struct propagates group MCP settings to children; child overrides take precedence
 - Hidden routes emit only x-mcp-hidden: true with no tool name or description in OpenAPI spec
 - update_route_mcp remains pub(crate) since it is only used within the routing module
+- Post-scaffold output reads app name from ./Cargo.toml with "my-app" fallback for personalized MCP config snippets
 
 ### Roadmap Evolution
 
@@ -158,6 +160,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 83 Plan 04 complete: ferro api:check CLI command — 4 sequential checks (connectivity, spec available, spec valid, auth), 7 unit tests
 - Phase 83 Plan 01 complete: ferro make:api-key CLI command — generates fe_{env}_{random} keys with SHA-256, SQL/Rust snippets, 8 unit tests
 - Phase 83 Plan 02 complete: x-mcp route customization API — .mcp_tool_name(), .mcp_description(), .mcp_hint(), .mcp_hidden() builder methods, OpenAPI spec consumption, 5 new tests
+- Phase 83 Plan 05 complete: Post-scaffold guidance with MCP config snippets, complete API-to-MCP documentation
 
 ### Pending Todos
 
@@ -170,5 +173,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 83 Wave 1 complete (Plans 01-04 done) — Wave 2 (Plan 05) ready
+Stopped at: Phase 83 complete — all 5 plans shipped
 Resume file: None
