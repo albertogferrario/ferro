@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 85 (State Machines)
-Plan: 02 complete
-Status: Ready for plan 03
-Last activity: 2026-02-28 — Plan 85-02 complete (2 tasks, 2 commits)
+Phase: 86 (Actions & Preconditions)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-28 — Phase 85 complete (2 plans, 6 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 85-02 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 5/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 6/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -82,5 +82,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 85 plan 02 complete — comprehensive test suite for state machine types, 49 tests passing
+Stopped at: Phase 85 complete — state machine schema types + 49 tests, ready for Phase 86
 Resume file: None

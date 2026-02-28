@@ -32,7 +32,7 @@
 
 ### 🚧 v9.0 Service Projections (In Progress)
 
-**Milestone Goal:** Introduce a three-layer architecture where services describe business capabilities and UI is generated from those descriptions: Model → ServiceDef → IntentGraph → Renderer → Output.
+**Milestone Goal:** Introduce a three-layer architecture where services describe business capabilities and UI is generated from those descriptions: Model → ServiceDef → IntentGraph → Renderer → Output. Define a standardized protocol for interoperability and prepare patent documentation.
 
 #### Phase 84: Service Identity & Field Semantics ✅
 
@@ -45,16 +45,16 @@ Plans:
 - [x] 84-01: ferro-projections crate with ServiceDef builder, FieldMeaning, DataType, infer_meaning
 - [x] 84-02: Comprehensive test suite (22 unit tests + 1 doctest)
 
-#### Phase 85: State Machines
+#### Phase 85: State Machines ✅
 
 **Goal**: Add state machine definitions — states, transitions, guards, side effects as schema.
 **Depends on**: Phase 84
-**Research**: Unlikely (internal patterns)
-**Plans**: 2
+**Completed**: 2026-02-28
+**Plans**: 2/2
 
 Plans:
-- [ ] 85-01: TBD
-- [ ] 85-02: TBD
+- [x] 85-01: StateMachine, StateDef, Transition, Warning types with builder APIs, BFS validation, ServiceDef integration
+- [x] 85-02: Comprehensive test suite (49 unit tests + 2 doctests)
 
 #### Phase 86: Actions & Preconditions
 
@@ -151,6 +151,19 @@ Plans:
 - [ ] 93-01: TBD
 - [ ] 93-02: TBD
 - [ ] 93-03: TBD
+
+#### Phase 94: Protocol & Patent
+
+**Goal**: Define a standardized protocol for data/intent-oriented web services with auto-generated UIs. Prepare patent documentation.
+**Depends on**: Phase 93
+**Research**: Likely (prior art survey, patent landscape, protocol design patterns)
+**Research topics**: Prior art in intent-based service protocols, patent landscape for declarative UI generation, existing standards (OpenAPI, GraphQL SDL, USDL), protocol serialization formats
+**Plans**: 3
+
+Plans:
+- [ ] 94-01: TBD
+- [ ] 94-02: TBD
+- [ ] 94-03: TBD
 
 ## Completed Milestones
 
@@ -604,7 +617,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-93 | 0/25 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 0/28 | 🚧 In Progress | - |
 
-**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (25 plans).**
+**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (28 plans).**
 
