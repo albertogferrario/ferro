@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 83 (API DX Polish)
-Plan: 04 complete
-Status: Wave 1 in progress (Plan 04 done)
-Last activity: 2026-02-28 — Plan 04 complete (ferro api:check command)
+Plan: 03 + 04 complete
+Status: Wave 1 in progress (Plans 03, 04 done)
+Last activity: 2026-02-28 — Plan 03 complete (make:api field exclusion)
 
 ## Milestone Summary
 
@@ -123,6 +123,9 @@ Archived to PROJECT.md and milestone archive files.
 - Route params must match handler variable names for AutoRouteBinding (:user not :id for user: Model)
 - validate_openapi_json extracted as pub fn for testability without HTTP mocking
 - find_first_endpoint prefers GET endpoints for auth test safety
+- Sensitive field auto-exclusion uses exact match only (not substring) to avoid false positives
+- filter_resource_fields is pub(crate) for testability; FieldInfo visibility raised to pub(crate)
+- --include-all disables auto-exclusion but --exclude custom fields still apply
 
 ### Roadmap Evolution
 
@@ -145,6 +148,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 82 Plan 02 complete: E2E integration tests — 3 tests validate full pipeline (OpenAPI spec, MCP tool discovery, CRUD operations)
 - Phase 83 added: API DX Polish — CLI key generation, model selection, x-mcp route API, post-scaffold guidance, local verification
 - Phase 83 planned: 5 plans in 2 waves — Plans 01-04 parallel (Wave 1), Plan 05 sequential (Wave 2, depends on 01+04)
+- Phase 83 Plan 03 complete: make:api field exclusion — auto-excludes sensitive fields from API resources, --exclude and --include-all flags, 8 unit tests
 - Phase 83 Plan 04 complete: ferro api:check CLI command — 4 sequential checks (connectivity, spec available, spec valid, auth), 7 unit tests
 
 ### Pending Todos
@@ -158,5 +162,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 83 Plan 04 complete — ferro api:check command shipped
+Stopped at: Phase 83 Plans 03+04 complete — Wave 1 progressing
 Resume file: None
