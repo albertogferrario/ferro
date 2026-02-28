@@ -29,7 +29,7 @@
 
 #[allow(unused_imports)]
 use ferro::{
-    bind, global_middleware, singleton, App, ApiKeyProvider, LangMiddleware, Limit, RateLimiter,
+    bind, global_middleware, singleton, ApiKeyProvider, App, LangMiddleware, Limit, RateLimiter,
     UserProvider, DB,
 };
 

@@ -87,10 +87,7 @@ pub async fn store(form: CreateUserRequest) -> Response {
         .map_err(|e| {
             HttpResponse::json(ferro::serde_json::json!({"error": e.to_string()})).status(500)
         })?;
-    Ok(
-        HttpResponse::json(ferro::serde_json::json!({"data": {"id": model.id}}))
-            .status(201),
-    )
+    Ok(HttpResponse::json(ferro::serde_json::json!({"data": {"id": model.id}})).status(201))
 }
 
 /// Update an existing user
