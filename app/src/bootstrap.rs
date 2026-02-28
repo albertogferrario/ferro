@@ -29,11 +29,12 @@
 
 #[allow(unused_imports)]
 use ferro::{
-    bind, global_middleware, singleton, App, LangMiddleware, Limit, RateLimiter, UserProvider, DB,
+    bind, global_middleware, singleton, App, ApiKeyProvider, LangMiddleware, Limit, RateLimiter,
+    UserProvider, DB,
 };
 
 use crate::middleware;
-use crate::providers::DatabaseUserProvider;
+use crate::providers::{ApiKeyProviderImpl, DatabaseUserProvider};
 
 /// Register global middleware and services
 ///
@@ -63,6 +64,9 @@ pub async fn register() {
 
     // Register the user provider for Auth::user()
     bind!(dyn UserProvider, DatabaseUserProvider);
+
+    // Register the API key provider for ApiKeyMiddleware
+    bind!(dyn ApiKeyProvider, ApiKeyProviderImpl);
 
     // Define named rate limiters for API routes
     RateLimiter::define("api", |_req| Limit::per_minute(60));
