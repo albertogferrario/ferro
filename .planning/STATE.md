@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 85 (State Machines)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-28 — Phase 84 complete (2 plans, 8 commits)
+Plan: 01 complete
+Status: Ready for plan 02
+Last activity: 2026-02-28 — Plan 85-01 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Phase 84 complete (2 plans, 8 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-93 | 4/25 | In Progress | - |
+| v9.0 Service Projections | 84-93 | 5/25 | In Progress | - |
 
 ## Accumulated Context
 
@@ -53,6 +53,13 @@ Archived to PROJECT.md and milestone archive files.
 - 18 known FieldMeaning variants + Custom(String) untagged fallback
 - 10 DataType variants (abstract categories, not database types)
 - infer_meaning() with 7 rules from existing CLI patterns
+
+**Phase 85-01:**
+- Flat states only, no hierarchical/compound states in v1
+- Guards as Option<String>, actions as Vec<String> — string references resolved externally
+- validate() returns Result<Vec<Warning>, Error> — warnings for structural concerns, errors for fatal
+- Removed Eq from ServiceDef (serde_json::Value in StateDef.metadata doesn't implement Eq)
+- BFS reachability from initial state for validation
 
 ### Roadmap Evolution
 
@@ -70,5 +77,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 84 complete — ferro-projections crate with all types + 23 tests, ready for Phase 85
+Stopped at: Phase 85 plan 01 complete — StateMachine schema types + ServiceDef integration, 39 tests passing
 Resume file: None
