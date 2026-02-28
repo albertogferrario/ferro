@@ -74,8 +74,40 @@ pub fn parse_spec(json: &str) -> Result<Vec<ApiOperation>, Error> {
 
         for &(method, op_opt) in methods {
             if let Some(operation) = op_opt {
-                let tool_name = generate_tool_name(operation.operation_id.as_deref(), method, path);
-                let description = build_description(operation, &tool_name);
+                // Skip operations marked as hidden via x-mcp-hidden
+                let hidden = operation
+                    .extensions
+                    .get("x-mcp-hidden")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                if hidden {
+                    continue;
+                }
+
+                // Extract x-mcp overrides
+                let mcp_tool_name = operation
+                    .extensions
+                    .get("x-mcp-tool-name")
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
+                let mcp_description = operation
+                    .extensions
+                    .get("x-mcp-description")
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
+                let mcp_hint = operation
+                    .extensions
+                    .get("x-mcp-hint")
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
+
+                // Use x-mcp values as overrides with existing behavior as fallback
+                let tool_name = mcp_tool_name.unwrap_or_else(|| {
+                    generate_tool_name(operation.operation_id.as_deref(), method, path)
+                });
+                let description =
+                    mcp_description.unwrap_or_else(|| build_description(operation, &tool_name));
+
                 let parameters =
                     extract_parameters(&spec, &operation.parameters, &path_item.parameters);
                 let request_body_schema = extract_request_body(&spec, &operation.request_body);
@@ -84,6 +116,7 @@ pub fn parse_spec(json: &str) -> Result<Vec<ApiOperation>, Error> {
                     ApiOperation::new(tool_name, method.to_string(), path.clone(), description);
                 op.parameters = parameters;
                 op.request_body_schema = request_body_schema;
+                op.hint = mcp_hint;
 
                 operations.push(op);
             }
@@ -752,5 +785,120 @@ mod tests {
         }));
         let ops = parse_spec(&spec).unwrap();
         assert_eq!(ops[0].description, "api_users_index");
+    }
+
+    // ── 8. x-mcp vendor extensions ───────────────────────────────
+
+    #[test]
+    fn x_mcp_tool_name_overrides_operation_id() {
+        let spec = spec_shell(json!({
+            "/api/users": {
+                "get": {
+                    "operationId": "api.users.index",
+                    "summary": "List users",
+                    "x-mcp-tool-name": "list_all_users",
+                    "responses": { "200": { "description": "OK" } }
+                }
+            }
+        }));
+        let ops = parse_spec(&spec).unwrap();
+        assert_eq!(ops[0].tool_name, "list_all_users");
+    }
+
+    #[test]
+    fn x_mcp_description_overrides_summary() {
+        let spec = spec_shell(json!({
+            "/api/users": {
+                "get": {
+                    "operationId": "api.users.index",
+                    "summary": "List users",
+                    "x-mcp-description": "Retrieve all user records with pagination",
+                    "responses": { "200": { "description": "OK" } }
+                }
+            }
+        }));
+        let ops = parse_spec(&spec).unwrap();
+        assert_eq!(
+            ops[0].description,
+            "Retrieve all user records with pagination"
+        );
+    }
+
+    #[test]
+    fn x_mcp_hidden_excludes_operation() {
+        let spec = spec_shell(json!({
+            "/api/users": {
+                "get": {
+                    "operationId": "api.users.index",
+                    "summary": "List users",
+                    "responses": { "200": { "description": "OK" } }
+                }
+            },
+            "/api/internal/health": {
+                "get": {
+                    "operationId": "internal.health",
+                    "summary": "Health check",
+                    "x-mcp-hidden": true,
+                    "responses": { "200": { "description": "OK" } }
+                }
+            }
+        }));
+        let ops = parse_spec(&spec).unwrap();
+        assert_eq!(ops.len(), 1);
+        assert_eq!(ops[0].tool_name, "api_users_index");
+    }
+
+    #[test]
+    fn x_mcp_hint_extracted() {
+        let spec = spec_shell(json!({
+            "/api/users": {
+                "get": {
+                    "operationId": "api.users.index",
+                    "summary": "List users",
+                    "x-mcp-hint": "Use page and per_page query params for pagination",
+                    "responses": { "200": { "description": "OK" } }
+                }
+            }
+        }));
+        let ops = parse_spec(&spec).unwrap();
+        assert_eq!(
+            ops[0].hint.as_deref(),
+            Some("Use page and per_page query params for pagination")
+        );
+    }
+
+    #[test]
+    fn x_mcp_fallback_without_extensions() {
+        let spec = spec_shell(json!({
+            "/api/users": {
+                "get": {
+                    "operationId": "api.users.index",
+                    "summary": "List users",
+                    "responses": { "200": { "description": "OK" } }
+                }
+            }
+        }));
+        let ops = parse_spec(&spec).unwrap();
+        assert_eq!(ops[0].tool_name, "api_users_index");
+        assert_eq!(ops[0].description, "List users");
+        assert!(ops[0].hint.is_none());
+    }
+
+    #[test]
+    fn x_mcp_partial_extensions() {
+        let spec = spec_shell(json!({
+            "/api/users": {
+                "get": {
+                    "operationId": "api.users.index",
+                    "summary": "List users",
+                    "x-mcp-tool-name": "fetch_users",
+                    "responses": { "200": { "description": "OK" } }
+                }
+            }
+        }));
+        let ops = parse_spec(&spec).unwrap();
+        assert_eq!(ops[0].tool_name, "fetch_users");
+        assert_eq!(ops[0].description, "List users");
+        assert!(ops[0].hint.is_none());
     }
 }

@@ -30,6 +30,7 @@ pub struct ApiOperation {
     pub parameters: Vec<ApiParam>,
     pub request_body_schema: Option<serde_json::Value>,
     pub input_schema: serde_json::Value,
+    pub hint: Option<String>,
 }
 
 impl ApiOperation {
@@ -46,6 +47,7 @@ impl ApiOperation {
             parameters: Vec::new(),
             request_body_schema: None,
             input_schema: serde_json::json!({"type": "object", "properties": {}}),
+            hint: None,
         }
     }
 }
