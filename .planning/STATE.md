@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 80 (x-mcp OpenAPI Extensions)
-Plan: Planned (01-02)
-Status: Ready for execution
-Last activity: 2026-02-28 — Phase 80 planned (2 plans, 1 wave)
+Plan: 02/02
+Status: Complete
+Last activity: 2026-02-28 — Phase 80 complete (2 plans executed in parallel)
 
 ## Milestone Summary
 
@@ -101,6 +101,12 @@ Archived to PROJECT.md and milestone archive files.
 - Base URL resolved with three-tier fallback: --base-url flag > spec servers[0].url > spec_url origin
 - All diagnostic output to stderr; stdout reserved for MCP JSON-RPC transport
 - SpecMetadata extracted separately from parse_spec for separation of concerns
+- x-mcp extensions use ExtensionsBuilder.add() which auto-handles x- prefix
+- mcp_tool_name/mcp_description helpers mirror auto_summary pattern with method+path dispatch
+- x-mcp extensions are optional overrides with fallback to existing behavior in ferro-api-mcp
+- x-mcp-hidden uses continue to skip operations at parse time (not post-filtering)
+- Hint text appended to description as "\n\nHint: {hint}" for AI agent visibility without MCP protocol changes
+- hint stored as separate field on ApiOperation for clean parser→service data flow
 
 ### Roadmap Evolution
 
@@ -115,6 +121,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 79 Plan 02 complete: OpenAPI spec parser with TDD (22 tests, version validation, $ref resolution)
 - Phase 79 Plan 03 complete: schema bridge (OpenAPI params to MCP JSON Schema) and HTTP client
 - Phase 79 Plan 04 complete: MCP service with dynamic ToolRouter, stdio server, full CLI-to-serve pipeline
+- Phase 80 complete: x-mcp OpenAPI extensions — framework emits x-mcp-tool-name/x-mcp-description, ferro-api-mcp consumes x-mcp-tool-name/description/hint/hidden
 
 ### Pending Todos
 
@@ -127,5 +134,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 80 planned — 2 plans in 1 wave, ready for execution
+Stopped at: Phase 80 complete — next is Phase 81 (Consumer DX & Polish)
 Resume file: None

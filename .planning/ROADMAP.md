@@ -37,7 +37,7 @@
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
 | 79. ferro-api-mcp Core | 4/4 | Complete | 2026-02-28 |
-| 80. x-mcp OpenAPI Extensions | 2 | Planned | - |
+| 80. x-mcp OpenAPI Extensions | 2/2 | Complete | 2026-02-28 |
 | 81. Consumer DX & Polish | TBD | Not started | - |
 | 82. End-to-End Validation | TBD | Not started | - |
 
@@ -60,8 +60,8 @@ Plans:
 **Plans**: 2 plans in 1 wave
 
 Plans:
-- [ ] 80-01: Framework x-mcp extension emission (Wave 1)
-- [ ] 80-02: ferro-api-mcp x-mcp extension consumption (Wave 1, parallel with 01)
+- [x] 80-01: Framework x-mcp extension emission (Wave 1)
+- [x] 80-02: ferro-api-mcp x-mcp extension consumption (Wave 1, parallel with 01)
 
 #### Phase 81: Consumer DX & Polish
 **Goal**: Connection diagnostics, input validation from JSON Schema, helpful error messages when tools fail, and consumer-facing setup documentation.
