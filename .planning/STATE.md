@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Current Position
 
-Phase: 81 (Consumer DX & Polish)
-Plan: 03/03
-Status: Complete
-Last activity: 2026-02-28 — Phase 81 complete (all 3 plans shipped)
+Phase: 82 (E2E Validation)
+Plan: 01
+Status: In Progress
+Last activity: 2026-02-28 — Plan 01 complete (sample app API layer)
 
 ## Milestone Summary
 
@@ -115,6 +115,9 @@ Archived to PROJECT.md and milestone archive files.
 - Validation runs before HTTP call to avoid unnecessary network requests
 - HTTP status suggestions appended to body text to keep Error enum stable (no new variants)
 - url_str captured before Url is moved into request builder (Rust ownership)
+- Entity/model split for api_keys: entity in entities/ (auto-generated pattern), model in models/ (custom code with re-export)
+- Request types inline in API controller files when no separate requests module exists
+- openapi_docs_response and openapi_json_response re-exported from framework root for direct use in app code
 
 ### Roadmap Evolution
 
@@ -133,6 +136,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 81 Plan 01 complete: Startup diagnostics & categorized spec fetch errors — --dry-run flag, connectivity check, categorized error messages
 - Phase 81 Plan 02 complete: Input validation & error DX — pre-flight arg validation (8 tests), categorized errors with actionable suggestions
 - Phase 81 Plan 03 complete: Consumer-facing ferro-api-mcp documentation — setup, MCP host configs, x-mcp extensions, troubleshooting
+- Phase 82 Plan 01 complete: Sample app API layer — user CRUD at /api/v1/users, API key auth, OpenAPI spec at /api/openapi.json
 
 ### Pending Todos
 
@@ -145,5 +149,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 81 complete — all 3 plans shipped (diagnostics, validation, docs)
+Stopped at: Phase 82 Plan 01 complete — sample app API layer shipped
 Resume file: None
