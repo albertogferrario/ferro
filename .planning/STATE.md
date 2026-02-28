@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 86 (Actions & Preconditions) — COMPLETE
-Plan: 02/02 complete
-Status: Phase 86 complete — types + integration + validation + tests
-Last activity: 2026-02-28 — Plan 02 complete (2 tasks, 2 commits)
+Phase: 87 (Service Relationships) — Plan 01 COMPLETE
+Plan: 01/01 complete
+Status: Phase 87 complete — RelationshipDef + Cardinality + NavigationHint + ServiceDef integration + validation + 118 tests
+Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 02 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 8/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 9/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -92,6 +92,13 @@ Archived to PROJECT.md and milestone archive files.
 - Undefined references are hard errors, structural concerns are warnings
 - 93 ferro-projections unit tests + 4 doctests = 97 total
 
+**Phase 87-01:**
+- RelationshipDef, Cardinality, NavigationHint types — two-dimensional relationship schema (structural + presentational)
+- NavigationHint defaults from Cardinality.default_navigation(), overridable per relationship
+- ServiceDef gains .relationship(), .belongs_to(), .has_many(), .has_one(), .belongs_to_many() builder methods
+- Warning::DuplicateRelationship and Warning::ManyToManyWithForeignKey validation warnings
+- 113 ferro-projections unit tests + 5 doctests = 118 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -111,5 +118,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 86 COMPLETE — types + ServiceDef integration + cross-phase validate() + 97 tests
+Stopped at: Phase 87 Plan 01 COMPLETE — RelationshipDef + ServiceDef integration + validation + 118 tests
 Resume file: None
