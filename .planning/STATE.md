@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 88 (Intent Core Types) — Plan 01 COMPLETE
-Plan: 01/01 complete
-Status: Phase 88 complete — Intent + IntentScore + IntentHint + ServiceDef integration + validation + 143 tests
-Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 2 commits)
+Phase: 88 (Intent Core Types) — Plan 02 COMPLETE
+Plan: 02/02 complete
+Status: Phase 88 complete — all types implemented + 148 tests (143 unit + 5 doc)
+Last activity: 2026-03-01 — Plan 02 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 10/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 12/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -107,6 +107,11 @@ Archived to PROJECT.md and milestone archive files.
 - Warning::ConflictingIntentHints and Warning::MultiplePrimaryIntentHints validation warnings
 - 138 ferro-projections unit tests + 5 doctests = 143 total
 
+**Phase 88-02:**
+- 5 new tests: IntentScore construction, empty signals, Exclude with Custom intent, known vs Custom equality, full ServiceDef integration
+- Full integration test exercises all ServiceDef subsystems (fields, actions, guards, relationships, state machine, intent hints)
+- 143 ferro-projections unit tests + 5 doctests = 148 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -125,6 +130,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-28
-Stopped at: Phase 88 Plan 01 COMPLETE — Intent + IntentScore + IntentHint + ServiceDef integration + validation + 143 tests
+Last session: 2026-03-01
+Stopped at: Phase 88 Plan 02 COMPLETE — comprehensive test suite, 148 tests total, ready for Phase 89
 Resume file: None
