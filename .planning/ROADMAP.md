@@ -92,14 +92,12 @@ Plans:
 
 **Goal**: Define Intent enum from structural derivation analysis. 7 derivable intents + Custom escape hatch + IntentHint override.
 **Depends on**: Phase 84, Phase 86
-**Research**: Likely (structural derivation taxonomy needs careful design)
-**Research topics**: Structural signal mapping, intent derivation heuristics, prior art in abstract UI description
-**Plans**: 3
+**Research**: Complete (structural derivation taxonomy — prior art, signal inventory, 7-intent vocabulary)
+**Plans**: 2
 
 Plans:
-- [ ] 88-01: TBD
-- [ ] 88-02: TBD
-- [ ] 88-03: TBD
+- [ ] 88-01: Intent, IntentScore, IntentHint types + ServiceDef integration + validation
+- [ ] 88-02: Comprehensive test suite (serde, schema, builder, validation, integration)
 
 #### Phase 89: Intent Graph Generation
 
