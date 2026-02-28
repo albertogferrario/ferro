@@ -174,6 +174,22 @@ mod tests {
     }
 
     #[test]
+    fn field_meaning_custom_round_trip() {
+        let custom = FieldMeaning::Custom("my_thing".into());
+        let json = serde_json::to_string(&custom).unwrap();
+        let parsed: FieldMeaning = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, FieldMeaning::Custom("my_thing".into()));
+    }
+
+    #[test]
+    fn field_meaning_known_not_custom() {
+        // Deserializing "money" must match Money variant, not Custom("money")
+        let parsed: FieldMeaning = serde_json::from_str(r#""money""#).unwrap();
+        assert_eq!(parsed, FieldMeaning::Money);
+        assert_ne!(parsed, FieldMeaning::Custom("money".into()));
+    }
+
+    #[test]
     fn field_meaning_money_serializes_to_snake_case() {
         let json = serde_json::to_string(&FieldMeaning::Money).unwrap();
         assert_eq!(json, r#""money""#);
