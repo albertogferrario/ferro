@@ -21,6 +21,8 @@ use walkdir::WalkDir;
 struct ModelInfo {
     /// PascalCase struct name (e.g., "User")
     name: String,
+    /// Module name under `crate::models::` (e.g., "users" for `crate::models::users`)
+    module_name: String,
     /// Table name from `#[sea_orm(table_name = "...")]`
     table_name: Option<String>,
     /// All struct fields
@@ -138,6 +140,7 @@ impl<'ast> Visit<'ast> for ModelVisitor {
                 let fields = Self::extract_fields(&node.fields);
                 self.models.push(ModelInfo {
                     name: name.clone(),
+                    module_name: String::new(), // Set later by scan_models
                     table_name: table,
                     fields,
                 });
@@ -187,14 +190,32 @@ fn scan_models(project_root: &Path) -> Vec<(String, ModelInfo)> {
         visitor.visit_file(&syntax);
 
         for mut model in visitor.models {
-            // Derive the PascalCase model name from the file name
-            let pascal_name = to_pascal_case(&file_stem);
+            // Entity files typically use plural table names (users.rs, todos.rs).
+            // Singularize to get the model name (User, Todo) and use the singular
+            // form as the snake_name key for generated file paths.
+            let is_entity_file = entry
+                .path()
+                .parent()
+                .and_then(|p| p.file_name())
+                .is_some_and(|dir| dir == "entities");
+
+            let singular_stem = if is_entity_file {
+                singularize(&file_stem)
+            } else {
+                file_stem.clone()
+            };
+
+            // module_name is the actual Rust module path under crate::models::
+            // For entity files, the re-export module matches the entity file name.
+            model.module_name = file_stem.clone();
+
+            let pascal_name = to_pascal_case(&singular_stem);
             model.name = pascal_name.clone();
             // If no table name was extracted, derive from file name
             if model.table_name.is_none() {
-                model.table_name = Some(pluralize(&file_stem));
+                model.table_name = Some(pluralize(&singular_stem));
             }
-            results.push((file_stem.clone(), model));
+            results.push((singular_stem.clone(), model));
         }
     }
 
@@ -261,13 +282,15 @@ fn generate_controller(snake_name: &str, model: &ModelInfo) {
     // Build optional set_field calls for update
     let update_fields = build_update_fields(&model.fields);
 
+    let mod_name = &model.module_name;
+
     let content = format!(
         r#"//! {pascal} API controller
 //!
 //! Generated with `ferro make:api`
 
 use ferro::{{handler, Request, Response, HttpResponse}};
-use crate::models::{snake_name}::{{self, Entity as {pascal}}};
+use crate::models::{mod_name}::{{self, Entity as {pascal}}};
 use sea_orm::{{EntityTrait, PaginatorTrait}};
 use crate::resources::{snake_name}_resource::{pascal}Resource;
 use crate::requests::{snake_name}_request::{{Create{pascal}Request, Update{pascal}Request}};
@@ -277,20 +300,20 @@ use crate::requests::{snake_name}_request::{{Create{pascal}Request, Update{pasca
 /// GET /api/v1/{plural}
 #[handler]
 pub async fn index(req: Request) -> Response {{
-    let page: u64 = req.query("page").unwrap_or(1);
-    let per_page: u64 = req.query("per_page").unwrap_or(15).min(100);
+    let page: u64 = req.query_as_or("page", 1u64).max(1);
+    let per_page: u64 = req.query_as_or("per_page", 15u64).clamp(1, 100);
     let db = ferro::DB::connection()
-        .map_err(|e| HttpResponse::json(serde_json::json!({{"error": e.to_string()}})).status(500))?;
-    let paginator = {pascal}::find().paginate(&db, per_page);
+        .map_err(|e| HttpResponse::json(ferro::serde_json::json!({{"error": e.to_string()}})).status(500))?;
+    let paginator = {pascal}::find().paginate(db.inner(), per_page);
     let total = paginator
         .num_items()
         .await
-        .map_err(|e| HttpResponse::json(serde_json::json!({{"error": e.to_string()}})).status(500))?;
+        .map_err(|e| HttpResponse::json(ferro::serde_json::json!({{"error": e.to_string()}})).status(500))?;
     let items = paginator
         .fetch_page(page - 1)
         .await
-        .map_err(|e| HttpResponse::json(serde_json::json!({{"error": e.to_string()}})).status(500))?;
-    let resources: Vec<{pascal}Resource> = items.iter().map(|m| {pascal}Resource::from(m)).collect();
+        .map_err(|e| HttpResponse::json(ferro::serde_json::json!({{"error": e.to_string()}})).status(500))?;
+    let resources: Vec<{pascal}Resource> = items.into_iter().map({pascal}Resource::from).collect();
     let meta = ferro::PaginationMeta::new(page, per_page, total);
     Ok(ferro::ResourceCollection::paginated(resources, meta).to_response(&req))
 }}
@@ -299,45 +322,49 @@ pub async fn index(req: Request) -> Response {{
 ///
 /// GET /api/v1/{plural}/{{id}}
 #[handler]
-pub async fn show(req: Request, {snake_name}: {snake_name}::Model) -> Response {{
-    Ok(ferro::Resource::to_wrapped_response(&{pascal}Resource::from(&{snake_name}), &req))
+pub async fn show(req: Request, {snake_name}: {mod_name}::Model) -> Response {{
+    Ok(ferro::Resource::to_wrapped_response(&{pascal}Resource::from({snake_name}), &req))
 }}
 
 /// Create a new {snake_name}
 ///
 /// POST /api/v1/{plural}
 #[handler]
-pub async fn store(req: Request, form: Create{pascal}Request) -> Response {{
-    let model = {pascal}::create()
+pub async fn store(form: Create{pascal}Request) -> Response {{
+    let model = {mod_name}::Model::create()
 {store_fields}        .insert()
         .await
-        .map_err(|e| HttpResponse::json(serde_json::json!({{"error": e.to_string()}})).status(500))?;
-    Ok(ferro::Resource::to_wrapped_response(&{pascal}Resource::from(&model), &req).status(201))
+        .map_err(|e| HttpResponse::json(ferro::serde_json::json!({{"error": e.to_string()}})).status(500))?;
+    Ok(HttpResponse::json(ferro::serde_json::json!({{"data": ferro::serde_json::json!({{
+        "id": model.id
+    }})}})).status(201))
 }}
 
 /// Update an existing {snake_name}
 ///
 /// PUT /api/v1/{plural}/{{id}}
 #[handler]
-pub async fn update(req: Request, {snake_name}: {snake_name}::Model, form: Update{pascal}Request) -> Response {{
+pub async fn update({snake_name}: {mod_name}::Model, form: Update{pascal}Request) -> Response {{
     let mut builder = {snake_name}.update();
 {update_fields}    let updated = builder
         .save()
         .await
-        .map_err(|e| HttpResponse::json(serde_json::json!({{"error": e.to_string()}})).status(500))?;
-    Ok(ferro::Resource::to_wrapped_response(&{pascal}Resource::from(&updated), &req))
+        .map_err(|e| HttpResponse::json(ferro::serde_json::json!({{"error": e.to_string()}})).status(500))?;
+    Ok(HttpResponse::json(ferro::serde_json::json!({{"data": ferro::serde_json::json!({{
+        "id": updated.id
+    }})}})))
 }}
 
 /// Delete a {snake_name}
 ///
 /// DELETE /api/v1/{plural}/{{id}}
 #[handler]
-pub async fn destroy({snake_name}: {snake_name}::Model) -> Response {{
+pub async fn destroy({snake_name}: {mod_name}::Model) -> Response {{
     {snake_name}
         .delete()
         .await
-        .map_err(|e| HttpResponse::json(serde_json::json!({{"error": e.to_string()}})).status(500))?;
-    Ok(HttpResponse::json(serde_json::json!({{"message": "Deleted"}})).status(200))
+        .map_err(|e| HttpResponse::json(ferro::serde_json::json!({{"error": e.to_string()}})).status(500))?;
+    Ok(HttpResponse::json(ferro::serde_json::json!({{"message": "Deleted"}})).status(200))
 }}
 "#,
     );
@@ -371,13 +398,15 @@ fn generate_resource(snake_name: &str, model: &ModelInfo) {
     let resource_fields = build_resource_fields(&model.fields);
     let from_assignments = build_from_assignments(&model.fields);
 
+    let mod_name = &model.module_name;
+
     let content = format!(
         r#"//! {pascal} API resource
 //!
 //! Generated with `ferro make:api`
 
-use ferro::{{Resource, ResourceMap, Request}};
-use crate::models::{snake_name};
+use ferro::{{serde_json, Resource, ResourceMap, Request}};
+use crate::models::{mod_name};
 
 /// API representation of {pascal}.
 pub struct {pascal}Resource {{
@@ -391,8 +420,8 @@ impl Resource for {pascal}Resource {{
     }}
 }}
 
-impl From<&{snake_name}::Model> for {pascal}Resource {{
-    fn from(model: &{snake_name}::Model) -> Self {{
+impl From<{mod_name}::Model> for {pascal}Resource {{
+    fn from(model: {mod_name}::Model) -> Self {{
         Self {{
 {model_to_resource}        }}
     }}
@@ -434,17 +463,33 @@ fn generate_request(snake_name: &str, model: &ModelInfo) {
 //!
 //! Generated with `ferro make:api`
 
-use ferro::request;
+use ferro::{{serde::Deserialize, FormRequest}};
 
 /// Request body for creating a new {pascal}.
-#[request]
+#[derive(Deserialize)]
 pub struct Create{pascal}Request {{
 {create_fields}}}
 
+impl ferro::Validate for Create{pascal}Request {{
+    fn validate(&self) -> Result<(), ferro::validator::ValidationErrors> {{
+        Ok(())
+    }}
+}}
+
+impl FormRequest for Create{pascal}Request {{}}
+
 /// Request body for updating an existing {pascal} (all fields optional).
-#[request]
+#[derive(Deserialize)]
 pub struct Update{pascal}Request {{
 {update_fields}}}
+
+impl ferro::Validate for Update{pascal}Request {{
+    fn validate(&self) -> Result<(), ferro::validator::ValidationErrors> {{
+        Ok(())
+    }}
+}}
+
+impl FormRequest for Update{pascal}Request {{}}
 "#,
     );
 
@@ -468,11 +513,24 @@ fn is_auto_field(field: &FieldInfo) -> bool {
 }
 
 /// Build `.set_field(form.field)` lines for the store handler.
+///
+/// For nullable model fields, the create request has `Option<T>` while the
+/// builder setter expects the inner type. We use `unwrap_or_default()` to
+/// provide a sensible default when `None` is passed.
 fn build_store_fields(fields: &[FieldInfo]) -> String {
     fields
         .iter()
         .filter(|f| !is_auto_field(f))
-        .map(|f| format!("        .set_{}(form.{}.clone())\n", f.name, f.name))
+        .map(|f| {
+            if f.is_nullable {
+                format!(
+                    "        .set_{name}(form.{name}.clone().unwrap_or_default())\n",
+                    name = f.name
+                )
+            } else {
+                format!("        .set_{}(form.{}.clone())\n", f.name, f.name)
+            }
+        })
         .collect()
 }
 
@@ -520,31 +578,37 @@ fn build_model_to_resource(fields: &[FieldInfo]) -> String {
         .collect()
 }
 
-/// Build create request struct fields with validation attributes.
+/// Build create request struct fields.
 fn build_create_request_fields(fields: &[FieldInfo]) -> String {
     fields
         .iter()
         .filter(|f| !is_auto_field(f))
         .map(|f| {
-            let validation = validation_attr_for_field(f, false);
             let rust_type = request_rust_type(&f.rust_type, f.is_nullable);
-            if validation.is_empty() {
-                format!("    pub {}: {},\n", f.name, rust_type)
-            } else {
-                format!("    {}\n    pub {}: {},\n", validation, f.name, rust_type)
-            }
+            format!("    pub {}: {},\n", f.name, rust_type)
         })
         .collect()
 }
 
 /// Build update request struct fields (all optional).
+///
+/// For model fields that are already `Option<T>`, the update request field is
+/// `Option<T>` (not `Option<Option<T>>`). This means `None` = "don't change"
+/// and `Some(value)` = "set to value". Explicitly setting a nullable field to
+/// NULL requires custom code beyond the generated scaffold.
 fn build_update_request_fields(fields: &[FieldInfo]) -> String {
     fields
         .iter()
         .filter(|f| !is_auto_field(f))
         .map(|f| {
-            let inner = request_rust_type(&f.rust_type, false);
-            format!("    pub {}: Option<{}>,\n", f.name, inner)
+            if f.is_nullable {
+                // Already Option<T> in the model — keep as Option<T> in update request
+                let rust_type = request_rust_type(&f.rust_type, true);
+                format!("    pub {}: {},\n", f.name, rust_type)
+            } else {
+                let inner = request_rust_type(&f.rust_type, false);
+                format!("    pub {}: Option<{}>,\n", f.name, inner)
+            }
         })
         .collect()
 }
@@ -569,27 +633,6 @@ fn request_rust_type(rust_type: &str, is_nullable: bool) -> String {
         return "String".to_string();
     }
     rust_type.to_string()
-}
-
-/// Generate a validation attribute for a request field.
-fn validation_attr_for_field(field: &FieldInfo, _is_update: bool) -> String {
-    if field.is_nullable {
-        return String::new();
-    }
-
-    let ty = &field.rust_type;
-
-    // Email fields
-    if field.name == "email" || field.name.ends_with("_email") {
-        return "#[validate(email)]".to_string();
-    }
-
-    // String/text types
-    if ty == "String" || ty.contains("String") && !ty.starts_with("Option") {
-        return "#[validate(length(min = 1))]".to_string();
-    }
-
-    String::new()
 }
 
 // ---------------------------------------------------------------------------
@@ -635,6 +678,28 @@ fn pluralize(name: &str) -> String {
         format!("{}ies", &name[..name.len() - 1])
     } else {
         format!("{name}s")
+    }
+}
+
+/// Best-effort singularization of a plural English noun.
+///
+/// Handles common suffixes: -ies -> -y, -ses/-xes/-ches/-shes -> strip -es, -s -> strip.
+fn singularize(name: &str) -> String {
+    if name.ends_with("ies") && name.len() > 3 {
+        // "categories" -> "category"
+        format!("{}y", &name[..name.len() - 3])
+    } else if name.ends_with("ses")
+        || name.ends_with("xes")
+        || name.ends_with("ches")
+        || name.ends_with("shes")
+    {
+        // "statuses" -> "status", "boxes" -> "box"
+        name[..name.len() - 2].to_string()
+    } else if name.ends_with('s') && !name.ends_with("ss") {
+        // "users" -> "user", "todos" -> "todo"
+        name[..name.len() - 1].to_string()
+    } else {
+        name.to_string()
     }
 }
 
@@ -716,6 +781,8 @@ pub fn run(models: Vec<String>, all: bool, yes: bool) {
     generate_api_mod(&selected);
     generate_api_routes(&selected);
     generate_api_docs();
+    generate_resources_mod(&selected);
+    generate_requests_mod(&selected);
     generate_api_key_migration();
     generate_api_key_model();
     generate_api_key_provider();
@@ -857,11 +924,11 @@ fn generate_api_routes(models: &[(String, ModelInfo)]) {
 use ferro::*;
 use crate::api::*;
 
-pub fn api_routes() -> GroupBuilder {{
-    group!("/api/v1")
+pub fn api_routes() -> GroupDef {{
+    group!("/api/v1", {{{route_blocks}
+    }})
         .middleware(ApiKeyMiddleware::new())
         .middleware(Throttle::named("api"))
-        .routes([{route_blocks}        ])
 }}
 "#,
     );
@@ -887,17 +954,17 @@ fn generate_api_docs() {
 
 use ferro::*;
 
-pub fn docs_routes() -> Vec<RouteDefBuilder> {
-    vec![
-        get!("/api/docs", api_docs).name("api.docs"),
-        get!("/api/openapi.json", openapi_json).name("api.openapi"),
-    ]
+pub fn docs_routes() -> GroupDef {
+    group!("/api", {
+        get!("/docs", api_docs).name("api.docs"),
+        get!("/openapi.json", openapi_json).name("api.openapi"),
+    })
 }
 
 #[handler]
 pub async fn api_docs() -> Response {
     let config = OpenApiConfig {
-        title: ferro::env("APP_NAME", "API"),
+        title: ferro::env("APP_NAME", "API".to_string()),
         version: "1.0.0".to_string(),
         description: Some("Auto-generated API documentation".to_string()),
         api_prefix: "/api/".to_string(),
@@ -910,7 +977,7 @@ pub async fn api_docs() -> Response {
 #[handler]
 pub async fn openapi_json() -> Response {
     let config = OpenApiConfig {
-        title: ferro::env("APP_NAME", "API"),
+        title: ferro::env("APP_NAME", "API".to_string()),
         version: "1.0.0".to_string(),
         description: Some("Auto-generated API documentation".to_string()),
         api_prefix: "/api/".to_string(),
@@ -923,6 +990,72 @@ pub async fn openapi_json() -> Response {
 
     fs::write(file_path, content).expect("Failed to write src/api/docs.rs");
     println!("   {} Created src/api/docs.rs", style("✓").green());
+}
+
+/// Create or update src/resources/mod.rs to include generated resource modules.
+fn generate_resources_mod(models: &[(String, ModelInfo)]) {
+    let resources_dir = Path::new("src/resources");
+    if !resources_dir.exists() {
+        return;
+    }
+
+    let mod_path = resources_dir.join("mod.rs");
+    if mod_path.exists() {
+        let existing = fs::read_to_string(&mod_path).unwrap_or_default();
+        let mut additions = String::new();
+        for (snake_name, _) in models {
+            let decl = format!("pub mod {snake_name}_resource;");
+            if !existing.contains(&decl) {
+                additions.push_str(&decl);
+                additions.push('\n');
+            }
+        }
+        if !additions.is_empty() {
+            let updated = format!("{existing}{additions}");
+            fs::write(&mod_path, updated).expect("Failed to update src/resources/mod.rs");
+            println!("   {} Updated src/resources/mod.rs", style("✓").green());
+        }
+    } else {
+        let mut content = String::new();
+        for (snake_name, _) in models {
+            content.push_str(&format!("pub mod {snake_name}_resource;\n"));
+        }
+        fs::write(&mod_path, content).expect("Failed to write src/resources/mod.rs");
+        println!("   {} Created src/resources/mod.rs", style("✓").green());
+    }
+}
+
+/// Create or update src/requests/mod.rs to include generated request modules.
+fn generate_requests_mod(models: &[(String, ModelInfo)]) {
+    let requests_dir = Path::new("src/requests");
+    if !requests_dir.exists() {
+        fs::create_dir_all(requests_dir).expect("Failed to create src/requests/ directory");
+    }
+
+    let mod_path = requests_dir.join("mod.rs");
+    if mod_path.exists() {
+        let existing = fs::read_to_string(&mod_path).unwrap_or_default();
+        let mut additions = String::new();
+        for (snake_name, _) in models {
+            let decl = format!("pub mod {snake_name}_request;");
+            if !existing.contains(&decl) {
+                additions.push_str(&decl);
+                additions.push('\n');
+            }
+        }
+        if !additions.is_empty() {
+            let updated = format!("{existing}{additions}");
+            fs::write(&mod_path, updated).expect("Failed to update src/requests/mod.rs");
+            println!("   {} Updated src/requests/mod.rs", style("✓").green());
+        }
+    } else {
+        let mut content = String::new();
+        for (snake_name, _) in models {
+            content.push_str(&format!("pub mod {snake_name}_request;\n"));
+        }
+        fs::write(&mod_path, content).expect("Failed to write src/requests/mod.rs");
+        println!("   {} Created src/requests/mod.rs", style("✓").green());
+    }
 }
 
 /// Generate the API keys migration.
@@ -1122,9 +1255,8 @@ fn generate_api_key_model() {
     let content = r#"//! API key model
 
 use ferro::database::{Model as DatabaseModel, ModelMut, QueryBuilder};
+use ferro::serde::Serialize;
 use sea_orm::entity::prelude::*;
-use sea_orm::Set;
-use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize)]
 #[sea_orm(table_name = "api_keys")]
@@ -1165,7 +1297,7 @@ impl Model {
     if mod_path.exists() {
         let existing = fs::read_to_string(&mod_path).unwrap_or_default();
         if !existing.contains("pub mod api_key;") {
-            let updated = format!("{existing}pub mod api_key;\npub use api_key::*;\n");
+            let updated = format!("{existing}pub mod api_key;\n");
             fs::write(&mod_path, updated).expect("Failed to update models mod.rs");
         }
     }
@@ -1193,7 +1325,7 @@ fn generate_api_key_provider() {
 //!
 //! Generated with `ferro make:api`
 
-use ferro::{async_trait, ApiKeyInfo, ApiKeyProvider, verify_api_key_hash};
+use ferro::{async_trait, serde_json, ApiKeyInfo, ApiKeyProvider, verify_api_key_hash};
 use crate::models::api_key::{self, Entity as ApiKey};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
@@ -1213,7 +1345,7 @@ impl ApiKeyProvider for ApiKeyProviderImpl {
         let db = ferro::DB::connection().map_err(|_| ())?;
         let record = ApiKey::find()
             .filter(api_key::Column::Prefix.eq(prefix))
-            .one(&db)
+            .one(db.inner())
             .await
             .map_err(|_| ())?
             .ok_or(())?;
