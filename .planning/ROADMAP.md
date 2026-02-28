@@ -23,10 +23,26 @@
 - ✅ **v7.5 Type Generator Fix** — Phase 75 (shipped 2026-02-27)
 - ✅ **v7.6 Default API Scaffold** — Phase 76 (shipped 2026-02-27)
 - 🔧 **v7.7 Validate & Fix API Scaffold** — Phase 77
+- 🔧 **v7.8 Memory Leak Fixes** — Phase 78
 
 ---
 
 ## Active Milestone
+
+### v7.8 Memory Leak Fixes (Phase 78)
+
+**Milestone Goal:** Fix four unbounded in-memory data structures that grow indefinitely in long-running Ferro servers — metrics 404 explosion, framework InMemoryCache, ferro-cache tags/counters.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 78. Memory Leak Fixes | 3 | Pending | - |
+
+Plans:
+- [ ] 78-01: Fix metrics 404 path explosion (wave 1)
+- [ ] 78-02: Replace framework InMemoryCache with Moka (wave 1)
+- [ ] 78-03: Fix ferro-cache MemoryStore leaks (wave 1)
+
+---
 
 ### v7.7 Validate & Fix API Scaffold (Phase 77)
 
