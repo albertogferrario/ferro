@@ -55,7 +55,9 @@ impl Middleware for MetricsMiddleware {
 
         // Get route pattern (with placeholders like {id}) instead of actual path
         // This groups metrics by route pattern, not individual URLs
-        let route_pattern = request.route_pattern().unwrap_or_else(|| path.to_string());
+        let route_pattern = request
+            .route_pattern()
+            .unwrap_or_else(|| "UNMATCHED".to_string());
 
         // Execute the rest of the middleware chain and handler
         let response = next(request).await;

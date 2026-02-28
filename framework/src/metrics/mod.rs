@@ -8,6 +8,11 @@ use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 use std::time::Duration;
 
+/// Safety cap on the number of unique route entries in the metrics store.
+/// Normalization handles the common case (unmatched routes → "UNMATCHED"),
+/// this cap prevents any other unbounded growth scenario.
+const MAX_ROUTE_ENTRIES: usize = 1000;
+
 /// Request metrics for a single route
 #[derive(Debug, Clone, Serialize)]
 pub struct RouteMetrics {
@@ -114,6 +119,11 @@ pub fn record_request(route: &str, method: &str, duration: Duration, is_error: b
     let duration_ms = duration.as_millis() as u64;
 
     if let Ok(mut store) = get_store().write() {
+        // Safety cap: if at capacity and this is a new key, skip recording
+        if store.routes.len() >= MAX_ROUTE_ENTRIES && !store.routes.contains_key(&key) {
+            return;
+        }
+
         let metrics = store
             .routes
             .entry(key)
