@@ -66,11 +66,13 @@ Plans:
 #### Phase 81: Consumer DX & Polish
 **Goal**: Connection diagnostics, input validation from JSON Schema, helpful error messages when tools fail, and consumer-facing setup documentation.
 **Depends on**: Phase 80
-**Research**: Unlikely (internal patterns)
-**Plans**: TBD
+**Research**: None needed (internal patterns)
+**Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 81-01: TBD
+- [ ] 81-01: Startup diagnostics & dry-run (Wave 1)
+- [ ] 81-02: Input validation & error messages (Wave 1, parallel with 01)
+- [ ] 81-03: Consumer setup documentation (Wave 2, depends: 01, 02)
 
 #### Phase 82: End-to-End Validation
 **Goal**: Full pipeline test — make:api generates API, start app, connect ferro-api-mcp, verify all tools work through MCP protocol against real data.
