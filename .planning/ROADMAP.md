@@ -26,7 +26,7 @@
 - ✅ **v7.8 Memory Leak Fixes** — Phase 78 (shipped 2026-02-28)
 - ✅ **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (shipped 2026-02-28)
 - ✅ **v8.1 API DX Polish** — Phase 83 (shipped 2026-02-28)
-- 🚧 **v9.0 Service Projections** — Phases 84-93 (in progress)
+- 🚧 [**v9.0 Service Projections**](milestones/v9.0-ROADMAP.md) — Phases 84-93 (in progress)
 
 ---
 
