@@ -22,7 +22,7 @@
 - ✅ **v7.4 Security Hardening** — Phases 72-74 (shipped 2026-02-26)
 - ✅ **v7.5 Type Generator Fix** — Phase 75 (shipped 2026-02-27)
 - ✅ **v7.6 Default API Scaffold** — Phase 76 (shipped 2026-02-27)
-- 🔧 **v7.7 Validate & Fix API Scaffold** — Phase 77
+- ✅ **v7.7 Validate & Fix API Scaffold** — Phase 77 (shipped 2026-02-28)
 - 🔧 **v7.8 Memory Leak Fixes** — Phase 78
 
 ---
@@ -44,19 +44,6 @@ Plans:
 
 ---
 
-### v7.7 Validate & Fix API Scaffold (Phase 77)
-
-**Milestone Goal:** Fix bugs found during audit of Phase 76, add missing tests, and validate end-to-end with a real generated app and MCP server.
-
-| Phase | Plans | Status | Completed |
-|-------|-------|--------|-----------|
-| 77. Validate & Fix API Scaffold | 3 | Pending | - |
-
-Plans:
-- [ ] 77-01: Fix generated code templates + framework API tests (wave 1)
-- [ ] 77-02: MCP CRUD operations tests + edge case fixes (wave 1)
-- [ ] 77-03: End-to-end make:api validation against real models (wave 2, depends on 77-01)
-
 ---
 
 ### v7.3 Vite Manifest (Phase 71)
@@ -75,6 +62,26 @@ Plans:
 ---
 
 ## Completed Milestones
+
+<details>
+<summary>✅ v7.7 Validate & Fix API Scaffold (Phase 77) — SHIPPED 2026-02-28</summary>
+
+**Milestone Goal:** Fix bugs found during Phase 76 audit, add missing tests, and validate end-to-end make:api output compiles.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 77. Validate & Fix API Scaffold | 3/3 | Complete | 2026-02-28 |
+
+**Total:** 1 phase, 3 plans
+
+**What was built:**
+- Fixed `.await` on sync `DB::connection()` and `Vec<serde_json::Value>` → typed Resource vec in all templates (Plan 01)
+- 43 unit tests for MCP CRUD operations + fixed `per_page=0` producing `LIMIT 0` (Plan 02)
+- Fixed 5 template bugs: singular model names, module import paths, From trait compatibility, mod.rs generation (Plan 03)
+- 32 regression tests for make:api template validation (Plan 03)
+- `ferro make:api` now generates compilable code for real models — 75 total tests
+
+</details>
 
 <details>
 <summary>✅ v7.6 Default API Scaffold (Phase 76) — SHIPPED 2026-02-27</summary>
@@ -437,6 +444,7 @@ Plans:
 | v7.4 Security Hardening | 72-74 | 5 | ✅ Complete | 2026-02-26 |
 | v7.5 Type Generator Fix | 75 | 1 | ✅ Complete | 2026-02-27 |
 | v7.6 Default API Scaffold | 76 | 4 | ✅ Complete | 2026-02-27 |
+| v7.7 Validate & Fix API Scaffold | 77 | 3 | ✅ Complete | 2026-02-28 |
 
-**Total: 17 milestones shipped, 162 plans.**
+**Total: 18 milestones shipped, 165 plans.**
 
