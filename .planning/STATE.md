@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 85.1 (Architecture Refinement)
-Plan: 01 complete, 02 pending
-Status: In progress
-Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 2 commits)
+Phase: 85.1 (Architecture Refinement) — COMPLETE
+Plan: 02/02 complete
+Status: Phase complete — ready for Phase 86
+Last activity: 2026-02-28 — Plan 02 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 7/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 8/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -71,12 +71,20 @@ Archived to PROJECT.md and milestone archive files.
 - JsonSchema not added to Error/Warning (internal types, not protocol contract)
 - 53 ferro-projections unit tests + 2 doctests = 55 total
 
+**Phase 85.1-02:**
+- v9.0 architectural direction shifted from "map SAP floorplans" to "derive intent from ServiceDef structure"
+- 4 architecture principles established: structural intent derivation, schema as protocol, structurally-derivable intents only, confidence scores over hard selection
+- 7 proposed intents: Browse, Focus, Collect, Process, Summarize, Analyze, Track + Custom escape hatch
+- Phase 89 marked as core innovation phase with >70% accuracy validation target
+- Phase 94 descoped to protocol documentation only (patent dropped)
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
 - v9.0 created: Service Projections — ServiceDef→IntentGraph→Renderer architecture, 10 phases (Phase 84-93)
-- Phase 94 added: Protocol & Patent — standardized protocol definition + patent preparation
-- Phase 85.1 inserted after Phase 85: Architecture Refinement (URGENT) — incorporate prior art insights, add schemars, refine Phases 86-93, descope Phase 94 (drop patent)
+- Phase 94 added: Protocol Documentation — standardized protocol definition (patent descoped)
+- Phase 85.1 inserted after Phase 85: Architecture Refinement — incorporate prior art insights, add schemars, refine Phases 86-93
+- Phase 85.1 COMPLETE: 2 plans, schemars integration + roadmap refinement
 
 ### Pending Todos
 
@@ -89,5 +97,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 85.1 Plan 01 complete — schemars JsonSchema on all public types, Plan 02 (roadmap refinement) next
+Stopped at: Phase 85.1 COMPLETE — both plans done (schemars + roadmap refinement), ready for Phase 86
 Resume file: None
