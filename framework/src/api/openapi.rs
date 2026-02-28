@@ -29,6 +29,7 @@ use crate::routing::RouteInfo;
 use std::sync::OnceLock;
 use utoipa::openapi::extensions::ExtensionsBuilder;
 use utoipa::openapi::path::{HttpMethod, OperationBuilder, ParameterBuilder, ParameterIn};
+use utoipa::openapi::schema::{Object, Type};
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use utoipa::openapi::{
     ComponentsBuilder, InfoBuilder, OpenApiBuilder, PathItem, PathsBuilder, Required,
@@ -88,6 +89,7 @@ pub fn build_openapi_spec(
                     .name(param_name)
                     .parameter_in(ParameterIn::Path)
                     .required(Required::True)
+                    .schema(Some(Object::with_type(Type::String)))
                     .build(),
             );
         }

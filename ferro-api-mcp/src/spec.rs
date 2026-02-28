@@ -85,7 +85,7 @@ fn categorize_reqwest_error(url: &str, e: &reqwest::Error) -> Error {
 pub fn parse_spec(json: &str) -> Result<Vec<ApiOperation>, Error> {
     let spec: OpenAPI = serde_json::from_str(json).map_err(|e| Error::SpecParse(e.to_string()))?;
 
-    if !spec.openapi.starts_with("3.0") {
+    if !spec.openapi.starts_with("3.") {
         return Err(Error::UnsupportedVersion(spec.openapi.clone()));
     }
 
@@ -385,7 +385,7 @@ mod tests {
     }
 
     #[test]
-    fn version_3_1_rejected() {
+    fn version_3_1_accepted() {
         let spec = json!({
             "openapi": "3.1.0",
             "info": { "title": "Test", "version": "1.0.0" },
@@ -393,12 +393,7 @@ mod tests {
         })
         .to_string();
         let result = parse_spec(&spec);
-        assert!(result.is_err(), "3.1.0 should be rejected");
-        let err = result.unwrap_err();
-        assert!(
-            matches!(err, Error::UnsupportedVersion(_)),
-            "expected UnsupportedVersion, got: {err:?}"
-        );
+        assert!(result.is_ok(), "3.1.0 should be accepted");
     }
 
     #[test]
