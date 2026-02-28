@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
@@ -12,7 +13,7 @@ use ferro_api_mcp::spec;
 
 /// Standalone MCP server that bridges OpenAPI specs to MCP tools.
 #[derive(Parser, Debug)]
-#[command(name = "ferro-api-mcp")]
+#[command(name = "ferro-api-mcp", version)]
 struct Cli {
     /// URL to fetch the OpenAPI spec from (e.g., http://localhost:8080/api/docs/openapi.json).
     #[arg(long)]
@@ -29,6 +30,10 @@ struct Cli {
     /// Log level (debug, info, warn, error).
     #[arg(long, default_value = "info")]
     log_level: String,
+
+    /// Validate spec and print tool summary without starting the MCP server.
+    #[arg(long)]
+    dry_run: bool,
 }
 
 #[tokio::main]
@@ -55,13 +60,17 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Fetch spec
     let spec_json = spec::fetch_spec(&cli.spec_url)
         .await
-        .map_err(|e| format!("Failed to fetch OpenAPI spec from {}: {e}", cli.spec_url))?;
+        .map_err(|e| format_spec_fetch_error(&cli.spec_url, &e.to_string()))?;
+
+    eprintln!("Fetched spec: {} bytes", spec_json.len());
 
     // 2. Parse spec into operations
     let mut operations =
         spec::parse_spec(&spec_json).map_err(|e| format!("Failed to parse OpenAPI spec: {e}"))?;
 
-    eprintln!("Parsed {} API operations from spec", operations.len());
+    if operations.is_empty() {
+        eprintln!("Warning: spec parsed successfully but contains no operations. Check that the spec has paths defined.");
+    }
 
     // 3. Extract metadata (title, server URL)
     let metadata = spec::extract_metadata(&spec_json)
@@ -69,24 +78,81 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // 4. Determine base URL
     let base_url = resolve_base_url(&cli.base_url, &metadata.server_url, &cli.spec_url)?;
-    eprintln!("Base URL: {base_url}");
 
-    // 5. Build input schemas for each operation
+    // 5. Connectivity check (best-effort, non-blocking)
+    check_api_connectivity(&base_url).await;
+
+    // 6. Build input schemas for each operation
     for op in &mut operations {
         op.input_schema = build_input_schema(&op.parameters, op.request_body_schema.as_ref());
     }
 
-    // 6. Create HTTP client
+    // 7. Startup summary
+    let version = env!("CARGO_PKG_VERSION");
+    eprintln!();
+    eprintln!("ferro-api-mcp v{version}");
+    eprintln!("API: {}", metadata.title);
+    eprintln!("Base URL: {base_url}");
+    eprintln!("Tools: {} registered", operations.len());
+
+    // 8. Dry-run mode: print tool list and exit
+    if cli.dry_run {
+        eprintln!();
+        eprintln!("Tools:");
+        for op in &operations {
+            let first_line = op.description.lines().next().unwrap_or(&op.tool_name);
+            eprintln!("  - {}: {first_line}", op.tool_name);
+        }
+        eprintln!();
+        eprintln!("Dry run complete. {} tools validated.", operations.len());
+        return Ok(());
+    }
+
+    // 9. Create HTTP client
     let http_client = Arc::new(HttpClient::new(base_url, cli.api_key));
 
-    // 7. Create service
+    // 10. Create service
     let service = ApiMcpService::new(metadata.title, operations, http_client);
 
-    // 8. Start server
+    // 11. Start server
     let server = McpServer::new(service);
     server.run().await?;
 
     Ok(())
+}
+
+/// Best-effort HEAD request to verify the API is reachable.
+async fn check_api_connectivity(base_url: &Url) {
+    let result = reqwest::Client::new()
+        .head(base_url.as_str())
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await;
+
+    if let Err(e) = result {
+        eprintln!(
+            "Warning: API at {base_url} is not reachable. Tools will fail until the API is available. ({e})"
+        );
+    }
+}
+
+/// Format a spec fetch error with categorized diagnostic messages.
+fn format_spec_fetch_error(url: &str, error: &str) -> String {
+    let lower = error.to_lowercase();
+    if lower.contains("connection refused") {
+        format!("Cannot connect to {url}. Is the server running?")
+    } else if lower.contains("timed out") || lower.contains("timeout") {
+        format!("Request to {url} timed out. Check network connectivity.")
+    } else if lower.contains("dns") || lower.contains("resolve") || lower.contains("no such host") {
+        format!("Cannot resolve hostname in {url}. Check the URL.")
+    } else if lower.contains("http ") && lower.contains("expected 200") {
+        // Already categorized by spec.rs
+        format!("Spec URL returned {error}")
+    } else if lower.contains("not valid json") {
+        "Spec URL returned non-JSON content. Expected an OpenAPI 3.0.x JSON document.".to_string()
+    } else {
+        format!("Failed to fetch OpenAPI spec from {url}: {error}")
+    }
 }
 
 /// Resolve the base URL from CLI override, spec servers, or spec URL origin.
