@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::action::{ActionDef, GuardDef};
 use crate::field::{DataType, FieldDef, FieldMeaning};
+use crate::relationship::{Cardinality, RelationshipDef};
 use crate::state::{StateMachine, Warning};
 
 /// A service definition describing a domain entity and its fields.
@@ -33,6 +34,8 @@ pub struct ServiceDef {
     pub actions: Vec<ActionDef>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub guards: Vec<GuardDef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub relationships: Vec<RelationshipDef>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_machine: Option<StateMachine>,
 }
@@ -47,6 +50,7 @@ impl ServiceDef {
             fields: Vec::new(),
             actions: Vec::new(),
             guards: Vec::new(),
+            relationships: Vec::new(),
             state_machine: None,
         }
     }
@@ -172,6 +176,32 @@ impl ServiceDef {
     pub fn guard(mut self, guard: GuardDef) -> Self {
         self.guards.push(guard);
         self
+    }
+
+    /// Adds a relationship definition to this service.
+    pub fn relationship(mut self, rel: RelationshipDef) -> Self {
+        self.relationships.push(rel);
+        self
+    }
+
+    /// Adds a many-to-one relationship (this service belongs to target).
+    pub fn belongs_to(self, name: impl Into<String>, target: impl Into<String>) -> Self {
+        self.relationship(RelationshipDef::new(name, target, Cardinality::ManyToOne))
+    }
+
+    /// Adds a one-to-many relationship (this service has many of target).
+    pub fn has_many(self, name: impl Into<String>, target: impl Into<String>) -> Self {
+        self.relationship(RelationshipDef::new(name, target, Cardinality::OneToMany))
+    }
+
+    /// Adds a one-to-one relationship (this service has one of target).
+    pub fn has_one(self, name: impl Into<String>, target: impl Into<String>) -> Self {
+        self.relationship(RelationshipDef::new(name, target, Cardinality::OneToOne))
+    }
+
+    /// Adds a many-to-many relationship (this service belongs to many of target).
+    pub fn belongs_to_many(self, name: impl Into<String>, target: impl Into<String>) -> Self {
+        self.relationship(RelationshipDef::new(name, target, Cardinality::ManyToMany))
     }
 
     /// Sets the state machine definition for this service.
