@@ -36,6 +36,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ferro-mcp = { path = "../ferro-mcp", version = "0.1" }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
+rand = "0.8"
+sha2 = "0.10"
 
 [dev-dependencies]
 tempfile = "3.24.0"

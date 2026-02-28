@@ -79,6 +79,15 @@ enum Commands {
         /// Name of the action (e.g., AddTodo, CreateUser)
         name: String,
     },
+    /// Generate an API key for authentication
+    #[command(name = "make:api-key")]
+    MakeApiKey {
+        /// Name of the key (e.g., "Production Bot")
+        name: String,
+        /// Environment: "live" or "test"
+        #[arg(long, default_value = "live")]
+        env: String,
+    },
     /// Scaffold a complete REST API layer for existing models
     #[command(name = "make:api")]
     MakeApi {
@@ -397,6 +406,9 @@ fn main() {
         }
         Commands::MakeAction { name } => {
             commands::make_action::run(name);
+        }
+        Commands::MakeApiKey { name, env } => {
+            commands::make_api_key::run(name, env);
         }
         Commands::MakeApi {
             models,

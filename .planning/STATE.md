@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 83 (API DX Polish)
-Plan: Planning complete
-Status: Ready for execution
-Last activity: 2026-02-28 — Phase 83 planned (5 plans in 2 waves)
+Plan: 04 complete
+Status: Wave 1 in progress (Plan 04 done)
+Last activity: 2026-02-28 — Plan 04 complete (ferro api:check command)
 
 ## Milestone Summary
 
@@ -121,6 +121,8 @@ Archived to PROJECT.md and milestone archive files.
 - OpenAPI spec version check relaxed from 3.0.x to 3.x (utoipa 5.x generates 3.1.0)
 - Path parameters require schema in OpenAPI spec for openapiv3 crate compatibility
 - Route params must match handler variable names for AutoRouteBinding (:user not :id for user: Model)
+- validate_openapi_json extracted as pub fn for testability without HTTP mocking
+- find_first_endpoint prefers GET endpoints for auth test safety
 
 ### Roadmap Evolution
 
@@ -143,6 +145,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 82 Plan 02 complete: E2E integration tests — 3 tests validate full pipeline (OpenAPI spec, MCP tool discovery, CRUD operations)
 - Phase 83 added: API DX Polish — CLI key generation, model selection, x-mcp route API, post-scaffold guidance, local verification
 - Phase 83 planned: 5 plans in 2 waves — Plans 01-04 parallel (Wave 1), Plan 05 sequential (Wave 2, depends on 01+04)
+- Phase 83 Plan 04 complete: ferro api:check CLI command — 4 sequential checks (connectivity, spec available, spec valid, auth), 7 unit tests
 
 ### Pending Todos
 
@@ -155,5 +158,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 83 planning complete — 5 plans created, ready for execution
+Stopped at: Phase 83 Plan 04 complete — ferro api:check command shipped
 Resume file: None
