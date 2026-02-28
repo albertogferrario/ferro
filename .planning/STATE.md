@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 84 (Service Identity & Field Semantics)
-Plan: 02 complete
-Status: Plan 02 shipped — comprehensive test suite for all ferro-projections types
-Last activity: 2026-02-28 — Plan 84-02 executed (2 tasks, 2 commits)
+Phase: 85 (State Machines)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-28 — Phase 84 complete (2 plans, 8 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 84-02 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-93 | 2/25 | In Progress | - |
+| v9.0 Service Projections | 84-93 | 4/25 | In Progress | - |
 
 ## Accumulated Context
 
@@ -70,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 84 Plan 02 complete — all types tested, ready for Phase 85
+Stopped at: Phase 84 complete — ferro-projections crate with all types + 23 tests, ready for Phase 85
 Resume file: None

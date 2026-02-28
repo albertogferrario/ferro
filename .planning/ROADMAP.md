@@ -34,16 +34,16 @@
 
 **Milestone Goal:** Introduce a three-layer architecture where services describe business capabilities and UI is generated from those descriptions: Model → ServiceDef → IntentGraph → Renderer → Output.
 
-#### Phase 84: Service Identity & Field Semantics
+#### Phase 84: Service Identity & Field Semantics ✅
 
 **Goal**: Create `ferro-projections` crate with `ServiceDef` and `FieldMeaning`.
 **Depends on**: Previous milestone complete
-**Research**: Unlikely (internal patterns)
-**Plans**: 2
+**Completed**: 2026-02-28
+**Plans**: 2/2
 
 Plans:
-- [ ] 84-01: TBD
-- [ ] 84-02: TBD
+- [x] 84-01: ferro-projections crate with ServiceDef builder, FieldMeaning, DataType, infer_meaning
+- [x] 84-02: Comprehensive test suite (22 unit tests + 1 doctest)
 
 #### Phase 85: State Machines
 
