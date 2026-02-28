@@ -78,26 +78,26 @@ Plans:
 - [x] 86-01: ActionDef, InputDef, GuardDef types with builder APIs + readable/writable on FieldDef (78 tests)
 - [x] 86-02: ServiceDef integration, cross-phase validate(), comprehensive test suite (97 tests total)
 
-#### Phase 87: Service Relationships
+#### Phase 87: Service Relationships ✅
 
 **Goal**: Declare service relationships with cardinality as structural signal for intent derivation.
 **Depends on**: Phase 84 (parallel with 85-86)
-**Research**: Unlikely
-**Plans**: 1
+**Completed**: 2026-02-28
+**Plans**: 1/1
 
 Plans:
-- [ ] 87-01: TBD
+- [x] 87-01: RelationshipDef, Cardinality, NavigationHint types with ServiceDef integration and validation (118 tests)
 
-#### Phase 88: Intent Layer — Core Types
+#### Phase 88: Intent Layer — Core Types ✅
 
 **Goal**: Define Intent enum from structural derivation analysis. 7 derivable intents + Custom escape hatch + IntentHint override.
 **Depends on**: Phase 84, Phase 86
-**Research**: Complete (structural derivation taxonomy — prior art, signal inventory, 7-intent vocabulary)
-**Plans**: 2
+**Completed**: 2026-03-01
+**Plans**: 2/2
 
 Plans:
-- [ ] 88-01: Intent, IntentScore, IntentHint types + ServiceDef integration + validation
-- [ ] 88-02: Comprehensive test suite (serde, schema, builder, validation, integration)
+- [x] 88-01: Intent, IntentScore, IntentHint types + ServiceDef integration + validation (143 tests)
+- [x] 88-02: Comprehensive test suite — serde, schema, builder, validation, integration (148 tests)
 
 #### Phase 89: Intent Graph Generation
 
@@ -625,7 +625,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 8/28 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 12/28 | 🚧 In Progress | - |
 
-**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (28 plans).**
+**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (12/28 plans complete).**
 
