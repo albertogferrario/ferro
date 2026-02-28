@@ -25,31 +25,32 @@
 - ✅ **v7.7 Validate & Fix API Scaffold** — Phase 77 (shipped 2026-02-28)
 - ✅ **v7.8 Memory Leak Fixes** — Phase 78 (shipped 2026-02-28)
 - ✅ **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (shipped 2026-02-28)
-- 🚧 **v8.1 API DX Polish** — Phase 83 (in progress)
+- ✅ **v8.1 API DX Polish** — Phase 83 (shipped 2026-02-28)
 
 ---
 
-## Active Milestone
+## Completed Milestones
 
-### v8.1 API DX Polish (Phase 83)
+<details>
+<summary>✅ v8.1 API DX Polish (Phase 83) — SHIPPED 2026-02-28</summary>
 
 **Milestone Goal:** Close the DX gaps between `ferro make:api` scaffold and a working MCP integration. Add API key CLI command, post-scaffold guidance, model/field selection, and x-mcp route-level customization.
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 83. API DX Polish | 5 | Not started | - |
+| 83. API DX Polish | 5/5 | Complete | 2026-02-28 |
 
-#### Phase 83: API DX Polish
-**Goal**: Fix five DX gaps discovered during v8.0 validation: (1) CLI command for API key generation, (2) model/field selection in make:api, (3) route-level x-mcp customization API, (4) post-scaffold next-steps guidance with MCP config snippet, (5) local API verification before MCP wiring.
-**Depends on**: Phase 82
-**Plans**: 5 plans in 2 waves
+**Total:** 1 phase, 5 plans
 
-Plans:
-- [ ] 83-01: API Key CLI Command (wave 1)
-- [ ] 83-02: Route-Level x-MCP Customization (wave 1)
-- [ ] 83-03: make:api Field Selection (wave 1)
-- [ ] 83-04: Local API Verification (wave 1)
-- [ ] 83-05: Post-scaffold Guidance & Docs (wave 2, depends: 01, 04)
+**What was built:**
+- `ferro make:api-key` CLI command: generates API keys with SHA-256 hashing, SQL/Rust code snippets (Plan 01)
+- Route-level x-MCP builder API: .mcp_tool_name(), .mcp_description(), .mcp_hint(), .mcp_hidden() on RouteDefBuilder and GroupDef with group-level defaults (Plan 02)
+- Field exclusion in make:api: --exclude, --include-all flags, auto-excludes 8 sensitive field patterns (Plan 03)
+- `ferro api:check` CLI command: validates server, OpenAPI spec, API key auth, prints ferro-api-mcp config (Plan 04)
+- Enhanced post-scaffold guidance: generated files list, setup steps, MCP config snippets for Claude Desktop/Code (Plan 05)
+- Documentation updates for all new features in docs/src/features/api.md and api-mcp.md (Plan 05)
+
+</details>
 
 ---
 
@@ -479,6 +480,7 @@ Plans:
 | v7.7 Validate & Fix API Scaffold | 77 | 3 | ✅ Complete | 2026-02-28 |
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
+| v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
 
-**Total: 20 milestones shipped, 179 plans.**
+**Total: 21 milestones shipped, 184 plans.**
 
