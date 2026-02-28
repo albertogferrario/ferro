@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Phase 78 complete — Memory Leak Audit
+**Current focus:** v8.0 Consumer MCP — OpenAPI Bridge
 
 ## Current Position
 
-Phase: 78 (Memory Leak Audit)
-Plan: 3 of 3 complete
-Status: Phase 78 complete — all four memory leak vectors fixed (metrics, InMemoryCache, ferro-cache tags/counters)
-Last activity: 2026-02-28 — Plan 03 executed (ferro-cache per-entry TTL, tag cleanup, bounded counters)
+Phase: 79 (ferro-api-mcp Core)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-28 — Milestone v8.0 created (4 phases, 79-82)
 
 ## Milestone Summary
 
@@ -94,6 +94,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 76 complete: Default API scaffold with API key auth, OpenAPI, MCP CRUD, CLI make:api, and documentation
 - Phase 77 complete: Validate & fix API scaffold — 5 template bugs fixed, 75 regression tests added
 - Phase 78 complete: Memory leak audit — Plan 01 fixes metrics 404 explosion, Plan 02 replaces InMemoryCache with moka, Plan 03 fixes ferro-cache TTL/tags/counters
+- Milestone v8.0 created: Consumer MCP — OpenAPI Bridge, 4 phases (79-82)
 
 ### Pending Todos
 
@@ -106,5 +107,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 78 complete — all memory leak vectors fixed
+Stopped at: Milestone v8.0 initialization
 Resume file: None

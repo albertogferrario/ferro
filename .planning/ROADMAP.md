@@ -24,10 +24,61 @@
 - ✅ **v7.6 Default API Scaffold** — Phase 76 (shipped 2026-02-27)
 - ✅ **v7.7 Validate & Fix API Scaffold** — Phase 77 (shipped 2026-02-28)
 - ✅ **v7.8 Memory Leak Fixes** — Phase 78 (shipped 2026-02-28)
+- 🚧 **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (in progress)
 
 ---
 
 ## Active Milestone
+
+### v8.0 Consumer MCP — OpenAPI Bridge (Phases 79-82)
+
+**Milestone Goal:** Let consumers interact with any Ferro web service through natural language via a standalone MCP server that auto-discovers API operations from OpenAPI specs.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 79. ferro-api-mcp Core | TBD | Not started | - |
+| 80. x-mcp OpenAPI Extensions | TBD | Not started | - |
+| 81. Consumer DX & Polish | TBD | Not started | - |
+| 82. End-to-End Validation | TBD | Not started | - |
+
+#### Phase 79: ferro-api-mcp Core
+**Goal**: New crate — standalone MCP server binary that fetches an OpenAPI spec from a URL, parses operations, and dynamically registers MCP tools. HTTP client with API key auth header.
+**Depends on**: Phase 76-77 (API scaffold + fixes)
+**Research**: Likely (rmcp dynamic tool registration API, OpenAPI 3.x parsing crates in Rust)
+**Research topics**: How rmcp handles dynamic tool registration at runtime; best OpenAPI parser crate (utoipa-gen, openapiv3, etc.); MCP tool schema from JSON Schema
+**Plans**: TBD
+
+Plans:
+- [ ] 79-01: TBD (run /gsd:plan-phase 79 to break down)
+
+#### Phase 80: x-mcp OpenAPI Extensions
+**Goal**: Define `x-mcp` extension schema for OpenAPI operations. Update `ferro make:api` to emit enriched tool names, descriptions, and usage hints in generated specs.
+**Depends on**: Phase 79
+**Research**: Unlikely (extending existing make:api patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 80-01: TBD
+
+#### Phase 81: Consumer DX & Polish
+**Goal**: Connection diagnostics, input validation from JSON Schema, helpful error messages when tools fail, and consumer-facing setup documentation.
+**Depends on**: Phase 80
+**Research**: Unlikely (internal patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 81-01: TBD
+
+#### Phase 82: End-to-End Validation
+**Goal**: Full pipeline test — make:api generates API, start app, connect ferro-api-mcp, verify all tools work through MCP protocol against real data.
+**Depends on**: Phase 81
+**Research**: Unlikely (internal validation)
+**Plans**: TBD
+
+Plans:
+- [ ] 82-01: TBD
+
+---
 
 ### v7.3 Vite Manifest (Phase 71)
 
@@ -39,8 +90,6 @@
 
 Plans:
 - [ ] 71-01: Read Vite manifest for production asset paths
-
----
 
 ---
 
