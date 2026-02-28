@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 /// let warnings = machine.validate().unwrap();
 /// assert!(warnings.is_empty());
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StateMachine {
     /// Machine identifier (e.g., "order_lifecycle").
     pub name: String,
@@ -41,7 +41,7 @@ pub struct StateMachine {
 ///
 /// States can declare entry/exit side effects as string references
 /// and carry optional metadata for rendering hints.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StateDef {
     /// State identifier (e.g., "draft", "pending", "completed").
     pub name: String,
@@ -69,7 +69,7 @@ pub struct StateDef {
 ///
 /// Guards gate the transition; actions fire when the transition is taken.
 /// Both are string references resolved externally.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Transition {
     /// Source state name.
     pub from: String,
@@ -222,12 +222,18 @@ impl StateMachine {
 
     /// Returns all transitions triggered by a given event.
     pub fn states_for_event(&self, event: &str) -> Vec<&Transition> {
-        self.transitions.iter().filter(|t| t.event == event).collect()
+        self.transitions
+            .iter()
+            .filter(|t| t.event == event)
+            .collect()
     }
 
     /// Returns outgoing transitions from a state.
     pub fn events_from_state(&self, state: &str) -> Vec<&Transition> {
-        self.transitions.iter().filter(|t| t.from == state).collect()
+        self.transitions
+            .iter()
+            .filter(|t| t.from == state)
+            .collect()
     }
 }
 
@@ -333,9 +339,7 @@ mod tests {
                     .display_name("Completed")
                     .final_state(),
             )
-            .transition(
-                Transition::new("draft", "submit", "pending").guard("has_required_fields"),
-            )
+            .transition(Transition::new("draft", "submit", "pending").guard("has_required_fields"))
             .transition(Transition::new("pending", "approve", "approved").guard("is_reviewer"))
             .transition(Transition::new("approved", "complete", "completed"))
     }

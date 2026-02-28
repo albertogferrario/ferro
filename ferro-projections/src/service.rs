@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::field::{DataType, FieldDef, FieldMeaning};
+use crate::state::StateMachine;
 
 /// A service definition describing a domain entity and its fields.
 ///
@@ -16,7 +17,7 @@ use crate::field::{DataType, FieldDef, FieldMeaning};
 ///     .field("total", DataType::Float, FieldMeaning::Money)
 ///     .optional_field("notes", DataType::String, FieldMeaning::FreeText);
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ServiceDef {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,6 +25,8 @@ pub struct ServiceDef {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub fields: Vec<FieldDef>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_machine: Option<StateMachine>,
 }
 
 impl ServiceDef {
@@ -34,6 +37,7 @@ impl ServiceDef {
             display_name: None,
             description: None,
             fields: Vec::new(),
+            state_machine: None,
         }
     }
 
@@ -97,6 +101,12 @@ impl ServiceDef {
             required: true,
             is_list: true,
         });
+        self
+    }
+
+    /// Sets the state machine definition for this service.
+    pub fn state_machine(mut self, machine: StateMachine) -> Self {
+        self.state_machine = Some(machine);
         self
     }
 }
