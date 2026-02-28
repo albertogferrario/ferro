@@ -342,4 +342,69 @@ mod tests {
         );
         assert!(obj.contains_key("meaning"), "missing 'meaning' property");
     }
+
+    // -- Additional Phase 86-02 tests: readable/writable defaults --
+
+    #[test]
+    fn field_def_readable_writable_defaults_from_json() {
+        // Both readable and writable default to true when omitted — backward compatibility
+        let json = r#"{"name":"title","data_type":"string","meaning":"entity_name"}"#;
+        let parsed: FieldDef = serde_json::from_str(json).unwrap();
+        assert!(parsed.readable);
+        assert!(parsed.writable);
+    }
+
+    #[test]
+    fn field_def_readable_false_writable_true_round_trip() {
+        let field = FieldDef {
+            name: "password".to_string(),
+            data_type: DataType::String,
+            meaning: FieldMeaning::Sensitive,
+            required: true,
+            is_list: false,
+            readable: false,
+            writable: true,
+        };
+        let json = serde_json::to_string(&field).unwrap();
+        let parsed: FieldDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(field, parsed);
+        assert!(!parsed.readable);
+        assert!(parsed.writable);
+    }
+
+    #[test]
+    fn field_def_readable_true_writable_false_round_trip() {
+        let field = FieldDef {
+            name: "id".to_string(),
+            data_type: DataType::Integer,
+            meaning: FieldMeaning::Identifier,
+            required: true,
+            is_list: false,
+            readable: true,
+            writable: false,
+        };
+        let json = serde_json::to_string(&field).unwrap();
+        let parsed: FieldDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(field, parsed);
+        assert!(parsed.readable);
+        assert!(!parsed.writable);
+    }
+
+    #[test]
+    fn field_def_readable_false_writable_false_round_trip() {
+        let field = FieldDef {
+            name: "internal_hash".to_string(),
+            data_type: DataType::String,
+            meaning: FieldMeaning::Sensitive,
+            required: true,
+            is_list: false,
+            readable: false,
+            writable: false,
+        };
+        let json = serde_json::to_string(&field).unwrap();
+        let parsed: FieldDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(field, parsed);
+        assert!(!parsed.readable);
+        assert!(!parsed.writable);
+    }
 }

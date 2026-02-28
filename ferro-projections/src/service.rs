@@ -638,4 +638,280 @@ mod tests {
             assert!(f.writable, "field '{}' should be writable", f.name);
         }
     }
+
+    // -- Phase 86-02 tests: actions/guards integration + validate() --
+
+    use crate::action::{ActionDef, GuardDef, InputDef};
+    use crate::state::Warning;
+
+    #[test]
+    fn service_def_with_actions_and_guards_builder() {
+        let service = ServiceDef::new("order")
+            .guard(GuardDef::new("has_items"))
+            .guard(GuardDef::new("payment_valid"))
+            .action(
+                ActionDef::new("submit_order")
+                    .precondition("has_items")
+                    .precondition("payment_valid"),
+            )
+            .action(ActionDef::new("update_notes"));
+
+        assert_eq!(service.guards.len(), 2);
+        assert_eq!(service.actions.len(), 2);
+        assert_eq!(service.actions[0].name, "submit_order");
+        assert_eq!(service.actions[1].name, "update_notes");
+    }
+
+    #[test]
+    fn service_def_serde_round_trip_with_actions_guards() {
+        let service = ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .guard(GuardDef::new("has_items").display_name("Has Items"))
+            .action(
+                ActionDef::new("submit")
+                    .input(InputDef::new(
+                        "order_id",
+                        DataType::Integer,
+                        FieldMeaning::Identifier,
+                    ))
+                    .precondition("has_items")
+                    .effect("notify"),
+            );
+
+        let json = serde_json::to_string_pretty(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+    }
+
+    #[test]
+    fn service_def_json_omits_empty_actions_guards() {
+        let service = ServiceDef::new("user");
+        let json = serde_json::to_string(&service).unwrap();
+        assert!(!json.contains("actions"));
+        assert!(!json.contains("guards"));
+    }
+
+    #[test]
+    fn validate_passes_valid_service() {
+        let machine = StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft"))
+            .state(StateDef::new("submitted").final_state())
+            .transition(Transition::new("draft", "submit", "submitted").guard("has_items"));
+
+        let service = ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .guard(GuardDef::new("has_items"))
+            .action(
+                ActionDef::new("submit_order")
+                    .precondition("has_items")
+                    .transition_trigger("submit"),
+            )
+            .state_machine(machine);
+
+        let warnings = service.validate().unwrap();
+        assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn validate_catches_undefined_action_precondition() {
+        let service = ServiceDef::new("order")
+            .guard(GuardDef::new("has_items"))
+            .action(ActionDef::new("submit").precondition("nonexistent_guard"));
+
+        let result = service.validate();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("nonexistent_guard"));
+        assert!(err.contains("submit"));
+    }
+
+    #[test]
+    fn validate_catches_undefined_transition_guard() {
+        let machine = StateMachine::new("lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft"))
+            .state(StateDef::new("done").final_state())
+            .transition(Transition::new("draft", "finish", "done").guard("undefined_guard"));
+
+        let service = ServiceDef::new("order").state_machine(machine);
+
+        let result = service.validate();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("undefined_guard"));
+    }
+
+    #[test]
+    fn validate_catches_unmatched_transition_trigger() {
+        let machine = StateMachine::new("lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft"))
+            .state(StateDef::new("done").final_state())
+            .transition(Transition::new("draft", "finish", "done"));
+
+        let service = ServiceDef::new("order")
+            .action(ActionDef::new("submit").transition_trigger("nonexistent_event"))
+            .state_machine(machine);
+
+        let result = service.validate();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("nonexistent_event"));
+    }
+
+    #[test]
+    fn validate_warns_unused_guards() {
+        let service = ServiceDef::new("order")
+            .guard(GuardDef::new("used_guard"))
+            .guard(GuardDef::new("unused_guard"))
+            .action(ActionDef::new("submit").precondition("used_guard"));
+
+        let warnings = service.validate().unwrap();
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings.contains(&Warning::UnusedGuard("unused_guard".into())));
+    }
+
+    #[test]
+    fn validate_warns_transition_trigger_without_state_machine() {
+        let service =
+            ServiceDef::new("order").action(ActionDef::new("submit").transition_trigger("submit"));
+
+        let warnings = service.validate().unwrap();
+        assert_eq!(warnings.len(), 1);
+        assert!(
+            warnings.contains(&Warning::TransitionTriggerWithoutStateMachine(
+                "submit".into()
+            ))
+        );
+    }
+
+    #[test]
+    fn validate_delegates_to_state_machine_validate() {
+        // Missing initial state in states — state machine validation catches this
+        let machine = StateMachine::new("lifecycle")
+            .initial("nonexistent")
+            .state(StateDef::new("a").final_state());
+
+        let service = ServiceDef::new("order").state_machine(machine);
+
+        let result = service.validate();
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("nonexistent"));
+    }
+
+    #[test]
+    fn validate_without_state_machine_or_actions_passes_clean() {
+        let service =
+            ServiceDef::new("simple").field("id", DataType::Integer, FieldMeaning::Identifier);
+
+        let warnings = service.validate().unwrap();
+        assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn full_order_service_with_guards_actions_validates_clean() {
+        let machine = StateMachine::new("order_lifecycle")
+            .display_name("Order Lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft").display_name("Draft"))
+            .state(StateDef::new("submitted").display_name("Submitted"))
+            .state(StateDef::new("processing").display_name("Processing"))
+            .state(
+                StateDef::new("shipped")
+                    .display_name("Shipped")
+                    .final_state(),
+            )
+            .state(
+                StateDef::new("cancelled")
+                    .display_name("Cancelled")
+                    .final_state(),
+            )
+            .transition(Transition::new("draft", "submit", "submitted").guard("has_items"))
+            .transition(
+                Transition::new("submitted", "process", "processing").guard("payment_valid"),
+            )
+            .transition(
+                Transition::new("processing", "ship", "shipped").guard("inventory_fulfilled"),
+            )
+            .transition(
+                Transition::new("draft", "cancel", "cancelled").guard("cancellation_allowed"),
+            )
+            .transition(
+                Transition::new("submitted", "cancel", "cancelled").guard("cancellation_allowed"),
+            );
+
+        let service = ServiceDef::new("order")
+            .display_name("Order")
+            .description("Full order management")
+            .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_id", DataType::Integer, FieldMeaning::ForeignKey)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .read_only_field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .guard(GuardDef::new("has_items").display_name("Has Items"))
+            .guard(GuardDef::new("payment_valid").display_name("Payment Valid"))
+            .guard(GuardDef::new("inventory_fulfilled").display_name("Inventory Fulfilled"))
+            .guard(GuardDef::new("cancellation_allowed").display_name("Cancellation Allowed"))
+            .action(
+                ActionDef::new("submit_order")
+                    .display_name("Submit Order")
+                    .input(InputDef::new(
+                        "order_id",
+                        DataType::Integer,
+                        FieldMeaning::Identifier,
+                    ))
+                    .precondition("has_items")
+                    .effect("notify_customer")
+                    .transition_trigger("submit"),
+            )
+            .action(
+                ActionDef::new("process_order")
+                    .precondition("payment_valid")
+                    .transition_trigger("process"),
+            )
+            .action(
+                ActionDef::new("ship_order")
+                    .precondition("inventory_fulfilled")
+                    .transition_trigger("ship"),
+            )
+            .action(
+                ActionDef::new("cancel_order")
+                    .precondition("cancellation_allowed")
+                    .effect("refund_payment")
+                    .transition_trigger("cancel"),
+            )
+            .state_machine(machine);
+
+        // Validate passes with no warnings
+        let warnings = service.validate().unwrap();
+        assert!(
+            warnings.is_empty(),
+            "expected no warnings, got: {warnings:?}"
+        );
+
+        // All pieces present
+        assert_eq!(service.fields.len(), 5);
+        assert_eq!(service.guards.len(), 4);
+        assert_eq!(service.actions.len(), 4);
+        assert!(service.state_machine.is_some());
+
+        // Serde round-trip
+        let json = serde_json::to_string_pretty(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+    }
+
+    #[test]
+    fn service_def_json_schema_includes_actions_guards() {
+        let schema = schemars::schema_for!(ServiceDef);
+        let value = schema.to_value();
+        let props = value
+            .get("properties")
+            .expect("ServiceDef schema must have properties");
+        let obj = props.as_object().unwrap();
+        assert!(obj.contains_key("actions"), "missing 'actions' property");
+        assert!(obj.contains_key("guards"), "missing 'guards' property");
+    }
 }

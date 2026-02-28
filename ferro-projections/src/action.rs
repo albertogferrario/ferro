@@ -384,4 +384,30 @@ mod tests {
         let obj = props.as_object().unwrap();
         assert!(obj.contains_key("name"), "missing 'name' property");
     }
+
+    // -- Additional Phase 86-02 tests --
+
+    #[test]
+    fn action_def_without_transition_trigger() {
+        let action = ActionDef::new("update_notes")
+            .display_name("Update Notes")
+            .input(InputDef::new(
+                "notes",
+                DataType::String,
+                FieldMeaning::FreeText,
+            ))
+            .effect("log_change");
+
+        assert!(action.transition_trigger.is_none());
+        assert_eq!(action.effects, vec!["log_change"]);
+        assert_eq!(action.inputs.len(), 1);
+    }
+
+    #[test]
+    fn action_def_serde_minimal_round_trip() {
+        let action = ActionDef::new("simple");
+        let json = serde_json::to_string(&action).unwrap();
+        let parsed: ActionDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(action, parsed);
+    }
 }
