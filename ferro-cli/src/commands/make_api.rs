@@ -13,6 +13,56 @@ use syn::{Attribute, Fields, ItemStruct, Type};
 use walkdir::WalkDir;
 
 // ---------------------------------------------------------------------------
+// Sensitive field auto-exclusion
+// ---------------------------------------------------------------------------
+
+/// Field names that are auto-excluded from API resources (response serialization).
+/// Matched case-insensitively, exact match only.
+const SENSITIVE_FIELD_PATTERNS: &[&str] = &[
+    "password",
+    "password_hash",
+    "hashed_password",
+    "secret",
+    "token",
+    "api_key",
+    "hashed_key",
+    "remember_token",
+];
+
+/// Filter fields for API resource generation, excluding sensitive and user-specified fields.
+///
+/// Returns references to fields that should be included in the resource.
+/// When `include_all` is true, no auto-exclusion is applied (user `--exclude` still applies).
+pub fn filter_resource_fields<'a>(
+    fields: &'a [FieldInfo],
+    exclude: &[String],
+    include_all: bool,
+) -> Vec<&'a FieldInfo> {
+    fields
+        .iter()
+        .filter(|f| {
+            let name_lower = f.name.to_lowercase();
+
+            // Check user-specified exclusions (always applied)
+            if exclude.iter().any(|e| e.to_lowercase() == name_lower) {
+                return false;
+            }
+
+            // Check sensitive field patterns (unless --include-all)
+            if !include_all
+                && SENSITIVE_FIELD_PATTERNS
+                    .iter()
+                    .any(|p| p.to_lowercase() == name_lower)
+            {
+                return false;
+            }
+
+            true
+        })
+        .collect()
+}
+
+// ---------------------------------------------------------------------------
 // Model metadata types
 // ---------------------------------------------------------------------------
 
@@ -30,11 +80,11 @@ struct ModelInfo {
 }
 
 #[derive(Debug, Clone)]
-struct FieldInfo {
-    name: String,
-    rust_type: String,
-    is_primary_key: bool,
-    is_nullable: bool,
+pub(crate) struct FieldInfo {
+    pub(crate) name: String,
+    pub(crate) rust_type: String,
+    pub(crate) is_primary_key: bool,
+    pub(crate) is_nullable: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -377,7 +427,7 @@ pub async fn destroy({snake_name}: {mod_name}::Model) -> Response {{
 }
 
 /// Generate the API resource for a model.
-fn generate_resource(snake_name: &str, model: &ModelInfo) {
+fn generate_resource(snake_name: &str, model: &ModelInfo, exclude: &[String], include_all: bool) {
     let resources_dir = Path::new("src/resources");
     if !resources_dir.exists() {
         fs::create_dir_all(resources_dir).expect("Failed to create src/resources/ directory");
@@ -394,9 +444,28 @@ fn generate_resource(snake_name: &str, model: &ModelInfo) {
 
     let pascal = &model.name;
 
-    // Build resource fields and From impl assignments
-    let resource_fields = build_resource_fields(&model.fields);
-    let from_assignments = build_from_assignments(&model.fields);
+    // Filter fields for the resource (excludes sensitive fields)
+    let included_fields = filter_resource_fields(&model.fields, exclude, include_all);
+
+    // Report excluded fields
+    let excluded_names: Vec<&str> = model
+        .fields
+        .iter()
+        .filter(|f| !included_fields.iter().any(|inc| inc.name == f.name))
+        .map(|f| f.name.as_str())
+        .collect();
+    if !excluded_names.is_empty() {
+        println!(
+            "   {} Auto-excluded sensitive fields from {}Resource: {}",
+            style("ℹ").blue(),
+            pascal,
+            excluded_names.join(", ")
+        );
+    }
+
+    // Build resource fields and From impl assignments using filtered fields
+    let resource_fields = build_resource_fields_filtered(&included_fields);
+    let from_assignments = build_from_assignments_filtered(&included_fields);
 
     let mod_name = &model.module_name;
 
@@ -427,7 +496,7 @@ impl From<{mod_name}::Model> for {pascal}Resource {{
     }}
 }}
 "#,
-        model_to_resource = build_model_to_resource(&model.fields),
+        model_to_resource = build_model_to_resource_filtered(&included_fields),
     );
 
     fs::write(&file_path, content).expect("Failed to write API resource file");
@@ -548,8 +617,8 @@ fn build_update_fields(fields: &[FieldInfo]) -> String {
         .collect()
 }
 
-/// Build struct field definitions for the resource.
-fn build_resource_fields(fields: &[FieldInfo]) -> String {
+/// Build struct field definitions for the resource (filtered field list).
+fn build_resource_fields_filtered(fields: &[&FieldInfo]) -> String {
     fields
         .iter()
         .map(|f| format!("    pub {}: {},", f.name, resource_rust_type(&f.rust_type)))
@@ -557,8 +626,8 @@ fn build_resource_fields(fields: &[FieldInfo]) -> String {
         .join("\n")
 }
 
-/// Build ResourceMap field calls for to_resource.
-fn build_from_assignments(fields: &[FieldInfo]) -> String {
+/// Build ResourceMap field calls for to_resource (filtered field list).
+fn build_from_assignments_filtered(fields: &[&FieldInfo]) -> String {
     fields
         .iter()
         .map(|f| {
@@ -570,12 +639,33 @@ fn build_from_assignments(fields: &[FieldInfo]) -> String {
         .collect()
 }
 
-/// Build From<&Model> field assignments.
-fn build_model_to_resource(fields: &[FieldInfo]) -> String {
+/// Build From<Model> field assignments (filtered field list).
+fn build_model_to_resource_filtered(fields: &[&FieldInfo]) -> String {
     fields
         .iter()
         .map(|f| format!("            {name}: model.{name}.clone(),\n", name = f.name))
         .collect()
+}
+
+/// Build struct field definitions for all fields (unfiltered convenience wrapper).
+#[cfg(test)]
+fn build_resource_fields(fields: &[FieldInfo]) -> String {
+    let refs: Vec<&FieldInfo> = fields.iter().collect();
+    build_resource_fields_filtered(&refs)
+}
+
+/// Build ResourceMap field calls for all fields (unfiltered convenience wrapper).
+#[cfg(test)]
+fn build_from_assignments(fields: &[FieldInfo]) -> String {
+    let refs: Vec<&FieldInfo> = fields.iter().collect();
+    build_from_assignments_filtered(&refs)
+}
+
+/// Build From<Model> assignments for all fields (unfiltered convenience wrapper).
+#[cfg(test)]
+fn build_model_to_resource(fields: &[FieldInfo]) -> String {
+    let refs: Vec<&FieldInfo> = fields.iter().collect();
+    build_model_to_resource_filtered(&refs)
 }
 
 /// Build create request struct fields.
@@ -711,7 +801,7 @@ fn singularize(name: &str) -> String {
 ///
 /// Generates API controllers, resources, and request types for the specified
 /// models (or all models if `--all` is set).
-pub fn run(models: Vec<String>, all: bool, yes: bool) {
+pub fn run(models: Vec<String>, all: bool, yes: bool, exclude: Vec<String>, include_all: bool) {
     if models.is_empty() && !all {
         eprintln!(
             "{} Specify model names or use --all to scaffold API for all models",
@@ -769,7 +859,7 @@ pub fn run(models: Vec<String>, all: bool, yes: bool) {
     for (snake_name, model) in &selected {
         println!("  {} {}", style("Model:").bold(), style(&model.name).cyan());
         generate_controller(snake_name, model);
-        generate_resource(snake_name, model);
+        generate_resource(snake_name, model, &exclude, include_all);
         generate_request(snake_name, model);
         generated_files.push(format!("src/api/{snake_name}_api.rs"));
         generated_files.push(format!("src/resources/{snake_name}_resource.rs"));

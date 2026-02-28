@@ -90,6 +90,12 @@ enum Commands {
         /// Skip confirmation prompts
         #[arg(long, short = 'y')]
         yes: bool,
+        /// Fields to exclude from API resources (comma-separated, e.g., password_hash,secret_token)
+        #[arg(long, value_delimiter = ',')]
+        exclude: Vec<String>,
+        /// Include all fields in API resources (disable auto-exclusion of sensitive fields)
+        #[arg(long)]
+        include_all: bool,
     },
     /// Scaffold a complete authentication system (migration, controller, routes)
     #[command(name = "make:auth")]
@@ -345,6 +351,19 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Check local API readiness for MCP integration
+    #[command(name = "api:check")]
+    ApiCheck {
+        /// Base URL of the running API server
+        #[arg(long, default_value = "http://localhost:8080")]
+        url: String,
+        /// API key to test authentication
+        #[arg(long)]
+        api_key: Option<String>,
+        /// Path to the OpenAPI spec endpoint
+        #[arg(long, default_value = "/api/openapi.json")]
+        spec_path: String,
+    },
 }
 
 fn main() {
@@ -379,8 +398,14 @@ fn main() {
         Commands::MakeAction { name } => {
             commands::make_action::run(name);
         }
-        Commands::MakeApi { models, all, yes } => {
-            commands::make_api::run(models, all, yes);
+        Commands::MakeApi {
+            models,
+            all,
+            yes,
+            exclude,
+            include_all,
+        } => {
+            commands::make_api::run(models, all, yes, exclude, include_all);
         }
         Commands::MakeAuth { force } => {
             commands::make_auth::run(force);
@@ -517,6 +542,13 @@ fn main() {
         }
         Commands::ValidateContracts { filter, json } => {
             commands::validate_contracts::run(filter, json);
+        }
+        Commands::ApiCheck {
+            url,
+            api_key,
+            spec_path,
+        } => {
+            commands::api_check::run(url, api_key, spec_path);
         }
     }
 }
