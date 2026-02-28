@@ -244,4 +244,53 @@ mod tests {
         let one_of = value.get("oneOf");
         assert!(one_of.is_some(), "IntentHint schema must have oneOf");
     }
+
+    // -- IntentScore construction --
+
+    #[test]
+    fn intent_score_construction() {
+        let score = IntentScore {
+            intent: Intent::Process,
+            confidence: 0.72,
+            matching_signals: vec!["guarded_transitions".into(), "state_progression".into()],
+        };
+        assert_eq!(score.intent, Intent::Process);
+        assert!((score.confidence - 0.72).abs() < f64::EPSILON);
+        assert_eq!(score.matching_signals.len(), 2);
+        assert_eq!(score.matching_signals[0], "guarded_transitions");
+        assert_eq!(score.matching_signals[1], "state_progression");
+    }
+
+    #[test]
+    fn intent_score_empty_signals() {
+        let score = IntentScore {
+            intent: Intent::Focus,
+            confidence: 0.5,
+            matching_signals: vec![],
+        };
+        let json = serde_json::to_string(&score).unwrap();
+        let parsed: IntentScore = serde_json::from_str(&json).unwrap();
+        assert_eq!(score, parsed);
+        assert!(parsed.matching_signals.is_empty());
+    }
+
+    // -- IntentHint with Custom intents --
+
+    #[test]
+    fn intent_hint_exclude_custom() {
+        let hint = IntentHint::Exclude(Intent::Custom("niche".into()));
+        let json = serde_json::to_string(&hint).unwrap();
+        let parsed: IntentHint = serde_json::from_str(&json).unwrap();
+        assert_eq!(hint, parsed);
+    }
+
+    // -- Equality edge cases --
+
+    #[test]
+    fn intent_eq_known_vs_custom() {
+        // Browse and Custom("browse") must be distinct values
+        assert_ne!(Intent::Browse, Intent::Custom("browse".into()));
+        assert_ne!(Intent::Focus, Intent::Custom("focus".into()));
+        assert_ne!(Intent::Track, Intent::Custom("track".into()));
+    }
 }
