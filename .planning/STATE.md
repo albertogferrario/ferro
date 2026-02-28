@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 85.1 (Architecture Refinement) — COMPLETE
-Plan: 02/02 complete
-Status: Phase complete — ready for Phase 86
-Last activity: 2026-02-28 — Plan 02 complete (2 tasks, 2 commits)
+Phase: 86 (Actions & Preconditions) — IN PROGRESS
+Plan: 01/01 complete
+Status: Plan 01 complete — type definitions shipped
+Last activity: 2026-02-28 — Plan 01 complete (2 tasks, 3 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-02-28 — Plan 02 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 8/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 9/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -78,6 +78,13 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 89 marked as core innovation phase with >70% accuracy validation target
 - Phase 94 descoped to protocol documentation only (patent dropped)
 
+**Phase 86-01:**
+- ActionDef, InputDef, GuardDef types — schema-only action/guard definitions
+- InputDef reuses DataType/FieldMeaning — single type vocabulary, no parallel systems
+- FieldDef readable/writable booleans default true — backward-compatible with Phase 84/85 JSON
+- ServiceDef gains read_only_field/write_only_field convenience builders
+- 74 ferro-projections unit tests + 4 doctests = 78 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -97,5 +104,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 85.1 COMPLETE — both plans done (schemars + roadmap refinement), ready for Phase 86
+Stopped at: Phase 86, Plan 01 COMPLETE — ActionDef/InputDef/GuardDef + FieldDef readable/writable
 Resume file: None
