@@ -794,6 +794,27 @@ fn singularize(name: &str) -> String {
 }
 
 // ---------------------------------------------------------------------------
+/// Read the project name from `./Cargo.toml`, falling back to "my-app".
+fn read_app_name() -> String {
+    fs::read_to_string("Cargo.toml")
+        .ok()
+        .and_then(|content| {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("name") {
+                    if let Some(value) = trimmed.split('=').nth(1) {
+                        let name = value.trim().trim_matches('"').trim_matches('\'');
+                        if !name.is_empty() {
+                            return Some(name.to_string());
+                        }
+                    }
+                }
+            }
+            None
+        })
+        .unwrap_or_else(|| "my-app".to_string())
+}
+
 // Public entry point (Task 1: model detection + per-model generation only)
 // ---------------------------------------------------------------------------
 
@@ -877,45 +898,120 @@ pub fn run(models: Vec<String>, all: bool, yes: bool, exclude: Vec<String>, incl
     generate_api_key_model();
     generate_api_key_provider();
 
-    // Print summary
+    // Print comprehensive post-scaffold guidance
     let model_names: Vec<&str> = selected.iter().map(|(_, m)| m.name.as_str()).collect();
+    let app_name = read_app_name();
+
+    println!();
     println!(
-        "\n{} API scaffold generated for: {}",
-        style("✓").green().bold(),
-        model_names.join(", ")
-    );
-    println!("\n  Generated files:");
-    for (snake_name, _) in &selected {
-        println!("    {}  src/api/{snake_name}_api.rs", style("—").dim());
-        println!(
-            "    {}  src/resources/{snake_name}_resource.rs",
-            style("—").dim()
-        );
-        println!(
-            "    {}  src/requests/{snake_name}_request.rs",
-            style("—").dim()
-        );
-    }
-    println!("    {}  src/api/mod.rs", style("—").dim());
-    println!("    {}  src/api/routes.rs", style("—").dim());
-    println!("    {}  src/api/docs.rs", style("—").dim());
-    println!("    {}  src/models/api_key.rs", style("—").dim());
-    println!(
-        "    {}  src/providers/api_key_provider.rs",
-        style("—").dim()
+        "  {}",
+        style("═══════════════════════════════════════════════").bold()
     );
     println!(
-        "    {}  src/migrations/m..._create_api_keys_table.rs",
-        style("—").dim()
+        "  {} {}",
+        style("API scaffold complete! Generated for:").bold(),
+        style(model_names.join(", ")).cyan().bold()
+    );
+    println!(
+        "  {}",
+        style("═══════════════════════════════════════════════").bold()
     );
 
-    println!("\n  Next steps:");
-    println!("    1. Add `mod api;` to src/main.rs or src/lib.rs");
-    println!("    2. Register api_routes() in your route configuration");
-    println!("    3. Register docs_routes() for API documentation");
-    println!("    4. Register ApiKeyProviderImpl as a service");
-    println!("    5. Run `ferro db:migrate` to create api_keys table");
-    println!("    6. Generate your first API key (see docs)");
+    println!("\n  Generated files:");
+    for (snake_name, _) in &selected {
+        println!("    Controllers:  src/api/{snake_name}_api.rs");
+        println!("    Resources:    src/resources/{snake_name}_resource.rs");
+        println!("    Requests:     src/requests/{snake_name}_request.rs");
+    }
+    println!("    Routes:       src/api/routes.rs");
+    println!("    Docs:         src/api/docs.rs");
+    println!("    API Keys:     src/models/api_key.rs, src/providers/api_key_provider.rs");
+    println!("    Migration:    src/migrations/m..._create_api_keys_table.rs");
+
+    println!(
+        "\n  {}",
+        style("───────────────────────────────────────────────").dim()
+    );
+    println!("  {}", style("Setup Steps").bold());
+    println!(
+        "  {}",
+        style("───────────────────────────────────────────────").dim()
+    );
+
+    println!("\n  1. Wire up routes in src/main.rs:");
+    println!("       {}", style("mod api;").cyan());
+    println!("       // In route registration:");
+    println!("       {}", style("api::routes::api_routes()").cyan());
+    println!("       {}", style("api::docs::docs_routes()").cyan());
+    println!();
+    println!("  2. Register the API key provider:");
+    println!(
+        "       {}",
+        style("App::bind::<dyn ApiKeyProvider>(Box::new(ApiKeyProviderImpl::new()));").cyan()
+    );
+    println!();
+    println!("  3. Run the migration:");
+    println!("       {}", style("ferro db:migrate").cyan());
+    println!();
+    println!("  4. Generate an API key:");
+    println!("       {}", style(r#"ferro make:api-key "My App""#).cyan());
+    println!();
+    println!("  5. Verify the API works:");
+    println!(
+        "       {}",
+        style("ferro api:check --api-key fe_live_...").cyan()
+    );
+
+    println!(
+        "\n  {}",
+        style("───────────────────────────────────────────────").dim()
+    );
+    println!("  {}", style("MCP Integration").bold());
+    println!(
+        "  {}",
+        style("───────────────────────────────────────────────").dim()
+    );
+
+    println!("\n  To connect this API to an AI agent via MCP, add to your");
+    println!("  MCP host configuration:");
+
+    println!(
+        "\n  {} (~/.claude/claude_desktop_config.json):",
+        style("Claude Desktop").bold()
+    );
+    println!("    {{");
+    println!("      \"mcpServers\": {{");
+    println!("        \"{app_name}-api\": {{");
+    println!("          \"command\": \"ferro-api-mcp\",");
+    println!("          \"args\": [");
+    println!("            \"--spec-url\", \"http://localhost:8080/api/openapi.json\",");
+    println!("            \"--api-key\", \"fe_live_...\"");
+    println!("          ]");
+    println!("        }}");
+    println!("      }}");
+    println!("    }}");
+
+    println!("\n  {} (~/.claude.json):", style("Claude Code").bold());
+    println!("    {{");
+    println!("      \"mcpServers\": {{");
+    println!("        \"{app_name}-api\": {{");
+    println!("          \"command\": \"ferro-api-mcp\",");
+    println!("          \"args\": [");
+    println!("            \"--spec-url\", \"http://localhost:8080/api/openapi.json\",");
+    println!("            \"--api-key\", \"fe_live_...\"");
+    println!("          ]");
+    println!("        }}");
+    println!("      }}");
+    println!("    }}");
+
+    println!(
+        "\n  Docs: {}",
+        style("https://docs.ferro-rs.dev/features/api-mcp.html").underlined()
+    );
+    println!(
+        "  {}",
+        style("═══════════════════════════════════════════════").bold()
+    );
     println!();
 }
 
