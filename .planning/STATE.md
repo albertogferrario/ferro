@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 81 (Consumer DX & Polish)
-Plan: 02/03
-Status: In progress
-Last activity: 2026-02-28 — Plan 01 complete (startup diagnostics & categorized spec errors)
+Plan: 03/03
+Status: Complete
+Last activity: 2026-02-28 — Phase 81 complete (all 3 plans shipped)
 
 ## Milestone Summary
 
@@ -132,6 +132,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 80 complete: x-mcp OpenAPI extensions — framework emits x-mcp-tool-name/x-mcp-description, ferro-api-mcp consumes x-mcp-tool-name/description/hint/hidden
 - Phase 81 Plan 01 complete: Startup diagnostics & categorized spec fetch errors — --dry-run flag, connectivity check, categorized error messages
 - Phase 81 Plan 02 complete: Input validation & error DX — pre-flight arg validation (8 tests), categorized errors with actionable suggestions
+- Phase 81 Plan 03 complete: Consumer-facing ferro-api-mcp documentation — setup, MCP host configs, x-mcp extensions, troubleshooting
 
 ### Pending Todos
 
@@ -144,5 +145,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 81 Plan 02 complete — Plan 03 next (wave 2)
+Stopped at: Phase 81 complete — all 3 plans shipped (diagnostics, validation, docs)
 Resume file: None
