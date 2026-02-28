@@ -1,8 +1,11 @@
+use std::collections::HashSet;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::action::{ActionDef, GuardDef};
 use crate::field::{DataType, FieldDef, FieldMeaning};
-use crate::state::StateMachine;
+use crate::state::{StateMachine, Warning};
 
 /// A service definition describing a domain entity and its fields.
 ///
@@ -26,6 +29,10 @@ pub struct ServiceDef {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub fields: Vec<FieldDef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub actions: Vec<ActionDef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub guards: Vec<GuardDef>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_machine: Option<StateMachine>,
 }
@@ -38,6 +45,8 @@ impl ServiceDef {
             display_name: None,
             description: None,
             fields: Vec::new(),
+            actions: Vec::new(),
+            guards: Vec::new(),
             state_machine: None,
         }
     }
@@ -153,10 +162,116 @@ impl ServiceDef {
         self
     }
 
+    /// Adds an action definition to this service.
+    pub fn action(mut self, action: ActionDef) -> Self {
+        self.actions.push(action);
+        self
+    }
+
+    /// Adds a guard definition to this service.
+    pub fn guard(mut self, guard: GuardDef) -> Self {
+        self.guards.push(guard);
+        self
+    }
+
     /// Sets the state machine definition for this service.
     pub fn state_machine(mut self, machine: StateMachine) -> Self {
         self.state_machine = Some(machine);
         self
+    }
+
+    /// Validates the service definition and returns warnings for potential issues.
+    ///
+    /// This is the single validation entry point that subsumes `StateMachine::validate()`.
+    /// Guard names form a shared pool referenced from transitions and action preconditions.
+    ///
+    /// Returns `Err` for fatal issues (undefined guard references, unmatched triggers).
+    /// Returns `Ok(warnings)` for structural concerns (unused guards, missing state machine).
+    pub fn validate(&self) -> Result<Vec<Warning>, crate::Error> {
+        let mut warnings = Vec::new();
+
+        // 1. Delegate to state machine validation if present
+        if let Some(ref sm) = self.state_machine {
+            warnings.extend(sm.validate()?);
+        }
+
+        // 2. Collect declared guard names
+        let declared_guards: HashSet<&str> = self.guards.iter().map(|g| g.name.as_str()).collect();
+
+        // 3. Check action preconditions reference declared guards
+        for action in &self.actions {
+            for precondition in &action.preconditions {
+                if !declared_guards.contains(precondition.as_str()) {
+                    return Err(crate::Error::Validation(format!(
+                        "action '{}' references undefined guard '{}'",
+                        action.name, precondition
+                    )));
+                }
+            }
+        }
+
+        // 4. Check transition guards reference declared guards (if state machine exists)
+        if let Some(ref sm) = self.state_machine {
+            for transition in &sm.transitions {
+                if let Some(ref guard) = transition.guard {
+                    if !declared_guards.contains(guard.as_str()) {
+                        return Err(crate::Error::Validation(format!(
+                            "transition '{}' -> '{}' references undefined guard '{}'",
+                            transition.from, transition.to, guard
+                        )));
+                    }
+                }
+            }
+        }
+
+        // 5. Check action transition_triggers match state machine event names
+        if let Some(ref sm) = self.state_machine {
+            let event_names: HashSet<&str> =
+                sm.transitions.iter().map(|t| t.event.as_str()).collect();
+            for action in &self.actions {
+                if let Some(ref trigger) = action.transition_trigger {
+                    if !event_names.contains(trigger.as_str()) {
+                        return Err(crate::Error::Validation(format!(
+                            "action '{}' has transition_trigger '{}' that does not match any state machine event",
+                            action.name, trigger
+                        )));
+                    }
+                }
+            }
+        }
+
+        // 6. Warn about declared guards never referenced
+        let mut referenced_guards: HashSet<&str> = HashSet::new();
+        for action in &self.actions {
+            for precondition in &action.preconditions {
+                referenced_guards.insert(precondition.as_str());
+            }
+        }
+        if let Some(ref sm) = self.state_machine {
+            for transition in &sm.transitions {
+                if let Some(ref guard) = transition.guard {
+                    referenced_guards.insert(guard.as_str());
+                }
+            }
+        }
+        for guard in &self.guards {
+            if !referenced_guards.contains(guard.name.as_str()) {
+                warnings.push(Warning::UnusedGuard(guard.name.clone()));
+            }
+        }
+
+        // 7. Warn about actions with transition_trigger when no state machine exists
+        if self.state_machine.is_none() {
+            for action in &self.actions {
+                if action.transition_trigger.is_some() {
+                    warnings.push(Warning::TransitionTriggerWithoutStateMachine(
+                        action.name.clone(),
+                    ));
+                }
+            }
+        }
+
+        Ok(warnings)
     }
 }
 

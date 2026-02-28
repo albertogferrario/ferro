@@ -89,7 +89,7 @@ pub struct Transition {
     pub description: Option<String>,
 }
 
-/// Structural warnings from state machine validation.
+/// Structural warnings from service and state machine validation.
 ///
 /// Warnings indicate potential issues that may be intentional
 /// (e.g., unreachable states reached via external means).
@@ -101,6 +101,10 @@ pub enum Warning {
     DeadEndState(String),
     /// No states are marked as final.
     NoFinalStates,
+    /// A guard declared but never referenced by any transition or action precondition.
+    UnusedGuard(String),
+    /// An action has a transition_trigger but the service has no state machine.
+    TransitionTriggerWithoutStateMachine(String),
 }
 
 impl StateMachine {
