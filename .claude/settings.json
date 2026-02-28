@@ -2,11 +2,13 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": {
-          "tool": ["Write", "Edit"],
-          "path": "**/*.rs"
-        },
-        "command": "cd /Users/alberto/repositories/albertogferrario/ferro && cargo fmt --all 2>/dev/null || true"
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q '\\.rs'; then cd /Users/alberto/repositories/albertogferrario/ferro && cargo fmt --all 2>/dev/null || true; fi"
+          }
+        ]
       }
     ]
   },
