@@ -390,4 +390,20 @@ mod tests {
         let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
         assert_eq!(service, parsed);
     }
+
+    #[test]
+    fn service_def_json_schema() {
+        let schema = schemars::schema_for!(ServiceDef);
+        let value = schema.to_value();
+        let props = value
+            .get("properties")
+            .expect("ServiceDef schema must have properties");
+        let obj = props.as_object().unwrap();
+        assert!(obj.contains_key("name"), "missing 'name' property");
+        assert!(obj.contains_key("fields"), "missing 'fields' property");
+        assert!(
+            obj.contains_key("state_machine"),
+            "missing 'state_machine' property"
+        );
+    }
 }

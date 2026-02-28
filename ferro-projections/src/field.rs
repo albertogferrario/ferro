@@ -29,7 +29,9 @@ pub enum DataType {
 /// `Custom(String)` must remain the last variant for correct serde deserialization.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-#[schemars(description = "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning.")]
+#[schemars(
+    description = "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning."
+)]
 pub enum FieldMeaning {
     Identifier,
     ForeignKey,
@@ -268,5 +270,52 @@ mod tests {
             infer_meaning("description"),
             FieldMeaning::Custom("description".to_string())
         );
+    }
+
+    #[test]
+    fn data_type_json_schema() {
+        let schema = schemars::schema_for!(DataType);
+        let value = schema.to_value();
+        let enum_values = value
+            .get("enum")
+            .expect("DataType schema must have enum key");
+        let arr = enum_values.as_array().unwrap();
+        let strings: Vec<&str> = arr.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(strings.contains(&"string"));
+        assert!(strings.contains(&"integer"));
+        assert!(strings.contains(&"float"));
+        assert!(strings.contains(&"boolean"));
+        assert!(strings.contains(&"date_time"));
+        assert!(strings.contains(&"uuid"));
+    }
+
+    #[test]
+    fn field_meaning_json_schema_has_description() {
+        let schema = schemars::schema_for!(FieldMeaning);
+        let value = schema.to_value();
+        let desc = value
+            .get("description")
+            .expect("FieldMeaning schema must have description");
+        let desc_str = desc.as_str().unwrap();
+        assert!(
+            desc_str.contains("Known variants"),
+            "description should document known variants, got: {desc_str}"
+        );
+    }
+
+    #[test]
+    fn field_def_json_schema() {
+        let schema = schemars::schema_for!(FieldDef);
+        let value = schema.to_value();
+        let props = value
+            .get("properties")
+            .expect("FieldDef schema must have properties");
+        let obj = props.as_object().unwrap();
+        assert!(obj.contains_key("name"), "missing 'name' property");
+        assert!(
+            obj.contains_key("data_type"),
+            "missing 'data_type' property"
+        );
+        assert!(obj.contains_key("meaning"), "missing 'meaning' property");
     }
 }
