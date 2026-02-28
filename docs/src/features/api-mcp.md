@@ -2,6 +2,46 @@
 
 ferro-api-mcp is a standalone binary that bridges any Ferro REST API to the Model Context Protocol (MCP). AI agents can discover and call your API endpoints as MCP tools without custom integration code.
 
+## Quick Start Workflow
+
+From scaffold to working MCP integration in seven steps:
+
+1. **Scaffold the API:**
+   ```bash
+   ferro make:api --all
+   ```
+
+2. **Wire routes** in `src/main.rs`:
+   ```rust
+   mod api;
+   // In route registration:
+   api::routes::api_routes()
+   api::docs::docs_routes()
+   ```
+
+3. **Run the migration:**
+   ```bash
+   ferro db:migrate
+   ```
+
+4. **Generate an API key:**
+   ```bash
+   ferro make:api-key "My Key"
+   ```
+   Save the raw key -- it is shown only once.
+
+5. **Start the server:**
+   ```bash
+   cargo run
+   ```
+
+6. **Verify the setup:**
+   ```bash
+   ferro api:check --api-key fe_live_...
+   ```
+
+7. **Add MCP config** to your AI agent (see [MCP Host Configuration](#mcp-host-configuration) below).
+
 ## How It Works
 
 1. Reads the OpenAPI spec from your Ferro app's `/api/docs/openapi.json` endpoint
@@ -132,6 +172,55 @@ Ferro's `build_openapi_spec()` automatically emits `x-mcp` vendor extensions on 
 | `x-mcp-hidden` | Set to `true` to exclude the operation from MCP tools |
 
 These are emitted automatically by the framework. No configuration is needed. ferro-api-mcp uses the extension values as overrides, falling back to auto-generated names and descriptions when extensions are absent.
+
+## Route Customization
+
+Override the auto-generated MCP metadata on individual routes using builder methods:
+
+```rust
+use ferro::routing::*;
+
+group!("/api/v1")
+    .middleware(ApiKeyMiddleware::new())
+    .routes([
+        get!("/users", user_api::index)
+            .mcp_tool_name("search_users")
+            .mcp_description("Search users by name or email with pagination")
+            .mcp_hint("Use page and per_page params for large result sets"),
+
+        post!("/users", user_api::store)
+            .mcp_description("Create a new user account"),
+
+        delete!("/users/:id/sessions", user_api::clear_sessions)
+            .mcp_hidden(),  // Exclude from MCP tools
+    ])
+```
+
+### Available Methods
+
+| Method | Effect | When to Use |
+|--------|--------|-------------|
+| `.mcp_tool_name("name")` | Override auto-generated tool name | When the default name is unclear (e.g., `store_user` -> `create_user_account`) |
+| `.mcp_description("desc")` | Override auto-generated description | When the default summary needs more context for AI agents |
+| `.mcp_hint("hint")` | Append hint text to description | To guide AI agents on parameter usage or expected behavior |
+| `.mcp_hidden()` | Exclude route from MCP tools | For internal/admin endpoints that agents should not call |
+
+### Group-Level Defaults
+
+Set MCP defaults at the group level. Route-level overrides take precedence:
+
+```rust
+group!("/api/v1/internal")
+    .mcp_hidden()  // Hide all routes in this group
+    .routes([
+        get!("/health", internal_api::health),
+        get!("/metrics", internal_api::metrics),
+    ])
+```
+
+### How It Works
+
+Customizations are stored in the route registry and emitted as `x-mcp` vendor extensions in the OpenAPI spec. ferro-api-mcp reads these extensions at startup, using them as overrides over auto-generated values.
 
 ## Troubleshooting
 

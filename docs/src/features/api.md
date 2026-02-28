@@ -138,6 +138,36 @@ The generated `ApiKeyProviderImpl` in `src/providers/api_key_provider.rs` provid
 
 ## API Key Management
 
+### CLI Key Generation
+
+Generate API keys from the command line without writing code:
+
+```bash
+ferro make:api-key "My App"
+```
+
+Options:
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--env` | Key environment: `live` or `test` | `live` |
+
+Example with test environment:
+
+```bash
+ferro make:api-key "Dev Bot" --env test
+```
+
+Output includes:
+
+- **Raw key** (e.g., `fe_live_aBcDeFg...`) -- shown once, store securely
+- **Prefix** -- first 16 characters, used for database lookup
+- **Hashed key** -- SHA-256 hex digest for verification
+- **SQL insert** -- ready-to-run INSERT statement
+- **Rust snippet** -- copy-paste SeaORM code
+
+The raw key is displayed only once. If lost, generate a new key.
+
 ### Creating Keys Programmatically
 
 ```rust
@@ -223,6 +253,76 @@ pub async fn index(req: Request) -> Response {
     // ...
 }
 ```
+
+## Field Selection
+
+By default, `make:api` auto-excludes sensitive fields from generated API resources. Fields matching these patterns are omitted:
+
+- `password`, `password_hash`, `hashed_password`
+- `secret`, `token`, `api_key`, `hashed_key`
+- `remember_token`
+
+Matching is case-insensitive, exact match only. A field named `token_count` is not excluded.
+
+### Custom Exclusion
+
+Exclude additional fields with `--exclude`:
+
+```bash
+ferro make:api --all --exclude password_hash,secret_token
+```
+
+Multiple fields are comma-separated. Custom exclusions stack with auto-exclusion.
+
+### Including All Fields
+
+Override auto-exclusion with `--include-all`:
+
+```bash
+ferro make:api --all --include-all
+```
+
+When `--include-all` is set, no auto-exclusion is applied. Custom `--exclude` fields are still honored:
+
+```bash
+# Include all fields except internal_notes
+ferro make:api --all --include-all --exclude internal_notes
+```
+
+## Verifying Your API
+
+After scaffolding and wiring routes, verify the setup with `ferro api:check`:
+
+```bash
+ferro api:check
+```
+
+The command runs four sequential checks:
+
+1. **Server connectivity** -- can the CLI reach your server?
+2. **Spec available** -- does `/api/openapi.json` return a response?
+3. **Spec valid** -- is the response a valid OpenAPI 3.x document?
+4. **Auth working** -- does the API key authenticate successfully?
+
+### With Authentication
+
+```bash
+ferro api:check --api-key fe_live_...
+```
+
+### Custom URL
+
+```bash
+ferro api:check --url http://localhost:3000
+```
+
+### Custom Spec Path
+
+```bash
+ferro api:check --spec-path /api/docs/openapi.json
+```
+
+On success, `api:check` prints a ready-to-copy `ferro-api-mcp` command for MCP integration.
 
 ## Endpoints
 
