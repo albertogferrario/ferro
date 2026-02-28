@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v8.0 Consumer MCP — OpenAPI Bridge
+**Current focus:** v8.1 API DX Polish
 
 ## Current Position
 
-Phase: 82 (E2E Validation)
-Plan: 02
-Status: Complete
-Last activity: 2026-02-28 — Plan 02 complete (E2E integration tests)
+Phase: 83 (API DX Polish)
+Plan: Planning complete
+Status: Ready for execution
+Last activity: 2026-02-28 — Phase 83 planned (5 plans in 2 waves)
 
 ## Milestone Summary
 
@@ -141,6 +141,8 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 81 Plan 03 complete: Consumer-facing ferro-api-mcp documentation — setup, MCP host configs, x-mcp extensions, troubleshooting
 - Phase 82 Plan 01 complete: Sample app API layer — user CRUD at /api/v1/users, API key auth, OpenAPI spec at /api/openapi.json
 - Phase 82 Plan 02 complete: E2E integration tests — 3 tests validate full pipeline (OpenAPI spec, MCP tool discovery, CRUD operations)
+- Phase 83 added: API DX Polish — CLI key generation, model selection, x-mcp route API, post-scaffold guidance, local verification
+- Phase 83 planned: 5 plans in 2 waves — Plans 01-04 parallel (Wave 1), Plan 05 sequential (Wave 2, depends on 01+04)
 
 ### Pending Todos
 
@@ -153,5 +155,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 82 Plan 02 complete — E2E integration tests shipped, v8.0 milestone fully validated
+Stopped at: Phase 83 planning complete — 5 plans created, ready for execution
 Resume file: None

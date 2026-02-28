@@ -25,12 +25,31 @@
 - ✅ **v7.7 Validate & Fix API Scaffold** — Phase 77 (shipped 2026-02-28)
 - ✅ **v7.8 Memory Leak Fixes** — Phase 78 (shipped 2026-02-28)
 - ✅ **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (shipped 2026-02-28)
+- 🚧 **v8.1 API DX Polish** — Phase 83 (in progress)
 
 ---
 
 ## Active Milestone
 
-None — all milestones complete.
+### v8.1 API DX Polish (Phase 83)
+
+**Milestone Goal:** Close the DX gaps between `ferro make:api` scaffold and a working MCP integration. Add API key CLI command, post-scaffold guidance, model/field selection, and x-mcp route-level customization.
+
+| Phase | Plans | Status | Completed |
+|-------|-------|--------|-----------|
+| 83. API DX Polish | 5 | Not started | - |
+
+#### Phase 83: API DX Polish
+**Goal**: Fix five DX gaps discovered during v8.0 validation: (1) CLI command for API key generation, (2) model/field selection in make:api, (3) route-level x-mcp customization API, (4) post-scaffold next-steps guidance with MCP config snippet, (5) local API verification before MCP wiring.
+**Depends on**: Phase 82
+**Plans**: 5 plans in 2 waves
+
+Plans:
+- [ ] 83-01: API Key CLI Command (wave 1)
+- [ ] 83-02: Route-Level x-MCP Customization (wave 1)
+- [ ] 83-03: make:api Field Selection (wave 1)
+- [ ] 83-04: Local API Verification (wave 1)
+- [ ] 83-05: Post-scaffold Guidance & Docs (wave 2, depends: 01, 04)
 
 ---
 
