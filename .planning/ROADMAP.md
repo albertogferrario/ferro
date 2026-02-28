@@ -32,7 +32,7 @@
 
 ### 🚧 v9.0 Service Projections (In Progress)
 
-**Milestone Goal:** Introduce a three-layer architecture where services describe business capabilities and UI is generated from those descriptions: Model → ServiceDef → IntentGraph → Renderer → Output. Define a standardized protocol for interoperability and prepare patent documentation.
+**Milestone Goal:** Introduce a three-layer architecture where services describe business capabilities and UI is generated from those descriptions: Model → ServiceDef → IntentGraph → Renderer → Output. Define a standardized protocol for interoperability.
 
 #### Phase 84: Service Identity & Field Semantics ✅
 
@@ -56,11 +56,17 @@ Plans:
 - [x] 85-01: StateMachine, StateDef, Transition, Warning types with builder APIs, BFS validation, ServiceDef integration
 - [x] 85-02: Comprehensive test suite (49 unit tests + 2 doctests)
 
+#### Phase 85.1: Architecture Refinement (INSERTED)
+
+**Goal**: Incorporate prior art insights. Add schemars JSON Schema derives. Refine Phase 86-93 descriptions shifting from "map SAP floorplans" to "derive intent from structure." Descope Phase 94 to protocol documentation only.
+**Depends on**: Phase 85
+**Plans**: 2
+
 #### Phase 86: Actions & Preconditions
 
-**Goal**: Add action definitions — inputs, guards, preconditions, transition triggers.
-**Depends on**: Phase 85
-**Research**: Unlikely (internal patterns)
+**Goal**: Add Siren-inspired ActionDef with inputs reusing DataType/FieldMeaning. Add readable/writable to FieldDef for intent derivation.
+**Depends on**: Phase 85.1
+**Research**: Unlikely (Siren action format well-documented)
 **Plans**: 2
 
 Plans:
@@ -69,9 +75,9 @@ Plans:
 
 #### Phase 87: Service Relationships
 
-**Goal**: Declare how services relate to each other with cardinality and navigation hints.
+**Goal**: Declare service relationships with cardinality as structural signal for intent derivation.
 **Depends on**: Phase 84 (parallel with 85-86)
-**Research**: Unlikely (internal patterns)
+**Research**: Unlikely
 **Plans**: 1
 
 Plans:
@@ -79,10 +85,10 @@ Plans:
 
 #### Phase 88: Intent Layer — Core Types
 
-**Goal**: Build the Intent vocabulary — universal UI operations for any medium.
+**Goal**: Define Intent enum from structural derivation analysis. 7 derivable intents + Custom escape hatch + IntentHint override.
 **Depends on**: Phase 84, Phase 86
-**Research**: Likely (intent taxonomy needs careful design across rendering scenarios)
-**Research topics**: Intent taxonomy design, medium-agnostic UI operations, prior art in abstract UI description
+**Research**: Likely (structural derivation taxonomy needs careful design)
+**Research topics**: Structural signal mapping, intent derivation heuristics, prior art in abstract UI description
 **Plans**: 3
 
 Plans:
@@ -92,10 +98,10 @@ Plans:
 
 #### Phase 89: Intent Graph Generation
 
-**Goal**: ServiceDef + current state/context → IntentGraph.
+**Goal**: Structural analysis engine — pattern matching on ServiceDef signals to ranked intents with confidence scores. Core innovation phase.
 **Depends on**: Phase 88
-**Research**: Likely (graph generation algorithm is the intellectual core)
-**Research topics**: Directed graph generation from schema, cycle handling, state-dependent edge filtering
+**Research**: Likely (structural analysis heuristics are the intellectual core)
+**Research topics**: Structural signal pattern matching, confidence scoring, derivation validation suite
 **Plans**: 3
 
 Plans:
@@ -142,7 +148,7 @@ Plans:
 
 #### Phase 93: Field Test & Polish
 
-**Goal**: Build complete Order Management service exercising full stack. Fix issues, polish API.
+**Goal**: Build representative services exercising full stack. Validate structural intent derivation accuracy (target: >70% correct without manual hints).
 **Depends on**: Phase 92
 **Research**: Unlikely (validation of existing implementation)
 **Plans**: 3
@@ -152,12 +158,11 @@ Plans:
 - [ ] 93-02: TBD
 - [ ] 93-03: TBD
 
-#### Phase 94: Protocol & Patent
+#### Phase 94: Protocol Documentation
 
-**Goal**: Define a standardized protocol for data/intent-oriented web services with auto-generated UIs. Prepare patent documentation.
+**Goal**: Define a standardized protocol specification for data/intent-oriented web services with auto-generated UIs. Formalize the ServiceDef → IntentGraph → Renderer chain as a documented, versioned protocol.
 **Depends on**: Phase 93
-**Research**: Likely (prior art survey, patent landscape, protocol design patterns)
-**Research topics**: Prior art in intent-based service protocols, patent landscape for declarative UI generation, existing standards (OpenAPI, GraphQL SDL, USDL), protocol serialization formats
+**Research**: Complete (Phase 94 research — prior art, protocol design patterns, serialization formats)
 **Plans**: 3
 
 Plans:
@@ -617,7 +622,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 0/28 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 6/28 | 🚧 In Progress | - |
 
 **Total: 21 milestones shipped, 184 plans. 1 milestone in progress (28 plans).**
 
