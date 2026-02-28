@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 78 (Memory Leak Audit)
-Plan: 01 complete
-Status: Plan 01 complete — metrics 404 path explosion fixed with UNMATCHED bucket + entry cap
-Last activity: 2026-02-28 — Plan 01 executed (metrics normalization + cap)
+Plan: 02 complete
+Status: Plan 02 complete — InMemoryCache replaced with moka::sync::Cache (bounded, per-entry TTL, proactive eviction)
+Last activity: 2026-02-28 — Plan 02 executed (InMemoryCache moka replacement)
 
 ## Milestone Summary
 
@@ -77,6 +77,9 @@ Archived to PROJECT.md and milestone archive files.
 - Generated resources use From<Model> (owned) for ApiResource derive macro compatibility
 - Unmatched routes normalized to "UNMATCHED" bucket to prevent 404 path explosion DoS
 - MAX_ROUTE_ENTRIES = 1000 cap as defense-in-depth for metrics HashMap
+- InMemoryCache: moka::sync::Cache (not future) since CacheStore async_trait wraps synchronous operations
+- Default capacity 10,000 entries matching ferro-cache MemoryStore convention
+- CacheValue wrapper struct embeds optional TTL for Expiry trait per-entry reads
 
 ### Roadmap Evolution
 
@@ -85,7 +88,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 75 complete: generate-types output made self-contained (no shared.ts imports/re-exports)
 - Phase 76 complete: Default API scaffold with API key auth, OpenAPI, MCP CRUD, CLI make:api, and documentation
 - Phase 77 complete: Validate & fix API scaffold — 5 template bugs fixed, 75 regression tests added
-- Phase 78 in progress: Memory leak audit — Plan 01 fixes metrics 404 path explosion
+- Phase 78 in progress: Memory leak audit — Plan 01 fixes metrics 404 path explosion, Plan 02 replaces InMemoryCache with moka
 
 ### Pending Todos
 
@@ -98,5 +101,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 78 Plan 01 complete — metrics path explosion fixed
+Stopped at: Phase 78 Plan 02 complete — InMemoryCache replaced with moka
 Resume file: None
