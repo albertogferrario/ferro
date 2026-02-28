@@ -36,7 +36,7 @@
 
 | Phase | Plans | Status | Completed |
 |-------|-------|--------|-----------|
-| 79. ferro-api-mcp Core | TBD | Not started | - |
+| 79. ferro-api-mcp Core | 0/4 | Planned | - |
 | 80. x-mcp OpenAPI Extensions | TBD | Not started | - |
 | 81. Consumer DX & Polish | TBD | Not started | - |
 | 82. End-to-End Validation | TBD | Not started | - |
@@ -44,12 +44,14 @@
 #### Phase 79: ferro-api-mcp Core
 **Goal**: New crate — standalone MCP server binary that fetches an OpenAPI spec from a URL, parses operations, and dynamically registers MCP tools. HTTP client with API key auth header.
 **Depends on**: Phase 76-77 (API scaffold + fixes)
-**Research**: Likely (rmcp dynamic tool registration API, OpenAPI 3.x parsing crates in Rust)
-**Research topics**: How rmcp handles dynamic tool registration at runtime; best OpenAPI parser crate (utoipa-gen, openapiv3, etc.); MCP tool schema from JSON Schema
-**Plans**: TBD
+**Research**: Complete (79-RESEARCH.md — rmcp 0.12 ToolRoute::new_dyn, openapiv3 2.2.0, reqwest HTTP client)
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 79-01: TBD (run /gsd:plan-phase 79 to break down)
+- [ ] 79-01: Crate scaffold + types + CLI (Wave 1)
+- [ ] 79-02: OpenAPI spec parser — TDD (Wave 2)
+- [ ] 79-03: Schema bridge + HTTP client (Wave 2, parallel with 02)
+- [ ] 79-04: MCP service + server integration (Wave 3)
 
 #### Phase 80: x-mcp OpenAPI Extensions
 **Goal**: Define `x-mcp` extension schema for OpenAPI operations. Update `ferro make:api` to emit enriched tool names, descriptions, and usage hints in generated specs.
