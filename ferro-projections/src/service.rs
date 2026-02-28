@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::action::{ActionDef, GuardDef};
 use crate::field::{DataType, FieldDef, FieldMeaning};
+use crate::intent::IntentHint;
 use crate::relationship::{Cardinality, RelationshipDef};
 use crate::state::{StateMachine, Warning};
 
@@ -36,6 +37,8 @@ pub struct ServiceDef {
     pub guards: Vec<GuardDef>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub relationships: Vec<RelationshipDef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub intent_hints: Vec<IntentHint>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_machine: Option<StateMachine>,
 }
@@ -51,6 +54,7 @@ impl ServiceDef {
             actions: Vec::new(),
             guards: Vec::new(),
             relationships: Vec::new(),
+            intent_hints: Vec::new(),
             state_machine: None,
         }
     }
@@ -204,6 +208,12 @@ impl ServiceDef {
         self.relationship(RelationshipDef::new(name, target, Cardinality::ManyToMany))
     }
 
+    /// Adds an intent hint for overriding structural derivation.
+    pub fn intent_hint(mut self, hint: IntentHint) -> Self {
+        self.intent_hints.push(hint);
+        self
+    }
+
     /// Sets the state machine definition for this service.
     pub fn state_machine(mut self, machine: StateMachine) -> Self {
         self.state_machine = Some(machine);
@@ -317,6 +327,43 @@ impl ServiceDef {
                 warnings.push(Warning::ManyToManyWithForeignKey {
                     relationship: rel.name.clone(),
                 });
+            }
+        }
+
+        // 10. Check for conflicting intent hints (same intent in both Primary and Exclude)
+        {
+            let mut primaries = HashSet::new();
+            let mut excludes = HashSet::new();
+            let mut primary_count = 0u32;
+
+            for hint in &self.intent_hints {
+                match hint {
+                    IntentHint::Primary(intent) => {
+                        primary_count += 1;
+                        let serialized = serde_json::to_string(intent)
+                            .unwrap_or_default()
+                            .trim_matches('"')
+                            .to_string();
+                        primaries.insert(serialized);
+                    }
+                    IntentHint::Exclude(intent) => {
+                        let serialized = serde_json::to_string(intent)
+                            .unwrap_or_default()
+                            .trim_matches('"')
+                            .to_string();
+                        excludes.insert(serialized);
+                    }
+                }
+            }
+
+            for intent_name in primaries.intersection(&excludes) {
+                warnings.push(Warning::ConflictingIntentHints {
+                    intent: intent_name.clone(),
+                });
+            }
+
+            if primary_count > 1 {
+                warnings.push(Warning::MultiplePrimaryIntentHints);
             }
         }
 
@@ -1150,6 +1197,125 @@ mod tests {
         assert!(
             obj.contains_key("relationships"),
             "missing 'relationships' property"
+        );
+    }
+
+    // -- Phase 88-01 tests: intent hints --
+
+    use crate::intent::{Intent, IntentHint};
+
+    #[test]
+    fn service_def_new_has_empty_intent_hints() {
+        let service = ServiceDef::new("order");
+        assert!(service.intent_hints.is_empty());
+    }
+
+    #[test]
+    fn service_def_intent_hint_builder() {
+        let service = ServiceDef::new("order")
+            .intent_hint(IntentHint::Primary(Intent::Browse))
+            .intent_hint(IntentHint::Exclude(Intent::Process));
+
+        assert_eq!(service.intent_hints.len(), 2);
+        assert_eq!(service.intent_hints[0], IntentHint::Primary(Intent::Browse));
+        assert_eq!(
+            service.intent_hints[1],
+            IntentHint::Exclude(Intent::Process)
+        );
+    }
+
+    #[test]
+    fn service_def_json_omits_empty_intent_hints() {
+        let service = ServiceDef::new("user");
+        let json = serde_json::to_string(&service).unwrap();
+        assert!(!json.contains("intent_hints"));
+    }
+
+    #[test]
+    fn service_def_intent_hints_serde_round_trip() {
+        let service = ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .intent_hint(IntentHint::Primary(Intent::Browse))
+            .intent_hint(IntentHint::Exclude(Intent::Collect));
+
+        let json = serde_json::to_string_pretty(&service).unwrap();
+        let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(service, parsed);
+        assert_eq!(parsed.intent_hints.len(), 2);
+    }
+
+    #[test]
+    fn validate_passes_with_valid_intent_hints() {
+        let service = ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .intent_hint(IntentHint::Primary(Intent::Browse))
+            .intent_hint(IntentHint::Exclude(Intent::Collect));
+
+        let warnings = service.validate().unwrap();
+        assert!(
+            warnings.is_empty(),
+            "expected no warnings, got: {warnings:?}"
+        );
+    }
+
+    #[test]
+    fn validate_warns_conflicting_intent_hints() {
+        let service = ServiceDef::new("order")
+            .intent_hint(IntentHint::Primary(Intent::Browse))
+            .intent_hint(IntentHint::Exclude(Intent::Browse));
+
+        let warnings = service.validate().unwrap();
+        assert!(warnings.contains(&Warning::ConflictingIntentHints {
+            intent: "browse".into()
+        }));
+    }
+
+    #[test]
+    fn validate_warns_multiple_primary_intent_hints() {
+        let service = ServiceDef::new("order")
+            .intent_hint(IntentHint::Primary(Intent::Browse))
+            .intent_hint(IntentHint::Primary(Intent::Focus));
+
+        let warnings = service.validate().unwrap();
+        assert!(warnings.contains(&Warning::MultiplePrimaryIntentHints));
+    }
+
+    #[test]
+    fn validate_warns_both_conflicting_and_multiple_primary() {
+        let service = ServiceDef::new("order")
+            .intent_hint(IntentHint::Primary(Intent::Browse))
+            .intent_hint(IntentHint::Primary(Intent::Focus))
+            .intent_hint(IntentHint::Exclude(Intent::Browse));
+
+        let warnings = service.validate().unwrap();
+        assert!(warnings.contains(&Warning::ConflictingIntentHints {
+            intent: "browse".into()
+        }));
+        assert!(warnings.contains(&Warning::MultiplePrimaryIntentHints));
+    }
+
+    #[test]
+    fn validate_no_warning_for_single_primary() {
+        let service = ServiceDef::new("order").intent_hint(IntentHint::Primary(Intent::Browse));
+
+        let warnings = service.validate().unwrap();
+        assert!(
+            warnings.is_empty(),
+            "expected no warnings, got: {warnings:?}"
+        );
+    }
+
+    #[test]
+    fn service_def_json_schema_includes_intent_hints() {
+        let schema = schemars::schema_for!(ServiceDef);
+        let value = schema.to_value();
+        let props = value
+            .get("properties")
+            .expect("ServiceDef schema must have properties");
+        let obj = props.as_object().unwrap();
+        assert!(
+            obj.contains_key("intent_hints"),
+            "missing 'intent_hints' property"
         );
     }
 }

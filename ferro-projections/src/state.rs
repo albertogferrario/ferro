@@ -109,6 +109,10 @@ pub enum Warning {
     DuplicateRelationship(String),
     /// A many-to-many relationship has a foreign_key set (join tables have no single FK).
     ManyToManyWithForeignKey { relationship: String },
+    /// Primary(X) and Exclude(X) for the same intent.
+    ConflictingIntentHints { intent: String },
+    /// More than one Primary hint specified.
+    MultiplePrimaryIntentHints,
 }
 
 impl StateMachine {
