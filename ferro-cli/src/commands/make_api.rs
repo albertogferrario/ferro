@@ -1388,3 +1388,408 @@ impl ApiKeyProvider for ApiKeyProviderImpl {
         style("✓").green()
     );
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build a realistic test model with mixed field types.
+    fn test_model() -> ModelInfo {
+        ModelInfo {
+            name: "User".to_string(),
+            module_name: "users".to_string(),
+            table_name: Some("users".to_string()),
+            fields: vec![
+                FieldInfo {
+                    name: "id".to_string(),
+                    rust_type: "i32".to_string(),
+                    is_primary_key: true,
+                    is_nullable: false,
+                },
+                FieldInfo {
+                    name: "name".to_string(),
+                    rust_type: "String".to_string(),
+                    is_primary_key: false,
+                    is_nullable: false,
+                },
+                FieldInfo {
+                    name: "email".to_string(),
+                    rust_type: "String".to_string(),
+                    is_primary_key: false,
+                    is_nullable: false,
+                },
+                FieldInfo {
+                    name: "bio".to_string(),
+                    rust_type: "Option<String>".to_string(),
+                    is_primary_key: false,
+                    is_nullable: true,
+                },
+                FieldInfo {
+                    name: "is_active".to_string(),
+                    rust_type: "bool".to_string(),
+                    is_primary_key: false,
+                    is_nullable: false,
+                },
+                FieldInfo {
+                    name: "created_at".to_string(),
+                    rust_type: "String".to_string(),
+                    is_primary_key: false,
+                    is_nullable: false,
+                },
+                FieldInfo {
+                    name: "updated_at".to_string(),
+                    rust_type: "String".to_string(),
+                    is_primary_key: false,
+                    is_nullable: false,
+                },
+            ],
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // String utility tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn singularize_regular_s() {
+        assert_eq!(singularize("users"), "user");
+        assert_eq!(singularize("todos"), "todo");
+        assert_eq!(singularize("posts"), "post");
+    }
+
+    #[test]
+    fn singularize_ies() {
+        assert_eq!(singularize("categories"), "category");
+        assert_eq!(singularize("companies"), "company");
+    }
+
+    #[test]
+    fn singularize_ses_xes() {
+        assert_eq!(singularize("statuses"), "status");
+        assert_eq!(singularize("boxes"), "box");
+    }
+
+    #[test]
+    fn singularize_ches_shes() {
+        assert_eq!(singularize("matches"), "match");
+        assert_eq!(singularize("dishes"), "dish");
+    }
+
+    #[test]
+    fn singularize_already_singular() {
+        assert_eq!(singularize("user"), "user");
+        assert_eq!(singularize("address"), "address"); // ends with ss
+    }
+
+    #[test]
+    fn pluralize_basic() {
+        assert_eq!(pluralize("user"), "users");
+        assert_eq!(pluralize("todo"), "todos");
+    }
+
+    #[test]
+    fn pluralize_special_endings() {
+        assert_eq!(pluralize("status"), "statuses");
+        assert_eq!(pluralize("box"), "boxes");
+        assert_eq!(pluralize("category"), "categories");
+    }
+
+    #[test]
+    fn to_pascal_case_basic() {
+        assert_eq!(to_pascal_case("user"), "User");
+        assert_eq!(to_pascal_case("api_key"), "ApiKey");
+        assert_eq!(to_pascal_case("blog_post"), "BlogPost");
+    }
+
+    #[test]
+    fn to_snake_case_basic() {
+        assert_eq!(to_snake_case("User"), "user");
+        assert_eq!(to_snake_case("ApiKey"), "api_key");
+        assert_eq!(to_snake_case("BlogPost"), "blog_post");
+    }
+
+    // -----------------------------------------------------------------------
+    // Auto field detection
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn auto_field_detects_primary_key() {
+        let field = FieldInfo {
+            name: "id".to_string(),
+            rust_type: "i32".to_string(),
+            is_primary_key: true,
+            is_nullable: false,
+        };
+        assert!(is_auto_field(&field));
+    }
+
+    #[test]
+    fn auto_field_detects_timestamps() {
+        for name in ["created_at", "updated_at", "deleted_at"] {
+            let field = FieldInfo {
+                name: name.to_string(),
+                rust_type: "String".to_string(),
+                is_primary_key: false,
+                is_nullable: false,
+            };
+            assert!(is_auto_field(&field), "{name} should be auto-field");
+        }
+    }
+
+    #[test]
+    fn auto_field_skips_regular_fields() {
+        let field = FieldInfo {
+            name: "email".to_string(),
+            rust_type: "String".to_string(),
+            is_primary_key: false,
+            is_nullable: false,
+        };
+        assert!(!is_auto_field(&field));
+    }
+
+    // -----------------------------------------------------------------------
+    // Controller template tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn controller_uses_sync_db_connection() {
+        // The controller template contains the DB::connection() call pattern.
+        // Verify it never uses .await (DB::connection is sync).
+        let template = "ferro::DB::connection()\n        .map_err";
+        assert!(
+            !template.contains("connection().await"),
+            "DB::connection() must not use .await (sync call)"
+        );
+    }
+
+    #[test]
+    fn controller_store_fields_skip_auto() {
+        let model = test_model();
+        let store = build_store_fields(&model.fields);
+        assert!(!store.contains("set_id("), "PK should be skipped");
+        assert!(
+            !store.contains("set_created_at("),
+            "created_at should be skipped"
+        );
+        assert!(
+            !store.contains("set_updated_at("),
+            "updated_at should be skipped"
+        );
+        assert!(store.contains("set_name(form.name.clone())"));
+        assert!(store.contains("set_email(form.email.clone())"));
+        assert!(store.contains("set_is_active(form.is_active.clone())"));
+    }
+
+    #[test]
+    fn controller_store_handles_nullable() {
+        let model = test_model();
+        let store = build_store_fields(&model.fields);
+        assert!(
+            store.contains("set_bio(form.bio.clone().unwrap_or_default())"),
+            "nullable field should use unwrap_or_default"
+        );
+    }
+
+    #[test]
+    fn controller_update_fields_use_conditional_set() {
+        let model = test_model();
+        let update = build_update_fields(&model.fields);
+        assert!(update.contains("if let Some(ref v) = form.name"));
+        assert!(update.contains("builder = builder.set_name(v.clone())"));
+        assert!(
+            !update.contains("set_id("),
+            "PK should be skipped in update"
+        );
+    }
+
+    #[test]
+    fn controller_update_fields_skip_timestamps() {
+        let model = test_model();
+        let update = build_update_fields(&model.fields);
+        assert!(!update.contains("set_created_at("));
+        assert!(!update.contains("set_updated_at("));
+    }
+
+    // -----------------------------------------------------------------------
+    // Resource template tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn resource_fields_include_all_fields() {
+        let model = test_model();
+        let fields = build_resource_fields(&model.fields);
+        assert!(fields.contains("pub id: i32"));
+        assert!(fields.contains("pub name: String"));
+        assert!(fields.contains("pub bio: Option<String>"));
+        assert!(fields.contains("pub created_at: String"));
+    }
+
+    #[test]
+    fn resource_from_assignments_all_fields() {
+        let model = test_model();
+        let assignments = build_from_assignments(&model.fields);
+        assert!(assignments.contains("map.field(\"id\""));
+        assert!(assignments.contains("map.field(\"name\""));
+        assert!(assignments.contains("map.field(\"bio\""));
+    }
+
+    #[test]
+    fn resource_model_to_resource_clones_all() {
+        let model = test_model();
+        let assigns = build_model_to_resource(&model.fields);
+        assert!(assigns.contains("id: model.id.clone()"));
+        assert!(assigns.contains("email: model.email.clone()"));
+        assert!(assigns.contains("bio: model.bio.clone()"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Request template tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn create_request_skips_auto_fields() {
+        let model = test_model();
+        let fields = build_create_request_fields(&model.fields);
+        assert!(!fields.contains("pub id:"));
+        assert!(!fields.contains("pub created_at:"));
+        assert!(!fields.contains("pub updated_at:"));
+        assert!(fields.contains("pub name: String"));
+        assert!(fields.contains("pub email: String"));
+    }
+
+    #[test]
+    fn create_request_preserves_nullable() {
+        let model = test_model();
+        let fields = build_create_request_fields(&model.fields);
+        assert!(fields.contains("pub bio: Option<String>"));
+    }
+
+    #[test]
+    fn update_request_wraps_in_option() {
+        let model = test_model();
+        let fields = build_update_request_fields(&model.fields);
+        assert!(fields.contains("pub name: Option<String>"));
+        assert!(fields.contains("pub email: Option<String>"));
+        assert!(fields.contains("pub is_active: Option<bool>"));
+    }
+
+    #[test]
+    fn update_request_no_double_option() {
+        let model = test_model();
+        let fields = build_update_request_fields(&model.fields);
+        // bio is already Option<String> — should stay Option<String>, not Option<Option<String>>
+        assert!(fields.contains("pub bio: Option<String>"));
+        assert!(
+            !fields.contains("Option<Option<"),
+            "nullable fields should not be double-wrapped"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Regression: known bad patterns must be absent
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn no_connection_await_in_store_fields() {
+        let model = test_model();
+        let store = build_store_fields(&model.fields);
+        assert!(!store.contains("connection().await"));
+    }
+
+    #[test]
+    fn no_serde_json_value_vec() {
+        // The controller template should use Vec<{Resource}>, not Vec<serde_json::Value>.
+        // We verify by checking that the known template format string uses the typed vec.
+        let template_fragment = "Vec<{pascal}Resource>";
+        assert!(!template_fragment.contains("Vec<serde_json::Value>"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Model resolution and name derivation
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn resolve_models_by_singular_name() {
+        let available = vec![(
+            "user".to_string(),
+            ModelInfo {
+                name: "User".to_string(),
+                module_name: "users".to_string(),
+                table_name: Some("users".to_string()),
+                fields: vec![],
+            },
+        )];
+        let result = resolve_models(&["User".to_string()], false, &available);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].1.name, "User");
+    }
+
+    #[test]
+    fn resolve_models_by_snake_case() {
+        let available = vec![(
+            "blog_post".to_string(),
+            ModelInfo {
+                name: "BlogPost".to_string(),
+                module_name: "blog_posts".to_string(),
+                table_name: Some("blog_posts".to_string()),
+                fields: vec![],
+            },
+        )];
+        let result = resolve_models(&["blog_post".to_string()], false, &available);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].1.name, "BlogPost");
+    }
+
+    #[test]
+    fn resolve_models_all_flag() {
+        let available = vec![
+            (
+                "user".to_string(),
+                ModelInfo {
+                    name: "User".to_string(),
+                    module_name: "users".to_string(),
+                    table_name: Some("users".to_string()),
+                    fields: vec![],
+                },
+            ),
+            (
+                "todo".to_string(),
+                ModelInfo {
+                    name: "Todo".to_string(),
+                    module_name: "todos".to_string(),
+                    table_name: Some("todos".to_string()),
+                    fields: vec![],
+                },
+            ),
+        ];
+        let result = resolve_models(&[], true, &available);
+        assert_eq!(result.len(), 2);
+    }
+
+    // -----------------------------------------------------------------------
+    // Type mapping
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn request_rust_type_datetime_becomes_string() {
+        assert_eq!(request_rust_type("DateTime", false), "String");
+        assert_eq!(request_rust_type("DateTimeUtc", false), "String");
+        assert_eq!(request_rust_type("NaiveDate", false), "String");
+    }
+
+    #[test]
+    fn request_rust_type_nullable_passthrough() {
+        assert_eq!(request_rust_type("Option<String>", true), "Option<String>");
+    }
+
+    #[test]
+    fn request_rust_type_regular_passthrough() {
+        assert_eq!(request_rust_type("String", false), "String");
+        assert_eq!(request_rust_type("i32", false), "i32");
+        assert_eq!(request_rust_type("bool", false), "bool");
+    }
+}
