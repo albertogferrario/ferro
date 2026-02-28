@@ -361,4 +361,69 @@ mod tests {
         assert_eq!(route_key("GET", "/users"), "GET:/users");
         assert_eq!(route_key("POST", "/api/v1/items"), "POST:/api/v1/items");
     }
+
+    #[test]
+    #[serial]
+    fn test_unmatched_routes_use_fixed_bucket() {
+        setup();
+
+        // Simulate what the middleware now does: all unmatched routes → "UNMATCHED"
+        record_request("UNMATCHED", "GET", Duration::from_millis(5), true);
+        record_request("UNMATCHED", "GET", Duration::from_millis(10), true);
+        record_request("UNMATCHED", "POST", Duration::from_millis(8), true);
+
+        let snapshot = get_metrics();
+
+        // GET:UNMATCHED and POST:UNMATCHED — only 2 entries, not N unique paths
+        let unmatched_routes: Vec<_> = snapshot
+            .routes
+            .iter()
+            .filter(|r| r.route == "UNMATCHED")
+            .collect();
+        assert_eq!(unmatched_routes.len(), 2);
+
+        let get_unmatched = unmatched_routes.iter().find(|r| r.method == "GET").unwrap();
+        assert_eq!(get_unmatched.count, 2);
+    }
+
+    #[test]
+    #[serial]
+    fn test_entry_cap_prevents_unbounded_growth() {
+        setup();
+
+        // Fill to MAX_ROUTE_ENTRIES with unique routes
+        for i in 0..MAX_ROUTE_ENTRIES + 100 {
+            let route = format!("/route/{i}");
+            record_request(&route, "GET", Duration::from_millis(1), false);
+        }
+
+        let snapshot = get_metrics();
+        assert!(snapshot.routes.len() <= MAX_ROUTE_ENTRIES);
+    }
+
+    #[test]
+    #[serial]
+    fn test_existing_entries_updated_after_cap() {
+        setup();
+
+        // Fill exactly to MAX_ROUTE_ENTRIES
+        for i in 0..MAX_ROUTE_ENTRIES {
+            let route = format!("/route/{i}");
+            record_request(&route, "GET", Duration::from_millis(1), false);
+        }
+
+        let snapshot = get_metrics();
+        assert_eq!(snapshot.routes.len(), MAX_ROUTE_ENTRIES);
+
+        // Record another request for an existing route — should still be tracked
+        record_request("/route/0", "GET", Duration::from_millis(50), false);
+
+        let snapshot = get_metrics();
+        let route = snapshot
+            .routes
+            .iter()
+            .find(|r| r.route == "/route/0" && r.method == "GET")
+            .unwrap();
+        assert_eq!(route.count, 2); // Original + new request
+    }
 }
