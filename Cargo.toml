@@ -15,6 +15,7 @@ members = [
     "ferro-inertia",
     "ferro-json-ui",
     "ferro-lang",
+    "ferro-api-mcp",
 ]
 
 [workspace.package]
