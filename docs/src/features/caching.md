@@ -214,7 +214,7 @@ let stock = cache.decrement("product:stock", 1).await?;
 
 ### Memory Store
 
-Fast in-memory caching using moka. Best for:
+Fast in-memory caching backed by [moka](https://github.com/moka-rs/moka). Best for:
 - Single-server deployments
 - Development/testing
 - Non-critical cache data
@@ -227,6 +227,8 @@ let cache = Cache::memory();
 let store = MemoryStore::with_capacity(50_000);
 let cache = Cache::new(Arc::new(store));
 ```
+
+The memory store is bounded: when capacity is reached, least-recently-used entries are evicted automatically. Each entry respects its own TTL — expired entries are never returned and are cleaned up proactively by the cache engine. Counters (increment/decrement) share the same capacity bound.
 
 ### Redis Store
 
