@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Phase 78 in progress — Memory Leak Audit
+**Current focus:** Phase 78 complete — Memory Leak Audit
 
 ## Current Position
 
 Phase: 78 (Memory Leak Audit)
-Plan: 02 complete
-Status: Plan 02 complete — InMemoryCache replaced with moka::sync::Cache (bounded, per-entry TTL, proactive eviction)
-Last activity: 2026-02-28 — Plan 02 executed (InMemoryCache moka replacement)
+Plan: 3 of 3 complete
+Status: Phase 78 complete — all four memory leak vectors fixed (metrics, InMemoryCache, ferro-cache tags/counters)
+Last activity: 2026-02-28 — Plan 03 executed (ferro-cache per-entry TTL, tag cleanup, bounded counters)
 
 ## Milestone Summary
 
@@ -37,6 +37,7 @@ Last activity: 2026-02-28 — Plan 02 executed (InMemoryCache moka replacement)
 | Type Generator Fix | 75 | 1 | Complete | 2026-02-27 |
 | Default API Scaffold | 76 | 4 | Complete | 2026-02-27 |
 | Validate & Fix API Scaffold | 77 | 3 | Complete | 2026-02-28 |
+| Memory Leak Audit | 78 | 3 | Complete | 2026-02-28 |
 
 ## Accumulated Context
 
@@ -80,6 +81,10 @@ Archived to PROJECT.md and milestone archive files.
 - InMemoryCache: moka::sync::Cache (not future) since CacheStore async_trait wraps synchronous operations
 - Default capacity 10,000 entries matching ferro-cache MemoryStore convention
 - CacheValue wrapper struct embeds optional TTL for Expiry trait per-entry reads
+- ferro-cache: CacheValue wrapper with TTL for moka::future::Cache per-entry expiry via Expiry trait
+- ferro-cache tags: HashSet instead of Vec prevents duplicates structurally
+- moka 0.12 eviction listener fires on explicit removal/size eviction but not TTL expiry; lazy cleanup in tag_members as complement
+- ferro-cache counters: bounded moka cache instead of unbounded DashMap
 
 ### Roadmap Evolution
 
@@ -88,7 +93,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 75 complete: generate-types output made self-contained (no shared.ts imports/re-exports)
 - Phase 76 complete: Default API scaffold with API key auth, OpenAPI, MCP CRUD, CLI make:api, and documentation
 - Phase 77 complete: Validate & fix API scaffold — 5 template bugs fixed, 75 regression tests added
-- Phase 78 in progress: Memory leak audit — Plan 01 fixes metrics 404 path explosion, Plan 02 replaces InMemoryCache with moka
+- Phase 78 complete: Memory leak audit — Plan 01 fixes metrics 404 explosion, Plan 02 replaces InMemoryCache with moka, Plan 03 fixes ferro-cache TTL/tags/counters
 
 ### Pending Todos
 
@@ -101,5 +106,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 78 Plan 02 complete — InMemoryCache replaced with moka
+Stopped at: Phase 78 complete — all memory leak vectors fixed
 Resume file: None
