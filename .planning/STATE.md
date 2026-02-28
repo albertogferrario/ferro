@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 79 (ferro-api-mcp Core)
-Plan: 01-03 complete
-Status: In progress
-Last activity: 2026-02-28 — Plan 02 shipped (OpenAPI spec parser, TDD, 22 tests)
+Plan: 01-04 complete
+Status: Complete
+Last activity: 2026-02-28 — Plan 04 shipped (MCP service, server, full integration pipeline)
 
 ## Milestone Summary
 
@@ -96,6 +96,11 @@ Archived to PROJECT.md and milestone archive files.
 - Unresolvable $ref in spec parser returns None with tracing::warn (graceful degradation, not error)
 - Cookie parameters skipped in spec parser extraction (not relevant for MCP tool inputs)
 - Tool name fallback excludes {param} path segments for cleaner names
+- Dynamic ToolRouter built at runtime from Vec<ApiOperation> (not compile-time macros)
+- Tool annotations based on HTTP method: GET=readOnly+idempotent, POST=mutable, PUT/PATCH=idempotent, DELETE=destructive
+- Base URL resolved with three-tier fallback: --base-url flag > spec servers[0].url > spec_url origin
+- All diagnostic output to stderr; stdout reserved for MCP JSON-RPC transport
+- SpecMetadata extracted separately from parse_spec for separation of concerns
 
 ### Roadmap Evolution
 
@@ -109,6 +114,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 79 Plan 01 complete: ferro-api-mcp crate scaffold with types, errors, and clap CLI
 - Phase 79 Plan 02 complete: OpenAPI spec parser with TDD (22 tests, version validation, $ref resolution)
 - Phase 79 Plan 03 complete: schema bridge (OpenAPI params to MCP JSON Schema) and HTTP client
+- Phase 79 Plan 04 complete: MCP service with dynamic ToolRouter, stdio server, full CLI-to-serve pipeline
 
 ### Pending Todos
 
@@ -121,5 +127,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 79, Plans 01-03 complete — ready for Plan 04
+Stopped at: Phase 79 complete — all 4 plans shipped, ferro-api-mcp is a functional binary
 Resume file: None
