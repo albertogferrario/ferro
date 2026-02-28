@@ -11,7 +11,7 @@ Phase 86 gives meaning to the string references stored by Phase 85. Where Phase 
 
 Three research threads inform the design: (1) XState v5's `setup()` pattern separates action/guard definitions from implementations — actions are `{ type, params }` objects, guards are `{ type, params }` boolean checks, both registered by name. (2) Google A2UI models server actions as `{ event: { name, context } }` with component-level `checks` for preconditions. (3) CQRS command patterns define actions as data structures with identity (name), contract (input schema, preconditions, postconditions), and semantics (description, metadata).
 
-**Primary recommendation:** Three new types — `ActionDef` (business operation schema), `InputDef` (action parameter), `GuardDef` (named boolean condition). Actions reference guards via `preconditions: Vec<String>`. Actions link to state machines via `transition_trigger: Option<String>`. No new dependencies.
+**Primary recommendation:** Three new types — `ActionDef` (business operation schema), `InputDef` (action parameter), `GuardDef` (named boolean condition). Actions reference guards via `preconditions: Vec<String>`. Actions link to state machines via `transition_trigger: Option<String>`. Add `readable: bool` and `writable: bool` to `FieldDef` (Hydra SupportedProperty pattern) for intent derivation. No new dependencies.
 </research_summary>
 
 <standard_stack>
@@ -152,12 +152,70 @@ let order_service = ServiceDef::new("order")
         .transition_trigger("approve"));
 ```
 
+### Pattern 6: Siren Action Format as Design Reference
+
+**Source:** [Siren Hypermedia Specification](https://github.com/kevinswiber/siren)
+
+Siren defines actions as `{ name, title, method, href, type, fields }`. Ferro adapts this pattern but drops HTTP-specific concerns:
+
+| Siren Property | Ferro Equivalent | Rationale |
+|---------------|-----------------|-----------|
+| `name` (required) | `ActionDef.name` | Keep — action identifier |
+| `title` (optional) | `ActionDef.display_name` | Keep — matches existing convention |
+| `method` (HTTP verb) | **Not adopted** | ActionDef is protocol-agnostic; IntentGraph infers semantics from inputs + transition_trigger |
+| `href` (required) | **Dropped** | ServiceDef is schema-only, not protocol-bound |
+| `type` (encoding) | **Dropped** | Protocol concern |
+| `fields` (array) | `ActionDef.inputs: Vec<InputDef>` | Keep — reuses DataType/FieldMeaning |
+
+Siren's field objects have `{ name, type, value, title, class }` where `type` maps to HTML5 input types (text, number, email, etc.). Ferro replaces this with DataType + FieldMeaning which provides richer semantic information for intent-driven rendering.
+
+### Pattern 7: Readable/Writable on FieldDef (Hydra SupportedProperty)
+
+**Source:** [Hydra Core Vocabulary](https://www.hydra-cg.com/spec/latest/core/) — SupportedProperty
+
+Hydra defines two boolean properties on SupportedProperty:
+- `readable: xsd:boolean` — "True if the client can retrieve the property's value, false otherwise."
+- `writable: xsd:boolean` — "True if the client can change the property's value, false otherwise."
+
+OpenAPI 3.0 has similar `readOnly`/`writeOnly` but as **mutually exclusive** — a property cannot be both. Hydra's model is more flexible: both booleans are independent, yielding 4 access modes.
+
+**Ferro adaptation — add to FieldDef:**
+
+```rust
+pub struct FieldDef {
+    pub name: String,
+    pub data_type: DataType,
+    pub meaning: FieldMeaning,
+    pub required: bool,
+    pub is_list: bool,
+    pub readable: bool,   // NEW: default true
+    pub writable: bool,   // NEW: default true
+}
+```
+
+| readable | writable | Meaning | Example Fields |
+|----------|----------|---------|---------------|
+| true | true | Read-write (default) | name, email, notes |
+| true | false | Read-only (computed/system) | id, created_at, total |
+| false | true | Write-only (sensitive input) | password, api_key |
+| false | false | Internal (hidden from UI) | hashed_password, internal_flags |
+
+**Intent derivation signal (Phase 89):** The count of writable fields directly drives intent selection:
+- `writable_count > 3` → Collect intent (form/wizard)
+- All fields readable, few writable → Focus intent (detail view)
+- Sensitive fields write-only → security-aware rendering
+
+**Defaults:** Both default to `true`. This matches the common case where fields are read-write. Developers opt specific fields into restricted modes (id → read-only, password → write-only).
+
+**Serde compatibility:** Both fields MUST use `#[serde(default = "default_true")]` so existing JSON without these fields deserializes correctly, maintaining backward compatibility with Phase 84/85 ServiceDef JSON.
+
 ### Anti-Patterns to Avoid
 - **No closures in guards/actions:** Guards check conditions but the check logic is external. `GuardDef` describes what, not how.
 - **No ActionKind enum:** Don't categorize actions as Create/Update/Delete/Transition. The IntentGraph can infer this from inputs + transition_trigger. Explicit categorization is premature and rigid.
 - **No guard composition in schema:** If you need "is_reviewer AND not_author", define a single guard "is_reviewer_not_author". Composition is a runtime concern, not schema.
 - **No input validation rules in InputDef:** InputDef describes what data is needed (type + meaning), not validation constraints. Validation rules live in the handler, not the projection.
 - **Don't conflate effects with transition triggers:** Effects are side effects (fire-and-forget). Transition triggers fire state machine events. An action can have effects without changing state, or change state without side effects.
+- **Don't use OpenAPI's mutually exclusive readOnly/writeOnly:** Hydra's independent booleans are more expressive. A field that is neither readable nor writable (internal) is a valid and useful combination that OpenAPI cannot express.
 </architecture_patterns>
 
 <dont_hand_roll>
@@ -207,7 +265,13 @@ let order_service = ServiceDef::new("order")
 **How to avoid:** Actions should be atomic operations. Complex flows are sequences of state transitions (Phase 85) with side effects. The action "submit" triggers the "submit" event; the state machine's on_enter effects handle downstream logic.
 **Warning signs:** ActionDef with >5 effects, or effects that are sequential dependencies (must run in order).
 
-### Pitfall 6: Missing Connection Between Actions and Transitions
+### Pitfall 6: Breaking FieldDef Serde Compatibility with Readable/Writable
+**What goes wrong:** Adding `readable`/`writable` fields to FieldDef breaks deserialization of existing JSON.
+**Why it happens:** New fields without serde defaults cause missing-field errors on old JSON.
+**How to avoid:** Both fields MUST have `#[serde(default = "default_true")]` so existing JSON without these fields deserializes to read-write (the common case). The `default_true` helper already exists in field.rs.
+**Warning signs:** Existing Phase 84/85 tests fail after adding the fields.
+
+### Pitfall 7: Missing Connection Between Actions and Transitions
 **What goes wrong:** Actions exist as standalone operations disconnected from the state machine, making the IntentGraph unable to determine which actions are available in which states.
 **Why it happens:** ActionDef and StateMachine are built independently without linking.
 **How to avoid:** `transition_trigger: Option<String>` on ActionDef explicitly connects to Transition.event. Validation checks that transition_trigger values match existing transition event names. Actions without transition_trigger are state-independent (available in any state).
@@ -491,6 +555,64 @@ pub enum Warning {
 }
 ```
 
+### FieldDef with Readable/Writable
+```rust
+// Source: Hydra SupportedProperty semantics
+// New builder convenience methods on ServiceDef:
+
+impl ServiceDef {
+    /// Adds a read-only field (readable=true, writable=false).
+    /// For system-assigned or computed fields: id, created_at, total.
+    pub fn read_only_field(
+        mut self,
+        name: impl Into<String>,
+        data_type: DataType,
+        meaning: FieldMeaning,
+    ) -> Self {
+        self.fields.push(FieldDef {
+            name: name.into(),
+            data_type,
+            meaning,
+            required: true,
+            is_list: false,
+            readable: true,
+            writable: false,
+        });
+        self
+    }
+
+    /// Adds a write-only field (readable=false, writable=true).
+    /// For sensitive inputs: password, api_key.
+    pub fn write_only_field(
+        mut self,
+        name: impl Into<String>,
+        data_type: DataType,
+        meaning: FieldMeaning,
+    ) -> Self {
+        self.fields.push(FieldDef {
+            name: name.into(),
+            data_type,
+            meaning,
+            required: true,
+            is_list: false,
+            readable: false,
+            writable: true,
+        });
+        self
+    }
+}
+
+// Usage:
+let user = ServiceDef::new("user")
+    .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
+    .field("name", DataType::String, FieldMeaning::EntityName)          // default: read-write
+    .field("email", DataType::String, FieldMeaning::Email)              // default: read-write
+    .write_only_field("password", DataType::String, FieldMeaning::Sensitive)
+    .read_only_field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+// writable_count = 2 (name, email) → NOT enough for Collect intent
+// readable_count = 4 (id, name, email, created_at) → Focus intent likely
+```
+
 ### Full Order Service Example
 ```rust
 let order_service = ServiceDef::new("order")
@@ -655,7 +777,13 @@ Explicit categorization would be premature and could conflict with these inferen
 **Chosen:** `ServiceDef::validate()` checks all guard references, transition triggers, and reports unused guards as warnings.
 **Rationale:** Guard names are forward references across Phase 85 (transitions) and Phase 86 (actions). Without centralized validation, typos in guard names silently break. Validation catches: undefined guard refs, unmatched transition triggers, and unused guard declarations.
 
-### Decision 7: Actions and Guards on ServiceDef (Not Global)
+### Decision 7: Readable/Writable as Independent Booleans (Hydra, Not OpenAPI)
+**Chosen:** Two independent `bool` fields on FieldDef: `readable` (default true) and `writable` (default true).
+**Rationale:** Hydra SupportedProperty uses independent booleans, yielding 4 access modes (read-write, read-only, write-only, internal). OpenAPI's readOnly/writeOnly are mutually exclusive, limiting to 3 modes. The "internal" mode (readable=false, writable=false) is useful for fields like hashed_password that exist in the schema but should never appear in UI.
+**Serde:** Both fields use `#[serde(default = "default_true")]` for backward compatibility with existing Phase 84/85 JSON.
+**Intent signal:** Writable field count directly feeds Phase 89 intent derivation (>3 writable → Collect intent).
+
+### Decision 8: Actions and Guards on ServiceDef (Not Global)
 **Chosen:** Actions and guards are per-service, stored on `ServiceDef`.
 **Rationale:** Each service defines its own operations and conditions. An "is_reviewer" guard on the Order service is different from "is_reviewer" on the Invoice service (different reviewers). Global guards would require namespacing. Service-scoped guards are naturally namespaced.
 </design_decisions>
@@ -692,7 +820,12 @@ Explicit categorization would be premature and could conflict with these inferen
    - What's unclear: Whether postconditions add value at the schema level or are better modeled as state machine transitions (which already describe the outcome).
    - Recommendation: NO for v1. The state machine's target state IS the postcondition for transition-triggering actions. Non-transition actions don't change observable state from the schema's perspective.
 
-3. **Should there be a way to declare CRUD actions implicitly from fields?**
+3. **Builder API for readable/writable on FieldDef**
+   - What we know: Need to set readable/writable per field. Current builder has `.field()` and `.optional_field()`.
+   - What's unclear: Whether to use modifier methods (`.field(...).read_only()`), separate builder methods (`.read_only_field(...)`), or pass as parameters.
+   - Recommendation: Add `read_only_field()` and `write_only_field()` convenience methods on ServiceDef. Keep existing `field()` unchanged (defaults to read-write). This avoids changing method signatures and follows the existing `optional_field()` pattern.
+
+4. **Should there be a way to declare CRUD actions implicitly from fields?**
    - What we know: Most services have create/read/update/delete operations derivable from their field definitions. Explicit ActionDefs for CRUD feels boilerplate-heavy.
    - What's unclear: Whether implicit CRUD generation belongs in Phase 86 (schema) or Phase 89 (IntentGraph generation).
    - Recommendation: DEFER to Phase 89. ActionDef handles explicit, domain-specific actions. The IntentGraph generator can infer standard CRUD operations from ServiceDef fields. This keeps Phase 86 focused on explicit action definitions.
@@ -708,10 +841,15 @@ Explicit categorization would be premature and could conflict with these inferen
 - [v9.0-RESEARCH.md](v9.0-RESEARCH.md) — schema-only philosophy, XState design validation, A2UI action model
 
 ### Secondary (MEDIUM confidence)
+- [Siren Hypermedia Specification](https://github.com/kevinswiber/siren) — Action and field format (name, method, fields, href)
+- [Siren JSON Schema](https://github.com/kevinswiber/siren/blob/master/siren.schema.json) — Exact action/field property definitions with types and enums
+- [Hydra Core Vocabulary](https://www.hydra-cg.com/spec/latest/core/) — SupportedProperty, readable/writable semantics
+- [Hydra JSON-LD Context](https://github.com/HydraCG/Specifications/blob/master/spec/latest/core/core.jsonld) — Exact readable (`xsd:boolean`) and writable (`xsd:boolean`) definitions
 - [A2UI v0.9 specification](https://a2ui.org/specification/v0.9-a2ui/) — server action structure `{ event: { name, context } }`, checks/preconditions on components
 - [CQRS Pattern (Microsoft)](https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs) — command definition as data, pre/postcondition separation
 - [JSON Schema for forms](https://json-schema.org/understanding-json-schema/reference/object) — input schema patterns (decided against full JSON Schema, too heavy)
 - [Design by Contract (Microsoft)](https://learn.microsoft.com/en-us/dotnet/framework/debug-trace-profile/code-contracts) — precondition/postcondition/invariant formalization
+- [OpenAPI 3.0.3 readOnly/writeOnly](https://spec.openapis.org/oas/v3.0.3.html) — mutually exclusive alternative to Hydra's independent booleans
 
 ### Tertiary (LOW confidence — needs validation)
 - None. All findings verified against Context7 docs, official specifications, or established patterns.
@@ -722,9 +860,9 @@ Explicit categorization would be premature and could conflict with these inferen
 
 **Research scope:**
 - Core technology: Rust struct design for action/guard/input schemas in ferro-projections
-- Ecosystem: XState v5 (action/guard model), A2UI (server actions), CQRS (command patterns)
-- Patterns: ActionDef builder, InputDef reusing DataType/FieldMeaning, GuardDef as named condition, cross-phase validation
-- Pitfalls: Runtime logic creep, type system duplication, guard/precondition conflation, over-categorization
+- Ecosystem: XState v5 (action/guard model), A2UI (server actions), CQRS (command patterns), Siren (action format), Hydra (readable/writable)
+- Patterns: ActionDef builder, InputDef reusing DataType/FieldMeaning, GuardDef as named condition, cross-phase validation, FieldDef readable/writable
+- Pitfalls: Runtime logic creep, type system duplication, guard/precondition conflation, over-categorization, serde backward compatibility
 
 **Confidence breakdown:**
 - Standard stack: HIGH — no new dependencies, uses existing workspace crates
