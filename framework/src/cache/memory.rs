@@ -260,4 +260,85 @@ mod tests {
         let val = cache.increment("counter", 1).await.unwrap();
         assert_eq!(val, 6, "expire should not reset the value");
     }
+
+    #[tokio::test]
+    async fn test_put_get_forget_flush() {
+        let cache = InMemoryCache::new();
+
+        // put + get
+        cache.put_raw("key1", "value1", None).await.unwrap();
+        assert_eq!(
+            cache.get_raw("key1").await.unwrap(),
+            Some("value1".to_string())
+        );
+        assert!(cache.has("key1").await.unwrap());
+
+        // get missing key
+        assert!(cache.get_raw("missing").await.unwrap().is_none());
+        assert!(!cache.has("missing").await.unwrap());
+
+        // forget existing
+        assert!(cache.forget("key1").await.unwrap());
+        assert!(cache.get_raw("key1").await.unwrap().is_none());
+
+        // forget missing
+        assert!(!cache.forget("key1").await.unwrap());
+
+        // flush
+        cache.put_raw("a", "1", None).await.unwrap();
+        cache.put_raw("b", "2", None).await.unwrap();
+        cache.flush().await.unwrap();
+        assert!(!cache.has("a").await.unwrap());
+        assert!(!cache.has("b").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_capacity_eviction() {
+        let cache = InMemoryCache::with_capacity(100);
+
+        for i in 0..200u64 {
+            cache
+                .put_raw(&format!("key{i}"), &format!("val{i}"), None)
+                .await
+                .unwrap();
+        }
+
+        // Trigger pending evictions
+        cache.cache.run_pending_tasks();
+
+        let count = cache.cache.entry_count();
+        assert!(
+            count <= 110,
+            "cache should be bounded near capacity, got {count}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_expired_entries_not_returned() {
+        let cache = InMemoryCache::new();
+
+        cache
+            .put_raw("short-lived", "data", Some(Duration::from_millis(100)))
+            .await
+            .unwrap();
+
+        // Exists immediately
+        assert!(cache.has("short-lived").await.unwrap());
+        assert_eq!(
+            cache.get_raw("short-lived").await.unwrap(),
+            Some("data".to_string())
+        );
+
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Moka proactively filters expired entries
+        assert!(
+            cache.get_raw("short-lived").await.unwrap().is_none(),
+            "expired entry should not be returned"
+        );
+        assert!(
+            !cache.has("short-lived").await.unwrap(),
+            "has() should return false for expired entry"
+        );
+    }
 }
