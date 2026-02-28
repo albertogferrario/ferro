@@ -53,12 +53,9 @@ async fn main() {
 
 async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Fetch spec
-    let spec_json = spec::fetch_spec(&cli.spec_url).await.map_err(|e| {
-        format!(
-            "Failed to fetch OpenAPI spec from {}: {e}",
-            cli.spec_url
-        )
-    })?;
+    let spec_json = spec::fetch_spec(&cli.spec_url)
+        .await
+        .map_err(|e| format!("Failed to fetch OpenAPI spec from {}: {e}", cli.spec_url))?;
 
     // 2. Parse spec into operations
     let mut operations =

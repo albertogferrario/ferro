@@ -119,9 +119,7 @@ fn annotations_for_method(method: &str) -> ToolAnnotations {
             .read_only(true)
             .idempotent(true)
             .open_world(true),
-        "POST" => ToolAnnotations::new()
-            .read_only(false)
-            .open_world(true),
+        "POST" => ToolAnnotations::new().read_only(false).open_world(true),
         "PUT" | "PATCH" => ToolAnnotations::new()
             .read_only(false)
             .idempotent(true)
