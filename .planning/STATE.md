@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 83 (API DX Polish)
-Plan: 03 + 04 complete
-Status: Wave 1 in progress (Plans 03, 04 done)
-Last activity: 2026-02-28 — Plan 03 complete (make:api field exclusion)
+Plan: 01 + 03 + 04 complete
+Status: Wave 1 in progress (Plans 01, 03, 04 done)
+Last activity: 2026-02-28 — Plan 01 complete (ferro make:api-key CLI command)
 
 ## Milestone Summary
 
@@ -126,6 +126,8 @@ Archived to PROJECT.md and milestone archive files.
 - Sensitive field auto-exclusion uses exact match only (not substring) to avoid false positives
 - filter_resource_fields is pub(crate) for testability; FieldInfo visibility raised to pub(crate)
 - --include-all disables auto-exclusion but --exclude custom fields still apply
+- make:api-key replicates key generation logic (~20 lines) to keep ferro-cli independent from framework crate
+- generate_api_key returns Option (None for invalid env) instead of panicking
 
 ### Roadmap Evolution
 
@@ -150,6 +152,7 @@ Archived to PROJECT.md and milestone archive files.
 - Phase 83 planned: 5 plans in 2 waves — Plans 01-04 parallel (Wave 1), Plan 05 sequential (Wave 2, depends on 01+04)
 - Phase 83 Plan 03 complete: make:api field exclusion — auto-excludes sensitive fields from API resources, --exclude and --include-all flags, 8 unit tests
 - Phase 83 Plan 04 complete: ferro api:check CLI command — 4 sequential checks (connectivity, spec available, spec valid, auth), 7 unit tests
+- Phase 83 Plan 01 complete: ferro make:api-key CLI command — generates fe_{env}_{random} keys with SHA-256, SQL/Rust snippets, 8 unit tests
 
 ### Pending Todos
 
@@ -162,5 +165,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 83 Plans 03+04 complete — Wave 1 progressing
+Stopped at: Phase 83 Plans 01+03+04 complete — Wave 1 progressing
 Resume file: None
