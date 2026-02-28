@@ -547,30 +547,35 @@ mod tests {
                 path: "/api/v1/users".to_string(),
                 name: Some("api.users.index".to_string()),
                 middleware: vec![],
+                ..Default::default()
             },
             RouteInfo {
                 method: "POST".to_string(),
                 path: "/api/v1/users".to_string(),
                 name: Some("api.users.store".to_string()),
                 middleware: vec![],
+                ..Default::default()
             },
             RouteInfo {
                 method: "GET".to_string(),
                 path: "/api/v1/users/{id}".to_string(),
                 name: Some("api.users.show".to_string()),
                 middleware: vec![],
+                ..Default::default()
             },
             RouteInfo {
                 method: "PUT".to_string(),
                 path: "/api/v1/users/{id}".to_string(),
                 name: Some("api.users.update".to_string()),
                 middleware: vec![],
+                ..Default::default()
             },
             RouteInfo {
                 method: "DELETE".to_string(),
                 path: "/api/v1/users/{id}".to_string(),
                 name: Some("api.users.destroy".to_string()),
                 middleware: vec![],
+                ..Default::default()
             },
         ];
 
@@ -641,18 +646,21 @@ mod tests {
                 path: "/api/v1/users".to_string(),
                 name: None,
                 middleware: vec![],
+                ..Default::default()
             },
             RouteInfo {
                 method: "GET".to_string(),
                 path: "/dashboard".to_string(),
                 name: None,
                 middleware: vec![],
+                ..Default::default()
             },
             RouteInfo {
                 method: "GET".to_string(),
                 path: "/login".to_string(),
                 name: None,
                 middleware: vec![],
+                ..Default::default()
             },
         ];
 
@@ -680,6 +688,7 @@ mod tests {
             path: "/api/v1/health".to_string(),
             name: None,
             middleware: vec![],
+            ..Default::default()
         }];
 
         let spec = build_openapi_spec(&config, &routes);
@@ -700,12 +709,14 @@ mod tests {
                 path: "/api/v1/users".to_string(),
                 name: Some("users.index".to_string()),
                 middleware: vec![],
+                ..Default::default()
             },
             RouteInfo {
                 method: "POST".to_string(),
                 path: "/api/v1/users".to_string(),
                 name: Some("users.store".to_string()),
                 middleware: vec![],
+                ..Default::default()
             },
         ];
 

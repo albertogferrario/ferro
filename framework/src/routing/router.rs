@@ -14,7 +14,7 @@ static ROUTE_REGISTRY: OnceLock<RwLock<HashMap<String, String>>> = OnceLock::new
 static REGISTERED_ROUTES: OnceLock<RwLock<Vec<RouteInfo>>> = OnceLock::new();
 
 /// Information about a registered route for introspection
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct RouteInfo {
     /// HTTP method (GET, POST, PUT, DELETE)
     pub method: String,
@@ -24,6 +24,14 @@ pub struct RouteInfo {
     pub name: Option<String>,
     /// Middleware applied to this route
     pub middleware: Vec<String>,
+    /// Override for auto-generated MCP tool name
+    pub mcp_tool_name: Option<String>,
+    /// Override for auto-generated MCP description
+    pub mcp_description: Option<String>,
+    /// Hint text appended to MCP description for AI agent guidance
+    pub mcp_hint: Option<String>,
+    /// When true, route is hidden from MCP tool discovery
+    pub mcp_hidden: bool,
 }
 
 /// Register a route for introspection
@@ -35,6 +43,10 @@ fn register_route(method: &str, path: &str) {
             path: path.to_string(),
             name: None,
             middleware: Vec::new(),
+            mcp_tool_name: None,
+            mcp_description: None,
+            mcp_hint: None,
+            mcp_hidden: false,
         });
     }
 }
@@ -57,6 +69,25 @@ fn update_route_middleware(path: &str, middleware_name: &str) {
         // Find the most recent route with this path and add middleware
         if let Some(route) = routes.iter_mut().rev().find(|r| r.path == path) {
             route.middleware.push(middleware_name.to_string());
+        }
+    }
+}
+
+/// Update a route with MCP metadata overrides
+pub(crate) fn update_route_mcp(
+    path: &str,
+    tool_name: Option<String>,
+    description: Option<String>,
+    hint: Option<String>,
+    hidden: bool,
+) {
+    let registry = REGISTERED_ROUTES.get_or_init(|| RwLock::new(Vec::new()));
+    if let Ok(mut routes) = registry.write() {
+        if let Some(route) = routes.iter_mut().rev().find(|r| r.path == path) {
+            route.mcp_tool_name = tool_name;
+            route.mcp_description = description;
+            route.mcp_hint = hint;
+            route.mcp_hidden = hidden;
         }
     }
 }

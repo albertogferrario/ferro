@@ -36,6 +36,7 @@ pub const fn validate_route_path(path: &'static str) -> &'static str {
     }
     path
 }
+use super::router::update_route_mcp;
 use crate::middleware::{into_boxed, BoxedMiddleware, Middleware};
 use crate::routing::router::{register_route_name, BoxedHandler, Router};
 use std::future::Future;
@@ -91,6 +92,10 @@ pub struct RouteDefBuilder<H> {
     handler: H,
     name: Option<&'static str>,
     middlewares: Vec<BoxedMiddleware>,
+    mcp_tool_name: Option<String>,
+    mcp_description: Option<String>,
+    mcp_hint: Option<String>,
+    mcp_hidden: bool,
 }
 
 impl<H, Fut> RouteDefBuilder<H>
@@ -106,6 +111,10 @@ where
             handler,
             name: None,
             middlewares: Vec::new(),
+            mcp_tool_name: None,
+            mcp_description: None,
+            mcp_hint: None,
+            mcp_hidden: false,
         }
     }
 
@@ -121,10 +130,44 @@ where
         self
     }
 
+    /// Override the auto-generated MCP tool name for this route
+    pub fn mcp_tool_name(mut self, name: &str) -> Self {
+        self.mcp_tool_name = Some(name.to_string());
+        self
+    }
+
+    /// Override the auto-generated MCP description for this route
+    pub fn mcp_description(mut self, desc: &str) -> Self {
+        self.mcp_description = Some(desc.to_string());
+        self
+    }
+
+    /// Add a hint that is appended to the MCP description for AI guidance
+    pub fn mcp_hint(mut self, hint: &str) -> Self {
+        self.mcp_hint = Some(hint.to_string());
+        self
+    }
+
+    /// Hide this route from MCP tool discovery
+    pub fn mcp_hidden(mut self) -> Self {
+        self.mcp_hidden = true;
+        self
+    }
+
     /// Register this route definition with a router
     pub fn register(self, router: Router) -> Router {
         // Convert :param to {param} for matchit compatibility
         let converted_path = convert_route_params(self.path);
+
+        // Capture MCP fields before moving self
+        let has_mcp = self.mcp_tool_name.is_some()
+            || self.mcp_description.is_some()
+            || self.mcp_hint.is_some()
+            || self.mcp_hidden;
+        let mcp_tool_name = self.mcp_tool_name;
+        let mcp_description = self.mcp_description;
+        let mcp_hint = self.mcp_hint;
+        let mcp_hidden = self.mcp_hidden;
 
         // First, register the route based on method
         let builder = match self.method {
@@ -140,6 +183,17 @@ where
             .middlewares
             .into_iter()
             .fold(builder, |b, m| b.middleware_boxed(m));
+
+        // Apply MCP metadata if any fields are set
+        if has_mcp {
+            update_route_mcp(
+                &converted_path,
+                mcp_tool_name,
+                mcp_description,
+                mcp_hint,
+                mcp_hidden,
+            );
+        }
 
         // Apply name if present, otherwise convert to Router
         if let Some(name) = self.name {
@@ -388,6 +442,10 @@ pub struct GroupRoute {
     handler: Arc<BoxedHandler>,
     name: Option<&'static str>,
     middlewares: Vec<BoxedMiddleware>,
+    mcp_tool_name: Option<String>,
+    mcp_description: Option<String>,
+    mcp_hint: Option<String>,
+    mcp_hidden: bool,
 }
 
 /// An item that can be added to a route group - either a route or a nested group
@@ -401,6 +459,15 @@ pub enum GroupItem {
 /// Trait for types that can be converted into a GroupItem
 pub trait IntoGroupItem {
     fn into_group_item(self) -> GroupItem;
+}
+
+/// MCP defaults inherited from parent groups to child routes
+#[derive(Default, Clone)]
+struct McpDefaults {
+    tool_name: Option<String>,
+    description: Option<String>,
+    hint: Option<String>,
+    hidden: bool,
 }
 
 /// Group definition that collects routes and applies prefix/middleware
@@ -423,6 +490,10 @@ pub struct GroupDef {
     prefix: &'static str,
     items: Vec<GroupItem>,
     group_middlewares: Vec<BoxedMiddleware>,
+    mcp_tool_name: Option<String>,
+    mcp_description: Option<String>,
+    mcp_hint: Option<String>,
+    mcp_hidden: bool,
 }
 
 impl GroupDef {
@@ -435,6 +506,10 @@ impl GroupDef {
             prefix,
             items: Vec::new(),
             group_middlewares: Vec::new(),
+            mcp_tool_name: None,
+            mcp_description: None,
+            mcp_hint: None,
+            mcp_hidden: false,
         }
     }
 
@@ -476,6 +551,38 @@ impl GroupDef {
         self
     }
 
+    /// Set a default MCP tool name for all routes in this group
+    ///
+    /// Route-level overrides take precedence.
+    pub fn mcp_tool_name(mut self, name: &str) -> Self {
+        self.mcp_tool_name = Some(name.to_string());
+        self
+    }
+
+    /// Set a default MCP description for all routes in this group
+    ///
+    /// Route-level overrides take precedence.
+    pub fn mcp_description(mut self, desc: &str) -> Self {
+        self.mcp_description = Some(desc.to_string());
+        self
+    }
+
+    /// Set a default MCP hint for all routes in this group
+    ///
+    /// Route-level overrides take precedence.
+    pub fn mcp_hint(mut self, hint: &str) -> Self {
+        self.mcp_hint = Some(hint.to_string());
+        self
+    }
+
+    /// Hide all routes in this group from MCP tool discovery
+    ///
+    /// Route-level overrides take precedence.
+    pub fn mcp_hidden(mut self) -> Self {
+        self.mcp_hidden = true;
+        self
+    }
+
     /// Register all routes in this group with the router
     ///
     /// This prepends the group prefix to each route path and applies
@@ -492,7 +599,8 @@ impl GroupDef {
     /// Parent group middleware is applied before child group middleware,
     /// which is applied before route-specific middleware.
     pub fn register(self, mut router: Router) -> Router {
-        self.register_with_inherited(&mut router, "", &[]);
+        let mcp_defaults = McpDefaults::default();
+        self.register_with_inherited(&mut router, "", &[], &mcp_defaults);
         router
     }
 
@@ -502,6 +610,7 @@ impl GroupDef {
         router: &mut Router,
         parent_prefix: &str,
         inherited_middleware: &[BoxedMiddleware],
+        inherited_mcp: &McpDefaults,
     ) {
         // Build the full prefix for this group
         let full_prefix = if parent_prefix.is_empty() {
@@ -517,6 +626,14 @@ impl GroupDef {
             .cloned()
             .chain(self.group_middlewares.iter().cloned())
             .collect();
+
+        // Merge MCP defaults: this group's settings override inherited
+        let combined_mcp = McpDefaults {
+            tool_name: self.mcp_tool_name.or(inherited_mcp.tool_name.clone()),
+            description: self.mcp_description.or(inherited_mcp.description.clone()),
+            hint: self.mcp_hint.or(inherited_mcp.hint.clone()),
+            hidden: self.mcp_hidden || inherited_mcp.hidden,
+        };
 
         for item in self.items {
             match item {
@@ -565,6 +682,27 @@ impl GroupDef {
                         register_route_name(name, full_path);
                     }
 
+                    // Apply MCP metadata: route-level overrides group defaults
+                    let mcp_tool_name = route.mcp_tool_name.or(combined_mcp.tool_name.clone());
+                    let mcp_description =
+                        route.mcp_description.or(combined_mcp.description.clone());
+                    let mcp_hint = route.mcp_hint.or(combined_mcp.hint.clone());
+                    let mcp_hidden = route.mcp_hidden || combined_mcp.hidden;
+
+                    if mcp_tool_name.is_some()
+                        || mcp_description.is_some()
+                        || mcp_hint.is_some()
+                        || mcp_hidden
+                    {
+                        update_route_mcp(
+                            full_path,
+                            mcp_tool_name,
+                            mcp_description,
+                            mcp_hint,
+                            mcp_hidden,
+                        );
+                    }
+
                     // Apply combined middleware (inherited + group), then route-specific
                     for mw in &combined_middleware {
                         router.add_middleware(full_path, mw.clone());
@@ -575,7 +713,12 @@ impl GroupDef {
                 }
                 GroupItem::NestedGroup(nested) => {
                     // Recursively register the nested group with accumulated prefix and middleware
-                    nested.register_with_inherited(router, &full_prefix, &combined_middleware);
+                    nested.register_with_inherited(
+                        router,
+                        &full_prefix,
+                        &combined_middleware,
+                        &combined_mcp,
+                    );
                 }
             }
         }
@@ -599,6 +742,10 @@ where
             handler: Arc::new(boxed),
             name: self.name,
             middlewares: self.middlewares,
+            mcp_tool_name: self.mcp_tool_name,
+            mcp_description: self.mcp_description,
+            mcp_hint: self.mcp_hint,
+            mcp_hidden: self.mcp_hidden,
         }
     }
 }
