@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": {
+          "tool": ["Write", "Edit"],
+          "path": "**/*.rs"
+        },
+        "command": "cd /Users/alberto/repositories/albertogferrario/ferro && cargo fmt --all 2>/dev/null || true"
+      }
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
