@@ -1882,4 +1882,137 @@ mod tests {
         assert_eq!(request_rust_type("i32", false), "i32");
         assert_eq!(request_rust_type("bool", false), "bool");
     }
+
+    // -----------------------------------------------------------------------
+    // filter_resource_fields tests
+    // -----------------------------------------------------------------------
+
+    fn make_field(name: &str) -> FieldInfo {
+        FieldInfo {
+            name: name.to_string(),
+            rust_type: "String".to_string(),
+            is_primary_key: false,
+            is_nullable: false,
+        }
+    }
+
+    #[test]
+    fn filter_excludes_password_hash_by_default() {
+        let fields = vec![
+            make_field("id"),
+            make_field("email"),
+            make_field("password_hash"),
+        ];
+        let result = filter_resource_fields(&fields, &[], false);
+        let names: Vec<&str> = result.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"id"));
+        assert!(names.contains(&"email"));
+        assert!(!names.contains(&"password_hash"));
+    }
+
+    #[test]
+    fn filter_keeps_non_sensitive_fields() {
+        let fields = vec![
+            make_field("id"),
+            make_field("email"),
+            make_field("name"),
+            make_field("created_at"),
+        ];
+        let result = filter_resource_fields(&fields, &[], false);
+        assert_eq!(result.len(), 4);
+    }
+
+    #[test]
+    fn filter_custom_exclude_removes_field() {
+        let fields = vec![make_field("id"), make_field("email"), make_field("name")];
+        let exclude = vec!["email".to_string()];
+        let result = filter_resource_fields(&fields, &exclude, false);
+        let names: Vec<&str> = result.iter().map(|f| f.name.as_str()).collect();
+        assert!(!names.contains(&"email"));
+        assert!(names.contains(&"id"));
+        assert!(names.contains(&"name"));
+    }
+
+    #[test]
+    fn filter_include_all_keeps_sensitive_fields() {
+        let fields = vec![
+            make_field("id"),
+            make_field("password_hash"),
+            make_field("hashed_key"),
+            make_field("secret"),
+        ];
+        let result = filter_resource_fields(&fields, &[], true);
+        assert_eq!(result.len(), 4);
+    }
+
+    #[test]
+    fn filter_case_insensitive_matching() {
+        let fields = vec![
+            make_field("Password_Hash"),
+            make_field("SECRET"),
+            make_field("email"),
+        ];
+        let result = filter_resource_fields(&fields, &[], false);
+        let names: Vec<&str> = result.iter().map(|f| f.name.as_str()).collect();
+        assert!(!names.contains(&"Password_Hash"));
+        assert!(!names.contains(&"SECRET"));
+        assert!(names.contains(&"email"));
+    }
+
+    #[test]
+    fn filter_exact_match_only() {
+        // "token" should exclude "token" but NOT "created_at" or "token_time"
+        let fields = vec![
+            make_field("token"),
+            make_field("created_at"),
+            make_field("token_time"),
+        ];
+        let result = filter_resource_fields(&fields, &[], false);
+        let names: Vec<&str> = result.iter().map(|f| f.name.as_str()).collect();
+        assert!(
+            !names.contains(&"token"),
+            "exact match 'token' should be excluded"
+        );
+        assert!(
+            names.contains(&"created_at"),
+            "unrelated field should remain"
+        );
+        assert!(
+            names.contains(&"token_time"),
+            "substring match should NOT be excluded"
+        );
+    }
+
+    #[test]
+    fn filter_include_all_still_respects_custom_exclude() {
+        // --include-all disables auto-exclusion but --exclude still works
+        let fields = vec![
+            make_field("password_hash"),
+            make_field("email"),
+            make_field("name"),
+        ];
+        let exclude = vec!["email".to_string()];
+        let result = filter_resource_fields(&fields, &exclude, true);
+        let names: Vec<&str> = result.iter().map(|f| f.name.as_str()).collect();
+        assert!(
+            names.contains(&"password_hash"),
+            "include_all keeps sensitive fields"
+        );
+        assert!(!names.contains(&"email"), "custom exclude still works");
+        assert!(names.contains(&"name"));
+    }
+
+    #[test]
+    fn filter_all_sensitive_patterns_excluded() {
+        let fields: Vec<FieldInfo> = SENSITIVE_FIELD_PATTERNS
+            .iter()
+            .map(|p| make_field(p))
+            .collect();
+        let result = filter_resource_fields(&fields, &[], false);
+        assert!(
+            result.is_empty(),
+            "all sensitive patterns should be excluded, got: {:?}",
+            result.iter().map(|f| &f.name).collect::<Vec<_>>()
+        );
+    }
 }

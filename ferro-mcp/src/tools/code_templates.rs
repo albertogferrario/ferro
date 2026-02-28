@@ -1348,11 +1348,12 @@ fn api_templates() -> Vec<CodeTemplate> {
         CodeTemplate {
             name: "api_controller".to_string(),
             category: "api".to_string(),
-            description: "CRUD API controller with pagination, resource responses, and error handling"
+            description: "CRUD API controller with pagination, resource responses, and error handling. Sensitive fields (password_hash, etc.) are auto-excluded by make:api."
                 .to_string(),
             code: r#"use ferro::{handler, Request, Response, HttpResponse};
 use crate::models::{{entity}}::{self, Entity as {{Entity}}};
 use sea_orm::{EntityTrait, PaginatorTrait};
+// Sensitive fields (password_hash, etc.) are auto-excluded by make:api
 use crate::resources::{{entity}}_resource::{{Entity}}Resource;
 use crate::requests::{{entity}}_request::{Create{{Entity}}Request, Update{{Entity}}Request};
 
