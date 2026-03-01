@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 89 (Intent Graph Generation) — Plan 02 COMPLETE
-Plan: 02 complete
-Status: Full 5-analyzer derivation pipeline with state machine, relationship, and action analyzers, 190 tests (185 unit + 5 doc)
-Last activity: 2026-03-01 — Plan 02 complete (2 tasks, 2 commits)
+Phase: 90 (Renderer Trait & JSON-UI Renderer) — PLANNING COMPLETE
+Plan: 3 plans created (90-01, 90-02, 90-03) in 3 waves
+Status: Plans ready for execution
+Last activity: 2026-03-01 — Phase 90 planned (3 plans, 3 waves)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 02 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 15/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 16/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -128,6 +128,14 @@ Archived to PROJECT.md and milestone archive files.
 - Both state machine and action analyzers contribute Process weight from transition_trigger, amplifying when aligned
 - 185 ferro-projections unit tests + 5 doctests = 190 total
 
+**Phase 89-03:**
+- 12 validation fixtures covering all 7 intents at 100% primary intent accuracy (exceeds 70% threshold)
+- No weight tuning needed — engine generalizes correctly across all validation scenarios
+- Fixture design requires careful field selection to avoid competing signals (e.g., FreeText amplifying Focus over Collect, CreatedAt being system field)
+- 8 edge case tests: empty, minimal, maximal, ambiguous, IntentHint Primary/Exclude overrides, confidence range validation
+- derive_intents() doctest added for public API documentation
+- 206 ferro-projections unit tests + 6 doctests = 212 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -147,5 +155,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 89 Plan 02 COMPLETE — Full 5-analyzer derivation pipeline, 190 tests
+Stopped at: Phase 89 Plan 03 COMPLETE — Validated derivation engine, 100% accuracy, 212 tests
 Resume file: None

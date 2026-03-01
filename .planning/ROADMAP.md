@@ -115,14 +115,13 @@ Plans:
 
 **Goal**: Define Renderer trait, implement first renderer mapping intents to JSON-UI components.
 **Depends on**: Phase 89
-**Research**: Likely (validates the whole architecture — if mapping feels forced, intent taxonomy needs revision)
-**Research topics**: ferro-json-ui component API, plugin registry pattern, FieldMeaning→component mapping
+**Research**: Complete (90-RESEARCH.md — HIGH confidence, 6/7 intents map naturally)
 **Plans**: 3
 
 Plans:
-- [ ] 90-01: TBD
-- [ ] 90-02: TBD
-- [ ] 90-03: TBD
+- [ ] 90-01: Renderer trait, RenderContext/RenderMode types, field mapping (display+input+column), relationship mapping
+- [ ] 90-02: JsonUiRenderer — Browse, Focus, Collect, Summarize intent layouts
+- [ ] 90-03: JsonUiRenderer — Process, Analyze, Track intent layouts + full pipeline integration tests
 
 #### Phase 91: Framework Integration
 
