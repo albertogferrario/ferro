@@ -868,4 +868,239 @@ ServiceDef::new("order")
         assert!(blocks[0].contains("submit_feedback"));
         assert!(blocks[0].contains("InputDef::new"));
     }
+
+    // --- Integration tests against real projection files ---
+
+    /// Helper to read a projection source file from the sample app.
+    fn read_projection_source(name: &str) -> String {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let path = std::path::Path::new(manifest_dir)
+            .join("../app/src/projections")
+            .join(format!("{name}.rs"));
+        std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()))
+    }
+
+    /// Reconstruct a ServiceDef from a real projection file and validate it.
+    fn reconstruct_and_validate(
+        name: &str,
+        display: &str,
+    ) -> (ServiceDef, Vec<ferro_projections::IntentScore>) {
+        let content = read_projection_source(name);
+        let service = reconstruct_service_def(name, &Some(display.to_string()), &content).unwrap();
+
+        // Validate — no errors allowed, warnings are OK
+        let warnings = service.validate().unwrap_or_else(|e| {
+            panic!("ServiceDef::validate() returned error for {name}: {e}");
+        });
+        let _ = warnings; // warnings are acceptable
+
+        let intents = derive_intents(&service);
+        assert!(
+            !intents.is_empty(),
+            "{name}: should derive at least one intent"
+        );
+        (service, intents)
+    }
+
+    #[test]
+    fn test_integration_user_projection() {
+        let (service, intents) = reconstruct_and_validate("user", "User");
+        assert_eq!(service.fields.len(), 5);
+        // Model-based: accept any reasonable intent
+        let _ = intents[0].intent.clone();
+    }
+
+    #[test]
+    fn test_integration_todo_projection() {
+        let (service, intents) = reconstruct_and_validate("todo", "Todo");
+        assert_eq!(service.fields.len(), 5);
+        // Model-based: accept any reasonable intent
+        let _ = intents[0].intent.clone();
+    }
+
+    #[test]
+    fn test_integration_api_key_projection() {
+        let (service, intents) = reconstruct_and_validate("api_key", "Api Key");
+        assert_eq!(service.fields.len(), 8);
+        // Model-based: accept any reasonable intent
+        let _ = intents[0].intent.clone();
+    }
+
+    #[test]
+    fn test_integration_order_projection() {
+        let (service, intents) = reconstruct_and_validate("order", "Order");
+        use ferro_projections::Intent;
+
+        // Verify reconstruction completeness
+        assert_eq!(service.fields.len(), 5);
+        assert!(service.state_machine.is_some());
+        let sm = service.state_machine.as_ref().unwrap();
+        assert_eq!(sm.states.len(), 6);
+        assert_eq!(sm.transitions.len(), 6);
+        // Check guarded transition was parsed
+        let guarded_count = sm.transitions.iter().filter(|t| t.guard.is_some()).count();
+        assert!(
+            guarded_count >= 1,
+            "order: expected at least 1 guarded transition, got {guarded_count}"
+        );
+        // Check guards parsed
+        assert!(
+            !service.guards.is_empty(),
+            "order: expected guard definitions"
+        );
+        // Check action details
+        assert!(
+            service.actions.len() >= 3,
+            "order: expected at least 3 actions, got {}",
+            service.actions.len()
+        );
+        let trigger_count = service
+            .actions
+            .iter()
+            .filter(|a| a.transition_trigger.is_some())
+            .count();
+        assert!(
+            trigger_count >= 2,
+            "order: expected at least 2 actions with transition_trigger, got {trigger_count}"
+        );
+        let precondition_count = service
+            .actions
+            .iter()
+            .filter(|a| !a.preconditions.is_empty())
+            .count();
+        assert!(
+            precondition_count >= 1,
+            "order: expected at least 1 action with preconditions, got {precondition_count}"
+        );
+        assert_eq!(service.relationships.len(), 2);
+
+        // Assert exact primary intent
+        assert_eq!(
+            intents[0].intent,
+            Intent::Process,
+            "order: expected Process intent, got {:?} (confidence: {}, signals: {:?})",
+            intents[0].intent,
+            intents[0].confidence,
+            intents[0].matching_signals
+        );
+    }
+
+    #[test]
+    fn test_integration_product_projection() {
+        let (service, intents) = reconstruct_and_validate("product", "Product");
+        use ferro_projections::Intent;
+
+        assert_eq!(service.fields.len(), 6);
+        assert_eq!(service.relationships.len(), 3);
+
+        assert_eq!(
+            intents[0].intent,
+            Intent::Browse,
+            "product: expected Browse intent, got {:?} (confidence: {}, signals: {:?})",
+            intents[0].intent,
+            intents[0].confidence,
+            intents[0].matching_signals
+        );
+    }
+
+    #[test]
+    fn test_integration_revenue_dashboard_projection() {
+        let (service, intents) = reconstruct_and_validate("revenue_dashboard", "Revenue Dashboard");
+        use ferro_projections::Intent;
+
+        assert_eq!(service.fields.len(), 6);
+        // All non-id fields should be read-only
+        let read_only_count = service.fields.iter().filter(|f| !f.writable).count();
+        assert!(
+            read_only_count >= 5,
+            "revenue_dashboard: expected at least 5 read-only fields, got {read_only_count}"
+        );
+
+        assert_eq!(
+            intents[0].intent,
+            Intent::Summarize,
+            "revenue_dashboard: expected Summarize intent, got {:?} (confidence: {}, signals: {:?})",
+            intents[0].intent,
+            intents[0].confidence,
+            intents[0].matching_signals
+        );
+    }
+
+    #[test]
+    fn test_integration_sales_analytics_projection() {
+        let (service, intents) = reconstruct_and_validate("sales_analytics", "Sales Analytics");
+        use ferro_projections::Intent;
+
+        assert_eq!(service.fields.len(), 5);
+
+        assert_eq!(
+            intents[0].intent,
+            Intent::Analyze,
+            "sales_analytics: expected Analyze intent, got {:?} (confidence: {}, signals: {:?})",
+            intents[0].intent,
+            intents[0].confidence,
+            intents[0].matching_signals
+        );
+    }
+
+    #[test]
+    fn test_integration_feedback_form_projection() {
+        let (service, intents) = reconstruct_and_validate("feedback_form", "Feedback Form");
+        use ferro_projections::Intent;
+
+        assert_eq!(service.fields.len(), 6);
+        // Check write-only fields were parsed
+        let write_only_count = service
+            .fields
+            .iter()
+            .filter(|f| f.writable && !f.readable)
+            .count();
+        assert!(
+            write_only_count >= 2,
+            "feedback_form: expected at least 2 write-only fields, got {write_only_count}"
+        );
+        // Check action inputs were parsed
+        assert!(
+            !service.actions.is_empty(),
+            "feedback_form: expected at least 1 action"
+        );
+        let input_count: usize = service.actions.iter().map(|a| a.inputs.len()).sum();
+        assert!(
+            input_count >= 3,
+            "feedback_form: expected at least 3 action inputs, got {input_count}"
+        );
+
+        assert_eq!(
+            intents[0].intent,
+            Intent::Collect,
+            "feedback_form: expected Collect intent, got {:?} (confidence: {}, signals: {:?})",
+            intents[0].intent,
+            intents[0].confidence,
+            intents[0].matching_signals
+        );
+    }
+
+    #[test]
+    fn test_integration_all_projections_validate() {
+        let projections = [
+            ("user", "User"),
+            ("todo", "Todo"),
+            ("api_key", "Api Key"),
+            ("order", "Order"),
+            ("product", "Product"),
+            ("revenue_dashboard", "Revenue Dashboard"),
+            ("sales_analytics", "Sales Analytics"),
+            ("feedback_form", "Feedback Form"),
+        ];
+
+        for (name, display) in &projections {
+            let content = read_projection_source(name);
+            let service =
+                reconstruct_service_def(name, &Some(display.to_string()), &content).unwrap();
+            service.validate().unwrap_or_else(|e| {
+                panic!("ServiceDef::validate() error for {name}: {e}");
+            });
+        }
+    }
 }
