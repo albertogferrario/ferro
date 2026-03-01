@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::field::FieldMeaning;
 use crate::intent::{Intent, IntentHint, IntentScore};
+use crate::relationship::{Cardinality, NavigationHint};
 use crate::service::ServiceDef;
 
 // Signal name constants to prevent typo bugs in matching_signals.
@@ -23,6 +24,27 @@ const SIGNAL_BASELINE: &str = "baseline";
 const SIGNAL_NO_STRUCTURAL: &str = "no_structural_signals";
 const SIGNAL_HINT_PRIMARY: &str = "intent_hint_primary";
 
+// State machine analyzer signals.
+const SIGNAL_GUARDED_TRANSITIONS: &str = "guarded_transitions";
+const SIGNAL_BRANCHING_STATES: &str = "branching_states";
+const SIGNAL_TRANSITION_TRIGGERS: &str = "transition_triggers";
+const SIGNAL_WORKFLOW_STATES: &str = "workflow_states";
+const SIGNAL_LINEAR_STATES: &str = "linear_states";
+const SIGNAL_HAS_FINAL_STATES: &str = "has_final_states";
+const SIGNAL_UNGUARDED_PROGRESSION: &str = "unguarded_progression";
+
+// Relationship analyzer signals.
+const SIGNAL_COLLECTION_RELATIONSHIPS: &str = "collection_relationships";
+const SIGNAL_INLINE_RELATIONSHIPS: &str = "inline_relationships";
+const SIGNAL_PARENT_REFERENCES: &str = "parent_references";
+const SIGNAL_RICH_RELATIONSHIP_GRAPH: &str = "rich_relationship_graph";
+
+// Action analyzer signals.
+const SIGNAL_WORKFLOW_ACTIONS: &str = "workflow_actions";
+const SIGNAL_COMPLEX_INPUT_ACTIONS: &str = "complex_input_actions";
+const SIGNAL_GUARDED_ACTIONS: &str = "guarded_actions";
+const SIGNAL_SIMPLE_CRUD_ACTIONS: &str = "simple_crud_actions";
+
 // Baseline scores added to Browse and Focus to ensure they always appear.
 const BASELINE_BROWSE: f64 = 0.1;
 const BASELINE_FOCUS: f64 = 0.1;
@@ -34,10 +56,13 @@ type Signal = (Intent, f64, String);
 ///
 /// Always returns at least one IntentScore. Default: Focus with 0.5 confidence.
 pub fn derive_intents(service: &ServiceDef) -> Vec<IntentScore> {
-    // 1. Collect signals from all analyzers.
+    // 1. Collect signals from all 5 analyzers.
     let mut all_signals = Vec::new();
     all_signals.extend(analyze_field_meanings(service));
     all_signals.extend(analyze_writability(service));
+    all_signals.extend(analyze_state_machine(service));
+    all_signals.extend(analyze_relationships(service));
+    all_signals.extend(analyze_actions(service));
 
     // 2. Aggregate and add baselines.
     let mut raw = aggregate_signals(all_signals);
@@ -249,6 +274,223 @@ fn analyze_writability(service: &ServiceDef) -> Vec<Signal> {
     let readable_count = non_system.iter().filter(|f| f.readable).count();
     if readable_count > writable_count {
         signals.push((Intent::Focus, 0.1, SIGNAL_MORE_READABLE.to_string()));
+    }
+
+    signals
+}
+
+/// Examines state machine shape to discriminate Process (branching/guards) from Track (linear).
+fn analyze_state_machine(service: &ServiceDef) -> Vec<Signal> {
+    let mut signals = Vec::new();
+
+    let sm = match &service.state_machine {
+        Some(sm) => sm,
+        None => return signals,
+    };
+
+    let total_transitions = sm.transitions.len();
+    if total_transitions == 0 {
+        return signals;
+    }
+
+    // --- Process signals (branching + guards) ---
+
+    // Guard density: guarded transitions / total transitions.
+    let guarded_count = sm.transitions.iter().filter(|t| t.guard.is_some()).count();
+    if guarded_count > 0 {
+        let ratio = guarded_count as f64 / total_transitions as f64;
+        signals.push((
+            Intent::Process,
+            0.4 * ratio,
+            format!("{guarded_count}/{total_transitions}_{SIGNAL_GUARDED_TRANSITIONS}"),
+        ));
+    }
+
+    // Branching factor: states with >1 outgoing transition.
+    let mut outgoing_counts: HashMap<&str, usize> = HashMap::new();
+    for t in &sm.transitions {
+        *outgoing_counts.entry(t.from.as_str()).or_default() += 1;
+    }
+    let branching_states = outgoing_counts.values().filter(|&&c| c > 1).count();
+    if branching_states > 0 {
+        signals.push((
+            Intent::Process,
+            0.15,
+            format!("{branching_states}_{SIGNAL_BRANCHING_STATES}"),
+        ));
+    }
+
+    // Actions with transition_trigger present in service.actions.
+    let trigger_count = service
+        .actions
+        .iter()
+        .filter(|a| a.transition_trigger.is_some())
+        .count();
+    let total_actions = service.actions.len();
+    if trigger_count > 0 && total_actions > 0 {
+        signals.push((
+            Intent::Process,
+            0.25 * (trigger_count as f64 / total_actions as f64),
+            format!("{trigger_count}_{SIGNAL_TRANSITION_TRIGGERS}"),
+        ));
+    }
+
+    // Multiple non-trivial states (>2 non-final).
+    let non_final_count = sm.states.iter().filter(|s| !s.is_final).count();
+    if non_final_count > 2 {
+        signals.push((
+            Intent::Process,
+            0.10,
+            format!("{non_final_count}_{SIGNAL_WORKFLOW_STATES}"),
+        ));
+    }
+
+    // --- Track signals (linear + temporal) ---
+
+    // Linear progression: non-final states > 2 AND no branching states.
+    if non_final_count > 2 && branching_states == 0 {
+        signals.push((
+            Intent::Track,
+            0.3,
+            format!("{non_final_count}_{SIGNAL_LINEAR_STATES}"),
+        ));
+    }
+
+    // Has final states.
+    if sm.states.iter().any(|s| s.is_final) {
+        signals.push((Intent::Track, 0.1, SIGNAL_HAS_FINAL_STATES.to_string()));
+    }
+
+    // No guards on transitions.
+    if guarded_count == 0 {
+        signals.push((Intent::Track, 0.1, SIGNAL_UNGUARDED_PROGRESSION.to_string()));
+    }
+
+    signals
+}
+
+/// Examines relationship cardinalities to discriminate Browse (collections) from Focus (inline).
+fn analyze_relationships(service: &ServiceDef) -> Vec<Signal> {
+    let mut signals = Vec::new();
+
+    if service.relationships.is_empty() {
+        return signals;
+    }
+
+    // OneToMany or ManyToMany -> Browse.
+    let collection_count = service
+        .relationships
+        .iter()
+        .filter(|r| {
+            matches!(
+                r.cardinality,
+                Cardinality::OneToMany | Cardinality::ManyToMany
+            )
+        })
+        .count();
+    if collection_count > 0 {
+        signals.push((
+            Intent::Browse,
+            0.35 * collection_count as f64,
+            format!("{collection_count}_{SIGNAL_COLLECTION_RELATIONSHIPS}"),
+        ));
+    }
+
+    // OneToOne with NavigationHint::Inline -> Focus.
+    let inline_count = service
+        .relationships
+        .iter()
+        .filter(|r| {
+            r.cardinality == Cardinality::OneToOne && r.navigation == NavigationHint::Inline
+        })
+        .count();
+    if inline_count > 0 {
+        signals.push((
+            Intent::Focus,
+            0.15 * inline_count as f64,
+            format!("{inline_count}_{SIGNAL_INLINE_RELATIONSHIPS}"),
+        ));
+    }
+
+    // ManyToOne -> Focus.
+    let parent_count = service
+        .relationships
+        .iter()
+        .filter(|r| r.cardinality == Cardinality::ManyToOne)
+        .count();
+    if parent_count > 0 {
+        signals.push((
+            Intent::Focus,
+            0.1 * parent_count as f64,
+            format!("{parent_count}_{SIGNAL_PARENT_REFERENCES}"),
+        ));
+    }
+
+    // Total relationship count > 3 -> Browse.
+    if service.relationships.len() > 3 {
+        signals.push((
+            Intent::Browse,
+            0.1,
+            SIGNAL_RICH_RELATIONSHIP_GRAPH.to_string(),
+        ));
+    }
+
+    signals
+}
+
+/// Examines action patterns to discriminate Process (workflow) from Collect (input) and Browse (CRUD).
+fn analyze_actions(service: &ServiceDef) -> Vec<Signal> {
+    let mut signals = Vec::new();
+
+    if service.actions.is_empty() {
+        return signals;
+    }
+
+    // Actions with transition_trigger -> Process.
+    let workflow_count = service
+        .actions
+        .iter()
+        .filter(|a| a.transition_trigger.is_some())
+        .count();
+    if workflow_count > 0 {
+        signals.push((
+            Intent::Process,
+            0.15 * workflow_count as f64,
+            format!("{workflow_count}_{SIGNAL_WORKFLOW_ACTIONS}"),
+        ));
+    }
+
+    // Actions with >2 inputs -> Collect.
+    let complex_input_count = service
+        .actions
+        .iter()
+        .filter(|a| a.inputs.len() > 2)
+        .count();
+    if complex_input_count > 0 {
+        signals.push((
+            Intent::Collect,
+            0.15 * complex_input_count as f64,
+            format!("{complex_input_count}_{SIGNAL_COMPLEX_INPUT_ACTIONS}"),
+        ));
+    }
+
+    // Actions with preconditions -> Process.
+    let guarded_action_count = service
+        .actions
+        .iter()
+        .filter(|a| !a.preconditions.is_empty())
+        .count();
+    if guarded_action_count > 0 {
+        signals.push((
+            Intent::Process,
+            0.1 * guarded_action_count as f64,
+            format!("{guarded_action_count}_{SIGNAL_GUARDED_ACTIONS}"),
+        ));
+    }
+
+    // Simple CRUD: actions present but no transition triggers and no preconditions.
+    if workflow_count == 0 && guarded_action_count == 0 {
+        signals.push((Intent::Browse, 0.05, SIGNAL_SIMPLE_CRUD_ACTIONS.to_string()));
     }
 
     signals
