@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 94 (Protocol Documentation) — In Progress
-Plan: 94-01 complete
-Status: Plan 94-01 shipped — mdBook project structure + JSON Schema generation from Rust types
-Last activity: 2026-03-01 — Plan 94-01 executed (2 tasks, 2 commits)
+Plan: 94-02 complete
+Status: Plan 94-02 shipped — introduction, terminology, and architecture specification pages
+Last activity: 2026-03-01 — Plan 94-02 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 94-01 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 28/30 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 29/30 | In Progress | - |
 
 ## Accumulated Context
 
@@ -232,6 +232,13 @@ Archived to PROJECT.md and milestone archive files.
 - Date-versioned $id URLs: https://ferro-rs.dev/protocol/2026-03-01/{type}.json
 - Schema generation reproducible via `cargo test -p ferro-projections --test generate_schemas`
 
+**Phase 94-02:**
+- Protocol introduction positions Ferro in the 2026 agent stack (A2A/MCP/AG-UI/A2UI) with explicit gap identification
+- 18 domain-specific terms defined alphabetically in terminology.md, cross-referenced to Rust type names
+- Three-layer architecture (ServiceDef -> IntentScores -> Renderer) with normative/informative split for derivation rules
+- CAMELEON Reference Framework correspondence acknowledged with differentiation: dynamic confidence-scored derivation vs static tree-based AUI
+- RFC 2119 + RFC 8174 conformance language established per BCP 14
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -251,5 +258,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 94, Plan 01 complete — mdBook structure + JSON Schema generation
+Stopped at: Phase 94, Plan 02 complete — introduction, terminology, architecture pages
 Resume file: None
