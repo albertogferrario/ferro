@@ -54,7 +54,23 @@ type Signal = (Intent, f64, String);
 
 /// Derives ranked intents from a ServiceDef's structural signals.
 ///
+/// Runs 5 analyzers (field meaning, writability, state machine, relationship,
+/// action) and normalizes their signals into ranked IntentScores.
+///
 /// Always returns at least one IntentScore. Default: Focus with 0.5 confidence.
+///
+/// ```
+/// use ferro_projections::{ServiceDef, DataType, FieldMeaning, derive_intents};
+///
+/// let product = ServiceDef::new("product")
+///     .field("id", DataType::Integer, FieldMeaning::Identifier)
+///     .field("name", DataType::String, FieldMeaning::EntityName)
+///     .field("price", DataType::Float, FieldMeaning::Money);
+///
+/// let scores = derive_intents(&product);
+/// assert!(!scores.is_empty());
+/// assert!(scores[0].confidence > 0.0);
+/// ```
 pub fn derive_intents(service: &ServiceDef) -> Vec<IntentScore> {
     // 1. Collect signals from all 5 analyzers.
     let mut all_signals = Vec::new();
@@ -1964,6 +1980,265 @@ mod tests {
                 accuracy * 100.0,
                 incorrect.join("\n")
             );
+        }
+    }
+
+    // ==========================================================
+    // Edge case tests
+    // ==========================================================
+
+    #[test]
+    fn edge_empty_service_def_returns_scores() {
+        let service = ServiceDef::new("empty");
+        let scores = derive_intents(&service);
+        assert!(
+            !scores.is_empty(),
+            "Empty ServiceDef must return at least one score"
+        );
+        // Both Browse and Focus have baseline 0.1, tied. Browse wins by priority.
+        assert_eq!(scores[0].intent, Intent::Browse);
+        // Confidence is valid.
+        assert!(scores[0].confidence >= 0.0 && scores[0].confidence <= 1.0);
+    }
+
+    #[test]
+    fn edge_minimal_single_identifier() {
+        let service =
+            ServiceDef::new("minimal").field("id", DataType::Integer, FieldMeaning::Identifier);
+        let scores = derive_intents(&service);
+        assert!(!scores.is_empty());
+        // Only baselines, Browse or Focus at top.
+        assert!(
+            scores[0].intent == Intent::Browse || scores[0].intent == Intent::Focus,
+            "Minimal service should default to Browse or Focus baseline, got {:?}",
+            scores[0].intent
+        );
+    }
+
+    #[test]
+    fn edge_maximal_all_field_types() {
+        use crate::action::InputDef;
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        let service = ServiceDef::new("maximal")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("body", DataType::String, FieldMeaning::FreeText)
+            .field("photo", DataType::String, FieldMeaning::ImageUrl)
+            .field("link", DataType::String, FieldMeaning::Url)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("margin", DataType::Float, FieldMeaning::Percentage)
+            .field("qty", DataType::Integer, FieldMeaning::Quantity)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("category", DataType::String, FieldMeaning::Category)
+            .field("date", DataType::DateTime, FieldMeaning::DateTime)
+            .field("email", DataType::String, FieldMeaning::Email)
+            .field("phone", DataType::String, FieldMeaning::Phone)
+            .field("toggle", DataType::Boolean, FieldMeaning::Boolean)
+            .write_only_field("secret", DataType::String, FieldMeaning::Sensitive)
+            .state_machine(
+                StateMachine::new("lifecycle")
+                    .initial("a")
+                    .state(StateDef::new("a"))
+                    .state(StateDef::new("b"))
+                    .state(StateDef::new("c"))
+                    .state(StateDef::new("d").final_state())
+                    .transition(Transition::new("a", "go_b", "b").guard("check"))
+                    .transition(Transition::new("b", "go_c", "c"))
+                    .transition(Transition::new("a", "go_c", "c"))
+                    .transition(Transition::new("c", "go_d", "d")),
+            )
+            .guard(crate::action::GuardDef::new("check"))
+            .action(
+                ActionDef::new("do_thing")
+                    .transition_trigger("go_b")
+                    .precondition("check")
+                    .input(InputDef::new("x", DataType::String, FieldMeaning::FreeText))
+                    .input(InputDef::new("y", DataType::String, FieldMeaning::FreeText))
+                    .input(InputDef::new("z", DataType::String, FieldMeaning::FreeText)),
+            )
+            .has_many("children", "child")
+            .belongs_to("parent", "parent_type")
+            .has_one("profile", "profile_type");
+
+        let scores = derive_intents(&service);
+        assert!(!scores.is_empty());
+        // Should have highest confidence (1.0) for some intent.
+        assert!(
+            (scores[0].confidence - 1.0).abs() < f64::EPSILON,
+            "Maximal service top score should be 1.0"
+        );
+        // Should have many intents present.
+        assert!(
+            scores.len() >= 4,
+            "Maximal service should produce 4+ intents, got {}",
+            scores.len()
+        );
+    }
+
+    #[test]
+    fn edge_ambiguous_does_not_panic() {
+        // Roughly equal signals for Browse, Focus, Summarize.
+        let service = ServiceDef::new("ambiguous")
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("body", DataType::String, FieldMeaning::FreeText)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .has_many("items", "item");
+
+        let scores = derive_intents(&service);
+        assert!(!scores.is_empty(), "Ambiguous service must not panic");
+
+        // Top-2 should be within reasonable range (both > 0.3 confidence).
+        if scores.len() >= 2 {
+            assert!(
+                scores[1].confidence >= 0.3,
+                "In ambiguous case, second intent should have reasonable confidence (>= 0.3), got {:.2}",
+                scores[1].confidence
+            );
+        }
+    }
+
+    #[test]
+    fn edge_hint_primary_overrides_structural() {
+        // Structurally Browse (EntityName + has_many).
+        let service = ServiceDef::new("hint_override")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .has_many("items", "item")
+            .intent_hint(IntentHint::Primary(Intent::Process));
+
+        let scores = derive_intents(&service);
+        assert_eq!(scores[0].intent, Intent::Process);
+        assert!((scores[0].confidence - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn edge_hint_exclude_removes_primary() {
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        // Structurally Process (state machine + guards + transition triggers).
+        let service = ServiceDef::new("exclude_process")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .state_machine(
+                StateMachine::new("sm")
+                    .initial("a")
+                    .state(StateDef::new("a"))
+                    .state(StateDef::new("b"))
+                    .state(StateDef::new("c"))
+                    .state(StateDef::new("d").final_state())
+                    .transition(Transition::new("a", "go", "b").guard("g"))
+                    .transition(Transition::new("b", "next", "c"))
+                    .transition(Transition::new("a", "skip", "c"))
+                    .transition(Transition::new("c", "finish", "d")),
+            )
+            .guard(crate::action::GuardDef::new("g"))
+            .action(
+                ActionDef::new("go_action")
+                    .transition_trigger("go")
+                    .precondition("g"),
+            )
+            .intent_hint(IntentHint::Exclude(Intent::Process));
+
+        let scores = derive_intents(&service);
+        assert!(
+            find_intent(&scores, &Intent::Process).is_none(),
+            "Process must be excluded by hint"
+        );
+        // Something else becomes primary.
+        assert!(!scores.is_empty());
+        assert_ne!(scores[0].intent, Intent::Process);
+    }
+
+    #[test]
+    fn edge_multiple_hints_primary_and_exclude() {
+        let service = ServiceDef::new("multi_hint")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .has_many("items", "item")
+            .intent_hint(IntentHint::Primary(Intent::Collect))
+            .intent_hint(IntentHint::Exclude(Intent::Browse));
+
+        let scores = derive_intents(&service);
+        assert_eq!(
+            scores[0].intent,
+            Intent::Collect,
+            "Primary(Collect) should be at top"
+        );
+        assert!(
+            (scores[0].confidence - 1.0).abs() < f64::EPSILON,
+            "Primary should have 1.0 confidence"
+        );
+        assert!(
+            find_intent(&scores, &Intent::Browse).is_none(),
+            "Browse must be excluded"
+        );
+    }
+
+    #[test]
+    fn edge_all_confidences_in_valid_range() {
+        use crate::action::InputDef;
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        // Use a variety of ServiceDefs to verify all confidences are in [0.0, 1.0].
+        let fixtures: Vec<ServiceDef> = vec![
+            ServiceDef::new("order")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("total", DataType::Float, FieldMeaning::Money)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .state_machine(
+                    StateMachine::new("sm")
+                        .initial("a")
+                        .state(StateDef::new("a"))
+                        .state(StateDef::new("b"))
+                        .state(StateDef::new("c").final_state())
+                        .transition(Transition::new("a", "go", "b").guard("g"))
+                        .transition(Transition::new("b", "done", "c")),
+                )
+                .guard(crate::action::GuardDef::new("g"))
+                .action(
+                    ActionDef::new("go")
+                        .transition_trigger("go")
+                        .precondition("g"),
+                ),
+            ServiceDef::new("product")
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("price", DataType::Float, FieldMeaning::Money)
+                .has_many("reviews", "review"),
+            ServiceDef::new("blog")
+                .field("body", DataType::String, FieldMeaning::FreeText)
+                .field("photo", DataType::String, FieldMeaning::ImageUrl),
+            ServiceDef::new("reg")
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("email", DataType::String, FieldMeaning::Email)
+                .write_only_field("pw", DataType::String, FieldMeaning::Sensitive),
+            ServiceDef::new("empty"),
+            ServiceDef::new("max")
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("body", DataType::String, FieldMeaning::FreeText)
+                .field("total", DataType::Float, FieldMeaning::Money)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .field("date", DataType::DateTime, FieldMeaning::DateTime)
+                .has_many("items", "item")
+                .action(
+                    ActionDef::new("submit")
+                        .input(InputDef::new("a", DataType::String, FieldMeaning::FreeText))
+                        .input(InputDef::new("b", DataType::String, FieldMeaning::FreeText))
+                        .input(InputDef::new("c", DataType::String, FieldMeaning::FreeText)),
+                ),
+        ];
+
+        for service in &fixtures {
+            let scores = derive_intents(service);
+            for s in &scores {
+                assert!(
+                    s.confidence >= 0.0 && s.confidence <= 1.0,
+                    "Confidence {:.4} out of [0.0, 1.0] for {:?} in '{}'",
+                    s.confidence,
+                    s.intent,
+                    service.name
+                );
+            }
         }
     }
 }
