@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 93 (Field Test & Polish) — In Progress
-Plan: 93-01 complete
-Status: Plan 93-01 shipped — 8 projection files in sample app
-Last activity: 2026-03-01 — Plan 93-01 executed (2 tasks, 2 commits)
+Plan: 93-02 complete
+Status: Plan 93-02 shipped — MCP parser fixed, full pipeline validated against 8 real projections
+Last activity: 2026-03-01 — Plan 93-02 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 93-01 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 25/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 27/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -217,6 +217,14 @@ Archived to PROJECT.md and milestone archive files.
 - Projections module needs #[allow(dead_code)] since functions are discovered by MCP source scanning, not called from Rust
 - Long field names (e.g., "discount_applied") cause rustfmt to break read_only_field calls across lines, defeating regex parser
 
+**Phase 93-02:**
+- MCP parser fixed: parenthesis-depth extraction for .action() blocks, sub-regex parsing of transition_trigger/precondition/display_name/inputs
+- Transition .guard() and GuardDef definitions now parsed during ServiceDef reconstruction
+- 9 integration tests validate full MCP pipeline against all 8 real projection files
+- All 5 hand-crafted projections derive exact target intents: Process, Browse, Summarize, Analyze, Collect
+- sales_analytics adjusted to mixed read/write fields to avoid Summarize dominance while preserving Analyze signal
+- 178 ferro-mcp tests total (169 existing + 9 integration)
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -236,5 +244,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 93, Plan 01 complete — 8 projection files created in sample app
+Stopped at: Phase 93, Plan 02 complete — MCP parser fixed, pipeline validated
 Resume file: None
