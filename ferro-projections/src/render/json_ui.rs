@@ -47,9 +47,10 @@ impl Renderer for JsonUiRenderer {
                 RenderMode::Input => self.render_collect(service),
             },
             Intent::Collect => self.render_collect(service),
-            Intent::Summarize => {
-                todo!("implemented in Plan 90-02 Task 2")
-            }
+            Intent::Summarize => match ctx.mode {
+                RenderMode::Display => self.render_summarize(service),
+                RenderMode::Input => self.render_collect(service),
+            },
             Intent::Process => {
                 todo!("implemented in Plan 03")
             }
@@ -238,6 +239,112 @@ impl JsonUiRenderer {
 
         vec![form]
     }
+
+    /// Summarize layout: dashboard metrics with card grid.
+    fn render_summarize(&self, service: &ServiceDef) -> Vec<Value> {
+        let mut metric_cards: Vec<Value> = Vec::new();
+        let mut status_badges: Vec<Value> = Vec::new();
+
+        for field in &service.fields {
+            if !field.readable || is_system_field(&field.meaning) {
+                continue;
+            }
+
+            match &field.meaning {
+                FieldMeaning::Money | FieldMeaning::Quantity => {
+                    let label = field_display_name(&field.name);
+                    metric_cards.push(json!({
+                        "type": "Card",
+                        "key": format!("{}-metric", field.name),
+                        "title": label,
+                        "children": [json!({
+                            "type": "Text",
+                            "key": format!("{}-value", field.name),
+                            "content": "",
+                            "data_path": format!("/data/{}", field.name),
+                        })],
+                    }));
+                }
+                FieldMeaning::Percentage => {
+                    let label = field_display_name(&field.name);
+                    metric_cards.push(json!({
+                        "type": "Card",
+                        "key": format!("{}-metric", field.name),
+                        "title": label,
+                        "children": [json!({
+                            "type": "Progress",
+                            "key": format!("{}-progress", field.name),
+                            "value": 0,
+                            "data_path": format!("/data/{}", field.name),
+                        })],
+                    }));
+                }
+                FieldMeaning::Status => {
+                    let label = field_display_name(&field.name);
+                    status_badges.push(json!({
+                        "type": "Badge",
+                        "key": format!("{}-badge", field.name),
+                        "text": "",
+                        "variant": "default",
+                        "label": label,
+                        "data_path": format!("/data/{}", field.name),
+                    }));
+                }
+                _ => {}
+            }
+        }
+
+        // If no numeric fields, fall back to DescriptionList
+        if metric_cards.is_empty() {
+            let items: Vec<Value> = service
+                .fields
+                .iter()
+                .filter(|f| f.readable && !is_system_field(&f.meaning))
+                .filter_map(|f| {
+                    let display = field_to_display(f);
+                    if display.is_null() {
+                        return None;
+                    }
+                    Some(json!({
+                        "term": field_display_name(&f.name),
+                        "detail_data_path": format!("/data/{}", f.name),
+                    }))
+                })
+                .collect();
+
+            let mut result = vec![json!({
+                "type": "DescriptionList",
+                "key": format!("{}-summary-details", service.name),
+                "items": items,
+            })];
+
+            // Still show status badges if present
+            if !status_badges.is_empty() {
+                let status_card = json!({
+                    "type": "Card",
+                    "key": format!("{}-status", service.name),
+                    "title": "Status",
+                    "children": status_badges,
+                });
+                result.push(status_card);
+            }
+
+            return result;
+        }
+
+        // Status badges in a summary card
+        if !status_badges.is_empty() {
+            let status_card = json!({
+                "type": "Card",
+                "key": format!("{}-status", service.name),
+                "title": "Status",
+                "children": status_badges,
+            });
+            metric_cards.push(status_card);
+        }
+
+        metric_cards
+    }
 }
 
 #[cfg(test)]
@@ -268,6 +375,14 @@ mod tests {
         IntentScore {
             intent: Intent::Collect,
             confidence: 0.6,
+            matching_signals: vec!["test".into()],
+        }
+    }
+
+    fn summarize_intent() -> IntentScore {
+        IntentScore {
+            intent: Intent::Summarize,
+            confidence: 0.5,
             matching_signals: vec!["test".into()],
         }
     }
@@ -648,6 +763,83 @@ mod tests {
         let children = result["components"][0]["children"].as_array().unwrap();
         assert_eq!(children[0]["type"], "Input");
         assert_eq!(children[0]["input_type"], "email");
+    }
+
+    // -- Summarize tests --
+
+    #[test]
+    fn summarize_produces_card_per_metric_field() {
+        let service = ServiceDef::new("dashboard")
+            .display_name("Dashboard")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("revenue", DataType::Float, FieldMeaning::Money)
+            .field("units_sold", DataType::Integer, FieldMeaning::Quantity)
+            .field("completion", DataType::Float, FieldMeaning::Percentage)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+        let intents = vec![summarize_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+
+        // 3 metric cards: revenue, units_sold, completion
+        assert_eq!(components.len(), 3);
+
+        // Revenue card has Text child
+        let revenue = components.iter().find(|c| c["title"] == "Revenue").unwrap();
+        assert_eq!(revenue["type"], "Card");
+        assert_eq!(revenue["children"][0]["type"], "Text");
+
+        // Completion card has Progress child
+        let completion = components
+            .iter()
+            .find(|c| c["title"] == "Completion")
+            .unwrap();
+        assert_eq!(completion["type"], "Card");
+        assert_eq!(completion["children"][0]["type"], "Progress");
+    }
+
+    #[test]
+    fn summarize_falls_back_to_description_list_without_numeric_fields() {
+        let service = ServiceDef::new("profile")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("email", DataType::String, FieldMeaning::Email);
+        let intents = vec![summarize_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        assert_eq!(components[0]["type"], "DescriptionList");
+    }
+
+    #[test]
+    fn summarize_shows_status_as_badge() {
+        let service = ServiceDef::new("project")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("revenue", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status);
+        let intents = vec![summarize_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+
+        // Status card with Badge
+        let status_card = components.iter().find(|c| c["title"] == "Status").unwrap();
+        assert_eq!(status_card["children"][0]["type"], "Badge");
+    }
+
+    #[test]
+    fn summarize_input_mode_renders_collect_form() {
+        let service =
+            ServiceDef::new("dashboard").field("revenue", DataType::Float, FieldMeaning::Money);
+        let intents = vec![summarize_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &input_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        assert_eq!(components[0]["type"], "Form");
     }
 
     // -- Empty intent slice --
