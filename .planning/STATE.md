@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 91 (Framework Integration) — In Progress
-Plan: 91-03 complete
-Status: Plan 91-03 complete — 3 MCP projection introspection tools with 17 tests
-Last activity: 2026-03-01 — Phase 91 Plan 03 executed (2 tasks, 2 commits)
+Phase: 91 (Framework Integration) — COMPLETE
+Plan: 91-01, 91-02, and 91-03 all complete
+Status: Phase 91 complete — framework re-exports, CLI scaffolding, MCP introspection
+Last activity: 2026-03-01 — Phase 91 executed (3 plans, 1 wave, 6 tasks, 9 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Phase 91 Plan 03 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 23/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 21/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -206,5 +206,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 91 Plan 03 COMPLETE — 3 MCP projection tools (list, inspect, render) with 17 tests
+Stopped at: Phase 91 COMPLETE — framework integration (re-exports, CLI, MCP tools)
 Resume file: None

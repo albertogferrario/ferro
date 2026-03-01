@@ -123,17 +123,17 @@ Plans:
 - [x] 90-02: JsonUiRenderer — Browse, Focus, Collect, Summarize intent layouts
 - [x] 90-03: JsonUiRenderer — Process, Analyze, Track intent layouts + full pipeline integration tests
 
-#### Phase 91: Framework Integration
+#### Phase 91: Framework Integration ✅
 
 **Goal**: Wire ferro-projections into the framework — re-exports, handler helpers, route generation.
 **Depends on**: Phase 90
-**Research**: Unlikely (established integration patterns)
-**Plans**: 3
+**Completed**: 2026-03-01
+**Plans**: 3/3
 
 Plans:
-- [ ] 91-01: TBD
-- [ ] 91-02: TBD
-- [ ] 91-03: TBD
+- [x] 91-01: Feature-gated re-exports of all 22 ferro-projections types + error conversion for `?` in handlers
+- [x] 91-02: `ferro make:projection` CLI command — scaffolds ServiceDef module with builder template
+- [x] 91-03: 3 MCP introspection tools — list_projections, inspect_projection, render_projection
 
 #### Phase 92: MCP Introspection & CLI
 
@@ -623,7 +623,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 18/28 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 21/28 | 🚧 In Progress | - |
 
-**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (18/28 plans complete).**
+**Total: 21 milestones shipped, 187 plans. 1 milestone in progress (21/28 plans complete).**
 
