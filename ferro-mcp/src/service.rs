@@ -303,6 +303,12 @@ pub struct ValidateProjectionParams {
     pub all: Option<bool>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct ProjectionCoverageParams {
+    /// Include derived primary intents for covered projections (default: true)
+    pub include_intents: Option<bool>,
+}
+
 #[tool_router(router = tool_router)]
 impl FerroMcpService {
     /// Get application information including framework version, Rust version, models, and installed crates
@@ -1416,6 +1422,23 @@ impl FerroMcpService {
         } else {
             "{\"error\": \"provide 'name' for a single projection or 'all: true' for all projections\"}".to_string()
         }
+    }
+
+    /// Show which models have service projections and which need them
+    #[tool(
+        name = "projection_coverage",
+        description = "Show which models have service projections and which need them. Includes derived primary intent for existing projections.\n\n\
+            **When to use:** Identifying coverage gaps in service projections, \
+            planning which models need ServiceDef scaffolding, auditing projection completeness.\n\n\
+            **Returns:** Per-model coverage status with primary intent, confidence, and CLI suggestions for uncovered models.\n\n\
+            **Combine with:** `list_models` for model details, `list_projections` for projection details."
+    )]
+    pub async fn projection_coverage(
+        &self,
+        #[allow(unused_variables)] params: Parameters<ProjectionCoverageParams>,
+    ) -> String {
+        let report = tools::projection_coverage::execute(&self.project_root);
+        serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
     }
 }
 

@@ -40,6 +40,7 @@ pub mod list_resources;
 pub mod list_routes;
 pub mod list_services;
 pub mod model_usages;
+pub mod projection_coverage;
 pub mod queue_status;
 pub mod read_logs;
 pub mod relation_map;
