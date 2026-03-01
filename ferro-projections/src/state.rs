@@ -93,7 +93,8 @@ pub struct Transition {
 ///
 /// Warnings indicate potential issues that may be intentional
 /// (e.g., unreachable states reached via external means).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Warning {
     /// A state not reachable from the initial state via transitions.
     UnreachableState(String),

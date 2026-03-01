@@ -1,0 +1,1661 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/protocol.json",
+  "title": "Ferro Projections Protocol",
+  "description": "Combined schema for all ferro-projections protocol types.",
+  "$defs": {
+    "service-def": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldDef"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionDef"
+          }
+        },
+        "guards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GuardDef"
+          }
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RelationshipDef"
+          }
+        },
+        "intent_hints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IntentHint"
+          }
+        },
+        "state_machine": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StateMachine"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "fields"
+      ],
+      "description": "A service definition describing a domain entity and its fields.\n\nConstructed via a builder API with method chaining:\n\n```\nuse ferro_projections::{ServiceDef, DataType, FieldMeaning};\n\nlet order = ServiceDef::new(\"order\")\n    .display_name(\"Order\")\n    .description(\"Manages customer orders\")\n    .field(\"id\", DataType::Integer, FieldMeaning::Identifier)\n    .field(\"total\", DataType::Float, FieldMeaning::Money)\n    .optional_field(\"notes\", DataType::String, FieldMeaning::FreeText);\n```",
+      "title": "ServiceDef",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "FieldDef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "data_type": {
+              "$ref": "#/$defs/DataType"
+            },
+            "meaning": {
+              "$ref": "#/$defs/FieldMeaning"
+            },
+            "required": {
+              "type": "boolean",
+              "default": true
+            },
+            "is_list": {
+              "type": "boolean",
+              "default": false
+            },
+            "readable": {
+              "type": "boolean",
+              "default": true
+            },
+            "writable": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "name",
+            "data_type",
+            "meaning"
+          ],
+          "description": "A field definition within a service projection."
+        },
+        "DataType": {
+          "type": "string",
+          "enum": [
+            "string",
+            "integer",
+            "float",
+            "boolean",
+            "date_time",
+            "date",
+            "json",
+            "binary",
+            "uuid",
+            "enum"
+          ],
+          "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time."
+        },
+        "FieldMeaning": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "identifier",
+                "foreign_key",
+                "entity_name",
+                "email",
+                "phone",
+                "url",
+                "image_url",
+                "money",
+                "percentage",
+                "quantity",
+                "status",
+                "category",
+                "boolean",
+                "free_text",
+                "created_at",
+                "updated_at",
+                "date_time",
+                "sensitive"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning."
+        },
+        "ActionDef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "display_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/InputDef"
+              }
+            },
+            "preconditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "effects": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "transition_trigger": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "description": "A business operation schema describing what an action does and what it needs.\n\nActions are the verbs of a service: \"submit order\", \"approve review\", \"send invoice\".\nEach action defines its input contract, preconditions that must hold, effects that\nwill occur, and an optional link to a state machine transition.\n\n```\nuse ferro_projections::{ActionDef, InputDef, DataType, FieldMeaning};\n\nlet action = ActionDef::new(\"submit_order\")\n    .display_name(\"Submit Order\")\n    .description(\"Validates and submits a customer order for processing\")\n    .input(InputDef::new(\"order_id\", DataType::Integer, FieldMeaning::Identifier))\n    .precondition(\"has_items\")\n    .precondition(\"payment_valid\")\n    .effect(\"notify_customer\")\n    .transition_trigger(\"submit\");\n```"
+        },
+        "InputDef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "data_type": {
+              "$ref": "#/$defs/DataType"
+            },
+            "meaning": {
+              "$ref": "#/$defs/FieldMeaning"
+            },
+            "required": {
+              "type": "boolean",
+              "default": true
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "data_type",
+            "meaning"
+          ],
+          "description": "An input parameter definition for an action.\n\nReuses [`DataType`] and [`FieldMeaning`] from the field module to maintain\na single type vocabulary across the projection schema."
+        },
+        "GuardDef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "display_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "description": "A named boolean condition that guards action execution or state transitions.\n\nGuards are declarative checks referenced by name. The actual evaluation logic\nlives outside the projection schema.\n\n```\nuse ferro_projections::GuardDef;\n\nlet guard = GuardDef::new(\"has_items\")\n    .display_name(\"Has Items\")\n    .description(\"Order must contain at least one line item\");\n```"
+        },
+        "RelationshipDef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Relationship name (e.g., \"customer\", \"line_items\")."
+            },
+            "target": {
+              "type": "string",
+              "description": "Target service name (e.g., \"customer\", \"order_line_item\")."
+            },
+            "cardinality": {
+              "$ref": "#/$defs/Cardinality",
+              "description": "Structural cardinality of the relationship."
+            },
+            "navigation": {
+              "$ref": "#/$defs/NavigationHint",
+              "description": "How the renderer should present this relationship."
+            },
+            "foreign_key": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Foreign key field name on the owning side."
+            },
+            "inverse": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Name of the inverse relationship on the target service."
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Human-readable description of the relationship."
+            }
+          },
+          "required": [
+            "name",
+            "target",
+            "cardinality",
+            "navigation"
+          ],
+          "description": "A service-to-service relationship declaration.\n\nEach service declares its own relationships independently. The `inverse` field\nis a documentation hint, not a hard reference. Relationships carry two dimensions:\nstructural (cardinality) and presentational (navigation hint).\n\n```\nuse ferro_projections::{RelationshipDef, Cardinality, NavigationHint};\n\nlet rel = RelationshipDef::new(\"customer\", \"customer\", Cardinality::ManyToOne)\n    .foreign_key(\"customer_id\")\n    .inverse(\"orders\")\n    .navigation(NavigationHint::Link)\n    .description(\"Customer who placed this order\");\n```"
+        },
+        "Cardinality": {
+          "type": "string",
+          "enum": [
+            "one_to_one",
+            "one_to_many",
+            "many_to_one",
+            "many_to_many"
+          ],
+          "description": "Structural cardinality of a service-to-service relationship.\n\nStandard ER cardinality covering the four relationship types.\nEach variant maps to a default [`NavigationHint`] via [`Cardinality::default_navigation`]."
+        },
+        "NavigationHint": {
+          "oneOf": [
+            {
+              "type": "string",
+              "const": "inline",
+              "description": "Embed related data in current view (e.g., customer name on order card)."
+            },
+            {
+              "type": "string",
+              "const": "link",
+              "description": "Show as navigable link to related entity."
+            },
+            {
+              "type": "string",
+              "const": "tab",
+              "description": "Show as separate tab in detail view."
+            },
+            {
+              "type": "string",
+              "const": "nested",
+              "description": "Show as nested list/table within current view."
+            },
+            {
+              "type": "string",
+              "const": "hidden",
+              "description": "Relationship exists but not shown in default navigation."
+            }
+          ],
+          "description": "Presentational hint for how a relationship should be rendered in UI.\n\nBridges the gap between structural relationships and UI presentation.\nDefaults are derived from [`Cardinality`] and can be overridden per relationship."
+        },
+        "IntentHint": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "primary": {
+                  "$ref": "#/$defs/Intent"
+                }
+              },
+              "required": [
+                "primary"
+              ],
+              "additionalProperties": false,
+              "description": "Force this intent as the primary classification."
+            },
+            {
+              "type": "object",
+              "properties": {
+                "exclude": {
+                  "$ref": "#/$defs/Intent"
+                }
+              },
+              "required": [
+                "exclude"
+              ],
+              "additionalProperties": false,
+              "description": "Exclude this intent from consideration."
+            }
+          ],
+          "description": "Manual override for intent derivation when structural analysis is wrong.\n\n`Primary` forces an intent as the top classification.\n`Exclude` removes an intent from consideration entirely.\n\nSerializes as externally tagged: `{\"primary\": \"browse\"}` or `{\"exclude\": \"process\"}`."
+        },
+        "Intent": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "browse",
+              "description": "Collection navigation: has_many relationships, EntityName fields."
+            },
+            {
+              "type": "string",
+              "const": "focus",
+              "description": "Single-entity deep view: FreeText/ImageUrl/Url fields."
+            },
+            {
+              "type": "string",
+              "const": "collect",
+              "description": "Data capture: many writable fields, write_only present."
+            },
+            {
+              "type": "string",
+              "const": "process",
+              "description": "Workflow with state progression: guarded transitions."
+            },
+            {
+              "type": "string",
+              "const": "summarize",
+              "description": "Overview dashboard: read-only Money/Percentage/Quantity fields."
+            },
+            {
+              "type": "string",
+              "const": "analyze",
+              "description": "Time-series exploration: DateTime + numeric measures."
+            },
+            {
+              "type": "string",
+              "const": "track",
+              "description": "Timeline/audit trail: Status + temporal ordering."
+            },
+            {
+              "type": "string",
+              "description": "Escape hatch for intents not structurally derivable."
+            }
+          ],
+          "description": "Structural intent classification. Known variants: browse, focus, collect, process, summarize, analyze, track. Any other string is a custom domain-specific intent."
+        },
+        "StateMachine": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Machine identifier (e.g., \"order_lifecycle\")."
+            },
+            "display_name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Human-readable name."
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Description of what this state machine models."
+            },
+            "initial_state": {
+              "type": "string",
+              "description": "Name of the initial state (must exist in states)."
+            },
+            "states": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/StateDef"
+              },
+              "description": "State definitions."
+            },
+            "transitions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Transition"
+              },
+              "description": "Transition definitions."
+            }
+          },
+          "required": [
+            "name",
+            "initial_state",
+            "states",
+            "transitions"
+          ],
+          "description": "A state machine schema describing lifecycle states and transitions.\n\nSchema-only: defines structure but does not execute transitions.\nGuards and side effects are string references resolved externally.\n\n```\nuse ferro_projections::{StateMachine, StateDef, Transition};\n\nlet machine = StateMachine::new(\"order_lifecycle\")\n    .initial(\"draft\")\n    .state(StateDef::new(\"draft\").display_name(\"Draft\"))\n    .state(StateDef::new(\"completed\").display_name(\"Completed\").final_state())\n    .transition(Transition::new(\"draft\", \"complete\", \"completed\"));\n\nlet warnings = machine.validate().unwrap();\nassert!(warnings.is_empty());\n```"
+        },
+        "StateDef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "State identifier (e.g., \"draft\", \"pending\", \"completed\")."
+            },
+            "display_name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Human-readable name (e.g., \"Pending Review\")."
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Description of what this state means."
+            },
+            "is_final": {
+              "type": "boolean",
+              "description": "Whether this is a terminal state.",
+              "default": false
+            },
+            "on_enter": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Side effects triggered on entering this state (string references)."
+            },
+            "on_exit": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Side effects triggered on exiting this state (string references)."
+            },
+            "metadata": {
+              "description": "Arbitrary metadata for rendering hints."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "description": "A state within a state machine.\n\nStates can declare entry/exit side effects as string references\nand carry optional metadata for rendering hints."
+        },
+        "Transition": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Source state name."
+            },
+            "event": {
+              "type": "string",
+              "description": "Event name that triggers this transition."
+            },
+            "to": {
+              "type": "string",
+              "description": "Target state name."
+            },
+            "guard": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Guard condition (string reference, resolved at runtime)."
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Side effects executed when transition fires (string references)."
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Description of what this transition represents."
+            }
+          },
+          "required": [
+            "from",
+            "event",
+            "to"
+          ],
+          "description": "A transition between two states, triggered by an event.\n\nGuards gate the transition; actions fire when the transition is taken.\nBoth are string references resolved externally."
+        }
+      },
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/service-def.json"
+    },
+    "field-def": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "data_type": {
+          "$ref": "#/$defs/DataType"
+        },
+        "meaning": {
+          "$ref": "#/$defs/FieldMeaning"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "is_list": {
+          "type": "boolean",
+          "default": false
+        },
+        "readable": {
+          "type": "boolean",
+          "default": true
+        },
+        "writable": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": [
+        "name",
+        "data_type",
+        "meaning"
+      ],
+      "description": "A field definition within a service projection.",
+      "title": "FieldDef",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "DataType": {
+          "type": "string",
+          "enum": [
+            "string",
+            "integer",
+            "float",
+            "boolean",
+            "date_time",
+            "date",
+            "json",
+            "binary",
+            "uuid",
+            "enum"
+          ],
+          "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time."
+        },
+        "FieldMeaning": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "identifier",
+                "foreign_key",
+                "entity_name",
+                "email",
+                "phone",
+                "url",
+                "image_url",
+                "money",
+                "percentage",
+                "quantity",
+                "status",
+                "category",
+                "boolean",
+                "free_text",
+                "created_at",
+                "updated_at",
+                "date_time",
+                "sensitive"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning."
+        }
+      },
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/field-def.json"
+    },
+    "data-type": {
+      "type": "string",
+      "enum": [
+        "string",
+        "integer",
+        "float",
+        "boolean",
+        "date_time",
+        "date",
+        "json",
+        "binary",
+        "uuid",
+        "enum"
+      ],
+      "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time.",
+      "title": "DataType",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/data-type.json"
+    },
+    "field-meaning": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "identifier",
+            "foreign_key",
+            "entity_name",
+            "email",
+            "phone",
+            "url",
+            "image_url",
+            "money",
+            "percentage",
+            "quantity",
+            "status",
+            "category",
+            "boolean",
+            "free_text",
+            "created_at",
+            "updated_at",
+            "date_time",
+            "sensitive"
+          ]
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning.",
+      "title": "FieldMeaning",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/field-meaning.json"
+    },
+    "state-machine": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Machine identifier (e.g., \"order_lifecycle\")."
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human-readable name."
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Description of what this state machine models."
+        },
+        "initial_state": {
+          "type": "string",
+          "description": "Name of the initial state (must exist in states)."
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StateDef"
+          },
+          "description": "State definitions."
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Transition"
+          },
+          "description": "Transition definitions."
+        }
+      },
+      "required": [
+        "name",
+        "initial_state",
+        "states",
+        "transitions"
+      ],
+      "description": "A state machine schema describing lifecycle states and transitions.\n\nSchema-only: defines structure but does not execute transitions.\nGuards and side effects are string references resolved externally.\n\n```\nuse ferro_projections::{StateMachine, StateDef, Transition};\n\nlet machine = StateMachine::new(\"order_lifecycle\")\n    .initial(\"draft\")\n    .state(StateDef::new(\"draft\").display_name(\"Draft\"))\n    .state(StateDef::new(\"completed\").display_name(\"Completed\").final_state())\n    .transition(Transition::new(\"draft\", \"complete\", \"completed\"));\n\nlet warnings = machine.validate().unwrap();\nassert!(warnings.is_empty());\n```",
+      "title": "StateMachine",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "StateDef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "State identifier (e.g., \"draft\", \"pending\", \"completed\")."
+            },
+            "display_name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Human-readable name (e.g., \"Pending Review\")."
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Description of what this state means."
+            },
+            "is_final": {
+              "type": "boolean",
+              "description": "Whether this is a terminal state.",
+              "default": false
+            },
+            "on_enter": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Side effects triggered on entering this state (string references)."
+            },
+            "on_exit": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Side effects triggered on exiting this state (string references)."
+            },
+            "metadata": {
+              "description": "Arbitrary metadata for rendering hints."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "description": "A state within a state machine.\n\nStates can declare entry/exit side effects as string references\nand carry optional metadata for rendering hints."
+        },
+        "Transition": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Source state name."
+            },
+            "event": {
+              "type": "string",
+              "description": "Event name that triggers this transition."
+            },
+            "to": {
+              "type": "string",
+              "description": "Target state name."
+            },
+            "guard": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Guard condition (string reference, resolved at runtime)."
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Side effects executed when transition fires (string references)."
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Description of what this transition represents."
+            }
+          },
+          "required": [
+            "from",
+            "event",
+            "to"
+          ],
+          "description": "A transition between two states, triggered by an event.\n\nGuards gate the transition; actions fire when the transition is taken.\nBoth are string references resolved externally."
+        }
+      },
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/state-machine.json"
+    },
+    "state-def": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "State identifier (e.g., \"draft\", \"pending\", \"completed\")."
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human-readable name (e.g., \"Pending Review\")."
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Description of what this state means."
+        },
+        "is_final": {
+          "type": "boolean",
+          "description": "Whether this is a terminal state.",
+          "default": false
+        },
+        "on_enter": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Side effects triggered on entering this state (string references)."
+        },
+        "on_exit": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Side effects triggered on exiting this state (string references)."
+        },
+        "metadata": {
+          "description": "Arbitrary metadata for rendering hints."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "description": "A state within a state machine.\n\nStates can declare entry/exit side effects as string references\nand carry optional metadata for rendering hints.",
+      "title": "StateDef",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/state-def.json"
+    },
+    "transition": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source state name."
+        },
+        "event": {
+          "type": "string",
+          "description": "Event name that triggers this transition."
+        },
+        "to": {
+          "type": "string",
+          "description": "Target state name."
+        },
+        "guard": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Guard condition (string reference, resolved at runtime)."
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Side effects executed when transition fires (string references)."
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Description of what this transition represents."
+        }
+      },
+      "required": [
+        "from",
+        "event",
+        "to"
+      ],
+      "description": "A transition between two states, triggered by an event.\n\nGuards gate the transition; actions fire when the transition is taken.\nBoth are string references resolved externally.",
+      "title": "Transition",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/transition.json"
+    },
+    "warning": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "unreachable_state": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "unreachable_state"
+          ],
+          "additionalProperties": false,
+          "description": "A state not reachable from the initial state via transitions."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dead_end_state": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "dead_end_state"
+          ],
+          "additionalProperties": false,
+          "description": "A non-final state with no outgoing transitions."
+        },
+        {
+          "type": "string",
+          "const": "no_final_states",
+          "description": "No states are marked as final."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unused_guard": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "unused_guard"
+          ],
+          "additionalProperties": false,
+          "description": "A guard declared but never referenced by any transition or action precondition."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "transition_trigger_without_state_machine": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "transition_trigger_without_state_machine"
+          ],
+          "additionalProperties": false,
+          "description": "An action has a transition_trigger but the service has no state machine."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "duplicate_relationship": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "duplicate_relationship"
+          ],
+          "additionalProperties": false,
+          "description": "Multiple relationships share the same name within a service."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "many_to_many_with_foreign_key": {
+              "type": "object",
+              "properties": {
+                "relationship": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "relationship"
+              ]
+            }
+          },
+          "required": [
+            "many_to_many_with_foreign_key"
+          ],
+          "additionalProperties": false,
+          "description": "A many-to-many relationship has a foreign_key set (join tables have no single FK)."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "conflicting_intent_hints": {
+              "type": "object",
+              "properties": {
+                "intent": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "intent"
+              ]
+            }
+          },
+          "required": [
+            "conflicting_intent_hints"
+          ],
+          "additionalProperties": false,
+          "description": "Primary(X) and Exclude(X) for the same intent."
+        },
+        {
+          "type": "string",
+          "const": "multiple_primary_intent_hints",
+          "description": "More than one Primary hint specified."
+        }
+      ],
+      "description": "Structural warnings from service and state machine validation.\n\nWarnings indicate potential issues that may be intentional\n(e.g., unreachable states reached via external means).",
+      "title": "Warning",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/warning.json"
+    },
+    "action-def": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InputDef"
+          }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transition_trigger": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "description": "A business operation schema describing what an action does and what it needs.\n\nActions are the verbs of a service: \"submit order\", \"approve review\", \"send invoice\".\nEach action defines its input contract, preconditions that must hold, effects that\nwill occur, and an optional link to a state machine transition.\n\n```\nuse ferro_projections::{ActionDef, InputDef, DataType, FieldMeaning};\n\nlet action = ActionDef::new(\"submit_order\")\n    .display_name(\"Submit Order\")\n    .description(\"Validates and submits a customer order for processing\")\n    .input(InputDef::new(\"order_id\", DataType::Integer, FieldMeaning::Identifier))\n    .precondition(\"has_items\")\n    .precondition(\"payment_valid\")\n    .effect(\"notify_customer\")\n    .transition_trigger(\"submit\");\n```",
+      "title": "ActionDef",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "InputDef": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "data_type": {
+              "$ref": "#/$defs/DataType"
+            },
+            "meaning": {
+              "$ref": "#/$defs/FieldMeaning"
+            },
+            "required": {
+              "type": "boolean",
+              "default": true
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "data_type",
+            "meaning"
+          ],
+          "description": "An input parameter definition for an action.\n\nReuses [`DataType`] and [`FieldMeaning`] from the field module to maintain\na single type vocabulary across the projection schema."
+        },
+        "DataType": {
+          "type": "string",
+          "enum": [
+            "string",
+            "integer",
+            "float",
+            "boolean",
+            "date_time",
+            "date",
+            "json",
+            "binary",
+            "uuid",
+            "enum"
+          ],
+          "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time."
+        },
+        "FieldMeaning": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "identifier",
+                "foreign_key",
+                "entity_name",
+                "email",
+                "phone",
+                "url",
+                "image_url",
+                "money",
+                "percentage",
+                "quantity",
+                "status",
+                "category",
+                "boolean",
+                "free_text",
+                "created_at",
+                "updated_at",
+                "date_time",
+                "sensitive"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning."
+        }
+      },
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/action-def.json"
+    },
+    "input-def": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "data_type": {
+          "$ref": "#/$defs/DataType"
+        },
+        "meaning": {
+          "$ref": "#/$defs/FieldMeaning"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "data_type",
+        "meaning"
+      ],
+      "description": "An input parameter definition for an action.\n\nReuses [`DataType`] and [`FieldMeaning`] from the field module to maintain\na single type vocabulary across the projection schema.",
+      "title": "InputDef",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "DataType": {
+          "type": "string",
+          "enum": [
+            "string",
+            "integer",
+            "float",
+            "boolean",
+            "date_time",
+            "date",
+            "json",
+            "binary",
+            "uuid",
+            "enum"
+          ],
+          "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time."
+        },
+        "FieldMeaning": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "identifier",
+                "foreign_key",
+                "entity_name",
+                "email",
+                "phone",
+                "url",
+                "image_url",
+                "money",
+                "percentage",
+                "quantity",
+                "status",
+                "category",
+                "boolean",
+                "free_text",
+                "created_at",
+                "updated_at",
+                "date_time",
+                "sensitive"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning."
+        }
+      },
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/input-def.json"
+    },
+    "guard-def": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "description": "A named boolean condition that guards action execution or state transitions.\n\nGuards are declarative checks referenced by name. The actual evaluation logic\nlives outside the projection schema.\n\n```\nuse ferro_projections::GuardDef;\n\nlet guard = GuardDef::new(\"has_items\")\n    .display_name(\"Has Items\")\n    .description(\"Order must contain at least one line item\");\n```",
+      "title": "GuardDef",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/guard-def.json"
+    },
+    "relationship-def": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Relationship name (e.g., \"customer\", \"line_items\")."
+        },
+        "target": {
+          "type": "string",
+          "description": "Target service name (e.g., \"customer\", \"order_line_item\")."
+        },
+        "cardinality": {
+          "$ref": "#/$defs/Cardinality",
+          "description": "Structural cardinality of the relationship."
+        },
+        "navigation": {
+          "$ref": "#/$defs/NavigationHint",
+          "description": "How the renderer should present this relationship."
+        },
+        "foreign_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Foreign key field name on the owning side."
+        },
+        "inverse": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Name of the inverse relationship on the target service."
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human-readable description of the relationship."
+        }
+      },
+      "required": [
+        "name",
+        "target",
+        "cardinality",
+        "navigation"
+      ],
+      "description": "A service-to-service relationship declaration.\n\nEach service declares its own relationships independently. The `inverse` field\nis a documentation hint, not a hard reference. Relationships carry two dimensions:\nstructural (cardinality) and presentational (navigation hint).\n\n```\nuse ferro_projections::{RelationshipDef, Cardinality, NavigationHint};\n\nlet rel = RelationshipDef::new(\"customer\", \"customer\", Cardinality::ManyToOne)\n    .foreign_key(\"customer_id\")\n    .inverse(\"orders\")\n    .navigation(NavigationHint::Link)\n    .description(\"Customer who placed this order\");\n```",
+      "title": "RelationshipDef",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "Cardinality": {
+          "type": "string",
+          "enum": [
+            "one_to_one",
+            "one_to_many",
+            "many_to_one",
+            "many_to_many"
+          ],
+          "description": "Structural cardinality of a service-to-service relationship.\n\nStandard ER cardinality covering the four relationship types.\nEach variant maps to a default [`NavigationHint`] via [`Cardinality::default_navigation`]."
+        },
+        "NavigationHint": {
+          "oneOf": [
+            {
+              "type": "string",
+              "const": "inline",
+              "description": "Embed related data in current view (e.g., customer name on order card)."
+            },
+            {
+              "type": "string",
+              "const": "link",
+              "description": "Show as navigable link to related entity."
+            },
+            {
+              "type": "string",
+              "const": "tab",
+              "description": "Show as separate tab in detail view."
+            },
+            {
+              "type": "string",
+              "const": "nested",
+              "description": "Show as nested list/table within current view."
+            },
+            {
+              "type": "string",
+              "const": "hidden",
+              "description": "Relationship exists but not shown in default navigation."
+            }
+          ],
+          "description": "Presentational hint for how a relationship should be rendered in UI.\n\nBridges the gap between structural relationships and UI presentation.\nDefaults are derived from [`Cardinality`] and can be overridden per relationship."
+        }
+      },
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/relationship-def.json"
+    },
+    "cardinality": {
+      "type": "string",
+      "enum": [
+        "one_to_one",
+        "one_to_many",
+        "many_to_one",
+        "many_to_many"
+      ],
+      "description": "Structural cardinality of a service-to-service relationship.\n\nStandard ER cardinality covering the four relationship types.\nEach variant maps to a default [`NavigationHint`] via [`Cardinality::default_navigation`].",
+      "title": "Cardinality",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/cardinality.json"
+    },
+    "navigation-hint": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "inline",
+          "description": "Embed related data in current view (e.g., customer name on order card)."
+        },
+        {
+          "type": "string",
+          "const": "link",
+          "description": "Show as navigable link to related entity."
+        },
+        {
+          "type": "string",
+          "const": "tab",
+          "description": "Show as separate tab in detail view."
+        },
+        {
+          "type": "string",
+          "const": "nested",
+          "description": "Show as nested list/table within current view."
+        },
+        {
+          "type": "string",
+          "const": "hidden",
+          "description": "Relationship exists but not shown in default navigation."
+        }
+      ],
+      "description": "Presentational hint for how a relationship should be rendered in UI.\n\nBridges the gap between structural relationships and UI presentation.\nDefaults are derived from [`Cardinality`] and can be overridden per relationship.",
+      "title": "NavigationHint",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/navigation-hint.json"
+    },
+    "intent": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "browse",
+          "description": "Collection navigation: has_many relationships, EntityName fields."
+        },
+        {
+          "type": "string",
+          "const": "focus",
+          "description": "Single-entity deep view: FreeText/ImageUrl/Url fields."
+        },
+        {
+          "type": "string",
+          "const": "collect",
+          "description": "Data capture: many writable fields, write_only present."
+        },
+        {
+          "type": "string",
+          "const": "process",
+          "description": "Workflow with state progression: guarded transitions."
+        },
+        {
+          "type": "string",
+          "const": "summarize",
+          "description": "Overview dashboard: read-only Money/Percentage/Quantity fields."
+        },
+        {
+          "type": "string",
+          "const": "analyze",
+          "description": "Time-series exploration: DateTime + numeric measures."
+        },
+        {
+          "type": "string",
+          "const": "track",
+          "description": "Timeline/audit trail: Status + temporal ordering."
+        },
+        {
+          "type": "string",
+          "description": "Escape hatch for intents not structurally derivable."
+        }
+      ],
+      "description": "Structural intent classification. Known variants: browse, focus, collect, process, summarize, analyze, track. Any other string is a custom domain-specific intent.",
+      "title": "Intent",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/intent.json"
+    },
+    "intent-score": {
+      "type": "object",
+      "properties": {
+        "intent": {
+          "$ref": "#/$defs/Intent",
+          "description": "The classified intent."
+        },
+        "confidence": {
+          "type": "number",
+          "format": "double",
+          "description": "Confidence score from 0.0 to 1.0."
+        },
+        "matching_signals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Structural signals that contributed to this classification."
+        }
+      },
+      "required": [
+        "intent",
+        "confidence",
+        "matching_signals"
+      ],
+      "description": "A scored intent with confidence and the structural signals that contributed.\n\nProduced by the structural analysis engine (Phase 89). Confidence ranges\nfrom 0.0 (no signal) to 1.0 (strong structural match).",
+      "title": "IntentScore",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "Intent": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "browse",
+              "description": "Collection navigation: has_many relationships, EntityName fields."
+            },
+            {
+              "type": "string",
+              "const": "focus",
+              "description": "Single-entity deep view: FreeText/ImageUrl/Url fields."
+            },
+            {
+              "type": "string",
+              "const": "collect",
+              "description": "Data capture: many writable fields, write_only present."
+            },
+            {
+              "type": "string",
+              "const": "process",
+              "description": "Workflow with state progression: guarded transitions."
+            },
+            {
+              "type": "string",
+              "const": "summarize",
+              "description": "Overview dashboard: read-only Money/Percentage/Quantity fields."
+            },
+            {
+              "type": "string",
+              "const": "analyze",
+              "description": "Time-series exploration: DateTime + numeric measures."
+            },
+            {
+              "type": "string",
+              "const": "track",
+              "description": "Timeline/audit trail: Status + temporal ordering."
+            },
+            {
+              "type": "string",
+              "description": "Escape hatch for intents not structurally derivable."
+            }
+          ],
+          "description": "Structural intent classification. Known variants: browse, focus, collect, process, summarize, analyze, track. Any other string is a custom domain-specific intent."
+        }
+      },
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/intent-score.json"
+    },
+    "intent-hint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "primary": {
+              "$ref": "#/$defs/Intent"
+            }
+          },
+          "required": [
+            "primary"
+          ],
+          "additionalProperties": false,
+          "description": "Force this intent as the primary classification."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "exclude": {
+              "$ref": "#/$defs/Intent"
+            }
+          },
+          "required": [
+            "exclude"
+          ],
+          "additionalProperties": false,
+          "description": "Exclude this intent from consideration."
+        }
+      ],
+      "description": "Manual override for intent derivation when structural analysis is wrong.\n\n`Primary` forces an intent as the top classification.\n`Exclude` removes an intent from consideration entirely.\n\nSerializes as externally tagged: `{\"primary\": \"browse\"}` or `{\"exclude\": \"process\"}`.",
+      "title": "IntentHint",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "Intent": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "browse",
+              "description": "Collection navigation: has_many relationships, EntityName fields."
+            },
+            {
+              "type": "string",
+              "const": "focus",
+              "description": "Single-entity deep view: FreeText/ImageUrl/Url fields."
+            },
+            {
+              "type": "string",
+              "const": "collect",
+              "description": "Data capture: many writable fields, write_only present."
+            },
+            {
+              "type": "string",
+              "const": "process",
+              "description": "Workflow with state progression: guarded transitions."
+            },
+            {
+              "type": "string",
+              "const": "summarize",
+              "description": "Overview dashboard: read-only Money/Percentage/Quantity fields."
+            },
+            {
+              "type": "string",
+              "const": "analyze",
+              "description": "Time-series exploration: DateTime + numeric measures."
+            },
+            {
+              "type": "string",
+              "const": "track",
+              "description": "Timeline/audit trail: Status + temporal ordering."
+            },
+            {
+              "type": "string",
+              "description": "Escape hatch for intents not structurally derivable."
+            }
+          ],
+          "description": "Structural intent classification. Known variants: browse, focus, collect, process, summarize, analyze, track. Any other string is a custom domain-specific intent."
+        }
+      },
+      "$id": "https://ferro-rs.dev/protocol/2026-03-01/intent-hint.json"
+    }
+  }
+}
