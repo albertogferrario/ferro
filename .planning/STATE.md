@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 93 (Field Test & Polish) — In Progress
-Plan: 93-02 complete
-Status: Plan 93-02 shipped — MCP parser fixed, full pipeline validated against 8 real projections
-Last activity: 2026-03-01 — Plan 93-02 executed (2 tasks, 2 commits)
+Phase: 94 (Protocol Documentation) — In Progress
+Plan: 94-01 complete
+Status: Plan 94-01 shipped — mdBook project structure + JSON Schema generation from Rust types
+Last activity: 2026-03-01 — Plan 94-01 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 93-02 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 27/30 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 28/30 | In Progress | - |
 
 ## Accumulated Context
 
@@ -225,6 +225,13 @@ Archived to PROJECT.md and milestone archive files.
 - sales_analytics adjusted to mixed read/write fields to avoid Summarize dominance while preserving Analyze signal
 - 178 ferro-mcp tests total (169 existing + 9 integration)
 
+**Phase 94-01:**
+- mdBook project at docs/protocol/ with full TOC (18 pages across Protocol, Governance, Appendix sections)
+- Integration test generates 17 individual + 1 combined JSON Schema files from schemars derives
+- Warning enum gained Serialize/Deserialize/JsonSchema derives for protocol schema inclusion
+- Date-versioned $id URLs: https://ferro-rs.dev/protocol/2026-03-01/{type}.json
+- Schema generation reproducible via `cargo test -p ferro-projections --test generate_schemas`
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -244,5 +251,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 93, Plan 02 complete — MCP parser fixed, pipeline validated
+Stopped at: Phase 94, Plan 01 complete — mdBook structure + JSON Schema generation
 Resume file: None
