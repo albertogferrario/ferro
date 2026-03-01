@@ -295,6 +295,14 @@ pub struct RenderProjectionParams {
     pub intent_index: Option<usize>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct ValidateProjectionParams {
+    /// Name of the projection function to validate (e.g., "user_service")
+    pub name: Option<String>,
+    /// Validate all discovered projections
+    pub all: Option<bool>,
+}
+
 #[tool_router(router = tool_router)]
 impl FerroMcpService {
     /// Get application information including framework version, Rust version, models, and installed crates
@@ -1379,6 +1387,34 @@ impl FerroMcpService {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
             Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
+    }
+
+    /// Validate a service projection for structural issues
+    #[tool(
+        name = "validate_projection",
+        description = "Validate a service projection for structural issues (unreachable states, unused guards, etc.).\n\n\
+            **When to use:** Checking ServiceDef correctness before deployment, CI validation, \
+            debugging structural warnings after editing projections.\n\n\
+            **Returns:** Warnings and errors for each projection, with valid/invalid status.\n\n\
+            **Combine with:** `inspect_projection` to see structure, `render_projection` to preview output."
+    )]
+    pub async fn validate_projection(
+        &self,
+        params: Parameters<ValidateProjectionParams>,
+    ) -> String {
+        if let Some(ref name) = params.0.name {
+            match tools::validate_projection::execute_single(&self.project_root, name) {
+                Ok(result) => {
+                    serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+                }
+                Err(e) => format!("{{\"error\": \"{e}\"}}"),
+            }
+        } else if params.0.all == Some(true) {
+            let summary = tools::validate_projection::execute_all(&self.project_root);
+            serde_json::to_string_pretty(&summary).unwrap_or_else(|_| "{}".to_string())
+        } else {
+            "{\"error\": \"provide 'name' for a single projection or 'all: true' for all projections\"}".to_string()
         }
     }
 }

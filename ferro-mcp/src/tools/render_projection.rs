@@ -107,7 +107,7 @@ pub fn execute(
 }
 
 /// Reconstruct a ServiceDef from source code using regex parsing.
-fn reconstruct_service_def(
+pub(crate) fn reconstruct_service_def(
     service_name: &str,
     display_name: &Option<String>,
     content: &str,
