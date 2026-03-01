@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 90 (Renderer Trait & JSON-UI Renderer) — Plan 01 COMPLETE
-Plan: 90-01 complete, 90-02 and 90-03 remaining
-Status: Plan 01 executed (Renderer trait + field/relationship mappings)
-Last activity: 2026-03-01 — Phase 90 Plan 01 executed (2 tasks, 2 commits)
+Phase: 90 (Renderer Trait & JSON-UI Renderer) — Plan 02 COMPLETE
+Plan: 90-01 and 90-02 complete, 90-03 remaining
+Status: Plan 02 executed (JsonUiRenderer with 4 intent layouts)
+Last activity: 2026-03-01 — Phase 90 Plan 02 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Phase 90 Plan 01 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 17/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 18/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -146,6 +146,17 @@ Archived to PROJECT.md and milestone archive files.
 - Error::Render variant added for rendering failures
 - 249 ferro-projections unit tests + 7 doctests = 256 total
 
+**Phase 90-02:**
+- JsonUiRenderer struct implementing Renderer trait, outputs ferro-json-ui/v1 JSON envelope
+- Browse layout: Table + Pagination, system fields excluded from columns, sortable
+- Focus layout: Card + DescriptionList + relationship sections (Tab->Tabs, Nested->Table, Inline/Link->Card children)
+- Collect layout: Form + typed inputs per FieldMeaning, skip auto-generated system fields, Submit button
+- Summarize layout: Card per metric field (Money/Quantity->Text, Percentage->Progress), Status->Badge, DescriptionList fallback
+- Collect shared across Browse/Focus/Summarize/Custom in Input mode (single form implementation)
+- Custom(String) intent falls back to Focus display, Collect input
+- Process/Analyze/Track remain todo!() for Plan 03
+- 274 ferro-projections unit tests + 7 doctests = 281 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -165,5 +176,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 90 Plan 01 COMPLETE — Renderer trait, field/relationship mappings, 256 tests
+Stopped at: Phase 90 Plan 02 COMPLETE — JsonUiRenderer with Browse/Focus/Collect/Summarize, 281 tests
 Resume file: None
