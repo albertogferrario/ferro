@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 89 (Intent Graph Generation) — Plan 01 COMPLETE
-Plan: 01 complete
-Status: derive_intents() engine with field meaning + writability analyzers, 175 tests (170 unit + 5 doc)
-Last activity: 2026-03-01 — Plan 01 complete (2 tasks, 2 commits)
+Phase: 89 (Intent Graph Generation) — Plan 02 COMPLETE
+Plan: 02 complete
+Status: Full 5-analyzer derivation pipeline with state machine, relationship, and action analyzers, 190 tests (185 unit + 5 doc)
+Last activity: 2026-03-01 — Plan 02 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 01 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 13/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 15/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -121,6 +121,13 @@ Archived to PROJECT.md and milestone archive files.
 - Signal type alias (Intent, f64, String), is_system_field() excludes Identifier/CreatedAt/UpdatedAt
 - 170 ferro-projections unit tests + 5 doctests = 175 total
 
+**Phase 89-02:**
+- State machine analyzer: guard density ratio for Process (0.4*ratio), branching states for Process (0.15), transition triggers for Process (0.25*ratio), workflow states for Process (0.10), linear progression for Track (0.3), final states for Track (0.1), unguarded for Track (0.1)
+- Relationship analyzer: OneToMany/ManyToMany -> Browse (0.35*count), OneToOne+Inline -> Focus (0.15*count), ManyToOne -> Focus (0.1*count), >3 relationships -> Browse (0.1)
+- Action analyzer: transition triggers -> Process (0.15*count), >2 inputs -> Collect (0.15*count), preconditions -> Process (0.1*count), simple CRUD -> Browse (0.05)
+- Both state machine and action analyzers contribute Process weight from transition_trigger, amplifying when aligned
+- 185 ferro-projections unit tests + 5 doctests = 190 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -140,5 +147,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 89 Plan 01 COMPLETE — derive_intents() engine with field meaning + writability analyzers, 175 tests
+Stopped at: Phase 89 Plan 02 COMPLETE — Full 5-analyzer derivation pipeline, 190 tests
 Resume file: None
