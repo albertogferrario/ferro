@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 88 (Intent Core Types) — Plan 02 COMPLETE
-Plan: 02/02 complete
-Status: Phase 88 complete — all types implemented + 148 tests (143 unit + 5 doc)
-Last activity: 2026-03-01 — Plan 02 complete (2 tasks, 2 commits)
+Phase: 89 (Intent Graph Generation) — Plan 01 COMPLETE
+Plan: 01 complete
+Status: derive_intents() engine with field meaning + writability analyzers, 175 tests (170 unit + 5 doc)
+Last activity: 2026-03-01 — Plan 01 complete (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 02 complete (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 12/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 13/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -112,6 +112,15 @@ Archived to PROJECT.md and milestone archive files.
 - Full integration test exercises all ServiceDef subsystems (fields, actions, guards, relationships, state machine, intent hints)
 - 143 ferro-projections unit tests + 5 doctests = 148 total
 
+**Phase 89-01:**
+- derive_intents() public API: always returns >= 1 IntentScore, default Focus 0.5 fallback
+- Field meaning analyzer: proportional count-weighted signals (0.3*count for Summarize, 0.25*count for Focus, 0.2*count for Browse EntityName, 0.35 for Analyze DateTime+numeric, 0.25 for Track Status, 0.1*count for Browse Category)
+- Writability analyzer: >50% writable -> Collect 0.35, write-only -> Collect 0.2*count, >70% non-writable -> Summarize 0.2, more readable -> Focus 0.1
+- Browse and Focus receive 0.1 baseline scores to always appear in results
+- Stable tie-breaking: Process(0) > Track(1) > Collect(2) > Browse(3) > Focus(4) > Summarize(5) > Analyze(6) > Custom(7)
+- Signal type alias (Intent, f64, String), is_system_field() excludes Identifier/CreatedAt/UpdatedAt
+- 170 ferro-projections unit tests + 5 doctests = 175 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -131,5 +140,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 88 Plan 02 COMPLETE — comprehensive test suite, 148 tests total, ready for Phase 89
+Stopped at: Phase 89 Plan 01 COMPLETE — derive_intents() engine with field meaning + writability analyzers, 175 tests
 Resume file: None
