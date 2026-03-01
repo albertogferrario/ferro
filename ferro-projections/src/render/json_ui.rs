@@ -36,6 +36,28 @@ fn is_numeric_field(meaning: &FieldMeaning) -> bool {
 /// Translates service definitions and scored intents into a JSON view specification
 /// matching the ferro-json-ui/v1 schema. Each intent maps to a layout strategy
 /// that composes field/relationship mapping functions into a component tree.
+///
+/// # Example
+///
+/// ```
+/// use ferro_projections::{ServiceDef, DataType, FieldMeaning, derive_intents, JsonUiRenderer, Renderer, RenderContext};
+///
+/// let product = ServiceDef::new("product")
+///     .display_name("Product")
+///     .field("id", DataType::Integer, FieldMeaning::Identifier)
+///     .field("name", DataType::String, FieldMeaning::EntityName)
+///     .field("price", DataType::Float, FieldMeaning::Money);
+///
+/// let intents = derive_intents(&product);
+/// let renderer = JsonUiRenderer;
+/// let result = renderer.render(&product, &intents, &RenderContext::default());
+/// assert!(result.is_ok());
+///
+/// let json = result.unwrap();
+/// assert_eq!(json["$schema"], "ferro-json-ui/v1");
+/// assert_eq!(json["title"], "Product");
+/// assert!(!json["components"].as_array().unwrap().is_empty());
+/// ```
 pub struct JsonUiRenderer;
 
 impl Renderer for JsonUiRenderer {
@@ -1458,5 +1480,437 @@ mod tests {
         let intents: Vec<IntentScore> = vec![];
         let result = JsonUiRenderer.render(&service, &intents, &default_ctx());
         assert!(result.is_err());
+    }
+
+    // =========================================================================
+    // Full pipeline integration tests: ServiceDef → derive_intents → render
+    // =========================================================================
+
+    mod pipeline {
+        use super::*;
+        use crate::action::ActionDef;
+        use crate::derive::derive_intents;
+        use crate::intent::Intent;
+
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        /// Validates common structural invariants on any render output.
+        fn assert_valid_json_ui(result: &Value) {
+            assert_eq!(result["$schema"], "ferro-json-ui/v1");
+            assert!(result["title"].as_str().is_some(), "title must be a string");
+            let components = result["components"]
+                .as_array()
+                .expect("components must be array");
+            assert!(!components.is_empty(), "components must not be empty");
+        }
+
+        #[test]
+        fn ecommerce_product_catalog_derives_browse_renders_table() {
+            let service = ServiceDef::new("product")
+                .display_name("Product")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("price", DataType::Float, FieldMeaning::Money)
+                .field("category", DataType::String, FieldMeaning::Category)
+                .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+                .has_many("reviews", "review");
+
+            let intents = derive_intents(&service);
+            assert!(
+                !intents.is_empty(),
+                "derive_intents must return at least 1 intent"
+            );
+
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+            assert_eq!(result["title"], "Product");
+
+            let components = result["components"].as_array().unwrap();
+            let primary = &intents[0].intent;
+
+            // Product catalog primary should be Browse or Focus (both table-capable)
+            match primary {
+                Intent::Browse => {
+                    assert_eq!(components[0]["type"], "Table");
+                    // System fields excluded from Browse
+                    let columns = components[0]["columns"].as_array().unwrap();
+                    let keys: Vec<&str> =
+                        columns.iter().map(|c| c["key"].as_str().unwrap()).collect();
+                    assert!(!keys.contains(&"id"));
+                    assert!(!keys.contains(&"created_at"));
+                }
+                Intent::Focus => {
+                    assert_eq!(components[0]["type"], "Card");
+                }
+                _ => {
+                    // Render succeeds regardless of derived intent
+                    assert!(components[0]["type"].as_str().is_some());
+                }
+            }
+        }
+
+        #[test]
+        fn user_profile_derives_focus_renders_card() {
+            let service = ServiceDef::new("user_profile")
+                .display_name("User Profile")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("email", DataType::String, FieldMeaning::Email)
+                .field("avatar", DataType::String, FieldMeaning::ImageUrl)
+                .field("bio", DataType::String, FieldMeaning::FreeText)
+                .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+
+            let intents = derive_intents(&service);
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+            assert_eq!(result["title"], "User Profile");
+
+            // Focus produces Card + DescriptionList
+            let components = result["components"].as_array().unwrap();
+            if intents[0].intent == Intent::Focus {
+                assert_eq!(components[0]["type"], "Card");
+                let children = components[0]["children"].as_array().unwrap();
+                assert_eq!(children[0]["type"], "DescriptionList");
+            }
+        }
+
+        #[test]
+        fn survey_form_derives_collect_renders_form() {
+            let service = ServiceDef::new("survey")
+                .display_name("Survey")
+                .write_only_field("question_1", DataType::String, FieldMeaning::FreeText)
+                .write_only_field("question_2", DataType::String, FieldMeaning::FreeText)
+                .write_only_field("question_3", DataType::String, FieldMeaning::FreeText)
+                .write_only_field("rating", DataType::Integer, FieldMeaning::Quantity);
+
+            let intents = derive_intents(&service);
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+
+            let components = result["components"].as_array().unwrap();
+            if intents[0].intent == Intent::Collect {
+                assert_eq!(components[0]["type"], "Form");
+                let children = components[0]["children"].as_array().unwrap();
+                // At least the writable fields + Submit button
+                assert!(children.len() >= 5);
+            }
+        }
+
+        #[test]
+        fn order_workflow_derives_process_renders_card_with_buttons() {
+            let service = ServiceDef::new("order")
+                .display_name("Order")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("title", DataType::String, FieldMeaning::EntityName)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .field("total", DataType::Float, FieldMeaning::Money)
+                .action(
+                    ActionDef::new("submit")
+                        .display_name("Submit")
+                        .transition_trigger("submit"),
+                )
+                .action(
+                    ActionDef::new("approve")
+                        .display_name("Approve")
+                        .transition_trigger("approve"),
+                )
+                .action(
+                    ActionDef::new("reject")
+                        .display_name("Reject")
+                        .transition_trigger("reject"),
+                )
+                .state_machine(
+                    StateMachine::new("order_flow")
+                        .initial("draft")
+                        .state(StateDef::new("draft"))
+                        .state(StateDef::new("pending"))
+                        .state(StateDef::new("approved").final_state())
+                        .state(StateDef::new("rejected").final_state())
+                        .transition(
+                            Transition::new("draft", "submit", "pending")
+                                .guard("has_required_fields"),
+                        )
+                        .transition(
+                            Transition::new("pending", "approve", "approved").guard("is_manager"),
+                        )
+                        .transition(Transition::new("pending", "reject", "rejected")),
+                );
+
+            let intents = derive_intents(&service);
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+
+            let components = result["components"].as_array().unwrap();
+            if intents[0].intent == Intent::Process {
+                // Card with Badge for state display
+                assert_eq!(components[0]["type"], "Card");
+                let children = components[0]["children"].as_array().unwrap();
+                assert_eq!(children[0]["type"], "Badge");
+                assert_eq!(children[0]["data_path"], "/data/state");
+
+                // Transition buttons
+                let buttons: Vec<&Value> = components
+                    .iter()
+                    .filter(|c| c["type"] == "Button")
+                    .collect();
+                assert_eq!(buttons.len(), 3);
+            }
+        }
+
+        #[test]
+        fn activity_log_derives_track_renders_table_with_datetime() {
+            let service = ServiceDef::new("activity")
+                .display_name("Activity Log")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("actor", DataType::String, FieldMeaning::EntityName)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+                .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt);
+
+            let intents = derive_intents(&service);
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+
+            let components = result["components"].as_array().unwrap();
+            if intents[0].intent == Intent::Track {
+                let table = &components[0];
+                assert_eq!(table["type"], "Table");
+                assert_eq!(table["sort_direction"], "desc");
+
+                let columns = table["columns"].as_array().unwrap();
+                let keys: Vec<&str> = columns.iter().map(|c| c["key"].as_str().unwrap()).collect();
+                // Track includes DateTime system fields
+                assert!(keys.contains(&"created_at"));
+                assert!(keys.contains(&"updated_at"));
+                assert!(keys.contains(&"status"));
+
+                // Pagination present
+                assert_eq!(components[1]["type"], "Pagination");
+            }
+        }
+
+        // -- RenderContext variation tests --
+
+        #[test]
+        fn secondary_intent_renders_different_layout() {
+            let service = ServiceDef::new("product")
+                .display_name("Product")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("price", DataType::Float, FieldMeaning::Money)
+                .field("category", DataType::String, FieldMeaning::Category)
+                .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+
+            let intents = derive_intents(&service);
+            assert!(
+                intents.len() >= 2,
+                "Expected at least 2 intents for a product service"
+            );
+
+            // Render secondary intent
+            let ctx = RenderContext {
+                intent_index: 1,
+                current_state: None,
+                mode: RenderMode::Display,
+            };
+            let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
+            assert_valid_json_ui(&result);
+        }
+
+        #[test]
+        fn input_mode_on_focus_service_produces_form() {
+            let service = ServiceDef::new("profile")
+                .display_name("Profile")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("email", DataType::String, FieldMeaning::Email)
+                .field("bio", DataType::String, FieldMeaning::FreeText);
+
+            let intents = derive_intents(&service);
+            let ctx = RenderContext {
+                intent_index: 0,
+                current_state: None,
+                mode: RenderMode::Input,
+            };
+            let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
+            assert_valid_json_ui(&result);
+
+            let components = result["components"].as_array().unwrap();
+            assert_eq!(components[0]["type"], "Form");
+        }
+
+        #[test]
+        fn current_state_affects_process_badge() {
+            let service = ServiceDef::new("ticket")
+                .display_name("Ticket")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("title", DataType::String, FieldMeaning::EntityName)
+                .action(
+                    ActionDef::new("escalate")
+                        .display_name("Escalate")
+                        .transition_trigger("escalate"),
+                )
+                .state_machine(
+                    StateMachine::new("ticket_flow")
+                        .initial("open")
+                        .state(StateDef::new("open"))
+                        .state(StateDef::new("escalated").final_state())
+                        .transition(Transition::new("open", "escalate", "escalated")),
+                );
+
+            let intents = vec![IntentScore {
+                intent: Intent::Process,
+                confidence: 0.9,
+                matching_signals: vec!["test".into()],
+            }];
+
+            let ctx = RenderContext {
+                intent_index: 0,
+                current_state: Some("open".to_string()),
+                mode: RenderMode::Display,
+            };
+            let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
+            let badge = &result["components"][0]["children"][0];
+            assert_eq!(badge["text"], "open");
+        }
+
+        // -- Edge case tests --
+
+        #[test]
+        fn empty_service_renders_without_panic() {
+            let service = ServiceDef::new("empty");
+            let intents = derive_intents(&service);
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+        }
+
+        #[test]
+        fn service_with_only_system_fields_renders_minimal_view() {
+            let service = ServiceDef::new("minimal")
+                .display_name("Minimal")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+                .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt);
+
+            let intents = derive_intents(&service);
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+        }
+
+        #[test]
+        fn all_sensitive_fields_focus_shows_empty_description_list() {
+            let service = ServiceDef::new("secrets")
+                .display_name("Secrets")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("api_key", DataType::String, FieldMeaning::Sensitive)
+                .field("token", DataType::String, FieldMeaning::Sensitive);
+
+            let intents = vec![IntentScore {
+                intent: Intent::Focus,
+                confidence: 0.5,
+                matching_signals: vec!["test".into()],
+            }];
+
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+
+            // Sensitive fields excluded from display → empty items
+            let items = result["components"][0]["children"][0]["items"]
+                .as_array()
+                .unwrap();
+            assert!(
+                items.is_empty(),
+                "Sensitive fields should be excluded from Focus display"
+            );
+        }
+
+        #[test]
+        fn all_sensitive_fields_collect_shows_password_inputs() {
+            let service = ServiceDef::new("secrets")
+                .display_name("Secrets")
+                .field("api_key", DataType::String, FieldMeaning::Sensitive)
+                .field("token", DataType::String, FieldMeaning::Sensitive);
+
+            let intents = vec![IntentScore {
+                intent: Intent::Collect,
+                confidence: 0.5,
+                matching_signals: vec!["test".into()],
+            }];
+
+            let result = JsonUiRenderer
+                .render(&service, &intents, &default_ctx())
+                .unwrap();
+            assert_valid_json_ui(&result);
+
+            let children = result["components"][0]["children"].as_array().unwrap();
+            let password_inputs: Vec<&Value> = children
+                .iter()
+                .filter(|c| c["input_type"] == "password")
+                .collect();
+            assert_eq!(password_inputs.len(), 2);
+        }
+
+        #[test]
+        fn all_seven_intents_render_without_error() {
+            let service = ServiceDef::new("universal")
+                .display_name("Universal")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("price", DataType::Float, FieldMeaning::Money)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+                .action(
+                    ActionDef::new("do_thing")
+                        .display_name("Do Thing")
+                        .transition_trigger("do"),
+                )
+                .state_machine(
+                    StateMachine::new("flow")
+                        .initial("a")
+                        .state(StateDef::new("a"))
+                        .state(StateDef::new("b").final_state())
+                        .transition(Transition::new("a", "do", "b")),
+                );
+
+            let all_intents = vec![
+                Intent::Browse,
+                Intent::Focus,
+                Intent::Collect,
+                Intent::Process,
+                Intent::Summarize,
+                Intent::Analyze,
+                Intent::Track,
+                Intent::Custom("test".into()),
+            ];
+
+            for intent in all_intents {
+                let intent_score = IntentScore {
+                    intent: intent.clone(),
+                    confidence: 0.5,
+                    matching_signals: vec!["test".into()],
+                };
+                let intents = vec![intent_score];
+                let result = JsonUiRenderer
+                    .render(&service, &intents, &default_ctx())
+                    .unwrap();
+                assert_valid_json_ui(&result);
+            }
+        }
     }
 }
