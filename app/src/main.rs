@@ -47,6 +47,8 @@ mod controllers;
 mod middleware;
 mod migrations;
 mod models;
+#[allow(dead_code)]
+mod projections;
 mod providers;
 mod resources;
 mod routes;
