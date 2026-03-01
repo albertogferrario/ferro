@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 92 (MCP Introspection & CLI) — COMPLETE
-Plan: 92-03 complete
-Status: Phase 92 complete — all 3 plans shipped
-Last activity: 2026-03-01 — Plan 92-03 executed (2 tasks, 2 commits)
+Phase: 93 (Field Test & Polish) — In Progress
+Plan: 93-01 complete
+Status: Plan 93-01 shipped — 8 projection files in sample app
+Last activity: 2026-03-01 — Plan 93-01 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 92-03 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 24/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 25/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -210,6 +210,13 @@ Archived to PROJECT.md and milestone archive files.
 - Coverage percentage computed as (with_projections / total_models) * 100
 - 5 new ferro-mcp tests (158 total)
 
+**Phase 93-01:**
+- 8 projection files in app/src/projections/ covering all 7 intents (Browse, Focus, Collect, Process, Summarize, Analyze, Track)
+- CLI --from-model generates Custom(...) field meanings which are not parseable by MCP regex scanner — must use standard FieldMeaning variants
+- Projection functions use pub fn service_def() naming convention (not {name}_service from CLI template)
+- Projections module needs #[allow(dead_code)] since functions are discovered by MCP source scanning, not called from Rust
+- Long field names (e.g., "discount_applied") cause rustfmt to break read_only_field calls across lines, defeating regex parser
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -229,5 +236,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 92 COMPLETE — all 3 plans shipped (model-aware scaffolding, validation, coverage)
+Stopped at: Phase 93, Plan 01 complete — 8 projection files created in sample app
 Resume file: None
