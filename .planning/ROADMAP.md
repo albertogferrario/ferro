@@ -139,13 +139,13 @@ Plans:
 
 **Goal**: MCP tools for service discovery, CLI scaffolding.
 **Depends on**: Phase 91
-**Research**: Unlikely (established MCP/CLI patterns)
-**Plans**: 3
+**Completed**: 2026-03-01
+**Plans**: 3/3
 
 Plans:
-- [ ] 92-01: TBD
-- [ ] 92-02: TBD
-- [ ] 92-03: TBD
+- [x] 92-01: Model-aware projection scaffolding (--from-model flag, type/meaning mapping, FK relationships)
+- [x] 92-02: Projection validation CLI (projection:check) + MCP tool (validate_projection)
+- [x] 92-03: Service coverage MCP tool (projection_coverage with intent derivation)
 
 #### Phase 93: Field Test & Polish
 

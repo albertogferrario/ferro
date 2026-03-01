@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 92 (MCP Introspection & CLI) — IN PROGRESS
-Plan: 92-02 complete
-Status: Plan 92-02 complete — projection validation via CLI and MCP
-Last activity: 2026-03-01 — Plan 92-02 executed (2 tasks, 2 commits)
+Phase: 92 (MCP Introspection & CLI) — COMPLETE
+Plan: 92-03 complete
+Status: Phase 92 complete — all 3 plans shipped
+Last activity: 2026-03-01 — Plan 92-03 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 92-02 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 21/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 24/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -203,6 +203,13 @@ Archived to PROJECT.md and milestone archive files.
 - Warnings produce exit code 0, only Err from validate() produces exit code 1
 - 5 ferro-cli + 6 ferro-mcp tests = 11 new tests
 
+**Phase 92-03:**
+- `projection_coverage` MCP tool cross-references list_models with list_projections via case-insensitive service_name matching
+- Derives primary intent via reconstruct_service_def + derive_intents for covered projections
+- Generates `ferro make:projection {snake_name} --from-model` suggestions for uncovered models
+- Coverage percentage computed as (with_projections / total_models) * 100
+- 5 new ferro-mcp tests (158 total)
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -222,5 +229,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 92 Plan 02 COMPLETE — projection validation via CLI and MCP
+Stopped at: Phase 92 COMPLETE — all 3 plans shipped (model-aware scaffolding, validation, coverage)
 Resume file: None
