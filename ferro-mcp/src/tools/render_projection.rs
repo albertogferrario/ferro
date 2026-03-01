@@ -4,8 +4,9 @@ use serde::Serialize;
 use std::path::Path;
 
 use ferro_projections::{
-    derive_intents, ActionDef, Cardinality, DataType, FieldMeaning, IntentHint, JsonUiRenderer,
-    RenderContext, RenderMode, Renderer, ServiceDef, StateDef, StateMachine, Transition,
+    derive_intents, ActionDef, Cardinality, DataType, FieldMeaning, GuardDef, InputDef, IntentHint,
+    JsonUiRenderer, RenderContext, RenderMode, Renderer, ServiceDef, StateDef, StateMachine,
+    Transition,
 };
 use regex::Regex;
 use std::fs;
@@ -140,6 +141,9 @@ pub(crate) fn reconstruct_service_def(
         }
     }
 
+    // Parse guards
+    service = parse_and_add_guards(service, content);
+
     // Parse intent hints
     service = parse_and_add_intent_hints(service, content);
 
@@ -232,15 +236,101 @@ fn parse_and_add_relationships(mut service: ServiceDef, content: &str) -> Servic
 }
 
 /// Parse and add actions from source.
+///
+/// Extracts full `.action(...)` blocks using parenthesis depth counting, then
+/// applies sub-regexes to parse chained builder methods within each block.
 fn parse_and_add_actions(mut service: ServiceDef, content: &str) -> ServiceDef {
-    // Match .action(ActionDef::new("name")...) — capture the action name
-    let action_re = Regex::new(r#"\.action\(ActionDef::new\("([^"]+)"\)"#).unwrap();
-    for cap in action_re.captures_iter(content) {
-        let action_name = &cap[1];
-        let action = ActionDef::new(action_name);
-        service = service.action(action);
+    for block in extract_action_blocks(content) {
+        if let Some(action) = parse_action_block(&block) {
+            service = service.action(action);
+        }
+    }
+    service
+}
+
+/// Extract each `.action(...)` expression by tracking parenthesis depth.
+fn extract_action_blocks(content: &str) -> Vec<String> {
+    let mut blocks = Vec::new();
+    let needle = ".action(";
+    let bytes = content.as_bytes();
+    let mut search_from = 0;
+
+    while let Some(pos) = content[search_from..].find(needle) {
+        let abs_pos = search_from + pos;
+        let start = abs_pos + needle.len(); // right after the opening '('
+        let mut depth = 1;
+        let mut i = start;
+
+        while i < bytes.len() && depth > 0 {
+            match bytes[i] {
+                b'(' => depth += 1,
+                b')' => depth -= 1,
+                _ => {}
+            }
+            i += 1;
+        }
+
+        if depth == 0 {
+            // Block content is everything between the outer parens (exclusive of closing ')')
+            blocks.push(content[start..i - 1].to_string());
+        }
+
+        search_from = i;
     }
 
+    blocks
+}
+
+/// Parse a single action block into an ActionDef with full builder chain.
+fn parse_action_block(block: &str) -> Option<ActionDef> {
+    let name_re = Regex::new(r#"ActionDef::new\("([^"]+)"\)"#).unwrap();
+    let name = name_re.captures(block)?[1].to_string();
+    let mut action = ActionDef::new(&name);
+
+    // .transition_trigger("event_name")
+    let tt_re = Regex::new(r#"\.transition_trigger\("([^"]+)"\)"#).unwrap();
+    if let Some(cap) = tt_re.captures(block) {
+        action = action.transition_trigger(&cap[1]);
+    }
+
+    // .precondition("guard_name") — may appear multiple times
+    let pc_re = Regex::new(r#"\.precondition\("([^"]+)"\)"#).unwrap();
+    for cap in pc_re.captures_iter(block) {
+        action = action.precondition(&cap[1]);
+    }
+
+    // .display_name("name")
+    let dn_re = Regex::new(r#"\.display_name\("([^"]+)"\)"#).unwrap();
+    if let Some(cap) = dn_re.captures(block) {
+        action = action.display_name(&cap[1]);
+    }
+
+    // .input(InputDef::new("name", DataType::X, FieldMeaning::Y))
+    let input_re = Regex::new(
+        r#"\.input\(InputDef::new\(\s*"([^"]+)",\s*DataType::(\w+),\s*FieldMeaning::(\w+),?\s*\)\)"#,
+    )
+    .unwrap();
+    for cap in input_re.captures_iter(block) {
+        if let (Some(dt), Some(fm)) = (parse_data_type(&cap[2]), parse_field_meaning(&cap[3])) {
+            action = action.input(InputDef::new(&cap[1], dt, fm));
+        }
+    }
+
+    Some(action)
+}
+
+/// Parse and add guard definitions from source.
+fn parse_and_add_guards(mut service: ServiceDef, content: &str) -> ServiceDef {
+    let guard_re =
+        Regex::new(r#"\.guard\(GuardDef::new\("([^"]+)"\)(?:\.display_name\("([^"]+)"\))?\)"#)
+            .unwrap();
+    for cap in guard_re.captures_iter(content) {
+        let mut guard = GuardDef::new(&cap[1]);
+        if let Some(dn) = cap.get(2) {
+            guard = guard.display_name(dn.as_str());
+        }
+        service = service.guard(guard);
+    }
     service
 }
 
@@ -296,10 +386,17 @@ fn parse_state_machine(content: &str) -> Option<StateMachine> {
         machine = machine.state(state);
     }
 
-    // .transition(Transition::new("from", "event", "to"))
-    let trans_re = Regex::new(r#"Transition::new\("([^"]+)",\s*"([^"]+)",\s*"([^"]+)"\)"#).unwrap();
+    // .transition(Transition::new("from", "event", "to")) with optional .guard("name")
+    let trans_re = Regex::new(
+        r#"Transition::new\("([^"]+)",\s*"([^"]+)",\s*"([^"]+)"\)(?:\.guard\("([^"]+)"\))?"#,
+    )
+    .unwrap();
     for cap in trans_re.captures_iter(content) {
-        machine = machine.transition(Transition::new(&cap[1], &cap[2], &cap[3]));
+        let mut transition = Transition::new(&cap[1], &cap[2], &cap[3]);
+        if let Some(guard_match) = cap.get(4) {
+            transition = transition.guard(guard_match.as_str());
+        }
+        machine = machine.transition(transition);
     }
 
     Some(machine)
@@ -522,5 +619,253 @@ ServiceDef::new("order")
         );
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not found"));
+    }
+
+    #[test]
+    fn test_reconstruct_action_with_transition_trigger() {
+        let content = r#"
+ServiceDef::new("order")
+    .action(ActionDef::new("submit").transition_trigger("submit"))
+        "#;
+
+        let service = reconstruct_service_def("order", &None, content).unwrap();
+        assert_eq!(service.actions.len(), 1);
+        assert_eq!(service.actions[0].name, "submit");
+        assert_eq!(
+            service.actions[0].transition_trigger.as_deref(),
+            Some("submit")
+        );
+    }
+
+    #[test]
+    fn test_reconstruct_action_with_precondition() {
+        let content = r#"
+ServiceDef::new("order")
+    .action(ActionDef::new("approve").precondition("is_manager"))
+        "#;
+
+        let service = reconstruct_service_def("order", &None, content).unwrap();
+        assert_eq!(service.actions.len(), 1);
+        assert_eq!(service.actions[0].preconditions, vec!["is_manager"]);
+    }
+
+    #[test]
+    fn test_reconstruct_action_with_multiple_preconditions() {
+        let content = r#"
+ServiceDef::new("order")
+    .action(ActionDef::new("process").precondition("has_items").precondition("payment_valid"))
+        "#;
+
+        let service = reconstruct_service_def("order", &None, content).unwrap();
+        assert_eq!(service.actions.len(), 1);
+        assert_eq!(
+            service.actions[0].preconditions,
+            vec!["has_items", "payment_valid"]
+        );
+    }
+
+    #[test]
+    fn test_reconstruct_action_with_inputs() {
+        let content = r#"
+ServiceDef::new("feedback")
+    .action(
+        ActionDef::new("submit_feedback")
+            .input(InputDef::new("subject", DataType::String, FieldMeaning::EntityName))
+            .input(InputDef::new("rating", DataType::Integer, FieldMeaning::Quantity))
+    )
+        "#;
+
+        let service = reconstruct_service_def("feedback", &None, content).unwrap();
+        assert_eq!(service.actions.len(), 1);
+        assert_eq!(service.actions[0].inputs.len(), 2);
+        assert_eq!(service.actions[0].inputs[0].name, "subject");
+        assert_eq!(service.actions[0].inputs[0].data_type, DataType::String);
+        assert_eq!(
+            service.actions[0].inputs[0].meaning,
+            FieldMeaning::EntityName
+        );
+        assert_eq!(service.actions[0].inputs[1].name, "rating");
+    }
+
+    #[test]
+    fn test_reconstruct_action_with_display_name() {
+        let content = r#"
+ServiceDef::new("order")
+    .action(ActionDef::new("approve").display_name("Approve Order"))
+        "#;
+
+        let service = reconstruct_service_def("order", &None, content).unwrap();
+        assert_eq!(service.actions.len(), 1);
+        assert_eq!(
+            service.actions[0].display_name.as_deref(),
+            Some("Approve Order")
+        );
+    }
+
+    #[test]
+    fn test_reconstruct_action_full_chain() {
+        let content = r#"
+ServiceDef::new("order")
+    .action(
+        ActionDef::new("approve")
+            .display_name("Approve Order")
+            .transition_trigger("approve")
+            .precondition("is_manager")
+            .input(InputDef::new("notes", DataType::String, FieldMeaning::FreeText))
+    )
+        "#;
+
+        let service = reconstruct_service_def("order", &None, content).unwrap();
+        assert_eq!(service.actions.len(), 1);
+        let action = &service.actions[0];
+        assert_eq!(action.name, "approve");
+        assert_eq!(action.display_name.as_deref(), Some("Approve Order"));
+        assert_eq!(action.transition_trigger.as_deref(), Some("approve"));
+        assert_eq!(action.preconditions, vec!["is_manager"]);
+        assert_eq!(action.inputs.len(), 1);
+        assert_eq!(action.inputs[0].name, "notes");
+    }
+
+    #[test]
+    fn test_reconstruct_guarded_transitions() {
+        let content = r#"
+ServiceDef::new("order")
+    .state_machine(
+        StateMachine::new("lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft"))
+            .state(StateDef::new("approved"))
+            .transition(Transition::new("draft", "approve", "approved").guard("is_manager"))
+    )
+        "#;
+
+        let service = reconstruct_service_def("order", &None, content).unwrap();
+        let sm = service.state_machine.as_ref().unwrap();
+        assert_eq!(sm.transitions.len(), 1);
+        assert_eq!(sm.transitions[0].guard.as_deref(), Some("is_manager"));
+    }
+
+    #[test]
+    fn test_reconstruct_guard_defs() {
+        let content = r#"
+ServiceDef::new("order")
+    .guard(GuardDef::new("is_manager").display_name("Manager Approval Required"))
+    .guard(GuardDef::new("has_items"))
+        "#;
+
+        let service = reconstruct_service_def("order", &None, content).unwrap();
+        assert_eq!(service.guards.len(), 2);
+        assert_eq!(service.guards[0].name, "is_manager");
+        assert_eq!(
+            service.guards[0].display_name.as_deref(),
+            Some("Manager Approval Required")
+        );
+        assert_eq!(service.guards[1].name, "has_items");
+        assert!(service.guards[1].display_name.is_none());
+    }
+
+    #[test]
+    fn test_reconstruct_full_order_service() {
+        let content = r#"
+ServiceDef::new("order")
+    .display_name("Order")
+    .field("id", DataType::Integer, FieldMeaning::Identifier)
+    .field("customer_name", DataType::String, FieldMeaning::EntityName)
+    .field("total", DataType::Float, FieldMeaning::Money)
+    .field("status", DataType::String, FieldMeaning::Status)
+    .state_machine(
+        StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft"))
+            .state(StateDef::new("submitted"))
+            .state(StateDef::new("approved"))
+            .state(StateDef::new("delivered").final_state())
+            .state(StateDef::new("cancelled").final_state())
+            .transition(Transition::new("draft", "submit", "submitted"))
+            .transition(Transition::new("submitted", "approve", "approved").guard("is_manager"))
+            .transition(Transition::new("submitted", "reject", "cancelled"))
+            .transition(Transition::new("approved", "ship", "delivered"))
+    )
+    .guard(GuardDef::new("is_manager"))
+    .action(ActionDef::new("submit").transition_trigger("submit"))
+    .action(ActionDef::new("approve").transition_trigger("approve").precondition("is_manager"))
+    .belongs_to("customer", "user")
+    .has_many("line_items", "line_item")
+        "#;
+
+        let service =
+            reconstruct_service_def("order", &Some("Order".to_string()), content).unwrap();
+
+        // Fields
+        assert_eq!(service.fields.len(), 4);
+
+        // State machine with guarded transition
+        let sm = service.state_machine.as_ref().unwrap();
+        assert_eq!(sm.transitions.len(), 4);
+        let guarded: Vec<_> = sm
+            .transitions
+            .iter()
+            .filter(|t| t.guard.is_some())
+            .collect();
+        assert_eq!(guarded.len(), 1);
+        assert_eq!(guarded[0].guard.as_deref(), Some("is_manager"));
+
+        // Guards
+        assert_eq!(service.guards.len(), 1);
+        assert_eq!(service.guards[0].name, "is_manager");
+
+        // Actions with transition triggers and preconditions
+        assert_eq!(service.actions.len(), 2);
+        assert_eq!(
+            service.actions[0].transition_trigger.as_deref(),
+            Some("submit")
+        );
+        assert_eq!(
+            service.actions[1].transition_trigger.as_deref(),
+            Some("approve")
+        );
+        assert_eq!(service.actions[1].preconditions, vec!["is_manager"]);
+
+        // Relationships
+        assert_eq!(service.relationships.len(), 2);
+
+        // Derive intents and verify Process is primary
+        let intents = derive_intents(&service);
+        assert!(!intents.is_empty(), "Should derive at least one intent");
+        assert_eq!(
+            intents[0].intent,
+            ferro_projections::Intent::Process,
+            "Order with guarded state machine should derive Process intent, got {:?}",
+            intents[0].intent
+        );
+    }
+
+    #[test]
+    fn test_extract_action_blocks_multiple() {
+        let content = r#"
+    .action(ActionDef::new("submit").transition_trigger("submit"))
+    .action(ActionDef::new("approve").precondition("is_manager"))
+        "#;
+
+        let blocks = extract_action_blocks(content);
+        assert_eq!(blocks.len(), 2);
+        assert!(blocks[0].contains("submit"));
+        assert!(blocks[1].contains("approve"));
+    }
+
+    #[test]
+    fn test_extract_action_blocks_nested_parens() {
+        let content = r#"
+    .action(
+        ActionDef::new("submit_feedback")
+            .input(InputDef::new("name", DataType::String, FieldMeaning::EntityName))
+            .input(InputDef::new("rating", DataType::Integer, FieldMeaning::Quantity))
+    )
+        "#;
+
+        let blocks = extract_action_blocks(content);
+        assert_eq!(blocks.len(), 1);
+        assert!(blocks[0].contains("submit_feedback"));
+        assert!(blocks[0].contains("InputDef::new"));
     }
 }
