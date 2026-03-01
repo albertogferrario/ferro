@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 94 (Protocol Documentation) — In Progress
-Plan: 94-04 complete
-Status: Plan 94-04 shipped — derivation, rendering, and validation specification pages
-Last activity: 2026-03-01 — Plan 94-04 executed (2 tasks, 2 commits)
+Plan: 94-03 complete
+Status: Plan 94-03 shipped — complete data model specification (22 types across 7 pages)
+Last activity: 2026-03-01 — Plan 94-03 executed (3 tasks, 3 commits)
 
 ## Milestone Summary
 
@@ -245,6 +245,16 @@ Archived to PROJECT.md and milestone archive files.
 - CAMELEON Reference Framework correspondence acknowledged with differentiation: dynamic confidence-scored derivation vs static tree-based AUI
 - RFC 2119 + RFC 8174 conformance language established per BCP 14
 
+**Phase 94-03:**
+- Data model overview (README) documents type hierarchy, serialization conventions, and canonical definition policy
+- ServiceDef documented as protocol root type with all 9 fields, normative rules, and complete JSON example
+- FieldDef (7 fields with defaults), DataType (10 variants), FieldMeaning (18+1 variants with rendering guidance) fully specified
+- StateMachine, StateDef, Transition documented with schema-only constraint and BFS reachability rules
+- ActionDef, InputDef (reusing DataType/FieldMeaning single vocabulary), GuardDef (shared pool) specified
+- RelationshipDef with two-dimensional design (Cardinality structural + NavigationHint presentational), default navigation mapping
+- Intent (7+1 variants), IntentScore (confidence scoring, tie-breaking), IntentHint (Primary/Exclude overrides) specified
+- All types link to generated JSON Schema files in appendix
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -264,5 +274,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 94, Plan 04 complete — derivation, rendering, and validation specification pages
+Stopped at: Phase 94, Plan 03 complete — complete data model specification
 Resume file: None
