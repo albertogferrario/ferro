@@ -26,11 +26,11 @@
 - ✅ **v7.8 Memory Leak Fixes** — Phase 78 (shipped 2026-02-28)
 - ✅ **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (shipped 2026-02-28)
 - ✅ **v8.1 API DX Polish** — Phase 83 (shipped 2026-02-28)
-- 🚧 [**v9.0 Service Projections**](milestones/v9.0-ROADMAP.md) — Phases 84-93 (in progress)
+- ✅ [**v9.0 Service Projections**](milestones/v9.0-ROADMAP.md) — Phases 84-94 (shipped 2026-03-01)
 
 ---
 
-### 🚧 v9.0 Service Projections (In Progress)
+### ✅ v9.0 Service Projections (Complete)
 
 **Milestone Goal:** Introduce a three-layer architecture where services describe business capabilities and UI is generated from those descriptions: Model → ServiceDef → IntentGraph → Renderer → Output. Define a standardized protocol for interoperability.
 
@@ -158,19 +158,19 @@ Plans:
 - [x] 93-01: 8 representative projections in sample app covering all 7 intents (User, Todo, ApiKey, Order, Product, RevenueDashboard, SalesAnalytics, FeedbackForm)
 - [x] 93-02: Fixed MCP parser for action/guard/transition details + integration tests validating 100% intent accuracy
 
-#### Phase 94: Protocol Documentation
+#### Phase 94: Protocol Documentation ✅
 
 **Goal**: Define a standardized protocol specification for data/intent-oriented web services with auto-generated UIs. Formalize the ServiceDef → IntentGraph → Renderer chain as a documented, versioned protocol.
 **Depends on**: Phase 93
-**Research**: Complete (Phase 94 research — prior art, protocol design patterns, serialization formats)
-**Plans**: 5
+**Completed**: 2026-03-01
+**Plans**: 5/5
 
 Plans:
-- [ ] 94-01: Protocol infrastructure — mdBook setup, JSON Schema generation from Rust types
-- [ ] 94-02: Specification foundation — introduction, terminology, architecture
-- [ ] 94-03: Data model specification — all 22 public types across 6 pages
-- [ ] 94-04: Derivation, rendering & validation — 5 analyzers, Renderer trait, validate() rules
-- [ ] 94-05: Governance & appendix — extensions, conformance, security, related work, worked examples
+- [x] 94-01: Protocol infrastructure — mdBook setup, JSON Schema generation from Rust types (17 schemas + combined protocol.json)
+- [x] 94-02: Specification foundation — introduction, terminology (18 terms), architecture (three-layer pipeline)
+- [x] 94-03: Data model specification — all 22 public types across 7 pages (ServiceDef, FieldDef, DataType, FieldMeaning, StateMachine, Actions, Relationships, Intent)
+- [x] 94-04: Derivation, rendering & validation — 5 analyzers, Renderer trait, 4 errors + 9 warnings
+- [x] 94-05: Governance & appendix — extensions, conformance (3 levels), security (7 considerations), related work (9 cited), worked examples (7 intents)
 
 ## Completed Milestones
 
@@ -624,7 +624,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 26/30 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 30 | ✅ Complete | 2026-03-01 |
 
-**Total: 21 milestones shipped, 192 plans. 1 milestone in progress (26/30 plans complete).**
+**Total: 22 milestones shipped, 197 plans.**
 

@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v9.0 Service Projections
+**Current focus:** v9.0 Service Projections — COMPLETE
 
 ## Current Position
 
-Phase: 94 (Protocol Documentation) — In Progress
-Plan: 94-05 complete
-Status: Plan 94-05 shipped — protocol governance (extensions, conformance, security, related work) and appendix (examples, JSON Schema reference, changelog)
-Last activity: 2026-03-01 — Plan 94-05 executed (3 tasks, 3 commits)
+Phase: 94 (Protocol Documentation) — Complete
+Plan: All 5 plans complete
+Status: v9.0 milestone complete — all 11 phases (84-94), 30 plans shipped
+Last activity: 2026-03-01 — Phase 94 executed (5 plans, 2 waves)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 94-05 executed (3 tasks, 3 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 30/30 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 30 | Complete | 2026-03-01 |
 
 ## Accumulated Context
 
@@ -266,11 +266,8 @@ Archived to PROJECT.md and milestone archive files.
 
 ### Roadmap Evolution
 
-- 21 milestones shipped, 184 plans total
-- v9.0 created: Service Projections — ServiceDef→IntentGraph→Renderer architecture, 10 phases (Phase 84-93)
-- Phase 94 added: Protocol Documentation — standardized protocol definition (patent descoped)
-- Phase 85.1 inserted after Phase 85: Architecture Refinement — incorporate prior art insights, add schemars, refine Phases 86-93
-- Phase 85.1 COMPLETE: 2 plans, schemars integration + roadmap refinement
+- 22 milestones shipped, 197 plans total
+- v9.0 COMPLETE: Service Projections — ServiceDef→IntentGraph→Renderer architecture, 11 phases (Phase 84-94), 30 plans
 
 ### Pending Todos
 
@@ -283,5 +280,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 94, Plan 05 complete — protocol governance and appendix
+Stopped at: Phase 94 complete — v9.0 milestone shipped
 Resume file: None
