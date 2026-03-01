@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 90 (Renderer Trait & JSON-UI Renderer) — COMPLETE
-Plan: 90-01, 90-02, and 90-03 all complete
-Status: Phase 90 complete — all 7 intents implemented in JsonUiRenderer
-Last activity: 2026-03-01 — Phase 90 Plan 03 executed (2 tasks, 2 commits)
+Phase: 91 (Framework Integration) — In Progress
+Plan: 91-01 complete
+Status: Plan 91-01 complete — feature-gated re-exports and error conversion
+Last activity: 2026-03-01 — Phase 91 Plan 01 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Phase 90 Plan 03 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 20/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 21/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -167,6 +167,12 @@ Archived to PROJECT.md and milestone archive files.
 - JsonUiRenderer doctest documenting basic usage
 - 301 ferro-projections unit tests + 8 doctests = 309 total
 
+**Phase 91-01:**
+- Feature-gated re-export of 22 ferro-projections public types behind `#[cfg(feature = "projections")]`
+- ProjectionsError/ProjectionsWarning aliases avoid name collisions with existing Error re-exports
+- ferro_projections::Error maps to FrameworkError::Internal (500 status) — projection failures are internal logic errors
+- Both FrameworkError and HttpResponse From impls needed for `?` operator in handlers returning Response
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -186,5 +192,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 90 COMPLETE — all 7 intents implemented, 309 tests
+Stopped at: Phase 91 Plan 01 COMPLETE — framework re-exports and error conversion
 Resume file: None
