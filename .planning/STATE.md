@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 90 (Renderer Trait & JSON-UI Renderer) — Plan 02 COMPLETE
-Plan: 90-01 and 90-02 complete, 90-03 remaining
-Status: Plan 02 executed (JsonUiRenderer with 4 intent layouts)
-Last activity: 2026-03-01 — Phase 90 Plan 02 executed (2 tasks, 2 commits)
+Phase: 90 (Renderer Trait & JSON-UI Renderer) — COMPLETE
+Plan: 90-01, 90-02, and 90-03 all complete
+Status: Phase 90 complete — all 7 intents implemented in JsonUiRenderer
+Last activity: 2026-03-01 — Phase 90 Plan 03 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Phase 90 Plan 02 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 18/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 20/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -157,6 +157,16 @@ Archived to PROJECT.md and milestone archive files.
 - Process/Analyze/Track remain todo!() for Plan 03
 - 274 ferro-projections unit tests + 7 doctests = 281 total
 
+**Phase 90-03:**
+- Process layout: Card+Badge state display, guard Alert, transition action Buttons; falls back to Focus without state machine
+- Analyze layout: summary Card with stat placeholders for numeric fields, sortable Table with all readable fields including DateTime, no Pagination
+- Track layout: Table with DateTime system fields visible, Status columns, sorted desc, with Pagination
+- Process Input mode: Form + transition buttons for editing while progressing state
+- All 7 intents + Custom fully implemented (no remaining todo!() stubs)
+- 5 full pipeline integration tests, edge case tests, RenderContext variation tests
+- JsonUiRenderer doctest documenting basic usage
+- 301 ferro-projections unit tests + 8 doctests = 309 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -176,5 +186,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 90 Plan 02 COMPLETE — JsonUiRenderer with Browse/Focus/Collect/Summarize, 281 tests
+Stopped at: Phase 90 COMPLETE — all 7 intents implemented, 309 tests
 Resume file: None
