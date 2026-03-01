@@ -457,6 +457,16 @@ impl From<sea_orm::DbErr> for FrameworkError {
     }
 }
 
+// Implement From<ferro_projections::Error> for automatic error conversion with ?
+#[cfg(feature = "projections")]
+impl From<ferro_projections::Error> for FrameworkError {
+    fn from(e: ferro_projections::Error) -> Self {
+        Self::Internal {
+            message: e.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -593,6 +603,22 @@ mod tests {
             "Validation errors should not have hints"
         );
         assert!(json.get("errors").is_some(), "should have errors field");
+    }
+
+    #[cfg(feature = "projections")]
+    #[test]
+    fn projection_error_converts_to_500() {
+        let err = FrameworkError::from(ferro_projections::Error::Definition(
+            "missing field".to_string(),
+        ));
+        assert_eq!(err.status_code(), 500);
+
+        let json = error_to_json(err);
+        let msg = json["message"].as_str().unwrap();
+        assert!(
+            msg.contains("missing field"),
+            "error message should contain original text, got: {msg}"
+        );
     }
 
     #[test]

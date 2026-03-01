@@ -351,6 +351,17 @@ impl From<crate::error::AppError> for HttpResponse {
     }
 }
 
+/// Auto-convert ferro_projections::Error to HttpResponse
+///
+/// This enables using the `?` operator in controller handlers with projection errors.
+#[cfg(feature = "projections")]
+impl From<ferro_projections::Error> for HttpResponse {
+    fn from(err: ferro_projections::Error) -> HttpResponse {
+        let framework_err: crate::error::FrameworkError = err.into();
+        framework_err.into()
+    }
+}
+
 /// Inertia-aware HTTP Redirect response builder.
 ///
 /// Unlike standard `Redirect`, this respects the Inertia protocol:
