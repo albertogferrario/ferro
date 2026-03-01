@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 90 (Renderer Trait & JSON-UI Renderer) — PLANNING COMPLETE
-Plan: 3 plans created (90-01, 90-02, 90-03) in 3 waves
-Status: Plans ready for execution
-Last activity: 2026-03-01 — Phase 90 planned (3 plans, 3 waves)
+Phase: 90 (Renderer Trait & JSON-UI Renderer) — Plan 01 COMPLETE
+Plan: 90-01 complete, 90-02 and 90-03 remaining
+Status: Plan 01 executed (Renderer trait + field/relationship mappings)
+Last activity: 2026-03-01 — Phase 90 Plan 01 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Phase 90 planned (3 plans, 3 waves)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 16/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 17/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -136,6 +136,16 @@ Archived to PROJECT.md and milestone archive files.
 - derive_intents() doctest added for public API documentation
 - 206 ferro-projections unit tests + 6 doctests = 212 total
 
+**Phase 90-01:**
+- Renderer trait with render() -> Result<serde_json::Value, Error>, outputs framework-independent JSON
+- RenderMode (Display/Input), RenderContext (intent_index, current_state, mode) types
+- is_system_field() moved from derive.rs to render module as pub(crate), shared across modules
+- field_to_display/input/column: exhaustive mapping of all 18 FieldMeaning variants to JSON-UI components
+- relationship_to_component: all 5 NavigationHint variants mapped (Inline/Link/Tab/Nested/Hidden)
+- field_display_name() converts snake_case to title case labels
+- Error::Render variant added for rendering failures
+- 249 ferro-projections unit tests + 7 doctests = 256 total
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -155,5 +165,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 89 Plan 03 COMPLETE — Validated derivation engine, 100% accuracy, 212 tests
+Stopped at: Phase 90 Plan 01 COMPLETE — Renderer trait, field/relationship mappings, 256 tests
 Resume file: None
