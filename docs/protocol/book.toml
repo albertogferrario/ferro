@@ -1,0 +1,8 @@
+[book]
+title = "Ferro Projections Protocol Specification"
+authors = ["ferro-rs contributors"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
