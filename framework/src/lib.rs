@@ -179,6 +179,15 @@ pub use ferro_cache::{
 // Re-export ferro-lang for localization
 pub use ferro_lang::{LangError, Translator};
 
+// Re-export ferro-projections for service projection definitions
+#[cfg(feature = "projections")]
+pub use ferro_projections::{
+    derive_intents, infer_meaning, ActionDef, Cardinality, DataType,
+    Error as ProjectionsError, FieldDef, FieldMeaning, GuardDef, InputDef, Intent, IntentHint,
+    IntentScore, JsonUiRenderer, NavigationHint, RelationshipDef, RenderContext, RenderMode,
+    Renderer, ServiceDef, StateDef, StateMachine, Transition, Warning as ProjectionsWarning,
+};
+
 // Re-export async_trait for middleware implementations
 pub use async_trait::async_trait;
 
