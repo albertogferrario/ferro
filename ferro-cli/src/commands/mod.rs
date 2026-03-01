@@ -31,6 +31,7 @@ pub mod make_middleware;
 pub mod make_migration;
 pub mod make_notification;
 pub mod make_policy;
+pub mod make_projection;
 pub mod make_resource;
 pub mod make_scaffold;
 pub mod make_seeder;
