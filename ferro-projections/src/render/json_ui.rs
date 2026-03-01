@@ -15,6 +15,22 @@ use super::field_map::{field_to_column, field_to_display, field_to_input};
 use super::relationship_map::relationship_to_component;
 use super::{field_display_name, is_system_field, RenderContext, RenderMode, Renderer};
 
+/// Returns true for DateTime-family field meanings that Track views expose.
+fn is_datetime_field(meaning: &FieldMeaning) -> bool {
+    matches!(
+        meaning,
+        FieldMeaning::CreatedAt | FieldMeaning::UpdatedAt | FieldMeaning::DateTime
+    )
+}
+
+/// Returns true for numeric field meanings used in Analyze summary stats.
+fn is_numeric_field(meaning: &FieldMeaning) -> bool {
+    matches!(
+        meaning,
+        FieldMeaning::Money | FieldMeaning::Quantity | FieldMeaning::Percentage
+    )
+}
+
 /// JSON-UI renderer producing ferro-json-ui/v1 component trees.
 ///
 /// Translates service definitions and scored intents into a JSON view specification
@@ -51,15 +67,18 @@ impl Renderer for JsonUiRenderer {
                 RenderMode::Display => self.render_summarize(service),
                 RenderMode::Input => self.render_collect(service),
             },
-            Intent::Process => {
-                todo!("implemented in Plan 03")
-            }
-            Intent::Analyze => {
-                todo!("implemented in Plan 03")
-            }
-            Intent::Track => {
-                todo!("implemented in Plan 03")
-            }
+            Intent::Process => match ctx.mode {
+                RenderMode::Display => self.render_process(service, ctx),
+                RenderMode::Input => self.render_process_input(service, ctx),
+            },
+            Intent::Analyze => match ctx.mode {
+                RenderMode::Display => self.render_analyze(service),
+                RenderMode::Input => self.render_collect(service),
+            },
+            Intent::Track => match ctx.mode {
+                RenderMode::Display => self.render_track(service),
+                RenderMode::Input => self.render_collect(service),
+            },
             Intent::Custom(_) => match ctx.mode {
                 RenderMode::Display => self.render_focus(service),
                 RenderMode::Input => self.render_collect(service),
@@ -238,6 +257,241 @@ impl JsonUiRenderer {
         });
 
         vec![form]
+    }
+
+    /// Process layout: workflow control panel for state-machine-driven services.
+    ///
+    /// Displays current state as a Badge, guard requirements as an Alert,
+    /// and transition-triggering actions as Buttons. Falls back to Focus
+    /// layout if no state machine is defined.
+    fn render_process(&self, service: &ServiceDef, ctx: &RenderContext) -> Vec<Value> {
+        let sm = match &service.state_machine {
+            Some(sm) => sm,
+            None => return self.render_focus(service),
+        };
+
+        let mut components = Vec::new();
+
+        // Current state display card
+        let title = service
+            .display_name
+            .as_deref()
+            .unwrap_or(&service.name)
+            .to_string();
+
+        let current_state_name = ctx.current_state.as_deref().unwrap_or("Unknown");
+
+        let mut card_children: Vec<Value> = vec![json!({
+            "type": "Badge",
+            "key": format!("{}-state-badge", service.name),
+            "text": current_state_name,
+            "variant": "default",
+            "data_path": "/data/state",
+        })];
+
+        // Alert if current state's outgoing transitions have guards
+        let current_state_str = ctx.current_state.as_deref().unwrap_or(&sm.initial_state);
+        let outgoing = sm.events_from_state(current_state_str);
+        let guarded: Vec<&str> = outgoing.iter().filter_map(|t| t.guard.as_deref()).collect();
+
+        if !guarded.is_empty() {
+            let guard_list = guarded.join(", ");
+            card_children.push(json!({
+                "type": "Alert",
+                "key": format!("{}-guard-alert", service.name),
+                "variant": "info",
+                "title": "Requirements",
+                "description": format!("Guards: {guard_list}"),
+            }));
+        }
+
+        components.push(json!({
+            "type": "Card",
+            "key": format!("{}-process-card", service.name),
+            "title": title,
+            "children": card_children,
+        }));
+
+        // Transition action buttons
+        for action in &service.actions {
+            if action.transition_trigger.is_some() {
+                let label = action
+                    .display_name
+                    .as_deref()
+                    .unwrap_or(&action.name)
+                    .to_string();
+                components.push(json!({
+                    "type": "Button",
+                    "key": format!("{}-action-{}", service.name, action.name),
+                    "label": label,
+                    "variant": "default",
+                    "action_handler": format!("{}.{}", service.name, action.name),
+                }));
+            }
+        }
+
+        components
+    }
+
+    /// Process layout in Input mode: form fields alongside transition buttons.
+    ///
+    /// Combines a Collect-style form (for editing process data) with
+    /// transition action buttons from the state machine.
+    fn render_process_input(&self, service: &ServiceDef, ctx: &RenderContext) -> Vec<Value> {
+        let mut components = self.render_collect(service);
+
+        // Add transition buttons after the form if state machine exists
+        if service.state_machine.is_some() {
+            for action in &service.actions {
+                if action.transition_trigger.is_some() {
+                    let label = action
+                        .display_name
+                        .as_deref()
+                        .unwrap_or(&action.name)
+                        .to_string();
+                    components.push(json!({
+                        "type": "Button",
+                        "key": format!("{}-action-{}", service.name, action.name),
+                        "label": label,
+                        "variant": "default",
+                        "action_handler": format!("{}.{}", service.name, action.name),
+                    }));
+                }
+            }
+        }
+
+        // If no state machine, fall back to standard Collect
+        let _ = ctx; // ctx available for future state-aware input rendering
+        components
+    }
+
+    /// Analyze layout: analytical table view for time-series/measure data.
+    ///
+    /// Includes ALL readable non-system fields as columns (broader than Browse).
+    /// DateTime columns included prominently, sorted descending by default.
+    /// No pagination (analytical views show all data).
+    ///
+    /// Note: JSON-UI has no chart components. The sortable Table is the analytical view.
+    fn render_analyze(&self, service: &ServiceDef) -> Vec<Value> {
+        let mut components = Vec::new();
+
+        // Summary card for numeric fields (structural placeholders for framework-layer computation)
+        let numeric_fields: Vec<&str> = service
+            .fields
+            .iter()
+            .filter(|f| f.readable && is_numeric_field(&f.meaning))
+            .map(|f| f.name.as_str())
+            .collect();
+
+        if !numeric_fields.is_empty() {
+            let items: Vec<Value> = numeric_fields
+                .iter()
+                .flat_map(|name| {
+                    let label = field_display_name(name);
+                    vec![
+                        json!({
+                            "term": format!("Total {label}"),
+                            "detail_data_path": format!("/data/summary/{name}_total"),
+                        }),
+                        json!({
+                            "term": format!("Average {label}"),
+                            "detail_data_path": format!("/data/summary/{name}_average"),
+                        }),
+                    ]
+                })
+                .collect();
+
+            components.push(json!({
+                "type": "Card",
+                "key": format!("{}-summary-card", service.name),
+                "title": "Summary",
+                "children": [json!({
+                    "type": "DescriptionList",
+                    "key": format!("{}-summary-stats", service.name),
+                    "items": items,
+                })],
+            }));
+        }
+
+        // Table with ALL readable fields (including DateTime, unlike Browse)
+        let columns: Vec<Value> = service
+            .fields
+            .iter()
+            .filter(|f| {
+                f.readable
+                    && !matches!(
+                        f.meaning,
+                        FieldMeaning::Identifier
+                            | FieldMeaning::Sensitive
+                            | FieldMeaning::ForeignKey
+                    )
+            })
+            .map(field_to_column)
+            .collect();
+
+        let table = json!({
+            "type": "Table",
+            "key": format!("{}-analyze-table", service.name),
+            "columns": columns,
+            "data_path": "/data/items",
+            "sortable": true,
+            "sort_direction": "desc",
+        });
+
+        components.push(table);
+        // No pagination for analytical views — show all data
+
+        components
+    }
+
+    /// Track layout: status timeline/audit list view.
+    ///
+    /// Unlike Browse, Track views INCLUDE DateTime system fields and sort by them.
+    /// Status columns render as Badges. Includes Pagination for long audit trails.
+    fn render_track(&self, service: &ServiceDef) -> Vec<Value> {
+        let columns: Vec<Value> = service
+            .fields
+            .iter()
+            .filter(|f| {
+                if !f.readable {
+                    return false;
+                }
+                // Include DateTime fields (Track wants temporal ordering visible)
+                if is_datetime_field(&f.meaning) {
+                    return true;
+                }
+                // Include Status, EntityName, and other non-system readable fields
+                if matches!(f.meaning, FieldMeaning::Identifier) {
+                    return false;
+                }
+                // Exclude Sensitive and ForeignKey
+                !matches!(
+                    f.meaning,
+                    FieldMeaning::Sensitive | FieldMeaning::ForeignKey
+                )
+            })
+            .map(field_to_column)
+            .collect();
+
+        let table = json!({
+            "type": "Table",
+            "key": format!("{}-track-table", service.name),
+            "columns": columns,
+            "data_path": "/data/items",
+            "sortable": true,
+            "sort_direction": "desc",
+        });
+
+        let pagination = json!({
+            "type": "Pagination",
+            "key": format!("{}-track-pagination", service.name),
+            "current_page": 1,
+            "per_page": 25,
+            "total": 0,
+            "base_url": format!("/{}", service.name),
+        });
+
+        vec![table, pagination]
     }
 
     /// Summarize layout: dashboard metrics with card grid.
@@ -835,6 +1089,360 @@ mod tests {
         let service =
             ServiceDef::new("dashboard").field("revenue", DataType::Float, FieldMeaning::Money);
         let intents = vec![summarize_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &input_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        assert_eq!(components[0]["type"], "Form");
+    }
+
+    // -- Process tests --
+
+    fn process_intent() -> IntentScore {
+        IntentScore {
+            intent: Intent::Process,
+            confidence: 0.9,
+            matching_signals: vec!["test".into()],
+        }
+    }
+
+    fn analyze_intent() -> IntentScore {
+        IntentScore {
+            intent: Intent::Analyze,
+            confidence: 0.7,
+            matching_signals: vec!["test".into()],
+        }
+    }
+
+    fn track_intent() -> IntentScore {
+        IntentScore {
+            intent: Intent::Track,
+            confidence: 0.75,
+            matching_signals: vec!["test".into()],
+        }
+    }
+
+    fn workflow_service() -> ServiceDef {
+        use crate::action::ActionDef;
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        ServiceDef::new("order")
+            .display_name("Order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("title", DataType::String, FieldMeaning::EntityName)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .action(
+                ActionDef::new("submit")
+                    .display_name("Submit Order")
+                    .transition_trigger("submit"),
+            )
+            .action(
+                ActionDef::new("approve")
+                    .display_name("Approve")
+                    .transition_trigger("approve"),
+            )
+            .action(ActionDef::new("update_notes").display_name("Update Notes"))
+            .state_machine(
+                StateMachine::new("order_workflow")
+                    .initial("draft")
+                    .state(StateDef::new("draft").display_name("Draft"))
+                    .state(StateDef::new("pending").display_name("Pending"))
+                    .state(
+                        StateDef::new("approved")
+                            .display_name("Approved")
+                            .final_state(),
+                    )
+                    .transition(
+                        Transition::new("draft", "submit", "pending").guard("has_required_fields"),
+                    )
+                    .transition(
+                        Transition::new("pending", "approve", "approved").guard("is_reviewer"),
+                    ),
+            )
+    }
+
+    #[test]
+    fn process_produces_card_badge_and_action_buttons_with_state_machine() {
+        let service = workflow_service();
+        let intents = vec![process_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+
+        // Card with Badge
+        assert_eq!(components[0]["type"], "Card");
+        let children = components[0]["children"].as_array().unwrap();
+        assert_eq!(children[0]["type"], "Badge");
+        assert_eq!(children[0]["data_path"], "/data/state");
+
+        // Transition action buttons (submit, approve — not update_notes)
+        let buttons: Vec<&Value> = components
+            .iter()
+            .filter(|c| c["type"] == "Button")
+            .collect();
+        assert_eq!(buttons.len(), 2);
+        assert_eq!(buttons[0]["label"], "Submit Order");
+        assert_eq!(buttons[0]["action_handler"], "order.submit");
+        assert_eq!(buttons[1]["label"], "Approve");
+        assert_eq!(buttons[1]["action_handler"], "order.approve");
+    }
+
+    #[test]
+    fn process_falls_back_to_focus_without_state_machine() {
+        let service = ServiceDef::new("order")
+            .display_name("Order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("title", DataType::String, FieldMeaning::EntityName)
+            .field("total", DataType::Float, FieldMeaning::Money);
+        let intents = vec![process_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        // Focus layout: Card with DescriptionList
+        assert_eq!(components[0]["type"], "Card");
+        let children = components[0]["children"].as_array().unwrap();
+        assert_eq!(children[0]["type"], "DescriptionList");
+    }
+
+    #[test]
+    fn process_includes_guard_alert_for_guarded_transitions() {
+        let service = workflow_service();
+        let intents = vec![process_intent()];
+        // Current state is "draft" which has guarded transition (has_required_fields)
+        let ctx = RenderContext {
+            intent_index: 0,
+            current_state: Some("draft".to_string()),
+            mode: RenderMode::Display,
+        };
+        let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
+        let card_children = result["components"][0]["children"].as_array().unwrap();
+        let alert = card_children.iter().find(|c| c["type"] == "Alert");
+        assert!(alert.is_some(), "Expected Alert for guarded transitions");
+        let alert = alert.unwrap();
+        assert_eq!(alert["variant"], "info");
+        assert!(alert["description"]
+            .as_str()
+            .unwrap()
+            .contains("has_required_fields"));
+    }
+
+    #[test]
+    fn process_shows_current_state_in_badge() {
+        let service = workflow_service();
+        let intents = vec![process_intent()];
+        let ctx = RenderContext {
+            intent_index: 0,
+            current_state: Some("pending".to_string()),
+            mode: RenderMode::Display,
+        };
+        let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
+        let badge = &result["components"][0]["children"][0];
+        assert_eq!(badge["text"], "pending");
+    }
+
+    #[test]
+    fn process_input_mode_renders_form_with_transition_buttons() {
+        let service = workflow_service();
+        let intents = vec![process_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &input_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        // Form first
+        assert_eq!(components[0]["type"], "Form");
+        // Transition buttons after form
+        let buttons: Vec<&Value> = components
+            .iter()
+            .filter(|c| c["type"] == "Button" && c.get("action_handler").is_some())
+            .filter(|c| c["action_handler"].as_str().unwrap() != "order.store")
+            .collect();
+        assert_eq!(buttons.len(), 2);
+    }
+
+    // -- Analyze tests --
+
+    #[test]
+    fn analyze_produces_sortable_table_with_all_readable_fields() {
+        let service = ServiceDef::new("metric")
+            .display_name("Metric")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("value", DataType::Float, FieldMeaning::Money)
+            .field("recorded_at", DataType::DateTime, FieldMeaning::DateTime)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+        let intents = vec![analyze_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+
+        // Find the table
+        let table = components.iter().find(|c| c["type"] == "Table").unwrap();
+        assert_eq!(table["sortable"], true);
+        assert_eq!(table["sort_direction"], "desc");
+        assert_eq!(table["data_path"], "/data/items");
+
+        // Columns include DateTime fields (unlike Browse)
+        let columns = table["columns"].as_array().unwrap();
+        let keys: Vec<&str> = columns.iter().map(|c| c["key"].as_str().unwrap()).collect();
+        assert!(keys.contains(&"name"), "Expected name column");
+        assert!(keys.contains(&"value"), "Expected value column");
+        assert!(keys.contains(&"recorded_at"), "Expected recorded_at column");
+        assert!(keys.contains(&"created_at"), "Expected created_at column");
+        // Identifier excluded
+        assert!(!keys.contains(&"id"));
+    }
+
+    #[test]
+    fn analyze_has_no_pagination() {
+        let service = ServiceDef::new("metric")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("value", DataType::Float, FieldMeaning::Money);
+        let intents = vec![analyze_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        assert!(
+            !components.iter().any(|c| c["type"] == "Pagination"),
+            "Analyze should not have Pagination"
+        );
+    }
+
+    #[test]
+    fn analyze_includes_summary_card_when_numeric_fields_exist() {
+        let service = ServiceDef::new("metric")
+            .display_name("Metric")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("revenue", DataType::Float, FieldMeaning::Money)
+            .field("count", DataType::Integer, FieldMeaning::Quantity);
+        let intents = vec![analyze_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+
+        // Summary card present
+        let summary = components.iter().find(|c| c["title"] == "Summary");
+        assert!(
+            summary.is_some(),
+            "Expected Summary card for numeric fields"
+        );
+
+        let summary = summary.unwrap();
+        assert_eq!(summary["type"], "Card");
+        let dl = &summary["children"][0];
+        assert_eq!(dl["type"], "DescriptionList");
+        let items = dl["items"].as_array().unwrap();
+        // Total + Average for each numeric field
+        let terms: Vec<&str> = items.iter().map(|i| i["term"].as_str().unwrap()).collect();
+        assert!(terms.contains(&"Total Revenue"));
+        assert!(terms.contains(&"Average Revenue"));
+        assert!(terms.contains(&"Total Count"));
+        assert!(terms.contains(&"Average Count"));
+    }
+
+    #[test]
+    fn analyze_no_summary_card_without_numeric_fields() {
+        let service = ServiceDef::new("log")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("message", DataType::String, FieldMeaning::FreeText)
+            .field("recorded_at", DataType::DateTime, FieldMeaning::DateTime);
+        let intents = vec![analyze_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        assert!(
+            !components.iter().any(|c| c["title"] == "Summary"),
+            "No summary card without numeric fields"
+        );
+    }
+
+    #[test]
+    fn analyze_input_mode_renders_collect_form() {
+        let service = ServiceDef::new("metric")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("value", DataType::Float, FieldMeaning::Money);
+        let intents = vec![analyze_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &input_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        assert_eq!(components[0]["type"], "Form");
+    }
+
+    // -- Track tests --
+
+    #[test]
+    fn track_produces_table_with_datetime_and_status_columns() {
+        let service = ServiceDef::new("activity")
+            .display_name("Activity Log")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt);
+        let intents = vec![track_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+
+        let table = &components[0];
+        assert_eq!(table["type"], "Table");
+
+        let columns = table["columns"].as_array().unwrap();
+        let keys: Vec<&str> = columns.iter().map(|c| c["key"].as_str().unwrap()).collect();
+        // DateTime fields INCLUDED (Track's key difference from Browse)
+        assert!(keys.contains(&"created_at"), "Track includes created_at");
+        assert!(keys.contains(&"updated_at"), "Track includes updated_at");
+        // Status and EntityName included
+        assert!(keys.contains(&"status"));
+        assert!(keys.contains(&"name"));
+        // Identifier excluded
+        assert!(!keys.contains(&"id"));
+    }
+
+    #[test]
+    fn track_includes_pagination() {
+        let service = ServiceDef::new("activity")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+        let intents = vec![track_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let components = result["components"].as_array().unwrap();
+        assert_eq!(components.len(), 2);
+        assert_eq!(components[1]["type"], "Pagination");
+    }
+
+    #[test]
+    fn track_sorts_by_datetime_desc() {
+        let service = ServiceDef::new("activity")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+        let intents = vec![track_intent()];
+        let result = JsonUiRenderer
+            .render(&service, &intents, &default_ctx())
+            .unwrap();
+        let table = &result["components"][0];
+        assert_eq!(table["sort_direction"], "desc");
+        assert_eq!(table["sortable"], true);
+    }
+
+    #[test]
+    fn track_input_mode_renders_collect_form() {
+        let service = ServiceDef::new("activity")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status);
+        let intents = vec![track_intent()];
         let result = JsonUiRenderer
             .render(&service, &intents, &input_ctx())
             .unwrap();
