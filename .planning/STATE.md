@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 91 (Framework Integration) — In Progress
-Plan: 91-01 complete
-Status: Plan 91-01 complete — feature-gated re-exports and error conversion
-Last activity: 2026-03-01 — Phase 91 Plan 01 executed (2 tasks, 2 commits)
+Plan: 91-02 complete
+Status: Plan 91-02 complete — make:projection CLI command with 4 tests
+Last activity: 2026-03-01 — Phase 91 Plan 02 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Phase 91 Plan 01 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 21/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 22/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -173,6 +173,12 @@ Archived to PROJECT.md and milestone archive files.
 - ferro_projections::Error maps to FrameworkError::Internal (500 status) — projection failures are internal logic errors
 - Both FrameworkError and HttpResponse From impls needed for `?` operator in handlers returning Response
 
+**Phase 91-02:**
+- `ferro make:projection <name>` CLI command scaffolds src/projections/{name}.rs with ServiceDef builder function
+- Template uses `ferro::{...}` imports (targets user projects, not workspace)
+- Auto-creates src/projections/ directory (like make_json_view pattern)
+- 4 unit tests: template generation, directory/file creation, mod.rs creation, mod.rs append without duplication
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -192,5 +198,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 91 Plan 01 COMPLETE — framework re-exports and error conversion
+Stopped at: Phase 91 Plan 02 COMPLETE — make:projection CLI command with 4 tests
 Resume file: None
