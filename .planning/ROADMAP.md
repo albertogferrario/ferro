@@ -111,17 +111,17 @@ Plans:
 - [x] 89-02: State machine, relationship, and action signal analyzers — full 5-analyzer pipeline
 - [x] 89-03: Validation test suite — 12 representative ServiceDefs, 100% primary intent accuracy, edge cases
 
-#### Phase 90: Renderer Trait & JSON-UI Renderer
+#### Phase 90: Renderer Trait & JSON-UI Renderer ✅
 
 **Goal**: Define Renderer trait, implement first renderer mapping intents to JSON-UI components.
 **Depends on**: Phase 89
-**Research**: Complete (90-RESEARCH.md — HIGH confidence, 6/7 intents map naturally)
-**Plans**: 3
+**Completed**: 2026-03-01
+**Plans**: 3/3
 
 Plans:
-- [ ] 90-01: Renderer trait, RenderContext/RenderMode types, field mapping (display+input+column), relationship mapping
-- [ ] 90-02: JsonUiRenderer — Browse, Focus, Collect, Summarize intent layouts
-- [ ] 90-03: JsonUiRenderer — Process, Analyze, Track intent layouts + full pipeline integration tests
+- [x] 90-01: Renderer trait, RenderContext/RenderMode types, field mapping (display+input+column), relationship mapping
+- [x] 90-02: JsonUiRenderer — Browse, Focus, Collect, Summarize intent layouts
+- [x] 90-03: JsonUiRenderer — Process, Analyze, Track intent layouts + full pipeline integration tests
 
 #### Phase 91: Framework Integration
 
@@ -623,7 +623,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 15/28 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 18/28 | 🚧 In Progress | - |
 
-**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (15/28 plans complete).**
+**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (18/28 plans complete).**
 
