@@ -99,18 +99,17 @@ Plans:
 - [x] 88-01: Intent, IntentScore, IntentHint types + ServiceDef integration + validation (143 tests)
 - [x] 88-02: Comprehensive test suite — serde, schema, builder, validation, integration (148 tests)
 
-#### Phase 89: Intent Graph Generation
+#### Phase 89: Intent Graph Generation ✅
 
 **Goal**: Structural analysis engine — pattern matching on ServiceDef signals to ranked intents with confidence scores. Core innovation phase.
 **Depends on**: Phase 88
-**Research**: Likely (structural analysis heuristics are the intellectual core)
-**Research topics**: Structural signal pattern matching, confidence scoring, derivation validation suite
-**Plans**: 3
+**Completed**: 2026-03-01
+**Plans**: 3/3
 
 Plans:
-- [ ] 89-01: TBD
-- [ ] 89-02: TBD
-- [ ] 89-03: TBD
+- [x] 89-01: Derivation engine foundation — derive_intents() API, field meaning + writability analyzers, scoring pipeline
+- [x] 89-02: State machine, relationship, and action signal analyzers — full 5-analyzer pipeline
+- [x] 89-03: Validation test suite — 12 representative ServiceDefs, 100% primary intent accuracy, edge cases
 
 #### Phase 90: Renderer Trait & JSON-UI Renderer
 
@@ -625,7 +624,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 12/28 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 15/28 | 🚧 In Progress | - |
 
-**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (12/28 plans complete).**
+**Total: 21 milestones shipped, 184 plans. 1 milestone in progress (15/28 plans complete).**
 
