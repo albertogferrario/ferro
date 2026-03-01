@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::field::FieldMeaning;
 use crate::intent::{Intent, IntentHint, IntentScore};
 use crate::relationship::{Cardinality, NavigationHint};
+use crate::render::is_system_field;
 use crate::service::ServiceDef;
 
 // Signal name constants to prevent typo bugs in matching_signals.
@@ -109,15 +110,6 @@ pub fn derive_intents(service: &ServiceDef) -> Vec<IntentScore> {
     }
 
     scores
-}
-
-/// Returns true for system/infrastructure field meanings that should not
-/// contribute to domain intent signals.
-fn is_system_field(meaning: &FieldMeaning) -> bool {
-    matches!(
-        meaning,
-        FieldMeaning::Identifier | FieldMeaning::CreatedAt | FieldMeaning::UpdatedAt
-    )
 }
 
 /// Examines non-system fields' meanings to derive intent signals.
