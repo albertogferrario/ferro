@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 91 (Framework Integration) — COMPLETE
-Plan: 91-01, 91-02, and 91-03 all complete
-Status: Phase 91 complete — framework re-exports, CLI scaffolding, MCP introspection
-Last activity: 2026-03-01 — Phase 91 executed (3 plans, 1 wave, 6 tasks, 9 commits)
+Phase: 92 (MCP Introspection & CLI) — IN PROGRESS
+Plan: 92-01 complete
+Status: Plan 92-01 complete — model-aware projection scaffolding via --from-model
+Last activity: 2026-03-01 — Plan 92-01 executed (2 tasks, 1 commit)
 
 ## Milestone Summary
 
@@ -187,6 +187,14 @@ Archived to PROJECT.md and milestone archive files.
 - All 4 field types parsed with correct readable/writable flags
 - 17 new tests (147 total ferro-mcp tests)
 
+**Phase 92-01:**
+- `ferro make:projection --from-model` reads SeaORM models via syn AST visitor and generates populated ServiceDef
+- Self-contained ModelField/ModelVisitor in make_projection.rs (not imported from make_api — avoids coupling)
+- Replicated infer_meaning logic as string-returning codegen helper (no ferro-projections dependency in ferro-cli for this)
+- rust_type_to_data_type maps 20+ Rust types to DataType variants, unknown falls back to String
+- Sensitive fields excluded entirely from output, FK fields get read_only_field + belongs_to
+- 10 ferro-cli make_projection tests (4 existing + 6 new)
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -206,5 +214,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 91 COMPLETE — framework integration (re-exports, CLI, MCP tools)
+Stopped at: Phase 92 Plan 01 COMPLETE — model-aware projection scaffolding
 Resume file: None
