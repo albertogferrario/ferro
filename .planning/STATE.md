@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 91 (Framework Integration) — In Progress
-Plan: 91-02 complete
-Status: Plan 91-02 complete — make:projection CLI command with 4 tests
-Last activity: 2026-03-01 — Phase 91 Plan 02 executed (2 tasks, 2 commits)
+Plan: 91-03 complete
+Status: Plan 91-03 complete — 3 MCP projection introspection tools with 17 tests
+Last activity: 2026-03-01 — Phase 91 Plan 03 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Phase 91 Plan 02 executed (2 tasks, 2 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 22/28 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 23/28 | In Progress | - |
 
 ## Accumulated Context
 
@@ -179,6 +179,14 @@ Archived to PROJECT.md and milestone archive files.
 - Auto-creates src/projections/ directory (like make_json_view pattern)
 - 4 unit tests: template generation, directory/file creation, mod.rs creation, mod.rs append without duplication
 
+**Phase 91-03:**
+- 3 MCP projection introspection tools: list_projections, inspect_projection, render_projection
+- Source-scanning via regex (matching json_ui_inspect pattern) to discover and parse ServiceDef functions
+- render_projection reconstructs ServiceDef from parsed source, derives intents, renders JSON-UI via JsonUiRenderer
+- InspectResult uses untagged enum for clean Found/NotFound JSON output
+- All 4 field types parsed with correct readable/writable flags
+- 17 new tests (147 total ferro-mcp tests)
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -198,5 +206,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 91 Plan 02 COMPLETE — make:projection CLI command with 4 tests
+Stopped at: Phase 91 Plan 03 COMPLETE — 3 MCP projection tools (list, inspect, render) with 17 tests
 Resume file: None
