@@ -1579,4 +1579,391 @@ mod tests {
         assert!(intent_priority(&Intent::Summarize) < intent_priority(&Intent::Analyze));
         assert!(intent_priority(&Intent::Analyze) < intent_priority(&Intent::Custom("x".into())));
     }
+
+    // ==========================================================
+    // Validation suite: 12 representative ServiceDef fixtures
+    // ==========================================================
+
+    mod validation {
+        use super::*;
+        use crate::action::InputDef;
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        fn assert_primary_intent(service: &ServiceDef, expected: Intent) {
+            let scores = derive_intents(service);
+            assert!(
+                !scores.is_empty(),
+                "derive_intents returned empty for '{}'",
+                service.name
+            );
+            assert_eq!(
+                scores[0].intent, expected,
+                "Expected primary intent {:?} for '{}', got {:?} (confidence: {:.2}). Signals: {:?}",
+                expected,
+                service.name,
+                scores[0].intent,
+                scores[0].confidence,
+                scores[0].matching_signals
+            );
+        }
+
+        // 1. Order Management -> Process
+        fn order_management() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("order_management")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("total", DataType::Float, FieldMeaning::Money)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .field("notes", DataType::String, FieldMeaning::FreeText)
+                .state_machine(
+                    StateMachine::new("order_lifecycle")
+                        .initial("draft")
+                        .state(StateDef::new("draft"))
+                        .state(StateDef::new("submitted"))
+                        .state(StateDef::new("approved"))
+                        .state(StateDef::new("completed").final_state())
+                        .transition(
+                            Transition::new("draft", "submit", "submitted").guard("has_items"),
+                        )
+                        .transition(
+                            Transition::new("submitted", "approve", "approved").guard("is_manager"),
+                        )
+                        .transition(Transition::new("approved", "complete", "completed")),
+                )
+                .guard(crate::action::GuardDef::new("has_items"))
+                .guard(crate::action::GuardDef::new("is_manager"))
+                .action(
+                    ActionDef::new("submit")
+                        .transition_trigger("submit")
+                        .precondition("has_items"),
+                )
+                .action(
+                    ActionDef::new("approve")
+                        .transition_trigger("approve")
+                        .precondition("is_manager"),
+                );
+            (service, Intent::Process)
+        }
+
+        #[test]
+        fn validation_01_order_management_process() {
+            let (service, expected) = order_management();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 2. Product Catalog -> Browse
+        fn product_catalog() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("product_catalog")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("name", DataType::String, FieldMeaning::EntityName)
+                .field("price", DataType::Float, FieldMeaning::Money)
+                .field("category", DataType::String, FieldMeaning::Category)
+                .has_many("reviews", "review");
+            (service, Intent::Browse)
+        }
+
+        #[test]
+        fn validation_02_product_catalog_browse() {
+            let (service, expected) = product_catalog();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 3. Blog Post -> Focus
+        fn blog_post() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("blog_post")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("body", DataType::String, FieldMeaning::FreeText)
+                .field("featured_image", DataType::String, FieldMeaning::ImageUrl)
+                .field("canonical_url", DataType::String, FieldMeaning::Url)
+                .belongs_to("author", "user");
+            (service, Intent::Focus)
+        }
+
+        #[test]
+        fn validation_03_blog_post_focus() {
+            let (service, expected) = blog_post();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 4. User Registration -> Collect
+        fn user_registration() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("user_registration")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("full_name", DataType::String, FieldMeaning::EntityName)
+                .field("email", DataType::String, FieldMeaning::Email)
+                .write_only_field("password", DataType::String, FieldMeaning::Sensitive)
+                .field("phone", DataType::String, FieldMeaning::Phone)
+                .field("bio", DataType::String, FieldMeaning::FreeText);
+            (service, Intent::Collect)
+        }
+
+        #[test]
+        fn validation_04_user_registration_collect() {
+            let (service, expected) = user_registration();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 5. Revenue Report -> Summarize
+        fn revenue_report() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("revenue_report")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .read_only_field("total_revenue", DataType::Float, FieldMeaning::Money)
+                .read_only_field("margin", DataType::Float, FieldMeaning::Percentage)
+                .read_only_field("units_sold", DataType::Integer, FieldMeaning::Quantity)
+                .read_only_field("growth_rate", DataType::Float, FieldMeaning::Percentage);
+            (service, Intent::Summarize)
+        }
+
+        #[test]
+        fn validation_05_revenue_report_summarize() {
+            let (service, expected) = revenue_report();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 6. Sales Analytics -> Analyze
+        // DateTime + numeric co-occurrence triggers Analyze (0.35). Mixed read/write
+        // avoids both high_writable_ratio (Collect) and mostly_read_only (Summarize).
+        // Single Quantity field gives Summarize 0.3, weaker than Analyze 0.35.
+        fn sales_analytics() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("sales_analytics")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .read_only_field("order_date", DataType::DateTime, FieldMeaning::DateTime)
+                .read_only_field("units", DataType::Integer, FieldMeaning::Quantity)
+                .field("region", DataType::String, FieldMeaning::Category);
+            (service, Intent::Analyze)
+        }
+
+        #[test]
+        fn validation_06_sales_analytics_analyze() {
+            let (service, expected) = sales_analytics();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 7. Shipment Tracking -> Track
+        fn shipment_tracking() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("shipment_tracking")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .read_only_field("shipped_at", DataType::DateTime, FieldMeaning::DateTime)
+                .read_only_field("delivered_at", DataType::DateTime, FieldMeaning::DateTime)
+                .state_machine(
+                    StateMachine::new("shipment_lifecycle")
+                        .initial("pending")
+                        .state(StateDef::new("pending"))
+                        .state(StateDef::new("shipped"))
+                        .state(StateDef::new("in_transit"))
+                        .state(StateDef::new("delivered").final_state())
+                        .transition(Transition::new("pending", "ship", "shipped"))
+                        .transition(Transition::new("shipped", "depart", "in_transit"))
+                        .transition(Transition::new("in_transit", "deliver", "delivered")),
+                );
+            (service, Intent::Track)
+        }
+
+        #[test]
+        fn validation_07_shipment_tracking_track() {
+            let (service, expected) = shipment_tracking();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 8. Comment Thread -> Browse
+        fn comment_thread() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("comment_thread")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("content", DataType::String, FieldMeaning::FreeText)
+                .has_many("replies", "comment")
+                .belongs_to("author", "user");
+            (service, Intent::Browse)
+        }
+
+        #[test]
+        fn validation_08_comment_thread_browse() {
+            let (service, expected) = comment_thread();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 9. Support Ticket -> Process
+        fn support_ticket() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("support_ticket")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .field("description", DataType::String, FieldMeaning::FreeText)
+                .state_machine(
+                    StateMachine::new("ticket_lifecycle")
+                        .initial("open")
+                        .state(StateDef::new("open"))
+                        .state(StateDef::new("in_progress"))
+                        .state(StateDef::new("waiting"))
+                        .state(StateDef::new("resolved"))
+                        .state(StateDef::new("closed").final_state())
+                        .transition(
+                            Transition::new("open", "assign", "in_progress").guard("is_assigned"),
+                        )
+                        .transition(Transition::new("in_progress", "wait", "waiting"))
+                        .transition(
+                            Transition::new("waiting", "respond", "in_progress")
+                                .guard("customer_responded"),
+                        )
+                        .transition(Transition::new("in_progress", "resolve", "resolved"))
+                        .transition(Transition::new("resolved", "close", "closed")),
+                )
+                .guard(crate::action::GuardDef::new("is_assigned"))
+                .guard(crate::action::GuardDef::new("customer_responded"))
+                .action(
+                    ActionDef::new("assign")
+                        .transition_trigger("assign")
+                        .precondition("is_assigned"),
+                )
+                .action(ActionDef::new("resolve").transition_trigger("resolve"))
+                .action(ActionDef::new("close").transition_trigger("close"));
+            (service, Intent::Process)
+        }
+
+        #[test]
+        fn validation_09_support_ticket_process() {
+            let (service, expected) = support_ticket();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 10. User Profile -> Focus
+        fn user_profile() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("user_profile")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .read_only_field("avatar", DataType::String, FieldMeaning::ImageUrl)
+                .read_only_field("bio", DataType::String, FieldMeaning::FreeText)
+                .read_only_field("website", DataType::String, FieldMeaning::Url)
+                .has_one("address", "address");
+            (service, Intent::Focus)
+        }
+
+        #[test]
+        fn validation_10_user_profile_focus() {
+            let (service, expected) = user_profile();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 11. Survey Form -> Collect
+        // Many writable fields including write-only produce strong Collect signals.
+        // Using non-FreeText field meanings avoids Focus amplification. >50% writable
+        // ratio triggers high_writable_ratio, write-only adds write_only_fields signal.
+        fn survey_form() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("survey_form")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("full_name", DataType::String, FieldMeaning::EntityName)
+                .field("email", DataType::String, FieldMeaning::Email)
+                .field("phone", DataType::String, FieldMeaning::Phone)
+                .field("consent", DataType::Boolean, FieldMeaning::Boolean)
+                .write_only_field(
+                    "answer_1",
+                    DataType::String,
+                    FieldMeaning::Custom("answer".into()),
+                )
+                .write_only_field(
+                    "answer_2",
+                    DataType::String,
+                    FieldMeaning::Custom("answer".into()),
+                )
+                .action(
+                    ActionDef::new("submit_survey")
+                        .input(InputDef::new(
+                            "full_name",
+                            DataType::String,
+                            FieldMeaning::EntityName,
+                        ))
+                        .input(InputDef::new(
+                            "email",
+                            DataType::String,
+                            FieldMeaning::Email,
+                        ))
+                        .input(InputDef::new(
+                            "consent",
+                            DataType::Boolean,
+                            FieldMeaning::Boolean,
+                        )),
+                );
+            (service, Intent::Collect)
+        }
+
+        #[test]
+        fn validation_11_survey_form_collect() {
+            let (service, expected) = survey_form();
+            assert_primary_intent(&service, expected);
+        }
+
+        // 12. Activity Log -> Track
+        // Status field signals Track (0.25). Read-only pattern with no FreeText avoids
+        // Focus amplification. Using DateTime (not CreatedAt, which is a system field)
+        // keeps temporal fields in domain analysis.
+        fn activity_log() -> (ServiceDef, Intent) {
+            let service = ServiceDef::new("activity_log")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .read_only_field("event_type", DataType::String, FieldMeaning::Status)
+                .read_only_field("occurred_at", DataType::DateTime, FieldMeaning::DateTime)
+                .read_only_field("source", DataType::String, FieldMeaning::Category);
+            (service, Intent::Track)
+        }
+
+        #[test]
+        fn validation_12_activity_log_track() {
+            let (service, expected) = activity_log();
+            assert_primary_intent(&service, expected);
+        }
+
+        #[test]
+        fn validation_accuracy_check() {
+            let fixtures: Vec<(ServiceDef, Intent)> = vec![
+                order_management(),
+                product_catalog(),
+                blog_post(),
+                user_registration(),
+                revenue_report(),
+                sales_analytics(),
+                shipment_tracking(),
+                comment_thread(),
+                support_ticket(),
+                user_profile(),
+                survey_form(),
+                activity_log(),
+            ];
+
+            let total = fixtures.len();
+            let mut correct = 0;
+            let mut incorrect: Vec<String> = Vec::new();
+
+            for (service, expected) in &fixtures {
+                let scores = derive_intents(service);
+                if !scores.is_empty() && scores[0].intent == *expected {
+                    correct += 1;
+                } else {
+                    let actual = if scores.is_empty() {
+                        "EMPTY".to_string()
+                    } else {
+                        format!("{:?} ({:.2})", scores[0].intent, scores[0].confidence)
+                    };
+                    incorrect.push(format!(
+                        "  '{}': expected {:?}, got {}",
+                        service.name, expected, actual
+                    ));
+                }
+            }
+
+            let accuracy = correct as f64 / total as f64;
+            eprintln!(
+                "\n=== Intent Derivation Accuracy: {correct}/{total} ({:.0}%) ===",
+                accuracy * 100.0
+            );
+            if !incorrect.is_empty() {
+                eprintln!("Misclassified:");
+                for line in &incorrect {
+                    eprintln!("{line}");
+                }
+            }
+
+            assert!(
+                correct * 100 >= total * 70,
+                "Accuracy {correct}/{total} ({:.0}%) is below 70% threshold. Misclassified:\n{}",
+                accuracy * 100.0,
+                incorrect.join("\n")
+            );
+        }
+    }
 }
