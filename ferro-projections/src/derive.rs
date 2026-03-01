@@ -580,6 +580,7 @@ fn apply_hints(scores: &mut Vec<IntentScore>, hints: &[IntentHint]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::action::ActionDef;
     use crate::field::DataType;
 
     // -- Helper: find an IntentScore for a given intent in a slice --
@@ -1078,6 +1079,460 @@ mod tests {
             (scores[0].confidence - 1.0).abs() < f64::EPSILON,
             "Top score should be 1.0, got {}",
             scores[0].confidence
+        );
+
+        // Every score has at least one matching signal.
+        for s in &scores {
+            assert!(
+                !s.matching_signals.is_empty(),
+                "{:?} has no matching signals",
+                s.intent
+            );
+        }
+    }
+
+    // ==========================================================
+    // State machine analyzer tests
+    // ==========================================================
+
+    #[test]
+    fn state_machine_order_workflow_produces_process() {
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        // Order workflow: guarded transitions, branching (draft -> pending OR cancelled).
+        let service = ServiceDef::new("order")
+            .state_machine(
+                StateMachine::new("order_lifecycle")
+                    .initial("draft")
+                    .state(StateDef::new("draft"))
+                    .state(StateDef::new("pending"))
+                    .state(StateDef::new("approved"))
+                    .state(StateDef::new("completed").final_state())
+                    .state(StateDef::new("cancelled").final_state())
+                    .transition(
+                        Transition::new("draft", "submit", "pending").guard("has_required_fields"),
+                    )
+                    .transition(
+                        Transition::new("pending", "approve", "approved").guard("is_reviewer"),
+                    )
+                    .transition(Transition::new("approved", "complete", "completed"))
+                    .transition(Transition::new("draft", "cancel", "cancelled")),
+            )
+            .action(
+                ActionDef::new("submit")
+                    .transition_trigger("submit")
+                    .precondition("has_required_fields"),
+            );
+
+        let signals = analyze_state_machine(&service);
+        let process_signals: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Process).collect();
+        let track_signals: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Track).collect();
+
+        assert!(
+            !process_signals.is_empty(),
+            "Process signals must be present for guarded branching workflow"
+        );
+        let process_weight: f64 = process_signals.iter().map(|s| s.1).sum();
+        let track_weight: f64 = track_signals.iter().map(|s| s.1).sum();
+        assert!(
+            process_weight > track_weight,
+            "Process ({process_weight}) should outweigh Track ({track_weight}) for branching workflow"
+        );
+    }
+
+    #[test]
+    fn state_machine_shipment_tracking_produces_track() {
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        // Shipment tracking: linear states, no guards, no branches.
+        let service = ServiceDef::new("shipment").state_machine(
+            StateMachine::new("shipment_tracking")
+                .initial("created")
+                .state(StateDef::new("created"))
+                .state(StateDef::new("picked_up"))
+                .state(StateDef::new("in_transit"))
+                .state(StateDef::new("delivered").final_state())
+                .transition(Transition::new("created", "pick_up", "picked_up"))
+                .transition(Transition::new("picked_up", "depart", "in_transit"))
+                .transition(Transition::new("in_transit", "deliver", "delivered")),
+        );
+
+        let signals = analyze_state_machine(&service);
+        let track_signals: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Track).collect();
+        let process_signals: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Process).collect();
+
+        assert!(
+            !track_signals.is_empty(),
+            "Track signals must be present for linear progression"
+        );
+        let track_weight: f64 = track_signals.iter().map(|s| s.1).sum();
+        let process_weight: f64 = process_signals.iter().map(|s| s.1).sum();
+        assert!(
+            track_weight > process_weight,
+            "Track ({track_weight}) should outweigh Process ({process_weight}) for linear tracking"
+        );
+    }
+
+    #[test]
+    fn state_machine_none_returns_empty() {
+        let service = ServiceDef::new("bare");
+        let signals = analyze_state_machine(&service);
+        assert!(
+            signals.is_empty(),
+            "No state machine should produce no signals"
+        );
+    }
+
+    #[test]
+    fn state_machine_trivial_produces_weak_track() {
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        // Trivial: 2 states, 1 transition, no guards.
+        let service = ServiceDef::new("toggle").state_machine(
+            StateMachine::new("toggle")
+                .initial("off")
+                .state(StateDef::new("off"))
+                .state(StateDef::new("on").final_state())
+                .transition(Transition::new("off", "activate", "on")),
+        );
+
+        let signals = analyze_state_machine(&service);
+        let track_signals: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Track).collect();
+
+        // Should have some Track signals (has_final_states, unguarded_progression).
+        assert!(
+            !track_signals.is_empty(),
+            "Trivial state machine should produce some Track signals"
+        );
+        // But no linear_states signal (non-final count == 1, not > 2).
+        let linear: Vec<_> = track_signals
+            .iter()
+            .filter(|s| s.2.contains(SIGNAL_LINEAR_STATES))
+            .collect();
+        assert!(
+            linear.is_empty(),
+            "Trivial machine should not have linear_states (only 1 non-final)"
+        );
+    }
+
+    // ==========================================================
+    // Relationship analyzer tests
+    // ==========================================================
+
+    #[test]
+    fn relationship_has_many_produces_browse() {
+        let service = ServiceDef::new("category")
+            .has_many("products", "product")
+            .has_many("subcategories", "category");
+
+        let signals = analyze_relationships(&service);
+        let browse: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Browse && s.2.contains(SIGNAL_COLLECTION_RELATIONSHIPS))
+            .collect();
+        assert!(
+            !browse.is_empty(),
+            "has_many relationships should produce Browse collection signal"
+        );
+        // 2 collection relationships * 0.35 = 0.7
+        assert!(
+            (browse[0].1 - 0.7).abs() < f64::EPSILON,
+            "expected 0.7, got {}",
+            browse[0].1
+        );
+    }
+
+    #[test]
+    fn relationship_one_to_one_inline_produces_focus() {
+        let service = ServiceDef::new("user").has_one("profile", "profile");
+
+        let signals = analyze_relationships(&service);
+        let focus: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Focus && s.2.contains(SIGNAL_INLINE_RELATIONSHIPS))
+            .collect();
+        assert!(
+            !focus.is_empty(),
+            "OneToOne with Inline navigation should produce Focus signal"
+        );
+        // 1 inline * 0.15 = 0.15
+        assert!(
+            (focus[0].1 - 0.15).abs() < f64::EPSILON,
+            "expected 0.15, got {}",
+            focus[0].1
+        );
+    }
+
+    #[test]
+    fn relationship_many_to_one_produces_focus_parent() {
+        let service = ServiceDef::new("order").belongs_to("customer", "customer");
+
+        let signals = analyze_relationships(&service);
+        let focus: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Focus && s.2.contains(SIGNAL_PARENT_REFERENCES))
+            .collect();
+        assert!(
+            !focus.is_empty(),
+            "ManyToOne should produce Focus parent_references signal"
+        );
+        // 1 parent * 0.1 = 0.1
+        assert!(
+            (focus[0].1 - 0.1).abs() < f64::EPSILON,
+            "expected 0.1, got {}",
+            focus[0].1
+        );
+    }
+
+    #[test]
+    fn relationship_rich_graph_produces_browse() {
+        let service = ServiceDef::new("order")
+            .belongs_to("customer", "customer")
+            .has_many("line_items", "line_item")
+            .has_many("payments", "payment")
+            .belongs_to("warehouse", "warehouse");
+
+        let signals = analyze_relationships(&service);
+        let rich: Vec<_> = signals
+            .iter()
+            .filter(|s| s.2.contains(SIGNAL_RICH_RELATIONSHIP_GRAPH))
+            .collect();
+        assert!(
+            !rich.is_empty(),
+            "4+ relationships should produce rich_relationship_graph signal"
+        );
+    }
+
+    #[test]
+    fn relationship_none_returns_empty() {
+        let service = ServiceDef::new("bare");
+        let signals = analyze_relationships(&service);
+        assert!(
+            signals.is_empty(),
+            "No relationships should produce no signals"
+        );
+    }
+
+    // ==========================================================
+    // Action analyzer tests
+    // ==========================================================
+
+    #[test]
+    fn action_transition_trigger_produces_process() {
+        let service = ServiceDef::new("order")
+            .action(ActionDef::new("submit").transition_trigger("submit"))
+            .action(ActionDef::new("approve").transition_trigger("approve"));
+
+        let signals = analyze_actions(&service);
+        let workflow: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Process && s.2.contains(SIGNAL_WORKFLOW_ACTIONS))
+            .collect();
+        assert!(
+            !workflow.is_empty(),
+            "Actions with transition_trigger should produce workflow_actions signal"
+        );
+        // 2 workflow actions * 0.15 = 0.3
+        assert!(
+            (workflow[0].1 - 0.3).abs() < f64::EPSILON,
+            "expected 0.3, got {}",
+            workflow[0].1
+        );
+    }
+
+    #[test]
+    fn action_complex_inputs_produces_collect() {
+        use crate::action::InputDef;
+
+        let service = ServiceDef::new("registration").action(
+            ActionDef::new("register")
+                .input(InputDef::new(
+                    "name",
+                    DataType::String,
+                    FieldMeaning::EntityName,
+                ))
+                .input(InputDef::new(
+                    "email",
+                    DataType::String,
+                    FieldMeaning::Email,
+                ))
+                .input(InputDef::new(
+                    "phone",
+                    DataType::String,
+                    FieldMeaning::Phone,
+                )),
+        );
+
+        let signals = analyze_actions(&service);
+        let collect: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Collect && s.2.contains(SIGNAL_COMPLEX_INPUT_ACTIONS))
+            .collect();
+        assert!(
+            !collect.is_empty(),
+            "Actions with >2 inputs should produce complex_input_actions signal"
+        );
+        // 1 complex action * 0.15 = 0.15
+        assert!(
+            (collect[0].1 - 0.15).abs() < f64::EPSILON,
+            "expected 0.15, got {}",
+            collect[0].1
+        );
+    }
+
+    #[test]
+    fn action_preconditions_produces_process() {
+        let service = ServiceDef::new("order")
+            .action(
+                ActionDef::new("submit")
+                    .precondition("has_items")
+                    .precondition("payment_valid"),
+            )
+            .action(ActionDef::new("cancel").precondition("is_cancellable"));
+
+        let signals = analyze_actions(&service);
+        let guarded: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Process && s.2.contains(SIGNAL_GUARDED_ACTIONS))
+            .collect();
+        assert!(
+            !guarded.is_empty(),
+            "Actions with preconditions should produce guarded_actions signal"
+        );
+        // 2 guarded actions * 0.1 = 0.2
+        assert!(
+            (guarded[0].1 - 0.2).abs() < f64::EPSILON,
+            "expected 0.2, got {}",
+            guarded[0].1
+        );
+    }
+
+    #[test]
+    fn action_simple_crud_produces_browse() {
+        let service = ServiceDef::new("product")
+            .action(ActionDef::new("create"))
+            .action(ActionDef::new("update"))
+            .action(ActionDef::new("delete"));
+
+        let signals = analyze_actions(&service);
+        let simple: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Browse && s.2.contains(SIGNAL_SIMPLE_CRUD_ACTIONS))
+            .collect();
+        assert!(
+            !simple.is_empty(),
+            "Simple CRUD actions should produce simple_crud_actions signal"
+        );
+    }
+
+    #[test]
+    fn action_none_returns_empty() {
+        let service = ServiceDef::new("bare");
+        let signals = analyze_actions(&service);
+        assert!(signals.is_empty(), "No actions should produce no signals");
+    }
+
+    // ==========================================================
+    // Full pipeline integration test (all 5 analyzers)
+    // ==========================================================
+
+    #[test]
+    fn integration_order_management_all_analyzers_produce_process() {
+        use crate::action::InputDef;
+        use crate::state::{StateDef, StateMachine, Transition};
+
+        // Realistic order management service with signals from all 5 analyzers.
+        let service = ServiceDef::new("order")
+            // Fields: Money -> Summarize, Status -> Track, EntityName -> Browse
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("tax", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("notes", DataType::String, FieldMeaning::FreeText)
+            // State machine: branching with guards -> Process
+            .state_machine(
+                StateMachine::new("order_lifecycle")
+                    .initial("draft")
+                    .state(StateDef::new("draft"))
+                    .state(StateDef::new("pending"))
+                    .state(StateDef::new("approved"))
+                    .state(StateDef::new("completed").final_state())
+                    .state(StateDef::new("cancelled").final_state())
+                    .transition(Transition::new("draft", "submit", "pending").guard("has_items"))
+                    .transition(
+                        Transition::new("pending", "approve", "approved").guard("is_reviewer"),
+                    )
+                    .transition(Transition::new("approved", "complete", "completed"))
+                    .transition(Transition::new("draft", "cancel", "cancelled"))
+                    .transition(
+                        Transition::new("pending", "cancel", "cancelled")
+                            .guard("cancellation_allowed"),
+                    ),
+            )
+            // Actions: transition triggers + preconditions -> Process
+            .action(
+                ActionDef::new("submit_order")
+                    .transition_trigger("submit")
+                    .precondition("has_items")
+                    .input(InputDef::new(
+                        "order_id",
+                        DataType::Integer,
+                        FieldMeaning::Identifier,
+                    ))
+                    .input(InputDef::new(
+                        "notes",
+                        DataType::String,
+                        FieldMeaning::FreeText,
+                    ))
+                    .input(InputDef::new(
+                        "priority",
+                        DataType::String,
+                        FieldMeaning::Category,
+                    )),
+            )
+            .action(
+                ActionDef::new("approve_order")
+                    .transition_trigger("approve")
+                    .precondition("is_reviewer"),
+            )
+            .action(ActionDef::new("cancel_order").transition_trigger("cancel"))
+            // Relationships: has_many -> Browse, belongs_to -> Focus
+            .has_many("line_items", "order_line_item")
+            .belongs_to("customer", "customer");
+
+        let scores = derive_intents(&service);
+
+        // Process must be the primary intent (highest confidence or position 0).
+        assert_eq!(
+            scores[0].intent,
+            Intent::Process,
+            "Order management with state machine + guards + transition triggers should derive Process as primary. Got {:?} (full: {:?})",
+            scores[0].intent,
+            scores.iter().map(|s| (&s.intent, s.confidence)).collect::<Vec<_>>()
+        );
+
+        // All confidences in [0.0, 1.0] and sorted descending.
+        for i in 0..scores.len() {
+            assert!(
+                scores[i].confidence >= 0.0 && scores[i].confidence <= 1.0,
+                "Confidence {} out of range for {:?}",
+                scores[i].confidence,
+                scores[i].intent
+            );
+            if i > 0 {
+                assert!(
+                    scores[i - 1].confidence >= scores[i].confidence,
+                    "Scores must be sorted descending"
+                );
+            }
+        }
+
+        // Multiple intents should be present from different analyzers.
+        assert!(
+            scores.len() >= 3,
+            "Multiple analyzers should contribute multiple intents, got {}",
+            scores.len()
         );
 
         // Every score has at least one matching signal.
