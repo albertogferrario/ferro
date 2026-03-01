@@ -4,6 +4,7 @@
 //! that translate `ServiceDef` + `IntentScore` into renderable JSON output.
 
 pub mod field_map;
+pub mod json_ui;
 pub mod relationship_map;
 
 use crate::error::Error;
