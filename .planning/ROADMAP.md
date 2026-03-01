@@ -147,17 +147,16 @@ Plans:
 - [x] 92-02: Projection validation CLI (projection:check) + MCP tool (validate_projection)
 - [x] 92-03: Service coverage MCP tool (projection_coverage with intent derivation)
 
-#### Phase 93: Field Test & Polish
+#### Phase 93: Field Test & Polish ✅
 
 **Goal**: Build representative services exercising full stack. Validate structural intent derivation accuracy (target: >70% correct without manual hints).
 **Depends on**: Phase 92
-**Research**: Unlikely (validation of existing implementation)
-**Plans**: 3
+**Completed**: 2026-03-01
+**Plans**: 2/2
 
 Plans:
-- [ ] 93-01: TBD
-- [ ] 93-02: TBD
-- [ ] 93-03: TBD
+- [x] 93-01: 8 representative projections in sample app covering all 7 intents (User, Todo, ApiKey, Order, Product, RevenueDashboard, SalesAnalytics, FeedbackForm)
+- [x] 93-02: Fixed MCP parser for action/guard/transition details + integration tests validating 100% intent accuracy
 
 #### Phase 94: Protocol Documentation
 
@@ -623,7 +622,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 21/28 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 26/28 | 🚧 In Progress | - |
 
-**Total: 21 milestones shipped, 187 plans. 1 milestone in progress (21/28 plans complete).**
+**Total: 21 milestones shipped, 192 plans. 1 milestone in progress (26/28 plans complete).**
 
