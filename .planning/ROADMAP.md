@@ -163,12 +163,14 @@ Plans:
 **Goal**: Define a standardized protocol specification for data/intent-oriented web services with auto-generated UIs. Formalize the ServiceDef → IntentGraph → Renderer chain as a documented, versioned protocol.
 **Depends on**: Phase 93
 **Research**: Complete (Phase 94 research — prior art, protocol design patterns, serialization formats)
-**Plans**: 3
+**Plans**: 5
 
 Plans:
-- [ ] 94-01: TBD
-- [ ] 94-02: TBD
-- [ ] 94-03: TBD
+- [ ] 94-01: Protocol infrastructure — mdBook setup, JSON Schema generation from Rust types
+- [ ] 94-02: Specification foundation — introduction, terminology, architecture
+- [ ] 94-03: Data model specification — all 22 public types across 6 pages
+- [ ] 94-04: Derivation, rendering & validation — 5 analyzers, Renderer trait, validate() rules
+- [ ] 94-05: Governance & appendix — extensions, conformance, security, related work, worked examples
 
 ## Completed Milestones
 
@@ -622,7 +624,7 @@ Plans:
 | v7.8 Memory Leak Fixes | 78 | 3 | ✅ Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 26/28 | 🚧 In Progress | - |
+| v9.0 Service Projections | 84-94 | 26/30 | 🚧 In Progress | - |
 
-**Total: 21 milestones shipped, 192 plans. 1 milestone in progress (26/28 plans complete).**
+**Total: 21 milestones shipped, 192 plans. 1 milestone in progress (26/30 plans complete).**
 
