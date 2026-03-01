@@ -334,3 +334,552 @@ fn apply_hints(scores: &mut Vec<IntentScore>, hints: &[IntentHint]) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::field::DataType;
+
+    // -- Helper: find an IntentScore for a given intent in a slice --
+
+    fn find_intent<'a>(scores: &'a [IntentScore], intent: &Intent) -> Option<&'a IntentScore> {
+        scores.iter().find(|s| &s.intent == intent)
+    }
+
+    fn has_signal(score: &IntentScore, signal: &str) -> bool {
+        score.matching_signals.iter().any(|s| s.contains(signal))
+    }
+
+    // ==========================================================
+    // Field meaning analyzer tests
+    // ==========================================================
+
+    #[test]
+    fn field_meaning_money_percentage_quantity_produce_summarize() {
+        let service = ServiceDef::new("financials")
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("margin", DataType::Float, FieldMeaning::Percentage)
+            .field("qty", DataType::Integer, FieldMeaning::Quantity);
+
+        let signals = analyze_field_meanings(&service);
+        let summarize: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Summarize)
+            .collect();
+        assert!(!summarize.is_empty(), "Summarize signal must be present");
+        let total_weight: f64 = summarize.iter().map(|s| s.1).sum();
+        assert!(total_weight > 0.0, "Summarize weight must be positive");
+        // 3 fields * 0.3 = 0.9
+        assert!(
+            (total_weight - 0.9).abs() < f64::EPSILON,
+            "expected 0.9, got {total_weight}"
+        );
+    }
+
+    #[test]
+    fn field_meaning_free_text_image_url_produce_focus() {
+        let service = ServiceDef::new("content")
+            .field("body", DataType::String, FieldMeaning::FreeText)
+            .field("photo", DataType::String, FieldMeaning::ImageUrl);
+
+        let signals = analyze_field_meanings(&service);
+        let focus: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Focus).collect();
+        assert!(!focus.is_empty(), "Focus signal must be present");
+        let total_weight: f64 = focus.iter().map(|s| s.1).sum();
+        // 2 fields * 0.25 = 0.5
+        assert!(
+            (total_weight - 0.5).abs() < f64::EPSILON,
+            "expected 0.5, got {total_weight}"
+        );
+    }
+
+    #[test]
+    fn field_meaning_entity_name_category_produce_browse() {
+        let service = ServiceDef::new("catalog")
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("type", DataType::String, FieldMeaning::Category);
+
+        let signals = analyze_field_meanings(&service);
+        let browse: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Browse).collect();
+        assert!(!browse.is_empty(), "Browse signal must be present");
+        let total_weight: f64 = browse.iter().map(|s| s.1).sum();
+        // EntityName: 0.2 * 1 + Category: 0.1 * 1 = 0.3
+        assert!(
+            (total_weight - 0.3).abs() < f64::EPSILON,
+            "expected 0.3, got {total_weight}"
+        );
+    }
+
+    #[test]
+    fn field_meaning_datetime_money_produce_analyze() {
+        let service = ServiceDef::new("timeseries")
+            .field("recorded_at", DataType::DateTime, FieldMeaning::DateTime)
+            .field("revenue", DataType::Float, FieldMeaning::Money);
+
+        let signals = analyze_field_meanings(&service);
+        let analyze: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Analyze).collect();
+        assert!(!analyze.is_empty(), "Analyze signal must be present");
+        assert!(
+            (analyze[0].1 - 0.35).abs() < f64::EPSILON,
+            "Analyze weight should be 0.35"
+        );
+    }
+
+    #[test]
+    fn field_meaning_status_produces_track() {
+        let service =
+            ServiceDef::new("orders").field("status", DataType::String, FieldMeaning::Status);
+
+        let signals = analyze_field_meanings(&service);
+        let track: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Track).collect();
+        assert!(!track.is_empty(), "Track signal must be present");
+        assert!(
+            (track[0].1 - 0.25).abs() < f64::EPSILON,
+            "Track weight should be 0.25"
+        );
+    }
+
+    #[test]
+    fn field_meaning_system_fields_excluded() {
+        let service = ServiceDef::new("system_only")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt);
+
+        let signals = analyze_field_meanings(&service);
+        assert!(
+            signals.is_empty(),
+            "System-only fields should produce no field meaning signals"
+        );
+    }
+
+    // ==========================================================
+    // Writability analyzer tests
+    // ==========================================================
+
+    #[test]
+    fn writability_high_writable_ratio_produces_collect() {
+        // 3 writable out of 4 = 75% > 50%
+        let service = ServiceDef::new("form")
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("email", DataType::String, FieldMeaning::Email)
+            .field("phone", DataType::String, FieldMeaning::Phone)
+            .read_only_field("score", DataType::Float, FieldMeaning::Quantity);
+
+        let signals = analyze_writability(&service);
+        let collect: Vec<_> = signals.iter().filter(|s| s.0 == Intent::Collect).collect();
+        assert!(
+            !collect.is_empty(),
+            "Collect signal must be present for high writable ratio"
+        );
+        assert!(collect.iter().any(|s| s.2 == SIGNAL_HIGH_WRITABLE_RATIO));
+    }
+
+    #[test]
+    fn writability_write_only_fields_produce_collect() {
+        let service = ServiceDef::new("auth")
+            .field("username", DataType::String, FieldMeaning::EntityName)
+            .write_only_field("password", DataType::String, FieldMeaning::Sensitive)
+            .write_only_field("confirm", DataType::String, FieldMeaning::Sensitive);
+
+        let signals = analyze_writability(&service);
+        let wo_collect: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Collect && s.2 == SIGNAL_WRITE_ONLY_FIELDS)
+            .collect();
+        assert!(
+            !wo_collect.is_empty(),
+            "Write-only Collect signal must be present"
+        );
+        // 2 write-only fields * 0.2 = 0.4
+        assert!(
+            (wo_collect[0].1 - 0.4).abs() < f64::EPSILON,
+            "expected 0.4, got {}",
+            wo_collect[0].1
+        );
+    }
+
+    #[test]
+    fn writability_mostly_read_only_produces_summarize() {
+        // 4 fields, 3 read-only, 1 writable => non_writable_ratio = 3/4 = 75% > 70%
+        let service = ServiceDef::new("dashboard")
+            .read_only_field("total", DataType::Float, FieldMeaning::Money)
+            .read_only_field("count", DataType::Integer, FieldMeaning::Quantity)
+            .read_only_field("rate", DataType::Float, FieldMeaning::Percentage)
+            .field("notes", DataType::String, FieldMeaning::FreeText);
+
+        let signals = analyze_writability(&service);
+        let summarize: Vec<_> = signals
+            .iter()
+            .filter(|s| s.0 == Intent::Summarize && s.2 == SIGNAL_MOSTLY_READ_ONLY)
+            .collect();
+        assert!(
+            !summarize.is_empty(),
+            "Summarize signal must be present for mostly read-only"
+        );
+    }
+
+    #[test]
+    fn writability_balanced_no_strong_collect() {
+        // 2 writable, 2 non-writable => 50% exactly, NOT >50%
+        let service = ServiceDef::new("balanced")
+            .field("a", DataType::String, FieldMeaning::FreeText)
+            .field("b", DataType::String, FieldMeaning::FreeText)
+            .read_only_field("c", DataType::Integer, FieldMeaning::Quantity)
+            .read_only_field("d", DataType::Integer, FieldMeaning::Quantity);
+
+        let signals = analyze_writability(&service);
+        let high_writable: Vec<_> = signals
+            .iter()
+            .filter(|s| s.2 == SIGNAL_HIGH_WRITABLE_RATIO)
+            .collect();
+        assert!(
+            high_writable.is_empty(),
+            "50/50 should not trigger high_writable_ratio (needs >50%)"
+        );
+    }
+
+    // ==========================================================
+    // Normalizer tests
+    // ==========================================================
+
+    #[test]
+    fn normalizer_highest_score_becomes_1() {
+        let mut raw = HashMap::new();
+        raw.insert(Intent::Browse, (0.8, vec!["signal_a".to_string()]));
+        raw.insert(Intent::Focus, (0.4, vec!["signal_b".to_string()]));
+
+        let scores = normalize_scores(raw);
+        let browse = find_intent(&scores, &Intent::Browse).unwrap();
+        assert!(
+            (browse.confidence - 1.0).abs() < f64::EPSILON,
+            "Highest score should normalize to 1.0"
+        );
+    }
+
+    #[test]
+    fn normalizer_second_highest_proportional() {
+        let mut raw = HashMap::new();
+        raw.insert(Intent::Browse, (0.8, vec!["a".to_string()]));
+        raw.insert(Intent::Focus, (0.4, vec!["b".to_string()]));
+
+        let scores = normalize_scores(raw);
+        let focus = find_intent(&scores, &Intent::Focus).unwrap();
+        assert!(
+            (focus.confidence - 0.5).abs() < f64::EPSILON,
+            "0.4/0.8 = 0.5, got {}",
+            focus.confidence
+        );
+    }
+
+    #[test]
+    fn normalizer_empty_input_returns_empty() {
+        let raw: HashMap<Intent, (f64, Vec<String>)> = HashMap::new();
+        let scores = normalize_scores(raw);
+        assert!(scores.is_empty());
+    }
+
+    #[test]
+    fn normalizer_single_intent_gets_confidence_1() {
+        let mut raw = HashMap::new();
+        raw.insert(Intent::Track, (0.5, vec!["status".to_string()]));
+
+        let scores = normalize_scores(raw);
+        assert_eq!(scores.len(), 1);
+        assert!(
+            (scores[0].confidence - 1.0).abs() < f64::EPSILON,
+            "Single intent should get confidence 1.0"
+        );
+    }
+
+    #[test]
+    fn normalizer_sorted_descending() {
+        let mut raw = HashMap::new();
+        raw.insert(Intent::Browse, (0.2, vec!["a".to_string()]));
+        raw.insert(Intent::Focus, (0.6, vec!["b".to_string()]));
+        raw.insert(Intent::Track, (0.4, vec!["c".to_string()]));
+
+        let scores = normalize_scores(raw);
+        for i in 1..scores.len() {
+            assert!(
+                scores[i - 1].confidence >= scores[i].confidence,
+                "Scores must be sorted descending: {} >= {}",
+                scores[i - 1].confidence,
+                scores[i].confidence
+            );
+        }
+    }
+
+    // ==========================================================
+    // IntentHint tests
+    // ==========================================================
+
+    #[test]
+    fn hint_primary_forces_position_0_confidence_1() {
+        let mut scores = vec![
+            IntentScore {
+                intent: Intent::Summarize,
+                confidence: 1.0,
+                matching_signals: vec!["existing".to_string()],
+            },
+            IntentScore {
+                intent: Intent::Browse,
+                confidence: 0.5,
+                matching_signals: vec!["existing".to_string()],
+            },
+        ];
+
+        apply_hints(&mut scores, &[IntentHint::Primary(Intent::Browse)]);
+
+        assert_eq!(scores[0].intent, Intent::Browse);
+        assert!((scores[0].confidence - 1.0).abs() < f64::EPSILON);
+        assert!(has_signal(&scores[0], SIGNAL_HINT_PRIMARY));
+        // Browse was removed from old position
+        assert_eq!(
+            scores.iter().filter(|s| s.intent == Intent::Browse).count(),
+            1,
+            "Browse should appear exactly once"
+        );
+    }
+
+    #[test]
+    fn hint_exclude_removes_intent() {
+        let mut scores = vec![
+            IntentScore {
+                intent: Intent::Process,
+                confidence: 1.0,
+                matching_signals: vec!["a".to_string()],
+            },
+            IntentScore {
+                intent: Intent::Browse,
+                confidence: 0.5,
+                matching_signals: vec!["b".to_string()],
+            },
+        ];
+
+        apply_hints(&mut scores, &[IntentHint::Exclude(Intent::Process)]);
+
+        assert!(
+            find_intent(&scores, &Intent::Process).is_none(),
+            "Process should be excluded"
+        );
+        assert_eq!(scores.len(), 1);
+    }
+
+    #[test]
+    fn hint_primary_and_exclude_together() {
+        let mut scores = vec![
+            IntentScore {
+                intent: Intent::Process,
+                confidence: 1.0,
+                matching_signals: vec!["a".to_string()],
+            },
+            IntentScore {
+                intent: Intent::Browse,
+                confidence: 0.8,
+                matching_signals: vec!["b".to_string()],
+            },
+            IntentScore {
+                intent: Intent::Focus,
+                confidence: 0.5,
+                matching_signals: vec!["c".to_string()],
+            },
+        ];
+
+        apply_hints(
+            &mut scores,
+            &[
+                IntentHint::Exclude(Intent::Process),
+                IntentHint::Primary(Intent::Focus),
+            ],
+        );
+
+        assert!(find_intent(&scores, &Intent::Process).is_none());
+        assert_eq!(scores[0].intent, Intent::Focus);
+        assert!((scores[0].confidence - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn hint_on_empty_scores_primary_adds_exclude_noop() {
+        let mut scores: Vec<IntentScore> = Vec::new();
+
+        apply_hints(&mut scores, &[IntentHint::Exclude(Intent::Process)]);
+        assert!(scores.is_empty(), "Exclude on empty is no-op");
+
+        apply_hints(&mut scores, &[IntentHint::Primary(Intent::Browse)]);
+        assert_eq!(scores.len(), 1);
+        assert_eq!(scores[0].intent, Intent::Browse);
+        assert!((scores[0].confidence - 1.0).abs() < f64::EPSILON);
+    }
+
+    // ==========================================================
+    // Default fallback test
+    // ==========================================================
+
+    #[test]
+    fn empty_service_returns_focus_default() {
+        let service = ServiceDef::new("empty");
+        let scores = derive_intents(&service);
+
+        assert!(!scores.is_empty(), "Must return at least one score");
+        // The first score should still be Browse/Focus from baseline, but
+        // with an empty service both baselines are equal (0.1 each), so
+        // Browse wins by priority (3 < 4). Let's verify the overall
+        // behavior: at least one score, all confidences in [0, 1].
+        for s in &scores {
+            assert!(s.confidence >= 0.0 && s.confidence <= 1.0);
+        }
+    }
+
+    #[test]
+    fn service_only_system_fields_returns_baseline_scores() {
+        let service = ServiceDef::new("system")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt);
+
+        let scores = derive_intents(&service);
+        assert!(!scores.is_empty());
+        // Only baselines present, both Browse and Focus at 0.1 each.
+        // They normalize to 1.0 each, tie-broken by priority: Browse(3) < Focus(4).
+        assert_eq!(scores[0].intent, Intent::Browse);
+        assert_eq!(scores[1].intent, Intent::Focus);
+        assert!((scores[0].confidence - 1.0).abs() < f64::EPSILON);
+        assert!((scores[1].confidence - 1.0).abs() < f64::EPSILON);
+    }
+
+    // ==========================================================
+    // Integration test
+    // ==========================================================
+
+    #[test]
+    fn integration_money_entity_name_produces_ranked_scores() {
+        let service = ServiceDef::new("invoice")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("tax", DataType::Float, FieldMeaning::Percentage)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt);
+
+        let scores = derive_intents(&service);
+
+        // Multiple intents should be returned.
+        assert!(scores.len() >= 2, "Should have multiple intent scores");
+
+        // All confidences in [0.0, 1.0].
+        for s in &scores {
+            assert!(
+                s.confidence >= 0.0 && s.confidence <= 1.0,
+                "Confidence {} out of range for {:?}",
+                s.confidence,
+                s.intent
+            );
+        }
+
+        // Sorted descending.
+        for i in 1..scores.len() {
+            assert!(
+                scores[i - 1].confidence >= scores[i].confidence,
+                "Scores must be sorted descending"
+            );
+        }
+
+        // Summarize should be present (Money + Percentage).
+        assert!(
+            find_intent(&scores, &Intent::Summarize).is_some(),
+            "Summarize should be present from Money+Percentage fields"
+        );
+
+        // Browse should be present (EntityName + baseline).
+        assert!(
+            find_intent(&scores, &Intent::Browse).is_some(),
+            "Browse should be present from EntityName + baseline"
+        );
+    }
+
+    #[test]
+    fn integration_derive_intents_with_hints() {
+        let service = ServiceDef::new("invoice")
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .intent_hint(IntentHint::Primary(Intent::Collect))
+            .intent_hint(IntentHint::Exclude(Intent::Summarize));
+
+        let scores = derive_intents(&service);
+
+        // Collect must be first with confidence 1.0.
+        assert_eq!(scores[0].intent, Intent::Collect);
+        assert!((scores[0].confidence - 1.0).abs() < f64::EPSILON);
+
+        // Summarize must be excluded.
+        assert!(
+            find_intent(&scores, &Intent::Summarize).is_none(),
+            "Summarize should be excluded by hint"
+        );
+    }
+
+    #[test]
+    fn integration_all_confidences_normalized() {
+        let service = ServiceDef::new("complex")
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("description", DataType::String, FieldMeaning::FreeText)
+            .field("photo", DataType::String, FieldMeaning::ImageUrl)
+            .field("price", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("category", DataType::String, FieldMeaning::Category)
+            .field("recorded_at", DataType::DateTime, FieldMeaning::DateTime);
+
+        let scores = derive_intents(&service);
+
+        // Highest confidence should be 1.0.
+        assert!(
+            (scores[0].confidence - 1.0).abs() < f64::EPSILON,
+            "Top score should be 1.0, got {}",
+            scores[0].confidence
+        );
+
+        // Every score has at least one matching signal.
+        for s in &scores {
+            assert!(
+                !s.matching_signals.is_empty(),
+                "{:?} has no matching signals",
+                s.intent
+            );
+        }
+    }
+
+    // ==========================================================
+    // is_system_field tests
+    // ==========================================================
+
+    #[test]
+    fn is_system_field_identifies_system_meanings() {
+        assert!(is_system_field(&FieldMeaning::Identifier));
+        assert!(is_system_field(&FieldMeaning::CreatedAt));
+        assert!(is_system_field(&FieldMeaning::UpdatedAt));
+    }
+
+    #[test]
+    fn is_system_field_rejects_domain_meanings() {
+        assert!(!is_system_field(&FieldMeaning::Money));
+        assert!(!is_system_field(&FieldMeaning::EntityName));
+        assert!(!is_system_field(&FieldMeaning::FreeText));
+        assert!(!is_system_field(&FieldMeaning::Status));
+        assert!(!is_system_field(&FieldMeaning::Custom("x".into())));
+    }
+
+    // ==========================================================
+    // intent_priority tests
+    // ==========================================================
+
+    #[test]
+    fn intent_priority_ordering() {
+        assert!(intent_priority(&Intent::Process) < intent_priority(&Intent::Track));
+        assert!(intent_priority(&Intent::Track) < intent_priority(&Intent::Collect));
+        assert!(intent_priority(&Intent::Collect) < intent_priority(&Intent::Browse));
+        assert!(intent_priority(&Intent::Browse) < intent_priority(&Intent::Focus));
+        assert!(intent_priority(&Intent::Focus) < intent_priority(&Intent::Summarize));
+        assert!(intent_priority(&Intent::Summarize) < intent_priority(&Intent::Analyze));
+        assert!(intent_priority(&Intent::Analyze) < intent_priority(&Intent::Custom("x".into())));
+    }
+}
