@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 92 (MCP Introspection & CLI) — IN PROGRESS
-Plan: 92-01 complete
-Status: Plan 92-01 complete — model-aware projection scaffolding via --from-model
-Last activity: 2026-03-01 — Plan 92-01 executed (2 tasks, 1 commit)
+Plan: 92-02 complete
+Status: Plan 92-02 complete — projection validation via CLI and MCP
+Last activity: 2026-03-01 — Plan 92-02 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -195,6 +195,14 @@ Archived to PROJECT.md and milestone archive files.
 - Sensitive fields excluded entirely from output, FK fields get read_only_field + belongs_to
 - 10 ferro-cli make_projection tests (4 existing + 6 new)
 
+**Phase 92-02:**
+- `ferro projection:check` CLI command scans src/projections/, reconstructs ServiceDef via regex, validates with ServiceDef::validate()
+- Feature-gated behind `projections` feature flag in ferro-cli (default enabled)
+- `validate_projection` MCP tool with single (by name) and all-projections modes
+- reconstruct_service_def promoted to pub(crate) in render_projection.rs for reuse
+- Warnings produce exit code 0, only Err from validate() produces exit code 1
+- 5 ferro-cli + 6 ferro-mcp tests = 11 new tests
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -214,5 +222,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 92 Plan 01 COMPLETE — model-aware projection scaffolding
+Stopped at: Phase 92 Plan 02 COMPLETE — projection validation via CLI and MCP
 Resume file: None
