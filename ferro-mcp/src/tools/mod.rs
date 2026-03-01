@@ -43,6 +43,7 @@ pub mod model_usages;
 pub mod queue_status;
 pub mod read_logs;
 pub mod relation_map;
+pub mod render_projection;
 pub mod request_metrics;
 pub mod route_dependencies;
 pub mod search_docs;

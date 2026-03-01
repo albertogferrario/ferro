@@ -273,6 +273,28 @@ pub struct CrudDeleteParams {
     pub id: serde_json::Value,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct ListProjectionsParams {
+    /// Optional filter by name (case-insensitive substring)
+    pub filter: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct InspectProjectionParams {
+    /// Name of the projection function (e.g., "user_service")
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct RenderProjectionParams {
+    /// Name of the projection function (e.g., "user_service")
+    pub name: String,
+    /// Render mode: "display" (default) or "input"
+    pub mode: Option<String>,
+    /// Intent index to render (default: 0, primary intent)
+    pub intent_index: Option<usize>,
+}
+
 #[tool_router(router = tool_router)]
 impl FerroMcpService {
     /// Get application information including framework version, Rust version, models, and installed crates
@@ -1301,6 +1323,58 @@ impl FerroMcpService {
         match tools::crud_operations::delete(&self.project_root, &params.0.model, &params.0.id)
             .await
         {
+            Ok(result) => {
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
+    }
+
+    /// List service projections defined in the project
+    #[tool(
+        name = "list_projections",
+        description = "List service projections defined in the project.\n\n\
+            **When to use:** Discovering what ServiceDef projections exist, \
+            understanding the projection surface area.\n\n\
+            **Returns:** List of projection functions with service names and file locations.\n\n\
+            **Combine with:** `inspect_projection` for field details, `render_projection` for rendered JSON-UI."
+    )]
+    pub async fn list_projections(&self, params: Parameters<ListProjectionsParams>) -> String {
+        let result =
+            tools::list_projections::execute(&self.project_root, params.0.filter.as_deref());
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Inspect a service projection's structure
+    #[tool(
+        name = "inspect_projection",
+        description = "Inspect a service projection's structure (fields, relationships, actions, state machine).\n\n\
+            **When to use:** Understanding what a ServiceDef contains, checking field semantics, \
+            reviewing relationships before rendering.\n\n\
+            **Returns:** Detailed projection structure with fields, data types, meanings, relationships.\n\n\
+            **Combine with:** `render_projection` to see the rendered JSON-UI output."
+    )]
+    pub async fn inspect_projection(&self, params: Parameters<InspectProjectionParams>) -> String {
+        let result = tools::inspect_projection::execute(&self.project_root, &params.0.name);
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Render a service projection to JSON-UI output
+    #[tool(
+        name = "render_projection",
+        description = "Render a service projection to JSON-UI output.\n\n\
+            **When to use:** Previewing how a ServiceDef renders to UI components, \
+            checking intent derivation results, comparing display vs input modes.\n\n\
+            **Returns:** Derived intents with confidence scores and rendered JSON-UI component tree.\n\n\
+            **Combine with:** `inspect_projection` to understand the source ServiceDef."
+    )]
+    pub async fn render_projection(&self, params: Parameters<RenderProjectionParams>) -> String {
+        match tools::render_projection::execute(
+            &self.project_root,
+            &params.0.name,
+            params.0.mode.as_deref(),
+            params.0.intent_index,
+        ) {
             Ok(result) => {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
