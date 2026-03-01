@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 94 (Protocol Documentation) — In Progress
-Plan: 94-02 complete
-Status: Plan 94-02 shipped — introduction, terminology, and architecture specification pages
-Last activity: 2026-03-01 — Plan 94-02 executed (2 tasks, 2 commits)
+Plan: 94-04 complete
+Status: Plan 94-04 shipped — derivation, rendering, and validation specification pages
+Last activity: 2026-03-01 — Plan 94-04 executed (2 tasks, 2 commits)
 
 ## Milestone Summary
 
@@ -232,6 +232,12 @@ Archived to PROJECT.md and milestone archive files.
 - Date-versioned $id URLs: https://ferro-rs.dev/protocol/2026-03-01/{type}.json
 - Schema generation reproducible via `cargo test -p ferro-projections --test generate_schemas`
 
+**Phase 94-04:**
+- Signal types (WHAT each analyzer examines) are normative; exact weights are informative — allows alternative implementations while preserving interoperability
+- Rendering spec is renderer-agnostic: Renderer trait is normative, intent-to-layout mapping is informative
+- BFS reachability specified as MUST with explicit algorithm pseudocode
+- Validation order recommended (fatal errors before warnings) but not mandated
+
 **Phase 94-02:**
 - Protocol introduction positions Ferro in the 2026 agent stack (A2A/MCP/AG-UI/A2UI) with explicit gap identification
 - 18 domain-specific terms defined alphabetically in terminology.md, cross-referenced to Rust type names
@@ -258,5 +264,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 94, Plan 02 complete — introduction, terminology, architecture pages
+Stopped at: Phase 94, Plan 04 complete — derivation, rendering, and validation specification pages
 Resume file: None
