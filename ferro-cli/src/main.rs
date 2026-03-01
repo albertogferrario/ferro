@@ -194,6 +194,12 @@ enum Commands {
         #[arg(long, short = 'm')]
         model: Option<String>,
     },
+    /// Generate a service projection definition (ServiceDef)
+    #[command(name = "make:projection")]
+    MakeProjection {
+        /// Name of the service (e.g., user, order, product)
+        name: String,
+    },
     /// Generate a new API resource
     #[command(name = "make:resource")]
     MakeResource {
@@ -459,6 +465,9 @@ fn main() {
         }
         Commands::MakePolicy { name, model } => {
             commands::make_policy::run(name, model);
+        }
+        Commands::MakeProjection { name } => {
+            commands::make_projection::execute(&name);
         }
         Commands::MakeResource { name, model } => {
             commands::make_resource::run(name, model);

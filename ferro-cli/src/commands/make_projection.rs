@@ -191,6 +191,40 @@ fn to_pascal_case(s: &str) -> String {
     result
 }
 
+/// Generate projection files at the given base directory.
+/// Returns (projection_file_path, mod_file_path) on success.
+#[cfg(test)]
+fn generate_in_dir(
+    base_dir: &Path,
+    name: &str,
+) -> Result<(std::path::PathBuf, std::path::PathBuf), String> {
+    let file_name = to_snake_case(name);
+    let display_name = to_pascal_case(name);
+    let projections_dir = base_dir.join("src/projections");
+    let projection_file = projections_dir.join(format!("{file_name}.rs"));
+    let mod_file = projections_dir.join("mod.rs");
+
+    fs::create_dir_all(&projections_dir)
+        .map_err(|e| format!("Failed to create projections directory: {e}"))?;
+
+    let content = projection_template(&file_name, &display_name);
+    fs::write(&projection_file, content)
+        .map_err(|e| format!("Failed to write projection file: {e}"))?;
+
+    if mod_file.exists() {
+        let mod_content = fs::read_to_string(&mod_file).unwrap_or_default();
+        let pub_mod_decl = format!("pub mod {file_name};");
+        if !mod_content.contains(&pub_mod_decl) {
+            update_mod_file(&mod_file, &file_name)?;
+        }
+    } else {
+        let mod_content = format!("pub mod {file_name};\n");
+        fs::write(&mod_file, mod_content).map_err(|e| format!("Failed to create mod.rs: {e}"))?;
+    }
+
+    Ok((projection_file, mod_file))
+}
+
 fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     let content =
         fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
@@ -227,4 +261,68 @@ fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     fs::write(mod_file, new_content).map_err(|e| format!("Failed to write mod.rs: {e}"))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_template_generation() {
+        let template = projection_template("user", "User");
+
+        assert!(template.contains("pub fn user_service() -> ServiceDef"));
+        assert!(template.contains("ServiceDef::new(\"user\")"));
+        assert!(template.contains(".display_name(\"User\")"));
+        assert!(template.contains("DataType::Integer, FieldMeaning::Identifier"));
+        assert!(template.contains("use ferro::{"));
+        assert!(template.contains("/// Build the User service projection."));
+    }
+
+    #[test]
+    fn test_creates_directory_and_file() {
+        let tmp = TempDir::new().unwrap();
+        let (proj_file, _mod_file) = generate_in_dir(tmp.path(), "order").unwrap();
+
+        assert!(tmp.path().join("src/projections").exists());
+        assert!(proj_file.exists());
+
+        let content = fs::read_to_string(&proj_file).unwrap();
+        assert!(content.contains("pub fn order_service() -> ServiceDef"));
+        assert!(content.contains(".display_name(\"Order\")"));
+    }
+
+    #[test]
+    fn test_mod_rs_creation() {
+        let tmp = TempDir::new().unwrap();
+        let (_proj_file, mod_file) = generate_in_dir(tmp.path(), "product").unwrap();
+
+        assert!(mod_file.exists());
+        let mod_content = fs::read_to_string(&mod_file).unwrap();
+        assert!(mod_content.contains("pub mod product;"));
+    }
+
+    #[test]
+    fn test_mod_rs_append() {
+        let tmp = TempDir::new().unwrap();
+
+        // First projection creates mod.rs
+        generate_in_dir(tmp.path(), "user").unwrap();
+        let mod_file = tmp.path().join("src/projections/mod.rs");
+        let content = fs::read_to_string(&mod_file).unwrap();
+        assert!(content.contains("pub mod user;"));
+
+        // Second projection appends to mod.rs without duplicating
+        generate_in_dir(tmp.path(), "order").unwrap();
+        let content = fs::read_to_string(&mod_file).unwrap();
+        assert!(content.contains("pub mod user;"));
+        assert!(content.contains("pub mod order;"));
+
+        // Third call with same name should not duplicate
+        generate_in_dir(tmp.path(), "order").unwrap();
+        let content = fs::read_to_string(&mod_file).unwrap();
+        let count = content.matches("pub mod order;").count();
+        assert_eq!(count, 1, "pub mod order; should appear exactly once");
+    }
 }
