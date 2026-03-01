@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 94 (Protocol Documentation) — In Progress
-Plan: 94-03 complete
-Status: Plan 94-03 shipped — complete data model specification (22 types across 7 pages)
-Last activity: 2026-03-01 — Plan 94-03 executed (3 tasks, 3 commits)
+Plan: 94-05 complete
+Status: Plan 94-05 shipped — protocol governance (extensions, conformance, security, related work) and appendix (examples, JSON Schema reference, changelog)
+Last activity: 2026-03-01 — Plan 94-05 executed (3 tasks, 3 commits)
 
 ## Milestone Summary
 
@@ -40,7 +40,7 @@ Last activity: 2026-03-01 — Plan 94-03 executed (3 tasks, 3 commits)
 | v7.8 Memory Leak Fixes | 78 | 3 | Complete | 2026-02-28 |
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | Complete | 2026-02-28 |
-| v9.0 Service Projections | 84-94 | 29/30 | In Progress | - |
+| v9.0 Service Projections | 84-94 | 30/30 | In Progress | - |
 
 ## Accumulated Context
 
@@ -255,6 +255,15 @@ Archived to PROJECT.md and milestone archive files.
 - Intent (7+1 variants), IntentScore (confidence scoring, tie-breaking), IntentHint (Primary/Exclude overrides) specified
 - All types link to generated JSON Schema files in appendix
 
+**Phase 94-05:**
+- Extension mechanism follows JSON:API two-tier model: x-* vendor prefix + URI-namespaced with critical flag
+- Three conformance levels: Schema (L1), Derivation (L2), Rendering (L3) — partial conformance allowed
+- Derivation signal categories normative; exact weights informative/implementation-specific
+- Seven security considerations: input validation, string injection, resource consumption, sensitive data, extension security, transport delegation, schema-only constraint
+- Nine related works cited: CAMELEON, SAP Fiori, MECANO, Siren, A2UI, AG-UI, MCP, Open-JSON-UI, json-render
+- Worked examples for all 7 standard intents with ServiceDef JSON and expected IntentScores
+- JSON Schema reference and changelog (0.1.0-draft) complete
+
 ### Roadmap Evolution
 
 - 21 milestones shipped, 184 plans total
@@ -274,5 +283,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Phase 94, Plan 03 complete — complete data model specification
+Stopped at: Phase 94, Plan 05 complete — protocol governance and appendix
 Resume file: None
