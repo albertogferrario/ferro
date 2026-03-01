@@ -38,6 +38,8 @@ pub mod make_seeder;
 pub mod make_task;
 pub mod mcp;
 pub mod new;
+#[cfg(feature = "projections")]
+pub mod projection_check;
 pub mod schedule_list;
 pub mod schedule_run;
 pub mod schedule_work;

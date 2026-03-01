@@ -199,6 +199,17 @@ enum Commands {
     MakeProjection {
         /// Name of the service (e.g., user, order, product)
         name: String,
+        /// Populate fields from a matching SeaORM model in src/models/
+        #[arg(long)]
+        from_model: bool,
+    },
+    /// Validate service projections for structural issues
+    #[cfg(feature = "projections")]
+    #[command(name = "projection:check")]
+    ProjectionCheck {
+        /// Check a single projection by function name
+        #[arg(long)]
+        name: Option<String>,
     },
     /// Generate a new API resource
     #[command(name = "make:resource")]
@@ -466,8 +477,12 @@ fn main() {
         Commands::MakePolicy { name, model } => {
             commands::make_policy::run(name, model);
         }
-        Commands::MakeProjection { name } => {
-            commands::make_projection::execute(&name);
+        Commands::MakeProjection { name, from_model } => {
+            commands::make_projection::execute(&name, from_model);
+        }
+        #[cfg(feature = "projections")]
+        Commands::ProjectionCheck { name } => {
+            commands::projection_check::execute(name.as_deref());
         }
         Commands::MakeResource { name, model } => {
             commands::make_resource::run(name, model);
