@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 96 Plan 02 complete — TenantContext subscription enrichment + RequiresPlan middleware
-last_updated: "2026-03-11T03:16:00Z"
-last_activity: 2026-03-11 — Phase 96-02 executed (2 tasks)
+stopped_at: Completed 96-03-PLAN.md
+last_updated: "2026-03-11T03:32:16.792Z"
+last_activity: 2026-03-11 — Phase 96-03 executed (2 tasks)
 progress:
   total_phases: 17
   completed_phases: 13
   total_plans: 39
-  completed_plans: 35
+  completed_plans: 36
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 96 (Stripe Integration) — In Progress
-Plan: 2 of 6 complete
-Status: Phase 96 Plan 02 complete — TenantContext subscription enrichment + RequiresPlan middleware
-Last activity: 2026-03-11 — Phase 96-02 executed (2 tasks)
+Plan: 3 of 6 complete
+Status: Phase 96 Plan 03 complete — Webhook verification, events, and subscription sync
+Last activity: 2026-03-11 — Phase 96-03 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -308,6 +308,12 @@ Archived to PROJECT.md and milestone archive files.
 - or(self.plan.as_deref()) over or_else closure — simpler, non-lazy fallback for current_plan
 - All ferro-stripe types re-exported from framework/src/lib.rs behind stripe feature — single import point
 
+**Phase 96-03:**
+- ferro_queue::dispatch() used over Queueable::dispatch() — Queueable returns PendingDispatch builder, not Future
+- plan_from_subscription resolution: metadata["plan"] > price nickname > "unknown"
+- is_processed stub always returns false — full idempotency deferred to user event listener with DB
+- signed_webhook_payload is a regular pub fn (not feature-gated) — needed in production test suites
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -328,6 +334,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T03:16:00Z
-Stopped at: Completed 96-02-PLAN.md
-Resume file: .planning/phases/96-stripe-integration/96-02-SUMMARY.md
+Last session: 2026-03-11T03:32:16.788Z
+Stopped at: Completed 96-03-PLAN.md
+Resume file: .planning/phases/96-stripe-integration/96-03-SUMMARY.md
