@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 98-03-PLAN.md
-last_updated: "2026-03-11T16:50:48.583Z"
-last_activity: 2026-03-11 — Phase 98-02 executed (2 tasks)
+stopped_at: Completed 98-04-PLAN.md
+last_updated: "2026-03-11T16:58:26.000Z"
+last_activity: 2026-03-11 — Phase 98-04 executed (2 tasks)
 progress:
   total_phases: 16
   completed_phases: 15
   total_plans: 48
-  completed_plans: 46
+  completed_plans: 47
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 98 (ferro-json-ui Stable Release) — In Progress
-Plan: 3 of 5 complete
-Status: Phase 98 Plan 03 complete — API surface audit, schemars JsonSchema on 40+ types, internal helpers demoted to pub(crate), framework re-exports updated with Plan 01/02 types
-Last activity: 2026-03-11 — Phase 98-03 executed (2 tasks)
+Plan: 4 of 5 complete
+Status: Phase 98 Plan 04 complete — 352 ferro-json-ui tests (30 new): serde round-trips for 6 new components, schema generation, MapPlugin pipeline, edge cases
+Last activity: 2026-03-11 — Phase 98-04 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -371,6 +371,12 @@ Archived to PROJECT.md and milestone archive files.
 - resolve_path and resolve_path_string doctests removed when demoted to pub(crate) — external API examples must not reference crate-private items
 - AppLayout/AuthLayout/DefaultLayout remain pub in layout.rs for framework internal use but removed from lib.rs top-level re-exports
 
+**Phase 98-04:**
+- Individual serde round-trip tests added per new component even though batch test covers all 26 — per-component tests pinpoint failures
+- test_render_component_with_visibility_and_action uses GET+URL action pattern since visibility is client-side; non-GET actions are not in rendered HTML
+- Plugin pipeline test uses global registry (MapPlugin auto-registered) via render_to_html_with_plugins — exercises full asset collection path
+- 352 total tests (347 unit + 5 doc) — 30 new tests in this plan
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -391,6 +397,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T16:50:48.580Z
-Stopped at: Completed 98-03-PLAN.md
+Last session: 2026-03-11T16:58:26.000Z
+Stopped at: Completed 98-04-PLAN.md
 Resume file: None
