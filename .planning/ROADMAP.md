@@ -611,13 +611,18 @@ Plans:
 
 ### Phase 96: Stripe integration
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add `ferro-stripe` crate with two-tier billing (platform SaaS subscriptions + Stripe Connect), webhook handling via ferro-events, TenantContext enrichment with SubscriptionInfo, RequiresPlan middleware, CLI scaffolding, MCP tools, and documentation.
+**Requirements**: [STRIPE-01, STRIPE-02, STRIPE-03, STRIPE-04, STRIPE-05, STRIPE-06, STRIPE-07, STRIPE-08, STRIPE-09, STRIPE-10, STRIPE-11, STRIPE-12, STRIPE-13]
 **Depends on:** Phase 95
-**Plans:** 0 plans
+**Plans:** 6 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 96 to break down)
+- [ ] 96-01-PLAN.md — ferro-stripe crate foundation: types (SubscriptionInfo, SubscriptionStatus, Error), Stripe client facade, checkout/billing portal/Connect functions
+- [ ] 96-02-PLAN.md — TenantContext enrichment with subscription data, cache invalidation, RequiresPlan middleware
+- [ ] 96-03-PLAN.md — Webhook verification, event types (ferro-events integration), handler functions, subscription sync
+- [ ] 96-04-PLAN.md — Test helpers: subscription factories, signed webhook payloads, event fixture generators
+- [ ] 96-05-PLAN.md — CLI scaffolding (ferro make:stripe) and MCP introspection tools
+- [ ] 96-06-PLAN.md — Publish workflow, documentation, full workspace validation
 
 ### Phase 97: QR code generation
 
