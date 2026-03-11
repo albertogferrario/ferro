@@ -4047,4 +4047,107 @@ mod tests {
         assert!(!html.contains("<script>"));
         assert!(html.contains("&lt;script&gt;"));
     }
+
+    // ── Edge case integration tests ───────────────────────────────────────
+
+    #[test]
+    fn test_render_deeply_nested_components() {
+        // Card -> Card -> Text (three levels deep)
+        let inner_card = ComponentNode::card(
+            "inner-card",
+            CardProps {
+                title: "Inner Card".to_string(),
+                description: None,
+                children: vec![ComponentNode {
+                    key: "inner-text".to_string(),
+                    component: Component::Text(TextProps {
+                        content: "Deep content".to_string(),
+                        element: TextElement::P,
+                    }),
+                    action: None,
+                    visibility: None,
+                }],
+                footer: vec![],
+            },
+        );
+        let outer_card = ComponentNode::card(
+            "outer-card",
+            CardProps {
+                title: "Outer Card".to_string(),
+                description: None,
+                children: vec![inner_card],
+                footer: vec![],
+            },
+        );
+        let view = JsonUiView::new().component(outer_card);
+        let html = render_to_html(&view, &json!({}));
+
+        assert!(
+            html.contains("Outer Card"),
+            "outer card title should be rendered"
+        );
+        assert!(
+            html.contains("Inner Card"),
+            "inner card title should be rendered"
+        );
+        assert!(
+            html.contains("Deep content"),
+            "nested text content should be rendered"
+        );
+    }
+
+    #[test]
+    fn test_render_empty_view() {
+        let view = JsonUiView::new();
+        let html = render_to_html(&view, &json!({}));
+        assert_eq!(html, "<div></div>", "empty view renders empty div");
+    }
+
+    #[test]
+    fn test_render_component_with_visibility_and_action() {
+        use crate::action::{Action, HttpMethod};
+        use crate::visibility::{Visibility, VisibilityCondition, VisibilityOperator};
+
+        // A ComponentNode with GET action + URL wraps in <a href="...">.
+        let node = ComponentNode {
+            key: "admin-link".to_string(),
+            component: Component::Button(ButtonProps {
+                label: "View Reports".to_string(),
+                variant: ButtonVariant::Default,
+                size: Size::Default,
+                disabled: None,
+                icon: None,
+                icon_position: None,
+            }),
+            action: Some(Action {
+                handler: "reports.index".to_string(),
+                url: Some("/reports".to_string()),
+                method: HttpMethod::Get,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+            }),
+            visibility: Some(Visibility::Condition(VisibilityCondition {
+                path: "/auth/user/role".to_string(),
+                operator: VisibilityOperator::Eq,
+                value: Some(serde_json::Value::String("admin".to_string())),
+            })),
+        };
+        let view = JsonUiView::new().component(node);
+        let html = render_to_html(&view, &json!({}));
+
+        // GET action with URL wraps the component in <a href="...">
+        assert!(
+            html.contains("View Reports"),
+            "button label should be rendered"
+        );
+        assert!(
+            html.contains("href=\"/reports\""),
+            "GET action with URL should produce anchor href"
+        );
+        assert!(
+            html.contains("<a "),
+            "GET action should wrap component in anchor tag"
+        );
+    }
 }

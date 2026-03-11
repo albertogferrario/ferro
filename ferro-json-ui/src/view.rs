@@ -407,4 +407,71 @@ mod tests {
         let errs = view.errors.unwrap();
         assert_eq!(errs["name"], vec!["Too short".to_string()]);
     }
+
+    // ── JSON Schema generation tests ─────────────────────────────────────
+
+    #[test]
+    fn test_json_schema_for_table_props_generates() {
+        use crate::component::TableProps;
+        let schema = schemars::schema_for!(TableProps);
+        let value = serde_json::to_value(&schema).unwrap();
+        // Schema must be a valid object with title or properties
+        assert!(
+            value.is_object(),
+            "schema should serialize to a JSON object"
+        );
+        // TableProps has required field `data_path`
+        let schema_str = serde_json::to_string(&schema).unwrap();
+        assert!(
+            schema_str.contains("data_path"),
+            "schema should reference data_path field"
+        );
+    }
+
+    #[test]
+    fn test_json_schema_for_stat_card_props_generates() {
+        use crate::component::StatCardProps;
+        let schema = schemars::schema_for!(StatCardProps);
+        let value = serde_json::to_value(&schema).unwrap();
+        assert!(
+            value.is_object(),
+            "schema should serialize to a JSON object"
+        );
+        let schema_str = serde_json::to_string(&schema).unwrap();
+        assert!(
+            schema_str.contains("label"),
+            "schema should reference label field"
+        );
+        assert!(
+            schema_str.contains("value"),
+            "schema should reference value field"
+        );
+    }
+
+    #[test]
+    fn test_json_schema_for_action_generates() {
+        use crate::action::Action;
+        let schema = schemars::schema_for!(Action);
+        let value = serde_json::to_value(&schema).unwrap();
+        assert!(
+            value.is_object(),
+            "schema should serialize to a JSON object"
+        );
+        let schema_str = serde_json::to_string(&schema).unwrap();
+        assert!(
+            schema_str.contains("handler"),
+            "schema should reference handler field"
+        );
+    }
+
+    #[test]
+    fn test_json_schema_for_visibility_generates() {
+        use crate::visibility::Visibility;
+        let schema = schemars::schema_for!(Visibility);
+        let value = serde_json::to_value(&schema).unwrap();
+        assert!(
+            value.is_object(),
+            "schema should serialize to a JSON object"
+        );
+    }
 }

@@ -514,4 +514,93 @@ mod tests {
         sorted.sort();
         assert_eq!(types, sorted);
     }
+
+    // ── Plugin pipeline integration tests ─────────────────────────────
+
+    #[test]
+    fn test_map_plugin_full_pipeline() {
+        use crate::component::{Component, ComponentNode, PluginProps};
+        use crate::render::render_to_html_with_plugins;
+        use crate::view::JsonUiView;
+
+        // MapPlugin is auto-registered in the global registry
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "map-1".to_string(),
+            component: Component::Plugin(PluginProps {
+                plugin_type: "Map".to_string(),
+                props: serde_json::json!({
+                    "center": [51.505, -0.09],
+                    "zoom": 12
+                }),
+            }),
+            action: None,
+            visibility: None,
+        });
+
+        let result = render_to_html_with_plugins(&view, &serde_json::json!({}));
+
+        // Verify rendered HTML contains map container
+        assert!(
+            result.html.contains("data-ferro-map"),
+            "rendered HTML should contain map container"
+        );
+        assert!(
+            result.html.contains("51.505"),
+            "rendered HTML should contain center lat"
+        );
+
+        // Verify CSS assets collected (Leaflet CSS)
+        assert!(
+            result.css_head.contains("leaflet"),
+            "CSS head should contain Leaflet link"
+        );
+
+        // Verify JS assets collected (Leaflet JS + init script)
+        assert!(
+            result.scripts.contains("leaflet"),
+            "scripts should contain Leaflet JS"
+        );
+    }
+
+    #[test]
+    fn test_plugin_assets_deduplication() {
+        use crate::component::{Component, ComponentNode, PluginProps};
+        use crate::render::render_to_html_with_plugins;
+        use crate::view::JsonUiView;
+
+        // Two Map components on the same page should only collect Leaflet assets once
+        let view = JsonUiView::new()
+            .component(ComponentNode {
+                key: "map-a".to_string(),
+                component: Component::Plugin(PluginProps {
+                    plugin_type: "Map".to_string(),
+                    props: serde_json::json!({"center": [40.7128, -74.0060], "zoom": 12}),
+                }),
+                action: None,
+                visibility: None,
+            })
+            .component(ComponentNode {
+                key: "map-b".to_string(),
+                component: Component::Plugin(PluginProps {
+                    plugin_type: "Map".to_string(),
+                    props: serde_json::json!({"center": [51.505, -0.09], "zoom": 10}),
+                }),
+                action: None,
+                visibility: None,
+            });
+
+        let result = render_to_html_with_plugins(&view, &serde_json::json!({}));
+
+        // Both maps rendered
+        assert!(result.html.contains("40.7128"), "first map center rendered");
+        assert!(result.html.contains("51.505"), "second map center rendered");
+
+        // Leaflet CSS should appear exactly once (deduplicated by URL)
+        let css_count = result.css_head.matches("leaflet.css").count();
+        assert_eq!(css_count, 1, "Leaflet CSS should appear exactly once");
+
+        // Leaflet JS should appear exactly once
+        let js_count = result.scripts.matches("leaflet.js").count();
+        assert_eq!(js_count, 1, "Leaflet JS should appear exactly once");
+    }
 }
