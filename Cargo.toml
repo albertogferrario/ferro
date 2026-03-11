@@ -17,6 +17,7 @@ members = [
     "ferro-lang",
     "ferro-api-mcp",
     "ferro-projections",
+    "ferro-stripe",
 ]
 
 [workspace.package]
