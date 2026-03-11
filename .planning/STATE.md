@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 97 context gathered
-last_updated: "2026-03-11T13:46:23.617Z"
-last_activity: 2026-03-11 — Phase 96-07 executed (1 task)
+stopped_at: Phase 97 Plan 01 complete
+last_updated: "2026-03-11T14:13:10Z"
+last_activity: 2026-03-11 — Phase 97-01 executed (2 tasks)
 progress:
-  total_phases: 15
+  total_phases: 16
   completed_phases: 14
-  total_plans: 40
-  completed_plans: 40
+  total_plans: 43
+  completed_plans: 41
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 96 (Stripe Integration) — Complete
-Plan: 7 of 7 complete
-Status: Phase 96 Plan 07 complete — webhook scaffold templates corrected to use queue_dispatch and struct literals
-Last activity: 2026-03-11 — Phase 96-07 executed (1 task)
+Phase: 97 (Tenant-Aware Background Jobs) — In Progress
+Plan: 1 of 1 complete
+Status: Phase 97 Plan 01 complete — tenant context propagation primitives added to ferro-queue
+Last activity: 2026-03-11 — Phase 97-01 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -334,6 +334,13 @@ Archived to PROJECT.md and milestone archive files.
 - ProcessStripeWebhook constructed as plain struct literal { event_type, event_json, connect_account_id } — no platform()/connect() constructors exist
 - verify_webhook() return value must be captured as event to access event.type_ and event.account for struct field population
 
+**Phase 97-01:**
+- OnceLock<fn() -> Option<i64>> for capture hook — zero-cost static, no Arc/Mutex needed for fn pointer
+- serde(default) on tenant_id — backward compat with old payloads, no custom deserializer needed
+- captured_tenant_id() precedence: explicit override > hook > None — admin overrides work regardless of ambient context
+- TenantScopeProvider in worker.rs — logically belongs with worker-side execution, not dispatch path
+- for_tenant() in sync mode is a no-op with debug log — job runs in current task context which inherits tenant
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -354,6 +361,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T13:46:23.613Z
-Stopped at: Phase 97 context gathered
-Resume file: .planning/phases/97-tenant-aware-background-jobs/97-CONTEXT.md
+Last session: 2026-03-11T14:13:10Z
+Stopped at: Phase 97 Plan 01 complete
+Resume file: .planning/phases/97-tenant-aware-background-jobs/97-01-SUMMARY.md
