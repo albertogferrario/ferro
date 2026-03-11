@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 96 Plan 01 complete — ferro-stripe foundation crate
-last_updated: "2026-03-11T03:02:12Z"
-last_activity: 2026-03-11 — Phase 96-01 executed (2 tasks)
+stopped_at: Phase 96 Plan 02 complete — TenantContext subscription enrichment + RequiresPlan middleware
+last_updated: "2026-03-11T03:16:00Z"
+last_activity: 2026-03-11 — Phase 96-02 executed (2 tasks)
 progress:
   total_phases: 17
   completed_phases: 13
   total_plans: 39
-  completed_plans: 34
+  completed_plans: 35
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 96 (Stripe Integration) — In Progress
-Plan: 1 of 6 complete
-Status: Phase 96 Plan 01 complete — ferro-stripe foundation crate (types, client, checkout)
-Last activity: 2026-03-11 — Phase 96-01 executed (2 tasks)
+Plan: 2 of 6 complete
+Status: Phase 96 Plan 02 complete — TenantContext subscription enrichment + RequiresPlan middleware
+Last activity: 2026-03-11 — Phase 96-02 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -303,6 +303,11 @@ Archived to PROJECT.md and milestone archive files.
 - CreateCheckoutSession::new() in async-stripe 0.41 takes no args — success_url/cancel_url are Option<&str> fields
 - CreateAccountLink::new(account, type_) in async-stripe 0.41 — no Default impl, two required args
 
+**Phase 96-02:**
+- is_some_and delegation over map_or(false, ...) — Clippy-correct pattern for option boolean delegation
+- or(self.plan.as_deref()) over or_else closure — simpler, non-lazy fallback for current_plan
+- All ferro-stripe types re-exported from framework/src/lib.rs behind stripe feature — single import point
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -323,6 +328,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T03:02:12Z
-Stopped at: Completed 96-01-PLAN.md
-Resume file: .planning/phases/96-stripe-integration/96-01-SUMMARY.md
+Last session: 2026-03-11T03:16:00Z
+Stopped at: Completed 96-02-PLAN.md
+Resume file: .planning/phases/96-stripe-integration/96-02-SUMMARY.md
