@@ -79,8 +79,11 @@ pub use ferro_json_ui::{
 #[cfg(feature = "stripe")]
 pub use ferro_stripe::{
     billing_portal_url, create_account_link, create_connect_checkout, create_subscription_checkout,
-    plan_satisfies, subscription_info_from_stripe, ConnectAccount, Error as StripeError, Stripe,
-    StripeConfig, SubscriptionInfo, SubscriptionStatus,
+    is_processed as stripe_is_processed, plan_from_subscription, plan_satisfies,
+    subscription_info_from_stripe, verify_webhook, ConnectAccount, Error as StripeError,
+    ProcessStripeWebhook, Stripe, StripeCheckoutCompleted, StripeConfig,
+    StripeConnectPaymentSucceeded, StripeInvoicePaid, StripeSubscriptionDeleted,
+    StripeSubscriptionUpdated, SubscriptionInfo, SubscriptionStatus,
 };
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{

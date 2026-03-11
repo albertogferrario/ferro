@@ -29,6 +29,7 @@ pub mod config;
 pub mod connect;
 pub mod error;
 pub mod subscription;
+pub mod webhook;
 
 pub use client::Stripe;
 pub use config::StripeConfig;
@@ -36,5 +37,10 @@ pub use connect::checkout::{create_account_link, create_connect_checkout};
 pub use connect::ConnectAccount;
 pub use error::Error;
 pub use subscription::checkout::{billing_portal_url, create_subscription_checkout};
-pub use subscription::sync::subscription_info_from_stripe;
+pub use subscription::sync::{plan_from_subscription, subscription_info_from_stripe};
 pub use subscription::{plan_satisfies, SubscriptionInfo, SubscriptionStatus};
+pub use webhook::events::{
+    ProcessStripeWebhook, StripeCheckoutCompleted, StripeConnectPaymentSucceeded,
+    StripeInvoicePaid, StripeSubscriptionDeleted, StripeSubscriptionUpdated,
+};
+pub use webhook::{is_processed, verify_webhook};

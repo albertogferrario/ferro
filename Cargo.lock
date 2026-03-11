@@ -1840,8 +1840,13 @@ dependencies = [
  "async-stripe",
  "async-trait",
  "chrono",
+ "ferro-events",
+ "ferro-queue",
+ "hex",
+ "hmac",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.17",
  "tokio",
 ]
