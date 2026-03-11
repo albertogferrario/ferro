@@ -113,6 +113,13 @@ enum Commands {
         #[arg(long, short = 'f')]
         force: bool,
     },
+    /// Scaffold Stripe integration (webhook routes, event listeners, migration, env config)
+    #[command(name = "make:stripe")]
+    MakeStripe {
+        /// Include Stripe Connect scaffolding (connect webhook, connect account ID field)
+        #[arg(long)]
+        connect: bool,
+    },
     /// Generate a new domain error
     #[command(name = "make:error")]
     MakeError {
@@ -438,6 +445,9 @@ fn main() {
         }
         Commands::MakeAuth { force } => {
             commands::make_auth::run(force);
+        }
+        Commands::MakeStripe { connect } => {
+            commands::make_stripe::execute(connect);
         }
         Commands::MakeError { name } => {
             commands::make_error::run(name);

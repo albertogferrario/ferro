@@ -35,6 +35,7 @@ pub mod make_projection;
 pub mod make_resource;
 pub mod make_scaffold;
 pub mod make_seeder;
+pub mod make_stripe;
 pub mod make_task;
 pub mod mcp;
 pub mod new;
