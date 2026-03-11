@@ -597,6 +597,58 @@ Plans:
 
 </details>
 
+### Phase 95: Multi-tenant middleware
+
+**Goal:** Add TenantMiddleware with pluggable resolver chain (Subdomain, Header, Path, JWT), task-local TenantContext, TenantScope query helper for cross-tenant data isolation, and FromRequest handler extraction.
+**Requirements**: [MT-01, MT-02, MT-03, MT-04, MT-05, MT-06, MT-07, MT-08, MT-09, MT-10]
+**Depends on:** Phase 94
+**Plans:** 3 plans
+
+Plans:
+- [ ] 95-01-PLAN.md — Core types: TenantContext, task-local context, TenantResolver trait, TenantLookup with moka cache
+- [ ] 95-02-PLAN.md — TenantMiddleware with resolver chain + 4 concrete resolver implementations
+- [ ] 95-03-PLAN.md — TenantScope query scoping, FromRequest extractor, lib.rs re-exports, documentation
+
+### Phase 96: Stripe integration
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 95
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 96 to break down)
+
+### Phase 97: QR code generation
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 96
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 97 to break down)
+
+### Phase 98: Tenant-aware background jobs
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 97
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 98 to break down)
+
+### Phase 99: ferro-json-ui stable release
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 98
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 99 to break down)
+
 ---
 
 ## Progress Summary
@@ -627,4 +679,3 @@ Plans:
 | v9.0 Service Projections | 84-94 | 30 | ✅ Complete | 2026-03-01 |
 
 **Total: 22 milestones shipped, 197 plans.**
-
