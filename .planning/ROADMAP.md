@@ -602,7 +602,7 @@ Plans:
 **Goal:** Add TenantMiddleware with pluggable resolver chain (Subdomain, Header, Path, JWT), task-local TenantContext, TenantScope query helper for cross-tenant data isolation, and FromRequest handler extraction.
 **Requirements**: [MT-01, MT-02, MT-03, MT-04, MT-05, MT-06, MT-07, MT-08, MT-09, MT-10]
 **Depends on:** Phase 94
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 95-01-PLAN.md — Core types: TenantContext, task-local context, TenantResolver trait, TenantLookup with moka cache

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 95-01-PLAN.md
-last_updated: "2026-03-11T00:59:46.956Z"
-last_activity: 2026-03-01 — Phase 94 executed (5 plans, 2 waves)
+stopped_at: Completed 95-02-PLAN.md
+last_updated: "2026-03-11T01:10:46.000Z"
+last_activity: 2026-03-11 — Phase 95-02 executed (2 tasks)
 progress:
   total_phases: 17
   completed_phases: 12
   total_plans: 33
-  completed_plans: 31
+  completed_plans: 32
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 95 (Multi-tenant Middleware) — In Progress
-Plan: 1 of N complete
-Status: Phase 95 Plan 01 complete — tenant core types and traits
-Last activity: 2026-03-11 — Phase 95-01 executed (2 tasks)
+Plan: 2 of N complete
+Status: Phase 95 Plan 02 complete — TenantMiddleware and 4 concrete resolvers
+Last activity: 2026-03-11 — Phase 95-02 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -285,6 +285,12 @@ Archived to PROJECT.md and milestone archive files.
 - TenantResolver::resolve() takes &Request (non-consuming) — allows header/host inspection without consuming body
 - tenant_scope() and with_tenant_scope() are pub(crate) with #[allow(dead_code)] — forward-declared for Plan 02 middleware
 
+**Phase 95-02:**
+- TCP loopback for test requests: hyper::body::Incoming has no default constructor, tests use tokio::net::TcpListener pattern matching rate_limit tests
+- JwtClaimResolver reads serde_json::Value from request extensions: no JWT claims infrastructure in framework, upstream middleware must insert parsed claims
+- PathResolver uses req.param().ok(): req.param() returns Result<&str, ParamError> not Option<&str> as plan assumed
+- #[derive(Debug)] added to HttpResponse: required for Result::unwrap() in tests, was missing from the type
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -305,6 +311,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T00:59:46.952Z
-Stopped at: Completed 95-01-PLAN.md
+Last session: 2026-03-11T01:10:46.000Z
+Stopped at: Completed 95-02-PLAN.md
 Resume file: None
