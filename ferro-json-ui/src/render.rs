@@ -3473,4 +3473,578 @@ mod tests {
         assert!(tags.contains("src=\"https://cdn.example.com/lib.js\""));
         assert!(tags.contains("<script>initLib();</script>"));
     }
+
+    // ── StatCard ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn stat_card_renders_label_and_value() {
+        let view = JsonUiView::new().component(ComponentNode::stat_card(
+            "rev",
+            StatCardProps {
+                label: "Revenue".to_string(),
+                value: "$1,234".to_string(),
+                icon: None,
+                subtitle: None,
+                sse_target: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("Revenue"));
+        assert!(html.contains("$1,234"));
+        assert!(html.contains("bg-white rounded-lg shadow-sm"));
+    }
+
+    #[test]
+    fn stat_card_renders_icon_and_subtitle() {
+        let view = JsonUiView::new().component(ComponentNode::stat_card(
+            "users",
+            StatCardProps {
+                label: "Users".to_string(),
+                value: "42".to_string(),
+                icon: Some("👤".to_string()),
+                subtitle: Some("active today".to_string()),
+                sse_target: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("👤"));
+        assert!(html.contains("active today"));
+    }
+
+    #[test]
+    fn stat_card_renders_sse_target_data_attributes() {
+        let view = JsonUiView::new().component(ComponentNode::stat_card(
+            "live",
+            StatCardProps {
+                label: "Live count".to_string(),
+                value: "100".to_string(),
+                icon: None,
+                subtitle: None,
+                sse_target: Some("visitor_count".to_string()),
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-sse-target=\"visitor_count\""));
+        assert!(html.contains("data-live-value"));
+    }
+
+    #[test]
+    fn stat_card_no_sse_target_omits_data_attributes() {
+        let view = JsonUiView::new().component(ComponentNode::stat_card(
+            "static",
+            StatCardProps {
+                label: "Label".to_string(),
+                value: "99".to_string(),
+                icon: None,
+                subtitle: None,
+                sse_target: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("data-sse-target"));
+        assert!(!html.contains("data-live-value"));
+    }
+
+    // ── Checklist ────────────────────────────────────────────────────────
+
+    #[test]
+    fn checklist_renders_title_and_items() {
+        let view = JsonUiView::new().component(ComponentNode::checklist(
+            "tasks",
+            ChecklistProps {
+                title: "Setup Tasks".to_string(),
+                items: vec![
+                    ChecklistItem {
+                        label: "Create account".to_string(),
+                        checked: true,
+                        href: None,
+                    },
+                    ChecklistItem {
+                        label: "Add team member".to_string(),
+                        checked: false,
+                        href: None,
+                    },
+                ],
+                dismissible: true,
+                dismiss_label: None,
+                data_key: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("Setup Tasks"));
+        assert!(html.contains("Create account"));
+        assert!(html.contains("Add team member"));
+    }
+
+    #[test]
+    fn checklist_checked_item_has_strikethrough() {
+        let view = JsonUiView::new().component(ComponentNode::checklist(
+            "tasks",
+            ChecklistProps {
+                title: "Tasks".to_string(),
+                items: vec![ChecklistItem {
+                    label: "Done".to_string(),
+                    checked: true,
+                    href: None,
+                }],
+                dismissible: false,
+                dismiss_label: None,
+                data_key: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("line-through"));
+        assert!(html.contains("checked"));
+    }
+
+    #[test]
+    fn checklist_dismissible_renders_dismiss_button() {
+        let view = JsonUiView::new().component(ComponentNode::checklist(
+            "tasks",
+            ChecklistProps {
+                title: "Tasks".to_string(),
+                items: vec![],
+                dismissible: true,
+                dismiss_label: Some("Close".to_string()),
+                data_key: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("Close"));
+        assert!(html.contains("data-dismissible"));
+    }
+
+    #[test]
+    fn checklist_data_key_added_to_container() {
+        let view = JsonUiView::new().component(ComponentNode::checklist(
+            "tasks",
+            ChecklistProps {
+                title: "Tasks".to_string(),
+                items: vec![],
+                dismissible: false,
+                dismiss_label: None,
+                data_key: Some("onboarding_checklist".to_string()),
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-checklist-key=\"onboarding_checklist\""));
+    }
+
+    #[test]
+    fn checklist_item_with_href_renders_link() {
+        let view = JsonUiView::new().component(ComponentNode::checklist(
+            "tasks",
+            ChecklistProps {
+                title: "Tasks".to_string(),
+                items: vec![ChecklistItem {
+                    label: "Visit docs".to_string(),
+                    checked: false,
+                    href: Some("/docs".to_string()),
+                }],
+                dismissible: false,
+                dismiss_label: None,
+                data_key: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("href=\"/docs\""));
+        assert!(html.contains("Visit docs"));
+    }
+
+    // ── Toast ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn toast_renders_message_and_variant() {
+        let view = JsonUiView::new().component(ComponentNode::toast(
+            "t",
+            ToastProps {
+                message: "Saved successfully!".to_string(),
+                variant: ToastVariant::Success,
+                timeout: None,
+                dismissible: true,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("Saved successfully!"));
+        assert!(html.contains("data-toast-variant=\"success\""));
+    }
+
+    #[test]
+    fn toast_renders_timeout_attribute() {
+        let view = JsonUiView::new().component(ComponentNode::toast(
+            "t",
+            ToastProps {
+                message: "Warning!".to_string(),
+                variant: ToastVariant::Warning,
+                timeout: Some(10),
+                dismissible: false,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-toast-timeout=\"10\""));
+        assert!(!html.contains("data-toast-dismissible"));
+    }
+
+    #[test]
+    fn toast_default_timeout_is_five_seconds() {
+        let view = JsonUiView::new().component(ComponentNode::toast(
+            "t",
+            ToastProps {
+                message: "Hello".to_string(),
+                variant: ToastVariant::Info,
+                timeout: None,
+                dismissible: false,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-toast-timeout=\"5\""));
+    }
+
+    #[test]
+    fn toast_dismissible_renders_dismiss_button() {
+        let view = JsonUiView::new().component(ComponentNode::toast(
+            "t",
+            ToastProps {
+                message: "Error occurred".to_string(),
+                variant: ToastVariant::Error,
+                timeout: None,
+                dismissible: true,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-toast-dismissible"));
+        assert!(html.contains("&times;"));
+    }
+
+    #[test]
+    fn toast_info_variant_uses_blue_classes() {
+        let view = JsonUiView::new().component(ComponentNode::toast(
+            "t",
+            ToastProps {
+                message: "Info".to_string(),
+                variant: ToastVariant::Info,
+                timeout: None,
+                dismissible: false,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-blue-50"));
+        assert!(html.contains("data-toast-variant=\"info\""));
+    }
+
+    #[test]
+    fn toast_has_fixed_position_classes() {
+        let view = JsonUiView::new().component(ComponentNode::toast(
+            "t",
+            ToastProps {
+                message: "msg".to_string(),
+                variant: ToastVariant::Info,
+                timeout: None,
+                dismissible: false,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("fixed top-4 right-4 z-50"));
+    }
+
+    // ── NotificationDropdown ─────────────────────────────────────────────
+
+    #[test]
+    fn notification_dropdown_renders_bell_icon() {
+        let view = JsonUiView::new().component(ComponentNode::notification_dropdown(
+            "notifs",
+            NotificationDropdownProps {
+                notifications: vec![],
+                empty_text: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-notification-dropdown"));
+        assert!(html.contains("data-notification-count=\"0\""));
+    }
+
+    #[test]
+    fn notification_dropdown_shows_unread_count_badge() {
+        let view = JsonUiView::new().component(ComponentNode::notification_dropdown(
+            "notifs",
+            NotificationDropdownProps {
+                notifications: vec![
+                    NotificationItem {
+                        icon: None,
+                        text: "New message".to_string(),
+                        timestamp: None,
+                        read: false,
+                        action_url: None,
+                    },
+                    NotificationItem {
+                        icon: None,
+                        text: "Old message".to_string(),
+                        timestamp: None,
+                        read: true,
+                        action_url: None,
+                    },
+                ],
+                empty_text: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-notification-count=\"1\""));
+        assert!(html.contains("New message"));
+        assert!(html.contains("Old message"));
+    }
+
+    #[test]
+    fn notification_dropdown_shows_empty_text_when_no_notifications() {
+        let view = JsonUiView::new().component(ComponentNode::notification_dropdown(
+            "notifs",
+            NotificationDropdownProps {
+                notifications: vec![],
+                empty_text: Some("All caught up!".to_string()),
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("All caught up!"));
+    }
+
+    #[test]
+    fn notification_dropdown_unread_indicator_for_unread_items() {
+        let view = JsonUiView::new().component(ComponentNode::notification_dropdown(
+            "notifs",
+            NotificationDropdownProps {
+                notifications: vec![NotificationItem {
+                    icon: None,
+                    text: "Unread".to_string(),
+                    timestamp: None,
+                    read: false,
+                    action_url: None,
+                }],
+                empty_text: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("bg-blue-500"));
+    }
+
+    // ── Sidebar ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn sidebar_renders_aside_element() {
+        let view = JsonUiView::new().component(ComponentNode::sidebar(
+            "nav",
+            SidebarProps {
+                fixed_top: vec![],
+                groups: vec![],
+                fixed_bottom: vec![],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<aside"));
+        assert!(html.contains("</aside>"));
+    }
+
+    #[test]
+    fn sidebar_renders_fixed_top_items() {
+        let view = JsonUiView::new().component(ComponentNode::sidebar(
+            "nav",
+            SidebarProps {
+                fixed_top: vec![SidebarNavItem {
+                    label: "Dashboard".to_string(),
+                    href: "/dashboard".to_string(),
+                    icon: None,
+                    active: true,
+                }],
+                groups: vec![],
+                fixed_bottom: vec![],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("href=\"/dashboard\""));
+        assert!(html.contains("Dashboard"));
+        assert!(html.contains("bg-gray-100 text-blue-600"));
+    }
+
+    #[test]
+    fn sidebar_renders_groups_with_data_attribute() {
+        let view = JsonUiView::new().component(ComponentNode::sidebar(
+            "nav",
+            SidebarProps {
+                fixed_top: vec![],
+                groups: vec![SidebarGroup {
+                    label: "Management".to_string(),
+                    collapsed: false,
+                    items: vec![SidebarNavItem {
+                        label: "Users".to_string(),
+                        href: "/users".to_string(),
+                        icon: None,
+                        active: false,
+                    }],
+                }],
+                fixed_bottom: vec![],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-sidebar-group"));
+        assert!(html.contains("Management"));
+        assert!(html.contains("Users"));
+        assert!(!html.contains("data-collapsed"));
+    }
+
+    #[test]
+    fn sidebar_collapsed_group_has_data_collapsed() {
+        let view = JsonUiView::new().component(ComponentNode::sidebar(
+            "nav",
+            SidebarProps {
+                fixed_top: vec![],
+                groups: vec![SidebarGroup {
+                    label: "Advanced".to_string(),
+                    collapsed: true,
+                    items: vec![],
+                }],
+                fixed_bottom: vec![],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-collapsed"));
+    }
+
+    #[test]
+    fn sidebar_inactive_item_uses_gray_classes() {
+        let view = JsonUiView::new().component(ComponentNode::sidebar(
+            "nav",
+            SidebarProps {
+                fixed_top: vec![SidebarNavItem {
+                    label: "Settings".to_string(),
+                    href: "/settings".to_string(),
+                    icon: None,
+                    active: false,
+                }],
+                groups: vec![],
+                fixed_bottom: vec![],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("text-gray-600"));
+        assert!(!html.contains("text-blue-600"));
+    }
+
+    // ── Header ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn header_renders_business_name() {
+        let view = JsonUiView::new().component(ComponentNode::header(
+            "hdr",
+            HeaderProps {
+                business_name: "Acme Corp".to_string(),
+                notification_count: None,
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<header"));
+        assert!(html.contains("Acme Corp"));
+    }
+
+    #[test]
+    fn header_renders_notification_count_badge() {
+        let view = JsonUiView::new().component(ComponentNode::header(
+            "hdr",
+            HeaderProps {
+                business_name: "Acme".to_string(),
+                notification_count: Some(3),
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-notification-count=\"3\""));
+    }
+
+    #[test]
+    fn header_no_badge_when_count_is_zero() {
+        let view = JsonUiView::new().component(ComponentNode::header(
+            "hdr",
+            HeaderProps {
+                business_name: "Acme".to_string(),
+                notification_count: Some(0),
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-notification-count=\"0\""));
+        // No red badge when count is zero.
+        assert!(!html.contains("bg-red-500"));
+    }
+
+    #[test]
+    fn header_renders_user_name_initials() {
+        let view = JsonUiView::new().component(ComponentNode::header(
+            "hdr",
+            HeaderProps {
+                business_name: "Acme".to_string(),
+                notification_count: None,
+                user_name: Some("John Doe".to_string()),
+                user_avatar: None,
+                logout_url: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("JD"));
+        assert!(html.contains("John Doe"));
+    }
+
+    #[test]
+    fn header_renders_avatar_image_when_provided() {
+        let view = JsonUiView::new().component(ComponentNode::header(
+            "hdr",
+            HeaderProps {
+                business_name: "Acme".to_string(),
+                notification_count: None,
+                user_name: None,
+                user_avatar: Some("/avatar.jpg".to_string()),
+                logout_url: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("src=\"/avatar.jpg\""));
+        assert!(html.contains("rounded-full"));
+    }
+
+    #[test]
+    fn header_renders_logout_link() {
+        let view = JsonUiView::new().component(ComponentNode::header(
+            "hdr",
+            HeaderProps {
+                business_name: "Acme".to_string(),
+                notification_count: None,
+                user_name: None,
+                user_avatar: None,
+                logout_url: Some("/logout".to_string()),
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("href=\"/logout\""));
+        assert!(html.contains("Logout"));
+    }
+
+    #[test]
+    fn header_escapes_business_name_xss() {
+        let view = JsonUiView::new().component(ComponentNode::header(
+            "hdr",
+            HeaderProps {
+                business_name: "<script>alert(1)</script>".to_string(),
+                notification_count: None,
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<script>"));
+        assert!(html.contains("&lt;script&gt;"));
+    }
 }
