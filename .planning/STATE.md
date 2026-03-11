@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 96-06-PLAN.md
-last_updated: "2026-03-11T03:57:46.415Z"
-last_activity: 2026-03-11 — Phase 96-05 executed (2 tasks)
+stopped_at: Completed 96-07-PLAN.md
+last_updated: "2026-03-11T04:25:04.339Z"
+last_activity: 2026-03-11 — Phase 96-07 executed (1 task)
 progress:
   total_phases: 17
   completed_phases: 14
-  total_plans: 39
-  completed_plans: 39
+  total_plans: 40
+  completed_plans: 40
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 96 (Stripe Integration) — Complete
-Plan: 6 of 6 complete
-Status: Phase 96 Plan 06 complete — publish workflow, documentation, full workspace validation
-Last activity: 2026-03-11 — Phase 96-06 executed (2 tasks)
+Plan: 7 of 7 complete
+Status: Phase 96 Plan 07 complete — webhook scaffold templates corrected to use queue_dispatch and struct literals
+Last activity: 2026-03-11 — Phase 96-07 executed (1 task)
 
 ## Milestone Summary
 
@@ -329,6 +329,11 @@ Archived to PROJECT.md and milestone archive files.
 - ferro-stripe in publish workflow Wave 1: ferro-events and ferro-queue already in Wave 1, sequential publishing handles ordering
 - New crates go in Wave 1 unless they depend on ferro-rs (Wave 2) or ferro-cli (Wave 3)
 
+**Phase 96-07:**
+- queue_dispatch is the correct API name for make:stripe templates — framework exports `dispatch as queue_dispatch` not `dispatch_job`
+- ProcessStripeWebhook constructed as plain struct literal { event_type, event_json, connect_account_id } — no platform()/connect() constructors exist
+- verify_webhook() return value must be captured as event to access event.type_ and event.account for struct field population
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -349,6 +354,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T03:57:46.412Z
-Stopped at: Completed 96-06-PLAN.md
+Last session: 2026-03-11T04:25:04.335Z
+Stopped at: Completed 96-07-PLAN.md
 Resume file: None
