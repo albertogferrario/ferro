@@ -8,7 +8,6 @@
 //! behaviors (e.g., `DashboardLayout`).
 
 /// Vanilla JS runtime (~5-10KB) for ferro-json-ui live behaviors.
-#[allow(dead_code)]
 ///
 /// Uses an IIFE and `var` declarations for maximum browser compatibility.
 /// Auto-initializes via `DOMContentLoaded`. All behavior is driven by

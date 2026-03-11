@@ -3,7 +3,8 @@
 //! Provides a trait-based layout system where named layouts wrap rendered
 //! component HTML in full page shells. Three built-in layouts are provided:
 //! `DefaultLayout` (minimal), `AppLayout` (dashboard with nav + sidebar),
-//! and `AuthLayout` (centered card).
+//! and `AuthLayout` (centered card). `DashboardLayout` is an optional layout
+//! that users register themselves with per-app config.
 //!
 //! A global `LayoutRegistry` maps layout names to implementations. Views
 //! specify a layout via `JsonUiView.layout`, and the render pipeline looks
@@ -12,6 +13,7 @@
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
+use crate::component::{HeaderProps, SidebarGroup, SidebarNavItem, SidebarProps};
 use crate::render::html_escape;
 
 // ── Layout context ──────────────────────────────────────────────────────
@@ -94,6 +96,199 @@ fn ferro_wrapper(ctx: &LayoutContext) -> String {
         props = html_escape(ctx.data_json),
         content = ctx.content,
     )
+}
+
+/// Produce the common `<!DOCTYPE html>` shell with optional extra body attributes.
+///
+/// Extends `base_document` with a `body_data` parameter for additional
+/// `data-*` attributes on the `<body>` element (e.g., `data-sse-url`).
+fn base_document_ext(
+    title: &str,
+    head: &str,
+    body_class: &str,
+    body_data: &str,
+    body_content: &str,
+    scripts: &str,
+) -> String {
+    let body_data_attr = if body_data.is_empty() {
+        String::new()
+    } else {
+        format!(" {body_data}")
+    };
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    {head}
+</head>
+<body class="{body_class}"{body_data_attr}>
+    {body_content}
+    {scripts}
+</body>
+</html>"#,
+        title = html_escape(title),
+        head = head,
+        body_class = html_escape(body_class),
+        body_data_attr = body_data_attr,
+        body_content = body_content,
+        scripts = scripts,
+    )
+}
+
+// ── DashboardLayout helpers ─────────────────────────────────────────────
+
+/// Render a sidebar nav item for the layout shell.
+fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
+    let classes = if item.active {
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-blue-600"
+    } else {
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+    };
+    let mut html = format!(
+        "<a href=\"{}\" class=\"{}\">",
+        html_escape(&item.href),
+        classes
+    );
+    if let Some(ref icon) = item.icon {
+        html.push_str(&format!(
+            "<span class=\"icon\" data-icon=\"{}\">{}</span>",
+            html_escape(icon),
+            html_escape(icon)
+        ));
+    }
+    html.push_str(&format!("{}</a>", html_escape(&item.label)));
+    html
+}
+
+/// Render a sidebar group for the layout shell.
+fn layout_sidebar_group(group: &SidebarGroup) -> String {
+    let mut html = String::from("<div data-sidebar-group");
+    if group.collapsed {
+        html.push_str(" data-collapsed");
+    }
+    html.push('>');
+    html.push_str(&format!(
+        "<p class=\"px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider\">{}</p>",
+        html_escape(&group.label)
+    ));
+    html.push_str("<nav class=\"space-y-1\">");
+    for item in &group.items {
+        html.push_str(&layout_sidebar_nav_item(item));
+    }
+    html.push_str("</nav></div>");
+    html
+}
+
+/// Render the sidebar shell from SidebarProps for DashboardLayout.
+fn layout_sidebar_html(props: &SidebarProps) -> String {
+    let mut html = String::from(
+        "<aside data-sidebar class=\"fixed inset-y-0 left-0 z-40 w-64 flex flex-col \
+         bg-white border-r border-gray-200 hidden md:flex\">",
+    );
+    if !props.fixed_top.is_empty() {
+        html.push_str("<nav class=\"p-4 space-y-1\">");
+        for item in &props.fixed_top {
+            html.push_str(&layout_sidebar_nav_item(item));
+        }
+        html.push_str("</nav>");
+    }
+    if !props.groups.is_empty() {
+        html.push_str("<div class=\"flex-1 overflow-y-auto p-4 space-y-4\">");
+        for group in &props.groups {
+            html.push_str(&layout_sidebar_group(group));
+        }
+        html.push_str("</div>");
+    }
+    if !props.fixed_bottom.is_empty() {
+        html.push_str("<nav class=\"p-4 space-y-1 border-t border-gray-200\">");
+        for item in &props.fixed_bottom {
+            html.push_str(&layout_sidebar_nav_item(item));
+        }
+        html.push_str("</nav>");
+    }
+    html.push_str("</aside>");
+    html
+}
+
+/// Render the header shell from HeaderProps for DashboardLayout.
+fn layout_header_html(props: &HeaderProps) -> String {
+    let mut html = String::from(
+        "<header class=\"sticky top-0 z-30 flex items-center justify-between \
+         px-4 py-3 bg-white border-b border-gray-200 md:pl-72\">",
+    );
+    // Mobile hamburger button — visible only on small screens.
+    html.push_str(
+        "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-md text-gray-500 \
+         hover:text-gray-700 hover:bg-gray-100\" aria-label=\"Toggle sidebar\">\
+         <svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
+         <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
+         d=\"M4 6h16M4 12h16M4 18h16\"/></svg></button>",
+    );
+    // Business name.
+    html.push_str(&format!(
+        "<span class=\"text-lg font-semibold text-gray-900\">{}</span>",
+        html_escape(&props.business_name)
+    ));
+    html.push_str("<div class=\"flex items-center gap-4\">");
+    // Notification bell with dropdown toggle.
+    html.push_str("<div class=\"relative\">");
+    if let Some(count) = props.notification_count {
+        if count > 0 {
+            html.push_str(&format!(
+                "<button data-notification-toggle class=\"relative p-2 text-gray-500 hover:text-gray-700\">\
+                 <svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
+                 <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
+                 d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/></svg>\
+                 <span class=\"absolute top-1 right-1 inline-flex items-center justify-center h-4 w-4 \
+                 text-xs font-bold text-white bg-red-500 rounded-full\">{count}</span></button>",
+            ));
+        } else {
+            html.push_str(
+                "<button data-notification-toggle class=\"p-2 text-gray-500 hover:text-gray-700\">\
+                 <svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
+                 <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
+                 d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/></svg></button>",
+            );
+        }
+    }
+    html.push_str(
+        "<div data-notification-dropdown class=\"hidden absolute right-0 top-full mt-1 w-80 \
+         bg-white rounded-lg shadow-lg border border-gray-200 z-50\"></div></div>",
+    );
+    // User section.
+    html.push_str("<div class=\"flex items-center gap-2\">");
+    if let Some(ref avatar) = props.user_avatar {
+        html.push_str(&format!(
+            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-full object-cover\">",
+            html_escape(avatar)
+        ));
+    } else if let Some(ref name) = props.user_name {
+        let initials: String = name
+            .split_whitespace()
+            .filter_map(|w| w.chars().next())
+            .take(2)
+            .collect();
+        html.push_str(&format!(
+            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-full \
+             bg-gray-200 text-gray-600 text-sm font-medium\">{}</span>",
+            html_escape(&initials)
+        ));
+        html.push_str(&format!(
+            "<span class=\"text-sm text-gray-700\">{}</span>",
+            html_escape(name)
+        ));
+    }
+    if let Some(ref logout) = props.logout_url {
+        html.push_str(&format!(
+            "<a href=\"{}\" class=\"text-sm text-gray-500 hover:text-gray-700\">Logout</a>",
+            html_escape(logout)
+        ));
+    }
+    html.push_str("</div></div></header>");
+    html
 }
 
 // ── DefaultLayout ───────────────────────────────────────────────────────
@@ -285,6 +480,129 @@ pub fn footer(text: &str) -> String {
         "<footer class=\"border-t border-gray-200 px-4 py-3 text-center text-sm text-gray-500\">{}</footer>",
         html_escape(text),
     )
+}
+
+// ── DashboardLayout ─────────────────────────────────────────────────────
+
+/// Configuration for `DashboardLayout`.
+///
+/// Provides the per-application sidebar navigation and header data needed
+/// to render the persistent dashboard shell. Users construct this at app
+/// startup and register it with the layout registry.
+///
+/// # Example
+///
+/// ```rust
+/// use ferro_json_ui::{DashboardLayout, DashboardLayoutConfig, HeaderProps, SidebarProps, register_layout};
+///
+/// register_layout("dashboard", DashboardLayout::new(DashboardLayoutConfig {
+///     sidebar: SidebarProps { fixed_top: vec![], groups: vec![], fixed_bottom: vec![] },
+///     header: HeaderProps {
+///         business_name: "My App".to_string(),
+///         notification_count: None,
+///         user_name: Some("Alice".to_string()),
+///         user_avatar: None,
+///         logout_url: Some("/logout".to_string()),
+///     },
+///     sse_url: None,
+/// }));
+/// ```
+pub struct DashboardLayoutConfig {
+    /// Sidebar navigation data for the persistent sidebar shell.
+    pub sidebar: SidebarProps,
+    /// Header data for the persistent header shell.
+    pub header: HeaderProps,
+    /// Optional SSE endpoint URL. When set, the JS runtime opens an
+    /// `EventSource` connection to this URL and dispatches live-value
+    /// and toast updates from incoming messages.
+    pub sse_url: Option<String>,
+}
+
+/// Dashboard layout with persistent sidebar, header, and main content area.
+///
+/// Renders a full-page shell with a fixed sidebar on the left (desktop)
+/// and a sticky header at the top. The rendered view content appears in
+/// the `<main>` area. The built-in JS runtime (`FERRO_RUNTIME_JS`) is
+/// injected once as a `<script>` tag, enabling SSE, live-value updates,
+/// and toast notifications.
+///
+/// Mobile: sidebar is hidden by default and toggled via the hamburger button
+/// in the header (using responsive Tailwind classes).
+///
+/// This layout is NOT auto-registered. Users must register it at startup:
+///
+/// ```rust
+/// use ferro_json_ui::{DashboardLayout, DashboardLayoutConfig, HeaderProps, SidebarProps, register_layout};
+///
+/// register_layout("dashboard", DashboardLayout::new(DashboardLayoutConfig {
+///     sidebar: SidebarProps { fixed_top: vec![], groups: vec![], fixed_bottom: vec![] },
+///     header: HeaderProps {
+///         business_name: "My App".to_string(),
+///         notification_count: None,
+///         user_name: None,
+///         user_avatar: None,
+///         logout_url: None,
+///     },
+///     sse_url: None,
+/// }));
+/// ```
+pub struct DashboardLayout {
+    /// Layout configuration (sidebar, header, SSE URL).
+    pub config: DashboardLayoutConfig,
+}
+
+impl DashboardLayout {
+    /// Create a new `DashboardLayout` from a `DashboardLayoutConfig`.
+    pub fn new(config: DashboardLayoutConfig) -> Self {
+        Self { config }
+    }
+}
+
+impl Layout for DashboardLayout {
+    fn render(&self, ctx: &LayoutContext) -> String {
+        let sidebar_html = layout_sidebar_html(&self.config.sidebar);
+        let header_html = layout_header_html(&self.config.header);
+        let wrapper = ferro_wrapper(ctx);
+
+        let body_data = if let Some(ref url) = self.config.sse_url {
+            format!("data-sse-url=\"{}\"", html_escape(url))
+        } else {
+            String::new()
+        };
+
+        let runtime_script = format!("<script>\n{}\n</script>", crate::runtime::FERRO_RUNTIME_JS);
+        let scripts = if ctx.scripts.is_empty() {
+            runtime_script
+        } else {
+            format!("{}\n{}", ctx.scripts, runtime_script)
+        };
+
+        let body_content = format!(
+            r#"{sidebar_html}
+    <div class="flex flex-col md:pl-64">
+        {header_html}
+        <main class="flex-1 p-6">
+            {wrapper}
+        </main>
+        <div data-toast-container class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+    </div>"#,
+        );
+
+        let body_class = if ctx.body_class.is_empty() {
+            "bg-gray-50"
+        } else {
+            ctx.body_class
+        };
+
+        base_document_ext(
+            ctx.title,
+            ctx.head,
+            body_class,
+            &body_data,
+            &body_content,
+            &scripts,
+        )
+    }
 }
 
 // ── Layout registry ─────────────────────────────────────────────────────
@@ -681,5 +999,180 @@ mod tests {
         assert!(html.contains("data-view=\""));
         assert!(html.contains("data-props=\""));
         assert!(html.contains("<p>Hello</p>"));
+    }
+
+    // ── DashboardLayout tests ───────────────────────────────────────
+
+    fn dashboard_layout() -> DashboardLayout {
+        use crate::component::{HeaderProps, SidebarProps};
+        DashboardLayout::new(DashboardLayoutConfig {
+            sidebar: SidebarProps {
+                fixed_top: vec![],
+                groups: vec![],
+                fixed_bottom: vec![],
+            },
+            header: HeaderProps {
+                business_name: "Acme".to_string(),
+                notification_count: None,
+                user_name: Some("Alice".to_string()),
+                user_avatar: None,
+                logout_url: Some("/logout".to_string()),
+            },
+            sse_url: None,
+        })
+    }
+
+    #[test]
+    fn dashboard_layout_renders_full_html_structure() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+
+        assert!(html.starts_with("<!DOCTYPE html>"));
+        assert!(html.contains("<title>Test Page</title>"));
+        assert!(html.contains("<div id=\"ferro-json-ui\""));
+        assert!(html.contains("<p>Hello</p>"));
+    }
+
+    #[test]
+    fn dashboard_layout_has_persistent_sidebar() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        assert!(html.contains("<aside data-sidebar"));
+    }
+
+    #[test]
+    fn dashboard_layout_has_persistent_header() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        assert!(html.contains("<header"));
+        assert!(html.contains("Acme"));
+    }
+
+    #[test]
+    fn dashboard_layout_has_main_content_area() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        assert!(html.contains("<main class=\"flex-1 p-6\">"));
+    }
+
+    #[test]
+    fn dashboard_layout_has_toast_container() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        assert!(html.contains("data-toast-container"));
+    }
+
+    #[test]
+    fn dashboard_layout_injects_runtime_js() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        // JS runtime is injected as a <script> tag containing the IIFE
+        assert!(html.contains("<script>"));
+        assert!(html.contains("FERRO_RUNTIME_JS") || html.contains("(function()"));
+    }
+
+    #[test]
+    fn dashboard_layout_has_mobile_hamburger_toggle() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        assert!(html.contains("data-sidebar-toggle"));
+    }
+
+    #[test]
+    fn dashboard_layout_no_sse_url_attribute_on_body_when_not_configured() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        // data-sse-url appears in the JS runtime source as a string literal,
+        // but should NOT appear as a body element attribute when sse_url is None.
+        // Check that the body tag does not contain the attribute.
+        let body_start = html.find("<body").unwrap_or(0);
+        let body_tag_end = html[body_start..].find('>').unwrap_or(0) + body_start;
+        let body_tag = &html[body_start..=body_tag_end];
+        assert!(!body_tag.contains("data-sse-url="));
+    }
+
+    #[test]
+    fn dashboard_layout_adds_sse_url_to_body_when_configured() {
+        use crate::component::{HeaderProps, SidebarProps};
+        let layout = DashboardLayout::new(DashboardLayoutConfig {
+            sidebar: SidebarProps {
+                fixed_top: vec![],
+                groups: vec![],
+                fixed_bottom: vec![],
+            },
+            header: HeaderProps {
+                business_name: "App".to_string(),
+                notification_count: None,
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            },
+            sse_url: Some("/events".to_string()),
+        });
+        let ctx = test_ctx();
+        let html = layout.render(&ctx);
+        assert!(html.contains("data-sse-url=\"/events\""));
+    }
+
+    #[test]
+    fn dashboard_layout_escapes_sse_url_xss() {
+        use crate::component::{HeaderProps, SidebarProps};
+        let layout = DashboardLayout::new(DashboardLayoutConfig {
+            sidebar: SidebarProps {
+                fixed_top: vec![],
+                groups: vec![],
+                fixed_bottom: vec![],
+            },
+            header: HeaderProps {
+                business_name: "App".to_string(),
+                notification_count: None,
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            },
+            sse_url: Some("/events?a=1&b=2".to_string()),
+        });
+        let ctx = test_ctx();
+        let html = layout.render(&ctx);
+        assert!(html.contains("data-sse-url=\"/events?a=1&amp;b=2\""));
+    }
+
+    #[test]
+    fn dashboard_layout_notification_toggle_present_with_count() {
+        use crate::component::{HeaderProps, SidebarProps};
+        let layout = DashboardLayout::new(DashboardLayoutConfig {
+            sidebar: SidebarProps {
+                fixed_top: vec![],
+                groups: vec![],
+                fixed_bottom: vec![],
+            },
+            header: HeaderProps {
+                business_name: "App".to_string(),
+                notification_count: Some(5),
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            },
+            sse_url: None,
+        });
+        let ctx = test_ctx();
+        let html = layout.render(&ctx);
+        assert!(html.contains("data-notification-toggle"));
+    }
+
+    #[test]
+    fn dashboard_layout_sidebar_mobile_classes() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        // Sidebar uses responsive classes: hidden on mobile, flex on md+
+        assert!(html.contains("hidden md:flex"));
+    }
+
+    #[test]
+    fn dashboard_layout_uses_default_body_class() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        // body_class from test_ctx is "bg-white" — should be preserved
+        assert!(html.contains("class=\"bg-white\""));
     }
 }

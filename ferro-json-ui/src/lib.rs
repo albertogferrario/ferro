@@ -69,7 +69,8 @@ pub use config::JsonUiConfig;
 pub use data::{resolve_path, resolve_path_string};
 pub use layout::{
     footer, global_registry, navigation, register_layout, render_layout, sidebar, AppLayout,
-    AuthLayout, DefaultLayout, Layout, LayoutContext, LayoutRegistry, NavItem, SidebarSection,
+    AuthLayout, DashboardLayout, DashboardLayoutConfig, DefaultLayout, Layout, LayoutContext,
+    LayoutRegistry, NavItem, SidebarSection,
 };
 pub use plugin::{
     collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
