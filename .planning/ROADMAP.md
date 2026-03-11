@@ -642,7 +642,7 @@ Plans:
 **Goal:** Stabilize ferro-json-ui from experimental to production-ready: add 6 dashboard-driven components (StatCard, Checklist, Toast, NotificationDropdown, Sidebar, Header), DashboardLayout with persistent shell, built-in JS runtime for SSE/toast/live-value, schemars JSON Schema generation, API visibility audit, 60+ tests, and comprehensive documentation.
 **Requirements**: [COMP-01, COMP-02, COMP-03, DASH-01, DASH-02, DASH-03, JS-01, JS-02, JS-03, API-01, API-02, API-03, API-04, TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, DOCS-01, DOCS-02, DOCS-03]
 **Depends on:** Phase 97
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 - [ ] 98-01-PLAN.md — 6 new component types + render implementations + convenience constructors for all 26 variants
