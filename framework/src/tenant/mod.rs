@@ -161,7 +161,10 @@ mod tests {
         })
         .await;
 
-        assert!(result.is_ok(), "Expected Ok(TenantContext), got: {result:?}");
+        assert!(
+            result.is_ok(),
+            "Expected Ok(TenantContext), got: {result:?}"
+        );
         let tenant = result.unwrap();
         assert_eq!(tenant.id, 99);
         assert_eq!(tenant.slug, "acme");

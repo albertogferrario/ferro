@@ -95,6 +95,11 @@ pub use session::{
     invalidate_all_for_user, session, session_mut, DatabaseSessionDriver, SessionConfig,
     SessionData, SessionMiddleware, SessionStore,
 };
+pub use tenant::{
+    current_tenant, DbTenantLookup, HeaderResolver, JwtClaimResolver, PathResolver,
+    SubdomainResolver, TenantContext, TenantFailureMode, TenantLookup, TenantMiddleware,
+    TenantResolver, TenantScope,
+};
 // Deprecated - kept for backward compatibility
 #[cfg(feature = "inertia")]
 #[allow(deprecated)]
