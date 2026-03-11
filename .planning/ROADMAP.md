@@ -639,13 +639,17 @@ Plans:
 
 ### Phase 98: ferro-json-ui stable release
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Stabilize ferro-json-ui from experimental to production-ready: add 6 dashboard-driven components (StatCard, Checklist, Toast, NotificationDropdown, Sidebar, Header), DashboardLayout with persistent shell, built-in JS runtime for SSE/toast/live-value, schemars JSON Schema generation, API visibility audit, 60+ tests, and comprehensive documentation.
+**Requirements**: [COMP-01, COMP-02, COMP-03, DASH-01, DASH-02, DASH-03, JS-01, JS-02, JS-03, API-01, API-02, API-03, API-04, TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, DOCS-01, DOCS-02, DOCS-03]
 **Depends on:** Phase 97
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 98 to break down)
+- [ ] 98-01-PLAN.md — 6 new component types + render implementations + convenience constructors for all 26 variants
+- [ ] 98-02-PLAN.md — DashboardLayout with persistent sidebar/header shell + built-in JS runtime (~5-10KB)
+- [ ] 98-03-PLAN.md — API visibility audit (pub(crate) internals) + schemars JSON Schema + framework re-export update
+- [ ] 98-04-PLAN.md — Comprehensive test suite: serde round-trips, render tests, schema tests, plugin pipeline (60+ total)
+- [ ] 98-05-PLAN.md — Documentation: component catalog (26 types), plugin guide, DashboardLayout docs, clean rustdoc
 
 ---
 
