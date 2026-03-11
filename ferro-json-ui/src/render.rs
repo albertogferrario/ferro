@@ -1,7 +1,7 @@
 //! HTML render engine for JSON-UI views.
 //!
 //! Walks a `JsonUiView` component tree and produces an HTML fragment using
-//! Tailwind CSS utility classes. All 20 built-in component types plus plugin
+//! Tailwind CSS utility classes. All 26 built-in component types plus plugin
 //! components are supported. Plugin components are dispatched to the plugin
 //! registry; their CSS/JS assets are collected and returned separately.
 
@@ -12,10 +12,11 @@ use serde_json::Value;
 use crate::action::HttpMethod;
 use crate::component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbProps, ButtonProps,
-    ButtonVariant, CardProps, CheckboxProps, Component, ComponentNode, DescriptionListProps,
-    FormProps, IconPosition, InputProps, InputType, ModalProps, Orientation, PaginationProps,
-    PluginProps, ProgressProps, SelectProps, SeparatorProps, Size, SkeletonProps, SwitchProps,
-    TableProps, TabsProps, TextElement, TextProps,
+    ButtonVariant, CardProps, CheckboxProps, ChecklistProps, Component, ComponentNode,
+    DescriptionListProps, FormProps, HeaderProps, IconPosition, InputProps, InputType, ModalProps,
+    NotificationDropdownProps, Orientation, PaginationProps, PluginProps, ProgressProps,
+    SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps,
+    TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -140,7 +141,13 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::Pagination(_)
         | Component::Progress(_)
         | Component::Avatar(_)
-        | Component::Skeleton(_) => {}
+        | Component::Skeleton(_)
+        | Component::StatCard(_)
+        | Component::Checklist(_)
+        | Component::Toast(_)
+        | Component::NotificationDropdown(_)
+        | Component::Sidebar(_)
+        | Component::Header(_) => {}
     }
 }
 
@@ -242,6 +249,14 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::Select(props) => render_select(props, data),
         Component::Checkbox(props) => render_checkbox(props, data),
         Component::Switch(props) => render_switch(props, data),
+
+        // New dashboard components.
+        Component::StatCard(props) => render_stat_card(props),
+        Component::Checklist(props) => render_checklist(props),
+        Component::Toast(props) => render_toast(props),
+        Component::NotificationDropdown(props) => render_notification_dropdown(props),
+        Component::Sidebar(props) => render_sidebar(props),
+        Component::Header(props) => render_header(props),
 
         // Plugin components (rendered via plugin registry).
         Component::Plugin(props) => render_plugin(props, data),
@@ -1112,6 +1127,328 @@ fn render_description_list(props: &DescriptionListProps) -> String {
         ));
     }
     html.push_str("</dl>");
+    html
+}
+
+// ── New dashboard component renderers ───────────────────────────────────
+
+fn render_stat_card(props: &StatCardProps) -> String {
+    let mut html =
+        String::from("<div class=\"bg-white rounded-lg shadow-sm p-4 border border-gray-100\">");
+    if let Some(ref icon) = props.icon {
+        html.push_str(&format!(
+            "<span class=\"text-2xl mb-2 block\">{}</span>",
+            html_escape(icon)
+        ));
+    }
+    html.push_str(&format!(
+        "<p class=\"text-sm text-gray-500\">{}</p>",
+        html_escape(&props.label)
+    ));
+    if let Some(ref sse) = props.sse_target {
+        html.push_str(&format!(
+            "<p class=\"text-2xl font-bold text-gray-900\" data-sse-target=\"{}\" data-live-value>{}</p>",
+            html_escape(sse),
+            html_escape(&props.value)
+        ));
+    } else {
+        html.push_str(&format!(
+            "<p class=\"text-2xl font-bold text-gray-900\">{}</p>",
+            html_escape(&props.value)
+        ));
+    }
+    if let Some(ref subtitle) = props.subtitle {
+        html.push_str(&format!(
+            "<p class=\"text-xs text-gray-400 mt-1\">{}</p>",
+            html_escape(subtitle)
+        ));
+    }
+    html.push_str("</div>");
+    html
+}
+
+fn render_checklist(props: &ChecklistProps) -> String {
+    let mut html =
+        String::from("<div class=\"bg-white rounded-lg shadow-sm p-4 border border-gray-100\">");
+    html.push_str("<div class=\"flex items-center justify-between mb-3\">");
+    html.push_str(&format!(
+        "<h3 class=\"text-sm font-semibold text-gray-900\">{}</h3>",
+        html_escape(&props.title)
+    ));
+    if props.dismissible {
+        let dismiss_label = props.dismiss_label.as_deref().unwrap_or("Dismiss");
+        html.push_str(&format!(
+            "<button type=\"button\" class=\"text-xs text-gray-400 hover:text-gray-600\" data-dismissible>{}</button>",
+            html_escape(dismiss_label)
+        ));
+    }
+    html.push_str("</div>");
+    if let Some(ref key) = props.data_key {
+        html.push_str(&format!(
+            "<div data-checklist-key=\"{}\">",
+            html_escape(key)
+        ));
+    } else {
+        html.push_str("<div>");
+    }
+    if props.dismissible {
+        html.push_str("<ul data-dismissible class=\"space-y-2\">");
+    } else {
+        html.push_str("<ul class=\"space-y-2\">");
+    }
+    for item in &props.items {
+        html.push_str("<li class=\"flex items-center gap-2\">");
+        if item.checked {
+            html.push_str("<input type=\"checkbox\" checked class=\"h-4 w-4 rounded border-gray-300 text-blue-600\">");
+        } else {
+            html.push_str(
+                "<input type=\"checkbox\" class=\"h-4 w-4 rounded border-gray-300 text-blue-600\">",
+            );
+        }
+        let label_class = if item.checked {
+            "text-sm line-through text-gray-400"
+        } else {
+            "text-sm text-gray-700"
+        };
+        if let Some(ref href) = item.href {
+            html.push_str(&format!(
+                "<a href=\"{}\" class=\"{}\">{}</a>",
+                html_escape(href),
+                label_class,
+                html_escape(&item.label)
+            ));
+        } else {
+            html.push_str(&format!(
+                "<span class=\"{}\">{}</span>",
+                label_class,
+                html_escape(&item.label)
+            ));
+        }
+        html.push_str("</li>");
+    }
+    html.push_str("</ul></div></div>");
+    html
+}
+
+fn render_toast(props: &ToastProps) -> String {
+    let variant_classes = match props.variant {
+        ToastVariant::Info => "bg-blue-50 border-blue-200 text-blue-800",
+        ToastVariant::Success => "bg-green-50 border-green-200 text-green-800",
+        ToastVariant::Warning => "bg-yellow-50 border-yellow-200 text-yellow-800",
+        ToastVariant::Error => "bg-red-50 border-red-200 text-red-800",
+    };
+    let variant_str = match props.variant {
+        ToastVariant::Info => "info",
+        ToastVariant::Success => "success",
+        ToastVariant::Warning => "warning",
+        ToastVariant::Error => "error",
+    };
+    let timeout = props.timeout.unwrap_or(5);
+    let mut html = format!(
+        "<div class=\"fixed top-4 right-4 z-50 rounded-md border p-4 shadow-lg {variant_classes}\" data-toast-variant=\"{variant_str}\" data-toast-timeout=\"{timeout}\"",
+    );
+    if props.dismissible {
+        html.push_str(" data-toast-dismissible");
+    }
+    html.push('>');
+    html.push_str("<div class=\"flex items-start gap-3\">");
+    html.push_str(&format!(
+        "<p class=\"text-sm\">{}</p>",
+        html_escape(&props.message)
+    ));
+    if props.dismissible {
+        html.push_str(
+            "<button type=\"button\" class=\"ml-auto text-current opacity-70 hover:opacity-100\">&times;</button>",
+        );
+    }
+    html.push_str("</div></div>");
+    html
+}
+
+fn render_notification_dropdown(props: &NotificationDropdownProps) -> String {
+    let unread_count = props.notifications.iter().filter(|n| !n.read).count();
+    let mut html = String::from("<div class=\"relative\" data-notification-dropdown>");
+    // Bell icon button with badge.
+    html.push_str(&format!(
+        "<button type=\"button\" class=\"relative p-2 text-gray-500 hover:text-gray-700\" data-notification-count=\"{unread_count}\">"
+    ));
+    html.push_str("<span class=\"text-xl\">&#x1F514;</span>");
+    if unread_count > 0 {
+        html.push_str(&format!(
+            "<span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-white bg-red-500 rounded-full\">{unread_count}</span>"
+        ));
+    }
+    html.push_str("</button>");
+    // Dropdown panel.
+    html.push_str(
+        "<div class=\"hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50\" data-notification-panel>",
+    );
+    if props.notifications.is_empty() {
+        let empty = props.empty_text.as_deref().unwrap_or("No notifications");
+        html.push_str(&format!(
+            "<p class=\"p-4 text-sm text-gray-500\">{}</p>",
+            html_escape(empty)
+        ));
+    } else {
+        html.push_str("<ul class=\"divide-y divide-gray-100\">");
+        for item in &props.notifications {
+            html.push_str("<li class=\"flex items-start gap-3 p-3\">");
+            if let Some(ref icon) = item.icon {
+                html.push_str(&format!(
+                    "<span class=\"text-lg shrink-0\">{}</span>",
+                    html_escape(icon)
+                ));
+            }
+            html.push_str("<div class=\"flex-1 min-w-0\">");
+            if let Some(ref url) = item.action_url {
+                html.push_str(&format!(
+                    "<a href=\"{}\" class=\"text-sm text-gray-900 hover:underline\">{}</a>",
+                    html_escape(url),
+                    html_escape(&item.text)
+                ));
+            } else {
+                html.push_str(&format!(
+                    "<p class=\"text-sm text-gray-900\">{}</p>",
+                    html_escape(&item.text)
+                ));
+            }
+            if let Some(ref ts) = item.timestamp {
+                html.push_str(&format!(
+                    "<p class=\"text-xs text-gray-400 mt-0.5\">{}</p>",
+                    html_escape(ts)
+                ));
+            }
+            html.push_str("</div>");
+            if !item.read {
+                html.push_str(
+                    "<span class=\"h-2 w-2 mt-1 shrink-0 rounded-full bg-blue-500\"></span>",
+                );
+            }
+            html.push_str("</li>");
+        }
+        html.push_str("</ul>");
+    }
+    html.push_str("</div></div>");
+    html
+}
+
+fn render_sidebar(props: &SidebarProps) -> String {
+    let mut html =
+        String::from("<aside class=\"flex flex-col h-full bg-white border-r border-gray-200\">");
+    // Fixed top items.
+    if !props.fixed_top.is_empty() {
+        html.push_str("<nav class=\"p-4 space-y-1\">");
+        for item in &props.fixed_top {
+            html.push_str(&render_sidebar_nav_item(item));
+        }
+        html.push_str("</nav>");
+    }
+    // Groups.
+    if !props.groups.is_empty() {
+        html.push_str("<div class=\"flex-1 overflow-y-auto p-4 space-y-4\">");
+        for group in &props.groups {
+            html.push_str("<div data-sidebar-group");
+            if group.collapsed {
+                html.push_str(" data-collapsed");
+            }
+            html.push('>');
+            html.push_str(&format!(
+                "<p class=\"px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider\">{}</p>",
+                html_escape(&group.label)
+            ));
+            html.push_str("<nav class=\"space-y-1\">");
+            for item in &group.items {
+                html.push_str(&render_sidebar_nav_item(item));
+            }
+            html.push_str("</nav></div>");
+        }
+        html.push_str("</div>");
+    }
+    // Fixed bottom items.
+    if !props.fixed_bottom.is_empty() {
+        html.push_str("<nav class=\"p-4 space-y-1 border-t border-gray-200\">");
+        for item in &props.fixed_bottom {
+            html.push_str(&render_sidebar_nav_item(item));
+        }
+        html.push_str("</nav>");
+    }
+    html.push_str("</aside>");
+    html
+}
+
+fn render_sidebar_nav_item(item: &crate::component::SidebarNavItem) -> String {
+    let classes = if item.active {
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-blue-600"
+    } else {
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+    };
+    let mut html = format!(
+        "<a href=\"{}\" class=\"{}\">",
+        html_escape(&item.href),
+        classes
+    );
+    if let Some(ref icon) = item.icon {
+        html.push_str(&format!(
+            "<span class=\"icon\" data-icon=\"{}\">{}</span>",
+            html_escape(icon),
+            html_escape(icon)
+        ));
+    }
+    html.push_str(&format!("{}</a>", html_escape(&item.label)));
+    html
+}
+
+fn render_header(props: &HeaderProps) -> String {
+    let mut html = String::from(
+        "<header class=\"flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200\">",
+    );
+    // Business name.
+    html.push_str(&format!(
+        "<span class=\"text-lg font-semibold text-gray-900\">{}</span>",
+        html_escape(&props.business_name)
+    ));
+    html.push_str("<div class=\"flex items-center gap-4\">");
+    // Notification bell with count badge.
+    if let Some(count) = props.notification_count {
+        if count > 0 {
+            html.push_str(&format!(
+                "<div class=\"relative\"><span class=\"text-xl text-gray-500\">&#x1F514;</span><span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-white bg-red-500 rounded-full\" data-notification-count=\"{count}\">{count}</span></div>"
+            ));
+        } else {
+            html.push_str(&format!(
+                "<span class=\"text-xl text-gray-500\" data-notification-count=\"{count}\">&#x1F514;</span>"
+            ));
+        }
+    }
+    // User section.
+    html.push_str("<div class=\"flex items-center gap-2\">");
+    if let Some(ref avatar) = props.user_avatar {
+        html.push_str(&format!(
+            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-full object-cover\">",
+            html_escape(avatar)
+        ));
+    } else if let Some(ref name) = props.user_name {
+        let initials: String = name
+            .split_whitespace()
+            .filter_map(|w| w.chars().next())
+            .take(2)
+            .collect();
+        html.push_str(&format!(
+            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-200 text-gray-600 text-sm font-medium\">{}</span>",
+            html_escape(&initials)
+        ));
+        html.push_str(&format!(
+            "<span class=\"text-sm text-gray-700\">{}</span>",
+            html_escape(name)
+        ));
+    }
+    if let Some(ref logout) = props.logout_url {
+        html.push_str(&format!(
+            "<a href=\"{}\" class=\"text-sm text-gray-500 hover:text-gray-700\">Logout</a>",
+            html_escape(logout)
+        ));
+    }
+    html.push_str("</div></div></header>");
     html
 }
 

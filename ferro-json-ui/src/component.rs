@@ -427,6 +427,143 @@ pub struct SkeletonProps {
     pub rounded: Option<bool>,
 }
 
+/// Toast visual variants.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToastVariant {
+    #[default]
+    Info,
+    Success,
+    Warning,
+    Error,
+}
+
+/// A single item in a checklist.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChecklistItem {
+    pub label: String,
+    #[serde(default)]
+    pub checked: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub href: Option<String>,
+}
+
+/// A single item in a notification dropdown.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotificationItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<String>,
+    #[serde(default)]
+    pub read: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action_url: Option<String>,
+}
+
+/// A single navigation item in the sidebar.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SidebarNavItem {
+    pub label: String,
+    pub href: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub active: bool,
+}
+
+/// A collapsible group in the sidebar.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SidebarGroup {
+    pub label: String,
+    #[serde(default)]
+    pub collapsed: bool,
+    pub items: Vec<SidebarNavItem>,
+}
+
+/// Props for StatCard component (live-updatable metric card).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StatCardProps {
+    pub label: String,
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtitle: Option<String>,
+    /// SSE target key for live updates; maps to `data-sse-target` on the value element.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sse_target: Option<String>,
+}
+
+/// Props for Checklist component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChecklistProps {
+    pub title: String,
+    pub items: Vec<ChecklistItem>,
+    #[serde(default = "default_true")]
+    pub dismissible: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dismiss_label: Option<String>,
+    /// Server-side state persistence key for this checklist.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_key: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Props for Toast component (declarative notification intent).
+///
+/// The JS runtime reads data attributes from the rendered element to
+/// display the toast. Timeouts and dismissal are handled client-side.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ToastProps {
+    pub message: String,
+    #[serde(default)]
+    pub variant: ToastVariant,
+    /// Seconds before auto-dismiss. Default 5.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u32>,
+    #[serde(default = "default_true")]
+    pub dismissible: bool,
+}
+
+/// Props for NotificationDropdown component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotificationDropdownProps {
+    pub notifications: Vec<NotificationItem>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_text: Option<String>,
+}
+
+/// Props for Sidebar component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SidebarProps {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fixed_top: Vec<SidebarNavItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub groups: Vec<SidebarGroup>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fixed_bottom: Vec<SidebarNavItem>,
+}
+
+/// Props for Header component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HeaderProps {
+    pub business_name: String,
+    /// Unread notification count for badge display.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notification_count: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_avatar: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logout_url: Option<String>,
+}
+
 /// Props for a plugin component.
 ///
 /// The `plugin_type` field holds the original `"type"` value from JSON,
@@ -504,6 +641,12 @@ pub enum Component {
     Progress(ProgressProps),
     Avatar(AvatarProps),
     Skeleton(SkeletonProps),
+    StatCard(StatCardProps),
+    Checklist(ChecklistProps),
+    Toast(ToastProps),
+    NotificationDropdown(NotificationDropdownProps),
+    Sidebar(SidebarProps),
+    Header(HeaderProps),
     Plugin(PluginProps),
 }
 
@@ -549,6 +692,14 @@ impl Serialize for Component {
             Component::Progress(p) => serialize_tagged(serializer, "Progress", p),
             Component::Avatar(p) => serialize_tagged(serializer, "Avatar", p),
             Component::Skeleton(p) => serialize_tagged(serializer, "Skeleton", p),
+            Component::StatCard(p) => serialize_tagged(serializer, "StatCard", p),
+            Component::Checklist(p) => serialize_tagged(serializer, "Checklist", p),
+            Component::Toast(p) => serialize_tagged(serializer, "Toast", p),
+            Component::NotificationDropdown(p) => {
+                serialize_tagged(serializer, "NotificationDropdown", p)
+            }
+            Component::Sidebar(p) => serialize_tagged(serializer, "Sidebar", p),
+            Component::Header(p) => serialize_tagged(serializer, "Header", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -625,6 +776,24 @@ impl<'de> Deserialize<'de> for Component {
             "Skeleton" => serde_json::from_value::<SkeletonProps>(value)
                 .map(Component::Skeleton)
                 .map_err(de::Error::custom),
+            "StatCard" => serde_json::from_value::<StatCardProps>(value)
+                .map(Component::StatCard)
+                .map_err(de::Error::custom),
+            "Checklist" => serde_json::from_value::<ChecklistProps>(value)
+                .map(Component::Checklist)
+                .map_err(de::Error::custom),
+            "Toast" => serde_json::from_value::<ToastProps>(value)
+                .map(Component::Toast)
+                .map_err(de::Error::custom),
+            "NotificationDropdown" => serde_json::from_value::<NotificationDropdownProps>(value)
+                .map(Component::NotificationDropdown)
+                .map_err(de::Error::custom),
+            "Sidebar" => serde_json::from_value::<SidebarProps>(value)
+                .map(Component::Sidebar)
+                .map_err(de::Error::custom),
+            "Header" => serde_json::from_value::<HeaderProps>(value)
+                .map(Component::Header)
+                .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
                 let plugin_type = type_str.to_string();
@@ -652,6 +821,280 @@ pub struct ComponentNode {
     pub action: Option<Action>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub visibility: Option<Visibility>,
+}
+
+impl ComponentNode {
+    /// Create a Card component node.
+    pub fn card(key: impl Into<String>, props: CardProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Card(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Table component node.
+    pub fn table(key: impl Into<String>, props: TableProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Table(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Form component node.
+    pub fn form(key: impl Into<String>, props: FormProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Form(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Button component node.
+    pub fn button(key: impl Into<String>, props: ButtonProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Button(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create an Input component node.
+    pub fn input(key: impl Into<String>, props: InputProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Input(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Select component node.
+    pub fn select(key: impl Into<String>, props: SelectProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Select(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create an Alert component node.
+    pub fn alert(key: impl Into<String>, props: AlertProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Alert(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Badge component node.
+    pub fn badge(key: impl Into<String>, props: BadgeProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Badge(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Modal component node.
+    pub fn modal(key: impl Into<String>, props: ModalProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Modal(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Text component node.
+    pub fn text(key: impl Into<String>, props: TextProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Text(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Checkbox component node.
+    pub fn checkbox(key: impl Into<String>, props: CheckboxProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Checkbox(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Switch component node.
+    pub fn switch(key: impl Into<String>, props: SwitchProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Switch(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Separator component node.
+    pub fn separator(key: impl Into<String>, props: SeparatorProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Separator(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a DescriptionList component node.
+    pub fn description_list(key: impl Into<String>, props: DescriptionListProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::DescriptionList(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Tabs component node.
+    pub fn tabs(key: impl Into<String>, props: TabsProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Tabs(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Breadcrumb component node.
+    pub fn breadcrumb(key: impl Into<String>, props: BreadcrumbProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Breadcrumb(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Pagination component node.
+    pub fn pagination(key: impl Into<String>, props: PaginationProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Pagination(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Progress component node.
+    pub fn progress(key: impl Into<String>, props: ProgressProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Progress(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create an Avatar component node.
+    pub fn avatar(key: impl Into<String>, props: AvatarProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Avatar(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Skeleton component node.
+    pub fn skeleton(key: impl Into<String>, props: SkeletonProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Skeleton(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a StatCard component node.
+    pub fn stat_card(key: impl Into<String>, props: StatCardProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::StatCard(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Checklist component node.
+    pub fn checklist(key: impl Into<String>, props: ChecklistProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Checklist(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Toast component node.
+    pub fn toast(key: impl Into<String>, props: ToastProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Toast(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a NotificationDropdown component node.
+    pub fn notification_dropdown(key: impl Into<String>, props: NotificationDropdownProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::NotificationDropdown(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Sidebar component node.
+    pub fn sidebar(key: impl Into<String>, props: SidebarProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Sidebar(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Header component node.
+    pub fn header(key: impl Into<String>, props: HeaderProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Header(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Plugin component node.
+    ///
+    /// Use `plugin_component` to avoid ambiguity with any `plugin` module.
+    pub fn plugin_component(key: impl Into<String>, props: PluginProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Plugin(props),
+            action: None,
+            visibility: None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1032,8 +1475,44 @@ mod tests {
                 height: None,
                 rounded: None,
             }),
+            Component::StatCard(StatCardProps {
+                label: "Revenue".to_string(),
+                value: "$1,234".to_string(),
+                icon: None,
+                subtitle: None,
+                sse_target: None,
+            }),
+            Component::Checklist(ChecklistProps {
+                title: "Tasks".to_string(),
+                items: vec![],
+                dismissible: true,
+                dismiss_label: None,
+                data_key: None,
+            }),
+            Component::Toast(ToastProps {
+                message: "Saved!".to_string(),
+                variant: ToastVariant::Success,
+                timeout: None,
+                dismissible: true,
+            }),
+            Component::NotificationDropdown(NotificationDropdownProps {
+                notifications: vec![],
+                empty_text: None,
+            }),
+            Component::Sidebar(SidebarProps {
+                fixed_top: vec![],
+                groups: vec![],
+                fixed_bottom: vec![],
+            }),
+            Component::Header(HeaderProps {
+                business_name: "Acme".to_string(),
+                notification_count: None,
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            }),
         ];
-        assert_eq!(components.len(), 20, "should have 20 component variants");
+        assert_eq!(components.len(), 26, "should have 26 component variants");
         let expected_types = [
             "Card",
             "Table",
@@ -1055,6 +1534,12 @@ mod tests {
             "Progress",
             "Avatar",
             "Skeleton",
+            "StatCard",
+            "Checklist",
+            "Toast",
+            "NotificationDropdown",
+            "Sidebar",
+            "Header",
         ];
         for (component, expected_type) in components.iter().zip(expected_types.iter()) {
             let json = serde_json::to_value(component).unwrap();

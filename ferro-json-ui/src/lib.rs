@@ -55,11 +55,13 @@ pub mod visibility;
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
 pub use component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem,
-    BreadcrumbProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, Column, ColumnFormat,
-    Component, ComponentNode, DescriptionItem, DescriptionListProps, FormProps, IconPosition,
-    InputProps, InputType, ModalProps, Orientation, PaginationProps, PluginProps, ProgressProps,
-    SelectOption, SelectProps, SeparatorProps, Size, SkeletonProps, SortDirection, SwitchProps,
-    Tab, TableProps, TabsProps, TextElement, TextProps,
+    BreadcrumbProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistItem,
+    ChecklistProps, Column, ColumnFormat, Component, ComponentNode, DescriptionItem,
+    DescriptionListProps, FormProps, HeaderProps, IconPosition, InputProps, InputType, ModalProps,
+    NotificationDropdownProps, NotificationItem, Orientation, PaginationProps, PluginProps,
+    ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem,
+    SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
+    TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
 pub use data::{resolve_path, resolve_path_string};

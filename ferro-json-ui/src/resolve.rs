@@ -78,6 +78,12 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
         | Component::Progress(_)
         | Component::Avatar(_)
         | Component::Skeleton(_)
+        | Component::StatCard(_)
+        | Component::Checklist(_)
+        | Component::Toast(_)
+        | Component::NotificationDropdown(_)
+        | Component::Sidebar(_)
+        | Component::Header(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -186,6 +192,12 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         | Component::Progress(_)
         | Component::Avatar(_)
         | Component::Skeleton(_)
+        | Component::StatCard(_)
+        | Component::Checklist(_)
+        | Component::Toast(_)
+        | Component::NotificationDropdown(_)
+        | Component::Sidebar(_)
+        | Component::Header(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -292,6 +304,12 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::Progress(_)
         | Component::Avatar(_)
         | Component::Skeleton(_)
+        | Component::StatCard(_)
+        | Component::Checklist(_)
+        | Component::Toast(_)
+        | Component::NotificationDropdown(_)
+        | Component::Sidebar(_)
+        | Component::Header(_)
         | Component::Plugin(_) => {}
     }
 }
