@@ -230,6 +230,76 @@ impl TenantLookup for MyCustomLookup {
 
 The `TenantLookup` trait is object-safe (`Arc<dyn TenantLookup>`), so resolvers can share a single lookup instance across threads.
 
+## Background Jobs
+
+Jobs dispatched from tenant-scoped handlers automatically carry the current tenant's ID in the payload. When a worker processes the job, it restores the full `TenantContext` before execution — so `current_tenant()` works inside job handlers the same way it does in HTTP handlers.
+
+### Setup
+
+Register the capture hook and configure the worker with a tenant scope provider during bootstrap:
+
+```rust
+use ferro_rs::{
+    Worker, WorkerConfig, Queue, register_tenant_capture_hook,
+    current_tenant,
+    tenant::{DbTenantLookup, FrameworkTenantScopeProvider},
+};
+use std::sync::Arc;
+
+// Register once at startup. Called at dispatch time to capture the current tenant ID.
+register_tenant_capture_hook(|| current_tenant().map(|t| t.id));
+
+// Build the lookup (same instance used by TenantMiddleware).
+let lookup = Arc::new(DbTenantLookup::new(
+    |slug| Box::pin(async move { /* find by slug */ None }),
+    |id| Box::pin(async move { /* find by id */ None }),
+));
+
+// Attach the scope provider to the worker.
+let worker = Worker::new(Queue::connection(), WorkerConfig::default())
+    .with_tenant_scope(Arc::new(FrameworkTenantScopeProvider::new(lookup)));
+```
+
+`register_tenant_capture_hook` is a no-op if called more than once — only the first registration takes effect.
+
+### Using current_tenant() in Jobs
+
+Job handlers can call `current_tenant()` directly, without any extra setup:
+
+```rust
+use ferro_rs::{Job, Error, current_tenant};
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct SendWelcomeEmail;
+
+#[async_trait::async_trait]
+impl Job for SendWelcomeEmail {
+    async fn handle(&self) -> Result<(), Error> {
+        let tenant = current_tenant().expect("job must run inside tenant scope");
+        // send email for tenant.name ...
+        Ok(())
+    }
+}
+```
+
+### Dispatching on Behalf of a Tenant
+
+In admin or system contexts where no ambient tenant scope exists (CLI commands, webhooks, scheduled tasks), use `.for_tenant(id)` to explicitly attach a tenant ID to the job:
+
+```rust
+use ferro_rs::queue_dispatch;
+
+// Runs the job in the scope of tenant 42, regardless of current context.
+queue_dispatch(SendWelcomeEmail)
+    .for_tenant(42)
+    .dispatch()
+    .await?;
+```
+
+### Behavior When Tenant Not Found
+
+If the worker cannot resolve the tenant ID stored in the payload (tenant deleted, DB unavailable), the job fails with `QueueError::TenantNotFound`. The worker follows the normal retry/failed-queue flow based on the job's retry configuration.
+
 ## Safety Notes
 
 **Every query on tenant-owned tables must use `TenantScope`.** Unscoped queries silently return data from all tenants.
