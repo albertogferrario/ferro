@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 95-02-PLAN.md
-last_updated: "2026-03-11T01:10:46.000Z"
+stopped_at: Completed 95-03-PLAN.md
+last_updated: "2026-03-11T01:25:45.747Z"
 last_activity: 2026-03-11 — Phase 95-02 executed (2 tasks)
 progress:
   total_phases: 17
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 33
-  completed_plans: 32
+  completed_plans: 33
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 95 (Multi-tenant Middleware) — In Progress
-Plan: 2 of N complete
-Status: Phase 95 Plan 02 complete — TenantMiddleware and 4 concrete resolvers
-Last activity: 2026-03-11 — Phase 95-02 executed (2 tasks)
+Phase: 95 (Multi-tenant Middleware) — Complete
+Plan: 3 of 3 complete
+Status: Phase 95 Plan 03 complete — TenantScope, FromRequest, re-exports, and documentation
+Last activity: 2026-03-11 — Phase 95-03 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -291,6 +291,11 @@ Archived to PROJECT.md and milestone archive files.
 - PathResolver uses req.param().ok(): req.param() returns Result<&str, ParamError> not Option<&str> as plan assumed
 - #[derive(Debug)] added to HttpResponse: required for Result::unwrap() in tests, was missing from the type
 
+**Phase 95-03:**
+- TenantScope SQL assertion uses Statement.values (Value::BigInt) — SQLite parameterized queries use ? placeholders, not inlined values
+- FromRequest tests use TCP loopback (same pattern as middleware tests) since Request::new takes hyper::body::Incoming with no default constructor
+- TenantScope generic over ColumnTrait: impl<E, C> Scope<E> for TenantScope<C> handles any column, not just tenant_id
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -311,6 +316,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T01:10:46.000Z
-Stopped at: Completed 95-02-PLAN.md
+Last session: 2026-03-11T01:25:45.743Z
+Stopped at: Completed 95-03-PLAN.md
 Resume file: None
