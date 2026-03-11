@@ -30,6 +30,7 @@ pub const SCHEMA_VERSION: &str = "ferro-json-ui/v1";
 /// let json = view.to_json().unwrap();
 /// assert!(json.contains("ferro-json-ui/v1"));
 /// ```
+// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JsonUiView {
     #[serde(rename = "$schema")]

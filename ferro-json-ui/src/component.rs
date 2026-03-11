@@ -3,6 +3,7 @@
 //! Defines the available UI components with typed props. Each component
 //! uses serde's tagged enum representation so JSON includes `"type": "Card"`.
 
+use schemars::JsonSchema;
 use serde::de::{self, Deserializer};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
@@ -11,7 +12,7 @@ use crate::action::Action;
 use crate::visibility::Visibility;
 
 /// Shared size enum for components (Button, Badge, Avatar, Input).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Size {
     Xs,
@@ -22,7 +23,7 @@ pub enum Size {
 }
 
 /// Icon placement relative to button label.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum IconPosition {
     #[default]
@@ -31,7 +32,7 @@ pub enum IconPosition {
 }
 
 /// Sort direction for table columns.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SortDirection {
     #[default]
@@ -40,7 +41,7 @@ pub enum SortDirection {
 }
 
 /// Separator orientation.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Orientation {
     #[default]
@@ -49,7 +50,7 @@ pub enum Orientation {
 }
 
 /// Button visual variants (aligned to shadcn/ui).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ButtonVariant {
     #[default]
@@ -62,7 +63,7 @@ pub enum ButtonVariant {
 }
 
 /// Input field types.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum InputType {
     #[default]
@@ -80,7 +81,7 @@ pub enum InputType {
 }
 
 /// Alert visual variants.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AlertVariant {
     #[default]
@@ -91,7 +92,7 @@ pub enum AlertVariant {
 }
 
 /// Badge visual variants (aligned to shadcn/ui).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BadgeVariant {
     #[default]
@@ -102,7 +103,7 @@ pub enum BadgeVariant {
 }
 
 /// Text element types for semantic HTML rendering.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TextElement {
     #[default]
@@ -116,7 +117,7 @@ pub enum TextElement {
 }
 
 /// Column display format for tables.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ColumnFormat {
     Date,
@@ -126,7 +127,7 @@ pub enum ColumnFormat {
 }
 
 /// Table column definition.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Column {
     pub key: String,
     pub label: String,
@@ -135,13 +136,14 @@ pub struct Column {
 }
 
 /// Select option (value + label pair).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SelectOption {
     pub value: String,
     pub label: String,
 }
 
 /// Props for Card component.
+// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CardProps {
     pub title: String,
@@ -154,7 +156,7 @@ pub struct CardProps {
 }
 
 /// Props for Table component.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TableProps {
     pub columns: Vec<Column>,
     pub data_path: String,
@@ -171,6 +173,7 @@ pub struct TableProps {
 }
 
 /// Props for Form component.
+// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FormProps {
     pub action: Action,
@@ -180,7 +183,7 @@ pub struct FormProps {
 }
 
 /// Props for Button component.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ButtonProps {
     pub label: String,
     #[serde(default)]
@@ -196,7 +199,7 @@ pub struct ButtonProps {
 }
 
 /// Props for Input component.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct InputProps {
     /// Form field name for data binding.
     pub field: String,
@@ -224,7 +227,7 @@ pub struct InputProps {
 }
 
 /// Props for Select component.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SelectProps {
     /// Form field name for data binding.
     pub field: String,
@@ -248,7 +251,7 @@ pub struct SelectProps {
 }
 
 /// Props for Alert component.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct AlertProps {
     pub message: String,
     #[serde(default)]
@@ -258,7 +261,7 @@ pub struct AlertProps {
 }
 
 /// Props for Badge component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct BadgeProps {
     pub label: String,
     #[serde(default)]
@@ -266,6 +269,7 @@ pub struct BadgeProps {
 }
 
 /// Props for Modal component.
+// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModalProps {
     pub title: String,
@@ -280,7 +284,7 @@ pub struct ModalProps {
 }
 
 /// Props for Text component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TextProps {
     pub content: String,
     #[serde(default)]
@@ -288,7 +292,7 @@ pub struct TextProps {
 }
 
 /// Props for Checkbox component.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CheckboxProps {
     /// Form field name for data binding.
     pub field: String,
@@ -309,7 +313,7 @@ pub struct CheckboxProps {
 }
 
 /// Props for Switch component.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SwitchProps {
     /// Form field name for data binding.
     pub field: String,
@@ -330,14 +334,14 @@ pub struct SwitchProps {
 }
 
 /// Props for Separator component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SeparatorProps {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orientation: Option<Orientation>,
 }
 
 /// A single item in a description list.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct DescriptionItem {
     pub label: String,
     pub value: String,
@@ -346,7 +350,7 @@ pub struct DescriptionItem {
 }
 
 /// Props for DescriptionList component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct DescriptionListProps {
     pub items: Vec<DescriptionItem>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -354,6 +358,7 @@ pub struct DescriptionListProps {
 }
 
 /// A single tab within a Tabs component.
+// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tab {
     pub value: String,
@@ -363,6 +368,7 @@ pub struct Tab {
 }
 
 /// Props for Tabs component.
+// JsonSchema skipped: contains Vec<Tab> which contains Vec<ComponentNode>
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TabsProps {
     pub default_tab: String,
@@ -370,7 +376,7 @@ pub struct TabsProps {
 }
 
 /// A single item in a breadcrumb trail.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct BreadcrumbItem {
     pub label: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -378,13 +384,13 @@ pub struct BreadcrumbItem {
 }
 
 /// Props for Breadcrumb component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct BreadcrumbProps {
     pub items: Vec<BreadcrumbItem>,
 }
 
 /// Props for Pagination component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct PaginationProps {
     pub current_page: u32,
     pub per_page: u32,
@@ -394,7 +400,7 @@ pub struct PaginationProps {
 }
 
 /// Props for Progress component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ProgressProps {
     /// Percentage value (0-100).
     pub value: u8,
@@ -405,7 +411,7 @@ pub struct ProgressProps {
 }
 
 /// Props for Avatar component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct AvatarProps {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub src: Option<String>,
@@ -417,7 +423,7 @@ pub struct AvatarProps {
 }
 
 /// Props for Skeleton loading placeholder.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SkeletonProps {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub width: Option<String>,
@@ -428,7 +434,7 @@ pub struct SkeletonProps {
 }
 
 /// Toast visual variants.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ToastVariant {
     #[default]
@@ -439,7 +445,7 @@ pub enum ToastVariant {
 }
 
 /// A single item in a checklist.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ChecklistItem {
     pub label: String,
     #[serde(default)]
@@ -449,7 +455,7 @@ pub struct ChecklistItem {
 }
 
 /// A single item in a notification dropdown.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct NotificationItem {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
@@ -463,7 +469,7 @@ pub struct NotificationItem {
 }
 
 /// A single navigation item in the sidebar.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SidebarNavItem {
     pub label: String,
     pub href: String,
@@ -474,7 +480,7 @@ pub struct SidebarNavItem {
 }
 
 /// A collapsible group in the sidebar.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SidebarGroup {
     pub label: String,
     #[serde(default)]
@@ -483,7 +489,7 @@ pub struct SidebarGroup {
 }
 
 /// Props for StatCard component (live-updatable metric card).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct StatCardProps {
     pub label: String,
     pub value: String,
@@ -497,7 +503,7 @@ pub struct StatCardProps {
 }
 
 /// Props for Checklist component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ChecklistProps {
     pub title: String,
     pub items: Vec<ChecklistItem>,
@@ -518,7 +524,7 @@ fn default_true() -> bool {
 ///
 /// The JS runtime reads data attributes from the rendered element to
 /// display the toast. Timeouts and dismissal are handled client-side.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ToastProps {
     pub message: String,
     #[serde(default)]
@@ -531,7 +537,7 @@ pub struct ToastProps {
 }
 
 /// Props for NotificationDropdown component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct NotificationDropdownProps {
     pub notifications: Vec<NotificationItem>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -539,7 +545,7 @@ pub struct NotificationDropdownProps {
 }
 
 /// Props for Sidebar component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SidebarProps {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fixed_top: Vec<SidebarNavItem>,
@@ -550,7 +556,7 @@ pub struct SidebarProps {
 }
 
 /// Props for Header component.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct HeaderProps {
     pub business_name: String,
     /// Unread notification count for badge display.
@@ -569,6 +575,7 @@ pub struct HeaderProps {
 /// The `plugin_type` field holds the original `"type"` value from JSON,
 /// and `props` holds the remaining fields. Used for custom interactive
 /// components registered via the plugin system.
+// JsonSchema skipped: custom Serialize/Deserialize impl
 #[derive(Debug, Clone, PartialEq)]
 pub struct PluginProps {
     /// The plugin component type name (e.g., "Map").
@@ -619,6 +626,7 @@ impl<'de> Deserialize<'de> for PluginProps {
 ///
 /// Serializes built-in variants with `"type": "Card"` etc. The Plugin
 /// variant serializes with the plugin's own type name.
+// JsonSchema skipped: custom Serialize/Deserialize impl
 #[derive(Debug, Clone, PartialEq)]
 pub enum Component {
     Card(CardProps),
@@ -812,6 +820,7 @@ impl<'de> Deserialize<'de> for Component {
 /// Every component in a view tree is wrapped in a `ComponentNode` that
 /// provides a unique key, optional action binding, and optional visibility
 /// rules. The component itself is flattened into the node's JSON.
+// JsonSchema skipped: contains Component via flatten — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComponentNode {
     pub key: String,

@@ -14,7 +14,7 @@
 ///     .tailwind_cdn(false)
 ///     .body_class("bg-gray-50 text-gray-800");
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, schemars::JsonSchema)]
 pub struct JsonUiConfig {
     /// Include Tailwind CDN link in rendered HTML (dev convenience).
     pub tailwind_cdn: bool,

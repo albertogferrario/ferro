@@ -4,10 +4,11 @@
 //! on data conditions. Conditions reference data paths (JSONPath-style)
 //! and support logical composition with AND, OR, and NOT operators.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Comparison operators for visibility conditions.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum VisibilityOperator {
     Exists,
@@ -24,7 +25,7 @@ pub enum VisibilityOperator {
 }
 
 /// A single visibility condition comparing a data path against a value.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct VisibilityCondition {
     /// JSONPath-style reference to data.
     pub path: String,
@@ -39,7 +40,7 @@ pub struct VisibilityCondition {
 /// - Simple: `{"path": "/data/users", "operator": "not_empty"}`
 /// - Compound: `{"and": [...]}`
 /// - Nested: `{"not": {"path": ..., "operator": ...}}`
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum Visibility {
     And { and: Vec<Visibility> },

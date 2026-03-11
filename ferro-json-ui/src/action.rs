@@ -5,10 +5,11 @@
 //! `"controller.method"` format and can include confirmation dialogs
 //! and outcome behaviors.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Variant for confirmation dialogs.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DialogVariant {
     #[default]
@@ -17,7 +18,7 @@ pub enum DialogVariant {
 }
 
 /// HTTP method for action requests.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum HttpMethod {
     Get,
@@ -29,7 +30,7 @@ pub enum HttpMethod {
 }
 
 /// Confirmation dialog shown before executing an action.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ConfirmDialog {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -39,7 +40,7 @@ pub struct ConfirmDialog {
 }
 
 /// Notification variant for action outcomes.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum NotifyVariant {
     #[default]
@@ -50,7 +51,7 @@ pub enum NotifyVariant {
 }
 
 /// Outcome after an action completes (success or error).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ActionOutcome {
     Redirect {
@@ -65,7 +66,7 @@ pub enum ActionOutcome {
 }
 
 /// An action declaration mapping a user interaction to a backend handler.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Action {
     /// Handler reference in "controller.method" format.
     pub handler: String,
