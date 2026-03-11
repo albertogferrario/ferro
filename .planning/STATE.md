@@ -1,3 +1,18 @@
+---
+gsd_state_version: 1.0
+milestone: v9.0
+milestone_name: Service Projections
+status: completed
+stopped_at: Phase 95 context gathered
+last_updated: "2026-03-11T00:39:20.974Z"
+last_activity: 2026-03-01 — Phase 94 executed (5 plans, 2 waves)
+progress:
+  total_phases: 17
+  completed_phases: 12
+  total_plans: 30
+  completed_plans: 30
+---
+
 # Project State
 
 ## Project Reference
@@ -268,6 +283,11 @@ Archived to PROJECT.md and milestone archive files.
 
 - 22 milestones shipped, 197 plans total
 - v9.0 COMPLETE: Service Projections — ServiceDef→IntentGraph→Renderer architecture, 11 phases (Phase 84-94), 30 plans
+- Phase 95 added: Multi-tenant middleware
+- Phase 96 added: Stripe integration
+- Phase 97 added: QR code generation
+- Phase 98 added: Tenant-aware background jobs
+- Phase 99 added: ferro-json-ui stable release
 
 ### Pending Todos
 
@@ -279,6 +299,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-01
-Stopped at: Phase 94 complete — v9.0 milestone shipped
-Resume file: None
+Last session: 2026-03-11T00:39:20.960Z
+Stopped at: Phase 95 context gathered
+Resume file: .planning/phases/95-multi-tenant-middleware/95-CONTEXT.md
