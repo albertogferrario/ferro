@@ -630,7 +630,7 @@ Plans:
 **Goal:** Propagate tenant context into ferro-queue jobs so current_tenant() and TenantScope work inside job handlers. Jobs dispatched from tenant-scoped request handlers automatically carry tenant_id through Redis and restore full TenantContext in the worker before executing.
 **Requirements**: [TBJ-01, TBJ-02, TBJ-03, TBJ-04, TBJ-05, TBJ-06, TBJ-07, TBJ-08, TBJ-09, TBJ-10, TBJ-11]
 **Depends on:** Phase 96
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 97-01-PLAN.md — ferro-queue types: JobPayload tenant_id, TenantScopeProvider trait, Error::TenantNotFound, OnceLock capture hook, PendingDispatch::for_tenant()

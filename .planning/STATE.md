@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 97 Plan 01 complete
-last_updated: "2026-03-11T14:13:10Z"
-last_activity: 2026-03-11 — Phase 97-01 executed (2 tasks)
+stopped_at: Phase 97 Plan 02 complete — Worker tenant scope injection and process_job wrapping
+last_updated: "2026-03-11T14:26:51.851Z"
+last_activity: 2026-03-11 — Phase 97-02 executed (1 task)
 progress:
   total_phases: 16
   completed_phases: 14
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 97 (Tenant-Aware Background Jobs) — In Progress
-Plan: 1 of 1 complete
-Status: Phase 97 Plan 01 complete — tenant context propagation primitives added to ferro-queue
-Last activity: 2026-03-11 — Phase 97-01 executed (2 tasks)
+Plan: 2 of 3 complete
+Status: Phase 97 Plan 02 complete — Worker tenant scope injection and process_job wrapping
+Last activity: 2026-03-11 — Phase 97-02 executed (1 task)
 
 ## Milestone Summary
 
@@ -341,6 +341,12 @@ Archived to PROJECT.md and milestone archive files.
 - TenantScopeProvider in worker.rs — logically belongs with worker-side execution, not dispatch path
 - for_tenant() in sync mode is a no-op with debug log — job runs in current task context which inherits tenant
 
+**Phase 97-02:**
+- tenant_scope: Option<Arc<dyn TenantScopeProvider>> field on Worker — Arc allows Clone without TenantScopeProvider: Clone
+- with_scope() called inside tokio::spawn — task-locals do not cross spawn boundaries, tenant_id (Copy) and Arc are safe
+- match (&tenant_scope, tenant_id) — both must be Some to wrap; backward compatible: no provider or no tenant_id runs directly
+- Fake Redis TCP server (+OK to all lines) for struct-field tests — avoids live Redis dependency while satisfying ConnectionManager handshake
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -361,6 +367,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T14:13:10Z
-Stopped at: Phase 97 Plan 01 complete
-Resume file: .planning/phases/97-tenant-aware-background-jobs/97-01-SUMMARY.md
+Last session: 2026-03-11T14:26:51.842Z
+Stopped at: Phase 97 Plan 02 complete — Worker tenant scope injection and process_job wrapping
+Resume file: None
