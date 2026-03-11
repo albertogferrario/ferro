@@ -76,6 +76,12 @@ pub use ferro_json_ui::{
     TextElement, TextProps, Visibility as JsonUiVisibility, VisibilityCondition,
     VisibilityOperator, SCHEMA_VERSION,
 };
+#[cfg(feature = "stripe")]
+pub use ferro_stripe::{
+    billing_portal_url, create_account_link, create_connect_checkout, create_subscription_checkout,
+    plan_satisfies, subscription_info_from_stripe, ConnectAccount, Error as StripeError, Stripe,
+    StripeConfig, SubscriptionInfo, SubscriptionStatus,
+};
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{
     bytes, json, text, Cookie, CookieOptions, FormRequest, FromParam, FromRequest, HttpResponse,
@@ -95,6 +101,8 @@ pub use session::{
     invalidate_all_for_user, session, session_mut, DatabaseSessionDriver, SessionConfig,
     SessionData, SessionMiddleware, SessionStore,
 };
+#[cfg(feature = "stripe")]
+pub use tenant::RequiresPlan;
 pub use tenant::{
     current_tenant, DbTenantLookup, HeaderResolver, JwtClaimResolver, PathResolver,
     SubdomainResolver, TenantContext, TenantFailureMode, TenantLookup, TenantMiddleware,
