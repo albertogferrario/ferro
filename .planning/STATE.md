@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 98 context gathered
-last_updated: "2026-03-11T15:43:08.439Z"
-last_activity: 2026-03-11 — Phase 97-03 executed (2 tasks)
+stopped_at: Completed 98-01-PLAN.md
+last_updated: "2026-03-11T16:22:32.454Z"
+last_activity: 2026-03-11 — Phase 98-01 executed (2 tasks)
 progress:
   total_phases: 16
   completed_phases: 15
-  total_plans: 43
-  completed_plans: 43
+  total_plans: 48
+  completed_plans: 44
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 97 (Tenant-Aware Background Jobs) — Complete
-Plan: 3 of 3 complete
-Status: Phase 97 Plan 03 complete — FrameworkTenantScopeProvider bridge, re-exports, documentation
-Last activity: 2026-03-11 — Phase 97-03 executed (2 tasks)
+Phase: 98 (ferro-json-ui Stable Release) — In Progress
+Plan: 1 of 5 complete
+Status: Phase 98 Plan 01 complete — 6 new dashboard components (StatCard, Checklist, Toast, NotificationDropdown, Sidebar, Header), 26 ComponentNode constructors, 304 unit tests
+Last activity: 2026-03-11 — Phase 98-01 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -352,6 +352,13 @@ Archived to PROJECT.md and milestone archive files.
 - Documentation appended to multi-tenancy.md (not a new tenant.md) — existing file already listed in docs/src/SUMMARY.md
 - with_scope writes tenant to scope Arc before calling with_tenant_scope — same pattern as TenantMiddleware
 
+**Phase 98-01:**
+- ComponentNode constructors added as impl block on ComponentNode — ergonomic call site (ComponentNode::stat_card(...)), not standalone fns
+- ToastVariant reuses AlertVariant color scheme (info=blue, success=green, warning=yellow, error=red) for visual consistency
+- render_sidebar_nav_item extracted as private helper — avoids duplicating active/inactive class logic across fixed_top, groups, fixed_bottom
+- default_true() helper fn for serde defaults — serde requires a fn path, not a bool literal
+- Render functions implemented alongside Task 1 compile fix — Component match must be exhaustive before Task 1 can compile
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -372,6 +379,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T15:43:08.434Z
-Stopped at: Phase 98 context gathered
-Resume file: .planning/phases/98-ferro-json-ui-stable-release/98-CONTEXT.md
+Last session: 2026-03-11T16:22:32.447Z
+Stopped at: Completed 98-01-PLAN.md
+Resume file: None
