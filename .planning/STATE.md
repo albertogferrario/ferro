@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 96 context gathered
-last_updated: "2026-03-11T02:05:08.084Z"
-last_activity: 2026-03-11 — Phase 95-03 executed (2 tasks)
+stopped_at: Phase 96 Plan 01 complete — ferro-stripe foundation crate
+last_updated: "2026-03-11T03:02:12Z"
+last_activity: 2026-03-11 — Phase 96-01 executed (2 tasks)
 progress:
   total_phases: 17
   completed_phases: 13
-  total_plans: 33
-  completed_plans: 33
+  total_plans: 39
+  completed_plans: 34
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 95 (Multi-tenant Middleware) — Complete
-Plan: 3 of 3 complete
-Status: Phase 95 Plan 03 complete — TenantScope, FromRequest, re-exports, and documentation
-Last activity: 2026-03-11 — Phase 95-03 executed (2 tasks)
+Phase: 96 (Stripe Integration) — In Progress
+Plan: 1 of 6 complete
+Status: Phase 96 Plan 01 complete — ferro-stripe foundation crate (types, client, checkout)
+Last activity: 2026-03-11 — Phase 96-01 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -296,6 +296,13 @@ Archived to PROJECT.md and milestone archive files.
 - FromRequest tests use TCP loopback (same pattern as middleware tests) since Request::new takes hyper::body::Incoming with no default constructor
 - TenantScope generic over ColumnTrait: impl<E, C> Scope<E> for TenantScope<C> handles any column, not just tenant_id
 
+**Phase 96-01:**
+- async-stripe 0.41.x (stable) over 1.0.0-rc.3 (pre-release) — 1.x still anticipates breaking changes
+- OnceLock<stripe::Client> facade (Stripe::init + Stripe::client()) matches ferro-notifications CONFIG pattern
+- plan_satisfies() uses index-based comparison: enterprise=2, pro=1, free=0; unknown plans only match themselves
+- CreateCheckoutSession::new() in async-stripe 0.41 takes no args — success_url/cancel_url are Option<&str> fields
+- CreateAccountLink::new(account, type_) in async-stripe 0.41 — no Default impl, two required args
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -316,6 +323,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T02:05:08.076Z
-Stopped at: Phase 96 context gathered
-Resume file: .planning/phases/96-stripe-integration/96-CONTEXT.md
+Last session: 2026-03-11T03:02:12Z
+Stopped at: Completed 96-01-PLAN.md
+Resume file: .planning/phases/96-stripe-integration/96-01-SUMMARY.md
