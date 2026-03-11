@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 98-04-PLAN.md
-last_updated: "2026-03-11T16:58:26.000Z"
+stopped_at: Completed 98-05-PLAN.md
+last_updated: "2026-03-11T17:12:42.620Z"
 last_activity: 2026-03-11 — Phase 98-04 executed (2 tasks)
 progress:
   total_phases: 16
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 48
-  completed_plans: 47
+  completed_plans: 48
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 98 (ferro-json-ui Stable Release) — In Progress
-Plan: 4 of 5 complete
-Status: Phase 98 Plan 04 complete — 352 ferro-json-ui tests (30 new): serde round-trips for 6 new components, schema generation, MapPlugin pipeline, edge cases
-Last activity: 2026-03-11 — Phase 98-04 executed (2 tasks)
+Phase: 98 (ferro-json-ui Stable Release) — COMPLETE
+Plan: 5 of 5 complete
+Status: Phase 98 Plan 05 complete — comprehensive docs: 26-component catalog, plugin guide, DashboardLayout docs, clean rustdoc
+Last activity: 2026-03-11 — Phase 98-05 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -377,6 +377,12 @@ Archived to PROJECT.md and milestone archive files.
 - Plugin pipeline test uses global registry (MapPlugin auto-registered) via render_to_html_with_plugins — exercises full asset collection path
 - 352 total tests (347 unit + 5 doc) — 30 new tests in this plan
 
+**Phase 98-05:**
+- components.md structured as 7 groups (Layout, Data Display, Forms, Feedback, Navigation, Onboarding, Extensible) matching component catalog intent
+- plugins.md as standalone guide: trait API first, then registration, usage, asset injection, then examples and built-ins
+- layouts.md removed AppLayout/AuthLayout from user-facing section (they are framework-internal); users access via name string only
+- getting-started.md updated to use ComponentNode convenience constructors (stat_card, card, table) and 'dashboard' layout
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -397,6 +403,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T16:58:26.000Z
-Stopped at: Completed 98-04-PLAN.md
+Last session: 2026-03-11T17:12:42.616Z
+Stopped at: Completed 98-05-PLAN.md
 Resume file: None
