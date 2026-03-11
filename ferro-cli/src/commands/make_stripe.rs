@@ -44,15 +44,18 @@ pub async fn stripe_webhook(req: Request) -> Response {
         .await
         .map_err(|_| HttpResponse::text("Failed to read body").status(400))?;
 
-    // Verify signature inline per locked decision.
-    ferro::verify_webhook(&body, &sig, &Stripe::config().webhook_secret)
+    let event = ferro::verify_webhook(&body, &sig, &Stripe::config().webhook_secret)
         .map_err(|_| HttpResponse::text("Invalid signature").status(400))?;
 
-    // Dispatch to ferro-queue for async processing per locked decision.
-    ferro::dispatch_job(ProcessStripeWebhook::platform(&body))
+    let job = ProcessStripeWebhook {
+        event_type: event.type_.to_string(),
+        event_json: body.clone(),
+        connect_account_id: None,
+    };
+    ferro::queue_dispatch(job)
+        .await
         .map_err(|e| HttpResponse::text(format!("Queue error: {e}")).status(500))?;
 
-    // Ack 200 immediately.
     Ok(HttpResponse::json(serde_json::json!({"received": true})))
 }
 "#
@@ -73,14 +76,23 @@ pub async fn stripe_connect_webhook(req: Request) -> Response {
         .await
         .map_err(|_| HttpResponse::text("Failed to read body").status(400))?;
 
-    // Verify signature using the Connect webhook secret.
-    ferro::verify_webhook(&body, &sig, &Stripe::config().connect_webhook_secret
-        .as_deref()
-        .unwrap_or_default())
-        .map_err(|_| HttpResponse::text("Invalid signature").status(400))?;
+    let event = ferro::verify_webhook(
+        &body,
+        &sig,
+        Stripe::config()
+            .connect_webhook_secret
+            .as_deref()
+            .unwrap_or_default(),
+    )
+    .map_err(|_| HttpResponse::text("Invalid signature").status(400))?;
 
-    // Dispatch to ferro-queue for async processing.
-    ferro::dispatch_job(ProcessStripeWebhook::connect(&body))
+    let job = ProcessStripeWebhook {
+        event_type: event.type_.to_string(),
+        event_json: body.clone(),
+        connect_account_id: event.account.map(|id| id.to_string()),
+    };
+    ferro::queue_dispatch(job)
+        .await
         .map_err(|e| HttpResponse::text(format!("Queue error: {e}")).status(500))?;
 
     Ok(HttpResponse::json(serde_json::json!({"received": true})))
@@ -522,10 +534,10 @@ mod tests {
     // --- webhook.rs template tests ---
 
     #[test]
-    fn test_webhook_template_uses_dispatch_job() {
+    fn test_webhook_template_uses_queue_dispatch() {
         let tmpl = stripe_webhook_template();
-        // Must use dispatch_job (not dispatch_event) per locked decision
-        assert!(tmpl.contains("ferro::dispatch_job(ProcessStripeWebhook::platform("));
+        // Must use queue_dispatch (not dispatch_event) per locked decision
+        assert!(tmpl.contains("ferro::queue_dispatch(job)"));
         assert!(!tmpl.contains("dispatch_event"));
         assert!(tmpl.contains("ferro::verify_webhook("));
         assert!(tmpl.contains("stripe-signature"));
@@ -545,8 +557,8 @@ mod tests {
     fn test_connect_webhook_template() {
         let tmpl = stripe_connect_webhook_template();
         assert!(tmpl.contains("stripe_connect_webhook"));
-        assert!(tmpl.contains("ProcessStripeWebhook::connect("));
-        assert!(tmpl.contains("ferro::dispatch_job("));
+        assert!(tmpl.contains("ProcessStripeWebhook {"));
+        assert!(tmpl.contains("ferro::queue_dispatch(job)"));
         assert!(tmpl.contains("connect_webhook_secret"));
     }
 
@@ -638,7 +650,7 @@ mod tests {
         // Verify connect webhook content
         let content = read_file(&stripe_dir.join("connect_webhook.rs"));
         assert!(content.contains("stripe_connect_webhook"));
-        assert!(content.contains("ProcessStripeWebhook::connect("));
+        assert!(content.contains("ProcessStripeWebhook {"));
     }
 
     #[test]
@@ -705,10 +717,10 @@ mod tests {
         let webhook_path = tmp.path().join("src/stripe/webhook.rs");
         let content = read_file(&webhook_path);
 
-        // Must use dispatch_job, not dispatch_event
+        // Must use queue_dispatch, not dispatch_event
         assert!(
-            content.contains("dispatch_job"),
-            "webhook.rs must use dispatch_job (not dispatch_event)"
+            content.contains("queue_dispatch"),
+            "webhook.rs must use queue_dispatch (not dispatch_event)"
         );
         assert!(
             !content.contains("dispatch_event"),
