@@ -625,17 +625,19 @@ Plans:
 - [x] 96-06-PLAN.md — Publish workflow, documentation, full workspace validation
 - [ ] 96-07-PLAN.md — Gap closure: fix make:stripe webhook templates to use correct API (queue_dispatch, struct literal construction)
 
-### Phase 97: QR code generation
+### Phase 97: Tenant-aware background jobs
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Propagate tenant context into ferro-queue jobs so current_tenant() and TenantScope work inside job handlers. Jobs dispatched from tenant-scoped request handlers automatically carry tenant_id through Redis and restore full TenantContext in the worker before executing.
+**Requirements**: [TBJ-01, TBJ-02, TBJ-03, TBJ-04, TBJ-05, TBJ-06, TBJ-07, TBJ-08, TBJ-09, TBJ-10, TBJ-11]
 **Depends on:** Phase 96
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 97 to break down)
+- [ ] 97-01-PLAN.md — ferro-queue types: JobPayload tenant_id, TenantScopeProvider trait, Error::TenantNotFound, OnceLock capture hook, PendingDispatch::for_tenant()
+- [ ] 97-02-PLAN.md — Worker tenant scope: with_tenant_scope() builder, process_job scope wrapping, Clone fix, tracing span
+- [ ] 97-03-PLAN.md — Framework wiring: FrameworkTenantScopeProvider, hook registration, lib.rs re-exports, documentation
 
-### Phase 98: Tenant-aware background jobs
+### Phase 98: ferro-json-ui stable release
 
 **Goal:** [To be planned]
 **Requirements**: TBD
@@ -644,16 +646,6 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 98 to break down)
-
-### Phase 99: ferro-json-ui stable release
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 98
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 99 to break down)
 
 ---
 
