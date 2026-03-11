@@ -309,6 +309,22 @@ pub struct ProjectionCoverageParams {
     pub include_intents: Option<bool>,
 }
 
+// No extra params needed for Stripe tools — they scan fixed paths.
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct StripeConfigStatusParams {
+    // No parameters — reads from project root
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct StripeWebhookEventsParams {
+    // No parameters — scans src/stripe/listeners.rs
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct StripeSubscriptionInfoParams {
+    // No parameters — reads from src/migrations/
+}
+
 #[tool_router(router = tool_router)]
 impl FerroMcpService {
     /// Get application information including framework version, Rust version, models, and installed crates
@@ -1439,6 +1455,60 @@ impl FerroMcpService {
     ) -> String {
         let report = tools::projection_coverage::execute(&self.project_root);
         serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Report Stripe configuration status (env vars, scaffold presence)
+    #[tool(
+        name = "stripe_config_status",
+        description = "Report Stripe configuration status for the current project.\n\n\
+            **When to use:** Verifying Stripe is configured before running the app, \
+            checking which env vars are set, confirming the scaffold exists.\n\n\
+            **Returns:** configured (bool), keys_present, keys_missing, scaffold_exists, scaffold_files.\n\n\
+            **Combine with:** `stripe_webhook_events` to check event listeners, \
+            `stripe_subscription_info` to inspect the billing table schema."
+    )]
+    pub async fn stripe_config_status(
+        &self,
+        #[allow(unused_variables)] _params: Parameters<StripeConfigStatusParams>,
+    ) -> String {
+        let status = tools::stripe::stripe_config_status(&self.project_root);
+        serde_json::to_string_pretty(&status).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// List Stripe webhook event listeners discovered in the project source
+    #[tool(
+        name = "stripe_webhook_events",
+        description = "List Stripe webhook event listeners discovered in src/stripe/listeners.rs.\n\n\
+            **When to use:** Understanding which Stripe events the app handles, \
+            checking listener coverage, debugging missing event handling.\n\n\
+            **Returns:** events array with event_type, listener struct name, and file path.\n\n\
+            **Combine with:** `stripe_config_status` to verify setup, \
+            `list_jobs` to see ProcessStripeWebhook job."
+    )]
+    pub async fn stripe_webhook_events(
+        &self,
+        #[allow(unused_variables)] _params: Parameters<StripeWebhookEventsParams>,
+    ) -> String {
+        let events = tools::stripe::stripe_webhook_events(&self.project_root);
+        serde_json::to_string_pretty(&events).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Report tenant_billing table schema from migration files
+    #[tool(
+        name = "stripe_subscription_info",
+        description = "Report the tenant_billing table schema parsed from migration files.\n\n\
+            **When to use:** Checking the billing table structure, understanding column types \
+            and nullability, verifying the migration was generated.\n\n\
+            **Returns:** table_exists, migration_file path, columns (name, sql_type, nullable, default), indexes.\n\n\
+            **Combine with:** `list_migrations` to see migration status, \
+            `db_schema` for live table introspection after migration."
+    )]
+    pub async fn stripe_subscription_info(
+        &self,
+        #[allow(unused_variables)] _params: Parameters<StripeSubscriptionInfoParams>,
+    ) -> String {
+        let info = tools::stripe::stripe_subscription_info(&self.project_root);
+        serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string())
     }
 }
 

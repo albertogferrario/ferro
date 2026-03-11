@@ -49,6 +49,7 @@ pub mod request_metrics;
 pub mod route_dependencies;
 pub mod search_docs;
 pub mod session_inspect;
+pub mod stripe;
 pub mod test_route;
 pub mod tinker;
 pub mod validate_contracts;
