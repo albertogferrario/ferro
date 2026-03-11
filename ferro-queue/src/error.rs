@@ -61,6 +61,13 @@ pub enum Error {
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
+    /// Tenant not found when trying to establish tenant scope for a job.
+    #[error("Tenant not found for job: tenant_id={tenant_id}")]
+    TenantNotFound {
+        /// The tenant ID that could not be resolved.
+        tenant_id: i64,
+    },
+
     /// Custom error.
     #[error("{0}")]
     Custom(String),
@@ -83,6 +90,11 @@ impl Error {
         }
     }
 
+    /// Create a tenant not found error.
+    pub fn tenant_not_found(id: i64) -> Self {
+        Self::TenantNotFound { tenant_id: id }
+    }
+
     /// Create a custom error.
     pub fn custom(message: impl Into<String>) -> Self {
         Self::Custom(message.into())
@@ -98,5 +110,22 @@ impl From<String> for Error {
 impl From<&str> for Error {
     fn from(s: &str) -> Self {
         Self::Custom(s.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tenant_not_found_formats_with_id() {
+        let err = Error::tenant_not_found(42);
+        assert_eq!(err.to_string(), "Tenant not found for job: tenant_id=42");
+    }
+
+    #[test]
+    fn test_tenant_not_found_constructor() {
+        let err = Error::tenant_not_found(99);
+        assert!(matches!(err, Error::TenantNotFound { tenant_id: 99 }));
     }
 }

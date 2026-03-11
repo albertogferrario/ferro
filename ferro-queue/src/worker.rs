@@ -1,6 +1,7 @@
 //! Queue worker for processing jobs.
 
 use crate::{Error, Job, JobPayload, QueueConnection};
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -8,6 +9,22 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
 use tracing::{debug, error, info, warn};
+
+/// Injects tenant scope around job execution.
+///
+/// Implemented by the framework — injected at startup via `Worker::with_tenant_scope()`.
+/// The provider receives a tenant_id and a boxed future representing the job execution.
+/// It must resolve the tenant, establish a task-local scope, and run the future within it.
+/// Returns `TenantNotFound` error if the tenant ID does not resolve to a valid tenant.
+#[async_trait]
+pub trait TenantScopeProvider: Send + Sync {
+    /// Run the given future within a tenant scope for the specified tenant.
+    async fn with_scope(
+        &self,
+        tenant_id: i64,
+        f: Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>,
+    ) -> Result<(), Error>;
+}
 
 /// Worker configuration.
 #[derive(Debug, Clone)]
@@ -232,5 +249,30 @@ impl Clone for Worker {
             semaphore: self.semaphore.clone(),
             shutdown: self.shutdown.clone(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verifies TenantScopeProvider is object-safe (can be wrapped in Arc<dyn TenantScopeProvider>).
+    #[test]
+    fn test_tenant_scope_provider_is_object_safe() {
+        struct NoopProvider;
+
+        #[async_trait]
+        impl TenantScopeProvider for NoopProvider {
+            async fn with_scope(
+                &self,
+                _tenant_id: i64,
+                f: Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>,
+            ) -> Result<(), Error> {
+                f.await
+            }
+        }
+
+        // If this compiles, the trait is object-safe.
+        let _provider: Arc<dyn TenantScopeProvider> = Arc::new(NoopProvider);
     }
 }

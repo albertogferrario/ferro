@@ -56,7 +56,7 @@ pub use job::{Job, JobPayload};
 pub use queue::{
     FailedJobInfo, JobInfo, JobState, Queue, QueueConnection, QueueStats, SingleQueueStats,
 };
-pub use worker::{Worker, WorkerConfig};
+pub use worker::{TenantScopeProvider, Worker, WorkerConfig};
 
 /// Re-export async_trait for convenience
 pub use async_trait::async_trait;

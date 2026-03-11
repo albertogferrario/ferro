@@ -92,6 +92,11 @@ pub struct JobPayload {
     pub available_at: DateTime<Utc>,
     /// When the job was reserved by a worker (if any).
     pub reserved_at: Option<DateTime<Utc>>,
+    /// Tenant ID for tenant-scoped job execution.
+    /// None means the job runs in system scope (no tenant context).
+    /// Old payloads without this field deserialize to None.
+    #[serde(default)]
+    pub tenant_id: Option<i64>,
 }
 
 impl JobPayload {
@@ -110,6 +115,7 @@ impl JobPayload {
             created_at: Utc::now(),
             available_at: Utc::now(),
             reserved_at: None,
+            tenant_id: None,
         })
     }
 
@@ -122,6 +128,12 @@ impl JobPayload {
         let mut payload = Self::new(job, queue)?;
         payload.available_at = Utc::now() + chrono::Duration::from_std(delay).unwrap_or_default();
         Ok(payload)
+    }
+
+    /// Set the tenant ID for this payload.
+    pub fn with_tenant_id(mut self, id: Option<i64>) -> Self {
+        self.tenant_id = id;
+        self
     }
 
     /// Check if the job is available for processing.
@@ -200,5 +212,54 @@ mod tests {
 
         assert_eq!(payload.id, restored.id);
         assert_eq!(payload.queue, restored.queue);
+    }
+
+    #[test]
+    fn test_tenant_id_none_by_default() {
+        let job = TestJob { value: 42 };
+        let payload = JobPayload::new(&job, "default").unwrap();
+        assert_eq!(payload.tenant_id, None);
+    }
+
+    #[test]
+    fn test_tenant_id_none_serializes_as_null() {
+        let job = TestJob { value: 42 };
+        let payload = JobPayload::new(&job, "default").unwrap();
+        let json = payload.to_json().unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["tenant_id"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn test_tenant_id_some_round_trips() {
+        let job = TestJob { value: 42 };
+        let payload = JobPayload::new(&job, "default")
+            .unwrap()
+            .with_tenant_id(Some(42));
+        let json = payload.to_json().unwrap();
+        let restored = JobPayload::from_json(&json).unwrap();
+        assert_eq!(restored.tenant_id, Some(42));
+    }
+
+    #[test]
+    fn test_old_payload_without_tenant_id_deserializes_to_none() {
+        // Old JSON payload without "tenant_id" key — must deserialize to None via serde(default)
+        let old_json = r#"{"id":"550e8400-e29b-41d4-a716-446655440000","job_type":"test","data":"{}","queue":"default","attempts":0,"max_retries":3,"created_at":"2024-01-01T00:00:00Z","available_at":"2024-01-01T00:00:00Z","reserved_at":null}"#;
+        let payload = JobPayload::from_json(old_json).unwrap();
+        assert_eq!(payload.tenant_id, None);
+    }
+
+    #[test]
+    fn test_with_tenant_id_builder() {
+        let job = TestJob { value: 42 };
+        let payload = JobPayload::new(&job, "default")
+            .unwrap()
+            .with_tenant_id(Some(99));
+        assert_eq!(payload.tenant_id, Some(99));
+
+        let payload_none = JobPayload::new(&job, "default")
+            .unwrap()
+            .with_tenant_id(None);
+        assert_eq!(payload_none.tenant_id, None);
     }
 }
