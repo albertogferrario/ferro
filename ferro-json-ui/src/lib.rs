@@ -1,13 +1,11 @@
 //! # Ferro JSON-UI
 //!
-//! **Experimental:** The component schema and plugin interface may evolve.
-//!
-//! JSON-based server-driven UI schema types for the Ferro framework.
+//! Stable JSON-based server-driven UI schema types for the Ferro framework.
 //!
 //! This crate defines the typed foundation for JSON-UI: a declarative
 //! component system where the server sends JSON descriptions that are
 //! rendered to HTML. Components, actions, and visibility rules are all
-//! defined as Rust types with serde serialization.
+//! defined as Rust types with serde serialization and JSON Schema generation.
 //!
 //! ## Schema Structure
 //!
@@ -66,21 +64,21 @@ pub use component::{
     TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
-pub use data::{resolve_path, resolve_path_string};
+// resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers
 pub use layout::{
-    footer, global_registry, navigation, register_layout, render_layout, sidebar, AppLayout,
-    AuthLayout, DashboardLayout, DashboardLayoutConfig, DefaultLayout, Layout, LayoutContext,
+    register_layout, render_layout, DashboardLayout, DashboardLayoutConfig, Layout, LayoutContext,
     LayoutRegistry, NavItem, SidebarSection,
 };
+// AppLayout, AuthLayout, DefaultLayout are pub in layout.rs but not user-facing — users select
+// layouts by name string ("dashboard", "app", "auth"), not by struct.
+// navigation, sidebar, footer, global_registry are framework-internal.
 pub use plugin::{
     collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
 };
 pub use plugins::{register_built_in_plugins, MapPlugin};
-pub use render::{collect_plugin_types, render_to_html, render_to_html_with_plugins, RenderResult};
+pub use render::{render_to_html, render_to_html_with_plugins, RenderResult};
+// collect_plugin_types is pub(crate) — internal render pipeline helper
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
 pub use view::{JsonUiView, SCHEMA_VERSION};
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
-
-// Re-export serde_json for convenience
-pub use serde_json;

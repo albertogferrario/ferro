@@ -83,7 +83,7 @@ pub fn render_to_html_with_plugins(view: &JsonUiView, data: &Value) -> RenderRes
 }
 
 /// Walk the component tree and collect unique plugin type names.
-pub fn collect_plugin_types(view: &JsonUiView) -> HashSet<String> {
+pub(crate) fn collect_plugin_types(view: &JsonUiView) -> HashSet<String> {
     let mut types = HashSet::new();
     for node in &view.components {
         collect_plugin_types_node(node, &mut types);

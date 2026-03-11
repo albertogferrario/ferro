@@ -12,18 +12,7 @@ use serde_json::Value;
 /// or array index (numeric string). Leading slash is required for non-empty
 /// paths. Empty path or `"/"` returns the root value. Returns `None` if any
 /// segment fails to resolve.
-///
-/// # Examples
-///
-/// ```
-/// use ferro_json_ui::resolve_path;
-/// use serde_json::json;
-///
-/// let data = json!({"user": {"name": "Alice"}});
-/// let result = resolve_path(&data, "/user/name");
-/// assert_eq!(result, Some(&json!("Alice")));
-/// ```
-pub fn resolve_path<'a>(data: &'a Value, path: &str) -> Option<&'a Value> {
+pub(crate) fn resolve_path<'a>(data: &'a Value, path: &str) -> Option<&'a Value> {
     if path.is_empty() || path == "/" {
         return Some(data);
     }
@@ -56,18 +45,7 @@ pub fn resolve_path<'a>(data: &'a Value, path: &str) -> Option<&'a Value> {
 /// For `String` values, returns the string directly. For numbers and booleans,
 /// uses `to_string()`. For `null`, returns `None`. For objects and arrays,
 /// returns their JSON serialization.
-///
-/// # Examples
-///
-/// ```
-/// use ferro_json_ui::resolve_path_string;
-/// use serde_json::json;
-///
-/// let data = json!({"count": 42, "name": "Alice"});
-/// assert_eq!(resolve_path_string(&data, "/name"), Some("Alice".to_string()));
-/// assert_eq!(resolve_path_string(&data, "/count"), Some("42".to_string()));
-/// ```
-pub fn resolve_path_string(data: &Value, path: &str) -> Option<String> {
+pub(crate) fn resolve_path_string(data: &Value, path: &str) -> Option<String> {
     let value = resolve_path(data, path)?;
     match value {
         Value::String(s) => Some(s.clone()),

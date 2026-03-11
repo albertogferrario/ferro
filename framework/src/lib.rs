@@ -63,18 +63,18 @@ pub use utoipa_redoc;
 pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
 #[cfg(feature = "json-ui")]
 pub use ferro_json_ui::{
-    footer, global_registry, navigation, register_layout, render_layout, render_to_html,
-    resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all, resolve_path,
-    resolve_path_string, sidebar, Action, ActionOutcome, AlertProps, AlertVariant, AppLayout,
-    AuthLayout, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem, BreadcrumbProps,
-    ButtonProps, ButtonVariant, CardProps, CheckboxProps, Column, ColumnFormat, Component,
-    ComponentNode, ConfirmDialog, DefaultLayout, DescriptionItem, DescriptionListProps,
-    DialogVariant, FormProps, HttpMethod, IconPosition, InputProps, InputType, JsonUiConfig,
-    JsonUiView, Layout, LayoutContext, LayoutRegistry, ModalProps, NavItem, NotifyVariant,
-    Orientation, PaginationProps, ProgressProps, SelectOption, SelectProps, SeparatorProps,
-    SidebarSection, Size, SkeletonProps, SortDirection, SwitchProps, Tab, TableProps, TabsProps,
-    TextElement, TextProps, Visibility as JsonUiVisibility, VisibilityCondition,
-    VisibilityOperator, SCHEMA_VERSION,
+    resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all, Action,
+    ActionOutcome, AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem,
+    BreadcrumbProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistItem,
+    ChecklistProps, Column, ColumnFormat, Component, ComponentNode, ConfirmDialog, DashboardLayout,
+    DashboardLayoutConfig, DescriptionItem, DescriptionListProps, DialogVariant, FormProps,
+    HeaderProps, HttpMethod, IconPosition, InputProps, InputType, JsonUiConfig, JsonUiView, Layout,
+    LayoutContext, LayoutRegistry, ModalProps, NavItem, NotificationDropdownProps,
+    NotificationItem, NotifyVariant, Orientation, PaginationProps, ProgressProps, SelectOption,
+    SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem, SidebarProps, SidebarSection, Size,
+    SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps, TabsProps,
+    TextElement, TextProps, ToastProps, ToastVariant, Visibility as JsonUiVisibility,
+    VisibilityCondition, VisibilityOperator, SCHEMA_VERSION,
 };
 #[cfg(feature = "stripe")]
 pub use ferro_stripe::{
