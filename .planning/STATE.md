@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 95 context gathered
-last_updated: "2026-03-11T00:39:20.974Z"
+stopped_at: Completed 95-01-PLAN.md
+last_updated: "2026-03-11T00:59:46.956Z"
 last_activity: 2026-03-01 — Phase 94 executed (5 plans, 2 waves)
 progress:
   total_phases: 17
   completed_phases: 12
-  total_plans: 30
-  completed_plans: 30
+  total_plans: 33
+  completed_plans: 31
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 94 (Protocol Documentation) — Complete
-Plan: All 5 plans complete
-Status: v9.0 milestone complete — all 11 phases (84-94), 30 plans shipped
-Last activity: 2026-03-01 — Phase 94 executed (5 plans, 2 waves)
+Phase: 95 (Multi-tenant Middleware) — In Progress
+Plan: 1 of N complete
+Status: Phase 95 Plan 01 complete — tenant core types and traits
+Last activity: 2026-03-11 — Phase 95-01 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -279,6 +279,12 @@ Archived to PROJECT.md and milestone archive files.
 - Worked examples for all 7 standard intents with ServiceDef JSON and expected IntentScores
 - JSON Schema reference and changelog (0.1.0-draft) complete
 
+**Phase 95-01:**
+- TenantContext.plan is Option<String> — nullable until Phase 96 Stripe adds billing plans
+- DbTenantLookup takes boxed async finder closures — decouples caching from user DB schema, users inject own query
+- TenantResolver::resolve() takes &Request (non-consuming) — allows header/host inspection without consuming body
+- tenant_scope() and with_tenant_scope() are pub(crate) with #[allow(dead_code)] — forward-declared for Plan 02 middleware
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -299,6 +305,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T00:39:20.960Z
-Stopped at: Phase 95 context gathered
-Resume file: .planning/phases/95-multi-tenant-middleware/95-CONTEXT.md
+Last session: 2026-03-11T00:59:46.952Z
+Stopped at: Completed 95-01-PLAN.md
+Resume file: None
