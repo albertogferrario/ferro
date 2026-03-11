@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 96-05-PLAN.md
-last_updated: "2026-03-11T03:49:22.888Z"
+stopped_at: Completed 96-06-PLAN.md
+last_updated: "2026-03-11T03:57:46.415Z"
 last_activity: 2026-03-11 — Phase 96-05 executed (2 tasks)
 progress:
   total_phases: 17
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 39
-  completed_plans: 38
+  completed_plans: 39
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 96 (Stripe Integration) — In Progress
-Plan: 5 of 6 complete
-Status: Phase 96 Plan 05 complete — CLI scaffolding and MCP introspection for Stripe
-Last activity: 2026-03-11 — Phase 96-05 executed (2 tasks)
+Phase: 96 (Stripe Integration) — Complete
+Plan: 6 of 6 complete
+Status: Phase 96 Plan 06 complete — publish workflow, documentation, full workspace validation
+Last activity: 2026-03-11 — Phase 96-06 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -325,6 +325,10 @@ Archived to PROJECT.md and milestone archive files.
 - MCP tools scan source files via regex: Listener<Event> impl blocks in listeners.rs, SQL from execute_unprepared() in migration files
 - Optional Stripe env vars (STRIPE_CONNECT_WEBHOOK_SECRET, etc.) tracked as present-if-set but not as missing (only required keys generate missing entries)
 
+**Phase 96-06:**
+- ferro-stripe in publish workflow Wave 1: ferro-events and ferro-queue already in Wave 1, sequential publishing handles ordering
+- New crates go in Wave 1 unless they depend on ferro-rs (Wave 2) or ferro-cli (Wave 3)
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -345,6 +349,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T03:49:22.883Z
-Stopped at: Completed 96-05-PLAN.md
+Last session: 2026-03-11T03:57:46.412Z
+Stopped at: Completed 96-06-PLAN.md
 Resume file: None
