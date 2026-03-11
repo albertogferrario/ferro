@@ -2311,4 +2311,427 @@ mod tests {
             );
         }
     }
+
+    // ── Serde round-trip tests for 6 new components ──────────────────────
+
+    #[test]
+    fn test_stat_card_serde_round_trip() {
+        let component = Component::StatCard(StatCardProps {
+            label: "Orders".into(),
+            value: "42".into(),
+            icon: Some("package".into()),
+            subtitle: Some("today".into()),
+            sse_target: Some("orders_today".into()),
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"StatCard\""));
+        assert!(json.contains("\"sse_target\":\"orders_today\""));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    #[test]
+    fn test_checklist_serde_round_trip() {
+        let component = Component::Checklist(ChecklistProps {
+            title: "Getting Started".into(),
+            items: vec![
+                ChecklistItem {
+                    label: "Install dependencies".into(),
+                    checked: true,
+                    href: None,
+                },
+                ChecklistItem {
+                    label: "Read the docs".into(),
+                    checked: false,
+                    href: Some("/docs".into()),
+                },
+            ],
+            dismissible: true,
+            dismiss_label: Some("Dismiss".into()),
+            data_key: Some("onboarding".into()),
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"Checklist\""));
+        assert!(json.contains("\"data_key\":\"onboarding\""));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    #[test]
+    fn test_toast_serde_round_trip() {
+        let component = Component::Toast(ToastProps {
+            message: "Operation completed".into(),
+            variant: ToastVariant::Success,
+            timeout: Some(10),
+            dismissible: true,
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"Toast\""));
+        assert!(json.contains("\"timeout\":10"));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    #[test]
+    fn test_notification_dropdown_serde_round_trip() {
+        let component = Component::NotificationDropdown(NotificationDropdownProps {
+            notifications: vec![
+                NotificationItem {
+                    icon: Some("bell".into()),
+                    text: "New message".into(),
+                    timestamp: Some("2m ago".into()),
+                    read: false,
+                    action_url: Some("/messages/1".into()),
+                },
+                NotificationItem {
+                    icon: None,
+                    text: "Old notification".into(),
+                    timestamp: None,
+                    read: true,
+                    action_url: None,
+                },
+            ],
+            empty_text: Some("No notifications".into()),
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"NotificationDropdown\""));
+        assert!(json.contains("\"empty_text\":\"No notifications\""));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    #[test]
+    fn test_sidebar_serde_round_trip() {
+        let component = Component::Sidebar(SidebarProps {
+            fixed_top: vec![SidebarNavItem {
+                label: "Dashboard".into(),
+                href: "/dashboard".into(),
+                icon: Some("home".into()),
+                active: true,
+            }],
+            groups: vec![SidebarGroup {
+                label: "Management".into(),
+                collapsed: false,
+                items: vec![SidebarNavItem {
+                    label: "Users".into(),
+                    href: "/users".into(),
+                    icon: None,
+                    active: false,
+                }],
+            }],
+            fixed_bottom: vec![SidebarNavItem {
+                label: "Settings".into(),
+                href: "/settings".into(),
+                icon: Some("gear".into()),
+                active: false,
+            }],
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"Sidebar\""));
+        assert!(json.contains("\"fixed_top\""));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    #[test]
+    fn test_header_serde_round_trip() {
+        let component = Component::Header(HeaderProps {
+            business_name: "Acme Corp".into(),
+            notification_count: Some(5),
+            user_name: Some("Jane Doe".into()),
+            user_avatar: Some("/avatar.jpg".into()),
+            logout_url: Some("/logout".into()),
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"Header\""));
+        assert!(json.contains("\"business_name\":\"Acme Corp\""));
+        assert!(json.contains("\"notification_count\":5"));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    // ── Convenience constructor tests ─────────────────────────────────────
+
+    #[test]
+    fn test_stat_card_constructor() {
+        let props = StatCardProps {
+            label: "Revenue".into(),
+            value: "$1,000".into(),
+            icon: None,
+            subtitle: None,
+            sse_target: None,
+        };
+        let node = ComponentNode::stat_card("revenue-card", props.clone());
+        assert_eq!(node.key, "revenue-card");
+        assert!(node.action.is_none());
+        assert!(node.visibility.is_none());
+        assert_eq!(node.component, Component::StatCard(props));
+    }
+
+    #[test]
+    fn test_checklist_constructor() {
+        let props = ChecklistProps {
+            title: "Tasks".into(),
+            items: vec![],
+            dismissible: true,
+            dismiss_label: None,
+            data_key: None,
+        };
+        let node = ComponentNode::checklist("task-list", props.clone());
+        assert_eq!(node.key, "task-list");
+        assert!(node.action.is_none());
+        assert!(node.visibility.is_none());
+        assert_eq!(node.component, Component::Checklist(props));
+    }
+
+    #[test]
+    fn test_toast_constructor() {
+        let props = ToastProps {
+            message: "Done!".into(),
+            variant: ToastVariant::Success,
+            timeout: None,
+            dismissible: true,
+        };
+        let node = ComponentNode::toast("success-toast", props.clone());
+        assert_eq!(node.key, "success-toast");
+        assert!(node.action.is_none());
+        assert!(node.visibility.is_none());
+        assert_eq!(node.component, Component::Toast(props));
+    }
+
+    #[test]
+    fn test_notification_dropdown_constructor() {
+        let props = NotificationDropdownProps {
+            notifications: vec![],
+            empty_text: Some("All caught up!".into()),
+        };
+        let node = ComponentNode::notification_dropdown("notifs", props.clone());
+        assert_eq!(node.key, "notifs");
+        assert!(node.action.is_none());
+        assert!(node.visibility.is_none());
+        assert_eq!(node.component, Component::NotificationDropdown(props));
+    }
+
+    #[test]
+    fn test_sidebar_constructor() {
+        let props = SidebarProps {
+            fixed_top: vec![],
+            groups: vec![],
+            fixed_bottom: vec![],
+        };
+        let node = ComponentNode::sidebar("main-nav", props.clone());
+        assert_eq!(node.key, "main-nav");
+        assert!(node.action.is_none());
+        assert!(node.visibility.is_none());
+        assert_eq!(node.component, Component::Sidebar(props));
+    }
+
+    #[test]
+    fn test_header_constructor() {
+        let props = HeaderProps {
+            business_name: "MyApp".into(),
+            notification_count: None,
+            user_name: None,
+            user_avatar: None,
+            logout_url: None,
+        };
+        let node = ComponentNode::header("page-header", props.clone());
+        assert_eq!(node.key, "page-header");
+        assert!(node.action.is_none());
+        assert!(node.visibility.is_none());
+        assert_eq!(node.component, Component::Header(props));
+    }
+
+    // ── Sub-type serde tests ─────────────────────────────────────────────
+
+    #[test]
+    fn test_checklist_item_round_trip() {
+        let checked_item = ChecklistItem {
+            label: "Completed task".into(),
+            checked: true,
+            href: Some("/task/1".into()),
+        };
+        let json = serde_json::to_string(&checked_item).unwrap();
+        let parsed: ChecklistItem = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, checked_item);
+
+        let unchecked_item = ChecklistItem {
+            label: "Pending task".into(),
+            checked: false,
+            href: None,
+        };
+        let json = serde_json::to_string(&unchecked_item).unwrap();
+        let parsed: ChecklistItem = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, unchecked_item);
+        // href is None — should be omitted
+        assert!(!json.contains("href"));
+    }
+
+    #[test]
+    fn test_sidebar_group_round_trip() {
+        let expanded = SidebarGroup {
+            label: "Main".into(),
+            collapsed: false,
+            items: vec![
+                SidebarNavItem {
+                    label: "Home".into(),
+                    href: "/".into(),
+                    icon: Some("home".into()),
+                    active: true,
+                },
+                SidebarNavItem {
+                    label: "About".into(),
+                    href: "/about".into(),
+                    icon: None,
+                    active: false,
+                },
+            ],
+        };
+        let json = serde_json::to_string(&expanded).unwrap();
+        let parsed: SidebarGroup = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, expanded);
+        assert_eq!(parsed.items.len(), 2);
+
+        let collapsed = SidebarGroup {
+            label: "Advanced".into(),
+            collapsed: true,
+            items: vec![],
+        };
+        let json = serde_json::to_string(&collapsed).unwrap();
+        let parsed: SidebarGroup = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, collapsed);
+        assert!(parsed.collapsed);
+    }
+
+    #[test]
+    fn test_notification_item_round_trip() {
+        let unread = NotificationItem {
+            icon: Some("mail".into()),
+            text: "You have a new message".into(),
+            timestamp: Some("5m ago".into()),
+            read: false,
+            action_url: Some("/messages/42".into()),
+        };
+        let json = serde_json::to_string(&unread).unwrap();
+        let parsed: NotificationItem = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, unread);
+        assert!(!parsed.read);
+
+        let read_notif = NotificationItem {
+            icon: None,
+            text: "Welcome to the platform".into(),
+            timestamp: None,
+            read: true,
+            action_url: None,
+        };
+        let json = serde_json::to_string(&read_notif).unwrap();
+        let parsed: NotificationItem = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, read_notif);
+        assert!(parsed.read);
+        // Optional fields with None should be omitted
+        assert!(!json.contains("\"icon\""));
+        assert!(!json.contains("\"action_url\""));
+    }
+
+    // ── Edge case tests ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_stat_card_all_optionals_none() {
+        let component = Component::StatCard(StatCardProps {
+            label: "Count".into(),
+            value: "0".into(),
+            icon: None,
+            subtitle: None,
+            sse_target: None,
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"StatCard\""));
+        assert!(!json.contains("\"icon\""));
+        assert!(!json.contains("\"subtitle\""));
+        assert!(!json.contains("\"sse_target\""));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    #[test]
+    fn test_checklist_empty_items() {
+        let component = Component::Checklist(ChecklistProps {
+            title: "Empty List".into(),
+            items: vec![],
+            dismissible: true,
+            dismiss_label: None,
+            data_key: None,
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"Checklist\""));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+        match &deserialized {
+            Component::Checklist(props) => assert!(props.items.is_empty()),
+            _ => panic!("expected Checklist"),
+        }
+    }
+
+    #[test]
+    fn test_sidebar_empty_groups_and_fixed() {
+        let component = Component::Sidebar(SidebarProps {
+            fixed_top: vec![],
+            groups: vec![],
+            fixed_bottom: vec![],
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"Sidebar\""));
+        // Empty vecs should be omitted (skip_serializing_if = "Vec::is_empty")
+        assert!(!json.contains("\"fixed_top\""));
+        assert!(!json.contains("\"groups\""));
+        assert!(!json.contains("\"fixed_bottom\""));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    #[test]
+    fn test_notification_dropdown_empty_uses_empty_text() {
+        let component = Component::NotificationDropdown(NotificationDropdownProps {
+            notifications: vec![],
+            empty_text: Some("Nothing here!".into()),
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(json.contains("\"type\":\"NotificationDropdown\""));
+        assert!(json.contains("\"empty_text\":\"Nothing here!\""));
+        let deserialized: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(component, deserialized);
+    }
+
+    // ── Optional field skip_serializing tests ────────────────────────────
+
+    #[test]
+    fn test_stat_card_omits_sse_target_when_none() {
+        let component = Component::StatCard(StatCardProps {
+            label: "Revenue".into(),
+            value: "$500".into(),
+            icon: None,
+            subtitle: None,
+            sse_target: None,
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(
+            !json.contains("sse_target"),
+            "sse_target must be omitted when None"
+        );
+    }
+
+    #[test]
+    fn test_toast_omits_timeout_when_none() {
+        let component = Component::Toast(ToastProps {
+            message: "Hello".into(),
+            variant: ToastVariant::Info,
+            timeout: None,
+            dismissible: false,
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        assert!(
+            !json.contains("\"timeout\""),
+            "timeout must be omitted when None"
+        );
+    }
 }
