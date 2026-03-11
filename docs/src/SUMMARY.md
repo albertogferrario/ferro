@@ -36,6 +36,7 @@
 - [Static Files](features/static-files.md)
 - [Inertia.js](features/inertia.md)
 - [JSON-UI](features/json-ui.md)
+- [Stripe](features/stripe.md)
 
 # JSON-UI
 
