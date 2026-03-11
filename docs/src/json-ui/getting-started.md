@@ -15,34 +15,36 @@ Create a handler that returns a JSON-UI page. The view is a tree of components r
 
 ```rust
 use ferro::{handler, JsonUi, JsonUiView, ComponentNode, Component, CardProps,
-    TextProps, TextElement, Response};
+    TextProps, TextElement, StatCardProps, Response};
 
 #[handler]
 pub async fn dashboard() -> Response {
     let view = JsonUiView::new()
         .title("Dashboard")
-        .layout("app")
-        .component(ComponentNode {
-            key: "welcome".to_string(),
-            component: Component::Card(CardProps {
-                title: "Welcome".to_string(),
-                description: Some("Your application dashboard".to_string()),
-                children: vec![
-                    ComponentNode {
-                        key: "intro".to_string(),
-                        component: Component::Text(TextProps {
-                            content: "This page is rendered entirely from Rust.".to_string(),
-                            element: TextElement::P,
-                        }),
-                        action: None,
-                        visibility: None,
-                    },
-                ],
-                footer: vec![],
-            }),
-            action: None,
-            visibility: None,
-        });
+        .layout("dashboard")
+        .component(ComponentNode::card("welcome", CardProps {
+            title: "Welcome".to_string(),
+            description: Some("Your application dashboard".to_string()),
+            children: vec![
+                ComponentNode {
+                    key: "intro".to_string(),
+                    component: Component::Text(TextProps {
+                        content: "This page is rendered entirely from Rust.".to_string(),
+                        element: TextElement::P,
+                    }),
+                    action: None,
+                    visibility: None,
+                },
+            ],
+            footer: vec![],
+        }))
+        .component(ComponentNode::stat_card("orders", StatCardProps {
+            label: "Orders Today".to_string(),
+            value: "42".to_string(),
+            icon: Some("shopping-bag".to_string()),
+            subtitle: Some("Last updated just now".to_string()),
+            sse_target: Some("orders_today".to_string()),
+        }));
 
     JsonUi::render(&view, &serde_json::json!({}))
 }
@@ -56,7 +58,7 @@ use ferro::get;
 get!("/dashboard", controllers::dashboard::dashboard);
 ```
 
-That's it. Visit `/dashboard` to see a styled card with your content, wrapped in the app layout with sidebar and navigation.
+That's it. Visit `/dashboard` to see a styled card with your content, wrapped in the dashboard layout with sidebar and navigation.
 
 ## Adding a Form
 
@@ -72,7 +74,7 @@ use ferro::{handler, JsonUi, JsonUiView, ComponentNode, Component, FormProps,
 pub async fn create() -> Response {
     let view = JsonUiView::new()
         .title("Create User")
-        .layout("app")
+        .layout("dashboard")
         .component(ComponentNode {
             key: "form".to_string(),
             component: Component::Form(FormProps {
@@ -91,6 +93,7 @@ pub async fn create() -> Response {
                             description: None,
                             default_value: None,
                             data_path: None,
+                            step: None,
                         }),
                         action: None,
                         visibility: None,
@@ -108,6 +111,7 @@ pub async fn create() -> Response {
                             description: None,
                             default_value: None,
                             data_path: None,
+                            step: None,
                         }),
                         action: None,
                         visibility: None,
@@ -152,7 +156,7 @@ For edit forms, pass the existing record as data and use `data_path` on each fie
 pub async fn edit(user: User) -> Response {
     let view = JsonUiView::new()
         .title("Edit User")
-        .layout("app")
+        .layout("dashboard")
         .component(ComponentNode {
             key: "form".to_string(),
             component: Component::Form(FormProps {
@@ -171,6 +175,7 @@ pub async fn edit(user: User) -> Response {
                             description: None,
                             default_value: None,
                             data_path: Some("/data/user/name".to_string()),
+                            step: None,
                         }),
                         action: None,
                         visibility: None,
@@ -188,6 +193,7 @@ pub async fn edit(user: User) -> Response {
                             description: None,
                             default_value: None,
                             data_path: Some("/data/user/email".to_string()),
+                            step: None,
                         }),
                         action: None,
                         visibility: None,
@@ -252,33 +258,28 @@ use ferro::{handler, JsonUi, JsonUiView, ComponentNode, Component, TableProps,
 pub async fn index() -> Response {
     let view = JsonUiView::new()
         .title("Users")
-        .layout("app")
-        .component(ComponentNode {
-            key: "users-table".to_string(),
-            component: Component::Table(TableProps {
-                columns: vec![
-                    Column { key: "name".to_string(), label: "Name".to_string(), format: None },
-                    Column { key: "email".to_string(), label: "Email".to_string(), format: None },
-                    Column {
-                        key: "created_at".to_string(),
-                        label: "Created".to_string(),
-                        format: Some(ColumnFormat::Date),
-                    },
-                ],
-                data_path: "/data/users".to_string(),
-                row_actions: Some(vec![
-                    Action::get("users.edit"),
-                    Action::delete("users.destroy")
-                        .confirm_danger("Delete this user?"),
-                ]),
-                empty_message: Some("No users found".to_string()),
-                sortable: None,
-                sort_column: None,
-                sort_direction: None,
-            }),
-            action: None,
-            visibility: None,
-        })
+        .layout("dashboard")
+        .component(ComponentNode::table("users-table", TableProps {
+            columns: vec![
+                Column { key: "name".to_string(), label: "Name".to_string(), format: None },
+                Column { key: "email".to_string(), label: "Email".to_string(), format: None },
+                Column {
+                    key: "created_at".to_string(),
+                    label: "Created".to_string(),
+                    format: Some(ColumnFormat::Date),
+                },
+            ],
+            data_path: "/data/users".to_string(),
+            row_actions: Some(vec![
+                Action::get("users.edit"),
+                Action::delete("users.destroy")
+                    .confirm_danger("Delete this user?"),
+            ]),
+            empty_message: Some("No users found".to_string()),
+            sortable: None,
+            sort_column: None,
+            sort_direction: None,
+        }))
         .component(ComponentNode {
             key: "pagination".to_string(),
             component: Component::Pagination(PaginationProps {
@@ -320,7 +321,8 @@ With an Anthropic API key configured, the command reads your models and routes t
 
 ## Next Steps
 
-- **[Components](components.md)** -- Reference for all 20 built-in component types
+- **[Components](components.md)** -- Reference for all 26 built-in component types
 - **[Actions](actions.md)** -- Navigation, form submission, confirmations, and outcomes
 - **[Data Binding & Visibility](data-binding.md)** -- Data paths and conditional rendering
-- **[Layouts](layouts.md)** -- Page structure, built-in layouts, and custom layouts
+- **[Layouts](layouts.md)** -- Page structure, DashboardLayout, and custom layouts
+- **[Plugins](plugins.md)** -- Extend the component catalog with custom interactive components
