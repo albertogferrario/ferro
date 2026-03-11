@@ -107,9 +107,9 @@ pub use session::{
 #[cfg(feature = "stripe")]
 pub use tenant::RequiresPlan;
 pub use tenant::{
-    current_tenant, DbTenantLookup, HeaderResolver, JwtClaimResolver, PathResolver,
-    SubdomainResolver, TenantContext, TenantFailureMode, TenantLookup, TenantMiddleware,
-    TenantResolver, TenantScope,
+    current_tenant, DbTenantLookup, FrameworkTenantScopeProvider, HeaderResolver, JwtClaimResolver,
+    PathResolver, SubdomainResolver, TenantContext, TenantFailureMode, TenantLookup,
+    TenantMiddleware, TenantResolver, TenantScope,
 };
 // Deprecated - kept for backward compatibility
 #[cfg(feature = "inertia")]
@@ -159,8 +159,9 @@ pub use ferro_events::{
 
 // Re-export ferro-queue for background job processing
 pub use ferro_queue::{
-    dispatch as queue_dispatch, dispatch_later, dispatch_to, Error as QueueError, Job, JobPayload,
-    PendingDispatch, Queue, QueueConfig, QueueConnection, Queueable, Worker, WorkerConfig,
+    dispatch as queue_dispatch, dispatch_later, dispatch_to, register_tenant_capture_hook,
+    Error as QueueError, Job, JobPayload, PendingDispatch, Queue, QueueConfig, QueueConnection,
+    Queueable, TenantScopeProvider, Worker, WorkerConfig,
 };
 
 // Re-export ferro-notifications for multi-channel notifications

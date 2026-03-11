@@ -18,6 +18,7 @@ pub mod middleware;
 pub mod requires_plan;
 pub mod resolver;
 pub mod scope;
+pub mod worker;
 
 pub use context::current_tenant;
 pub use lookup::{DbTenantLookup, TenantLookup};
@@ -28,6 +29,7 @@ pub use resolver::{
     HeaderResolver, JwtClaimResolver, PathResolver, SubdomainResolver, TenantResolver,
 };
 pub use scope::TenantScope;
+pub use worker::FrameworkTenantScopeProvider;
 
 use crate::error::FrameworkError;
 use crate::http::{FromRequest, Request};
@@ -115,7 +117,6 @@ impl FromRequest for TenantContext {
 }
 
 /// Controls framework behavior when no tenant is resolved for a request.
-#[derive(Debug, Clone)]
 pub enum TenantFailureMode {
     /// Return 404 Not Found when the tenant cannot be resolved.
     NotFound,
@@ -123,6 +124,30 @@ pub enum TenantFailureMode {
     Forbidden,
     /// Pass through — allow the request even without a resolved tenant.
     Allow,
+    /// Return a custom response when the tenant cannot be resolved.
+    Custom(Box<dyn Fn() -> crate::http::Response + Send + Sync>),
+}
+
+impl std::fmt::Debug for TenantFailureMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotFound => write!(f, "NotFound"),
+            Self::Forbidden => write!(f, "Forbidden"),
+            Self::Allow => write!(f, "Allow"),
+            Self::Custom(_) => write!(f, "Custom(...)"),
+        }
+    }
+}
+
+impl Clone for TenantFailureMode {
+    fn clone(&self) -> Self {
+        match self {
+            Self::NotFound => Self::NotFound,
+            Self::Forbidden => Self::Forbidden,
+            Self::Allow => Self::Allow,
+            Self::Custom(_) => panic!("TenantFailureMode::Custom cannot be cloned"),
+        }
+    }
 }
 
 #[cfg(test)]
