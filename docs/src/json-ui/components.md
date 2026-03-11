@@ -1,33 +1,47 @@
 # Components
 
-JSON-UI includes 20 built-in components for building complete application interfaces from Rust handlers.
+JSON-UI includes 26 built-in component types organized into six groups. Every component serializes to JSON with a `"type"` discriminant and is wrapped in a `ComponentNode` that adds a unique key, an optional action binding, and optional visibility rules.
 
 ## Component Overview
 
 | Category | Components |
 |----------|-----------|
-| **Display** | Card, Table, Badge, Alert, Separator, DescriptionList, Text, Button |
-| **Form** | Form, Input, Select, Checkbox, Switch |
-| **Navigation** | Tabs, Breadcrumb, Pagination |
-| **Feedback** | Progress, Avatar, Skeleton |
-| **Layout** | Modal |
+| **Layout** | Card, Tabs, Separator, Modal, Skeleton |
+| **Data Display** | Table, DescriptionList, Badge, Avatar, Text, Progress, Breadcrumb, Pagination, StatCard |
+| **Forms** | Form, Input, Select, Checkbox, Switch, Button |
+| **Feedback** | Alert, Toast |
+| **Navigation** | Sidebar, Header, NotificationDropdown |
+| **Onboarding** | Checklist |
+| **Extensible** | Plugin |
 
-Every component is wrapped in a `ComponentNode` that provides a unique `key`, an optional `action` binding, and optional `visibility` rules:
+## ComponentNode
+
+Every component is wrapped in a `ComponentNode`:
 
 ```rust
 use ferro::*;
 
 ComponentNode {
-    key: "my-card".to_string(),
+    key: "my-card".to_string(),          // unique identifier on the page
     component: Component::Card(CardProps { /* ... */ }),
-    action: None,
-    visibility: None,
+    action: None,                         // optional Action binding
+    visibility: None,                     // optional Visibility condition
 }
 ```
 
-## Shared Types
+Convenience constructors are available for common components:
 
-These enums are used across multiple components.
+```rust
+// Equivalent to the struct literal above, but more concise
+let node = ComponentNode::card("my-card", CardProps {
+    title: "Hello".to_string(),
+    description: None,
+    children: vec![],
+    footer: vec![],
+});
+```
+
+## Shared Types
 
 ### Size
 
@@ -55,7 +69,7 @@ Visual styles for the Button component (aligned to shadcn/ui).
 
 ### AlertVariant
 
-Visual styles for the Alert component.
+Visual styles for Alert and Toast components.
 
 | Value | Serialized |
 |-------|-----------|
@@ -97,10 +111,23 @@ Semantic HTML element for the Text component.
 | `TextElement::H2` | `"h2"` | `<h2>` |
 | `TextElement::H3` | `"h3"` | `<h3>` |
 | `TextElement::Span` | `"span"` | `<span>` |
+| `TextElement::Div` | `"div"` | `<div>` |
+| `TextElement::Section` | `"section"` | `<section>` |
+
+### ToastVariant
+
+Visual styles for the Toast component. Mirrors AlertVariant.
+
+| Value | Serialized |
+|-------|-----------|
+| `ToastVariant::Info` | `"info"` |
+| `ToastVariant::Success` | `"success"` |
+| `ToastVariant::Warning` | `"warning"` |
+| `ToastVariant::Error` | `"error"` |
 
 ---
 
-## Display Components
+## Layout Components
 
 ### Card
 
@@ -116,35 +143,71 @@ Container with title, optional description, nested children, and footer.
 ```rust
 use ferro::*;
 
+let node = ComponentNode::card("user-card", CardProps {
+    title: "User Details".to_string(),
+    description: Some("Account information".to_string()),
+    children: vec![
+        ComponentNode::button("edit-btn", ButtonProps {
+            label: "Edit".to_string(),
+            variant: ButtonVariant::Outline,
+            size: Size::Default,
+            disabled: None,
+            icon: None,
+            icon_position: None,
+        }),
+    ],
+    footer: vec![],
+});
+```
+
+JSON output:
+
+```json
+{
+  "key": "user-card",
+  "type": "Card",
+  "title": "User Details",
+  "description": "Account information",
+  "children": [
+    { "key": "edit-btn", "type": "Button", "label": "Edit", "variant": "outline", "size": "default" }
+  ]
+}
+```
+
+### Tabs
+
+Tabbed content with multiple panels. Each tab contains its own set of child components.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `default_tab` | `String` | Yes | - | Value of the initially active tab |
+| `tabs` | `Vec<Tab>` | Yes | - | Tab definitions |
+
+**Tab** defines a tab panel:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `value` | `String` | Yes | Tab identifier (matches `default_tab`) |
+| `label` | `String` | Yes | Tab label text |
+| `children` | `Vec<ComponentNode>` | No | Components displayed when the tab is active |
+
+```rust
+use ferro::*;
+
 ComponentNode {
-    key: "user-card".to_string(),
-    component: Component::Card(CardProps {
-        title: "User Details".to_string(),
-        description: Some("Account information".to_string()),
-        children: vec![
-            ComponentNode {
-                key: "name".to_string(),
-                component: Component::Text(TextProps {
-                    content: "Alice Johnson".to_string(),
-                    element: TextElement::H3,
-                }),
-                action: None,
-                visibility: None,
+    key: "settings-tabs".to_string(),
+    component: Component::Tabs(TabsProps {
+        default_tab: "general".to_string(),
+        tabs: vec![
+            Tab {
+                value: "general".to_string(),
+                label: "General".to_string(),
+                children: vec![/* ... */],
             },
-        ],
-        footer: vec![
-            ComponentNode {
-                key: "edit-btn".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Edit".to_string(),
-                    variant: ButtonVariant::Outline,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                }),
-                action: Some(Action::get("users.edit")),
-                visibility: None,
+            Tab {
+                value: "security".to_string(),
+                label: "Security".to_string(),
+                children: vec![/* ... */],
             },
         ],
     }),
@@ -152,6 +215,139 @@ ComponentNode {
     visibility: None,
 }
 ```
+
+JSON output:
+
+```json
+{
+  "key": "settings-tabs",
+  "type": "Tabs",
+  "default_tab": "general",
+  "tabs": [
+    { "value": "general", "label": "General", "children": [] },
+    { "value": "security", "label": "Security", "children": [] }
+  ]
+}
+```
+
+### Separator
+
+Visual divider between content sections.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `orientation` | `Option<Orientation>` | No | `Horizontal` | Direction: `horizontal` or `vertical` |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "divider".to_string(),
+    component: Component::Separator(SeparatorProps {
+        orientation: None, // defaults to horizontal
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{ "key": "divider", "type": "Separator" }
+```
+
+### Modal
+
+Dialog overlay with title, content, footer, and trigger button.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `title` | `String` | Yes | - | Modal title |
+| `description` | `Option<String>` | No | `None` | Modal description |
+| `children` | `Vec<ComponentNode>` | No | `[]` | Content components inside the modal body |
+| `footer` | `Vec<ComponentNode>` | No | `[]` | Components in the modal footer |
+| `trigger_label` | `Option<String>` | No | `None` | Label for the trigger button |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "delete-modal".to_string(),
+    component: Component::Modal(ModalProps {
+        title: "Delete Item".to_string(),
+        description: Some("This action cannot be undone.".to_string()),
+        children: vec![],
+        footer: vec![
+            ComponentNode {
+                key: "delete-btn".to_string(),
+                component: Component::Button(ButtonProps {
+                    label: "Delete".to_string(),
+                    variant: ButtonVariant::Destructive,
+                    size: Size::Default,
+                    disabled: None,
+                    icon: None,
+                    icon_position: None,
+                }),
+                action: Some(Action::delete("items.destroy").confirm_danger("Confirm deletion")),
+                visibility: None,
+            },
+        ],
+        trigger_label: Some("Delete".to_string()),
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{
+  "key": "delete-modal",
+  "type": "Modal",
+  "title": "Delete Item",
+  "description": "This action cannot be undone.",
+  "trigger_label": "Delete",
+  "children": [],
+  "footer": [{ "key": "delete-btn", "type": "Button", "label": "Delete", "variant": "destructive", "size": "default" }]
+}
+```
+
+### Skeleton
+
+Loading placeholder with configurable dimensions for content that is still loading.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `width` | `Option<String>` | No | `None` | CSS width (e.g., `"100%"`, `"200px"`) |
+| `height` | `Option<String>` | No | `None` | CSS height (e.g., `"40px"`) |
+| `rounded` | `Option<bool>` | No | `None` | Whether to use rounded corners |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "loading-placeholder".to_string(),
+    component: Component::Skeleton(SkeletonProps {
+        width: Some("100%".to_string()),
+        height: Some("40px".to_string()),
+        rounded: Some(true),
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{ "key": "loading-placeholder", "type": "Skeleton", "width": "100%", "height": "40px", "rounded": true }
+```
+
+---
+
+## Data Display Components
 
 ### Table
 
@@ -178,110 +374,41 @@ Data table with column definitions, row actions, and sorting support. Rows are l
 ```rust
 use ferro::*;
 
-ComponentNode {
-    key: "users-table".to_string(),
-    component: Component::Table(TableProps {
-        columns: vec![
-            Column {
-                key: "name".to_string(),
-                label: "Name".to_string(),
-                format: None,
-            },
-            Column {
-                key: "email".to_string(),
-                label: "Email".to_string(),
-                format: None,
-            },
-            Column {
-                key: "created_at".to_string(),
-                label: "Created".to_string(),
-                format: Some(ColumnFormat::Date),
-            },
-        ],
-        data_path: "/data/users".to_string(),
-        row_actions: Some(vec![
-            Action::get("users.edit"),
-            Action::delete("users.destroy")
-                .confirm_danger("Delete this user?"),
-        ]),
-        empty_message: Some("No users found.".to_string()),
-        sortable: Some(true),
-        sort_column: None,
-        sort_direction: None,
-    }),
-    action: None,
-    visibility: None,
-}
+let node = ComponentNode::table("users-table", TableProps {
+    columns: vec![
+        Column { key: "name".to_string(), label: "Name".to_string(), format: None },
+        Column { key: "email".to_string(), label: "Email".to_string(), format: None },
+        Column {
+            key: "created_at".to_string(),
+            label: "Created".to_string(),
+            format: Some(ColumnFormat::Date),
+        },
+    ],
+    data_path: "/data/users".to_string(),
+    row_actions: Some(vec![
+        Action::get("users.edit"),
+        Action::delete("users.destroy").confirm_danger("Delete this user?"),
+    ]),
+    empty_message: Some("No users found.".to_string()),
+    sortable: Some(true),
+    sort_column: None,
+    sort_direction: None,
+});
 ```
 
-The `data_path` points to an array in the handler data. Each object in the array maps its keys to column `key` fields.
+JSON output:
 
-### Badge
-
-Small label with variant-based styling.
-
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `label` | `String` | Yes | - | Badge text |
-| `variant` | `BadgeVariant` | No | `Default` | Visual style |
-
-```rust
-use ferro::*;
-
-ComponentNode {
-    key: "status".to_string(),
-    component: Component::Badge(BadgeProps {
-        label: "Active".to_string(),
-        variant: BadgeVariant::Default,
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-### Alert
-
-Alert message with variant-based styling and optional title.
-
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `message` | `String` | Yes | - | Alert message content |
-| `variant` | `AlertVariant` | No | `Info` | Visual style |
-| `title` | `Option<String>` | No | `None` | Alert title |
-
-```rust
-use ferro::*;
-
-ComponentNode {
-    key: "warning".to_string(),
-    component: Component::Alert(AlertProps {
-        message: "Your trial expires in 3 days.".to_string(),
-        variant: AlertVariant::Warning,
-        title: Some("Trial Ending".to_string()),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-### Separator
-
-Visual divider between content sections.
-
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `orientation` | `Option<Orientation>` | No | `Horizontal` | Direction: `horizontal` or `vertical` |
-
-```rust
-use ferro::*;
-
-ComponentNode {
-    key: "divider".to_string(),
-    component: Component::Separator(SeparatorProps {
-        orientation: None, // defaults to horizontal
-    }),
-    action: None,
-    visibility: None,
+```json
+{
+  "key": "users-table",
+  "type": "Table",
+  "data_path": "/data/users",
+  "columns": [
+    { "key": "name", "label": "Name" },
+    { "key": "email", "label": "Email" },
+    { "key": "created_at", "label": "Created", "format": "date" }
+  ],
+  "sortable": true
 }
 ```
 
@@ -309,11 +436,7 @@ ComponentNode {
     key: "user-info".to_string(),
     component: Component::DescriptionList(DescriptionListProps {
         items: vec![
-            DescriptionItem {
-                label: "Name".to_string(),
-                value: "Alice Johnson".to_string(),
-                format: None,
-            },
+            DescriptionItem { label: "Name".to_string(), value: "Alice Johnson".to_string(), format: None },
             DescriptionItem {
                 label: "Joined".to_string(),
                 value: "2026-01-15".to_string(),
@@ -332,6 +455,83 @@ ComponentNode {
 }
 ```
 
+JSON output:
+
+```json
+{
+  "key": "user-info",
+  "type": "DescriptionList",
+  "columns": 2,
+  "items": [
+    { "label": "Name", "value": "Alice Johnson" },
+    { "label": "Joined", "value": "2026-01-15", "format": "date" },
+    { "label": "Active", "value": "true", "format": "boolean" }
+  ]
+}
+```
+
+### Badge
+
+Small label with variant-based styling.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `label` | `String` | Yes | - | Badge text |
+| `variant` | `BadgeVariant` | No | `Default` | Visual style |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "status".to_string(),
+    component: Component::Badge(BadgeProps {
+        label: "Active".to_string(),
+        variant: BadgeVariant::Default,
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{ "key": "status", "type": "Badge", "label": "Active", "variant": "default" }
+```
+
+### Avatar
+
+User avatar with image source, fallback text, and size variants.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `src` | `Option<String>` | No | `None` | Image URL |
+| `alt` | `String` | Yes | - | Alt text (required for accessibility) |
+| `fallback` | `Option<String>` | No | `None` | Fallback initials when no image |
+| `size` | `Option<Size>` | No | `Default` | Avatar size: `xs`, `sm`, `default`, `lg` |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "user-avatar".to_string(),
+    component: Component::Avatar(AvatarProps {
+        src: Some("/images/alice.jpg".to_string()),
+        alt: "Alice Johnson".to_string(),
+        fallback: Some("AJ".to_string()),
+        size: Some(Size::Lg),
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{ "key": "user-avatar", "type": "Avatar", "alt": "Alice Johnson", "src": "/images/alice.jpg", "fallback": "AJ", "size": "lg" }
+```
+
 ### Text
 
 Renders text content with semantic HTML element selection.
@@ -339,7 +539,7 @@ Renders text content with semantic HTML element selection.
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
 | `content` | `String` | Yes | - | Text content |
-| `element` | `TextElement` | No | `P` | HTML element: `p`, `h1`, `h2`, `h3`, `span` |
+| `element` | `TextElement` | No | `P` | HTML element: `p`, `h1`, `h2`, `h3`, `span`, `div`, `section` |
 
 ```rust
 use ferro::*;
@@ -355,42 +555,172 @@ ComponentNode {
 }
 ```
 
-### Button
+JSON output:
 
-Interactive button with visual variants, sizing, and optional icon.
+```json
+{ "key": "heading", "type": "Text", "content": "Welcome to the dashboard", "element": "h1" }
+```
+
+### Progress
+
+Progress bar with percentage value.
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `label` | `String` | Yes | - | Button label text |
-| `variant` | `ButtonVariant` | No | `Default` | Visual style |
-| `size` | `Size` | No | `Default` | Button size |
-| `disabled` | `Option<bool>` | No | `None` | Whether the button is disabled |
-| `icon` | `Option<String>` | No | `None` | Icon name |
-| `icon_position` | `Option<IconPosition>` | No | `Left` | Icon placement: `left` or `right` |
-
-Buttons are typically combined with an `action` on the `ComponentNode` to bind click behavior:
+| `value` | `u8` | Yes | - | Percentage value (0-100) |
+| `max` | `Option<u8>` | No | `None` | Maximum value |
+| `label` | `Option<String>` | No | `None` | Label text above the bar |
 
 ```rust
 use ferro::*;
 
 ComponentNode {
-    key: "save-btn".to_string(),
-    component: Component::Button(ButtonProps {
-        label: "Save Changes".to_string(),
-        variant: ButtonVariant::Default,
-        size: Size::Default,
-        disabled: None,
-        icon: Some("save".to_string()),
-        icon_position: Some(IconPosition::Left),
+    key: "upload-progress".to_string(),
+    component: Component::Progress(ProgressProps {
+        value: 75,
+        max: Some(100),
+        label: Some("Uploading...".to_string()),
     }),
-    action: Some(Action::new("users.update")),
+    action: None,
     visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{ "key": "upload-progress", "type": "Progress", "value": 75, "max": 100, "label": "Uploading..." }
+```
+
+### Breadcrumb
+
+Navigation breadcrumb trail. The last item typically has no URL (current page).
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `items` | `Vec<BreadcrumbItem>` | Yes | - | Breadcrumb items |
+
+**BreadcrumbItem** defines a breadcrumb entry:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | `String` | Yes | Breadcrumb text |
+| `url` | `Option<String>` | No | Link URL (omit for the current page) |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "breadcrumbs".to_string(),
+    component: Component::Breadcrumb(BreadcrumbProps {
+        items: vec![
+            BreadcrumbItem { label: "Home".to_string(), url: Some("/".to_string()) },
+            BreadcrumbItem { label: "Users".to_string(), url: Some("/users".to_string()) },
+            BreadcrumbItem { label: "Edit User".to_string(), url: None },
+        ],
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{
+  "key": "breadcrumbs",
+  "type": "Breadcrumb",
+  "items": [
+    { "label": "Home", "url": "/" },
+    { "label": "Users", "url": "/users" },
+    { "label": "Edit User" }
+  ]
+}
+```
+
+### Pagination
+
+Page navigation for paginated data. Computes page count from `total` and `per_page`.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `current_page` | `u32` | Yes | - | Current page number |
+| `per_page` | `u32` | Yes | - | Items per page |
+| `total` | `u32` | Yes | - | Total number of items |
+| `base_url` | `Option<String>` | No | `None` | Base URL for page links |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "users-pagination".to_string(),
+    component: Component::Pagination(PaginationProps {
+        current_page: 1,
+        per_page: 25,
+        total: 150,
+        base_url: Some("/users".to_string()),
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{ "key": "users-pagination", "type": "Pagination", "current_page": 1, "per_page": 25, "total": 150, "base_url": "/users" }
+```
+
+### StatCard
+
+Live-updatable metric card with an optional SSE target for real-time value updates. Used in dashboards to display KPIs, counts, and monetary totals.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `label` | `String` | Yes | - | Metric label (e.g., "Total Revenue") |
+| `value` | `String` | Yes | - | Current metric value (e.g., "€12,345") |
+| `icon` | `Option<String>` | No | `None` | Icon name |
+| `subtitle` | `Option<String>` | No | `None` | Secondary text below the value |
+| `sse_target` | `Option<String>` | No | `None` | SSE event target key for live updates |
+
+The `sse_target` field connects this card to the JS runtime's SSE listener. When the server emits a Server-Sent Event with a matching key, the runtime updates the displayed value without a page reload:
+
+```rust
+use ferro::*;
+
+let node = ComponentNode::stat_card("revenue", StatCardProps {
+    label: "Total Revenue".to_string(),
+    value: "€12,345".to_string(),
+    icon: Some("currency-euro".to_string()),
+    subtitle: Some("This month".to_string()),
+    sse_target: Some("revenue_total".to_string()),
+});
+```
+
+The server sends updates via SSE as JSON:
+
+```
+event: live-value
+data: {"target": "revenue_total", "value": "€13,210"}
+```
+
+JSON output:
+
+```json
+{
+  "key": "revenue",
+  "type": "StatCard",
+  "label": "Total Revenue",
+  "value": "€12,345",
+  "icon": "currency-euro",
+  "subtitle": "This month",
+  "sse_target": "revenue_total"
 }
 ```
 
 ---
 
-## Form Components
+## Forms Components
 
 ### Form
 
@@ -423,23 +753,7 @@ ComponentNode {
                     description: None,
                     default_value: None,
                     data_path: None,
-                }),
-                action: None,
-                visibility: None,
-            },
-            ComponentNode {
-                key: "email-input".to_string(),
-                component: Component::Input(InputProps {
-                    field: "email".to_string(),
-                    label: "Email".to_string(),
-                    input_type: InputType::Email,
-                    placeholder: Some("user@example.com".to_string()),
-                    required: Some(true),
-                    disabled: None,
-                    error: None,
-                    description: None,
-                    default_value: None,
-                    data_path: None,
+                    step: None,
                 }),
                 action: None,
                 visibility: None,
@@ -449,6 +763,19 @@ ComponentNode {
     }),
     action: None,
     visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{
+  "key": "create-form",
+  "type": "Form",
+  "action": { "handler": "users.store", "method": "POST" },
+  "fields": [
+    { "key": "name-input", "type": "Input", "field": "name", "label": "Name", "placeholder": "Enter name", "required": true }
+  ]
 }
 ```
 
@@ -468,7 +795,7 @@ Text input field with type variants, validation error display, and data binding.
 | `description` | `Option<String>` | No | `None` | Help text below the input |
 | `default_value` | `Option<String>` | No | `None` | Pre-filled value |
 | `data_path` | `Option<String>` | No | `None` | Data path for pre-filling from handler data (e.g., `"/data/user/name"`) |
-| `step` | `Option<String>` | No | `None` | HTML step attribute for number inputs (e.g., `"any"`, `"0.01"`). Controls valid increment granularity. |
+| `step` | `Option<String>` | No | `None` | HTML step attribute for number inputs (e.g., `"any"`, `"0.01"`) |
 
 **InputType** variants:
 
@@ -509,6 +836,22 @@ ComponentNode {
 }
 ```
 
+JSON output:
+
+```json
+{
+  "key": "email-input",
+  "type": "Input",
+  "field": "email",
+  "label": "Email Address",
+  "input_type": "email",
+  "placeholder": "user@example.com",
+  "required": true,
+  "description": "Your work email",
+  "data_path": "/data/user/email"
+}
+```
+
 ### Select
 
 Dropdown select field with options, validation error, and data binding.
@@ -542,18 +885,9 @@ ComponentNode {
         field: "role".to_string(),
         label: "Role".to_string(),
         options: vec![
-            SelectOption {
-                value: "admin".to_string(),
-                label: "Administrator".to_string(),
-            },
-            SelectOption {
-                value: "editor".to_string(),
-                label: "Editor".to_string(),
-            },
-            SelectOption {
-                value: "viewer".to_string(),
-                label: "Viewer".to_string(),
-            },
+            SelectOption { value: "admin".to_string(), label: "Administrator".to_string() },
+            SelectOption { value: "editor".to_string(), label: "Editor".to_string() },
+            SelectOption { value: "viewer".to_string(), label: "Viewer".to_string() },
         ],
         placeholder: Some("Select a role".to_string()),
         required: Some(true),
@@ -565,6 +899,25 @@ ComponentNode {
     }),
     action: None,
     visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{
+  "key": "role-select",
+  "type": "Select",
+  "field": "role",
+  "label": "Role",
+  "placeholder": "Select a role",
+  "required": true,
+  "data_path": "/data/user/role",
+  "options": [
+    { "value": "admin", "label": "Administrator" },
+    { "value": "editor", "label": "Editor" },
+    { "value": "viewer", "label": "Viewer" }
+  ]
 }
 ```
 
@@ -603,9 +956,15 @@ ComponentNode {
 }
 ```
 
+JSON output:
+
+```json
+{ "key": "terms-checkbox", "type": "Checkbox", "field": "terms", "label": "Accept Terms of Service", "description": "You must accept to continue.", "required": true }
+```
+
 ### Switch
 
-Toggle switch -- a visual alternative to Checkbox with identical props. The frontend renderer handles the visual difference.
+Toggle switch — a visual alternative to Checkbox with identical props. The frontend renderer handles the visual difference.
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
@@ -638,311 +997,411 @@ ComponentNode {
 }
 ```
 
----
+JSON output:
 
-## Navigation Components
-
-### Tabs
-
-Tabbed content with multiple panels. Each tab contains its own set of child components.
-
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `default_tab` | `String` | Yes | - | Value of the initially active tab |
-| `tabs` | `Vec<Tab>` | Yes | - | Tab definitions |
-
-**Tab** defines a tab panel:
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `value` | `String` | Yes | Tab identifier (matches `default_tab`) |
-| `label` | `String` | Yes | Tab label text |
-| `children` | `Vec<ComponentNode>` | No | Components displayed when the tab is active |
-
-```rust
-use ferro::*;
-
-ComponentNode {
-    key: "settings-tabs".to_string(),
-    component: Component::Tabs(TabsProps {
-        default_tab: "general".to_string(),
-        tabs: vec![
-            Tab {
-                value: "general".to_string(),
-                label: "General".to_string(),
-                children: vec![
-                    ComponentNode {
-                        key: "name-input".to_string(),
-                        component: Component::Input(InputProps {
-                            field: "name".to_string(),
-                            label: "Name".to_string(),
-                            input_type: InputType::Text,
-                            placeholder: None,
-                            required: None,
-                            disabled: None,
-                            error: None,
-                            description: None,
-                            default_value: None,
-                            data_path: None,
-                        }),
-                        action: None,
-                        visibility: None,
-                    },
-                ],
-            },
-            Tab {
-                value: "security".to_string(),
-                label: "Security".to_string(),
-                children: vec![
-                    ComponentNode {
-                        key: "password-input".to_string(),
-                        component: Component::Input(InputProps {
-                            field: "password".to_string(),
-                            label: "Password".to_string(),
-                            input_type: InputType::Password,
-                            placeholder: None,
-                            required: None,
-                            disabled: None,
-                            error: None,
-                            description: None,
-                            default_value: None,
-                            data_path: None,
-                        }),
-                        action: None,
-                        visibility: None,
-                    },
-                ],
-            },
-        ],
-    }),
-    action: None,
-    visibility: None,
-}
+```json
+{ "key": "notifications-switch", "type": "Switch", "field": "notifications", "label": "Enable Notifications", "description": "Receive email notifications", "checked": true, "data_path": "/data/user/notifications_enabled" }
 ```
 
-### Pagination
+### Button
 
-Page navigation for paginated data. Computes page count from `total` and `per_page`.
+Interactive button with visual variants, sizing, and optional icon.
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `current_page` | `u32` | Yes | - | Current page number |
-| `per_page` | `u32` | Yes | - | Items per page |
-| `total` | `u32` | Yes | - | Total number of items |
-| `base_url` | `Option<String>` | No | `None` | Base URL for page links |
+| `label` | `String` | Yes | - | Button label text |
+| `variant` | `ButtonVariant` | No | `Default` | Visual style |
+| `size` | `Size` | No | `Default` | Button size |
+| `disabled` | `Option<bool>` | No | `None` | Whether the button is disabled |
+| `icon` | `Option<String>` | No | `None` | Icon name |
+| `icon_position` | `Option<IconPosition>` | No | `Left` | Icon placement: `left` or `right` |
+
+Buttons are typically combined with an `action` on the `ComponentNode` to bind click behavior:
 
 ```rust
 use ferro::*;
 
-ComponentNode {
-    key: "users-pagination".to_string(),
-    component: Component::Pagination(PaginationProps {
-        current_page: 1,
-        per_page: 25,
-        total: 150,
-        base_url: Some("/users".to_string()),
-    }),
-    action: None,
-    visibility: None,
-}
+let node = ComponentNode::button("save-btn", ButtonProps {
+    label: "Save Changes".to_string(),
+    variant: ButtonVariant::Default,
+    size: Size::Default,
+    disabled: None,
+    icon: Some("save".to_string()),
+    icon_position: Some(IconPosition::Left),
+});
 ```
 
-### Breadcrumb
+JSON output:
 
-Navigation breadcrumb trail. The last item typically has no URL (current page).
-
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `items` | `Vec<BreadcrumbItem>` | Yes | - | Breadcrumb items |
-
-**BreadcrumbItem** defines a breadcrumb entry:
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | `String` | Yes | Breadcrumb text |
-| `url` | `Option<String>` | No | Link URL (omit for the current page) |
-
-```rust
-use ferro::*;
-
-ComponentNode {
-    key: "breadcrumbs".to_string(),
-    component: Component::Breadcrumb(BreadcrumbProps {
-        items: vec![
-            BreadcrumbItem {
-                label: "Home".to_string(),
-                url: Some("/".to_string()),
-            },
-            BreadcrumbItem {
-                label: "Users".to_string(),
-                url: Some("/users".to_string()),
-            },
-            BreadcrumbItem {
-                label: "Edit User".to_string(),
-                url: None,
-            },
-        ],
-    }),
-    action: None,
-    visibility: None,
-}
+```json
+{ "key": "save-btn", "type": "Button", "label": "Save Changes", "variant": "default", "size": "default", "icon": "save", "icon_position": "left" }
 ```
 
 ---
 
 ## Feedback Components
 
-### Progress
+### Alert
 
-Progress bar with percentage value.
+Alert message with variant-based styling and optional title.
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `value` | `u8` | Yes | - | Percentage value (0-100) |
-| `max` | `Option<u8>` | No | `None` | Maximum value |
-| `label` | `Option<String>` | No | `None` | Label text above the bar |
+| `message` | `String` | Yes | - | Alert message content |
+| `variant` | `AlertVariant` | No | `Info` | Visual style |
+| `title` | `Option<String>` | No | `None` | Alert title |
 
 ```rust
 use ferro::*;
 
 ComponentNode {
-    key: "upload-progress".to_string(),
-    component: Component::Progress(ProgressProps {
-        value: 75,
-        max: Some(100),
-        label: Some("Uploading...".to_string()),
+    key: "warning".to_string(),
+    component: Component::Alert(AlertProps {
+        message: "Your trial expires in 3 days.".to_string(),
+        variant: AlertVariant::Warning,
+        title: Some("Trial Ending".to_string()),
     }),
     action: None,
     visibility: None,
 }
 ```
 
-### Avatar
+JSON output:
 
-User avatar with image source, fallback text, and size variants.
+```json
+{ "key": "warning", "type": "Alert", "message": "Your trial expires in 3 days.", "variant": "warning", "title": "Trial Ending" }
+```
+
+### Toast
+
+Declarative notification intent rendered by the JS runtime. When a Toast component is included in a view, the runtime displays it as an overlay notification (top-right corner) and dismisses it after the configured timeout.
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `src` | `Option<String>` | No | `None` | Image URL |
-| `alt` | `String` | Yes | - | Alt text (required for accessibility) |
-| `fallback` | `Option<String>` | No | `None` | Fallback initials when no image |
-| `size` | `Option<Size>` | No | `Default` | Avatar size: `xs`, `sm`, `default`, `lg` |
+| `message` | `String` | Yes | - | Toast message content |
+| `variant` | `ToastVariant` | No | `Info` | Visual style (info, success, warning, error) |
+| `timeout` | `Option<u32>` | No | `None` | Seconds before auto-dismiss (default: 5) |
+| `dismissible` | `bool` | No | `true` | Whether the user can dismiss the toast |
 
 ```rust
 use ferro::*;
 
 ComponentNode {
-    key: "user-avatar".to_string(),
-    component: Component::Avatar(AvatarProps {
-        src: Some("/images/alice.jpg".to_string()),
-        alt: "Alice Johnson".to_string(),
-        fallback: Some("AJ".to_string()),
-        size: Some(Size::Lg),
+    key: "save-toast".to_string(),
+    component: Component::Toast(ToastProps {
+        message: "Changes saved successfully.".to_string(),
+        variant: ToastVariant::Success,
+        timeout: Some(3),
+        dismissible: true,
     }),
     action: None,
     visibility: None,
 }
 ```
 
-### Skeleton
+JSON output:
 
-Loading placeholder with configurable dimensions for content that is still loading.
+```json
+{ "key": "save-toast", "type": "Toast", "message": "Changes saved successfully.", "variant": "success", "timeout": 3, "dismissible": true }
+```
+
+---
+
+## Navigation Components
+
+### Sidebar
+
+Sidebar navigation shell with fixed top items, grouped items, and fixed bottom items. Typically used as a component inside a DashboardLayout. When used standalone it renders as a vertical navigation panel.
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `width` | `Option<String>` | No | `None` | CSS width (e.g., `"100%"`, `"200px"`) |
-| `height` | `Option<String>` | No | `None` | CSS height (e.g., `"40px"`) |
-| `rounded` | `Option<bool>` | No | `None` | Whether to use rounded corners |
+| `fixed_top` | `Vec<SidebarNavItem>` | No | `[]` | Items pinned at the top (e.g., logo/home link) |
+| `groups` | `Vec<SidebarGroup>` | No | `[]` | Collapsible navigation groups |
+| `fixed_bottom` | `Vec<SidebarNavItem>` | No | `[]` | Items pinned at the bottom (e.g., settings, logout) |
+
+**SidebarNavItem** defines a navigation link:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | `String` | Yes | Link text |
+| `href` | `String` | Yes | Link URL |
+| `icon` | `Option<String>` | No | Icon name |
+| `active` | `bool` | No (default: false) | Whether this is the current page |
+
+**SidebarGroup** defines a labeled, collapsible group:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | `String` | Yes | Group heading text |
+| `collapsed` | `bool` | No (default: false) | Whether the group starts collapsed |
+| `items` | `Vec<SidebarNavItem>` | Yes | Navigation links in this group |
 
 ```rust
 use ferro::*;
 
 ComponentNode {
-    key: "loading-placeholder".to_string(),
-    component: Component::Skeleton(SkeletonProps {
-        width: Some("100%".to_string()),
-        height: Some("40px".to_string()),
-        rounded: Some(true),
+    key: "sidebar".to_string(),
+    component: Component::Sidebar(SidebarProps {
+        fixed_top: vec![
+            SidebarNavItem { label: "Dashboard".to_string(), href: "/".to_string(), icon: Some("home".to_string()), active: true },
+        ],
+        groups: vec![
+            SidebarGroup {
+                label: "Management".to_string(),
+                collapsed: false,
+                items: vec![
+                    SidebarNavItem { label: "Users".to_string(), href: "/users".to_string(), icon: Some("users".to_string()), active: false },
+                    SidebarNavItem { label: "Orders".to_string(), href: "/orders".to_string(), icon: Some("shopping-bag".to_string()), active: false },
+                ],
+            },
+        ],
+        fixed_bottom: vec![
+            SidebarNavItem { label: "Settings".to_string(), href: "/settings".to_string(), icon: Some("cog".to_string()), active: false },
+        ],
     }),
     action: None,
     visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{
+  "key": "sidebar",
+  "type": "Sidebar",
+  "fixed_top": [{ "label": "Dashboard", "href": "/", "icon": "home", "active": true }],
+  "groups": [
+    {
+      "label": "Management",
+      "collapsed": false,
+      "items": [
+        { "label": "Users", "href": "/users", "icon": "users", "active": false },
+        { "label": "Orders", "href": "/orders", "icon": "shopping-bag", "active": false }
+      ]
+    }
+  ],
+  "fixed_bottom": [{ "label": "Settings", "href": "/settings", "icon": "cog", "active": false }]
+}
+```
+
+### Header
+
+Application header shell with business name, user info, notification count, and logout link. Typically used inside DashboardLayout.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `business_name` | `String` | Yes | - | Application name shown in the header |
+| `notification_count` | `Option<u32>` | No | `None` | Unread notification count for badge display |
+| `user_name` | `Option<String>` | No | `None` | Current user's name |
+| `user_avatar` | `Option<String>` | No | `None` | Current user's avatar URL |
+| `logout_url` | `Option<String>` | No | `None` | URL for the logout link |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "header".to_string(),
+    component: Component::Header(HeaderProps {
+        business_name: "My App".to_string(),
+        notification_count: Some(3),
+        user_name: Some("Alice Johnson".to_string()),
+        user_avatar: None,
+        logout_url: Some("/logout".to_string()),
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{
+  "key": "header",
+  "type": "Header",
+  "business_name": "My App",
+  "notification_count": 3,
+  "user_name": "Alice Johnson",
+  "logout_url": "/logout"
+}
+```
+
+### NotificationDropdown
+
+A dropdown list of notification items, typically rendered inside a Header. Displays a list of recent notifications with read/unread state, timestamps, and optional action URLs.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `notifications` | `Vec<NotificationItem>` | Yes | - | List of notifications |
+| `empty_text` | `Option<String>` | No | `None` | Text to show when the list is empty |
+
+**NotificationItem** defines a single notification:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `text` | `String` | Yes | Notification message |
+| `icon` | `Option<String>` | No | Icon name |
+| `timestamp` | `Option<String>` | No | Time string (e.g., "2 minutes ago") |
+| `read` | `bool` | No (default: false) | Whether the notification has been read |
+| `action_url` | `Option<String>` | No | URL to navigate to on click |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "notifications".to_string(),
+    component: Component::NotificationDropdown(NotificationDropdownProps {
+        notifications: vec![
+            NotificationItem {
+                icon: Some("bell".to_string()),
+                text: "New order received".to_string(),
+                timestamp: Some("5 minutes ago".to_string()),
+                read: false,
+                action_url: Some("/orders/123".to_string()),
+            },
+            NotificationItem {
+                icon: None,
+                text: "Payment processed".to_string(),
+                timestamp: Some("1 hour ago".to_string()),
+                read: true,
+                action_url: None,
+            },
+        ],
+        empty_text: Some("No new notifications".to_string()),
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+JSON output:
+
+```json
+{
+  "key": "notifications",
+  "type": "NotificationDropdown",
+  "empty_text": "No new notifications",
+  "notifications": [
+    { "icon": "bell", "text": "New order received", "timestamp": "5 minutes ago", "read": false, "action_url": "/orders/123" },
+    { "text": "Payment processed", "timestamp": "1 hour ago", "read": true }
+  ]
 }
 ```
 
 ---
 
-## Layout Components
+## Onboarding Components
 
-### Modal
+### Checklist
 
-Dialog overlay with title, content, footer, and trigger button.
+Step-by-step onboarding or task checklist with dismissal and optional server-side state persistence.
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `title` | `String` | Yes | - | Modal title |
-| `description` | `Option<String>` | No | `None` | Modal description |
-| `children` | `Vec<ComponentNode>` | No | `[]` | Content components inside the modal body |
-| `footer` | `Vec<ComponentNode>` | No | `[]` | Components in the modal footer |
-| `trigger_label` | `Option<String>` | No | `None` | Label for the trigger button |
+| `title` | `String` | Yes | - | Checklist title |
+| `items` | `Vec<ChecklistItem>` | Yes | - | Checklist items |
+| `dismissible` | `bool` | No | `true` | Whether the checklist can be dismissed |
+| `dismiss_label` | `Option<String>` | No | `None` | Custom dismiss button label |
+| `data_key` | `Option<String>` | No | `None` | Server-side state persistence key |
+
+**ChecklistItem** defines a checklist step:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | `String` | Yes | Step description |
+| `checked` | `bool` | No (default: false) | Whether this step is complete |
+| `href` | `Option<String>` | No | Link to take the step |
 
 ```rust
 use ferro::*;
 
 ComponentNode {
-    key: "delete-modal".to_string(),
-    component: Component::Modal(ModalProps {
-        title: "Delete Item".to_string(),
-        description: Some("This action cannot be undone.".to_string()),
-        children: vec![
-            ComponentNode {
-                key: "confirm-text".to_string(),
-                component: Component::Text(TextProps {
-                    content: "Are you sure you want to delete this item?".to_string(),
-                    element: TextElement::P,
-                }),
-                action: None,
-                visibility: None,
-            },
+    key: "setup-checklist".to_string(),
+    component: Component::Checklist(ChecklistProps {
+        title: "Get Started".to_string(),
+        items: vec![
+            ChecklistItem { label: "Create your account".to_string(), checked: true, href: None },
+            ChecklistItem { label: "Set up billing".to_string(), checked: false, href: Some("/billing".to_string()) },
+            ChecklistItem { label: "Invite your team".to_string(), checked: false, href: Some("/team/invite".to_string()) },
         ],
-        footer: vec![
-            ComponentNode {
-                key: "cancel-btn".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Cancel".to_string(),
-                    variant: ButtonVariant::Outline,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                }),
-                action: None,
-                visibility: None,
-            },
-            ComponentNode {
-                key: "delete-btn".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Delete".to_string(),
-                    variant: ButtonVariant::Destructive,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                }),
-                action: Some(Action::delete("items.destroy")
-                    .confirm_danger("Confirm deletion")),
-                visibility: None,
-            },
-        ],
-        trigger_label: Some("Delete".to_string()),
+        dismissible: true,
+        dismiss_label: Some("Done".to_string()),
+        data_key: Some("onboarding_checklist".to_string()),
     }),
     action: None,
     visibility: None,
 }
 ```
 
+JSON output:
+
+```json
+{
+  "key": "setup-checklist",
+  "type": "Checklist",
+  "title": "Get Started",
+  "dismissible": true,
+  "dismiss_label": "Done",
+  "data_key": "onboarding_checklist",
+  "items": [
+    { "label": "Create your account", "checked": true },
+    { "label": "Set up billing", "checked": false, "href": "/billing" },
+    { "label": "Invite your team", "checked": false, "href": "/team/invite" }
+  ]
+}
+```
+
 ---
 
-## JSON Output
+## Extensible Components
+
+### Plugin
+
+Passes through to a registered plugin component. The `plugin_type` field selects the plugin from the global registry.
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `plugin_type` | `String` | Yes | Registered plugin type name (e.g., `"Map"`) |
+| `props` | `serde_json::Value` | Yes | Raw props passed to the plugin's render function |
+
+```rust
+use ferro::*;
+
+ComponentNode {
+    key: "office-map".to_string(),
+    component: Component::Plugin(PluginProps {
+        plugin_type: "Map".to_string(),
+        props: serde_json::json!({
+            "center": [51.505, -0.09],
+            "zoom": 13,
+            "markers": [
+                { "lat": 51.505, "lng": -0.09, "popup": "Our office" }
+            ]
+        }),
+    }),
+    action: None,
+    visibility: None,
+}
+```
+
+See **[Plugins](plugins.md)** for the full plugin guide — how to build, register, and use custom plugin components.
+
+JSON output:
+
+```json
+{
+  "key": "office-map",
+  "type": "Map",
+  "center": [51.505, -0.09],
+  "zoom": 13,
+  "markers": [{ "lat": 51.505, "lng": -0.09, "popup": "Our office" }]
+}
+```
+
+---
+
+## JSON Serialization
 
 Every component tree serializes to JSON via serde. The `Component` enum uses serde's tagged representation, producing a `"type"` field that identifies the component:
 
@@ -959,9 +1418,10 @@ Every component tree serializes to JSON via serde. The `Component` enum uses ser
       "content": "Hello, Alice!",
       "element": "h2"
     }
-  ],
-  "footer": []
+  ]
 }
 ```
 
 The `ComponentNode` fields (`key`, `action`, `visibility`) are flattened into the same JSON object alongside the component-specific props. This produces clean, predictable JSON that frontend renderers can consume directly.
+
+Optional fields with `None` values are omitted from serialization (`skip_serializing_if = "Option::is_none"`). Default values for enums (e.g., `ButtonVariant::Default`) are always included.

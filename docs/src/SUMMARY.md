@@ -45,6 +45,7 @@
 - [Actions](json-ui/actions.md)
 - [Data Binding & Visibility](json-ui/data-binding.md)
 - [Layouts](json-ui/layouts.md)
+- [Plugins](json-ui/plugins.md)
 
 # Reference
 
