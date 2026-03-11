@@ -29,6 +29,8 @@ pub mod config;
 pub mod connect;
 pub mod error;
 pub mod subscription;
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod testing;
 pub mod webhook;
 
 pub use client::Stripe;
