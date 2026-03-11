@@ -84,6 +84,8 @@ mod tests {
             slug: format!("tenant-{id}"),
             name: format!("Tenant {id}"),
             plan: None,
+            #[cfg(feature = "stripe")]
+            subscription: None,
         }
     }
 

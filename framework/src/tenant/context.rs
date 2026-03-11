@@ -70,6 +70,8 @@ mod tests {
             slug: "acme".to_string(),
             name: "ACME Corp".to_string(),
             plan: Some("pro".to_string()),
+            #[cfg(feature = "stripe")]
+            subscription: None,
         }
     }
 
@@ -90,6 +92,8 @@ mod tests {
             slug: "beta-corp".to_string(),
             name: "Beta Corp".to_string(),
             plan: None,
+            #[cfg(feature = "stripe")]
+            subscription: None,
         };
         let json = serde_json::to_value(&tc).unwrap();
         assert_eq!(json["id"], 42);

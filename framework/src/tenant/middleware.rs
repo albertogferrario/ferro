@@ -121,6 +121,8 @@ mod tests {
             slug: slug.to_string(),
             name: "Test Corp".to_string(),
             plan: None,
+            #[cfg(feature = "stripe")]
+            subscription: None,
         }
     }
 

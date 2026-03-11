@@ -1782,6 +1782,7 @@ dependencies = [
  "ferro-projections",
  "ferro-queue",
  "ferro-storage",
+ "ferro-stripe",
  "form_urlencoded",
  "futures-util",
  "http 1.4.0",

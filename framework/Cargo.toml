@@ -15,6 +15,7 @@ default = ["inertia"]
 inertia = ["dep:ferro-inertia"]
 json-ui = ["dep:ferro-json-ui"]
 projections = ["dep:ferro-projections"]
+stripe = ["dep:ferro-stripe"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -38,6 +39,7 @@ ferro-lang = { path = "../ferro-lang", version = "0.1" }
 ferro-inertia = { path = "../ferro-inertia", version = "0.1", optional = true }
 ferro-json-ui = { path = "../ferro-json-ui", version = "0.1", optional = true }
 ferro-projections = { path = "../ferro-projections", version = "0.1", optional = true }
+ferro-stripe = { path = "../ferro-stripe", version = "0.1", optional = true }
 dotenvy = "0.15"
 inventory = "0.3"
 sea-orm = { version = "1.0", features = ["sqlx-postgres", "sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }

@@ -23,6 +23,12 @@ pub trait TenantLookup: Send + Sync {
 
     /// Find a tenant by numeric ID.
     async fn find_by_id(&self, id: i64) -> Option<TenantContext>;
+
+    /// Evict both slug and id cache entries for a tenant.
+    ///
+    /// Default implementation is a no-op. Override in caching implementations
+    /// to invalidate stale entries after billing state changes (e.g. Stripe webhooks).
+    fn invalidate(&self, _slug: &str, _id: i64) {}
 }
 
 type SlugFinder = Arc<
@@ -113,6 +119,15 @@ impl TenantLookup for DbTenantLookup {
         }
         result
     }
+
+    /// Evict both slug and id cache entries for the given tenant.
+    ///
+    /// Call this after receiving a Stripe webhook that updates subscription state
+    /// so the next request re-fetches fresh billing data from the database.
+    fn invalidate(&self, slug: &str, id: i64) {
+        self.cache.invalidate(&slug.to_string());
+        self.cache.invalidate(&id.to_string());
+    }
 }
 
 #[cfg(test)]
@@ -126,6 +141,8 @@ mod tests {
             slug: slug.to_string(),
             name: "Test Corp".to_string(),
             plan: None,
+            #[cfg(feature = "stripe")]
+            subscription: None,
         }
     }
 
@@ -209,5 +226,76 @@ mod tests {
         ));
         let result = lookup.find_by_slug("test").await;
         assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn invalidate_evicts_slug_and_id_cache_entries() {
+        let call_count = Arc::new(AtomicU32::new(0));
+        let call_count_clone = call_count.clone();
+
+        let lookup = DbTenantLookup::new(
+            move |slug| {
+                let count = call_count_clone.clone();
+                Box::pin(async move {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    if slug == "acme" {
+                        Some(make_tenant("acme"))
+                    } else {
+                        None
+                    }
+                })
+            },
+            |id| {
+                Box::pin(async move {
+                    if id == 1 {
+                        Some(make_tenant("acme"))
+                    } else {
+                        None
+                    }
+                })
+            },
+        );
+
+        // Prime the slug cache.
+        let first = lookup.find_by_slug("acme").await;
+        assert!(first.is_some());
+        assert_eq!(call_count.load(Ordering::SeqCst), 1, "finder called once");
+
+        // Second call hits cache — finder NOT called again.
+        let second = lookup.find_by_slug("acme").await;
+        assert!(second.is_some());
+        assert_eq!(call_count.load(Ordering::SeqCst), 1, "cache hit");
+
+        // Invalidate slug cache.
+        lookup.invalidate("acme", 1);
+
+        // After invalidation, next lookup misses cache and calls finder again.
+        let third = lookup.find_by_slug("acme").await;
+        assert!(third.is_some());
+        assert_eq!(
+            call_count.load(Ordering::SeqCst),
+            2,
+            "finder called again after invalidation"
+        );
+    }
+
+    #[test]
+    fn default_invalidate_is_noop() {
+        // TenantLookup trait default implementation is a no-op for types that don't cache.
+        struct NoCacheLookup;
+
+        #[async_trait]
+        impl TenantLookup for NoCacheLookup {
+            async fn find_by_slug(&self, _slug: &str) -> Option<TenantContext> {
+                None
+            }
+            async fn find_by_id(&self, _id: i64) -> Option<TenantContext> {
+                None
+            }
+        }
+
+        // Should not panic or error.
+        let lookup = NoCacheLookup;
+        lookup.invalidate("acme", 1);
     }
 }
