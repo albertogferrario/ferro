@@ -614,7 +614,7 @@ Plans:
 **Goal:** Add `ferro-stripe` crate with two-tier billing (platform SaaS subscriptions + Stripe Connect), webhook handling via ferro-events, TenantContext enrichment with SubscriptionInfo, RequiresPlan middleware, CLI scaffolding, MCP tools, and documentation.
 **Requirements**: [STRIPE-01, STRIPE-02, STRIPE-03, STRIPE-04, STRIPE-05, STRIPE-06, STRIPE-07, STRIPE-08, STRIPE-09, STRIPE-10, STRIPE-11, STRIPE-12, STRIPE-13]
 **Depends on:** Phase 95
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 - [ ] 96-01-PLAN.md — ferro-stripe crate foundation: types (SubscriptionInfo, SubscriptionStatus, Error), Stripe client facade, checkout/billing portal/Connect functions

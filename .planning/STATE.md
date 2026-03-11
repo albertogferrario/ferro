@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
-status: verifying
-stopped_at: Completed 96-04-PLAN.md
-last_updated: "2026-03-11T03:36:46.134Z"
-last_activity: 2026-03-11 — Phase 96-03 executed (2 tasks)
+status: completed
+stopped_at: Completed 96-05-PLAN.md
+last_updated: "2026-03-11T03:49:22.888Z"
+last_activity: 2026-03-11 — Phase 96-05 executed (2 tasks)
 progress:
   total_phases: 17
   completed_phases: 13
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 96 (Stripe Integration) — In Progress
-Plan: 4 of 6 complete
-Status: Phase 96 Plan 04 complete — Test helpers for ferro-stripe
-Last activity: 2026-03-11 — Phase 96-04 executed (1 task)
+Plan: 5 of 6 complete
+Status: Phase 96 Plan 05 complete — CLI scaffolding and MCP introspection for Stripe
+Last activity: 2026-03-11 — Phase 96-05 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -319,6 +319,12 @@ Archived to PROJECT.md and milestone archive files.
 - signed_webhook_payload re-exported from testing module via pub use — single source of truth
 - Event fixture JSON uses complete Stripe envelope structure — passes verify_webhook round-trip
 
+**Phase 96-05:**
+- Generated webhook handlers dispatch via dispatch_job (not dispatch_event) per Phase 96-03 locked decision
+- write_if_not_exists prevents overwriting user-modified scaffold files (same pattern as make_auth)
+- MCP tools scan source files via regex: Listener<Event> impl blocks in listeners.rs, SQL from execute_unprepared() in migration files
+- Optional Stripe env vars (STRIPE_CONNECT_WEBHOOK_SECRET, etc.) tracked as present-if-set but not as missing (only required keys generate missing entries)
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -339,6 +345,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T03:36:46.119Z
-Stopped at: Completed 96-04-PLAN.md
+Last session: 2026-03-11T03:49:22.883Z
+Stopped at: Completed 96-05-PLAN.md
 Resume file: None
