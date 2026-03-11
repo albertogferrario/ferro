@@ -13,10 +13,12 @@
 
 pub mod context;
 pub mod lookup;
+pub mod middleware;
 pub mod resolver;
 
 pub use context::current_tenant;
 pub use lookup::{DbTenantLookup, TenantLookup};
+pub use middleware::TenantMiddleware;
 pub use resolver::TenantResolver;
 
 /// Core data for the resolved tenant.

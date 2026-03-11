@@ -3,6 +3,7 @@ use bytes::Bytes;
 use http_body_util::Full;
 
 /// HTTP Response builder providing Laravel-like response creation
+#[derive(Debug)]
 pub struct HttpResponse {
     status: u16,
     body: Bytes,
