@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 98-02-PLAN.md
-last_updated: "2026-03-11T16:30:10.762Z"
-last_activity: 2026-03-11 — Phase 98-01 executed (2 tasks)
+stopped_at: Completed 98-03-PLAN.md
+last_updated: "2026-03-11T16:50:48.583Z"
+last_activity: 2026-03-11 — Phase 98-02 executed (2 tasks)
 progress:
   total_phases: 16
   completed_phases: 15
   total_plans: 48
-  completed_plans: 45
+  completed_plans: 46
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 98 (ferro-json-ui Stable Release) — In Progress
-Plan: 2 of 5 complete
-Status: Phase 98 Plan 02 complete — DashboardLayout with persistent sidebar/header shell, FERRO_RUNTIME_JS (~5KB IIFE for SSE/toast/live-value/checklist/dropdown/mobile-toggle), 317 unit tests
-Last activity: 2026-03-11 — Phase 98-02 executed (2 tasks)
+Plan: 3 of 5 complete
+Status: Phase 98 Plan 03 complete — API surface audit, schemars JsonSchema on 40+ types, internal helpers demoted to pub(crate), framework re-exports updated with Plan 01/02 types
+Last activity: 2026-03-11 — Phase 98-03 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -365,6 +365,12 @@ Archived to PROJECT.md and milestone archive files.
 - base_document_ext added alongside base_document to inject optional body data attributes (data-sse-url) without changing the shared helper signature
 - Test for 'no SSE URL on body' checks the body opening tag only — data-sse-url also appears as string literal inside the embedded JS runtime source
 
+**Phase 98-03:**
+- JsonSchema derives on leaf types only; types containing Component via flatten excluded (Component has custom serde — derive won't match actual shape)
+- ComponentNode, CardProps, FormProps, ModalProps, Tab, TabsProps, JsonUiView all skip JsonSchema because they transitively contain Component
+- resolve_path and resolve_path_string doctests removed when demoted to pub(crate) — external API examples must not reference crate-private items
+- AppLayout/AuthLayout/DefaultLayout remain pub in layout.rs for framework internal use but removed from lib.rs top-level re-exports
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -385,6 +391,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-11T16:30:10.758Z
-Stopped at: Completed 98-02-PLAN.md
+Last session: 2026-03-11T16:50:48.580Z
+Stopped at: Completed 98-03-PLAN.md
 Resume file: None
