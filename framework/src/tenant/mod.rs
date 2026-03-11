@@ -19,7 +19,9 @@ pub mod resolver;
 pub use context::current_tenant;
 pub use lookup::{DbTenantLookup, TenantLookup};
 pub use middleware::TenantMiddleware;
-pub use resolver::TenantResolver;
+pub use resolver::{
+    HeaderResolver, JwtClaimResolver, PathResolver, SubdomainResolver, TenantResolver,
+};
 
 /// Core data for the resolved tenant.
 ///
