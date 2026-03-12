@@ -143,9 +143,9 @@ fn base_document_ext(
 /// Render a sidebar nav item for the layout shell.
 fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
     let classes = if item.active {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-blue-600"
+        "flex items-center gap-2 px-3 py-2 rounded-radius-md text-sm font-medium bg-card text-primary"
     } else {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+        "flex items-center gap-2 px-3 py-2 rounded-radius-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface"
     };
     let mut html = format!(
         "<a href=\"{}\" class=\"{}\">",
@@ -171,7 +171,7 @@ fn layout_sidebar_group(group: &SidebarGroup) -> String {
     }
     html.push('>');
     html.push_str(&format!(
-        "<p class=\"px-2 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider\">{}</p>",
+        "<p class=\"px-2 py-1 text-xs font-semibold text-text-muted uppercase tracking-wider\">{}</p>",
         html_escape(&group.label)
     ));
     html.push_str("<nav class=\"space-y-1\">");
@@ -186,7 +186,7 @@ fn layout_sidebar_group(group: &SidebarGroup) -> String {
 fn layout_sidebar_html(props: &SidebarProps) -> String {
     let mut html = String::from(
         "<aside data-sidebar class=\"fixed inset-y-0 left-0 z-40 w-64 flex flex-col \
-         bg-white border-r border-gray-200 hidden md:flex\">",
+         bg-background border-r border-border hidden md:flex\">",
     );
     if !props.fixed_top.is_empty() {
         html.push_str("<nav class=\"p-4 space-y-1\">");
@@ -203,7 +203,7 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
         html.push_str("</div>");
     }
     if !props.fixed_bottom.is_empty() {
-        html.push_str("<nav class=\"p-4 space-y-1 border-t border-gray-200\">");
+        html.push_str("<nav class=\"p-4 space-y-1 border-t border-border\">");
         for item in &props.fixed_bottom {
             html.push_str(&layout_sidebar_nav_item(item));
         }
@@ -217,19 +217,19 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
 fn layout_header_html(props: &HeaderProps) -> String {
     let mut html = String::from(
         "<header class=\"sticky top-0 z-30 flex items-center justify-between \
-         px-4 py-3 bg-white border-b border-gray-200 md:pl-72\">",
+         px-4 py-3 bg-background border-b border-border md:pl-72\">",
     );
     // Mobile hamburger button — visible only on small screens.
     html.push_str(
-        "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-md text-gray-500 \
-         hover:text-gray-700 hover:bg-gray-100\" aria-label=\"Toggle sidebar\">\
+        "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-radius-md text-text-muted \
+         hover:text-text hover:bg-surface\" aria-label=\"Toggle sidebar\">\
          <svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
          <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
          d=\"M4 6h16M4 12h16M4 18h16\"/></svg></button>",
     );
     // Business name.
     html.push_str(&format!(
-        "<span class=\"text-lg font-semibold text-gray-900\">{}</span>",
+        "<span class=\"text-lg font-semibold text-text\">{}</span>",
         html_escape(&props.business_name)
     ));
     html.push_str("<div class=\"flex items-center gap-4\">");
@@ -238,16 +238,16 @@ fn layout_header_html(props: &HeaderProps) -> String {
     if let Some(count) = props.notification_count {
         if count > 0 {
             html.push_str(&format!(
-                "<button data-notification-toggle class=\"relative p-2 text-gray-500 hover:text-gray-700\">\
+                "<button data-notification-toggle class=\"relative p-2 text-text-muted hover:text-text\">\
                  <svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
                  <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
                  d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/></svg>\
                  <span class=\"absolute top-1 right-1 inline-flex items-center justify-center h-4 w-4 \
-                 text-xs font-bold text-white bg-red-500 rounded-full\">{count}</span></button>",
+                 text-xs font-bold text-primary-foreground bg-destructive rounded-radius-full\">{count}</span></button>",
             ));
         } else {
             html.push_str(
-                "<button data-notification-toggle class=\"p-2 text-gray-500 hover:text-gray-700\">\
+                "<button data-notification-toggle class=\"p-2 text-text-muted hover:text-text\">\
                  <svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
                  <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
                  d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/></svg></button>",
@@ -256,13 +256,13 @@ fn layout_header_html(props: &HeaderProps) -> String {
     }
     html.push_str(
         "<div data-notification-dropdown class=\"hidden absolute right-0 top-full mt-1 w-80 \
-         bg-white rounded-lg shadow-lg border border-gray-200 z-50\"></div></div>",
+         bg-background rounded-radius-lg shadow-shadow-lg border border-border z-50\"></div></div>",
     );
     // User section.
     html.push_str("<div class=\"flex items-center gap-2\">");
     if let Some(ref avatar) = props.user_avatar {
         html.push_str(&format!(
-            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-full object-cover\">",
+            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-radius-full object-cover\">",
             html_escape(avatar)
         ));
     } else if let Some(ref name) = props.user_name {
@@ -272,18 +272,18 @@ fn layout_header_html(props: &HeaderProps) -> String {
             .take(2)
             .collect();
         html.push_str(&format!(
-            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-full \
-             bg-gray-200 text-gray-600 text-sm font-medium\">{}</span>",
+            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-radius-full \
+             bg-card text-text-muted text-sm font-medium\">{}</span>",
             html_escape(&initials)
         ));
         html.push_str(&format!(
-            "<span class=\"text-sm text-gray-700\">{}</span>",
+            "<span class=\"text-sm text-text\">{}</span>",
             html_escape(name)
         ));
     }
     if let Some(ref logout) = props.logout_url {
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"text-sm text-gray-500 hover:text-gray-700\">Logout</a>",
+            "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text\">Logout</a>",
             html_escape(logout)
         ));
     }
@@ -353,7 +353,7 @@ impl Layout for AuthLayout {
         let body = format!(
             r#"<div class="min-h-screen flex items-center justify-center">
         <div class="w-full max-w-md">
-            <div class="bg-white rounded-lg shadow-md p-8">
+            <div class="bg-background rounded-radius-lg shadow-shadow-md p-8">
                 {wrapper}
             </div>
         </div>
@@ -417,13 +417,13 @@ impl SidebarSection {
 /// are highlighted with blue text and medium font weight.
 pub fn navigation(items: &[NavItem]) -> String {
     let mut html =
-        String::from("<nav class=\"bg-white border-b border-gray-200 px-4 py-3\"><div class=\"flex items-center space-x-6\">");
+        String::from("<nav class=\"bg-background border-b border-border px-4 py-3\"><div class=\"flex items-center space-x-6\">");
 
     for item in items {
         let class = if item.active {
-            "text-blue-600 font-medium"
+            "text-primary font-medium"
         } else {
-            "text-gray-600 hover:text-gray-900"
+            "text-text-muted hover:text-text"
         };
         html.push_str(&format!(
             "<a href=\"{}\" class=\"{}\">{}</a>",
@@ -443,20 +443,20 @@ pub fn navigation(items: &[NavItem]) -> String {
 /// and a list of navigation links.
 pub fn sidebar(sections: &[SidebarSection]) -> String {
     let mut html =
-        String::from("<aside class=\"w-64 bg-gray-50 border-r border-gray-200 p-4 min-h-screen\">");
+        String::from("<aside class=\"w-64 bg-surface border-r border-border p-4 min-h-screen\">");
 
     for section in sections {
         html.push_str("<div class=\"mb-6\">");
         html.push_str(&format!(
-            "<h3 class=\"text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2\">{}</h3>",
+            "<h3 class=\"text-xs font-semibold text-text-muted uppercase tracking-wider mb-2\">{}</h3>",
             html_escape(&section.title),
         ));
         html.push_str("<ul class=\"space-y-1\">");
         for item in &section.items {
             let class = if item.active {
-                "text-blue-600 font-medium"
+                "text-primary font-medium"
             } else {
-                "text-gray-600 hover:text-gray-900"
+                "text-text-muted hover:text-text"
             };
             html.push_str(&format!(
                 "<li><a href=\"{}\" class=\"block px-2 py-1 text-sm {}\">{}</a></li>",
@@ -477,7 +477,7 @@ pub fn sidebar(sections: &[SidebarSection]) -> String {
 /// Produces a `<footer>` element with centered text.
 pub fn footer(text: &str) -> String {
     format!(
-        "<footer class=\"border-t border-gray-200 px-4 py-3 text-center text-sm text-gray-500\">{}</footer>",
+        "<footer class=\"border-t border-border px-4 py-3 text-center text-sm text-text-muted\">{}</footer>",
         html_escape(text),
     )
 }
@@ -589,7 +589,7 @@ impl Layout for DashboardLayout {
         );
 
         let body_class = if ctx.body_class.is_empty() {
-            "bg-gray-50"
+            "bg-surface"
         } else {
             ctx.body_class
         };
@@ -702,7 +702,7 @@ mod tests {
             title: "Test Page",
             content: "<p>Hello</p>",
             head: "<link rel=\"stylesheet\" href=\"/style.css\">",
-            body_class: "bg-white",
+            body_class: "bg-background",
             view_json: "{\"schema\":\"v1\"}",
             data_json: "{\"key\":\"value\"}",
             scripts: "",
@@ -747,7 +747,7 @@ mod tests {
         assert!(html.contains("<!DOCTYPE html>"));
         assert!(html.contains("<title>Test Page</title>"));
         assert!(html.contains("href=\"/style.css\""));
-        assert!(html.contains("class=\"bg-white\""));
+        assert!(html.contains("class=\"bg-background\""));
         assert!(html.contains("id=\"ferro-json-ui\""));
         assert!(html.contains("data-view=\""));
         assert!(html.contains("data-props=\""));
@@ -791,7 +791,7 @@ mod tests {
 
         assert!(html.contains("flex items-center justify-center"));
         assert!(html.contains("max-w-md"));
-        assert!(html.contains("rounded-lg shadow-md"));
+        assert!(html.contains("rounded-radius-lg shadow-shadow-md"));
         assert!(html.contains("<div id=\"ferro-json-ui\""));
     }
 
@@ -925,7 +925,7 @@ mod tests {
         assert!(html.contains("href=\"/users\""));
         assert!(html.contains(">Users</a>"));
         // Both should be inactive
-        assert!(html.contains("text-gray-600 hover:text-gray-900"));
+        assert!(html.contains("text-text-muted hover:text-text"));
     }
 
     #[test]
@@ -935,7 +935,7 @@ mod tests {
             NavItem::new("Users", "/users"),
         ];
         let html = navigation(&items);
-        assert!(html.contains("text-blue-600 font-medium"));
+        assert!(html.contains("text-primary font-medium"));
     }
 
     #[test]
@@ -1172,7 +1172,7 @@ mod tests {
     fn dashboard_layout_uses_default_body_class() {
         let ctx = test_ctx();
         let html = dashboard_layout().render(&ctx);
-        // body_class from test_ctx is "bg-white" — should be preserved
-        assert!(html.contains("class=\"bg-white\""));
+        // body_class from test_ctx is "bg-background" — should be preserved
+        assert!(html.contains("class=\"bg-background\""));
     }
 }

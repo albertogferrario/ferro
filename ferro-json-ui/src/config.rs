@@ -12,7 +12,7 @@
 ///
 /// let config = JsonUiConfig::new()
 ///     .tailwind_cdn(false)
-///     .body_class("bg-gray-50 text-gray-800");
+///     .body_class("bg-surface text-text");
 /// ```
 #[derive(Debug, Clone, schemars::JsonSchema)]
 pub struct JsonUiConfig {
@@ -29,7 +29,7 @@ impl Default for JsonUiConfig {
         Self {
             tailwind_cdn: true,
             custom_head: None,
-            body_class: "bg-white text-gray-900".to_string(),
+            body_class: "bg-background text-text".to_string(),
         }
     }
 }
