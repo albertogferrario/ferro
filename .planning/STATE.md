@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 99 context gathered
-last_updated: "2026-03-12T02:09:27.891Z"
-last_activity: 2026-03-11 — Phase 98-05 executed (2 tasks)
+stopped_at: "Completed 99-01-PLAN.md (ferro-theme crate)"
+last_updated: "2026-03-12T02:57:00.000Z"
+last_activity: 2026-03-12 — Phase 99-01 executed (1 task)
 progress:
   total_phases: 17
   completed_phases: 16
-  total_plans: 48
-  completed_plans: 48
+  total_plans: 53
+  completed_plans: 49
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 98 (ferro-json-ui Stable Release) — COMPLETE
-Plan: 5 of 5 complete
-Status: Phase 98 Plan 05 complete — comprehensive docs: 26-component catalog, plugin guide, DashboardLayout docs, clean rustdoc
-Last activity: 2026-03-11 — Phase 98-05 executed (2 tasks)
+Phase: 99 (Semantic Theme System with Intent-Driven Templates) — In Progress
+Plan: 1 of 5 complete
+Status: Phase 99 Plan 01 complete — ferro-theme crate with semantic token vocabulary, embedded default CSS, ThemeTemplates schema
+Last activity: 2026-03-12 — Phase 99-01 executed (1 task)
 
 ## Milestone Summary
 
@@ -382,6 +382,12 @@ Archived to PROJECT.md and milestone archive files.
 - plugins.md as standalone guide: trait API first, then registration, usage, asset injection, then examples and built-ins
 - layouts.md removed AppLayout/AuthLayout from user-facing section (they are framework-internal); users access via name string only
 - getting-started.md updated to use ComponentNode convenience constructors (stat_card, card, table) and 'dashboard' layout
+
+**Phase 99-01:**
+- thiserror = "2" for ferro-theme (matching ferro-lang/ferro-stripe convention for new leaf crates)
+- 23 semantic token slots in ferro-theme/v1: 6 surface + 8 role + 4 radius + 3 shadow + 2 typography
+- ThemeTemplates uses #[serde(default)] on all 7 Option fields for partial JSON override support
+- Theme::from_path() treats missing theme.json as empty ThemeTemplates (not an error)
 
 ### Roadmap Evolution
 
