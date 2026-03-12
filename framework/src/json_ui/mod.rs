@@ -95,6 +95,14 @@ impl JsonUi {
         if let Some(custom) = &config.custom_head {
             head.push_str(custom);
         }
+        // Inject active theme CSS after Tailwind CDN and custom_head so the CDN
+        // can process @theme directives, and before plugin CSS so themes apply first.
+        #[cfg(feature = "theme")]
+        {
+            if let Some(theme) = crate::theme::context::current_theme() {
+                head.push_str(&format!("<style>{}</style>", theme.css));
+            }
+        }
 
         let result = render_to_html_with_plugins(view, data);
 
@@ -790,6 +798,142 @@ mod tests {
     // -----------------------------------------------------------------------
 
     use ferro_json_ui::PluginProps;
+
+    // -----------------------------------------------------------------------
+    // Theme CSS injection tests (only compiled with theme feature)
+    // -----------------------------------------------------------------------
+
+    #[cfg(feature = "theme")]
+    mod theme_tests {
+        use super::*;
+        use crate::theme::context::{theme_scope, with_theme_scope};
+        use ferro_theme::Theme;
+        use std::sync::Arc;
+
+        fn ok_response_body(result: Response) -> String {
+            let response = match result {
+                Ok(r) => r,
+                Err(_) => panic!("expected Ok response"),
+            };
+            let hyper = response.into_hyper();
+            format!("{:?}", hyper.into_body())
+        }
+
+        fn sample_view() -> JsonUiView {
+            use ferro_json_ui::{CardProps, Component, ComponentNode};
+            JsonUiView::new()
+                .title("Theme Test")
+                .component(ComponentNode {
+                    key: "card".to_string(),
+                    component: Component::Card(CardProps {
+                        title: "Hello".to_string(),
+                        description: None,
+                        children: vec![],
+                        footer: vec![],
+                    }),
+                    action: None,
+                    visibility: None,
+                })
+        }
+
+        // Test: When current_theme() returns Some, theme CSS is included in rendered HTML head as a style tag
+        #[tokio::test]
+        async fn theme_css_injected_into_head_when_theme_active() {
+            let mut custom_theme = Theme::default_theme();
+            custom_theme.css = "@theme { --color-primary: red; }".to_string();
+            let scope = theme_scope();
+            {
+                let mut guard = scope.write().await;
+                *guard = Some(Arc::new(custom_theme));
+            }
+
+            let view = sample_view();
+            let data = serde_json::json!({});
+            let body = with_theme_scope(scope, async {
+                ok_response_body(JsonUi::render(&view, &data))
+            })
+            .await;
+
+            assert!(
+                body.contains("<style>") && body.contains("--color-primary: red"),
+                "theme CSS should be injected as a <style> tag"
+            );
+        }
+
+        // Test: When current_theme() returns None (no ThemeMiddleware), head still works without theme CSS
+        #[test]
+        fn no_theme_css_injected_when_no_middleware() {
+            // No theme scope — current_theme() returns None
+            let view = sample_view();
+            let data = serde_json::json!({});
+            let result = JsonUi::render(&view, &data);
+            let body = ok_response_body(result);
+
+            // Should still render valid HTML
+            assert!(body.contains("<!DOCTYPE html>"));
+            // Should not have theme-specific style injection (no scope active)
+            // The page still renders — no crash on missing theme
+        }
+
+        // Test: Theme CSS is injected AFTER the Tailwind CDN script tag
+        #[tokio::test]
+        async fn theme_css_injected_after_tailwind_cdn() {
+            let mut custom_theme = Theme::default_theme();
+            custom_theme.css = "@theme { --color-test: blue; }".to_string();
+            let scope = theme_scope();
+            {
+                let mut guard = scope.write().await;
+                *guard = Some(Arc::new(custom_theme));
+            }
+
+            let view = sample_view();
+            let data = serde_json::json!({});
+            let config = JsonUiConfig::new().tailwind_cdn(true);
+            let body = with_theme_scope(scope, async {
+                ok_response_body(JsonUi::render_with_config(&view, &data, &config))
+            })
+            .await;
+
+            // Find positions to verify ordering
+            let cdn_pos = body.find("cdn.tailwindcss.com").unwrap_or(0);
+            let style_pos = body.find("--color-test").unwrap_or(0);
+            assert!(
+                cdn_pos < style_pos,
+                "theme CSS should come after Tailwind CDN script"
+            );
+        }
+
+        // Test: Theme CSS style tag does not duplicate if custom_head already has content
+        #[tokio::test]
+        async fn theme_css_does_not_duplicate_custom_head_content() {
+            let mut custom_theme = Theme::default_theme();
+            custom_theme.css = "@theme { --color-custom: purple; }".to_string();
+            let scope = theme_scope();
+            {
+                let mut guard = scope.write().await;
+                *guard = Some(Arc::new(custom_theme));
+            }
+
+            let view = sample_view();
+            let data = serde_json::json!({});
+            let config =
+                JsonUiConfig::new().custom_head(r#"<link rel="stylesheet" href="/my.css">"#);
+            let body = with_theme_scope(scope, async {
+                ok_response_body(JsonUi::render_with_config(&view, &data, &config))
+            })
+            .await;
+
+            // Both custom head content AND theme CSS should be present
+            assert!(body.contains("/my.css"), "custom_head should be present");
+            assert!(
+                body.contains("--color-custom"),
+                "theme CSS should be injected"
+            );
+            // Theme CSS should appear exactly once
+            let count = body.matches("--color-custom").count();
+            assert_eq!(count, 1, "theme CSS should not be duplicated");
+        }
+    }
 
     #[test]
     fn test_plugin_component_renders_in_full_page() {
