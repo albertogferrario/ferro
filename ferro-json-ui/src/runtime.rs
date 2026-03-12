@@ -27,6 +27,9 @@
 ///   checked (same as `data-dismissible` checklist behavior).
 /// - `data-notification-toggle` — Button that toggles `data-notification-dropdown`.
 /// - `data-notification-dropdown` — Dropdown panel shown/hidden by toggle.
+/// - `data-tabs` — Tab container. Scopes trigger/panel discovery.
+/// - `data-tab="value"` — Tab trigger button. Clicked to switch panels.
+/// - `data-tab-panel="value"` — Tab content panel. Shown/hidden by matching trigger.
 /// - `data-sidebar-toggle` — Hamburger button that toggles `data-sidebar` on mobile.
 /// - `data-sidebar` — Sidebar element toggled for mobile display.
 pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
@@ -55,6 +58,11 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         }
         if (data && data.toast) {
             showToast(data.toast);
+        }
+        if (data && data.reload_kanban) {
+            if (window.location.pathname.indexOf('/cassa/ordini') !== -1) {
+                window.location.reload();
+            }
         }
     }
 
@@ -210,6 +218,53 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         });
     }
 
+    // ── Tab switching ──────────────────────────────────────────────────────
+
+    function initTabs() {
+        var containers = document.querySelectorAll('[data-tabs]');
+        for (var i = 0; i < containers.length; i++) {
+            initTabContainer(containers[i]);
+        }
+    }
+
+    function initTabContainer(container) {
+        var triggers = container.querySelectorAll('[data-tab]');
+        var panels = container.querySelectorAll('[data-tab-panel]');
+        if (triggers.length === 0) return;
+
+        for (var i = 0; i < triggers.length; i++) {
+            triggers[i].addEventListener('click', makeTabHandler(triggers, panels));
+        }
+    }
+
+    function makeTabHandler(triggers, panels) {
+        return function(e) {
+            var value = e.currentTarget.getAttribute('data-tab');
+
+            for (var i = 0; i < triggers.length; i++) {
+                var t = triggers[i];
+                if (t.getAttribute('data-tab') === value) {
+                    t.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+                    t.classList.add('border-blue-600', 'text-blue-600');
+                    t.setAttribute('aria-selected', 'true');
+                } else {
+                    t.classList.remove('border-blue-600', 'text-blue-600');
+                    t.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+                    t.setAttribute('aria-selected', 'false');
+                }
+            }
+
+            for (var j = 0; j < panels.length; j++) {
+                var p = panels[j];
+                if (p.getAttribute('data-tab-panel') === value) {
+                    p.classList.remove('hidden');
+                } else {
+                    p.classList.add('hidden');
+                }
+            }
+        };
+    }
+
     // ── Sidebar mobile toggle ─────────────────────────────────────────────
 
     function initSidebarToggle() {
@@ -234,6 +289,7 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         if (sseUrl) {
             connectSSE(sseUrl);
         }
+        initTabs();
         initDismissibles();
         initNotificationToggle();
         initSidebarToggle();
