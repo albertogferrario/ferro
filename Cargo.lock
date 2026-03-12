@@ -1853,6 +1853,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-theme"
+version = "0.1.87"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "ff"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

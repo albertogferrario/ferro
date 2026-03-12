@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surface tokens */
+  --color-background: oklch(100% 0 0);
+  --color-surface: oklch(97% 0 0);
+  --color-card: oklch(95% 0 0);
+  --color-border: oklch(90% 0 0);
+  --color-text: oklch(15% 0 0);
+  --color-text-muted: oklch(50% 0 0);
+
+  /* Role tokens */
+  --color-primary: oklch(55% 0.2 250);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(70% 0.05 250);
+  --color-secondary-foreground: oklch(15% 0 0);
+  --color-accent: oklch(65% 0.15 200);
+  --color-destructive: oklch(55% 0.22 25);
+  --color-success: oklch(55% 0.18 145);
+  --color-warning: oklch(70% 0.18 80);
+
+  /* Shape tokens */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-full: 9999px;
+
+  /* Shadow tokens */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+  /* Typography tokens */
+  --font-family-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-family-mono: ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-background: oklch(12% 0 0);
+    --color-surface: oklch(17% 0 0);
+    --color-card: oklch(20% 0 0);
+    --color-border: oklch(30% 0 0);
+    --color-text: oklch(95% 0 0);
+    --color-text-muted: oklch(60% 0 0);
+    --color-primary: oklch(65% 0.2 250);
+    --color-primary-foreground: oklch(100% 0 0);
+    --color-secondary: oklch(60% 0.05 250);
+    --color-secondary-foreground: oklch(95% 0 0);
+    --color-accent: oklch(60% 0.15 200);
+    --color-destructive: oklch(60% 0.22 25);
+    --color-success: oklch(60% 0.18 145);
+    --color-warning: oklch(65% 0.18 80);
+  }
+}
+
+[data-theme="dark"] {
+  /* Same dark values for explicit toggle */
+  --color-background: oklch(12% 0 0);
+  --color-surface: oklch(17% 0 0);
+  --color-card: oklch(20% 0 0);
+  --color-border: oklch(30% 0 0);
+  --color-text: oklch(95% 0 0);
+  --color-text-muted: oklch(60% 0 0);
+  --color-primary: oklch(65% 0.2 250);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(60% 0.05 250);
+  --color-secondary-foreground: oklch(95% 0 0);
+  --color-accent: oklch(60% 0.15 200);
+  --color-destructive: oklch(60% 0.22 25);
+  --color-success: oklch(60% 0.18 145);
+  --color-warning: oklch(65% 0.18 80);
+}
