@@ -656,12 +656,12 @@ Plans:
 **Goal:** Make JSON-UI visually customizable through semantic CSS tokens and intent-to-layout mappings configurable through declarative templates. New `ferro-theme` crate defines token vocabulary (~23 slots) and intent template schema. ThemeMiddleware enables per-request theme selection for multi-tenant white-labeling. All ~224 hardcoded Tailwind classes in render.rs/layout.rs migrated to semantic token references. JsonUiRenderer updated to consume intent template overrides.
 **Requirements**: [THEME-01, THEME-02, THEME-03, THEME-04, THEME-05, THEME-06, THEME-07, THEME-08, THEME-09, THEME-10, THEME-11, THEME-12]
 **Depends on:** Phase 98
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
-- [ ] 99-01-PLAN.md — ferro-theme crate: Theme struct, ThemeError, token vocabulary, IntentTemplate schema, default embedded CSS, filesystem loader
-- [ ] 99-02-PLAN.md — Framework ThemeMiddleware with resolver chain, task-local current_theme(), feature-gated re-exports
-- [ ] 99-03-PLAN.md — render.rs + layout.rs semantic token migration (~224 hardcoded Tailwind classes replaced)
+- [x] 99-01-PLAN.md — ferro-theme crate: Theme struct, ThemeError, token vocabulary, IntentTemplate schema, default embedded CSS, filesystem loader
+- [x] 99-02-PLAN.md — Framework ThemeMiddleware with resolver chain, task-local current_theme(), feature-gated re-exports
+- [x] 99-03-PLAN.md — render.rs + layout.rs semantic token migration (~224 hardcoded Tailwind classes replaced)
 - [ ] 99-04-PLAN.md — JsonUiRenderer intent template consumption from ThemeTemplates
 - [ ] 99-05-PLAN.md — CLI make:theme command, publish workflow update, theme documentation
 

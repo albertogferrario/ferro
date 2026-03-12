@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 99-02-PLAN.md (ThemeMiddleware and JSON-UI CSS injection)
-last_updated: "2026-03-12T03:09:17.618Z"
-last_activity: 2026-03-12 — Phase 99-02 executed (2 tasks)
+stopped_at: Completed 99-03-PLAN.md (Semantic token migration for render.rs and layout.rs)
+last_updated: "2026-03-12T00:45:00.000Z"
+last_activity: 2026-03-12 — Phase 99-03 executed (2 tasks)
 progress:
   total_phases: 17
   completed_phases: 16
   total_plans: 53
-  completed_plans: 50
+  completed_plans: 51
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 99 (Semantic Theme System with Intent-Driven Templates) — In Progress
-Plan: 1 of 5 complete
-Status: Phase 99 Plan 02 complete — ThemeMiddleware with resolver chain, task-local context, moka cache, and JSON-UI CSS injection
-Last activity: 2026-03-12 — Phase 99-01 executed (1 task)
+Plan: 3 of 5 complete
+Status: Phase 99 Plan 03 complete — All 26 render.rs components and 3 layout.rs layouts migrated to semantic Tailwind v4 token classes
+Last activity: 2026-03-12 — Phase 99-03 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -395,6 +395,14 @@ Archived to PROJECT.md and milestone archive files.
 - ThemeMiddleware has no failure mode (unlike TenantMiddleware) — DefaultResolver always provides a fallback
 - Theme CSS injected after Tailwind CDN and custom_head but before plugin CSS so CDN processes @theme directives first
 
+**Phase 99-03:**
+- Opacity modifiers used for tinted variant backgrounds: bg-primary/10 for info alerts (no separate token needed)
+- text-primary-foreground for text ON colored backgrounds (primary/destructive buttons), not text-white
+- hover:bg-primary/90 for primary button hover states (replaces hover:bg-blue-700)
+- DashboardLayout fallback body class changed from bg-gray-50 to bg-surface (semantic equivalent)
+- Test fixtures updated to use bg-background instead of bg-white to eliminate hardcoded colors from test data
+- 364 total ferro-json-ui tests pass; zero hardcoded Tailwind color classes remain in render.rs or layout.rs
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -416,6 +424,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T03:09:17.609Z
-Stopped at: Completed 99-02-PLAN.md (ThemeMiddleware and JSON-UI CSS injection)
+Last session: 2026-03-12T00:45:00.000Z
+Stopped at: Completed 99-03-PLAN.md (Semantic token migration for render.rs and layout.rs)
 Resume file: None
