@@ -3,6 +3,7 @@
 //! Implements the `Renderer` trait to translate `ServiceDef` + `IntentScore[]` into
 //! a JSON view specification with layout strategies for each intent type.
 
+use ferro_theme::{IntentSlotTemplate, ThemeTemplates};
 use serde_json::{json, Value};
 
 use crate::error::Error;
@@ -75,36 +76,46 @@ impl Renderer for JsonUiRenderer {
             ))
         })?;
 
-        let components = match &intent_score.intent {
-            Intent::Browse => match ctx.mode {
-                RenderMode::Display => self.render_browse(service),
-                RenderMode::Input => self.render_collect(service),
-            },
-            Intent::Focus => match ctx.mode {
-                RenderMode::Display => self.render_focus(service),
-                RenderMode::Input => self.render_collect(service),
-            },
-            Intent::Collect => self.render_collect(service),
-            Intent::Summarize => match ctx.mode {
-                RenderMode::Display => self.render_summarize(service),
-                RenderMode::Input => self.render_collect(service),
-            },
-            Intent::Process => match ctx.mode {
-                RenderMode::Display => self.render_process(service, ctx),
-                RenderMode::Input => self.render_process_input(service, ctx),
-            },
-            Intent::Analyze => match ctx.mode {
-                RenderMode::Display => self.render_analyze(service),
-                RenderMode::Input => self.render_collect(service),
-            },
-            Intent::Track => match ctx.mode {
-                RenderMode::Display => self.render_track(service),
-                RenderMode::Input => self.render_collect(service),
-            },
-            Intent::Custom(_) => match ctx.mode {
-                RenderMode::Display => self.render_focus(service),
-                RenderMode::Input => self.render_collect(service),
-            },
+        // Check for a theme template override for this intent+mode combination.
+        let template_override = ctx
+            .templates
+            .as_ref()
+            .and_then(|t| get_template_for_intent(t, &intent_score.intent, &ctx.mode));
+
+        let components = if let Some(template) = template_override {
+            self.render_from_template(service, template, ctx)
+        } else {
+            match &intent_score.intent {
+                Intent::Browse => match ctx.mode {
+                    RenderMode::Display => self.render_browse(service),
+                    RenderMode::Input => self.render_collect(service),
+                },
+                Intent::Focus => match ctx.mode {
+                    RenderMode::Display => self.render_focus(service),
+                    RenderMode::Input => self.render_collect(service),
+                },
+                Intent::Collect => self.render_collect(service),
+                Intent::Summarize => match ctx.mode {
+                    RenderMode::Display => self.render_summarize(service),
+                    RenderMode::Input => self.render_collect(service),
+                },
+                Intent::Process => match ctx.mode {
+                    RenderMode::Display => self.render_process(service, ctx),
+                    RenderMode::Input => self.render_process_input(service, ctx),
+                },
+                Intent::Analyze => match ctx.mode {
+                    RenderMode::Display => self.render_analyze(service),
+                    RenderMode::Input => self.render_collect(service),
+                },
+                Intent::Track => match ctx.mode {
+                    RenderMode::Display => self.render_track(service),
+                    RenderMode::Input => self.render_collect(service),
+                },
+                Intent::Custom(_) => match ctx.mode {
+                    RenderMode::Display => self.render_focus(service),
+                    RenderMode::Input => self.render_collect(service),
+                },
+            }
         };
 
         let title = service
@@ -118,6 +129,34 @@ impl Renderer for JsonUiRenderer {
             "title": title,
             "components": components,
         }))
+    }
+}
+
+/// Returns the slot template for a given intent and mode, if any override exists
+/// and the template has non-empty slots.
+fn get_template_for_intent<'a>(
+    templates: &'a ThemeTemplates,
+    intent: &Intent,
+    mode: &RenderMode,
+) -> Option<&'a IntentSlotTemplate> {
+    let mode_templates = match intent {
+        Intent::Browse => templates.browse.as_ref()?,
+        Intent::Focus => templates.focus.as_ref()?,
+        Intent::Collect => templates.collect.as_ref()?,
+        Intent::Process => templates.process.as_ref()?,
+        Intent::Summarize => templates.summarize.as_ref()?,
+        Intent::Analyze => templates.analyze.as_ref()?,
+        Intent::Track => templates.track.as_ref()?,
+        Intent::Custom(_) => return None, // Custom intents have no template overrides
+    };
+    let slot_template = match mode {
+        RenderMode::Display => &mode_templates.display,
+        RenderMode::Input => &mode_templates.input,
+    };
+    if slot_template.slots.is_empty() {
+        None // Empty slots = no override, use built-in
+    } else {
+        Some(slot_template)
     }
 }
 
@@ -516,6 +555,318 @@ impl JsonUiRenderer {
         vec![table, pagination]
     }
 
+    /// Template-driven rendering: slot-ordered component list from a ThemeTemplate.
+    ///
+    /// Iterates over `template.slots` and produces components for each named slot.
+    /// Slots that produce no content (e.g., "relationships" when the service has none)
+    /// are silently skipped — no empty containers emitted.
+    ///
+    /// Component generation uses the SAME field_map functions as the built-in render
+    /// methods, so the output is structurally identical for equivalent slot configurations.
+    fn render_from_template(
+        &self,
+        service: &ServiceDef,
+        template: &IntentSlotTemplate,
+        ctx: &RenderContext,
+    ) -> Vec<Value> {
+        let mut components: Vec<Value> = Vec::new();
+
+        for slot in &template.slots {
+            let slot_components = self.render_slot(service, slot.as_str(), template, ctx);
+            components.extend(slot_components);
+        }
+
+        components
+    }
+
+    /// Renders a single named slot into zero or more component values.
+    ///
+    /// Returns an empty vec when the slot has no applicable content so that callers
+    /// can simply extend their output without emitting empty containers.
+    fn render_slot(
+        &self,
+        service: &ServiceDef,
+        slot: &str,
+        template: &IntentSlotTemplate,
+        ctx: &RenderContext,
+    ) -> Vec<Value> {
+        let title = service
+            .display_name
+            .as_deref()
+            .unwrap_or(&service.name)
+            .to_string();
+
+        match slot {
+            "title" => {
+                vec![json!({
+                    "type": "Text",
+                    "key": format!("{}-title", service.name),
+                    "element": "h1",
+                    "content": title,
+                })]
+            }
+            "body" => {
+                // Layout hint guides which component produces the body.
+                // "table" → Table, "form" → Form fields, default → DescriptionList
+                match template.layout.as_deref() {
+                    Some("table") | Some("Table") => {
+                        let columns: Vec<Value> = service
+                            .fields
+                            .iter()
+                            .filter(|f| f.readable && !is_system_field(&f.meaning))
+                            .map(field_to_column)
+                            .collect();
+                        if columns.is_empty() {
+                            vec![]
+                        } else {
+                            vec![json!({
+                                "type": "Table",
+                                "key": format!("{}-body-table", service.name),
+                                "columns": columns,
+                                "data_path": "/data/items",
+                                "sortable": true,
+                            })]
+                        }
+                    }
+                    Some("form") | Some("Form") => {
+                        let inputs: Vec<Value> = service
+                            .fields
+                            .iter()
+                            .filter(|f| f.writable && !is_system_field(&f.meaning))
+                            .filter_map(|f| {
+                                let v = field_to_input(f);
+                                if v.is_null() {
+                                    None
+                                } else {
+                                    Some(v)
+                                }
+                            })
+                            .collect();
+                        inputs
+                    }
+                    _ => {
+                        // Default body: DescriptionList
+                        let items: Vec<Value> = service
+                            .fields
+                            .iter()
+                            .filter(|f| f.readable && !is_system_field(&f.meaning))
+                            .filter_map(|f| {
+                                let display = field_to_display(f);
+                                if display.is_null() {
+                                    return None;
+                                }
+                                Some(json!({
+                                    "term": field_display_name(&f.name),
+                                    "detail_data_path": format!("/data/{}", f.name),
+                                }))
+                            })
+                            .collect();
+                        if items.is_empty() {
+                            vec![]
+                        } else {
+                            vec![json!({
+                                "type": "DescriptionList",
+                                "key": format!("{}-body", service.name),
+                                "items": items,
+                            })]
+                        }
+                    }
+                }
+            }
+            "fields" => {
+                // Fields slot: use mode to decide display vs input
+                match ctx.mode {
+                    RenderMode::Input => {
+                        // Layout hint can force table for input mode
+                        match template.layout.as_deref() {
+                            Some("table") | Some("Table") => {
+                                let columns: Vec<Value> = service
+                                    .fields
+                                    .iter()
+                                    .filter(|f| f.readable && !is_system_field(&f.meaning))
+                                    .map(field_to_column)
+                                    .collect();
+                                if columns.is_empty() {
+                                    vec![]
+                                } else {
+                                    vec![json!({
+                                        "type": "Table",
+                                        "key": format!("{}-fields-table", service.name),
+                                        "columns": columns,
+                                        "data_path": "/data/items",
+                                        "sortable": true,
+                                    })]
+                                }
+                            }
+                            _ => {
+                                let inputs: Vec<Value> = service
+                                    .fields
+                                    .iter()
+                                    .filter(|f| f.writable && !is_system_field(&f.meaning))
+                                    .filter_map(|f| {
+                                        let v = field_to_input(f);
+                                        if v.is_null() {
+                                            None
+                                        } else {
+                                            Some(v)
+                                        }
+                                    })
+                                    .collect();
+                                inputs
+                            }
+                        }
+                    }
+                    RenderMode::Display => {
+                        // Layout hint: table renders columns, otherwise DescriptionList items
+                        match template.layout.as_deref() {
+                            Some("table") | Some("Table") => {
+                                let columns: Vec<Value> = service
+                                    .fields
+                                    .iter()
+                                    .filter(|f| f.readable && !is_system_field(&f.meaning))
+                                    .map(field_to_column)
+                                    .collect();
+                                if columns.is_empty() {
+                                    vec![]
+                                } else {
+                                    vec![json!({
+                                        "type": "Table",
+                                        "key": format!("{}-fields-table", service.name),
+                                        "columns": columns,
+                                        "data_path": "/data/items",
+                                        "sortable": true,
+                                    })]
+                                }
+                            }
+                            _ => {
+                                let items: Vec<Value> = service
+                                    .fields
+                                    .iter()
+                                    .filter(|f| f.readable && !is_system_field(&f.meaning))
+                                    .filter_map(|f| {
+                                        let display = field_to_display(f);
+                                        if display.is_null() {
+                                            return None;
+                                        }
+                                        Some(json!({
+                                            "term": field_display_name(&f.name),
+                                            "detail_data_path": format!("/data/{}", f.name),
+                                        }))
+                                    })
+                                    .collect();
+                                items
+                            }
+                        }
+                    }
+                }
+            }
+            "actions" => {
+                let buttons: Vec<Value> = service
+                    .actions
+                    .iter()
+                    .map(|action| {
+                        let label = action
+                            .display_name
+                            .as_deref()
+                            .unwrap_or(&action.name)
+                            .to_string();
+                        json!({
+                            "type": "Button",
+                            "key": format!("{}-action-{}", service.name, action.name),
+                            "label": label,
+                            "variant": "default",
+                            "action_handler": format!("{}.{}", service.name, action.name),
+                        })
+                    })
+                    .collect();
+                buttons
+            }
+            "relationships" => {
+                // Only emit components for visible relationships
+                let comps: Vec<Value> = service
+                    .relationships
+                    .iter()
+                    .filter(|r| r.navigation != NavigationHint::Hidden)
+                    .filter_map(|r| {
+                        let comp = relationship_to_component(r, &service.name);
+                        if comp.is_null() {
+                            None
+                        } else {
+                            Some(comp)
+                        }
+                    })
+                    .collect();
+                comps
+            }
+            "pagination" => {
+                vec![json!({
+                    "type": "Pagination",
+                    "key": format!("{}-pagination", service.name),
+                    "current_page": 1,
+                    "per_page": 25,
+                    "total": 0,
+                    "base_url": format!("/{}", service.name),
+                })]
+            }
+            "metadata" => {
+                // System timestamp fields as DescriptionList items
+                let items: Vec<Value> = service
+                    .fields
+                    .iter()
+                    .filter(|f| {
+                        f.readable
+                            && matches!(
+                                f.meaning,
+                                FieldMeaning::CreatedAt | FieldMeaning::UpdatedAt
+                            )
+                    })
+                    .map(|f| {
+                        json!({
+                            "term": field_display_name(&f.name),
+                            "detail_data_path": format!("/data/{}", f.name),
+                        })
+                    })
+                    .collect();
+                if items.is_empty() {
+                    vec![]
+                } else {
+                    vec![json!({
+                        "type": "DescriptionList",
+                        "key": format!("{}-metadata", service.name),
+                        "items": items,
+                    })]
+                }
+            }
+            "stats" => {
+                // StatCard-style components for numeric fields
+                let stat_items: Vec<Value> = service
+                    .fields
+                    .iter()
+                    .filter(|f| f.readable && is_numeric_field(&f.meaning))
+                    .map(|f| {
+                        let label = field_display_name(&f.name);
+                        json!({
+                            "type": "Card",
+                            "key": format!("{}-stat", f.name),
+                            "title": label,
+                            "children": [json!({
+                                "type": "Text",
+                                "key": format!("{}-stat-value", f.name),
+                                "content": "",
+                                "data_path": format!("/data/{}", f.name),
+                            })],
+                        })
+                    })
+                    .collect();
+                stat_items
+            }
+            _ => {
+                // Unknown slot names are silently skipped
+                vec![]
+            }
+        }
+    }
+
     /// Summarize layout: dashboard metrics with card grid.
     fn render_summarize(&self, service: &ServiceDef) -> Vec<Value> {
         let mut metric_cards: Vec<Value> = Vec::new();
@@ -680,6 +1031,7 @@ mod tests {
             intent_index: 0,
             current_state: None,
             mode: RenderMode::Input,
+            templates: None,
         }
     }
 
@@ -893,6 +1245,7 @@ mod tests {
             intent_index: 5,
             current_state: None,
             mode: RenderMode::Display,
+            templates: None,
         };
         let result = JsonUiRenderer.render(&service, &intents, &ctx);
         assert!(result.is_err());
@@ -1239,6 +1592,7 @@ mod tests {
             intent_index: 0,
             current_state: Some("draft".to_string()),
             mode: RenderMode::Display,
+            templates: None,
         };
         let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
         let card_children = result["components"][0]["children"].as_array().unwrap();
@@ -1260,6 +1614,7 @@ mod tests {
             intent_index: 0,
             current_state: Some("pending".to_string()),
             mode: RenderMode::Display,
+            templates: None,
         };
         let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
         let badge = &result["components"][0]["children"][0];
@@ -1722,6 +2077,7 @@ mod tests {
                 intent_index: 1,
                 current_state: None,
                 mode: RenderMode::Display,
+                templates: None,
             };
             let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
             assert_valid_json_ui(&result);
@@ -1741,6 +2097,7 @@ mod tests {
                 intent_index: 0,
                 current_state: None,
                 mode: RenderMode::Input,
+                templates: None,
             };
             let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
             assert_valid_json_ui(&result);
@@ -1778,6 +2135,7 @@ mod tests {
                 intent_index: 0,
                 current_state: Some("open".to_string()),
                 mode: RenderMode::Display,
+                templates: None,
             };
             let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
             let badge = &result["components"][0]["children"][0];
@@ -2031,7 +2389,7 @@ mod tests {
                 ..RenderContext::default()
             };
             let browse_result = JsonUiRenderer
-                .render(&service, &vec![browse_intent()], &browse_ctx)
+                .render(&service, &[browse_intent()], &browse_ctx)
                 .unwrap();
             let browse_components = browse_result["components"].as_array().unwrap();
             assert_eq!(browse_components[0]["type"], "Text"); // template override
@@ -2042,7 +2400,7 @@ mod tests {
                 ..RenderContext::default()
             };
             let focus_result = JsonUiRenderer
-                .render(&service, &vec![focus_intent()], &focus_ctx)
+                .render(&service, &[focus_intent()], &focus_ctx)
                 .unwrap();
             let focus_components = focus_result["components"].as_array().unwrap();
             assert_eq!(focus_components[0]["type"], "Card"); // built-in layout
@@ -2073,7 +2431,7 @@ mod tests {
             };
 
             let result = JsonUiRenderer
-                .render(&service, &vec![browse_intent()], &ctx)
+                .render(&service, &[browse_intent()], &ctx)
                 .unwrap();
             let components = result["components"].as_array().unwrap();
 
@@ -2085,10 +2443,13 @@ mod tests {
                 .collect();
             assert!(types.contains(&"Text"));
             // No relationship-specific components
-            assert!(!types.contains(&"Table") || components.iter().all(|c| c["key"]
-                .as_str()
-                .map(|k| !k.contains("rel"))
-                .unwrap_or(true)));
+            assert!(
+                !types.contains(&"Table")
+                    || components.iter().all(|c| c["key"]
+                        .as_str()
+                        .map(|k| !k.contains("rel"))
+                        .unwrap_or(true))
+            );
         }
 
         #[test]
@@ -2117,7 +2478,10 @@ mod tests {
             // produces a Table component
             let components = result["components"].as_array().unwrap();
             let has_table = components.iter().any(|c| c["type"] == "Table");
-            assert!(has_table, "layout hint 'table' should produce a Table component");
+            assert!(
+                has_table,
+                "layout hint 'table' should produce a Table component"
+            );
         }
 
         #[test]

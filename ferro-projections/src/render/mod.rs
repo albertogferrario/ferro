@@ -12,6 +12,7 @@ use crate::field::FieldMeaning;
 use crate::intent::IntentScore;
 use crate::service::ServiceDef;
 
+use ferro_theme::ThemeTemplates;
 use serde::{Deserialize, Serialize};
 
 /// Controls whether fields render as read-only display or editable inputs.
@@ -33,6 +34,8 @@ pub struct RenderContext {
     pub current_state: Option<String>,
     /// Display or Input mode.
     pub mode: RenderMode,
+    /// Optional theme template overrides. `None` means use built-in layouts.
+    pub templates: Option<ThemeTemplates>,
 }
 
 impl Default for RenderContext {
@@ -41,6 +44,7 @@ impl Default for RenderContext {
             intent_index: 0,
             current_state: None,
             mode: RenderMode::Display,
+            templates: None,
         }
     }
 }
@@ -113,6 +117,7 @@ mod tests {
         assert_eq!(ctx.intent_index, 0);
         assert!(ctx.current_state.is_none());
         assert_eq!(ctx.mode, RenderMode::Display);
+        assert!(ctx.templates.is_none());
     }
 
     #[test]
