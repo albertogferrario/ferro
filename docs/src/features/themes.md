@@ -31,12 +31,12 @@ This creates `themes/myapp/tokens.css` with all 23 token slots pre-filled with d
 Activate the theme in `bootstrap.rs`:
 
 ```rust
-use ferro::{global_middleware, ThemeMiddleware, StaticThemeResolver};
+use ferro::{global_middleware, ThemeMiddleware, HeaderThemeResolver};
 
 pub fn register() {
     global_middleware!(
         ThemeMiddleware::new()
-            .resolver(StaticThemeResolver::new("myapp"))
+            .resolver(HeaderThemeResolver::new("./themes"))
     );
 }
 ```
@@ -143,41 +143,47 @@ Supported intent keys: `browse`, `focus`, `collect`, `process`, `summarize`, `an
 
 Supported slot keys within each intent: `title`, `body`, `fields`, `actions`, `relationships`, `pagination`, `metadata`, `stats`.
 
-Example — override Browse to use a card grid instead of the default table:
+Each intent has two modes: `display` (reading data) and `input` (forms/editing). Each mode specifies an ordered list of `slots` and an optional `layout` component.
+
+Example — override Browse display to show title, fields, and pagination in a Table layout:
 
 ```json
 {
   "browse": {
-    "body": "card-grid",
-    "pagination": "cursor"
+    "display": {
+      "slots": ["title", "fields", "pagination"],
+      "layout": "Table"
+    }
   }
 }
 ```
 
-Example — override Collect to show a multi-step wizard:
+Example — override Collect input to show fields and actions in a Form layout:
 
 ```json
 {
   "collect": {
-    "body": "wizard",
-    "actions": "step-navigation"
+    "input": {
+      "slots": ["fields", "actions"],
+      "layout": "Form"
+    }
   }
 }
 ```
 
-Unspecified slots fall back to the framework defaults. Only override intents you want to change.
+Unspecified intents and modes fall back to the framework defaults. Only override what you want to change.
 
 ## ThemeMiddleware Setup
 
 `ThemeMiddleware` resolves the active theme per request using a resolver chain. Multiple resolvers are tried in order; the first `Some` result wins.
 
 ```rust
-use ferro::{global_middleware, ThemeMiddleware, StaticThemeResolver};
+use ferro::{global_middleware, ThemeMiddleware, HeaderThemeResolver};
 
 pub fn register() {
     global_middleware!(
         ThemeMiddleware::new()
-            .resolver(StaticThemeResolver::new("myapp"))
+            .resolver(HeaderThemeResolver::new("./themes"))
     );
 }
 ```
@@ -186,10 +192,13 @@ The middleware injects the theme CSS into every HTML response. When no resolver 
 
 ### Resolver Types
 
-**`StaticThemeResolver`** — always applies the same theme:
+**`HeaderThemeResolver`** — selects theme from the `X-Theme` request header:
 
 ```rust
-StaticThemeResolver::new("myapp")
+use ferro::HeaderThemeResolver;
+
+HeaderThemeResolver::new("./themes")
+// Request with `X-Theme: pro` header loads themes/pro/
 ```
 
 **`TenantThemeResolver`** — selects theme based on `TenantContext.plan`:
@@ -197,17 +206,19 @@ StaticThemeResolver::new("myapp")
 ```rust
 use ferro::TenantThemeResolver;
 
-TenantThemeResolver::new()
-    .map("enterprise", "enterprise-dark")
-    .map("pro", "pro-light")
-    // tenants without a matching plan use the default theme
+TenantThemeResolver::new("./themes")
+// Tenant with plan "enterprise" loads themes/enterprise/
 ```
 
-**`DefaultResolver`** — always returns the built-in default theme. Added automatically as final fallback:
+**`DefaultResolver`** — always returns a specific theme:
 
 ```rust
-// No configuration needed — ThemeMiddleware adds this automatically
+use ferro::{DefaultResolver, Theme};
+
+DefaultResolver::new(Theme::from_path("./themes/corporate").unwrap())
 ```
+
+When no resolver matches, `ThemeMiddleware` falls back to the built-in default theme automatically.
 
 ## Multi-Tenant Themes
 
@@ -223,12 +234,12 @@ pub fn register() {
 
     global_middleware!(
         ThemeMiddleware::new()
-            .resolver(TenantThemeResolver::new()
-                .map("enterprise", "enterprise-dark")
-                .map("pro", "pro-light"))
+            .resolver(TenantThemeResolver::new("./themes"))
     );
 }
 ```
+
+The tenant's `plan` field is used as the theme directory name. A tenant with `plan: "enterprise"` loads `themes/enterprise/`.
 
 `TenantMiddleware` must run before `ThemeMiddleware` so `TenantContext` is available when the theme is resolved.
 
