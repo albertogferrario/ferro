@@ -1328,8 +1328,9 @@ fn render_form_section(props: &FormSectionProps, data: &Value) -> String {
 // ── Dashboard component renderers ───────────────────────────────────────
 
 fn render_stat_card(props: &StatCardProps) -> String {
-    let mut html =
-        String::from("<div class=\"bg-background rounded-radius-lg shadow-shadow-sm p-4 border border-border\">");
+    let mut html = String::from(
+        "<div class=\"bg-background rounded-radius-lg shadow-shadow-sm p-4 border border-border\">",
+    );
     if let Some(ref icon) = props.icon {
         html.push_str(&format!(
             "<span class=\"text-2xl mb-2 block\">{}</span>",
@@ -1363,8 +1364,9 @@ fn render_stat_card(props: &StatCardProps) -> String {
 }
 
 fn render_checklist(props: &ChecklistProps) -> String {
-    let mut html =
-        String::from("<div class=\"bg-background rounded-radius-lg shadow-shadow-sm p-4 border border-border\">");
+    let mut html = String::from(
+        "<div class=\"bg-background rounded-radius-lg shadow-shadow-sm p-4 border border-border\">",
+    );
     html.push_str("<div class=\"flex items-center justify-between mb-3\">");
     html.push_str(&format!(
         "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
@@ -2738,7 +2740,9 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("rounded-radius-lg border border-border bg-background shadow-shadow-sm"));
+        assert!(
+            html.contains("rounded-radius-lg border border-border bg-background shadow-shadow-sm")
+        );
         assert!(html.contains("<h3 class=\"text-lg font-semibold text-text\">My Card</h3>"));
         assert!(html.contains("<p class=\"mt-1 text-sm text-text-muted\">A description</p>"));
     }
