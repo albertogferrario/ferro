@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 99-03-PLAN.md (Semantic token migration for render.rs and layout.rs)
-last_updated: "2026-03-12T00:45:00.000Z"
+stopped_at: Completed 99-04-PLAN.md (ThemeTemplates intent template consumption in JsonUiRenderer)
+last_updated: "2026-03-12T03:44:35.683Z"
 last_activity: 2026-03-12 — Phase 99-03 executed (2 tasks)
 progress:
   total_phases: 17
   completed_phases: 16
   total_plans: 53
-  completed_plans: 51
+  completed_plans: 52
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 99 (Semantic Theme System with Intent-Driven Templates) — In Progress
-Plan: 3 of 5 complete
-Status: Phase 99 Plan 03 complete — All 26 render.rs components and 3 layout.rs layouts migrated to semantic Tailwind v4 token classes
-Last activity: 2026-03-12 — Phase 99-03 executed (2 tasks)
+Plan: 4 of 5 complete
+Status: Phase 99 Plan 04 complete — JsonUiRenderer updated to consume ThemeTemplates slot-driven layout overrides
+Last activity: 2026-03-12 — Phase 99-04 executed (1 task, TDD)
 
 ## Milestone Summary
 
@@ -403,6 +403,12 @@ Archived to PROJECT.md and milestone archive files.
 - Test fixtures updated to use bg-background instead of bg-white to eliminate hardcoded colors from test data
 - 364 total ferro-json-ui tests pass; zero hardcoded Tailwind color classes remain in render.rs or layout.rs
 
+**Phase 99-04:**
+- render_from_template reuses existing field_map functions — templates control slot ARRANGEMENT only, not component generation
+- Empty slot list (slot_template.slots.is_empty()) treated as no override — fallback to built-in (ensures ThemeTemplates::default() produces identical output to ctx.templates=None)
+- Custom(_) intent always returns None from get_template_for_intent — custom intents are user-defined, can't have fixed template overrides
+- render_slot returns Vec<Value> — callers use extend() which naturally handles empty vecs without special cases
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -424,6 +430,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T00:45:00.000Z
-Stopped at: Completed 99-03-PLAN.md (Semantic token migration for render.rs and layout.rs)
+Last session: 2026-03-12T03:44:35.679Z
+Stopped at: Completed 99-04-PLAN.md (ThemeTemplates intent template consumption in JsonUiRenderer)
 Resume file: None
