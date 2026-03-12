@@ -174,6 +174,12 @@ enum Commands {
         /// Locale code (e.g., en, fr, de, pt-br)
         name: String,
     },
+    /// Scaffold a new theme (tokens.css + theme.json)
+    #[command(name = "make:theme")]
+    MakeTheme {
+        /// Theme name (e.g., ocean, corporate, midnight)
+        name: String,
+    },
     /// Generate a new background job
     #[command(name = "make:job")]
     MakeJob {
@@ -474,6 +480,9 @@ fn main() {
         }
         Commands::MakeLang { name } => {
             commands::make_lang::run(name);
+        }
+        Commands::MakeTheme { name } => {
+            commands::make_theme::run(&name);
         }
         Commands::MakeJob { name } => {
             commands::make_job::run(name);
