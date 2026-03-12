@@ -1913,4 +1913,234 @@ mod tests {
             }
         }
     }
+
+    // =========================================================================
+    // Template consumption tests: ThemeTemplates → intent layout overrides
+    // =========================================================================
+
+    mod template_tests {
+        use super::*;
+        use ferro_theme::{IntentModeTemplates, IntentSlotTemplate, ThemeTemplates};
+
+        fn order_service() -> ServiceDef {
+            ServiceDef::new("order")
+                .display_name("Order")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("title", DataType::String, FieldMeaning::EntityName)
+                .field("total", DataType::Float, FieldMeaning::Money)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+                .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt)
+        }
+
+        fn browse_intent() -> IntentScore {
+            IntentScore {
+                intent: Intent::Browse,
+                confidence: 0.8,
+                matching_signals: vec!["test".into()],
+            }
+        }
+
+        fn focus_intent() -> IntentScore {
+            IntentScore {
+                intent: Intent::Focus,
+                confidence: 0.7,
+                matching_signals: vec!["test".into()],
+            }
+        }
+
+        #[test]
+        fn render_context_default_has_templates_none() {
+            let ctx = RenderContext::default();
+            assert!(ctx.templates.is_none());
+        }
+
+        #[test]
+        fn render_with_none_templates_produces_same_output_as_before() {
+            let service = order_service();
+            let intents = vec![browse_intent()];
+
+            // No templates at all (baseline)
+            let ctx_no_templates = RenderContext::default();
+            let result_no_templates = JsonUiRenderer
+                .render(&service, &intents, &ctx_no_templates)
+                .unwrap();
+
+            // Explicit None templates
+            let ctx_none_templates = RenderContext {
+                templates: None,
+                ..RenderContext::default()
+            };
+            let result_none_templates = JsonUiRenderer
+                .render(&service, &intents, &ctx_none_templates)
+                .unwrap();
+
+            assert_eq!(result_no_templates, result_none_templates);
+        }
+
+        #[test]
+        fn render_with_browse_template_override_uses_slot_order() {
+            let service = order_service();
+            let intents = vec![browse_intent()];
+
+            // Override Browse to only show title slot (Text component)
+            let templates = ThemeTemplates {
+                browse: Some(IntentModeTemplates {
+                    display: IntentSlotTemplate {
+                        slots: vec!["title".to_string()],
+                        layout: None,
+                    },
+                    input: IntentSlotTemplate::default(),
+                }),
+                ..ThemeTemplates::default()
+            };
+
+            let ctx = RenderContext {
+                templates: Some(templates),
+                ..RenderContext::default()
+            };
+
+            let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
+            let components = result["components"].as_array().unwrap();
+
+            // Template with only "title" slot produces a Text (h1) component
+            assert!(!components.is_empty());
+            assert_eq!(components[0]["type"], "Text");
+            assert_eq!(components[0]["element"], "h1");
+        }
+
+        #[test]
+        fn render_with_partial_templates_only_browse_overridden_focus_uses_builtin() {
+            let service = order_service();
+
+            // Override Browse only
+            let templates = ThemeTemplates {
+                browse: Some(IntentModeTemplates {
+                    display: IntentSlotTemplate {
+                        slots: vec!["title".to_string()],
+                        layout: None,
+                    },
+                    input: IntentSlotTemplate::default(),
+                }),
+                ..ThemeTemplates::default()
+            };
+
+            // Browse intent uses template
+            let browse_ctx = RenderContext {
+                templates: Some(templates.clone()),
+                ..RenderContext::default()
+            };
+            let browse_result = JsonUiRenderer
+                .render(&service, &vec![browse_intent()], &browse_ctx)
+                .unwrap();
+            let browse_components = browse_result["components"].as_array().unwrap();
+            assert_eq!(browse_components[0]["type"], "Text"); // template override
+
+            // Focus intent uses built-in (no template for focus)
+            let focus_ctx = RenderContext {
+                templates: Some(templates),
+                ..RenderContext::default()
+            };
+            let focus_result = JsonUiRenderer
+                .render(&service, &vec![focus_intent()], &focus_ctx)
+                .unwrap();
+            let focus_components = focus_result["components"].as_array().unwrap();
+            assert_eq!(focus_components[0]["type"], "Card"); // built-in layout
+        }
+
+        #[test]
+        fn template_slot_with_no_data_relationships_is_skipped() {
+            // Service with no relationships — "relationships" slot should be skipped
+            let service = ServiceDef::new("product")
+                .display_name("Product")
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("name", DataType::String, FieldMeaning::EntityName);
+
+            let templates = ThemeTemplates {
+                browse: Some(IntentModeTemplates {
+                    display: IntentSlotTemplate {
+                        slots: vec!["title".to_string(), "relationships".to_string()],
+                        layout: None,
+                    },
+                    input: IntentSlotTemplate::default(),
+                }),
+                ..ThemeTemplates::default()
+            };
+
+            let ctx = RenderContext {
+                templates: Some(templates),
+                ..RenderContext::default()
+            };
+
+            let result = JsonUiRenderer
+                .render(&service, &vec![browse_intent()], &ctx)
+                .unwrap();
+            let components = result["components"].as_array().unwrap();
+
+            // Only title slot rendered — relationships slot skipped (no relationships)
+            // components should only contain the Text (h1) for title
+            let types: Vec<&str> = components
+                .iter()
+                .map(|c| c["type"].as_str().unwrap_or(""))
+                .collect();
+            assert!(types.contains(&"Text"));
+            // No relationship-specific components
+            assert!(!types.contains(&"Table") || components.iter().all(|c| c["key"]
+                .as_str()
+                .map(|k| !k.contains("rel"))
+                .unwrap_or(true)));
+        }
+
+        #[test]
+        fn template_with_layout_hint_is_passed_through_to_output() {
+            let service = order_service();
+            let intents = vec![browse_intent()];
+
+            let templates = ThemeTemplates {
+                browse: Some(IntentModeTemplates {
+                    display: IntentSlotTemplate {
+                        slots: vec!["title".to_string(), "fields".to_string()],
+                        layout: Some("table".to_string()),
+                    },
+                    input: IntentSlotTemplate::default(),
+                }),
+                ..ThemeTemplates::default()
+            };
+
+            let ctx = RenderContext {
+                templates: Some(templates),
+                ..RenderContext::default()
+            };
+
+            let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
+            // The layout hint "table" should be reflected: fields slot with table layout
+            // produces a Table component
+            let components = result["components"].as_array().unwrap();
+            let has_table = components.iter().any(|c| c["type"] == "Table");
+            assert!(has_table, "layout hint 'table' should produce a Table component");
+        }
+
+        #[test]
+        fn empty_theme_templates_all_none_produces_identical_output_to_no_templates() {
+            let service = order_service();
+            let intents = vec![browse_intent()];
+
+            // No templates
+            let ctx_no_templates = RenderContext::default();
+            let result_no_templates = JsonUiRenderer
+                .render(&service, &intents, &ctx_no_templates)
+                .unwrap();
+
+            // Empty ThemeTemplates (all None)
+            let ctx_empty = RenderContext {
+                templates: Some(ThemeTemplates::default()),
+                ..RenderContext::default()
+            };
+            let result_empty = JsonUiRenderer
+                .render(&service, &intents, &ctx_empty)
+                .unwrap();
+
+            assert_eq!(result_no_templates, result_empty);
+        }
+    }
 }
