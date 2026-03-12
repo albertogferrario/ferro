@@ -56,8 +56,9 @@ pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod
 pub use component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem,
     BreadcrumbProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistItem,
-    ChecklistProps, Column, ColumnFormat, Component, ComponentNode, DescriptionItem,
-    DescriptionListProps, FormProps, HeaderProps, IconPosition, InputProps, InputType, ModalProps,
+    ChecklistProps, CollapsibleProps, Column, ColumnFormat, Component, ComponentNode,
+    DescriptionItem, DescriptionListProps, EmptyStateProps, FormProps, FormSectionProps, GapSize,
+    GridProps, HeaderProps, IconPosition, InputProps, InputType, ModalProps,
     NotificationDropdownProps, NotificationItem, Orientation, PaginationProps, PluginProps,
     ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem,
     SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,

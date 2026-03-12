@@ -313,7 +313,8 @@ pub struct CheckboxProps {
 }
 
 /// Props for Switch component.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+// JsonSchema skipped: contains Option<Action> — Action has custom Serialize/Deserialize
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SwitchProps {
     /// Form field name for data binding.
     pub field: String,
@@ -331,6 +332,10 @@ pub struct SwitchProps {
     pub disabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Auto-submit action. When set, the switch renders inside a minimal
+    /// form and submits on change.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action: Option<Action>,
 }
 
 /// Props for Separator component.
@@ -570,6 +575,70 @@ pub struct HeaderProps {
     pub logout_url: Option<String>,
 }
 
+/// Gap size for Grid layout.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum GapSize {
+    None,
+    Sm,
+    #[default]
+    Md,
+    Lg,
+    Xl,
+}
+
+/// Props for Grid component — multi-column layout.
+// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GridProps {
+    /// Number of columns (1-12).
+    #[serde(default = "default_grid_columns")]
+    pub columns: u8,
+    /// Gap between grid items.
+    #[serde(default)]
+    pub gap: GapSize,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<ComponentNode>,
+}
+
+fn default_grid_columns() -> u8 {
+    2
+}
+
+/// Props for Collapsible section — expandable <details>/<summary>.
+// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CollapsibleProps {
+    pub title: String,
+    #[serde(default)]
+    pub expanded: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<ComponentNode>,
+}
+
+/// Props for EmptyState component — standardized empty view.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct EmptyStateProps {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action: Option<Action>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action_label: Option<String>,
+}
+
+/// Props for FormSection component — visual grouping within forms.
+// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FormSectionProps {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<ComponentNode>,
+}
+
 /// Props for a plugin component.
 ///
 /// The `plugin_type` field holds the original `"type"` value from JSON,
@@ -655,6 +724,10 @@ pub enum Component {
     NotificationDropdown(NotificationDropdownProps),
     Sidebar(SidebarProps),
     Header(HeaderProps),
+    Grid(GridProps),
+    Collapsible(CollapsibleProps),
+    EmptyState(EmptyStateProps),
+    FormSection(FormSectionProps),
     Plugin(PluginProps),
 }
 
@@ -708,6 +781,10 @@ impl Serialize for Component {
             }
             Component::Sidebar(p) => serialize_tagged(serializer, "Sidebar", p),
             Component::Header(p) => serialize_tagged(serializer, "Header", p),
+            Component::Grid(p) => serialize_tagged(serializer, "Grid", p),
+            Component::Collapsible(p) => serialize_tagged(serializer, "Collapsible", p),
+            Component::EmptyState(p) => serialize_tagged(serializer, "EmptyState", p),
+            Component::FormSection(p) => serialize_tagged(serializer, "FormSection", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -801,6 +878,18 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "Header" => serde_json::from_value::<HeaderProps>(value)
                 .map(Component::Header)
+                .map_err(de::Error::custom),
+            "Grid" => serde_json::from_value::<GridProps>(value)
+                .map(Component::Grid)
+                .map_err(de::Error::custom),
+            "Collapsible" => serde_json::from_value::<CollapsibleProps>(value)
+                .map(Component::Collapsible)
+                .map_err(de::Error::custom),
+            "EmptyState" => serde_json::from_value::<EmptyStateProps>(value)
+                .map(Component::EmptyState)
+                .map_err(de::Error::custom),
+            "FormSection" => serde_json::from_value::<FormSectionProps>(value)
+                .map(Component::FormSection)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -1088,6 +1177,46 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::Header(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Grid component node.
+    pub fn grid(key: impl Into<String>, props: GridProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Grid(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a Collapsible component node.
+    pub fn collapsible(key: impl Into<String>, props: CollapsibleProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Collapsible(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create an EmptyState component node.
+    pub fn empty_state(key: impl Into<String>, props: EmptyStateProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::EmptyState(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a FormSection component node.
+    pub fn form_section(key: impl Into<String>, props: FormSectionProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::FormSection(props),
             action: None,
             visibility: None,
         }
@@ -1438,6 +1567,7 @@ mod tests {
                 required: None,
                 disabled: None,
                 error: None,
+                action: None,
             }),
             Component::Separator(SeparatorProps { orientation: None }),
             Component::DescriptionList(DescriptionListProps {
@@ -1832,6 +1962,7 @@ mod tests {
             required: None,
             disabled: Some(false),
             error: None,
+            action: None,
         });
         let json = serde_json::to_value(&switch).unwrap();
         assert_eq!(json["type"], "Switch");
@@ -2167,6 +2298,7 @@ mod tests {
             required: None,
             disabled: None,
             error: None,
+            action: None,
         });
         let json = serde_json::to_value(&switch).unwrap();
         assert_eq!(json["data_path"], "/data/user/notifications_enabled");
@@ -2718,6 +2850,147 @@ mod tests {
             !json.contains("sse_target"),
             "sse_target must be omitted when None"
         );
+    }
+
+    // ── Grid tests ────────────────────────────────────────────────────
+
+    #[test]
+    fn grid_round_trips() {
+        let grid = Component::Grid(GridProps {
+            columns: 3,
+            gap: GapSize::Lg,
+            children: vec![ComponentNode::text(
+                "t",
+                TextProps {
+                    content: "cell".into(),
+                    element: TextElement::P,
+                },
+            )],
+        });
+        let json = serde_json::to_value(&grid).unwrap();
+        assert_eq!(json["type"], "Grid");
+        assert_eq!(json["columns"], 3);
+        assert_eq!(json["gap"], "lg");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, grid);
+    }
+
+    #[test]
+    fn grid_defaults() {
+        let json = serde_json::json!({"type": "Grid"});
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        match parsed {
+            Component::Grid(props) => {
+                assert_eq!(props.columns, 2);
+                assert_eq!(props.gap, GapSize::Md);
+                assert!(props.children.is_empty());
+            }
+            _ => panic!("expected Grid"),
+        }
+    }
+
+    // ── Collapsible tests ────────────────────────────────────────────
+
+    #[test]
+    fn collapsible_round_trips() {
+        let c = Component::Collapsible(CollapsibleProps {
+            title: "Details".into(),
+            expanded: true,
+            children: vec![],
+        });
+        let json = serde_json::to_value(&c).unwrap();
+        assert_eq!(json["type"], "Collapsible");
+        assert_eq!(json["title"], "Details");
+        assert_eq!(json["expanded"], true);
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, c);
+    }
+
+    // ── EmptyState tests ─────────────────────────────────────────────
+
+    #[test]
+    fn empty_state_round_trips() {
+        let es = Component::EmptyState(EmptyStateProps {
+            title: "No items".into(),
+            description: Some("Create one".into()),
+            action: Some(Action::get("items.create")),
+            action_label: Some("New item".into()),
+        });
+        let json = serde_json::to_value(&es).unwrap();
+        assert_eq!(json["type"], "EmptyState");
+        assert_eq!(json["title"], "No items");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, es);
+    }
+
+    #[test]
+    fn empty_state_minimal() {
+        let json = serde_json::json!({"type": "EmptyState", "title": "Nothing"});
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        match parsed {
+            Component::EmptyState(props) => {
+                assert_eq!(props.title, "Nothing");
+                assert!(props.description.is_none());
+                assert!(props.action.is_none());
+                assert!(props.action_label.is_none());
+            }
+            _ => panic!("expected EmptyState"),
+        }
+    }
+
+    // ── FormSection tests ────────────────────────────────────────────
+
+    #[test]
+    fn form_section_round_trips() {
+        let fs = Component::FormSection(FormSectionProps {
+            title: "Contact".into(),
+            description: Some("Your details".into()),
+            children: vec![],
+        });
+        let json = serde_json::to_value(&fs).unwrap();
+        assert_eq!(json["type"], "FormSection");
+        assert_eq!(json["title"], "Contact");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, fs);
+    }
+
+    // ── Switch action tests ──────────────────────────────────────────
+
+    #[test]
+    fn switch_with_action_round_trips() {
+        let sw = Component::Switch(SwitchProps {
+            field: "active".into(),
+            label: "Active".into(),
+            description: None,
+            checked: Some(true),
+            data_path: None,
+            required: None,
+            disabled: None,
+            error: None,
+            action: Some(Action::new("settings.toggle")),
+        });
+        let json = serde_json::to_value(&sw).unwrap();
+        assert!(json["action"].is_object());
+        assert_eq!(json["action"]["handler"], "settings.toggle");
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, sw);
+    }
+
+    #[test]
+    fn switch_without_action_omits_field() {
+        let sw = Component::Switch(SwitchProps {
+            field: "f".into(),
+            label: "l".into(),
+            description: None,
+            checked: None,
+            data_path: None,
+            required: None,
+            disabled: None,
+            error: None,
+            action: None,
+        });
+        let json = serde_json::to_string(&sw).unwrap();
+        assert!(!json.contains("\"action\""));
     }
 
     #[test]

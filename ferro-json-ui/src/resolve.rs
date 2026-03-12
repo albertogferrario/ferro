@@ -62,6 +62,31 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
                 }
             }
         }
+        Component::Grid(props) => {
+            for child in &mut props.children {
+                resolve_component_node(child, resolver);
+            }
+        }
+        Component::Collapsible(props) => {
+            for child in &mut props.children {
+                resolve_component_node(child, resolver);
+            }
+        }
+        Component::FormSection(props) => {
+            for child in &mut props.children {
+                resolve_component_node(child, resolver);
+            }
+        }
+        Component::EmptyState(props) => {
+            if let Some(ref mut action) = props.action {
+                resolve_action(action, resolver);
+            }
+        }
+        Component::Switch(props) => {
+            if let Some(ref mut action) = props.action {
+                resolve_action(action, resolver);
+            }
+        }
         // Leaf components with no children or actions to resolve.
         Component::Button(_)
         | Component::Input(_)
@@ -70,7 +95,6 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
         | Component::Badge(_)
         | Component::Text(_)
         | Component::Checkbox(_)
-        | Component::Switch(_)
         | Component::Separator(_)
         | Component::DescriptionList(_)
         | Component::Breadcrumb(_)
@@ -177,6 +201,31 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
                 }
             }
         }
+        Component::Grid(props) => {
+            for child in &props.children {
+                collect_unresolved_node(child, unresolved);
+            }
+        }
+        Component::Collapsible(props) => {
+            for child in &props.children {
+                collect_unresolved_node(child, unresolved);
+            }
+        }
+        Component::FormSection(props) => {
+            for child in &props.children {
+                collect_unresolved_node(child, unresolved);
+            }
+        }
+        Component::EmptyState(props) => {
+            if let Some(ref action) = props.action {
+                collect_unresolved_action(action, unresolved);
+            }
+        }
+        Component::Switch(props) => {
+            if let Some(ref action) = props.action {
+                collect_unresolved_action(action, unresolved);
+            }
+        }
         Component::Button(_)
         | Component::Input(_)
         | Component::Select(_)
@@ -184,7 +233,6 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         | Component::Badge(_)
         | Component::Text(_)
         | Component::Checkbox(_)
-        | Component::Switch(_)
         | Component::Separator(_)
         | Component::DescriptionList(_)
         | Component::Breadcrumb(_)
@@ -291,6 +339,21 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
                 }
             }
         }
+        Component::Grid(props) => {
+            for child in &mut props.children {
+                resolve_errors_node(child, errors, all);
+            }
+        }
+        Component::Collapsible(props) => {
+            for child in &mut props.children {
+                resolve_errors_node(child, errors, all);
+            }
+        }
+        Component::FormSection(props) => {
+            for child in &mut props.children {
+                resolve_errors_node(child, errors, all);
+            }
+        }
         // Leaf components with no form field semantics.
         Component::Table(_)
         | Component::Button(_)
@@ -310,6 +373,7 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::NotificationDropdown(_)
         | Component::Sidebar(_)
         | Component::Header(_)
+        | Component::EmptyState(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -814,6 +878,7 @@ mod tests {
                 required: None,
                 disabled: None,
                 error: None,
+                action: None,
             }),
             action: None,
             visibility: None,

@@ -12,8 +12,9 @@ use serde_json::Value;
 use crate::action::HttpMethod;
 use crate::component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbProps, ButtonProps,
-    ButtonVariant, CardProps, CheckboxProps, ChecklistProps, Component, ComponentNode,
-    DescriptionListProps, FormProps, HeaderProps, IconPosition, InputProps, InputType, ModalProps,
+    ButtonVariant, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
+    ComponentNode, DescriptionListProps, EmptyStateProps, FormProps, FormSectionProps, GapSize,
+    GridProps, HeaderProps, IconPosition, InputProps, InputType, ModalProps,
     NotificationDropdownProps, Orientation, PaginationProps, PluginProps, ProgressProps,
     SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps,
     TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
@@ -125,6 +126,21 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
                 }
             }
         }
+        Component::Grid(props) => {
+            for child in &props.children {
+                collect_plugin_types_node(child, types);
+            }
+        }
+        Component::Collapsible(props) => {
+            for child in &props.children {
+                collect_plugin_types_node(child, types);
+            }
+        }
+        Component::FormSection(props) => {
+            for child in &props.children {
+                collect_plugin_types_node(child, types);
+            }
+        }
         // Leaf components have no children to recurse into.
         Component::Table(_)
         | Component::Button(_)
@@ -147,7 +163,8 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::Toast(_)
         | Component::NotificationDropdown(_)
         | Component::Sidebar(_)
-        | Component::Header(_) => {}
+        | Component::Header(_)
+        | Component::EmptyState(_) => {}
     }
 }
 
@@ -250,7 +267,15 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::Checkbox(props) => render_checkbox(props, data),
         Component::Switch(props) => render_switch(props, data),
 
-        // New dashboard components.
+        // Layout components.
+        Component::Grid(props) => render_grid(props, data),
+        Component::Collapsible(props) => render_collapsible(props, data),
+        Component::FormSection(props) => render_form_section(props, data),
+
+        // Standalone components.
+        Component::EmptyState(props) => render_empty_state(props),
+
+        // Dashboard components.
         Component::StatCard(props) => render_stat_card(props),
         Component::Checklist(props) => render_checklist(props),
         Component::Toast(props) => render_toast(props),
@@ -350,34 +375,78 @@ fn render_modal(props: &ModalProps, data: &Value) -> String {
 }
 
 fn render_tabs(props: &TabsProps, data: &Value) -> String {
-    let mut html = String::from("<div>");
+    // Determine rendering strategy per tab:
+    // - Tabs with children render their panel and switch client-side via JS.
+    // - Empty tabs (server-driven) render as links with ?tab= for full reload.
+    let has_any_content = props.tabs.iter().any(|t| !t.children.is_empty());
+
+    let mut html = String::from("<div data-tabs>");
     html.push_str("<div class=\"border-b border-gray-200\">");
-    html.push_str("<nav class=\"flex -mb-px space-x-4\">");
+    html.push_str("<nav class=\"flex -mb-px space-x-4\" role=\"tablist\">");
+
     for tab in &props.tabs {
-        if tab.value == props.default_tab {
+        let is_active = tab.value == props.default_tab;
+        let border = if is_active {
+            "border-blue-600"
+        } else {
+            "border-transparent"
+        };
+        let text = if is_active {
+            "text-blue-600"
+        } else {
+            "text-gray-500 hover:text-gray-700"
+        };
+
+        if has_any_content && (is_active || !tab.children.is_empty()) {
+            // Client-side tab trigger
             html.push_str(&format!(
-                "<span class=\"border-b-2 border-blue-600 text-blue-600 px-3 py-2 text-sm font-medium\">{}</span>",
-                html_escape(&tab.label)
+                "<button type=\"button\" role=\"tab\" data-tab=\"{}\" \
+                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium cursor-pointer\" \
+                 aria-selected=\"{}\">{}</button>",
+                html_escape(&tab.value),
+                border,
+                text,
+                is_active,
+                html_escape(&tab.label),
             ));
         } else {
+            // Server-driven tab: link with ?tab= query param
             html.push_str(&format!(
-                "<span class=\"border-b-2 border-transparent text-gray-500 px-3 py-2 text-sm font-medium\">{}</span>",
-                html_escape(&tab.label)
+                "<a href=\"?tab={}\" role=\"tab\" \
+                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium\" \
+                 aria-selected=\"{}\">{}</a>",
+                html_escape(&tab.value),
+                border,
+                text,
+                is_active,
+                html_escape(&tab.label),
             ));
         }
     }
+
     html.push_str("</nav></div>");
-    // Render only the default tab's children.
+
+    // Render all tab panels — inactive panels are hidden via CSS.
     for tab in &props.tabs {
-        if tab.value == props.default_tab {
-            html.push_str("<div class=\"pt-4 space-y-4\">");
-            for child in &tab.children {
-                html.push_str(&render_node(child, data));
-            }
-            html.push_str("</div>");
-            break;
+        if tab.children.is_empty() && tab.value != props.default_tab {
+            continue;
         }
+        let hidden = if tab.value != props.default_tab {
+            " hidden"
+        } else {
+            ""
+        };
+        html.push_str(&format!(
+            "<div role=\"tabpanel\" data-tab-panel=\"{}\" class=\"pt-4 space-y-4{}\">",
+            html_escape(&tab.value),
+            hidden,
+        ));
+        for child in &tab.children {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div>");
     }
+
     html.push_str("</div>");
     html
 }
@@ -773,7 +842,42 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
         false
     };
 
-    let mut html = String::from("<div class=\"space-y-1\">");
+    let auto_submit = props.action.is_some();
+    let onchange = if auto_submit {
+        " onchange=\"this.closest('form').submit()\""
+    } else {
+        ""
+    };
+
+    let mut html = String::new();
+
+    // Wrap in a minimal form when an action is provided.
+    if let Some(ref action) = props.action {
+        let action_url = action.url.as_deref().unwrap_or("#");
+        let (form_method, needs_spoofing) = match action.method {
+            HttpMethod::Get => ("get", false),
+            HttpMethod::Post => ("post", false),
+            HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => ("post", true),
+        };
+        html.push_str(&format!(
+            "<form action=\"{}\" method=\"{}\">",
+            html_escape(action_url),
+            form_method
+        ));
+        if needs_spoofing {
+            let method_value = match action.method {
+                HttpMethod::Put => "PUT",
+                HttpMethod::Patch => "PATCH",
+                HttpMethod::Delete => "DELETE",
+                _ => unreachable!(),
+            };
+            html.push_str(&format!(
+                "<input type=\"hidden\" name=\"_method\" value=\"{method_value}\">"
+            ));
+        }
+    }
+
+    html.push_str("<div class=\"space-y-1\">");
     html.push_str("<div class=\"flex items-center justify-between\">");
 
     // Left side: label + description.
@@ -794,9 +898,10 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
     // Right side: toggle.
     html.push_str("<label class=\"relative inline-flex items-center cursor-pointer\">");
     html.push_str(&format!(
-        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"1\" class=\"sr-only peer\"",
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"1\" class=\"sr-only peer\"{}",
         html_escape(&props.field),
-        html_escape(&props.field)
+        html_escape(&props.field),
+        onchange,
     ));
     if is_checked {
         html.push_str(" checked");
@@ -819,6 +924,11 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
         ));
     }
     html.push_str("</div>");
+
+    if props.action.is_some() {
+        html.push_str("</form>");
+    }
+
     html
 }
 
@@ -1130,7 +1240,90 @@ fn render_description_list(props: &DescriptionListProps) -> String {
     html
 }
 
-// ── New dashboard component renderers ───────────────────────────────────
+// ── Layout component renderers ───────────────────────────────────────────
+
+fn render_grid(props: &GridProps, data: &Value) -> String {
+    let cols = props.columns.clamp(1, 12);
+    let gap = match props.gap {
+        GapSize::None => "gap-0",
+        GapSize::Sm => "gap-2",
+        GapSize::Md => "gap-4",
+        GapSize::Lg => "gap-6",
+        GapSize::Xl => "gap-8",
+    };
+    let mut html = format!("<div class=\"grid grid-cols-{cols} {gap}\">");
+    for child in &props.children {
+        html.push_str(&render_node(child, data));
+    }
+    html.push_str("</div>");
+    html
+}
+
+fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
+    let mut html = String::from("<details class=\"group\"");
+    if props.expanded {
+        html.push_str(" open");
+    }
+    html.push('>');
+    html.push_str(&format!(
+        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-gray-900 bg-gray-50 rounded-lg hover:bg-gray-100\">{}<span class=\"text-gray-400 group-open:rotate-180 transition-transform\">&#9660;</span></summary>",
+        html_escape(&props.title)
+    ));
+    html.push_str("<div class=\"px-4 py-3 space-y-4\">");
+    for child in &props.children {
+        html.push_str(&render_node(child, data));
+    }
+    html.push_str("</div></details>");
+    html
+}
+
+fn render_empty_state(props: &EmptyStateProps) -> String {
+    let mut html =
+        String::from("<div class=\"flex flex-col items-center justify-center py-12 text-center\">");
+    html.push_str(&format!(
+        "<p class=\"text-lg font-medium text-gray-900\">{}</p>",
+        html_escape(&props.title)
+    ));
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"mt-1 text-sm text-gray-500\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+    if let Some(ref action) = props.action {
+        let label = props.action_label.as_deref().unwrap_or("Action");
+        let url = action.url.as_deref().unwrap_or("#");
+        html.push_str(&format!(
+            "<a href=\"{}\" class=\"mt-4 inline-flex items-center justify-center rounded-md bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700\">{}</a>",
+            html_escape(url),
+            html_escape(label)
+        ));
+    }
+    html.push_str("</div>");
+    html
+}
+
+fn render_form_section(props: &FormSectionProps, data: &Value) -> String {
+    let mut html = String::from("<fieldset class=\"space-y-4\">");
+    html.push_str(&format!(
+        "<legend class=\"text-base font-semibold text-gray-900\">{}</legend>",
+        html_escape(&props.title)
+    ));
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-gray-500\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+    html.push_str("<div class=\"space-y-4\">");
+    for child in &props.children {
+        html.push_str(&render_node(child, data));
+    }
+    html.push_str("</div></fieldset>");
+    html
+}
+
+// ── Dashboard component renderers ───────────────────────────────────────
 
 fn render_stat_card(props: &StatCardProps) -> String {
     let mut html =
@@ -2665,13 +2858,16 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         // Active tab styling.
         assert!(html.contains("border-b-2 border-blue-600 text-blue-600"));
-        assert!(html.contains(">General</span>"));
+        assert!(html.contains(">General</button>"));
         // Inactive tab styling.
         assert!(html.contains("border-transparent text-gray-500"));
-        assert!(html.contains(">Security</span>"));
-        // Only default tab content rendered.
+        assert!(html.contains(">Security</button>"));
+        // Default tab panel visible, inactive panel hidden.
         assert!(html.contains("General content"));
-        assert!(!html.contains("Security content"));
+        assert!(html.contains("Security content"));
+        // Active panel has no hidden class; inactive panel is hidden.
+        assert!(html.contains("data-tab-panel=\"general\" class=\"pt-4 space-y-4\""));
+        assert!(html.contains("data-tab-panel=\"security\" class=\"pt-4 space-y-4 hidden\""));
     }
 
     // ── 19. Form ───────────────────────────────────────────────────────
@@ -3123,6 +3319,7 @@ mod tests {
                 required: None,
                 disabled: None,
                 error: None,
+                action: None,
             }),
             action: None,
             visibility: None,
@@ -3152,6 +3349,7 @@ mod tests {
                 required: None,
                 disabled: None,
                 error: Some("Required".to_string()),
+                action: None,
             }),
             action: None,
             visibility: None,
@@ -4149,5 +4347,184 @@ mod tests {
             html.contains("<a "),
             "GET action should wrap component in anchor tag"
         );
+    }
+
+    // ── Grid ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn grid_renders_columns_and_gap() {
+        let view = JsonUiView::new().component(ComponentNode::grid(
+            "g",
+            crate::component::GridProps {
+                columns: 4,
+                gap: crate::component::GapSize::Lg,
+                children: vec![text_node("c1", "Cell 1", TextElement::P)],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("grid grid-cols-4 gap-6"));
+        assert!(html.contains("Cell 1"));
+    }
+
+    #[test]
+    fn grid_clamps_columns() {
+        let view = JsonUiView::new().component(ComponentNode::grid(
+            "g",
+            crate::component::GridProps {
+                columns: 20,
+                gap: crate::component::GapSize::default(),
+                children: vec![],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("grid-cols-12"));
+    }
+
+    // ── Collapsible ───────────────────────────────────────────────────
+
+    #[test]
+    fn collapsible_renders_details_summary() {
+        let view = JsonUiView::new().component(ComponentNode::collapsible(
+            "c",
+            crate::component::CollapsibleProps {
+                title: "More info".into(),
+                expanded: false,
+                children: vec![text_node("t", "Hidden text", TextElement::P)],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<details"));
+        assert!(!html.contains(" open"));
+        assert!(html.contains("<summary"));
+        assert!(html.contains("More info"));
+        assert!(html.contains("Hidden text"));
+    }
+
+    #[test]
+    fn collapsible_expanded_has_open() {
+        let view = JsonUiView::new().component(ComponentNode::collapsible(
+            "c",
+            crate::component::CollapsibleProps {
+                title: "Open".into(),
+                expanded: true,
+                children: vec![],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<details") && html.contains(" open"));
+    }
+
+    // ── EmptyState ────────────────────────────────────────────────────
+
+    #[test]
+    fn empty_state_renders_title_and_description() {
+        let view = JsonUiView::new().component(ComponentNode::empty_state(
+            "es",
+            crate::component::EmptyStateProps {
+                title: "No orders".into(),
+                description: Some("Create your first order".into()),
+                action: None,
+                action_label: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("No orders"));
+        assert!(html.contains("Create your first order"));
+        assert!(!html.contains("<a "));
+    }
+
+    #[test]
+    fn empty_state_renders_action_link() {
+        let view = JsonUiView::new().component(ComponentNode::empty_state(
+            "es",
+            crate::component::EmptyStateProps {
+                title: "Empty".into(),
+                description: None,
+                action: Some(Action {
+                    handler: "orders.new".into(),
+                    url: Some("/orders/new".into()),
+                    method: HttpMethod::Get,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                }),
+                action_label: Some("New order".into()),
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("href=\"/orders/new\""));
+        assert!(html.contains("New order"));
+    }
+
+    // ── FormSection ───────────────────────────────────────────────────
+
+    #[test]
+    fn form_section_renders_fieldset() {
+        let view = JsonUiView::new().component(ComponentNode::form_section(
+            "fs",
+            crate::component::FormSectionProps {
+                title: "Contact".into(),
+                description: Some("Enter details".into()),
+                children: vec![text_node("n", "Name field", TextElement::P)],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<fieldset"));
+        assert!(html.contains("<legend"));
+        assert!(html.contains("Contact"));
+        assert!(html.contains("Enter details"));
+        assert!(html.contains("Name field"));
+    }
+
+    // ── Switch auto-submit ────────────────────────────────────────────
+
+    #[test]
+    fn switch_with_action_renders_form() {
+        let view = JsonUiView::new().component(ComponentNode::switch(
+            "sw",
+            SwitchProps {
+                field: "active".into(),
+                label: "Active".into(),
+                description: None,
+                checked: Some(true),
+                data_path: None,
+                required: None,
+                disabled: None,
+                error: None,
+                action: Some(Action {
+                    handler: "settings.toggle".into(),
+                    url: Some("/settings/toggle".into()),
+                    method: HttpMethod::Post,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                }),
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<form action=\"/settings/toggle\" method=\"post\">"));
+        assert!(html.contains("onchange=\"this.closest('form').submit()\""));
+        assert!(html.contains("</form>"));
+    }
+
+    #[test]
+    fn switch_without_action_no_form() {
+        let view = JsonUiView::new().component(ComponentNode::switch(
+            "sw",
+            SwitchProps {
+                field: "f".into(),
+                label: "L".into(),
+                description: None,
+                checked: None,
+                data_path: None,
+                required: None,
+                disabled: None,
+                error: None,
+                action: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("<form"));
+        assert!(!html.contains("onchange"));
     }
 }
