@@ -28,17 +28,13 @@ ferro make:theme myapp
 
 This creates `themes/myapp/tokens.css` with all 23 token slots pre-filled with defaults, and `themes/myapp/theme.json` as an empty object.
 
-Activate the theme in `bootstrap.rs`:
+Activate the theme by setting it as the default in your middleware setup:
 
 ```rust
-use ferro::{global_middleware, ThemeMiddleware, HeaderThemeResolver};
+use ferro::{ThemeMiddleware, Theme};
 
-pub fn register() {
-    global_middleware!(
-        ThemeMiddleware::new()
-            .resolver(HeaderThemeResolver::new("./themes"))
-    );
-}
+let middleware = ThemeMiddleware::new()
+    .default_theme(Theme::from_path("./themes/myapp").unwrap());
 ```
 
 Edit `themes/myapp/tokens.css` to customize the visual identity:
@@ -125,7 +121,7 @@ The scaffolded `tokens.css` includes a dark mode block:
 }
 ```
 
-To add manual dark mode toggle (e.g., user preference stored in a cookie), apply a `data-theme="dark"` attribute on the `<html>` element and scope the `@theme` overrides with `[data-theme="dark"]`:
+To add manual dark mode toggle (e.g., user preference stored in a cookie), apply a `data-theme="dark"` attribute on the `<html>` element and scope the overrides with `[data-theme="dark"]`:
 
 ```css
 [data-theme="dark"] {
@@ -137,7 +133,7 @@ To add manual dark mode toggle (e.g., user preference stored in a cookie), apply
 
 ## Intent Templates
 
-`theme.json` controls how JSON-UI intent layouts render. Leave it as `{}` to use the defaults, or override specific intents.
+`theme.json` controls how JSON-UI intent layouts render. Leave it as `{}` to use the built-in layouts, or override specific intents.
 
 Supported intent keys: `browse`, `focus`, `collect`, `process`, `summarize`, `analyze`, `track`.
 
@@ -171,24 +167,20 @@ Example — override Collect input to show fields and actions in a Form layout:
 }
 ```
 
-Unspecified intents and modes fall back to the framework defaults. Only override what you want to change.
+Unspecified intents use the built-in renderer. Only override what you want to change.
 
 ## ThemeMiddleware Setup
 
 `ThemeMiddleware` resolves the active theme per request using a resolver chain. Multiple resolvers are tried in order; the first `Some` result wins.
 
 ```rust
-use ferro::{global_middleware, ThemeMiddleware, HeaderThemeResolver};
+use ferro::{ThemeMiddleware, HeaderThemeResolver};
 
-pub fn register() {
-    global_middleware!(
-        ThemeMiddleware::new()
-            .resolver(HeaderThemeResolver::new("./themes"))
-    );
-}
+let middleware = ThemeMiddleware::new()
+    .resolver(HeaderThemeResolver::new("./themes"));
 ```
 
-The middleware injects the theme CSS into every HTML response. When no resolver matches, `ThemeMiddleware` falls back to the built-in default theme — it never returns an error.
+The middleware stores the resolved theme in task-local context. JSON-UI responses automatically include the theme CSS as an inline `<style>` tag in the HTML `<head>`. When no resolver matches, `ThemeMiddleware` falls back to the built-in default theme — it never returns an error.
 
 ### Resolver Types
 
@@ -220,28 +212,36 @@ DefaultResolver::new(Theme::from_path("./themes/corporate").unwrap())
 
 When no resolver matches, `ThemeMiddleware` falls back to the built-in default theme automatically.
 
-## Multi-Tenant Themes
+### Setting a Custom Default
 
-In multi-tenant applications, each tenant can have a distinct visual identity. The `TenantThemeResolver` reads `TenantContext.plan` and maps it to a theme name.
-
-Setup — register both `TenantMiddleware` and `ThemeMiddleware`:
+Use `.default_theme()` to change the fallback theme (used when no resolver matches):
 
 ```rust
-use ferro::{global_middleware, TenantMiddleware, ThemeMiddleware, TenantThemeResolver};
+use ferro::{ThemeMiddleware, TenantThemeResolver, Theme};
 
-pub fn register() {
-    global_middleware!(TenantMiddleware::new().resolver(/* ... */));
-
-    global_middleware!(
-        ThemeMiddleware::new()
-            .resolver(TenantThemeResolver::new("./themes"))
-    );
-}
+let middleware = ThemeMiddleware::new()
+    .resolver(TenantThemeResolver::new("./themes"))
+    .default_theme(Theme::from_path("./themes/corporate").unwrap());
 ```
 
-The tenant's `plan` field is used as the theme directory name. A tenant with `plan: "enterprise"` loads `themes/enterprise/`.
+## Multi-Tenant Themes
 
-`TenantMiddleware` must run before `ThemeMiddleware` so `TenantContext` is available when the theme is resolved.
+In multi-tenant applications, each tenant can have a distinct visual identity. `TenantThemeResolver` reads `TenantContext.plan` and uses it as the theme directory name.
+
+`TenantMiddleware` must run before `ThemeMiddleware` so `TenantContext` is populated when the theme is resolved.
+
+```rust
+use ferro::{TenantMiddleware, ThemeMiddleware, TenantThemeResolver};
+
+// Register TenantMiddleware first
+let tenant_mw = TenantMiddleware::new().resolver(/* ... */);
+
+// Then ThemeMiddleware — reads tenant.plan as theme name
+let theme_mw = ThemeMiddleware::new()
+    .resolver(TenantThemeResolver::new("./themes"));
+```
+
+A tenant with `plan: "enterprise"` loads `themes/enterprise/`. Tenants without a plan (or with a plan that doesn't match a theme directory) fall through to the next resolver or the default theme.
 
 ## For Theme Creators
 
@@ -257,7 +257,7 @@ Add this to your build pipeline or `package.json` scripts.
 
 **Partial overrides in theme.json:**
 
-`theme.json` only needs to specify the intents and slots you want to change. An empty `{}` is valid and means "use all framework defaults." The framework deep-merges your overrides with the defaults, so you never need to specify the full structure.
+`theme.json` only needs to specify the intents and modes you want to override. An empty `{}` is valid and means "use all built-in layouts." Intents not specified in `theme.json` use the framework's built-in renderer unchanged.
 
 **Publishing a theme:**
 
