@@ -27,6 +27,8 @@ pub mod session;
 pub(crate) mod static_files;
 pub mod tenant;
 pub mod testing;
+#[cfg(feature = "theme")]
+pub mod theme;
 pub mod validation;
 mod websocket;
 
@@ -85,6 +87,8 @@ pub use ferro_stripe::{
     StripeConnectPaymentSucceeded, StripeInvoicePaid, StripeSubscriptionDeleted,
     StripeSubscriptionUpdated, SubscriptionInfo, SubscriptionStatus,
 };
+#[cfg(feature = "theme")]
+pub use ferro_theme::{IntentModeTemplates, IntentSlotTemplate, Theme, ThemeError, ThemeTemplates};
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{
     bytes, json, text, Cookie, CookieOptions, FormRequest, FromParam, FromRequest, HttpResponse,
@@ -110,6 +114,11 @@ pub use tenant::{
     current_tenant, DbTenantLookup, FrameworkTenantScopeProvider, HeaderResolver, JwtClaimResolver,
     PathResolver, SubdomainResolver, TenantContext, TenantFailureMode, TenantLookup,
     TenantMiddleware, TenantResolver, TenantScope,
+};
+#[cfg(feature = "theme")]
+pub use theme::{
+    current_theme, DefaultResolver, HeaderThemeResolver, TenantThemeResolver, ThemeMiddleware,
+    ThemeResolver,
 };
 // Deprecated - kept for backward compatibility
 #[cfg(feature = "inertia")]
