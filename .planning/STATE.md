@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: "Completed 99-01-PLAN.md (ferro-theme crate)"
-last_updated: "2026-03-12T02:57:00.000Z"
-last_activity: 2026-03-12 — Phase 99-01 executed (1 task)
+stopped_at: Completed 99-02-PLAN.md (ThemeMiddleware and JSON-UI CSS injection)
+last_updated: "2026-03-12T03:09:17.618Z"
+last_activity: 2026-03-12 — Phase 99-02 executed (2 tasks)
 progress:
   total_phases: 17
   completed_phases: 16
   total_plans: 53
-  completed_plans: 49
+  completed_plans: 50
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 Phase: 99 (Semantic Theme System with Intent-Driven Templates) — In Progress
 Plan: 1 of 5 complete
-Status: Phase 99 Plan 01 complete — ferro-theme crate with semantic token vocabulary, embedded default CSS, ThemeTemplates schema
+Status: Phase 99 Plan 02 complete — ThemeMiddleware with resolver chain, task-local context, moka cache, and JSON-UI CSS injection
 Last activity: 2026-03-12 — Phase 99-01 executed (1 task)
 
 ## Milestone Summary
@@ -389,6 +389,12 @@ Archived to PROJECT.md and milestone archive files.
 - ThemeTemplates uses #[serde(default)] on all 7 Option fields for partial JSON override support
 - Theme::from_path() treats missing theme.json as empty ThemeTemplates (not an error)
 
+**Phase 99-02:**
+- Arc<Theme> in task-local (not Theme directly) — Theme holds a CSS String, Arc avoids cloning large content per-request
+- TenantThemeResolver uses tenant.plan as theme selector for v1 — dedicated theme_name field deferred to future phase
+- ThemeMiddleware has no failure mode (unlike TenantMiddleware) — DefaultResolver always provides a fallback
+- Theme CSS injected after Tailwind CDN and custom_head but before plugin CSS so CDN processes @theme directives first
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -410,6 +416,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T02:09:27.879Z
-Stopped at: Phase 99 context gathered
-Resume file: .planning/phases/99-semantic-theme-system-with-intent-driven-templates/99-CONTEXT.md
+Last session: 2026-03-12T03:09:17.609Z
+Stopped at: Completed 99-02-PLAN.md (ThemeMiddleware and JSON-UI CSS injection)
+Resume file: None
