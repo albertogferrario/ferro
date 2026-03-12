@@ -656,7 +656,7 @@ Plans:
 **Goal:** Make JSON-UI visually customizable through semantic CSS tokens and intent-to-layout mappings configurable through declarative templates. New `ferro-theme` crate defines token vocabulary (~23 slots) and intent template schema. ThemeMiddleware enables per-request theme selection for multi-tenant white-labeling. All ~224 hardcoded Tailwind classes in render.rs/layout.rs migrated to semantic token references. JsonUiRenderer updated to consume intent template overrides.
 **Requirements**: [THEME-01, THEME-02, THEME-03, THEME-04, THEME-05, THEME-06, THEME-07, THEME-08, THEME-09, THEME-10, THEME-11, THEME-12]
 **Depends on:** Phase 98
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 99-01-PLAN.md — ferro-theme crate: Theme struct, ThemeError, token vocabulary, IntentTemplate schema, default embedded CSS, filesystem loader

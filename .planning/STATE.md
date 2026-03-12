@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 99-04-PLAN.md (ThemeTemplates intent template consumption in JsonUiRenderer)
-last_updated: "2026-03-12T03:44:35.683Z"
-last_activity: 2026-03-12 — Phase 99-03 executed (2 tasks)
+stopped_at: Completed 99-05-PLAN.md (CLI theme scaffolding, publish workflow, and documentation)
+last_updated: "2026-03-12T03:47:43.450Z"
+last_activity: 2026-03-12 — Phase 99-05 executed (2 tasks)
 progress:
   total_phases: 17
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 53
-  completed_plans: 52
+  completed_plans: 53
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 99 (Semantic Theme System with Intent-Driven Templates) — In Progress
-Plan: 4 of 5 complete
-Status: Phase 99 Plan 04 complete — JsonUiRenderer updated to consume ThemeTemplates slot-driven layout overrides
-Last activity: 2026-03-12 — Phase 99-04 executed (1 task, TDD)
+Phase: 99 (Semantic Theme System with Intent-Driven Templates) — COMPLETE
+Plan: 5 of 5 complete
+Status: Phase 99 Plan 05 complete — ferro make:theme CLI command, ferro-theme in publish.yml Wave 1, comprehensive theme documentation
+Last activity: 2026-03-12 — Phase 99-05 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -409,6 +409,12 @@ Archived to PROJECT.md and milestone archive files.
 - Custom(_) intent always returns None from get_template_for_intent — custom intents are user-defined, can't have fixed template overrides
 - render_slot returns Vec<Value> — callers use extend() which naturally handles empty vecs without special cases
 
+**Phase 99-05:**
+- make_theme_in_dir(name, base) with configurable base directory enables tempfile-based unit tests without filesystem side effects
+- tokens.css scaffold uses Tailwind v4 @theme authoring format (not :root) — users must process with npx tailwindcss before serving
+- theme.json scaffold is exactly {} (empty object) — partial overrides only, framework deep-merges with defaults at runtime
+- ferro-theme in Wave 1 of publish.yml — no dependency on ferro-rs (Wave 2), consistent with ferro-lang/ferro-stripe placement
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -430,6 +436,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T03:44:35.679Z
-Stopped at: Completed 99-04-PLAN.md (ThemeTemplates intent template consumption in JsonUiRenderer)
+Last session: 2026-03-12T03:47:43.446Z
+Stopped at: Completed 99-05-PLAN.md (CLI theme scaffolding, publish workflow, and documentation)
 Resume file: None
