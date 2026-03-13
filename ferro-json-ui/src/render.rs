@@ -783,12 +783,20 @@ fn render_checkbox(props: &CheckboxProps, data: &Value) -> String {
         false
     };
 
+    let value_attr = props.value.as_deref().unwrap_or("1");
+    // When value is set, use it as part of the id to make each checkbox unique.
+    let checkbox_id = match &props.value {
+        Some(v) => format!("{}_{}", props.field, v),
+        None => props.field.clone(),
+    };
+
     let mut html = String::from("<div class=\"space-y-1\">");
     html.push_str("<div class=\"flex items-center gap-2\">");
     html.push_str(&format!(
-        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"1\" class=\"h-4 w-4 rounded-radius-sm border-border text-primary focus:ring-primary\"",
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-radius-sm border-border text-primary focus:ring-primary\"",
+        html_escape(&checkbox_id),
         html_escape(&props.field),
-        html_escape(&props.field)
+        html_escape(value_attr)
     ));
     if is_checked {
         html.push_str(" checked");
@@ -802,7 +810,7 @@ fn render_checkbox(props: &CheckboxProps, data: &Value) -> String {
     html.push('>');
     html.push_str(&format!(
         "<label class=\"text-sm font-medium text-text\" for=\"{}\">{}</label>",
-        html_escape(&props.field),
+        html_escape(&checkbox_id),
         html_escape(&props.label)
     ));
     html.push_str("</div>");
@@ -3243,6 +3251,7 @@ mod tests {
             key: "cb".to_string(),
             component: Component::Checkbox(CheckboxProps {
                 field: "terms".to_string(),
+                value: None,
                 label: "Accept Terms".to_string(),
                 description: Some("You must accept".to_string()),
                 checked: Some(true),
@@ -3274,6 +3283,7 @@ mod tests {
             key: "cb".to_string(),
             component: Component::Checkbox(CheckboxProps {
                 field: "accepted".to_string(),
+                value: None,
                 label: "Accepted".to_string(),
                 description: None,
                 checked: None,
@@ -3295,6 +3305,7 @@ mod tests {
             key: "cb".to_string(),
             component: Component::Checkbox(CheckboxProps {
                 field: "terms".to_string(),
+                value: None,
                 label: "Terms".to_string(),
                 description: None,
                 checked: None,

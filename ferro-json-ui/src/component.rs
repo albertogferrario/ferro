@@ -296,6 +296,10 @@ pub struct TextProps {
 pub struct CheckboxProps {
     /// Form field name for data binding.
     pub field: String,
+    /// HTML value attribute. When set, the checkbox submits this value instead of "1".
+    /// Required for multi-value checkbox groups (same name, different values).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
     pub label: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -1550,6 +1554,7 @@ mod tests {
             }),
             Component::Checkbox(CheckboxProps {
                 field: "f".to_string(),
+                value: None,
                 label: "l".to_string(),
                 description: None,
                 checked: None,
@@ -1934,6 +1939,7 @@ mod tests {
     fn checkbox_round_trips() {
         let checkbox = Component::Checkbox(CheckboxProps {
             field: "terms".to_string(),
+            value: None,
             label: "Accept Terms".to_string(),
             description: Some("You must accept the terms".to_string()),
             checked: Some(true),
@@ -2023,6 +2029,7 @@ mod tests {
     fn checkbox_with_error() {
         let checkbox = Component::Checkbox(CheckboxProps {
             field: "agree".to_string(),
+            value: None,
             label: "I agree".to_string(),
             description: None,
             checked: None,
@@ -2273,6 +2280,7 @@ mod tests {
     fn checkbox_data_path_round_trips() {
         let checkbox = Component::Checkbox(CheckboxProps {
             field: "terms".to_string(),
+            value: None,
             label: "Accept Terms".to_string(),
             description: None,
             checked: None,

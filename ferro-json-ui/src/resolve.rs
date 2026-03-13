@@ -843,6 +843,7 @@ mod tests {
             key: "terms-checkbox".to_string(),
             component: Component::Checkbox(CheckboxProps {
                 field: "terms".to_string(),
+                value: None,
                 label: "Accept Terms".to_string(),
                 description: None,
                 checked: None,
