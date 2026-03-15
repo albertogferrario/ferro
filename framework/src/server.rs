@@ -15,11 +15,27 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
+/// Pre-routing WebSocket interceptor.
+///
+/// Called for every WS upgrade request before Ferro routing.
+/// Returns `Ok(Response)` to handle the request, `Err(Request)` to decline
+/// and pass to normal routing (including the built-in `/_ferro/ws` check).
+type WsInterceptor = Box<
+    dyn Fn(
+            hyper::Request<hyper::body::Incoming>,
+        ) -> Result<
+            hyper::Response<Full<Bytes>>,
+            hyper::Request<hyper::body::Incoming>,
+        > + Send
+        + Sync,
+>;
+
 pub struct Server {
     router: Arc<Router>,
     middleware: MiddlewareRegistry,
     host: String,
     port: u16,
+    ws_interceptor: Option<Arc<WsInterceptor>>,
 }
 
 impl Server {
@@ -29,6 +45,7 @@ impl Server {
             middleware: MiddlewareRegistry::new(),
             host: "127.0.0.1".to_string(),
             port: 8080,
+            ws_interceptor: None,
         }
     }
 
@@ -46,7 +63,43 @@ impl Server {
             middleware: MiddlewareRegistry::from_global(),
             host: config.host,
             port: config.port,
+            ws_interceptor: None,
         }
+    }
+
+    /// Set a WebSocket interceptor that runs before all routing.
+    ///
+    /// The interceptor receives every WS upgrade request first.
+    /// Return `Ok(response)` to handle the connection; return `Err(request)` to
+    /// decline and let normal routing (including `/_ferro/ws`) proceed.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// Server::from_config(router)
+    ///     .ws_interceptor(|req| {
+    ///         if req.uri().path().starts_with("/sessions/") {
+    ///             Ok(my_ws_handler(req))
+    ///         } else {
+    ///             Err(req) // pass to /_ferro/ws
+    ///         }
+    ///     })
+    ///     .run()
+    ///     .await;
+    /// ```
+    pub fn ws_interceptor<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(
+                hyper::Request<hyper::body::Incoming>,
+            ) -> Result<
+                hyper::Response<Full<Bytes>>,
+                hyper::Request<hyper::body::Incoming>,
+            > + Send
+            + Sync
+            + 'static,
+    {
+        self.ws_interceptor = Some(Arc::new(Box::new(handler)));
+        self
     }
 
     /// Add global middleware (runs on every request)
@@ -92,18 +145,25 @@ impl Server {
 
         let router = self.router;
         let middleware = Arc::new(self.middleware);
+        let ws_interceptor = self.ws_interceptor;
 
         loop {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
             let router = router.clone();
             let middleware = middleware.clone();
+            let ws_interceptor = ws_interceptor.clone();
 
             tokio::spawn(async move {
                 let service = service_fn(move |req: hyper::Request<hyper::body::Incoming>| {
                     let router = router.clone();
                     let middleware = middleware.clone();
-                    async move { Ok::<_, Infallible>(handle_request(router, middleware, req).await) }
+                    let ws_interceptor = ws_interceptor.clone();
+                    async move {
+                        Ok::<_, Infallible>(
+                            handle_request(router, middleware, ws_interceptor, req).await,
+                        )
+                    }
                 });
 
                 if let Err(err) = http1::Builder::new()
@@ -121,8 +181,22 @@ impl Server {
 async fn handle_request(
     router: Arc<Router>,
     middleware_registry: Arc<MiddlewareRegistry>,
-    req: hyper::Request<hyper::body::Incoming>,
+    ws_interceptor: Option<Arc<WsInterceptor>>,
+    mut req: hyper::Request<hyper::body::Incoming>,
 ) -> hyper::Response<Full<Bytes>> {
+    // Application WS interceptor runs before /_ferro/ws
+    if let Some(ref interceptor) = ws_interceptor {
+        if hyper_tungstenite::is_upgrade_request(&req) {
+            match interceptor(req) {
+                Ok(response) => return response,
+                Err(returned_req) => {
+                    // Interceptor declined — continue with returned request
+                    req = returned_req;
+                }
+            }
+        }
+    }
+
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     let query = req.uri().query().unwrap_or("");
