@@ -90,7 +90,7 @@ impl JsonUi {
 
         let mut head = String::new();
         if config.tailwind_cdn {
-            head.push_str(r#"<script src="https://cdn.tailwindcss.com"></script>"#);
+            head.push_str(r#"<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>"#);
         }
         if let Some(custom) = &config.custom_head {
             head.push_str(custom);
@@ -100,7 +100,10 @@ impl JsonUi {
         #[cfg(feature = "theme")]
         {
             if let Some(theme) = crate::theme::context::current_theme() {
-                head.push_str(&format!("<style>{}</style>", theme.css));
+                head.push_str(&format!(
+                    "<style type=\"text/tailwindcss\">{}</style>",
+                    theme.css
+                ));
             }
         }
 
@@ -330,7 +333,7 @@ mod tests {
         let result = JsonUi::render_with_config(&view, &data, &config);
 
         let body = response_body(ok_response(result));
-        assert!(!body.contains("cdn.tailwindcss.com"));
+        assert!(!body.contains("@tailwindcss/browser"));
     }
 
     #[test]
@@ -855,8 +858,9 @@ mod tests {
             .await;
 
             assert!(
-                body.contains("<style>") && body.contains("--color-primary: red"),
-                "theme CSS should be injected as a <style> tag"
+                body.contains("<style type=\"text/tailwindcss\">")
+                    && body.contains("--color-primary: red"),
+                "theme CSS should be injected as a <style type=\"text/tailwindcss\"> tag"
             );
         }
 
@@ -895,7 +899,7 @@ mod tests {
             .await;
 
             // Find positions to verify ordering
-            let cdn_pos = body.find("cdn.tailwindcss.com").unwrap_or(0);
+            let cdn_pos = body.find("@tailwindcss/browser").unwrap_or(0);
             let style_pos = body.find("--color-test").unwrap_or(0);
             assert!(
                 cdn_pos < style_pos,

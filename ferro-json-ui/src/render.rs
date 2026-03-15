@@ -296,7 +296,7 @@ fn render_plugin(props: &PluginProps, data: &Value) -> String {
     })
     .unwrap_or_else(|| {
         format!(
-            "<div class=\"p-4 bg-destructive/10 text-destructive rounded-radius-md\">Unknown plugin component: {}</div>",
+            "<div class=\"p-4 bg-destructive/10 text-destructive rounded-md\">Unknown plugin component: {}</div>",
             html_escape(&props.plugin_type)
         )
     })
@@ -306,7 +306,7 @@ fn render_plugin(props: &PluginProps, data: &Value) -> String {
 
 fn render_card(props: &CardProps, data: &Value) -> String {
     let mut html = String::from(
-        "<div class=\"rounded-radius-lg border border-border bg-background shadow-shadow-sm\"><div class=\"p-6\">",
+        "<div class=\"rounded-lg border border-border bg-background shadow-sm\"><div class=\"p-6\">",
     );
     html.push_str(&format!(
         "<h3 class=\"text-lg font-semibold text-text\">{}</h3>",
@@ -341,12 +341,12 @@ fn render_modal(props: &ModalProps, data: &Value) -> String {
     let trigger = props.trigger_label.as_deref().unwrap_or("Open");
     let mut html = String::from("<details class=\"group\">");
     html.push_str(&format!(
-        "<summary class=\"inline-flex items-center justify-center rounded-radius-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium cursor-pointer\">{}</summary>",
+        "<summary class=\"inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium cursor-pointer\">{}</summary>",
         html_escape(trigger)
     ));
     html.push_str("<div class=\"fixed inset-0 z-50 flex items-center justify-center bg-black/50 group-open:block hidden\">");
     html.push_str(
-        "<div class=\"relative bg-background rounded-radius-lg shadow-shadow-lg max-w-lg w-full mx-4 p-6\">",
+        "<div class=\"relative bg-background rounded-lg shadow-lg max-w-lg w-full mx-4 p-6\">",
     );
     html.push_str(&format!(
         "<h3 class=\"text-lg font-semibold text-text\">{}</h3>",
@@ -625,7 +625,7 @@ fn render_input(props: &InputProps, data: &Value) -> String {
         InputType::Textarea => {
             let val = resolved_value.as_deref().unwrap_or("");
             html.push_str(&format!(
-                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-radius-md border {} px-3 py-2 text-sm shadow-shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
+                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
                 html_escape(&props.field),
                 html_escape(&props.field),
                 border_class
@@ -655,7 +655,7 @@ fn render_input(props: &InputProps, data: &Value) -> String {
                 InputType::Textarea | InputType::Hidden => unreachable!(),
             };
             html.push_str(&format!(
-                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-radius-md border {} px-3 py-2 text-sm shadow-shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
+                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
                 input_type,
                 html_escape(&props.field),
                 html_escape(&props.field),
@@ -722,7 +722,7 @@ fn render_select(props: &SelectProps, data: &Value) -> String {
     }
 
     html.push_str(&format!(
-        "<select id=\"{}\" name=\"{}\" class=\"block w-full rounded-radius-md border {} px-3 py-2 text-sm shadow-shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
+        "<select id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
         html_escape(&props.field),
         html_escape(&props.field),
         border_class
@@ -793,7 +793,7 @@ fn render_checkbox(props: &CheckboxProps, data: &Value) -> String {
     let mut html = String::from("<div class=\"space-y-1\">");
     html.push_str("<div class=\"flex items-center gap-2\">");
     html.push_str(&format!(
-        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-radius-sm border-border text-primary focus:ring-primary\"",
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm border-border text-primary focus:ring-primary\"",
         html_escape(&checkbox_id),
         html_escape(&props.field),
         html_escape(value_attr)
@@ -921,7 +921,7 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
         html.push_str(" disabled");
     }
     html.push('>');
-    html.push_str("<div class=\"w-11 h-6 bg-border rounded-radius-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-radius-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>");
+    html.push_str("<div class=\"w-11 h-6 bg-border rounded-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>");
     html.push_str("</label>");
     html.push_str("</div>");
 
@@ -1018,7 +1018,7 @@ fn render_button(props: &ButtonProps) -> String {
 }
 
 fn render_badge(props: &BadgeProps) -> String {
-    let base = "inline-flex items-center rounded-radius-full px-2.5 py-0.5 text-xs font-medium";
+    let base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
     let variant_classes = match props.variant {
         BadgeVariant::Default => "bg-primary/10 text-primary",
         BadgeVariant::Secondary => "bg-secondary/10 text-secondary-foreground",
@@ -1041,7 +1041,7 @@ fn render_alert(props: &AlertProps) -> String {
         AlertVariant::Error => "bg-destructive/10 border-destructive text-destructive",
     };
     let mut html =
-        format!("<div role=\"alert\" class=\"rounded-radius-md border p-4 {variant_classes}\">");
+        format!("<div role=\"alert\" class=\"rounded-md border p-4 {variant_classes}\">");
     if let Some(ref title) = props.title {
         html.push_str(&format!(
             "<h4 class=\"font-semibold mb-1\">{}</h4>",
@@ -1077,7 +1077,7 @@ fn render_progress(props: &ProgressProps) -> String {
         ));
     }
     html.push_str(&format!(
-        "<div class=\"w-full rounded-radius-full bg-border h-2.5\"><div class=\"rounded-radius-full bg-primary h-2.5\" style=\"width: {pct}%\"></div></div>"
+        "<div class=\"w-full rounded-full bg-border h-2.5\"><div class=\"rounded-full bg-primary h-2.5\" style=\"width: {pct}%\"></div></div>"
     ));
     html.push_str("</div>");
     html
@@ -1107,7 +1107,7 @@ fn render_avatar(props: &AvatarProps) -> String {
         // Take first two chars for initials.
         let initials: String = fallback_text.chars().take(2).collect();
         format!(
-            "<span class=\"inline-flex items-center justify-center rounded-radius-full bg-card text-text-muted {}\">{}</span>",
+            "<span class=\"inline-flex items-center justify-center rounded-full bg-card text-text-muted {}\">{}</span>",
             size_classes,
             html_escape(&initials)
         )
@@ -1118,9 +1118,9 @@ fn render_skeleton(props: &SkeletonProps) -> String {
     let width = props.width.as_deref().unwrap_or("100%");
     let height = props.height.as_deref().unwrap_or("1rem");
     let rounded = if props.rounded == Some(true) {
-        "rounded-radius-full"
+        "rounded-full"
     } else {
-        "rounded-radius-md"
+        "rounded-md"
     };
     format!(
         "<div class=\"animate-pulse bg-card {rounded}\" style=\"width: {width}; height: {height}\"></div>"
@@ -1173,7 +1173,7 @@ fn render_pagination(props: &PaginationProps) -> String {
     // Previous button.
     if current > 1 {
         html.push_str(&format!(
-            "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-radius-md bg-background text-text hover:bg-surface\">&laquo;</a>",
+            "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface\">&laquo;</a>",
             html_escape(base_url),
             current - 1
         ));
@@ -1188,11 +1188,11 @@ fn render_pagination(props: &PaginationProps) -> String {
         }
         if page == current {
             html.push_str(&format!(
-                "<span class=\"px-3 py-1 rounded-radius-md bg-primary text-primary-foreground\">{page}</span>"
+                "<span class=\"px-3 py-1 rounded-md bg-primary text-primary-foreground\">{page}</span>"
             ));
         } else {
             html.push_str(&format!(
-                "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-radius-md bg-background text-text hover:bg-surface\">{}</a>",
+                "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface\">{}</a>",
                 html_escape(base_url),
                 page,
                 page
@@ -1204,7 +1204,7 @@ fn render_pagination(props: &PaginationProps) -> String {
     // Next button.
     if current < total_pages {
         html.push_str(&format!(
-            "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-radius-md bg-background text-text hover:bg-surface\">&raquo;</a>",
+            "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface\">&raquo;</a>",
             html_escape(base_url),
             current + 1
         ));
@@ -1276,7 +1276,7 @@ fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
     }
     html.push('>');
     html.push_str(&format!(
-        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-radius-lg hover:bg-card\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">&#9660;</span></summary>",
+        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">&#9660;</span></summary>",
         html_escape(&props.title)
     ));
     html.push_str("<div class=\"px-4 py-3 space-y-4\">");
@@ -1304,7 +1304,7 @@ fn render_empty_state(props: &EmptyStateProps) -> String {
         let label = props.action_label.as_deref().unwrap_or("Action");
         let url = action.url.as_deref().unwrap_or("#");
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"mt-4 inline-flex items-center justify-center rounded-radius-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90\">{}</a>",
+            "<a href=\"{}\" class=\"mt-4 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90\">{}</a>",
             html_escape(url),
             html_escape(label)
         ));
@@ -1337,7 +1337,7 @@ fn render_form_section(props: &FormSectionProps, data: &Value) -> String {
 
 fn render_stat_card(props: &StatCardProps) -> String {
     let mut html = String::from(
-        "<div class=\"bg-background rounded-radius-lg shadow-shadow-sm p-4 border border-border\">",
+        "<div class=\"bg-background rounded-lg shadow-sm p-4 border border-border\">",
     );
     if let Some(ref icon) = props.icon {
         html.push_str(&format!(
@@ -1373,7 +1373,7 @@ fn render_stat_card(props: &StatCardProps) -> String {
 
 fn render_checklist(props: &ChecklistProps) -> String {
     let mut html = String::from(
-        "<div class=\"bg-background rounded-radius-lg shadow-shadow-sm p-4 border border-border\">",
+        "<div class=\"bg-background rounded-lg shadow-sm p-4 border border-border\">",
     );
     html.push_str("<div class=\"flex items-center justify-between mb-3\">");
     html.push_str(&format!(
@@ -1404,10 +1404,10 @@ fn render_checklist(props: &ChecklistProps) -> String {
     for item in &props.items {
         html.push_str("<li class=\"flex items-center gap-2\">");
         if item.checked {
-            html.push_str("<input type=\"checkbox\" checked class=\"h-4 w-4 rounded-radius-sm border-border text-primary\">");
+            html.push_str("<input type=\"checkbox\" checked class=\"h-4 w-4 rounded-sm border-border text-primary\">");
         } else {
             html.push_str(
-                "<input type=\"checkbox\" class=\"h-4 w-4 rounded-radius-sm border-border text-primary\">",
+                "<input type=\"checkbox\" class=\"h-4 w-4 rounded-sm border-border text-primary\">",
             );
         }
         let label_class = if item.checked {
@@ -1450,7 +1450,7 @@ fn render_toast(props: &ToastProps) -> String {
     };
     let timeout = props.timeout.unwrap_or(5);
     let mut html = format!(
-        "<div class=\"fixed top-4 right-4 z-50 rounded-radius-md border p-4 shadow-shadow-lg {variant_classes}\" data-toast-variant=\"{variant_str}\" data-toast-timeout=\"{timeout}\"",
+        "<div class=\"fixed top-4 right-4 z-50 rounded-md border p-4 shadow-lg {variant_classes}\" data-toast-variant=\"{variant_str}\" data-toast-timeout=\"{timeout}\"",
     );
     if props.dismissible {
         html.push_str(" data-toast-dismissible");
@@ -1480,13 +1480,13 @@ fn render_notification_dropdown(props: &NotificationDropdownProps) -> String {
     html.push_str("<span class=\"text-xl\">&#x1F514;</span>");
     if unread_count > 0 {
         html.push_str(&format!(
-            "<span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-primary-foreground bg-destructive rounded-radius-full\">{unread_count}</span>"
+            "<span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-primary-foreground bg-destructive rounded-full\">{unread_count}</span>"
         ));
     }
     html.push_str("</button>");
     // Dropdown panel.
     html.push_str(
-        "<div class=\"hidden absolute right-0 mt-2 w-80 bg-background rounded-radius-lg shadow-shadow-lg border border-border z-50\" data-notification-panel>",
+        "<div class=\"hidden absolute right-0 mt-2 w-80 bg-background rounded-lg shadow-lg border border-border z-50\" data-notification-panel>",
     );
     if props.notifications.is_empty() {
         let empty = props.empty_text.as_deref().unwrap_or("No notifications");
@@ -1526,7 +1526,7 @@ fn render_notification_dropdown(props: &NotificationDropdownProps) -> String {
             html.push_str("</div>");
             if !item.read {
                 html.push_str(
-                    "<span class=\"h-2 w-2 mt-1 shrink-0 rounded-radius-full bg-primary\"></span>",
+                    "<span class=\"h-2 w-2 mt-1 shrink-0 rounded-full bg-primary\"></span>",
                 );
             }
             html.push_str("</li>");
@@ -1583,9 +1583,9 @@ fn render_sidebar(props: &SidebarProps) -> String {
 
 fn render_sidebar_nav_item(item: &crate::component::SidebarNavItem) -> String {
     let classes = if item.active {
-        "flex items-center gap-2 px-3 py-2 rounded-radius-md text-sm font-medium bg-card text-primary"
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary"
     } else {
-        "flex items-center gap-2 px-3 py-2 rounded-radius-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface"
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface"
     };
     let mut html = format!(
         "<a href=\"{}\" class=\"{}\">",
@@ -1617,7 +1617,7 @@ fn render_header(props: &HeaderProps) -> String {
     if let Some(count) = props.notification_count {
         if count > 0 {
             html.push_str(&format!(
-                "<div class=\"relative\"><span class=\"text-xl text-text-muted\">&#x1F514;</span><span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-primary-foreground bg-destructive rounded-radius-full\" data-notification-count=\"{count}\">{count}</span></div>"
+                "<div class=\"relative\"><span class=\"text-xl text-text-muted\">&#x1F514;</span><span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-primary-foreground bg-destructive rounded-full\" data-notification-count=\"{count}\">{count}</span></div>"
             ));
         } else {
             html.push_str(&format!(
@@ -1629,7 +1629,7 @@ fn render_header(props: &HeaderProps) -> String {
     html.push_str("<div class=\"flex items-center gap-2\">");
     if let Some(ref avatar) = props.user_avatar {
         html.push_str(&format!(
-            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-radius-full object-cover\">",
+            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-full object-cover\">",
             html_escape(avatar)
         ));
     } else if let Some(ref name) = props.user_name {
@@ -1639,7 +1639,7 @@ fn render_header(props: &HeaderProps) -> String {
             .take(2)
             .collect();
         html.push_str(&format!(
-            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-radius-full bg-card text-text-muted text-sm font-medium\">{}</span>",
+            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-full bg-card text-text-muted text-sm font-medium\">{}</span>",
             html_escape(&initials)
         ));
         html.push_str(&format!(
@@ -2044,7 +2044,7 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains(
-            "inline-flex items-center rounded-radius-full px-2.5 py-0.5 text-xs font-medium"
+            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
         ));
     }
 
@@ -2320,7 +2320,7 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("animate-pulse bg-card"));
-        assert!(html.contains("rounded-radius-md"));
+        assert!(html.contains("rounded-md"));
         assert!(html.contains("width: 100%"));
         assert!(html.contains("height: 1rem"));
     }
@@ -2338,7 +2338,7 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("rounded-radius-full"));
+        assert!(html.contains("rounded-full"));
         assert!(html.contains("width: 200px"));
         assert!(html.contains("height: 40px"));
     }
@@ -2749,7 +2749,7 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(
-            html.contains("rounded-radius-lg border border-border bg-background shadow-shadow-sm")
+            html.contains("rounded-lg border border-border bg-background shadow-sm")
         );
         assert!(html.contains("<h3 class=\"text-lg font-semibold text-text\">My Card</h3>"));
         assert!(html.contains("<p class=\"mt-1 text-sm text-text-muted\">A description</p>"));
@@ -3707,7 +3707,7 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("Revenue"));
         assert!(html.contains("$1,234"));
-        assert!(html.contains("bg-background rounded-radius-lg shadow-shadow-sm"));
+        assert!(html.contains("bg-background rounded-lg shadow-sm"));
     }
 
     #[test]
@@ -4227,7 +4227,7 @@ mod tests {
         ));
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("src=\"/avatar.jpg\""));
-        assert!(html.contains("rounded-radius-full"));
+        assert!(html.contains("rounded-full"));
     }
 
     #[test]

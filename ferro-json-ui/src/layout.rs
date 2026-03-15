@@ -143,9 +143,9 @@ fn base_document_ext(
 /// Render a sidebar nav item for the layout shell.
 fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
     let classes = if item.active {
-        "flex items-center gap-2 px-3 py-2 rounded-radius-md text-sm font-medium bg-card text-primary"
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary"
     } else {
-        "flex items-center gap-2 px-3 py-2 rounded-radius-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface"
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface"
     };
     let mut html = format!(
         "<a href=\"{}\" class=\"{}\">",
@@ -209,11 +209,11 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
         }
         html.push_str("</nav>");
     }
-    // Backdrop for mobile sidebar overlay — covers full viewport behind sidebar.
+    html.push_str("</aside>");
+    // Backdrop for mobile sidebar overlay — sibling of aside so it covers the viewport behind it.
     html.push_str(
         "<div data-sidebar-backdrop class=\"fixed inset-0 z-30 bg-black/50 hidden md:hidden\"></div>",
     );
-    html.push_str("</aside>");
     html
 }
 
@@ -225,7 +225,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
     );
     // Mobile hamburger button — visible only on small screens.
     html.push_str(
-        "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-radius-md text-text-muted \
+        "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-md text-text-muted \
          hover:text-text hover:bg-surface\" aria-label=\"Toggle sidebar\">\
          <svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
          <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
@@ -247,7 +247,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
                  <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
                  d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/></svg>\
                  <span class=\"absolute top-1 right-1 inline-flex items-center justify-center h-4 w-4 \
-                 text-xs font-bold text-primary-foreground bg-destructive rounded-radius-full\">{count}</span></button>",
+                 text-xs font-bold text-primary-foreground bg-destructive rounded-full\">{count}</span></button>",
             ));
         } else {
             html.push_str(
@@ -260,13 +260,13 @@ fn layout_header_html(props: &HeaderProps) -> String {
     }
     html.push_str(
         "<div data-notification-dropdown class=\"hidden absolute right-0 top-full mt-1 w-80 \
-         bg-background rounded-radius-lg shadow-shadow-lg border border-border z-50\"></div></div>",
+         bg-background rounded-lg shadow-lg border border-border z-50\"></div></div>",
     );
     // User section.
     html.push_str("<div class=\"flex items-center gap-2\">");
     if let Some(ref avatar) = props.user_avatar {
         html.push_str(&format!(
-            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-radius-full object-cover\">",
+            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-full object-cover\">",
             html_escape(avatar)
         ));
     } else if let Some(ref name) = props.user_name {
@@ -276,7 +276,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
             .take(2)
             .collect();
         html.push_str(&format!(
-            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-radius-full \
+            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-full \
              bg-card text-text-muted text-sm font-medium\">{}</span>",
             html_escape(&initials)
         ));
@@ -357,7 +357,7 @@ impl Layout for AuthLayout {
         let body = format!(
             r#"<div class="min-h-screen flex items-center justify-center">
         <div class="w-full max-w-md">
-            <div class="bg-background rounded-radius-lg shadow-shadow-md p-8">
+            <div class="bg-background rounded-lg shadow-md p-8">
                 {wrapper}
             </div>
         </div>
@@ -795,7 +795,7 @@ mod tests {
 
         assert!(html.contains("flex items-center justify-center"));
         assert!(html.contains("max-w-md"));
-        assert!(html.contains("rounded-radius-lg shadow-shadow-md"));
+        assert!(html.contains("rounded-lg shadow-md"));
         assert!(html.contains("<div id=\"ferro-json-ui\""));
     }
 
