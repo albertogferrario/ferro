@@ -32,6 +32,7 @@
 /// - `data-tab-panel="value"` — Tab content panel. Shown/hidden by matching trigger.
 /// - `data-sidebar-toggle` — Hamburger button that toggles `data-sidebar` on mobile.
 /// - `data-sidebar` — Sidebar element toggled for mobile display.
+/// - `data-sidebar-backdrop` — Dark overlay shown behind sidebar on mobile; click to close.
 pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
     'use strict';
 
@@ -270,16 +271,35 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
     function initSidebarToggle() {
         var toggleBtn = document.querySelector('[data-sidebar-toggle]');
         var sidebarEl = document.querySelector('[data-sidebar]');
+        var backdropEl = document.querySelector('[data-sidebar-backdrop]');
         if (!toggleBtn || !sidebarEl) return;
 
+        function openSidebar() {
+            sidebarEl.classList.remove('hidden');
+            if (backdropEl) backdropEl.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            sidebarEl.classList.add('hidden');
+            if (backdropEl) backdropEl.classList.add('hidden');
+        }
+
         toggleBtn.addEventListener('click', function() {
-            var hidden = sidebarEl.classList.contains('hidden');
-            if (hidden) {
-                sidebarEl.classList.remove('hidden');
-            } else {
-                sidebarEl.classList.add('hidden');
-            }
+            var isHidden = sidebarEl.classList.contains('hidden');
+            if (isHidden) { openSidebar(); } else { closeSidebar(); }
         });
+
+        if (backdropEl) {
+            backdropEl.addEventListener('click', closeSidebar);
+        }
+
+        // Auto-close sidebar when a nav link is clicked (mobile UX)
+        var links = sidebarEl.querySelectorAll('a[href]');
+        for (var i = 0; i < links.length; i++) {
+            links[i].addEventListener('click', function() {
+                setTimeout(closeSidebar, 50);
+            });
+        }
     }
 
     // ── Init ──────────────────────────────────────────────────────────────
