@@ -209,6 +209,10 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
         }
         html.push_str("</nav>");
     }
+    // Backdrop for mobile sidebar overlay — covers full viewport behind sidebar.
+    html.push_str(
+        "<div data-sidebar-backdrop class=\"fixed inset-0 z-30 bg-black/50 hidden md:hidden\"></div>",
+    );
     html.push_str("</aside>");
     html
 }
@@ -1158,6 +1162,15 @@ mod tests {
         let ctx = test_ctx();
         let html = layout.render(&ctx);
         assert!(html.contains("data-notification-toggle"));
+    }
+
+    #[test]
+    fn dashboard_layout_has_sidebar_backdrop() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        assert!(html.contains("data-sidebar-backdrop"));
+        assert!(html.contains("bg-black/50"));
+        assert!(html.contains("md:hidden"));
     }
 
     #[test]
