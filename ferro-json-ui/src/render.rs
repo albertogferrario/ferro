@@ -506,7 +506,7 @@ fn render_table(props: &TableProps, data: &Value) -> String {
         ));
     }
     if props.row_actions.is_some() {
-        html.push_str("<th class=\"px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-text-muted\">Actions</th>");
+        html.push_str("<th class=\"px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-text-muted\">Azioni</th>");
     }
     html.push_str("</tr></thead>");
 
@@ -3497,7 +3497,7 @@ mod tests {
         });
         let html = render_to_html(&view, &data);
         // Actions header.
-        assert!(html.contains(">Actions</th>"));
+        assert!(html.contains(">Azioni</th>"));
         // Action links.
         assert!(html.contains("href=\"/items/1/edit\""));
         assert!(html.contains(">edit</a>"));
