@@ -61,7 +61,8 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
             showToast(data.toast);
         }
         if (data && data.reload_kanban) {
-            if (window.location.pathname.indexOf('/cassa/ordini') !== -1) {
+            if (window.location.pathname.indexOf('/cassa/ordini') !== -1 ||
+                window.location.pathname.indexOf('/prenotazioni') !== -1) {
                 window.location.reload();
             }
         }
