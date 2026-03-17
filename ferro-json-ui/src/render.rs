@@ -11,13 +11,14 @@ use serde_json::Value;
 
 use crate::action::HttpMethod;
 use crate::component::{
-    AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbProps, ButtonProps,
-    ButtonVariant, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
-    ComponentNode, DescriptionListProps, EmptyStateProps, FormProps, FormSectionProps, GapSize,
-    GridProps, HeaderProps, IconPosition, InputProps, InputType, ModalProps,
-    NotificationDropdownProps, Orientation, PaginationProps, PluginProps, ProgressProps,
-    SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps,
-    TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbProps,
+    ButtonGroupProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistProps,
+    CollapsibleProps, Component, ComponentNode, DescriptionListProps, EmptyStateProps, FormProps,
+    FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps, InputType,
+    ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps,
+    PluginProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps,
+    StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps, ToastProps,
+    ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -139,6 +140,16 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         }
         Component::FormSection(props) => {
             for child in &props.children {
+                collect_plugin_types_node(child, types);
+            }
+        }
+        Component::PageHeader(props) => {
+            for child in &props.actions {
+                collect_plugin_types_node(child, types);
+            }
+        }
+        Component::ButtonGroup(props) => {
+            for child in &props.buttons {
                 collect_plugin_types_node(child, types);
             }
         }
@@ -284,6 +295,10 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::Sidebar(props) => render_sidebar(props),
         Component::Header(props) => render_header(props),
 
+        // Page layout components.
+        Component::PageHeader(props) => render_page_header(props, data),
+        Component::ButtonGroup(props) => render_button_group(props, data),
+
         // Plugin components (rendered via plugin registry).
         Component::Plugin(props) => render_plugin(props, data),
     }
@@ -301,6 +316,61 @@ fn render_plugin(props: &PluginProps, data: &Value) -> String {
             html_escape(&props.plugin_type)
         )
     })
+}
+
+// ── Page layout component renderers ─────────────────────────────────────
+
+fn render_page_header(props: &PageHeaderProps, data: &Value) -> String {
+    let mut html = String::from("<div class=\"flex items-start justify-between gap-4 pb-4\">");
+    html.push_str("<div>");
+
+    // Breadcrumb (optional)
+    if !props.breadcrumb.is_empty() {
+        html.push_str("<nav class=\"flex items-center space-x-2 text-sm text-text-muted mb-1\">");
+        for (i, item) in props.breadcrumb.iter().enumerate() {
+            if i > 0 {
+                html.push_str("<span>/</span>");
+            }
+            if let Some(ref url) = item.url {
+                html.push_str(&format!(
+                    "<a href=\"{}\" class=\"hover:text-text\">{}</a>",
+                    html_escape(url),
+                    html_escape(&item.label)
+                ));
+            } else {
+                html.push_str(&format!("<span>{}</span>", html_escape(&item.label)));
+            }
+        }
+        html.push_str("</nav>");
+    }
+
+    // Title
+    html.push_str(&format!(
+        "<h2 class=\"text-2xl font-semibold text-text\">{}</h2>",
+        html_escape(&props.title)
+    ));
+    html.push_str("</div>");
+
+    // Actions (optional)
+    if !props.actions.is_empty() {
+        html.push_str("<div class=\"flex items-center gap-2 flex-shrink-0\">");
+        for action in &props.actions {
+            html.push_str(&render_node(action, data));
+        }
+        html.push_str("</div>");
+    }
+
+    html.push_str("</div>");
+    html
+}
+
+fn render_button_group(props: &ButtonGroupProps, data: &Value) -> String {
+    let mut html = String::from("<div class=\"flex items-center gap-2 flex-wrap\">");
+    for button in &props.buttons {
+        html.push_str(&render_node(button, data));
+    }
+    html.push_str("</div>");
+    html
 }
 
 // ── Container component renderers ───────────────────────────────────────
@@ -376,6 +446,19 @@ fn render_modal(props: &ModalProps, data: &Value) -> String {
 }
 
 fn render_tabs(props: &TabsProps, data: &Value) -> String {
+    // Auto-hide tab bar when only one tab.
+    if props.tabs.len() == 1 {
+        let tab = &props.tabs[0];
+        let mut html = String::from(
+            "<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+        );
+        for child in &tab.children {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div>");
+        return html;
+    }
+
     // Determine rendering strategy per tab:
     // - Tabs with children render their panel and switch client-side via JS.
     // - Empty tabs (server-driven) render as links with ?tab= for full reload.
@@ -723,7 +806,7 @@ fn render_select(props: &SelectProps, data: &Value) -> String {
     }
 
     html.push_str(&format!(
-        "<select id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
+        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
         html_escape(&props.field),
         html_escape(&props.field),
         border_class
@@ -4561,5 +4644,245 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(!html.contains("<form"));
         assert!(!html.contains("onchange"));
+    }
+
+    // ── PageHeader ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_render_page_header_title_only() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "ph".to_string(),
+            component: Component::PageHeader(PageHeaderProps {
+                title: "My Page".to_string(),
+                breadcrumb: vec![],
+                actions: vec![],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("pb-4"), "flex container with pb-4");
+        assert!(html.contains("<h2 class=\"text-2xl font-semibold text-text\">My Page</h2>"));
+        assert!(!html.contains("<nav"), "no breadcrumb nav when empty");
+        assert!(!html.contains("flex-shrink-0"), "no actions div when empty");
+    }
+
+    #[test]
+    fn test_render_page_header_with_breadcrumb() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "ph".to_string(),
+            component: Component::PageHeader(PageHeaderProps {
+                title: "Users".to_string(),
+                breadcrumb: vec![
+                    BreadcrumbItem {
+                        label: "Home".to_string(),
+                        url: Some("/".to_string()),
+                    },
+                    BreadcrumbItem {
+                        label: "Users".to_string(),
+                        url: None,
+                    },
+                ],
+                actions: vec![],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<nav class=\"flex items-center space-x-2 text-sm text-text-muted mb-1\">"));
+        assert!(html.contains("<a href=\"/\" class=\"hover:text-text\">Home</a>"));
+        assert!(html.contains("<span>Users</span>"));
+        assert!(html.contains("<span>/</span>"), "separator between breadcrumb items");
+    }
+
+    #[test]
+    fn test_render_page_header_with_actions() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "ph".to_string(),
+            component: Component::PageHeader(PageHeaderProps {
+                title: "Dashboard".to_string(),
+                breadcrumb: vec![],
+                actions: vec![ComponentNode {
+                    key: "add-btn".to_string(),
+                    component: Component::Button(ButtonProps {
+                        label: "Add New".to_string(),
+                        variant: ButtonVariant::Default,
+                        size: Size::Default,
+                        disabled: None,
+                        icon: None,
+                        icon_position: None,
+                    }),
+                    action: None,
+                    visibility: None,
+                }],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("flex-shrink-0"), "actions wrapper with flex-shrink-0");
+        assert!(html.contains(">Add New</button>"), "action button rendered inside");
+    }
+
+    // ── ButtonGroup ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_render_button_group() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bg".to_string(),
+            component: Component::ButtonGroup(ButtonGroupProps {
+                buttons: vec![
+                    ComponentNode {
+                        key: "save".to_string(),
+                        component: Component::Button(ButtonProps {
+                            label: "Save".to_string(),
+                            variant: ButtonVariant::Default,
+                            size: Size::Default,
+                            disabled: None,
+                            icon: None,
+                            icon_position: None,
+                        }),
+                        action: None,
+                        visibility: None,
+                    },
+                    ComponentNode {
+                        key: "cancel".to_string(),
+                        component: Component::Button(ButtonProps {
+                            label: "Cancel".to_string(),
+                            variant: ButtonVariant::Outline,
+                            size: Size::Default,
+                            disabled: None,
+                            icon: None,
+                            icon_position: None,
+                        }),
+                        action: None,
+                        visibility: None,
+                    },
+                ],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("flex items-center gap-2 flex-wrap"), "horizontal flex container");
+        assert!(html.contains(">Save</button>"));
+        assert!(html.contains(">Cancel</button>"));
+    }
+
+    #[test]
+    fn test_render_button_group_empty() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "bg".to_string(),
+            component: Component::ButtonGroup(ButtonGroupProps { buttons: vec![] }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<div class=\"flex items-center gap-2 flex-wrap\"></div>"));
+    }
+
+    // ── Select appearance-none fix ──────────────────────────────────────
+
+    #[test]
+    fn test_render_select_appearance_none() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "sel".to_string(),
+            component: Component::Select(SelectProps {
+                field: "role".to_string(),
+                label: "Role".to_string(),
+                options: vec![SelectOption {
+                    value: "admin".to_string(),
+                    label: "Admin".to_string(),
+                }],
+                placeholder: None,
+                required: None,
+                disabled: None,
+                error: None,
+                description: None,
+                default_value: None,
+                data_path: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("appearance-none"), "select must have appearance-none class");
+        assert!(html.contains("bg-background"), "select must have bg-background class");
+    }
+
+    // ── Single-tab auto-hide ────────────────────────────────────────────
+
+    #[test]
+    fn test_render_tabs_single_tab() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "tabs".to_string(),
+            component: Component::Tabs(TabsProps {
+                default_tab: "only".to_string(),
+                tabs: vec![Tab {
+                    value: "only".to_string(),
+                    label: "Only Tab".to_string(),
+                    children: vec![ComponentNode {
+                        key: "txt".to_string(),
+                        component: Component::Text(TextProps {
+                            content: "Content here".to_string(),
+                            element: TextElement::P,
+                        }),
+                        action: None,
+                        visibility: None,
+                    }],
+                }],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("data-tabs"), "no data-tabs wrapper for single tab");
+        assert!(!html.contains("role=\"tablist\""), "no tab nav for single tab");
+        assert!(html.contains("Content here"), "tab content still rendered");
+    }
+
+    #[test]
+    fn test_render_tabs_multi_still_works() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "tabs".to_string(),
+            component: Component::Tabs(TabsProps {
+                default_tab: "tab1".to_string(),
+                tabs: vec![
+                    Tab {
+                        value: "tab1".to_string(),
+                        label: "Tab One".to_string(),
+                        children: vec![ComponentNode {
+                            key: "t1".to_string(),
+                            component: Component::Text(TextProps {
+                                content: "Tab 1 content".to_string(),
+                                element: TextElement::P,
+                            }),
+                            action: None,
+                            visibility: None,
+                        }],
+                    },
+                    Tab {
+                        value: "tab2".to_string(),
+                        label: "Tab Two".to_string(),
+                        children: vec![ComponentNode {
+                            key: "t2".to_string(),
+                            component: Component::Text(TextProps {
+                                content: "Tab 2 content".to_string(),
+                                element: TextElement::P,
+                            }),
+                            action: None,
+                            visibility: None,
+                        }],
+                    },
+                ],
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-tabs"), "multi-tab still has data-tabs wrapper");
+        assert!(html.contains("role=\"tablist\""), "multi-tab still has nav with role=tablist");
+        assert!(html.contains("Tab One"), "tab label rendered");
+        assert!(html.contains("Tab Two"), "tab label rendered");
     }
 }

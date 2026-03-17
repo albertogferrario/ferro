@@ -77,6 +77,16 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
                 resolve_component_node(child, resolver);
             }
         }
+        Component::PageHeader(props) => {
+            for child in &mut props.actions {
+                resolve_component_node(child, resolver);
+            }
+        }
+        Component::ButtonGroup(props) => {
+            for child in &mut props.buttons {
+                resolve_component_node(child, resolver);
+            }
+        }
         Component::EmptyState(props) => {
             if let Some(ref mut action) = props.action {
                 resolve_action(action, resolver);
@@ -216,6 +226,16 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
                 collect_unresolved_node(child, unresolved);
             }
         }
+        Component::PageHeader(props) => {
+            for child in &props.actions {
+                collect_unresolved_node(child, unresolved);
+            }
+        }
+        Component::ButtonGroup(props) => {
+            for child in &props.buttons {
+                collect_unresolved_node(child, unresolved);
+            }
+        }
         Component::EmptyState(props) => {
             if let Some(ref action) = props.action {
                 collect_unresolved_action(action, unresolved);
@@ -351,6 +371,16 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         }
         Component::FormSection(props) => {
             for child in &mut props.children {
+                resolve_errors_node(child, errors, all);
+            }
+        }
+        Component::PageHeader(props) => {
+            for child in &mut props.actions {
+                resolve_errors_node(child, errors, all);
+            }
+        }
+        Component::ButtonGroup(props) => {
+            for child in &mut props.buttons {
                 resolve_errors_node(child, errors, all);
             }
         }
