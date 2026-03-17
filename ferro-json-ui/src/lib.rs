@@ -55,14 +55,14 @@ pub(crate) mod runtime;
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
 pub use component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem,
-    BreadcrumbProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistItem,
-    ChecklistProps, CollapsibleProps, Column, ColumnFormat, Component, ComponentNode,
+    BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps,
+    ChecklistItem, ChecklistProps, CollapsibleProps, Column, ColumnFormat, Component, ComponentNode,
     DescriptionItem, DescriptionListProps, EmptyStateProps, FormProps, FormSectionProps, GapSize,
     GridProps, HeaderProps, IconPosition, InputProps, InputType, ModalProps,
-    NotificationDropdownProps, NotificationItem, Orientation, PaginationProps, PluginProps,
-    ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem,
-    SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
-    TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps, PaginationProps,
+    PluginProps, ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup,
+    SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps,
+    Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers

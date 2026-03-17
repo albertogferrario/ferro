@@ -646,6 +646,25 @@ pub struct FormSectionProps {
     pub children: Vec<ComponentNode>,
 }
 
+/// Props for PageHeader component -- page title with optional breadcrumb and action buttons.
+// JsonSchema skipped: contains Vec<ComponentNode>
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PageHeaderProps {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub breadcrumb: Vec<BreadcrumbItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub actions: Vec<ComponentNode>,
+}
+
+/// Props for ButtonGroup component -- horizontal button row with consistent gap.
+// JsonSchema skipped: contains Vec<ComponentNode>
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ButtonGroupProps {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub buttons: Vec<ComponentNode>,
+}
+
 /// Props for a plugin component.
 ///
 /// The `plugin_type` field holds the original `"type"` value from JSON,
@@ -735,6 +754,8 @@ pub enum Component {
     Collapsible(CollapsibleProps),
     EmptyState(EmptyStateProps),
     FormSection(FormSectionProps),
+    PageHeader(PageHeaderProps),
+    ButtonGroup(ButtonGroupProps),
     Plugin(PluginProps),
 }
 
@@ -792,6 +813,8 @@ impl Serialize for Component {
             Component::Collapsible(p) => serialize_tagged(serializer, "Collapsible", p),
             Component::EmptyState(p) => serialize_tagged(serializer, "EmptyState", p),
             Component::FormSection(p) => serialize_tagged(serializer, "FormSection", p),
+            Component::PageHeader(p) => serialize_tagged(serializer, "PageHeader", p),
+            Component::ButtonGroup(p) => serialize_tagged(serializer, "ButtonGroup", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -897,6 +920,12 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "FormSection" => serde_json::from_value::<FormSectionProps>(value)
                 .map(Component::FormSection)
+                .map_err(de::Error::custom),
+            "PageHeader" => serde_json::from_value::<PageHeaderProps>(value)
+                .map(Component::PageHeader)
+                .map_err(de::Error::custom),
+            "ButtonGroup" => serde_json::from_value::<ButtonGroupProps>(value)
+                .map(Component::ButtonGroup)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -3018,5 +3047,139 @@ mod tests {
             !json.contains("\"timeout\""),
             "timeout must be omitted when None"
         );
+    }
+
+    #[test]
+    fn page_header_round_trip_title_only() {
+        let component = Component::PageHeader(PageHeaderProps {
+            title: "Test Title".to_string(),
+            breadcrumb: vec![],
+            actions: vec![],
+        });
+        let json = serde_json::to_value(&component).unwrap();
+        assert_eq!(json["type"], "PageHeader");
+        assert_eq!(json["title"], "Test Title");
+        // Empty vecs are omitted.
+        assert!(json.get("breadcrumb").is_none());
+        assert!(json.get("actions").is_none());
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, component);
+    }
+
+    #[test]
+    fn page_header_round_trip_with_breadcrumb_and_actions() {
+        let component = Component::PageHeader(PageHeaderProps {
+            title: "Users".to_string(),
+            breadcrumb: vec![
+                BreadcrumbItem {
+                    label: "Home".to_string(),
+                    url: Some("/".to_string()),
+                },
+                BreadcrumbItem {
+                    label: "Users".to_string(),
+                    url: None,
+                },
+            ],
+            actions: vec![ComponentNode {
+                key: "add-btn".to_string(),
+                component: Component::Button(ButtonProps {
+                    label: "Add User".to_string(),
+                    variant: ButtonVariant::Default,
+                    size: Size::Default,
+                    disabled: None,
+                    icon: None,
+                    icon_position: None,
+                }),
+                action: None,
+                visibility: None,
+            }],
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, component);
+        // Verify type field present.
+        let value = serde_json::to_value(&component).unwrap();
+        assert_eq!(value["type"], "PageHeader");
+        assert_eq!(value["title"], "Users");
+        assert!(value["breadcrumb"].is_array());
+        assert!(value["actions"].is_array());
+    }
+
+    #[test]
+    fn page_header_deserialize_from_json() {
+        let json = r#"{"type":"PageHeader","title":"Test"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::PageHeader(props) => {
+                assert_eq!(props.title, "Test");
+                assert!(props.breadcrumb.is_empty());
+                assert!(props.actions.is_empty());
+            }
+            _ => panic!("expected PageHeader"),
+        }
+    }
+
+    #[test]
+    fn button_group_round_trip_empty() {
+        let component = Component::ButtonGroup(ButtonGroupProps { buttons: vec![] });
+        let json = serde_json::to_value(&component).unwrap();
+        assert_eq!(json["type"], "ButtonGroup");
+        // Empty vec omitted.
+        assert!(json.get("buttons").is_none());
+        let parsed: Component = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed, component);
+    }
+
+    #[test]
+    fn button_group_round_trip_with_buttons() {
+        let component = Component::ButtonGroup(ButtonGroupProps {
+            buttons: vec![
+                ComponentNode {
+                    key: "save".to_string(),
+                    component: Component::Button(ButtonProps {
+                        label: "Save".to_string(),
+                        variant: ButtonVariant::Default,
+                        size: Size::Default,
+                        disabled: None,
+                        icon: None,
+                        icon_position: None,
+                    }),
+                    action: None,
+                    visibility: None,
+                },
+                ComponentNode {
+                    key: "cancel".to_string(),
+                    component: Component::Button(ButtonProps {
+                        label: "Cancel".to_string(),
+                        variant: ButtonVariant::Outline,
+                        size: Size::Default,
+                        disabled: None,
+                        icon: None,
+                        icon_position: None,
+                    }),
+                    action: None,
+                    visibility: None,
+                },
+            ],
+        });
+        let json = serde_json::to_string(&component).unwrap();
+        let parsed: Component = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, component);
+        let value = serde_json::to_value(&component).unwrap();
+        assert_eq!(value["type"], "ButtonGroup");
+        assert!(value["buttons"].is_array());
+        assert_eq!(value["buttons"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn button_group_deserialize_from_json() {
+        let json = r#"{"type":"ButtonGroup","buttons":[]}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::ButtonGroup(props) => {
+                assert!(props.buttons.is_empty());
+            }
+            _ => panic!("expected ButtonGroup"),
+        }
     }
 }
