@@ -32,7 +32,7 @@ use crate::view::JsonUiView;
 /// The `data` parameter is used to resolve `data_path` references on form
 /// fields and table components.
 pub fn render_to_html(view: &JsonUiView, data: &Value) -> String {
-    let mut html = String::from("<div>");
+    let mut html = String::from("<div class=\"space-y-4\">");
     for node in &view.components {
         html.push_str(&render_node(node, data));
     }
@@ -1742,14 +1742,14 @@ mod tests {
     fn render_empty_view_produces_wrapper_div() {
         let view = JsonUiView::new();
         let html = render_to_html(&view, &json!({}));
-        assert_eq!(html, "<div></div>");
+        assert_eq!(html, "<div class=\"space-y-4\"></div>");
     }
 
     #[test]
     fn render_view_with_component_wraps_in_div() {
         let view = JsonUiView::new().component(text_node("t", "Hello", TextElement::P));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.starts_with("<div>"));
+        assert!(html.starts_with("<div class=\"space-y-4\">"));
         assert!(html.ends_with("</div>"));
         assert!(html.contains("<p class=\"text-base text-text\">Hello</p>"));
     }
@@ -4315,7 +4315,7 @@ mod tests {
     fn test_render_empty_view() {
         let view = JsonUiView::new();
         let html = render_to_html(&view, &json!({}));
-        assert_eq!(html, "<div></div>", "empty view renders empty div");
+        assert_eq!(html, "<div class=\"space-y-4\"></div>", "empty view renders empty div");
     }
 
     #[test]
