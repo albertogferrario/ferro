@@ -1261,7 +1261,11 @@ fn render_grid(props: &GridProps, data: &Value) -> String {
         GapSize::Lg => "gap-6",
         GapSize::Xl => "gap-8",
     };
-    let mut html = format!("<div class=\"grid grid-cols-{cols} {gap}\">");
+    let col_classes = match props.md_columns {
+        Some(md) => format!("grid-cols-{cols} md:grid-cols-{}", md.clamp(1, 12)),
+        None => format!("grid-cols-{cols}"),
+    };
+    let mut html = format!("<div class=\"grid {col_classes} {gap}\">");
     for child in &props.children {
         html.push_str(&render_node(child, data));
     }
@@ -4370,6 +4374,7 @@ mod tests {
             "g",
             crate::component::GridProps {
                 columns: 4,
+                md_columns: None,
                 gap: crate::component::GapSize::Lg,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
             },
@@ -4385,12 +4390,28 @@ mod tests {
             "g",
             crate::component::GridProps {
                 columns: 20,
+                md_columns: None,
                 gap: crate::component::GapSize::default(),
                 children: vec![],
             },
         ));
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("grid-cols-12"));
+    }
+
+    #[test]
+    fn grid_responsive_md_columns() {
+        let view = JsonUiView::new().component(ComponentNode::grid(
+            "g",
+            crate::component::GridProps {
+                columns: 1,
+                md_columns: Some(3),
+                gap: crate::component::GapSize::Md,
+                children: vec![text_node("c1", "Cell 1", TextElement::P)],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("grid-cols-1 md:grid-cols-3"));
     }
 
     // ── Collapsible ───────────────────────────────────────────────────

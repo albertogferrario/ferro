@@ -595,9 +595,12 @@ pub enum GapSize {
 // JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GridProps {
-    /// Number of columns (1-12).
+    /// Number of columns (1-12) at base (mobile) viewport.
     #[serde(default = "default_grid_columns")]
     pub columns: u8,
+    /// Number of columns at md breakpoint (768px+). When set, creates a responsive grid.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub md_columns: Option<u8>,
     /// Gap between grid items.
     #[serde(default)]
     pub gap: GapSize,
@@ -2866,6 +2869,7 @@ mod tests {
     fn grid_round_trips() {
         let grid = Component::Grid(GridProps {
             columns: 3,
+            md_columns: None,
             gap: GapSize::Lg,
             children: vec![ComponentNode::text(
                 "t",
