@@ -1428,8 +1428,8 @@ fn render_stat_card(props: &StatCardProps) -> String {
         String::from("<div class=\"bg-background rounded-lg shadow-sm p-4 border border-border\">");
     if let Some(ref icon) = props.icon {
         html.push_str(&format!(
-            "<span class=\"text-2xl mb-2 block\">{}</span>",
-            html_escape(icon)
+            "<span class=\"inline-block mb-2\">{}</span>",
+            icon  // raw
         ));
     }
     html.push_str(&format!(
@@ -3808,6 +3808,24 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("👤"));
         assert!(html.contains("active today"));
+    }
+
+    #[test]
+    fn stat_card_renders_svg_icon_without_escaping() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>"#;
+        let view = JsonUiView::new().component(ComponentNode::stat_card(
+            "svg-icon",
+            StatCardProps {
+                label: "Test".to_string(),
+                value: "0".to_string(),
+                icon: Some(svg.to_string()),
+                subtitle: None,
+                sse_target: None,
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<svg"), "SVG should render as markup, not escaped text");
+        assert!(!html.contains("&lt;svg"), "SVG should NOT be HTML-escaped");
     }
 
     #[test]
