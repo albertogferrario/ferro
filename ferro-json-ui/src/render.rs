@@ -32,7 +32,8 @@ use crate::view::JsonUiView;
 /// The `data` parameter is used to resolve `data_path` references on form
 /// fields and table components.
 pub fn render_to_html(view: &JsonUiView, data: &Value) -> String {
-    let mut html = String::from("<div class=\"space-y-4\">");
+    let mut html =
+        String::from("<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
     for node in &view.components {
         html.push_str(&render_node(node, data));
     }
@@ -319,7 +320,7 @@ fn render_card(props: &CardProps, data: &Value) -> String {
         ));
     }
     if !props.children.is_empty() {
-        html.push_str("<div class=\"mt-4 space-y-4\">");
+        html.push_str("<div class=\"mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
         for child in &props.children {
             html.push_str(&render_node(child, data));
         }
@@ -358,7 +359,7 @@ fn render_modal(props: &ModalProps, data: &Value) -> String {
             html_escape(desc)
         ));
     }
-    html.push_str("<div class=\"mt-4 space-y-4\">");
+    html.push_str("<div class=\"mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
     for child in &props.children {
         html.push_str(&render_node(child, data));
     }
@@ -437,7 +438,7 @@ fn render_tabs(props: &TabsProps, data: &Value) -> String {
             ""
         };
         html.push_str(&format!(
-            "<div role=\"tabpanel\" data-tab-panel=\"{}\" class=\"pt-4 space-y-4{}\">",
+            "<div role=\"tabpanel\" data-tab-panel=\"{}\" class=\"pt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto{}\">",
             html_escape(&tab.value),
             hidden,
         ));
@@ -468,7 +469,7 @@ fn render_form(props: &FormProps, data: &Value) -> String {
 
     let action_url = props.action.url.as_deref().unwrap_or("#");
     let mut html = format!(
-        "<form action=\"{}\" method=\"{}\" class=\"space-y-4\">",
+        "<form action=\"{}\" method=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
         html_escape(action_url),
         form_method
     );
@@ -1283,7 +1284,7 @@ fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
         "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">&#9660;</span></summary>",
         html_escape(&props.title)
     ));
-    html.push_str("<div class=\"px-4 py-3 space-y-4\">");
+    html.push_str("<div class=\"px-4 py-3 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
     for child in &props.children {
         html.push_str(&render_node(child, data));
     }
@@ -1318,7 +1319,7 @@ fn render_empty_state(props: &EmptyStateProps) -> String {
 }
 
 fn render_form_section(props: &FormSectionProps, data: &Value) -> String {
-    let mut html = String::from("<fieldset class=\"space-y-4\">");
+    let mut html = String::from("<fieldset class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
     html.push_str(&format!(
         "<legend class=\"text-base font-semibold text-text\">{}</legend>",
         html_escape(&props.title)
@@ -1552,7 +1553,7 @@ fn render_sidebar(props: &SidebarProps) -> String {
     }
     // Groups.
     if !props.groups.is_empty() {
-        html.push_str("<div class=\"flex-1 overflow-y-auto p-4 space-y-4\">");
+        html.push_str("<div class=\"flex-1 overflow-y-auto p-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
         for group in &props.groups {
             html.push_str("<div data-sidebar-group");
             if group.collapsed {
@@ -1742,14 +1743,14 @@ mod tests {
     fn render_empty_view_produces_wrapper_div() {
         let view = JsonUiView::new();
         let html = render_to_html(&view, &json!({}));
-        assert_eq!(html, "<div class=\"space-y-4\"></div>");
+        assert_eq!(html, "<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\"></div>");
     }
 
     #[test]
     fn render_view_with_component_wraps_in_div() {
         let view = JsonUiView::new().component(text_node("t", "Hello", TextElement::P));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.starts_with("<div class=\"space-y-4\">"));
+        assert!(html.starts_with("<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">"));
         assert!(html.ends_with("</div>"));
         assert!(html.contains("<p class=\"text-base text-text\">Hello</p>"));
     }
@@ -2768,7 +2769,7 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("mt-4 space-y-4"));
+        assert!(html.contains("mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto"));
         assert!(html.contains("Child content"));
     }
 
@@ -2880,8 +2881,8 @@ mod tests {
         assert!(html.contains("General content"));
         assert!(html.contains("Security content"));
         // Active panel has no hidden class; inactive panel is hidden.
-        assert!(html.contains("data-tab-panel=\"general\" class=\"pt-4 space-y-4\""));
-        assert!(html.contains("data-tab-panel=\"security\" class=\"pt-4 space-y-4 hidden\""));
+        assert!(html.contains("data-tab-panel=\"general\" class=\"pt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\""));
+        assert!(html.contains("data-tab-panel=\"security\" class=\"pt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto hidden\""));
     }
 
     // ── 19. Form ───────────────────────────────────────────────────────
@@ -2908,7 +2909,7 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("action=\"/users\""));
         assert!(html.contains("method=\"post\""));
-        assert!(html.contains("class=\"space-y-4\""));
+        assert!(html.contains("class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\""));
     }
 
     #[test]
@@ -4315,7 +4316,7 @@ mod tests {
     fn test_render_empty_view() {
         let view = JsonUiView::new();
         let html = render_to_html(&view, &json!({}));
-        assert_eq!(html, "<div class=\"space-y-4\"></div>", "empty view renders empty div");
+        assert_eq!(html, "<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\"></div>", "empty view renders empty div");
     }
 
     #[test]
