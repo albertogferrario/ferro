@@ -171,7 +171,7 @@ fn layout_sidebar_group(group: &SidebarGroup) -> String {
     }
     html.push('>');
     html.push_str(&format!(
-        "<p class=\"px-2 py-1 text-xs font-semibold text-text-muted uppercase tracking-wider\">{}</p>",
+        "<p class=\"px-2 py-1 text-xs font-semibold text-text\">{}</p>",
         html_escape(&group.label)
     ));
     html.push_str("<nav class=\"space-y-1\">");
@@ -1187,5 +1187,20 @@ mod tests {
         let html = dashboard_layout().render(&ctx);
         // body_class from test_ctx is "bg-background" — should be preserved
         assert!(html.contains("class=\"bg-background\""));
+    }
+
+    #[test]
+    fn sidebar_group_label_uses_normal_casing() {
+        let group = SidebarGroup {
+            label: "Cassa".to_string(),
+            collapsed: false,
+            items: vec![],
+        };
+        let html = layout_sidebar_group(&group);
+        assert!(html.contains("Cassa"));
+        assert!(html.contains("font-semibold"));
+        assert!(html.contains("text-text"));
+        assert!(!html.contains("uppercase"), "sidebar group label should not use uppercase");
+        assert!(!html.contains("tracking-wider"), "sidebar group label should not use letter-spacing");
     }
 }

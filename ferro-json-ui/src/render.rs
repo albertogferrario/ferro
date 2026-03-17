@@ -1469,7 +1469,7 @@ fn render_checklist(props: &ChecklistProps) -> String {
     if props.dismissible {
         let dismiss_label = props.dismiss_label.as_deref().unwrap_or("Dismiss");
         html.push_str(&format!(
-            "<button type=\"button\" class=\"text-xs text-text-muted hover:text-text\" data-dismissible>{}</button>",
+            "<button type=\"button\" class=\"text-xs font-medium text-text hover:text-primary\" data-dismissible>{}</button>",
             html_escape(dismiss_label)
         ));
     }
@@ -3929,6 +3929,9 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("Close"));
         assert!(html.contains("data-dismissible"));
+        assert!(html.contains("font-medium"));
+        assert!(html.contains("text-text"));
+        assert!(html.contains("hover:text-primary"));
     }
 
     #[test]
