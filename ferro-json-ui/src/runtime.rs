@@ -33,6 +33,8 @@
 /// - `data-sidebar-toggle` — Hamburger button that toggles `data-sidebar` on mobile.
 /// - `data-sidebar` — Sidebar element toggled for mobile display.
 /// - `data-sidebar-backdrop` — Dark overlay shown behind sidebar on mobile; click to close.
+/// - `data-form-guard="number-gt-0"` — Form with number input guard. Submit disabled until
+///   at least one number input > 0.
 pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
     'use strict';
 
@@ -303,6 +305,50 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         }
     }
 
+    // ── Form guards ───────────────────────────────────────────────────────
+
+    function initFormGuards() {
+        var forms = document.querySelectorAll('[data-form-guard]');
+        for (var i = 0; i < forms.length; i++) {
+            initFormGuard(forms[i]);
+        }
+    }
+
+    function initFormGuard(form) {
+        var guardType = form.getAttribute('data-form-guard');
+        if (guardType === 'number-gt-0') {
+            initNumberGuard(form);
+        }
+    }
+
+    function initNumberGuard(form) {
+        var inputs = form.querySelectorAll('input[type="number"]');
+        var submitBtn = form.querySelector('button');
+        if (!submitBtn || inputs.length === 0) return;
+
+        function check() {
+            var hasValue = false;
+            for (var i = 0; i < inputs.length; i++) {
+                if (parseFloat(inputs[i].value) > 0) {
+                    hasValue = true;
+                    break;
+                }
+            }
+            if (hasValue) {
+                submitBtn.removeAttribute('disabled');
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                submitBtn.setAttribute('disabled', 'disabled');
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        check(); // initial state
+        for (var j = 0; j < inputs.length; j++) {
+            inputs[j].addEventListener('input', check);
+        }
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────
 
     function init() {
@@ -314,6 +360,7 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         initDismissibles();
         initNotificationToggle();
         initSidebarToggle();
+        initFormGuards();
     }
 
     document.addEventListener('DOMContentLoaded', init);
