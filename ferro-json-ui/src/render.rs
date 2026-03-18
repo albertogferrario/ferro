@@ -1698,9 +1698,8 @@ fn render_sidebar_nav_item(item: &crate::component::SidebarNavItem) -> String {
     );
     if let Some(ref icon) = item.icon {
         html.push_str(&format!(
-            "<span class=\"icon\" data-icon=\"{}\">{}</span>",
-            html_escape(icon),
-            html_escape(icon)
+            "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{}</span>", // raw SVG
+            icon
         ));
     }
     html.push_str(&format!("{}</a>", html_escape(&item.label)));

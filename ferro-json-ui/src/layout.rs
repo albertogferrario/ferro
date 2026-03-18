@@ -154,9 +154,8 @@ fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
     );
     if let Some(ref icon) = item.icon {
         html.push_str(&format!(
-            "<span class=\"icon\" data-icon=\"{}\">{}</span>",
-            html_escape(icon),
-            html_escape(icon)
+            "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{}</span>", // raw SVG
+            icon
         ));
     }
     html.push_str(&format!("{}</a>", html_escape(&item.label)));
@@ -1187,6 +1186,20 @@ mod tests {
         let html = dashboard_layout().render(&ctx);
         // body_class from test_ctx is "bg-background" — should be preserved
         assert!(html.contains("class=\"bg-background\""));
+    }
+
+    #[test]
+    fn sidebar_nav_item_renders_icon_as_raw_svg() {
+        let item = SidebarNavItem {
+            label: "Dashboard".to_string(),
+            href: "/dashboard".to_string(),
+            icon: Some("<svg class=\"h-5 w-5\"><path d=\"M3 12l2-2\"/></svg>".to_string()),
+            active: false,
+        };
+        let html = layout_sidebar_nav_item(&item);
+        assert!(html.contains("<svg"), "icon SVG should be rendered raw, not escaped");
+        assert!(!html.contains("&lt;svg"), "icon SVG should NOT be html-escaped");
+        assert!(html.contains("Dashboard"), "label should still appear");
     }
 
     #[test]
