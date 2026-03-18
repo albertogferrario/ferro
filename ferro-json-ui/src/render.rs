@@ -762,6 +762,9 @@ fn render_input(props: &InputProps, data: &Value) -> String {
             if let Some(ref step) = props.step {
                 html.push_str(&format!(" step=\"{}\"", html_escape(step)));
             }
+            if let Some(ref list_id) = props.list {
+                html.push_str(&format!(" list=\"{}\"", html_escape(list_id)));
+            }
             if props.required == Some(true) {
                 html.push_str(" required");
             }
@@ -769,6 +772,17 @@ fn render_input(props: &InputProps, data: &Value) -> String {
                 html.push_str(" disabled");
             }
             html.push('>');
+            if let Some(ref list_id) = props.list {
+                if let Some(arr) = data.get(list_id).and_then(|v| v.as_array()) {
+                    html.push_str(&format!("<datalist id=\"{}\">", html_escape(list_id)));
+                    for opt in arr {
+                        if let Some(s) = opt.as_str() {
+                            html.push_str(&format!("<option value=\"{}\">", html_escape(s)));
+                        }
+                    }
+                    html.push_str("</datalist>");
+                }
+            }
         }
     }
 
@@ -3106,6 +3120,7 @@ mod tests {
                 default_value: None,
                 data_path: None,
                 step: None,
+                list: None,
             }),
             action: None,
             visibility: None,
@@ -3138,6 +3153,7 @@ mod tests {
                 default_value: None,
                 data_path: None,
                 step: None,
+                list: None,
             }),
             action: None,
             visibility: None,
@@ -3164,6 +3180,7 @@ mod tests {
                 default_value: None,
                 data_path: Some("/user/name".to_string()),
                 step: None,
+                list: None,
             }),
             action: None,
             visibility: None,
@@ -3189,6 +3206,7 @@ mod tests {
                 default_value: Some("Bob".to_string()),
                 data_path: Some("/user/name".to_string()),
                 step: None,
+                list: None,
             }),
             action: None,
             visibility: None,
@@ -3214,6 +3232,7 @@ mod tests {
                 default_value: Some("Hello world".to_string()),
                 data_path: None,
                 step: None,
+                list: None,
             }),
             action: None,
             visibility: None,
@@ -3240,6 +3259,7 @@ mod tests {
                 default_value: Some("abc123".to_string()),
                 data_path: None,
                 step: None,
+                list: None,
             }),
             action: None,
             visibility: None,
@@ -3247,6 +3267,56 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("type=\"hidden\""));
         assert!(html.contains("value=\"abc123\""));
+    }
+
+    #[test]
+    fn input_renders_datalist() {
+        let props = InputProps {
+            field: "category".to_string(),
+            label: "Category".to_string(),
+            input_type: InputType::Text,
+            placeholder: None,
+            required: None,
+            disabled: None,
+            error: None,
+            description: None,
+            default_value: None,
+            data_path: None,
+            step: None,
+            list: Some("cat-suggestions".to_string()),
+        };
+        let data = serde_json::json!({
+            "cat-suggestions": ["Pizza", "Pasta", "Bevande"]
+        });
+        let html = render_input(&props, &data);
+        assert!(html.contains("list=\"cat-suggestions\""), "input should have list attribute");
+        assert!(html.contains("<datalist id=\"cat-suggestions\">"), "should render datalist element");
+        assert!(html.contains("<option value=\"Pizza\">"), "should render option for Pizza");
+        assert!(html.contains("<option value=\"Pasta\">"), "should render option for Pasta");
+        assert!(html.contains("<option value=\"Bevande\">"), "should render option for Bevande");
+        assert!(html.contains("</datalist>"), "should close datalist");
+    }
+
+    #[test]
+    fn input_no_datalist_without_data() {
+        let props = InputProps {
+            field: "category".to_string(),
+            label: "Category".to_string(),
+            input_type: InputType::Text,
+            placeholder: None,
+            required: None,
+            disabled: None,
+            error: None,
+            description: None,
+            default_value: None,
+            data_path: None,
+            step: None,
+            list: Some("missing-key".to_string()),
+        };
+        let data = serde_json::json!({});
+        let html = render_input(&props, &data);
+        assert!(html.contains("list=\"missing-key\""), "input should still have list attribute");
+        assert!(!html.contains("<datalist"), "should NOT render datalist when data key missing");
     }
 
     // ── 21. Select ─────────────────────────────────────────────────────
