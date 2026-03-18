@@ -90,7 +90,9 @@ impl JsonUi {
 
         let mut head = String::new();
         if config.tailwind_cdn {
-            head.push_str(r#"<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>"#);
+            head.push_str(
+                r#"<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>"#,
+            );
         }
         if let Some(custom) = &config.custom_head {
             head.push_str(custom);
@@ -523,6 +525,7 @@ mod tests {
                         on_success: None,
                         on_error: None,
                     },
+                    guard: None,
                     fields: vec![
                         ComponentNode {
                             key: "name-input".to_string(),

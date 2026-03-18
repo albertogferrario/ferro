@@ -551,11 +551,19 @@ fn render_form(props: &FormProps, data: &Value) -> String {
     };
 
     let action_url = props.action.url.as_deref().unwrap_or("#");
-    let mut html = format!(
-        "<form action=\"{}\" method=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
-        html_escape(action_url),
-        form_method
-    );
+    let mut html = match &props.guard {
+        Some(g) => format!(
+            "<form action=\"{}\" method=\"{}\" data-form-guard=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            html_escape(action_url),
+            form_method,
+            html_escape(g)
+        ),
+        None => format!(
+            "<form action=\"{}\" method=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            html_escape(action_url),
+            form_method
+        ),
+    };
 
     if needs_spoofing {
         let method_value = match effective_method {
@@ -1337,7 +1345,6 @@ fn render_description_list(props: &DescriptionListProps) -> String {
 // ── Layout component renderers ───────────────────────────────────────────
 
 fn render_grid(props: &GridProps, data: &Value) -> String {
-    let cols = props.columns.clamp(1, 12);
     let gap = match props.gap {
         GapSize::None => "gap-0",
         GapSize::Sm => "gap-2",
@@ -1345,6 +1352,17 @@ fn render_grid(props: &GridProps, data: &Value) -> String {
         GapSize::Lg => "gap-6",
         GapSize::Xl => "gap-8",
     };
+
+    if props.scrollable == Some(true) {
+        let mut html = format!("<div class=\"overflow-x-auto\"><div class=\"grid grid-flow-col auto-cols-[minmax(280px,1fr)] {gap}\">");
+        for child in &props.children {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div></div>");
+        return html;
+    }
+
+    let cols = props.columns.clamp(1, 12);
     let col_classes = match props.md_columns {
         Some(md) => format!("grid-cols-{cols} md:grid-cols-{}", md.clamp(1, 12)),
         None => format!("grid-cols-{cols}"),
@@ -2985,6 +3003,7 @@ mod tests {
                 },
                 fields: vec![],
                 method: None,
+                guard: None,
             }),
             action: None,
             visibility: None,
@@ -3010,6 +3029,7 @@ mod tests {
                 },
                 fields: vec![],
                 method: None,
+                guard: None,
             }),
             action: None,
             visibility: None,
@@ -3034,6 +3054,7 @@ mod tests {
                 },
                 fields: vec![],
                 method: Some(HttpMethod::Put),
+                guard: None,
             }),
             action: None,
             visibility: None,
@@ -3058,6 +3079,7 @@ mod tests {
                 },
                 fields: vec![],
                 method: None,
+                guard: None,
             }),
             action: None,
             visibility: None,
@@ -4481,6 +4503,7 @@ mod tests {
                 columns: 4,
                 md_columns: None,
                 gap: crate::component::GapSize::Lg,
+                scrollable: None,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
             },
         ));
@@ -4497,6 +4520,7 @@ mod tests {
                 columns: 20,
                 md_columns: None,
                 gap: crate::component::GapSize::default(),
+                scrollable: None,
                 children: vec![],
             },
         ));
@@ -4512,11 +4536,101 @@ mod tests {
                 columns: 1,
                 md_columns: Some(3),
                 gap: crate::component::GapSize::Md,
+                scrollable: None,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
             },
         ));
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("grid-cols-1 md:grid-cols-3"));
+    }
+
+    #[test]
+    fn grid_scrollable_renders_overflow() {
+        let view = JsonUiView::new().component(ComponentNode::grid(
+            "g",
+            crate::component::GridProps {
+                columns: 3,
+                md_columns: None,
+                gap: crate::component::GapSize::Md,
+                scrollable: Some(true),
+                children: vec![
+                    text_node("c1", "Col 1", TextElement::P),
+                    text_node("c2", "Col 2", TextElement::P),
+                ],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("overflow-x-auto"), "should wrap with overflow-x-auto");
+        assert!(html.contains("grid-flow-col"), "should use grid-flow-col for scrollable");
+        assert!(html.contains("auto-cols-[minmax(280px,1fr)]"), "should use auto-cols");
+        assert!(html.contains("Col 1"));
+        assert!(html.contains("Col 2"));
+    }
+
+    #[test]
+    fn grid_non_scrollable_unchanged() {
+        let view = JsonUiView::new().component(ComponentNode::grid(
+            "g",
+            crate::component::GridProps {
+                columns: 3,
+                md_columns: None,
+                gap: crate::component::GapSize::Md,
+                scrollable: None,
+                children: vec![text_node("c1", "Cell 1", TextElement::P)],
+            },
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("grid grid-cols-3 gap-4"), "non-scrollable should use grid-cols-N");
+        assert!(!html.contains("overflow-x-auto"), "non-scrollable should not have overflow-x-auto");
+        assert!(!html.contains("grid-flow-col"), "non-scrollable should not have grid-flow-col");
+    }
+
+    #[test]
+    fn form_guard_renders_data_attribute() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "f".to_string(),
+            component: Component::Form(crate::component::FormProps {
+                action: Action {
+                    handler: "orders.create".to_string(),
+                    url: Some("/orders".to_string()),
+                    method: HttpMethod::Post,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                },
+                fields: vec![],
+                method: None,
+                guard: Some("number-gt-0".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("data-form-guard=\"number-gt-0\""), "form with guard should render data-form-guard attribute");
+    }
+
+    #[test]
+    fn form_without_guard_unchanged() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "f".to_string(),
+            component: Component::Form(crate::component::FormProps {
+                action: Action {
+                    handler: "orders.create".to_string(),
+                    url: Some("/orders".to_string()),
+                    method: HttpMethod::Post,
+                    confirm: None,
+                    on_success: None,
+                    on_error: None,
+                },
+                fields: vec![],
+                method: None,
+                guard: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("data-form-guard"), "form without guard should not render data-form-guard attribute");
     }
 
     // ── Collapsible ───────────────────────────────────────────────────

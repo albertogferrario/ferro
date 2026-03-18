@@ -180,6 +180,11 @@ pub struct FormProps {
     pub fields: Vec<ComponentNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub method: Option<crate::action::HttpMethod>,
+    /// Form guard type. When set, the runtime JS disables the submit button
+    /// until the guard condition is met. Value: `"number-gt-0"` — at least
+    /// one number input must have value > 0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guard: Option<String>,
 }
 
 /// Props for Button component.
@@ -604,6 +609,10 @@ pub struct GridProps {
     /// Gap between grid items.
     #[serde(default)]
     pub gap: GapSize,
+    /// Enables horizontal scroll mode. Children get min-w-[280px] and the grid
+    /// uses grid-flow-col auto-cols layout for Trello-like horizontal scrolling.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scrollable: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<ComponentNode>,
 }
@@ -1457,6 +1466,7 @@ mod tests {
                 visibility: None,
             }],
             method: None,
+            guard: None,
         });
         let json = serde_json::to_string(&form).unwrap();
         let parsed: Component = serde_json::from_str(&json).unwrap();
@@ -1530,6 +1540,7 @@ mod tests {
                 },
                 fields: vec![],
                 method: None,
+                guard: None,
             }),
             Component::Button(ButtonProps {
                 label: "b".to_string(),
@@ -2900,6 +2911,7 @@ mod tests {
             columns: 3,
             md_columns: None,
             gap: GapSize::Lg,
+            scrollable: None,
             children: vec![ComponentNode::text(
                 "t",
                 TextProps {
