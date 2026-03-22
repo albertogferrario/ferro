@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
-status: completed
-stopped_at: Completed 99-05-PLAN.md (CLI theme scaffolding, publish workflow, and documentation)
-last_updated: "2026-03-12T03:53:57.774Z"
-last_activity: 2026-03-12 — Phase 99-05 executed (2 tasks)
+status: in-progress
+stopped_at: Completed 100-01-PLAN.md (ferro-ai crate with classification types, AnthropicProvider, retry logic)
+last_updated: "2026-03-22T13:41:03Z"
+last_activity: 2026-03-22 — Phase 100-01 executed (2 tasks)
 progress:
-  total_phases: 17
+  total_phases: 19
   completed_phases: 17
-  total_plans: 53
-  completed_plans: 53
+  total_plans: 56
+  completed_plans: 54
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 99 (Semantic Theme System with Intent-Driven Templates) — COMPLETE
-Plan: 5 of 5 complete
-Status: Phase 99 Plan 05 complete — ferro make:theme CLI command, ferro-theme in publish.yml Wave 1, comprehensive theme documentation
-Last activity: 2026-03-12 — Phase 99-05 executed (2 tasks)
+Phase: 100 (AI Structured Classification & Confirmation Primitives) — IN PROGRESS
+Plan: 1 of 3 complete
+Status: Phase 100 Plan 01 complete — ferro-ai crate, ClassificationProvider trait, AnthropicProvider, Classifier<T> with retry logic
+Last activity: 2026-03-22 — Phase 100-01 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -415,6 +415,13 @@ Archived to PROJECT.md and milestone archive files.
 - theme.json scaffold is exactly {} (empty object) — partial overrides only, framework deep-merges with defaults at runtime
 - ferro-theme in Wave 1 of publish.yml — no dependency on ferro-rs (Wave 2), consistent with ferro-lang/ferro-stripe placement
 
+**Phase 100-01:**
+- Single ferro-ai crate for both classification (Plan 01) and confirmation (Plan 02) — co-deployed under one "ai" feature flag
+- ClassificationProvider trait is object-safe: Arc<dyn ClassificationProvider> compiles — async_trait + Send + Sync
+- AnthropicProvider::build_request_body is pub(crate) — testable without HTTP mocking; uses output_config.format.type=json_schema per Anthropic structured outputs API
+- is_permanent_provider_error() checks error message string for HTTP status digits — keeps retry logic in Classifier without needing Error subtypes
+- Confidence extracted from raw_json.get("confidence") — schema must include it; Anthropic structured output returns only schema-compliant JSON, no metadata
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -436,6 +443,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T03:47:43.446Z
-Stopped at: Completed 99-05-PLAN.md (CLI theme scaffolding, publish workflow, and documentation)
+Last session: 2026-03-22T13:41:03Z
+Stopped at: Completed 100-01-PLAN.md (ferro-ai crate: ClassificationProvider trait, AnthropicProvider, Classifier<T> with retry logic)
 Resume file: None
