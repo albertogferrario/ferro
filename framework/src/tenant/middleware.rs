@@ -86,7 +86,7 @@ impl Middleware for TenantMiddleware {
                 }
                 with_tenant_scope(scope, next(request)).await
             }
-            None => match self.on_failure {
+            None => match &self.on_failure {
                 TenantFailureMode::NotFound => {
                     Err(HttpResponse::json(json!({"error": "Tenant not found"})).status(404))
                 }
@@ -98,6 +98,7 @@ impl Middleware for TenantMiddleware {
                     let scope = tenant_scope();
                     with_tenant_scope(scope, next(request)).await
                 }
+                TenantFailureMode::Custom(handler) => handler(),
             },
         }
     }

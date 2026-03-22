@@ -541,6 +541,7 @@ mod tests {
                                 default_value: None,
                                 data_path: None,
                                 step: None,
+                                list: None,
                             }),
                             action: None,
                             visibility: None,
@@ -559,6 +560,7 @@ mod tests {
                                 default_value: None,
                                 data_path: None,
                                 step: None,
+                                list: None,
                             }),
                             action: None,
                             visibility: None,
@@ -821,8 +823,7 @@ mod tests {
                 Ok(r) => r,
                 Err(_) => panic!("expected Ok response"),
             };
-            let hyper = response.into_hyper();
-            format!("{:?}", hyper.into_body())
+            response.body().to_string()
         }
 
         fn sample_view() -> JsonUiView {

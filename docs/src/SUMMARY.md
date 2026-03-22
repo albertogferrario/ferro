@@ -38,6 +38,7 @@
 - [JSON-UI](features/json-ui.md)
 - [Stripe](features/stripe.md)
 - [Themes](features/themes.md)
+- [AI & Confirmation](features/ai.md)
 
 # JSON-UI
 
