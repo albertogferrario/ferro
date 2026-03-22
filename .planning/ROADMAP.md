@@ -665,6 +665,33 @@ Plans:
 - [ ] 99-04-PLAN.md — JsonUiRenderer intent template consumption from ThemeTemplates
 - [ ] 99-05-PLAN.md — CLI make:theme command, publish workflow update, theme documentation
 
+### Phase 100: AI Structured Classification & Confirmation Primitives
+
+**Goal:** Add framework-level primitives for AI-powered structured intent classification (Claude structured JSON output) and a confirmation state machine for gating destructive actions behind explicit user confirmation with TTL expiry.
+**Requirements**: [AI-01, AI-02, AI-03, CONF-01, CONF-02, CONF-03]
+**Depends on:** Phase 99
+**Plans:** TBD
+**Context:** Driven by gestiscilo.it v2.4 (owner WhatsApp commands). These are generic framework primitives reusable by any Ferro app.
+
+**Delivers:**
+- Structured AI classification abstraction: Claude structured JSON output wrapper with configurable schema, model selection, confidence threshold, and fallback handling
+- Confirmation state machine: DashMap-based pending action store with composite key support, configurable TTL (tokio::spawn expiry), confirm/reject/timeout lifecycle
+- Framework re-exports and feature gating
+
+### Phase 101: ferro-whatsapp Plugin
+
+**Goal:** Create `ferro-whatsapp` plugin crate providing WhatsApp Business Cloud API integration: outbound message sender, inbound webhook dispatcher with HMAC verification, wamid-level message deduplication, and sender-identity routing (owner vs customer message classification).
+**Requirements**: [WA-01, WA-02, WA-03, WA-04, WA-05]
+**Depends on:** Phase 100
+**Plans:** TBD
+**Context:** Driven by gestiscilo.it v2.4. Extracted from gestiscilo's existing WhatsApp webhook code into a reusable plugin. Shipped with Ferro but separated as an optional crate.
+
+**Delivers:**
+- `ferro-whatsapp` crate: outbound sender (Meta Cloud API wrapper), webhook dispatcher with HMAC verification, wamid dedup
+- Sender-identity routing: configurable owner vs customer message classification based on phone number matching
+- CLI scaffolding (`ferro make:whatsapp`) and MCP introspection tools
+- Documentation and publish workflow integration
+
 ---
 
 ## Progress Summary
