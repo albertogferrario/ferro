@@ -670,7 +670,7 @@ Plans:
 **Goal:** Add framework-level primitives for AI-powered structured intent classification (Claude structured JSON output) and a confirmation state machine for gating destructive actions behind explicit user confirmation with TTL expiry.
 **Requirements**: [AI-01, AI-02, AI-03, CONF-01, CONF-02, CONF-03]
 **Depends on:** Phase 99
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 100-01-PLAN.md — ferro-ai crate foundation + AI classification: ClassificationProvider trait, AnthropicProvider, Classifier<T> facade, ClassifierConfig, retry logic

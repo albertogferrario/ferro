@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
-status: in-progress
-stopped_at: Completed 100-01-PLAN.md (ferro-ai crate with classification types, AnthropicProvider, retry logic)
-last_updated: "2026-03-22T13:41:03Z"
-last_activity: 2026-03-22 — Phase 100-01 executed (2 tasks)
+status: completed
+stopped_at: "Completed 100-02-PLAN.md (ferro-ai confirmation module: ConfirmationStore trait, InMemoryConfirmationStore, ConfirmationExpired event)"
+last_updated: "2026-03-22T14:00:00Z"
+last_activity: 2026-03-22 — Phase 100-02 executed (2 tasks)
 progress:
   total_phases: 19
   completed_phases: 17
   total_plans: 56
-  completed_plans: 54
+  completed_plans: 55
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 100 (AI Structured Classification & Confirmation Primitives) — IN PROGRESS
-Plan: 1 of 3 complete
-Status: Phase 100 Plan 01 complete — ferro-ai crate, ClassificationProvider trait, AnthropicProvider, Classifier<T> with retry logic
-Last activity: 2026-03-22 — Phase 100-01 executed (2 tasks)
+Plan: 2 of 3 complete
+Status: Phase 100 Plan 02 complete — ferro-ai confirmation module, ConfirmationStore trait, InMemoryConfirmationStore with DashMap + AbortHandle TTL, ConfirmationExpired event
+Last activity: 2026-03-22 — Phase 100-02 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -421,6 +421,12 @@ Archived to PROJECT.md and milestone archive files.
 - AnthropicProvider::build_request_body is pub(crate) — testable without HTTP mocking; uses output_config.format.type=json_schema per Anthropic structured outputs API
 - is_permanent_provider_error() checks error message string for HTTP status digits — keeps retry logic in Classifier without needing Error subtypes
 - Confidence extracted from raw_json.get("confidence") — schema must include it; Anthropic structured output returns only schema-compliant JSON, no metadata
+
+**Phase 100-02:**
+- InMemoryConfirmationStore::new() takes no default_ttl — TTL is per-call at request_confirmation time, cleaner API
+- AbortHandle stored inside StoredAction struct co-located with payload — single source of truth, no sync issues between the timer and the entry
+- Paused-clock test pattern: yield_to_register_timer() before tokio::time::advance() required — spawned tasks must be polled at least once to register their sleep futures with the runtime before advancing the paused clock
+- DashMap guards never held across .await: remove() returns owned (key, value) tuple, guard drops immediately before any further async operation
 
 ### Roadmap Evolution
 
