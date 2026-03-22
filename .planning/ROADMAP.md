@@ -670,13 +670,12 @@ Plans:
 **Goal:** Add framework-level primitives for AI-powered structured intent classification (Claude structured JSON output) and a confirmation state machine for gating destructive actions behind explicit user confirmation with TTL expiry.
 **Requirements**: [AI-01, AI-02, AI-03, CONF-01, CONF-02, CONF-03]
 **Depends on:** Phase 99
-**Plans:** TBD
-**Context:** Driven by gestiscilo.it v2.4 (owner WhatsApp commands). These are generic framework primitives reusable by any Ferro app.
+**Plans:** 3 plans
 
-**Delivers:**
-- Structured AI classification abstraction: Claude structured JSON output wrapper with configurable schema, model selection, confidence threshold, and fallback handling
-- Confirmation state machine: DashMap-based pending action store with composite key support, configurable TTL (tokio::spawn expiry), confirm/reject/timeout lifecycle
-- Framework re-exports and feature gating
+Plans:
+- [ ] 100-01-PLAN.md — ferro-ai crate foundation + AI classification: ClassificationProvider trait, AnthropicProvider, Classifier<T> facade, ClassifierConfig, retry logic
+- [ ] 100-02-PLAN.md — Confirmation state machine: ConfirmationStore trait, InMemoryConfirmationStore (DashMap), TTL expiry via tokio::spawn, ConfirmationExpired ferro-events integration
+- [ ] 100-03-PLAN.md — Framework integration: feature-gated re-exports, MCP tools (test_classifier, list_pending_confirmations), publish workflow, documentation
 
 ### Phase 101: ferro-whatsapp Plugin
 
