@@ -1789,6 +1789,7 @@ dependencies = [
  "clap",
  "dashmap",
  "dotenvy",
+ "ferro-ai",
  "ferro-broadcast",
  "ferro-cache",
  "ferro-events",
