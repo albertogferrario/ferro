@@ -1555,6 +1555,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
+name = "ferro-ai"
+version = "0.1.87"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "dashmap",
+ "ferro-events",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "ferro-api-mcp"
 version = "0.1.87"
 dependencies = [
@@ -1737,6 +1753,7 @@ dependencies = [
 name = "ferro-projections"
 version = "0.1.87"
 dependencies = [
+ "ferro-theme",
  "schemars",
  "serde",
  "serde_json",
@@ -1784,6 +1801,7 @@ dependencies = [
  "ferro-queue",
  "ferro-storage",
  "ferro-stripe",
+ "ferro-theme",
  "form_urlencoded",
  "futures-util",
  "http 1.4.0",

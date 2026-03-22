@@ -1,0 +1,25 @@
+[package]
+name = "ferro-ai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "AI structured classification and confirmation primitives for the Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["ai", "classification", "confirmation", "anthropic", "ferro"]
+categories = ["web-programming"]
+readme = "README.md"
+
+[dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["time", "rt"] }
+async-trait = "0.1"
+thiserror = "2"
+tracing = "0.1"
+ferro-events = { path = "../ferro-events", version = "0.1" }
+dashmap = "6"
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
