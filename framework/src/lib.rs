@@ -206,6 +206,14 @@ pub use ferro_cache::{
 // Re-export ferro-lang for localization
 pub use ferro_lang::{LangError, Translator};
 
+// Re-export ferro-ai for AI classification and confirmation primitives
+#[cfg(feature = "ai")]
+pub use ferro_ai::{
+    AnthropicProvider, ClassificationProvider, ClassificationResult, Classifier, ClassifierConfig,
+    ConfirmationExpired, ConfirmationStore, Error as AiError, InMemoryConfirmationStore,
+    PendingActionInfo,
+};
+
 // Re-export ferro-projections for service projection definitions
 #[cfg(feature = "projections")]
 pub use ferro_projections::{
