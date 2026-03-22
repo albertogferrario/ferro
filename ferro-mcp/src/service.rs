@@ -309,6 +309,24 @@ pub struct ProjectionCoverageParams {
     pub include_intents: Option<bool>,
 }
 
+// AI classification and confirmation tool params.
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct TestClassifierParams {
+    /// System prompt (sets the classification task context).
+    pub system_prompt: String,
+    /// User prompt (the content to classify).
+    pub user_prompt: String,
+    /// JSON Schema string describing the expected output shape.
+    pub schema_json: String,
+    /// Optional model override (defaults to claude-sonnet-4-6).
+    pub model: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct ListPendingConfirmationsParams {
+    // No parameters — scans src/ for request_confirmation calls
+}
+
 // No extra params needed for Stripe tools — they scan fixed paths.
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct StripeConfigStatusParams {
@@ -1509,6 +1527,41 @@ impl FerroMcpService {
     ) -> String {
         let info = tools::stripe::stripe_subscription_info(&self.project_root);
         serde_json::to_string_pretty(&info).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Test an AI classification by sending a prompt to the configured provider
+    #[tool(
+        name = "test_classifier",
+        description = "Test an AI classification by sending a prompt to the configured provider.\n\n\
+            **When to use:** Debugging classification prompts, verifying schema compliance, testing prompt iterations.\n\n\
+            **Note:** Makes a real API call to Anthropic. Costs tokens. Requires ANTHROPIC_API_KEY in environment or .env.\n\n\
+            **Returns:** Raw classified JSON output matching the provided schema, model used, and success status."
+    )]
+    pub async fn test_classifier(&self, params: Parameters<TestClassifierParams>) -> String {
+        let ai_params = tools::ai::TestClassifierParams {
+            system_prompt: params.0.system_prompt,
+            user_prompt: params.0.user_prompt,
+            schema_json: params.0.schema_json,
+            model: params.0.model,
+        };
+        let result = tools::ai::test_classifier(&self.project_root, ai_params).await;
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Scan source code for confirmation usage patterns (request_confirmation calls)
+    #[tool(
+        name = "list_pending_confirmations",
+        description = "Scan source code for confirmation usage patterns (request_confirmation calls).\n\n\
+            **When to use:** Understanding which handlers use the confirmation primitive, auditing confirmation flows.\n\n\
+            **Note:** Confirmation state is in-memory and not inspectable at runtime. This tool scans source files instead.\n\n\
+            **Returns:** File paths and line numbers where request_confirmation is called."
+    )]
+    pub async fn list_pending_confirmations(
+        &self,
+        #[allow(unused_variables)] _params: Parameters<ListPendingConfirmationsParams>,
+    ) -> String {
+        let result = tools::ai::list_pending_confirmations(&self.project_root);
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
     }
 }
 

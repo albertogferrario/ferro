@@ -1,5 +1,6 @@
 //! MCP Tools for Ferro Framework introspection
 
+pub mod ai;
 pub mod application_info;
 pub mod browser_logs;
 pub mod cache_inspect;

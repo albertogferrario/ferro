@@ -73,6 +73,7 @@ pub fn execute(
         intent_index: idx,
         current_state: None,
         mode: render_mode,
+        templates: None,
     };
 
     // Render
