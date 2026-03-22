@@ -1,3 +1,4 @@
+pub mod anthropic;
 pub mod provider;
 
 use crate::error::Error;

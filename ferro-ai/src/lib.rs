@@ -28,6 +28,7 @@
 pub mod classifier;
 pub mod error;
 
+pub use classifier::anthropic::AnthropicProvider;
 pub use classifier::provider::ClassificationProvider;
 pub use classifier::{ClassificationResult, Classifier, ClassifierConfig};
 pub use error::Error;
