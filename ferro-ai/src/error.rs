@@ -25,4 +25,8 @@ pub enum Error {
     /// Request timed out after all retries were exhausted.
     #[error("classification request timed out after retries")]
     Timeout,
+
+    /// Confirmation store operation failed.
+    #[error("confirmation store error: {0}")]
+    StoreError(String),
 }

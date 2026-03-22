@@ -24,11 +24,31 @@
 //!     ClassifierConfig::default(),
 //! );
 //! ```
+//!
+//! ## Confirmation
+//!
+//! State machine for gating destructive actions behind explicit user confirmation
+//! with configurable TTL expiry and event-driven observability.
+//!
+//! ```rust,ignore
+//! use ferro_ai::{InMemoryConfirmationStore, ConfirmationStore};
+//! use std::time::Duration;
+//!
+//! let store = InMemoryConfirmationStore::new();
+//! let payload = serde_json::json!({"action": "delete_user", "user_id": 42});
+//!
+//! store.request_confirmation("confirm-delete-42", payload, Duration::from_secs(60)).await?;
+//! let confirmed = store.confirm("confirm-delete-42").await?;
+//! ```
 
 pub mod classifier;
+pub mod confirmation;
 pub mod error;
 
 pub use classifier::anthropic::AnthropicProvider;
 pub use classifier::provider::ClassificationProvider;
 pub use classifier::{ClassificationResult, Classifier, ClassifierConfig};
+pub use confirmation::events::ConfirmationExpired;
+pub use confirmation::store::InMemoryConfirmationStore;
+pub use confirmation::{ConfirmationStore, PendingActionInfo};
 pub use error::Error;
