@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: "Completed 100-02-PLAN.md (ferro-ai confirmation module: ConfirmationStore trait, InMemoryConfirmationStore, ConfirmationExpired event)"
-last_updated: "2026-03-22T14:00:00Z"
-last_activity: 2026-03-22 — Phase 100-02 executed (2 tasks)
+stopped_at: "Completed 100-03-PLAN.md (ferro-ai ecosystem integration: feature-gated framework re-exports, test_classifier and list_pending_confirmations MCP tools, Wave 1 publish, documentation)"
+last_updated: "2026-03-22T14:32:50.057Z"
+last_activity: 2026-03-22 — Phase 100-03 executed (3 tasks)
 progress:
   total_phases: 19
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 56
-  completed_plans: 55
+  completed_plans: 56
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 100 (AI Structured Classification & Confirmation Primitives) — IN PROGRESS
-Plan: 2 of 3 complete
-Status: Phase 100 Plan 02 complete — ferro-ai confirmation module, ConfirmationStore trait, InMemoryConfirmationStore with DashMap + AbortHandle TTL, ConfirmationExpired event
-Last activity: 2026-03-22 — Phase 100-02 executed (2 tasks)
+Phase: 100 (AI Structured Classification & Confirmation Primitives) — COMPLETE
+Plan: 3 of 3 complete
+Status: Phase 100 complete — ferro-ai ecosystem integration: feature-gated re-exports, test_classifier and list_pending_confirmations MCP tools, Wave 1 publish workflow, documentation
+Last activity: 2026-03-22 — Phase 100-03 executed (3 tasks)
 
 ## Milestone Summary
 
@@ -428,6 +428,13 @@ Archived to PROJECT.md and milestone archive files.
 - Paused-clock test pattern: yield_to_register_timer() before tokio::time::advance() required — spawned tasks must be polled at least once to register their sleep futures with the runtime before advancing the paused clock
 - DashMap guards never held across .await: remove() returns owned (key, value) tuple, guard drops immediately before any further async operation
 
+**Phase 100-03:**
+- ferro-ai in Wave 1 of publish.yml: no dependency on ferro-rs (Wave 2), consistent with ferro-lang/ferro-stripe/ferro-theme placement
+- AiError alias for ferro_ai::Error to avoid name collision with existing Error re-exports in framework/src/lib.rs
+- MCP test_classifier uses classify_raw directly: returns raw JSON for debugging without type deserialization
+- MCP list_pending_confirmations scans source (not runtime): InMemoryConfirmationStore state is ephemeral and not inspectable via source scanning
+- ok_response_body in json_ui tests should use response.body().to_string() not format!("{:?}", hyper.into_body()) — Debug repr of Full<Bytes> varies by feature combination
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -449,6 +456,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T13:41:03Z
-Stopped at: Completed 100-01-PLAN.md (ferro-ai crate: ClassificationProvider trait, AnthropicProvider, Classifier<T> with retry logic)
+Last session: 2026-03-22T14:32:50.053Z
+Stopped at: Completed 100-03-PLAN.md (ferro-ai ecosystem integration: feature-gated framework re-exports, test_classifier and list_pending_confirmations MCP tools, Wave 1 publish, documentation)
 Resume file: None
