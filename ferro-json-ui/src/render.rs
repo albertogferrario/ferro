@@ -1466,10 +1466,8 @@ fn render_stat_card(props: &StatCardProps) -> String {
     let mut html =
         String::from("<div class=\"bg-background rounded-lg shadow-sm p-4 border border-border\">");
     if let Some(ref icon) = props.icon {
-        html.push_str(&format!(
-            "<span class=\"inline-block mb-2\">{}</span>",
-            icon // raw
-        ));
+        html.push_str(&format!("<span class=\"inline-block mb-2\">{icon}</span>"));
+        // raw
     }
     html.push_str(&format!(
         "<p class=\"text-sm text-text-muted\">{}</p>",
@@ -1719,8 +1717,7 @@ fn render_sidebar_nav_item(item: &crate::component::SidebarNavItem) -> String {
     );
     if let Some(ref icon) = item.icon {
         html.push_str(&format!(
-            "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{}</span>", // raw SVG
-            icon
+            "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{icon}</span>" // raw SVG
         ));
     }
     html.push_str(&format!("{}</a>", html_escape(&item.label)));

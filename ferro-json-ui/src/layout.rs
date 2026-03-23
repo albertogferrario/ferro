@@ -154,8 +154,7 @@ fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
     );
     if let Some(ref icon) = item.icon {
         html.push_str(&format!(
-            "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{}</span>", // raw SVG
-            icon
+            "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{icon}</span>" // raw SVG
         ));
     }
     html.push_str(&format!("{}</a>", html_escape(&item.label)));

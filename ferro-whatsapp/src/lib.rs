@@ -36,5 +36,6 @@ pub use config::WhatsAppConfig;
 pub use dedup::{DeduplicationStore, InMemoryDeduplicationStore};
 pub use error::Error;
 pub use message::{DeliveryStatus, Message, SendResult, SenderIdentity};
+pub use webhook::events::{ProcessWhatsAppWebhook, WhatsAppStatusUpdate, WhatsAppTextReceived};
 pub use webhook::signed_whatsapp_payload;
 pub use webhook::verify_whatsapp_webhook;
