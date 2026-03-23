@@ -1197,8 +1197,14 @@ mod tests {
             active: false,
         };
         let html = layout_sidebar_nav_item(&item);
-        assert!(html.contains("<svg"), "icon SVG should be rendered raw, not escaped");
-        assert!(!html.contains("&lt;svg"), "icon SVG should NOT be html-escaped");
+        assert!(
+            html.contains("<svg"),
+            "icon SVG should be rendered raw, not escaped"
+        );
+        assert!(
+            !html.contains("&lt;svg"),
+            "icon SVG should NOT be html-escaped"
+        );
         assert!(html.contains("Dashboard"), "label should still appear");
     }
 
@@ -1213,7 +1219,13 @@ mod tests {
         assert!(html.contains("Cassa"));
         assert!(html.contains("font-semibold"));
         assert!(html.contains("text-text"));
-        assert!(!html.contains("uppercase"), "sidebar group label should not use uppercase");
-        assert!(!html.contains("tracking-wider"), "sidebar group label should not use letter-spacing");
+        assert!(
+            !html.contains("uppercase"),
+            "sidebar group label should not use uppercase"
+        );
+        assert!(
+            !html.contains("tracking-wider"),
+            "sidebar group label should not use letter-spacing"
+        );
     }
 }

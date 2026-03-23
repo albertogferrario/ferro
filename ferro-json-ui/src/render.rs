@@ -33,8 +33,9 @@ use crate::view::JsonUiView;
 /// The `data` parameter is used to resolve `data_path` references on form
 /// fields and table components.
 pub fn render_to_html(view: &JsonUiView, data: &Value) -> String {
-    let mut html =
-        String::from("<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
+    let mut html = String::from(
+        "<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+    );
     for node in &view.components {
         html.push_str(&render_node(node, data));
     }
@@ -390,7 +391,9 @@ fn render_card(props: &CardProps, data: &Value) -> String {
         ));
     }
     if !props.children.is_empty() {
-        html.push_str("<div class=\"mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
+        html.push_str(
+            "<div class=\"mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+        );
         for child in &props.children {
             html.push_str(&render_node(child, data));
         }
@@ -429,7 +432,9 @@ fn render_modal(props: &ModalProps, data: &Value) -> String {
             html_escape(desc)
         ));
     }
-    html.push_str("<div class=\"mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
+    html.push_str(
+        "<div class=\"mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+    );
     for child in &props.children {
         html.push_str(&render_node(child, data));
     }
@@ -1434,7 +1439,9 @@ fn render_empty_state(props: &EmptyStateProps) -> String {
 }
 
 fn render_form_section(props: &FormSectionProps, data: &Value) -> String {
-    let mut html = String::from("<fieldset class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
+    let mut html = String::from(
+        "<fieldset class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+    );
     html.push_str(&format!(
         "<legend class=\"text-base font-semibold text-text\">{}</legend>",
         html_escape(&props.title)
@@ -1461,7 +1468,7 @@ fn render_stat_card(props: &StatCardProps) -> String {
     if let Some(ref icon) = props.icon {
         html.push_str(&format!(
             "<span class=\"inline-block mb-2\">{}</span>",
-            icon  // raw
+            icon // raw
         ));
     }
     html.push_str(&format!(
@@ -1864,7 +1871,9 @@ mod tests {
     fn render_view_with_component_wraps_in_div() {
         let view = JsonUiView::new().component(text_node("t", "Hello", TextElement::P));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.starts_with("<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">"));
+        assert!(html.starts_with(
+            "<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">"
+        ));
         assert!(html.ends_with("</div>"));
         assert!(html.contains("<p class=\"text-base text-text\">Hello</p>"));
     }
@@ -2883,7 +2892,9 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto"));
+        assert!(
+            html.contains("mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto")
+        );
         assert!(html.contains("Child content"));
     }
 
@@ -3024,7 +3035,9 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("action=\"/users\""));
         assert!(html.contains("method=\"post\""));
-        assert!(html.contains("class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\""));
+        assert!(html.contains(
+            "class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\""
+        ));
     }
 
     #[test]
@@ -3289,11 +3302,26 @@ mod tests {
             "cat-suggestions": ["Pizza", "Pasta", "Bevande"]
         });
         let html = render_input(&props, &data);
-        assert!(html.contains("list=\"cat-suggestions\""), "input should have list attribute");
-        assert!(html.contains("<datalist id=\"cat-suggestions\">"), "should render datalist element");
-        assert!(html.contains("<option value=\"Pizza\">"), "should render option for Pizza");
-        assert!(html.contains("<option value=\"Pasta\">"), "should render option for Pasta");
-        assert!(html.contains("<option value=\"Bevande\">"), "should render option for Bevande");
+        assert!(
+            html.contains("list=\"cat-suggestions\""),
+            "input should have list attribute"
+        );
+        assert!(
+            html.contains("<datalist id=\"cat-suggestions\">"),
+            "should render datalist element"
+        );
+        assert!(
+            html.contains("<option value=\"Pizza\">"),
+            "should render option for Pizza"
+        );
+        assert!(
+            html.contains("<option value=\"Pasta\">"),
+            "should render option for Pasta"
+        );
+        assert!(
+            html.contains("<option value=\"Bevande\">"),
+            "should render option for Bevande"
+        );
         assert!(html.contains("</datalist>"), "should close datalist");
     }
 
@@ -3315,8 +3343,14 @@ mod tests {
         };
         let data = serde_json::json!({});
         let html = render_input(&props, &data);
-        assert!(html.contains("list=\"missing-key\""), "input should still have list attribute");
-        assert!(!html.contains("<datalist"), "should NOT render datalist when data key missing");
+        assert!(
+            html.contains("list=\"missing-key\""),
+            "input should still have list attribute"
+        );
+        assert!(
+            !html.contains("<datalist"),
+            "should NOT render datalist when data key missing"
+        );
     }
 
     // ── 21. Select ─────────────────────────────────────────────────────
@@ -3915,7 +3949,10 @@ mod tests {
             },
         ));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<svg"), "SVG should render as markup, not escaped text");
+        assert!(
+            html.contains("<svg"),
+            "SVG should render as markup, not escaped text"
+        );
         assert!(!html.contains("&lt;svg"), "SVG should NOT be HTML-escaped");
     }
 
@@ -4629,9 +4666,18 @@ mod tests {
             },
         ));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("overflow-x-auto"), "should wrap with overflow-x-auto");
-        assert!(html.contains("grid-flow-col"), "should use grid-flow-col for scrollable");
-        assert!(html.contains("auto-cols-[minmax(280px,1fr)]"), "should use auto-cols");
+        assert!(
+            html.contains("overflow-x-auto"),
+            "should wrap with overflow-x-auto"
+        );
+        assert!(
+            html.contains("grid-flow-col"),
+            "should use grid-flow-col for scrollable"
+        );
+        assert!(
+            html.contains("auto-cols-[minmax(280px,1fr)]"),
+            "should use auto-cols"
+        );
         assert!(html.contains("Col 1"));
         assert!(html.contains("Col 2"));
     }
@@ -4649,9 +4695,18 @@ mod tests {
             },
         ));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("grid grid-cols-3 gap-4"), "non-scrollable should use grid-cols-N");
-        assert!(!html.contains("overflow-x-auto"), "non-scrollable should not have overflow-x-auto");
-        assert!(!html.contains("grid-flow-col"), "non-scrollable should not have grid-flow-col");
+        assert!(
+            html.contains("grid grid-cols-3 gap-4"),
+            "non-scrollable should use grid-cols-N"
+        );
+        assert!(
+            !html.contains("overflow-x-auto"),
+            "non-scrollable should not have overflow-x-auto"
+        );
+        assert!(
+            !html.contains("grid-flow-col"),
+            "non-scrollable should not have grid-flow-col"
+        );
     }
 
     #[test]
@@ -4675,7 +4730,10 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("data-form-guard=\"number-gt-0\""), "form with guard should render data-form-guard attribute");
+        assert!(
+            html.contains("data-form-guard=\"number-gt-0\""),
+            "form with guard should render data-form-guard attribute"
+        );
     }
 
     #[test]
@@ -4699,7 +4757,10 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(!html.contains("data-form-guard"), "form without guard should not render data-form-guard attribute");
+        assert!(
+            !html.contains("data-form-guard"),
+            "form without guard should not render data-form-guard attribute"
+        );
     }
 
     // ── Collapsible ───────────────────────────────────────────────────
@@ -4893,10 +4954,14 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<nav class=\"flex items-center space-x-2 text-sm text-text-muted mb-1\">"));
+        assert!(html
+            .contains("<nav class=\"flex items-center space-x-2 text-sm text-text-muted mb-1\">"));
         assert!(html.contains("<a href=\"/\" class=\"hover:text-text\">Home</a>"));
         assert!(html.contains("<span>Users</span>"));
-        assert!(html.contains("<span>/</span>"), "separator between breadcrumb items");
+        assert!(
+            html.contains("<span>/</span>"),
+            "separator between breadcrumb items"
+        );
     }
 
     #[test]
@@ -4924,8 +4989,14 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("flex-shrink-0"), "actions wrapper with flex-shrink-0");
-        assert!(html.contains(">Add New</button>"), "action button rendered inside");
+        assert!(
+            html.contains("flex-shrink-0"),
+            "actions wrapper with flex-shrink-0"
+        );
+        assert!(
+            html.contains(">Add New</button>"),
+            "action button rendered inside"
+        );
     }
 
     // ── ButtonGroup ─────────────────────────────────────────────────────
@@ -4968,7 +5039,10 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("flex items-center gap-2 flex-wrap"), "horizontal flex container");
+        assert!(
+            html.contains("flex items-center gap-2 flex-wrap"),
+            "horizontal flex container"
+        );
         assert!(html.contains(">Save</button>"));
         assert!(html.contains(">Cancel</button>"));
     }
@@ -5010,8 +5084,14 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("appearance-none"), "select must have appearance-none class");
-        assert!(html.contains("bg-background"), "select must have bg-background class");
+        assert!(
+            html.contains("appearance-none"),
+            "select must have appearance-none class"
+        );
+        assert!(
+            html.contains("bg-background"),
+            "select must have bg-background class"
+        );
     }
 
     // ── Single-tab auto-hide ────────────────────────────────────────────
@@ -5040,8 +5120,14 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(!html.contains("data-tabs"), "no data-tabs wrapper for single tab");
-        assert!(!html.contains("role=\"tablist\""), "no tab nav for single tab");
+        assert!(
+            !html.contains("data-tabs"),
+            "no data-tabs wrapper for single tab"
+        );
+        assert!(
+            !html.contains("role=\"tablist\""),
+            "no tab nav for single tab"
+        );
         assert!(html.contains("Content here"), "tab content still rendered");
     }
 
@@ -5084,8 +5170,14 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("data-tabs"), "multi-tab still has data-tabs wrapper");
-        assert!(html.contains("role=\"tablist\""), "multi-tab still has nav with role=tablist");
+        assert!(
+            html.contains("data-tabs"),
+            "multi-tab still has data-tabs wrapper"
+        );
+        assert!(
+            html.contains("role=\"tablist\""),
+            "multi-tab still has nav with role=tablist"
+        );
         assert!(html.contains("Tab One"), "tab label rendered");
         assert!(html.contains("Tab Two"), "tab label rendered");
     }
