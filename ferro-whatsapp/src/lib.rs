@@ -4,7 +4,8 @@
 //!
 //! Provides outbound message sending (text and template messages) via the Meta
 //! Cloud API v23.0, with a static OnceLock facade matching the ferro-stripe pattern.
-//! Inbound webhook processing and message deduplication are added in subsequent plans.
+//! Inbound webhook verification, message deduplication, and typed event dispatch
+//! are provided by the `webhook` and `dedup` modules.
 //!
 //! ## Quick Start
 //!
@@ -25,15 +26,15 @@
 
 pub mod client;
 pub mod config;
+pub mod dedup;
 pub mod error;
 pub mod message;
-
-// Stub modules for Plan 02 (webhook processing and deduplication)
-// TODO(plan-02): implement webhook/ and dedup.rs
-pub mod dedup;
 pub mod webhook;
 
 pub use client::WhatsApp;
 pub use config::WhatsAppConfig;
+pub use dedup::{DeduplicationStore, InMemoryDeduplicationStore};
 pub use error::Error;
 pub use message::{DeliveryStatus, Message, SendResult, SenderIdentity};
+pub use webhook::signed_whatsapp_payload;
+pub use webhook::verify_whatsapp_webhook;
