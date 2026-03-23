@@ -1883,6 +1883,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-whatsapp"
+version = "0.1.87"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "dashmap",
+ "ferro-events",
+ "ferro-queue",
+ "hex",
+ "hmac",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "ff"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
