@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 101-01-PLAN.md
-last_updated: "2026-03-23T01:25:18.407Z"
-last_activity: 2026-03-22 — Phase 100-03 executed (3 tasks)
+stopped_at: Completed 101-02-PLAN.md
+last_updated: "2026-03-23T02:00:00.000Z"
+last_activity: 2026-03-23 — Phase 101-02 executed (2 tasks)
 progress:
   total_phases: 19
   completed_phases: 18
   total_plans: 59
-  completed_plans: 57
+  completed_plans: 58
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 101 (ferro-whatsapp Plugin) — IN PROGRESS
-Plan: 1 of 3 complete
-Status: Phase 101-01 complete — ferro-whatsapp crate foundation: OnceLock facade, core types, 23 unit tests
-Last activity: 2026-03-23 — Phase 101-01 executed (2 tasks)
+Plan: 2 of 3 complete
+Status: Phase 101-02 complete — webhook HMAC verification, InMemoryDeduplicationStore, typed event dispatch via ProcessWhatsAppWebhook
+Last activity: 2026-03-23 — Phase 101-02 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -441,6 +441,12 @@ Archived to PROJECT.md and milestone archive files.
 - build_api_payload test helper gated on cfg(any(test, feature = "test-helpers")) for HTTP-free unit tests
 - Empty stub modules (dedup.rs, webhook/mod.rs) declared in lib.rs to allow compilation; Plan 02 fills them in
 - map_response_error uses body.to_lowercase().contains("invalid") heuristic for InvalidNumber from 400 responses
+
+**Phase 101-02:**
+- signed_whatsapp_payload is a regular pub fn (not feature-gated) — needed in production test suites, matching ferro-stripe Phase 96-03 decision
+- ferro_queue::Error::custom() for JSON parse errors in ProcessWhatsAppWebhook::handle() — ferro_queue::Error uses constructor methods, not tuple variants
+- Deduplication deferred to application layer: ProcessWhatsAppWebhook does not check dedup internally; users wire InMemoryDeduplicationStore in their webhook handler before dispatching the job
+- Private parse helpers (parse_text_messages, parse_status_updates, resolve_identity) keep ProcessWhatsAppWebhook::handle() focused on orchestration
 
 ### Roadmap Evolution
 

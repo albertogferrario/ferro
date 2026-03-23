@@ -682,7 +682,7 @@ Plans:
 **Goal:** Create `ferro-whatsapp` plugin crate providing WhatsApp Business Cloud API integration: outbound message sender, inbound webhook dispatcher with HMAC verification, wamid-level message deduplication, and sender-identity routing (owner vs customer message classification).
 **Requirements**: [WA-01, WA-02, WA-03, WA-04, WA-05]
 **Depends on:** Phase 100
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 101-01-PLAN.md — ferro-whatsapp crate foundation: core types (Error, Config, Message, SenderIdentity, DeliveryStatus), OnceLock facade, outbound sender via Meta Cloud API v23.0
