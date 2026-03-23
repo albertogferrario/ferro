@@ -214,6 +214,15 @@ pub use ferro_ai::{
     PendingActionInfo,
 };
 
+// Re-export ferro-whatsapp for WhatsApp Business Cloud API integration
+#[cfg(feature = "whatsapp")]
+pub use ferro_whatsapp::{
+    verify_whatsapp_webhook, DeduplicationStore, DeliveryStatus, Error as WhatsAppError,
+    InMemoryDeduplicationStore, Message as WhatsAppMessage, ProcessWhatsAppWebhook,
+    SendResult as WhatsAppSendResult, SenderIdentity, WhatsApp, WhatsAppConfig,
+    WhatsAppStatusUpdate, WhatsAppTextReceived,
+};
+
 // Re-export ferro-projections for service projection definitions
 #[cfg(feature = "projections")]
 pub use ferro_projections::{

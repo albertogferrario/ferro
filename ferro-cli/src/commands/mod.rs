@@ -38,6 +38,7 @@ pub mod make_seeder;
 pub mod make_stripe;
 pub mod make_task;
 pub mod make_theme;
+pub mod make_whatsapp;
 pub mod mcp;
 pub mod new;
 #[cfg(feature = "projections")]

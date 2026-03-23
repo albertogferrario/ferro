@@ -120,6 +120,9 @@ enum Commands {
         #[arg(long)]
         connect: bool,
     },
+    /// Scaffold WhatsApp Business integration (webhook routes, event listeners, env config)
+    #[command(name = "make:whatsapp")]
+    MakeWhatsapp,
     /// Generate a new domain error
     #[command(name = "make:error")]
     MakeError {
@@ -454,6 +457,11 @@ fn main() {
         }
         Commands::MakeStripe { connect } => {
             commands::make_stripe::execute(connect);
+        }
+        Commands::MakeWhatsapp => {
+            let project_root =
+                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+            commands::make_whatsapp::execute(&project_root);
         }
         Commands::MakeError { name } => {
             commands::make_error::run(name);
