@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
-status: completed
-stopped_at: Completed 101-02-PLAN.md
-last_updated: "2026-03-23T02:00:00.000Z"
+status: verifying
+stopped_at: Completed 101-03-PLAN.md
+last_updated: "2026-03-23T01:44:18.245Z"
 last_activity: 2026-03-23 — Phase 101-02 executed (2 tasks)
 progress:
   total_phases: 19
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 59
-  completed_plans: 58
+  completed_plans: 59
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 101 (ferro-whatsapp Plugin) — IN PROGRESS
-Plan: 2 of 3 complete
-Status: Phase 101-02 complete — webhook HMAC verification, InMemoryDeduplicationStore, typed event dispatch via ProcessWhatsAppWebhook
-Last activity: 2026-03-23 — Phase 101-02 executed (2 tasks)
+Phase: 101 (ferro-whatsapp Plugin) — COMPLETE
+Plan: 3 of 3 complete
+Status: Phase 101-03 complete — framework re-exports, CLI scaffold, MCP tools, publish workflow, docs
+Last activity: 2026-03-23 — Phase 101-03 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -448,6 +448,11 @@ Archived to PROJECT.md and milestone archive files.
 - Deduplication deferred to application layer: ProcessWhatsAppWebhook does not check dedup internally; users wire InMemoryDeduplicationStore in their webhook handler before dispatching the job
 - Private parse helpers (parse_text_messages, parse_status_updates, resolve_identity) keep ProcessWhatsAppWebhook::handle() focused on orchestration
 
+**Phase 101-03:**
+- Error as WhatsAppError, Message as WhatsAppMessage, SendResult as WhatsAppSendResult aliases avoid collisions with existing re-exports in framework/src/lib.rs
+- make_whatsapp execute() takes &Path project_root for testability — matches make_projection pattern, not hardcoded cwd
+- whatsapp_webhook_events returns Vec<WhatsAppWebhookEvent> directly (not wrapped in a struct) — simpler for a pure list result
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -469,6 +474,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T01:25:18.390Z
-Stopped at: Completed 101-01-PLAN.md
+Last session: 2026-03-23T01:44:18.241Z
+Stopped at: Completed 101-03-PLAN.md
 Resume file: None
