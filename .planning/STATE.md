@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Phase 101 context gathered
-last_updated: "2026-03-23T00:51:13.062Z"
+stopped_at: Completed 101-01-PLAN.md
+last_updated: "2026-03-23T01:25:18.407Z"
 last_activity: 2026-03-22 — Phase 100-03 executed (3 tasks)
 progress:
   total_phases: 19
   completed_phases: 18
-  total_plans: 56
-  completed_plans: 56
+  total_plans: 59
+  completed_plans: 57
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 100 (AI Structured Classification & Confirmation Primitives) — COMPLETE
-Plan: 3 of 3 complete
-Status: Phase 100 complete — ferro-ai ecosystem integration: feature-gated re-exports, test_classifier and list_pending_confirmations MCP tools, Wave 1 publish workflow, documentation
-Last activity: 2026-03-22 — Phase 100-03 executed (3 tasks)
+Phase: 101 (ferro-whatsapp Plugin) — IN PROGRESS
+Plan: 1 of 3 complete
+Status: Phase 101-01 complete — ferro-whatsapp crate foundation: OnceLock facade, core types, 23 unit tests
+Last activity: 2026-03-23 — Phase 101-01 executed (2 tasks)
 
 ## Milestone Summary
 
@@ -435,6 +435,13 @@ Archived to PROJECT.md and milestone archive files.
 - MCP list_pending_confirmations scans source (not runtime): InMemoryConfirmationStore state is ephemeral and not inspectable via source scanning
 - ok_response_body in json_ui tests should use response.body().to_string() not format!("{:?}", hyper.into_body()) — Debug repr of Full<Bytes> varies by feature combination
 
+**Phase 101-01:**
+- META_API_VERSION const in config.rs as single source of truth for Meta Cloud API v23.0 version string
+- SenderIdentity uses externally-tagged serde (tag/content) for clean JSON in webhook event payloads
+- build_api_payload test helper gated on cfg(any(test, feature = "test-helpers")) for HTTP-free unit tests
+- Empty stub modules (dedup.rs, webhook/mod.rs) declared in lib.rs to allow compilation; Plan 02 fills them in
+- map_response_error uses body.to_lowercase().contains("invalid") heuristic for InvalidNumber from 400 responses
+
 ### Roadmap Evolution
 
 - 22 milestones shipped, 197 plans total
@@ -456,6 +463,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-23T00:51:13.054Z
-Stopped at: Phase 101 context gathered
-Resume file: .planning/phases/101-ferro-whatsapp-plugin/101-CONTEXT.md
+Last session: 2026-03-23T01:25:18.390Z
+Stopped at: Completed 101-01-PLAN.md
+Resume file: None
