@@ -343,6 +343,17 @@ pub struct StripeSubscriptionInfoParams {
     // No parameters — reads from src/migrations/
 }
 
+// No extra params needed for WhatsApp tools — they scan fixed paths.
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct WhatsAppConfigStatusParams {
+    // No parameters — reads from project root
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct WhatsAppWebhookEventsParams {
+    // No parameters — scans src/whatsapp/listeners.rs
+}
+
 #[tool_router(router = tool_router)]
 impl FerroMcpService {
     /// Get application information including framework version, Rust version, models, and installed crates
@@ -1562,6 +1573,41 @@ impl FerroMcpService {
     ) -> String {
         let result = tools::ai::list_pending_confirmations(&self.project_root);
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Report WhatsApp configuration status (env vars, scaffold presence)
+    #[tool(
+        name = "whatsapp_config_status",
+        description = "Report WhatsApp Business configuration status for the current project.\n\n\
+            **When to use:** Verifying WhatsApp is configured before running the app, \
+            checking which env vars are set, confirming the scaffold exists.\n\n\
+            **Returns:** configured (bool), keys_present, keys_missing, scaffold_exists, scaffold_files.\n\n\
+            **Combine with:** `whatsapp_webhook_events` to check event listeners."
+    )]
+    pub async fn whatsapp_config_status(
+        &self,
+        #[allow(unused_variables)] _params: Parameters<WhatsAppConfigStatusParams>,
+    ) -> String {
+        let status = tools::whatsapp::whatsapp_config_status(&self.project_root);
+        serde_json::to_string_pretty(&status).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// List WhatsApp webhook event listeners discovered in the project source
+    #[tool(
+        name = "whatsapp_webhook_events",
+        description = "List WhatsApp webhook event listeners discovered in src/whatsapp/listeners.rs.\n\n\
+            **When to use:** Understanding which WhatsApp events the app handles, \
+            checking listener coverage, debugging missing event handling.\n\n\
+            **Returns:** Array of event listeners with event_type, listener struct name, and file path.\n\n\
+            **Combine with:** `whatsapp_config_status` to verify setup, \
+            `list_jobs` to see ProcessWhatsAppWebhook job."
+    )]
+    pub async fn whatsapp_webhook_events(
+        &self,
+        #[allow(unused_variables)] _params: Parameters<WhatsAppWebhookEventsParams>,
+    ) -> String {
+        let events = tools::whatsapp::whatsapp_webhook_events(&self.project_root);
+        serde_json::to_string_pretty(&events).unwrap_or_else(|_| "{}".to_string())
     }
 }
 

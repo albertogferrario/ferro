@@ -37,6 +37,7 @@
 - [Inertia.js](features/inertia.md)
 - [JSON-UI](features/json-ui.md)
 - [Stripe](features/stripe.md)
+- [WhatsApp](features/whatsapp.md)
 - [Themes](features/themes.md)
 - [AI & Confirmation](features/ai.md)
 
