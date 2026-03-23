@@ -682,14 +682,12 @@ Plans:
 **Goal:** Create `ferro-whatsapp` plugin crate providing WhatsApp Business Cloud API integration: outbound message sender, inbound webhook dispatcher with HMAC verification, wamid-level message deduplication, and sender-identity routing (owner vs customer message classification).
 **Requirements**: [WA-01, WA-02, WA-03, WA-04, WA-05]
 **Depends on:** Phase 100
-**Plans:** TBD
-**Context:** Driven by gestiscilo.it v2.4. Extracted from gestiscilo's existing WhatsApp webhook code into a reusable plugin. Shipped with Ferro but separated as an optional crate.
+**Plans:** 3 plans
 
-**Delivers:**
-- `ferro-whatsapp` crate: outbound sender (Meta Cloud API wrapper), webhook dispatcher with HMAC verification, wamid dedup
-- Sender-identity routing: configurable owner vs customer message classification based on phone number matching
-- CLI scaffolding (`ferro make:whatsapp`) and MCP introspection tools
-- Documentation and publish workflow integration
+Plans:
+- [ ] 101-01-PLAN.md — ferro-whatsapp crate foundation: core types (Error, Config, Message, SenderIdentity, DeliveryStatus), OnceLock facade, outbound sender via Meta Cloud API v23.0
+- [ ] 101-02-PLAN.md — Webhook HMAC verification (X-Hub-Signature-256), DeduplicationStore trait + InMemoryDeduplicationStore, event structs (WhatsAppTextReceived, WhatsAppStatusUpdate), ProcessWhatsAppWebhook job with sender-identity routing
+- [ ] 101-03-PLAN.md — Framework re-exports, CLI scaffolding (ferro make:whatsapp), MCP introspection tools, publish workflow, documentation
 
 ---
 
