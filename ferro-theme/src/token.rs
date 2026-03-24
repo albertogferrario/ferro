@@ -56,9 +56,9 @@ pub const TOKEN_SHADOW_LG: &str = "--shadow-lg";
 
 // Typography tokens — font family scale only; Tailwind size scale stays as-is
 /// Sans-serif font stack.
-pub const TOKEN_FONT_FAMILY_SANS: &str = "--font-family-sans";
+pub const TOKEN_FONT_SANS: &str = "--font-sans";
 /// Monospace font stack.
-pub const TOKEN_FONT_FAMILY_MONO: &str = "--font-family-mono";
+pub const TOKEN_FONT_MONO: &str = "--font-mono";
 
 /// All token names in the ferro-theme/v1 vocabulary (23 slots).
 pub const ALL_TOKENS: &[&str] = &[
@@ -83,6 +83,6 @@ pub const ALL_TOKENS: &[&str] = &[
     TOKEN_SHADOW_SM,
     TOKEN_SHADOW_MD,
     TOKEN_SHADOW_LG,
-    TOKEN_FONT_FAMILY_SANS,
-    TOKEN_FONT_FAMILY_MONO,
+    TOKEN_FONT_SANS,
+    TOKEN_FONT_MONO,
 ];

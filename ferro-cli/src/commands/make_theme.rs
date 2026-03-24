@@ -102,8 +102,8 @@ fn tokens_css_template() -> &'static str {
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 
   /* Typography tokens */
-  --font-family-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-family-mono: ui-monospace, monospace;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -201,14 +201,8 @@ mod tests {
         assert!(css.contains("--shadow-lg:"), "missing --shadow-lg");
 
         // Typography tokens (2)
-        assert!(
-            css.contains("--font-family-sans:"),
-            "missing --font-family-sans"
-        );
-        assert!(
-            css.contains("--font-family-mono:"),
-            "missing --font-family-mono"
-        );
+        assert!(css.contains("--font-sans:"), "missing --font-sans");
+        assert!(css.contains("--font-mono:"), "missing --font-mono");
     }
 
     #[test]
