@@ -7,18 +7,19 @@ tags: [multi-tenancy, middleware, async-trait, hyper, jwt, subdomain, header, pa
 # Dependency graph
 requires:
   - phase: 95-01
-    provides: TenantContext, TenantFailureMode, TenantResolver trait, TenantLookup trait, tenant_scope, with_tenant_scope
+    provides: TenantContext, TenantFailureMode, TenantLookup trait, tenant_scope, with_tenant_scope
 provides:
-  - TenantMiddleware implementing Middleware trait with builder API
+  - TenantResolver trait (async_trait, object-safe, Send + Sync)
   - SubdomainResolver extracting tenant slug from Host header with port stripping and configurable base domain parts
   - HeaderResolver extracting tenant slug from configurable HTTP header
   - PathResolver extracting tenant slug from route path parameter
   - JwtClaimResolver extracting tenant_id from serde_json::Value in request extensions
+  - TenantMiddleware implementing Middleware trait with builder API and resolver chain
 affects:
   - 95-03 (re-exports from framework/src/lib.rs)
-  - 95-04 (TenantExtractor can rely on current_tenant() being set by TenantMiddleware)
   - 96-stripe-integration (middleware pipeline complete for multi-tenant requests)
-  - 98-tenant-aware-background-jobs (current_tenant() set by middleware, available in downstream)
+  - 97-tenant-aware-background-jobs (current_tenant() set by middleware, available in downstream)
+  - 98-ferro-json-ui-stable-release (tenant context available in render pipeline)
 
 # Tech tracking
 tech-stack:
@@ -31,14 +32,14 @@ tech-stack:
 
 key-files:
   created:
+    - framework/src/tenant/resolver.rs
     - framework/src/tenant/middleware.rs
   modified:
-    - framework/src/tenant/resolver.rs
     - framework/src/tenant/mod.rs
     - framework/src/http/response.rs
 
 key-decisions:
-  - "TCP loopback for test requests: hyper::body::Incoming cannot be constructed without a real connection, so tests use tokio::net::TcpListener pattern matching rate_limit tests"
+  - "TCP loopback for test requests: hyper::body::Incoming cannot be constructed without a real connection, tests use tokio::net::TcpListener pattern matching rate_limit tests"
   - "#[derive(Debug)] added to HttpResponse: required for Result::unwrap()/unwrap_err() in tests — correct correctness fix"
   - "JwtClaimResolver reads serde_json::Value from request extensions: no JWT infrastructure exists in framework, upstream middleware must insert parsed claims"
   - "PathResolver uses req.param().ok() to convert Result to Option: req.param() returns Result<&str, ParamError> not Option<&str>"
@@ -47,7 +48,7 @@ patterns-established:
   - "Resolver chain: middleware holds Vec<Box<dyn TenantResolver>>, iterates calling resolve(), breaks on first Some"
   - "Task-local scope lifecycle: tenant_scope() creates Arc<RwLock<Option<TenantContext>>>, write guard sets tenant, with_tenant_scope() wraps next() call"
 
-requirements-completed: [MT-01, MT-04, MT-05, MT-07, MT-08]
+requirements-completed: [MT-01, MT-02, MT-03, MT-04, MT-08]
 
 # Metrics
 duration: 9min
@@ -56,7 +57,7 @@ completed: 2026-03-11
 
 # Phase 95 Plan 02: TenantMiddleware and Concrete Resolvers Summary
 
-**TenantMiddleware implementing Middleware trait with resolver chain and failure modes, plus four concrete resolver strategies (Subdomain, Header, Path, JWT) each delegating to TenantLookup for DB verification**
+**TenantMiddleware with resolver chain and failure modes plus four concrete resolver strategies (Subdomain, Header, Path, JWT) delegating to TenantLookup for DB verification**
 
 ## Performance
 
@@ -68,31 +69,31 @@ completed: 2026-03-11
 
 ## Accomplishments
 
-- TenantMiddleware with consuming builder API (resolver/on_failure), resolver chain runs in order first match wins, stores tenant in task-local context via with_tenant_scope()
-- Three failure modes: NotFound (404 JSON), Forbidden (403 JSON), Allow (pass-through with None tenant)
+- TenantResolver trait with `async fn resolve(&self, req: &Request) -> Option<TenantContext>` — object-safe, Send + Sync
 - SubdomainResolver: extracts subdomain from Host header, strips port, skips requests with only base domain parts
 - HeaderResolver: reads configurable header name as slug
 - PathResolver: reads named route parameter as slug (handles Result->Option conversion correctly)
 - JwtClaimResolver: reads serde_json::Value from request extensions, extracts i64 field as tenant_id
-- 20 total new tests (9 middleware + 11 resolver) — all pass
+- TenantMiddleware with consuming builder API (resolver/on_failure), resolver chain runs in order first match wins
+- Stores tenant in task-local context via with_tenant_scope() from Plan 01
+- Three failure modes: NotFound (404 JSON), Forbidden (403 JSON), Allow (pass-through with None tenant)
+- 20 total tests (11 resolver + 9 middleware) — all pass
 
 ## Task Commits
 
 Each task was committed atomically:
 
-1. **Task 1: TenantMiddleware with resolver chain and failure modes** - `03e8a46` (feat)
-2. **Task 2: Four concrete resolver implementations** - `de9cd7b` (feat)
+1. **Task 1: TenantResolver trait and four concrete resolver implementations** - `03e8a46` (feat)
+2. **Task 2: TenantMiddleware with resolver chain and failure modes** - `de9cd7b` (feat)
 
-**Plan metadata:** (docs commit below)
-
-_Note: TDD tasks implemented with tests and implementation together — type signatures needed to compile tests_
+**Plan metadata:** `386adc6` (docs: complete TenantMiddleware and resolver implementations plan)
 
 ## Files Created/Modified
 
+- `framework/src/tenant/resolver.rs` - TenantResolver trait, SubdomainResolver, HeaderResolver, PathResolver, JwtClaimResolver with 11 tests
 - `framework/src/tenant/middleware.rs` - TenantMiddleware struct with Middleware impl, 9 tests
-- `framework/src/tenant/resolver.rs` - SubdomainResolver, HeaderResolver, PathResolver, JwtClaimResolver, 11 tests
-- `framework/src/tenant/mod.rs` - Added middleware module, re-exported TenantMiddleware and 4 resolver types
-- `framework/src/http/response.rs` - Added #[derive(Debug)] to HttpResponse
+- `framework/src/tenant/mod.rs` - Added resolver/middleware modules and re-exports for all 5 public types
+- `framework/src/http/response.rs` - Added `#[derive(Debug)]` to HttpResponse
 
 ## Decisions Made
 
@@ -139,7 +140,7 @@ None - no external service configuration required.
 - TenantMiddleware and all 4 resolver strategies implemented and tested
 - Re-exports added to `framework/src/tenant/mod.rs` — ready for Plan 03 to expose via `framework/src/lib.rs`
 - `current_tenant()` accessible in downstream handlers when middleware is active
-- JwtClaimResolver is documented: upstream JWT middleware must insert `serde_json::Value` claims
+- JwtClaimResolver documented: upstream JWT middleware must insert `serde_json::Value` claims
 
 ---
 *Phase: 95-multi-tenant-middleware*
