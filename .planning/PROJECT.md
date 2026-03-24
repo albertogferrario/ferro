@@ -135,10 +135,23 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - ✓ Post-scaffold guidance with MCP config snippets for Claude Desktop/Code — v8.1
 - ✓ Complete API-to-MCP documentation (Quick Start Workflow, Route Customization) — v8.1
 
+## Current Milestone: v10.0 JSON-UI Visual Overhaul
+
+**Goal:** Reach Vercel-level visual quality across all JSON-UI components while maintaining Ferro's own identity.
+
+**Target features:**
+- Typography foundation (load professional font, apply via theme tokens, define type scale)
+- Surface/elevation system (proper card-on-background layering, refined shadows)
+- Component polish (all ~30 components — focus rings, custom select arrows, transitions, consistent spacing)
+- Theme token integration (render.rs uses shape/shadow/font tokens instead of hardcoded Tailwind classes)
+- Layout fixes (DashboardLayout bugs, responsive defaults, spacing system)
+- Consistency pass (emoji→SVG, unified hover/focus states, border treatment)
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
+- [ ] Full visual overhaul of JSON-UI rendering to professional quality
 - [ ] Publish to crates.io (manual step using PUBLISHING.md)
 - [ ] Public announcement and marketing
 
@@ -224,4 +237,4 @@ Reference codebase documentation in `.planning/codebase/`:
 | 401 via FrameworkError::domain | 401 is authentication failure; Unauthorized is 403 | ✓ Good |
 
 ---
-*Last updated: 2026-02-28 after v8.1 API DX Polish milestone*
+*Last updated: 2026-03-24 after v10.0 JSON-UI Visual Overhaul milestone start*
