@@ -89,6 +89,12 @@ impl JsonUi {
         let title = view.title.as_deref().unwrap_or("Ferro");
 
         let mut head = String::new();
+        // Inter Variable via Bunny Fonts — loaded unconditionally so font renders
+        // regardless of whether the Tailwind CDN is active.
+        head.push_str(
+            "<link rel=\"preconnect\" href=\"https://fonts.bunny.net\">\
+             <link href=\"https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap\" rel=\"stylesheet\">",
+        );
         if config.tailwind_cdn {
             head.push_str(
                 r#"<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>"#,
@@ -359,6 +365,23 @@ mod tests {
 
         let body = response_body(ok_response(result));
         assert!(body.contains("dark bg-black"));
+    }
+
+    #[test]
+    fn bunny_fonts_link_in_head() {
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("fonts.bunny.net"),
+            "head should contain Bunny Fonts link"
+        );
+        assert!(
+            body.contains("family=inter"),
+            "head should request Inter font family"
+        );
     }
 
     #[test]
