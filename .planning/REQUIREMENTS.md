@@ -92,48 +92,48 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01 | — | Pending |
-| FND-02 | — | Pending |
-| FND-03 | — | Pending |
-| FND-04 | — | Pending |
-| SRF-01 | — | Pending |
-| SRF-02 | — | Pending |
-| SRF-03 | — | Pending |
-| SRF-04 | — | Pending |
-| SRF-05 | — | Pending |
-| SRF-06 | — | Pending |
-| SRF-07 | — | Pending |
-| TYP-01 | — | Pending |
-| TYP-02 | — | Pending |
-| TYP-03 | — | Pending |
-| TYP-04 | — | Pending |
-| TYP-05 | — | Pending |
-| FRM-01 | — | Pending |
-| FRM-02 | — | Pending |
-| FRM-03 | — | Pending |
-| FRM-04 | — | Pending |
-| FRM-05 | — | Pending |
-| FRM-06 | — | Pending |
-| FRM-07 | — | Pending |
-| INT-01 | — | Pending |
-| INT-02 | — | Pending |
-| INT-03 | — | Pending |
-| INT-04 | — | Pending |
-| INT-05 | — | Pending |
-| INT-06 | — | Pending |
-| INT-07 | — | Pending |
-| CMP-01 | — | Pending |
-| CMP-02 | — | Pending |
-| CMP-03 | — | Pending |
-| CMP-04 | — | Pending |
-| CMP-05 | — | Pending |
-| CMP-06 | — | Pending |
+| FND-01 | Phase 102 | Pending |
+| FND-02 | Phase 102 | Pending |
+| FND-03 | Phase 102 | Pending |
+| FND-04 | Phase 102 | Pending |
+| SRF-01 | Phase 103 | Pending |
+| SRF-02 | Phase 103 | Pending |
+| SRF-03 | Phase 103 | Pending |
+| SRF-04 | Phase 103 | Pending |
+| SRF-05 | Phase 103 | Pending |
+| SRF-06 | Phase 103 | Pending |
+| SRF-07 | Phase 103 | Pending |
+| TYP-01 | Phase 104 | Pending |
+| TYP-02 | Phase 104 | Pending |
+| TYP-03 | Phase 104 | Pending |
+| TYP-04 | Phase 104 | Pending |
+| TYP-05 | Phase 104 | Pending |
+| FRM-01 | Phase 105 | Pending |
+| FRM-02 | Phase 105 | Pending |
+| FRM-03 | Phase 105 | Pending |
+| FRM-04 | Phase 105 | Pending |
+| FRM-05 | Phase 105 | Pending |
+| FRM-06 | Phase 105 | Pending |
+| FRM-07 | Phase 105 | Pending |
+| INT-01 | Phase 106 | Pending |
+| INT-02 | Phase 106 | Pending |
+| INT-03 | Phase 106 | Pending |
+| INT-04 | Phase 106 | Pending |
+| INT-05 | Phase 106 | Pending |
+| INT-06 | Phase 106 | Pending |
+| INT-07 | Phase 106 | Pending |
+| CMP-01 | Phase 107 | Pending |
+| CMP-02 | Phase 107 | Pending |
+| CMP-03 | Phase 107 | Pending |
+| CMP-04 | Phase 107 | Pending |
+| CMP-05 | Phase 107 | Pending |
+| CMP-06 | Phase 107 | Pending |
 
 **Coverage:**
 - v10.0 requirements: 36 total
-- Mapped to phases: 0
-- Unmapped: 36
+- Mapped to phases: 36
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-24*
-*Last updated: 2026-03-24 after initial definition*
+*Last updated: 2026-03-24 after roadmap creation — all 36 requirements mapped to Phases 102-107*

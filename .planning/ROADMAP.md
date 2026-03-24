@@ -27,6 +27,7 @@
 - ✅ **v8.0 Consumer MCP — OpenAPI Bridge** — Phases 79-82 (shipped 2026-02-28)
 - ✅ **v8.1 API DX Polish** — Phase 83 (shipped 2026-02-28)
 - ✅ [**v9.0 Service Projections**](milestones/v9.0-ROADMAP.md) — Phases 84-94 (shipped 2026-03-01)
+- 🚧 **v10.0 JSON-UI Visual Overhaul** — Phases 102-107 (in progress)
 
 ---
 
@@ -171,6 +172,201 @@ Plans:
 - [x] 94-03: Data model specification — all 22 public types across 7 pages (ServiceDef, FieldDef, DataType, FieldMeaning, StateMachine, Actions, Relationships, Intent)
 - [x] 94-04: Derivation, rendering & validation — 5 analyzers, Renderer trait, 4 errors + 9 warnings
 - [x] 94-05: Governance & appendix — extensions, conformance (3 levels), security (7 considerations), related work (9 cited), worked examples (7 intents)
+
+### Phase 95: Multi-tenant middleware
+
+**Goal:** Add TenantMiddleware with pluggable resolver chain (Subdomain, Header, Path, JWT), task-local TenantContext, TenantScope query helper for cross-tenant data isolation, and FromRequest handler extraction.
+**Requirements**: [MT-01, MT-02, MT-03, MT-04, MT-05, MT-06, MT-07, MT-08, MT-09, MT-10]
+**Depends on:** Phase 94
+**Plans:** 3/3 plans complete
+
+Plans:
+- [ ] 95-01-PLAN.md — Core types: TenantContext, task-local context, TenantResolver trait, TenantLookup with moka cache
+- [ ] 95-02-PLAN.md — TenantMiddleware with resolver chain + 4 concrete resolver implementations
+- [ ] 95-03-PLAN.md — TenantScope query scoping, FromRequest extractor, lib.rs re-exports, documentation
+
+### Phase 96: Stripe integration
+
+**Goal:** Add `ferro-stripe` crate with two-tier billing (platform SaaS subscriptions + Stripe Connect), webhook handling via ferro-events, TenantContext enrichment with SubscriptionInfo, RequiresPlan middleware, CLI scaffolding, MCP tools, and documentation.
+**Requirements**: [STRIPE-01, STRIPE-02, STRIPE-03, STRIPE-04, STRIPE-05, STRIPE-06, STRIPE-07, STRIPE-08, STRIPE-09, STRIPE-10, STRIPE-11, STRIPE-12, STRIPE-13]
+**Depends on:** Phase 95
+**Plans:** 7/7 plans complete
+
+Plans:
+- [x] 96-01-PLAN.md — ferro-stripe crate foundation: types (SubscriptionInfo, SubscriptionStatus, Error), Stripe client facade, checkout/billing portal/Connect functions
+- [x] 96-02-PLAN.md — TenantContext enrichment with subscription data, cache invalidation, RequiresPlan middleware
+- [x] 96-03-PLAN.md — Webhook verification, event types (ferro-events integration), handler functions, subscription sync
+- [x] 96-04-PLAN.md — Test helpers: subscription factories, signed webhook payloads, event fixture generators
+- [x] 96-05-PLAN.md — CLI scaffolding (ferro make:stripe) and MCP introspection tools
+- [x] 96-06-PLAN.md — Publish workflow, documentation, full workspace validation
+- [ ] 96-07-PLAN.md — Gap closure: fix make:stripe webhook templates to use correct API (queue_dispatch, struct literal construction)
+
+### Phase 97: Tenant-aware background jobs
+
+**Goal:** Propagate tenant context into ferro-queue jobs so current_tenant() and TenantScope work inside job handlers. Jobs dispatched from tenant-scoped request handlers automatically carry tenant_id through Redis and restore full TenantContext in the worker before executing.
+**Requirements**: [TBJ-01, TBJ-02, TBJ-03, TBJ-04, TBJ-05, TBJ-06, TBJ-07, TBJ-08, TBJ-09, TBJ-10, TBJ-11]
+**Depends on:** Phase 96
+**Plans:** 3/3 plans complete
+
+Plans:
+- [ ] 97-01-PLAN.md — ferro-queue types: JobPayload tenant_id, TenantScopeProvider trait, Error::TenantNotFound, OnceLock capture hook, PendingDispatch::for_tenant()
+- [ ] 97-02-PLAN.md — Worker tenant scope: with_tenant_scope() builder, process_job scope wrapping, Clone fix, tracing span
+- [ ] 97-03-PLAN.md — Framework wiring: FrameworkTenantScopeProvider, hook registration, lib.rs re-exports, documentation
+
+### Phase 98: ferro-json-ui stable release
+
+**Goal:** Stabilize ferro-json-ui from experimental to production-ready: add 6 dashboard-driven components (StatCard, Checklist, Toast, NotificationDropdown, Sidebar, Header), DashboardLayout with persistent shell, built-in JS runtime for SSE/toast/live-value, schemars JSON Schema generation, API visibility audit, 60+ tests, and comprehensive documentation.
+**Requirements**: [COMP-01, COMP-02, COMP-03, DASH-01, DASH-02, DASH-03, JS-01, JS-02, JS-03, API-01, API-02, API-03, API-04, TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, DOCS-01, DOCS-02, DOCS-03]
+**Depends on:** Phase 97
+**Plans:** 5/5 plans complete
+
+Plans:
+- [ ] 98-01-PLAN.md — 6 new component types + render implementations + convenience constructors for all 26 variants
+- [ ] 98-02-PLAN.md — DashboardLayout with persistent sidebar/header shell + built-in JS runtime (~5-10KB)
+- [ ] 98-03-PLAN.md — API visibility audit (pub(crate) internals) + schemars JSON Schema + framework re-export update
+- [ ] 98-04-PLAN.md — Comprehensive test suite: serde round-trips, render tests, schema tests, plugin pipeline (60+ total)
+- [ ] 98-05-PLAN.md — Documentation: component catalog (26 types), plugin guide, DashboardLayout docs, clean rustdoc
+
+### Phase 99: Semantic theme system with intent-driven templates
+
+**Goal:** Make JSON-UI visually customizable through semantic CSS tokens and intent-to-layout mappings configurable through declarative templates. New `ferro-theme` crate defines token vocabulary (~23 slots) and intent template schema. ThemeMiddleware enables per-request theme selection for multi-tenant white-labeling. All ~224 hardcoded Tailwind classes in render.rs/layout.rs migrated to semantic token references. JsonUiRenderer updated to consume intent template overrides.
+**Requirements**: [THEME-01, THEME-02, THEME-03, THEME-04, THEME-05, THEME-06, THEME-07, THEME-08, THEME-09, THEME-10, THEME-11, THEME-12]
+**Depends on:** Phase 98
+**Plans:** 5/5 plans complete
+
+Plans:
+- [x] 99-01-PLAN.md — ferro-theme crate: Theme struct, ThemeError, token vocabulary, IntentTemplate schema, default embedded CSS, filesystem loader
+- [x] 99-02-PLAN.md — Framework ThemeMiddleware with resolver chain, task-local current_theme(), feature-gated re-exports
+- [x] 99-03-PLAN.md — render.rs + layout.rs semantic token migration (~224 hardcoded Tailwind classes replaced)
+- [ ] 99-04-PLAN.md — JsonUiRenderer intent template consumption from ThemeTemplates
+- [ ] 99-05-PLAN.md — CLI make:theme command, publish workflow update, theme documentation
+
+### Phase 100: AI Structured Classification & Confirmation Primitives
+
+**Goal:** Add framework-level primitives for AI-powered structured intent classification (Claude structured JSON output) and a confirmation state machine for gating destructive actions behind explicit user confirmation with TTL expiry.
+**Requirements**: [AI-01, AI-02, AI-03, CONF-01, CONF-02, CONF-03]
+**Depends on:** Phase 99
+**Plans:** 3/3 plans complete
+
+Plans:
+- [ ] 100-01-PLAN.md — ferro-ai crate foundation + AI classification: ClassificationProvider trait, AnthropicProvider, Classifier<T> facade, ClassifierConfig, retry logic
+- [ ] 100-02-PLAN.md — Confirmation state machine: ConfirmationStore trait, InMemoryConfirmationStore (DashMap), TTL expiry via tokio::spawn, ConfirmationExpired ferro-events integration
+- [ ] 100-03-PLAN.md — Framework integration: feature-gated re-exports, MCP tools (test_classifier, list_pending_confirmations), publish workflow, documentation
+
+### Phase 101: ferro-whatsapp Plugin
+
+**Goal:** Create `ferro-whatsapp` plugin crate providing WhatsApp Business Cloud API integration: outbound message sender, inbound webhook dispatcher with HMAC verification, wamid-level message deduplication, and sender-identity routing (owner vs customer message classification).
+**Requirements**: [WA-01, WA-02, WA-03, WA-04, WA-05]
+**Depends on:** Phase 100
+**Plans:** 3/3 plans complete
+
+Plans:
+- [ ] 101-01-PLAN.md — ferro-whatsapp crate foundation: core types (Error, Config, Message, SenderIdentity, DeliveryStatus), OnceLock facade, outbound sender via Meta Cloud API v23.0
+- [ ] 101-02-PLAN.md — Webhook HMAC verification (X-Hub-Signature-256), DeduplicationStore trait + InMemoryDeduplicationStore, event structs (WhatsAppTextReceived, WhatsAppStatusUpdate), ProcessWhatsAppWebhook job with sender-identity routing
+- [ ] 101-03-PLAN.md — Framework re-exports, CLI scaffolding (ferro make:whatsapp), MCP introspection tools, publish workflow, documentation
+
+---
+
+### 🚧 v10.0 JSON-UI Visual Overhaul (In Progress)
+
+**Milestone Goal:** Reach professional visual quality across all JSON-UI components. Inter Variable font loaded and wired through correct Tailwind v4 token names. Surface elevation hierarchy (background → surface → card) applied to all components. Typography scale, form polish, interactive states, and component details completed in dependency order.
+
+## Phases
+
+- [ ] **Phase 102: Foundation** - Fix Tailwind font token namespace and load Inter Variable font
+- [ ] **Phase 103: Surface Elevation** - Apply card/modal/dropdown surface hierarchy and verify dark mode tokens
+- [ ] **Phase 104: Typography Scale** - Apply heading and body line-height and letter-spacing classes
+- [ ] **Phase 105: Form Polish** - Custom select arrow, error focus rings, transitions, disabled states
+- [ ] **Phase 106: Interactive States** - Focus rings and hover states across all interactive elements
+- [ ] **Phase 107: Component Details** - Alert icons, Skeleton shimmer, Breadcrumb chevron, tab weight, bell SVG
+
+## Phase Details
+
+### Phase 102: Foundation
+**Goal**: Font token namespace bug is fixed and Inter Variable font renders in all JSON-UI pages
+**Depends on**: Phase 101
+**Requirements**: FND-01, FND-02, FND-03, FND-04
+**Success Criteria** (what must be TRUE):
+  1. JSON-UI pages render text in Inter Variable (or system sans-serif fallback), not the browser default serif
+  2. The `--font-sans` CSS custom property resolves to the Inter font stack in `default.css`
+  3. A test that asserts on a Tailwind class string does not break unrelated tests when only that class changes
+  4. Bunny Fonts `<link>` tag is present in the `<head>` of every JSON-UI document
+**Plans**: TBD
+
+### Phase 103: Surface Elevation
+**Goal**: Cards, modals, stat cards, and notification dropdowns are visually elevated above the page background in both light and dark mode
+**Depends on**: Phase 102
+**Requirements**: SRF-01, SRF-02, SRF-03, SRF-04, SRF-05, SRF-06, SRF-07
+**Success Criteria** (what must be TRUE):
+  1. Card components render with a background visually distinct from the page body (bg-card, not bg-background)
+  2. Modal panels and notification dropdown panels use the card surface color, creating visible layering
+  3. StatCard uses bg-card so dashboard metric cards are visually elevated from the page background
+  4. All 8 critical dark mode token pairs pass WCAG 4.5:1 contrast ratio when verified with an oklch-native tool
+  5. Runtime JS toast and tab switcher use semantic token classes (bg-primary, not bg-blue-500)
+**Plans**: TBD
+
+### Phase 104: Typography Scale
+**Goal**: All text elements render with the correct line-height and letter-spacing for their heading level
+**Depends on**: Phase 102
+**Requirements**: TYP-01, TYP-02, TYP-03, TYP-04, TYP-05
+**Success Criteria** (what must be TRUE):
+  1. H1 and H2 headings render tighter tracking and tight line-height compared to default browser rendering
+  2. H3 headings render with snug line-height
+  3. Body text (P, Div, Section) renders with relaxed line-height for comfortable reading
+  4. Muted text uses the same `text-text-muted` class consistently across all components
+**Plans**: TBD
+
+### Phase 105: Form Polish
+**Goal**: All form elements have a custom select arrow, correct error focus rings, transition animations, and disabled state styling
+**Depends on**: Phase 103
+**Requirements**: FRM-01, FRM-02, FRM-03, FRM-04, FRM-05, FRM-06, FRM-07
+**Success Criteria** (what must be TRUE):
+  1. Select elements display a visible SVG chevron arrow in all major browsers without JavaScript
+  2. Input, Select, and Textarea in error state show a red (destructive) focus ring, not the primary ring
+  3. All form elements animate color transitions over 150ms and suppress animation for users with reduced-motion preference
+  4. Disabled form elements render at reduced opacity with a not-allowed cursor
+  5. Form field layout always renders in label → input → description → error message order
+**Plans**: TBD
+
+### Phase 106: Interactive States
+**Goal**: Every interactive element has a visible focus ring and hover state, applied consistently across the full component catalog
+**Depends on**: Phase 103
+**Requirements**: INT-01, INT-02, INT-03, INT-04, INT-05, INT-06, INT-07
+**Success Criteria** (what must be TRUE):
+  1. Tabbing through a JSON-UI page shows a visible 2px focus ring on every interactive element (buttons, tabs, pagination, breadcrumb links, sidebar nav items)
+  2. Table rows highlight on hover with a surface background tint
+  3. All interactive elements animate color transitions over 150ms with reduced-motion suppression
+  4. Focus rings use `focus-visible:` (not `focus:`) so mouse clicks do not trigger the ring
+**Plans**: TBD
+
+### Phase 107: Component Details
+**Goal**: Alert components, Skeleton loader, Breadcrumb separator, active tab, and notification bell use refined visual treatments that eliminate emoji and add motion
+**Depends on**: Phase 104, Phase 106
+**Requirements**: CMP-01, CMP-02, CMP-03, CMP-04, CMP-05, CMP-06
+**Success Criteria** (what must be TRUE):
+  1. Alert components display an inline SVG icon that matches the variant (info, success, warning, error)
+  2. Skeleton loader uses a smooth shimmer animation instead of a pulsing opacity effect
+  3. Breadcrumb separator renders as an SVG chevron, not a `/` text character
+  4. Active tabs render with semibold font weight, visually distinct from inactive tabs
+  5. Notification bell renders as an SVG icon, consistent across all operating systems
+  6. Collapsible components display a rotating SVG chevron that indicates open/closed state
+**Plans**: TBD
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 102 → 103 → 104 → 105 → 106 → 107
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 102. Foundation | 0/TBD | Not started | - |
+| 103. Surface Elevation | 0/TBD | Not started | - |
+| 104. Typography Scale | 0/TBD | Not started | - |
+| 105. Form Polish | 0/TBD | Not started | - |
+| 106. Interactive States | 0/TBD | Not started | - |
+| 107. Component Details | 0/TBD | Not started | - |
+
+---
 
 ## Completed Milestones
 
@@ -597,98 +793,6 @@ Plans:
 
 </details>
 
-### Phase 95: Multi-tenant middleware
-
-**Goal:** Add TenantMiddleware with pluggable resolver chain (Subdomain, Header, Path, JWT), task-local TenantContext, TenantScope query helper for cross-tenant data isolation, and FromRequest handler extraction.
-**Requirements**: [MT-01, MT-02, MT-03, MT-04, MT-05, MT-06, MT-07, MT-08, MT-09, MT-10]
-**Depends on:** Phase 94
-**Plans:** 3/3 plans complete
-
-Plans:
-- [ ] 95-01-PLAN.md — Core types: TenantContext, task-local context, TenantResolver trait, TenantLookup with moka cache
-- [ ] 95-02-PLAN.md — TenantMiddleware with resolver chain + 4 concrete resolver implementations
-- [ ] 95-03-PLAN.md — TenantScope query scoping, FromRequest extractor, lib.rs re-exports, documentation
-
-### Phase 96: Stripe integration
-
-**Goal:** Add `ferro-stripe` crate with two-tier billing (platform SaaS subscriptions + Stripe Connect), webhook handling via ferro-events, TenantContext enrichment with SubscriptionInfo, RequiresPlan middleware, CLI scaffolding, MCP tools, and documentation.
-**Requirements**: [STRIPE-01, STRIPE-02, STRIPE-03, STRIPE-04, STRIPE-05, STRIPE-06, STRIPE-07, STRIPE-08, STRIPE-09, STRIPE-10, STRIPE-11, STRIPE-12, STRIPE-13]
-**Depends on:** Phase 95
-**Plans:** 7/7 plans complete
-
-Plans:
-- [x] 96-01-PLAN.md — ferro-stripe crate foundation: types (SubscriptionInfo, SubscriptionStatus, Error), Stripe client facade, checkout/billing portal/Connect functions
-- [x] 96-02-PLAN.md — TenantContext enrichment with subscription data, cache invalidation, RequiresPlan middleware
-- [x] 96-03-PLAN.md — Webhook verification, event types (ferro-events integration), handler functions, subscription sync
-- [x] 96-04-PLAN.md — Test helpers: subscription factories, signed webhook payloads, event fixture generators
-- [x] 96-05-PLAN.md — CLI scaffolding (ferro make:stripe) and MCP introspection tools
-- [x] 96-06-PLAN.md — Publish workflow, documentation, full workspace validation
-- [ ] 96-07-PLAN.md — Gap closure: fix make:stripe webhook templates to use correct API (queue_dispatch, struct literal construction)
-
-### Phase 97: Tenant-aware background jobs
-
-**Goal:** Propagate tenant context into ferro-queue jobs so current_tenant() and TenantScope work inside job handlers. Jobs dispatched from tenant-scoped request handlers automatically carry tenant_id through Redis and restore full TenantContext in the worker before executing.
-**Requirements**: [TBJ-01, TBJ-02, TBJ-03, TBJ-04, TBJ-05, TBJ-06, TBJ-07, TBJ-08, TBJ-09, TBJ-10, TBJ-11]
-**Depends on:** Phase 96
-**Plans:** 3/3 plans complete
-
-Plans:
-- [ ] 97-01-PLAN.md — ferro-queue types: JobPayload tenant_id, TenantScopeProvider trait, Error::TenantNotFound, OnceLock capture hook, PendingDispatch::for_tenant()
-- [ ] 97-02-PLAN.md — Worker tenant scope: with_tenant_scope() builder, process_job scope wrapping, Clone fix, tracing span
-- [ ] 97-03-PLAN.md — Framework wiring: FrameworkTenantScopeProvider, hook registration, lib.rs re-exports, documentation
-
-### Phase 98: ferro-json-ui stable release
-
-**Goal:** Stabilize ferro-json-ui from experimental to production-ready: add 6 dashboard-driven components (StatCard, Checklist, Toast, NotificationDropdown, Sidebar, Header), DashboardLayout with persistent shell, built-in JS runtime for SSE/toast/live-value, schemars JSON Schema generation, API visibility audit, 60+ tests, and comprehensive documentation.
-**Requirements**: [COMP-01, COMP-02, COMP-03, DASH-01, DASH-02, DASH-03, JS-01, JS-02, JS-03, API-01, API-02, API-03, API-04, TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, DOCS-01, DOCS-02, DOCS-03]
-**Depends on:** Phase 97
-**Plans:** 5/5 plans complete
-
-Plans:
-- [ ] 98-01-PLAN.md — 6 new component types + render implementations + convenience constructors for all 26 variants
-- [ ] 98-02-PLAN.md — DashboardLayout with persistent sidebar/header shell + built-in JS runtime (~5-10KB)
-- [ ] 98-03-PLAN.md — API visibility audit (pub(crate) internals) + schemars JSON Schema + framework re-export update
-- [ ] 98-04-PLAN.md — Comprehensive test suite: serde round-trips, render tests, schema tests, plugin pipeline (60+ total)
-- [ ] 98-05-PLAN.md — Documentation: component catalog (26 types), plugin guide, DashboardLayout docs, clean rustdoc
-
-### Phase 99: Semantic theme system with intent-driven templates
-
-**Goal:** Make JSON-UI visually customizable through semantic CSS tokens and intent-to-layout mappings configurable through declarative templates. New `ferro-theme` crate defines token vocabulary (~23 slots) and intent template schema. ThemeMiddleware enables per-request theme selection for multi-tenant white-labeling. All ~224 hardcoded Tailwind classes in render.rs/layout.rs migrated to semantic token references. JsonUiRenderer updated to consume intent template overrides.
-**Requirements**: [THEME-01, THEME-02, THEME-03, THEME-04, THEME-05, THEME-06, THEME-07, THEME-08, THEME-09, THEME-10, THEME-11, THEME-12]
-**Depends on:** Phase 98
-**Plans:** 5/5 plans complete
-
-Plans:
-- [x] 99-01-PLAN.md — ferro-theme crate: Theme struct, ThemeError, token vocabulary, IntentTemplate schema, default embedded CSS, filesystem loader
-- [x] 99-02-PLAN.md — Framework ThemeMiddleware with resolver chain, task-local current_theme(), feature-gated re-exports
-- [x] 99-03-PLAN.md — render.rs + layout.rs semantic token migration (~224 hardcoded Tailwind classes replaced)
-- [ ] 99-04-PLAN.md — JsonUiRenderer intent template consumption from ThemeTemplates
-- [ ] 99-05-PLAN.md — CLI make:theme command, publish workflow update, theme documentation
-
-### Phase 100: AI Structured Classification & Confirmation Primitives
-
-**Goal:** Add framework-level primitives for AI-powered structured intent classification (Claude structured JSON output) and a confirmation state machine for gating destructive actions behind explicit user confirmation with TTL expiry.
-**Requirements**: [AI-01, AI-02, AI-03, CONF-01, CONF-02, CONF-03]
-**Depends on:** Phase 99
-**Plans:** 3/3 plans complete
-
-Plans:
-- [ ] 100-01-PLAN.md — ferro-ai crate foundation + AI classification: ClassificationProvider trait, AnthropicProvider, Classifier<T> facade, ClassifierConfig, retry logic
-- [ ] 100-02-PLAN.md — Confirmation state machine: ConfirmationStore trait, InMemoryConfirmationStore (DashMap), TTL expiry via tokio::spawn, ConfirmationExpired ferro-events integration
-- [ ] 100-03-PLAN.md — Framework integration: feature-gated re-exports, MCP tools (test_classifier, list_pending_confirmations), publish workflow, documentation
-
-### Phase 101: ferro-whatsapp Plugin
-
-**Goal:** Create `ferro-whatsapp` plugin crate providing WhatsApp Business Cloud API integration: outbound message sender, inbound webhook dispatcher with HMAC verification, wamid-level message deduplication, and sender-identity routing (owner vs customer message classification).
-**Requirements**: [WA-01, WA-02, WA-03, WA-04, WA-05]
-**Depends on:** Phase 100
-**Plans:** 3/3 plans complete
-
-Plans:
-- [ ] 101-01-PLAN.md — ferro-whatsapp crate foundation: core types (Error, Config, Message, SenderIdentity, DeliveryStatus), OnceLock facade, outbound sender via Meta Cloud API v23.0
-- [ ] 101-02-PLAN.md — Webhook HMAC verification (X-Hub-Signature-256), DeduplicationStore trait + InMemoryDeduplicationStore, event structs (WhatsAppTextReceived, WhatsAppStatusUpdate), ProcessWhatsAppWebhook job with sender-identity routing
-- [ ] 101-03-PLAN.md — Framework re-exports, CLI scaffolding (ferro make:whatsapp), MCP introspection tools, publish workflow, documentation
-
 ---
 
 ## Progress Summary
@@ -717,5 +821,6 @@ Plans:
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
 | v9.0 Service Projections | 84-94 | 30 | ✅ Complete | 2026-03-01 |
+| v10.0 JSON-UI Visual Overhaul | 102-107 | TBD | 🚧 In progress | - |
 
 **Total: 22 milestones shipped, 197 plans.**
