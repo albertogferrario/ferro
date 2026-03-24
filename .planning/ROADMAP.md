@@ -291,7 +291,11 @@ Plans:
   2. The `--font-sans` CSS custom property resolves to the Inter font stack in `default.css`
   3. A test that asserts on a Tailwind class string does not break unrelated tests when only that class changes
   4. Bunny Fonts `<link>` tag is present in the `<head>` of every JSON-UI document
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 102-01-PLAN.md — Fix font token namespace (--font-sans), add Bunny Fonts CDN link, wire font-sans body class
+- [ ] 102-02-PLAN.md — Add has_class test helper and structural component tests for resilient assertions
 
 ### Phase 103: Surface Elevation
 **Goal**: Cards, modals, stat cards, and notification dropdowns are visually elevated above the page background in both light and dark mode
@@ -359,7 +363,7 @@ Phases execute in numeric order: 102 → 103 → 104 → 105 → 106 → 107
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 102. Foundation | 0/TBD | Not started | - |
+| 102. Foundation | 0/2 | Planned | - |
 | 103. Surface Elevation | 0/TBD | Not started | - |
 | 104. Typography Scale | 0/TBD | Not started | - |
 | 105. Form Polish | 0/TBD | Not started | - |
