@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Service Projections
 status: completed
-stopped_at: Completed 95-02-PLAN.md
-last_updated: "2026-03-24T02:19:39.519Z"
-last_activity: 2026-03-23 — Phase 101-03 executed (2 tasks)
+stopped_at: Completed 95-03-PLAN.md
+last_updated: "2026-03-24T02:23:25.526Z"
+last_activity: 2026-03-24 — Phase 95-03 executed (2 tasks: TenantScope + docs)
 progress:
   total_phases: 19
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 59
-  completed_plans: 58
+  completed_plans: 59
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 95 (Multi-tenant middleware) — In Progress
-Plan: 2 of 3 complete
-Status: Phase 95-02 complete — TenantMiddleware with resolver chain and 4 concrete resolver implementations
-Last activity: 2026-03-24 — Phase 95-02 executed (2 tasks, already committed from Plan 01 session)
+Phase: 95 (Multi-tenant middleware) — Complete
+Plan: 3 of 3 complete
+Status: Phase 95 complete — TenantScope, lib.rs re-exports, and multi-tenancy documentation
+Last activity: 2026-03-24 — Phase 95-03 executed (2 tasks: TenantScope + docs)
 
 ## Milestone Summary
 
@@ -474,6 +474,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-24T02:19:39.515Z
-Stopped at: Completed 95-02-PLAN.md
+Last session: 2026-03-24T02:23:25.518Z
+Stopped at: Completed 95-03-PLAN.md
 Resume file: None
