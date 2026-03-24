@@ -5178,4 +5178,462 @@ mod tests {
         assert!(html.contains("Tab One"), "tab label rendered");
         assert!(html.contains("Tab Two"), "tab label rendered");
     }
+
+    // ── Structural test helpers ───────────────────────────────────────────
+
+    /// Check that rendered HTML contains an element with a specific CSS class.
+    /// Checks class as: sole class, first class, middle class, or last class.
+    /// More resilient than full class string matching — survives class additions.
+    fn has_class(html: &str, class: &str) -> bool {
+        html.contains(&format!("class=\"{class}\""))
+            || html.contains(&format!("class=\"{class} "))
+            || html.contains(&format!(" {class}\""))
+            || html.contains(&format!(" {class} "))
+    }
+
+    /// Assert HTML contains a specific element tag and content string.
+    fn assert_element(html: &str, tag: &str, content: &str) {
+        assert!(
+            html.contains(&format!("<{tag} ")) || html.contains(&format!("<{tag}>")),
+            "expected <{tag}> element in HTML"
+        );
+        assert!(
+            html.contains(content),
+            "expected content '{content}' in HTML"
+        );
+    }
+
+    // ── Structural tests — survive cosmetic class additions ───────────────
+    //
+    // These tests verify element type, text content, and semantic token classes
+    // without matching the full class attribute string. Adding classes like
+    // `leading-tight` or `bg-card` will not break these tests.
+    //
+    // The existing full-string tests above remain as documentation of current
+    // class output and will be updated in Phases 103-107 as classes change.
+
+    mod structural_tests {
+        use super::*;
+        use serde_json::json;
+
+        // ── Text H1 (Phase 104 adds leading-tight tracking-tight) ─────────
+
+        #[test]
+        fn h1_structural_element_and_semantic_class() {
+            let view = JsonUiView::new().component(text_node("t", "Page Title", TextElement::H1));
+            let html = render_to_html(&view, &json!({}));
+            assert_element(&html, "h1", "Page Title");
+            assert!(
+                has_class(&html, "text-text"),
+                "h1 should have text-text class"
+            );
+        }
+
+        // ── Text H2 (Phase 104 adds leading-tight tracking-tight) ─────────
+
+        #[test]
+        fn h2_structural_element_and_semantic_class() {
+            let view =
+                JsonUiView::new().component(text_node("t", "Section Title", TextElement::H2));
+            let html = render_to_html(&view, &json!({}));
+            assert_element(&html, "h2", "Section Title");
+            assert!(
+                has_class(&html, "text-text"),
+                "h2 should have text-text class"
+            );
+        }
+
+        // ── Text H3 (Phase 104 adds leading-snug) ─────────────────────────
+
+        #[test]
+        fn h3_structural_element_and_semantic_class() {
+            let view = JsonUiView::new().component(text_node("t", "Subsection", TextElement::H3));
+            let html = render_to_html(&view, &json!({}));
+            assert_element(&html, "h3", "Subsection");
+            assert!(
+                has_class(&html, "text-text"),
+                "h3 should have text-text class"
+            );
+        }
+
+        // ── Text P (Phase 104 adds leading-relaxed) ───────────────────────
+
+        #[test]
+        fn p_structural_element_and_semantic_class() {
+            let view = JsonUiView::new().component(text_node("t", "Body text", TextElement::P));
+            let html = render_to_html(&view, &json!({}));
+            assert_element(&html, "p", "Body text");
+            assert!(
+                has_class(&html, "text-text"),
+                "p should have text-text class"
+            );
+        }
+
+        // ── Card (Phase 103 adds bg-card) ─────────────────────────────────
+
+        #[test]
+        fn card_structural_title_and_description() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "c".to_string(),
+                component: Component::Card(CardProps {
+                    title: "Card Title".to_string(),
+                    description: Some("Card description".to_string()),
+                    children: vec![],
+                    footer: vec![],
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(html.contains("<div"), "card should render a div container");
+            assert!(html.contains("Card Title"), "card title should be present");
+            assert!(
+                html.contains("Card description"),
+                "card description should be present"
+            );
+            assert!(
+                has_class(&html, "border-border"),
+                "card container should have border-border"
+            );
+        }
+
+        // ── Alert (Phase 107 adds SVG icon) ──────────────────────────────
+
+        #[test]
+        fn alert_structural_container_and_message() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "a".to_string(),
+                component: Component::Alert(AlertProps {
+                    message: "Something went wrong".to_string(),
+                    variant: AlertVariant::Warning,
+                    title: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("role=\"alert\""),
+                "alert should have role=alert"
+            );
+            assert!(
+                html.contains("Something went wrong"),
+                "alert message should be present"
+            );
+            assert!(
+                has_class(&html, "text-warning"),
+                "warning alert should have text-warning class"
+            );
+        }
+
+        // ── Input (Phase 105 adds transitions, disabled states) ───────────
+
+        #[test]
+        fn input_structural_element_and_type() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "i".to_string(),
+                component: Component::Input(InputProps {
+                    field: "username".to_string(),
+                    label: "Username".to_string(),
+                    input_type: InputType::Text,
+                    placeholder: None,
+                    required: None,
+                    disabled: None,
+                    error: None,
+                    description: None,
+                    default_value: None,
+                    data_path: None,
+                    step: None,
+                    list: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("<input"),
+                "input should render an <input element"
+            );
+            assert!(html.contains("type=\"text\""), "input type should be text");
+            assert!(
+                html.contains("name=\"username\""),
+                "input name should match field"
+            );
+        }
+
+        // ── Select (Phase 105 adds custom arrow styling) ──────────────────
+
+        #[test]
+        fn select_structural_element_and_options() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "s".to_string(),
+                component: Component::Select(SelectProps {
+                    field: "status".to_string(),
+                    label: "Status".to_string(),
+                    options: vec![
+                        SelectOption {
+                            value: "active".to_string(),
+                            label: "Active".to_string(),
+                        },
+                        SelectOption {
+                            value: "inactive".to_string(),
+                            label: "Inactive".to_string(),
+                        },
+                    ],
+                    placeholder: None,
+                    required: None,
+                    disabled: None,
+                    error: None,
+                    description: None,
+                    default_value: None,
+                    data_path: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("<select"),
+                "select should render a <select element"
+            );
+            assert!(
+                html.contains("Active"),
+                "select should render option labels"
+            );
+            assert!(
+                html.contains("Inactive"),
+                "select should render all options"
+            );
+        }
+
+        // ── Table (Phase 106 adds hover:bg-surface to rows) ───────────────
+
+        #[test]
+        fn table_structural_headers_and_body() {
+            let data = json!({
+                "items": [{"name": "Widget", "price": "9.99"}]
+            });
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "t".to_string(),
+                component: Component::Table(TableProps {
+                    columns: vec![
+                        Column {
+                            key: "name".to_string(),
+                            label: "Name".to_string(),
+                            format: None,
+                        },
+                        Column {
+                            key: "price".to_string(),
+                            label: "Price".to_string(),
+                            format: None,
+                        },
+                    ],
+                    data_path: "/items".to_string(),
+                    row_actions: None,
+                    empty_message: None,
+                    sortable: None,
+                    sort_column: None,
+                    sort_direction: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &data);
+            assert!(
+                html.contains("<table"),
+                "table should render a <table element"
+            );
+            assert!(html.contains("<th"), "table should render header cells");
+            assert!(
+                html.contains("Name"),
+                "table should render Name column header"
+            );
+            assert!(
+                html.contains("Price"),
+                "table should render Price column header"
+            );
+            assert!(html.contains("Widget"), "table should render row data");
+        }
+
+        // ── Breadcrumb (Phase 107 changes separator) ──────────────────────
+
+        #[test]
+        fn breadcrumb_structural_nav_and_links() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "bc".to_string(),
+                component: Component::Breadcrumb(BreadcrumbProps {
+                    items: vec![
+                        BreadcrumbItem {
+                            label: "Home".to_string(),
+                            url: Some("/".to_string()),
+                        },
+                        BreadcrumbItem {
+                            label: "Products".to_string(),
+                            url: Some("/products".to_string()),
+                        },
+                        BreadcrumbItem {
+                            label: "Widget".to_string(),
+                            url: None,
+                        },
+                    ],
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("<nav"),
+                "breadcrumb should render a <nav element"
+            );
+            assert!(
+                html.contains("href=\"/\""),
+                "breadcrumb should render Home link"
+            );
+            assert!(
+                html.contains("href=\"/products\""),
+                "breadcrumb should render Products link"
+            );
+            assert!(
+                html.contains("Widget"),
+                "breadcrumb should render last item text"
+            );
+        }
+
+        // ── Tabs (Phase 107 adds font-semibold to active tab) ─────────────
+
+        #[test]
+        fn tabs_structural_buttons_and_content() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "tabs".to_string(),
+                component: Component::Tabs(TabsProps {
+                    default_tab: "overview".to_string(),
+                    tabs: vec![
+                        Tab {
+                            value: "overview".to_string(),
+                            label: "Overview".to_string(),
+                            children: vec![text_node("t1", "Overview content", TextElement::P)],
+                        },
+                        Tab {
+                            value: "details".to_string(),
+                            label: "Details".to_string(),
+                            children: vec![text_node("t2", "Details content", TextElement::P)],
+                        },
+                    ],
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("<button"),
+                "tabs should render button elements"
+            );
+            assert!(html.contains("Overview"), "tabs should render tab labels");
+            assert!(
+                html.contains("Details"),
+                "tabs should render all tab labels"
+            );
+            assert!(
+                html.contains("Overview content"),
+                "tabs should render active tab content"
+            );
+        }
+
+        // ── StatCard (Phase 103 adds bg-card) ────────────────────────────
+
+        #[test]
+        fn stat_card_structural_value_and_label() {
+            let view = JsonUiView::new().component(ComponentNode::stat_card(
+                "sales",
+                StatCardProps {
+                    label: "Total Sales".to_string(),
+                    value: "1,024".to_string(),
+                    icon: None,
+                    subtitle: None,
+                    sse_target: None,
+                },
+            ));
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("Total Sales"),
+                "stat card should render label"
+            );
+            assert!(html.contains("1,024"), "stat card should render value");
+            assert!(
+                has_class(&html, "rounded-lg"),
+                "stat card should have rounded-lg class"
+            );
+        }
+
+        // ── Skeleton (Phase 107 changes animation class) ──────────────────
+
+        #[test]
+        fn skeleton_structural_animate_class() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "sk".to_string(),
+                component: Component::Skeleton(SkeletonProps {
+                    width: None,
+                    height: None,
+                    rounded: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(html.contains("<div"), "skeleton should render a div");
+            assert!(
+                has_class(&html, "animate-pulse"),
+                "skeleton should have animate-pulse class"
+            );
+        }
+
+        // ── Collapsible (Phase 107 adds SVG chevron) ──────────────────────
+
+        #[test]
+        fn collapsible_structural_details_element() {
+            let view = JsonUiView::new().component(ComponentNode::collapsible(
+                "col",
+                crate::component::CollapsibleProps {
+                    title: "Show more".into(),
+                    expanded: false,
+                    children: vec![text_node("t", "Collapsed content", TextElement::P)],
+                },
+            ));
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("<details"),
+                "collapsible should render a <details element"
+            );
+            assert!(
+                html.contains("Show more"),
+                "collapsible should render the title"
+            );
+            assert!(
+                html.contains("Collapsed content"),
+                "collapsible should render children"
+            );
+        }
+
+        // ── Button (Phase 106 adds focus-visible ring) ────────────────────
+
+        #[test]
+        fn button_structural_element_and_text() {
+            let view = JsonUiView::new().component(button_node(
+                "btn",
+                "Submit",
+                ButtonVariant::Default,
+                Size::Default,
+            ));
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("<button"),
+                "button should render a <button element"
+            );
+            assert!(html.contains("Submit"), "button should render label text");
+            assert!(
+                has_class(&html, "bg-primary"),
+                "default button should have bg-primary class"
+            );
+        }
+    }
 }
