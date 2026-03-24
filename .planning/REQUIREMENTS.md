@@ -12,7 +12,7 @@ Requirements for JSON-UI visual quality uplift to professional grade. Each maps 
 - [ ] **FND-01**: Font token namespace uses correct Tailwind v4 names (`--font-sans`, `--font-mono` not `--font-family-sans`)
 - [ ] **FND-02**: Inter Variable font loads via Bunny Fonts CDN in base document `<head>`
 - [ ] **FND-03**: Body and all text elements render in Inter (or system fallback)
-- [ ] **FND-04**: Test suite separates structural assertions from cosmetic class assertions to prevent cascade failures
+- [x] **FND-04**: Test suite separates structural assertions from cosmetic class assertions to prevent cascade failures
 
 ### Surface & Elevation
 
@@ -95,7 +95,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-01 | Phase 102 | Pending |
 | FND-02 | Phase 102 | Pending |
 | FND-03 | Phase 102 | Pending |
-| FND-04 | Phase 102 | Pending |
+| FND-04 | Phase 102 | Complete |
 | SRF-01 | Phase 103 | Pending |
 | SRF-02 | Phase 103 | Pending |
 | SRF-03 | Phase 103 | Pending |
