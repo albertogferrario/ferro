@@ -322,7 +322,10 @@ Plans:
   2. H3 headings render with snug line-height
   3. Body text (P, Div, Section) renders with relaxed line-height for comfortable reading
   4. Muted text uses the same `text-text-muted` class consistently across all components
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 104-01-PLAN.md — Typography scale classes on render_text (H1/H2/H3/P/Div/Section) + inline headings + layout.rs muted text fix
 
 ### Phase 105: Form Polish
 **Goal**: All form elements have a custom select arrow, correct error focus rings, transition animations, and disabled state styling
@@ -369,7 +372,7 @@ Phases execute in numeric order: 102 → 103 → 104 → 105 → 106 → 107
 |-------|----------------|--------|-----------|
 | 102. Foundation | 2/2 | Complete    | 2026-03-24 |
 | 103. Surface Elevation | 2/2 | Complete    | 2026-03-25 |
-| 104. Typography Scale | 0/TBD | Not started | - |
+| 104. Typography Scale | 0/1 | Not started | - |
 | 105. Form Polish | 0/TBD | Not started | - |
 | 106. Interactive States | 0/TBD | Not started | - |
 | 107. Component Details | 0/TBD | Not started | - |
