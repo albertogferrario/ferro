@@ -249,10 +249,10 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
                 var t = triggers[i];
                 if (t.getAttribute('data-tab') === value) {
                     t.classList.remove('border-transparent', 'text-text-muted', 'hover:text-text');
-                    t.classList.add('border-primary', 'text-primary');
+                    t.classList.add('border-primary', 'text-primary', 'font-semibold');
                     t.setAttribute('aria-selected', 'true');
                 } else {
-                    t.classList.remove('border-primary', 'text-primary');
+                    t.classList.remove('border-primary', 'text-primary', 'font-semibold');
                     t.classList.add('border-transparent', 'text-text-muted', 'hover:text-text');
                     t.setAttribute('aria-selected', 'false');
                 }

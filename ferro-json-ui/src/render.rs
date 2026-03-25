@@ -330,7 +330,7 @@ fn render_page_header(props: &PageHeaderProps, data: &Value) -> String {
         html.push_str("<nav class=\"flex items-center space-x-2 text-sm text-text-muted mb-1\">");
         for (i, item) in props.breadcrumb.iter().enumerate() {
             if i > 0 {
-                html.push_str("<span>/</span>");
+                html.push_str(BREADCRUMB_SEP);
             }
             if let Some(ref url) = item.url {
                 html.push_str(&format!(
@@ -479,7 +479,7 @@ fn render_tabs(props: &TabsProps, data: &Value) -> String {
             "border-transparent"
         };
         let text = if is_active {
-            "text-primary"
+            "text-primary font-semibold"
         } else {
             "text-text-muted hover:text-text"
         };
@@ -1163,6 +1163,36 @@ fn render_badge(props: &BadgeProps) -> String {
     )
 }
 
+// ── CMP-01: Alert SVG icons ──────────────────────────────────────────────
+
+const ICON_INFO: &str = concat!(
+    "<span aria-hidden=\"true\" class=\"shrink-0\">",
+    "<svg class=\"h-5 w-5\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
+    "<path fill-rule=\"evenodd\" d=\"M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z\" clip-rule=\"evenodd\"/>",
+    "</svg></span>"
+);
+
+const ICON_SUCCESS: &str = concat!(
+    "<span aria-hidden=\"true\" class=\"shrink-0\">",
+    "<svg class=\"h-5 w-5\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
+    "<path fill-rule=\"evenodd\" d=\"M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z\" clip-rule=\"evenodd\"/>",
+    "</svg></span>"
+);
+
+const ICON_WARNING: &str = concat!(
+    "<span aria-hidden=\"true\" class=\"shrink-0\">",
+    "<svg class=\"h-5 w-5\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
+    "<path fill-rule=\"evenodd\" d=\"M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z\" clip-rule=\"evenodd\"/>",
+    "</svg></span>"
+);
+
+const ICON_ERROR: &str = concat!(
+    "<span aria-hidden=\"true\" class=\"shrink-0\">",
+    "<svg class=\"h-5 w-5\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
+    "<path fill-rule=\"evenodd\" d=\"M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z\" clip-rule=\"evenodd\"/>",
+    "</svg></span>"
+);
+
 fn render_alert(props: &AlertProps) -> String {
     let variant_classes = match props.variant {
         AlertVariant::Info => "bg-primary/10 border-primary text-primary",
@@ -1170,8 +1200,17 @@ fn render_alert(props: &AlertProps) -> String {
         AlertVariant::Warning => "bg-warning/10 border-warning text-warning",
         AlertVariant::Error => "bg-destructive/10 border-destructive text-destructive",
     };
-    let mut html =
-        format!("<div role=\"alert\" class=\"rounded-md border p-4 {variant_classes}\">");
+    let icon = match props.variant {
+        AlertVariant::Info => ICON_INFO,
+        AlertVariant::Success => ICON_SUCCESS,
+        AlertVariant::Warning => ICON_WARNING,
+        AlertVariant::Error => ICON_ERROR,
+    };
+    let mut html = format!(
+        "<div role=\"alert\" class=\"rounded-md border p-4 flex items-start gap-3 {variant_classes}\">"
+    );
+    html.push_str(icon);
+    html.push_str("<div>");
     if let Some(ref title) = props.title {
         html.push_str(&format!(
             "<h4 class=\"font-semibold mb-1\">{}</h4>",
@@ -1179,6 +1218,7 @@ fn render_alert(props: &AlertProps) -> String {
         ));
     }
     html.push_str(&format!("<p>{}</p>", html_escape(&props.message)));
+    html.push_str("</div>");
     html.push_str("</div>");
     html
 }
@@ -1244,6 +1284,19 @@ fn render_avatar(props: &AvatarProps) -> String {
     }
 }
 
+// ── CMP-02: Skeleton shimmer animation ──────────────────────────────────
+
+const SHIMMER_CSS: &str = concat!(
+    "<style>",
+    "@keyframes ferro-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}",
+    ".ferro-shimmer{",
+    "background:linear-gradient(90deg,var(--color-card,#f1f5f9) 25%,var(--color-border,#e2e8f0) 50%,var(--color-card,#f1f5f9) 75%);",
+    "background-size:200% 100%;",
+    "animation:ferro-shimmer 1.5s ease-in-out infinite;",
+    "}",
+    "</style>"
+);
+
 fn render_skeleton(props: &SkeletonProps) -> String {
     let width = props.width.as_deref().unwrap_or("100%");
     let height = props.height.as_deref().unwrap_or("1rem");
@@ -1252,10 +1305,17 @@ fn render_skeleton(props: &SkeletonProps) -> String {
     } else {
         "rounded-md"
     };
-    format!(
-        "<div class=\"animate-pulse bg-card {rounded}\" style=\"width: {width}; height: {height}\"></div>"
-    )
+    format!("{SHIMMER_CSS}<div class=\"ferro-shimmer {rounded}\" style=\"width: {width}; height: {height}\"></div>")
 }
+
+// ── CMP-03: Breadcrumb SVG chevron separator ─────────────────────────────
+
+const BREADCRUMB_SEP: &str = concat!(
+    "<span aria-hidden=\"true\" class=\"text-text-muted\">",
+    "<svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
+    "<path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"/>",
+    "</svg></span>"
+);
 
 fn render_breadcrumb(props: &BreadcrumbProps) -> String {
     let mut html =
@@ -1278,7 +1338,7 @@ fn render_breadcrumb(props: &BreadcrumbProps) -> String {
             html.push_str(&format!("<span>{}</span>", html_escape(&item.label)));
         }
         if !is_last {
-            html.push_str("<span>/</span>");
+            html.push_str(BREADCRUMB_SEP);
         }
     }
     html.push_str("</nav>");
@@ -1413,6 +1473,14 @@ fn render_grid(props: &GridProps, data: &Value) -> String {
     html
 }
 
+// ── CMP-06: Collapsible SVG chevron ─────────────────────────────────────
+
+const CHEVRON_DOWN: &str = concat!(
+    "<svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
+    "<path fill-rule=\"evenodd\" d=\"M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z\" clip-rule=\"evenodd\"/>",
+    "</svg>"
+);
+
 fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
     let mut html = String::from("<details class=\"group\"");
     if props.expanded {
@@ -1420,7 +1488,7 @@ fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
     }
     html.push('>');
     html.push_str(&format!(
-        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">&#9660;</span></summary>",
+        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">{CHEVRON_DOWN}</span></summary>",
         html_escape(&props.title)
     ));
     html.push_str("<div class=\"px-4 py-3 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
@@ -1612,6 +1680,15 @@ fn render_toast(props: &ToastProps) -> String {
     html
 }
 
+// ── CMP-05: Bell SVG icon ────────────────────────────────────────────────
+
+const BELL_SVG: &str = concat!(
+    "<svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">",
+    "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" ",
+    "d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/>",
+    "</svg>"
+);
+
 fn render_notification_dropdown(props: &NotificationDropdownProps) -> String {
     let unread_count = props.notifications.iter().filter(|n| !n.read).count();
     let mut html = String::from("<div class=\"relative\" data-notification-dropdown>");
@@ -1619,7 +1696,7 @@ fn render_notification_dropdown(props: &NotificationDropdownProps) -> String {
     html.push_str(&format!(
         "<button type=\"button\" class=\"relative p-2 text-text-muted hover:text-text\" data-notification-count=\"{unread_count}\">"
     ));
-    html.push_str("<span class=\"text-xl\">&#x1F514;</span>");
+    html.push_str(BELL_SVG);
     if unread_count > 0 {
         html.push_str(&format!(
             "<span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-primary-foreground bg-destructive rounded-full\">{unread_count}</span>"
@@ -1757,11 +1834,11 @@ fn render_header(props: &HeaderProps) -> String {
     if let Some(count) = props.notification_count {
         if count > 0 {
             html.push_str(&format!(
-                "<div class=\"relative\"><span class=\"text-xl text-text-muted\">&#x1F514;</span><span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-primary-foreground bg-destructive rounded-full\" data-notification-count=\"{count}\">{count}</span></div>"
+                "<div class=\"relative\"><span class=\"text-text-muted\">{BELL_SVG}</span><span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-primary-foreground bg-destructive rounded-full\" data-notification-count=\"{count}\">{count}</span></div>"
             ));
         } else {
             html.push_str(&format!(
-                "<span class=\"text-xl text-text-muted\" data-notification-count=\"{count}\">&#x1F514;</span>"
+                "<span class=\"text-text-muted\" data-notification-count=\"{count}\">{BELL_SVG}</span>"
             ));
         }
     }
@@ -2465,7 +2542,7 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("animate-pulse bg-card"));
+        assert!(html.contains("ferro-shimmer"));
         assert!(html.contains("rounded-md"));
         assert!(html.contains("width: 100%"));
         assert!(html.contains("height: 1rem"));
@@ -2534,8 +2611,8 @@ mod tests {
         );
         // Last item is plain span, not a link.
         assert!(html.contains("<span class=\"text-text font-medium\">Edit</span>"));
-        // Separators between items.
-        assert!(html.contains("<span>/</span>"));
+        // Separators between items — SVG chevrons.
+        assert!(html.contains("<svg"));
     }
 
     #[test]
@@ -5006,8 +5083,8 @@ mod tests {
         assert!(html.contains("<a href=\"/\" class=\"hover:text-text\">Home</a>"));
         assert!(html.contains("<span>Users</span>"));
         assert!(
-            html.contains("<span>/</span>"),
-            "separator between breadcrumb items"
+            html.contains("<svg"),
+            "SVG chevron separator between breadcrumb items"
         );
     }
 
@@ -5632,8 +5709,8 @@ mod tests {
             let html = render_to_html(&view, &json!({}));
             assert!(html.contains("<div"), "skeleton should render a div");
             assert!(
-                has_class(&html, "animate-pulse"),
-                "skeleton should have animate-pulse class"
+                html.contains("ferro-shimmer"),
+                "skeleton should have ferro-shimmer class"
             );
         }
 
