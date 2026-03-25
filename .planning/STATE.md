@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: JSON-UI Visual Overhaul
 status: executing
-stopped_at: Completed 102-01-PLAN.md
-last_updated: "2026-03-24T23:42:09.632Z"
-last_activity: "2026-03-25 — Completed 102-01: font token namespace fix and Bunny Fonts wiring"
+stopped_at: "Completed 103-02-PLAN.md"
+last_updated: "2026-03-25T00:18:39.842Z"
+last_activity: "2026-03-25 — Completed 103-02: runtime JS semantic token migration (VARIANT_CLASSES, tab switcher)"
 progress:
   total_phases: 25
-  completed_phases: 20
-  total_plans: 61
-  completed_plans: 61
+  completed_phases: 21
+  total_plans: 63
+  completed_plans: 63
   percent: 96
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 
 ## Current Position
 
-Phase: 102 of 107 (Foundation)
-Plan: 01 complete
+Phase: 103 of 107 (Surface Elevation)
+Plan: 02 complete
 Status: In progress
-Last activity: 2026-03-25 — Completed 102-01: font token namespace fix and Bunny Fonts wiring
+Last activity: 2026-03-25 — Completed 103-02: runtime JS semantic token migration (VARIANT_CLASSES, tab switcher)
 
 Progress: [██████████] 96%
 
@@ -48,6 +48,8 @@ Progress: [██████████] 96%
 *Updated after each plan completion*
 | Phase 102-foundation P02 | 15 | 1 tasks | 1 files |
 | Phase 102-foundation P01 | 15 | 2 tasks | 5 files |
+| Phase 103-surface-elevation P02 | 3 | 2 tasks | 1 files |
+| Phase 103-surface-elevation P01 | 15 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -64,6 +66,10 @@ Progress: [██████████] 96%
 - Font CDN link in JSON-UI head is unconditional — loads Inter regardless of tailwind_cdn flag
 - Tailwind v4 font tokens use --font-sans/--font-mono namespace; v3 --font-family-* is ignored by v4
 
+**Phase 103-surface-elevation P02:**
+- JS toasts use solid-background style (bg-primary text-primary-foreground) not light-tinted (bg-primary/10) — both use semantic tokens, visual style is intentionally different
+- Close button uses text-current to inherit parent foreground rather than duplicating text-primary-foreground
+
 ### Pending Todos
 
 None.
@@ -75,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-24T23:33:08.516Z
-Stopped at: Completed 102-01-PLAN.md
+Last session: 2026-03-25T00:18:39.838Z
+Stopped at: Completed 103-02-PLAN.md
 Resume file: None

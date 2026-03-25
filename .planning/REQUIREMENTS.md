@@ -16,13 +16,13 @@ Requirements for JSON-UI visual quality uplift to professional grade. Each maps 
 
 ### Surface & Elevation
 
-- [ ] **SRF-01**: Card component uses `bg-card` (visually distinct from page `bg-background`)
-- [ ] **SRF-02**: Modal panel uses `bg-card` for elevated surface appearance
-- [ ] **SRF-03**: StatCard uses `bg-card` for elevated surface appearance
-- [ ] **SRF-04**: NotificationDropdown panel uses `bg-card` for elevated surface appearance
-- [ ] **SRF-05**: Three-tier surface hierarchy enforced: `background` (page) → `surface` (sidebar, panels) → `card` (cards, modals, dropdowns)
+- [x] **SRF-01**: Card component uses `bg-card` (visually distinct from page `bg-background`)
+- [x] **SRF-02**: Modal panel uses `bg-card` for elevated surface appearance
+- [x] **SRF-03**: StatCard uses `bg-card` for elevated surface appearance
+- [x] **SRF-04**: NotificationDropdown panel uses `bg-card` for elevated surface appearance
+- [x] **SRF-05**: Three-tier surface hierarchy enforced: `background` (page) → `surface` (sidebar, panels) → `card` (cards, modals, dropdowns)
 - [ ] **SRF-06**: All 8 critical dark mode token pairs pass WCAG 4.5:1 contrast ratio
-- [ ] **SRF-07**: Runtime JS (toast, tab switcher) uses semantic token classes instead of hardcoded colors (`bg-primary` not `bg-blue-500`)
+- [x] **SRF-07**: Runtime JS (toast, tab switcher) uses semantic token classes instead of hardcoded colors (`bg-primary` not `bg-blue-500`)
 
 ### Typography
 
@@ -96,13 +96,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-02 | Phase 102 | Complete |
 | FND-03 | Phase 102 | Complete |
 | FND-04 | Phase 102 | Complete |
-| SRF-01 | Phase 103 | Pending |
-| SRF-02 | Phase 103 | Pending |
-| SRF-03 | Phase 103 | Pending |
-| SRF-04 | Phase 103 | Pending |
-| SRF-05 | Phase 103 | Pending |
+| SRF-01 | Phase 103 | Complete |
+| SRF-02 | Phase 103 | Complete |
+| SRF-03 | Phase 103 | Complete |
+| SRF-04 | Phase 103 | Complete |
+| SRF-05 | Phase 103 | Complete |
 | SRF-06 | Phase 103 | Pending |
-| SRF-07 | Phase 103 | Pending |
+| SRF-07 | Phase 103 | Complete |
 | TYP-01 | Phase 104 | Pending |
 | TYP-02 | Phase 104 | Pending |
 | TYP-03 | Phase 104 | Pending |
