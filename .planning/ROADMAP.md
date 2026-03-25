@@ -351,7 +351,10 @@ Plans:
   2. Table rows highlight on hover with a surface background tint
   3. All interactive elements animate color transitions over 150ms with reduced-motion suppression
   4. Focus rings use `focus-visible:` (not `focus:`) so mouse clicks do not trigger the ring
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 106-01-PLAN.md — Focus rings, transitions, and hover states on buttons, tabs, pagination, breadcrumbs, sidebar nav items, table rows
 
 ### Phase 107: Component Details
 **Goal**: Alert components, Skeleton loader, Breadcrumb separator, active tab, and notification bell use refined visual treatments that eliminate emoji and add motion
@@ -377,7 +380,7 @@ Phases execute in numeric order: 102 → 103 → 104 → 105 → 106 → 107
 | 103. Surface Elevation | 2/2 | Complete    | 2026-03-25 |
 | 104. Typography Scale | 1/1 | Complete    | 2026-03-25 |
 | 105. Form Polish | 1/1 | Complete    | 2026-03-25 |
-| 106. Interactive States | 0/TBD | Not started | - |
+| 106. Interactive States | 0/1 | Not started | - |
 | 107. Component Details | 0/TBD | Not started | - |
 
 ---
