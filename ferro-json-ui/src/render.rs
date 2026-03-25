@@ -5621,6 +5621,202 @@ mod tests {
             );
         }
 
+        // ── Form polish (Phase 105) ────────────────────────────────────────
+
+        #[test]
+        fn select_renders_chevron_wrapper() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "s".to_string(),
+                component: Component::Select(SelectProps {
+                    field: "role".to_string(),
+                    label: "Role".to_string(),
+                    options: vec![],
+                    placeholder: None,
+                    required: None,
+                    disabled: None,
+                    error: None,
+                    description: None,
+                    default_value: None,
+                    data_path: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("<div class=\"relative\">"),
+                "select should be wrapped in relative div"
+            );
+            assert!(
+                html.contains("aria-hidden=\"true\""),
+                "SVG span should have aria-hidden"
+            );
+            assert!(html.contains("<svg"), "inline SVG chevron should be present");
+            assert!(
+                html.contains("pointer-events-none"),
+                "SVG span should be non-interactive"
+            );
+            assert!(has_class(&html, "pr-10"), "select should have pr-10 class");
+        }
+
+        #[test]
+        fn input_renders_transition_classes() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "i".to_string(),
+                component: Component::Input(InputProps {
+                    field: "name".to_string(),
+                    label: "Name".to_string(),
+                    input_type: InputType::Text,
+                    placeholder: None,
+                    required: None,
+                    disabled: None,
+                    error: None,
+                    description: None,
+                    default_value: None,
+                    data_path: None,
+                    step: None,
+                    list: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                has_class(&html, "transition-colors"),
+                "input should have transition-colors"
+            );
+            assert!(
+                has_class(&html, "duration-150"),
+                "input should have duration-150"
+            );
+            assert!(
+                html.contains("motion-reduce:transition-none"),
+                "input should support reduced motion"
+            );
+        }
+
+        #[test]
+        fn input_disabled_renders_disabled_classes() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "i".to_string(),
+                component: Component::Input(InputProps {
+                    field: "name".to_string(),
+                    label: "Name".to_string(),
+                    input_type: InputType::Text,
+                    placeholder: None,
+                    required: None,
+                    disabled: Some(true),
+                    error: None,
+                    description: None,
+                    default_value: None,
+                    data_path: None,
+                    step: None,
+                    list: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("disabled:opacity-50"),
+                "input should have disabled:opacity-50"
+            );
+            assert!(
+                html.contains("disabled:cursor-not-allowed"),
+                "input should have disabled:cursor-not-allowed"
+            );
+            assert!(
+                html.contains(" disabled"),
+                "input should have disabled HTML attribute"
+            );
+        }
+
+        #[test]
+        fn textarea_renders_error_focus_ring() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "i".to_string(),
+                component: Component::Input(InputProps {
+                    field: "bio".to_string(),
+                    label: "Bio".to_string(),
+                    input_type: InputType::Textarea,
+                    placeholder: None,
+                    required: None,
+                    disabled: None,
+                    error: Some("Required".to_string()),
+                    description: None,
+                    default_value: None,
+                    data_path: None,
+                    step: None,
+                    list: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("ring-destructive"),
+                "textarea with error should have ring-destructive"
+            );
+        }
+
+        #[test]
+        fn input_description_order() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "i".to_string(),
+                component: Component::Input(InputProps {
+                    field: "name".to_string(),
+                    label: "Name".to_string(),
+                    input_type: InputType::Text,
+                    placeholder: None,
+                    required: None,
+                    disabled: None,
+                    error: None,
+                    description: Some("Help text".to_string()),
+                    default_value: None,
+                    data_path: None,
+                    step: None,
+                    list: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            let input_pos = html.find("<input").expect("input element should exist");
+            let desc_pos = html.find("Help text").expect("description should exist");
+            assert!(
+                input_pos < desc_pos,
+                "input should appear before description in DOM"
+            );
+        }
+
+        #[test]
+        fn select_description_order() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "s".to_string(),
+                component: Component::Select(SelectProps {
+                    field: "role".to_string(),
+                    label: "Role".to_string(),
+                    options: vec![],
+                    placeholder: None,
+                    required: None,
+                    disabled: None,
+                    error: None,
+                    description: Some("Pick one".to_string()),
+                    default_value: None,
+                    data_path: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            let select_close_pos = html.find("</select>").expect("select close should exist");
+            let desc_pos = html.find("Pick one").expect("description should exist");
+            assert!(
+                select_close_pos < desc_pos,
+                "select close should appear before description in DOM"
+            );
+        }
+
         // ── Button (Phase 106 adds focus-visible ring) ────────────────────
 
         #[test]
