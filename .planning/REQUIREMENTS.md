@@ -34,13 +34,13 @@ Requirements for JSON-UI visual quality uplift to professional grade. Each maps 
 
 ### Form Polish
 
-- [ ] **FRM-01**: Select element displays a custom SVG dropdown arrow (CSS-only, no JS)
-- [ ] **FRM-02**: Input in error state shows `focus-visible:ring-destructive` (not primary)
-- [ ] **FRM-03**: All form elements have `transition-colors duration-150 motion-reduce:transition-none`
-- [ ] **FRM-04**: All form elements have `disabled:opacity-50 disabled:cursor-not-allowed`
-- [ ] **FRM-05**: Select in error state shows `focus-visible:ring-destructive`
-- [ ] **FRM-06**: Textarea in error state shows `focus-visible:ring-destructive`
-- [ ] **FRM-07**: Form field order is consistent: label → input → description → error message
+- [x] **FRM-01**: Select element displays a custom SVG dropdown arrow (CSS-only, no JS)
+- [x] **FRM-02**: Input in error state shows `focus-visible:ring-destructive` (not primary)
+- [x] **FRM-03**: All form elements have `transition-colors duration-150 motion-reduce:transition-none`
+- [x] **FRM-04**: All form elements have `disabled:opacity-50 disabled:cursor-not-allowed`
+- [x] **FRM-05**: Select in error state shows `focus-visible:ring-destructive`
+- [x] **FRM-06**: Textarea in error state shows `focus-visible:ring-destructive`
+- [x] **FRM-07**: Form field order is consistent: label → input → description → error message
 
 ### Interactive States
 
@@ -108,13 +108,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYP-03 | Phase 104 | Complete |
 | TYP-04 | Phase 104 | Complete |
 | TYP-05 | Phase 104 | Complete |
-| FRM-01 | Phase 105 | Pending |
-| FRM-02 | Phase 105 | Pending |
-| FRM-03 | Phase 105 | Pending |
-| FRM-04 | Phase 105 | Pending |
-| FRM-05 | Phase 105 | Pending |
-| FRM-06 | Phase 105 | Pending |
-| FRM-07 | Phase 105 | Pending |
+| FRM-01 | Phase 105 | Complete |
+| FRM-02 | Phase 105 | Complete |
+| FRM-03 | Phase 105 | Complete |
+| FRM-04 | Phase 105 | Complete |
+| FRM-05 | Phase 105 | Complete |
+| FRM-06 | Phase 105 | Complete |
+| FRM-07 | Phase 105 | Complete |
 | INT-01 | Phase 106 | Pending |
 | INT-02 | Phase 106 | Pending |
 | INT-03 | Phase 106 | Pending |

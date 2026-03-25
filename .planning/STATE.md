@@ -4,8 +4,8 @@ milestone: v10.0
 milestone_name: JSON-UI Visual Overhaul
 status: executing
 stopped_at: Completed 105-01-PLAN.md
-last_updated: "2026-03-25T17:16:52.530Z"
-last_activity: "2026-03-25 — Completed 104-01: typography scale classes (leading-tight/snug/relaxed) on headings and body text; sidebar muted label fix (TYP-01 through TYP-05)"
+last_updated: "2026-03-25T17:20:31.198Z"
+last_activity: "2026-03-25 — Completed 105-01: SVG chevron on select, error-state destructive focus rings, transitions with reduced-motion, disabled states, and corrected DOM order (FRM-01 through FRM-07)"
 progress:
   total_phases: 25
   completed_phases: 23
