@@ -26,11 +26,11 @@ Requirements for JSON-UI visual quality uplift to professional grade. Each maps 
 
 ### Typography
 
-- [ ] **TYP-01**: H1 renders with `leading-tight tracking-tight`
-- [ ] **TYP-02**: H2 renders with `leading-tight tracking-tight`
-- [ ] **TYP-03**: H3 renders with `leading-snug`
-- [ ] **TYP-04**: Body text (P, Div, Section) renders with `leading-relaxed`
-- [ ] **TYP-05**: Muted text uses consistent `text-text-muted` across all components
+- [x] **TYP-01**: H1 renders with `leading-tight tracking-tight`
+- [x] **TYP-02**: H2 renders with `leading-tight tracking-tight`
+- [x] **TYP-03**: H3 renders with `leading-snug`
+- [x] **TYP-04**: Body text (P, Div, Section) renders with `leading-relaxed`
+- [x] **TYP-05**: Muted text uses consistent `text-text-muted` across all components
 
 ### Form Polish
 
@@ -103,11 +103,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SRF-05 | Phase 103 | Complete |
 | SRF-06 | Phase 103 | Complete |
 | SRF-07 | Phase 103 | Complete |
-| TYP-01 | Phase 104 | Pending |
-| TYP-02 | Phase 104 | Pending |
-| TYP-03 | Phase 104 | Pending |
-| TYP-04 | Phase 104 | Pending |
-| TYP-05 | Phase 104 | Pending |
+| TYP-01 | Phase 104 | Complete |
+| TYP-02 | Phase 104 | Complete |
+| TYP-03 | Phase 104 | Complete |
+| TYP-04 | Phase 104 | Complete |
+| TYP-05 | Phase 104 | Complete |
 | FRM-01 | Phase 105 | Pending |
 | FRM-02 | Phase 105 | Pending |
 | FRM-03 | Phase 105 | Pending |
