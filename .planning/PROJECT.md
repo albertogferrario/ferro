@@ -150,11 +150,20 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - [ ] Publish to crates.io (manual step using PUBLISHING.md)
 - [ ] Public announcement and marketing
 
+## Current Milestone: v11.0 Framework Consolidation Audit
+
+**Goal:** Comprehensive audit of documentation accuracy/completeness and framework philosophy consistency across all 14 crates, then fix everything found.
+
+**Target features:**
+- Full documentation audit (accuracy, quality, cross-references, examples, gaps)
+- Philosophy audit (agent-first consistency, pattern coherence across crates)
+- Audit-then-fix approach: report phases followed by fix phases
+
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
-- New major features (payments, subscriptions, etc.) — focus is publishing, not feature expansion
+- New major features (payments, subscriptions, etc.) — focus is consolidation, not feature expansion
 - Frontend framework changes — React/Inertia stack stays as-is, JSON-UI is the alternative
 - Database driver changes — SeaORM works, no need to replace
 - New JSON-UI components — v10.0 was polish, not features
@@ -241,4 +250,4 @@ Reference codebase documentation in `.planning/codebase/`:
 | Shimmer CSS injected inline | Keeps skeleton self-contained; no external stylesheet dependency | ✓ Good |
 
 ---
-*Last updated: 2026-03-26 after v10.0 milestone*
+*Last updated: 2026-03-26 after v11.0 milestone start*
