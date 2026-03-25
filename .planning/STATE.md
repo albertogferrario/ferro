@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: JSON-UI Visual Overhaul
 status: executing
-stopped_at: Completed 105-01-PLAN.md
-last_updated: "2026-03-25T17:20:31.198Z"
-last_activity: "2026-03-25 — Completed 105-01: SVG chevron on select, error-state destructive focus rings, transitions with reduced-motion, disabled states, and corrected DOM order (FRM-01 through FRM-07)"
+stopped_at: Completed 106-01-PLAN.md
+last_updated: "2026-03-25T21:28:21Z"
+last_activity: "2026-03-25 — Completed 106-01: focus-visible rings and transitions on buttons, tabs, pagination, breadcrumbs, sidebar nav items; hover:bg-surface on table rows (INT-01 through INT-07)"
 progress:
   total_phases: 25
   completed_phases: 23
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 
 ## Current Position
 
-Phase: 105 of 107 (Form Polish)
-Plan: 01 complete (Phase 105 complete)
+Phase: 106 of 107 (Interactive States)
+Plan: 01 complete (Phase 106 complete)
 Status: In progress
-Last activity: 2026-03-25 — Completed 105-01: SVG chevron on select, error-state destructive focus rings, transitions with reduced-motion, disabled states, and corrected DOM order (FRM-01 through FRM-07)
+Last activity: 2026-03-25 — Completed 106-01: focus-visible rings and transitions on buttons, tabs, pagination, breadcrumbs, sidebar nav items; hover:bg-surface on table rows (INT-01 through INT-07)
 
-Progress: [██████████] 97%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [██████████] 97%
 | Phase 103-surface-elevation P01 | 30 | 2 tasks | 3 files |
 | Phase 104-typography-scale P01 | 12 | 2 tasks | 2 files |
 | Phase 105-form-polish P01 | 5 | 2 tasks | 1 files |
+| Phase 106-interactive-states P01 | 15 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,12 @@ Progress: [██████████] 97%
 - DOM order reordered in render_input and render_select: label -> input -> description -> error
 - pr-10 added to select class to prevent option text overlapping absolutely-positioned chevron
 
+**Phase 106-interactive-states P01:**
+- focus-visible: used on all interactive elements (not focus:) — keyboard-only ring, no mouse click ring
+- Table body rows get hover:bg-surface as class on <tr> element directly
+- Checkbox opportunistically updated from focus:ring-primary to full focus-visible: quad to match Phase 105/106 standard
+- Canonical interactive element triple: transition-colors duration-150 motion-reduce:transition-none + focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
+
 ### Pending Todos
 
 None.
@@ -101,6 +108,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-25T17:16:52.523Z
-Stopped at: Completed 105-01-PLAN.md
+Last session: 2026-03-25T21:28:21Z
+Stopped at: Completed 106-01-PLAN.md
 Resume file: None
