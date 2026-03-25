@@ -143,9 +143,9 @@ fn base_document_ext(
 /// Render a sidebar nav item for the layout shell.
 fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
     let classes = if item.active {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary"
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
     } else {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface"
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
     };
     let mut html = format!(
         "<a href=\"{}\" class=\"{}\">",

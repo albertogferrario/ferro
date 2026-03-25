@@ -488,7 +488,7 @@ fn render_tabs(props: &TabsProps, data: &Value) -> String {
             // Client-side tab trigger
             html.push_str(&format!(
                 "<button type=\"button\" role=\"tab\" data-tab=\"{}\" \
-                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium cursor-pointer\" \
+                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
                  aria-selected=\"{}\">{}</button>",
                 html_escape(&tab.value),
                 border,
@@ -500,7 +500,7 @@ fn render_tabs(props: &TabsProps, data: &Value) -> String {
             // Server-driven tab: link with ?tab= query param
             html.push_str(&format!(
                 "<a href=\"?tab={}\" role=\"tab\" \
-                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium\" \
+                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
                  aria-selected=\"{}\">{}</a>",
                 html_escape(&tab.value),
                 border,
@@ -624,7 +624,7 @@ fn render_table(props: &TableProps, data: &Value) -> String {
             }
         } else {
             for row in items {
-                html.push_str("<tr>");
+                html.push_str("<tr class=\"hover:bg-surface\">");
                 for col in &props.columns {
                     let cell_value = row.get(&col.key);
                     let cell_text = match cell_value {
@@ -923,7 +923,7 @@ fn render_checkbox(props: &CheckboxProps, data: &Value) -> String {
     let mut html = String::from("<div class=\"space-y-1\">");
     html.push_str("<div class=\"flex items-center gap-2\">");
     html.push_str(&format!(
-        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm border-border text-primary transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed focus:ring-primary\"",
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm border-border text-primary transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\"",
         html_escape(&checkbox_id),
         html_escape(&props.field),
         html_escape(value_attr)
@@ -1092,7 +1092,7 @@ fn render_text(props: &TextProps) -> String {
 }
 
 fn render_button(props: &ButtonProps) -> String {
-    let base = "inline-flex items-center justify-center rounded-md font-medium transition-colors";
+    let base = "inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
     let variant_classes = match props.variant {
         ButtonVariant::Default => "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -1270,7 +1270,7 @@ fn render_breadcrumb(props: &BreadcrumbProps) -> String {
             ));
         } else if let Some(ref url) = item.url {
             html.push_str(&format!(
-                "<a href=\"{}\" class=\"hover:text-text\">{}</a>",
+                "<a href=\"{}\" class=\"hover:text-text transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\">{}</a>",
                 html_escape(url),
                 html_escape(&item.label)
             ));
@@ -1303,7 +1303,7 @@ fn render_pagination(props: &PaginationProps) -> String {
     // Previous button.
     if current > 1 {
         html.push_str(&format!(
-            "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface\">&laquo;</a>",
+            "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\">&laquo;</a>",
             html_escape(base_url),
             current - 1
         ));
@@ -1322,7 +1322,7 @@ fn render_pagination(props: &PaginationProps) -> String {
             ));
         } else {
             html.push_str(&format!(
-                "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface\">{}</a>",
+                "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\">{}</a>",
                 html_escape(base_url),
                 page,
                 page
@@ -1334,7 +1334,7 @@ fn render_pagination(props: &PaginationProps) -> String {
     // Next button.
     if current < total_pages {
         html.push_str(&format!(
-            "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface\">&raquo;</a>",
+            "<a href=\"{}page={}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\">&raquo;</a>",
             html_escape(base_url),
             current + 1
         ));
@@ -1725,9 +1725,9 @@ fn render_sidebar(props: &SidebarProps) -> String {
 
 fn render_sidebar_nav_item(item: &crate::component::SidebarNavItem) -> String {
     let classes = if item.active {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary"
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
     } else {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface"
+        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
     };
     let mut html = format!(
         "<a href=\"{}\" class=\"{}\">",
@@ -2516,8 +2516,10 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("<nav"));
-        assert!(html.contains("<a href=\"/\" class=\"hover:text-text\">Home</a>"));
-        assert!(html.contains("<a href=\"/users\" class=\"hover:text-text\">Users</a>"));
+        assert!(html.contains("<a href=\"/\""), "breadcrumb Home link should exist");
+        assert!(html.contains(">Home</a>"), "breadcrumb Home label should exist");
+        assert!(html.contains("<a href=\"/users\""), "breadcrumb Users link should exist");
+        assert!(html.contains(">Users</a>"), "breadcrumb Users label should exist");
         // Last item is plain span, not a link.
         assert!(html.contains("<span class=\"text-text font-medium\">Edit</span>"));
         // Separators between items.
