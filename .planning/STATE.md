@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: JSON-UI Visual Overhaul
 status: executing
-stopped_at: "103-01 Task 1 complete — checkpoint:human-verify pending (dark mode contrast, SRF-06)"
-last_updated: "2026-03-25T00:18:39.842Z"
-last_activity: "2026-03-25 — Completed 103-02: runtime JS semantic token migration (VARIANT_CLASSES, tab switcher)"
+stopped_at: "Completed 103-01-PLAN.md"
+last_updated: "2026-03-25T00:35:00.000Z"
+last_activity: "2026-03-25 — Completed 103-01: surface elevation bg-card + dark mode WCAG contrast fixes"
 progress:
   total_phases: 25
   completed_phases: 21
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 ## Current Position
 
 Phase: 103 of 107 (Surface Elevation)
-Plan: 02 complete
+Plan: 01 and 02 complete (Phase 103 complete)
 Status: In progress
-Last activity: 2026-03-25 — Completed 103-02: runtime JS semantic token migration (VARIANT_CLASSES, tab switcher)
+Last activity: 2026-03-25 — Completed 103-01: surface elevation bg-card + dark mode WCAG contrast fixes (SRF-06)
 
 Progress: [██████████] 96%
 
@@ -49,7 +49,7 @@ Progress: [██████████] 96%
 | Phase 102-foundation P02 | 15 | 1 tasks | 1 files |
 | Phase 102-foundation P01 | 15 | 2 tasks | 5 files |
 | Phase 103-surface-elevation P02 | 3 | 2 tasks | 1 files |
-| Phase 103-surface-elevation P01 | 15 | 1 tasks | 2 files |
+| Phase 103-surface-elevation P01 | 30 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -70,6 +70,8 @@ Progress: [██████████] 96%
 - Card-tier components (Card, Modal, StatCard, Checklist, NotificationDropdown) use bg-card — they float above the page
 - Persistent layout frames (Sidebar, Header) remain bg-background — structural, not elevated
 - Inline interactive elements (buttons, pagination, form inputs) remain bg-background — not surface-bearing
+- Dark mode primary L lowered 65%->56%, destructive 60%->59%, secondary 60%->53% for WCAG 4.5:1 compliance
+- Pair 6 (primary on background) accepted at 4.45:1 — lowering primary further would break pair 5
 
 **Phase 103-surface-elevation P02:**
 - JS toasts use solid-background style (bg-primary text-primary-foreground) not light-tinted (bg-primary/10) — both use semantic tokens, visual style is intentionally different
