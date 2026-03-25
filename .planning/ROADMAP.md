@@ -307,7 +307,11 @@ Plans:
   3. StatCard uses bg-card so dashboard metric cards are visually elevated from the page background
   4. All 8 critical dark mode token pairs pass WCAG 4.5:1 contrast ratio when verified with an oklch-native tool
   5. Runtime JS toast and tab switcher use semantic token classes (bg-primary, not bg-blue-500)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 103-01-PLAN.md — Surface elevation hierarchy: bg-card on Card, Modal, StatCard, Checklist, NotificationDropdown + dark mode contrast verification
+- [ ] 103-02-PLAN.md — Runtime JS semantic tokens: VARIANT_CLASSES, toast text, tab switcher class migration
 
 ### Phase 104: Typography Scale
 **Goal**: All text elements render with the correct line-height and letter-spacing for their heading level
@@ -364,7 +368,7 @@ Phases execute in numeric order: 102 → 103 → 104 → 105 → 106 → 107
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 102. Foundation | 2/2 | Complete    | 2026-03-24 |
-| 103. Surface Elevation | 0/TBD | Not started | - |
+| 103. Surface Elevation | 0/2 | Not started | - |
 | 104. Typography Scale | 0/TBD | Not started | - |
 | 105. Form Polish | 0/TBD | Not started | - |
 | 106. Interactive States | 0/TBD | Not started | - |
