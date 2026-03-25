@@ -378,7 +378,7 @@ fn render_button_group(props: &ButtonGroupProps, data: &Value) -> String {
 
 fn render_card(props: &CardProps, data: &Value) -> String {
     let mut html = String::from(
-        "<div class=\"rounded-lg border border-border bg-background shadow-sm\"><div class=\"p-6\">",
+        "<div class=\"rounded-lg border border-border bg-card shadow-sm\"><div class=\"p-6\">",
     );
     html.push_str(&format!(
         "<h3 class=\"text-lg font-semibold text-text\">{}</h3>",
@@ -419,9 +419,7 @@ fn render_modal(props: &ModalProps, data: &Value) -> String {
         html_escape(trigger)
     ));
     html.push_str("<div class=\"fixed inset-0 z-50 flex items-center justify-center bg-black/50 group-open:block hidden\">");
-    html.push_str(
-        "<div class=\"relative bg-background rounded-lg shadow-lg max-w-lg w-full mx-4 p-6\">",
-    );
+    html.push_str("<div class=\"relative bg-card rounded-lg shadow-lg max-w-lg w-full mx-4 p-6\">");
     html.push_str(&format!(
         "<h3 class=\"text-lg font-semibold text-text\">{}</h3>",
         html_escape(&props.title)
@@ -1464,7 +1462,7 @@ fn render_form_section(props: &FormSectionProps, data: &Value) -> String {
 
 fn render_stat_card(props: &StatCardProps) -> String {
     let mut html =
-        String::from("<div class=\"bg-background rounded-lg shadow-sm p-4 border border-border\">");
+        String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
     if let Some(ref icon) = props.icon {
         html.push_str(&format!("<span class=\"inline-block mb-2\">{icon}</span>"));
         // raw
@@ -1497,7 +1495,7 @@ fn render_stat_card(props: &StatCardProps) -> String {
 
 fn render_checklist(props: &ChecklistProps) -> String {
     let mut html =
-        String::from("<div class=\"bg-background rounded-lg shadow-sm p-4 border border-border\">");
+        String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
     html.push_str("<div class=\"flex items-center justify-between mb-3\">");
     html.push_str(&format!(
         "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
@@ -1609,7 +1607,7 @@ fn render_notification_dropdown(props: &NotificationDropdownProps) -> String {
     html.push_str("</button>");
     // Dropdown panel.
     html.push_str(
-        "<div class=\"hidden absolute right-0 mt-2 w-80 bg-background rounded-lg shadow-lg border border-border z-50\" data-notification-panel>",
+        "<div class=\"hidden absolute right-0 mt-2 w-80 bg-card rounded-lg shadow-lg border border-border z-50\" data-notification-panel>",
     );
     if props.notifications.is_empty() {
         let empty = props.empty_text.as_deref().unwrap_or("No notifications");
@@ -2870,7 +2868,7 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("rounded-lg border border-border bg-background shadow-sm"));
+        assert!(html.contains("rounded-lg border border-border bg-card shadow-sm"));
         assert!(html.contains("<h3 class=\"text-lg font-semibold text-text\">My Card</h3>"));
         assert!(html.contains("<p class=\"mt-1 text-sm text-text-muted\">A description</p>"));
     }
@@ -3912,7 +3910,7 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("Revenue"));
         assert!(html.contains("$1,234"));
-        assert!(html.contains("bg-background rounded-lg shadow-sm"));
+        assert!(html.contains("bg-card rounded-lg shadow-sm"));
     }
 
     #[test]

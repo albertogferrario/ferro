@@ -258,7 +258,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
     }
     html.push_str(
         "<div data-notification-dropdown class=\"hidden absolute right-0 top-full mt-1 w-80 \
-         bg-background rounded-lg shadow-lg border border-border z-50\"></div></div>",
+         bg-card rounded-lg shadow-lg border border-border z-50\"></div></div>",
     );
     // User section.
     html.push_str("<div class=\"flex items-center gap-2\">");
