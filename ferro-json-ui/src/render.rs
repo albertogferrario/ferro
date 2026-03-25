@@ -5741,6 +5741,195 @@ mod tests {
             );
         }
 
+        // ── CMP-01: Alert SVG icon per variant (Phase 107) ───────────────────
+
+        #[test]
+        fn alert_svg_icon_per_variant() {
+            use crate::component::AlertVariant;
+            let variants = [
+                AlertVariant::Info,
+                AlertVariant::Success,
+                AlertVariant::Warning,
+                AlertVariant::Error,
+            ];
+            for variant in variants {
+                let view = JsonUiView::new().component(ComponentNode {
+                    key: "a".to_string(),
+                    component: Component::Alert(AlertProps {
+                        variant,
+                        title: None,
+                        message: "Test message".to_string(),
+                    }),
+                    action: None,
+                    visibility: None,
+                });
+                let html = render_to_html(&view, &json!({}));
+                assert!(html.contains("<svg"), "alert should contain SVG icon");
+                assert!(
+                    html.contains("role=\"alert\""),
+                    "alert should preserve accessibility role"
+                );
+                assert!(
+                    has_class(&html, "flex"),
+                    "alert container should have flex class"
+                );
+            }
+        }
+
+        // ── CMP-02: Skeleton shimmer class (Phase 107) ────────────────────
+
+        #[test]
+        fn skeleton_shimmer_class() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "sk".to_string(),
+                component: Component::Skeleton(SkeletonProps {
+                    width: None,
+                    height: None,
+                    rounded: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                html.contains("ferro-shimmer"),
+                "shimmer class should be present"
+            );
+            assert!(
+                !html.contains("animate-pulse"),
+                "old pulse class should be removed"
+            );
+            assert!(
+                html.contains("@keyframes ferro-shimmer"),
+                "CSS keyframe should be injected"
+            );
+        }
+
+        // ── CMP-03: Breadcrumb SVG separator (Phase 107) ─────────────────
+
+        #[test]
+        fn breadcrumb_svg_separator() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "bc".to_string(),
+                component: Component::Breadcrumb(BreadcrumbProps {
+                    items: vec![
+                        BreadcrumbItem {
+                            label: "Home".to_string(),
+                            url: Some("/".to_string()),
+                        },
+                        BreadcrumbItem {
+                            label: "Products".to_string(),
+                            url: Some("/products".to_string()),
+                        },
+                        BreadcrumbItem {
+                            label: "Detail".to_string(),
+                            url: None,
+                        },
+                    ],
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(html.contains("<svg"), "SVG separator should be present");
+            assert!(
+                !html.contains("<span>/</span>"),
+                "old text separator should be removed"
+            );
+            assert!(
+                html.contains("aria-hidden"),
+                "separator should be decorative (aria-hidden)"
+            );
+        }
+
+        // ── CMP-04: Active tab font-semibold (Phase 107) ─────────────────
+
+        #[test]
+        fn tab_active_font_semibold() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "tabs".to_string(),
+                component: Component::Tabs(TabsProps {
+                    default_tab: "tab1".to_string(),
+                    tabs: vec![
+                        Tab {
+                            value: "tab1".to_string(),
+                            label: "First Tab".to_string(),
+                            children: vec![text_node("t1", "Content one", TextElement::P)],
+                        },
+                        Tab {
+                            value: "tab2".to_string(),
+                            label: "Second Tab".to_string(),
+                            children: vec![text_node("t2", "Content two", TextElement::P)],
+                        },
+                    ],
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                has_class(&html, "font-semibold"),
+                "active tab should have font-semibold class"
+            );
+            let count = html.matches("font-semibold").count();
+            assert_eq!(count, 1, "only the active tab should have font-semibold");
+        }
+
+        // ── CMP-05: Notification bell SVG (Phase 107) ─────────────────────
+
+        #[test]
+        fn notification_bell_svg() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "nd".to_string(),
+                component: Component::NotificationDropdown(NotificationDropdownProps {
+                    notifications: vec![crate::component::NotificationItem {
+                        text: "New message".to_string(),
+                        read: false,
+                        icon: None,
+                        action_url: None,
+                        timestamp: None,
+                    }],
+                    empty_text: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(html.contains("<svg"), "SVG bell should be present");
+            assert!(
+                !html.contains("&#x1F514;"),
+                "bell emoji entity should be removed"
+            );
+        }
+
+        // ── CMP-06: Collapsible SVG chevron (Phase 107) ───────────────────
+
+        #[test]
+        fn collapsible_svg_chevron() {
+            let view = JsonUiView::new().component(ComponentNode::collapsible(
+                "col",
+                crate::component::CollapsibleProps {
+                    title: "Section".into(),
+                    expanded: false,
+                    children: vec![text_node("t", "Body text", TextElement::P)],
+                },
+            ));
+            let html = render_to_html(&view, &json!({}));
+            assert!(html.contains("<svg"), "SVG chevron should be present");
+            assert!(
+                !html.contains("&#9660;"),
+                "old down-arrow entity should be removed"
+            );
+            assert!(
+                has_class(&html, "group-open:rotate-180"),
+                "rotation class should be preserved"
+            );
+            assert!(
+                has_class(&html, "transition-transform"),
+                "transition class should be preserved"
+            );
+        }
+
         // ── Form polish (Phase 105) ────────────────────────────────────────
 
         #[test]
