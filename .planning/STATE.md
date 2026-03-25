@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v10.0
 milestone_name: JSON-UI Visual Overhaul
 status: executing
-stopped_at: "Completed 103-02-PLAN.md"
+stopped_at: "103-01 Task 1 complete — checkpoint:human-verify pending (dark mode contrast, SRF-06)"
 last_updated: "2026-03-25T00:18:39.842Z"
 last_activity: "2026-03-25 — Completed 103-02: runtime JS semantic token migration (VARIANT_CLASSES, tab switcher)"
 progress:
@@ -65,6 +65,11 @@ Progress: [██████████] 96%
 **Phase 102-foundation P01:**
 - Font CDN link in JSON-UI head is unconditional — loads Inter regardless of tailwind_cdn flag
 - Tailwind v4 font tokens use --font-sans/--font-mono namespace; v3 --font-family-* is ignored by v4
+
+**Phase 103-surface-elevation P01:**
+- Card-tier components (Card, Modal, StatCard, Checklist, NotificationDropdown) use bg-card — they float above the page
+- Persistent layout frames (Sidebar, Header) remain bg-background — structural, not elevated
+- Inline interactive elements (buttons, pagination, form inputs) remain bg-background — not surface-bearing
 
 **Phase 103-surface-elevation P02:**
 - JS toasts use solid-background style (bg-primary text-primary-foreground) not light-tinted (bg-primary/10) — both use semantic tokens, visual style is intentionally different
