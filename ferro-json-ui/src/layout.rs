@@ -169,7 +169,7 @@ fn layout_sidebar_group(group: &SidebarGroup) -> String {
     }
     html.push('>');
     html.push_str(&format!(
-        "<p class=\"px-2 py-1 text-xs font-semibold text-text\">{}</p>",
+        "<p class=\"px-2 py-1 text-xs font-semibold text-text-muted\">{}</p>",
         html_escape(&group.label)
     ));
     html.push_str("<nav class=\"space-y-1\">");

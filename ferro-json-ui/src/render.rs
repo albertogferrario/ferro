@@ -1886,21 +1886,26 @@ mod tests {
     fn text_h1_variant() {
         let view = JsonUiView::new().component(text_node("t", "Title", TextElement::H1));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<h1 class=\"text-3xl font-bold leading-tight tracking-tight text-text\">Title</h1>"));
+        assert!(html.contains(
+            "<h1 class=\"text-3xl font-bold leading-tight tracking-tight text-text\">Title</h1>"
+        ));
     }
 
     #[test]
     fn text_h2_variant() {
         let view = JsonUiView::new().component(text_node("t", "Subtitle", TextElement::H2));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">Subtitle</h2>"));
+        assert!(html.contains(
+            "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">Subtitle</h2>"
+        ));
     }
 
     #[test]
     fn text_h3_variant() {
         let view = JsonUiView::new().component(text_node("t", "Section", TextElement::H3));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<h3 class=\"text-xl font-semibold leading-snug text-text\">Section</h3>"));
+        assert!(html
+            .contains("<h3 class=\"text-xl font-semibold leading-snug text-text\">Section</h3>"));
     }
 
     #[test]
@@ -2869,7 +2874,8 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("rounded-lg border border-border bg-card shadow-sm"));
-        assert!(html.contains("<h3 class=\"text-lg font-semibold leading-snug text-text\">My Card</h3>"));
+        assert!(html
+            .contains("<h3 class=\"text-lg font-semibold leading-snug text-text\">My Card</h3>"));
         assert!(html.contains("<p class=\"mt-1 text-sm text-text-muted\">A description</p>"));
     }
 
@@ -2941,7 +2947,8 @@ mod tests {
         assert!(html.contains("<details class=\"group\">"));
         assert!(html.contains("<summary"));
         assert!(html.contains("Open Modal</summary>"));
-        assert!(html.contains("<h3 class=\"text-lg font-semibold leading-snug text-text\">Confirm</h3>"));
+        assert!(html
+            .contains("<h3 class=\"text-lg font-semibold leading-snug text-text\">Confirm</h3>"));
         assert!(html.contains("Are you sure?"));
         assert!(html.contains("Body text"));
         assert!(html.contains(">OK</button>"));
@@ -4922,7 +4929,9 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("pb-4"), "flex container with pb-4");
-        assert!(html.contains("<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">My Page</h2>"));
+        assert!(html.contains(
+            "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">My Page</h2>"
+        ));
         assert!(!html.contains("<nav"), "no breadcrumb nav when empty");
         assert!(!html.contains("flex-shrink-0"), "no actions div when empty");
     }
