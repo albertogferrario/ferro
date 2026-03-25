@@ -44,13 +44,13 @@ Requirements for JSON-UI visual quality uplift to professional grade. Each maps 
 
 ### Interactive States
 
-- [ ] **INT-01**: All buttons have `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`
-- [ ] **INT-02**: Tab buttons have focus-visible ring
-- [ ] **INT-03**: Pagination links have focus-visible ring
-- [ ] **INT-04**: Breadcrumb links have focus-visible ring
-- [ ] **INT-05**: Sidebar nav items have focus-visible ring
-- [ ] **INT-06**: Table rows have `hover:bg-surface` for row highlighting
-- [ ] **INT-07**: All interactive elements have `transition-colors duration-150 motion-reduce:transition-none`
+- [x] **INT-01**: All buttons have `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`
+- [x] **INT-02**: Tab buttons have focus-visible ring
+- [x] **INT-03**: Pagination links have focus-visible ring
+- [x] **INT-04**: Breadcrumb links have focus-visible ring
+- [x] **INT-05**: Sidebar nav items have focus-visible ring
+- [x] **INT-06**: Table rows have `hover:bg-surface` for row highlighting
+- [x] **INT-07**: All interactive elements have `transition-colors duration-150 motion-reduce:transition-none`
 
 ### Component Details
 
@@ -115,13 +115,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FRM-05 | Phase 105 | Complete |
 | FRM-06 | Phase 105 | Complete |
 | FRM-07 | Phase 105 | Complete |
-| INT-01 | Phase 106 | Pending |
-| INT-02 | Phase 106 | Pending |
-| INT-03 | Phase 106 | Pending |
-| INT-04 | Phase 106 | Pending |
-| INT-05 | Phase 106 | Pending |
-| INT-06 | Phase 106 | Pending |
-| INT-07 | Phase 106 | Pending |
+| INT-01 | Phase 106 | Complete |
+| INT-02 | Phase 106 | Complete |
+| INT-03 | Phase 106 | Complete |
+| INT-04 | Phase 106 | Complete |
+| INT-05 | Phase 106 | Complete |
+| INT-06 | Phase 106 | Complete |
+| INT-07 | Phase 106 | Complete |
 | CMP-01 | Phase 107 | Pending |
 | CMP-02 | Phase 107 | Pending |
 | CMP-03 | Phase 107 | Pending |
