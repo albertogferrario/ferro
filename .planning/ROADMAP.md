@@ -337,7 +337,10 @@ Plans:
   3. All form elements animate color transitions over 150ms and suppress animation for users with reduced-motion preference
   4. Disabled form elements render at reduced opacity with a not-allowed cursor
   5. Form field layout always renders in label → input → description → error message order
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 105-01-PLAN.md — Form polish: SVG chevron on select, error focus rings, transitions, disabled states, DOM reorder
 
 ### Phase 106: Interactive States
 **Goal**: Every interactive element has a visible focus ring and hover state, applied consistently across the full component catalog
@@ -373,7 +376,7 @@ Phases execute in numeric order: 102 → 103 → 104 → 105 → 106 → 107
 | 102. Foundation | 2/2 | Complete    | 2026-03-24 |
 | 103. Surface Elevation | 2/2 | Complete    | 2026-03-25 |
 | 104. Typography Scale | 1/1 | Complete    | 2026-03-25 |
-| 105. Form Polish | 0/TBD | Not started | - |
+| 105. Form Polish | 0/1 | Not started | - |
 | 106. Interactive States | 0/TBD | Not started | - |
 | 107. Component Details | 0/TBD | Not started | - |
 
@@ -832,6 +835,6 @@ Phases execute in numeric order: 102 → 103 → 104 → 105 → 106 → 107
 | v8.0 Consumer MCP — OpenAPI Bridge | 79-82 | 11 | ✅ Complete | 2026-02-28 |
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
 | v9.0 Service Projections | 84-94 | 30 | ✅ Complete | 2026-03-01 |
-| v10.0 JSON-UI Visual Overhaul | 102-107 | TBD | 🚧 In progress | - |
+| v10.0 JSON-UI Visual Overhaul | 102-107 | TBD | In progress | - |
 
 **Total: 22 milestones shipped, 197 plans.**
