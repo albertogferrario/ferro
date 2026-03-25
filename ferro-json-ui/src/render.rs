@@ -692,6 +692,11 @@ fn render_input(props: &InputProps, data: &Value) -> String {
     } else {
         "border-border"
     };
+    let focus_ring_class = if has_error {
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+    } else {
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    };
 
     let mut html = String::from("<div class=\"space-y-1\">");
     html.push_str(&format!(
@@ -699,13 +704,6 @@ fn render_input(props: &InputProps, data: &Value) -> String {
         html_escape(&props.field),
         html_escape(&props.label)
     ));
-
-    if let Some(ref desc) = props.description {
-        html.push_str(&format!(
-            "<p class=\"text-sm text-text-muted\">{}</p>",
-            html_escape(desc)
-        ));
-    }
 
     match props.input_type {
         InputType::Hidden => {
@@ -720,10 +718,11 @@ fn render_input(props: &InputProps, data: &Value) -> String {
         InputType::Textarea => {
             let val = resolved_value.as_deref().unwrap_or("");
             html.push_str(&format!(
-                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
+                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
                 html_escape(&props.field),
                 html_escape(&props.field),
-                border_class
+                border_class,
+                focus_ring_class
             ));
             if let Some(ref placeholder) = props.placeholder {
                 html.push_str(&format!(" placeholder=\"{}\"", html_escape(placeholder)));
@@ -750,11 +749,12 @@ fn render_input(props: &InputProps, data: &Value) -> String {
                 InputType::Textarea | InputType::Hidden => unreachable!(),
             };
             html.push_str(&format!(
-                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
+                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
                 input_type,
                 html_escape(&props.field),
                 html_escape(&props.field),
-                border_class
+                border_class,
+                focus_ring_class
             ));
             if let Some(ref placeholder) = props.placeholder {
                 html.push_str(&format!(" placeholder=\"{}\"", html_escape(placeholder)));
@@ -789,6 +789,13 @@ fn render_input(props: &InputProps, data: &Value) -> String {
         }
     }
 
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-text-muted\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+
     if let Some(ref error) = props.error {
         html.push_str(&format!(
             "<p class=\"text-sm text-destructive\">{}</p>",
@@ -815,6 +822,11 @@ fn render_select(props: &SelectProps, data: &Value) -> String {
     } else {
         "border-border"
     };
+    let focus_ring_class = if has_error {
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+    } else {
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    };
 
     let mut html = String::from("<div class=\"space-y-1\">");
     html.push_str(&format!(
@@ -823,18 +835,13 @@ fn render_select(props: &SelectProps, data: &Value) -> String {
         html_escape(&props.label)
     ));
 
-    if let Some(ref desc) = props.description {
-        html.push_str(&format!(
-            "<p class=\"text-sm text-text-muted\">{}</p>",
-            html_escape(desc)
-        ));
-    }
-
+    html.push_str("<div class=\"relative\">");
     html.push_str(&format!(
-        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\"",
+        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} pr-10 px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
         html_escape(&props.field),
         html_escape(&props.field),
-        border_class
+        border_class,
+        focus_ring_class
     ));
     if props.required == Some(true) {
         html.push_str(" required");
@@ -863,6 +870,20 @@ fn render_select(props: &SelectProps, data: &Value) -> String {
     }
 
     html.push_str("</select>");
+    html.push_str(concat!(
+        "<span class=\"pointer-events-none absolute inset-y-0 right-3 flex items-center\" aria-hidden=\"true\">",
+        "<svg class=\"h-4 w-4 text-text-muted\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
+        "<path fill-rule=\"evenodd\" d=\"M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z\" clip-rule=\"evenodd\"/>",
+        "</svg></span>"
+    ));
+    html.push_str("</div>");
+
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-text-muted\">{}</p>",
+            html_escape(desc)
+        ));
+    }
 
     if let Some(ref error) = props.error {
         html.push_str(&format!(
@@ -902,7 +923,7 @@ fn render_checkbox(props: &CheckboxProps, data: &Value) -> String {
     let mut html = String::from("<div class=\"space-y-1\">");
     html.push_str("<div class=\"flex items-center gap-2\">");
     html.push_str(&format!(
-        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm border-border text-primary focus:ring-primary\"",
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm border-border text-primary transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed focus:ring-primary\"",
         html_escape(&checkbox_id),
         html_escape(&props.field),
         html_escape(value_attr)
@@ -3176,6 +3197,10 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("border-destructive"));
         assert!(html.contains("<p class=\"text-sm text-destructive\">Name is required</p>"));
+        assert!(
+            html.contains("ring-destructive"),
+            "error input should have destructive ring"
+        );
     }
 
     #[test]
@@ -3451,6 +3476,10 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("border-destructive"));
         assert!(html.contains("Role is required"));
+        assert!(
+            html.contains("ring-destructive"),
+            "error select should have destructive ring"
+        );
     }
 
     // ── 22. Checkbox ───────────────────────────────────────────────────
@@ -5651,7 +5680,10 @@ mod tests {
                 html.contains("aria-hidden=\"true\""),
                 "SVG span should have aria-hidden"
             );
-            assert!(html.contains("<svg"), "inline SVG chevron should be present");
+            assert!(
+                html.contains("<svg"),
+                "inline SVG chevron should be present"
+            );
             assert!(
                 html.contains("pointer-events-none"),
                 "SVG span should be non-interactive"
