@@ -82,10 +82,10 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
     // ── Toast display/stacking/auto-dismiss ───────────────────────────────
 
     var VARIANT_CLASSES = {
-        info: 'bg-blue-500',
-        success: 'bg-green-500',
-        warning: 'bg-yellow-500',
-        error: 'bg-red-500'
+        info: 'bg-primary text-primary-foreground',
+        success: 'bg-success text-primary-foreground',
+        warning: 'bg-warning text-primary-foreground',
+        error: 'bg-destructive text-primary-foreground'
     };
 
     function showToast(toast) {
@@ -98,11 +98,11 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         var colorClass = VARIANT_CLASSES[variant] || VARIANT_CLASSES.info;
 
         var el = document.createElement('div');
-        el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg text-white max-w-sm ' +
+        el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm ' +
             colorClass + ' opacity-0 transition-opacity duration-300';
         el.innerHTML =
             '<span class="flex-1 text-sm">' + escapeHtml(message) + '</span>' +
-            '<button class="text-white opacity-70 hover:opacity-100 text-lg leading-none" ' +
+            '<button class="text-current opacity-70 hover:opacity-100 text-lg leading-none" ' +
             'data-toast-close>&times;</button>';
 
         var closeBtn = el.querySelector('[data-toast-close]');
@@ -248,12 +248,12 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
             for (var i = 0; i < triggers.length; i++) {
                 var t = triggers[i];
                 if (t.getAttribute('data-tab') === value) {
-                    t.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700');
-                    t.classList.add('border-blue-600', 'text-blue-600');
+                    t.classList.remove('border-transparent', 'text-text-muted', 'hover:text-text');
+                    t.classList.add('border-primary', 'text-primary');
                     t.setAttribute('aria-selected', 'true');
                 } else {
-                    t.classList.remove('border-blue-600', 'text-blue-600');
-                    t.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+                    t.classList.remove('border-primary', 'text-primary');
+                    t.classList.add('border-transparent', 'text-text-muted', 'hover:text-text');
                     t.setAttribute('aria-selected', 'false');
                 }
             }
@@ -373,29 +373,77 @@ mod tests {
 
     #[test]
     fn variant_classes_use_semantic_tokens() {
-        assert!(FERRO_RUNTIME_JS.contains("'bg-primary'"), "info variant should use bg-primary");
-        assert!(FERRO_RUNTIME_JS.contains("'bg-success'"), "success variant should use bg-success");
-        assert!(FERRO_RUNTIME_JS.contains("'bg-warning'"), "warning variant should use bg-warning");
-        assert!(FERRO_RUNTIME_JS.contains("'bg-destructive'"), "error variant should use bg-destructive");
-        assert!(!FERRO_RUNTIME_JS.contains("bg-blue-500"), "should not contain hardcoded bg-blue-500");
-        assert!(!FERRO_RUNTIME_JS.contains("bg-green-500"), "should not contain hardcoded bg-green-500");
-        assert!(!FERRO_RUNTIME_JS.contains("bg-yellow-500"), "should not contain hardcoded bg-yellow-500");
-        assert!(!FERRO_RUNTIME_JS.contains("bg-red-500"), "should not contain hardcoded bg-red-500");
+        assert!(
+            FERRO_RUNTIME_JS.contains("bg-primary"),
+            "info variant should use bg-primary"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("bg-success"),
+            "success variant should use bg-success"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("bg-warning"),
+            "warning variant should use bg-warning"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("bg-destructive"),
+            "error variant should use bg-destructive"
+        );
+        assert!(
+            !FERRO_RUNTIME_JS.contains("bg-blue-500"),
+            "should not contain hardcoded bg-blue-500"
+        );
+        assert!(
+            !FERRO_RUNTIME_JS.contains("bg-green-500"),
+            "should not contain hardcoded bg-green-500"
+        );
+        assert!(
+            !FERRO_RUNTIME_JS.contains("bg-yellow-500"),
+            "should not contain hardcoded bg-yellow-500"
+        );
+        assert!(
+            !FERRO_RUNTIME_JS.contains("bg-red-500"),
+            "should not contain hardcoded bg-red-500"
+        );
     }
 
     #[test]
     fn tab_switcher_uses_semantic_tokens() {
-        assert!(FERRO_RUNTIME_JS.contains("border-primary"), "active tab should use border-primary");
-        assert!(FERRO_RUNTIME_JS.contains("text-primary"), "active tab should use text-primary");
-        assert!(FERRO_RUNTIME_JS.contains("text-text-muted"), "inactive tab should use text-text-muted");
-        assert!(!FERRO_RUNTIME_JS.contains("border-blue-600"), "should not contain hardcoded border-blue-600");
-        assert!(!FERRO_RUNTIME_JS.contains("text-blue-600"), "should not contain hardcoded text-blue-600");
-        assert!(!FERRO_RUNTIME_JS.contains("text-gray-500"), "should not contain hardcoded text-gray-500");
+        assert!(
+            FERRO_RUNTIME_JS.contains("border-primary"),
+            "active tab should use border-primary"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("text-primary"),
+            "active tab should use text-primary"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("text-text-muted"),
+            "inactive tab should use text-text-muted"
+        );
+        assert!(
+            !FERRO_RUNTIME_JS.contains("border-blue-600"),
+            "should not contain hardcoded border-blue-600"
+        );
+        assert!(
+            !FERRO_RUNTIME_JS.contains("text-blue-600"),
+            "should not contain hardcoded text-blue-600"
+        );
+        assert!(
+            !FERRO_RUNTIME_JS.contains("text-gray-500"),
+            "should not contain hardcoded text-gray-500"
+        );
     }
 
     #[test]
     fn toast_uses_semantic_text_color() {
-        assert!(FERRO_RUNTIME_JS.contains("text-primary-foreground"), "toast should use text-primary-foreground");
-        assert!(!FERRO_RUNTIME_JS.contains("text-white"), "toast should not use hardcoded text-white");
+        assert!(
+            FERRO_RUNTIME_JS.contains("text-primary-foreground"),
+            "toast should use text-primary-foreground"
+        );
+        assert!(
+            !FERRO_RUNTIME_JS.contains("text-white"),
+            "toast should not use hardcoded text-white"
+        );
     }
 }
