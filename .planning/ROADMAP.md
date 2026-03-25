@@ -367,7 +367,10 @@ Plans:
   4. Active tabs render with semibold font weight, visually distinct from inactive tabs
   5. Notification bell renders as an SVG icon, consistent across all operating systems
   6. Collapsible components display a rotating SVG chevron that indicates open/closed state
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 107-01-PLAN.md — Inline SVG icons for alerts/bell/breadcrumb/collapsible, shimmer animation for skeleton, font-semibold for active tabs
 
 ## Progress
 
@@ -381,7 +384,7 @@ Phases execute in numeric order: 102 → 103 → 104 → 105 → 106 → 107
 | 104. Typography Scale | 1/1 | Complete    | 2026-03-25 |
 | 105. Form Polish | 1/1 | Complete    | 2026-03-25 |
 | 106. Interactive States | 1/1 | Complete    | 2026-03-25 |
-| 107. Component Details | 0/TBD | Not started | - |
+| 107. Component Details | 0/1 | Not started | - |
 
 ---
 
