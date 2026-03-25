@@ -1227,4 +1227,25 @@ mod tests {
             "sidebar group label should not use letter-spacing"
         );
     }
+
+    // ── INT-07 (layout): DashboardLayout sidebar nav item focus ring ──────
+
+    #[test]
+    fn layout_sidebar_nav_focus_ring() {
+        let item = SidebarNavItem {
+            label: "Dashboard".to_string(),
+            href: "/dashboard".to_string(),
+            icon: None,
+            active: false,
+        };
+        let html = layout_sidebar_nav_item(&item);
+        assert!(
+            html.contains("focus-visible:ring-primary"),
+            "layout sidebar nav <a> item should have focus-visible:ring-primary (INT-07)"
+        );
+        assert!(
+            html.contains("duration-150"),
+            "layout sidebar nav <a> item should have duration-150 (INT-07)"
+        );
+    }
 }

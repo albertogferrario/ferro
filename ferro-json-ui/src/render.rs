@@ -5870,5 +5870,181 @@ mod tests {
                 "default button should have bg-primary class"
             );
         }
+
+        // ── INT-01: Button focus ring and transition ───────────────────────
+
+        #[test]
+        fn button_focus_ring() {
+            let view = JsonUiView::new().component(button_node(
+                "btn",
+                "Click me",
+                ButtonVariant::Default,
+                Size::Default,
+            ));
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                has_class(&html, "focus-visible:ring-primary"),
+                "button should have focus-visible:ring-primary class (INT-01)"
+            );
+            assert!(
+                has_class(&html, "duration-150"),
+                "button should have duration-150 class (INT-07)"
+            );
+            assert!(
+                html.contains("motion-reduce:transition-none"),
+                "button should have motion-reduce:transition-none (INT-07)"
+            );
+        }
+
+        // ── INT-02: Tabs focus ring and transition ─────────────────────────
+
+        #[test]
+        fn tabs_focus_ring() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "tabs".to_string(),
+                component: Component::Tabs(TabsProps {
+                    default_tab: "tab1".to_string(),
+                    tabs: vec![
+                        Tab {
+                            value: "tab1".to_string(),
+                            label: "Tab One".to_string(),
+                            children: vec![text_node("t1", "Content one", TextElement::P)],
+                        },
+                        Tab {
+                            value: "tab2".to_string(),
+                            label: "Tab Two".to_string(),
+                            children: vec![text_node("t2", "Content two", TextElement::P)],
+                        },
+                    ],
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                has_class(&html, "focus-visible:ring-primary"),
+                "tab button/link should have focus-visible:ring-primary class (INT-02)"
+            );
+            assert!(
+                has_class(&html, "duration-150"),
+                "tab button/link should have duration-150 class (INT-07)"
+            );
+        }
+
+        // ── INT-03: Pagination focus ring and transition ───────────────────
+
+        #[test]
+        fn pagination_focus_ring() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "pg".to_string(),
+                component: Component::Pagination(PaginationProps {
+                    total: 30,
+                    per_page: 10,
+                    current_page: 2,
+                    base_url: Some("?".to_string()),
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                has_class(&html, "focus-visible:ring-primary"),
+                "pagination <a> links should have focus-visible:ring-primary class (INT-03)"
+            );
+            assert!(
+                has_class(&html, "duration-150"),
+                "pagination <a> links should have duration-150 class (INT-07)"
+            );
+        }
+
+        // ── INT-04: Breadcrumb focus ring and transition ───────────────────
+
+        #[test]
+        fn breadcrumb_focus_ring() {
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "bc".to_string(),
+                component: Component::Breadcrumb(BreadcrumbProps {
+                    items: vec![
+                        BreadcrumbItem {
+                            label: "Home".to_string(),
+                            url: Some("/".to_string()),
+                        },
+                        BreadcrumbItem {
+                            label: "Current".to_string(),
+                            url: None,
+                        },
+                    ],
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                has_class(&html, "focus-visible:ring-primary"),
+                "breadcrumb <a> link should have focus-visible:ring-primary class (INT-04)"
+            );
+            assert!(
+                has_class(&html, "duration-150"),
+                "breadcrumb <a> link should have duration-150 class (INT-07)"
+            );
+        }
+
+        // ── INT-05: Sidebar nav item focus ring and transition ─────────────
+
+        #[test]
+        fn sidebar_nav_focus_ring() {
+            let view = JsonUiView::new().component(ComponentNode::sidebar(
+                "nav",
+                SidebarProps {
+                    fixed_top: vec![SidebarNavItem {
+                        label: "Dashboard".to_string(),
+                        href: "/dashboard".to_string(),
+                        icon: None,
+                        active: false,
+                    }],
+                    groups: vec![],
+                    fixed_bottom: vec![],
+                },
+            ));
+            let html = render_to_html(&view, &json!({}));
+            assert!(
+                has_class(&html, "focus-visible:ring-primary"),
+                "sidebar nav <a> item should have focus-visible:ring-primary class (INT-05)"
+            );
+            assert!(
+                has_class(&html, "duration-150"),
+                "sidebar nav <a> item should have duration-150 class (INT-07)"
+            );
+        }
+
+        // ── INT-06: Table body row hover ───────────────────────────────────
+
+        #[test]
+        fn table_row_hover() {
+            let data = json!({"items": [{"name": "Alice"}]});
+            let view = JsonUiView::new().component(ComponentNode {
+                key: "t".to_string(),
+                component: Component::Table(TableProps {
+                    columns: vec![Column {
+                        key: "name".to_string(),
+                        label: "Name".to_string(),
+                        format: None,
+                    }],
+                    data_path: "/items".to_string(),
+                    row_actions: None,
+                    empty_message: None,
+                    sortable: None,
+                    sort_column: None,
+                    sort_direction: None,
+                }),
+                action: None,
+                visibility: None,
+            });
+            let html = render_to_html(&view, &data);
+            assert!(
+                html.contains("<tr class=\"hover:bg-surface\">"),
+                "table body row should have hover:bg-surface class (INT-06)"
+            );
+        }
     }
 }
