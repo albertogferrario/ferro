@@ -54,12 +54,12 @@ Requirements for JSON-UI visual quality uplift to professional grade. Each maps 
 
 ### Component Details
 
-- [ ] **CMP-01**: Alert renders an inline SVG icon per variant (info, success, warning, error)
-- [ ] **CMP-02**: Skeleton uses shimmer animation (CSS keyframe) instead of `animate-pulse`
-- [ ] **CMP-03**: Breadcrumb uses SVG chevron separator instead of `/` text
-- [ ] **CMP-04**: Active tab has `font-semibold` weight
-- [ ] **CMP-05**: NotificationDropdown bell renders as SVG icon (not emoji)
-- [ ] **CMP-06**: Collapsible renders a rotating SVG chevron indicator
+- [x] **CMP-01**: Alert renders an inline SVG icon per variant (info, success, warning, error)
+- [x] **CMP-02**: Skeleton uses shimmer animation (CSS keyframe) instead of `animate-pulse`
+- [x] **CMP-03**: Breadcrumb uses SVG chevron separator instead of `/` text
+- [x] **CMP-04**: Active tab has `font-semibold` weight
+- [x] **CMP-05**: NotificationDropdown bell renders as SVG icon (not emoji)
+- [x] **CMP-06**: Collapsible renders a rotating SVG chevron indicator
 
 ## Future Requirements
 
@@ -122,12 +122,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INT-05 | Phase 106 | Complete |
 | INT-06 | Phase 106 | Complete |
 | INT-07 | Phase 106 | Complete |
-| CMP-01 | Phase 107 | Pending |
-| CMP-02 | Phase 107 | Pending |
-| CMP-03 | Phase 107 | Pending |
-| CMP-04 | Phase 107 | Pending |
-| CMP-05 | Phase 107 | Pending |
-| CMP-06 | Phase 107 | Pending |
+| CMP-01 | Phase 107 | Complete |
+| CMP-02 | Phase 107 | Complete |
+| CMP-03 | Phase 107 | Complete |
+| CMP-04 | Phase 107 | Complete |
+| CMP-05 | Phase 107 | Complete |
+| CMP-06 | Phase 107 | Complete |
 
 **Coverage:**
 - v10.0 requirements: 36 total
