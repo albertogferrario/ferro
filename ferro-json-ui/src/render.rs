@@ -2516,10 +2516,22 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("<nav"));
-        assert!(html.contains("<a href=\"/\""), "breadcrumb Home link should exist");
-        assert!(html.contains(">Home</a>"), "breadcrumb Home label should exist");
-        assert!(html.contains("<a href=\"/users\""), "breadcrumb Users link should exist");
-        assert!(html.contains(">Users</a>"), "breadcrumb Users label should exist");
+        assert!(
+            html.contains("<a href=\"/\""),
+            "breadcrumb Home link should exist"
+        );
+        assert!(
+            html.contains(">Home</a>"),
+            "breadcrumb Home label should exist"
+        );
+        assert!(
+            html.contains("<a href=\"/users\""),
+            "breadcrumb Users link should exist"
+        );
+        assert!(
+            html.contains(">Users</a>"),
+            "breadcrumb Users label should exist"
+        );
         // Last item is plain span, not a link.
         assert!(html.contains("<span class=\"text-text font-medium\">Edit</span>"));
         // Separators between items.
