@@ -366,3 +366,36 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
     document.addEventListener('DOMContentLoaded', init);
 })();
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn variant_classes_use_semantic_tokens() {
+        assert!(FERRO_RUNTIME_JS.contains("'bg-primary'"), "info variant should use bg-primary");
+        assert!(FERRO_RUNTIME_JS.contains("'bg-success'"), "success variant should use bg-success");
+        assert!(FERRO_RUNTIME_JS.contains("'bg-warning'"), "warning variant should use bg-warning");
+        assert!(FERRO_RUNTIME_JS.contains("'bg-destructive'"), "error variant should use bg-destructive");
+        assert!(!FERRO_RUNTIME_JS.contains("bg-blue-500"), "should not contain hardcoded bg-blue-500");
+        assert!(!FERRO_RUNTIME_JS.contains("bg-green-500"), "should not contain hardcoded bg-green-500");
+        assert!(!FERRO_RUNTIME_JS.contains("bg-yellow-500"), "should not contain hardcoded bg-yellow-500");
+        assert!(!FERRO_RUNTIME_JS.contains("bg-red-500"), "should not contain hardcoded bg-red-500");
+    }
+
+    #[test]
+    fn tab_switcher_uses_semantic_tokens() {
+        assert!(FERRO_RUNTIME_JS.contains("border-primary"), "active tab should use border-primary");
+        assert!(FERRO_RUNTIME_JS.contains("text-primary"), "active tab should use text-primary");
+        assert!(FERRO_RUNTIME_JS.contains("text-text-muted"), "inactive tab should use text-text-muted");
+        assert!(!FERRO_RUNTIME_JS.contains("border-blue-600"), "should not contain hardcoded border-blue-600");
+        assert!(!FERRO_RUNTIME_JS.contains("text-blue-600"), "should not contain hardcoded text-blue-600");
+        assert!(!FERRO_RUNTIME_JS.contains("text-gray-500"), "should not contain hardcoded text-gray-500");
+    }
+
+    #[test]
+    fn toast_uses_semantic_text_color() {
+        assert!(FERRO_RUNTIME_JS.contains("text-primary-foreground"), "toast should use text-primary-foreground");
+        assert!(!FERRO_RUNTIME_JS.contains("text-white"), "toast should not use hardcoded text-white");
+    }
+}
