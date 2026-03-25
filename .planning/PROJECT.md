@@ -135,23 +135,18 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - ✓ Post-scaffold guidance with MCP config snippets for Claude Desktop/Code — v8.1
 - ✓ Complete API-to-MCP documentation (Quick Start Workflow, Route Customization) — v8.1
 
-## Current Milestone: v10.0 JSON-UI Visual Overhaul
-
-**Goal:** Reach Vercel-level visual quality across all JSON-UI components while maintaining Ferro's own identity.
-
-**Target features:**
-- Typography foundation (load professional font, apply via theme tokens, define type scale)
-- Surface/elevation system (proper card-on-background layering, refined shadows)
-- Component polish (all ~30 components — focus rings, custom select arrows, transitions, consistent spacing)
-- Theme token integration (render.rs uses shape/shadow/font tokens instead of hardcoded Tailwind classes)
-- Layout fixes (DashboardLayout bugs, responsive defaults, spacing system)
-- Consistency pass (emoji→SVG, unified hover/focus states, border treatment)
+**v10.0 JSON-UI Visual Overhaul (shipped 2026-03-26):**
+- ✓ Inter Variable font loaded via Bunny Fonts CDN with correct Tailwind v4 --font-sans token — v10.0
+- ✓ Three-tier surface elevation (background → surface → card) with WCAG 4.5:1 dark mode contrast — v10.0
+- ✓ Typography scale: H1/H2 tight tracking, H3 snug, body relaxed line-height — v10.0
+- ✓ Form polish: SVG select chevron, destructive error focus rings, transitions, disabled states — v10.0
+- ✓ Focus-visible rings and hover states on all interactive elements — v10.0
+- ✓ SVG icons replacing emoji (alerts, bell, breadcrumb, collapsible), shimmer animation, semibold active tabs — v10.0
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Full visual overhaul of JSON-UI rendering to professional quality
 - [ ] Publish to crates.io (manual step using PUBLISHING.md)
 - [ ] Public announcement and marketing
 
@@ -162,17 +157,20 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - New major features (payments, subscriptions, etc.) — focus is publishing, not feature expansion
 - Frontend framework changes — React/Inertia stack stays as-is, JSON-UI is the alternative
 - Database driver changes — SeaORM works, no need to replace
+- New JSON-UI components — v10.0 was polish, not features
+- JavaScript-powered interactivity — JSON-UI is CSS-only; JS features are a separate concern
+- Custom icon library — inline SVG strings in Rust sufficient for needed icons
 
 ## Context
 
 **Current State:**
 - ~90,000 lines of Rust across 14 crates (including ferro-api-mcp)
-- v8.1 added: API DX polish — make:api-key, api:check, field exclusion, x-MCP route API, post-scaffold guidance
+- v10.0 shipped: JSON-UI Visual Overhaul — Inter font, surface elevation, typography, form polish, interactive states, SVG icons
+- v9.0 shipped: Service Projections — ServiceDef → IntentGraph → Renderer pipeline, protocol specification
+- v8.1 added: API DX polish — make:api-key, api:check, field exclusion, x-MCP route API
 - v8.0 added: ferro-api-mcp standalone binary — OpenAPI-to-MCP bridge for consumer AI agents
-- v7.8 added: Memory leak fixes — moka-based bounded caches, metrics 404 explosion fix
-- v7.4 added: Security hardening — binary responses, security headers, session absolute expiry
-- v6.0 added: ferro-lang localization crate with JSON translations, per-request locale detection, validation bridge
 - Framework production-ready for crates.io publication
+- 426 ferro-json-ui unit tests + comprehensive workspace test coverage
 - Sample application (app/) demonstrating Inertia integration with API layer
 - Comprehensive MCP introspection (35+ tools) + consumer MCP bridge (ferro-api-mcp)
 
@@ -235,6 +233,12 @@ Reference codebase documentation in `.planning/codebase/`:
 | WS upgrade before middleware | Upgrade needs raw hyper Request, not framework Request | ✓ Good |
 | Always include error hints | Errors are developer-facing APIs, not user-facing | ✓ Good |
 | 401 via FrameworkError::domain | 401 is authentication failure; Unauthorized is 403 | ✓ Good |
+| Tailwind v4 --font-sans namespace | v3 used --font-family-sans which v4 ignores; token fix enables font rendering | ✓ Good |
+| Three-tier surface hierarchy | background < surface < card; persistent frames stay background | ✓ Good |
+| focus-visible: over focus: | Keyboard-only rings; mouse clicks don't trigger visual noise | ✓ Good |
+| Inline SVG via concat! macro | Avoids data URI which fails in CDN mode; self-contained per component | ✓ Good |
+| Dark mode pair 6 trade-off | 4.45:1 accepted (0.05 below AA) — lowering primary L breaks pair 5 | ⚠️ Revisit |
+| Shimmer CSS injected inline | Keeps skeleton self-contained; no external stylesheet dependency | ✓ Good |
 
 ---
-*Last updated: 2026-03-24 after v10.0 JSON-UI Visual Overhaul milestone start*
+*Last updated: 2026-03-26 after v10.0 milestone*

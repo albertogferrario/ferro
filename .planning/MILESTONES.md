@@ -1,5 +1,30 @@
 # Project Milestones: Ferro Framework
 
+## v10.0 JSON-UI Visual Overhaul (Shipped: 2026-03-26)
+
+**Delivered:** Professional visual quality uplift across all JSON-UI components — Inter font, surface elevation, typography scale, form polish, interactive states, and SVG icon refinements.
+
+**Phases completed:** 102-107 (8 plans total)
+
+**Key accomplishments:**
+- Inter Variable font loaded via Bunny Fonts CDN with correct Tailwind v4 --font-sans token namespace (Phase 102)
+- Three-tier surface elevation hierarchy (background → surface → card) with WCAG 4.5:1 dark mode contrast verification (Phase 103)
+- Typography scale: H1/H2 tight tracking, H3 snug, body relaxed line-height across all text elements (Phase 104)
+- Form polish: inline SVG select chevron, destructive error focus rings, 150ms transitions with reduced-motion, disabled states (Phase 105)
+- Focus-visible rings and hover states on all interactive elements (buttons, tabs, pagination, breadcrumbs, sidebar, table rows) (Phase 106)
+- SVG icons for alerts/bell/breadcrumb/collapsible, CSS shimmer animation for skeleton, font-semibold active tabs (Phase 107)
+
+**Stats:**
+- 39 files changed (+6,847, -204 lines)
+- 6 phases, 8 plans, 46 commits
+- 2 days (2026-03-24 → 2026-03-26)
+
+**Git range:** `9d906347` → `67d74d51`
+
+**What's next:** Planning next milestone.
+
+---
+
 ## v8.1 API DX Polish (Shipped: 2026-02-28)
 
 **Delivered:** Closed the DX gaps between `ferro make:api` scaffold and a working MCP integration with five targeted improvements.
