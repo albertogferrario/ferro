@@ -347,7 +347,7 @@ fn render_page_header(props: &PageHeaderProps, data: &Value) -> String {
 
     // Title
     html.push_str(&format!(
-        "<h2 class=\"text-2xl font-semibold text-text\">{}</h2>",
+        "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">{}</h2>",
         html_escape(&props.title)
     ));
     html.push_str("</div>");
@@ -381,7 +381,7 @@ fn render_card(props: &CardProps, data: &Value) -> String {
         "<div class=\"rounded-lg border border-border bg-card shadow-sm\"><div class=\"p-6\">",
     );
     html.push_str(&format!(
-        "<h3 class=\"text-lg font-semibold text-text\">{}</h3>",
+        "<h3 class=\"text-lg font-semibold leading-snug text-text\">{}</h3>",
         html_escape(&props.title)
     ));
     if let Some(ref desc) = props.description {
@@ -421,7 +421,7 @@ fn render_modal(props: &ModalProps, data: &Value) -> String {
     html.push_str("<div class=\"fixed inset-0 z-50 flex items-center justify-center bg-black/50 group-open:block hidden\">");
     html.push_str("<div class=\"relative bg-card rounded-lg shadow-lg max-w-lg w-full mx-4 p-6\">");
     html.push_str(&format!(
-        "<h3 class=\"text-lg font-semibold text-text\">{}</h3>",
+        "<h3 class=\"text-lg font-semibold leading-snug text-text\">{}</h3>",
         html_escape(&props.title)
     ));
     if let Some(ref desc) = props.description {
@@ -1054,18 +1054,18 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
 fn render_text(props: &TextProps) -> String {
     let content = html_escape(&props.content);
     match props.element {
-        TextElement::P => format!("<p class=\"text-base text-text\">{content}</p>"),
-        TextElement::H1 => format!("<h1 class=\"text-3xl font-bold text-text\">{content}</h1>"),
+        TextElement::P => format!("<p class=\"text-base leading-relaxed text-text\">{content}</p>"),
+        TextElement::H1 => format!("<h1 class=\"text-3xl font-bold leading-tight tracking-tight text-text\">{content}</h1>"),
         TextElement::H2 => {
-            format!("<h2 class=\"text-2xl font-semibold text-text\">{content}</h2>")
+            format!("<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">{content}</h2>")
         }
         TextElement::H3 => {
-            format!("<h3 class=\"text-xl font-semibold text-text\">{content}</h3>")
+            format!("<h3 class=\"text-xl font-semibold leading-snug text-text\">{content}</h3>")
         }
         TextElement::Span => format!("<span class=\"text-base text-text\">{content}</span>"),
-        TextElement::Div => format!("<div class=\"text-base text-text\">{content}</div>"),
+        TextElement::Div => format!("<div class=\"text-base leading-relaxed text-text\">{content}</div>"),
         TextElement::Section => {
-            format!("<section class=\"text-base text-text\">{content}</section>")
+            format!("<section class=\"text-base leading-relaxed text-text\">{content}</section>")
         }
     }
 }
@@ -1498,7 +1498,7 @@ fn render_checklist(props: &ChecklistProps) -> String {
         String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
     html.push_str("<div class=\"flex items-center justify-between mb-3\">");
     html.push_str(&format!(
-        "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
+        "<h3 class=\"text-sm font-semibold leading-snug text-text\">{}</h3>",
         html_escape(&props.title)
     ));
     if props.dismissible {
@@ -1870,7 +1870,7 @@ mod tests {
             "<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">"
         ));
         assert!(html.ends_with("</div>"));
-        assert!(html.contains("<p class=\"text-base text-text\">Hello</p>"));
+        assert!(html.contains("<p class=\"text-base leading-relaxed text-text\">Hello</p>"));
     }
 
     // ── 2. Text variants ────────────────────────────────────────────────
@@ -1879,28 +1879,28 @@ mod tests {
     fn text_p_variant() {
         let view = JsonUiView::new().component(text_node("t", "Paragraph", TextElement::P));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<p class=\"text-base text-text\">Paragraph</p>"));
+        assert!(html.contains("<p class=\"text-base leading-relaxed text-text\">Paragraph</p>"));
     }
 
     #[test]
     fn text_h1_variant() {
         let view = JsonUiView::new().component(text_node("t", "Title", TextElement::H1));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<h1 class=\"text-3xl font-bold text-text\">Title</h1>"));
+        assert!(html.contains("<h1 class=\"text-3xl font-bold leading-tight tracking-tight text-text\">Title</h1>"));
     }
 
     #[test]
     fn text_h2_variant() {
         let view = JsonUiView::new().component(text_node("t", "Subtitle", TextElement::H2));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<h2 class=\"text-2xl font-semibold text-text\">Subtitle</h2>"));
+        assert!(html.contains("<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">Subtitle</h2>"));
     }
 
     #[test]
     fn text_h3_variant() {
         let view = JsonUiView::new().component(text_node("t", "Section", TextElement::H3));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<h3 class=\"text-xl font-semibold text-text\">Section</h3>"));
+        assert!(html.contains("<h3 class=\"text-xl font-semibold leading-snug text-text\">Section</h3>"));
     }
 
     #[test]
@@ -2869,7 +2869,7 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("rounded-lg border border-border bg-card shadow-sm"));
-        assert!(html.contains("<h3 class=\"text-lg font-semibold text-text\">My Card</h3>"));
+        assert!(html.contains("<h3 class=\"text-lg font-semibold leading-snug text-text\">My Card</h3>"));
         assert!(html.contains("<p class=\"mt-1 text-sm text-text-muted\">A description</p>"));
     }
 
@@ -2941,7 +2941,7 @@ mod tests {
         assert!(html.contains("<details class=\"group\">"));
         assert!(html.contains("<summary"));
         assert!(html.contains("Open Modal</summary>"));
-        assert!(html.contains("<h3 class=\"text-lg font-semibold text-text\">Confirm</h3>"));
+        assert!(html.contains("<h3 class=\"text-lg font-semibold leading-snug text-text\">Confirm</h3>"));
         assert!(html.contains("Are you sure?"));
         assert!(html.contains("Body text"));
         assert!(html.contains(">OK</button>"));
@@ -4922,7 +4922,7 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("pb-4"), "flex container with pb-4");
-        assert!(html.contains("<h2 class=\"text-2xl font-semibold text-text\">My Page</h2>"));
+        assert!(html.contains("<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">My Page</h2>"));
         assert!(!html.contains("<nav"), "no breadcrumb nav when empty");
         assert!(!html.contains("flex-shrink-0"), "no actions div when empty");
     }
