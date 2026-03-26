@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: planning
-stopped_at: Phase 112 context gathered
-last_updated: "2026-03-26T04:44:40.287Z"
+stopped_at: Completed 112-agent-first-philosophy plan 01
+last_updated: "2026-03-26T05:08:06.249Z"
 last_activity: 2026-03-26 — Roadmap created for v11.0 (7 phases, 23 requirements mapped)
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-03-26 — Roadmap created for v11.0 (7 phases, 23 requirements mapped)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 110-mcp-tool-accuracy P01 | 15min | 2 tasks | 2 files |
 | Phase 111-documentation-coverage P01 | 106s | 2 tasks | 2 files |
 | Phase 111-documentation-coverage P02 | 2min | 2 tasks | 2 files |
+| Phase 112-agent-first-philosophy P01 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,10 @@ Recent decisions affecting current work:
 - [110-01] All ferro imports use explicit crate-root exports — no ferro::prelude or ferro::validation:: module paths
 - [110-01] Status codes use .status(u16) pattern — StatusCode enum not re-exported from ferro crate
 - [110-01] Validation rule functions imported at crate root: ferro::{Validator, required, email, min, ...}
+- [112-01] introduction.md leads with "agent-first" in sentence 1 — MCP mentioned before any framework comparison or Laravel reference
+- [112-01] Working with Agents guide covers ferro-mcp only — ferro-api-mcp remains on its dedicated api-mcp.md page
+- [112-01] Agent-to-CLI workflow documented within working-with-agents.md as a section, not a separate page
+- [112-01] MCP config command is `ferro mcp` — not a standalone ferro-mcp binary
 
 ### Pending Todos
 
@@ -79,6 +84,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-26T04:44:40.283Z
-Stopped at: Phase 112 context gathered
-Resume file: .planning/phases/112-agent-first-philosophy/112-CONTEXT.md
+Last session: 2026-03-26T05:08:06.244Z
+Stopped at: Completed 112-agent-first-philosophy plan 01
+Resume file: None

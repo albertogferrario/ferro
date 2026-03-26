@@ -29,10 +29,10 @@ Requirements for Framework Consolidation Audit. Each maps to roadmap phases.
 
 ### Agent-First Philosophy
 
-- [ ] **PHIL-01**: introduction.md rewritten to lead with agent-first value proposition
-- [ ] **PHIL-02**: "Working with Agents" guide created documenting MCP workflow
+- [x] **PHIL-01**: introduction.md rewritten to lead with agent-first value proposition
+- [x] **PHIL-02**: "Working with Agents" guide created documenting MCP workflow
 - [ ] **PHIL-03**: MCP tool references added to each feature documentation page
-- [ ] **PHIL-04**: Agent-to-CLI workflow documented (agent calls MCP → reads hints → uses CLI)
+- [x] **PHIL-04**: Agent-to-CLI workflow documented (agent calls MCP → reads hints → uses CLI)
 
 ### Pattern Coherence
 
@@ -87,10 +87,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-01 | Phase 111 | Complete |
 | DOC-02 | Phase 111 | Complete |
 | DOC-03 | Phase 111 | Complete |
-| PHIL-01 | Phase 112 | Pending |
-| PHIL-02 | Phase 112 | Pending |
+| PHIL-01 | Phase 112 | Complete |
+| PHIL-02 | Phase 112 | Complete |
 | PHIL-03 | Phase 112 | Pending |
-| PHIL-04 | Phase 112 | Pending |
+| PHIL-04 | Phase 112 | Complete |
 | COH-01 | Phase 113 | Pending |
 | COH-02 | Phase 113 | Pending |
 | COH-03 | Phase 113 | Pending |
