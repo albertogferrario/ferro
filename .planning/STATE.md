@@ -5,11 +5,11 @@ milestone_name: Framework Consolidation Audit
 status: active
 stopped_at: null
 last_updated: "2026-03-26"
-last_activity: "2026-03-26 — Milestone v11.0 started"
+last_activity: "2026-03-26 — Roadmap created, Phase 108 ready to plan"
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
-  total_plans: 0
+  total_plans: 13
   completed_plans: 0
   percent: 0
 ---
@@ -21,14 +21,31 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-26)
 
 **Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** v11.0 Framework Consolidation Audit
+**Current focus:** v11.0 Framework Consolidation Audit — Phase 108: P0 Accuracy Fixes
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-26 — Milestone v11.0 started
+Phase: 108 of 114 (P0 Accuracy Fixes)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-26 — Roadmap created for v11.0 (7 phases, 23 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: —
+- Total execution time: —
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
@@ -36,16 +53,23 @@ Last activity: 2026-03-26 — Milestone v11.0 started
 
 See PROJECT.md Key Decisions table for full history.
 
+Recent decisions affecting current work:
+- Research established strict ordering: P0 accuracy → CLI/MCP → completeness → philosophy → metadata
+- COMPONENT_CATALOG duplication requires a design decision before implementation (Phase 113)
+- ferro-stripe phantom stubs: classify as incomplete, add callout — do not implement in v11.0
+- `#![warn(missing_docs)]` on framework crate only — not workspace-wide (avoids mass failures)
+
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-None.
+- [Research flag] Phase 110: code_templates.rs verification requires manual crate-by-crate tracing — estimate effort during plan-phase before committing scope
+- [Research flag] Phase 113: COMPONENT_CATALOG resolution needs design decision evaluation (shared data file vs build script vs new crate) — evaluate options before scoping
 
 ## Session Continuity
 
 Last session: 2026-03-26
-Stopped at: Milestone v11.0 requirements definition
+Stopped at: Roadmap creation complete — all 7 phases defined, all 23 requirements mapped
 Resume file: None

@@ -76,35 +76,35 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACC-01 | — | Pending |
-| ACC-02 | — | Pending |
-| ACC-03 | — | Pending |
-| ACC-04 | — | Pending |
-| ACC-05 | — | Pending |
-| CLIMCP-01 | — | Pending |
-| CLIMCP-02 | — | Pending |
-| CLIMCP-03 | — | Pending |
-| DOC-01 | — | Pending |
-| DOC-02 | — | Pending |
-| DOC-03 | — | Pending |
-| PHIL-01 | — | Pending |
-| PHIL-02 | — | Pending |
-| PHIL-03 | — | Pending |
-| PHIL-04 | — | Pending |
-| COH-01 | — | Pending |
-| COH-02 | — | Pending |
-| COH-03 | — | Pending |
-| COH-04 | — | Pending |
-| META-01 | — | Pending |
-| META-02 | — | Pending |
-| META-03 | — | Pending |
-| META-04 | — | Pending |
+| ACC-01 | Phase 108 | Pending |
+| ACC-02 | Phase 108 | Pending |
+| ACC-03 | Phase 108 | Pending |
+| ACC-04 | Phase 108 | Pending |
+| ACC-05 | Phase 108 | Pending |
+| CLIMCP-01 | Phase 109 | Pending |
+| CLIMCP-02 | Phase 110 | Pending |
+| CLIMCP-03 | Phase 110 | Pending |
+| DOC-01 | Phase 111 | Pending |
+| DOC-02 | Phase 111 | Pending |
+| DOC-03 | Phase 111 | Pending |
+| PHIL-01 | Phase 112 | Pending |
+| PHIL-02 | Phase 112 | Pending |
+| PHIL-03 | Phase 112 | Pending |
+| PHIL-04 | Phase 112 | Pending |
+| COH-01 | Phase 113 | Pending |
+| COH-02 | Phase 113 | Pending |
+| COH-03 | Phase 113 | Pending |
+| COH-04 | Phase 113 | Pending |
+| META-01 | Phase 114 | Pending |
+| META-02 | Phase 114 | Pending |
+| META-03 | Phase 114 | Pending |
+| META-04 | Phase 114 | Pending |
 
 **Coverage:**
 - v11.0 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23 ⚠️
+- Mapped to phases: 23
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after initial definition*
+*Last updated: 2026-03-26 after roadmap creation*

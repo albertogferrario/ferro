@@ -28,242 +28,142 @@
 - ✅ **v8.1 API DX Polish** — Phase 83 (shipped 2026-02-28)
 - ✅ [**v9.0 Service Projections**](milestones/v9.0-ROADMAP.md) — Phases 84-94 (shipped 2026-03-01)
 - ✅ [**v10.0 JSON-UI Visual Overhaul**](milestones/v10.0-ROADMAP.md) — Phases 102-107 (shipped 2026-03-26)
+- 🚧 **v11.0 Framework Consolidation Audit** — Phases 108-114 (in progress)
 
 ---
 
-### ✅ v9.0 Service Projections (Complete)
+### 🚧 v11.0 Framework Consolidation Audit (In Progress)
 
-**Milestone Goal:** Introduce a three-layer architecture where services describe business capabilities and UI is generated from those descriptions: Model → ServiceDef → IntentGraph → Renderer → Output. Define a standardized protocol for interoperability.
+**Milestone Goal:** Comprehensive audit and fix of documentation accuracy, completeness, and agent-first philosophy consistency across all 14 crates — preparing Ferro for crates.io publication.
 
-#### Phase 84: Service Identity & Field Semantics ✅
+## Phases
 
-**Goal**: Create `ferro-projections` crate with `ServiceDef` and `FieldMeaning`.
-**Depends on**: Previous milestone complete
-**Completed**: 2026-02-28
-**Plans**: 2/2
+- [ ] **Phase 108: P0 Accuracy Fixes** - Eliminate actively wrong information that contaminates all downstream work
+- [ ] **Phase 109: CLI Reference Completeness** - Document all 13 missing CLI commands in reference/cli.md
+- [ ] **Phase 110: MCP Tool Accuracy** - Verify generation_hints and code_templates against current framework exports
+- [ ] **Phase 111: Documentation Coverage** - Create missing user docs for Service Projections and derive macros
+- [ ] **Phase 112: Agent-First Philosophy** - Rewrite introduction and add agent workflow guides
+- [ ] **Phase 113: Pattern Coherence** - Standardize code examples and resolve COMPONENT_CATALOG duplication
+- [ ] **Phase 114: Metadata & Publication Readiness** - Fix Cargo.toml gaps, missing_docs, and stub READMEs
 
-Plans:
-- [x] 84-01: ferro-projections crate with ServiceDef builder, FieldMeaning, DataType, infer_meaning
-- [x] 84-02: Comprehensive test suite (22 unit tests + 1 doctest)
+## Phase Details
 
-#### Phase 85: State Machines ✅
-
-**Goal**: Add state machine definitions — states, transitions, guards, side effects as schema.
-**Depends on**: Phase 84
-**Completed**: 2026-02-28
-**Plans**: 2/2
-
-Plans:
-- [x] 85-01: StateMachine, StateDef, Transition, Warning types with builder APIs, BFS validation, ServiceDef integration
-- [x] 85-02: Comprehensive test suite (49 unit tests + 2 doctests)
-
-#### Phase 85.1: Architecture Refinement (INSERTED) ✅
-
-**Goal**: Incorporate prior art insights. Add schemars JSON Schema derives. Refine Phase 86-93 descriptions shifting from "map SAP floorplans" to "derive intent from structure." Descope Phase 94 to protocol documentation only.
-**Depends on**: Phase 85
-**Completed**: 2026-02-28
-**Plans**: 2/2
+### Phase 108: P0 Accuracy Fixes
+**Goal**: Remove all actively wrong information from user-facing docs — stale import paths, TODO stubs presented as working code, and false claims about feature status
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: ACC-01, ACC-02, ACC-03, ACC-04, ACC-05
+**Success Criteria** (what must be TRUE):
+  1. All `ferro_rs::` occurrences in docs replaced with `ferro::` — grep finds zero matches in docs/src/
+  2. CLI reference examples contain no `// TODO: Implement` stubs — every example shown is runnable
+  3. README roadmap section accurately reflects shipped features — JSON-UI marked shipped, not "Work in Progress"
+  4. Storage documentation accurately describes S3 as shipped — "coming soon" note removed
+  5. All MCP tool count claims in docs reflect the actual 57 tools
+**Plans**: TBD
 
 Plans:
-- [x] 85.1-01: schemars JSON Schema derives on 7 public types + 4 schema tests
-- [x] 85.1-02: Refined Phase 86-93 descriptions with structural intent derivation principles
+- [ ] 108-01: Import path normalization (ferro_rs:: → ferro::, atomic grep-replace across docs/src/)
+- [ ] 108-02: README roadmap + storage docs + MCP tool count corrections + CLI stub removal
 
-#### Phase 86: Actions & Preconditions ✅
-
-**Goal**: Add Siren-inspired ActionDef with inputs reusing DataType/FieldMeaning. Add readable/writable to FieldDef for intent derivation.
-**Depends on**: Phase 85.1
-**Completed**: 2026-02-28
-**Plans**: 2/2
-
-Plans:
-- [x] 86-01: ActionDef, InputDef, GuardDef types with builder APIs + readable/writable on FieldDef (78 tests)
-- [x] 86-02: ServiceDef integration, cross-phase validate(), comprehensive test suite (97 tests total)
-
-#### Phase 87: Service Relationships ✅
-
-**Goal**: Declare service relationships with cardinality as structural signal for intent derivation.
-**Depends on**: Phase 84 (parallel with 85-86)
-**Completed**: 2026-02-28
-**Plans**: 1/1
+### Phase 109: CLI Reference Completeness
+**Goal**: Every CLI command that exists in ferro-cli has a reference entry in docs — no undiscoverable commands
+**Depends on**: Phase 108
+**Requirements**: CLIMCP-01
+**Success Criteria** (what must be TRUE):
+  1. `reference/cli.md` contains entries for all 13 previously undocumented commands (api:check, clean, generate-routes, make:api, make:api-key, make:lang, make:policy, make:projection, make:stripe, make:theme, make:whatsapp, projection:check, validate-contracts)
+  2. Each new entry follows the same format as existing entries (synopsis, flags, description, example)
+  3. The count of documented commands in reference/cli.md matches the count of command files in ferro-cli/src/commands/
+**Plans**: TBD
 
 Plans:
-- [x] 87-01: RelationshipDef, Cardinality, NavigationHint types with ServiceDef integration and validation (118 tests)
+- [ ] 109-01: Document all 13 missing CLI commands in reference/cli.md
 
-#### Phase 88: Intent Layer — Core Types ✅
-
-**Goal**: Define Intent enum from structural derivation analysis. 7 derivable intents + Custom escape hatch + IntentHint override.
-**Depends on**: Phase 84, Phase 86
-**Completed**: 2026-03-01
-**Plans**: 2/2
-
-Plans:
-- [x] 88-01: Intent, IntentScore, IntentHint types + ServiceDef integration + validation (143 tests)
-- [x] 88-02: Comprehensive test suite — serde, schema, builder, validation, integration (148 tests)
-
-#### Phase 89: Intent Graph Generation ✅
-
-**Goal**: Structural analysis engine — pattern matching on ServiceDef signals to ranked intents with confidence scores. Core innovation phase.
-**Depends on**: Phase 88
-**Completed**: 2026-03-01
-**Plans**: 3/3
+### Phase 110: MCP Tool Accuracy
+**Goal**: All 57 MCP tool responses carry accurate generation_hints that reflect current framework APIs, and code_templates.rs patterns compile against current framework exports
+**Depends on**: Phase 109
+**Requirements**: CLIMCP-02, CLIMCP-03
+**Success Criteria** (what must be TRUE):
+  1. generation_hints across all 57 MCP tools reference types and patterns that exist in framework/src/lib.rs
+  2. code_templates.rs code snippets compile if pasted into a ferro project (no references to removed or renamed APIs)
+  3. UpdateBuilder pattern in MCP templates matches current implementation (not legacy ActiveModel pattern)
+**Plans**: TBD
 
 Plans:
-- [x] 89-01: Derivation engine foundation — derive_intents() API, field meaning + writability analyzers, scoring pipeline
-- [x] 89-02: State machine, relationship, and action signal analyzers — full 5-analyzer pipeline
-- [x] 89-03: Validation test suite — 12 representative ServiceDefs, 100% primary intent accuracy, edge cases
+- [ ] 110-01: Audit and refresh generation_hints across all 57 MCP tool responses
+- [ ] 110-02: Verify code_templates.rs patterns against current framework/src/lib.rs exports
 
-#### Phase 90: Renderer Trait & JSON-UI Renderer ✅
-
-**Goal**: Define Renderer trait, implement first renderer mapping intents to JSON-UI components.
-**Depends on**: Phase 89
-**Completed**: 2026-03-01
-**Plans**: 3/3
-
-Plans:
-- [x] 90-01: Renderer trait, RenderContext/RenderMode types, field mapping (display+input+column), relationship mapping
-- [x] 90-02: JsonUiRenderer — Browse, Focus, Collect, Summarize intent layouts
-- [x] 90-03: JsonUiRenderer — Process, Analyze, Track intent layouts + full pipeline integration tests
-
-#### Phase 91: Framework Integration ✅
-
-**Goal**: Wire ferro-projections into the framework — re-exports, handler helpers, route generation.
-**Depends on**: Phase 90
-**Completed**: 2026-03-01
-**Plans**: 3/3
+### Phase 111: Documentation Coverage
+**Goal**: Every shipped framework feature that agents and users need to understand has a user-facing documentation page
+**Depends on**: Phase 110
+**Requirements**: DOC-01, DOC-02, DOC-03
+**Success Criteria** (what must be TRUE):
+  1. docs/src/features/projections.md exists, is linked in SUMMARY.md, and covers the ServiceDef → IntentGraph → Renderer pipeline with a worked example
+  2. FerroModel derive macro is documented in user docs with at least one complete usage example
+  3. ValidateRules derive macro is documented in user docs with at least one complete usage example
+**Plans**: TBD
 
 Plans:
-- [x] 91-01: Feature-gated re-exports of all 22 ferro-projections types + error conversion for `?` in handlers
-- [x] 91-02: `ferro make:projection` CLI command — scaffolds ServiceDef module with builder template
-- [x] 91-03: 3 MCP introspection tools — list_projections, inspect_projection, render_projection
+- [ ] 111-01: Create docs/src/features/projections.md (Service Projections user guide)
+- [ ] 111-02: Document FerroModel and ValidateRules derive macros in user docs
 
-#### Phase 92: MCP Introspection & CLI
-
-**Goal**: MCP tools for service discovery, CLI scaffolding.
-**Depends on**: Phase 91
-**Completed**: 2026-03-01
-**Plans**: 3/3
-
-Plans:
-- [x] 92-01: Model-aware projection scaffolding (--from-model flag, type/meaning mapping, FK relationships)
-- [x] 92-02: Projection validation CLI (projection:check) + MCP tool (validate_projection)
-- [x] 92-03: Service coverage MCP tool (projection_coverage with intent derivation)
-
-#### Phase 93: Field Test & Polish ✅
-
-**Goal**: Build representative services exercising full stack. Validate structural intent derivation accuracy (target: >70% correct without manual hints).
-**Depends on**: Phase 92
-**Completed**: 2026-03-01
-**Plans**: 2/2
+### Phase 112: Agent-First Philosophy
+**Goal**: Ferro's documentation leads with and consistently reinforces its agent-first identity — every feature page makes MCP tools discoverable
+**Depends on**: Phase 111
+**Requirements**: PHIL-01, PHIL-02, PHIL-03, PHIL-04
+**Success Criteria** (what must be TRUE):
+  1. introduction.md leads with agent-first value proposition — the phrase "agent-first" appears in the first paragraph and MCP is mentioned before any framework comparison
+  2. A "Working with Agents" guide exists in docs that documents the MCP workflow (application_info → list_routes → get_handler → use CLI)
+  3. Each feature documentation page lists the relevant MCP tools for that feature
+  4. The agent-to-CLI workflow is documented end-to-end (agent reads MCP hints → selects CLI command → scaffolds code)
+**Plans**: TBD
 
 Plans:
-- [x] 93-01: 8 representative projections in sample app covering all 7 intents (User, Todo, ApiKey, Order, Product, RevenueDashboard, SalesAnalytics, FeedbackForm)
-- [x] 93-02: Fixed MCP parser for action/guard/transition details + integration tests validating 100% intent accuracy
+- [ ] 112-01: Rewrite introduction.md with agent-first thesis
+- [ ] 112-02: Create "Working with Agents" guide + add MCP tool references to all feature pages
 
-#### Phase 94: Protocol Documentation ✅
-
-**Goal**: Define a standardized protocol specification for data/intent-oriented web services with auto-generated UIs. Formalize the ServiceDef → IntentGraph → Renderer chain as a documented, versioned protocol.
-**Depends on**: Phase 93
-**Completed**: 2026-03-01
-**Plans**: 5/5
-
-Plans:
-- [x] 94-01: Protocol infrastructure — mdBook setup, JSON Schema generation from Rust types (17 schemas + combined protocol.json)
-- [x] 94-02: Specification foundation — introduction, terminology (18 terms), architecture (three-layer pipeline)
-- [x] 94-03: Data model specification — all 22 public types across 7 pages (ServiceDef, FieldDef, DataType, FieldMeaning, StateMachine, Actions, Relationships, Intent)
-- [x] 94-04: Derivation, rendering & validation — 5 analyzers, Renderer trait, 4 errors + 9 warnings
-- [x] 94-05: Governance & appendix — extensions, conformance (3 levels), security (7 considerations), related work (9 cited), worked examples (7 intents)
-
-### Phase 95: Multi-tenant middleware
-
-**Goal:** Add TenantMiddleware with pluggable resolver chain (Subdomain, Header, Path, JWT), task-local TenantContext, TenantScope query helper for cross-tenant data isolation, and FromRequest handler extraction.
-**Requirements**: [MT-01, MT-02, MT-03, MT-04, MT-05, MT-06, MT-07, MT-08, MT-09, MT-10]
-**Depends on:** Phase 94
-**Plans:** 3/3 plans complete
+### Phase 113: Pattern Coherence
+**Goal**: All code examples in docs use consistent import style and idiomatic patterns, and the COMPONENT_CATALOG duplication has a documented resolution
+**Depends on**: Phase 112
+**Requirements**: COH-01, COH-02, COH-03, COH-04
+**Success Criteria** (what must be TRUE):
+  1. All code examples in docs use a single consistent import style — no mixed `use ferro::*` vs explicit multi-import
+  2. All handler examples in docs use `#[handler]` macro — no legacy handler signatures
+  3. All error propagation examples use `?` operator — no `.unwrap()` in doc examples
+  4. COMPONENT_CATALOG duplication between ferro-cli and ferro-mcp is either resolved (shared source) or documented with a clear design decision in PROJECT.md
+**Plans**: TBD
 
 Plans:
-- [ ] 95-01-PLAN.md — Core types: TenantContext, task-local context, TenantResolver trait, TenantLookup with moka cache
-- [ ] 95-02-PLAN.md — TenantMiddleware with resolver chain + 4 concrete resolver implementations
-- [ ] 95-03-PLAN.md — TenantScope query scoping, FromRequest extractor, lib.rs re-exports, documentation
+- [ ] 113-01: Standardize import style and handler patterns across all doc examples
+- [ ] 113-02: Fix error propagation examples + resolve or document COMPONENT_CATALOG duplication
 
-### Phase 96: Stripe integration
-
-**Goal:** Add `ferro-stripe` crate with two-tier billing (platform SaaS subscriptions + Stripe Connect), webhook handling via ferro-events, TenantContext enrichment with SubscriptionInfo, RequiresPlan middleware, CLI scaffolding, MCP tools, and documentation.
-**Requirements**: [STRIPE-01, STRIPE-02, STRIPE-03, STRIPE-04, STRIPE-05, STRIPE-06, STRIPE-07, STRIPE-08, STRIPE-09, STRIPE-10, STRIPE-11, STRIPE-12, STRIPE-13]
-**Depends on:** Phase 95
-**Plans:** 7/7 plans complete
-
-Plans:
-- [x] 96-01-PLAN.md — ferro-stripe crate foundation: types (SubscriptionInfo, SubscriptionStatus, Error), Stripe client facade, checkout/billing portal/Connect functions
-- [x] 96-02-PLAN.md — TenantContext enrichment with subscription data, cache invalidation, RequiresPlan middleware
-- [x] 96-03-PLAN.md — Webhook verification, event types (ferro-events integration), handler functions, subscription sync
-- [x] 96-04-PLAN.md — Test helpers: subscription factories, signed webhook payloads, event fixture generators
-- [x] 96-05-PLAN.md — CLI scaffolding (ferro make:stripe) and MCP introspection tools
-- [x] 96-06-PLAN.md — Publish workflow, documentation, full workspace validation
-- [ ] 96-07-PLAN.md — Gap closure: fix make:stripe webhook templates to use correct API (queue_dispatch, struct literal construction)
-
-### Phase 97: Tenant-aware background jobs
-
-**Goal:** Propagate tenant context into ferro-queue jobs so current_tenant() and TenantScope work inside job handlers. Jobs dispatched from tenant-scoped request handlers automatically carry tenant_id through Redis and restore full TenantContext in the worker before executing.
-**Requirements**: [TBJ-01, TBJ-02, TBJ-03, TBJ-04, TBJ-05, TBJ-06, TBJ-07, TBJ-08, TBJ-09, TBJ-10, TBJ-11]
-**Depends on:** Phase 96
-**Plans:** 3/3 plans complete
+### Phase 114: Metadata & Publication Readiness
+**Goal**: All crates are publication-ready with complete Cargo.toml metadata, crate-level doc comments, and expanded READMEs
+**Depends on**: Phase 113
+**Requirements**: META-01, META-02, META-03, META-04
+**Success Criteria** (what must be TRUE):
+  1. ferro-broadcast, ferro-theme, and ferro-projections Cargo.toml files have no missing metadata fields (readme, categories, homepage as applicable)
+  2. framework crate compiles with `#![warn(missing_docs)]` without new warnings introduced by this phase
+  3. ferro-json-ui, ferro-lang, and ferro-whatsapp READMEs contain meaningful content beyond 9 lines
+  4. ferro-json-ui and ferro-lang lib.rs files have crate-level `//!` doc comment blocks
+**Plans**: TBD
 
 Plans:
-- [ ] 97-01-PLAN.md — ferro-queue types: JobPayload tenant_id, TenantScopeProvider trait, Error::TenantNotFound, OnceLock capture hook, PendingDispatch::for_tenant()
-- [ ] 97-02-PLAN.md — Worker tenant scope: with_tenant_scope() builder, process_job scope wrapping, Clone fix, tracing span
-- [ ] 97-03-PLAN.md — Framework wiring: FrameworkTenantScopeProvider, hook registration, lib.rs re-exports, documentation
+- [ ] 114-01: Fix Cargo.toml metadata gaps + add #![warn(missing_docs)] to framework crate
+- [ ] 114-02: Expand stub READMEs + add //! crate-level doc comments to ferro-json-ui and ferro-lang
 
-### Phase 98: ferro-json-ui stable release
+## Progress
 
-**Goal:** Stabilize ferro-json-ui from experimental to production-ready: add 6 dashboard-driven components (StatCard, Checklist, Toast, NotificationDropdown, Sidebar, Header), DashboardLayout with persistent shell, built-in JS runtime for SSE/toast/live-value, schemars JSON Schema generation, API visibility audit, 60+ tests, and comprehensive documentation.
-**Requirements**: [COMP-01, COMP-02, COMP-03, DASH-01, DASH-02, DASH-03, JS-01, JS-02, JS-03, API-01, API-02, API-03, API-04, TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, DOCS-01, DOCS-02, DOCS-03]
-**Depends on:** Phase 97
-**Plans:** 5/5 plans complete
+**Execution Order:**
+Phases execute in numeric order: 108 → 109 → 110 → 111 → 112 → 113 → 114
 
-Plans:
-- [ ] 98-01-PLAN.md — 6 new component types + render implementations + convenience constructors for all 26 variants
-- [ ] 98-02-PLAN.md — DashboardLayout with persistent sidebar/header shell + built-in JS runtime (~5-10KB)
-- [ ] 98-03-PLAN.md — API visibility audit (pub(crate) internals) + schemars JSON Schema + framework re-export update
-- [ ] 98-04-PLAN.md — Comprehensive test suite: serde round-trips, render tests, schema tests, plugin pipeline (60+ total)
-- [ ] 98-05-PLAN.md — Documentation: component catalog (26 types), plugin guide, DashboardLayout docs, clean rustdoc
-
-### Phase 99: Semantic theme system with intent-driven templates
-
-**Goal:** Make JSON-UI visually customizable through semantic CSS tokens and intent-to-layout mappings configurable through declarative templates. New `ferro-theme` crate defines token vocabulary (~23 slots) and intent template schema. ThemeMiddleware enables per-request theme selection for multi-tenant white-labeling. All ~224 hardcoded Tailwind classes in render.rs/layout.rs migrated to semantic token references. JsonUiRenderer updated to consume intent template overrides.
-**Requirements**: [THEME-01, THEME-02, THEME-03, THEME-04, THEME-05, THEME-06, THEME-07, THEME-08, THEME-09, THEME-10, THEME-11, THEME-12]
-**Depends on:** Phase 98
-**Plans:** 5/5 plans complete
-
-Plans:
-- [x] 99-01-PLAN.md — ferro-theme crate: Theme struct, ThemeError, token vocabulary, IntentTemplate schema, default embedded CSS, filesystem loader
-- [x] 99-02-PLAN.md — Framework ThemeMiddleware with resolver chain, task-local current_theme(), feature-gated re-exports
-- [x] 99-03-PLAN.md — render.rs + layout.rs semantic token migration (~224 hardcoded Tailwind classes replaced)
-- [ ] 99-04-PLAN.md — JsonUiRenderer intent template consumption from ThemeTemplates
-- [ ] 99-05-PLAN.md — CLI make:theme command, publish workflow update, theme documentation
-
-### Phase 100: AI Structured Classification & Confirmation Primitives
-
-**Goal:** Add framework-level primitives for AI-powered structured intent classification (Claude structured JSON output) and a confirmation state machine for gating destructive actions behind explicit user confirmation with TTL expiry.
-**Requirements**: [AI-01, AI-02, AI-03, CONF-01, CONF-02, CONF-03]
-**Depends on:** Phase 99
-**Plans:** 3/3 plans complete
-
-Plans:
-- [ ] 100-01-PLAN.md — ferro-ai crate foundation + AI classification: ClassificationProvider trait, AnthropicProvider, Classifier<T> facade, ClassifierConfig, retry logic
-- [ ] 100-02-PLAN.md — Confirmation state machine: ConfirmationStore trait, InMemoryConfirmationStore (DashMap), TTL expiry via tokio::spawn, ConfirmationExpired ferro-events integration
-- [ ] 100-03-PLAN.md — Framework integration: feature-gated re-exports, MCP tools (test_classifier, list_pending_confirmations), publish workflow, documentation
-
-### Phase 101: ferro-whatsapp Plugin
-
-**Goal:** Create `ferro-whatsapp` plugin crate providing WhatsApp Business Cloud API integration: outbound message sender, inbound webhook dispatcher with HMAC verification, wamid-level message deduplication, and sender-identity routing (owner vs customer message classification).
-**Requirements**: [WA-01, WA-02, WA-03, WA-04, WA-05]
-**Depends on:** Phase 100
-**Plans:** 3/3 plans complete
-
-Plans:
-- [ ] 101-01-PLAN.md — ferro-whatsapp crate foundation: core types (Error, Config, Message, SenderIdentity, DeliveryStatus), OnceLock facade, outbound sender via Meta Cloud API v23.0
-- [ ] 101-02-PLAN.md — Webhook HMAC verification (X-Hub-Signature-256), DeduplicationStore trait + InMemoryDeduplicationStore, event structs (WhatsAppTextReceived, WhatsAppStatusUpdate), ProcessWhatsAppWebhook job with sender-identity routing
-- [ ] 101-03-PLAN.md — Framework re-exports, CLI scaffolding (ferro make:whatsapp), MCP introspection tools, publish workflow, documentation
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 108. P0 Accuracy Fixes | 0/2 | Not started | - |
+| 109. CLI Reference Completeness | 0/1 | Not started | - |
+| 110. MCP Tool Accuracy | 0/2 | Not started | - |
+| 111. Documentation Coverage | 0/2 | Not started | - |
+| 112. Agent-First Philosophy | 0/2 | Not started | - |
+| 113. Pattern Coherence | 0/2 | Not started | - |
+| 114. Metadata & Publication Readiness | 0/2 | Not started | - |
 
 ---
 
@@ -745,5 +645,6 @@ Plans:
 | v8.1 API DX Polish | 83 | 5 | ✅ Complete | 2026-02-28 |
 | v9.0 Service Projections | 84-94 | 30 | ✅ Complete | 2026-03-01 |
 | v10.0 JSON-UI Visual Overhaul | 102-107 | 8 | ✅ Complete | 2026-03-26 |
+| v11.0 Framework Consolidation Audit | 108-114 | 13 | 🚧 In progress | - |
 
-**Total: 23 milestones shipped, 205 plans.**
+**Total: 23 milestones shipped, 205 plans complete. 13 plans in progress.**
