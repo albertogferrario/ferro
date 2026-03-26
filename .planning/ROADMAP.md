@@ -78,18 +78,18 @@ Plans:
 - [ ] 109-01-PLAN.md — Document all 13 missing CLI commands in reference/cli.md (body sections + Command Summary table)
 
 ### Phase 110: MCP Tool Accuracy
-**Goal**: All 57 MCP tool responses carry accurate generation_hints that reflect current framework APIs, and code_templates.rs patterns compile against current framework exports
+**Goal**: All 65 MCP tool responses carry accurate generation_hints that reflect current framework APIs, and code_templates.rs patterns compile against current framework exports
 **Depends on**: Phase 109
 **Requirements**: CLIMCP-02, CLIMCP-03
 **Success Criteria** (what must be TRUE):
-  1. generation_hints across all 57 MCP tools reference types and patterns that exist in framework/src/lib.rs
+  1. generation_hints across all 65 MCP tools reference types and patterns that exist in framework/src/lib.rs
   2. code_templates.rs code snippets compile if pasted into a ferro project (no references to removed or renamed APIs)
   3. UpdateBuilder pattern in MCP templates matches current implementation (not legacy ActiveModel pattern)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 110-01: Audit and refresh generation_hints across all 57 MCP tool responses
-- [ ] 110-02: Verify code_templates.rs patterns against current framework/src/lib.rs exports
+- [ ] 110-01-PLAN.md — Fix ferro::prelude::*, validation imports, and StatusCode patterns in code_templates.rs and generation_context.rs
+- [ ] 110-02-PLAN.md — Audit and fix "Combine with" cross-references and API accuracy across all 65 tool descriptions in service.rs
 
 ### Phase 111: Documentation Coverage
 **Goal**: Every shipped framework feature that agents and users need to understand has a user-facing documentation page
