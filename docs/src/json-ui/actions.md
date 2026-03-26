@@ -16,7 +16,7 @@ Every interactive element in JSON-UI uses an `Action` to declare what happens wh
 The `Action` struct provides builder methods for common HTTP methods:
 
 ```rust
-use ferro_rs::Action;
+use ferro::Action;
 
 // Form submission (POST, the default)
 Action::new("users.store")
@@ -31,7 +31,7 @@ Action::delete("users.destroy")
 To override the HTTP method explicitly:
 
 ```rust
-use ferro_rs::{Action, HttpMethod};
+use ferro::{Action, HttpMethod};
 
 Action::new("users.update").method(HttpMethod::Put)
 ```
@@ -65,7 +65,7 @@ Action::delete("users.destroy")
 Actions can show a confirmation dialog before executing. Two variants are available:
 
 ```rust
-use ferro_rs::Action;
+use ferro::Action;
 
 // Standard confirmation
 Action::new("users.store")
@@ -109,7 +109,7 @@ The `on_success` field controls what happens after the action completes. Four ou
 | `Notify { message, variant }` | Show a notification toast |
 
 ```rust
-use ferro_rs::{Action, ActionOutcome, NotifyVariant};
+use ferro::{Action, ActionOutcome, NotifyVariant};
 
 // Redirect after successful creation
 Action::new("users.store")
@@ -167,7 +167,7 @@ Actions attach to components in three places:
 Any component can have an action via the `action` field on `ComponentNode`. This makes the entire component interactive:
 
 ```rust
-use ferro_rs::{
+use ferro::{
     ComponentNode, Component, ButtonProps, ButtonVariant, Size, Action,
 };
 
@@ -191,7 +191,7 @@ ComponentNode {
 Forms have a dedicated `action` field on `FormProps` that defines the submission endpoint:
 
 ```rust
-use ferro_rs::{Component, FormProps, Action};
+use ferro::{Component, FormProps, Action};
 
 Component::Form(FormProps {
     action: Action::new("users.store"),
@@ -205,7 +205,7 @@ Component::Form(FormProps {
 Tables support per-row actions via `row_actions` on `TableProps`:
 
 ```rust
-use ferro_rs::Action;
+use ferro::Action;
 
 let row_actions = vec![
     Action::get("users.show"),
@@ -221,7 +221,7 @@ The framework resolves action handler names to URLs automatically during renderi
 If a handler cannot be resolved, its `url` remains `None`. The original view is never mutated.
 
 ```rust
-use ferro_rs::{JsonUi, JsonUiView};
+use ferro::{JsonUi, JsonUiView};
 
 // Actions are resolved automatically during render
 let view = JsonUiView::new()

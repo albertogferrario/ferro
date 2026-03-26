@@ -17,7 +17,7 @@ The multi-tenancy system has three components:
 Add `TenantMiddleware` to your application in `bootstrap.rs`:
 
 ```rust
-use ferro_rs::{
+use ferro::{
     global_middleware, TenantMiddleware, SubdomainResolver, DbTenantLookup,
     TenantFailureMode,
 };
@@ -141,7 +141,7 @@ TenantMiddleware::new()
 `TenantContext` implements `FromRequest` and can be used as a handler parameter directly:
 
 ```rust
-use ferro_rs::{handler, TenantContext, Response, json};
+use ferro::{handler, TenantContext, Response, json};
 
 #[handler]
 pub async fn dashboard(tenant: TenantContext) -> Response {
@@ -157,7 +157,7 @@ The handler will receive a 400 error if no tenant context is available (i.e., th
 You can also read the tenant anywhere in a call chain using `current_tenant()`:
 
 ```rust
-use ferro_rs::current_tenant;
+use ferro::current_tenant;
 
 pub async fn some_service() -> Option<String> {
     current_tenant().map(|t| t.slug)
@@ -171,7 +171,7 @@ pub async fn some_service() -> Option<String> {
 Use `TenantScope` to filter queries by the current tenant's ID. This prevents data from leaking between tenants.
 
 ```rust
-use ferro_rs::{TenantScope, ScopedQuery};
+use ferro::{TenantScope, ScopedQuery};
 
 // Fetch all posts belonging to the current tenant
 let posts = post::Entity::scoped(TenantScope(post::Column::TenantId))
@@ -214,7 +214,7 @@ With `Allow`, `current_tenant()` returns `None` for unresolved requests. Handler
 `DbTenantLookup` covers the most common case: a `tenants` table with `slug` and `id` columns. For custom schemas, implement `TenantLookup` directly:
 
 ```rust
-use ferro_rs::{TenantLookup, TenantContext};
+use ferro::{TenantLookup, TenantContext};
 use async_trait::async_trait;
 
 pub struct MyCustomLookup;
@@ -239,7 +239,7 @@ Jobs dispatched from tenant-scoped handlers automatically carry the current tena
 Register the capture hook and configure the worker with a tenant scope provider during bootstrap:
 
 ```rust
-use ferro_rs::{
+use ferro::{
     Worker, WorkerConfig, Queue, register_tenant_capture_hook,
     current_tenant,
     tenant::{DbTenantLookup, FrameworkTenantScopeProvider},
@@ -267,7 +267,7 @@ let worker = Worker::new(Queue::connection(), WorkerConfig::default())
 Job handlers can call `current_tenant()` directly, without any extra setup:
 
 ```rust
-use ferro_rs::{Job, Error, current_tenant};
+use ferro::{Job, Error, current_tenant};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct SendWelcomeEmail;
@@ -287,7 +287,7 @@ impl Job for SendWelcomeEmail {
 In admin or system contexts where no ambient tenant scope exists (CLI commands, webhooks, scheduled tasks), use `.for_tenant(id)` to explicitly attach a tenant ID to the job:
 
 ```rust
-use ferro_rs::queue_dispatch;
+use ferro::queue_dispatch;
 
 // Runs the job in the scope of tenant 42, regardless of current context.
 queue_dispatch(SendWelcomeEmail)

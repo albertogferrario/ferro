@@ -7,7 +7,7 @@ Pre-fill form fields from handler data and conditionally show or hide components
 JSON-UI views receive data from the handler at render time. This data drives form pre-filling and visibility conditions.
 
 ```rust
-use ferro_rs::{JsonUi, JsonUiView};
+use ferro::{JsonUi, JsonUiView};
 
 let view = JsonUiView::new()
     .title("Edit User")
@@ -51,7 +51,7 @@ Data paths are slash-separated strings that resolve against the handler's JSON d
 Form field components (`Input`, `Select`, `Checkbox`, `Switch`) support the `data_path` field. At render time, the path is resolved against the handler data and the result pre-fills the field.
 
 ```rust
-use ferro_rs::{Component, InputProps, InputType};
+use ferro::{Component, InputProps, InputType};
 
 Component::Input(InputProps {
     field: "name".to_string(),
@@ -120,7 +120,7 @@ Components can be conditionally shown or hidden based on data conditions. Attach
 A `VisibilityCondition` checks a data path against an operator and optional value:
 
 ```rust
-use ferro_rs::{JsonUiVisibility, VisibilityCondition, VisibilityOperator};
+use ferro::{JsonUiVisibility, VisibilityCondition, VisibilityOperator};
 
 // Show component only when users array is not empty
 JsonUiVisibility::Condition(VisibilityCondition {
@@ -184,7 +184,7 @@ Visibility rules support logical composition with `And`, `Or`, and `Not` operato
 All conditions must be true:
 
 ```rust
-use ferro_rs::{JsonUiVisibility, VisibilityCondition, VisibilityOperator};
+use ferro::{JsonUiVisibility, VisibilityCondition, VisibilityOperator};
 
 JsonUiVisibility::And {
     and: vec![
@@ -239,7 +239,7 @@ Compound rules can be nested arbitrarily. The `Visibility` enum uses serde's unt
 ### Attaching to Components
 
 ```rust
-use ferro_rs::{ComponentNode, Component, TextProps, TextElement, JsonUiVisibility, VisibilityCondition, VisibilityOperator};
+use ferro::{ComponentNode, Component, TextProps, TextElement, JsonUiVisibility, VisibilityCondition, VisibilityOperator};
 
 ComponentNode {
     key: "admin-notice".to_string(),
@@ -266,7 +266,7 @@ Use `JsonUi::render_with_errors()` to populate error messages on form fields:
 
 ```rust
 use std::collections::HashMap;
-use ferro_rs::{JsonUi, JsonUiView};
+use ferro::{JsonUi, JsonUiView};
 
 let mut errors = HashMap::new();
 errors.insert("email".to_string(), vec!["Email is required".to_string()]);
@@ -278,8 +278,8 @@ JsonUi::render_with_errors(&view, &data, &errors)
 Or use the `ValidationError` type directly:
 
 ```rust
-use ferro_rs::{JsonUi, JsonUiView};
-use ferro_rs::validation::ValidationError;
+use ferro::{JsonUi, JsonUiView};
+use ferro::validation::ValidationError;
 
 let validation_error: ValidationError = /* from validator */;
 JsonUi::render_validation_error(&view, &data, &validation_error)
