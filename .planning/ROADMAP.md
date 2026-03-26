@@ -39,7 +39,7 @@
 ## Phases
 
 - [x] **Phase 108: P0 Accuracy Fixes** - Eliminate actively wrong information that contaminates all downstream work (completed 2026-03-26)
-- [ ] **Phase 109: CLI Reference Completeness** - Document all 13 missing CLI commands in reference/cli.md
+- [x] **Phase 109: CLI Reference Completeness** - Document all 13 missing CLI commands in reference/cli.md (completed 2026-03-26)
 - [ ] **Phase 110: MCP Tool Accuracy** - Verify generation_hints and code_templates against current framework exports
 - [ ] **Phase 111: Documentation Coverage** - Create missing user docs for Service Projections and derive macros
 - [ ] **Phase 112: Agent-First Philosophy** - Rewrite introduction and add agent workflow guides
@@ -158,7 +158,7 @@ Phases execute in numeric order: 108 → 109 → 110 → 111 → 112 → 113 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 108. P0 Accuracy Fixes | 2/2 | Complete    | 2026-03-26 |
-| 109. CLI Reference Completeness | 0/1 | Not started | - |
+| 109. CLI Reference Completeness | 1/1 | Complete   | 2026-03-26 |
 | 110. MCP Tool Accuracy | 0/2 | Not started | - |
 | 111. Documentation Coverage | 0/2 | Not started | - |
 | 112. Agent-First Philosophy | 0/2 | Not started | - |
