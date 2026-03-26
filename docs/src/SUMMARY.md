@@ -6,6 +6,7 @@
 
 - [Installation](getting-started/installation.md)
 - [Quick Start](getting-started/quickstart.md)
+- [Working with Agents](getting-started/working-with-agents.md)
 - [Directory Structure](getting-started/directory-structure.md)
 
 # The Basics
