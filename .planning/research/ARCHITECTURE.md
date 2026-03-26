@@ -1,361 +1,353 @@
 # Architecture Research
 
-**Domain:** Server-side HTML renderer with CSS design tokens
-**Researched:** 2026-03-24
+**Domain:** Documentation/philosophy audit for a 14-crate Rust workspace
+**Researched:** 2026-03-26
 **Confidence:** HIGH (all findings from direct codebase inspection)
 
 ## Standard Architecture
 
 ### System Overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    HTTP Request Layer                         │
-│  JsonUi::render() → JsonUi::build_response()                 │
-├─────────────────────────────────────────────────────────────┤
-│                    Theme Injection (framework)                │
-│  current_theme() → theme.css → <style type="text/tailwindcss">│
-├─────────────────────────────────────────────────────────────┤
-│                    Render Pipeline (ferro-json-ui)            │
-│  ┌──────────────┐  ┌────────────┐  ┌──────────────────────┐  │
-│  │  render.rs   │  │  layout.rs │  │     runtime.rs        │  │
-│  │ component→   │  │ base_doc + │  │ FERRO_RUNTIME_JS      │  │
-│  │ HTML string  │  │ DashLayout │  │ tabs/toast/sidebar JS │  │
-│  └──────┬───────┘  └─────┬──────┘  └──────────────────────┘  │
-│         │                │                                    │
-├─────────┴────────────────┴────────────────────────────────────┤
-│                    Token Layer (ferro-theme)                   │
-│  default.css: @theme { --radius-md, --shadow-sm, ... }        │
-│  token.rs: const names (NOT consumed by render.rs today)      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Current State |
-|-----------|----------------|---------------|
-| `ferro-json-ui/src/render.rs` | Component→HTML with Tailwind classes | Hardcodes `rounded-md`, `shadow-sm`, etc. — does not use CSS custom properties |
-| `ferro-json-ui/src/layout.rs` | Page shell (base_document, DashboardLayout, AuthLayout) | Font link has no home; `base_document()` is the natural injection point |
-| `ferro-json-ui/src/runtime.rs` | Inline JS for tabs, toasts, sidebar toggle | Hardcodes `bg-blue-500`, `border-blue-600` — no semantic token awareness |
-| `ferro-json-ui/src/config.rs` | `JsonUiConfig` (tailwind_cdn flag, body_class, custom_head) | `custom_head` can carry font `<link>` tags but no first-class font field |
-| `ferro-theme/src/token.rs` | Constant names for 23 semantic token slots | Defined but not consumed by render.rs |
-| `ferro-theme/assets/default.css` | `@theme` CSS with light+dark values | Has `--radius-md`, `--shadow-sm`, `--font-family-sans` defined |
-| `framework/src/json_ui/mod.rs` | Bridge: resolves actions, injects theme CSS into head | Injects `theme.css` as `<style type="text/tailwindcss">` — Tailwind CDN processes it |
-| `framework/src/theme/context.rs` | task-local `current_theme()` | Works correctly; available to render pipeline |
-
-## Recommended Project Structure
-
-No new crates or modules are needed. All changes are within existing files:
+The audit operates across four interconnected artifact layers. Inconsistencies live at the boundaries between them.
 
 ```
-ferro-json-ui/src/
-├── render.rs           # PRIMARY TARGET: replace hardcoded classes with token-aware classes
-├── layout.rs           # SECONDARY: base_document gets font <link>; surface bg fixes
-├── runtime.rs          # TERTIARY: replace hardcoded color names in JS toast/tab code
-└── config.rs           # OPTIONAL: add font_url field to JsonUiConfig
-
-ferro-theme/assets/
-└── default.css         # Add Inter font @import + refined token values
+┌──────────────────────────────────────────────────────────────────┐
+│                     docs/src/  (mdBook pages)                     │
+│  introduction.md  the-basics/  features/  json-ui/  reference/   │
+│  40 Markdown files describing how the framework is supposed to    │
+│  work — the authoritative user-facing contract                    │
+├──────────────────────────────────────────────────────────────────┤
+│               framework/src/lib.rs  (re-export surface)           │
+│  Single pub API surface. Everything an app imports comes from     │
+│  here. Docs reference types, macros, and traits by their public   │
+│  names — a rename here invalidates every doc page that shows it.  │
+├──────────────────────────────────────────────────────────────────┤
+│  14 Crates  (individual crate lib.rs + src/ implementations)      │
+│  framework | ferro-cli | ferro-macros | ferro-events              │
+│  ferro-queue | ferro-notifications | ferro-broadcast              │
+│  ferro-storage | ferro-cache | ferro-mcp | ferro-inertia          │
+│  ferro-json-ui | ferro-lang | ferro-api-mcp | ferro-projections   │
+│  ferro-stripe | ferro-theme | ferro-ai | ferro-whatsapp           │
+│  ferro-planning (internal tooling, not user-facing)               │
+├──────────────────────────────────────────────────────────────────┤
+│     ferro-mcp/src/tools/  (54 introspection tools)                │
+│  Tools return code templates, explain routes/models, suggest      │
+│  patterns. An agent reads these BEFORE reading docs — they are    │
+│  the primary delivery channel for the agent-first philosophy.     │
+├──────────────────────────────────────────────────────────────────┤
+│     ferro-cli/src/  (50+ commands, templates/, commands/)         │
+│  Generated code is what agents and humans run. Template           │
+│  correctness is a doc promise. Wrong template = broken quickstart.│
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### Structure Rationale
+### Four Artifact Layers
 
-- **render.rs:** All 30 component renderers are here — it is the single file to change for visual quality. No new abstraction layer is needed.
-- **layout.rs:** `base_document()` is where font loading belongs. It is called by all three built-in layouts.
-- **runtime.rs:** The JS toast code has hardcoded `bg-blue-500` etc. These need to match the semantic token colors.
+| Layer | Files | Owner | Inconsistency Risk |
+|-------|-------|-------|-------------------|
+| Docs | `docs/src/**/*.md` (40 files) | Human-readable contract | Highest — written prose drifts after code changes |
+| Public API | `framework/src/lib.rs` + each crate's `lib.rs` | Machine-checked by compiler | Medium — type/trait renames surface here |
+| MCP tools | `ferro-mcp/src/tools/*.rs` (54 tools) | Agent-first delivery | High — tool descriptions and code templates age independently |
+| CLI templates | `ferro-cli/src/templates/*.rs` + `ferro-cli/src/commands/*.rs` | Generated code | High — templates reference patterns that have evolved |
 
-## Architectural Patterns
+## Where Inconsistencies Hide in Multi-Crate Workspaces
 
-### Pattern 1: CSS Custom Property References in Tailwind v4
+This is the core question for the audit. Based on codebase inspection, inconsistencies cluster in five structural locations.
 
-**What:** Tailwind v4 supports `rounded-[--radius-md]` syntax (CSS arbitrary-value referencing a custom property). When a `@theme` block defines `--radius-md: 0.375rem`, Tailwind v4 generates the `.rounded-\[--radius-md\]` class at the CDN processing step.
+### Location 1: Docs Reference Old Import Paths
 
-**When to use:** Every place render.rs currently hardcodes a shape, shadow, or font class.
+**What breaks:** A crate gets renamed or a re-export moves. The compiler catches call sites in Rust code, but Markdown code blocks are not compiled. The doc page still shows the old import.
 
-**Confidence:** HIGH — Tailwind v4 arbitrary-value syntax is documented, and the project already uses `@tailwindcss/browser@4` CDN. The theme CSS is injected as `<style type="text/tailwindcss">` before rendering, so the CDN processes all `@theme` directives before the page displays.
+**Specific risk in ferro:** `use ferro_rs::*` vs `use ferro::*` — the introduction page and several feature docs may show the pre-rebrand crate name. The whatsapp.md page explicitly shows `ferro-rs = { version = "0.1", features = ["whatsapp"] }` in the Cargo.toml example, which is the old crate name.
 
-**Trade-offs:**
-- Pro: render.rs becomes theme-overridable without changing Rust code
-- Pro: No new Rust API — just different class strings
-- Con: Class strings like `rounded-[--radius-md]` are less readable than `rounded-md`
-- Con: Themes must always define the custom properties (they already must — token.rs enforces this)
+**Detection pattern:** `grep -r "ferro_rs" docs/` and `grep -r "ferro-rs" docs/` catch old references.
 
-**Example (before):**
-```rust
-"<div class=\"rounded-lg border border-border bg-background shadow-sm\">"
+### Location 2: Docs Describe Features That Do Not Exist Yet
+
+**What breaks:** A doc page was written speculatively or as part of planning, but the implementation was deferred. The page appears in SUMMARY.md and is publicly accessible.
+
+**Specific risk in ferro:**
+- `docs/src/features/multi-tenancy.md` — references `ferro_rs::` prefix (old name) and covers `register_tenant_capture_hook`, `FrameworkTenantScopeProvider`, `.for_tenant()` — these need verification against the actual framework codebase
+- `docs/src/features/stripe.md` — `ferro-stripe` crate exists in the workspace but `ferro_stripe::testing::*` test helpers need verification
+- `docs/src/features/whatsapp.md` — `ferro-whatsapp` crate exists but WhatsApp integration scope needs verification against `ferro-mcp/src/tools/whatsapp.rs`
+- `docs/src/features/themes.md` — references `ThemeMiddleware`, `TenantThemeResolver`, `HeaderThemeResolver`, `DefaultResolver` — need to verify these types are exported from `framework/src/lib.rs`
+- `docs/src/features/ai.md` — `ferro-ai` crate exists; classification/confirmation primitives need verification
+
+**Detection pattern:** Cross-reference each type and function named in docs against `framework/src/lib.rs` exports and the relevant crate's `lib.rs`.
+
+### Location 3: MCP Tool Descriptions Diverge from Actual API
+
+**What breaks:** A tool's description text says "returns X" but the underlying implementation returns Y, or the tool's code template uses a pattern that the framework no longer supports.
+
+**Specific risk in ferro:** The `code_templates.rs` tool returns code snippets agents copy verbatim. If these templates use deprecated patterns (e.g., direct `ActiveModel` construction instead of the `UpdateBuilder` pattern introduced in v2.2, or missing `#[handler]` macro usage), agents generate broken code.
+
+**Key tool files to audit:**
+- `ferro-mcp/src/tools/code_templates.rs` — the highest-impact tool; everything agents generate starts here
+- `ferro-mcp/src/tools/application_info.rs` — describes the project; must reflect current crate count and philosophy
+- `ferro-mcp/src/tools/generation_context.rs` — the "what to know before generating code" context; must be current
+
+### Location 4: CLI Templates Use Outdated Patterns
+
+**What breaks:** `ferro make:controller` generates a controller that uses a pattern the framework has since improved. Users running the CLI get code that works but contradicts current best practices.
+
+**Specific risks in ferro:**
+- `ferro-cli/src/templates/make.rs` — controller templates should use `#[handler]` macro; migration from pre-v1.0 patterns may linger
+- `ferro-cli/src/templates/scaffold.rs` — scaffold templates may reference pre-v2.2 `ActiveModel` update patterns instead of `UpdateBuilder`
+- `ferro-cli/src/templates/entity.rs` — entity templates must include `FerroModel` derive (confirmed present in tests, but verify the template string matches current macro API)
+- The test suite in `ferro-cli/src/templates/mod.rs` verifies structure but not semantic correctness — it asserts `contains("#[handler]")` but not whether the generated code compiles
+
+### Location 5: Philosophy Drift — Agent-First Claims vs Actual API Design
+
+**What breaks:** The framework claims "agent-first" but specific APIs require knowledge that agents cannot infer from introspection alone. The MCP tools don't expose enough context to understand what a poorly-named type does.
+
+**Specific risks in ferro:**
+- `SavedInertiaContext` — an unusual pattern where you must save context before consuming the request. Documented in CLAUDE.md and `ferro-inertia`, but does the `application_info` or `generation_context` MCP tool surface this footgun?
+- `Option<Option<T>>` for nullable update fields — the decision log shows this pattern; do code templates demonstrate it?
+- `#[derive(ValidateRules)]` vs `#[derive(Validate)]` naming — the name was chosen to avoid a conflict with the `validator` crate. Do docs explain why, so agents don't "fix" it to `Validate`?
+- `json_ui_generate` tool — documented in PROJECT.md as "consuming agent IS the LLM, avoids double-LLM calls"; does the tool description in `json_ui_generate.rs` explain this to agents reading it?
+
+## Recommended Audit Order
+
+The order should respect dependency direction: fix foundational problems before surface problems. A wrong import path in docs is irrelevant if the feature doesn't exist.
+
+### Phase Order Rationale
+
+```
+Phase 1: Foundation Audit (public API surface)
+    ↓
+Phase 2: MCP Tool Accuracy (primary agent interface)
+    ↓
+Phase 3: CLI Template Correctness (generated code quality)
+    ↓
+Phase 4: Documentation Accuracy (user-facing prose)
+    ↓
+Phase 5: Philosophy Coherence (agent-first consistency)
 ```
 
-**Example (after):**
-```rust
-"<div class=\"rounded-[--radius-lg] border border-border bg-card shadow-[--shadow-sm]\">"
+**Why this order:**
+- Phase 1 first: If `framework/src/lib.rs` exports are wrong or missing, every other layer (docs, MCP, CLI) is describing something agents cannot access.
+- Phase 2 before docs: Agents read MCP tools before reading docs. MCP correctness has higher urgency than prose quality.
+- Phase 3 before prose: Template bugs produce broken code immediately. A prose error delays an agent; a template error breaks its build.
+- Phase 4 last among fixes: Prose is the most numerous artifact (40 files). Fix the code-based issues first so doc fixes can cite correct APIs.
+- Phase 5 final: Philosophy coherence is an overlay on all layers — you can only evaluate it holistically after each layer is accurate.
+
+### Crate Audit Order (within each phase)
+
+Within each phase, audit crates in this order based on integration surface and risk:
+
+```
+1. framework         — core API, highest surface area, all other layers depend on it
+2. ferro-macros      — proc macros are invisible in docs but critical for compilation
+3. ferro-mcp         — primary agent-first delivery channel
+4. ferro-cli         — generated code quality
+5. ferro-inertia     — complex SavedInertiaContext footgun
+6. ferro-json-ui     — large (426+ tests, 30 components), recently changed (v10.0)
+7. ferro-theme       — new system, low code count, documentation likely thin
+8. ferro-lang        — recent addition (v6.0), localization patterns
+9. ferro-events      — established, lower risk
+10. ferro-queue      — established, lower risk
+11. ferro-notifications — established, lower risk
+12. ferro-broadcast  — established, lower risk
+13. ferro-cache      — established, lower risk
+14. ferro-storage    — established, lower risk
+15. ferro-projections — v9.0 feature, documentation freshness uncertain
+16. ferro-api-mcp    — v8.0 feature, consumer bridge for external agents
+17. ferro-stripe     — optional feature, high doc complexity
+18. ferro-whatsapp   — optional feature, likely thin
+19. ferro-ai         — newest, documentation freshness uncertain
 ```
 
-**Note on `rounded-md` vs `rounded-[--radius-md]`:** Tailwind v4's `@theme` directive makes `--radius-md` available as `rounded-md` only if the theme names it to map to Tailwind's own scale. Since ferro uses custom names (`--radius-md` mapped to `0.375rem`, same as Tailwind's `rounded-md` default), the simplest approach is to keep using Tailwind utility names (`rounded-md`) for shape tokens, because the default theme values match. Only use `rounded-[--radius-md]` if the theme overrides are expected. For this visual overhaul milestone, use Tailwind's existing scale classes (`rounded-md`, `rounded-lg`) but fix the semantic surface token mismatches (`bg-background` → `bg-card` for Card).
+## Component Responsibilities
 
-### Pattern 2: Semantic Surface Layering
-
-**What:** The token vocabulary defines a three-level elevation hierarchy: `background` (page) → `surface` (panels, sidebars) → `card` (cards, modals). Components must use the correct level for their visual layer.
-
-**Current violations found in render.rs:**
-- `render_card()` uses `bg-background` — should be `bg-card`
-- `render_stat_card()` uses `bg-background` — should be `bg-card`
-- `render_modal()` inner panel uses `bg-background` — should be `bg-card`
-- `DashboardLayout` body uses `bg-surface` (correct) but sidebar uses `bg-background` (wrong — sidebar is a panel, should be `bg-surface`)
-- `layout_header_html()` uses `bg-background` — should be `bg-surface` or keep `bg-background` (header is top-level)
-
-**When to use:** Any container component that renders as a visually raised surface.
-
-**Rule:** Card-level components (`Card`, `StatCard`, `Modal` dialog panel, `NotificationDropdown` panel) → `bg-card`. Panel-level structures (sidebar, collapsible, table header) → `bg-surface`. Page background → `bg-background`.
-
-### Pattern 3: CSS-Only Select Arrow
-
-**What:** Replacing the native `<select>` arrow with a custom SVG chevron using a CSS `background-image`. Requires `appearance-none` (already present) plus a wrapper div that provides the arrow via `::after` pseudo-element or inline SVG background.
-
-**Current state:** `render_select()` uses `appearance-none bg-background` but provides no custom arrow — the select element is unstyled on most browsers.
-
-**Recommended approach:** Wrap the `<select>` in a `relative` div and add an absolute-positioned SVG span:
-
-```rust
-"<div class=\"relative\">\
-  <select class=\"block w-full appearance-none bg-background rounded-md border border-border \
-    px-3 py-2 pr-8 text-sm shadow-sm focus:border-primary focus:ring-1 focus:ring-primary\">\
-  </select>\
-  <span class=\"pointer-events-none absolute inset-y-0 right-2 flex items-center\">\
-    <svg class=\"h-4 w-4 text-text-muted\" ...chevron-down SVG...</svg>\
-  </span>\
-</div>"
-```
-
-**Why not CSS background-image:** The inline SVG approach works without external assets and supports semantic token colors (SVG `fill` can use `currentColor`).
-
-### Pattern 4: Consistent Focus Ring Pattern
-
-**What:** A standardized focus ring applied uniformly across all interactive elements (inputs, select, textarea, buttons, checkboxes).
-
-**Current state:** Inputs/selects use `focus:border-primary focus:ring-1 focus:ring-primary`. Buttons use `transition-colors` only. Checkboxes use `focus:ring-primary`. No outline-offset pattern.
-
-**Recommended uniform pattern:** `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`
-
-- `focus-visible` (not `focus`) — only shows ring on keyboard navigation, not mouse clicks
-- `ring-offset-2` — small gap between element border and ring for clarity
-
-This replaces the current split `focus:border-primary focus:ring-1 focus:ring-primary` approach.
-
-### Pattern 5: CSS Transition Classes
-
-**What:** Consistent animation timing across interactive components.
-
-**Current state:** Buttons have `transition-colors`. Switch toggle has `after:transition-all`. Collapsible arrow uses `transition-transform`. No unified timing or easing.
-
-**Recommended approach:** Define a standard transition class set:
-- Interactive elements (buttons, links): `transition-colors duration-150`
-- Position/size changes (switch thumb): `transition-all duration-200`
-- Rotation (collapsible arrow, accordion): `transition-transform duration-200`
-
-Keep these as inline Tailwind classes — no abstraction needed.
-
-### Pattern 6: Font Loading via base_document
-
-**What:** Inter (or another professional sans-serif) should be loaded once for all layouts via the `base_document()` function in layout.rs.
-
-**Where exactly:** In `base_document()`, inject a Google Fonts `<link>` preconnect + stylesheet before the `{head}` placeholder. This ensures it appears for all three built-in layouts (DefaultLayout, AppLayout, AuthLayout) and DashboardLayout (which delegates to `base_document_ext`).
-
-**Example addition to base_document:**
-```rust
-let font_link = r#"<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">"#;
-```
-
-Then update `default.css`:
-```css
---font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-```
-
-**Alternative:** Expose a `font_url: Option<String>` field on `JsonUiConfig` that gets injected in `JsonUi::build_response()`. This is more flexible but adds API surface. The `base_document` approach is simpler and achieves the same result for all layouts.
-
-**Recommendation:** Hard-code Inter in `base_document` for v10.0. The font is universally appropriate and CDN-available. If customization is needed later, add a `JsonUiConfig` field.
-
-### Pattern 7: Class Builder vs Inline Strings
-
-**What:** Whether to introduce a helper like `ClassBuilder` / `cx!()` macro to compose Tailwind class strings, versus keeping inline string literals.
-
-**Assessment:** Do not introduce a class builder for this milestone.
-
-**Rationale:**
-- render.rs already has ~1700 lines of working inline string concatenation
-- A class builder adds a new abstraction that agents must learn to generate
-- The visual changes are largely one-for-one substitutions (`bg-background` → `bg-card`)
-- Tailwind v4 with CDN has no purging — all classes are available regardless of how they appear in source
-
-**What to do instead:** Define small `const` strings for frequently reused class combinations (e.g., the focus ring pattern, the form field wrapper pattern). Keep these local to the function or as module-level `const` if reused by 3+ functions.
-
-```rust
-// Module-level const for reused patterns
-const FOCUS_RING: &str = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
-const FIELD_LABEL: &str = "block text-sm font-medium text-text";
-```
-
-This reduces repetition without adding abstraction overhead.
+| Component | Audit Responsibility | Files to Inspect |
+|-----------|---------------------|------------------|
+| `framework/src/lib.rs` | Canonical export surface — every public type must be here and named correctly | `framework/src/lib.rs` |
+| `docs/src/` | User-readable truth — must match actual exported API | All 40 `.md` files |
+| `ferro-mcp/src/tools/` | Agent-readable truth — tool descriptions must match current capabilities | 54 `.rs` files, especially `code_templates.rs`, `generation_context.rs`, `application_info.rs` |
+| `ferro-cli/src/templates/` | Generated code quality — templates must use current best-practice patterns | `make.rs`, `scaffold.rs`, `entity.rs`, `auth.rs` |
+| `ferro-cli/src/commands/` | CLI command descriptions shown in `--help` must match what commands actually do | 50+ `.rs` files |
 
 ## Data Flow
 
-### Theme → Visual Output
+### How Inconsistencies Propagate to Agents
 
 ```
-App Startup: ThemeMiddleware::new().resolver(...)
+Agent reads: application_info tool
     ↓
-HTTP Request arrives
+Agent reads: generation_context tool
+    ↓ (if stale: wrong patterns embedded)
+Agent reads: code_templates tool
+    ↓ (if stale: wrong patterns generated)
+Agent generates code
+    ↓ (if template wrong: build fails)
+Agent reads: last_error tool
     ↓
-ThemeMiddleware → current_theme() task-local set
+Agent reads: docs/src/features/*.md
+    ↓ (if stale: contradicts working code; agent confused)
+Agent tries fix from docs
     ↓
-Handler calls JsonUi::render(view, data)
-    ↓
-JsonUi::build_response()
-    ├── current_theme() → theme.css injected as <style type="text/tailwindcss">
-    ├── render_to_html_with_plugins(view, data) → HTML fragment with Tailwind class strings
-    └── render_layout(layout_name, ctx)
-        ├── base_document() → <!DOCTYPE html> + <head> + font links
-        └── DashboardLayout::render() → sidebar + header + main
-            ↓
-Full HTML page with:
-  - Tailwind CDN script (processes @theme + @import)
-  - <style> containing theme tokens (e.g., --radius-md: 0.5rem)
-  - Component HTML using classes like bg-card, rounded-[--radius-md]
+[Loop or hallucination]
 ```
 
-### Visual Quality Change Points
+**Key insight:** Stale MCP tools cause more damage than stale docs because agents encounter MCP output before docs. Fix MCP tools before prose.
 
-For the v10.0 overhaul, changes touch three files and flow in this order:
+### How Inconsistencies Propagate to Human Developers
 
-1. `ferro-theme/assets/default.css` — Token value refinements + Inter font family
-2. `ferro-json-ui/src/layout.rs` — Font `<link>` injection in `base_document()`
-3. `ferro-json-ui/src/render.rs` — Surface bg corrections + focus rings + transitions + select arrow + SVG icons
-4. `ferro-json-ui/src/runtime.rs` — Replace hardcoded `bg-blue-500` etc. with semantic CSS variables
+```
+Developer runs: ferro make:controller
+    ↓ (if template wrong: generates deprecated code)
+Developer reads: docs/src/the-basics/controllers.md
+    ↓ (if stale: contradicts generated code)
+Developer reads: docs/src/features/*.md
+    ↓ (if missing: no guidance for feature)
+Developer reads: framework source directly
+    ↓ (always accurate — source of truth)
+```
+
+## Architectural Patterns
+
+### Pattern 1: Single Public API Surface (framework/src/lib.rs)
+
+**What:** Every user-facing type, trait, and macro is re-exported from `framework/src/lib.rs`. Individual crate `lib.rs` files hold implementations; `framework/src/lib.rs` is the import façade.
+
+**Audit implication:** One file to verify for completeness. Cross-reference every type named in docs against this file. If a type is in docs but not in `lib.rs`, it is either a documentation error or a missing export.
+
+**When correct pattern breaks down:** Optional/feature-gated crates (`ferro-stripe`, `ferro-whatsapp`, `ferro-ai`) expose types through their own crate — docs must show the crate name, not `ferro::`. This is correct by design but inconsistency-prone.
+
+### Pattern 2: Agent-First Tool Architecture (ferro-mcp)
+
+**What:** Each MCP tool is a self-contained `.rs` file in `ferro-mcp/src/tools/`. Tools return formatted strings (not JSON schemas) designed for LLM context consumption. Tools include "generation hints" — snippets of the pattern to use.
+
+**Audit implication:** Tool hint strings are informal prose embedded in Rust string literals. They are not tested. They drift silently. The `code_templates` tool is the highest-risk file: it provides copy-paste Rust code that agents use verbatim.
+
+**How to audit:** For each code snippet in `code_templates.rs`, verify it compiles against the current framework API. This is the only reliable check.
+
+### Pattern 3: CLI Template as Test Baseline
+
+**What:** `ferro-cli/src/templates/mod.rs` contains ~800 lines of template tests. Tests verify structural presence (`contains("#[handler]")`) but not semantic correctness or compilation.
+
+**Audit implication:** The test suite provides a partial baseline but misses semantic drift. A template can pass all tests while generating code that uses a deprecated pattern. The audit must go beyond `contains()` checks.
+
+### Pattern 4: Documentation Philosophy (agent-first framing)
+
+**What:** The framework's stated philosophy is "agent-first" — every API optimized for AI agent comprehension and generation. Docs should explain not just what to do, but why, in terms agents can use to infer analogous patterns.
+
+**Audit implication:** "Agent-first" philosophy auditing is qualitative. For each feature doc, ask: "Could an agent generate correct code for this feature after reading only the `application_info` and `generation_context` MCP tools plus this doc page?" If no, the doc or the tool is incomplete.
 
 ## Integration Points
 
-### Existing Boundary: render.rs ↔ ferro-theme
+### Critical Boundary: docs ↔ framework/src/lib.rs
 
-**Current:** render.rs has **zero dependency** on ferro-theme. It uses hardcoded Tailwind class strings. The theme system only affects the CSS injected into `<head>` — it does not influence which classes the renderer emits.
+**Communication:** Prose references type names; compiler enforces types. No automated bridge.
 
-**Implication for this milestone:** The visual improvements require no new cross-crate dependencies. render.rs changes Tailwind class strings (e.g., `bg-background` → `bg-card` for Card) — these changes are visible because those class names map to the token values defined in the theme CSS.
+**Inconsistency vector:** A type is renamed or moved; docs still show the old name. Compiler does not catch Markdown.
 
-**Future consideration (not this milestone):** If we ever need render.rs to *programmatically* read token values (e.g., to choose between rendering strategies), we would need to pass a `Theme` reference into the render pipeline. That is not needed for v10.0.
+**Detection:** For every type/macro/function name in docs, `grep -r "TypeName" framework/src/lib.rs`. Missing hits = inconsistency.
 
-### Existing Boundary: framework ↔ ferro-json-ui
+### Critical Boundary: MCP tools ↔ actual framework behavior
 
-`framework/src/json_ui/mod.rs` is the only place where `current_theme()` is called and theme CSS is injected. This file is the correct place for any new theme-aware head content (font `<link>` tags could also go here via config).
+**Communication:** Tool implementations read from disk (migrations, routes, source files). Some tools have hardcoded templates.
 
-### Internal Boundary: layout.rs base_document ↔ all layouts
+**Inconsistency vector:** `code_templates.rs` returns Rust code strings that were correct at writing time. Framework API evolves; templates do not auto-update.
 
-All three built-in layouts and `DashboardLayout` call `base_document()` or `base_document_ext()`. Adding font loading to `base_document()` affects all layouts uniformly — this is the desired behavior.
+**Detection:** Attempt to compile each template snippet in isolation or trace the pattern to current framework exports.
 
-### runtime.js hardcoded colors
+### Critical Boundary: CLI templates ↔ framework patterns
 
-`FERRO_RUNTIME_JS` in `runtime.rs` uses JS-side hardcoded Tailwind class names (`bg-blue-500`, `border-blue-600`) for dynamic DOM manipulation during tab switching and toast creation. These do not respond to the theme system.
+**Communication:** Templates are string literals in `ferro-cli/src/templates/`. No link to the framework code they reference.
 
-**Resolution:** Replace with semantic CSS custom property references using inline styles or replace the Tailwind class names with semantic token names:
-- Toast creation: use CSS variables directly in inline style (`background: oklch(var(--color-primary))` or use semantic Tailwind classes like `bg-primary`)
-- Tab switching: replace `border-blue-600` with `border-primary`, `text-blue-600` with `text-primary`, `text-gray-500` with `text-text-muted`
+**Inconsistency vector:** Template uses `ActiveModel` update pattern; framework now uses `UpdateBuilder`. Both patterns compile (the old pattern still works via SeaORM); the inconsistency is in best-practice guidance, not compilation.
 
-The JS can use semantic class names because Tailwind CDN generates all classes eagerly — `border-primary` is always available.
+**Detection:** Compare template patterns against `app/src/` (sample application) — the sample app should always demonstrate current best practices.
+
+### Moderate Boundary: SUMMARY.md ↔ actual feature set
+
+**Communication:** `docs/src/SUMMARY.md` lists all doc pages. mdBook enforces that listed pages exist as files. It does not enforce that the features they describe are implemented.
+
+**Inconsistency vector:** A doc page was written speculatively. The feature stub exists but is incomplete.
+
+**Detection:** For each feature doc, verify that the primary type or function it documents can be found in `framework/src/lib.rs` or the relevant crate's `lib.rs`.
+
+### Moderate Boundary: ferro-planning ↔ workspace
+
+**Status:** `ferro-planning` is a workspace member but appears to have no source files (`ls ferro-planning/src/` returned nothing). This crate should either have content or be removed from the workspace.
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: ThemeContext in render.rs
+### Anti-Pattern 1: Fixing Docs Without Fixing the Code
 
-**What people do:** Pass `current_theme()` into the render functions so the Rust code can read token values and make rendering decisions (e.g., `if theme.radius == "full" { "rounded-full" } else { "rounded-md" }`).
+**What people do:** Find a doc page that describes a non-existent feature. Update the doc to describe what exists. Move on.
 
-**Why it's wrong:** Creates coupling between ferro-json-ui (pure renderer) and ferro-theme via the framework context. Also forces token values to be parsed as Rust strings rather than expressed as CSS. Makes the renderer stateful.
+**Why it's wrong:** If the feature is missing entirely, the correct fix may be to either implement the feature or remove the doc page. A doc page that accurately describes a "stub" feature is still misleading if the stub is incomplete.
 
-**Do this instead:** Keep render.rs token-agnostic. Express theme variation purely in CSS via custom properties. The Tailwind class `rounded-[--radius-md]` automatically reflects whatever `--radius-md` is set to in the theme's CSS, without render.rs knowing the value.
+**Do this instead:** For each doc page, classify the feature as: (a) fully implemented, (b) partially implemented, (c) not implemented. Fix (a) docs to be accurate. For (b) and (c), either implement the missing piece or remove/mark the doc as a placeholder.
 
-### Anti-Pattern 2: ClassBuilder Abstraction
+### Anti-Pattern 2: Auditing Only the Happy Path
 
-**What people do:** Introduce a `cx!()` macro or `ClassBuilder` struct to compose Tailwind class strings with conditional logic.
+**What people do:** Read the "Quick Start" section of each feature doc and verify it works. Declare the doc accurate.
 
-**Why it's wrong:** Adds an abstraction that agents need to learn and generate. The render.rs functions are already well-understood as simple string builders. The conditional class logic in render.rs (e.g., `border_class` for error states) is simple enough to keep inline.
+**Why it's wrong:** Most inconsistencies live in the advanced sections — error handling, edge cases, configuration options. The `TenantScope` panic behavior, the `Option<Option<T>>` nullable field pattern, the `SavedInertiaContext` footgun — these are the things that bite agents and developers.
 
-**Do this instead:** Use module-level `const` strings for repeated patterns (focus ring, label style) and inline `match` arms for variant-specific classes.
+**Do this instead:** For each feature doc, audit every code example from top to bottom. Every type name, every method call, every configuration key.
 
-### Anti-Pattern 3: Per-Component Shadow Values
+### Anti-Pattern 3: Auditing Each Crate in Isolation
 
-**What people do:** Each component picks its own shadow from Tailwind's scale (`shadow-sm`, `shadow-md`, `shadow-lg`) based on intuition.
+**What people do:** Audit `ferro-cache` independently. Find it accurate. Move on.
 
-**Why it's wrong:** Inconsistency. The theme token vocabulary (`--shadow-sm`, `--shadow-md`, `--shadow-lg`) exists to let themes control elevation uniformly.
+**Why it's wrong:** Cross-crate interactions are where philosophy inconsistencies hide. `ferro-cache` may be internally consistent, but if the `application_info` MCP tool doesn't mention caching as a capability, agents won't know to use it.
 
-**Do this instead:** Define a mapping rule:
-- Inline elements, form fields: no shadow
-- Cards, stat cards: `shadow-[--shadow-sm]`
-- Modals, popovers, notification dropdowns: `shadow-[--shadow-md]`
-- Full-screen overlays (if any): `shadow-[--shadow-lg]`
+**Do this instead:** After per-crate audits, do a cross-cutting pass: "Does the MCP layer accurately reflect all capabilities found in the per-crate audits?"
 
-Apply this mapping consistently to all components rather than case-by-case.
+### Anti-Pattern 4: Treating Template Tests as Proof of Correctness
 
-### Anti-Pattern 4: Custom Head for Font Loading
+**What people do:** The CLI templates have 60+ tests in `mod.rs`. Tests pass. Declare templates correct.
 
-**What people do:** Users inject font `<link>` via `JsonUiConfig::custom_head()` as a workaround.
+**Why it's wrong:** Tests check structural presence (`contains`), not correctness. A template that passes `contains("#[handler]")` may still use a deprecated authentication pattern, missing `.await?` propagation, or import a type that no longer exists.
 
-**Why it's wrong:** Requires every app to manually configure font loading. It is boilerplate that should be a framework default.
+**Do this instead:** Run generated code through `cargo check` in a test project. Or trace each template's imports and patterns against `framework/src/lib.rs` manually.
 
-**Do this instead:** Embed the Inter font `<link>` in `base_document()`. Inter is universally appropriate for professional UIs and is the font used by Linear, Vercel, and most modern SaaS products. Apps that need a different font can override `--font-family-sans` in their theme CSS.
+## Phase-Specific Warnings
 
-### Anti-Pattern 5: Emoji Icons in Notification Bell
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Import paths in docs | `ferro_rs` vs `ferro` (old vs new crate name) | `grep -r "ferro_rs" docs/` — fix all hits |
+| Optional feature docs (stripe, whatsapp, ai) | Types exposed via feature-gated crates, not `framework/src/lib.rs` | Verify that docs show correct crate name for optional features |
+| MCP code templates | `ActiveModel` pattern vs `UpdateBuilder` pattern | Compare to `app/src/controllers/` sample — sample is ground truth |
+| Agent-first philosophy | `SavedInertiaContext`, `Option<Option<T>>`, `ValidateRules` naming — footguns undocumented in MCP tools | Check `generation_context.rs` tool for these warnings |
+| ferro-projections docs | v9.0 feature; `inspect_projection`, `validate_projection`, `render_projection` MCP tools exist but user-facing docs may be missing | Check `docs/src/SUMMARY.md` — no projections page exists |
+| ferro-planning crate | Empty workspace member — no `src/` found | Remove from workspace or add content |
+| `docs/src/features/themes.md` | References `--font-family-sans` token but v10.0 KEY DECISION was that Tailwind v4 uses `--font-sans` (not `--font-family-sans`) | Verify token name in `ferro-theme/assets/default.css` against docs |
 
-**What people do:** Use emoji characters (`&#x1F514;` bell emoji) in the notification dropdown button.
+## Artifact Classification: New vs Modified
 
-**Why it's wrong:** Emoji rendering is platform-dependent (size, color, metrics vary per OS). Inconsistent with SVG icons used elsewhere.
+For the v11.0 audit milestone:
 
-**Do this instead:** Replace with an inline SVG bell icon (same pattern as the hamburger button in `layout_header_html()`). Keep all icons as SVG strings.
+**Modified artifacts (existing files that will be edited):**
+- All `docs/src/**/*.md` files where inaccuracies are found
+- `ferro-mcp/src/tools/code_templates.rs` — update code templates to current patterns
+- `ferro-mcp/src/tools/generation_context.rs` — add missing footgun warnings
+- `ferro-mcp/src/tools/application_info.rs` — update crate count and feature list
+- `ferro-cli/src/templates/*.rs` — fix any pattern drift found in templates
+- `framework/src/lib.rs` — add missing re-exports found during audit
 
-## Migration Path for Existing Apps
+**New artifacts (files that will be created):**
+- `docs/src/features/projections.md` — service projections feature is undocumented
+- Possibly `docs/src/features/planning.md` if `ferro-planning` has user-facing functionality
 
-No breaking API changes are required. All changes are:
-1. Visual improvements to HTML output (class names change)
-2. Font loading added to `base_document()` (additive)
-3. theme CSS token value refinements (additive — values may shift slightly)
-
-**Apps using `ThemeMiddleware`:** Will pick up better default token values from the updated `default.css`. No code changes needed.
-
-**Apps using `DashboardLayout`:** The sidebar background fix (`bg-background` → `bg-surface`) may cause a subtle visual change. This is intentional.
-
-**Apps overriding `body_class` via `JsonUiConfig`:** Unaffected.
-
-**Apps with custom theme CSS files:** Unaffected — they provide their own token values.
-
-## Build Order for v10.0
-
-The following order minimizes re-work and ensures visual changes can be reviewed incrementally:
-
-1. **default.css token refinements** — Adjust color values for better contrast, add Inter to font stack. No code changes. Visual baseline improves immediately.
-
-2. **base_document() font loading** — Add Inter Google Fonts `<link>` to `base_document()`. One-line addition. All layouts pick it up.
-
-3. **Surface bg corrections in render.rs** — Fix `bg-background` → `bg-card` for Card, StatCard, Modal dialog, NotificationDropdown panel. These are the highest-impact visual changes.
-
-4. **DashboardLayout sidebar bg fix** — `layout_sidebar_html()` sidebar `<aside>` uses `bg-background`, should use `bg-surface`. Header already uses `bg-background` which is correct for a top chrome element.
-
-5. **Focus ring standardization in render.rs** — Replace all `focus:border-primary focus:ring-1 focus:ring-primary` with `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`. Apply to all form fields (Input, Select, Textarea, Checkbox, Switch).
-
-6. **Select custom arrow in render.rs** — Wrap `<select>` in a relative `<div>` and add inline SVG chevron span.
-
-7. **Transition consistency in render.rs** — Add `duration-150` to button transitions; standardize on `duration-200` for switch/collapsible.
-
-8. **Shadow token mapping in render.rs** — Apply the elevation mapping (card→shadow-sm, modal→shadow-md) consistently.
-
-9. **runtime.js semantic class names** — Replace `bg-blue-500`/`border-blue-600` with `bg-primary`/`border-primary`/`text-text-muted` in `FERRO_RUNTIME_JS`.
-
-10. **Emoji→SVG in render.rs and layout.rs** — Replace `&#x1F514;` bell emoji with SVG; audit for other emoji usage.
+**Removed artifacts:**
+- `ferro-planning` from workspace if confirmed empty
+- Any doc pages for features confirmed non-existent
 
 ## Sources
 
-- Direct codebase inspection: `ferro-json-ui/src/render.rs`, `layout.rs`, `runtime.rs`, `config.rs`
-- `ferro-theme/src/token.rs`, `ferro-theme/assets/default.css`
-- `framework/src/json_ui/mod.rs`, `framework/src/theme/context.rs`
-- Token vocabulary is HIGH confidence (inspected directly)
-- Tailwind v4 `rounded-[--custom-prop]` syntax — MEDIUM confidence (based on Tailwind v4 arbitrary value docs knowledge, aligns with how the CDN is already being used)
+- Direct codebase inspection: `docs/src/SUMMARY.md`, all feature docs
+- `ferro-mcp/src/tools/mod.rs` — 54 tool files confirmed
+- `ferro-cli/src/commands/mod.rs` — 50+ command files confirmed
+- `ferro-cli/src/templates/mod.rs` — template test suite reviewed
+- `.planning/PROJECT.md` — KEY DECISIONS table is authoritative for patterns and tradeoffs
+- `.planning/codebase/ARCHITECTURE.md`, `STACK.md`, `CONVENTIONS.md`, `STRUCTURE.md`
+- Workspace `Cargo.toml` — 20 workspace members confirmed
 
 ---
-*Architecture research for: ferro-json-ui visual overhaul (v10.0)*
-*Researched: 2026-03-24*
+*Architecture research for: v11.0 Framework Consolidation Audit*
+*Researched: 2026-03-26*

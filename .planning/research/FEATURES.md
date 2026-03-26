@@ -1,237 +1,234 @@
-# Feature Landscape: JSON-UI Visual Overhaul
+# Feature Research: Framework Documentation & Philosophy Audit
 
-**Domain:** SSR component system — visual quality uplift to professional grade
-**Researched:** 2026-03-24
-**Milestone:** v10.0 JSON-UI Visual Overhaul
+**Domain:** Multi-crate Rust web framework — documentation accuracy, completeness, and philosophy consistency audit
+**Researched:** 2026-03-26
+**Milestone:** v11.0 Framework Consolidation Audit
+**Confidence:** HIGH (based on direct codebase inspection of all 14 crates + docs tree)
 
 ---
 
-## Context: Current State
+## Context: What the Audit Is
 
-Ferro JSON-UI has a functionally complete component catalog (~30 components). The rendering pipeline exists and emits Tailwind CSS classes against a semantic token vocabulary. The gap is visual quality — the output looks like "Tailwind defaults applied once" rather than "a considered design system."
+v11.0 is not a feature milestone. It is an audit-then-fix milestone. "Features" here are **audit check categories** — what to inspect, what issues to look for, what to fix. The roadmap phases map to audit categories, not product capabilities.
 
-Reference systems studied: shadcn/ui (Tailwind v4 + Radix), Vercel Geist, Radix Themes, Tailwind UI.
+The framework has ~90,000 lines of Rust across 14 crates, ~9,500 lines of mdBook documentation, 57 MCP tools, and ~50 CLI commands. The goal is to bring all of these into accurate, consistent, agent-ready shape before crates.io publication.
 
 ---
 
 ## Table Stakes
 
-Features users expect from any professional component system. Absence makes the output feel amateur.
+Audit checks every serious framework performs before a public release. Absence means the framework will lose trust with the first developer who encounters a discrepancy.
 
-| Feature | Why Expected | Complexity | Current State |
-|---------|--------------|------------|---------------|
-| Typography scale with consistent line-height | Every professional system (shadcn, Geist, Tailwind UI) defines explicit type ramp with line-height and letter-spacing per level, not just font-size | Low | `text-3xl font-bold`, `text-2xl font-semibold` — sizes exist but no line-height, letter-spacing, or responsive scaling |
-| Professional font | Inter (71% of professional apps), Geist Sans, or equivalent — system-ui alone reads as "unstyled" | Low | No font load; falls back to system-ui |
-| Surface/card contrast | Cards must read as visually elevated from page background. Geist uses Background1/Background2 separation. shadcn has `--card` token distinct from `--background`. Missing = cards look flat | Low-Med | Card uses `bg-background` — same token as page body, so no visual elevation |
-| Focus rings on all interactives | WCAG 2.4.7 (Level AA). Professional systems (Radix Themes, shadcn) use `focus-visible:outline` or `focus-visible:ring-2` with 2px offset. `focus:ring-1` on inputs only partially covers this | Med | Inputs have `focus:ring-1 focus:ring-primary`. Buttons have no focus style. Select, checkbox, switch inconsistent |
-| Hover states on all interactives | Every interactive element (table rows, nav items, pagination, collapsible trigger) needs a hover state. Missing = UI feels unresponsive | Low | Partial: buttons have hover, table rows have none, pagination links have hover |
-| Custom select arrow | Native `<select>` arrow is browser-rendered and looks inconsistent cross-browser. `appearance-none` without a replacement arrow looks broken — current state | Low | `appearance-none bg-background` on select but no replacement arrow SVG |
-| Input error states | Red border + error message below input — current state is partially correct. Missing: red focus ring variant for error state | Low | `border-destructive` on error but `focus:ring-primary` still applies (wrong color for error state) |
-| Transition-colors on all interactive elements | 150ms ease transitions on color changes. shadcn uses `transition-colors duration-150`. Current buttons have `transition-colors` but most other interactives do not | Low | Buttons: yes. Everything else: no |
-| Consistent spacing scale | 8px grid discipline throughout. All padding and gap values should be multiples of 4 (0.25rem = 4px). Mixing `py-3`, `py-3.5`, `py-4` in adjacent components creates visual jitter | Med | Inconsistent: `py-2`, `py-3`, `p-6`, `p-4`, `py-3.5` mixed without clear system |
-| Empty state design | Centered icon + title + description + optional CTA. EmptyState component exists but visual treatment needs review | Low | EmptyState component exists |
-| Skeleton loading shimmer | `animate-pulse` is minimal. Professional systems use shimmer gradient animation | Low | `animate-pulse bg-card` only — no shimmer |
-| Table row hover | Rows with actions need hover feedback. Essential for scannable data tables | Low | No row hover state |
-| Dark mode token completeness | All 23 theme tokens must have correct dark variants. Missing a dark variant = components look wrong in dark mode | Med | Unknown — depends on theme CSS file correctness |
-
----
+| Check Category | Why Required | Complexity | Current Evidence |
+|----------------|--------------|------------|-----------------|
+| Stale import paths in docs | Documentation showing wrong crate names causes immediate failures when users copy examples. One occurrence poisons trust. | Low | `ferro_rs::` found in `multi-tenancy.md`, `json-ui/actions.md`, `json-ui/data-binding.md` — 28 occurrences across 3 files |
+| CLI reference completeness | Every published command needs a doc entry. Agents use the CLI reference to know what scaffolding is available. | Low-Med | 13 CLI commands exist with no reference entry: `api:check`, `clean`, `generate-routes`, `make:api`, `make:api-key`, `make:lang`, `make:policy`, `make:projection`, `make:stripe`, `make:theme`, `make:whatsapp`, `projection:check`, `validate-contracts` |
+| "Coming soon" / TODO in user-facing docs | Published docs must not show internal scaffolding. Every TODO in an example is a trust failure for users and breaks agent comprehension. | Low | `reference/cli.md` has 8+ `// TODO: Implement` blocks; `storage.md` references S3 feature as "coming soon" though S3 is shipped |
+| README.md accuracy | Root README is the first document indexed by crates.io, search engines, and LLMs. Stale information compounds over time. | Med | README has a "Roadmap" section listing JSON-UI as "Work in Progress" — JSON-UI is shipped and production-ready at v10.0 |
+| Agent-first philosophy presence | Ferro's core value proposition is agent-first. The introduction doc does not mention agents, MCP, or the AI-first workflow. This is the primary differentiator and it is absent from the entry point. | Med | `docs/src/introduction.md` describes Ferro as "the Laravel of Rust" with zero mention of agent-first, MCP introspection, or AI generation capability |
+| MCP tool count accuracy | Documentation claims "30+ tools" in several places; the actual count is 57. Inaccurate claims undermine credibility. | Low | Project.md says "35+ tools". Actual count in `ferro-mcp/src/tools/mod.rs` is 57 tool modules. |
+| Feature docs for all shipped features | Every feature listed in PROJECT.md must have a corresponding doc page. | Low | All major features have pages. However: Service Projections (v9.0) has no user-facing doc page in `docs/src/`. The `docs/src/features/` directory does not contain a projections doc. |
+| Rust API Guidelines compliance | Crates intended for crates.io publication should follow Rust API Guidelines: crate-level docs, C-EXAMPLE (examples for all public items), C-FAILURE (error/panic documentation), C-LINK (cross-references). | High | No `#![warn(missing_docs)]` found in any crate. Several crates have minimal `lib.rs` crate-level docs (e.g., `ferro-json-ui`, `ferro-lang`). |
+| Cargo.toml metadata completeness | crates.io requires: description, license, repository. Preferred: keywords, categories, readme. All 14 publishable crates need a check. | Low | `ferro-broadcast` missing readme field. `ferro-theme` missing categories field. `ferro-projections` missing homepage and readme fields. Several crates need validation. |
 
 ## Differentiators
 
-Features that distinguish ferro-json-ui from a basic Tailwind component set. Professional apps have these; commodity UI generators do not.
+Audit checks specific to Ferro's agent-first identity. These go beyond standard framework documentation quality.
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Semantic color tokens on focus rings | Error state gets a red ring, not primary ring. Success state gets green ring. shadcn does this with `--ring` token that components can override. Radix Themes does this per component variant | Med | Requires per-variant ring color logic in render.rs. Currently all focus rings use primary regardless of error state |
-| Table row hover highlight | `hover:bg-muted/50` on `<tr>` — Tailwind UI standard pattern. Makes tables feel interactive and scannable | Low | Single CSS class addition |
-| Sticky table header | `sticky top-0 bg-background z-10` on `<thead>` — standard for data-heavy views. Tailwind UI and Flowbite both include this in their table patterns | Low-Med | Requires wrapper overflow and sticky positioning change |
-| Breadcrumb chevron separator | Replace `/` text separator with an SVG chevron. Every professional system (shadcn, Geist, Tailwind UI) uses chevrons | Low | Currently uses raw `/` span |
-| Consistent transition system | All interactives use `transition-colors duration-150 ease-in-out`. Systematic application, not per-component | Low | Currently only buttons have this |
-| Select with visible dropdown arrow | SVG arrow via background-image or pseudo-element. `appearance-none` without arrow is a known UX failure | Low | CSS background-image approach works for SSR; no JS needed |
-| Disabled state styling | `disabled:opacity-50 disabled:cursor-not-allowed` on all form elements (inputs, selects, checkboxes, switches). Currently only buttons handle disabled | Low | Pattern is clear; apply to all form elements |
-| Input description text positioning | Description below label (for context) vs. below input (for hints). Shadcn places description below the input, above error. Current order: label → description → input → error. Should be: label → input → description → error | Low | One reorder change but affects all inputs/selects |
-| Collapsible smooth animation | `max-height` transition with CSS for open/close. `<details>` default is instant. Radix and shadcn both animate panel height | Med | Requires inline style or Tailwind trick with `group-open` |
-| Active page state in tabs | Active tab needs `font-semibold` in addition to border/color change. Current: only border color and text color change, weight stays constant | Low | One class addition |
-| Avatar fallback background | Initials avatar should use `bg-muted` not `bg-card`. Card color as avatar background blends into card context | Low | Token swap |
-| Tooltip-style helper text | Inputs with long descriptions can show `?` icon with tooltip on hover. Not in current feature set. Differentiating but Medium complexity | High | New feature; defer to separate phase |
-
----
+| Check Category | Value Proposition | Complexity | Notes |
+|----------------|-------------------|------------|-------|
+| Agent workflow documentation | Ferro's MCP server is a major differentiator. There is no dedicated "working with agents" guide explaining the `application_info` → `list_routes` → `get_handler` workflow that agents use. | Med | The MCP tools exist and work but are not documented as a workflow. The CLAUDE.md has this pattern; user docs do not. |
+| MCP tool coverage gap | 57 MCP tools exist. Many tools added in v9.0 (projections) and specialized tools (session_inspect, dependency_graph, request_metrics, route_dependencies, browser_logs, relation_map, model_usages, render_projection, projection_coverage, validate_projection, search_docs) have no user-facing documentation. | Med | These tools are visible to agents via MCP but invisible to human developers reading docs. |
+| Error message agent-friendliness audit | One of Ferro's core features is "actionable error messages with fix suggestions." The consistency of this across all crates needs verification — do all error types include hints? | Med | Framework errors have hints. Cross-crate errors (ferro-lang, ferro-storage, ferro-queue) need verification. |
+| generation_hint coverage | Ferro embeds generation hints in MCP responses to guide agents. These hints need audit across all tools to ensure they are current, specific, and actionable. | Med | Hints exist in many tools but drift is likely after v9.0 (projections) added significant new tool surface. |
+| Pattern coherence for agent code generation | Agents generate code from examples in docs and MCP tool responses. Inconsistent patterns across crates (e.g., import style, handler shape, error propagation) cause agent generation failures. Check: do all code examples use `use ferro::*` or explicit imports? Are handler signatures consistent? | High | Mixed patterns found: some docs use `use ferro::*`, others use explicit multi-import statements. |
+| COMPONENT_CATALOG synchronization | The component catalog is duplicated between `ferro-cli/src/ai.rs` and `ferro-mcp/src/tools/json_ui_generate.rs`. The known drift (noted in CONCERNS.md) means AI-generated JSON-UI via CLI and via MCP may produce different schemas. | Med | Documented as P2 concern since v5.0. Still unresolved as of v10.0. |
 
 ## Anti-Features
 
-Features to explicitly NOT build in this milestone.
+Audit approaches that seem thorough but waste effort or create new problems.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| JavaScript-powered custom select dropdown | Replaces native `<select>` with a JS-driven listbox for visual control. High complexity, accessibility regression risk, adds JS weight to SSR system | CSS-only arrow background-image on the `<select>` element |
-| CSS-in-JS or runtime theming | Requires JS execution, defeats SSR purpose | CSS custom properties defined at `:root` — works perfectly SSR |
-| Animation library dependency | Framer Motion, Animate.css add weight. The micro-interactions needed here are all achievable with Tailwind's `transition-*` and `animate-*` utilities | Tailwind utility classes only |
-| Dark mode toggle JS | Persisting user preference in localStorage requires JS. SSR renders one mode | Use `prefers-color-scheme` CSS media query for automatic dark mode; no JS toggle |
-| Per-component theming props | `Card` with `color="blue"` variant — this is a component library model, not a design system model | Theme tokens set globally; components use semantic tokens |
-| Loading spinner component | Spinners on page load are inferior UX to skeleton screens for content areas | Improve skeleton component shimmer |
-| Responsive table collapse | Turning tables into card stacks on mobile is a complete rewrite of table rendering | Horizontal scroll wrapper on overflow (already present) |
+| Generating stub documentation for everything | Adding placeholder pages for unimplemented features makes the gap look smaller but creates "empty section" docs that confuse agents and users. | Document what is built; add a "not yet documented" tracking issue for deferred content |
+| Rewriting docs from scratch | Complete rewrites break internal cross-references, reset link indexes, and risk introducing new errors while fixing old ones. | Audit existing docs, fix in place, add missing sections |
+| Enforcing strict `#![deny(missing_docs)]` workspace-wide in one pass | This will cause hundreds of compiler warnings or errors across 90,000 lines and make the diff unmanageable. | Enable `#![warn(missing_docs)]` incrementally per crate, starting with the most user-facing (`framework`) |
+| Auditing generated code in `app/` | The sample app's generated code follows templates. Template auditing belongs in `ferro-cli` templates, not the sample app output. | Audit scaffold templates in `ferro-cli/src/templates/`, not `app/src/` |
+| Adding new features during audit | Scope creep. Any "we should also add X" finding during audit should be filed as a future milestone, not acted on in v11.0. | Track as PROJECT.md items under "Active" with [future] tag |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Font load (Inter) → Typography scale (line-heights, tracking) can reference the loaded font
-Token completeness (dark variants) → Dark mode surface contrast works
-Surface elevation tokens (bg-surface vs bg-card vs bg-background) → Card-on-background contrast
-Custom select arrow (CSS background-image) → appearance-none remains; arrow layered on top
-Focus ring system → Error state ring variant (error ring requires ring tokens to exist first)
-Transition system → Applied universally after other component classes are correct
+[Stale import path fix] → all other doc fixes build on clean examples
+    └── fixes ferro_rs:: → ferro:: in multi-tenancy.md, json-ui/actions.md, json-ui/data-binding.md
+
+[README accuracy fix]
+    └── requires: knowing what is actually shipped (PROJECT.md as source of truth)
+
+[CLI reference completeness]
+    └── requires: knowing all shipped commands (ferro-cli/src/commands/ as source of truth)
+
+[MCP tool documentation]
+    └── requires: knowing all shipped tools (ferro-mcp/src/tools/mod.rs as source of truth)
+
+[Agent workflow guide]
+    └── enhances: MCP tool documentation (needs tool docs to reference)
+
+[Cargo.toml metadata] ──independent──> can be fixed in any order
+
+[generation_hint audit] ──depends on──> understanding each tool's purpose
+
+[Pattern coherence audit] ──depends on──> stale import fix (can't assess coherence on wrong code)
+
+[COMPONENT_CATALOG sync] ──requires──> resolving to a single source of truth (ferro-json-ui)
+    └── conflicts with: workspace binary crate isolation (cannot directly share between ferro-cli and ferro-mcp)
 ```
 
----
+### Dependency Notes
 
-## Component-by-Component Gap Analysis
-
-This section maps what each component needs, ordered by impact.
-
-### High Impact (visible on every view)
-
-**Card**
-- Gap: `bg-background shadow-sm` — same background as page body means zero contrast
-- Fix: Change to `bg-card shadow-sm` — introduces card-as-surface-above-background pattern
-- Complexity: Low (token swap)
-
-**Table**
-- Gap: No row hover, "Azioni" hardcoded (Italian), column header letter-spacing uses `tracking-wider` but no `text-xs font-semibold uppercase` contrast improvement
-- Fix: Add `hover:bg-muted/50` to `<tr>`, externalize "Actions" label or remove hardcoded text, add sticky header option
-- Complexity: Low–Med
-
-**Button**
-- Gap: No `focus-visible:ring-2 focus-visible:ring-offset-2` — keyboard users get no focus indicator. `transition-colors` present but no easing specification
-- Fix: Add `focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary` to base classes
-- Complexity: Low
-
-**Input / Select / Textarea**
-- Gap: Focus ring uses wrong color during error state (`focus:ring-primary` but border is `border-destructive`). No transition on border color. Select has no dropdown arrow. Description above input rather than below.
-- Fix: Split focus classes into normal and error variants. Add `transition-colors`. Add SVG arrow to select via `bg-[url(arrow.svg)]` pattern or inline SVG via padding-right + background-position
-- Complexity: Med (error variant logic)
-
-**Typography (Text component)**
-- Gap: `text-3xl font-bold` for H1 has no `leading-tight tracking-tight`. `text-base` for P has no `leading-relaxed`. Line-height defaults to browser 1.2 for headings, which is visually cramped.
-- Fix: Add explicit `leading-*` and `tracking-*` to each text level
-- Complexity: Low
-
-### Medium Impact (visible in content views)
-
-**Breadcrumb**
-- Gap: `/` text separator. No `aria-current="page"` on last item.
-- Fix: Replace with `›` or inline SVG chevron. Add `aria-current`.
-- Complexity: Low
-
-**Badge**
-- Gap: `rounded-full` for badges is conventional but `rounded-md` (pill with flat sides) is the shadcn default — more versatile. Color treatment `bg-primary/10 text-primary` is correct pattern.
-- Fix: Keep current pattern — it is correct. No change needed.
-- Complexity: None
-
-**Alert**
-- Gap: No icon before alert content (info icon, check icon, warning triangle, error X). Professional alerts universally show an icon.
-- Fix: Add inline SVG icons per variant (4 SVGs needed)
-- Complexity: Low–Med
-
-**Skeleton**
-- Gap: `animate-pulse bg-card` — pulse opacity animation is minimal. Professional systems use shimmer (gradient sweep left-to-right).
-- Fix: Use `animate-pulse bg-muted` with Tailwind's `bg-gradient-to-r` and `animate-shimmer` (custom @keyframes in theme CSS)
-- Complexity: Med (requires CSS keyframe in theme file)
-
-**Tabs**
-- Gap: Active tab only changes color and border. No font-weight change.
-- Fix: Add `font-semibold` to active tab classes
-- Complexity: Low
-
-**Pagination**
-- Gap: `bg-background` on inactive pages — same as page background, no affordance. No border or ring on items.
-- Fix: `border border-border bg-background hover:bg-muted` on page links. Active page already has `bg-primary text-primary-foreground`.
-- Complexity: Low
-
-**Collapsible**
-- Gap: Instant open/close with no animation signal.
-- Fix: Add rotating chevron indicator via `group-open:rotate-180 transition-transform` on the summary icon
-- Complexity: Low
-
-### Lower Impact (specialized views)
-
-**StatCard** — Current state: unknown (not reviewed in detail). Likely needs same card elevation fix.
-
-**Checklist** — Current state: unknown. Likely needs focus ring on checkbox items.
-
-**Toast** — Current state: unknown. Verify has proper shadow elevation and is not `bg-background`.
-
-**NotificationDropdown** — Current state: `bg-background rounded-lg shadow-lg` — shadow-lg is good but `bg-background` creates same flat card issue.
-
-**Modal** — Current state: `bg-background rounded-lg shadow-lg` — same issue. Needs `bg-card`.
+- **Stale imports must be fixed first:** All other documentation checks that reference code examples are contaminated by the `ferro_rs` naming issue. Fix this before assessing pattern coherence.
+- **README roadmap section blocks credibility:** The "JSON-UI (Work in Progress)" roadmap entry is immediately visible to anyone landing on the repo. This is the highest-visibility single-file fix.
+- **COMPONENT_CATALOG sync requires a design decision:** Options are (1) extract to a shared data file loaded by both crates, (2) generate from a build script, or (3) make `ferro-mcp` depend on `ferro-cli` (creates a cycle — not viable). This is not a simple fix; it needs a phase of its own.
 
 ---
 
-## MVP Recommendation for v10.0
+## Audit Scope: All 14 Crates
 
-The highest leverage changes that produce the most visible quality improvement:
-
-**Phase 1: Foundation** (enables everything else)
-1. Load Inter font via `@import url(...)` in theme CSS head injection
-2. Add `bg-card` token definition distinct from `bg-background` in default theme
-3. Add `bg-muted` token for table/surface subtle backgrounds
-
-**Phase 2: Card/Surface elevation** (biggest visual win)
-4. Change Card, Modal, NotificationDropdown from `bg-background` to `bg-card`
-5. Add `hover:bg-muted/50` to table rows
-
-**Phase 3: Typography** (fast, high polish)
-6. Add `leading-tight tracking-tight` to H1, H2, H3
-7. Add `leading-relaxed` to P element
-8. Apply consistent font-size scale (no gaps between levels)
-
-**Phase 4: Form polish**
-9. Add custom select arrow (CSS background-image)
-10. Fix focus ring error variant (red ring when error present)
-11. Apply `transition-colors duration-150` to all form elements
-
-**Phase 5: Interaction states**
-12. Add `focus-visible:ring-2 focus-visible:ring-offset-2` to Button
-13. Add `hover:bg-muted` to sidebar nav items (already partially there)
-14. Add `transition-colors` to all interactive elements missing it
-
-**Phase 6: Component polish** (lower priority but visible)
-15. Breadcrumb chevron separator
-16. Alert icons (4 inline SVGs)
-17. Skeleton shimmer animation
-18. Active tab font-weight
-19. Pagination border treatment
-
-**Defer:**
-- Tooltip-style help text (new feature, not polish)
-- Sticky table header (layout change, needs design decision)
-- Responsive table collapse (out of scope)
-- Dark mode toggle JS (out of scope)
+| Crate | Doc Page | Cargo.toml | Crate lib.rs Docs | Key Concerns |
+|-------|----------|------------|-------------------|--------------|
+| `framework` (ferro-rs) | introduction.md, the-basics/ | Complete | Partial | Agent-first philosophy absent from intro |
+| `ferro-cli` | reference/cli.md | Complete | — (binary) | 13 commands undocumented |
+| `ferro-mcp` | reference/cli.md partial | Complete | — (binary) | 40+ tools undocumented to humans |
+| `ferro-macros` | inertia.md (InertiaProps only) | Complete | Minimal | FerroModel, ValidateRules not in user docs |
+| `ferro-inertia` | features/inertia.md (good) | Complete | Good README | Well documented |
+| `ferro-json-ui` | json-ui/* (good) | Complete | Stub README (9 lines) | README is near-empty |
+| `ferro-events` | features/events.md | Complete | Has README | Good |
+| `ferro-queue` | features/queues.md | Complete | Has README | Good |
+| `ferro-notifications` | features/notifications.md | Complete | Has README | Good |
+| `ferro-broadcast` | features/broadcasting.md | Missing readme in Cargo.toml | Has README | Missing Cargo.toml readme field |
+| `ferro-storage` | features/storage.md | Complete | Has README | "coming soon" S3 note is stale |
+| `ferro-cache` | features/caching.md | Complete | Has README | Good |
+| `ferro-lang` | features/localization.md | Complete | Stub README (9 lines) | README near-empty |
+| `ferro-projections` | No user doc page | Missing homepage, readme in Cargo.toml | — | Major gap: v9.0 feature with zero user docs |
+| `ferro-ai` | features/ai.md | Complete | — | Good |
+| `ferro-api-mcp` | features/api-mcp.md | — | — | Check binary-only crate metadata |
+| `ferro-theme` | features/themes.md | Missing categories | — | Minor metadata gap |
 
 ---
 
-## Complexity Tiers Reference
+## MVP Audit Definition
 
-| Level | Definition | Examples |
-|-------|------------|---------|
-| Low | Single class change or token swap. < 30min | Row hover, tab font-weight, button focus ring |
-| Low-Med | Multiple coordinated class changes across 1-2 functions. < 2h | Error ring variant, select arrow, description reorder |
-| Med | New CSS (keyframes, custom properties) or logic branch. 2-4h | Skeleton shimmer, collapsible animation |
-| High | New component feature or JS coordination. > 4h | Tooltip help text, JS-powered custom select |
+What must be done for v11.0 to be considered complete.
+
+### Phase 1: Accuracy Fixes (P0)
+
+Critical correctness issues that actively mislead users and agents.
+
+- [ ] Fix all `ferro_rs::` → `ferro::` in user docs (28 occurrences, 3 files)
+- [ ] Remove `// TODO: Implement` blocks from CLI reference examples (8+ occurrences)
+- [ ] Fix README roadmap section — JSON-UI is shipped, not "Work in Progress"
+- [ ] Fix S3 "coming soon" note in storage docs — S3 is shipped
+- [ ] Correct MCP tool count claims to reflect actual 57 tools
+
+### Phase 2: Completeness Fixes (P1)
+
+Missing coverage that blocks users from using shipped features.
+
+- [ ] Document 13 undocumented CLI commands in reference/cli.md
+- [ ] Add Service Projections user documentation page (v9.0 feature)
+- [ ] Document FerroModel and ValidateRules derive macros in user docs
+- [ ] Document `make:model` command (absent from CLI reference entirely)
+
+### Phase 3: Agent-First Philosophy (P1)
+
+Ferro's identity needs to be present where users first encounter it.
+
+- [ ] Rewrite introduction.md to lead with agent-first value proposition
+- [ ] Add "Working with Agents" guide documenting the MCP workflow
+- [ ] Audit and refresh generation_hints in all 57 MCP tool responses
+- [ ] Document the agent-to-CLI workflow (agent calls MCP → reads hints → uses CLI)
+
+### Phase 4: Pattern Coherence (P2)
+
+Consistency issues that cause agent generation failures.
+
+- [ ] Standardize import style across all code examples (audit `use ferro::*` vs explicit imports)
+- [ ] Audit handler macro patterns — all examples should use `#[handler]` not raw `async fn`
+- [ ] Verify error propagation examples use `?` not `unwrap()` or `try!`
+- [ ] Resolve COMPONENT_CATALOG duplication (design decision required)
+
+### Phase 5: Metadata & Rust Guidelines (P2)
+
+Pre-publication housekeeping.
+
+- [ ] Fix Cargo.toml metadata gaps (ferro-broadcast, ferro-theme, ferro-projections)
+- [ ] Add `#![warn(missing_docs)]` to framework crate
+- [ ] Expand stub READMEs: ferro-json-ui (9 lines), ferro-lang (9 lines), ferro-whatsapp (3 lines)
+- [ ] Add crate-level `//!` doc comments with examples to ferro-json-ui, ferro-lang lib.rs
+
+---
+
+## Feature Prioritization Matrix
+
+| Audit Check | User Value | Fix Cost | Priority |
+|-------------|------------|----------|----------|
+| Fix ferro_rs imports in docs | HIGH — breaks copy-paste examples | LOW | P0 |
+| Remove TODO from CLI reference | HIGH — confusing to users and agents | LOW | P0 |
+| README roadmap accuracy | HIGH — first impression | LOW | P0 |
+| Storage S3 "coming soon" | MEDIUM — misleads about shipped feature | LOW | P0 |
+| CLI reference completeness (13 commands) | HIGH — agents rely on this | MEDIUM | P1 |
+| Service Projections docs | MEDIUM — v9.0 feature undocumented | MEDIUM | P1 |
+| FerroModel/ValidateRules docs | MEDIUM — derive macros are core DX | LOW | P1 |
+| Introduction agent-first rewrite | HIGH — primary value prop missing | MEDIUM | P1 |
+| Agent workflow guide | HIGH — core differentiator | MEDIUM | P1 |
+| MCP tool hint audit | HIGH — directly affects agent quality | HIGH | P1 |
+| Import pattern coherence | HIGH — agent generation correctness | MEDIUM | P2 |
+| COMPONENT_CATALOG sync | MEDIUM — drift causes inconsistent AI output | MEDIUM | P2 |
+| Cargo.toml metadata fixes | LOW — crates.io quality | LOW | P2 |
+| missing_docs lint enablement | MEDIUM — long-term quality | HIGH | P2 |
+| Stub README expansions | LOW — crates.io discoverability | MEDIUM | P2 |
+
+**Priority key:**
+- P0: Actively wrong — fix before anything else
+- P1: Missing critical coverage — must have for publication
+- P2: Quality improvements — should have before publication
+
+---
+
+## Audit Scope Boundaries
+
+### In Scope
+
+- `docs/src/` — all mdBook user documentation
+- `docs/src/reference/cli.md` — CLI reference completeness
+- `*/Cargo.toml` — metadata for publishable crates
+- `ferro-mcp/src/tools/*.rs` — generation_hint strings in tool responses
+- `ferro-cli/src/templates/` — scaffold template accuracy
+- Root `README.md` — accuracy and philosophy alignment
+- `*/src/lib.rs` — crate-level doc comments for 14 crates
+
+### Out of Scope
+
+- `app/` sample application code (test bed only)
+- `docs/protocol/` service projection protocol spec (separate audience)
+- Frontend TypeScript types and React components
+- Test file documentation
+- Changelog or release notes format
 
 ---
 
 ## Sources
 
-- [shadcn/ui Theming](https://ui.shadcn.com/docs/theming) — CSS variable token system, OKLCH color format (HIGH confidence)
-- [shadcn/ui Tailwind v4](https://ui.shadcn.com/docs/tailwind-v4) — v4 @theme directive integration (HIGH confidence)
-- [Vercel Geist Typography](https://vercel.com/geist/typography) — Type scale taxonomy (MEDIUM confidence — page renders but tokens are proprietary)
-- [Vercel Geist Colors](https://vercel.com/geist/colors) — Background1/Background2 elevation tokens, 10-step color scale (HIGH confidence)
-- [Radix Themes DeepWiki](https://deepwiki.com/radix-ui/themes/7.2-input-components) — focus-visible implementation, :has() selector patterns (MEDIUM confidence)
-- [shadcn Design Principles Gist](https://gist.github.com/eonist/c1103bab5245b418fe008643c08fa272) — 150ms transition standard, shadow tiers (MEDIUM confidence — community source)
-- [Modern CSS: Custom Select Styles](https://moderncss.dev/custom-select-styles-with-pure-css/) — CSS-only select arrow techniques (HIGH confidence)
-- [Elevation Design Patterns](https://designsystems.surf/articles/depth-with-purpose-how-elevation-adds-realism-and-hierarchy) — 4-6 elevation level discipline (HIGH confidence)
-- [Tailwind CSS Tables — Flowbite](https://flowbite.com/docs/components/tables/) — Row hover, sticky header patterns (MEDIUM confidence)
-- [Skeleton Screens — NN/g](https://www.nngroup.com/articles/skeleton-screens/) — When/when not to use skeleton states (HIGH confidence)
-- [Fonts — HTTP Archive Web Almanac 2025](https://almanac.httparchive.org/en/2025/fonts) — 71% self-hosted adoption (HIGH confidence)
+- Direct codebase inspection: `docs/src/` (all mdBook pages), `ferro-mcp/src/tools/mod.rs`, `ferro-cli/src/commands/`, all 14 `Cargo.toml` files
+- [Rust API Guidelines — Documentation](https://rust-lang.github.io/api-guidelines/documentation.html) — C-CRATE-DOC, C-EXAMPLE, C-FAILURE, C-LINK, C-METADATA requirements (HIGH confidence)
+- [Rust API Guidelines — Checklist](https://rust-lang.github.io/api-guidelines/checklist.html) — 11 category audit framework (HIGH confidence)
+- [LLM-Friendly API Design — Awesome Agentic Patterns](https://agentic-patterns.com/patterns/llm-friendly-api-design/) — Agent-first design principles: self-descriptive naming, shallow indirection, actionable errors, explicit schemas (MEDIUM confidence)
+- [mdbook-linkcheck](https://docs.rs/mdbook-linkcheck) — Broken link checking for mdBook (HIGH confidence — tooling exists)
+- PROJECT.md — authoritative list of shipped features vs. documented features (HIGH confidence — primary source)
+
+---
+
+*Feature research for: v11.0 Framework Consolidation Audit*
+*Researched: 2026-03-26*

@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** v10.0 JSON-UI Visual Overhaul
-**Domain:** Server-side HTML rendering with CSS design tokens — professional visual quality uplift
-**Researched:** 2026-03-24
+**Project:** v11.0 Framework Consolidation Audit
+**Domain:** Documentation accuracy, completeness, and philosophy consistency audit — 14-crate Rust workspace
+**Researched:** 2026-03-26
 **Confidence:** HIGH
 
 ## Executive Summary
 
-Ferro JSON-UI has a functionally complete component catalog of ~30 components but the rendered output reads as "Tailwind defaults applied once" rather than a considered design system. The research identifies this as a solvable surface problem: no new crates, no new npm packages, and no architectural changes are required. All quality improvements target four existing files — `default.css`, `layout.rs`, `render.rs`, and `runtime.rs` — through targeted CSS class substitutions, semantic surface token corrections, and improved interactive state handling.
+The v11.0 milestone is not a feature release — it is a pre-publication audit-then-fix milestone for a ~90,000-line Rust workspace that evolved through 10 rapid development milestones. The framework has outrun its documentation: features shipped in v8.1, v9.0, and v10.0 have no user-facing docs, existing docs contain stale import paths and TODO stubs presented as working code, and the public introduction positions Ferro as "the Laravel of Rust" while burying its actual value proposition — agent-first AI code generation — entirely. Before crates.io publication, all four artifact layers (mdBook prose, public API surface, MCP tool descriptions, and CLI scaffold templates) must be brought into accurate, consistent, and agent-ready alignment.
 
-The recommended approach is a six-phase visual uplift ordered by dependency and impact. Font loading and token fixes must come first because they underpin everything else. Surface elevation corrections (Card/Modal/Notification backgrounds) deliver the single highest visible quality increase. Focus rings, transitions, and form polish follow as systematic sweeps across all interactive components. The final phase handles lower-impact component details (Alert icons, Skeleton shimmer, Breadcrumb chevron). This ordering ensures each phase builds cleanly on the previous and that test suite impacts are managed upfront.
+The recommended approach follows a strict layered sequence: audit and fix the public API surface first, then MCP tools, then CLI templates, and finally prose documentation. This order is not arbitrary — MCP tools are the primary interface agents encounter before docs, and CLI templates produce code that immediately reveals inaccuracies. Fixing prose before fixing the code it describes propagates errors with better grammar. The audit must separate read-only audit phases (produce a severity-ranked issue list) from fix phases (address specific items on that list) to prevent scope creep from making the milestone unshippable.
 
-The key risk is the test suite: 157 tests assert on exact Tailwind class strings, meaning visual changes will cause cascading failures that obscure regressions. This must be addressed in the first phase by establishing a structural vs. cosmetic assertion separation rule. A secondary risk is dark mode contrast: oklch lightness adjustments that look trivial can reduce WCAG contrast ratios meaningfully, requiring systematic verification with an oklch-native contrast checker after any token change.
+The key risks are: (1) phantom feature documentation — stub functions presented as working code, specifically `ferro-stripe`'s `stripe_is_processed()` which always returns `false`; (2) import path inconsistency — `ferro_rs::` vs `ferro::` scattered across multi-tenancy and JSON-UI docs with 28 confirmed occurrences; (3) a complete documentation gap for Service Projections (v9.0), which has its own crate, 315 tests, 5 MCP tools, and a protocol spec, but no user-facing how-to page. These three issues must be treated as P0 blockers alongside the README roadmap inaccuracy (JSON-UI listed as "Work in Progress" despite shipping in v10.0).
 
 ---
 
@@ -19,155 +19,136 @@ The key risk is the test suite: 157 tests assert on exact Tailwind class strings
 
 ### Recommended Stack
 
-The existing stack is correct and requires no additions. `@tailwindcss/browser@4` CDN with `<style type="text/tailwindcss">` injection handles all CSS generation. The only change is font loading: **Bunny Fonts** (not Google Fonts) for Inter Variable via `@import` inside the `<style type="text/tailwindcss">` block.
-
-There is one critical pre-existing bug: `ferro-theme/assets/default.css` uses `--font-family-sans` and `--font-family-mono` which generate no Tailwind utilities. The correct namespace for Tailwind v4 is `--font-sans` and `--font-mono`. This must be fixed before any font work has effect.
+All tooling for this milestone is Rust-native and stable-toolchain-compatible (MSRV 1.88.0). The existing CI already enforces `RUSTDOCFLAGS: -Dwarnings` with `cargo doc --no-deps --all-features`, catching broken intra-doc links automatically. The audit requires three additional tools: `mdbook-linkcheck` (broken link detection in the 40-page mdBook), `cargo-rdme` (sync per-crate READMEs from crate-level `//!` docs), and `cargo-semver-checks` (catch accidental API breaks during cleanup). All three are stable-toolchain-compatible — do not use nightly-only alternatives like `--show-coverage`, `cargo-sync-rdme`, or `rust-semverver`.
 
 **Core technologies:**
-- `@tailwindcss/browser@4` (CDN): Tailwind v4 in-browser compiler — already working, no changes needed
-- Bunny Fonts CDN: GDPR-compliant Inter Variable delivery — replaces Google Fonts recommendation in ARCHITECTURE.md due to EU legal risk
-- oklch color space: Perceptually uniform semantic tokens — already correct in `default.css`, no color science changes needed
-- Inline SVG strings (Rust): Icon delivery — no external icon library needed; all icons are hardcoded SVG strings in Rust source
+- `rustdoc` + `#![warn(missing_docs)]`: API doc coverage enforcement — stable, authoritative, integrates with existing CI `-D warnings` pipeline; add per-crate incrementally starting with `framework`
+- `mdbook-linkcheck 0.7.7`: Detects broken internal/external links in `docs/src/` — add to `docs/book.toml`; catches dead cross-references introduced by page renames
+- `cargo-rdme 1.4.8`: Syncs per-crate `README.md` from `//!` crate-level doc comments — use after fixing crate docs to propagate to crates.io README display; works on stable (unlike `cargo-sync-rdme` which requires nightly)
+- `cargo-semver-checks 0.44.0+`: 245 lints; catches API consistency violations during doc-driven cleanup — prevents accidental breaking changes appearing as doc-only PRs
 
-**Critical version fix required:**
-- `--font-family-sans` → `--font-sans` in `default.css` and `token.rs` constants
+**What to avoid:**
+- `RUSTDOCFLAGS='--show-coverage'` — nightly-only, unstable, known regression behavior (tracking issue #58154)
+- `#![deny(missing_docs)]` workspace-wide in one pass — causes hundreds of failures; use `warn`, escalate to `deny` per crate only after completion
+- Nightly toolchain for any audit tooling — workspace is pinned to stable 1.88.0
 
-### Expected Features
+### Expected Features (Audit Check Categories)
 
-The research classifies all improvements into three tiers based on visual impact and reference system precedent (shadcn/ui, Vercel Geist, Radix Themes, Tailwind UI).
+This milestone's "features" are audit check categories, not product capabilities. They map to a priority-ordered execution plan.
 
-**Must have (table stakes — absence makes output look amateur):**
-- Professional font (Inter Variable) with correct `--font-sans` token wiring
-- Surface/card contrast: `bg-card` distinct from `bg-background` for elevated surfaces
-- Focus rings on all interactive elements using `focus-visible:` (not `focus:`)
-- Custom select dropdown arrow (CSS background-image or absolute SVG span)
-- Transition-colors on all interactive elements with `motion-reduce:transition-none`
-- Typography scale with explicit `leading-*` and `tracking-*` per heading level
-- Hover states on all interactive elements (table rows, pagination, nav items)
-- Input error states with red focus ring variant (currently uses primary ring on error)
-- Consistent 8px spacing scale across components
+**Must have — P0 (Actively wrong, fix before anything else):**
+- Fix `ferro_rs::` import paths — 28 confirmed occurrences across multi-tenancy.md, json-ui/actions.md, json-ui/data-binding.md; canonical alias is `ferro::` as set by `ferro new`
+- Remove `// TODO: Implement` stubs from CLI reference examples — 8+ occurrences in reference/cli.md presented as working code
+- Fix README roadmap section — JSON-UI listed as "Work in Progress" is false; it shipped in v10.0
+- Fix storage docs — S3 labeled "coming soon" is stale; S3 is shipped
+- Correct MCP tool count claims — docs say "35+ tools", actual count is 57
 
-**Should have (differentiators — visible in production apps):**
-- Semantic focus ring variants per state (error gets red ring, success gets green)
-- Sticky table headers for data-heavy views
-- Breadcrumb SVG chevron separator (replaces raw `/` text)
-- Skeleton shimmer animation (replaces `animate-pulse`)
-- Alert icons per variant (4 inline SVGs)
-- Active tab `font-semibold` weight
-- Pagination border treatment for inactive pages
-- Collapsible rotating chevron indicator
-- Emoji-to-SVG replacement (bell icon in notification dropdown)
+**Should have — P1 (Missing critical coverage, must have for publication):**
+- Document 13 undocumented CLI commands: `api:check`, `clean`, `generate-routes`, `make:api`, `make:api-key`, `make:lang`, `make:policy`, `make:projection`, `make:stripe`, `make:theme`, `make:whatsapp`, `projection:check`, `validate-contracts`
+- Create Service Projections user documentation page — v9.0 feature with 315 tests and 5 MCP tools but zero how-to docs in `docs/src/`
+- Rewrite introduction.md to lead with agent-first value proposition — currently describes "the Laravel of Rust" with zero mention of agents, MCP, or AI generation
+- Add "Working with Agents" guide documenting the MCP workflow (`application_info` → `list_routes` → `get_handler`)
+- Audit and refresh generation_hints across all 57 MCP tool responses — drift is likely after v9.0 added significant new tool surface
+- Document FerroModel and ValidateRules derive macros in user docs
 
-**Defer (v2+):**
-- Tooltip-style help text on inputs (new feature, not polish)
-- Sticky table headers (layout change needing design decision)
-- Responsive table collapse (complete rewrite)
-- Dark mode toggle with localStorage persistence (requires JS)
-- JavaScript-powered custom select dropdown
+**Should have — P2 (Quality, should have before publication):**
+- Standardize import style across all code examples — mixed `use ferro::*` vs explicit multi-import patterns cause agent generation failures
+- Resolve COMPONENT_CATALOG duplication between `ferro-cli/src/ai.rs` and `ferro-mcp/src/tools/json_ui_generate.rs` — known P2 concern since v5.0, requires a design decision (shared data file, build script, or shared crate; direct dependency creates a cycle)
+- Fix Cargo.toml metadata gaps: `ferro-broadcast` (missing readme), `ferro-theme` (missing categories), `ferro-projections` (missing homepage and readme)
+- Add `#![warn(missing_docs)]` to `framework` crate; expand stub READMEs for ferro-json-ui (9 lines), ferro-lang (9 lines), ferro-whatsapp (3 lines)
+
+**Defer:**
+- Implementing features discovered incomplete during the audit — file as future milestone items; do not act in v11.0
+- Auditing `app/` sample application generated output — audit scaffold templates in `ferro-cli/src/templates/`, not generated output
 
 ### Architecture Approach
 
-All changes are within four existing files with no new cross-crate dependencies. The render.rs ↔ ferro-theme boundary remains: render.rs stays token-agnostic and emits Tailwind class strings; the theme CSS injects token values that those classes resolve to. No ThemeContext should be passed into render.rs — theme variation is expressed purely in CSS custom properties.
+The audit operates across four interconnected artifact layers. Inconsistencies cluster at the boundaries between them because only Rust source is compiler-checked; Markdown, MCP string literals, and CLI templates drift silently.
 
-**Major components and change targets:**
+```
+docs/src/ (40 .md files)          — highest drift risk; prose not compiled
+framework/src/lib.rs               — single re-export facade; source of truth for all type names
+ferro-mcp/src/tools/ (54 .rs)     — agent-first delivery; tool descriptions age independently of API
+ferro-cli/src/templates/ (50+)    — generated code; tests check structural presence, not compilation
+```
 
-1. `ferro-theme/assets/default.css` — Fix `--font-family-*` → `--font-*` namespace, add Inter `@import`, refine token values
-2. `ferro-json-ui/src/layout.rs` — Font `<link>` injection in `base_document()` using Bunny Fonts (not Google Fonts)
-3. `ferro-json-ui/src/render.rs` — PRIMARY TARGET: surface bg corrections, focus rings, transitions, select arrow, hover states, typography classes, SVG icons (~1700 lines, all visual changes concentrated here)
-4. `ferro-json-ui/src/runtime.rs` — Replace hardcoded `bg-blue-500`/`border-blue-600` with semantic class names (`bg-primary`, `border-primary`, `text-text-muted`)
-
-**Key patterns to enforce:**
-- Surface elevation hierarchy: `background` (page) → `surface` (panels, sidebars) → `card` (cards, modals, dropdowns)
-- Focus ring standard: `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`
-- Transition standard: `transition-colors duration-150 motion-reduce:transition-none` for color changes; `transition-transform duration-200` for rotations
-- Shadow mapping: cards → `shadow-sm`, modals/popovers → `shadow-md`
-- Use module-level `const` for repeated class combinations, not a ClassBuilder abstraction
+**Major components and audit responsibilities:**
+1. `framework/src/lib.rs` — canonical export surface; every type named in any doc must be verified against this file; if a type is in docs but not here, that is either a doc error or a missing export
+2. `docs/src/**/*.md` (40 files) — user-readable contract; highest volume, most drift; audit order: P0 accuracy fixes before prose quality
+3. `ferro-mcp/src/tools/*.rs` (54 tools) — agent-readable truth; `code_templates.rs`, `generation_context.rs`, and `application_info.rs` are highest-impact, highest-drift; fix before prose
+4. `ferro-cli/src/templates/*.rs` — generated code quality; template tests use `contains()` not compilation; must trace patterns against `framework/src/lib.rs` manually
+5. `ferro-cli/src/commands/*.rs` — CLI help text; 13 commands have no reference documentation in `reference/cli.md`
 
 ### Critical Pitfalls
 
-1. **Test avalanche from class string changes** — 157 tests assert on exact Tailwind class strings. One visual pass can trigger 40+ cascade failures, making regressions invisible. Prevention: before any class change, separate tests into structural (must pass) vs cosmetic (update to match intent). Address in Phase 1.
+1. **Phantom feature documentation** — Stub functions (`todo!()`, `// TODO` in public methods) presented as working examples. Confirmed: `ferro-stripe/src/webhook/mod.rs` line 40 has `// TODO: implement by checking a processed-events DB table`; the stripe.md doc presents `stripe_is_processed()` as callable. Prevention: classify each feature as fully/partially/not implemented before fixing its doc; stubs get an "NOT YET IMPLEMENTED" callout at the top, not in a footnote.
 
-2. **Dark mode oklch contrast failure** — Adjusting card lightness values by 2-3% can reduce WCAG contrast ratios below 4.5:1 without being visually obvious. Check all 8 critical token pairs with OddContrast (oklch-native) after every token change in both light and dark mode.
+2. **Wrong import path in examples** — `ferro_rs::` vs `ferro::`. The canonical alias is `ferro::` as set in `app/Cargo.toml`: `ferro = { path = "../framework", package = "ferro-rs" }`. Prevention: fix in a single atomic grep-replace pass as the first action; add a CI check that fails on `ferro_rs::` in `.md` files to prevent regression.
 
-3. **Font loading causing CLS and FOUT** — `@import url(google fonts)` inside theme CSS creates a CDN processing dependency chain. Font loading belongs in layout `<head>` as a `<link>` tag with `rel="preload"` and `font-display: swap`. Theme CSS defines only the `--font-sans` family stack.
+3. **Fix phase propagating inaccuracies** — Auditors "fix" docs by improving prose clarity rather than verifying against Rust source. Prevention: require that every changed API example in a PR names the Rust source file verified (`framework/src/lib.rs` line X confirmed); no doc example ships without source verification.
 
-4. **Select arrow missing on Windows/Firefox** — `appearance-none` removes the native select arrow but the current renderer provides no replacement. The field appears as a plain rectangle with no affordance. Fix: wrap in `div.relative` with an absolutely-positioned SVG chevron span.
+4. **Audit scope creep** — Each fix uncovers new gaps; the milestone expands until nothing ships. Prevention: separate read-only audit phases (produce a severity-ranked list) from fix phases (address only items on that list); newly discovered issues go to a backlog file, not the current PR; "while I was in there" is a scope creep warning sign.
 
-5. **Modal fixed overlay trapped in stacking context** — Adding `transition-transform` to the sidebar for mobile slide-in creates a CSS containing block that traps `position: fixed` modals inside it. Before adding any transform-based animation to layout containers, verify modals render outside them or use `translate` CSS property instead (which does not create a containing block in modern browsers).
+5. **Service Projections documentation gap** — The v9.0 crate has 315 tests, 5 MCP tools, and a protocol spec but no entry in `docs/src/SUMMARY.md` and no how-to page. Prevention: create `docs/src/features/projections.md` as a new artifact, pattern it on `events.md` structure; the protocol spec in `docs/protocol/` is a technical standard, not a user guide.
 
 ---
 
 ## Implications for Roadmap
 
-Based on combined research, the following phase structure is recommended. The ordering is driven by CSS dependency chains: fonts and tokens must exist before components can reference them correctly; surface elevation must be correct before component polish has its full effect; focus rings and transitions should sweep all components in a single pass to avoid incomplete coverage.
+The audit follows a dependency-respecting sequence: fix foundational layers before surface layers. Philosophy coherence can only be evaluated holistically after each individual layer is accurate.
 
-### Phase 1: Foundation — Token Fix and Font Loading
+### Phase 1: P0 Accuracy Fixes
 
-**Rationale:** Two pre-existing bugs block all subsequent work. The `--font-family-sans` namespace mismatch means no font token has ever had effect. The test avalanche pitfall must be addressed before any class strings change.
-**Delivers:** Working Inter Variable font, correct Tailwind font token wiring, test separation rule established
-**Addresses:** "Professional font" table stake, font token namespace bug
-**Avoids:** Test avalanche (establish rule first), font CLS pitfall (correct `<link>` in `<head>` pattern, not theme CSS `@import`)
-**Files:** `default.css`, `token.rs`, `layout.rs`
-**Research flag:** Standard patterns — skip phase research
+**Rationale:** Actively wrong information (stale imports, TODO stubs, README lies about shipped features) contaminates all downstream work. Auditing coherence on wrong examples is wasted effort.
+**Delivers:** All five P0 issues resolved; docs no longer actively mislead users or agents
+**Addresses:** Import path normalization (28 occurrences), README roadmap accuracy, storage S3 "coming soon" stale note, MCP tool count correction, CLI reference stub removal
+**Avoids:** The pitfall of fixing clarity while leaving factual errors; the wrong import pitfall (single atomic pass eliminates mixed states)
 
-### Phase 2: Surface Elevation and Dark Mode Tokens
+### Phase 2: CLI and MCP Accuracy
 
-**Rationale:** The single highest-impact visual change is correcting `bg-background` → `bg-card` for cards, modals, and dropdowns. Flat surfaces (cards with same color as page body) are the most visible marker of amateur rendering. Dark mode token completeness must be verified here before any further token changes compound the contrast problem.
-**Delivers:** Visual depth hierarchy — cards, modals, and dropdowns visually elevated above page background; all dark mode tokens verified
-**Addresses:** "Surface/card contrast" table stake, dark mode token completeness
-**Avoids:** oklch contrast failure in dark mode (verify all 8 critical token pairs with OddContrast)
-**Files:** `render.rs` (card, modal, stat card, notification dropdown, sidebar), `default.css`
-**Research flag:** Standard patterns — well-documented CSS elevation; skip phase research
+**Rationale:** Agents encounter MCP tools before prose. CLI templates produce code that immediately reveals inaccuracies. Fix code-based artifacts before prose — a wrong template breaks a build; a wrong prose sentence just confuses.
+**Delivers:** All 57 MCP tools verified and generation_hints refreshed; 13 undocumented CLI commands added to `reference/cli.md`; `code_templates.rs` patterns traced against current framework exports
+**Addresses:** MCP tool drift, CLI reference completeness (diff `ferro-cli/src/commands/` vs `reference/cli.md`), `code_templates.rs` accuracy
+**Avoids:** Fixing prose before code-layer artifacts; the anti-pattern of treating template `contains()` tests as proof of correctness
 
-### Phase 3: Typography Scale
+### Phase 3: Documentation Completeness
 
-**Rationale:** Typography improvements are pure class additions (`leading-tight tracking-tight` to headings, `leading-relaxed` to body text) with no dependencies other than the font being loaded (Phase 1). Fast execution, high polish perception.
-**Delivers:** Professional type ramp with correct line-height and letter-spacing at every heading level
-**Addresses:** "Typography scale" table stake
-**Files:** `render.rs` (Text component renderer)
-**Research flag:** Standard patterns — Tailwind typography utilities are well-documented; skip phase research
+**Rationale:** With accurate foundations, fill coverage gaps for shipped features that lack user-facing docs.
+**Delivers:** `docs/src/features/projections.md` (new page); FerroModel and ValidateRules derive macro docs; `make:model` command documentation
+**Addresses:** v9.0 Service Projections documentation gap, macro discoverability, agent discovery of scaffolding commands
+**Avoids:** Creating stub pages — only document features confirmed fully implemented; no placeholder content
 
-### Phase 4: Form Component Polish
+### Phase 4: Agent-First Philosophy
 
-**Rationale:** Form components have the most accumulated visual debt: broken select arrow (cross-browser regression), wrong focus ring on error state, missing transitions, and inconsistent spacing. This phase sweeps all form components in a single focused pass.
-**Delivers:** Custom select arrow, error-state focus ring variant, `transition-colors` on all form elements, `disabled:opacity-50 disabled:cursor-not-allowed` on all form elements, description positioning fix (label → input → description → error order)
-**Addresses:** "Custom select arrow", "Input error states", "Transition-colors" table stakes; "Semantic focus ring variants" differentiator
-**Avoids:** Select arrow cross-browser failure (test on Windows Chrome + Firefox), peer modifier breakage in Safari (Switch component)
-**Files:** `render.rs` (Input, Select, Textarea, Checkbox, Switch renderers)
-**Research flag:** Standard patterns — skip phase research
+**Rationale:** Philosophy coherence is an overlay on all layers; it can only be evaluated after each layer is accurate. Rewriting introduction.md before fixing the docs it introduces would be premature.
+**Delivers:** Rewritten `introduction.md` leading with agent-first thesis; "Working with Agents" guide; MCP tool references added to each feature doc section (one line listing relevant tools e.g. `list_events`, `inspect_projection`)
+**Addresses:** Introduction philosophy drift, agent discoverability of capabilities, generation_hint consistency across all 57 tools
+**Avoids:** Treating philosophy work as a full rewrite — it is an overlay on individually-accurate docs, not a replacement
 
-### Phase 5: Interactive State Consistency
+### Phase 5: Metadata and API Guidelines
 
-**Rationale:** Focus rings and hover states must be applied as a complete sweep across all interactive elements — partial coverage (e.g., buttons have focus rings but pagination does not) is worse than no coverage because it fails WCAG and creates inconsistent keyboard navigation experience.
-**Delivers:** Unified `focus-visible:ring-2 focus-visible:ring-offset-2` on all interactive elements (Button, Tabs, Breadcrumb links, Pagination); `hover:bg-muted/50` on table rows, sidebar nav, pagination; `transition-colors duration-150 motion-reduce:transition-none` universally applied
-**Addresses:** "Focus rings on all interactives" and "Hover states on all interactives" table stakes; "Consistent transition system" differentiator
-**Avoids:** Focus rings removed for aesthetics pitfall; hover-only without focus equivalent UX pitfall; reduced motion accessibility requirement
-**Files:** `render.rs` (Button, Tabs, Breadcrumb, Pagination, Table, Sidebar nav); `runtime.rs` (tab switcher JS using hardcoded `border-blue-600`)
-**Research flag:** Standard patterns — skip phase research
-
-### Phase 6: Component Details and Consistency Pass
-
-**Rationale:** Lower-impact but visible polish: Alert icons, Skeleton shimmer, Breadcrumb chevron, active tab weight, pagination borders, emoji-to-SVG. These are independent of each other and of earlier phases, making them safe to batch.
-**Delivers:** Alert icons per variant (4 SVGs), Skeleton shimmer keyframe animation, Breadcrumb SVG chevron, active tab `font-semibold`, pagination border treatment, notification bell emoji → SVG, CollapsibleRotating chevron indicator
-**Addresses:** Alert icons, Skeleton shimmer, Breadcrumb separator, tab active weight differentiators
-**Avoids:** Emoji rendering inconsistency across OS (replace with SVG), large inline SVG performance trap (keep icons small and hardcoded, not dynamic)
-**Files:** `render.rs` (Alert, Skeleton, Breadcrumb, Tabs, Pagination, Collapsible); `layout.rs` (notification bell); `default.css` (shimmer keyframe)
-**Research flag:** Standard patterns — skip phase research
+**Rationale:** Pre-publication housekeeping that does not affect user-facing accuracy. Do last to avoid blocking critical fixes.
+**Delivers:** Cargo.toml metadata gaps fixed (ferro-broadcast, ferro-theme, ferro-projections); `#![warn(missing_docs)]` added to `framework` crate; stub READMEs expanded; COMPONENT_CATALOG duplication resolved or design decision documented
+**Addresses:** crates.io publication readiness, Rust API Guidelines compliance, long-term doc quality enforcement
+**Avoids:** Adding `#![deny(missing_docs)]` workspace-wide in one pass; the Tokio pattern (add `#![allow(missing_docs)]` first, then `warn` module by module) is the correct incremental approach
 
 ### Phase Ordering Rationale
 
-- **Token and font fixes precede all component work** — the `--font-family-*` bug means font changes have zero effect until the namespace is corrected; there is no point polishing component typography before the font exists in the page
-- **Surface elevation before interactive states** — establishing the correct background hierarchy makes focus ring offsets (`ring-offset-2`) render correctly; on a flat surface the offset creates confusion about the background it is separating from
-- **Form components isolated from interaction states** — form components have variant-specific class logic (error state, disabled state) that is more complex than the simple sweep applied to buttons and navigation; isolating the work prevents scope creep
-- **Component details last** — the shimmer animation requires a CSS keyframe in `default.css`; adding it last avoids the risk of the keyframe name colliding with any class introduced in earlier phases
+- P0 fixes first because contaminated examples make all subsequent quality judgments unreliable
+- MCP and CLI before prose because agents read MCP output before docs; broken templates surface immediately at build time; prose errors require a developer to attempt the example before the error is visible
+- Completeness before philosophy because agent-first coherence cannot be evaluated for a feature that has no docs yet
+- Metadata last because it is independent of user-facing accuracy and has no blockers on the critical path
 
 ### Research Flags
 
 Phases needing deeper research during planning:
-- None identified. All patterns in this milestone are well-documented in Tailwind v4, CSS specifications, and the reference systems studied (shadcn/ui, Geist, Radix).
+- **Phase 2 (CLI/MCP Accuracy):** `code_templates.rs` pattern verification must trace each code snippet against current `framework/src/lib.rs` exports — manual, crate-by-crate work with no automated shortcut; estimate effort before committing to scope; the `UpdateBuilder` vs `ActiveModel` pattern drift specifically needs grounding
+- **Phase 5 (COMPONENT_CATALOG):** Resolving duplication between `ferro-cli/src/ai.rs` and `ferro-mcp/src/tools/json_ui_generate.rs` requires a design decision with architectural implications; options need explicit evaluation before the phase begins
 
-Phases with standard patterns (skip `/gsd:research-phase`):
-- **All 6 phases** — source confidence is HIGH across the board; implementation patterns are explicit in ARCHITECTURE.md with code examples ready to apply
+Phases with standard patterns (research-phase optional):
+- **Phase 1 (P0 Accuracy):** All fixes are grep-replace or straightforward prose corrections; no design decisions required
+- **Phase 3 (Completeness):** Creating `projections.md` is pattern-matched from `events.md`; standard structure applies
+- **Phase 4 (Philosophy):** `introduction.md` rewrite is pure prose with no API dependencies; philosophy pillars are clear from PROJECT.md
 
 ---
 
@@ -175,47 +156,43 @@ Phases with standard patterns (skip `/gsd:research-phase`):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All technology choices verified against official Tailwind v4 docs; Bunny Fonts drop-in confirmed; no inferred patterns |
-| Features | HIGH | Gap analysis from direct codebase inspection of render.rs; reference systems studied at shadcn/ui, Vercel Geist, Radix Themes; complexity estimates grounded in actual function scope |
-| Architecture | HIGH | All findings from direct codebase inspection of the 4 target files; data flow traced through actual call chains; no inference about internal behavior |
-| Pitfalls | HIGH | 5 of 6 critical pitfalls grounded in code inspection (157 tests counted, modal `<details>` pattern confirmed, `appearance-none` without arrow confirmed); oklch/WCAG math sourced from W3C discussion |
+| Stack | HIGH | All tooling verified against stable Rust 1.88.0 MSRV; stability status confirmed for each tool; nightly-only alternatives explicitly identified and excluded with tracking issue references |
+| Features | HIGH | All audit check categories derived from direct codebase inspection of all 14 crates, 40 doc files, 54 MCP tool files, and 50+ CLI command files; specific file locations and line numbers cited for confirmed issues |
+| Architecture | HIGH | All findings from direct codebase inspection; single re-export facade pattern confirmed in `framework/src/lib.rs`; 54 tool files confirmed in `ferro-mcp/src/tools/mod.rs`; data flow traced through actual call chains |
+| Pitfalls | HIGH | All pitfalls confirmed with specific instances: line numbers in multi-tenancy.md (8 occurrences), specific function in ferro-stripe/src/webhook/mod.rs (line 40), diff of command files (50) vs reference entries (37), SUMMARY.md confirmed to have no projections entry |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Tailwind v4 arbitrary-value syntax `rounded-[--radius-md]`:** ARCHITECTURE.md notes MEDIUM confidence on whether this generates classes in CDN mode. The recommendation is to avoid this pattern for v10.0 and use standard Tailwind scale classes (`rounded-md`) since the default token values match. Validate with a quick browser test before using arbitrary custom property references.
-- **Bunny Fonts `@import` inside `type="text/tailwindcss"`:** STACK.md recommends this placement, but PITFALLS.md warns that `@import` inside the theme `<style>` block can create a CDN processing dependency chain. Resolve by placing the font `@import` inside the injected `<style type="text/tailwindcss">` block but before the `@theme` block — OR move font loading entirely to a separate `<link>` in `base_document()`. The `<link>` approach in the layout `<head>` is recommended for Phase 1 to eliminate ambiguity.
-- **Dark mode token completeness:** The current state of dark mode token coverage is marked "Unknown" in FEATURES.md. A verification pass using OddContrast is required at the start of Phase 2 before any further token changes are made.
-- **`details`/`summary` modal Safari keyboard trap:** The existing modal uses a `<details>` element which has known Safari limitations for keyboard focus order. This is documented as a known limitation but not fixed in v10.0. Flag for a future modal-to-`<dialog>` migration.
+- **ferro-planning crate status:** The workspace member `ferro-planning` appears to have no source files. Confirm during Phase 5 — either add content or remove from workspace; an empty crate should not publish to crates.io.
+- **COMPONENT_CATALOG resolution strategy:** No recommended approach exists yet; the three options (shared data file, build script, new shared crate) each have trade-offs that need evaluation before Phase 5 can scope this item.
+- **Theme token name in docs:** `docs/src/features/themes.md` may reference `--font-family-sans` while the v10.0 KEY DECISION established `--font-sans` (Tailwind v4 namespace). Needs verification against `ferro-theme/assets/default.css` before the themes.md audit is considered complete.
+- **ferro-stripe stub scope:** `stripe_is_processed()` is confirmed as a stub. The full scope of incomplete stripe functionality needs a single audit pass to determine whether the feature is partially or fully stubbed beyond the webhook idempotency handler.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Tailwind v4 theme variables documentation](https://tailwindcss.com/docs/theme) — `@theme` syntax, token namespaces, `--font-sans` vs `--font-family-sans`
-- [Tailwind v4 Play CDN documentation](https://tailwindcss.com/docs/installation/play-cdn) — CDN development-only requirement; `type="text/tailwindcss"` pattern
-- [Tailwind v4 hover/focus states](https://tailwindcss.com/docs/hover-focus-and-other-states) — `focus-visible:` pattern
-- [CSS accent-color MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/accent-color) — checkbox/radio accent-color
-- [prefers-reduced-motion MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion) — motion accessibility
-- [Bunny Fonts](https://fonts.bunny.net/) — GDPR-compliant font CDN, Inter available
-- [shadcn/ui Theming](https://ui.shadcn.com/docs/theming) — CSS variable token system, OKLCH color format
-- [shadcn/ui Tailwind v4](https://ui.shadcn.com/docs/tailwind-v4) — v4 @theme directive integration
-- [Vercel Geist Colors](https://vercel.com/geist/colors) — Background1/Background2 elevation tokens
-- [Modern CSS: Custom Select Styles](https://moderncss.dev/custom-select-styles-with-pure-css/) — appearance-none + SVG arrow pattern
-- [OddContrast](https://www.oddcontrast.com/) — oklch-native contrast checker
-- Direct codebase inspection: `ferro-json-ui/src/render.rs`, `layout.rs`, `runtime.rs`, `config.rs`, `ferro-theme/src/token.rs`, `ferro-theme/assets/default.css`, `framework/src/json_ui/mod.rs`
+- Direct codebase inspection: `docs/src/` (40 files), `ferro-mcp/src/tools/mod.rs`, `ferro-cli/src/commands/`, all 14 `Cargo.toml` files, `ferro-stripe/src/webhook/mod.rs` (line 40), `app/Cargo.toml` (canonical alias), `docs/src/SUMMARY.md` (confirmed no projections entry)
+- [Rustdoc lints — official reference](https://doc.rust-lang.org/rustdoc/lints.html) — lint names and stability status
+- [Rust API Guidelines — documentation section](https://rust-lang.github.io/api-guidelines/documentation.html) — C-CRATE-DOC through C-HIDDEN checklist
+- [RFC 1574 — API documentation conventions](https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.md) — Panics/Errors/Safety section conventions
+- [cargo-semver-checks 0.44.0](https://crates.io/crates/cargo-semver-checks) — 245 lints, stable toolchain confirmed
+- [cargo-rdme 1.4.8](https://docs.rs/crate/cargo-rdme/latest) — stable README sync tool
+- `.github/workflows/ci.yml` — confirmed existing `RUSTDOCFLAGS: -Dwarnings` and `cargo doc` CI job
+- `.planning/codebase/CONCERNS.md` — confirmed COMPONENT_CATALOG drift as P2 concern since v5.0
+- `.planning/v9.0-MILESTONE-AUDIT.md` — confirmed v9.0 predates formal verification workflow; all 12 phases missing VALIDATION.md
 
 ### Secondary (MEDIUM confidence)
-- [Vercel Geist Typography](https://vercel.com/geist/typography) — Type scale taxonomy (page renders but tokens are proprietary)
-- [Radix Themes DeepWiki](https://deepwiki.com/radix-ui/themes/7.2-input-components) — focus-visible implementation patterns
-- [shadcn Design Principles Gist](https://gist.github.com/eonist/c1103bab5245b418fe008643c08fa272) — 150ms transition standard
-- [Tailwind v4 @theme theming discussion](https://github.com/tailwindlabs/tailwindcss/discussions/18471) — CDN @theme behavior edge cases
+- [mdbook-linkcheck 0.7.7](https://github.com/Michael-F-Bryan/mdbook-linkcheck) — last release 2022, still functional; used by the Rust project itself
+- [Axum lib.rs source](https://github.com/tokio-rs/axum/blob/main/axum/src/lib.rs) — documentation style and selective `missing_docs` enforcement patterns
+- [LLM-Friendly API Design patterns](https://agentic-patterns.com/patterns/llm-friendly-api-design/) — agent-first design principles for self-descriptive naming and actionable errors
 
 ### Tertiary (LOW confidence)
-- None — all findings have at least MEDIUM confidence backing
+- [rustdoc --show-coverage tracking issue #58154](https://github.com/rust-lang/rust/issues/58154) — cited to justify exclusion of `--show-coverage` from the toolchain, not for adoption
 
 ---
-*Research completed: 2026-03-24*
+*Research completed: 2026-03-26*
 *Ready for roadmap: yes*

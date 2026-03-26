@@ -1,307 +1,260 @@
 # Stack Research
 
-**Domain:** Server-side HTML rendering — professional UI quality for JSON-UI
-**Researched:** 2026-03-24
+**Domain:** Rust framework documentation audit tooling
+**Researched:** 2026-03-26
 **Confidence:** HIGH
 
 ## Context
 
-This is a research file for the v10.0 JSON-UI Visual Overhaul milestone. The existing system
-already has: `@tailwindcss/browser@4` CDN, `ferro-theme` with 23 semantic oklch tokens, and
-a `<style type="text/tailwindcss">` injection pipeline. This file covers only what needs to
-change or be added for professional visual quality.
-
----
-
-## Critical Bug: Font Token Namespace Mismatch
-
-**This must be fixed before any font work can have effect.**
-
-The existing `ferro-theme/assets/default.css` uses `--font-family-sans` and `--font-family-mono`.
-Tailwind v4's `@theme` namespace for font-family utilities is `--font-sans` and `--font-mono`
-(not `--font-family-*`). The existing tokens define CSS custom properties but generate no
-Tailwind utilities and do not affect `font-sans` base styles.
-
-```css
-/* WRONG — generates no Tailwind utility, affects nothing */
---font-family-sans: ui-sans-serif, system-ui, sans-serif;
-
-/* CORRECT — generates font-sans utility and sets body default */
---font-sans: ui-sans-serif, system-ui, sans-serif;
-```
-
-Source: [Tailwind v4 font-family documentation](https://tailwindcss.com/docs/font-family) (verified)
+This research covers tooling and methodology for the v11.0 Framework Consolidation Audit milestone. The
+goal is auditing documentation accuracy/completeness and philosophy consistency across 20 Rust crates
+(~90,000 lines). The existing CI already runs `cargo doc --no-deps --all-features` with `RUSTDOCFLAGS:
+-Dwarnings`, which catches broken intra-doc links and invalid HTML. This research identifies what
+additional tooling is needed and how well-documented Rust frameworks approach doc quality.
 
 ---
 
 ## Recommended Stack
 
-### Core Technologies (already in use — no changes)
+### Core Technologies
 
-| Technology | Version | Purpose | Status |
-|------------|---------|---------|--------|
-| `@tailwindcss/browser` | `@4` (pins to 4.x, current: 4.2.2) | Tailwind v4 CDN for development rendering | Working |
-| oklch color space | CSS native | Perceptually uniform semantic tokens | Working in default.css |
-| `<style type="text/tailwindcss">` | — | Injects theme CSS for CDN processing | Working |
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `rustdoc` (built-in) | Rust 1.88.0 (stable) | API documentation generation and lint enforcement | The authoritative source; already in CI with `-Dwarnings`. Enforces `rustdoc::broken_intra_doc_links`, `rustdoc::invalid_codeblock_attributes`, `rustdoc::bare_urls`, `rustdoc::invalid_html_tags` on every build. |
+| `#![warn(missing_docs)]` (built-in) | Rust 1.88.0 (stable) | Detect undocumented public API items | The canonical tool for doc coverage. Add per-crate, escalate to `deny` in CI once addressed. Works on stable, unlike `--show-coverage`. |
+| `mdBook` | Latest stable (used in `docs/`) | User-facing documentation site | Already in use. Generates the book at docs.ferro-rs.dev. No change needed to the tool itself. |
+| `mdbook-linkcheck` | 0.7.7 | Broken link detection in mdBook | Detects broken internal and external links in the book source. Last release 2022 but still functional; used by the Rust project itself. Catches dead `docs.ferro-rs.dev/` cross-references. |
 
-### Font Loading
+### Supporting Tools
 
-**Recommendation: Bunny Fonts CDN for Inter Variable.**
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| `cargo-rdme` | 1.4.8 (stable) | Sync README.md from crate-level `//!` docs | After fixing crate-level docs, run to keep per-crate READMEs in sync. One command per crate. Stable toolchain. |
+| `cargo-semver-checks` | 0.44.0+ (stable) | Detect API consistency violations and breaking changes | Run during the audit to catch accidental API breaks that occur during cleanup. 245 lints as of 2026. |
+| `cargo-deny` | Already configured (`deny.toml`) | Security and license consistency | Already in CI. No change needed. |
+| `RUSTDOCFLAGS=-D rustdoc::missing_crate_level_docs` | Built-in, stable | Enforce that every crate has a crate-level doc comment | Add to the audit CI step to identify crates missing top-level `//!` docs. |
 
-Do not use Google Fonts. German courts have ruled Google Fonts transmits user IPs to Google,
-violating GDPR. Bunny Fonts is a 1:1 drop-in replacement with zero logging and EU-based
-delivery.
+### Development Tools
 
-Do not self-host fonts. Ferro generates HTML server-side; fonts would need to be static
-assets in the user's application, adding setup friction. CDN is correct for development-mode
-JSON-UI (same audience as `tailwind_cdn: true`).
-
-| Font | CDN | URL | Format | Purpose |
-|------|-----|-----|--------|---------|
-| Inter Variable | Bunny Fonts | `https://fonts.bunny.net` | woff2 variable | Primary UI sans-serif |
-| Geist (alternative) | jsDelivr npm | `https://cdn.jsdelivr.net/npm/geist` | woff2 variable | Vercel-style developer aesthetic |
-
-**Inter is the correct default.** It is the most-copied professional UI typeface (used by
-Linear, Vercel, Stripe, GitHub). It has the highest character coverage and a variable font
-file covering weights 100–900 in one HTTP request.
-
-Bunny Fonts CSS import for Inter Variable:
-
-```css
-@import url('https://fonts.bunny.net/css?family=inter:100,200,300,400,500,600,700,800,900&display=swap');
-```
-
-This import goes inside `<style type="text/tailwindcss">` before the `@theme` block. The
-`@tailwindcss/browser` CDN processes `@import` statements within `type="text/tailwindcss"` blocks.
-
-Then in `@theme`:
-
-```css
-@theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-}
-```
-
-Note: `Inter Variable` as a font-family name requires quoting because of the space. Using
-`'Inter'` (matching the Bunny Fonts declaration) is simpler and also matches the name served
-by fonts.bunny.net.
-
-**Geist as alternative** (for theme authors wanting the Vercel aesthetic):
-```css
-@import url('https://fonts.bunny.net/css?family=geist:100,200,300,400,500,600,700,800,900&display=swap');
-@theme { --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif; }
-```
-
-Geist is available on Bunny Fonts. The Vercel CDN (`geistfont.vercel.app`) is also an option
-but is a third-party unofficial host — Bunny Fonts is preferable for consistency.
-
-### Supporting Libraries (CSS-only, no npm)
-
-None. All visual quality improvements are pure CSS patterns injected via the existing
-`<style type="text/tailwindcss">` pipeline. No new Rust crates or npm packages needed.
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| `cargo doc --no-deps --all-features --open` | Build and view the full API docs locally | Use to visually audit what docs.rs will show. The `--no-deps` flag keeps it fast. |
+| `RUSTDOCFLAGS="-D warnings -D missing_docs"` (local) | Find all undocumented public items in a single pass | Run locally before adding `#![warn(missing_docs)]` to a crate to see the full scope. Not for CI yet — too many violations likely exist. |
+| `cargo test --doc --all-features` | Run all doctests | Already included in `cargo test --all-features`. Verifies code examples compile and behave correctly. |
+| `mdbook build` | Build and validate user-facing book | Run locally to catch mdBook-specific issues. Add `mdbook-linkcheck` output to CI output. |
 
 ---
 
-## CSS Patterns for Visual Quality
+## Installation
 
-### 1. Focus Rings (`focus-visible:`)
+```bash
+# mdbook-linkcheck — add to book.toml, then install the binary
+cargo install mdbook-linkcheck
 
-Use `focus-visible:` not `focus:`. The distinction matters: `focus:` triggers for mouse
-clicks; `focus-visible:` triggers only for keyboard navigation, which is the correct
-accessibility behavior.
+# cargo-rdme — for README sync from crate docs
+cargo install cargo-rdme
 
-**Standard pattern:**
-```html
-<button class="... focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+# cargo-semver-checks — API consistency
+cargo install cargo-semver-checks
+
+# mdbook itself (if not present)
+cargo install mdbook
 ```
 
-Alternative using ring utilities (visually identical, slightly more Tailwind-idiomatic):
-```html
-<button class="... focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
+Add to `docs/book.toml` for link checking:
+```toml
+[output.linkcheck]
+follow-web-links = false
 ```
-
-The `outline-none` on the ring variant prevents double indicators. Both patterns are valid
-with `@tailwindcss/browser@4`.
-
-**In render.rs:** Every interactive element (Button, Input, Select, Checkbox, Switch, Tab
-trigger, Breadcrumb link, Pagination button, Collapsible summary) needs one of these patterns.
-Currently, inputs use `focus:ring-2 focus:ring-primary/20` — this should be
-`focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:outline-none`.
-
-### 2. Transitions
-
-Use `transition-colors` for color/background changes. Use `transition-transform` for
-geometric changes. Never use `transition-all` — it creates performance issues and causes
-focus style transitions on properties that should appear instantly.
-
-```html
-<!-- Button hover -->
-class="... transition-colors duration-150 hover:bg-primary/90"
-
-<!-- Collapsible chevron rotation -->
-class="... transition-transform duration-200 group-open:rotate-180"
-```
-
-Always pair transitions with `motion-reduce:transition-none` for accessibility:
-```html
-class="... transition-colors duration-150 motion-reduce:transition-none"
-```
-
-Tailwind v4 has `motion-reduce:` as a built-in variant. `@media (prefers-reduced-motion)`
-automatically disables these when the user has enabled that OS setting.
-
-**Duration rule:** 100–200ms for micro-interactions (hover, focus), 200–300ms for panel
-reveals (collapsible, modal). No transition longer than 300ms on UI elements.
-
-### 3. Custom Select Arrow
-
-The native `<select>` arrow is browser-rendered and cannot be themed with color tokens.
-Replace it with an SVG data URI via `appearance-none`.
-
-```html
-class="... appearance-none bg-no-repeat bg-right pr-10"
-style="background-image: url(\"data:image/svg+xml,...\")"
-```
-
-The recommended SVG pattern (URL-encoded, works cross-browser, respects color tokens via
-oklch in the data URI):
-
-```
-background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")
-```
-
-The stroke color (`%236b7280` = `#6b7280`) is hardcoded in the URI but can be a Tailwind
-class of `text-text-muted` applied to a wrapper — or just hardcode a neutral gray that works
-in both light and dark modes (gray at ~50% lightness is safe).
-
-**Note on `appearance: base-select`:** Chrome 135 (March 2025) introduced this but it's not
-cross-browser (no Firefox/Safari support yet). Do not use it. Stay with `appearance-none` +
-SVG for now.
-
-### 4. Checkbox and Radio Styling
-
-**Use `accent-color` first.** It is the simplest approach and is fully accessible because
-the browser maintains all native semantics and keyboard interaction.
-
-```html
-class="accent-primary h-4 w-4"
-```
-
-Tailwind v4 has `accent-{color}` utilities built-in. `accent-primary` will use the
-`--color-primary` token.
-
-The `appearance-none` + full custom CSS approach (using `::before`/`::after` pseudo-elements)
-gives more visual control but is more code and creates accessibility maintenance burden
-(keyboard states, indeterminate state, RTL support). Use it only if `accent-color` doesn't
-produce sufficient visual quality — which it won't for highly custom designs but is adequate
-for professional utility UI.
-
-**Decision:** Use `accent-primary` in render.rs. Reserve the custom approach for theme
-authors who need full control via `custom_head`.
-
-### 5. Oklahoma Color Science (oklch best practices)
-
-The existing `default.css` already uses oklch correctly. The key rules to enforce when
-updating tokens or designing new themes:
-
-- **Lightness governs contrast.** For text on background: minimum Δ lightness of 45% (e.g.,
-  text at L=15% on background at L=100%, or text at L=95% on background at L=12%).
-- **Chroma drives vibrancy.** Semantic role colors (primary, destructive, success, warning)
-  should have C ≥ 0.15 for clear visual differentiation. Neutral surfaces use C=0.
-- **Hue consistency.** All primary-family colors use the same hue; shift lightness/chroma
-  for variants (`primary/90` opacity works in Tailwind).
-- **Dark mode:** Increase L on role colors by ~10 points in dark mode (the existing default
-  does this: L=55 → L=65 for primary).
-- **WCAG 2.2 target:** 4.5:1 contrast ratio for body text, 3:1 for large text and UI
-  components. Check with the OKLCH lightness difference; for neutrals Δ L ≈ 50 ≈ 4.5:1.
-
-The existing defaults pass these checks. No changes needed to the color science, only to
-component application (render.rs class strings).
-
-### 6. Dark Mode Pattern in @theme
-
-The existing `default.css` uses `@media (prefers-color-scheme: dark)` with a nested `@theme`
-block plus a `[data-theme="dark"]` selector for explicit toggling. This is the correct
-pattern for the ferro-theme CDN use case.
-
-The shadcn/ui pattern of `@theme inline` + CSS variables at `:root` / `.dark` is designed
-for build pipelines, not the CDN. Do not switch to that pattern.
-
-Current pattern works. No changes needed to the dark mode architecture.
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| Bunny Fonts CDN | Google Fonts CDN | GDPR violation risk; Google collects user IPs |
-| Bunny Fonts CDN | Self-hosted fonts | Adds static asset setup friction for users |
-| `accent-color` for checkboxes | `appearance-none` custom CSS | More complexity, more code, equivalent quality for utility UI |
-| `focus-visible:` | `focus:` | `focus:` shows rings on mouse clicks — incorrect UX |
-| `motion-reduce:transition-none` | Skip accessibility flag | Required by WCAG 2.1 for users with vestibular disorders |
-| SVG data URI for select arrow | CSS `::after` + clip-path wrapper | Wrapper requires extra HTML element; render.rs generates no wrapper divs around selects |
-| `appearance: base-select` | Not yet — no cross-browser support | Chrome 135+ only as of March 2025 |
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| `#![warn(missing_docs)]` per-crate | `RUSTDOCFLAGS='--show-coverage'` | The `--show-coverage` flag is nightly-only and unstable (tracking issue #58154). `missing_docs` is stable and integrates with CI `-D warnings`. Do not use `--show-coverage` on a stable toolchain project. |
+| `cargo-rdme` | `cargo-sync-rdme` | `cargo-sync-rdme` requires nightly toolchain. `cargo-rdme` works on stable. For a stable-pinned workspace (1.88.0 MSRV), `cargo-rdme` is the correct choice. |
+| `mdbook-linkcheck` | `cargo-deadlinks` | `cargo-deadlinks` (0.8.1, last release 2021) checks rustdoc HTML output, not mdBook source. For the user-facing docs book, `mdbook-linkcheck` is the right tool. For rustdoc HTML, the built-in `rustdoc::broken_intra_doc_links` lint in CI is already sufficient. |
+| Manual audit + `missing_docs` | Custom CI scripts parsing rustdoc JSON | The rustdoc JSON output format is unstable. `cargo-semver-checks` already uses it internally. Writing custom scripts against unstable JSON is maintenance burden. |
 
 ---
 
-## What NOT to Add
+## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Animate.css / tw-animate-css | Ferro JSON-UI needs no keyframe animations; transitions suffice | `transition-*` Tailwind utilities |
-| Custom JavaScript animation library | Zero-JS is a JSON-UI design goal | CSS `transition` + `motion-reduce:` |
-| Alpine.js | Would compromise the zero-JS philosophy | Existing vanilla JS runtime in `runtime.rs` |
-| New Rust CSS-in-Rust libraries (e.g., `grass`) | Overkill; CSS is already compiled by the browser CDN | Direct string generation in `render.rs` |
-| `@tailwindcss/typography` plugin | CDN mode doesn't support plugins via npm; would need build pipeline | Handcrafted prose styles in `Text` component |
-| Geist as default font | Inter has better coverage, more recognizable professional aesthetic | Use Inter; make Geist available as theme example |
-| Google Fonts | GDPR violation risk in EU deployments | Bunny Fonts |
+| `RUSTDOCFLAGS='--show-coverage'` | Nightly-only (`-Z unstable-options` required). Doesn't integrate with stable CI. Known regression: deletes existing docs. | `#![warn(missing_docs)]` in each crate |
+| `rustdoc::missing_doc_code_examples` lint | Nightly-only lint, not available on stable 1.88.0. | Manual review of existing examples; `cargo test --doc` to verify they work |
+| `cargo-sync-rdme` | Requires nightly toolchain. Cannot use with MSRV 1.88.0. | `cargo-rdme` (stable) |
+| `rust-semverver` | Requires nightly, abandoned/maintenance mode. | `cargo-semver-checks` (stable, actively maintained) |
+| Adding `#![deny(missing_docs)]` immediately to all crates | Will cause CI failures before docs are written; blocks all other work. | Add `#![warn(missing_docs)]` first, fix incrementally, escalate to `deny` only after a crate is complete. |
 
 ---
 
-## Integration Points in Existing Code
+## How Well-Documented Rust Frameworks Approach Doc Quality
 
-| Change | File | What to Change |
-|--------|------|---------------|
-| Fix font token namespace | `ferro-theme/assets/default.css` | `--font-family-sans` → `--font-sans`; `--font-family-mono` → `--font-mono` |
-| Add Inter font import | `ferro-theme/assets/default.css` | Add `@import url('https://fonts.bunny.net/...')` before `@theme` block |
-| Fix font token names in Rust constants | `ferro-theme/src/token.rs` | Rename `TOKEN_FONT_FAMILY_SANS` → `TOKEN_FONT_SANS`, update value to `--font-sans` |
-| Add `focus-visible:` to interactive components | `ferro-json-ui/src/render.rs` | All Button, Input, Select, Checkbox, Switch, Tab, Breadcrumb, Pagination renderers |
-| Add `transition-colors motion-reduce:transition-none` | `ferro-json-ui/src/render.rs` | Button, Input, Select, Collapsible |
-| Add `appearance-none` + SVG arrow to select | `ferro-json-ui/src/render.rs` | `render_select()` function |
-| Replace `accent-{hardcoded}` with `accent-primary` | `ferro-json-ui/src/render.rs` | `render_checkbox()`, `render_switch()` |
-| Fix hardcoded colors in runtime JS | `ferro-json-ui/src/runtime.rs` | Toast `VARIANT_CLASSES` uses `bg-blue-500` etc. — should use semantic tokens |
-| Fix hardcoded colors in tab switching JS | `ferro-json-ui/src/runtime.rs` | Tab switcher uses `border-blue-600`, `text-blue-600` — should use semantic tokens |
+### Axum (tokio-rs/axum)
+
+Axum uses structured module-level docs with markdown headers, inline code examples throughout,
+and `#[cfg_attr(docsrs, feature(doc_cfg))]` for feature-gated documentation on docs.rs. It
+does not use a blanket `#![warn(missing_docs)]` — instead it enforces docs selectively. The
+primary enforcement is `rustdoc::broken_intra_doc_links` in CI.
+
+**Pattern:** Every public type and method has a one-sentence summary, followed by a code example
+with the `# use` boilerplate hidden behind `#` lines.
+
+### Rust API Guidelines (official reference)
+
+The official [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
+define the standard for crate documentation quality. The relevant items for this audit:
+
+| Guideline ID | Requirement |
+|-------------|-------------|
+| C-CRATE-DOC | Crate root (`//!` comment) is thorough and includes examples |
+| C-EXAMPLE | Every public module, struct, enum, function, trait, and type has a rustdoc example |
+| C-QUESTION-MARK | Examples use `?`, not `unwrap()` (hide boilerplate with `#` lines) |
+| C-FAILURE | Functions document panics (`# Panics`), errors (`# Errors`), safety (`# Safety`) |
+| C-LINK | Prose uses intra-doc links (`[`TypeName`]`) to related items |
+| C-HIDDEN | `#[doc(hidden)]` used for internal implementation details |
+
+### Agent-First Documentation Patterns
+
+For an agent-first framework specifically, documentation must satisfy both human readers and
+LLM context windows. Findings from examining AI agent framework documentation (Rig, AutoAgents,
+Kowalski) and the Ferro AGENTS.md:
+
+1. **Machine-readable structure is paramount.** Agents parse docs for patterns to replicate.
+   `# Panics`, `# Errors`, `# Examples` sections with consistent headings are more parseable
+   than prose descriptions.
+
+2. **Every type needs a purpose statement.** Agents infer usage from the first sentence of a
+   doc comment. "A builder for X" or "Extracts Y from a request" — concrete, single-sentence.
+
+3. **Examples must be minimal but complete.** Agent-generated code copies the nearest example
+   verbatim. Long examples with 20 setup lines generate incorrect code. Examples should be
+   the shortest valid usage.
+
+4. **Error messages are docs.** For Ferro specifically, the `# Errors` section on handler
+   functions and middleware should describe exactly what HTTP status is returned and when.
+   Agents use this to generate correct error handling.
+
+5. **Cross-crate relationships need explicit documentation.** When `ferro-cache` is used with
+   `framework`, the integration point must be documented in both crates. Agents cannot infer
+   cross-crate relationships from types alone.
+
+---
+
+## The Documentation Audit Approach
+
+The methodology used by well-maintained Rust projects (Tokio, Axum, SeaORM) follows this
+sequence, which maps directly to the audit phases:
+
+### Phase 1: Mechanical Audit (tooling-enforced)
+Run these checks to surface all mechanical gaps:
+
+```bash
+# Find all broken intra-doc links (already enforced in CI)
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
+
+# Find all public items with no doc comment (run per-crate to scope the work)
+RUSTDOCFLAGS="-D warnings -D missing_docs" cargo doc --no-deps --features [crate-features] -p [crate-name]
+
+# Find broken links in mdBook
+mdbook build docs/ 2>&1 | grep -E "ERROR|WARN"
+
+# Verify all doc examples compile and pass
+cargo test --doc --all-features
+```
+
+### Phase 2: Quality Audit (human review)
+Check against C-EXAMPLE, C-FAILURE, C-LINK guidelines. No tool automates this.
+
+For each public type, verify:
+- First sentence answers "what is this for?"
+- Code example shows why, not just how
+- `# Errors` section present if the function returns `Result`
+- `# Panics` section present if the function can panic
+- Intra-doc links used for all references to other types
+
+### Phase 3: Philosophy Audit (human review)
+Verify agent-first consistency:
+- Does the doc read correctly in an LLM context window?
+- Are patterns documented once, not scattered?
+- Do error messages match what the framework actually returns?
+- Is the "agent-first" framing consistent — tools, not just types?
+
+### Phase 4: Fix and Enforce
+After addressing all gaps:
+- Add `#![warn(missing_docs)]` to each crate as it's completed
+- Add mdbook-linkcheck to CI
+- Add `cargo-semver-checks` to CI
+
+---
+
+## Stack Patterns by Variant
+
+**If adding `#![warn(missing_docs)]` to a crate with many violations:**
+- Add `#![allow(missing_docs)]` at the crate root first
+- Then add `#![warn(missing_docs)]` to individual modules as they are fixed
+- This is how the Tokio project handled it during their documentation push
+
+**If a crate has internal implementation modules exposed as `pub(crate)`:**
+- Do not add doc comments to `pub(crate)` items — `missing_docs` does not require them
+- Focus doc effort on the public API surface
+
+**If user-facing docs (mdBook) contradict API docs (rustdoc):**
+- Fix rustdoc first (authoritative), then update mdBook to match
+- Inertia, JSON-UI, and auth are the highest-risk sections based on codebase growth since docs were written
 
 ---
 
 ## Version Compatibility
 
-| Package | Pinned To | Notes |
-|---------|-----------|-------|
-| `@tailwindcss/browser` | `@4` (resolves to latest 4.x) | Current: 4.2.2. Pinning to `@4` rather than `@4.2.2` is intentional — patch updates are safe |
-| Bunny Fonts Inter | `latest` via CDN URL | No versioning in Bunny Fonts URLs; always serves current |
+| Tool | Rust Toolchain | Notes |
+|------|----------------|-------|
+| `rustdoc` lints | 1.88.0 stable | `broken_intra_doc_links`, `missing_crate_level_docs` stable since ~1.52 |
+| `#![warn(missing_docs)]` | 1.88.0 stable | Stable since 1.0 |
+| `cargo-rdme` | 1.88.0 stable | Stable toolchain required |
+| `mdbook-linkcheck` | Any | CLI binary, not tied to Rust version |
+| `cargo-semver-checks` | 1.88.0 stable | Uses rustdoc JSON internally but exposes stable CLI |
+| `--show-coverage` | Nightly only | **Do not use** — requires `-Z unstable-options` |
+| `missing_doc_code_examples` lint | Nightly only | **Do not use** — unstable |
 
-No new Rust crates needed. No new npm packages needed.
+---
+
+## What the Audit Will Find (Predicted Gaps)
+
+Based on examining the codebase structure and existing doc patterns across the 20 crates:
+
+| Crate | Predicted Gap | Severity |
+|-------|--------------|----------|
+| `framework/src/lib.rs` | No crate-level `//!` doc comment at all | HIGH |
+| `framework/src/` modules | Mixed — some modules have docs, many functions don't | HIGH |
+| `ferro-json-ui` | Good crate-level docs; individual component functions likely sparse | MEDIUM |
+| `ferro-mcp` | Minimal docs — MCP is internal tooling but used by AI agents | HIGH |
+| `ferro-projections` | Complex types, likely underdocumented relative to complexity | HIGH |
+| `ferro-api-mcp` | Binary crate, docs less critical but CLI help text needs accuracy | MEDIUM |
+| mdBook (`docs/`) | Features added in v8.1, v9.0, v10.0 likely underdocumented | HIGH |
+| `ferro-theme` | New crate, likely sparse docs | MEDIUM |
 
 ---
 
 ## Sources
 
-- [Tailwind v4 theme variables documentation](https://tailwindcss.com/docs/theme) — `@theme` syntax, token namespaces (HIGH confidence)
-- [Tailwind v4 font-family documentation](https://tailwindcss.com/docs/font-family) — confirmed `--font-sans` not `--font-family-sans` (HIGH confidence)
-- [Tailwind v4 Play CDN documentation](https://tailwindcss.com/docs/installation/play-cdn) — `type="text/tailwindcss"` pattern for `@theme` in CDN mode (HIGH confidence)
-- [jsDelivr @tailwindcss/browser](https://www.jsdelivr.com/package/npm/@tailwindcss/browser) — current version 4.2.2 (HIGH confidence)
-- [Bunny Fonts](https://fonts.bunny.net/) — GDPR-compliant font CDN, Inter available (HIGH confidence)
-- [Fontsource Inter CDN](https://fontsource.org/fonts/inter/cdn) — jsDelivr variable font URL (MEDIUM confidence, jsDelivr alternative to Bunny)
-- [Tailwind v4 hover/focus states](https://tailwindcss.com/docs/hover-focus-and-other-states) — `focus-visible:` pattern confirmed (HIGH confidence)
-- [Modern CSS custom select styles](https://moderncss.dev/custom-select-styles-with-pure-css/) — `appearance-none` + SVG pattern (HIGH confidence)
-- [CSS accent-color MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/accent-color) — checkbox/radio accent-color (HIGH confidence)
-- [prefers-reduced-motion MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion) — motion accessibility (HIGH confidence)
-- [OKLCH color contrast guide](https://medium.com/@vyakymenko/color-contrast-with-oklch-prefers-reduced-motion-and-motion-design-ethics-089c0c8897d0) — oklch contrast rules (MEDIUM confidence)
-- [shadcn/ui Tailwind v4 migration](https://ui.shadcn.com/docs/tailwind-v4) — confirmed `@theme inline` pattern is for build pipelines (HIGH confidence)
+- [Rustdoc lints — official reference](https://doc.rust-lang.org/rustdoc/lints.html) — all lint names and stability (HIGH confidence)
+- [Rust API Guidelines — documentation section](https://rust-lang.github.io/api-guidelines/documentation.html) — C-CRATE-DOC through C-HIDDEN checklist (HIGH confidence)
+- [Rust API Guidelines — checklist](https://rust-lang.github.io/api-guidelines/checklist.html) — complete guideline IDs (HIGH confidence)
+- [Axum lib.rs source](https://github.com/tokio-rs/axum/blob/main/axum/src/lib.rs) — axum documentation style and lint configuration (HIGH confidence)
+- [cargo-semver-checks 0.44.0](https://crates.io/crates/cargo-semver-checks) — 245 lints, stable toolchain (HIGH confidence)
+- [cargo-rdme 1.4.8](https://docs.rs/crate/cargo-rdme/latest) — stable README sync tool (HIGH confidence)
+- [mdbook-linkcheck 0.7.7](https://github.com/Michael-F-Bryan/mdbook-linkcheck) — book link checking (MEDIUM confidence — last release 2022, still functional)
+- [cargo-deadlinks 0.8.1](https://docs.rs/crate/cargo-deadlinks/latest) — HTML link checker, last release 2021 (LOW — superceded by built-in lint for intra-doc links)
+- [rustdoc --show-coverage tracking issue #58154](https://github.com/rust-lang/rust/issues/58154) — confirmed unstable, nightly-only (HIGH confidence)
+- [RFC 1574 — more API documentation conventions](https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.md) — Panics/Errors/Safety section conventions (HIGH confidence)
+- [ferro CI workflow](/.github/workflows/ci.yml) — confirmed existing `RUSTDOCFLAGS: -Dwarnings` and `cargo doc` job (HIGH confidence — direct codebase inspection)
 
 ---
 
-*Stack research for: v10.0 JSON-UI Visual Overhaul*
-*Researched: 2026-03-24*
+*Stack research for: v11.0 Framework Consolidation Audit — documentation tooling methodology*
+*Researched: 2026-03-26*

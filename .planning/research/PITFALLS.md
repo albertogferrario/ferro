@@ -1,259 +1,253 @@
 # Pitfalls Research
 
-**Domain:** Visual polish overhaul — SSR component system with Tailwind CSS
-**Researched:** 2026-03-24
-**Confidence:** HIGH
+**Domain:** Documentation audit and consistency fix — rapidly-evolved multi-crate Rust framework
+**Researched:** 2026-03-26
+**Confidence:** HIGH (based on direct codebase inspection, retrospective review, and existing audit artifacts)
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Test Avalanche — 157 Snapshot-Style Tests Assert on Exact Class Strings
+### Pitfall 1: Phantom Feature Documentation — Docs Written Ahead of or Beyond the Implementation
 
 **What goes wrong:**
-Every visual change to a component triggers cascading test failures because 157 tests in `render.rs` assert on exact Tailwind class strings (e.g., `assert!(html.contains("bg-primary text-primary-foreground hover:bg-primary/90"))`). Changing `rounded-md` to `rounded-lg` on a button breaks the button variant tests, button size tests, and any container tests that embed buttons. A single focused spacing pass touching 10 components can produce 40+ failures simultaneously — making it impossible to distinguish regressions from intentional changes.
+Documentation exists for features that are incomplete, stub-only, or have diverged from the actual API. The audit team reads the doc, assumes it matches reality, and marks it "complete." The inconsistency ships to users, who copy-paste non-functional examples. This is specifically risky in Ferro because several crates (ferro-stripe, ferro-whatsapp) were created and documented in the same pass, without a separate audit that verified every code example compiles against the actual public API.
+
+Confirmed instance: `ferro-stripe/src/webhook/mod.rs` contains `// TODO: implement by checking a processed-events DB table in the application` — the docs present this as a callable function. The stripe.md doc at line 303 does note it is a stub, but the code example earlier doesn't warn callers.
 
 **Why it happens:**
-The tests were written to verify functional correctness of the renderer. They use `contains()` on class substrings, which is appropriate for verifying structure (e.g., "button has a disabled attribute") but was also used for visual classes that are now the subject of change. There is no distinction between structural/behavioral assertions and cosmetic ones.
+Documentation is written alongside feature scaffolding, not after feature completion. In a fast-iteration cycle (v1.0 through v10.0 in 2 months), the doc author and the implementer are the same session — the doc reflects intent, not verification. When auditing later, reviewers read the doc prose (which sounds authoritative) without running the examples.
 
 **How to avoid:**
-Before any visual pass, audit the test suite and separate assertions into two categories:
-1. **Structural** — HTML element type, attributes (id, name, type, disabled, required, checked), data attributes (data-tabs, data-tab, role), and semantic tokens (bg-primary, text-destructive). These must keep passing.
-2. **Cosmetic** — Spacing (px-4, py-2), radius (rounded-md), shadow classes. These will change and must be updated to match intent, not locked.
-
-For the cosmetic category, either update the tests as part of the same PR as the visual change, or convert them to assert on semantic meaning instead of literal strings. Do not batch a visual overhaul with a test refactor in the same commit — keep them separate so failures are attributable.
+For each feature page, the audit phase must answer: "Does every code example in this doc compile against the current public API?" This means running `cargo check` against extracted doc examples, not reading them. Treat doc examples as assertions. Any example with `todo!()` in the underlying implementation must carry a clear "Not yet implemented" callout at the top of the section, not buried in a Safety Notes footnote.
 
 **Warning signs:**
-- A diff touching one function in `render.rs` causes 20+ test failures
-- Tests fail in components you did not touch (cascade from shared class string)
-- PR description says "visual polish" but shows 40 test file changes
+- A doc section that says "this is a stub" but still provides full code examples showing how to call it
+- Implementation file has `todo!()` or a `// TODO` in a function that the doc presents as working
+- Feature page exists but the crate's `lib.rs` has no exports for the symbols used in the examples
 
 **Phase to address:**
-The first visual phase (typography or surface/elevation). Establish the separation rule before touching any class strings.
+The audit phase, before any fix phase. Fix phases must never touch docs for features where the implementation is confirmed incomplete — those need an "Under Construction" marker, not a corrected example.
 
 ---
 
-### Pitfall 2: oklch Contrast Failure in Dark Mode — Light Values Break Accessible Ratios
+### Pitfall 2: Wrong Import Path Hardcoded in Documentation Examples
 
 **What goes wrong:**
-The default theme uses oklch values that are visually balanced in light mode but can fail WCAG AA (4.5:1) in dark mode if tweaked without checking contrast. Specifically: `--color-text-muted: oklch(60% 0 0)` on a `--color-card: oklch(20% 0 0)` background produces a contrast ratio near 3:1 — acceptable for large text only. Adding surface elevation (slightly lighter cards) narrows this gap further. A developer adjusting `--color-card` from `oklch(20%)` to `oklch(22%)` to add depth will not notice the 0.3:1 contrast reduction until it is flagged by an accessibility audit.
+Documentation uses `use ferro_rs::` (the crate's Cargo name) while the sample app, the correct usage, and the intended user experience all use `use ferro::` (an alias set in `Cargo.toml` via `package = "ferro-rs"`). Users copy the doc example, add `ferro-rs` to their `Cargo.toml`, write `use ferro_rs::Foo`, and it works — but then they diverge from the idiomatic pattern. When Ferro publishes docs assuming one alias, users can't easily discover that the framework is aliased.
+
+Confirmed instance: `docs/src/features/multi-tenancy.md` uses `use ferro_rs::` (8 occurrences). `docs/src/json-ui/data-binding.md` uses `use ferro_rs::` (7 occurrences). All other feature docs correctly use `use ferro::`.
 
 **Why it happens:**
-oklch lightness (L) is perceptual but WCAG 2.x contrast ratio is calculated in sRGB luminance space. The relationship is non-linear. Moving L from 20% to 22% feels trivial but changes sRGB luminance by a meaningful percentage. Standard color pickers do not show WCAG ratios in real time. The W3C has confirmed WCAG 2.x calculations apply to oklch after conversion to sRGB — so the math works, but you must measure it.
+The import path question is subtle: `ferro-rs` is the Cargo registry name, `ferro` is what the `Cargo.toml` in new projects generated by `ferro new` will contain. When writing docs rapidly, authors default to the raw crate name. The inconsistency is invisible during writing because both paths actually work (if the user sets the alias).
 
 **How to avoid:**
-After any theme token change, run the following critical pairs through a contrast checker (OddContrast accepts oklch natively):
-- `--color-text` on `--color-background` (must be >= 7:1 for body text)
-- `--color-text-muted` on `--color-background` (must be >= 4.5:1)
-- `--color-text-muted` on `--color-surface` (must be >= 4.5:1)
-- `--color-text-muted` on `--color-card` (must be >= 4.5:1)
-- `--color-primary-foreground` on `--color-primary` (must be >= 4.5:1)
-- `--color-destructive` text on white/light background (must be >= 4.5:1)
-
-Check both light AND dark mode values. Do this before writing a single line of Rust — token changes are CSS-only and can be verified in isolation.
+Establish a single canonical import alias at the start of the audit: `ferro`. Run a workspace-wide grep for `ferro_rs::` in all `.md` files. Replace all occurrences. Add a doc linting step that fails on `ferro_rs::` to prevent regression. The `ferro new` template sets `ferry = { package = "ferro-rs" }` — docs must match that template.
 
 **Warning signs:**
-- Card background moves lighter (higher L) without a corresponding adjustment to text-muted
-- "Elevation" pass increases card L values by more than 2-3% without contrast check
-- Badge or alert colors use `text-warning` directly on `bg-background` without a background tint
+- Some doc pages use `ferro_rs::`, others use `ferro::`
+- A reader following two different feature pages gets different import path patterns
+- The sample app uses `ferro::` but a doc example uses `ferro_rs::`
 
 **Phase to address:**
-Surface/elevation system phase. Also applies to any theme token refinement phase.
+First fix phase. Import path is pervasive and trivial to grep-replace. Do it in one atomic pass before any other doc edits to avoid mixed states.
 
 ---
 
-### Pitfall 3: Tailwind CDN WASM Blocks First Paint — Semantic Classes Not Emitted at Build Time
+### Pitfall 3: Philosophy Drift — Introduction Contradicts the Framework's Actual Value Proposition
 
 **What goes wrong:**
-The framework currently uses `<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>` for development (the `tailwind_cdn: true` config). The browser CDN downloads a ~300KB WASM bundle, scans the page HTML, and generates CSS in-browser before first paint. This means: (1) pages appear unstyled for 200-800ms on first load depending on connection, (2) the WASM bundle must re-scan on every page navigation, and (3) arbitrary dynamic classes emitted from plugins or third-party code may not be detected if they are not present in the initial HTML scan. During the polish phase, adding new Tailwind utility classes is safe because they will be picked up on the next scan — but it creates a false sense that the system scales to production.
+The public-facing introduction (`docs/src/introduction.md`) positions Ferro as "the Laravel of Rust" with philosophy pillars of "convention over configuration" and "developer experience." The actual value proposition in `PROJECT.md` is agent-first: AI agents can go from "I want an app that does X" to a working deployed application. The agent-first architecture drives real decisions: MCP introspection tools, generation hints embedded in responses, actionable error messages with fix suggestions. The docs never explain this. A developer reading the docs sees a generic web framework; an agent reading the docs gets no signal that this framework was designed for agents to generate.
 
-Additionally, Tailwind's official documentation states the CDN is development-only and must not be used in production. Any deployment of ferro apps to production requires a proper Tailwind build step.
+This matters for the audit because "is this doc good for agents?" is a different question than "is this doc good for developers?" Most feature docs have zero MCP tool references, zero generation hints, and no "how an agent would discover this" section.
 
 **Why it happens:**
-The CDN was chosen for zero-config developer experience, which is correct. The pitfall is not in the choice but in: (a) adding focus styles or transitions that rely on classes not present in the initial scan window, and (b) shipping CDN config to production apps.
+The introduction was written in v1.0 when the rebrand was happening. Philosophy documentation is always harder to write than API documentation — it requires a clear statement of what makes this framework different, not just what it does. The "Laravel of Rust" framing was natural and accurate at the time; the agent-first pivot sharpened later.
 
 **How to avoid:**
-For the visual polish milestone: add new classes freely — the CDN will pick them up. But document clearly in `JsonUiConfig` that `tailwind_cdn: false` requires a build step and provide guidance. When testing the polish output, do a hard reload (not soft navigation) between changes to ensure the CDN re-scans. Watch for brief FOUT between CDN load and CSS injection — this is expected in dev but a signal for production gap.
+Rewrite `introduction.md` to lead with the agent-first thesis. The philosophy section should list: agent-generated code reliability, MCP introspection depth, actionable errors, and CLI scaffolding — not "convention over configuration." Each major feature doc should have a brief "MCP Tools" section listing which MCP tools expose that feature to an agent. This doesn't need to be long — even a single line referencing `list_events`, `list_jobs`, etc. creates discoverability.
 
 **Warning signs:**
-- Components look correctly styled after a soft navigation but unstyled on first hard load
-- A class added in render.rs doesn't appear to work until you reload twice
-- Production app shows unstyled flash for 300-500ms
+- Introduction says "Laravel of Rust" without mentioning agents or MCP
+- Feature docs for events, queues, authentication have zero MCP tool references
+- A reader cannot tell from the docs alone that this framework has 57 MCP introspection tools
+- Agent-first is in `PROJECT.md` and `CLAUDE.md` but not in any user-facing page
 
 **Phase to address:**
-Font loading phase (typography). Add a `PRODUCTION NOTE` to JsonUiConfig documentation at the start. A separate production-build phase may be needed post-overhaul.
+The philosophy audit phase, which should precede the accuracy audit. Getting the "why" right first makes accuracy judgments easier (is this doc accurate *for the intended audience*, which is agents?).
 
 ---
 
-### Pitfall 4: Custom `<select>` Arrow Disappears on Windows Chrome — `appearance-none` Removes Native Indicator Without Replacement
+### Pitfall 4: Missing Commands in the CLI Reference — Newly Added Commands Have No Documentation
 
 **What goes wrong:**
-The current `render_select` produces `appearance-none bg-background rounded-md border ...`. `appearance-none` removes the native dropdown arrow across all browsers, but the replacement arrow (typically a CSS background-image SVG) is never added. On macOS Chrome, this is less noticeable because the OS renders a subtle indicator. On Windows Chrome and Firefox, the select field appears as a plain rectangle with no affordance that it is interactive. Users do not know it is a dropdown.
+The CLI reference (`docs/src/reference/cli.md`) is missing documentation for commands added in v8.1, v9.0, and later milestones. The codebase has 50 CLI command files; the reference documents them in sections but omits newer commands entirely. Missing from the reference: `make:stripe`, `make:whatsapp`, `make:theme`, `make:projection`, `projection:check`, `make:api-key`, `api:check`. This is not just aesthetic — the CLI reference is the only complete source of truth for what commands exist. Agents querying docs cannot discover these commands.
 
 **Why it happens:**
-`appearance-none` is the correct first step to custom styling, but it must be paired with a custom arrow indicator. The current renderer removed the default arrow for styling consistency but never replaced it. This is a well-known trap: the class name (`appearance-none`) does not hint at what it removes.
+The CLI reference is a long document (1034 lines) that was built up feature by feature. New commands added in later milestones were documented in their feature pages (e.g., `ferro make:stripe` is in `features/stripe.md`) but never backfilled into the reference. The reference became out of sync without anyone noticing because the feature pages themselves are accurate.
 
 **How to avoid:**
-Wrap the `<select>` in a `relative` container and add an SVG chevron as an absolutely-positioned `pointer-events-none` element. The standard pattern:
-```html
-<div class="relative">
-  <select class="block w-full appearance-none bg-background rounded-md border ... pr-8">...</select>
-  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-text-muted">
-    <svg class="h-4 w-4" ...chevron-down...</svg>
-  </div>
-</div>
-```
-The `pr-8` on the select prevents text from overlapping the arrow.
+During the audit, diff the list of command files in `ferro-cli/src/commands/` against the entries in `reference/cli.md`. Any file without a corresponding `###` heading in the reference is a gap. Add the missing commands in a single pass. Going forward, a commit hook or CI check that counts `###` headings in `reference/cli.md` vs command files would prevent regression.
 
 **Warning signs:**
-- `appearance-none` present in select HTML without a wrapper `relative` container
-- No SVG or background-image arrow visible when inspecting the select element
-- Testing only on macOS (where it looks acceptable) but not on Windows or Firefox
+- Commands exist in `ferro-cli/src/commands/` without a matching section in `reference/cli.md`
+- Feature docs reference a `ferro make:X` command that isn't in the CLI reference
+- A developer cannot use the CLI reference alone to discover all available commands
 
 **Phase to address:**
-Component polish phase — specifically form field components (Input, Select, Checkbox, Switch).
+CLI documentation fix phase. Low complexity, high completeness impact.
 
 ---
 
-### Pitfall 5: Modal `fixed` Overlay Trapped in Parent Stacking Context
+### Pitfall 5: Service Projections (v9.0) Has No User-Facing Documentation Page
 
 **What goes wrong:**
-The current modal renders as a `<details>` element with a child `<div class="fixed inset-0 z-50 ...">`. This `position: fixed` + `z-index: 50` should overlay the entire viewport. However, if the modal's ancestor has `transform`, `will-change: transform`, `opacity < 1`, `filter`, or `isolation: isolate` applied, a new stacking context is created and the `fixed` div is positioned relative to that ancestor — not the viewport. The `DashboardLayout` sidebar is a candidate: any transition or transform added to the sidebar during the polish phase (e.g., slide-in animation) will trap any modal rendered inside it.
+Service Projections is a major v9.0 system: `ServiceDef → IntentGraph → Renderer → JSON-UI output`. It has its own crate (`ferro-projections`), 315 tests, 5 MCP tools, and a full protocol specification in `docs/protocol/`. But the main user documentation (`docs/src/`) has no page for it. The SUMMARY.md doesn't list it. Users and agents querying the main docs cannot discover that ServiceDef exists or how to use it. The protocol spec exists but is a technical standard, not a user guide. The `features/` directory is the expected place for how-to documentation.
 
 **Why it happens:**
-CSS `position: fixed` is defined to be relative to the initial containing block (viewport), but CSS transforms create a new containing block. This is a spec-compliant behavior that surprises nearly everyone. Adding `transition-transform` to the sidebar for a mobile slide-in effect creates exactly this trap.
+v9.0 was delivered rapidly with a protocol spec as the primary documentation artifact. The protocol spec documents *what the format is*, not *how a developer uses the API*. User-facing how-to documentation was deferred and never added.
 
 **How to avoid:**
-Before adding any `transform` or `transition` to container elements in layouts, verify that no modal components are rendered inside them. The `<details>`-based modal approach is vulnerable to this. If sidebar animations are added: either (1) render modal HTML outside the sidebar DOM tree (requires layout restructuring), or (2) avoid transform-based animations on layout containers, using `translate` CSS property instead (which does NOT create a containing block in modern browsers). Alternatively, migrate to `<dialog>` element which exists outside the normal stacking context.
+The audit must identify features with crates, tests, and CLI commands that have no entry in `docs/src/SUMMARY.md`. For each gap, a new page is needed with the standard structure: Quick Start, API reference, examples, MCP tools. The projections page specifically needs to show: how to define a ServiceDef, how to derive intents, how to render output, and which MCP tools inspect projections.
 
 **Warning signs:**
-- Adding `transition-transform` to the sidebar causes modal overlay to not cover the full viewport
-- Modal backdrop stops at the sidebar edge
-- z-index: 9999 doesn't fix the modal from being trapped
+- A crate has 300+ tests and CLI commands but no entry in `docs/src/SUMMARY.md`
+- The protocol spec exists but there's no how-to page with code examples
+- `ferro make:projection` is in the codebase but undiscoverable via docs
 
 **Phase to address:**
-Layout fixes phase (DashboardLayout). Must be checked before adding any CSS transitions to layout containers.
+Documentation gap-filling phase. Requires new page creation, not just edits to existing pages.
 
 ---
 
-### Pitfall 6: Font Loading Causes CLS and FOUT — Wrong `font-display` Strategy
+### Pitfall 6: Fix Phase Creates New Inconsistencies by Fixing Docs Without Verifying Code
 
 **What goes wrong:**
-When a professional font (e.g., Inter from Google Fonts) is loaded to replace the system font stack, two failure modes exist:
-1. **FOUT (Flash of Unstyled Text):** The browser renders text in the fallback font, then swaps to the loaded font. The visual jump causes Cumulative Layout Shift (CLS) if the fonts have different metrics (different line-height, cap-height, x-height, character width).
-2. **Render blocking:** If the font `<link>` is placed without `rel="preload"` or without `font-display: swap`, the browser blocks rendering until the font downloads.
+An auditor finds a doc that says function X takes parameter Y. The auditor "fixes" the doc to be clearer. But the clarification is based on reading the existing (possibly wrong) doc, not on reading the actual source code. The fix propagates the original inaccuracy with better prose. This is the audit equivalent of copy-editing a document that contains factual errors — the errors survive, polished.
 
-With the CDN approach, both the Tailwind WASM bundle and the font file compete for bandwidth on first load. If a Google Fonts `@import` is placed inside the `<style type="text/tailwindcss">` tag (i.e., inside the theme CSS), the CDN must process it — adding additional latency before CSS is available.
+In a 14-crate, ~90,000-line Rust workspace, it is easy to "fix" documentation by making it internally consistent without checking if it matches the actual API signatures.
 
 **Why it happens:**
-Font loading is treated as a CSS concern and placed in the theme file. The `@import url("https://fonts.googleapis.com/...")` inside `@theme` causes the CDN to attempt to process external CSS, which either fails silently or adds a dependency chain.
+Documentation audits under time pressure default to "does this read clearly?" over "is this accurate?". Reading code is slower than reading prose. The fix phase becomes a writing exercise rather than a verification exercise.
 
 **How to avoid:**
-- Load the font via a `<link rel="preload" as="font">` in the HTML `<head>`, not inside the theme CSS.
-- Use `font-display: swap` in the `@font-face` declaration to avoid render blocking.
-- Specify fallback font metrics that match the target font using `size-adjust`, `ascent-override`, and `descent-override` to minimize CLS.
-- In the framework: add the font `<link>` tags to the layout's `<head>` section, not to the theme CSS injected via `<style type="text/tailwindcss">`.
-- The theme CSS should only define `--font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif` — not load the font.
+For every API method, type, or trait mentioned in docs during a fix, the fixer must grep the corresponding Rust source to confirm: (1) the symbol is exported from `framework/src/lib.rs`, (2) the signature matches what the doc shows, (3) the function name matches (aliases like `dispatch` exported as `dispatch_event` are common traps). Make this a rule: no doc example can be committed without a source-verified annotation in the PR or planning document.
 
 **Warning signs:**
-- Font `@import` placed inside the theme CSS file (`assets/default.css`)
-- Text visibly reflows when the page finishes loading
-- Chrome Lighthouse reports CLS > 0.1 after font swap
-- No `rel="preload"` for font files in the layout `<head>`
+- A "fixed" doc example uses a method name that exists in the underlying crate but is not re-exported through `ferro::` (the public namespace)
+- An auditor fixes docs for a feature they haven't opened the Rust source for
+- The PR description says "improved clarity" with no mention of source verification
 
 **Phase to address:**
-Typography foundation phase (first phase of the overhaul).
+Every fix phase. This is a process constraint, not a content issue.
+
+---
+
+### Pitfall 7: Audit Scope Creep — Fixing Finds New Gaps, Derails Original Scope
+
+**What goes wrong:**
+The audit team finds that the events docs are inaccurate. While verifying, they notice the queue docs are also wrong. While fixing queues, they find the notification docs reference a type that no longer exists. Each fix uncovers more gaps. The milestone expands from "audit + fix known issues" to "rewrite all docs." Halfway through, morale drops, the scope is unclear, and nothing ships.
+
+This is especially likely for Ferro because 14 crates with docs written across 10 milestones means the gap density is non-uniform. Some pages will be nearly perfect; others will need significant work. Without a strategy to distinguish them, the audit treats everything as equally broken.
+
+**Why it happens:**
+Audit work has natural forward-chaining: you can't assess X without checking its dependencies, and its dependencies have their own issues. The healthy constraint ("we're auditing, not fixing everything") is hard to maintain when the fixing team is the same as the auditing team.
+
+**How to avoid:**
+Separate the audit phase from the fix phase structurally. The audit produces a severity-ranked list of issues (critical: wrong API, high: missing feature, medium: unclear prose, low: style). The fix phase addresses items by severity, not by the order they were discovered. Set a hard limit: fix phases only address issues on the audit list. If a fixer discovers a new issue, it goes on the list for the next iteration, not into the current PR.
+
+**Warning signs:**
+- A fix-phase PR touches files not on the original audit list
+- The milestone plan grows during execution without explicit scope negotiation
+- "While I was in there" appears in PR descriptions
+- Audit and fix phases are merged into a single phase with no structured handoff
+
+**Phase to address:**
+Planning. The milestone should have distinct audit phases (read-only, produce report) and fix phases (address specific items from the report).
 
 ---
 
 ## Technical Debt Patterns
 
+Shortcuts that seem reasonable in a fast-iteration codebase but create long-term problems during an audit.
+
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Hardcode Tailwind spacing in render.rs instead of consuming theme tokens | Faster to implement | Themes cannot override spacing; visual inconsistency between themed and default rendering | Never — theme tokens exist for this |
-| Use CDN in "production" docs without noting build requirement | Zero-config for demos | Users ship 300KB WASM bundle to real users; FOUT on every page | Never — document clearly |
-| Assert on exact class strings in new tests | Easy to write | Polish phases break tests; developers lose confidence in the test suite | Acceptable only for structural/behavioral assertions, not cosmetic classes |
-| Add emoji icons in components during polish | Fast placeholder | Emoji rendering varies by OS (Apple vs Android vs Windows); breaks visual consistency | Never — use SVG |
-| Apply `transform` to layout containers for animations | Smooth slide-in effect | Traps fixed modals; breaks stacking context | Only when no modals are children of that container |
-| Skip dark mode verification for "cosmetic" changes | Faster iteration | Dark mode contrast failures; light-mode-only visual testing | Never — always check both modes |
+| Write docs alongside feature scaffolding, not after verification | Faster shipping | Docs reflect intent, not actual API; examples may not compile | Never for public API docs — always verify against source |
+| Use prose qualifiers ("typically," "usually") instead of specifying actual behavior | Avoids committing to guarantees | Agents cannot generate reliable code from vague specs | Never in API-facing documentation — be specific |
+| Document the happy path, skip error cases | Faster to write | Users/agents don't know what to do on failure; error handling is the hard part | Acceptable only in quickstart examples with explicit "simplified" callout |
+| Copy examples from earlier docs without updating them | Saves writing time | Stale patterns propagate; v1.0 patterns appear alongside v10.0 patterns | Never — always trace examples to current API |
+| Skip the "MCP Tools" section for a feature | Shorter doc | Feature is invisible to agents; MCP has 57 tools, none of them linked from feature docs | Never for Ferro — agent discoverability is the primary goal |
+| Use `todo!()` in implementation but show full example in docs | Docs feel complete | Users see working example, hit panic in production | Never — stub must be labeled "not yet implemented" in both the code and the doc |
 
 ---
 
 ## Integration Gotchas
 
+Common mistakes when docs cross crate boundaries or reference external systems.
+
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Tailwind CDN + theme CSS injection | Placing `@import url(google fonts)` inside `<style type="text/tailwindcss">` | Load fonts via separate `<link>` in `<head>`; theme CSS defines font-family token only |
-| Tailwind CDN + dynamic classes | Adding a class in Rust that never appears in static HTML | Class is not in CDN scan window; must ensure it appears in rendered HTML or use safelist mechanism |
-| `peer` modifier + Switch component | Assuming `peer` works across arbitrary DOM nesting | `peer` requires strict sibling relationship; the `<input>` must be the immediate previous sibling |
-| `appearance-none` + Select | Removing native arrow without replacement | Always pair with a wrapper `div.relative` and an absolutely-positioned SVG chevron |
-| oklch colors + WCAG tools | Using only sRGB-based contrast checkers | Use OddContrast or Atmos which accept oklch natively; avoid converting manually |
-| `@theme` inside `@media` | Tailwind v4 `@theme` inside `@media (prefers-color-scheme: dark)` | v4 supports this but it overrides at the theme level, not via CSS cascade; confirm behavior matches intent in the CDN browser build |
-| `details`/`summary` modal + Safari | Assuming `group-open:block` shows the modal overlay | Safari does not include details content in keyboard focus order; test tab navigation explicitly |
-| Plugin CSS assets + theme | Plugin CSS loads after theme CSS | Plugin may use hardcoded colors that conflict with theme tokens; plugins should use semantic token classes, not literal values |
+| `ferro_rs::` vs `ferro::` import alias | Using the Cargo crate name instead of the alias set in project `Cargo.toml` | All doc examples use `use ferro::` — this matches what `ferro new` generates |
+| Feature-gated crates (stripe, ai, whatsapp, projections, theme) | Omitting the `features = [...]` line in the `Cargo.toml` snippet | Every feature doc that requires a feature gate must show the complete dependency line with the correct feature name |
+| MCP tool names in docs vs actual tool file names | Tool file is `list_broadcast_channels.rs` but doc calls it something else | Grep the tool `fn name()` method for the canonical string; don't assume from filename |
+| Protocol docs vs user docs | Protocol spec answers "what is the format?" but users need "how do I use this?" | User-facing docs in `docs/src/features/` must exist alongside any protocol spec |
+| Stripe idempotency stub | Docs show `ferro::stripe_is_processed(event_id)` without noting it always returns `false` | The Safety Notes section must come before any usage example, not after |
 
 ---
 
 ## Performance Traps
 
+Not directly applicable to a documentation audit. The single performance consideration is:
+
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| CDN re-scan on every page load | 200-800ms FOUC on first visit | Use CDN only in dev; build CSS for production | Every production page load |
-| Large inline SVG icons | Slow HTML parse, no caching | Use `<use>` with external SVG sprite or data-URI for small icons | When >5 components have inline SVGs |
-| Inline `style=` overrides instead of Tailwind | Blocks CSS batching in browser | Use Tailwind utilities or CSS variables; avoid `style=` for visual properties | Not a scale issue — a maintainability issue from day 1 |
-| Font loaded synchronously without preload | Render-blocking first paint | Add `<link rel="preload" as="font">` before other resources | Every page for users on slow connections |
-| CLS from font swap with mismatched metrics | Visible text reflow after ~200ms | Use `size-adjust` / `ascent-override` / `descent-override` fallback | Users on slower connections who see fallback font briefly |
+| Running full workspace tests after every doc edit | 10-15 minute feedback loop per doc change | Use `cargo test -p ferro-json-ui` or the relevant crate; don't run `--all-features` for doc-only changes | Immediately — no scale threshold, just a workflow friction issue |
+| Auditing docs in document order (top-to-bottom in SUMMARY.md) | Low-severity prose fixes consume time that should go to critical API accuracy | Audit by severity tier: API accuracy first, then completeness, then prose | First audit session without a prioritization strategy |
 
 ---
 
 ## Security Mistakes
 
+Specific to doc-content security in this codebase.
+
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Injecting theme CSS without escaping | XSS if theme is loaded from filesystem and tampered | Current implementation uses `include_str!` (safe); `from_path()` reads untrusted CSS — validate it does not contain `</style>` sequences |
-| Adding SVG icons with `innerHTML`-style injection | XSS if icon content comes from user data | Icons must be hardcoded SVG strings in Rust source, not data from API or user input |
-| Raw HTML in icon fields passed to `data-icon` attribute | Attribute injection if icon name contains `"` | Current `html_escape()` handles this correctly; maintain this for any new icon attributes |
-
----
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Focus rings removed for aesthetics | Keyboard-only users cannot see focus position; WCAG 2.4.7 violation | Use `:focus-visible` ring (visible only for keyboard, not mouse); never remove focus indicators |
-| Hover-only state changes with no focus equivalent | Keyboard users never see hover states | Every `hover:` class should have a matching `focus-visible:` counterpart |
-| Transition on every interactive element | Motion sickness for users with vestibular disorders | Wrap all `transition-*` classes in `motion-safe:` modifier; use `@media (prefers-reduced-motion: reduce)` |
-| Select field with no visible arrow indicator | Users don't know it is interactive; high error rates | Always provide visual affordance for all interactive elements |
-| Empty state components without actionable next step | Users feel lost with no guidance | EmptyState should always include at least one primary action button |
-| Modal without keyboard close (Escape) | Trapped keyboard users | The `<details>`-based modal has no Escape key support; document this limitation |
+| Doc examples that show API keys or secrets inline | Users copy-paste secrets into their code | Always use `env!("STRIPE_SECRET_KEY")` or `std::env::var(...)` patterns; never literal keys even as placeholders |
+| Documenting `stripe_is_processed()` as a no-op without a clear security warning | Users deploy idempotency-less webhook handlers; duplicate charges possible | The first paragraph of the stripe idempotency section must contain a bold warning that the stub returns false and must be replaced |
+| Missing `TenantScope` safety warning in the multi-tenancy doc | Developers forget to scope queries; all-tenant data leaks | The Safety Notes section must be the first section after the quick start, not the last |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Dark mode tokens:** Verify every new or changed token passes contrast checks in BOTH light and dark mode — not just light mode
-- [ ] **Select arrow:** After polishing select styling, confirm a visible dropdown indicator exists on Windows Chrome and Firefox, not just macOS
-- [ ] **Focus rings:** After adding focus ring styles, verify they appear on keyboard navigation in Safari (`:focus-visible` landed in Safari 15.4; test explicitly)
-- [ ] **Font loading:** After adding a professional font, verify CLS score in Chrome DevTools Performance panel — a zero CLS score is the target
-- [ ] **Modal overlay:** After adding any CSS transition to layout container elements, open a modal and verify the overlay covers the full viewport
-- [ ] **Tests updated:** After any cosmetic class change, verify the test suite passes — and verify the failures you fixed are the ones you expected to change
-- [ ] **Reduced motion:** After adding CSS transitions, confirm `motion-safe:` modifier is applied or `@media (prefers-reduced-motion)` is respected
-- [ ] **Emoji-to-SVG:** After replacing emoji icons, verify the SVG renders at the correct size and color in all target browsers
-- [ ] **Plugin compatibility:** After changing base component classes, verify that Leaflet map plugin (and any other registered plugins) still renders correctly in context
+The following are common failure modes during documentation audits of rapidly-evolved codebases. Check each during the audit phase.
+
+- [ ] **Import path consistency:** Every code example uses `use ferro::` (not `use ferro_rs::`) — grep `.md` files for `ferro_rs::` before declaring any page clean
+- [ ] **Symbol export verification:** Every type, function, and trait named in a doc example is actually exported from `framework/src/lib.rs` — not just present in the underlying crate
+- [ ] **Feature flag accuracy:** Every feature-gated crate (stripe, ai, whatsapp, projections, theme) shows the correct feature name in its `Cargo.toml` snippet
+- [ ] **CLI reference completeness:** Every file in `ferro-cli/src/commands/` has a corresponding entry in `docs/src/reference/cli.md` — diff the list
+- [ ] **SUMMARY.md coverage:** Every crate with user-facing functionality has an entry in `docs/src/SUMMARY.md` — check ferro-projections specifically
+- [ ] **Stub transparency:** Every `todo!()` or `// TODO` in a public function has a "not yet implemented" callout in the corresponding doc section
+- [ ] **Introduction philosophy alignment:** `introduction.md` leads with agent-first thesis, not "Laravel of Rust" framing
+- [ ] **MCP tool linking:** Every feature doc that has MCP tools lists them by tool name (e.g., `list_events`, `inspect_projection`) so agents can discover them
+- [ ] **Cross-page link accuracy:** Every `[text](page.md)` link in docs resolves to an existing file — broken links are common after page renames
+- [ ] **Dark mode / Stripe stub callout:** `stripe_is_processed()` returns false; this must be prominently documented before the usage example, not after
 
 ---
 
 ## Recovery Strategies
 
+When audit findings reveal these pitfalls after fix work has started.
+
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Test avalanche from class changes | LOW | Run `cargo test 2>&1 \| grep FAILED` to list failures; update cosmetic assertions to match new classes; keep structural assertions unchanged |
-| Dark mode contrast failure | LOW | Adjust only the L value of the failing token; use OddContrast to verify; re-run contrast check on all pairs |
-| CDN shipped to production | MEDIUM | Add Tailwind build step to deployment; update JsonUiConfig docs; bump minor version |
-| Select arrow missing | LOW | Add `relative` wrapper + SVG chevron to `render_select` in render.rs; update the 3-4 related tests |
-| Modal trapped in stacking context | MEDIUM | Move modal rendering outside transformed container; or replace `<details>` modal with `<dialog>` element |
-| Font causing CLS | MEDIUM | Move font loading to layout `<head>` with preload; add fallback font metric overrides; measure with Lighthouse |
-| Peer modifier broken in Safari | LOW | Verify Safari 16.4+ requirement is met; test with actual Safari; peer modifier requires strict sibling DOM structure |
+| Wrong import path (`ferro_rs::`) found after fix phase | LOW | Grep all `.md` files for `ferro_rs::`; do a single atomic replacement; verify with `rg "ferro_rs::" docs/` returning zero matches |
+| Introduction philosophy drift discovered mid-milestone | LOW | Rewrite `introduction.md` in isolation; it has no API dependencies; philosophy rewrite is pure prose |
+| Missing CLI commands in reference discovered late | MEDIUM | Add all missing commands in a single PR; use the command files as the source of truth for flags and behavior |
+| Projections doc gap found after other fixes shipped | MEDIUM | Create `docs/src/features/projections.md` and `docs/src/features/service-def.md`; add to SUMMARY.md; pattern-match from the events.md structure |
+| Phantom feature doc shipped to users (stub presented as working) | HIGH | Add a top-of-page "INCOMPLETE" callout immediately; issue a doc version note; this cannot be silently fixed — users may have already filed bug reports |
+| Scope creep discovered mid-fix-phase | LOW | Freeze the current fix list; create a new backlog file for newly discovered issues; ship current work; plan next iteration |
 
 ---
 
@@ -261,38 +255,31 @@ Typography foundation phase (first phase of the overhaul).
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Test avalanche from class changes | Phase 1 (Typography / first visual pass) — establish test separation rule first | `cargo test` passes with zero unexpected failures after each component change |
-| oklch contrast failure in dark mode | Surface/elevation phase (adds depth to card tokens) | All 8 critical token pairs checked with OddContrast in both light and dark mode |
-| CDN FOUT / production gap | Typography phase (introduces font loading) | Lighthouse CLS score; hard reload test; documentation for production build |
-| Select arrow missing | Component polish phase (form fields) | Manual test in Windows Chrome + Firefox; visual screenshot |
-| Modal trapped in stacking context | Layout fixes phase (DashboardLayout animations) | Open modal inside dashboard layout; verify overlay covers full viewport |
-| Font CLS | Typography foundation phase | Chrome DevTools Performance > Layout Shift; Lighthouse CLS < 0.1 |
-| Focus ring browser inconsistency | Component polish phase (focus rings) | Keyboard tab navigation test in Safari 17, Chrome, Firefox |
-| Peer modifier CSS-only breakage | Component polish phase (Switch component) | Test Switch in Safari 16.4+; verify checked/unchecked toggle visual |
-| Emoji to SVG rendering inconsistency | Consistency pass phase | Screenshot comparison across macOS, Windows, and Linux |
-| Plugin compatibility after base class changes | Component polish phase | Run full test suite including plugin tests; verify Leaflet map renders |
+| Phantom feature documentation | Audit phase: produce list of features with `todo!()` in public methods | After audit: list contains all stubs; after fix: each stub has a callout in the doc |
+| Wrong import path (`ferro_rs::`) | Fix phase 1: import path normalization pass | `rg "ferro_rs::" docs/` returns zero matches |
+| Philosophy drift in introduction | Philosophy audit phase (before accuracy audit) | `introduction.md` contains "agent" and "MCP" in the first 200 words |
+| Missing CLI commands in reference | CLI audit phase: diff `ferro-cli/src/commands/` vs `reference/cli.md` | Command count in reference >= command file count |
+| Missing projections user docs | Doc coverage audit phase: diff crates vs SUMMARY.md | SUMMARY.md has an entry for every crate with user-facing exports |
+| Fix phase propagating inaccuracies | Every fix phase: require source verification for every API change | PR description must name the Rust source file verified for each changed example |
+| Audit scope creep | Planning: separate audit phases (read-only) from fix phases | Audit PRs contain no code changes; fix PRs reference audit findings by ID |
 
 ---
 
 ## Sources
 
-- Tailwind v4 compatibility and browser requirements: [Tailwind CSS Compatibility Docs](https://tailwindcss.com/docs/compatibility)
-- Tailwind v4 CDN development-only note: [Play CDN docs](https://tailwindcss.com/docs/installation/play-cdn)
-- WCAG OKLCH contrast calculation clarification: [w3c/wcag Discussion #4559](https://github.com/w3c/wcag/discussions/4559)
-- OKLCH accessibility and contrast: [LogRocket — OKLCH in CSS](https://blog.logrocket.com/oklch-css-consistent-accessible-color-palettes)
-- OddContrast tool (accepts oklch natively): [OddContrast](https://www.oddcontrast.com/)
-- Custom select styling cross-browser: [Modern CSS Custom Select Styles](https://moderncss.dev/custom-select-styles-with-pure-css/)
-- CSS select appearance-none cross-browser: [LogRocket Custom Select Dropdown](https://blog.logrocket.com/creating-custom-select-dropdown-css/)
-- Stacking context and fixed position / transform trap: [Smashing Magazine — Unstacking CSS Stacking Contexts](https://www.smashingmagazine.com/2026/01/unstacking-css-stacking-contexts/)
-- Z-index stacking context reference: [MDN Stacking context](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Positioned_layout/Stacking_context)
-- Focus ring / :focus-visible browser interop: [WebKit blog :focus-visible](https://webkit.org/blog/12179/the-focus-indicated-pseudo-class-focus-visible/)
-- details/summary Safari limitations: [Can I Use — details](https://caniuse.com/?search=details)
-- details/summary modal vs dialog: [web.dev Details and Summary](https://web.dev/learn/html/details)
-- Font loading CLS and FOUT: [Ramotion — Optimizing Web Fonts](https://www.ramotion.com/blog/optimizing-web-fonts-for-performance/)
-- Tailwind v4 @theme theming discussion: [GitHub Discussion #18471](https://github.com/tailwindlabs/tailwindcss/discussions/18471)
-- Brittle test strategy: [When to Use Jest Snapshots](https://selleo.com/blog/when-to-use-jest-snapshots)
-- Personal analysis of ferro-json-ui render.rs (157 test functions), default.css (oklch tokens), layout.rs (details-based modal, stacking context exposure), and framework/src/json_ui/mod.rs (CDN injection path)
+- Direct inspection of `docs/src/introduction.md` — confirms "Laravel of Rust" framing with no agent-first mention
+- Direct inspection of `docs/src/features/multi-tenancy.md` lines 20, 144, 160, 174, 217, 242, 270, 290 — confirms `ferro_rs::` import path inconsistency (8 occurrences)
+- Direct inspection of `docs/src/json-ui/data-binding.md` lines 10, 54, 123, 187, 242, 269, 281 — confirms `ferro_rs::` import path inconsistency (7 occurrences)
+- Direct inspection of `ferro-stripe/src/webhook/mod.rs` line 40 — confirms `// TODO: implement by checking a processed-events DB table` in public function
+- Diff of `ferro-cli/src/commands/` (50 files) vs `docs/src/reference/cli.md` — confirms `make:stripe`, `make:whatsapp`, `make:theme`, `make:projection`, `projection:check`, `make:api-key`, `api:check` are undocumented in the reference
+- Inspection of `docs/src/SUMMARY.md` — confirms no entry for Service Projections (v9.0, `ferro-projections` crate, 315 tests)
+- `.planning/v9.0-MILESTONE-AUDIT.md` — confirms v9.0 predates formal verification workflow; all 12 phases missing VALIDATION.md
+- `.planning/RETROSPECTIVE.md` — confirms v10.0 lesson: "Test infrastructure investment in early phases prevents cascading failures"
+- `.planning/codebase/CONCERNS.md` — confirms COMPONENT_CATALOG drift between ferro-cli and ferro-mcp (P2 concern); confirms known TODO items
+- `framework/Cargo.toml` — confirms feature flags: `stripe`, `ai`, `projections`, `theme`, `whatsapp` are all optional features
+- `app/Cargo.toml` — confirms correct alias: `ferro = { path = "../framework", package = "ferro-rs" }` — docs must match this pattern
+- General post-mortem patterns for documentation drift in fast-iteration projects
 
 ---
-*Pitfalls research for: JSON-UI visual overhaul — SSR component system with Tailwind CSS*
-*Researched: 2026-03-24*
+*Pitfalls research for: documentation audit and consistency fix in a rapidly-evolved multi-crate Rust framework*
+*Researched: 2026-03-26*
