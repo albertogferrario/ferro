@@ -114,11 +114,11 @@ Plans:
   2. A "Working with Agents" guide exists in docs that documents the MCP workflow (application_info → list_routes → get_handler → use CLI)
   3. Each feature documentation page lists the relevant MCP tools for that feature
   4. The agent-to-CLI workflow is documented end-to-end (agent reads MCP hints → selects CLI command → scaffolds code)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 112-01: Rewrite introduction.md with agent-first thesis
-- [ ] 112-02: Create "Working with Agents" guide + add MCP tool references to all feature pages
+- [ ] 112-01-PLAN.md — Rewrite introduction.md with agent-first thesis + create Working with Agents guide with MCP config and agent-to-CLI workflow
+- [ ] 112-02-PLAN.md — Add `## MCP Tools` sections to 16 feature pages + standardize existing MCP sections in api.md, whatsapp.md, ai.md
 
 ### Phase 113: Pattern Coherence
 **Goal**: All code examples in docs use consistent import style and idiomatic patterns, and the COMPONENT_CATALOG duplication has a documented resolution
