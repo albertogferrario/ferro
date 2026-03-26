@@ -203,7 +203,7 @@ pub struct GenerationContextParams {
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CodeTemplatesParams {
-    /// Filter by category: handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting
+    /// Filter by category: handler, model, migration, middleware, validation, json_view, rate_limiting, broadcasting, api
     pub category: Option<String>,
 }
 
@@ -1154,7 +1154,7 @@ impl FerroMcpService {
         description = "Analyze a route's handler to identify which models it uses.\n\n\
             **When to use:** Understanding data dependencies for a route, planning refactors, \
             impact analysis before model changes, identifying coupled components.\n\n\
-            **Returns:** Models used (with usage type: query, active_model, column_filter), \
+            **Returns:** Models used (with usage type: entity_query, active_model, column_filter, import, type_annotation), \
             Inertia component (if any), services injected.\n\n\
             **Combine with:** `model_usages` for reverse lookup, `dependency_graph` for full picture, \
             `get_handler` to see source code."
@@ -1308,7 +1308,8 @@ impl FerroMcpService {
         description = "Create a new record for a model.\n\n\
             **When to use:** Adding data to any model table — users, posts, settings, etc.\n\n\
             **Returns:** The created record as JSON.\n\n\
-            **Combine with:** `list_models` to see available models and their fields."
+            **Combine with:** `list_models` to see available models and their fields, \
+            `db_query` to verify the created record."
     )]
     pub async fn crud_create(&self, params: Parameters<CrudCreateParams>) -> String {
         match tools::crud_operations::create(&self.project_root, &params.0.model, &params.0.data)
@@ -1327,7 +1328,8 @@ impl FerroMcpService {
         description = "List records from a model with optional filtering and pagination.\n\n\
             **When to use:** Reading data from any model table, searching with filters.\n\n\
             **Returns:** Array of records with pagination info.\n\n\
-            **Combine with:** `list_models` to see fields for filtering."
+            **Combine with:** `list_models` to see fields for filtering, \
+            `db_query` for custom SQL queries beyond filtering."
     )]
     pub async fn crud_list(&self, params: Parameters<CrudListParams>) -> String {
         match tools::crud_operations::list(
@@ -1411,7 +1413,9 @@ impl FerroMcpService {
             **When to use:** Understanding what a ServiceDef contains, checking field semantics, \
             reviewing relationships before rendering.\n\n\
             **Returns:** Detailed projection structure with fields, data types, meanings, relationships.\n\n\
-            **Combine with:** `render_projection` to see the rendered JSON-UI output."
+            **Combine with:** `list_projections` to discover available projections, \
+            `render_projection` to see the rendered JSON-UI output, \
+            `validate_projection` to check for structural issues."
     )]
     pub async fn inspect_projection(&self, params: Parameters<InspectProjectionParams>) -> String {
         let result = tools::inspect_projection::execute(&self.project_root, &params.0.name);
@@ -1425,7 +1429,8 @@ impl FerroMcpService {
             **When to use:** Previewing how a ServiceDef renders to UI components, \
             checking intent derivation results, comparing display vs input modes.\n\n\
             **Returns:** Derived intents with confidence scores and rendered JSON-UI component tree.\n\n\
-            **Combine with:** `inspect_projection` to understand the source ServiceDef."
+            **Combine with:** `list_projections` to discover available projections, \
+            `inspect_projection` to understand the source ServiceDef."
     )]
     pub async fn render_projection(&self, params: Parameters<RenderProjectionParams>) -> String {
         match tools::render_projection::execute(
@@ -1476,7 +1481,8 @@ impl FerroMcpService {
             **When to use:** Identifying coverage gaps in service projections, \
             planning which models need ServiceDef scaffolding, auditing projection completeness.\n\n\
             **Returns:** Per-model coverage status with primary intent, confidence, and CLI suggestions for uncovered models.\n\n\
-            **Combine with:** `list_models` for model details, `list_projections` for projection details."
+            **Combine with:** `list_models` for model details, `list_projections` for projection details, \
+            `validate_projection` to check existing projections for structural issues."
     )]
     pub async fn projection_coverage(
         &self,
@@ -1494,7 +1500,8 @@ impl FerroMcpService {
             checking which env vars are set, confirming the scaffold exists.\n\n\
             **Returns:** configured (bool), keys_present, keys_missing, scaffold_exists, scaffold_files.\n\n\
             **Combine with:** `stripe_webhook_events` to check event listeners, \
-            `stripe_subscription_info` to inspect the billing table schema."
+            `stripe_subscription_info` to inspect the billing table schema, \
+            `get_config` to view Stripe env var values."
     )]
     pub async fn stripe_config_status(
         &self,
@@ -1546,7 +1553,8 @@ impl FerroMcpService {
         description = "Test an AI classification by sending a prompt to the configured provider.\n\n\
             **When to use:** Debugging classification prompts, verifying schema compliance, testing prompt iterations.\n\n\
             **Note:** Makes a real API call to Anthropic. Costs tokens. Requires ANTHROPIC_API_KEY in environment or .env.\n\n\
-            **Returns:** Raw classified JSON output matching the provided schema, model used, and success status."
+            **Returns:** Raw classified JSON output matching the provided schema, model used, and success status.\n\n\
+            **Combine with:** `list_pending_confirmations` to find handlers that use the confirmation primitive."
     )]
     pub async fn test_classifier(&self, params: Parameters<TestClassifierParams>) -> String {
         let ai_params = tools::ai::TestClassifierParams {
@@ -1565,7 +1573,8 @@ impl FerroMcpService {
         description = "Scan source code for confirmation usage patterns (request_confirmation calls).\n\n\
             **When to use:** Understanding which handlers use the confirmation primitive, auditing confirmation flows.\n\n\
             **Note:** Confirmation state is in-memory and not inspectable at runtime. This tool scans source files instead.\n\n\
-            **Returns:** File paths and line numbers where request_confirmation is called."
+            **Returns:** File paths and line numbers where request_confirmation is called.\n\n\
+            **Combine with:** `test_classifier` to test the classification prompts used in confirmation flows."
     )]
     pub async fn list_pending_confirmations(
         &self,
@@ -1582,7 +1591,8 @@ impl FerroMcpService {
             **When to use:** Verifying WhatsApp is configured before running the app, \
             checking which env vars are set, confirming the scaffold exists.\n\n\
             **Returns:** configured (bool), keys_present, keys_missing, scaffold_exists, scaffold_files.\n\n\
-            **Combine with:** `whatsapp_webhook_events` to check event listeners."
+            **Combine with:** `whatsapp_webhook_events` to check event listeners, \
+            `get_config` to view WhatsApp env var values."
     )]
     pub async fn whatsapp_config_status(
         &self,
