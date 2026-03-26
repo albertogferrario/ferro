@@ -135,12 +135,11 @@ Inertia::render_ctx(&ctx, "Users/Show", UserProps { user })"#.to_string(),
             "Don't forget .layout(\"app\") on JSON-UI views - views without layout render as raw HTML".to_string(),
         ],
         imports: ImportTemplates {
-            handler: r#"use ferro::prelude::*;
-use crate::models::prelude::*;  // or specific model"#.to_string(),
+            handler: r#"use ferro::{handler, Request, Response, HttpResponse, ResponseExt};
+use serde::Deserialize;"#.to_string(),
             model: r#"use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};"#.to_string(),
-            validation: r#"use ferro::validation::{Validator, rules};
-use ferro::validation::rules::*;  // for individual rules"#.to_string(),
+            validation: r#"use ferro::{Validator, required, email, min, max, string, rules};"#.to_string(),
             json_ui_view: r#"use ferro::{Component, ComponentNode, JsonUiView, /* component-specific types */};"#.to_string(),
         },
     }

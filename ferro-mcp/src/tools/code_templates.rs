@@ -106,8 +106,7 @@ pub async fn index(req: Request) -> Response {
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::prelude::*;".to_string(),
-                "use ferro::{PaginationMeta, ResourceCollection};".to_string(),
+                "use ferro::{handler, Request, Response, HttpResponse, PaginationMeta, ResourceCollection};".to_string(),
                 "use crate::entities::{{entity}};".to_string(),
                 "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
                 "use crate::resources::{{Entity}}Resource;".to_string(),
@@ -141,7 +140,8 @@ pub async fn show(req: Request, id: Path<i32>) -> Response {
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::prelude::*;".to_string(),
+                "use ferro::{handler, Request, Response, HttpResponse, AppError};".to_string(),
+                "use serde_json::json;".to_string(),
                 "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
             ],
             placeholders: vec![
@@ -179,12 +179,13 @@ pub async fn create(req: Request) -> Response {
 
     let result = model.insert(db).await?;
 
-    Ok(json!(result).with_status(StatusCode::CREATED))
+    Ok(json!(result).status(201))
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::prelude::*;".to_string(),
-                "use ferro::validation::{Validator, rules};".to_string(),
+                "use ferro::{handler, Request, Response, HttpResponse, ResponseExt, Validator, required, min, max};".to_string(),
+                "use serde_json::json;".to_string(),
+                "use serde::Deserialize;".to_string(),
                 "use crate::entities::{{entity}};".to_string(),
                 "use sea_orm::ActiveModelTrait;".to_string(),
                 "use sea_orm::Set;".to_string(),
@@ -232,8 +233,9 @@ pub async fn update(req: Request, id: Path<i32>) -> Response {
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::prelude::*;".to_string(),
-                "use ferro::validation::{Validator, rules};".to_string(),
+                "use ferro::{handler, Request, Response, HttpResponse, AppError, Validator, required, min, max};".to_string(),
+                "use serde_json::json;".to_string(),
+                "use serde::Deserialize;".to_string(),
                 "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
             ],
             placeholders: vec![
@@ -263,11 +265,12 @@ pub async fn destroy(req: Request, id: Path<i32>) -> Response {
 
     existing.delete(db).await?;
 
-    Ok(json!({"deleted": true}).with_status(StatusCode::OK))
+    Ok(json!({"deleted": true}).status(200))
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::prelude::*;".to_string(),
+                "use ferro::{handler, Request, Response, HttpResponse, ResponseExt, AppError};".to_string(),
+                "use serde_json::json;".to_string(),
                 "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
                 "use sea_orm::ModelTrait;".to_string(),
             ],
@@ -315,8 +318,8 @@ pub async fn store(req: Request) -> Response {
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::prelude::*;".to_string(),
-                "use ferro::inertia::{Inertia, SavedInertiaContext};".to_string(),
+                "use ferro::{handler, Request, Response, HttpResponse, AppError, Inertia, SavedInertiaContext};".to_string(),
+                "use serde::Serialize;".to_string(),
                 "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
             ],
             placeholders: vec![
@@ -766,8 +769,7 @@ fn middleware_templates() -> Vec<CodeTemplate> {
             name: "auth_middleware".to_string(),
             category: "middleware".to_string(),
             description: "Authentication check middleware".to_string(),
-            code: r#"use ferro::middleware::{Middleware, Next};
-use ferro::prelude::*;
+            code: r#"use ferro::{Middleware, Next, Request, HttpResponse};
 
 pub struct AuthMiddleware;
 
@@ -779,14 +781,13 @@ impl Middleware for AuthMiddleware {
 
         match user {
             Some(_) => next.run(req).await,
-            None => unauthorized().into_response(),
+            None => HttpResponse::json(serde_json::json!({"message": "Unauthenticated."})).status(401),
         }
     }
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::middleware::{Middleware, Next};".to_string(),
-                "use ferro::prelude::*;".to_string(),
+                "use ferro::{Middleware, Next, Request, HttpResponse};".to_string(),
                 "use crate::models::User;".to_string(),
             ],
             placeholders: vec![],
@@ -795,8 +796,7 @@ impl Middleware for AuthMiddleware {
             name: "basic_middleware".to_string(),
             category: "middleware".to_string(),
             description: "Basic middleware structure".to_string(),
-            code: r#"use ferro::middleware::{Middleware, Next};
-use ferro::prelude::*;
+            code: r#"use ferro::{Middleware, Next, Request, HttpResponse};
 
 pub struct {{Name}}Middleware;
 
@@ -817,8 +817,7 @@ impl Middleware for {{Name}}Middleware {
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::middleware::{Middleware, Next};".to_string(),
-                "use ferro::prelude::*;".to_string(),
+                "use ferro::{Middleware, Next, Request, HttpResponse};".to_string(),
             ],
             placeholders: vec![Placeholder {
                 name: "{{Name}}".to_string(),
@@ -835,8 +834,8 @@ fn validation_templates() -> Vec<CodeTemplate> {
             name: "form_validation".to_string(),
             category: "validation".to_string(),
             description: "Full form validation with multiple fields".to_string(),
-            code: r#"use ferro::validation::{Validator, rules};
-use ferro::validation::rules::*;
+            code: r#"use ferro::{Validator, required, email, min, max, integer, sometimes};
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct {{Form}}Request {
@@ -859,8 +858,7 @@ Validator::new(&data)
 // Validation passes, data is valid"#
                 .to_string(),
             imports: vec![
-                "use ferro::validation::{Validator, rules};".to_string(),
-                "use ferro::validation::rules::*;".to_string(),
+                "use ferro::{Validator, required, email, min, max, integer, sometimes};".to_string(),
                 "use serde::Deserialize;".to_string(),
             ],
             placeholders: vec![Placeholder {
@@ -873,7 +871,7 @@ Validator::new(&data)
             name: "field_rules".to_string(),
             category: "validation".to_string(),
             description: "Common validation rule combinations".to_string(),
-            code: r#"use ferro::validation::rules::*;
+            code: r#"use ferro::{required, min, max, email, url, integer, numeric, sometimes, confirmed, required_if};
 
 // String fields
 rules![required(), min(1.0), max(255.0)]  // Required string
@@ -891,12 +889,11 @@ rules![required(), confirmed()]  // password + password_confirmation
 
 // Conditional
 rules![required_if("type", "premium")]  // Required if type == premium
-rules![required_unless("status", "draft")]  // Required unless draft
 
 // Array/List
 rules![required(), min(1.0)]  // At least one item"#
                 .to_string(),
-            imports: vec!["use ferro::validation::rules::*;".to_string()],
+            imports: vec!["use ferro::{required, min, max, email, url, integer, numeric, sometimes, confirmed, required_if};".to_string()],
             placeholders: vec![],
         },
     ]
