@@ -18,7 +18,7 @@ Requirements for Framework Consolidation Audit. Each maps to roadmap phases.
 ### CLI & MCP Completeness
 
 - [x] **CLIMCP-01**: All 13 undocumented CLI commands added to reference/cli.md
-- [ ] **CLIMCP-02**: generation_hints audited and refreshed across all 57 MCP tool responses
+- [x] **CLIMCP-02**: generation_hints audited and refreshed across all 57 MCP tool responses
 - [ ] **CLIMCP-03**: MCP code_templates.rs patterns verified against current framework exports
 
 ### Documentation Coverage
@@ -82,7 +82,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACC-04 | Phase 108 | Complete |
 | ACC-05 | Phase 108 | Complete |
 | CLIMCP-01 | Phase 109 | Complete |
-| CLIMCP-02 | Phase 110 | Pending |
+| CLIMCP-02 | Phase 110 | Complete |
 | CLIMCP-03 | Phase 110 | Pending |
 | DOC-01 | Phase 111 | Pending |
 | DOC-02 | Phase 111 | Pending |
