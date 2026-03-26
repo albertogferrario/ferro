@@ -99,11 +99,11 @@ Plans:
   1. docs/src/features/projections.md exists, is linked in SUMMARY.md, and covers the ServiceDef → IntentGraph → Renderer pipeline with a worked example
   2. FerroModel derive macro is documented in user docs with at least one complete usage example
   3. ValidateRules derive macro is documented in user docs with at least one complete usage example
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 111-01: Create docs/src/features/projections.md (Service Projections user guide)
-- [ ] 111-02: Document FerroModel and ValidateRules derive macros in user docs
+- [ ] 111-01-PLAN.md — Create docs/src/features/projections.md (Service Projections user guide with pipeline explanation and worked example)
+- [ ] 111-02-PLAN.md — Create docs/src/features/derive-macros.md documenting FerroModel and ValidateRules with complete usage examples
 
 ### Phase 112: Agent-First Philosophy
 **Goal**: Ferro's documentation leads with and consistently reinforces its agent-first identity — every feature page makes MCP tools discoverable
