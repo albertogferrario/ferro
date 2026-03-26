@@ -834,7 +834,7 @@ fn validation_templates() -> Vec<CodeTemplate> {
             name: "form_validation".to_string(),
             category: "validation".to_string(),
             description: "Full form validation with multiple fields".to_string(),
-            code: r#"use ferro::{Validator, required, email, min, max, integer, sometimes};
+            code: r#"use ferro::{Validator, required, email, min, max, integer, nullable};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -852,13 +852,13 @@ Validator::new(&data)
     .rules("name", rules![required(), min(2.0), max(100.0)])
     .rules("email", rules![required(), email()])
     .rules("password", rules![required(), min(8.0)])
-    .rules("age", rules![sometimes(), integer(), min(0.0), max(150.0)])
+    .rules("age", rules![nullable(), integer(), min(0.0), max(150.0)])
     .validate()?;
 
 // Validation passes, data is valid"#
                 .to_string(),
             imports: vec![
-                "use ferro::{Validator, required, email, min, max, integer, sometimes};".to_string(),
+                "use ferro::{Validator, required, email, min, max, integer, nullable};".to_string(),
                 "use serde::Deserialize;".to_string(),
             ],
             placeholders: vec![Placeholder {
@@ -871,18 +871,18 @@ Validator::new(&data)
             name: "field_rules".to_string(),
             category: "validation".to_string(),
             description: "Common validation rule combinations".to_string(),
-            code: r#"use ferro::{required, min, max, email, url, integer, numeric, sometimes, confirmed, required_if};
+            code: r#"use ferro::{required, min, max, email, url, integer, numeric, nullable, confirmed, required_if};
 
 // String fields
 rules![required(), min(1.0), max(255.0)]  // Required string
-rules![sometimes(), min(1.0), max(255.0)]  // Optional string
+rules![nullable(), min(1.0), max(255.0)]  // Optional string
 rules![required(), email()]  // Email
 rules![required(), url()]  // URL
 
 // Numeric fields
 rules![required(), integer()]  // Required integer
 rules![required(), numeric(), min(0.0)]  // Non-negative number
-rules![sometimes(), integer(), min(1.0), max(100.0)]  // Optional int 1-100
+rules![nullable(), integer(), min(1.0), max(100.0)]  // Optional int 1-100
 
 // Confirmation
 rules![required(), confirmed()]  // password + password_confirmation
@@ -893,7 +893,7 @@ rules![required_if("type", "premium")]  // Required if type == premium
 // Array/List
 rules![required(), min(1.0)]  // At least one item"#
                 .to_string(),
-            imports: vec!["use ferro::{required, min, max, email, url, integer, numeric, sometimes, confirmed, required_if};".to_string()],
+            imports: vec!["use ferro::{required, min, max, email, url, integer, numeric, nullable, confirmed, required_if};".to_string()],
             placeholders: vec![],
         },
     ]
