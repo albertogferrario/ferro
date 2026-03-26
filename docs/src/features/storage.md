@@ -282,7 +282,7 @@ let config = DiskConfig::memory()
 
 ### S3 Driver
 
-Requires the `s3` feature (coming soon):
+Enable the `s3` feature:
 
 ```toml
 [dependencies]

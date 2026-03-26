@@ -2,7 +2,7 @@
 
 **A Laravel-inspired web framework for Rust**
 
-[![Crates.io](https://img.shields.io/crates/v/ferro-rs.svg)](https://crates.io/crates/ferro-rs)
+[![Crates.io](https://img.shields.io/crates/v/ferro.svg)](https://crates.io/crates/ferro)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Build web applications in Rust with the developer experience you love from Laravel and Rails. Ferro gives you expressive routing, powerful tooling, and batteries-included features—without sacrificing Rust's performance.
@@ -56,9 +56,7 @@ async fn store(_req: Request) -> Response {
 - **Modern frontend** — First-class Inertia.js + React with automatic TypeScript types
 - **Rust performance** — All the safety and speed, none of the ceremony
 
-## Roadmap
-
-### 🚧 JSON-UI (Work in Progress)
+## JSON-UI
 
 An alternative to Inertia for building UIs without a frontend build step. Define views as JSON, render to HTML with Tailwind on the server.
 
