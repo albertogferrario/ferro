@@ -57,11 +57,11 @@
   2. CLI reference examples contain no `// TODO: Implement` stubs — every example shown is runnable
   3. README roadmap section accurately reflects shipped features — JSON-UI marked shipped, not "Work in Progress"
   4. Storage documentation accurately describes S3 as shipped — "coming soon" note removed
-  5. All MCP tool count claims in docs reflect the actual 57 tools
-**Plans**: TBD
+  5. All MCP tool count claims in docs reflect the actual 65 tools
+**Plans**: 2 plans
 
 Plans:
-- [ ] 108-01: Import path normalization (ferro_rs:: → ferro::, atomic grep-replace across docs/src/)
+- [ ] 108-01: Import path normalization (ferro_rs:: -> ferro::, atomic grep-replace across docs/src/)
 - [ ] 108-02: README roadmap + storage docs + MCP tool count corrections + CLI stub removal
 
 ### Phase 109: CLI Reference Completeness
