@@ -30,6 +30,7 @@
 - [MCP Bridge](features/api-mcp.md)
 - [Rate Limiting](features/rate-limiting.md)
 - [Database](features/database.md)
+- [Derive Macros](features/derive-macros.md)
 - [Validation](features/validation.md)
 - [Localization](features/localization.md)
 - [Testing](features/testing.md)
