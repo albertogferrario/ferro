@@ -258,3 +258,22 @@ ferro make:json-view UserIndex
 The command uses AI-powered generation when an Anthropic API key is configured. It reads your models and routes to produce a complete view file. Without an API key, it falls back to a static template.
 
 See [CLI Reference](../reference/cli.md) for details.
+
+## MCP Tools
+
+Three MCP tools support JSON-UI development: catalog browsing, component inspection, and view generation.
+
+### `json_ui_catalog`
+
+- **Returns:** All available components (built-in + registered plugins) with their prop schemas, required vs optional fields, and example JSON
+- **When to use:** Discover what components exist before building a view; look up the exact prop names and types for a component you want to use
+
+### `json_ui_inspect`
+
+- **Returns:** A parsed breakdown of an existing `JsonUiView` or JSON view definition: component tree, data paths referenced, actions and their resolved routes, and any visibility rules
+- **When to use:** Debug a view that isn't rendering as expected; audit data paths before changing handler output; verify that actions resolve to the correct route names
+
+### `json_ui_generate`
+
+- **Returns:** A complete `JsonUiView` Rust struct (or JSON definition) scaffolded from a model and intent description
+- **When to use:** Rapidly prototype a new view from a model; generate a starting point that you refine rather than starting from scratch. Requires the Anthropic API key to be set.

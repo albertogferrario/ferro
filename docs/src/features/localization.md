@@ -251,3 +251,11 @@ If no `lang/` directory exists or translations fail to load:
 - No panics, no errors -- the application runs normally without localization
 
 This means localization is entirely opt-in. Applications work without any translation files present.
+
+## MCP Tools
+
+Use `list_lang_files` to discover all translation files in the project.
+
+### `list_lang_files`
+
+Returns all JSON translation files found under the configured `LANG_PATH` directory, organized by locale. For each file, shows the locale, file name, and the top-level translation keys it defines. Use this to audit translation coverage across locales before adding new keys or supporting a new language.

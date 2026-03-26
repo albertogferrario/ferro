@@ -401,3 +401,11 @@ user.notify(OrderShipped {
 4. **Use database for in-app** - Combine with UI notification center
 5. **Handle failures gracefully** - Log errors, don't crash on send failures
 6. **Test notifications** - Verify each channel works in development
+
+## MCP Tools
+
+Use `code_templates` with the `notifications` category to generate starter code for new notification classes without looking up the API.
+
+### `code_templates`
+
+Returns ready-to-use code snippets for common notification patterns. Pass `category: "notifications"` to get templates for mail, database, and Slack channels, along with the `Notifiable` trait implementation. Useful when scaffolding a new notification type quickly.

@@ -288,3 +288,32 @@ let json = JsonUiRenderer.render(&order, &intents, &ctx).unwrap();
 | `Renderer` | Trait implemented by renderers; one method: `render(def, intents, ctx)` |
 | `RenderContext` | Render parameters: intent index, current state, mode, template overrides |
 | `RenderMode` | `Display` for read-only output; `Input` for editable form output |
+
+## MCP Tools
+
+Five MCP tools support Service Projections development: listing, inspection, rendering, validation, and coverage analysis.
+
+### `list_projections`
+
+- **Returns:** All `ServiceDef` definitions found in the project, with service name, field count, detected intents, and whether a state machine is defined
+- **When to use:** Audit what services are defined; find the correct service name before calling `inspect_projection`
+
+### `inspect_projection`
+
+- **Returns:** Full `ServiceDef` breakdown: all fields with their `DataType` and `FieldMeaning`, state machine states and transitions, guards, actions, and the full ranked `IntentScore` list from `derive_intents`
+- **When to use:** Understand why a particular intent was derived; verify field meanings before rendering; debug unexpected component tree output
+
+### `render_projection`
+
+- **Returns:** The rendered JSON-UI component tree for a named service, given an intent index and render mode
+- **When to use:** Preview what the renderer produces without writing a handler; compare `Display` vs `Input` output; verify that state machine transitions appear correctly at a given current state
+
+### `validate_projection`
+
+- **Returns:** Validation results for a `ServiceDef`: missing required fields, unresolvable guards, unreachable states, and mismatched `IntentHint` directives
+- **When to use:** Catch definition errors before runtime; verify a service definition is well-formed after editing
+
+### `projection_coverage`
+
+- **Returns:** A summary of which models have corresponding `ServiceDef` projections and which do not, along with suggestions for field meanings based on column names
+- **When to use:** Identify models that could benefit from projection-based UIs; plan which services to define next

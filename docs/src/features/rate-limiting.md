@@ -192,3 +192,11 @@ Rate limiting is designed to never cause application errors:
 - **Expire call fails:** The counter still works; the key may persist longer than intended.
 
 Rate limiting failures never produce `500` errors. The system prioritizes availability over strict enforcement.
+
+## MCP Tools
+
+Use `list_rate_limiters` to inspect all configured rate limiters in the project.
+
+### `list_rate_limiters`
+
+Returns all named rate limiters registered via `RateLimiter::define()`, including the limiter name, limit values, time windows, and which routes apply the limiter via `Throttle::named()`. Use this to audit rate limiting coverage before adding new API endpoints.

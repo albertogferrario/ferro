@@ -398,3 +398,11 @@ async fn upload_avatar(
 5. **Use memory driver for tests** - Fast and isolated testing
 6. **Clean up temporary files** - Delete files that are no longer needed
 7. **Validate uploads** - Check file types and sizes before storing
+
+## MCP Tools
+
+Use `code_templates` with the `storage` category to generate file upload and storage handler patterns.
+
+### `code_templates`
+
+Returns ready-to-use code snippets for file upload handling, including multipart parsing, extension validation, and disk selection. Pass `category: "storage"` to get templates for single-file upload, avatar upload with validation, and temporary URL generation.

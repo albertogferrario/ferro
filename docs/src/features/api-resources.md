@@ -474,4 +474,12 @@ let results = User::find()
 // GOOD: paginate parent, then batch load
 let users = User::find().paginate(db, 15).fetch_page(0).await?;
 // Then load posts for these users in a second query
+
+## MCP Tools
+
+Use `list_resources` to discover all API resource types defined in the project.
+
+### `list_resources`
+
+Returns all structs that implement the `Resource` trait, including their fields, any `skip` or `rename` annotations, and the model they wrap. Use this to understand what data is exposed in API responses before modifying a resource or adding a new endpoint.
 ```

@@ -998,3 +998,19 @@ router.reload();
 // Reload only specific props
 router.reload({ only: ['items'] });
 ```
+
+## MCP Tools
+
+Use these tools to inspect Inertia props structs and manage TypeScript type generation without running the CLI.
+
+### `list_props`
+
+Returns all structs with `#[derive(InertiaProps)]` found in `src/`, including field names, Rust types, their TypeScript equivalents, and which Inertia components use each props struct. Use this to audit the props surface before adding new fields or debugging type mismatches.
+
+### `inspect_props`
+
+Returns a detailed breakdown of a single props struct: source code, TypeScript interface preview, which handlers pass it to `Inertia::render()`, and a validation report comparing the Rust definition to any existing TypeScript interface in `frontend/src/types/`. Use this to catch mismatches between Rust and TypeScript before they cause runtime errors.
+
+### `generate_types`
+
+Generates or regenerates `frontend/src/types/inertia-props.ts` from all `InertiaProps` structs found in the project. Supports a `dry_run` parameter to preview changes. Equivalent to `ferro generate-types` but runs as an MCP tool without requiring the CLI or a running server.

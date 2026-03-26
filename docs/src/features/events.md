@@ -262,3 +262,11 @@ dispatcher.listen::<OrderPlaced, _>(UpdateInventory);
 4. **Queue heavy operations** - Use `ShouldQueue` for emails, PDFs, external APIs
 5. **Handle failures gracefully** - Listeners should not break on individual failures
 6. **Test listeners in isolation** - Unit test each listener independently
+
+## MCP Tools
+
+Use `list_events` to discover all registered events and listeners in the project.
+
+### `list_events`
+
+Returns all `Event` implementations found in `src/events/`, each with the event name, fields, and which listeners are registered to handle it. Use this to understand the event graph before adding new listeners or debugging dispatch issues.

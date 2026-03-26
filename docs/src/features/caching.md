@@ -356,3 +356,11 @@ async fn check_rate_limit(
 6. **Use remember pattern** - Cleaner code, less boilerplate
 7. **Prefix keys in production** - Avoid collisions between environments
 8. **Monitor cache hit rates** - Identify optimization opportunities
+
+## MCP Tools
+
+Use `cache_inspect` to examine live cache state without writing debug code.
+
+### `cache_inspect`
+
+Returns cached keys matching an optional prefix filter, along with their TTL, size, and tags. Use this to verify that values are being cached correctly, diagnose cache miss rates, or inspect which keys are tagged for bulk invalidation.

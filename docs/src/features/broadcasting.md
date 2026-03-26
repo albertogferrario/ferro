@@ -435,4 +435,12 @@ let channels = broadcaster.channel_count();
 if let Some(channel) = broadcaster.get_channel("orders") {
     println!("{} subscribers", channel.subscriber_count());
 }
+
+## MCP Tools
+
+Use `list_broadcast_channels` to inspect active WebSocket channels at runtime.
+
+### `list_broadcast_channels`
+
+Returns all currently active broadcast channels with subscriber count, channel type (public, private, presence), and connected client IDs. Use this to verify that clients have subscribed to the expected channels or to diagnose subscription failures.
 ```

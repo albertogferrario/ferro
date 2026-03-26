@@ -413,3 +413,19 @@ mock_invoice_paid_event(invoice_id, customer_id)
 | `STRIPE_WEBHOOK_SECRET` | Yes | Platform webhook signing secret (`whsec_xxx`) |
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | No | Connect webhook signing secret |
 | `STRIPE_APPLICATION_FEE_PERCENT` | No | Platform fee percentage for Connect charges (e.g. `2.5`) |
+
+## MCP Tools
+
+Three MCP tools support Stripe integration development: configuration status, webhook listener discovery, and subscription schema inspection.
+
+### `stripe_config_status`
+
+Reports which Stripe environment variables are present or missing, and whether the scaffold directory (`src/stripe/`) exists along with which files it contains. Use this to diagnose missing configuration before debugging webhook failures.
+
+### `stripe_webhook_events`
+
+Scans `src/stripe/listeners.rs` for `Listener<T>` implementations and returns the Stripe event type and listener struct name for each. Use this to audit which Stripe events have listeners and which are unhandled.
+
+### `stripe_subscription_info`
+
+Reads the `tenant_billing` migration file and returns the table schema: column names, types, nullability, defaults, and indexes. Use this to understand the subscription data shape without connecting to the database.

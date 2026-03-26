@@ -569,3 +569,11 @@ pub async fn store(req: Request) -> Response {
 6. **Create custom rules** - Reuse validation logic across the application
 7. **Return 422 status** - Standard HTTP status for validation errors
 8. **Structure errors as JSON** - Easy to consume by frontend applications
+
+## MCP Tools
+
+Use `code_templates` with the `validation` category to generate validator boilerplate without memorizing rule names.
+
+### `code_templates`
+
+Returns ready-to-use code snippets for common validation patterns. Pass `category: "validation"` to get templates for the fluent `Validator::new()` API, Form Requests with the `validator` crate, and custom rule implementations. Useful when setting up validation for a new handler quickly.

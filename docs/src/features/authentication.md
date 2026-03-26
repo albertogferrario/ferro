@@ -519,3 +519,15 @@ Ferro's auth system applies these protections:
 | Session expiry | Dual idle + absolute timeouts per OWASP |
 | Session invalidation | Direct DB deletion on password change via `Auth::logout_other_devices()` |
 | Password storage | Bcrypt with cost factor 12 (adaptive hashing) |
+
+## MCP Tools
+
+Use these tools to inspect authorization policies and active session state.
+
+### `list_policies`
+
+Returns all authorization policy implementations discovered in the project, including the policy struct name, the actions it governs, and the user types it checks. Use this to audit which resources have access control before adding new protected routes.
+
+### `session_inspect`
+
+Returns details about the current session store: active session count, session driver in use, idle and absolute timeout configuration, and whether session invalidation is working correctly. Use this to debug authentication failures or verify session security settings.

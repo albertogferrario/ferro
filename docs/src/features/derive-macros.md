@@ -148,3 +148,11 @@ Rules are evaluated in declaration order. For `Option<T>` fields, use `nullable`
 
 - [Database](database.md) — SeaORM entity setup and query patterns
 - [Validation](validation.md) — fluent `Validator::new()` API
+
+## MCP Tools
+
+Use `explain_model` to inspect the generated CRUD API for a `FerroModel`-derived entity.
+
+### `explain_model`
+
+Returns the full structure of a SeaORM entity, including which fields are included in the `CreateBuilder` and `UpdateBuilder`, optional fields that gain `clear_*()` methods, and any `RouteBinding` implementation. This is the same tool documented in [Database](database.md) — it works on any entity, whether or not it uses `#[derive(FerroModel)]`.

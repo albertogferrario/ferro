@@ -262,3 +262,19 @@ impl Job for ProcessPayment {
 | `REDIS_PORT` | Redis server port | 6379 |
 | `REDIS_PASSWORD` | Redis password | - |
 | `REDIS_DATABASE` | Redis database number | 0 |
+
+## MCP Tools
+
+Use these tools to monitor and debug queue state during development and in running applications.
+
+### `list_jobs`
+
+Returns all `Job` implementations found in `src/jobs/`, including the job struct name, max retries, and timeout configuration. Use this to audit what jobs exist before dispatching or debugging failures.
+
+### `job_history`
+
+Returns recent job execution history from Redis: job name, status (completed, failed, retrying), attempt count, and timestamp. Use this to diagnose jobs that are silently failing or retrying excessively.
+
+### `queue_status`
+
+Returns current queue depth, active workers, and pending job counts per queue name. Use this to check whether a queue is backed up or whether workers are running.

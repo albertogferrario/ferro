@@ -598,3 +598,42 @@ impl CreateUserAction {
 6. **Use dependency injection** - Cleaner code with `#[inject] db: Database`
 7. **Enable logging in development** - `DB_LOGGING=true` for debugging
 8. **Set appropriate pool sizes** - Match your expected concurrency
+
+## MCP Tools
+
+Ferro provides seven database-focused MCP tools covering schema inspection, query execution, migration status, model analysis, and relationship mapping.
+
+### `database_schema`
+
+- **Returns:** All tables with column names, types, nullability, defaults, and indexes
+- **When to use:** Understand the current database structure; verify a migration ran correctly; check column types before writing a query
+
+### `database_query`
+
+- **Returns:** Query results as JSON rows
+- **When to use:** Run ad-hoc SELECT queries against the live database to inspect data; debug unexpected values; validate seeded test data. Read-only — does not support INSERT, UPDATE, or DELETE.
+
+### `list_migrations`
+
+- **Returns:** All migration files with their status (applied or pending), applied-at timestamp, and the migration name
+- **When to use:** Check whether pending migrations need to be run; verify the current migration state before deployment
+
+### `list_models`
+
+- **Returns:** All SeaORM entity structs found in `src/models/`, with field names, types, and SeaORM column annotations
+- **When to use:** Discover all models in the project; find the correct field names before writing a query or resource
+
+### `explain_model`
+
+- **Returns:** Detailed breakdown of one model: fields, types, relations, and any Ferro trait implementations (`Model`, `ModelMut`, `RouteBinding`)
+- **When to use:** Deep-dive into a single model's structure; verify that the correct traits are implemented; understand relation definitions
+
+### `model_usages`
+
+- **Returns:** All locations in source code that reference a given model, grouped by file and usage type (query, insert, update, delete, relation)
+- **When to use:** Understand how widely a model is used before changing its schema; find all query sites when adding a new filter condition
+
+### `relation_map`
+
+- **Returns:** A graph of all model relationships: belongs-to, has-many, and many-to-many edges derived from SeaORM `Relation` enums
+- **When to use:** Visualize the entity relationship diagram; verify that relations are defined correctly on both sides; plan batch loading strategies to avoid N+1 queries
