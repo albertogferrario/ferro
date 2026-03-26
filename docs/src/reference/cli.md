@@ -178,13 +178,11 @@ use ferro::{handler, Request, Response, json_response};
 
 #[handler]
 pub async fn index(req: Request) -> Response {
-    // TODO: Implement
     json_response!({ "message": "index" })
 }
 
 #[handler]
 pub async fn show(req: Request) -> Response {
-    // TODO: Implement
     json_response!({ "message": "show" })
 }
 
@@ -235,7 +233,7 @@ pub struct CreateOrder;
 
 impl CreateOrder {
     pub async fn execute(&self) -> Result<(), FrameworkError> {
-        // TODO: Implement action
+        tracing::info!("executing resource action");
         Ok(())
     }
 }
@@ -315,7 +313,7 @@ pub struct SendWelcomeEmail;
 #[async_trait]
 impl<E: Event + Send + Sync> Listener<E> for SendWelcomeEmail {
     async fn handle(&self, event: &E) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // TODO: Implement listener
+        tracing::info!("handling event");
         Ok(())
     }
 }
@@ -345,7 +343,7 @@ pub struct ProcessImage {
 #[async_trait]
 impl Job for ProcessImage {
     async fn handle(&self, ctx: &JobContext) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // TODO: Implement job
+        tracing::info!(id = self.image_id, "processing item");
         Ok(())
     }
 }
@@ -393,16 +391,34 @@ use sea_orm_migration::prelude::*;
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
+#[derive(DeriveIden)]
+enum Item {
+    Table,
+    Id,
+    Name,
+    CreatedAt,
+}
+
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // TODO: Implement migration
-        Ok(())
+        manager
+            .create_table(
+                Table::create()
+                    .table(Item::Table)
+                    .if_not_exists()
+                    .col(ColumnDef::new(Item::Id).integer().not_null().auto_increment().primary_key())
+                    .col(ColumnDef::new(Item::Name).string().not_null())
+                    .col(ColumnDef::new(Item::CreatedAt).timestamp().not_null())
+                    .to_owned(),
+            )
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // TODO: Implement rollback
-        Ok(())
+        manager
+            .drop_table(Table::drop().table(Item::Table).to_owned())
+            .await
     }
 }
 ```
@@ -508,7 +524,7 @@ impl Task for CleanupExpiredSessions {
     }
 
     async fn handle(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // TODO: Implement task
+        tracing::info!("running scheduled task");
         Ok(())
     }
 }
