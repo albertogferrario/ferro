@@ -24,8 +24,8 @@ Requirements for Framework Consolidation Audit. Each maps to roadmap phases.
 ### Documentation Coverage
 
 - [x] **DOC-01**: Service Projections user documentation page created in docs/src/features/
-- [ ] **DOC-02**: FerroModel derive macro documented in user docs with examples
-- [ ] **DOC-03**: ValidateRules derive macro documented in user docs with examples
+- [x] **DOC-02**: FerroModel derive macro documented in user docs with examples
+- [x] **DOC-03**: ValidateRules derive macro documented in user docs with examples
 
 ### Agent-First Philosophy
 
@@ -85,8 +85,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLIMCP-02 | Phase 110 | Complete |
 | CLIMCP-03 | Phase 110 | Complete |
 | DOC-01 | Phase 111 | Complete |
-| DOC-02 | Phase 111 | Pending |
-| DOC-03 | Phase 111 | Pending |
+| DOC-02 | Phase 111 | Complete |
+| DOC-03 | Phase 111 | Complete |
 | PHIL-01 | Phase 112 | Pending |
 | PHIL-02 | Phase 112 | Pending |
 | PHIL-03 | Phase 112 | Pending |

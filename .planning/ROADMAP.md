@@ -41,7 +41,7 @@
 - [x] **Phase 108: P0 Accuracy Fixes** - Eliminate actively wrong information that contaminates all downstream work (completed 2026-03-26)
 - [x] **Phase 109: CLI Reference Completeness** - Document all 13 missing CLI commands in reference/cli.md (completed 2026-03-26)
 - [x] **Phase 110: MCP Tool Accuracy** - Verify generation_hints and code_templates against current framework exports (completed 2026-03-26)
-- [ ] **Phase 111: Documentation Coverage** - Create missing user docs for Service Projections and derive macros
+- [x] **Phase 111: Documentation Coverage** - Create missing user docs for Service Projections and derive macros (completed 2026-03-26)
 - [ ] **Phase 112: Agent-First Philosophy** - Rewrite introduction and add agent workflow guides
 - [ ] **Phase 113: Pattern Coherence** - Standardize code examples and resolve COMPONENT_CATALOG duplication
 - [ ] **Phase 114: Metadata & Publication Readiness** - Fix Cargo.toml gaps, missing_docs, and stub READMEs
@@ -160,7 +160,7 @@ Phases execute in numeric order: 108 → 109 → 110 → 111 → 112 → 113 →
 | 108. P0 Accuracy Fixes | 2/2 | Complete    | 2026-03-26 |
 | 109. CLI Reference Completeness | 1/1 | Complete    | 2026-03-26 |
 | 110. MCP Tool Accuracy | 2/2 | Complete    | 2026-03-26 |
-| 111. Documentation Coverage | 1/2 | In Progress|  |
+| 111. Documentation Coverage | 2/2 | Complete   | 2026-03-26 |
 | 112. Agent-First Philosophy | 0/2 | Not started | - |
 | 113. Pattern Coherence | 0/2 | Not started | - |
 | 114. Metadata & Publication Readiness | 0/2 | Not started | - |
