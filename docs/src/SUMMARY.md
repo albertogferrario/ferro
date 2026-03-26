@@ -39,6 +39,7 @@
 - [Stripe](features/stripe.md)
 - [WhatsApp](features/whatsapp.md)
 - [Themes](features/themes.md)
+- [Service Projections](features/projections.md)
 - [AI & Confirmation](features/ai.md)
 
 # JSON-UI
