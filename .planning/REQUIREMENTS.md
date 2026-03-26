@@ -10,10 +10,10 @@ Requirements for Framework Consolidation Audit. Each maps to roadmap phases.
 ### Accuracy
 
 - [x] **ACC-01**: All `ferro_rs::` import paths in user docs replaced with `ferro::` (28 occurrences, 3 files)
-- [ ] **ACC-02**: All `// TODO: Implement` stubs removed from CLI reference examples
-- [ ] **ACC-03**: README roadmap section updated — JSON-UI marked as shipped, not "Work in Progress"
-- [ ] **ACC-04**: Storage docs S3 "coming soon" note corrected to reflect shipped status
-- [ ] **ACC-05**: MCP tool count claims updated to reflect actual 57 tools across all docs
+- [x] **ACC-02**: All `// TODO: Implement` stubs removed from CLI reference examples
+- [x] **ACC-03**: README roadmap section updated — JSON-UI marked as shipped, not "Work in Progress"
+- [x] **ACC-04**: Storage docs S3 "coming soon" note corrected to reflect shipped status
+- [x] **ACC-05**: MCP tool count claims updated to reflect actual 57 tools across all docs
 
 ### CLI & MCP Completeness
 
@@ -77,10 +77,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ACC-01 | Phase 108 | Complete |
-| ACC-02 | Phase 108 | Pending |
-| ACC-03 | Phase 108 | Pending |
-| ACC-04 | Phase 108 | Pending |
-| ACC-05 | Phase 108 | Pending |
+| ACC-02 | Phase 108 | Complete |
+| ACC-03 | Phase 108 | Complete |
+| ACC-04 | Phase 108 | Complete |
+| ACC-05 | Phase 108 | Complete |
 | CLIMCP-01 | Phase 109 | Pending |
 | CLIMCP-02 | Phase 110 | Pending |
 | CLIMCP-03 | Phase 110 | Pending |
