@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: planning
-stopped_at: Completed 110-mcp-tool-accuracy 110-02-PLAN.md
-last_updated: "2026-03-26T02:38:09.419Z"
+stopped_at: Completed 110-mcp-tool-accuracy 110-01-PLAN.md
+last_updated: "2026-03-26T02:39:13.392Z"
 last_activity: 2026-03-26 — Roadmap created for v11.0 (7 phases, 23 requirements mapped)
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 108-p0-accuracy-fixes P02 | 12min | 2 tasks | 3 files |
 | Phase 109-cli-reference-completeness P01 | 148s | 2 tasks | 1 files |
 | Phase 110-mcp-tool-accuracy P02 | 8min | 1 tasks | 1 files |
+| Phase 110-mcp-tool-accuracy P01 | 15min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Recent decisions affecting current work:
 - COMPONENT_CATALOG duplication requires a design decision before implementation (Phase 113)
 - ferro-stripe phantom stubs: classify as incomplete, add callout — do not implement in v11.0
 - `#![warn(missing_docs)]` on framework crate only — not workspace-wide (avoids mass failures)
+- [110-01] All ferro imports use explicit crate-root exports — no ferro::prelude or ferro::validation:: module paths
+- [110-01] Status codes use .status(u16) pattern — StatusCode enum not re-exported from ferro crate
+- [110-01] Validation rule functions imported at crate root: ferro::{Validator, required, email, min, ...}
 
 ### Pending Todos
 
@@ -69,11 +73,10 @@ None.
 
 ### Blockers/Concerns
 
-- [Research flag] Phase 110: code_templates.rs verification requires manual crate-by-crate tracing — estimate effort during plan-phase before committing scope
 - [Research flag] Phase 113: COMPONENT_CATALOG resolution needs design decision evaluation (shared data file vs build script vs new crate) — evaluate options before scoping
 
 ## Session Continuity
 
-Last session: 2026-03-26T02:38:09.416Z
-Stopped at: Completed 110-mcp-tool-accuracy 110-02-PLAN.md
+Last session: 2026-03-26T02:39:13.388Z
+Stopped at: Completed 110-mcp-tool-accuracy 110-01-PLAN.md
 Resume file: None
