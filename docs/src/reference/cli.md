@@ -145,6 +145,31 @@ ferro generate-types
 
 This scans your Rust code for structs deriving `InertiaProps` and generates corresponding TypeScript interfaces in `frontend/src/types/`.
 
+> **Includes route generation:** `generate-types` also runs route generation internally, producing TypeScript route helpers alongside the type definitions.
+
+### `ferro clean`
+
+Remove build artifacts from the project.
+
+```bash
+# Remove all build artifacts (runs cargo clean)
+ferro clean
+
+# Remove only artifacts older than N days (requires cargo-sweep)
+ferro clean --sweep 7
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--sweep <days>` | — | Remove only artifacts older than N days. Requires `cargo install cargo-sweep`. |
+
+**What it does:**
+
+1. Without `--sweep`: runs `cargo clean`, removing the entire `target/` directory.
+2. With `--sweep <days>`: invokes `cargo sweep --maxage <days>` to remove only stale artifacts, preserving recently compiled dependencies.
+
 ## Code Generators
 
 All generators follow the pattern `ferro make:<type> <name> [options]`.
@@ -686,6 +711,210 @@ frontend/src/pages/
 │   └── Edit.tsx
 ```
 
+### `ferro make:api`
+
+Generate REST API endpoints for a set of models.
+
+```bash
+# Generate API for specific models
+ferro make:api User Post
+
+# Generate API for all detected models
+ferro make:api --all
+
+# Skip confirmation prompt and exclude specific fields
+ferro make:api User --yes --exclude password_hash,secret_token
+
+# Include all fields, disabling auto-exclusion of sensitive field names
+ferro make:api User --include-all
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `models` | — | One or more model names (positional) |
+| `--all` | `false` | Generate API for all detected models |
+| `--yes`, `-y` | `false` | Skip confirmation prompt |
+| `--exclude` | — | Comma-delimited list of field names to exclude from generated endpoints |
+| `--include-all` | `false` | Disable auto-exclusion of sensitive field names |
+
+**What it does:**
+
+1. Detects models in `src/models/` (or uses the provided list)
+2. Generates controller, resource, and route entries for each model
+3. Automatically excludes fields matching sensitive patterns: `password`, `secret`, `token`, `hash`, `key`, `salt`, `private`, `credentials`
+4. `--exclude` accepts comma-delimited values (e.g. `password_hash,secret_token`)
+5. `--include-all` disables the auto-exclusion list entirely
+
+### `ferro make:api-key`
+
+Generate an API key with SHA-256 hashing.
+
+```bash
+# Generate a live API key
+ferro make:api-key "Production Bot"
+
+# Generate a test key
+ferro make:api-key "CI Testing" --env test
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `name` | — | Display name for the key (positional, required) |
+| `--env` | `live` | Key environment: `live` or `test` |
+
+**What it does:**
+
+1. Generates a cryptographically random API key prefixed with `fe_<env>_`
+2. Hashes the key with SHA-256 (the hash is what gets stored)
+3. Prints the raw key once — it is not stored in plaintext and cannot be recovered
+4. Outputs a ready-to-run SQL INSERT statement and a Rust snippet for verifying keys in handlers
+
+### `ferro make:lang`
+
+Create translation files for a locale.
+
+```bash
+ferro make:lang fr
+ferro make:lang pt-br
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `name` | BCP 47 locale tag (positional, required; e.g. `en`, `fr`, `pt-br`, `zh-hans`) |
+
+**Generated files:**
+
+- `lang/<locale>/validation.json` — Validation error message translations
+- `lang/<locale>/app.json` — Application-level string translations
+
+### `ferro make:policy`
+
+Create an authorization policy for a model.
+
+```bash
+ferro make:policy Post
+ferro make:policy PostPolicy --model Post
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `name` | — | Policy name (positional, required) |
+| `--model`, `-m` | Name without `Policy` suffix | The model this policy guards |
+
+**Generated file:** `src/policies/<name>_policy.rs`
+
+```rust
+pub struct PostPolicy;
+
+impl PostPolicy {
+    pub fn view(&self, user: &User, post: &Post) -> bool {
+        true
+    }
+
+    pub fn create(&self, user: &User) -> bool {
+        true
+    }
+
+    pub fn update(&self, user: &User, post: &Post) -> bool {
+        user.id == post.user_id
+    }
+
+    pub fn delete(&self, user: &User, post: &Post) -> bool {
+        user.id == post.user_id
+    }
+}
+```
+
+### `ferro make:projection`
+
+Create a service projection definition.
+
+```bash
+ferro make:projection user
+ferro make:projection order --from-model
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `name` | — | Projection name (positional, required) |
+| `--from-model` | `false` | Populate fields from the matching SeaORM model in `src/models/` |
+
+**Generated file:** `src/projections/<name>.rs`
+
+### `ferro make:stripe`
+
+Scaffold Stripe billing integration.
+
+```bash
+# Basic Stripe integration
+ferro make:stripe
+
+# Include Stripe Connect scaffolding
+ferro make:stripe --connect
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--connect` | `false` | Include Stripe Connect webhook and connect account ID field |
+
+**Generated files:**
+
+- `src/stripe/mod.rs` — Stripe module root
+- `src/stripe/webhook.rs` — Stripe webhook handler
+- `src/stripe/listeners.rs` — Stripe event listeners
+- `src/stripe/connect_webhook.rs` — Connect webhook handler (with `--connect`)
+- `src/migrations/m<timestamp>_create_tenant_billing_table.rs` — Billing table migration (with `--connect`)
+
+### `ferro make:theme`
+
+Create a JSON-UI theme with Tailwind v4 semantic tokens.
+
+```bash
+ferro make:theme ocean
+ferro make:theme corporate
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `name` | Theme name (positional, required) |
+
+**Generated files:**
+
+- `themes/<name>/tokens.css` — Tailwind v4 `@theme` block with 23 semantic token slots
+- `themes/<name>/theme.json` — Empty JSON object for intent template overrides
+
+The `tokens.css` file uses the Tailwind v4 `@theme` directive and defines semantic color, typography, and shape tokens. The `theme.json` file is a placeholder for overriding how structural intents (Browse, Focus, Collect, etc.) render for this theme.
+
+### `ferro make:whatsapp`
+
+Scaffold WhatsApp Cloud API integration.
+
+```bash
+ferro make:whatsapp
+```
+
+No flags. Generates a complete WhatsApp webhook and listener scaffold.
+
+**Generated files:**
+
+- `src/whatsapp/mod.rs` — WhatsApp module root
+- `src/whatsapp/webhook.rs` — WhatsApp webhook handler
+- `src/whatsapp/listeners.rs` — WhatsApp message listeners
+
 ## Database Commands
 
 ### `ferro db:migrate`
@@ -929,6 +1158,93 @@ ferro storage:link
 
 This allows publicly accessible files stored in `storage/app/public` to be served via the web server.
 
+## Validation & Diagnostics
+
+### `ferro api:check`
+
+Verify that the local API server is running and MCP-compatible.
+
+```bash
+# Check local API server for MCP integration
+ferro api:check
+
+# Custom URL and API key
+ferro api:check --url http://localhost:8080 --api-key fe_live_xxx
+
+# Custom OpenAPI spec path
+ferro api:check --spec-path /api/docs/openapi.json
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--url` | `http://localhost:8080` | Base URL of the running API server |
+| `--api-key` | — | API key for testing authenticated endpoints |
+| `--spec-path` | `/api/openapi.json` | Path to the OpenAPI spec endpoint |
+
+**What it does:**
+
+1. Checks server reachability by sending a GET request to `--url`
+2. Fetches the OpenAPI spec from `<url><spec-path>`
+3. Validates the spec structure (version, paths, info object)
+4. Tests API key authentication if `--api-key` is provided
+5. Prints `ferro-api-mcp` configuration for connecting AI tools to this server
+
+### `ferro projection:check`
+
+Validate service projection definitions.
+
+> **Requires the `projections` feature.** Build with `cargo build --features projections` or add `projections` to the `default` features in `Cargo.toml` before running this command.
+
+```bash
+# Validate all projections
+ferro projection:check
+
+# Validate a single projection by function name
+ferro projection:check --name user_service
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--name` | — | Check only the named projection function |
+
+**What it does:**
+
+1. Discovers all projection definitions in `src/projections/`
+2. Validates that each projection's field types, intent hints, and visibility rules are well-formed
+3. Reports structural errors and type mismatches with file and line references
+
+### `ferro validate:contracts`
+
+Validate Inertia TypeScript contracts against Rust handler props.
+
+```bash
+# Validate all contracts
+ferro validate:contracts
+
+# Filter by route prefix
+ferro validate:contracts --filter /users
+
+# JSON output for CI integration
+ferro validate:contracts --json
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--filter`, `-f` | — | Only validate routes matching this prefix |
+| `--json` | `false` | Output results as JSON (useful for CI) |
+
+**What it does:**
+
+1. Compares Rust `InertiaProps` structs with the generated TypeScript interfaces in `frontend/src/types/`
+2. Reports field name mismatches, type incompatibilities, and missing optional fields
+3. With `--json`, outputs a machine-readable result for use in CI pipelines
+
 ## AI-Assisted Development
 
 ### `ferro mcp`
@@ -1003,24 +1319,32 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `new` | Create a new Ferro project |
 | `serve` | Start development server |
 | `generate-types` | Generate TypeScript types |
-| `make:controller` | Create a controller |
-| `make:middleware` | Create middleware |
+| `clean` | Remove build artifacts |
 | `make:action` | Create an action class |
+| `make:api` | Generate REST API endpoints for models |
+| `make:api-key` | Generate an API key |
 | `make:auth` | Scaffold authentication system |
-| `make:event` | Create an event |
-| `make:listener` | Create a listener |
-| `make:job` | Create a background job |
-| `make:notification` | Create a notification |
-| `make:migration` | Create a migration |
-| `make:inertia` | Create an Inertia page |
-| `make:json-view` | Create a JSON-UI view (AI-powered) |
-| `make:task` | Create a scheduled task |
-| `make:seeder` | Create a database seeder |
-| `make:factory` | Create a model factory |
+| `make:controller` | Create a controller |
 | `make:error` | Create a custom error |
+| `make:event` | Create an event |
+| `make:factory` | Create a model factory |
+| `make:inertia` | Create an Inertia page |
+| `make:job` | Create a background job |
+| `make:json-view` | Create a JSON-UI view (AI-powered) |
+| `make:lang` | Create translation files for a locale |
+| `make:listener` | Create a listener |
+| `make:middleware` | Create middleware |
+| `make:migration` | Create a migration |
+| `make:notification` | Create a notification |
 | `make:policy` | Create an authorization policy |
+| `make:projection` | Create a service projection |
 | `make:resource` | Create an API resource |
 | `make:scaffold` | Create complete CRUD scaffold |
+| `make:seeder` | Create a database seeder |
+| `make:stripe` | Scaffold Stripe billing integration |
+| `make:task` | Create a scheduled task |
+| `make:theme` | Create a JSON-UI theme |
+| `make:whatsapp` | Scaffold WhatsApp integration |
 | `db:migrate` | Run migrations |
 | `db:rollback` | Rollback migrations |
 | `db:status` | Show migration status |
@@ -1035,6 +1359,9 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `schedule:work` | Start scheduler worker |
 | `schedule:list` | List scheduled tasks |
 | `storage:link` | Create storage symlink |
+| `api:check` | Verify API server and MCP integration |
+| `projection:check` | Validate service projection definitions |
+| `validate:contracts` | Validate Inertia TypeScript contracts |
 | `mcp` | Start MCP server |
 | `boost:install` | Install AI boost features |
 | `claude:install` | Install Claude Code skills |
