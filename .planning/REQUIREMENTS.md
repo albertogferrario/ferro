@@ -9,7 +9,7 @@ Requirements for Framework Consolidation Audit. Each maps to roadmap phases.
 
 ### Accuracy
 
-- [ ] **ACC-01**: All `ferro_rs::` import paths in user docs replaced with `ferro::` (28 occurrences, 3 files)
+- [x] **ACC-01**: All `ferro_rs::` import paths in user docs replaced with `ferro::` (28 occurrences, 3 files)
 - [ ] **ACC-02**: All `// TODO: Implement` stubs removed from CLI reference examples
 - [ ] **ACC-03**: README roadmap section updated — JSON-UI marked as shipped, not "Work in Progress"
 - [ ] **ACC-04**: Storage docs S3 "coming soon" note corrected to reflect shipped status
@@ -76,7 +76,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACC-01 | Phase 108 | Pending |
+| ACC-01 | Phase 108 | Complete |
 | ACC-02 | Phase 108 | Pending |
 | ACC-03 | Phase 108 | Pending |
 | ACC-04 | Phase 108 | Pending |

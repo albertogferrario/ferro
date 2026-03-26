@@ -157,7 +157,7 @@ Phases execute in numeric order: 108 → 109 → 110 → 111 → 112 → 113 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 108. P0 Accuracy Fixes | 0/2 | Not started | - |
+| 108. P0 Accuracy Fixes | 1/2 | In Progress|  |
 | 109. CLI Reference Completeness | 0/1 | Not started | - |
 | 110. MCP Tool Accuracy | 0/2 | Not started | - |
 | 111. Documentation Coverage | 0/2 | Not started | - |
