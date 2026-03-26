@@ -1,0 +1,110 @@
+# Requirements: Ferro Framework
+
+**Defined:** 2026-03-26
+**Core Value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
+
+## v11.0 Requirements
+
+Requirements for Framework Consolidation Audit. Each maps to roadmap phases.
+
+### Accuracy
+
+- [ ] **ACC-01**: All `ferro_rs::` import paths in user docs replaced with `ferro::` (28 occurrences, 3 files)
+- [ ] **ACC-02**: All `// TODO: Implement` stubs removed from CLI reference examples
+- [ ] **ACC-03**: README roadmap section updated — JSON-UI marked as shipped, not "Work in Progress"
+- [ ] **ACC-04**: Storage docs S3 "coming soon" note corrected to reflect shipped status
+- [ ] **ACC-05**: MCP tool count claims updated to reflect actual 57 tools across all docs
+
+### CLI & MCP Completeness
+
+- [ ] **CLIMCP-01**: All 13 undocumented CLI commands added to reference/cli.md
+- [ ] **CLIMCP-02**: generation_hints audited and refreshed across all 57 MCP tool responses
+- [ ] **CLIMCP-03**: MCP code_templates.rs patterns verified against current framework exports
+
+### Documentation Coverage
+
+- [ ] **DOC-01**: Service Projections user documentation page created in docs/src/features/
+- [ ] **DOC-02**: FerroModel derive macro documented in user docs with examples
+- [ ] **DOC-03**: ValidateRules derive macro documented in user docs with examples
+
+### Agent-First Philosophy
+
+- [ ] **PHIL-01**: introduction.md rewritten to lead with agent-first value proposition
+- [ ] **PHIL-02**: "Working with Agents" guide created documenting MCP workflow
+- [ ] **PHIL-03**: MCP tool references added to each feature documentation page
+- [ ] **PHIL-04**: Agent-to-CLI workflow documented (agent calls MCP → reads hints → uses CLI)
+
+### Pattern Coherence
+
+- [ ] **COH-01**: Import style standardized across all code examples in docs
+- [ ] **COH-02**: Handler macro patterns audited — all examples use `#[handler]`
+- [ ] **COH-03**: Error propagation examples verified to use `?` not `unwrap()`
+- [ ] **COH-04**: COMPONENT_CATALOG duplication resolved (design decision + implementation)
+
+### Metadata & Guidelines
+
+- [ ] **META-01**: Cargo.toml metadata gaps fixed (ferro-broadcast, ferro-theme, ferro-projections)
+- [ ] **META-02**: `#![warn(missing_docs)]` added to framework crate
+- [ ] **META-03**: Stub READMEs expanded (ferro-json-ui, ferro-lang, ferro-whatsapp)
+- [ ] **META-04**: Crate-level `//!` doc comments added to ferro-json-ui and ferro-lang lib.rs
+
+## Future Requirements
+
+Deferred to future milestone. Tracked but not in current roadmap.
+
+### Publication
+
+- **PUB-01**: Publish all crates to crates.io using PUBLISHING.md checklist
+- **PUB-02**: Public announcement and marketing
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| New framework features | v11.0 is audit/fix only — no new capabilities |
+| Incomplete feature completion (e.g., ferro-stripe stubs) | File as future milestone; do not implement during audit |
+| Sample app (app/) audit | Audit scaffold templates in ferro-cli, not generated output |
+| docs/protocol/ spec changes | Separate audience; user docs are the target |
+| Frontend TypeScript/React changes | Out of scope for documentation audit |
+| `#![deny(missing_docs)]` workspace-wide | Too aggressive; use `warn` incrementally |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| ACC-01 | — | Pending |
+| ACC-02 | — | Pending |
+| ACC-03 | — | Pending |
+| ACC-04 | — | Pending |
+| ACC-05 | — | Pending |
+| CLIMCP-01 | — | Pending |
+| CLIMCP-02 | — | Pending |
+| CLIMCP-03 | — | Pending |
+| DOC-01 | — | Pending |
+| DOC-02 | — | Pending |
+| DOC-03 | — | Pending |
+| PHIL-01 | — | Pending |
+| PHIL-02 | — | Pending |
+| PHIL-03 | — | Pending |
+| PHIL-04 | — | Pending |
+| COH-01 | — | Pending |
+| COH-02 | — | Pending |
+| COH-03 | — | Pending |
+| COH-04 | — | Pending |
+| META-01 | — | Pending |
+| META-02 | — | Pending |
+| META-03 | — | Pending |
+| META-04 | — | Pending |
+
+**Coverage:**
+- v11.0 requirements: 23 total
+- Mapped to phases: 0
+- Unmapped: 23 ⚠️
+
+---
+*Requirements defined: 2026-03-26*
+*Last updated: 2026-03-26 after initial definition*
