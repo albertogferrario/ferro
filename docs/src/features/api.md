@@ -511,11 +511,11 @@ RateLimiter::define("api", |req| {
 
 See [Rate Limiting](rate-limiting.md) for full documentation on time windows, multiple limits, custom responses, and cache backends.
 
-## MCP Integration
+## MCP Tools
 
 Ferro's MCP server provides four CRUD tools for direct database access without the HTTP API layer. These enable AI agents to manage application data programmatically.
 
-### crud_create
+### `crud_create`
 
 Create a new record for any model:
 
@@ -528,7 +528,7 @@ Create a new record for any model:
 
 Returns the created record as JSON.
 
-### crud_list
+### `crud_list`
 
 List records with optional filtering and pagination:
 
@@ -543,7 +543,7 @@ List records with optional filtering and pagination:
 
 Returns records array with `total`, `page`, and `per_page` metadata. Per-page is capped at 100.
 
-### crud_update
+### `crud_update`
 
 Update an existing record by primary key:
 
@@ -557,7 +557,7 @@ Update an existing record by primary key:
 
 Returns the updated record as JSON.
 
-### crud_delete
+### `crud_delete`
 
 Delete a record by primary key:
 

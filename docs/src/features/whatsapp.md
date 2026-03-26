@@ -290,12 +290,17 @@ pub async fn whatsapp_webhook(req: Request) -> Response {
 
 Deduplication is the application's responsibility — `ProcessWhatsAppWebhook` does not check it internally.
 
-## MCP Introspection
+## MCP Tools
 
-Two MCP tools are available for WhatsApp development assistance:
+Two MCP tools are available for WhatsApp development assistance.
 
-- **`whatsapp_config_status`** — reports which env vars are present/missing and whether the scaffold exists
-- **`whatsapp_webhook_events`** — lists `Listener<T>` implementations discovered in `src/whatsapp/listeners.rs`
+### `whatsapp_config_status`
+
+Reports which environment variables are present or missing, and whether the scaffold directory (`src/whatsapp/`) exists. Use this to diagnose configuration issues before debugging webhook delivery or message sending failures.
+
+### `whatsapp_webhook_events`
+
+Scans `src/whatsapp/listeners.rs` for `Listener<T>` implementations and returns the event type and listener struct name for each. Use this to audit which WhatsApp events have listeners registered.
 
 ## Not Supported in v1
 
