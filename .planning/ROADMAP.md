@@ -72,10 +72,10 @@ Plans:
   1. `reference/cli.md` contains entries for all 13 previously undocumented commands (api:check, clean, generate-routes, make:api, make:api-key, make:lang, make:policy, make:projection, make:stripe, make:theme, make:whatsapp, projection:check, validate-contracts)
   2. Each new entry follows the same format as existing entries (synopsis, flags, description, example)
   3. The count of documented commands in reference/cli.md matches the count of command files in ferro-cli/src/commands/
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 109-01: Document all 13 missing CLI commands in reference/cli.md
+- [ ] 109-01-PLAN.md — Document all 13 missing CLI commands in reference/cli.md (body sections + Command Summary table)
 
 ### Phase 110: MCP Tool Accuracy
 **Goal**: All 57 MCP tool responses carry accurate generation_hints that reflect current framework APIs, and code_templates.rs patterns compile against current framework exports
