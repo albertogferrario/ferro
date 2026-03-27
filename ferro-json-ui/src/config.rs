@@ -29,7 +29,7 @@ impl Default for JsonUiConfig {
         Self {
             tailwind_cdn: true,
             custom_head: None,
-            body_class: "bg-background text-text font-sans".to_string(),
+            body_class: "dark bg-background text-text font-sans".to_string(),
         }
     }
 }
