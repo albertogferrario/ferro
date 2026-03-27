@@ -230,7 +230,7 @@ Reference codebase documentation in `.planning/codebase/`:
 | Callback-based URL resolver | Keeps ferro-json-ui decoupled from framework route registry | ✓ Good |
 | Sonnet default for AI generation | ~5x cost reduction vs Opus for CLI code generation | ✓ Good |
 | json_ui_generate returns context | Consuming agent IS the LLM, avoids double-LLM calls | ✓ Good |
-| COMPONENT_CATALOG duplicated | Cannot share code across workspace crates | ⚠️ Revisit |
+| COMPONENT_CATALOG in ferro-json-ui | Single pub const shared by ferro-cli and ferro-mcp via direct dependency | ✓ Good |
 | Separate ferro-lang crate | Follows ferro-cache/ferro-events pattern, keeps i18n decoupled | ✓ Good |
 | Pre-merge fallback at load time | O(1) runtime lookup, no fallback chain per request | ✓ Good |
 | OnceLock validation bridge | Zero coupling: validation has no ferro-lang dependency | ✓ Good |
