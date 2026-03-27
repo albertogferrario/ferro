@@ -3,6 +3,7 @@
 //! This tool does NOT call any AI API. It provides structured context so the
 //! consuming agent can write the view itself, avoiding double-LLM calls.
 
+use ferro_json_ui::COMPONENT_CATALOG;
 use regex::Regex;
 use serde::Serialize;
 use std::fs;
@@ -62,89 +63,6 @@ pub struct ViewConventions {
     /// Default layout name
     pub layout_default: String,
 }
-
-/// Concise reference of all JSON-UI components (20 built-in + plugin components).
-const COMPONENT_CATALOG: &str = r#"## Component Catalog
-
-### Text
-Props: content (String), element (h1|h2|h3|span|div|section|p)
-
-### Button
-Props: label (String), variant (default|secondary|destructive|outline|ghost|link), size (xs|sm|default|lg), disabled (Option<bool>), icon (Option<String>), icon_position (Option<left|right>)
-
-### Card
-Props: title (String), description (Option<String>), children (Vec<ComponentNode>), footer (Vec<ComponentNode>)
-
-### Table
-Props: columns (Vec<Column {key, label, format?}>), data_path (String), row_actions (Option<Vec<Action>>), empty_message (Option<String>), sortable (Option<bool>), sort_column (Option<String>), sort_direction (Option<asc|desc>)
-
-### Form
-Props: action (Action), fields (Vec<ComponentNode>), method (Option<GET|POST|PUT|PATCH|DELETE>)
-
-### Input
-Props: field (String), label (String), input_type (text|email|password|number|textarea|hidden|date|time|url|tel|search), placeholder (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>), description (Option<String>), default_value (Option<String>), data_path (Option<String>), step (Option<String>)
-
-### Select
-Props: field (String), label (String), options (Vec<SelectOption {value, label}>), placeholder (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>), description (Option<String>), default_value (Option<String>), data_path (Option<String>)
-
-### Alert
-Props: message (String), variant (info|success|warning|error), title (Option<String>)
-
-### Badge
-Props: label (String), variant (default|secondary|destructive|outline)
-
-### Modal
-Props: title (String), description (Option<String>), children (Vec<ComponentNode>), footer (Vec<ComponentNode>), trigger_label (Option<String>)
-
-### Checkbox
-Props: field (String), label (String), description (Option<String>), checked (Option<bool>), data_path (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>)
-
-### Switch
-Props: field (String), label (String), description (Option<String>), checked (Option<bool>), data_path (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>)
-
-### Separator
-Props: orientation (Option<horizontal|vertical>)
-
-### DescriptionList
-Props: items (Vec<DescriptionItem {label, value, format?}>), columns (Option<u8>)
-
-### Tabs
-Props: default_tab (String), tabs (Vec<Tab {value, label, children}>)
-
-### Breadcrumb
-Props: items (Vec<BreadcrumbItem {label, url?}>)
-
-### Pagination
-Props: current_page (u32), per_page (u32), total (u32), base_url (Option<String>)
-
-### Progress
-Props: value (u8 0-100), max (Option<u8>), label (Option<String>)
-
-### Avatar
-Props: src (Option<String>), alt (String), fallback (Option<String>), size (Option<xs|sm|default|lg>)
-
-### Skeleton
-Props: width (Option<String>), height (Option<String>), rounded (Option<bool>)
-
-## Plugin Components
-
-Plugin components use the same JSON syntax as built-in components. Their JS/CSS assets are loaded automatically.
-
-### Map
-Props: center (Option<[f64; 2]>), zoom (u8 0-18, default 13), height (String, default "400px"), fit_bounds (Option<bool>), markers (Vec<{lat, lng, popup?, color?, popup_html?, href?}>), tile_url (Option<String>), attribution (Option<String>), max_zoom (Option<u8>)
-Example JSON: {"type": "Map", "fit_bounds": true, "markers": [{"lat": 51.5, "lng": -0.09, "popup": "Hello"}]}
-Note: Leaflet CSS/JS loaded via CDN automatically. Works inside Tabs/Modals (IntersectionObserver handles resize).
-
-## Action
-Props: handler (String "controller.method" format), method (GET|POST|PUT|PATCH|DELETE), confirm (Option<ConfirmDialog {title, message?, variant: default|danger}>), on_success (Option<ActionOutcome>), on_error (Option<ActionOutcome>)
-Builders: Action::new("handler") (POST), Action::get("handler"), Action::delete("handler"), .confirm("title"), .confirm_danger("title")
-
-## ComponentNode
-Wraps every component: key (String), component (Component variant), action (Option<Action>), visibility (Option<Visibility>)
-
-## JsonUiView Builder
-JsonUiView::new().title("Title").layout("app").data(json).component(node).components(vec_of_nodes)
-"#;
 
 /// Complete example of a well-structured JSON-UI view
 const VIEW_EXAMPLE: &str = r#"//! User List JSON-UI view
