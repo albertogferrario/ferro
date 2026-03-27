@@ -70,7 +70,7 @@ ferro make:controller users
 Edit `src/controllers/users_controller.rs`:
 
 ```rust
-use ferro::*;
+use ferro::{handler, Request, Response, Inertia, InertiaProps};
 use crate::models::users::Entity as User;
 
 #[handler]
@@ -129,7 +129,7 @@ export default function UsersIndex({ users }: Props) {
 Edit `src/routes.rs`:
 
 ```rust
-use ferro::*;
+use ferro::Router;
 use crate::controllers::users_controller;
 
 pub fn routes() -> Router {

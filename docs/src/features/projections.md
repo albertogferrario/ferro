@@ -38,7 +38,7 @@ let intents = derive_intents(&product);
 let renderer = JsonUiRenderer;
 let json = renderer
     .render(&product, &intents, &RenderContext::default())
-    .unwrap();
+    .expect("rendering a valid service definition should not fail");
 // json["$schema"] == "ferro-json-ui/v1"
 // json["components"] contains the generated component tree
 ```
@@ -199,7 +199,7 @@ let input_ctx = RenderContext {
 };
 
 let renderer = JsonUiRenderer;
-let json = renderer.render(&service_def, &intents, &input_ctx).unwrap();
+let json = renderer.render(&service_def, &intents, &input_ctx).expect("rendering a valid service definition should not fail");
 ```
 
 **RenderContext fields:**
@@ -261,7 +261,7 @@ let ctx = RenderContext {
     templates: None,
 };
 
-let json = JsonUiRenderer.render(&order, &intents, &ctx).unwrap();
+let json = JsonUiRenderer.render(&order, &intents, &ctx).expect("rendering a valid service definition should not fail");
 // Produces a ferro-json-ui component tree with:
 // - Fields rendered as form inputs
 // - Available transitions ("approve") rendered as action buttons

@@ -7,7 +7,7 @@ Ferro provides an expressive routing API similar to Laravel.
 Define routes in `src/routes.rs`:
 
 ```rust
-use ferro::*;
+use ferro::Router;
 
 pub fn routes() -> Router {
     Router::new()

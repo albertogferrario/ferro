@@ -85,7 +85,7 @@ struct IntentClassification {
 }
 
 let schema = schemars::schema_for!(IntentClassification);
-let schema_value = serde_json::to_value(&schema).unwrap();
+let schema_value = serde_json::to_value(&schema).expect("schema serialization is infallible");
 ```
 
 ### Configuration
@@ -184,7 +184,7 @@ let classifier = Classifier::<WhatsAppIntent>::new(
     },
 );
 
-let schema = serde_json::to_value(schemars::schema_for!(WhatsAppIntent)).unwrap();
+let schema = serde_json::to_value(schemars::schema_for!(WhatsAppIntent)).expect("schema serialization is infallible");
 let result = classifier
     .classify(
         "You classify expense management commands from WhatsApp messages. \
@@ -302,7 +302,7 @@ pub async fn confirm_delete(req: Request, store: Arc<InMemoryConfirmationStore>)
 
     // payload contains the original data — perform the deletion
     let expense_id: i64 = payload["expense_id"].as_i64().unwrap_or(0);
-    Expense::delete_by_id(expense_id).exec(&DB.get().unwrap()).await?;
+    Expense::delete_by_id(expense_id).exec(&DB.get().ok_or_else(|| HttpResponse::internal_server_error())?).await?;
 
     Ok(json!({ "status": "deleted" }))
 }

@@ -223,7 +223,7 @@ The `data_path` value `"/data/user/name"` tells the renderer to look up `data.us
 When validation fails, use `JsonUi::render_validation_error()` to automatically populate error messages on the corresponding form fields:
 
 ```rust
-use ferro::validation::{Validator, rules};
+use ferro::{handler, Request, Response, Validator, HttpResponse};
 
 #[handler]
 pub async fn store(req: Request) -> Response {

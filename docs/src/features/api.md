@@ -181,7 +181,7 @@ let record = api_key::ActiveModel {
     name: Set("Production Bot".to_string()),
     prefix: Set(key.prefix),
     hashed_key: Set(key.hashed_key),
-    scopes: Set(Some(serde_json::to_string(&["read", "write"]).unwrap())),
+    scopes: Set(Some(serde_json::to_string(&["read", "write"]).expect("serialization is infallible"))),
     ..Default::default()
 };
 
@@ -248,7 +248,7 @@ use ferro::{handler, Request, Response, HttpResponse, ApiKeyInfo};
 
 #[handler]
 pub async fn index(req: Request) -> Response {
-    let key_info = req.get::<ApiKeyInfo>().unwrap();
+    let key_info = req.get::<ApiKeyInfo>().ok_or_else(|| HttpResponse::unauthorized())?;
     println!("Request from: {} (scopes: {:?})", key_info.name, key_info.scopes);
     // ...
 }
@@ -489,7 +489,7 @@ The generated `src/api/docs.rs` reads the `APP_NAME` environment variable for th
 Generated API routes include `Throttle::named("api")` middleware. Define the limiter in `bootstrap.rs`:
 
 ```rust
-use ferro::middleware::{RateLimiter, Limit};
+use ferro::{RateLimiter, Limit};
 
 RateLimiter::define("api", |_req| {
     Limit::per_minute(60)
@@ -499,7 +499,7 @@ RateLimiter::define("api", |_req| {
 The default configuration allows 60 requests per minute per client IP. Adjust the limit or segment by API key:
 
 ```rust
-use ferro::ApiKeyInfo;
+use ferro::{ApiKeyInfo, RateLimiter, Limit};
 
 RateLimiter::define("api", |req| {
     match req.get::<ApiKeyInfo>() {
@@ -675,7 +675,7 @@ group!("/api/v1/admin")
 // In handler, check additional granular permissions
 #[handler]
 pub async fn destroy(req: Request, user: user::Model) -> Response {
-    let key = req.get::<ApiKeyInfo>().unwrap();
+    let key = req.get::<ApiKeyInfo>().ok_or_else(|| HttpResponse::unauthorized())?;
     if !key.scopes.contains(&"users:delete".to_string()) {
         return Err(HttpResponse::json(json!({"error": "Missing users:delete scope"})).status(403));
     }

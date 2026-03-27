@@ -9,7 +9,7 @@ Register named limiters in `bootstrap.rs` (or a service provider). Each limiter 
 ### Basic Limiter
 
 ```rust
-use ferro::middleware::{RateLimiter, Limit};
+use ferro::{RateLimiter, Limit};
 
 pub fn register_rate_limiters() {
     RateLimiter::define("api", |_req| {
@@ -23,8 +23,7 @@ pub fn register_rate_limiters() {
 Use the request to vary limits by authentication state:
 
 ```rust
-use ferro::middleware::{RateLimiter, Limit};
-use ferro::Auth;
+use ferro::{RateLimiter, Limit, Auth};
 
 RateLimiter::define("api", |req| {
     match Auth::id() {
@@ -41,7 +40,7 @@ Unauthenticated requests default to the client IP as the rate limit key. Authent
 Return a `Vec<Limit>` to enforce several windows simultaneously. The first limit exceeded triggers a `429` response.
 
 ```rust
-use ferro::middleware::{RateLimiter, Limit};
+use ferro::{RateLimiter, Limit};
 
 RateLimiter::define("login", |req| {
     let ip = req.header("X-Forwarded-For")
@@ -64,7 +63,7 @@ RateLimiter::define("login", |req| {
 Reference a registered limiter by name with `Throttle::named()`:
 
 ```rust
-use ferro::middleware::Throttle;
+use ferro::Throttle;
 
 routes! {
     group!("/api", {
@@ -83,7 +82,7 @@ routes! {
 For simple cases that do not need a named registration:
 
 ```rust
-use ferro::middleware::Throttle;
+use ferro::Throttle;
 
 get!("/health", controllers::health::check)
     .middleware(Throttle::per_minute(10))

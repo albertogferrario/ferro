@@ -9,8 +9,7 @@ Ferro provides a WebSocket broadcasting system for real-time communication. Push
 In `bootstrap.rs`, create a `Broadcaster` and register it as a singleton. The broadcaster manages all connected clients and channel subscriptions.
 
 ```rust
-use ferro::{Broadcaster, BroadcastConfig};
-use ferro::container::App;
+use ferro::{Broadcaster, BroadcastConfig, App};
 
 pub async fn register() {
     let broadcaster = Broadcaster::with_config(BroadcastConfig::from_env());
@@ -148,8 +147,7 @@ The full authorization flow for private and presence channels:
 The `Broadcast` builder provides a chainable interface for sending events:
 
 ```rust
-use ferro::{Broadcast, Broadcaster};
-use ferro::container::App;
+use ferro::{Broadcast, Broadcaster, App};
 use std::sync::Arc;
 
 #[handler]
@@ -157,7 +155,7 @@ pub async fn update_order(req: Request, id: Path<i32>) -> Response {
     let db = req.db();
     let order = update_order_in_db(db, *id).await?;
 
-    let broadcaster = App::get::<Broadcaster>().unwrap();
+    let broadcaster = App::get::<Broadcaster>().ok_or_else(|| HttpResponse::internal_server_error())?;
     let broadcast = Broadcast::new(Arc::new(broadcaster));
 
     broadcast
@@ -191,7 +189,7 @@ broadcast
 For simpler cases, call `broadcast()` or `broadcast_except()` directly:
 
 ```rust
-let broadcaster = App::get::<Broadcaster>().unwrap();
+let broadcaster = App::get::<Broadcaster>().expect("Broadcaster not registered");
 
 // Broadcast to all subscribers
 broadcaster.broadcast("orders", "OrderCreated", &order).await?;
@@ -425,7 +423,7 @@ Clients that exceed `BROADCAST_CLIENT_TIMEOUT` without activity are disconnected
 ## Monitoring
 
 ```rust
-let broadcaster = App::get::<Broadcaster>().unwrap();
+let broadcaster = App::get::<Broadcaster>().expect("Broadcaster not registered");
 
 // Connection stats
 let clients = broadcaster.client_count();

@@ -537,7 +537,7 @@ ferro make:task SendDailyReport
 **Generated file:** `src/tasks/cleanup_expired_sessions.rs`
 
 ```rust
-use ferro::scheduling::{Task, Schedule};
+use ferro::{Task, Schedule};
 use async_trait::async_trait;
 
 pub struct CleanupExpiredSessions;
@@ -567,7 +567,7 @@ ferro make:seeder ProductSeeder
 **Generated file:** `src/seeders/user_seeder.rs`
 
 ```rust
-use ferro::database::Seeder;
+use ferro::Seeder;
 use async_trait::async_trait;
 
 pub struct UserSeeder;
@@ -593,7 +593,7 @@ ferro make:factory PostFactory
 **Generated file:** `src/factories/user_factory.rs`
 
 ```rust
-use ferro::testing::Factory;
+use ferro::Factory;
 use fake::{Fake, Faker};
 
 pub struct UserFactory;

@@ -178,7 +178,7 @@ These are emitted automatically by the framework. No configuration is needed. fe
 Override the auto-generated MCP metadata on individual routes using builder methods:
 
 ```rust
-use ferro::routing::*;
+use ferro::{group, get, post, delete, ApiKeyMiddleware};
 
 group!("/api/v1")
     .middleware(ApiKeyMiddleware::new())

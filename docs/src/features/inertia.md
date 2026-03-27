@@ -66,8 +66,7 @@ let config = InertiaConfig {
 Use `Inertia::render()` to return an Inertia response:
 
 ```rust
-use ferro::{handler, Request, Response};
-use ferro::inertia::Inertia;
+use ferro::{handler, Request, Response, Inertia};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -152,8 +151,7 @@ Shared props are data that should be available to every page component, like aut
 ### Creating the Middleware
 
 ```rust
-use ferro::{Middleware, Request, Response, Next};
-use ferro::inertia::InertiaShared;
+use ferro::{Middleware, Request, Response, Next, InertiaShared};
 use async_trait::async_trait;
 
 pub struct ShareInertiaData;
@@ -258,9 +256,7 @@ export default function Layout({ children }) {
 When you need to consume the request body (e.g., for validation) before rendering, use `SavedInertiaContext`:
 
 ```rust
-use ferro::{handler, Request, Response};
-use ferro::inertia::{Inertia, SavedInertiaContext};
-use ferro::validation::{Validator, rules};
+use ferro::{handler, Request, Response, Inertia, SavedInertiaContext, Validator};
 
 #[handler]
 pub async fn store(req: Request) -> Response {
@@ -298,9 +294,7 @@ pub async fn store(req: Request) -> Response {
 The most common pattern requiring `SavedInertiaContext` is form validation. Here's the complete flow:
 
 ```rust
-use ferro::{handler, Request, Response};
-use ferro::inertia::{Inertia, SavedInertiaContext};
-use ferro::validation::{Validator, rules};
+use ferro::{handler, Request, Response, Inertia, SavedInertiaContext, Validator};
 
 #[handler]
 pub async fn store(req: Request) -> Response {
@@ -497,7 +491,7 @@ When your assets change (new deployment), Inertia uses versioning to force a ful
 ### Checking Version
 
 ```rust
-use ferro::inertia::Inertia;
+use ferro::Inertia;
 
 #[handler]
 pub async fn index(req: Request) -> Response {
@@ -573,7 +567,7 @@ export default function CreatePost() {
 ### Server-Side Validation Response
 
 ```rust
-use ferro::inertia::{Inertia, SavedInertiaContext};
+use ferro::{Inertia, SavedInertiaContext};
 
 #[handler]
 pub async fn store(req: Request) -> Response {
@@ -747,8 +741,7 @@ The rendered HTML includes hashed assets:
 For testing or API clients that need raw JSON data from Inertia routes, enable JSON fallback:
 
 ```rust
-use ferro::{handler, Request, Response};
-use ferro::inertia::Inertia;
+use ferro::{handler, Request, Response, Inertia};
 
 #[handler]
 pub async fn show(req: Request, post: Post) -> Response {
@@ -804,9 +797,7 @@ pub fn routes() -> Vec<Route> {
 ### Controller
 
 ```rust
-use ferro::{handler, Request, Response, redirect};
-use ferro::inertia::{Inertia, SavedInertiaContext};
-use ferro::InertiaProps;
+use ferro::{handler, Request, Response, redirect, Inertia, SavedInertiaContext, InertiaProps};
 
 #[derive(InertiaProps)]
 pub struct IndexProps {
@@ -891,8 +882,9 @@ pub async fn destroy(post: Post, _req: Request) -> Response {
 For form submissions (POST, PUT, PATCH, DELETE) that should redirect after success, use `Inertia::redirect()`:
 
 ```rust
-use ferro::{Inertia, Request, Response, Auth};
+use ferro::{handler, Inertia, Request, Response, Auth};
 
+#[handler]
 pub async fn login(req: Request) -> Response {
     // ... validation and auth logic ...
 
@@ -900,6 +892,7 @@ pub async fn login(req: Request) -> Response {
     Inertia::redirect(&req, "/dashboard")
 }
 
+#[handler]
 pub async fn logout(req: Request) -> Response {
     Auth::logout();
     Inertia::redirect(&req, "/")
@@ -920,8 +913,9 @@ For Inertia pages, always use `Inertia::redirect()` which:
 If you've consumed the request with `req.input()`, use the saved context:
 
 ```rust
-use ferro::{Inertia, Request, Response, SavedInertiaContext};
+use ferro::{handler, Inertia, Request, Response, SavedInertiaContext};
 
+#[handler]
 pub async fn store(req: Request) -> Response {
     let ctx = SavedInertiaContext::from(&req);
     let form: CreateForm = req.input().await?;

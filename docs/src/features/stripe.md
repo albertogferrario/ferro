@@ -126,7 +126,7 @@ Stripe subscription states map to `SubscriptionStatus`:
 `SubscriptionInfo` exposes three helper methods:
 
 ```rust
-let sub = tenant.subscription.as_ref().unwrap();
+let sub = tenant.subscription.as_ref().expect("subscription not loaded");
 
 sub.on_trial()        // true when status == trialing
 sub.subscribed()      // true when active or trialing

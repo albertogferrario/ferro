@@ -81,7 +81,7 @@ register_plugin(VideoPlugin);
 Use `Component::Plugin` with the registered type name:
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, PluginProps};
 
 let node = ComponentNode {
     key: "sales-chart".to_string(),
@@ -290,7 +290,7 @@ The `MapPlugin` is auto-registered in the global plugin registry when the first 
 **Example:**
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, PluginProps};
 
 ComponentNode {
     key: "office-locations".to_string(),

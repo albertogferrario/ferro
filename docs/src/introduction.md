@@ -24,7 +24,7 @@ Ferro brings the developer experience of Laravel to Rust, providing familiar pat
 ## Quick Example
 
 ```rust
-use ferro::*;
+use ferro::{handler, Request, Response, Router, AuthMiddleware, Inertia};
 
 #[handler]
 pub async fn index(req: Request) -> Response {

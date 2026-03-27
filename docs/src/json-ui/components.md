@@ -19,7 +19,7 @@ JSON-UI includes 26 built-in component types organized into six groups. Every co
 Every component is wrapped in a `ComponentNode`:
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, CardProps};
 
 ComponentNode {
     key: "my-card".to_string(),          // unique identifier on the page
@@ -141,7 +141,7 @@ Container with title, optional description, nested children, and footer.
 | `footer` | `Vec<ComponentNode>` | No | `[]` | Components in the card footer |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, CardProps, ButtonProps, ButtonVariant, Size};
 
 let node = ComponentNode::card("user-card", CardProps {
     title: "User Details".to_string(),
@@ -192,7 +192,7 @@ Tabbed content with multiple panels. Each tab contains its own set of child comp
 | `children` | `Vec<ComponentNode>` | No | Components displayed when the tab is active |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, TabsProps, Tab};
 
 ComponentNode {
     key: "settings-tabs".to_string(),
@@ -239,7 +239,7 @@ Visual divider between content sections.
 | `orientation` | `Option<Orientation>` | No | `Horizontal` | Direction: `horizontal` or `vertical` |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, SeparatorProps};
 
 ComponentNode {
     key: "divider".to_string(),
@@ -270,7 +270,7 @@ Dialog overlay with title, content, footer, and trigger button.
 | `trigger_label` | `Option<String>` | No | `None` | Label for the trigger button |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, ModalProps, ButtonProps, ButtonVariant, Size, Action};
 
 ComponentNode {
     key: "delete-modal".to_string(),
@@ -325,7 +325,7 @@ Loading placeholder with configurable dimensions for content that is still loadi
 | `rounded` | `Option<bool>` | No | `None` | Whether to use rounded corners |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, SkeletonProps};
 
 ComponentNode {
     key: "loading-placeholder".to_string(),
@@ -372,7 +372,7 @@ Data table with column definitions, row actions, and sorting support. Rows are l
 | `format` | `Option<ColumnFormat>` | No | Display format (Date, DateTime, Currency, Boolean) |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, TableProps, Column, ColumnFormat, Action};
 
 let node = ComponentNode::table("users-table", TableProps {
     columns: vec![
@@ -430,7 +430,7 @@ Key-value pairs displayed as a description list. Reuses `ColumnFormat` for value
 | `format` | `Option<ColumnFormat>` | No | Display format |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, DescriptionListProps, DescriptionItem, ColumnFormat};
 
 ComponentNode {
     key: "user-info".to_string(),
@@ -480,7 +480,7 @@ Small label with variant-based styling.
 | `variant` | `BadgeVariant` | No | `Default` | Visual style |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, BadgeProps, BadgeVariant};
 
 ComponentNode {
     key: "status".to_string(),
@@ -511,7 +511,7 @@ User avatar with image source, fallback text, and size variants.
 | `size` | `Option<Size>` | No | `Default` | Avatar size: `xs`, `sm`, `default`, `lg` |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, AvatarProps, Size};
 
 ComponentNode {
     key: "user-avatar".to_string(),
@@ -542,7 +542,7 @@ Renders text content with semantic HTML element selection.
 | `element` | `TextElement` | No | `P` | HTML element: `p`, `h1`, `h2`, `h3`, `span`, `div`, `section` |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, TextProps, TextElement};
 
 ComponentNode {
     key: "heading".to_string(),
@@ -572,7 +572,7 @@ Progress bar with percentage value.
 | `label` | `Option<String>` | No | `None` | Label text above the bar |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, ProgressProps};
 
 ComponentNode {
     key: "upload-progress".to_string(),
@@ -608,7 +608,7 @@ Navigation breadcrumb trail. The last item typically has no URL (current page).
 | `url` | `Option<String>` | No | Link URL (omit for the current page) |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, BreadcrumbProps, BreadcrumbItem};
 
 ComponentNode {
     key: "breadcrumbs".to_string(),
@@ -650,7 +650,7 @@ Page navigation for paginated data. Computes page count from `total` and `per_pa
 | `base_url` | `Option<String>` | No | `None` | Base URL for page links |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, PaginationProps};
 
 ComponentNode {
     key: "users-pagination".to_string(),
@@ -686,7 +686,7 @@ Live-updatable metric card with an optional SSE target for real-time value updat
 The `sse_target` field connects this card to the JS runtime's SSE listener. When the server emits a Server-Sent Event with a matching key, the runtime updates the displayed value without a page reload:
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, StatCardProps};
 
 let node = ComponentNode::stat_card("revenue", StatCardProps {
     label: "Total Revenue".to_string(),
@@ -733,7 +733,7 @@ Form container with action binding and field components. The `action` defines th
 | `method` | `Option<HttpMethod>` | No | `None` | HTTP method override (GET, POST, PUT, PATCH, DELETE) |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, FormProps, InputProps, InputType, Action};
 
 ComponentNode {
     key: "create-form".to_string(),
@@ -814,7 +814,7 @@ Text input field with type variants, validation error display, and data binding.
 | `InputType::Search` | `"search"` |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, InputProps, InputType};
 
 ComponentNode {
     key: "email-input".to_string(),
@@ -877,7 +877,7 @@ Dropdown select field with options, validation error, and data binding.
 | `label` | `String` | Yes | Display text shown to the user |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, SelectProps, SelectOption};
 
 ComponentNode {
     key: "role-select".to_string(),
@@ -937,7 +937,7 @@ Boolean checkbox field with label, description, and data binding.
 | `error` | `Option<String>` | No | `None` | Validation error message |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, CheckboxProps};
 
 ComponentNode {
     key: "terms-checkbox".to_string(),
@@ -978,7 +978,7 @@ Toggle switch — a visual alternative to Checkbox with identical props. The fro
 | `error` | `Option<String>` | No | `None` | Validation error message |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, SwitchProps};
 
 ComponentNode {
     key: "notifications-switch".to_string(),
@@ -1019,7 +1019,7 @@ Interactive button with visual variants, sizing, and optional icon.
 Buttons are typically combined with an `action` on the `ComponentNode` to bind click behavior:
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, ButtonProps, ButtonVariant, Size, IconPosition};
 
 let node = ComponentNode::button("save-btn", ButtonProps {
     label: "Save Changes".to_string(),
@@ -1052,7 +1052,7 @@ Alert message with variant-based styling and optional title.
 | `title` | `Option<String>` | No | `None` | Alert title |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, AlertProps, AlertVariant};
 
 ComponentNode {
     key: "warning".to_string(),
@@ -1084,7 +1084,7 @@ Declarative notification intent rendered by the JS runtime. When a Toast compone
 | `dismissible` | `bool` | No | `true` | Whether the user can dismiss the toast |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, ToastProps, ToastVariant};
 
 ComponentNode {
     key: "save-toast".to_string(),
@@ -1137,7 +1137,7 @@ Sidebar navigation shell with fixed top items, grouped items, and fixed bottom i
 | `items` | `Vec<SidebarNavItem>` | Yes | Navigation links in this group |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, SidebarProps, SidebarNavItem, SidebarGroup};
 
 ComponentNode {
     key: "sidebar".to_string(),
@@ -1198,7 +1198,7 @@ Application header shell with business name, user info, notification count, and 
 | `logout_url` | `Option<String>` | No | `None` | URL for the logout link |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, HeaderProps};
 
 ComponentNode {
     key: "header".to_string(),
@@ -1247,7 +1247,7 @@ A dropdown list of notification items, typically rendered inside a Header. Displ
 | `action_url` | `Option<String>` | No | URL to navigate to on click |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, NotificationDropdownProps, NotificationItem};
 
 ComponentNode {
     key: "notifications".to_string(),
@@ -1314,7 +1314,7 @@ Step-by-step onboarding or task checklist with dismissal and optional server-sid
 | `href` | `Option<String>` | No | Link to take the step |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, ChecklistProps, ChecklistItem};
 
 ComponentNode {
     key: "setup-checklist".to_string(),
@@ -1366,7 +1366,7 @@ Passes through to a registered plugin component. The `plugin_type` field selects
 | `props` | `serde_json::Value` | Yes | Raw props passed to the plugin's render function |
 
 ```rust
-use ferro::*;
+use ferro::{ComponentNode, Component, PluginProps};
 
 ComponentNode {
     key: "office-map".to_string(),

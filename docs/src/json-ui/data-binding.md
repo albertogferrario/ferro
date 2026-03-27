@@ -278,8 +278,7 @@ JsonUi::render_with_errors(&view, &data, &errors)
 Or use the `ValidationError` type directly:
 
 ```rust
-use ferro::{JsonUi, JsonUiView};
-use ferro::validation::ValidationError;
+use ferro::{JsonUi, JsonUiView, ValidationError};
 
 let validation_error: ValidationError = /* from validator */;
 JsonUi::render_validation_error(&view, &data, &validation_error)

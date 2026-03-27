@@ -34,7 +34,7 @@ Activate the theme by setting it as the default in your middleware setup:
 use ferro::{ThemeMiddleware, Theme};
 
 let middleware = ThemeMiddleware::new()
-    .default_theme(Theme::from_path("./themes/myapp").unwrap());
+    .default_theme(Theme::from_path("./themes/myapp").expect("theme directory not found"));
 ```
 
 Edit `themes/myapp/tokens.css` to customize the visual identity:
@@ -207,7 +207,7 @@ TenantThemeResolver::new("./themes")
 ```rust
 use ferro::{DefaultResolver, Theme};
 
-DefaultResolver::new(Theme::from_path("./themes/corporate").unwrap())
+DefaultResolver::new(Theme::from_path("./themes/corporate").expect("theme directory not found"))
 ```
 
 When no resolver matches, `ThemeMiddleware` falls back to the built-in default theme automatically.
@@ -221,7 +221,7 @@ use ferro::{ThemeMiddleware, TenantThemeResolver, Theme};
 
 let middleware = ThemeMiddleware::new()
     .resolver(TenantThemeResolver::new("./themes"))
-    .default_theme(Theme::from_path("./themes/corporate").unwrap());
+    .default_theme(Theme::from_path("./themes/corporate").expect("theme directory not found"));
 ```
 
 ## Multi-Tenant Themes

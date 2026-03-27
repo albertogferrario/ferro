@@ -7,7 +7,7 @@ Ferro provides a powerful validation system with a fluent API, built-in rules, c
 ### Creating a Validator
 
 ```rust
-use ferro::validation::{Validator, rules};
+use ferro::Validator;
 
 let data = serde_json::json!({
     "name": "John Doe",
@@ -31,7 +31,7 @@ if errors.is_empty() {
 ### Quick Validation
 
 ```rust
-use ferro::validation::{validate, rules};
+use ferro::validate;
 
 let data = serde_json::json!({
     "email": "invalid-email"
@@ -53,7 +53,7 @@ if errors.fails() {
 ### Required Rules
 
 ```rust
-use ferro::validation::rules::*;
+// rules like required(), string(), etc. are available directly (no import needed)
 
 // Field must be present and not empty
 required()
@@ -153,7 +153,7 @@ accepted()
 ### User Registration
 
 ```rust
-use ferro::validation::{Validator, rules};
+use ferro::Validator;
 
 let data = serde_json::json!({
     "username": "johndoe",
@@ -249,7 +249,7 @@ let errors = Validator::new()
 The `ValidationError` type collects and manages validation errors:
 
 ```rust
-use ferro::validation::ValidationError;
+use ferro::ValidationError;
 
 let errors: ValidationError = validator.validate(&data);
 
@@ -303,7 +303,7 @@ Form Requests provide automatic validation and authorization for HTTP requests.
 ### Defining a Form Request
 
 ```rust
-use ferro::http::FormRequest;
+use ferro::FormRequest;
 use serde::Deserialize;
 use validator::Validate;
 
@@ -351,7 +351,7 @@ pub async fn store(request: CreateUserRequest) -> Response {
 Override the `authorize` method to add authorization logic:
 
 ```rust
-use ferro::http::{FormRequest, Request};
+use ferro::{FormRequest, Request};
 
 impl FormRequest for UpdatePostRequest {
     fn authorize(req: &Request) -> bool {
@@ -408,7 +408,7 @@ pub struct ExampleRequest {
 
 // Define regex patterns
 lazy_static! {
-    static ref RE_PHONE: Regex = Regex::new(r"^\+?[1-9]\d{1,14}$").unwrap();
+    static ref RE_PHONE: Regex = Regex::new(r"^\+?[1-9]\d{1,14}$").expect("valid regex pattern");
 }
 
 // Custom validation function
@@ -425,7 +425,7 @@ fn validate_username(username: &str) -> Result<(), validator::ValidationError> {
 Create custom validation rules by implementing the `Rule` trait:
 
 ```rust
-use ferro::validation::Rule;
+use ferro::Rule;
 use serde_json::Value;
 
 pub struct Uppercase;
@@ -501,8 +501,7 @@ let errors = Validator::new()
 ## API Validation Pattern
 
 ```rust
-use ferro::{handler, Request, Response, json_response};
-use ferro::validation::{Validator, rules};
+use ferro::{handler, Request, Response, json_response, Validator};
 
 #[handler]
 pub async fn store(req: Request) -> Response {

@@ -11,7 +11,7 @@ ferro make:controller Users
 This creates `src/controllers/users_controller.rs`:
 
 ```rust
-use ferro::*;
+use ferro::{handler, Request, Response, json};
 
 #[handler]
 pub async fn index(req: Request) -> Response {
@@ -108,9 +108,7 @@ pub struct UsersIndexProps {
 When handling forms, you need to call `req.input()` which consumes the request. To render validation errors with Inertia, save the context first:
 
 ```rust
-use ferro::{
-    Inertia, InertiaProps, Request, Response, SavedInertiaContext, Validate, serde_json,
-};
+use ferro::{Inertia, InertiaProps, Request, Response, SavedInertiaContext, Validate, serde_json};
 
 #[derive(InertiaProps)]
 pub struct LoginProps {
@@ -157,7 +155,7 @@ Key points:
 Use form requests for validation:
 
 ```rust
-use ferro::*;
+use ferro::{handler, Request, Response};
 
 #[derive(FormRequest)]
 pub struct CreateUserRequest {
@@ -205,7 +203,8 @@ ferro make:action CreateUser
 
 ```rust
 // src/actions/create_user.rs
-use ferro::*;
+use ferro::handler;
+use std::sync::Arc;
 
 #[derive(Action)]
 pub struct CreateUser {

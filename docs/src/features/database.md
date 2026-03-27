@@ -94,7 +94,7 @@ Ferro provides Laravel-like traits for SeaORM entities.
 
 ```rust
 use sea_orm::entity::prelude::*;
-use ferro::database::{Model, ModelMut};
+use ferro::{Model, ModelMut};
 
 #[derive(Clone, Debug, DeriveEntityModel)]
 #[sea_orm(table_name = "users")]
@@ -113,8 +113,8 @@ pub enum Relation {}
 impl ActiveModelBehavior for ActiveModel {}
 
 // Add Ferro's Model traits for convenient methods
-impl ferro::database::Model for Entity {}
-impl ferro::database::ModelMut for Entity {}
+impl ferro::Model for Entity {}
+impl ferro::ModelMut for Entity {}
 ```
 
 ### Reading Records
@@ -377,8 +377,7 @@ pub async fn show(user: user::Model) -> Response {
 For custom binding logic, implement the `RouteBinding` trait:
 
 ```rust
-use ferro::database::RouteBinding;
-use ferro::FrameworkError;
+use ferro::{RouteBinding, FrameworkError};
 use async_trait::async_trait;
 
 #[async_trait]
@@ -525,7 +524,7 @@ async fn test_create_user() {
 ### Custom Migrator
 
 ```rust
-use ferro::testing::TestDatabase;
+use ferro::TestDatabase;
 
 #[tokio::test]
 async fn test_with_custom_migrator() {

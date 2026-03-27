@@ -35,7 +35,7 @@ Authentication state is stored in server-side sessions. Configure via environmen
 Load configuration from environment:
 
 ```rust
-use ferro::session::SessionConfig;
+use ferro::SessionConfig;
 
 let config = SessionConfig::from_env();
 ```
@@ -76,7 +76,7 @@ Use `logout_other_devices()` after password changes to invalidate potentially co
 For admin/security flows that need to invalidate sessions for any user:
 
 ```rust
-use ferro::session::{invalidate_all_for_user, DatabaseSessionDriver};
+use ferro::{invalidate_all_for_user, DatabaseSessionDriver};
 
 let store = DatabaseSessionDriver::new(idle_lifetime, absolute_lifetime);
 let destroyed = invalidate_all_for_user(&store, user_id, None).await?;
@@ -91,7 +91,7 @@ Ferro uses bcrypt with a default cost factor of 12 (same as Laravel). The cost f
 Implement `Authenticatable` on your User model to enable `Auth::user()` and `Auth::user_as::<T>()`.
 
 ```rust
-use ferro::auth::Authenticatable;
+use ferro::Authenticatable;
 use std::any::Any;
 
 impl Authenticatable for User {
@@ -118,8 +118,7 @@ impl Authenticatable for User {
 The `UserProvider` trait retrieves users from your data store. Register it in `bootstrap.rs` to enable `Auth::user()`.
 
 ```rust
-use ferro::auth::{UserProvider, Authenticatable};
-use ferro::FrameworkError;
+use ferro::{UserProvider, Authenticatable, FrameworkError};
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -223,7 +222,7 @@ if result.is_some() {
 
 // Validate credentials without logging in (e.g., password confirmation)
 let valid = Auth::validate(|| async {
-    let user_id = Auth::id().unwrap();
+    let user_id = Auth::id().expect("called inside Auth::validate so user is authenticated");
     let user = find_user_by_id(user_id).await?;
     Ok(ferro::verify(&password, &user.password_hash)?)
 }).await?;
@@ -395,8 +394,7 @@ Authenticated users visiting these routes are redirected to the specified path. 
 ### Register Handler
 
 ```rust
-use ferro::{handler, Request, Response, Auth, json_response};
-use ferro::validation::{Validator, rules};
+use ferro::{handler, Request, Response, Auth, json_response, Validator};
 
 #[handler]
 pub async fn register(req: Request) -> Response {
@@ -417,12 +415,13 @@ pub async fn register(req: Request) -> Response {
     }
 
     // Hash password
-    let password_hash = ferro::hash(data["password"].as_str().unwrap())?;
+    let password = data["password"].as_str().ok_or_else(|| HttpResponse::bad_request())?;
+    let password_hash = ferro::hash(password)?;
 
     // Insert user
     let user = User::insert(NewUser {
-        name: data["name"].as_str().unwrap().to_string(),
-        email: data["email"].as_str().unwrap().to_string(),
+        name: data["name"].as_str().ok_or_else(|| HttpResponse::bad_request())?.to_string(),
+        email: data["email"].as_str().ok_or_else(|| HttpResponse::bad_request())?.to_string(),
         password: password_hash,
     }).await?;
 
@@ -452,8 +451,8 @@ pub async fn login(req: Request) -> Response {
         });
     }
 
-    let email = data["email"].as_str().unwrap();
-    let password = data["password"].as_str().unwrap();
+    let email = data["email"].as_str().ok_or_else(|| HttpResponse::bad_request())?;
+    let password = data["password"].as_str().ok_or_else(|| HttpResponse::bad_request())?;
 
     // Attempt authentication
     let result = Auth::attempt(|| async {

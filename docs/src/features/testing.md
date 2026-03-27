@@ -9,7 +9,7 @@ Ferro provides a comprehensive testing suite with HTTP test client, Jest-like as
 The `TestClient` provides a fluent API for making HTTP requests to your application.
 
 ```rust
-use ferro::testing::TestClient;
+use ferro::TestClient;
 
 #[tokio::test]
 async fn test_homepage() {
@@ -25,7 +25,7 @@ async fn test_homepage() {
 ### Making Requests
 
 ```rust
-use ferro::testing::TestClient;
+use ferro::TestClient;
 
 let client = TestClient::new(app());
 
@@ -112,7 +112,7 @@ Test authenticated routes by acting as a specific user.
 ```rust
 use ferro::models::user;
 
-let user = user::Entity::find_by_pk(1).await?.unwrap();
+let user = user::Entity::find_by_pk(1).await?.expect("user with id=1 exists");
 
 let response = client
     .get("/dashboard")
@@ -244,7 +244,7 @@ let content_type = response.header("Content-Type");
 Ferro provides Jest-like `expect` assertions for expressive tests.
 
 ```rust
-use ferro::testing::Expect;
+use ferro::testing::Expect; // not re-exported at crate root
 
 #[tokio::test]
 async fn test_user_creation() {
@@ -331,7 +331,7 @@ Factories generate fake data for testing, inspired by Laravel's model factories.
 ### Defining a Factory
 
 ```rust
-use ferro::testing::{Factory, FactoryBuilder, Fake};
+use ferro::{Factory, FactoryBuilder, Fake};
 use sea_orm::Set;
 use crate::models::user;
 
@@ -375,7 +375,8 @@ let admin = UserFactory::factory()
 Define reusable states for common variations.
 
 ```rust
-use ferro::testing::{Factory, FactoryTraits};
+use ferro::Factory;
+use ferro::testing::FactoryTraits; // not re-exported at crate root
 
 impl Factory for UserFactory {
     type Model = user::ActiveModel;
@@ -423,7 +424,8 @@ let inactive_admin = UserFactory::factory()
 For factories that persist to the database.
 
 ```rust
-use ferro::testing::{DatabaseFactory, Factory, Fake};
+use ferro::{Factory, Fake};
+use ferro::testing::DatabaseFactory; // not re-exported at crate root
 use ferro::DB;
 
 pub struct UserFactory;
@@ -473,7 +475,7 @@ let user = UserFactory::factory()
 Generate unique sequential values.
 
 ```rust
-use ferro::testing::Sequence;
+use ferro::Sequence;
 
 let seq = Sequence::new();
 
@@ -500,7 +502,7 @@ The `Fake` helper generates realistic test data.
 ### Personal Information
 
 ```rust
-use ferro::testing::Fake;
+use ferro::Fake;
 
 let name = Fake::name();           // "John Smith"
 let first = Fake::first_name();    // "John"
@@ -619,7 +621,7 @@ async fn test_user_creation() {
 ### Custom Migrator
 
 ```rust
-use ferro::testing::TestDatabase;
+use ferro::TestDatabase;
 
 #[tokio::test]
 async fn test_with_custom_migrator() {
@@ -648,7 +650,7 @@ Mock dependencies using the test container.
 ### Faking Services
 
 ```rust
-use ferro::testing::{TestContainer, TestContainerGuard};
+use ferro::{TestContainer, TestContainerGuard};
 use std::sync::Arc;
 
 #[tokio::test]
@@ -697,7 +699,8 @@ async fn test_with_mock_repository() {
 ## Complete Test Example
 
 ```rust
-use ferro::testing::{TestClient, TestDatabase, Expect, Fake};
+use ferro::{TestClient, TestDatabase, Fake};
+use ferro::testing::Expect; // not re-exported at crate root
 use ferro::test_database;
 use crate::factories::UserFactory;
 
