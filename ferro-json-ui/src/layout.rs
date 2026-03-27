@@ -355,7 +355,7 @@ impl Layout for AuthLayout {
         let body = format!(
             r#"<div class="min-h-screen flex items-center justify-center">
         <div class="w-full max-w-md">
-            <div class="bg-background rounded-lg shadow-md p-8">
+            <div class="bg-card rounded-lg shadow-md p-8">
                 {wrapper}
             </div>
         </div>
