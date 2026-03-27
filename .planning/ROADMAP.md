@@ -129,11 +129,11 @@ Plans:
   2. All handler examples in docs use `#[handler]` macro — no legacy handler signatures
   3. All error propagation examples use `?` operator — no `.unwrap()` in doc examples
   4. COMPONENT_CATALOG duplication between ferro-cli and ferro-mcp is either resolved (shared source) or documented with a clear design decision in PROJECT.md
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 113-01: Standardize import style and handler patterns across all doc examples
-- [ ] 113-02: Fix error propagation examples + resolve or document COMPONENT_CATALOG duplication
+- [ ] 113-01-PLAN.md — Standardize import style, handler macro, and error propagation across all doc code examples
+- [ ] 113-02-PLAN.md — Move COMPONENT_CATALOG to ferro-json-ui as single source + update PROJECT.md design decision
 
 ### Phase 114: Metadata & Publication Readiness
 **Goal**: All crates are publication-ready with complete Cargo.toml metadata, crate-level doc comments, and expanded READMEs
