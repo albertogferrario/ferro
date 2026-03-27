@@ -6,6 +6,9 @@ license.workspace = true
 description = "Service projection definitions for the Ferro framework"
 repository = "https://github.com/albertogferrario/ferro"
 keywords = ["projections", "service", "schema", "ferro", "web"]
+homepage = "https://ferro-rs.dev"
+readme = "README.md"
+categories = ["web-programming", "data-structures"]
 
 [dependencies]
 ferro-theme = { path = "../ferro-theme", version = "0.1" }

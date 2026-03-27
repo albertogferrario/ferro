@@ -5,7 +5,10 @@ edition.workspace = true
 license.workspace = true
 description = "Semantic theme tokens and intent template schema for Ferro"
 repository = "https://github.com/albertogferrario/ferro"
-keywords = ["theme", "tokens", "ferro", "sdui"]
+keywords = ["theme", "tokens", "ferro", "sdui", "css"]
+homepage = "https://ferro-rs.dev"
+readme = "README.md"
+categories = ["web-programming"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

@@ -8,6 +8,7 @@ repository = "https://github.com/albertogferrario/ferro"
 keywords = ["localization", "i18n", "ferro", "web"]
 categories = ["internationalization", "web-programming"]
 readme = "README.md"
+homepage = "https://ferro-rs.dev"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

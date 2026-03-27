@@ -8,6 +8,7 @@ repository = "https://github.com/albertogferrario/ferro"
 keywords = ["whatsapp", "messaging", "notifications", "meta", "ferro"]
 categories = ["web-programming"]
 readme = "README.md"
+homepage = "https://ferro-rs.dev"
 
 [dependencies]
 reqwest = { version = "0.12", features = ["json"] }
