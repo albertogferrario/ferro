@@ -144,11 +144,11 @@ Plans:
   2. framework crate compiles with `#![warn(missing_docs)]` without new warnings introduced by this phase
   3. ferro-json-ui, ferro-lang, and ferro-whatsapp READMEs contain meaningful content beyond 9 lines
   4. ferro-json-ui and ferro-lang lib.rs files have crate-level `//!` doc comment blocks
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 114-01: Fix Cargo.toml metadata gaps + add #![warn(missing_docs)] to framework crate
-- [ ] 114-02: Expand stub READMEs + add //! crate-level doc comments to ferro-json-ui and ferro-lang
+- [ ] 114-01-PLAN.md — Fix Cargo.toml metadata gaps across target crates + expand stub READMEs + verify META-04
+- [ ] 114-02-PLAN.md — Add #![warn(missing_docs)] to framework crate and fix all 136 warnings across 19 source files
 
 ## Progress
 
