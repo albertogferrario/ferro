@@ -36,9 +36,9 @@ Requirements for Framework Consolidation Audit. Each maps to roadmap phases.
 
 ### Pattern Coherence
 
-- [ ] **COH-01**: Import style standardized across all code examples in docs
-- [ ] **COH-02**: Handler macro patterns audited — all examples use `#[handler]`
-- [ ] **COH-03**: Error propagation examples verified to use `?` not `unwrap()`
+- [x] **COH-01**: Import style standardized across all code examples in docs
+- [x] **COH-02**: Handler macro patterns audited — all examples use `#[handler]`
+- [x] **COH-03**: Error propagation examples verified to use `?` not `unwrap()`
 - [x] **COH-04**: COMPONENT_CATALOG duplication resolved (design decision + implementation)
 
 ### Metadata & Guidelines
@@ -91,9 +91,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PHIL-02 | Phase 112 | Complete |
 | PHIL-03 | Phase 112 | Complete |
 | PHIL-04 | Phase 112 | Complete |
-| COH-01 | Phase 113 | Pending |
-| COH-02 | Phase 113 | Pending |
-| COH-03 | Phase 113 | Pending |
+| COH-01 | Phase 113 | Complete |
+| COH-02 | Phase 113 | Complete |
+| COH-03 | Phase 113 | Complete |
 | COH-04 | Phase 113 | Complete |
 | META-01 | Phase 114 | Pending |
 | META-02 | Phase 114 | Pending |
