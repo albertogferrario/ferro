@@ -679,6 +679,25 @@ pub struct ButtonGroupProps {
     pub buttons: Vec<ComponentNode>,
 }
 
+/// A single action item in a dropdown menu.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DropdownMenuAction {
+    pub label: String,
+    pub action: Action,
+    #[serde(default)]
+    pub destructive: bool,
+}
+
+/// Props for DropdownMenu component — trigger button with absolutely-positioned action panel.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DropdownMenuProps {
+    pub menu_id: String,
+    pub trigger_label: String,
+    pub items: Vec<DropdownMenuAction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_variant: Option<ButtonVariant>,
+}
+
 /// Props for a plugin component.
 ///
 /// The `plugin_type` field holds the original `"type"` value from JSON,
@@ -770,6 +789,7 @@ pub enum Component {
     FormSection(FormSectionProps),
     PageHeader(PageHeaderProps),
     ButtonGroup(ButtonGroupProps),
+    DropdownMenu(DropdownMenuProps),
     Plugin(PluginProps),
 }
 
@@ -829,6 +849,7 @@ impl Serialize for Component {
             Component::FormSection(p) => serialize_tagged(serializer, "FormSection", p),
             Component::PageHeader(p) => serialize_tagged(serializer, "PageHeader", p),
             Component::ButtonGroup(p) => serialize_tagged(serializer, "ButtonGroup", p),
+            Component::DropdownMenu(p) => serialize_tagged(serializer, "DropdownMenu", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -940,6 +961,9 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "ButtonGroup" => serde_json::from_value::<ButtonGroupProps>(value)
                 .map(Component::ButtonGroup)
+                .map_err(de::Error::custom),
+            "DropdownMenu" => serde_json::from_value::<DropdownMenuProps>(value)
+                .map(Component::DropdownMenu)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -1267,6 +1291,16 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::FormSection(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a DropdownMenu component node.
+    pub fn dropdown_menu(key: impl Into<String>, props: DropdownMenuProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::DropdownMenu(props),
             action: None,
             visibility: None,
         }

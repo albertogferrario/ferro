@@ -30,6 +30,8 @@
 /// - `data-tabs` — Tab container. Scopes trigger/panel discovery.
 /// - `data-tab="value"` — Tab trigger button. Clicked to switch panels.
 /// - `data-tab-panel="value"` — Tab content panel. Shown/hidden by matching trigger.
+/// - `data-dropdown-toggle="id"` — Button that toggles the matching `data-dropdown` panel.
+/// - `data-dropdown="id"` — Dropdown panel shown/hidden by its toggle button.
 /// - `data-sidebar-toggle` — Hamburger button that toggles `data-sidebar` on mobile.
 /// - `data-sidebar` — Sidebar element toggled for mobile display.
 /// - `data-sidebar-backdrop` — Dark overlay shown behind sidebar on mobile; click to close.
@@ -349,6 +351,51 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         }
     }
 
+    // ── Dropdown menus ──────────────────────────────────────────────────
+
+    function initDropdowns() {
+        var toggles = document.querySelectorAll('[data-dropdown-toggle]');
+        for (var i = 0; i < toggles.length; i++) {
+            initDropdownToggle(toggles[i]);
+        }
+        // Global click-outside: close all open dropdowns
+        document.addEventListener('click', function(e) {
+            var openMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
+            for (var j = 0; j < openMenus.length; j++) {
+                var menu = openMenus[j];
+                var toggleId = menu.getAttribute('data-dropdown');
+                var toggle = document.querySelector('[data-dropdown-toggle="' + toggleId + '"]');
+                if (!menu.contains(e.target) && e.target !== toggle) {
+                    menu.classList.add('hidden');
+                }
+            }
+        });
+        // Escape key closes all
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                var openMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
+                for (var k = 0; k < openMenus.length; k++) {
+                    openMenus[k].classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    function initDropdownToggle(btn) {
+        var targetId = btn.getAttribute('data-dropdown-toggle');
+        var panel = document.querySelector('[data-dropdown="' + targetId + '"]');
+        if (!panel) return;
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            // Close all other dropdowns first
+            var allMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
+            for (var m = 0; m < allMenus.length; m++) {
+                if (allMenus[m] !== panel) allMenus[m].classList.add('hidden');
+            }
+            panel.classList.toggle('hidden');
+        });
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────
 
     function init() {
@@ -359,6 +406,7 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         initTabs();
         initDismissibles();
         initNotificationToggle();
+        initDropdowns();
         initSidebarToggle();
         initFormGuards();
     }

@@ -87,6 +87,11 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
                 resolve_component_node(child, resolver);
             }
         }
+        Component::DropdownMenu(props) => {
+            for item in &mut props.items {
+                resolve_action(&mut item.action, resolver);
+            }
+        }
         Component::EmptyState(props) => {
             if let Some(ref mut action) = props.action {
                 resolve_action(action, resolver);
@@ -234,6 +239,11 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         Component::ButtonGroup(props) => {
             for child in &props.buttons {
                 collect_unresolved_node(child, unresolved);
+            }
+        }
+        Component::DropdownMenu(props) => {
+            for item in &props.items {
+                collect_unresolved_action(&item.action, unresolved);
             }
         }
         Component::EmptyState(props) => {
@@ -404,6 +414,7 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::Sidebar(_)
         | Component::Header(_)
         | Component::EmptyState(_)
+        | Component::DropdownMenu(_)
         | Component::Plugin(_) => {}
     }
 }

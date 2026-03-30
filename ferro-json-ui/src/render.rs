@@ -13,12 +13,12 @@ use crate::action::HttpMethod;
 use crate::component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbProps,
     ButtonGroupProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistProps,
-    CollapsibleProps, Component, ComponentNode, DescriptionListProps, EmptyStateProps, FormProps,
-    FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps, InputType,
-    ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps,
-    PluginProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps,
-    StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps, ToastProps,
-    ToastVariant,
+    CollapsibleProps, Component, ComponentNode, DescriptionListProps, DropdownMenuProps,
+    EmptyStateProps, FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition,
+    InputProps, InputType, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
+    PaginationProps, PluginProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
+    SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
+    ToastProps, ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -177,7 +177,8 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::NotificationDropdown(_)
         | Component::Sidebar(_)
         | Component::Header(_)
-        | Component::EmptyState(_) => {}
+        | Component::EmptyState(_)
+        | Component::DropdownMenu(_) => {}
     }
 }
 
@@ -287,6 +288,7 @@ fn render_component(component: &Component, data: &Value) -> String {
 
         // Standalone components.
         Component::EmptyState(props) => render_empty_state(props),
+        Component::DropdownMenu(props) => render_dropdown_menu(props),
 
         // Dashboard components.
         Component::StatCard(props) => render_stat_card(props),
@@ -303,6 +305,111 @@ fn render_component(component: &Component, data: &Value) -> String {
         // Plugin components (rendered via plugin registry).
         Component::Plugin(props) => render_plugin(props, data),
     }
+}
+
+// ── DropdownMenu renderer ───────────────────────────────────────────────
+
+fn render_dropdown_menu(props: &DropdownMenuProps) -> String {
+    let mut html = String::from("<div class=\"relative\">");
+
+    // Trigger button
+    html.push_str(&format!(
+        "<button type=\"button\" data-dropdown-toggle=\"{}\" aria-label=\"{}\" \
+         class=\"inline-flex items-center justify-center rounded-md p-1.5 \
+         text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 \
+         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary \
+         focus-visible:ring-offset-2\">{}</button>",
+        html_escape(&props.menu_id),
+        html_escape(&props.trigger_label),
+        html_escape(&props.trigger_label),
+    ));
+
+    // Panel (hidden by default)
+    html.push_str(&format!(
+        "<div data-dropdown=\"{}\" \
+         class=\"absolute right-0 z-50 mt-1 w-48 rounded-md border border-border bg-card shadow-md hidden\">",
+        html_escape(&props.menu_id),
+    ));
+
+    for item in &props.items {
+        let url = item.action.url.as_deref().unwrap_or("#");
+        let base_class = if item.destructive {
+            "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-150"
+        } else {
+            "block px-4 py-2 text-sm text-text hover:bg-surface transition-colors duration-150"
+        };
+
+        // Confirm dialog data attributes
+        let confirm_attrs = if let Some(ref confirm) = item.action.confirm {
+            let mut attrs = format!(
+                " data-confirm-title=\"{}\"",
+                html_escape(&confirm.title)
+            );
+            if let Some(ref message) = confirm.message {
+                attrs.push_str(&format!(
+                    " data-confirm-message=\"{}\"",
+                    html_escape(message)
+                ));
+            }
+            attrs
+        } else {
+            String::new()
+        };
+
+        let onclick = if item.action.confirm.is_some() {
+            " onclick=\"return confirm(this.dataset.confirmTitle || this.dataset.confirmMessage)\""
+        } else {
+            ""
+        };
+
+        match item.action.method {
+            HttpMethod::Get => {
+                html.push_str(&format!(
+                    "<a href=\"{}\" class=\"{}\"{}{}>{}</a>",
+                    html_escape(url),
+                    base_class,
+                    confirm_attrs,
+                    onclick,
+                    html_escape(&item.label),
+                ));
+            }
+            HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => {
+                let (form_method, needs_spoofing) = match item.action.method {
+                    HttpMethod::Post => ("post", false),
+                    HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => ("post", true),
+                    _ => unreachable!(),
+                };
+                html.push_str(&format!(
+                    "<form action=\"{}\" method=\"{}\">",
+                    html_escape(url),
+                    form_method,
+                ));
+                if needs_spoofing {
+                    let method_value = match item.action.method {
+                        HttpMethod::Put => "PUT",
+                        HttpMethod::Patch => "PATCH",
+                        HttpMethod::Delete => "DELETE",
+                        _ => unreachable!(),
+                    };
+                    html.push_str(&format!(
+                        "<input type=\"hidden\" name=\"_method\" value=\"{method_value}\">"
+                    ));
+                }
+                html.push_str(&format!(
+                    "<button type=\"submit\" class=\"w-full text-left {}\"{}{}>{}</button>",
+                    base_class,
+                    confirm_attrs,
+                    onclick,
+                    html_escape(&item.label),
+                ));
+                html.push_str("</form>");
+            }
+        }
+    }
+
+    html.push_str("</div>"); // close panel
+    html.push_str("</div>"); // close wrapper
+    html
 }
 
 // ── Plugin component renderer ───────────────────────────────────────────
@@ -6326,5 +6433,94 @@ mod tests {
                 "table body row should have hover:bg-surface class (INT-06)"
             );
         }
+    }
+
+    // ── DropdownMenu tests ───────────────────────────────────────────────
+
+    #[test]
+    fn test_render_dropdown_menu() {
+        use crate::action::ConfirmDialog;
+
+        let props = DropdownMenuProps {
+            menu_id: "actions-1".to_string(),
+            trigger_label: "Azioni".to_string(),
+            items: vec![
+                DropdownMenuAction {
+                    label: "Modifica".to_string(),
+                    action: Action {
+                        handler: "items.edit".to_string(),
+                        url: Some("/items/1/edit".to_string()),
+                        method: HttpMethod::Get,
+                        confirm: None,
+                        on_success: None,
+                        on_error: None,
+                    },
+                    destructive: false,
+                },
+                DropdownMenuAction {
+                    label: "Elimina".to_string(),
+                    action: Action {
+                        handler: "items.destroy".to_string(),
+                        url: Some("/items/1".to_string()),
+                        method: HttpMethod::Delete,
+                        confirm: None,
+                        on_success: None,
+                        on_error: None,
+                    },
+                    destructive: true,
+                },
+            ],
+            trigger_variant: None,
+        };
+
+        let view = JsonUiView::new().component(ComponentNode::dropdown_menu("menu", props));
+        let html = render_to_html(&view, &json!({}));
+
+        assert!(html.contains("data-dropdown-toggle=\"actions-1\""), "trigger has data-dropdown-toggle");
+        assert!(html.contains("data-dropdown=\"actions-1\""), "panel has data-dropdown");
+        assert!(html.contains("hidden"), "panel starts hidden");
+        assert!(html.contains("text-destructive"), "destructive item has text-destructive class");
+        assert!(html.contains("type=\"button\""), "trigger is type=button");
+        assert!(html.contains("aria-label=\"Azioni\""), "trigger has aria-label");
+        assert!(html.contains("Modifica"), "normal item label present");
+        assert!(html.contains("Elimina"), "destructive item label present");
+        // GET action renders as <a>, DELETE renders as <form>
+        assert!(html.contains("<a href=\"/items/1/edit\""), "GET action renders as link");
+        assert!(html.contains("<form action=\"/items/1\" method=\"post\">"), "DELETE action renders as form");
+        assert!(html.contains("name=\"_method\" value=\"DELETE\""), "DELETE method spoofing");
+    }
+
+    #[test]
+    fn test_render_dropdown_menu_confirm() {
+        use crate::action::{ConfirmDialog, DialogVariant};
+
+        let props = DropdownMenuProps {
+            menu_id: "confirm-menu".to_string(),
+            trigger_label: "Menu".to_string(),
+            items: vec![DropdownMenuAction {
+                label: "Elimina".to_string(),
+                action: Action {
+                    handler: "items.destroy".to_string(),
+                    url: Some("/items/1".to_string()),
+                    method: HttpMethod::Delete,
+                    confirm: Some(ConfirmDialog {
+                        title: "Conferma eliminazione".to_string(),
+                        message: Some("Sei sicuro?".to_string()),
+                        variant: DialogVariant::Danger,
+                    }),
+                    on_success: None,
+                    on_error: None,
+                },
+                destructive: true,
+            }],
+            trigger_variant: None,
+        };
+
+        let view = JsonUiView::new().component(ComponentNode::dropdown_menu("cm", props));
+        let html = render_to_html(&view, &json!({}));
+
+        assert!(html.contains("data-confirm-title=\"Conferma eliminazione\""), "confirm title attribute");
+        assert!(html.contains("data-confirm-message=\"Sei sicuro?\""), "confirm message attribute");
+        assert!(html.contains("data-confirm"), "has data-confirm attribute");
     }
 }
