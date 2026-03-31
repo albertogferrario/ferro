@@ -14,12 +14,13 @@ use crate::component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType, ButtonVariant,
     CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
-    ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps,
-    FormMaxWidth, FormProps, FormSectionLayout, FormSectionProps, GapSize, GridProps, HeaderProps,
-    IconPosition, InputProps, InputType, KanbanBoardProps, ModalProps, NotificationDropdownProps,
-    Orientation, PageHeaderProps, PaginationProps, PluginProps, ProductTileProps, ProgressProps,
-    SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps,
-    TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuAction, DropdownMenuProps,
+    EmptyStateProps, FormMaxWidth, FormProps, FormSectionLayout, FormSectionProps, GapSize,
+    GridProps, HeaderProps, IconPosition, InputProps, InputType, KanbanBoardProps, ModalProps,
+    NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps, PluginProps,
+    ProductTileProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps,
+    StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps, ToastProps,
+    ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -1103,10 +1104,17 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                 } else {
                     index.to_string()
                 };
+                let templated_items: Vec<DropdownMenuAction> = actions.iter().map(|a| {
+                    let mut cloned = a.clone();
+                    if let Some(ref url) = cloned.action.url {
+                        cloned.action.url = Some(url.replace("{row_key}", &row_key_value));
+                    }
+                    cloned
+                }).collect();
                 let dropdown_props = DropdownMenuProps {
                     menu_id: format!("dt-{}", row_key_value),
                     trigger_label: "\u{22EE}".to_string(),
-                    items: actions.clone(),
+                    items: templated_items,
                     trigger_variant: None,
                 };
                 html.push_str("<td class=\"px-6 py-4 text-right\">");
@@ -1158,10 +1166,17 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                 } else {
                     index.to_string()
                 };
+                let templated_items: Vec<DropdownMenuAction> = actions.iter().map(|a| {
+                    let mut cloned = a.clone();
+                    if let Some(ref url) = cloned.action.url {
+                        cloned.action.url = Some(url.replace("{row_key}", &row_key_value));
+                    }
+                    cloned
+                }).collect();
                 let dropdown_props = DropdownMenuProps {
                     menu_id: format!("dt-m-{}", row_key_value),
                     trigger_label: "\u{22EE}".to_string(),
-                    items: actions.clone(),
+                    items: templated_items,
                     trigger_variant: None,
                 };
                 html.push_str("<div class=\"pt-2 border-t border-border flex justify-end\">");
@@ -7593,5 +7608,31 @@ mod tests {
         };
         let html = render_button(&props);
         assert!(html.contains("type=\"submit\""), "submit button type is submit");
+    }
+
+    #[test]
+    fn data_table_row_actions_url_templating() {
+        use crate::component::*;
+        use crate::action::*;
+        let props = DataTableProps {
+            columns: vec![Column { key: "name".into(), label: "Name".into(), format: None }],
+            data_path: "items".into(),
+            row_actions: Some(vec![DropdownMenuAction {
+                label: "Delete".into(),
+                action: {
+                    let mut a = Action::new("items.delete");
+                    a.url = Some("/items/{row_key}/delete".into());
+                    a.method = HttpMethod::Delete;
+                    a
+                },
+                destructive: true,
+            }]),
+            empty_message: None,
+            row_key: Some("id".into()),
+        };
+        let data = serde_json::json!({ "items": [{"id": "42", "name": "Widget"}] });
+        let html = render_data_table(&props, &data);
+        assert!(html.contains("/items/42/delete"), "URL must have {{row_key}} replaced with actual row key value '42'");
+        assert!(!html.contains("{row_key}"), "No unreplaced {{row_key}} placeholders should remain");
     }
 }
