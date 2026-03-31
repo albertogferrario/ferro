@@ -172,6 +172,16 @@ pub struct TableProps {
     pub sort_direction: Option<SortDirection>,
 }
 
+/// Maximum width constraint for form containers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum FormMaxWidth {
+    #[default]
+    Default,
+    Narrow,
+    Wide,
+}
+
 /// Props for Form component.
 // JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -185,6 +195,9 @@ pub struct FormProps {
     /// one number input must have value > 0.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guard: Option<String>,
+    /// Optional max-width constraint for the form container.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_width: Option<FormMaxWidth>,
 }
 
 /// Props for Button component.
@@ -650,6 +663,15 @@ pub struct EmptyStateProps {
     pub action_label: Option<String>,
 }
 
+/// Layout variant for form sections.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum FormSectionLayout {
+    #[default]
+    Stacked,
+    TwoColumn,
+}
+
 /// Props for FormSection component — visual grouping within forms.
 // JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -659,6 +681,9 @@ pub struct FormSectionProps {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<ComponentNode>,
+    /// Optional layout variant. Defaults to stacked (single column).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<FormSectionLayout>,
 }
 
 /// Props for PageHeader component -- page title with optional breadcrumb and action buttons.
@@ -761,6 +786,7 @@ pub enum ActionCardVariant {
 /// Props for a horizontal action card with variant-colored left border.
 ///
 /// Renders icon + title + description + chevron in a clickable row.
+/// When `href` is set, the card wraps in an `<a>` element with `aria-label`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ActionCardProps {
     pub title: String,
@@ -769,6 +795,9 @@ pub struct ActionCardProps {
     pub icon: Option<String>,
     #[serde(default)]
     pub variant: ActionCardVariant,
+    /// Optional navigation URL. When set, the card renders as an `<a>` element.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub href: Option<String>,
 }
 
 /// Props for a touch-friendly product tile with quantity controls.
