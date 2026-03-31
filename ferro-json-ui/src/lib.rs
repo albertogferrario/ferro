@@ -55,7 +55,7 @@ pub(crate) mod runtime;
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
 pub use component::{
     AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem,
-    BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps,
+    BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType, ButtonVariant, CardProps, CheckboxProps,
     ChecklistItem, ChecklistProps, CollapsibleProps, Column, ColumnFormat, Component,
     ComponentNode, DescriptionItem, DescriptionListProps, EmptyStateProps, FormProps,
     FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps, InputType,
