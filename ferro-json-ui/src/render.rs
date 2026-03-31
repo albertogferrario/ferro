@@ -14,13 +14,12 @@ use crate::component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonVariant,
     CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
-    ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps, FormProps,
-    FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps, InputType,
-    KanbanBoardProps, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
-    PaginationProps, PluginProps, ProductTileProps, ProgressProps, SelectProps, SeparatorProps,
-    SidebarProps, Size,
-    SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
-    ToastProps, ToastVariant,
+    ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps,
+    FormMaxWidth, FormProps, FormSectionLayout, FormSectionProps, GapSize, GridProps, HeaderProps,
+    IconPosition, InputProps, InputType, KanbanBoardProps, ModalProps, NotificationDropdownProps,
+    Orientation, PageHeaderProps, PaginationProps, PluginProps, ProductTileProps, ProgressProps,
+    SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps,
+    TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -371,10 +370,28 @@ fn render_action_card(props: &ActionCardProps) -> String {
         ActionCardVariant::Danger => "border-l-destructive",
     };
 
-    let mut html = format!(
-        "<div class=\"rounded-lg border-l-4 {} border border-border bg-card shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-surface transition-colors duration-150\">",
-        border_class
-    );
+    // A11Y-04: use <a> when href is set, <div> otherwise
+    let (open_tag, close_tag) = if let Some(ref href) = props.href {
+        (
+            format!(
+                "<a href=\"{}\" aria-label=\"{}\" class=\"rounded-lg border-l-4 {} border border-border bg-card shadow-sm p-4 flex items-center gap-4 hover:bg-surface transition-colors duration-150 no-underline\">",
+                html_escape(href),
+                html_escape(&props.title),
+                border_class,
+            ),
+            "</a>".to_string(),
+        )
+    } else {
+        (
+            format!(
+                "<div class=\"rounded-lg border-l-4 {} border border-border bg-card shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-surface transition-colors duration-150\">",
+                border_class,
+            ),
+            "</div>".to_string(),
+        )
+    };
+
+    let mut html = open_tag;
 
     // Optional icon.
     if let Some(ref icon) = props.icon {
@@ -394,7 +411,7 @@ fn render_action_card(props: &ActionCardProps) -> String {
     // Chevron.
     html.push_str("<span class=\"text-text-muted flex-shrink-0 text-lg\">&rsaquo;</span>");
 
-    html.push_str("</div>");
+    html.push_str(&close_tag);
     html
 }
 
@@ -810,9 +827,11 @@ fn render_tabs(props: &TabsProps, data: &Value) -> String {
         if has_any_content && (is_active || !tab.children.is_empty()) {
             // Client-side tab trigger
             html.push_str(&format!(
-                "<button type=\"button\" role=\"tab\" data-tab=\"{}\" \
+                "<button type=\"button\" role=\"tab\" id=\"tab-btn-{}\" aria-controls=\"tab-panel-{}\" data-tab=\"{}\" \
                  class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
                  aria-selected=\"{}\">{}</button>",
+                html_escape(&tab.value),
+                html_escape(&tab.value),
                 html_escape(&tab.value),
                 border,
                 text,
@@ -822,9 +841,11 @@ fn render_tabs(props: &TabsProps, data: &Value) -> String {
         } else {
             // Server-driven tab: link with ?tab= query param
             html.push_str(&format!(
-                "<a href=\"?tab={}\" role=\"tab\" \
+                "<a href=\"?tab={}\" role=\"tab\" id=\"tab-btn-{}\" aria-controls=\"tab-panel-{}\" \
                  class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
                  aria-selected=\"{}\">{}</a>",
+                html_escape(&tab.value),
+                html_escape(&tab.value),
                 html_escape(&tab.value),
                 border,
                 text,
@@ -847,7 +868,9 @@ fn render_tabs(props: &TabsProps, data: &Value) -> String {
             ""
         };
         html.push_str(&format!(
-            "<div role=\"tabpanel\" data-tab-panel=\"{}\" class=\"pt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto{}\">",
+            "<div role=\"tabpanel\" id=\"tab-panel-{}\" aria-labelledby=\"tab-btn-{}\" data-tab-panel=\"{}\" class=\"pt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto{}\">",
+            html_escape(&tab.value),
+            html_escape(&tab.value),
             html_escape(&tab.value),
             hidden,
         ));
@@ -907,6 +930,13 @@ fn render_form(props: &FormProps, data: &Value) -> String {
         html.push_str(&render_node(field, data));
     }
     html.push_str("</form>");
+
+    // FIX-02: wrap in max-width container when specified
+    let html = match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
+        FormMaxWidth::Default => html,
+        FormMaxWidth::Narrow => format!("<div class=\"max-w-2xl mx-auto\">{}</div>", html),
+        FormMaxWidth::Wide => format!("<div class=\"max-w-4xl mx-auto\">{}</div>", html),
+    };
     html
 }
 
@@ -1158,6 +1188,17 @@ fn render_input(props: &InputProps, data: &Value) -> String {
         None
     };
 
+    // A11Y-07: Hidden inputs emit no label or wrapper div.
+    if matches!(props.input_type, InputType::Hidden) {
+        let val = resolved_value.as_deref().unwrap_or("");
+        return format!(
+            "<input type=\"hidden\" id=\"{}\" name=\"{}\" value=\"{}\">",
+            html_escape(&props.field),
+            html_escape(&props.field),
+            html_escape(val)
+        );
+    }
+
     let has_error = props.error.is_some();
     let border_class = if has_error {
         "border-destructive"
@@ -1178,15 +1219,7 @@ fn render_input(props: &InputProps, data: &Value) -> String {
     ));
 
     match props.input_type {
-        InputType::Hidden => {
-            let val = resolved_value.as_deref().unwrap_or("");
-            html.push_str(&format!(
-                "<input type=\"hidden\" id=\"{}\" name=\"{}\" value=\"{}\">",
-                html_escape(&props.field),
-                html_escape(&props.field),
-                html_escape(val)
-            ));
-        }
+        InputType::Hidden => unreachable!("handled by early return above"),
         InputType::Textarea => {
             let val = resolved_value.as_deref().unwrap_or("");
             html.push_str(&format!(
@@ -1204,6 +1237,13 @@ fn render_input(props: &InputProps, data: &Value) -> String {
             }
             if props.disabled == Some(true) {
                 html.push_str(" disabled");
+            }
+            // FIX-03 / A11Y-08: inline validation ARIA for textarea
+            if has_error {
+                html.push_str(&format!(
+                    " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
+                    html_escape(&props.field)
+                ));
             }
             html.push_str(&format!(">{}</textarea>", html_escape(val)));
         }
@@ -1246,6 +1286,13 @@ fn render_input(props: &InputProps, data: &Value) -> String {
             if props.disabled == Some(true) {
                 html.push_str(" disabled");
             }
+            // FIX-03 / A11Y-08: inline validation ARIA for standard inputs
+            if has_error {
+                html.push_str(&format!(
+                    " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
+                    html_escape(&props.field)
+                ));
+            }
             html.push('>');
             if let Some(ref list_id) = props.list {
                 if let Some(arr) = data.get(list_id).and_then(|v| v.as_array()) {
@@ -1269,8 +1316,10 @@ fn render_input(props: &InputProps, data: &Value) -> String {
     }
 
     if let Some(ref error) = props.error {
+        // FIX-03 / A11Y-08: id on error paragraph links to aria-describedby on input
         html.push_str(&format!(
-            "<p class=\"text-sm text-destructive\">{}</p>",
+            "<p id=\"err-{}\" class=\"text-sm text-destructive\">{}</p>",
+            html_escape(&props.field),
             html_escape(error)
         ));
     }
@@ -1321,6 +1370,13 @@ fn render_select(props: &SelectProps, data: &Value) -> String {
     if props.disabled == Some(true) {
         html.push_str(" disabled");
     }
+    // FIX-03: inline validation ARIA for select
+    if has_error {
+        html.push_str(&format!(
+            " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
+            html_escape(&props.field)
+        ));
+    }
     html.push('>');
 
     if let Some(ref placeholder) = props.placeholder {
@@ -1358,8 +1414,10 @@ fn render_select(props: &SelectProps, data: &Value) -> String {
     }
 
     if let Some(ref error) = props.error {
+        // FIX-03: id on error paragraph links to aria-describedby on select
         html.push_str(&format!(
-            "<p class=\"text-sm text-destructive\">{}</p>",
+            "<p id=\"err-{}\" class=\"text-sm text-destructive\">{}</p>",
+            html_escape(&props.field),
             html_escape(error)
         ));
     }
@@ -1507,10 +1565,12 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
 
     // Right side: toggle.
     html.push_str("<label class=\"relative inline-flex items-center cursor-pointer\">");
+    let aria_checked = if is_checked { "true" } else { "false" };
     html.push_str(&format!(
-        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"1\" class=\"sr-only peer\"{}",
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"1\" role=\"switch\" aria-checked=\"{}\" class=\"sr-only peer\"{}",
         html_escape(&props.field),
         html_escape(&props.field),
+        aria_checked,
         onchange,
     ));
     if is_checked {
@@ -1959,8 +2019,10 @@ fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
         html.push_str(" open");
     }
     html.push('>');
+    let aria_expanded = if props.expanded { "true" } else { "false" };
     html.push_str(&format!(
-        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">{CHEVRON_DOWN}</span></summary>",
+        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card\" aria-expanded=\"{}\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">{CHEVRON_DOWN}</span></summary>",
+        aria_expanded,
         html_escape(&props.title)
     ));
     html.push_str("<div class=\"px-4 py-3 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
@@ -1998,25 +2060,50 @@ fn render_empty_state(props: &EmptyStateProps) -> String {
 }
 
 fn render_form_section(props: &FormSectionProps, data: &Value) -> String {
-    let mut html = String::from(
-        "<fieldset class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
-    );
-    html.push_str(&format!(
-        "<legend class=\"text-base font-semibold text-text\">{}</legend>",
-        html_escape(&props.title)
-    ));
-    if let Some(ref desc) = props.description {
+    let is_two_column = matches!(props.layout.as_ref(), Some(FormSectionLayout::TwoColumn));
+
+    if is_two_column {
+        // FIX-05: two-column layout — description left (2 cols), controls right (3 cols)
+        let mut html = String::from("<fieldset class=\"md:grid md:grid-cols-5 md:gap-8\">");
         html.push_str(&format!(
-            "<p class=\"text-sm text-text-muted\">{}</p>",
-            html_escape(desc)
+            "<div class=\"md:col-span-2\"><legend class=\"text-base font-semibold text-text\">{}</legend>",
+            html_escape(&props.title)
         ));
+        if let Some(ref desc) = props.description {
+            html.push_str(&format!(
+                "<p class=\"text-sm text-text-muted mt-1\">{}</p>",
+                html_escape(desc)
+            ));
+        }
+        html.push_str("</div>");
+        html.push_str("<div class=\"md:col-span-3 space-y-4 mt-4 md:mt-0\">");
+        for child in &props.children {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div></fieldset>");
+        html
+    } else {
+        // Stacked (default) behavior
+        let mut html = String::from(
+            "<fieldset class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+        );
+        html.push_str(&format!(
+            "<legend class=\"text-base font-semibold text-text\">{}</legend>",
+            html_escape(&props.title)
+        ));
+        if let Some(ref desc) = props.description {
+            html.push_str(&format!(
+                "<p class=\"text-sm text-text-muted\">{}</p>",
+                html_escape(desc)
+            ));
+        }
+        html.push_str("<div>");
+        for child in &props.children {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div></fieldset>");
+        html
     }
-    html.push_str("<div>");
-    for child in &props.children {
-        html.push_str(&render_node(child, data));
-    }
-    html.push_str("</div></fieldset>");
-    html
 }
 
 // ── Dashboard component renderers ───────────────────────────────────────
@@ -3621,6 +3708,7 @@ mod tests {
                 fields: vec![],
                 method: None,
                 guard: None,
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -3649,6 +3737,7 @@ mod tests {
                 fields: vec![],
                 method: None,
                 guard: None,
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -3674,6 +3763,7 @@ mod tests {
                 fields: vec![],
                 method: Some(HttpMethod::Put),
                 guard: None,
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -3699,6 +3789,7 @@ mod tests {
                 fields: vec![],
                 method: None,
                 guard: None,
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -3766,7 +3857,7 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("border-destructive"));
-        assert!(html.contains("<p class=\"text-sm text-destructive\">Name is required</p>"));
+        assert!(html.contains("text-destructive") && html.contains("Name is required"));
         assert!(
             html.contains("ring-destructive"),
             "error input should have destructive ring"
@@ -5326,6 +5417,7 @@ mod tests {
                 fields: vec![],
                 method: None,
                 guard: Some("number-gt-0".to_string()),
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -5353,6 +5445,7 @@ mod tests {
                 fields: vec![],
                 method: None,
                 guard: None,
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -5450,6 +5543,7 @@ mod tests {
                 title: "Contact".into(),
                 description: Some("Enter details".into()),
                 children: vec![text_node("n", "Name field", TextElement::P)],
+                layout: None,
             },
         ));
         let html = render_to_html(&view, &json!({}));
@@ -7047,6 +7141,7 @@ mod tests {
             description: "Crea un ordine".into(),
             icon: Some("📦".into()),
             variant: ActionCardVariant::Default,
+            href: None,
         };
         let html = render_action_card(&props);
         assert!(html.contains("border-l-primary"), "default variant has primary border");
@@ -7062,6 +7157,7 @@ mod tests {
             description: "Completa la configurazione".into(),
             icon: None,
             variant: ActionCardVariant::Setup,
+            href: None,
         };
         let html = render_action_card(&props);
         assert!(html.contains("border-l-warning"), "setup variant has warning border");
@@ -7074,6 +7170,7 @@ mod tests {
             description: "Elimina questo elemento".into(),
             icon: None,
             variant: ActionCardVariant::Danger,
+            href: None,
         };
         let html = render_action_card(&props);
         assert!(html.contains("border-l-destructive"), "danger variant has destructive border");
@@ -7273,5 +7370,178 @@ mod tests {
         };
         let html = render_modal(&props, &serde_json::Value::Null);
         assert!(html.contains("A description"), "shows description");
+    }
+
+    // ── Form layout tests ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_render_form_max_width_narrow() {
+        let props = FormProps {
+            action: Action::new("save"),
+            fields: vec![],
+            method: None,
+            guard: None,
+            max_width: Some(FormMaxWidth::Narrow),
+        };
+        let html = render_form(&props, &serde_json::Value::Null);
+        assert!(html.contains("max-w-2xl"), "narrow form has max-w-2xl");
+        assert!(html.contains("mx-auto"), "narrow form is centered");
+    }
+
+    #[test]
+    fn test_render_form_max_width_default() {
+        let props = FormProps {
+            action: Action::new("save"),
+            fields: vec![],
+            method: None,
+            guard: None,
+            max_width: None,
+        };
+        let html = render_form(&props, &serde_json::Value::Null);
+        assert!(!html.contains("max-w-2xl"), "default form has no max-width wrapper");
+    }
+
+    #[test]
+    fn test_render_form_section_two_column() {
+        let props = FormSectionProps {
+            title: "Section".into(),
+            description: Some("Desc".into()),
+            children: vec![],
+            layout: Some(FormSectionLayout::TwoColumn),
+        };
+        let html = render_form_section(&props, &serde_json::Value::Null);
+        assert!(html.contains("md:grid"), "two-column uses grid");
+        assert!(html.contains("md:grid-cols-5"), "two-column uses 5-col grid");
+        assert!(html.contains("md:col-span-2"), "description takes 2 cols");
+        assert!(html.contains("md:col-span-3"), "controls take 3 cols");
+    }
+
+    // ── Input ARIA tests ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_render_input_with_error() {
+        let props = InputProps {
+            field: "email".into(),
+            label: "Email".into(),
+            input_type: InputType::Email,
+            error: Some("Campo obbligatorio".into()),
+            placeholder: None,
+            default_value: None,
+            data_path: None,
+            required: None,
+            disabled: None,
+            step: None,
+            description: None,
+            list: None,
+        };
+        let html = render_input(&props, &serde_json::Value::Null);
+        assert!(html.contains("aria-invalid=\"true\""), "input has aria-invalid");
+        assert!(html.contains("aria-describedby=\"err-email\""), "input has aria-describedby");
+        assert!(html.contains("id=\"err-email\""), "error paragraph has matching id");
+        assert!(html.contains("Campo obbligatorio"), "error message rendered");
+    }
+
+    #[test]
+    fn test_render_input_hidden_no_label() {
+        let props = InputProps {
+            field: "csrf".into(),
+            label: "".into(),
+            input_type: InputType::Hidden,
+            default_value: Some("token123".into()),
+            error: None,
+            placeholder: None,
+            data_path: None,
+            required: None,
+            disabled: None,
+            step: None,
+            description: None,
+            list: None,
+        };
+        let html = render_input(&props, &serde_json::Value::Null);
+        assert!(!html.contains("<label"), "hidden input has no label");
+        assert!(!html.contains("space-y-1"), "hidden input has no wrapper div");
+        assert!(html.contains("type=\"hidden\""), "hidden input present");
+    }
+
+    // ── Switch ARIA tests ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_render_switch_role_switch() {
+        let props = SwitchProps {
+            field: "active".into(),
+            label: "Attivo".into(),
+            description: None,
+            checked: Some(true),
+            data_path: None,
+            required: None,
+            disabled: None,
+            error: None,
+            action: None,
+        };
+        let html = render_switch(&props, &serde_json::Value::Null);
+        assert!(html.contains("role=\"switch\""), "switch has role=switch");
+        assert!(html.contains("aria-checked=\"true\""), "checked switch has aria-checked=true");
+    }
+
+    // ── Tabs ARIA tests ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_render_tabs_aria_attributes() {
+        let props = TabsProps {
+            default_tab: "general".into(),
+            tabs: vec![
+                Tab { value: "general".into(), label: "Generale".into(), children: vec![] },
+                Tab { value: "advanced".into(), label: "Avanzate".into(), children: vec![] },
+            ],
+        };
+        let html = render_tabs(&props, &serde_json::Value::Null);
+        assert!(html.contains("id=\"tab-btn-general\""), "tab button has id");
+        assert!(html.contains("aria-controls=\"tab-panel-general\""), "tab button has aria-controls");
+        assert!(html.contains("id=\"tab-panel-general\""), "tab panel has id");
+        assert!(html.contains("aria-labelledby=\"tab-btn-general\""), "tab panel has aria-labelledby");
+    }
+
+    // ── Collapsible ARIA tests ─────────────────────────────────────────────
+
+    #[test]
+    fn test_render_collapsible_aria_expanded() {
+        let props = CollapsibleProps {
+            title: "Details".into(),
+            expanded: false,
+            children: vec![],
+        };
+        let html = render_collapsible(&props, &serde_json::Value::Null);
+        assert!(html.contains("aria-expanded=\"false\""), "closed collapsible has aria-expanded=false");
+    }
+
+    // ── ActionCard href tests ──────────────────────────────────────────────
+
+    #[test]
+    fn test_render_action_card_with_href() {
+        let props = ActionCardProps {
+            title: "Nuovo ordine".into(),
+            description: "Crea un ordine".into(),
+            icon: None,
+            variant: ActionCardVariant::Default,
+            href: Some("/ordini/nuovo".into()),
+        };
+        let html = render_action_card(&props);
+        assert!(html.contains("<a href=\"/ordini/nuovo\""), "card wraps in <a> with href");
+        assert!(html.contains("aria-label=\"Nuovo ordine\""), "card link has aria-label");
+        assert!(!html.contains("<div class=\"rounded"), "no div wrapper when href present");
+    }
+
+    #[test]
+    fn test_render_action_card_without_href() {
+        let props = ActionCardProps {
+            title: "Test".into(),
+            description: "Desc".into(),
+            icon: None,
+            variant: ActionCardVariant::Default,
+            href: None,
+        };
+        let html = render_action_card(&props);
+        assert!(html.contains("<div class=\"rounded"), "uses div when no href");
+        assert!(!html.contains("<a "), "no anchor when no href");
     }
 }
