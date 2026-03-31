@@ -60,7 +60,8 @@ pub use component::{
     ComponentNode, DescriptionItem, DescriptionListProps, EmptyStateProps, FormProps,
     FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps, InputType,
     ModalProps, NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps,
-    PaginationProps, PluginProps, ProgressProps, SelectOption, SelectProps, SeparatorProps,
+    PaginationProps, PluginProps, ProductTileProps, ProgressProps, SelectOption, SelectProps,
+    SeparatorProps,
     SidebarGroup, SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps,
     SwitchProps, Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };

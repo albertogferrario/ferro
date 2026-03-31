@@ -756,6 +756,20 @@ pub struct ActionCardProps {
     pub variant: ActionCardVariant,
 }
 
+/// Props for a touch-friendly product tile with quantity controls.
+///
+/// Renders product name, price, and +/- buttons that drive a hidden input
+/// via JS. Used for POS-style product selection during order creation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ProductTileProps {
+    pub product_id: String,
+    pub name: String,
+    pub price: String,
+    pub field: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_quantity: Option<u32>,
+}
+
 /// Props for a plugin component.
 ///
 /// The `plugin_type` field holds the original `"type"` value from JSON,
@@ -851,6 +865,7 @@ pub enum Component {
     KanbanBoard(KanbanBoardProps),
     CalendarCell(CalendarCellProps),
     ActionCard(ActionCardProps),
+    ProductTile(ProductTileProps),
     Plugin(PluginProps),
 }
 
@@ -914,6 +929,7 @@ impl Serialize for Component {
             Component::KanbanBoard(p) => serialize_tagged(serializer, "KanbanBoard", p),
             Component::CalendarCell(p) => serialize_tagged(serializer, "CalendarCell", p),
             Component::ActionCard(p) => serialize_tagged(serializer, "ActionCard", p),
+            Component::ProductTile(p) => serialize_tagged(serializer, "ProductTile", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -1037,6 +1053,9 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "ActionCard" => serde_json::from_value::<ActionCardProps>(value)
                 .map(Component::ActionCard)
+                .map_err(de::Error::custom),
+            "ProductTile" => serde_json::from_value::<ProductTileProps>(value)
+                .map(Component::ProductTile)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -1404,6 +1423,16 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::ActionCard(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a ProductTile component node.
+    pub fn product_tile(key: impl Into<String>, props: ProductTileProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::ProductTile(props),
             action: None,
             visibility: None,
         }

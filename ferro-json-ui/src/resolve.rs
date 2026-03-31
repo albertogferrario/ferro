@@ -132,6 +132,7 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
         | Component::Header(_)
         | Component::CalendarCell(_)
         | Component::ActionCard(_)
+        | Component::ProductTile(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -294,6 +295,7 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         | Component::Header(_)
         | Component::CalendarCell(_)
         | Component::ActionCard(_)
+        | Component::ProductTile(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -436,6 +438,7 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::KanbanBoard(_)
         | Component::CalendarCell(_)
         | Component::ActionCard(_)
+        | Component::ProductTile(_)
         | Component::Plugin(_) => {}
     }
 }

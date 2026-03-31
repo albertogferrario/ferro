@@ -17,7 +17,8 @@ use crate::component::{
     ComponentNode, DescriptionListProps, DropdownMenuProps, EmptyStateProps, FormProps,
     FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps, InputType,
     KanbanBoardProps, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
-    PaginationProps, PluginProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
+    PaginationProps, PluginProps, ProductTileProps, ProgressProps, SelectProps, SeparatorProps,
+    SidebarProps, Size,
     SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
     ToastProps, ToastVariant,
 };
@@ -181,7 +182,8 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::EmptyState(_)
         | Component::DropdownMenu(_)
         | Component::CalendarCell(_)
-        | Component::ActionCard(_) => {}
+        | Component::ActionCard(_)
+        | Component::ProductTile(_) => {}
         Component::KanbanBoard(props) => {
             for col in &props.columns {
                 for child in &col.children {
@@ -315,6 +317,7 @@ fn render_component(component: &Component, data: &Value) -> String {
         // Standalone leaf components.
         Component::CalendarCell(props) => render_calendar_cell(props),
         Component::ActionCard(props) => render_action_card(props),
+        Component::ProductTile(props) => render_product_tile(props),
 
         // Container components (responsive).
         Component::KanbanBoard(props) => render_kanban_board(props, data),
@@ -391,6 +394,34 @@ fn render_action_card(props: &ActionCardProps) -> String {
 
     html.push_str("</div>");
     html
+}
+
+// ── ProductTile renderer ────────────────────────────────────────────────
+
+fn render_product_tile(props: &ProductTileProps) -> String {
+    let name = html_escape(&props.name);
+    let price = html_escape(&props.price);
+    let field = html_escape(&props.field);
+    let qty = props.default_quantity.unwrap_or(0);
+
+    format!(
+        "<div class=\"rounded-lg border border-border bg-card p-4 flex flex-col gap-3 touch-manipulation\">\
+         <div class=\"flex items-start justify-between gap-2\">\
+         <span class=\"text-sm font-semibold text-text\">{name}</span>\
+         <span class=\"text-sm font-semibold text-text-muted\">{price}</span>\
+         </div>\
+         <div class=\"flex items-center justify-between gap-2\">\
+         <button type=\"button\" data-qty-dec=\"{field}\" \
+         class=\"min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
+         aria-label=\"Diminuisci quantit\u{00E0} {name}\">\u{2212}</button>\
+         <span data-qty-display=\"{field}\" class=\"text-sm font-semibold text-text min-w-[2ch] text-center\">{qty}</span>\
+         <button type=\"button\" data-qty-inc=\"{field}\" \
+         class=\"min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
+         aria-label=\"Aumenta quantit\u{00E0} {name}\">+</button>\
+         </div>\
+         <input type=\"hidden\" name=\"{field}\" data-qty-input=\"{field}\" value=\"{qty}\">\
+         </div>"
+    )
 }
 
 // ── KanbanBoard renderer ────────────────────────────────────────────────
@@ -6875,5 +6906,45 @@ mod tests {
         };
         let html = render_action_card(&props);
         assert!(html.contains("border-l-destructive"), "danger variant has destructive border");
+    }
+
+    // ─── ProductTile tests ────────────────────────────────────────────
+
+    #[test]
+    fn test_render_product_tile() {
+        let props = ProductTileProps {
+            product_id: "p1".into(),
+            name: "Margherita".into(),
+            price: "\u{20AC}8,50".into(),
+            field: "qty_p1".into(),
+            default_quantity: None,
+        };
+        let html = render_product_tile(&props);
+        assert!(html.contains("Margherita"), "shows product name");
+        assert!(html.contains("\u{20AC}8,50"), "shows price");
+        assert!(html.contains("data-qty-inc=\"qty_p1\""), "inc button has data attr");
+        assert!(html.contains("data-qty-dec=\"qty_p1\""), "dec button has data attr");
+        assert!(html.contains("data-qty-display=\"qty_p1\""), "display span has data attr");
+        assert!(html.contains("data-qty-input=\"qty_p1\""), "hidden input has data attr");
+        assert!(html.contains("type=\"button\""), "buttons use type=button");
+        assert!(html.contains("type=\"hidden\""), "hidden input present");
+        assert!(html.contains("min-h-[44px]"), "44px touch target height");
+        assert!(html.contains("min-w-[44px]"), "44px touch target width");
+        assert!(html.contains("touch-manipulation"), "touch-manipulation on container");
+        assert!(html.contains("value=\"0\""), "default quantity is 0");
+    }
+
+    #[test]
+    fn test_render_product_tile_default_qty() {
+        let props = ProductTileProps {
+            product_id: "p2".into(),
+            name: "Diavola".into(),
+            price: "\u{20AC}10,00".into(),
+            field: "qty_p2".into(),
+            default_quantity: Some(2),
+        };
+        let html = render_product_tile(&props);
+        assert!(html.contains("value=\"2\""), "default quantity is 2");
+        assert!(html.contains(">2<"), "display shows 2");
     }
 }
