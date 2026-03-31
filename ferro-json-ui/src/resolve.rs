@@ -12,8 +12,10 @@ use crate::view::JsonUiView;
 
 /// Resolve a single action using the callback.
 fn resolve_action(action: &mut Action, resolver: &impl Fn(&str) -> Option<String>) {
-    if let Some(url) = resolver(&action.handler) {
-        action.url = Some(url);
+    if action.url.is_none() {
+        if let Some(url) = resolver(&action.handler) {
+            action.url = Some(url);
+        }
     }
 }
 
