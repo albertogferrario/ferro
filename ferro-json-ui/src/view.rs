@@ -317,6 +317,7 @@ mod tests {
                     disabled: Some(false),
                     icon: None,
                     icon_position: None,
+                                button_type: None,
                 }),
                 action: Some(Action {
                     handler: "admin.delete_all".to_string(),

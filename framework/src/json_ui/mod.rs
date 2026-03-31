@@ -478,6 +478,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: Some(Action {
                 handler: "users.index".to_string(),

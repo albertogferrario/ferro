@@ -12,7 +12,7 @@ use serde_json::Value;
 use crate::action::HttpMethod;
 use crate::component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
-    BadgeVariant, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonVariant,
+    BadgeVariant, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType, ButtonVariant,
     CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
     ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps,
     FormMaxWidth, FormProps, FormSectionLayout, FormSectionProps, GapSize, GridProps, HeaderProps,
@@ -1674,8 +1674,13 @@ fn render_button(props: &ButtonProps) -> String {
         label
     };
 
+    let type_attr = match props.button_type.as_ref().unwrap_or(&ButtonType::Button) {
+        ButtonType::Button => "button",
+        ButtonType::Submit => "submit",
+    };
+
     format!(
-        "<button class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
+        "<button type=\"{type_attr}\" class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
     )
 }
 
@@ -2482,6 +2487,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                button_type: None,
             }),
             action: None,
             visibility: None,
@@ -2658,6 +2664,7 @@ mod tests {
                 disabled: Some(true),
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: None,
             visibility: None,
@@ -2678,6 +2685,7 @@ mod tests {
                 disabled: None,
                 icon: Some("save".to_string()),
                 icon_position: Some(IconPosition::Left),
+                        button_type: None,
             }),
             action: None,
             visibility: None,
@@ -2701,6 +2709,7 @@ mod tests {
                 disabled: None,
                 icon: Some("arrow-right".to_string()),
                 icon_position: Some(IconPosition::Right),
+                        button_type: None,
             }),
             action: None,
             visibility: None,
@@ -3390,6 +3399,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: None,
             visibility: None,
@@ -3425,6 +3435,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: Some(make_action_with_url(
                 "users.show",
@@ -3450,6 +3461,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: Some(make_action_with_url(
                 "users.store",
@@ -3474,6 +3486,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: Some(make_action("users.show", HttpMethod::Get)),
             visibility: None,
@@ -3493,6 +3506,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: Some(make_action_with_url(
                 "users.destroy",
@@ -3516,6 +3530,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: Some(make_action_with_url(
                 "users.show",
@@ -5258,6 +5273,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: Some(Action {
                 handler: "reports.index".to_string(),
@@ -5677,6 +5693,7 @@ mod tests {
                         disabled: None,
                         icon: None,
                         icon_position: None,
+                                        button_type: None,
                     }),
                     action: None,
                     visibility: None,
@@ -5713,6 +5730,7 @@ mod tests {
                             disabled: None,
                             icon: None,
                             icon_position: None,
+                                                button_type: None,
                         }),
                         action: None,
                         visibility: None,
@@ -5726,6 +5744,7 @@ mod tests {
                             disabled: None,
                             icon: None,
                             icon_position: None,
+                                                button_type: None,
                         }),
                         action: None,
                         visibility: None,
@@ -7543,5 +7562,36 @@ mod tests {
         let html = render_action_card(&props);
         assert!(html.contains("<div class=\"rounded"), "uses div when no href");
         assert!(!html.contains("<a "), "no anchor when no href");
+    }
+
+    #[test]
+    fn test_render_button_type_button_default() {
+        let props = ButtonProps {
+            label: "Click".into(),
+            variant: ButtonVariant::Default,
+            size: Size::Default,
+            disabled: None,
+            icon: None,
+            icon_position: None,
+            button_type: None,
+        };
+        let html = render_button(&props);
+        assert!(html.contains("type=\"button\""), "default button type is button");
+        assert!(!html.contains("type=\"submit\""), "default is not submit");
+    }
+
+    #[test]
+    fn test_render_button_type_submit() {
+        let props = ButtonProps {
+            label: "Salva".into(),
+            variant: ButtonVariant::Default,
+            size: Size::Default,
+            disabled: None,
+            icon: None,
+            icon_position: None,
+            button_type: Some(ButtonType::Submit),
+        };
+        let html = render_button(&props);
+        assert!(html.contains("type=\"submit\""), "submit button type is submit");
     }
 }

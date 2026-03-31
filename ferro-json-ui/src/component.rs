@@ -200,6 +200,15 @@ pub struct FormProps {
     pub max_width: Option<FormMaxWidth>,
 }
 
+/// HTML button type attribute.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ButtonType {
+    #[default]
+    Button,
+    Submit,
+}
+
 /// Props for Button component.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ButtonProps {
@@ -214,6 +223,8 @@ pub struct ButtonProps {
     pub icon: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon_position: Option<IconPosition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub button_type: Option<ButtonType>,
 }
 
 /// Props for Input component.
@@ -1699,6 +1710,7 @@ mod tests {
             }],
             method: None,
             guard: None,
+            max_width: None,
         });
         let json = serde_json::to_string(&form).unwrap();
         let parsed: Component = serde_json::from_str(&json).unwrap();
@@ -1716,6 +1728,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             action: Some(Action {
                 handler: "users.create".to_string(),
@@ -1773,6 +1786,7 @@ mod tests {
                 fields: vec![],
                 method: None,
                 guard: None,
+                max_width: None,
             }),
             Component::Button(ButtonProps {
                 label: "b".to_string(),
@@ -1781,6 +1795,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
+                        button_type: None,
             }),
             Component::Input(InputProps {
                 field: "f".to_string(),
@@ -2020,6 +2035,7 @@ mod tests {
             disabled: None,
             icon: Some("save".to_string()),
             icon_position: Some(IconPosition::Left),
+                button_type: None,
         });
         let json = serde_json::to_value(&button).unwrap();
         assert_eq!(json["size"], "lg");
@@ -2044,6 +2060,7 @@ mod tests {
                     disabled: None,
                     icon: None,
                     icon_position: None,
+                                button_type: None,
                 }),
                 action: None,
                 visibility: None,
@@ -2137,6 +2154,7 @@ mod tests {
                     disabled: None,
                     icon: None,
                     icon_position: None,
+                                button_type: None,
                 }),
                 action: None,
                 visibility: None,
@@ -3238,6 +3256,7 @@ mod tests {
             title: "Contact".into(),
             description: Some("Your details".into()),
             children: vec![],
+            layout: None,
         });
         let json = serde_json::to_value(&fs).unwrap();
         assert_eq!(json["type"], "FormSection");
@@ -3340,6 +3359,7 @@ mod tests {
                     disabled: None,
                     icon: None,
                     icon_position: None,
+                                button_type: None,
                 }),
                 action: None,
                 visibility: None,
@@ -3394,6 +3414,7 @@ mod tests {
                         disabled: None,
                         icon: None,
                         icon_position: None,
+                                        button_type: None,
                     }),
                     action: None,
                     visibility: None,
@@ -3407,6 +3428,7 @@ mod tests {
                         disabled: None,
                         icon: None,
                         icon_position: None,
+                                        button_type: None,
                     }),
                     action: None,
                     visibility: None,
