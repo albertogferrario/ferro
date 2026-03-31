@@ -723,25 +723,38 @@ fn render_card(props: &CardProps, data: &Value) -> String {
 
 fn render_modal(props: &ModalProps, data: &Value) -> String {
     let trigger = props.trigger_label.as_deref().unwrap_or("Open");
-    let mut html = String::from("<details class=\"group\">");
+    let mut html = String::new();
+    // Trigger button (sibling of dialog, not inside it)
     html.push_str(&format!(
-        "<summary class=\"inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium cursor-pointer\">{}</summary>",
+        "<button type=\"button\" class=\"inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium cursor-pointer\" data-modal-open=\"{}\">{}</button>",
+        html_escape(&props.id),
         html_escape(trigger)
     ));
-    html.push_str("<div class=\"fixed inset-0 z-50 flex items-center justify-center bg-black/50 group-open:block hidden\">");
-    html.push_str("<div class=\"relative bg-card rounded-lg shadow-lg max-w-lg w-full mx-4 p-6\">");
+    // Native <dialog> element — focus trap and Escape key are built-in
     html.push_str(&format!(
-        "<h3 class=\"text-lg font-semibold leading-snug text-text\">{}</h3>",
+        "<dialog id=\"{}\" aria-modal=\"true\" aria-labelledby=\"{}-title\" class=\"bg-card rounded-lg shadow-lg max-w-lg w-full mx-4 p-6 backdrop:bg-black/50\">",
+        html_escape(&props.id),
+        html_escape(&props.id)
+    ));
+    // Header row: title + close button
+    html.push_str("<div class=\"flex items-center justify-between mb-4\">");
+    html.push_str(&format!(
+        "<h3 id=\"{}-title\" class=\"text-lg font-semibold leading-snug text-text\">{}</h3>",
+        html_escape(&props.id),
         html_escape(&props.title)
     ));
+    html.push_str(
+        "<button type=\"button\" data-modal-close aria-label=\"Chiudi\" class=\"text-text-muted hover:text-text p-2 rounded transition-colors duration-150\">\u{00d7}</button>",
+    );
+    html.push_str("</div>");
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
-            "<p class=\"mt-1 text-sm text-text-muted\">{}</p>",
+            "<p class=\"text-sm text-text-muted mb-4\">{}</p>",
             html_escape(desc)
         ));
     }
     html.push_str(
-        "<div class=\"mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+        "<div class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
     );
     for child in &props.children {
         html.push_str(&render_node(child, data));
@@ -754,7 +767,7 @@ fn render_modal(props: &ModalProps, data: &Value) -> String {
         }
         html.push_str("</div>");
     }
-    html.push_str("</div></div></details>");
+    html.push_str("</dialog>");
     html
 }
 
@@ -3496,10 +3509,11 @@ mod tests {
     // ── 17. Modal ──────────────────────────────────────────────────────
 
     #[test]
-    fn modal_renders_details_summary() {
+    fn modal_renders_dialog_element() {
         let view = JsonUiView::new().component(ComponentNode {
             key: "m".to_string(),
             component: Component::Modal(ModalProps {
+                id: "modal-confirm".to_string(),
                 title: "Confirm".to_string(),
                 description: Some("Are you sure?".to_string()),
                 children: vec![text_node("t", "Body text", TextElement::P)],
@@ -3515,15 +3529,19 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("<details class=\"group\">"));
-        assert!(html.contains("<summary"));
-        assert!(html.contains("Open Modal</summary>"));
-        assert!(html
-            .contains("<h3 class=\"text-lg font-semibold leading-snug text-text\">Confirm</h3>"));
-        assert!(html.contains("Are you sure?"));
-        assert!(html.contains("Body text"));
-        assert!(html.contains(">OK</button>"));
-        assert!(html.contains("</details>"));
+        assert!(html.contains("<dialog"), "uses dialog element");
+        assert!(html.contains("aria-modal=\"true\""), "has aria-modal");
+        assert!(
+            html.contains("data-modal-open=\"modal-confirm\""),
+            "trigger has data-modal-open"
+        );
+        assert!(html.contains("data-modal-close"), "has close button");
+        assert!(html.contains("Confirm"), "shows title");
+        assert!(html.contains("Are you sure?"), "shows description");
+        assert!(html.contains("Body text"), "shows children");
+        assert!(html.contains(">OK</button>"), "shows footer");
+        assert!(!html.contains("<details"), "no details element");
+        assert!(!html.contains("<summary"), "no summary element");
     }
 
     #[test]
@@ -3531,6 +3549,7 @@ mod tests {
         let view = JsonUiView::new().component(ComponentNode {
             key: "m".to_string(),
             component: Component::Modal(ModalProps {
+                id: "modal-dialog".to_string(),
                 title: "Dialog".to_string(),
                 description: None,
                 children: vec![],
@@ -3541,7 +3560,8 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("Open</summary>"));
+        assert!(html.contains("Open"), "default trigger label");
+        assert!(html.contains("<dialog"), "uses dialog element");
     }
 
     // ── 18. Tabs ───────────────────────────────────────────────────────
@@ -7210,5 +7230,48 @@ mod tests {
             html.contains("text-xs font-semibold text-text-muted uppercase"),
             "label styling"
         );
+    }
+
+    // ── Modal dialog tests ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_render_modal_dialog() {
+        let props = ModalProps {
+            id: "modal-test".into(),
+            title: "Test Title".into(),
+            description: None,
+            children: vec![],
+            footer: vec![],
+            trigger_label: Some("Open".into()),
+        };
+        let html = render_modal(&props, &serde_json::Value::Null);
+        assert!(html.contains("<dialog"), "uses dialog element");
+        assert!(html.contains("aria-modal=\"true\""), "has aria-modal");
+        assert!(
+            html.contains("aria-labelledby=\"modal-test-title\""),
+            "has aria-labelledby"
+        );
+        assert!(
+            html.contains("data-modal-open=\"modal-test\""),
+            "trigger has data-modal-open"
+        );
+        assert!(html.contains("data-modal-close"), "has close button");
+        assert!(html.contains("Chiudi"), "close button has Italian aria-label");
+        assert!(!html.contains("<details"), "no details element");
+        assert!(!html.contains("<summary"), "no summary element");
+    }
+
+    #[test]
+    fn test_render_modal_with_description() {
+        let props = ModalProps {
+            id: "modal-desc".into(),
+            title: "Title".into(),
+            description: Some("A description".into()),
+            children: vec![],
+            footer: vec![],
+            trigger_label: None,
+        };
+        let html = render_modal(&props, &serde_json::Value::Null);
+        assert!(html.contains("A description"), "shows description");
     }
 }

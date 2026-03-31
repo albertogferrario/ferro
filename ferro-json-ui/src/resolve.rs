@@ -714,6 +714,7 @@ mod tests {
         let mut view = JsonUiView::new().component(ComponentNode {
             key: "modal".to_string(),
             component: Component::Modal(ModalProps {
+                id: "modal-confirm".to_string(),
                 title: "Confirm".to_string(),
                 description: None,
                 children: vec![ComponentNode {

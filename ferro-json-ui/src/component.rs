@@ -282,6 +282,7 @@ pub struct BadgeProps {
 // JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModalProps {
+    pub id: String,
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -1617,6 +1618,7 @@ mod tests {
     #[test]
     fn modal_component_round_trips() {
         let modal = Component::Modal(ModalProps {
+            id: "modal-confirm".to_string(),
             title: "Confirm".to_string(),
             description: None,
             children: vec![ComponentNode {
@@ -1787,6 +1789,7 @@ mod tests {
                 variant: BadgeVariant::Default,
             }),
             Component::Modal(ModalProps {
+                id: "modal-t".to_string(),
                 title: "t".to_string(),
                 description: None,
                 children: vec![],
@@ -2092,6 +2095,7 @@ mod tests {
     #[test]
     fn modal_with_footer_and_description() {
         let modal = Component::Modal(ModalProps {
+            id: "modal-delete-item".to_string(),
             title: "Delete Item".to_string(),
             description: Some("This action cannot be undone.".to_string()),
             children: vec![],
@@ -2679,7 +2683,7 @@ mod tests {
                 "Select" => r#"{"type":"Select","field":"f","label":"l","options":[]}"#,
                 "Alert" => r#"{"type":"Alert","message":"m"}"#,
                 "Badge" => r#"{"type":"Badge","label":"b"}"#,
-                "Modal" => r#"{"type":"Modal","title":"t"}"#,
+                "Modal" => r#"{"type":"Modal","id":"modal-t","title":"t"}"#,
                 "Text" => r#"{"type":"Text","content":"c"}"#,
                 "Checkbox" => r#"{"type":"Checkbox","field":"f","label":"l"}"#,
                 "Switch" => r#"{"type":"Switch","field":"f","label":"l"}"#,
