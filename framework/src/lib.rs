@@ -1,3 +1,11 @@
+//! Ferro — a full-stack web framework for Rust.
+//!
+//! Provides routing, database access, validation, authentication, queues,
+//! events, notifications, broadcasting, storage, caching, and Inertia.js
+//! integration in a single cohesive package.
+#![warn(missing_docs)]
+
+/// API key management and OpenAPI specification generation.
 pub mod api;
 pub mod app;
 pub mod auth;
@@ -11,6 +19,7 @@ pub mod database;
 pub mod debug;
 pub mod error;
 pub mod hashing;
+/// HTTP request, response, cookie, and resource types.
 pub mod http;
 #[cfg(feature = "inertia")]
 pub mod inertia;
@@ -19,9 +28,11 @@ pub mod json_ui;
 pub mod lang;
 pub mod metrics;
 pub mod middleware;
+/// Route definition and registration.
 pub mod routing;
 pub mod schedule;
 pub mod seeder;
+/// HTTP server builder and runner.
 pub mod server;
 pub mod session;
 pub(crate) mod static_files;
@@ -67,7 +78,7 @@ pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
 pub use ferro_json_ui::{
     resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all, Action,
     ActionOutcome, AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem,
-    BreadcrumbProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistItem,
+    BreadcrumbProps, ButtonProps, ButtonType, ButtonVariant, CardProps, CheckboxProps, ChecklistItem,
     ChecklistProps, Column, ColumnFormat, Component, ComponentNode, ConfirmDialog, DashboardLayout,
     DashboardLayoutConfig, DescriptionItem, DescriptionListProps, DialogVariant, FormProps,
     HeaderProps, HttpMethod, IconPosition, InputProps, InputType, JsonUiConfig, JsonUiView, Layout,
@@ -312,6 +323,17 @@ pub use testing::{
     TestDatabase, TestRequestBuilder, TestResponse,
 };
 
+/// Return a JSON response from a handler using `serde_json::json!` syntax.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ferro_rs::json_response;
+///
+/// pub async fn index() -> Response {
+///     json_response!({ "status": "ok" })
+/// }
+/// ```
 #[macro_export]
 macro_rules! json_response {
     ($($json:tt)+) => {
@@ -319,6 +341,17 @@ macro_rules! json_response {
     };
 }
 
+/// Return a plain-text response from a handler.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ferro_rs::text_response;
+///
+/// pub async fn ping() -> Response {
+///     text_response!("pong")
+/// }
+/// ```
 #[macro_export]
 macro_rules! text_response {
     ($text:expr) => {
