@@ -718,6 +718,44 @@ pub struct KanbanBoardProps {
     pub mobile_default_column: Option<String>,
 }
 
+/// Props for a calendar day cell.
+///
+/// Renders a single day in a month grid with today highlight,
+/// out-of-month muting, and event count indicator.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CalendarCellProps {
+    pub day: u8,
+    #[serde(default)]
+    pub is_today: bool,
+    #[serde(default)]
+    pub is_current_month: bool,
+    #[serde(default)]
+    pub event_count: u32,
+}
+
+/// Visual variant for action cards.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ActionCardVariant {
+    #[default]
+    Default,
+    Setup,
+    Danger,
+}
+
+/// Props for a horizontal action card with variant-colored left border.
+///
+/// Renders icon + title + description + chevron in a clickable row.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ActionCardProps {
+    pub title: String,
+    pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub variant: ActionCardVariant,
+}
+
 /// Props for a plugin component.
 ///
 /// The `plugin_type` field holds the original `"type"` value from JSON,
@@ -811,6 +849,8 @@ pub enum Component {
     ButtonGroup(ButtonGroupProps),
     DropdownMenu(DropdownMenuProps),
     KanbanBoard(KanbanBoardProps),
+    CalendarCell(CalendarCellProps),
+    ActionCard(ActionCardProps),
     Plugin(PluginProps),
 }
 
@@ -872,6 +912,8 @@ impl Serialize for Component {
             Component::ButtonGroup(p) => serialize_tagged(serializer, "ButtonGroup", p),
             Component::DropdownMenu(p) => serialize_tagged(serializer, "DropdownMenu", p),
             Component::KanbanBoard(p) => serialize_tagged(serializer, "KanbanBoard", p),
+            Component::CalendarCell(p) => serialize_tagged(serializer, "CalendarCell", p),
+            Component::ActionCard(p) => serialize_tagged(serializer, "ActionCard", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -989,6 +1031,12 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "KanbanBoard" => serde_json::from_value::<KanbanBoardProps>(value)
                 .map(Component::KanbanBoard)
+                .map_err(de::Error::custom),
+            "CalendarCell" => serde_json::from_value::<CalendarCellProps>(value)
+                .map(Component::CalendarCell)
+                .map_err(de::Error::custom),
+            "ActionCard" => serde_json::from_value::<ActionCardProps>(value)
+                .map(Component::ActionCard)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -1336,6 +1384,26 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::KanbanBoard(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a CalendarCell component node.
+    pub fn calendar_cell(key: impl Into<String>, props: CalendarCellProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::CalendarCell(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create an ActionCard component node.
+    pub fn action_card(key: impl Into<String>, props: ActionCardProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::ActionCard(props),
             action: None,
             visibility: None,
         }

@@ -11,11 +11,12 @@ use serde_json::Value;
 
 use crate::action::HttpMethod;
 use crate::component::{
-    AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbProps,
-    ButtonGroupProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistProps,
-    CollapsibleProps, Component, ComponentNode, DescriptionListProps, DropdownMenuProps,
-    EmptyStateProps, FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition,
-    InputProps, InputType, KanbanBoardProps, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
+    ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
+    BadgeVariant, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonVariant,
+    CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
+    ComponentNode, DescriptionListProps, DropdownMenuProps, EmptyStateProps, FormProps,
+    FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps, InputType,
+    KanbanBoardProps, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
     PaginationProps, PluginProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
     SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
     ToastProps, ToastVariant,
@@ -178,7 +179,9 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::Sidebar(_)
         | Component::Header(_)
         | Component::EmptyState(_)
-        | Component::DropdownMenu(_) => {}
+        | Component::DropdownMenu(_)
+        | Component::CalendarCell(_)
+        | Component::ActionCard(_) => {}
         Component::KanbanBoard(props) => {
             for col in &props.columns {
                 for child in &col.children {
@@ -309,12 +312,85 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::PageHeader(props) => render_page_header(props, data),
         Component::ButtonGroup(props) => render_button_group(props, data),
 
+        // Standalone leaf components.
+        Component::CalendarCell(props) => render_calendar_cell(props),
+        Component::ActionCard(props) => render_action_card(props),
+
         // Container components (responsive).
         Component::KanbanBoard(props) => render_kanban_board(props, data),
 
         // Plugin components (rendered via plugin registry).
         Component::Plugin(props) => render_plugin(props, data),
     }
+}
+
+// ── CalendarCell renderer ───────────────────────────────────────────────
+
+fn render_calendar_cell(props: &CalendarCellProps) -> String {
+    let mut html = String::from("<div class=\"flex flex-col items-center gap-1 p-1 rounded-md\">");
+
+    // Day number with conditional styling.
+    let day_classes = if props.is_today {
+        "w-8 h-8 flex items-center justify-center text-sm font-semibold bg-primary text-primary-foreground rounded-full"
+    } else if !props.is_current_month {
+        "w-8 h-8 flex items-center justify-center text-sm text-text-muted opacity-50 rounded-full"
+    } else {
+        "w-8 h-8 flex items-center justify-center text-sm text-text rounded-full"
+    };
+
+    html.push_str(&format!(
+        "<span class=\"{}\">{}</span>",
+        day_classes, props.day
+    ));
+
+    // Event indicator.
+    if props.event_count == 1 {
+        html.push_str("<span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>");
+    } else if props.event_count > 1 {
+        html.push_str(&format!(
+            "<span class=\"text-xs font-semibold text-primary\">{}</span>",
+            props.event_count
+        ));
+    }
+
+    html.push_str("</div>");
+    html
+}
+
+// ── ActionCard renderer ────────────────────────────────────────────────
+
+fn render_action_card(props: &ActionCardProps) -> String {
+    let border_class = match props.variant {
+        ActionCardVariant::Default => "border-l-primary",
+        ActionCardVariant::Setup => "border-l-warning",
+        ActionCardVariant::Danger => "border-l-destructive",
+    };
+
+    let mut html = format!(
+        "<div class=\"rounded-lg border-l-4 {} border border-border bg-card shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-surface transition-colors duration-150\">",
+        border_class
+    );
+
+    // Optional icon.
+    if let Some(ref icon) = props.icon {
+        html.push_str(&format!(
+            "<div class=\"w-10 h-10 flex-shrink-0 rounded-md bg-surface flex items-center justify-center text-text-muted\">{}</div>",
+            html_escape(icon)
+        ));
+    }
+
+    // Text block.
+    html.push_str(&format!(
+        "<div class=\"flex-1 min-w-0\"><p class=\"text-sm font-semibold text-text\">{}</p><p class=\"text-sm text-text-muted mt-0.5\">{}</p></div>",
+        html_escape(&props.title),
+        html_escape(&props.description)
+    ));
+
+    // Chevron.
+    html.push_str("<span class=\"text-text-muted flex-shrink-0 text-lg\">&rsaquo;</span>");
+
+    html.push_str("</div>");
+    html
 }
 
 // ── KanbanBoard renderer ────────────────────────────────────────────────
@@ -6703,5 +6779,101 @@ mod tests {
         // The "progress" tab should be selected, "new" should not
         // Check that the progress panel is NOT hidden
         assert!(!html.contains("data-tab-panel=\"progress\" class=\"space-y-3 hidden\""), "progress panel visible");
+    }
+
+    // ── CalendarCell tests ──────────────────────────────────────────────
+
+    #[test]
+    fn test_render_calendar_cell_today() {
+        let props = CalendarCellProps {
+            day: 15,
+            is_today: true,
+            is_current_month: true,
+            event_count: 0,
+        };
+        let html = render_calendar_cell(&props);
+        assert!(html.contains("bg-primary"), "today has bg-primary");
+        assert!(html.contains("text-primary-foreground"), "today has foreground color");
+        assert!(html.contains("font-semibold"), "today is bold");
+        assert!(html.contains("15"), "shows day number");
+    }
+
+    #[test]
+    fn test_render_calendar_cell_out_of_month() {
+        let props = CalendarCellProps {
+            day: 30,
+            is_today: false,
+            is_current_month: false,
+            event_count: 0,
+        };
+        let html = render_calendar_cell(&props);
+        assert!(html.contains("text-text-muted"), "out-of-month is muted");
+        assert!(html.contains("opacity-50"), "out-of-month has opacity");
+    }
+
+    #[test]
+    fn test_render_calendar_cell_events() {
+        let props = CalendarCellProps {
+            day: 5,
+            is_today: false,
+            is_current_month: true,
+            event_count: 3,
+        };
+        let html = render_calendar_cell(&props);
+        assert!(html.contains(">3</span>"), "shows event count");
+        assert!(html.contains("text-primary"), "count styled as primary");
+    }
+
+    #[test]
+    fn test_render_calendar_cell_single_event_dot() {
+        let props = CalendarCellProps {
+            day: 5,
+            is_today: false,
+            is_current_month: true,
+            event_count: 1,
+        };
+        let html = render_calendar_cell(&props);
+        assert!(html.contains("w-1.5 h-1.5 rounded-full bg-primary"), "single event shows dot");
+    }
+
+    // ── ActionCard tests ────────────────────────────────────────────────
+
+    #[test]
+    fn test_render_action_card_default() {
+        let props = ActionCardProps {
+            title: "Nuovo ordine".into(),
+            description: "Crea un ordine".into(),
+            icon: Some("📦".into()),
+            variant: ActionCardVariant::Default,
+        };
+        let html = render_action_card(&props);
+        assert!(html.contains("border-l-primary"), "default variant has primary border");
+        assert!(html.contains("Nuovo ordine"), "shows title");
+        assert!(html.contains("Crea un ordine"), "shows description");
+        assert!(html.contains("rsaquo"), "shows chevron");
+    }
+
+    #[test]
+    fn test_render_action_card_setup() {
+        let props = ActionCardProps {
+            title: "Configura".into(),
+            description: "Completa la configurazione".into(),
+            icon: None,
+            variant: ActionCardVariant::Setup,
+        };
+        let html = render_action_card(&props);
+        assert!(html.contains("border-l-warning"), "setup variant has warning border");
+    }
+
+    #[test]
+    fn test_render_action_card_danger() {
+        let props = ActionCardProps {
+            title: "Elimina".into(),
+            description: "Elimina questo elemento".into(),
+            icon: None,
+            variant: ActionCardVariant::Danger,
+        };
+        let html = render_action_card(&props);
+        assert!(html.contains("border-l-destructive"), "danger variant has destructive border");
     }
 }

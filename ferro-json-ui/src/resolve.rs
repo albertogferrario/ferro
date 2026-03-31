@@ -130,6 +130,8 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
         | Component::NotificationDropdown(_)
         | Component::Sidebar(_)
         | Component::Header(_)
+        | Component::CalendarCell(_)
+        | Component::ActionCard(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -290,6 +292,8 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         | Component::NotificationDropdown(_)
         | Component::Sidebar(_)
         | Component::Header(_)
+        | Component::CalendarCell(_)
+        | Component::ActionCard(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -430,6 +434,8 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::EmptyState(_)
         | Component::DropdownMenu(_)
         | Component::KanbanBoard(_)
+        | Component::CalendarCell(_)
+        | Component::ActionCard(_)
         | Component::Plugin(_) => {}
     }
 }
