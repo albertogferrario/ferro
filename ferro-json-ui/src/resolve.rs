@@ -92,6 +92,13 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
                 resolve_action(&mut item.action, resolver);
             }
         }
+        Component::KanbanBoard(props) => {
+            for col in &mut props.columns {
+                for child in &mut col.children {
+                    resolve_component_node(child, resolver);
+                }
+            }
+        }
         Component::EmptyState(props) => {
             if let Some(ref mut action) = props.action {
                 resolve_action(action, resolver);
@@ -244,6 +251,13 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         Component::DropdownMenu(props) => {
             for item in &props.items {
                 collect_unresolved_action(&item.action, unresolved);
+            }
+        }
+        Component::KanbanBoard(props) => {
+            for col in &props.columns {
+                for child in &col.children {
+                    collect_unresolved_node(child, unresolved);
+                }
             }
         }
         Component::EmptyState(props) => {
@@ -415,6 +429,7 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::Header(_)
         | Component::EmptyState(_)
         | Component::DropdownMenu(_)
+        | Component::KanbanBoard(_)
         | Component::Plugin(_) => {}
     }
 }

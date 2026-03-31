@@ -15,7 +15,7 @@ use crate::component::{
     ButtonGroupProps, ButtonProps, ButtonVariant, CardProps, CheckboxProps, ChecklistProps,
     CollapsibleProps, Component, ComponentNode, DescriptionListProps, DropdownMenuProps,
     EmptyStateProps, FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition,
-    InputProps, InputType, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
+    InputProps, InputType, KanbanBoardProps, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
     PaginationProps, PluginProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
     SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
     ToastProps, ToastVariant,
@@ -179,6 +179,13 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::Header(_)
         | Component::EmptyState(_)
         | Component::DropdownMenu(_) => {}
+        Component::KanbanBoard(props) => {
+            for col in &props.columns {
+                for child in &col.children {
+                    collect_plugin_types_node(child, types);
+                }
+            }
+        }
     }
 }
 
@@ -302,9 +309,19 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::PageHeader(props) => render_page_header(props, data),
         Component::ButtonGroup(props) => render_button_group(props, data),
 
+        // Container components (responsive).
+        Component::KanbanBoard(props) => render_kanban_board(props, data),
+
         // Plugin components (rendered via plugin registry).
         Component::Plugin(props) => render_plugin(props, data),
     }
+}
+
+// ── KanbanBoard renderer ────────────────────────────────────────────────
+
+fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
+    let _ = (props, data);
+    String::new()
 }
 
 // ── DropdownMenu renderer ───────────────────────────────────────────────

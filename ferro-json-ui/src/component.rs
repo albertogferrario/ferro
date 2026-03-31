@@ -698,6 +698,26 @@ pub struct DropdownMenuProps {
     pub trigger_variant: Option<ButtonVariant>,
 }
 
+/// Props for a single column in a KanbanBoard.
+// JsonSchema skipped: contains Vec<ComponentNode>
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct KanbanColumnProps {
+    pub id: String,
+    pub title: String,
+    pub count: u32,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<ComponentNode>,
+}
+
+/// Props for KanbanBoard component — horizontal scrollable columns on desktop, tab-based on mobile.
+// JsonSchema skipped: contains Vec<ComponentNode> (via KanbanColumnProps)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct KanbanBoardProps {
+    pub columns: Vec<KanbanColumnProps>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mobile_default_column: Option<String>,
+}
+
 /// Props for a plugin component.
 ///
 /// The `plugin_type` field holds the original `"type"` value from JSON,
@@ -790,6 +810,7 @@ pub enum Component {
     PageHeader(PageHeaderProps),
     ButtonGroup(ButtonGroupProps),
     DropdownMenu(DropdownMenuProps),
+    KanbanBoard(KanbanBoardProps),
     Plugin(PluginProps),
 }
 
@@ -850,6 +871,7 @@ impl Serialize for Component {
             Component::PageHeader(p) => serialize_tagged(serializer, "PageHeader", p),
             Component::ButtonGroup(p) => serialize_tagged(serializer, "ButtonGroup", p),
             Component::DropdownMenu(p) => serialize_tagged(serializer, "DropdownMenu", p),
+            Component::KanbanBoard(p) => serialize_tagged(serializer, "KanbanBoard", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -964,6 +986,9 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "DropdownMenu" => serde_json::from_value::<DropdownMenuProps>(value)
                 .map(Component::DropdownMenu)
+                .map_err(de::Error::custom),
+            "KanbanBoard" => serde_json::from_value::<KanbanBoardProps>(value)
+                .map(Component::KanbanBoard)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -1301,6 +1326,16 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::DropdownMenu(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a KanbanBoard component node.
+    pub fn kanban_board(key: impl Into<String>, props: KanbanBoardProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::KanbanBoard(props),
             action: None,
             visibility: None,
         }
