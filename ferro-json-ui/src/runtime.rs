@@ -37,6 +37,13 @@
 /// - `data-sidebar-backdrop` — Dark overlay shown behind sidebar on mobile; click to close.
 /// - `data-form-guard="number-gt-0"` — Form with number input guard. Submit disabled until
 ///   at least one number input > 0.
+/// - `data-modal-open="id"` — Button that opens the `<dialog id="id">` via `showModal()`.
+/// - `data-modal-close` — Button inside a `<dialog>` that closes it via `close()`.
+///
+/// # Query parameter behaviors
+///
+/// - `?toast={message}` — On page load, shows a success toast with the decoded message
+///   and removes the param from the URL via `history.replaceState`.
 pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
     'use strict';
 
@@ -423,6 +430,50 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         });
     }
 
+    // ── Modal dialog wiring ───────────────────────────────────────────────
+
+    function initModals() {
+        var openers = document.querySelectorAll('[data-modal-open]');
+        for (var i = 0; i < openers.length; i++) {
+            (function(btn) {
+                var id = btn.getAttribute('data-modal-open');
+                var dialog = document.getElementById(id);
+                if (!dialog) return;
+                btn.addEventListener('click', function() {
+                    dialog.showModal();
+                });
+                dialog.addEventListener('click', function(e) {
+                    var rect = dialog.getBoundingClientRect();
+                    var inDialog = (
+                        e.clientX >= rect.left && e.clientX <= rect.right &&
+                        e.clientY >= rect.top && e.clientY <= rect.bottom
+                    );
+                    if (!inDialog) { dialog.close(); }
+                });
+                var closeBtn = dialog.querySelector('[data-modal-close]');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        dialog.close();
+                    });
+                }
+            })(openers[i]);
+        }
+    }
+
+    // ── Toast from URL query param ────────────────────────────────────────
+
+    function initToastFromUrl() {
+        var params = new URLSearchParams(window.location.search);
+        var msg = params.get('toast');
+        if (!msg) return;
+        showToast({ message: msg, variant: 'success' });
+        params.delete('toast');
+        var newUrl = window.location.pathname +
+            (params.toString() ? '?' + params.toString() : '') +
+            window.location.hash;
+        history.replaceState(null, '', newUrl);
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────
 
     function init() {
@@ -437,6 +488,8 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         initSidebarToggle();
         initFormGuards();
         initProductTiles();
+        initModals();
+        initToastFromUrl();
     }
 
     document.addEventListener('DOMContentLoaded', init);
@@ -520,6 +573,42 @@ mod tests {
         assert!(
             !FERRO_RUNTIME_JS.contains("text-white"),
             "toast should not use hardcoded text-white"
+        );
+    }
+
+    #[test]
+    fn test_runtime_contains_init_modals() {
+        assert!(
+            FERRO_RUNTIME_JS.contains("initModals"),
+            "runtime JS must contain initModals function"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-modal-open"),
+            "initModals must query data-modal-open"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("showModal"),
+            "initModals must call showModal"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-modal-close"),
+            "initModals must handle close button"
+        );
+    }
+
+    #[test]
+    fn test_runtime_contains_toast_from_url() {
+        assert!(
+            FERRO_RUNTIME_JS.contains("initToastFromUrl"),
+            "runtime JS must contain initToastFromUrl function"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("URLSearchParams"),
+            "initToastFromUrl must use URLSearchParams"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("history.replaceState"),
+            "initToastFromUrl must clean URL after toast"
         );
     }
 }
