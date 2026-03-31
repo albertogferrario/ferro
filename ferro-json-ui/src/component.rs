@@ -698,6 +698,20 @@ pub struct DropdownMenuProps {
     pub trigger_variant: Option<ButtonVariant>,
 }
 
+/// Props for the DataTable component — Stripe-style alternating rows with DropdownMenu per row,
+/// mobile card fallback, and empty state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DataTableProps {
+    pub columns: Vec<Column>,
+    pub data_path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_actions: Option<Vec<DropdownMenuAction>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_key: Option<String>,
+}
+
 /// Props for a single column in a KanbanBoard.
 // JsonSchema skipped: contains Vec<ComponentNode>
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -866,6 +880,7 @@ pub enum Component {
     CalendarCell(CalendarCellProps),
     ActionCard(ActionCardProps),
     ProductTile(ProductTileProps),
+    DataTable(DataTableProps),
     Plugin(PluginProps),
 }
 
@@ -930,6 +945,7 @@ impl Serialize for Component {
             Component::CalendarCell(p) => serialize_tagged(serializer, "CalendarCell", p),
             Component::ActionCard(p) => serialize_tagged(serializer, "ActionCard", p),
             Component::ProductTile(p) => serialize_tagged(serializer, "ProductTile", p),
+            Component::DataTable(p) => serialize_tagged(serializer, "DataTable", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -1056,6 +1072,9 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "ProductTile" => serde_json::from_value::<ProductTileProps>(value)
                 .map(Component::ProductTile)
+                .map_err(de::Error::custom),
+            "DataTable" => serde_json::from_value::<DataTableProps>(value)
+                .map(Component::DataTable)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -1433,6 +1452,16 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::ProductTile(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a DataTable component node.
+    pub fn data_table(key: impl Into<String>, props: DataTableProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::DataTable(props),
             action: None,
             visibility: None,
         }

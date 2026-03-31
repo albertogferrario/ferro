@@ -109,6 +109,13 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
                 resolve_action(action, resolver);
             }
         }
+        Component::DataTable(props) => {
+            if let Some(ref mut actions) = props.row_actions {
+                for item in actions {
+                    resolve_action(&mut item.action, resolver);
+                }
+            }
+        }
         // Leaf components with no children or actions to resolve.
         Component::Button(_)
         | Component::Input(_)
@@ -271,6 +278,13 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         Component::Switch(props) => {
             if let Some(ref action) = props.action {
                 collect_unresolved_action(action, unresolved);
+            }
+        }
+        Component::DataTable(props) => {
+            if let Some(ref actions) = props.row_actions {
+                for item in actions {
+                    collect_unresolved_action(&item.action, unresolved);
+                }
             }
         }
         Component::Button(_)
@@ -439,6 +453,7 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::CalendarCell(_)
         | Component::ActionCard(_)
         | Component::ProductTile(_)
+        | Component::DataTable(_)
         | Component::Plugin(_) => {}
     }
 }

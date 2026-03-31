@@ -14,7 +14,7 @@ use crate::component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonVariant,
     CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
-    ComponentNode, DescriptionListProps, DropdownMenuProps, EmptyStateProps, FormProps,
+    ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps, FormProps,
     FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps, InputType,
     KanbanBoardProps, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
     PaginationProps, PluginProps, ProductTileProps, ProgressProps, SelectProps, SeparatorProps,
@@ -183,7 +183,8 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::DropdownMenu(_)
         | Component::CalendarCell(_)
         | Component::ActionCard(_)
-        | Component::ProductTile(_) => {}
+        | Component::ProductTile(_)
+        | Component::DataTable(_) => {}
         Component::KanbanBoard(props) => {
             for col in &props.columns {
                 for child in &col.children {
@@ -318,6 +319,7 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::CalendarCell(props) => render_calendar_cell(props),
         Component::ActionCard(props) => render_action_card(props),
         Component::ProductTile(props) => render_product_tile(props),
+        Component::DataTable(props) => render_data_table(props, data),
 
         // Container components (responsive).
         Component::KanbanBoard(props) => render_kanban_board(props, data),
@@ -979,6 +981,155 @@ fn render_table(props: &TableProps, data: &Value) -> String {
     }
 
     html.push_str("</tbody></table></div>");
+    html
+}
+
+fn render_data_table(props: &DataTableProps, data: &Value) -> String {
+    let rows = resolve_path(data, &props.data_path);
+    let row_array = rows.and_then(|v| v.as_array().cloned());
+    let items = row_array.unwrap_or_default();
+    let has_actions = props.row_actions.is_some();
+    let col_count = props.columns.len() + if has_actions { 1 } else { 0 };
+    let empty_msg = props
+        .empty_message
+        .as_deref()
+        .unwrap_or("Nessun elemento trovato");
+
+    let mut html = String::new();
+
+    // --- Desktop table (hidden on mobile) ---
+    html.push_str("<div class=\"hidden md:block rounded-lg border border-border overflow-hidden\">");
+
+    if items.is_empty() {
+        html.push_str("<table class=\"w-full\"><tbody>");
+        html.push_str(&format!(
+            "<tr><td colspan=\"{}\" class=\"px-6 py-8 text-center text-sm text-text-muted\">{}</td></tr>",
+            col_count,
+            html_escape(empty_msg)
+        ));
+        html.push_str("</tbody></table>");
+    } else {
+        html.push_str("<table class=\"w-full\">");
+
+        // Header
+        html.push_str("<thead><tr class=\"bg-surface\">");
+        for col in &props.columns {
+            html.push_str(&format!(
+                "<th class=\"px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-text-muted\">{}</th>",
+                html_escape(&col.label)
+            ));
+        }
+        if has_actions {
+            html.push_str(
+                "<th class=\"px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-text-muted\">Azioni</th>"
+            );
+        }
+        html.push_str("</tr></thead>");
+
+        // Body
+        html.push_str("<tbody>");
+        for (index, row) in items.iter().enumerate() {
+            html.push_str(
+                "<tr class=\"even:bg-surface hover:bg-surface/80 transition-colors duration-150 border-t border-border\">"
+            );
+            for col in &props.columns {
+                let cell_value = row.get(&col.key);
+                let cell_text = match cell_value {
+                    Some(Value::String(s)) => s.clone(),
+                    Some(Value::Number(n)) => n.to_string(),
+                    Some(Value::Bool(b)) => b.to_string(),
+                    Some(Value::Null) | None => String::new(),
+                    Some(v @ Value::Array(_)) | Some(v @ Value::Object(_)) => {
+                        serde_json::to_string(v).unwrap_or_default()
+                    }
+                };
+                html.push_str(&format!(
+                    "<td class=\"px-6 py-4 text-sm text-text\">{}</td>",
+                    html_escape(&cell_text)
+                ));
+            }
+            if let Some(ref actions) = props.row_actions {
+                let row_key_value = if let Some(ref rk) = props.row_key {
+                    row.get(rk)
+                        .and_then(|v| match v {
+                            Value::String(s) => Some(s.clone()),
+                            Value::Number(n) => Some(n.to_string()),
+                            _ => None,
+                        })
+                        .unwrap_or_else(|| index.to_string())
+                } else {
+                    index.to_string()
+                };
+                let dropdown_props = DropdownMenuProps {
+                    menu_id: format!("dt-{}", row_key_value),
+                    trigger_label: "\u{22EE}".to_string(),
+                    items: actions.clone(),
+                    trigger_variant: None,
+                };
+                html.push_str("<td class=\"px-6 py-4 text-right\">");
+                html.push_str(&render_dropdown_menu(&dropdown_props));
+                html.push_str("</td>");
+            }
+            html.push_str("</tr>");
+        }
+        html.push_str("</tbody></table>");
+    }
+    html.push_str("</div>");
+
+    // --- Mobile cards (visible on mobile) ---
+    html.push_str("<div class=\"block md:hidden space-y-3\">");
+    if items.is_empty() {
+        html.push_str(&format!(
+            "<div class=\"text-center text-sm text-text-muted py-8\">{}</div>",
+            html_escape(empty_msg)
+        ));
+    } else {
+        for (index, row) in items.iter().enumerate() {
+            html.push_str("<div class=\"rounded-lg border border-border bg-card p-4 space-y-2\">");
+            for col in &props.columns {
+                let cell_value = row.get(&col.key);
+                let cell_text = match cell_value {
+                    Some(Value::String(s)) => s.clone(),
+                    Some(Value::Number(n)) => n.to_string(),
+                    Some(Value::Bool(b)) => b.to_string(),
+                    Some(Value::Null) | None => String::new(),
+                    Some(v @ Value::Array(_)) | Some(v @ Value::Object(_)) => {
+                        serde_json::to_string(v).unwrap_or_default()
+                    }
+                };
+                html.push_str(&format!(
+                    "<div class=\"flex justify-between\"><span class=\"text-xs font-semibold text-text-muted uppercase\">{}</span><span class=\"text-sm text-text\">{}</span></div>",
+                    html_escape(&col.label),
+                    html_escape(&cell_text)
+                ));
+            }
+            if let Some(ref actions) = props.row_actions {
+                let row_key_value = if let Some(ref rk) = props.row_key {
+                    row.get(rk)
+                        .and_then(|v| match v {
+                            Value::String(s) => Some(s.clone()),
+                            Value::Number(n) => Some(n.to_string()),
+                            _ => None,
+                        })
+                        .unwrap_or_else(|| index.to_string())
+                } else {
+                    index.to_string()
+                };
+                let dropdown_props = DropdownMenuProps {
+                    menu_id: format!("dt-m-{}", row_key_value),
+                    trigger_label: "\u{22EE}".to_string(),
+                    items: actions.clone(),
+                    trigger_variant: None,
+                };
+                html.push_str("<div class=\"pt-2 border-t border-border flex justify-end\">");
+                html.push_str(&render_dropdown_menu(&dropdown_props));
+                html.push_str("</div>");
+            }
+            html.push_str("</div>");
+        }
+    }
+    html.push_str("</div>");
+
     html
 }
 
@@ -6946,5 +7097,118 @@ mod tests {
         let html = render_product_tile(&props);
         assert!(html.contains("value=\"2\""), "default quantity is 2");
         assert!(html.contains(">2<"), "display shows 2");
+    }
+
+    #[test]
+    fn test_render_data_table_rows() {
+        let props = DataTableProps {
+            columns: vec![
+                Column { key: "name".into(), label: "Nome".into(), format: None },
+                Column { key: "price".into(), label: "Prezzo".into(), format: None },
+            ],
+            data_path: "items".into(),
+            row_actions: None,
+            empty_message: None,
+            row_key: None,
+        };
+        let data = json!({
+            "items": [
+                {"name": "Margherita", "price": "8.50"},
+                {"name": "Diavola", "price": "10.00"}
+            ]
+        });
+        let html = render_data_table(&props, &data);
+        assert!(html.contains("hidden md:block"), "desktop wrapper");
+        assert!(html.contains("even:bg-surface"), "alternating rows");
+        assert!(html.contains("block md:hidden"), "mobile wrapper");
+        assert!(html.contains("uppercase"), "column header style");
+        assert!(html.contains("Margherita"), "first row value");
+        assert!(html.contains("Diavola"), "second row value");
+    }
+
+    #[test]
+    fn test_render_data_table_with_actions() {
+        let props = DataTableProps {
+            columns: vec![
+                Column { key: "name".into(), label: "Nome".into(), format: None },
+            ],
+            data_path: "items".into(),
+            row_actions: Some(vec![
+                DropdownMenuAction {
+                    label: "Modifica".into(),
+                    action: Action {
+                        handler: "edit".into(),
+                        method: HttpMethod::Get,
+                        url: Some("/edit".into()),
+                        confirm: None,
+                        on_success: None,
+                        on_error: None,
+                    },
+                    destructive: false,
+                },
+                DropdownMenuAction {
+                    label: "Elimina".into(),
+                    action: Action {
+                        handler: "delete".into(),
+                        method: HttpMethod::Delete,
+                        url: Some("/delete".into()),
+                        confirm: None,
+                        on_success: None,
+                        on_error: None,
+                    },
+                    destructive: true,
+                },
+            ]),
+            empty_message: None,
+            row_key: Some("id".into()),
+        };
+        let data = json!({
+            "items": [{"id": "p1", "name": "Margherita"}]
+        });
+        let html = render_data_table(&props, &data);
+        assert!(html.contains("data-dropdown-toggle"), "DropdownMenu trigger present");
+        assert!(html.contains("text-destructive"), "destructive action in menu");
+    }
+
+    #[test]
+    fn test_render_data_table_empty() {
+        let props = DataTableProps {
+            columns: vec![
+                Column { key: "name".into(), label: "Nome".into(), format: None },
+            ],
+            data_path: "items".into(),
+            row_actions: None,
+            empty_message: None,
+            row_key: None,
+        };
+        let data = json!({"items": []});
+        let html = render_data_table(&props, &data);
+        assert!(html.contains("Nessun elemento trovato"), "default empty message");
+    }
+
+    #[test]
+    fn test_render_data_table_mobile_cards() {
+        let props = DataTableProps {
+            columns: vec![
+                Column { key: "name".into(), label: "Nome".into(), format: None },
+                Column { key: "price".into(), label: "Prezzo".into(), format: None },
+            ],
+            data_path: "items".into(),
+            row_actions: None,
+            empty_message: None,
+            row_key: None,
+        };
+        let data = json!({
+            "items": [
+                {"name": "Margherita", "price": "8.50"},
+                {"name": "Diavola", "price": "10.00"}
+            ]
+        });
+        let html = render_data_table(&props, &data);
+        assert!(html.contains("block md:hidden"), "mobile cards shown");
+        assert!(
+            html.contains("text-xs font-semibold text-text-muted uppercase"),
+            "label styling"
+        );
     }
 }
