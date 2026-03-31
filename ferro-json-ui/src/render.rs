@@ -320,8 +320,85 @@ fn render_component(component: &Component, data: &Value) -> String {
 // ── KanbanBoard renderer ────────────────────────────────────────────────
 
 fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
-    let _ = (props, data);
-    String::new()
+    if props.columns.is_empty() {
+        return String::new();
+    }
+
+    let default_id = props
+        .mobile_default_column
+        .as_deref()
+        .unwrap_or_else(|| &props.columns[0].id);
+
+    let mut html = String::new();
+
+    // ── Desktop view: horizontal scrollable columns ──────────────────
+    html.push_str("<div class=\"hidden md:block overflow-x-auto\">");
+    html.push_str("<div class=\"flex gap-6\" style=\"min-width: min-content;\">");
+
+    for col in &props.columns {
+        html.push_str("<div class=\"min-w-[280px] flex-shrink-0 rounded-lg border border-border bg-card p-4\">");
+        html.push_str("<div class=\"flex items-center justify-between mb-4\">");
+        html.push_str(&format!(
+            "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
+            html_escape(&col.title),
+        ));
+        html.push_str(&format!(
+            "<span class=\"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-primary text-primary-foreground\">{}</span>",
+            col.count,
+        ));
+        html.push_str("</div>");
+        html.push_str("<div class=\"space-y-3\">");
+        for child in &col.children {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div>");
+        html.push_str("</div>");
+    }
+
+    html.push_str("</div>");
+    html.push_str("</div>");
+
+    // ── Mobile view: tab-based column switching ──────────────────────
+    html.push_str("<div class=\"block md:hidden\" data-tabs>");
+    html.push_str("<div class=\"flex border-b border-border mb-4\">");
+
+    for col in &props.columns {
+        let is_default = col.id == default_id;
+        let (border, text) = if is_default {
+            ("border-primary", "text-primary font-semibold")
+        } else {
+            ("border-transparent", "text-text-muted hover:text-text")
+        };
+        html.push_str(&format!(
+            "<button type=\"button\" data-tab=\"{}\" class=\"flex-1 px-3 py-2 text-sm border-b-2 {} {}\" aria-selected=\"{}\">{} <span class=\"ml-1 text-xs text-text-muted\">({})</span></button>",
+            html_escape(&col.id),
+            border,
+            text,
+            is_default,
+            html_escape(&col.title),
+            col.count,
+        ));
+    }
+
+    html.push_str("</div>");
+
+    for col in &props.columns {
+        let is_default = col.id == default_id;
+        let hidden = if is_default { "" } else { " hidden" };
+        html.push_str(&format!(
+            "<div data-tab-panel=\"{}\" class=\"{}\">",
+            html_escape(&col.id),
+            format!("space-y-3{hidden}"),
+        ));
+        for child in &col.children {
+            html.push_str(&render_node(child, data));
+        }
+        html.push_str("</div>");
+    }
+
+    html.push_str("</div>");
+
+    html
 }
 
 // ── DropdownMenu renderer ───────────────────────────────────────────────
@@ -6539,5 +6616,92 @@ mod tests {
         assert!(html.contains("data-confirm-title=\"Conferma eliminazione\""), "confirm title attribute");
         assert!(html.contains("data-confirm-message=\"Sei sicuro?\""), "confirm message attribute");
         assert!(html.contains("data-confirm"), "has data-confirm attribute");
+    }
+
+    // ── KanbanBoard tests ───────────────────────────────────────────────
+
+    fn make_kanban_props() -> KanbanBoardProps {
+        use crate::component::{KanbanBoardProps, KanbanColumnProps, CardProps};
+
+        KanbanBoardProps {
+            columns: vec![
+                KanbanColumnProps {
+                    id: "new".to_string(),
+                    title: "Nuovi".to_string(),
+                    count: 3,
+                    children: vec![ComponentNode::card(
+                        "card-1",
+                        CardProps {
+                            title: "Ordine #1".to_string(),
+                            description: None,
+                            children: vec![],
+                            footer: vec![],
+                        },
+                    )],
+                },
+                KanbanColumnProps {
+                    id: "progress".to_string(),
+                    title: "In corso".to_string(),
+                    count: 1,
+                    children: vec![ComponentNode::card(
+                        "card-2",
+                        CardProps {
+                            title: "Ordine #2".to_string(),
+                            description: None,
+                            children: vec![],
+                            footer: vec![],
+                        },
+                    )],
+                },
+            ],
+            mobile_default_column: None,
+        }
+    }
+
+    #[test]
+    fn test_render_kanban_board_desktop() {
+        let props = make_kanban_props();
+        let view = JsonUiView::new().component(ComponentNode::kanban_board("kb", props));
+        let html = render_to_html(&view, &json!({}));
+
+        assert!(html.contains("hidden md:block"), "desktop wrapper present");
+        assert!(html.contains("min-w-[280px]"), "column min width");
+        assert!(html.contains("overflow-x-auto"), "scrollable container");
+        assert!(html.contains("Nuovi"), "first column title");
+        assert!(html.contains("In corso"), "second column title");
+        assert!(html.contains("bg-primary text-primary-foreground"), "count badge styling");
+        assert!(html.contains(">3<"), "first column count");
+        assert!(html.contains(">1<"), "second column count");
+    }
+
+    #[test]
+    fn test_render_kanban_board_mobile() {
+        let props = make_kanban_props();
+        let view = JsonUiView::new().component(ComponentNode::kanban_board("kb", props));
+        let html = render_to_html(&view, &json!({}));
+
+        assert!(html.contains("block md:hidden"), "mobile wrapper present");
+        assert!(html.contains("data-tabs"), "tab container attribute");
+        assert!(html.contains("data-tab=\"new\""), "first tab button");
+        assert!(html.contains("data-tab=\"progress\""), "second tab button");
+        assert!(html.contains("data-tab-panel=\"new\""), "first tab panel");
+        assert!(html.contains("data-tab-panel=\"progress\""), "second tab panel");
+        // Default tab (first) is active
+        assert!(html.contains("aria-selected=\"true\""), "default tab selected");
+        assert!(html.contains("aria-selected=\"false\""), "non-default tab not selected");
+    }
+
+    #[test]
+    fn test_render_kanban_board_custom_default_column() {
+        use crate::component::KanbanBoardProps;
+
+        let mut props = make_kanban_props();
+        props.mobile_default_column = Some("progress".to_string());
+        let view = JsonUiView::new().component(ComponentNode::kanban_board("kb", props));
+        let html = render_to_html(&view, &json!({}));
+
+        // The "progress" tab should be selected, "new" should not
+        // Check that the progress panel is NOT hidden
+        assert!(!html.contains("data-tab-panel=\"progress\" class=\"space-y-3 hidden\""), "progress panel visible");
     }
 }
