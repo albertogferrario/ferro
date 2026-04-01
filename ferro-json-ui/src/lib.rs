@@ -58,7 +58,7 @@ pub use component::{
     BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType, ButtonVariant, CardProps, CheckboxProps,
     ChecklistItem, ChecklistProps, CollapsibleProps, Column, ColumnFormat, Component,
     ComponentNode, DataTableProps, DescriptionItem, DescriptionListProps, DropdownMenuAction,
-    DropdownMenuProps, EmptyStateProps, FormProps, FormSectionProps, GapSize, GridProps,
+    DropdownMenuProps, EmptyStateProps, FormMaxWidth, FormProps, FormSectionProps, GapSize, GridProps,
     HeaderProps, IconPosition, InputProps, InputType, KanbanBoardProps, KanbanColumnProps,
     ModalProps,
     NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps, PaginationProps,

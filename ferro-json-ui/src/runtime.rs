@@ -327,7 +327,29 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         var guardType = form.getAttribute('data-form-guard');
         if (guardType === 'number-gt-0') {
             initNumberGuard(form);
+        } else if (guardType && guardType.indexOf('text-equals:') === 0) {
+            var expected = guardType.slice('text-equals:'.length);
+            initTextEqualsGuard(form, expected);
         }
+    }
+
+    function initTextEqualsGuard(form, expected) {
+        var input = form.querySelector('input[type="text"]');
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (!input || !submitBtn) return;
+
+        function check() {
+            if (input.value === expected) {
+                submitBtn.removeAttribute('disabled');
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                submitBtn.setAttribute('disabled', 'disabled');
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        check();
+        input.addEventListener('input', check);
     }
 
     function initNumberGuard(form) {
