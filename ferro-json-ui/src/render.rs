@@ -736,6 +736,17 @@ fn render_card(props: &CardProps, data: &Value) -> String {
         html.push_str("</div>");
     }
     html.push_str("</div>"); // close outer card
+
+    match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
+        FormMaxWidth::Default => {}
+        FormMaxWidth::Narrow => {
+            html = format!("<div class=\"max-w-2xl mx-auto\">{}</div>", html);
+        }
+        FormMaxWidth::Wide => {
+            html = format!("<div class=\"max-w-4xl mx-auto\">{}</div>", html);
+        }
+    }
+
     html
 }
 
@@ -3569,6 +3580,7 @@ mod tests {
                 description: Some("A description".to_string()),
                 children: vec![],
                 footer: vec![],
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -3589,6 +3601,7 @@ mod tests {
                 description: None,
                 children: vec![text_node("t", "Child content", TextElement::P)],
                 footer: vec![],
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -3671,6 +3684,7 @@ mod tests {
                 description: None,
                 children: vec![],
                 footer: vec![],
+                max_width: None,
                 trigger_label: None,
             }),
             action: None,
@@ -4534,6 +4548,7 @@ mod tests {
                     visibility: None,
                 }],
                 footer: vec![],
+                max_width: None,
             }),
             action: None,
             visibility: None,
@@ -5238,6 +5253,7 @@ mod tests {
                     visibility: None,
                 }],
                 footer: vec![],
+                max_width: None,
             },
         );
         let outer_card = ComponentNode::card(
@@ -5247,6 +5263,7 @@ mod tests {
                 description: None,
                 children: vec![inner_card],
                 footer: vec![],
+                max_width: None,
             },
         );
         let view = JsonUiView::new().component(outer_card);
@@ -6014,6 +6031,7 @@ mod tests {
                     description: Some("Card description".to_string()),
                     children: vec![],
                     footer: vec![],
+                max_width: None,
                 }),
                 action: None,
                 visibility: None,
@@ -7042,6 +7060,7 @@ mod tests {
                             description: None,
                             children: vec![],
                             footer: vec![],
+                max_width: None,
                         },
                     )],
                 },
@@ -7056,6 +7075,7 @@ mod tests {
                             description: None,
                             children: vec![],
                             footer: vec![],
+                max_width: None,
                         },
                     )],
                 },
@@ -7373,6 +7393,7 @@ mod tests {
             description: None,
             children: vec![],
             footer: vec![],
+                max_width: None,
             trigger_label: Some("Open".into()),
         };
         let html = render_modal(&props, &serde_json::Value::Null);
@@ -7400,6 +7421,7 @@ mod tests {
             description: Some("A description".into()),
             children: vec![],
             footer: vec![],
+                max_width: None,
             trigger_label: None,
         };
         let html = render_modal(&props, &serde_json::Value::Null);

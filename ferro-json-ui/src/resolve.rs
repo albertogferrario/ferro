@@ -1075,6 +1075,7 @@ mod tests {
                 description: None,
                 children: vec![make_input_node("name-input", "name")],
                 footer: vec![],
+                max_width: None,
             }),
             action: None,
             visibility: None,

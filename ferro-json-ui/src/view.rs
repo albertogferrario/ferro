@@ -144,6 +144,7 @@ mod tests {
                     description: None,
                     children: vec![],
                     footer: vec![],
+                max_width: None,
                 }),
                 action: None,
                 visibility: None,

@@ -153,6 +153,8 @@ pub struct CardProps {
     pub children: Vec<ComponentNode>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub footer: Vec<ComponentNode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_width: Option<FormMaxWidth>,
 }
 
 /// Props for Table component.
@@ -1534,6 +1536,7 @@ mod tests {
             description: Some("A description".to_string()),
             children: vec![],
             footer: vec![],
+                max_width: None,
         });
         let json = serde_json::to_value(&card).unwrap();
         assert_eq!(json["type"], "Card");
@@ -1671,6 +1674,7 @@ mod tests {
                 visibility: None,
             }],
             footer: vec![],
+                max_width: None,
             trigger_label: Some("Open".to_string()),
         });
         let json = serde_json::to_string(&modal).unwrap();
@@ -1764,6 +1768,7 @@ mod tests {
                 description: None,
                 children: vec![],
                 footer: vec![],
+                max_width: None,
             }),
             Component::Table(TableProps {
                 columns: vec![],
@@ -1838,6 +1843,7 @@ mod tests {
                 description: None,
                 children: vec![],
                 footer: vec![],
+                max_width: None,
                 trigger_label: None,
             }),
             Component::Text(TextProps {
