@@ -397,8 +397,7 @@ fn render_action_card(props: &ActionCardProps) -> String {
     // Optional icon.
     if let Some(ref icon) = props.icon {
         html.push_str(&format!(
-            "<div class=\"w-10 h-10 flex-shrink-0 rounded-md bg-surface flex items-center justify-center text-text-muted\">{}</div>",
-            html_escape(icon)
+            "<div class=\"w-10 h-10 flex-shrink-0 rounded-md bg-surface flex items-center justify-center text-text-muted\">{icon}</div>",
         ));
     }
 
@@ -2143,7 +2142,7 @@ fn render_stat_card(props: &StatCardProps) -> String {
     let mut html =
         String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
     if let Some(ref icon) = props.icon {
-        html.push_str(&format!("<span class=\"inline-block mb-2\">{icon}</span>"));
+        html.push_str(&format!("<span class=\"inline-block mb-2 w-6 h-6\">{icon}</span>"));
         // raw
     }
     html.push_str(&format!(

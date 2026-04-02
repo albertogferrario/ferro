@@ -77,7 +77,8 @@ pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
 #[cfg(feature = "json-ui")]
 pub use ferro_json_ui::{
     resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all, Action,
-    ActionOutcome, AlertProps, AlertVariant, AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem,
+    ActionCardProps, ActionCardVariant, ActionOutcome, AlertProps, AlertVariant, AvatarProps,
+    BadgeProps, BadgeVariant, BreadcrumbItem,
     BreadcrumbProps, ButtonProps, ButtonType, ButtonVariant, CardProps, CheckboxProps, ChecklistItem,
     ChecklistProps, Column, ColumnFormat, Component, ComponentNode, ConfirmDialog, DashboardLayout,
     DashboardLayoutConfig, DescriptionItem, DescriptionListProps, DialogVariant, FormProps,
