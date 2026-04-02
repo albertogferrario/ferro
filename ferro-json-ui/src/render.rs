@@ -2128,7 +2128,7 @@ fn render_form_section(props: &FormSectionProps, data: &Value) -> String {
                 html_escape(desc)
             ));
         }
-        html.push_str("<div>");
+        html.push_str("<div class=\"space-y-4\">");
         for child in &props.children {
             html.push_str(&render_node(child, data));
         }
