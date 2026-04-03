@@ -458,12 +458,12 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
     let mut html = String::new();
 
     // ── Desktop view: horizontal scrollable columns ──────────────────
-    html.push_str("<div class=\"hidden md:block overflow-x-auto\">");
-    html.push_str("<div class=\"flex gap-6\" style=\"min-width: min-content;\">");
+    html.push_str("<div class=\"hidden md:block\">");
+    html.push_str("<div class=\"flex gap-4\" style=\"min-width: min-content;\">");
 
     for col in &props.columns {
-        html.push_str("<div class=\"min-w-[280px] flex-shrink-0 rounded-lg border border-border bg-card p-4\">");
-        html.push_str("<div class=\"flex items-center justify-between mb-4\">");
+        html.push_str("<div class=\"min-w-[260px] flex-1 flex-shrink-0 rounded-lg border border-border bg-card/50 p-3\">");
+        html.push_str("<div class=\"flex items-center justify-between mb-3\">");
         html.push_str(&format!(
             "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
             html_escape(&col.title),
@@ -473,7 +473,7 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
             col.count,
         ));
         html.push_str("</div>");
-        html.push_str("<div class=\"space-y-3\">");
+        html.push_str("<div class=\"space-y-2\">");
         for child in &col.children {
             html.push_str(&render_node(child, data));
         }
@@ -532,7 +532,8 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
 fn render_dropdown_menu(props: &DropdownMenuProps) -> String {
     let mut html = String::from("<div class=\"relative\">");
 
-    // Trigger button
+    // Trigger button — kebab icon (⋮) with label as aria-label for accessibility
+    let trigger_icon = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"5\" r=\"1\"/><circle cx=\"12\" cy=\"12\" r=\"1\"/><circle cx=\"12\" cy=\"19\" r=\"1\"/></svg>";
     html.push_str(&format!(
         "<button type=\"button\" data-dropdown-toggle=\"{}\" aria-label=\"{}\" \
          class=\"inline-flex items-center justify-center rounded-md p-1.5 \
@@ -541,7 +542,7 @@ fn render_dropdown_menu(props: &DropdownMenuProps) -> String {
          focus-visible:ring-offset-2\">{}</button>",
         html_escape(&props.menu_id),
         html_escape(&props.trigger_label),
-        html_escape(&props.trigger_label),
+        trigger_icon,
     ));
 
     // Panel (hidden by default)
@@ -705,10 +706,10 @@ fn render_button_group(props: &ButtonGroupProps, data: &Value) -> String {
 
 fn render_card(props: &CardProps, data: &Value) -> String {
     let mut html = String::from(
-        "<div class=\"rounded-lg border border-border bg-card shadow-sm\"><div class=\"p-6\">",
+        "<div class=\"rounded-lg border border-border bg-card shadow-sm overflow-visible\"><div class=\"p-4\">",
     );
     html.push_str(&format!(
-        "<h3 class=\"text-lg font-semibold leading-snug text-text\">{}</h3>",
+        "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
         html_escape(&props.title)
     ));
     if let Some(ref desc) = props.description {
@@ -719,7 +720,7 @@ fn render_card(props: &CardProps, data: &Value) -> String {
     }
     if !props.children.is_empty() {
         html.push_str(
-            "<div class=\"mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            "<div class=\"mt-3 flex flex-wrap gap-3 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto overflow-visible\">",
         );
         for child in &props.children {
             html.push_str(&render_node(child, data));
