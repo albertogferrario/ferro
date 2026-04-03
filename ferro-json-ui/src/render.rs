@@ -468,8 +468,14 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
             "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
             html_escape(&col.title),
         ));
+        let badge_class = if col.count > 0 {
+            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-primary text-primary-foreground"
+        } else {
+            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-text-muted bg-surface"
+        };
         html.push_str(&format!(
-            "<span class=\"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-primary text-primary-foreground\">{}</span>",
+            "<span class=\"{}\">{}</span>",
+            badge_class,
             col.count,
         ));
         html.push_str("</div>");
