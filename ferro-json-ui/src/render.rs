@@ -481,7 +481,9 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
         html.push_str("</div>");
         html.push_str("<div class=\"space-y-2\">");
         for child in &col.children {
+            html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
             html.push_str(&render_node(child, data));
+            html.push_str("</div>");
         }
         html.push_str("</div>");
         html.push_str("</div>");
@@ -523,7 +525,9 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
             format!("space-y-3{hidden}"),
         ));
         for child in &col.children {
+            html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
             html.push_str(&render_node(child, data));
+            html.push_str("</div>");
         }
         html.push_str("</div>");
     }

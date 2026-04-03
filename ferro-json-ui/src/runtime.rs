@@ -498,6 +498,53 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
 
     // ── Init ──────────────────────────────────────────────────────────────
 
+    // ── Kanban card click-to-open-menu ─────────────────────────────────
+
+    function initKanbanCards() {
+        var cards = document.querySelectorAll('[data-kanban-card]');
+        for (var i = 0; i < cards.length; i++) {
+            initKanbanCard(cards[i]);
+        }
+    }
+
+    function initKanbanCard(wrapper) {
+        // Hide the kebab trigger button inside kanban cards
+        var trigger = wrapper.querySelector('[data-dropdown-toggle]');
+        if (trigger) {
+            trigger.style.display = 'none';
+        }
+
+        // Reposition dropdown panel: overlay centered on the card
+        var panel = wrapper.querySelector('[data-dropdown]');
+        if (panel) {
+            panel.style.cssText = 'position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:50; min-width:12rem;';
+            wrapper.style.position = 'relative';
+        }
+
+        // Click anywhere on the card toggles the dropdown
+        wrapper.addEventListener('click', function(e) {
+            if (!panel) return;
+
+            // If clicking a link/button/form inside the open panel, let it through
+            if (!panel.classList.contains('hidden') && panel.contains(e.target)) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close ALL open dropdowns first (including this one if open)
+            var allMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
+            var wasOpen = !panel.classList.contains('hidden');
+            for (var m = 0; m < allMenus.length; m++) {
+                allMenus[m].classList.add('hidden');
+            }
+
+            // Toggle: if it was closed, open it; if it was open, leave it closed
+            if (!wasOpen) {
+                panel.classList.remove('hidden');
+            }
+        });
+    }
+
     function init() {
         var sseUrl = document.body && document.body.getAttribute('data-sse-url');
         if (sseUrl) {
@@ -507,6 +554,7 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         initDismissibles();
         initNotificationToggle();
         initDropdowns();
+        initKanbanCards();
         initSidebarToggle();
         initFormGuards();
         initProductTiles();
