@@ -387,24 +387,37 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         for (var i = 0; i < toggles.length; i++) {
             initDropdownToggle(toggles[i]);
         }
-        // Global click-outside: close all open dropdowns
+        // Global click-outside: close all open dropdowns (both regular and kanban fixed)
         document.addEventListener('click', function(e) {
             var openMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
             for (var j = 0; j < openMenus.length; j++) {
                 var menu = openMenus[j];
+                if (menu._kanbanFixed) continue; // kanban menus handled by their own click handler
                 var toggleId = menu.getAttribute('data-dropdown');
                 var toggle = document.querySelector('[data-dropdown-toggle="' + toggleId + '"]');
                 if (!menu.contains(e.target) && e.target !== toggle) {
                     menu.classList.add('hidden');
                 }
             }
+            // Close kanban fixed menus when clicking outside any kanban card
+            var kanbanCard = e.target.closest('[data-kanban-card]');
+            if (!kanbanCard) {
+                var kanbanPanels = document.querySelectorAll('[data-kanban-card] [data-dropdown]');
+                for (var k = 0; k < kanbanPanels.length; k++) {
+                    kanbanPanels[k].style.display = 'none';
+                }
+            }
         });
-        // Escape key closes all
+        // Escape key closes all (including kanban fixed)
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 var openMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
                 for (var k = 0; k < openMenus.length; k++) {
                     openMenus[k].classList.add('hidden');
+                }
+                var kanbanPanels = document.querySelectorAll('[data-kanban-card] [data-dropdown]');
+                for (var m = 0; m < kanbanPanels.length; m++) {
+                    kanbanPanels[m].style.display = 'none';
                 }
             }
         });
@@ -514,33 +527,49 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
             trigger.style.display = 'none';
         }
 
-        // Reposition dropdown panel: overlay centered on the card
+        // Use fixed positioning so overflow:auto parents don't clip the menu
         var panel = wrapper.querySelector('[data-dropdown]');
         if (panel) {
-            panel.style.cssText = 'position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:50; min-width:12rem;';
-            wrapper.style.position = 'relative';
+            panel.style.cssText = 'position:fixed; z-index:9999; min-width:12rem; display:none;';
+            panel.classList.remove('hidden');
+            panel._kanbanFixed = true;
         }
 
-        // Click anywhere on the card toggles the dropdown
+        function positionPanel() {
+            if (!panel) return;
+            var rect = wrapper.getBoundingClientRect();
+            var pw = panel.offsetWidth || 192;
+            var ph = panel.offsetHeight || 160;
+            // Center horizontally on card, position below card title area
+            var left = rect.left + (rect.width - pw) / 2;
+            var top = rect.top + 40;
+            // Keep within viewport
+            if (left < 8) left = 8;
+            if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+            if (top + ph > window.innerHeight - 8) top = rect.top - ph - 4;
+            panel.style.left = left + 'px';
+            panel.style.top = top + 'px';
+        }
+
         wrapper.addEventListener('click', function(e) {
             if (!panel) return;
 
-            // If clicking a link/button/form inside the open panel, let it through
-            if (!panel.classList.contains('hidden') && panel.contains(e.target)) return;
+            // If clicking inside the open panel, let it through
+            if (panel.style.display !== 'none' && panel.contains(e.target)) return;
 
             e.preventDefault();
             e.stopPropagation();
 
-            // Close ALL open dropdowns first (including this one if open)
-            var allMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
-            var wasOpen = !panel.classList.contains('hidden');
-            for (var m = 0; m < allMenus.length; m++) {
-                allMenus[m].classList.add('hidden');
+            // Close ALL open kanban menus first
+            var allPanels = document.querySelectorAll('[data-kanban-card] [data-dropdown]');
+            var wasOpen = panel.style.display !== 'none';
+            for (var m = 0; m < allPanels.length; m++) {
+                allPanels[m].style.display = 'none';
             }
 
-            // Toggle: if it was closed, open it; if it was open, leave it closed
             if (!wasOpen) {
-                panel.classList.remove('hidden');
+                positionPanel();
+                panel.style.display = '';
             }
         });
     }

@@ -458,7 +458,7 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
     let mut html = String::new();
 
     // ── Desktop view: horizontal scrollable columns ──────────────────
-    html.push_str("<div class=\"hidden md:block\">");
+    html.push_str("<div class=\"hidden md:block overflow-x-auto\">");
     html.push_str("<div class=\"flex gap-4\" style=\"min-width: min-content;\">");
 
     for col in &props.columns {
