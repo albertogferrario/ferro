@@ -29,6 +29,7 @@
 - ✅ [**v9.0 Service Projections**](milestones/v9.0-ROADMAP.md) — Phases 84-94 (shipped 2026-03-01)
 - ✅ [**v10.0 JSON-UI Visual Overhaul**](milestones/v10.0-ROADMAP.md) — Phases 102-107 (shipped 2026-03-26)
 - 🚧 **v11.0 Framework Consolidation Audit** — Phases 108-114 (in progress)
+- 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned)
 
 ---
 
@@ -164,6 +165,133 @@ Phases execute in numeric order: 108 → 109 → 110 → 111 → 112 → 113 →
 | 112. Agent-First Philosophy | 2/2 | Complete    | 2026-03-26 |
 | 113. Pattern Coherence | 2/2 | Complete    | 2026-03-27 |
 | 114. Metadata & Publication Readiness | 0/2 | Not started | - |
+
+---
+
+### 📋 v12.0 JSON-UI v2 — Spec-Driven Rendering (Planned)
+
+**Milestone Goal:** Pivot ferro-json-ui from nested component trees built in Rust to flat, JSON-first specs that AI generates at runtime or developers write as static files. Adopt Vercel json-render's proven patterns (flat element map, props separation, formalized catalog) while keeping Ferro's strengths (server-side HTML rendering, compile-time safety, zero client JS).
+
+**Context:** Vercel json-render validates the same thesis — AI → JSON → UI. Their architecture is more mature: flat element maps (better for AI generation and streaming), separated props (cleaner schema validation), and formalized catalogs (machine-readable, generates LLM prompts). Ferro should adopt these structural patterns while keeping its server-authoritative model.
+
+**What changes:**
+- Spec format: flat `elements` map + `root` key (replaces nested `Vec<ComponentNode>`)
+- Props: separate `props` object per element (replaces flattened custom serialization)
+- Catalog: machine-readable struct with `prompt()`, `validate()`, `json_schema()` (replaces `COMPONENT_CATALOG` const string)
+- Expressions: `$data` and `$template` resolved server-side at render time (enriches current `data_path`)
+- Page loader: framework loads JSON spec files, merges handler data, renders HTML
+- **Clean break**: v1 types (`JsonUiView`, nested `ComponentNode`) are removed entirely — no backward compatibility layer
+
+**What stays:**
+- Server-side HTML + Tailwind rendering (zero client JS runtime)
+- Server-authoritative state (no client-side state management)
+- Action → handler POST model (server round-trips)
+- SSE for live updates
+- Compile-time Rust type safety (bonus layer over runtime validation)
+- Layout system (dashboard chrome is first-class)
+
+## Phases
+
+- [ ] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, and v1 backward compatibility
+- [ ] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
+- [ ] **Phase 117: Catalog Formalization** — Machine-readable `Catalog` with `prompt()`, `validate()`, `json_schema()`
+- [ ] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time
+- [ ] **Phase 119: Page Loader** — Framework loads JSON spec files, merges handler data, integrates with layouts
+- [ ] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format, add v1→v2 migration utility
+- [ ] **Phase 121: Documentation & Field Test** — Update all JSON-UI docs, convert one gestiscilo page as proof of concept
+
+## Phase Details
+
+### Phase 115: Spec v2 Data Structures
+**Goal**: Replace v1 types with the v2 spec format — flat element map, props separation, clean break
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: SPEC-01, SPEC-02, SPEC-03
+**Success Criteria** (what must be TRUE):
+  1. `Spec` struct exists with `root: String`, `elements: HashMap<String, Element>`, `title`, `layout`, `data`
+  2. `Element` struct has `type_name`, `props: serde_json::Value`, `children: Vec<String>`, `action`, `visible`
+  3. `Spec::from_json()` parses flat JSON specs and round-trips cleanly (serialize → deserialize = identity)
+  4. `JsonUiView`, nested `ComponentNode`, and `Vec<ComponentNode>` patterns are deleted — clean break, no v1 types remain
+  5. Schema version is `ferro-json-ui/v2`
+
+### Phase 116: Flat Element Renderer
+**Goal**: New render pipeline that walks the flat element map by ID lookups, replacing the recursive tree walker
+**Depends on**: Phase 115
+**Requirements**: RENDER-01, RENDER-02, RENDER-03
+**Success Criteria** (what must be TRUE):
+  1. `render_spec_to_html(spec, data)` renders all component types from flat element map
+  2. Element ID lookup handles missing children gracefully (skip + warn, don't panic)
+  3. Action resolution works on flat elements (handler → URL via callback)
+  4. Visibility evaluation works on flat elements (conditional rendering)
+  5. Plugin components render correctly in v2 specs
+  6. Old `render_to_html(view, data)` function is deleted
+
+### Phase 117: Catalog Formalization
+**Goal**: Replace the `COMPONENT_CATALOG` const string with a machine-readable `Catalog` struct that generates LLM prompts and validates specs
+**Depends on**: Phase 116
+**Requirements**: CAT-01, CAT-02, CAT-03, CAT-04
+**Success Criteria** (what must be TRUE):
+  1. `Catalog::build()` auto-discovers all Component variants with descriptions and JSON Schema per props struct
+  2. `catalog.prompt()` generates a system prompt suitable for constraining LLM output to valid specs
+  3. `catalog.validate(&spec)` returns typed errors for unknown component types, invalid props, missing required fields
+  4. `catalog.json_schema()` exports a complete JSON Schema document for the full spec format
+  5. `COMPONENT_CATALOG` const string is either replaced by `catalog.prompt()` output or generated from the same source
+
+### Phase 118: Server-Side Expressions
+**Goal**: Add `$data` and `$template` expression types that resolve against handler data at render time
+**Depends on**: Phase 116
+**Requirements**: EXPR-01, EXPR-02, EXPR-03
+**Success Criteria** (what must be TRUE):
+  1. `{"$data": "path/to/value"}` in any props field resolves against `spec.data` before rendering
+  2. `{"$template": "Hello, {user.name}!"}` interpolates data paths within strings
+  3. Expressions work in all props positions (string, number, boolean values)
+  4. Missing data paths resolve to `null`/empty — never panic
+  5. Expressions are evaluated before component rendering, so renderers receive resolved concrete values
+
+### Phase 119: Page Loader
+**Goal**: Framework-level support for loading JSON spec files and merging with handler-provided data
+**Depends on**: Phase 118
+**Requirements**: LOAD-01, LOAD-02, LOAD-03
+**Success Criteria** (what must be TRUE):
+  1. `Spec::from_file("path/to/page.json")` or `include_str!()` loads and parses specs
+  2. Handler data merges into `spec.data` (handler data takes precedence over spec defaults)
+  3. Layout data (sidebar, header, sse_url) injects automatically for dashboard-layout specs
+  4. Loaded specs are cached (compiled once, reused across requests)
+  5. Dev mode: file watcher reloads specs on change (hot reload without recompilation)
+
+### Phase 120: CLI & MCP Updates
+**Goal**: Update all AI-facing tools to generate v2 specs
+**Depends on**: Phase 117, Phase 119
+**Requirements**: TOOL-01, TOOL-02, TOOL-03
+**Success Criteria** (what must be TRUE):
+  1. `ferro make:json-view` generates v2 flat specs
+  2. MCP `json_ui_generate` tool uses `catalog.prompt()` for LLM context and produces v2 specs
+  3. MCP `json_ui_inspect` tool works with v2 format
+  4. All code templates in ferro-mcp use v2 spec format
+  5. No references to v1 types remain in CLI or MCP code
+
+### Phase 121: Documentation & Field Test
+**Goal**: Complete docs rewrite for v2 and validate with a real gestiscilo page conversion
+**Depends on**: Phase 120
+**Requirements**: DOC-01, DOC-02, FIELD-01
+**Success Criteria** (what must be TRUE):
+  1. All JSON-UI documentation pages rewritten for v2 spec format with flat element examples — no v1 references remain
+  2. One gestiscilo dashboard page (e.g., pagamenti) converted from Rust component tree to JSON spec file — handler reduced to data-only
+  3. Converted page renders identically to the Rust-built version
+
+## Progress
+
+**Execution Order:**
+Phases execute in order: 115 → 116 → 117 → 118 (parallel with 117) → 119 → 120 → 121
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 115. Spec v2 Data Structures | 0/? | Not started | - |
+| 116. Flat Element Renderer | 0/? | Not started | - |
+| 117. Catalog Formalization | 0/? | Not started | - |
+| 118. Server-Side Expressions | 0/? | Not started | - |
+| 119. Page Loader | 0/? | Not started | - |
+| 120. CLI & MCP Updates | 0/? | Not started | - |
+| 121. Documentation & Field Test | 0/? | Not started | - |
 
 ---
 
@@ -646,5 +774,6 @@ Phases execute in numeric order: 108 → 109 → 110 → 111 → 112 → 113 →
 | v9.0 Service Projections | 84-94 | 30 | ✅ Complete | 2026-03-01 |
 | v10.0 JSON-UI Visual Overhaul | 102-107 | 8 | ✅ Complete | 2026-03-26 |
 | v11.0 Framework Consolidation Audit | 108-114 | 13 | 🚧 In progress | - |
+| v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121 | ? | 📋 Planned | - |
 
 **Total: 23 milestones shipped, 205 plans complete. 13 plans in progress.**

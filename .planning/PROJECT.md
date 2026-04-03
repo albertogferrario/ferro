@@ -170,6 +170,27 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - JavaScript-powered interactivity — JSON-UI is CSS-only; JS features are a separate concern
 - Custom icon library — inline SVG strings in Rust sufficient for needed icons
 
+## Next Milestone: v12.0 JSON-UI v2 — Spec-Driven Rendering
+
+**Goal:** Pivot ferro-json-ui from Rust-built component trees to flat, JSON-first specs. AI generates specs at runtime; developers write static JSON files. Handlers become data-only providers.
+
+**Motivation:** Vercel json-render (13k+ GitHub stars, Jan 2026) validates the same AI → JSON → UI thesis with a more mature architecture. Ferro adopts their proven patterns (flat element map, props separation, formalized catalog) while keeping server-side HTML rendering and zero client JS.
+
+**Target features:**
+- v2 spec format: flat `elements` map + `root` key (replaces nested `Vec<ComponentNode>`)
+- Props separation: `props` object per element (cleaner schema validation)
+- Formalized catalog: `Catalog` struct with `prompt()`, `validate()`, `json_schema()`
+- Server-side expressions: `$data` and `$template` resolved at render time
+- Page loader: framework loads JSON files, merges handler data, renders HTML
+- CLI/MCP updates for v2 format with migration utility
+
+### Out of Scope (v12.0)
+
+- Client-side state management ($state, $bindState) — server-authoritative model is correct
+- Multi-platform renderers (React, Native, PDF) — HTML first, projections later
+- RFC 6902 streaming — server builds full spec before responding
+- New component types — v12.0 is structural, not feature expansion
+
 ## Context
 
 **Current State:**
@@ -248,6 +269,11 @@ Reference codebase documentation in `.planning/codebase/`:
 | Inline SVG via concat! macro | Avoids data URI which fails in CDN mode; self-contained per component | ✓ Good |
 | Dark mode pair 6 trade-off | 4.45:1 accepted (0.05 below AA) — lowering primary L breaks pair 5 | ⚠️ Revisit |
 | Shimmer CSS injected inline | Keeps skeleton self-contained; no external stylesheet dependency | ✓ Good |
+| Flat element map for v2 specs | Better for AI generation (no nesting depth), streaming (patch by ID), human readability. Adopted from Vercel json-render | Planned |
+| Props object separation in v2 | Clean boundary between structural fields (type, children, action) and component-specific props. Enables schema validation | Planned |
+| Server-side expressions only | `$data` and `$template` resolved at render time. Skip client-side `$state`/`$bindState` — server-authoritative model is correct for business tools | Planned |
+| No client-side state system | Vercel json-render's StateStore solves a problem Ferro doesn't have. Server round-trips are the right model. | Planned |
+| Clean break: delete v1 entirely | No backward compat layer. v1 types (JsonUiView, nested ComponentNode) are removed. Simpler codebase, no dual-format complexity. gestiscilo migrates all pages in one milestone | Planned |
 
 ---
-*Last updated: 2026-03-26 after v11.0 milestone start*
+*Last updated: 2026-04-03 after v12.0 milestone planning*
