@@ -340,7 +340,7 @@ fn render_calendar_cell(props: &CalendarCellProps) -> String {
     };
 
     let mut html = format!(
-        "<div class=\"flex flex-col min-h-[5rem] p-2 border-b border-r border-border{opacity}{hover}\">",
+        "<div class=\"flex flex-col min-h-[5rem] p-2 border border-border -mt-px -ml-px{opacity}{hover}\">",
     );
 
     // Day number — top-left, today gets a small circle
