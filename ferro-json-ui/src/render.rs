@@ -332,28 +332,49 @@ fn render_component(component: &Component, data: &Value) -> String {
 // ── CalendarCell renderer ───────────────────────────────────────────────
 
 fn render_calendar_cell(props: &CalendarCellProps) -> String {
-    let mut html = String::from("<div class=\"flex flex-col items-center gap-1 p-1 rounded-md\">");
-
-    // Day number with conditional styling.
-    let day_classes = if props.is_today {
-        "w-8 h-8 flex items-center justify-center text-sm font-semibold bg-primary text-primary-foreground rounded-full"
-    } else if !props.is_current_month {
-        "w-8 h-8 flex items-center justify-center text-sm text-text-muted opacity-50 rounded-full"
+    // Apple Calendar style: tall rectangular cells with day number top-right,
+    // event indicators at bottom, subtle border grid
+    let bg = if props.is_today {
+        "bg-primary/5"
     } else {
-        "w-8 h-8 flex items-center justify-center text-sm text-text rounded-full"
+        "hover:bg-surface/50"
     };
+    let opacity = if !props.is_current_month { " opacity-40" } else { "" };
 
-    html.push_str(&format!(
-        "<span class=\"{}\">{}</span>",
-        day_classes, props.day
-    ));
+    let mut html = format!(
+        "<div class=\"flex flex-col min-h-[5rem] p-2 border-t border-border/50 {bg}{opacity} transition-colors cursor-pointer\">"
+    );
 
-    // Event indicator.
-    if props.event_count == 1 {
-        html.push_str("<span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>");
-    } else if props.event_count > 1 {
+    // Day number — top right, today gets a filled circle
+    if props.is_today {
         html.push_str(&format!(
-            "<span class=\"text-xs font-semibold text-primary\">{}</span>",
+            "<span class=\"self-end w-7 h-7 flex items-center justify-center text-sm font-semibold \
+             bg-primary text-primary-foreground rounded-full\">{}</span>",
+            props.day
+        ));
+    } else {
+        html.push_str(&format!(
+            "<span class=\"self-end text-sm text-text\">{}</span>",
+            props.day
+        ));
+    }
+
+    // Spacer to push events to bottom
+    html.push_str("<div class=\"flex-1\"></div>");
+
+    // Event indicators at bottom
+    if props.event_count == 1 {
+        html.push_str(
+            "<div class=\"flex justify-center\">\
+             <span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>\
+             </div>"
+        );
+    } else if props.event_count > 0 {
+        html.push_str(&format!(
+            "<div class=\"flex items-center justify-center gap-1\">\
+             <span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>\
+             <span class=\"text-[10px] font-medium text-primary\">{}</span>\
+             </div>",
             props.event_count
         ));
     }
