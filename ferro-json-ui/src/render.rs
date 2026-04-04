@@ -2063,7 +2063,7 @@ fn render_grid(props: &GridProps, data: &Value) -> String {
         Some(md) => format!("grid-cols-{cols} md:grid-cols-{}", md.clamp(1, 12)),
         None => format!("grid-cols-{cols}"),
     };
-    let mut html = format!("<div class=\"grid {col_classes} {gap}\">");
+    let mut html = format!("<div class=\"grid w-full {col_classes} {gap}\">");
     for child in &props.children {
         html.push_str(&render_node(child, data));
     }
