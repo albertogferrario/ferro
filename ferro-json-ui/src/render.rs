@@ -673,7 +673,7 @@ fn render_plugin(props: &PluginProps, data: &Value) -> String {
 
 fn render_page_header(props: &PageHeaderProps, data: &Value) -> String {
     let mut html = String::from(
-        "<div class=\"flex items-center justify-between gap-4 pb-4\">",
+        "<div class=\"flex flex-wrap items-center justify-between gap-3 pb-4\">",
     );
 
     // Title block — breadcrumb and title fused into one inline flow
@@ -711,7 +711,7 @@ fn render_page_header(props: &PageHeaderProps, data: &Value) -> String {
 
     // Actions (optional)
     if !props.actions.is_empty() {
-        html.push_str("<div class=\"flex items-center gap-2 flex-shrink-0\">");
+        html.push_str("<div class=\"flex flex-wrap items-center gap-2\">");
         for action in &props.actions {
             html.push_str(&render_node(action, data));
         }
