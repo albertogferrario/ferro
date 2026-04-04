@@ -332,49 +332,40 @@ fn render_component(component: &Component, data: &Value) -> String {
 // ── CalendarCell renderer ───────────────────────────────────────────────
 
 fn render_calendar_cell(props: &CalendarCellProps) -> String {
-    // Apple Calendar style: tall rectangular cells with day number top-right,
-    // event indicators at bottom, subtle border grid
-    let bg = if props.is_today {
-        "bg-primary/5"
+    let opacity = if props.is_current_month { "" } else { " opacity-40" };
+    let hover = if props.is_current_month {
+        " hover:bg-surface/60 transition-colors cursor-pointer"
     } else {
-        "hover:bg-surface/50"
+        " cursor-pointer"
     };
-    let opacity = if !props.is_current_month { " opacity-40" } else { "" };
 
     let mut html = format!(
-        "<div class=\"flex flex-col min-h-[5rem] p-2 border-t border-border/50 {bg}{opacity} transition-colors cursor-pointer\">"
+        "<div class=\"flex flex-col min-h-[5rem] p-2 border-b border-r border-border{opacity}{hover}\">",
     );
 
-    // Day number — top right, today gets a filled circle
+    // Day number — top-left, today gets a small circle
     if props.is_today {
         html.push_str(&format!(
-            "<span class=\"self-end w-7 h-7 flex items-center justify-center text-sm font-semibold \
-             bg-primary text-primary-foreground rounded-full\">{}</span>",
+            "<span class=\"w-7 h-7 flex items-center justify-center text-sm font-semibold bg-primary text-primary-foreground rounded-full\">{}</span>",
             props.day
         ));
     } else {
         html.push_str(&format!(
-            "<span class=\"self-end text-sm text-text\">{}</span>",
+            "<span class=\"text-sm text-text\">{}</span>",
             props.day
         ));
     }
 
-    // Spacer to push events to bottom
-    html.push_str("<div class=\"flex-1\"></div>");
-
-    // Event indicators at bottom
-    if props.event_count == 1 {
-        html.push_str(
-            "<div class=\"flex justify-center\">\
-             <span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>\
-             </div>"
-        );
-    } else if props.event_count > 0 {
+    // Event indicators — dots for 1-3 events, count badge for 4+
+    if props.event_count > 0 && props.event_count <= 3 {
+        html.push_str("<div class=\"flex gap-1 mt-auto pt-1\">");
+        for _ in 0..props.event_count {
+            html.push_str("<span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>");
+        }
+        html.push_str("</div>");
+    } else if props.event_count > 3 {
         html.push_str(&format!(
-            "<div class=\"flex items-center justify-center gap-1\">\
-             <span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>\
-             <span class=\"text-[10px] font-medium text-primary\">{}</span>\
-             </div>",
+            "<span class=\"mt-auto pt-1 text-xs font-medium text-primary\">{} prenot.</span>",
             props.event_count
         ));
     }
