@@ -1127,7 +1127,10 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                 };
                 let templated_items: Vec<DropdownMenuAction> = actions.iter().map(|a| {
                     let mut cloned = a.clone();
-                    if let Some(ref url) = cloned.action.url {
+                    // Resolve URL from handler if url is None, then apply row_key template
+                    let base_url = cloned.action.url.clone()
+                        .or_else(|| Some(cloned.action.handler.clone()));
+                    if let Some(url) = base_url {
                         cloned.action.url = Some(url.replace("{row_key}", &row_key_value));
                     }
                     cloned
@@ -1189,7 +1192,10 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                 };
                 let templated_items: Vec<DropdownMenuAction> = actions.iter().map(|a| {
                     let mut cloned = a.clone();
-                    if let Some(ref url) = cloned.action.url {
+                    // Resolve URL from handler if url is None, then apply row_key template
+                    let base_url = cloned.action.url.clone()
+                        .or_else(|| Some(cloned.action.handler.clone()));
+                    if let Some(url) = base_url {
                         cloned.action.url = Some(url.replace("{row_key}", &row_key_value));
                     }
                     cloned
