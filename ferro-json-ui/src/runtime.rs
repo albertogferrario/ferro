@@ -359,7 +359,12 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
         var inputs = [];
         for (var n = 0; n < numberInputs.length; n++) inputs.push(numberInputs[n]);
         for (var q = 0; q < qtyInputs.length; q++) inputs.push(qtyInputs[q]);
-        var submitBtn = form.querySelector('button');
+        // Find the submit button — skip ProductTile +/- controls (they have data-qty-* attrs)
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (!submitBtn) {
+            var allBtns = form.querySelectorAll('button:not([data-qty-inc]):not([data-qty-dec])');
+            submitBtn = allBtns.length > 0 ? allBtns[allBtns.length - 1] : null;
+        }
         if (!submitBtn || inputs.length === 0) return;
 
         function check() {
