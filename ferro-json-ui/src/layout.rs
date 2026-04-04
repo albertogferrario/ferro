@@ -330,7 +330,7 @@ impl Layout for AppLayout {
             r#"{nav}
     <div class="flex">
         {side}
-        <main class="flex-1 p-6">
+        <main class="flex-1 px-3 py-4 md:p-6">
             {wrapper}
         </main>
     </div>"#,
@@ -583,7 +583,7 @@ impl Layout for DashboardLayout {
             r#"{sidebar_html}
     <div class="flex flex-col md:pl-64">
         {header_html}
-        <main class="flex-1 p-6">
+        <main class="flex-1 px-3 py-4 md:p-6">
             {wrapper}
         </main>
         <div data-toast-container class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
@@ -772,7 +772,7 @@ mod tests {
 
         assert!(html.contains("<nav"));
         assert!(html.contains("<aside"));
-        assert!(html.contains("<main class=\"flex-1 p-6\">"));
+        assert!(html.contains("<main class=\"flex-1 px-3 py-4 md:p-6\">"));
         assert!(html.contains("<div id=\"ferro-json-ui\""));
         assert!(html.contains("<p>Hello</p>"));
     }
@@ -1054,7 +1054,7 @@ mod tests {
     fn dashboard_layout_has_main_content_area() {
         let ctx = test_ctx();
         let html = dashboard_layout().render(&ctx);
-        assert!(html.contains("<main class=\"flex-1 p-6\">"));
+        assert!(html.contains("<main class=\"flex-1 px-3 py-4 md:p-6\">"));
     }
 
     #[test]
