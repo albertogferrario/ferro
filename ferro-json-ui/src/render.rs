@@ -660,32 +660,39 @@ fn render_plugin(props: &PluginProps, data: &Value) -> String {
 // ── Page layout component renderers ─────────────────────────────────────
 
 fn render_page_header(props: &PageHeaderProps, data: &Value) -> String {
-    let mut html = String::from("<div class=\"flex items-start justify-between gap-4 pb-4\">");
-    html.push_str("<div>");
+    let mut html = String::from(
+        "<div class=\"flex items-center justify-between gap-4 pb-4\">",
+    );
 
-    // Breadcrumb (optional)
+    // Title block — breadcrumb and title fused into one inline flow
+    html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
+
     if !props.breadcrumb.is_empty() {
-        html.push_str("<nav class=\"flex items-center space-x-2 text-sm text-text-muted mb-1\">");
-        for (i, item) in props.breadcrumb.iter().enumerate() {
-            if i > 0 {
-                html.push_str(BREADCRUMB_SEP);
-            }
+        for item in &props.breadcrumb {
             if let Some(ref url) = item.url {
                 html.push_str(&format!(
-                    "<a href=\"{}\" class=\"hover:text-text\">{}</a>",
+                    "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap\">{}</a>",
                     html_escape(url),
                     html_escape(&item.label)
                 ));
             } else {
-                html.push_str(&format!("<span>{}</span>", html_escape(&item.label)));
+                html.push_str(&format!(
+                    "<span class=\"text-sm text-text-muted whitespace-nowrap\">{}</span>",
+                    html_escape(&item.label)
+                ));
             }
+            // Chevron separator between breadcrumb and title
+            html.push_str(
+                "<span aria-hidden=\"true\" class=\"text-text-muted flex-shrink-0\">\
+                 <svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">\
+                 <path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"/>\
+                 </svg></span>"
+            );
         }
-        html.push_str("</nav>");
     }
 
-    // Title
     html.push_str(&format!(
-        "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">{}</h2>",
+        "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text truncate\">{}</h2>",
         html_escape(&props.title)
     ));
     html.push_str("</div>");
