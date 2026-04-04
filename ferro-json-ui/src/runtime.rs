@@ -353,7 +353,12 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
     }
 
     function initNumberGuard(form) {
-        var inputs = form.querySelectorAll('input[type="number"]');
+        var numberInputs = form.querySelectorAll('input[type="number"]');
+        var qtyInputs = form.querySelectorAll('input[data-qty-input]');
+        // Merge both NodeLists
+        var inputs = [];
+        for (var n = 0; n < numberInputs.length; n++) inputs.push(numberInputs[n]);
+        for (var q = 0; q < qtyInputs.length; q++) inputs.push(qtyInputs[q]);
         var submitBtn = form.querySelector('button');
         if (!submitBtn || inputs.length === 0) return;
 
@@ -462,6 +467,8 @@ pub(crate) const FERRO_RUNTIME_JS: &str = r#"(function() {
             if (next < 0) next = 0;
             input.value = next;
             display.textContent = next;
+            // Notify form guards of the change
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         });
     }
 
