@@ -17,6 +17,7 @@ pub use field::{infer_meaning, DataType, FieldDef, FieldMeaning};
 pub use intent::{Intent, IntentHint, IntentScore};
 pub use relationship::{Cardinality, NavigationHint, RelationshipDef};
 pub use render::json_ui::JsonUiRenderer;
+pub use render::template::TemplateRenderer;
 pub use render::{RenderContext, RenderMode, Renderer};
 pub use service::ServiceDef;
 pub use state::{StateDef, StateMachine, Transition, Warning};

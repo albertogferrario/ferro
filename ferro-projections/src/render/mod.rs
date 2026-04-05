@@ -6,6 +6,7 @@
 pub mod field_map;
 pub mod json_ui;
 pub mod relationship_map;
+pub mod template;
 
 use crate::error::Error;
 use crate::field::FieldMeaning;
