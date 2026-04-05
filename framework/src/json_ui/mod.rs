@@ -274,6 +274,7 @@ mod tests {
                     title: "Hello".to_string(),
                     description: Some("A test card".to_string()),
                     children: vec![],
+                    max_width: None,
                     footer: vec![],
                 }),
                 action: None,
@@ -478,7 +479,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: Some(Action {
                 handler: "users.index".to_string(),
@@ -550,6 +551,7 @@ mod tests {
                         on_error: None,
                     },
                     guard: None,
+                    max_width: None,
                     fields: vec![
                         ComponentNode {
                             key: "name-input".to_string(),
@@ -860,6 +862,7 @@ mod tests {
                         title: "Hello".to_string(),
                         description: None,
                         children: vec![],
+                        max_width: None,
                         footer: vec![],
                     }),
                     action: None,

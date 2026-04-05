@@ -1536,7 +1536,7 @@ mod tests {
             description: Some("A description".to_string()),
             children: vec![],
             footer: vec![],
-                max_width: None,
+            max_width: None,
         });
         let json = serde_json::to_value(&card).unwrap();
         assert_eq!(json["type"], "Card");
@@ -1731,7 +1731,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: Some(Action {
                 handler: "users.create".to_string(),
@@ -1799,7 +1799,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             Component::Input(InputProps {
                 field: "f".to_string(),
@@ -2039,7 +2039,7 @@ mod tests {
             disabled: None,
             icon: Some("save".to_string()),
             icon_position: Some(IconPosition::Left),
-                button_type: None,
+            button_type: None,
         });
         let json = serde_json::to_value(&button).unwrap();
         assert_eq!(json["size"], "lg");
@@ -2065,7 +2065,7 @@ mod tests {
                     disabled: None,
                     icon: None,
                     icon_position: None,
-                                button_type: None,
+                    button_type: None,
                 }),
                 action: None,
                 visibility: None,
@@ -2159,7 +2159,7 @@ mod tests {
                     disabled: None,
                     icon: None,
                     icon_position: None,
-                                button_type: None,
+                    button_type: None,
                 }),
                 action: None,
                 visibility: None,
@@ -3364,7 +3364,7 @@ mod tests {
                     disabled: None,
                     icon: None,
                     icon_position: None,
-                                button_type: None,
+                    button_type: None,
                 }),
                 action: None,
                 visibility: None,
@@ -3419,7 +3419,7 @@ mod tests {
                         disabled: None,
                         icon: None,
                         icon_position: None,
-                                        button_type: None,
+                        button_type: None,
                     }),
                     action: None,
                     visibility: None,
@@ -3433,7 +3433,7 @@ mod tests {
                         disabled: None,
                         icon: None,
                         icon_position: None,
-                                        button_type: None,
+                        button_type: None,
                     }),
                     action: None,
                     visibility: None,

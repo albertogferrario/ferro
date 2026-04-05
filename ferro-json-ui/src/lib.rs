@@ -56,17 +56,16 @@ pub(crate) mod runtime;
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
 pub use component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
-    BadgeVariant, BreadcrumbItem,
-    BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType, ButtonVariant, CardProps, CheckboxProps,
-    ChecklistItem, ChecklistProps, CollapsibleProps, Column, ColumnFormat, Component,
-    ComponentNode, DataTableProps, DescriptionItem, DescriptionListProps, DropdownMenuAction,
-    DropdownMenuProps, EmptyStateProps, FormMaxWidth, FormProps, FormSectionProps, GapSize, GridProps,
-    HeaderProps, IconPosition, InputProps, InputType, KanbanBoardProps, KanbanColumnProps,
-    ModalProps,
-    NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps, PaginationProps,
-    PluginProps, ProductTileProps, ProgressProps, SelectOption, SelectProps, SeparatorProps,
-    SidebarGroup, SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps,
-    SwitchProps, Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType,
+    ButtonVariant, CardProps, CheckboxProps, ChecklistItem, ChecklistProps, CollapsibleProps,
+    Column, ColumnFormat, Component, ComponentNode, DataTableProps, DescriptionItem,
+    DescriptionListProps, DropdownMenuAction, DropdownMenuProps, EmptyStateProps, FormMaxWidth,
+    FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, InputProps,
+    InputType, KanbanBoardProps, KanbanColumnProps, ModalProps, NotificationDropdownProps,
+    NotificationItem, Orientation, PageHeaderProps, PaginationProps, PluginProps, ProductTileProps,
+    ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem,
+    SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
+    TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers

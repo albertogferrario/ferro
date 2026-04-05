@@ -18,9 +18,9 @@ use crate::component::{
     EmptyStateProps, FormMaxWidth, FormProps, FormSectionLayout, FormSectionProps, GapSize,
     GridProps, HeaderProps, IconPosition, InputProps, InputType, KanbanBoardProps, ModalProps,
     NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps, PluginProps,
-    ProductTileProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps,
-    StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps, ToastProps,
-    ToastVariant,
+    ProductTileProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
+    SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
+    ToastProps, ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -332,7 +332,11 @@ fn render_component(component: &Component, data: &Value) -> String {
 // ── CalendarCell renderer ───────────────────────────────────────────────
 
 fn render_calendar_cell(props: &CalendarCellProps) -> String {
-    let opacity = if props.is_current_month { "" } else { " opacity-40" };
+    let opacity = if props.is_current_month {
+        ""
+    } else {
+        " opacity-40"
+    };
     let hover = if props.is_current_month {
         " hover:bg-surface/60 transition-colors cursor-pointer"
     } else {
@@ -486,8 +490,7 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
         };
         html.push_str(&format!(
             "<span class=\"{}\">{}</span>",
-            badge_class,
-            col.count,
+            badge_class, col.count,
         ));
         html.push_str("</div>");
         html.push_str("<div class=\"space-y-2\">");
@@ -582,10 +585,7 @@ fn render_dropdown_menu(props: &DropdownMenuProps) -> String {
 
         // Confirm dialog data attributes
         let confirm_attrs = if let Some(ref confirm) = item.action.confirm {
-            let mut attrs = format!(
-                " data-confirm-title=\"{}\"",
-                html_escape(&confirm.title)
-            );
+            let mut attrs = format!(" data-confirm-title=\"{}\"", html_escape(&confirm.title));
             if let Some(ref message) = confirm.message {
                 attrs.push_str(&format!(
                     " data-confirm-message=\"{}\"",
@@ -670,9 +670,8 @@ fn render_plugin(props: &PluginProps, data: &Value) -> String {
 // ── Page layout component renderers ─────────────────────────────────────
 
 fn render_page_header(props: &PageHeaderProps, data: &Value) -> String {
-    let mut html = String::from(
-        "<div class=\"flex flex-wrap items-center justify-between gap-3 pb-4\">",
-    );
+    let mut html =
+        String::from("<div class=\"flex flex-wrap items-center justify-between gap-3 pb-4\">");
 
     // Title block — breadcrumb and title fused into one inline flow
     html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
@@ -1080,7 +1079,9 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
     let mut html = String::new();
 
     // --- Desktop table (hidden on mobile) ---
-    html.push_str("<div class=\"hidden md:block rounded-lg border border-border overflow-hidden\">");
+    html.push_str(
+        "<div class=\"hidden md:block rounded-lg border border-border overflow-hidden\">",
+    );
 
     if items.is_empty() {
         html.push_str("<table class=\"w-full\"><tbody>");
@@ -1142,16 +1143,22 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                 } else {
                     index.to_string()
                 };
-                let templated_items: Vec<DropdownMenuAction> = actions.iter().map(|a| {
-                    let mut cloned = a.clone();
-                    // Resolve URL from handler if url is None, then apply row_key template
-                    let base_url = cloned.action.url.clone()
-                        .or_else(|| Some(cloned.action.handler.clone()));
-                    if let Some(url) = base_url {
-                        cloned.action.url = Some(url.replace("{row_key}", &row_key_value));
-                    }
-                    cloned
-                }).collect();
+                let templated_items: Vec<DropdownMenuAction> = actions
+                    .iter()
+                    .map(|a| {
+                        let mut cloned = a.clone();
+                        // Resolve URL from handler if url is None, then apply row_key template
+                        let base_url = cloned
+                            .action
+                            .url
+                            .clone()
+                            .or_else(|| Some(cloned.action.handler.clone()));
+                        if let Some(url) = base_url {
+                            cloned.action.url = Some(url.replace("{row_key}", &row_key_value));
+                        }
+                        cloned
+                    })
+                    .collect();
                 let dropdown_props = DropdownMenuProps {
                     menu_id: format!("dt-{row_key_value}"),
                     trigger_label: "\u{22EE}".to_string(),
@@ -1207,16 +1214,22 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                 } else {
                     index.to_string()
                 };
-                let templated_items: Vec<DropdownMenuAction> = actions.iter().map(|a| {
-                    let mut cloned = a.clone();
-                    // Resolve URL from handler if url is None, then apply row_key template
-                    let base_url = cloned.action.url.clone()
-                        .or_else(|| Some(cloned.action.handler.clone()));
-                    if let Some(url) = base_url {
-                        cloned.action.url = Some(url.replace("{row_key}", &row_key_value));
-                    }
-                    cloned
-                }).collect();
+                let templated_items: Vec<DropdownMenuAction> = actions
+                    .iter()
+                    .map(|a| {
+                        let mut cloned = a.clone();
+                        // Resolve URL from handler if url is None, then apply row_key template
+                        let base_url = cloned
+                            .action
+                            .url
+                            .clone()
+                            .or_else(|| Some(cloned.action.handler.clone()));
+                        if let Some(url) = base_url {
+                            cloned.action.url = Some(url.replace("{row_key}", &row_key_value));
+                        }
+                        cloned
+                    })
+                    .collect();
                 let dropdown_props = DropdownMenuProps {
                     menu_id: format!("dt-m-{row_key_value}"),
                     trigger_label: "\u{22EE}".to_string(),
@@ -2099,7 +2112,7 @@ fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
 
 fn render_empty_state(props: &EmptyStateProps) -> String {
     let mut html = String::from(
-        "<div class=\"flex flex-col items-center justify-center py-16 px-6 text-center\">"
+        "<div class=\"flex flex-col items-center justify-center py-16 px-6 text-center\">",
     );
     html.push_str(&format!(
         "<h3 class=\"text-xl font-semibold text-text\">{}</h3>",
@@ -2179,7 +2192,9 @@ fn render_stat_card(props: &StatCardProps) -> String {
     let mut html =
         String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
     if let Some(ref icon) = props.icon {
-        html.push_str(&format!("<span class=\"inline-block mb-2 w-6 h-6\">{icon}</span>"));
+        html.push_str(&format!(
+            "<span class=\"inline-block mb-2 w-6 h-6\">{icon}</span>"
+        ));
         // raw
     }
     html.push_str(&format!(
@@ -2726,7 +2741,7 @@ mod tests {
                 disabled: Some(true),
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: None,
             visibility: None,
@@ -2747,7 +2762,7 @@ mod tests {
                 disabled: None,
                 icon: Some("save".to_string()),
                 icon_position: Some(IconPosition::Left),
-                        button_type: None,
+                button_type: None,
             }),
             action: None,
             visibility: None,
@@ -2771,7 +2786,7 @@ mod tests {
                 disabled: None,
                 icon: Some("arrow-right".to_string()),
                 icon_position: Some(IconPosition::Right),
-                        button_type: None,
+                button_type: None,
             }),
             action: None,
             visibility: None,
@@ -3461,7 +3476,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: None,
             visibility: None,
@@ -3497,7 +3512,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: Some(make_action_with_url(
                 "users.show",
@@ -3523,7 +3538,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: Some(make_action_with_url(
                 "users.store",
@@ -3548,7 +3563,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: Some(make_action("users.show", HttpMethod::Get)),
             visibility: None,
@@ -3568,7 +3583,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: Some(make_action_with_url(
                 "users.destroy",
@@ -3592,7 +3607,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: Some(make_action_with_url(
                 "users.show",
@@ -5341,7 +5356,7 @@ mod tests {
                 disabled: None,
                 icon: None,
                 icon_position: None,
-                        button_type: None,
+                button_type: None,
             }),
             action: Some(Action {
                 handler: "reports.index".to_string(),
@@ -5736,7 +5751,9 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("<a href=\"/\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap\">Home</a>"));
-        assert!(html.contains("<span class=\"text-sm text-text-muted whitespace-nowrap\">Users</span>"));
+        assert!(
+            html.contains("<span class=\"text-sm text-text-muted whitespace-nowrap\">Users</span>")
+        );
         assert!(
             html.contains("<svg"),
             "SVG chevron separator between breadcrumb items"
@@ -5759,7 +5776,7 @@ mod tests {
                         disabled: None,
                         icon: None,
                         icon_position: None,
-                                        button_type: None,
+                        button_type: None,
                     }),
                     action: None,
                     visibility: None,
@@ -5796,7 +5813,7 @@ mod tests {
                             disabled: None,
                             icon: None,
                             icon_position: None,
-                                                button_type: None,
+                            button_type: None,
                         }),
                         action: None,
                         visibility: None,
@@ -5810,7 +5827,7 @@ mod tests {
                             disabled: None,
                             icon: None,
                             icon_position: None,
-                                                button_type: None,
+                            button_type: None,
                         }),
                         action: None,
                         visibility: None,
@@ -6065,7 +6082,7 @@ mod tests {
                     description: Some("Card description".to_string()),
                     children: vec![],
                     footer: vec![],
-                max_width: None,
+                    max_width: None,
                 }),
                 action: None,
                 visibility: None,
@@ -7026,18 +7043,39 @@ mod tests {
         let view = JsonUiView::new().component(ComponentNode::dropdown_menu("menu", props));
         let html = render_to_html(&view, &json!({}));
 
-        assert!(html.contains("data-dropdown-toggle=\"actions-1\""), "trigger has data-dropdown-toggle");
-        assert!(html.contains("data-dropdown=\"actions-1\""), "panel has data-dropdown");
+        assert!(
+            html.contains("data-dropdown-toggle=\"actions-1\""),
+            "trigger has data-dropdown-toggle"
+        );
+        assert!(
+            html.contains("data-dropdown=\"actions-1\""),
+            "panel has data-dropdown"
+        );
         assert!(html.contains("hidden"), "panel starts hidden");
-        assert!(html.contains("text-destructive"), "destructive item has text-destructive class");
+        assert!(
+            html.contains("text-destructive"),
+            "destructive item has text-destructive class"
+        );
         assert!(html.contains("type=\"button\""), "trigger is type=button");
-        assert!(html.contains("aria-label=\"Azioni\""), "trigger has aria-label");
+        assert!(
+            html.contains("aria-label=\"Azioni\""),
+            "trigger has aria-label"
+        );
         assert!(html.contains("Modifica"), "normal item label present");
         assert!(html.contains("Elimina"), "destructive item label present");
         // GET action renders as <a>, DELETE renders as <form>
-        assert!(html.contains("<a href=\"/items/1/edit\""), "GET action renders as link");
-        assert!(html.contains("<form action=\"/items/1\" method=\"post\">"), "DELETE action renders as form");
-        assert!(html.contains("name=\"_method\" value=\"DELETE\""), "DELETE method spoofing");
+        assert!(
+            html.contains("<a href=\"/items/1/edit\""),
+            "GET action renders as link"
+        );
+        assert!(
+            html.contains("<form action=\"/items/1\" method=\"post\">"),
+            "DELETE action renders as form"
+        );
+        assert!(
+            html.contains("name=\"_method\" value=\"DELETE\""),
+            "DELETE method spoofing"
+        );
     }
 
     #[test]
@@ -7069,15 +7107,21 @@ mod tests {
         let view = JsonUiView::new().component(ComponentNode::dropdown_menu("cm", props));
         let html = render_to_html(&view, &json!({}));
 
-        assert!(html.contains("data-confirm-title=\"Conferma eliminazione\""), "confirm title attribute");
-        assert!(html.contains("data-confirm-message=\"Sei sicuro?\""), "confirm message attribute");
+        assert!(
+            html.contains("data-confirm-title=\"Conferma eliminazione\""),
+            "confirm title attribute"
+        );
+        assert!(
+            html.contains("data-confirm-message=\"Sei sicuro?\""),
+            "confirm message attribute"
+        );
         assert!(html.contains("data-confirm"), "has data-confirm attribute");
     }
 
     // ── KanbanBoard tests ───────────────────────────────────────────────
 
     fn make_kanban_props() -> KanbanBoardProps {
-        use crate::component::{KanbanBoardProps, KanbanColumnProps, CardProps};
+        use crate::component::{CardProps, KanbanBoardProps, KanbanColumnProps};
 
         KanbanBoardProps {
             columns: vec![
@@ -7092,7 +7136,7 @@ mod tests {
                             description: None,
                             children: vec![],
                             footer: vec![],
-                max_width: None,
+                            max_width: None,
                         },
                     )],
                 },
@@ -7107,7 +7151,7 @@ mod tests {
                             description: None,
                             children: vec![],
                             footer: vec![],
-                max_width: None,
+                            max_width: None,
                         },
                     )],
                 },
@@ -7127,7 +7171,10 @@ mod tests {
         assert!(html.contains("overflow-x-auto"), "scrollable container");
         assert!(html.contains("Nuovi"), "first column title");
         assert!(html.contains("In corso"), "second column title");
-        assert!(html.contains("bg-primary text-primary-foreground"), "count badge styling");
+        assert!(
+            html.contains("bg-primary text-primary-foreground"),
+            "count badge styling"
+        );
         assert!(html.contains(">3<"), "first column count");
         assert!(html.contains(">1<"), "second column count");
     }
@@ -7143,10 +7190,19 @@ mod tests {
         assert!(html.contains("data-tab=\"new\""), "first tab button");
         assert!(html.contains("data-tab=\"progress\""), "second tab button");
         assert!(html.contains("data-tab-panel=\"new\""), "first tab panel");
-        assert!(html.contains("data-tab-panel=\"progress\""), "second tab panel");
+        assert!(
+            html.contains("data-tab-panel=\"progress\""),
+            "second tab panel"
+        );
         // Default tab (first) is active
-        assert!(html.contains("aria-selected=\"true\""), "default tab selected");
-        assert!(html.contains("aria-selected=\"false\""), "non-default tab not selected");
+        assert!(
+            html.contains("aria-selected=\"true\""),
+            "default tab selected"
+        );
+        assert!(
+            html.contains("aria-selected=\"false\""),
+            "non-default tab not selected"
+        );
     }
 
     #[test]
@@ -7158,7 +7214,10 @@ mod tests {
 
         // The "progress" tab should be selected, "new" should not
         // Check that the progress panel is NOT hidden
-        assert!(!html.contains("data-tab-panel=\"progress\" class=\"space-y-3 hidden\""), "progress panel visible");
+        assert!(
+            !html.contains("data-tab-panel=\"progress\" class=\"space-y-3 hidden\""),
+            "progress panel visible"
+        );
     }
 
     // ── CalendarCell tests ──────────────────────────────────────────────
@@ -7173,7 +7232,10 @@ mod tests {
         };
         let html = render_calendar_cell(&props);
         assert!(html.contains("bg-primary"), "today has bg-primary");
-        assert!(html.contains("text-primary-foreground"), "today has foreground color");
+        assert!(
+            html.contains("text-primary-foreground"),
+            "today has foreground color"
+        );
         assert!(html.contains("font-semibold"), "today is bold");
         assert!(html.contains("15"), "shows day number");
     }
@@ -7199,7 +7261,10 @@ mod tests {
             event_count: 3,
         };
         let html = render_calendar_cell(&props);
-        assert!(html.contains("w-1.5 h-1.5 rounded-full bg-primary"), "shows event dots");
+        assert!(
+            html.contains("w-1.5 h-1.5 rounded-full bg-primary"),
+            "shows event dots"
+        );
         assert!(html.contains("flex gap-1"), "dots container present");
     }
 
@@ -7212,7 +7277,10 @@ mod tests {
             event_count: 1,
         };
         let html = render_calendar_cell(&props);
-        assert!(html.contains("w-1.5 h-1.5 rounded-full bg-primary"), "single event shows dot");
+        assert!(
+            html.contains("w-1.5 h-1.5 rounded-full bg-primary"),
+            "single event shows dot"
+        );
     }
 
     // ── ActionCard tests ────────────────────────────────────────────────
@@ -7227,7 +7295,10 @@ mod tests {
             href: None,
         };
         let html = render_action_card(&props);
-        assert!(html.contains("border-l-primary"), "default variant has primary border");
+        assert!(
+            html.contains("border-l-primary"),
+            "default variant has primary border"
+        );
         assert!(html.contains("Nuovo ordine"), "shows title");
         assert!(html.contains("Crea un ordine"), "shows description");
         assert!(html.contains("rsaquo"), "shows chevron");
@@ -7243,7 +7314,10 @@ mod tests {
             href: None,
         };
         let html = render_action_card(&props);
-        assert!(html.contains("border-l-warning"), "setup variant has warning border");
+        assert!(
+            html.contains("border-l-warning"),
+            "setup variant has warning border"
+        );
     }
 
     #[test]
@@ -7256,7 +7330,10 @@ mod tests {
             href: None,
         };
         let html = render_action_card(&props);
-        assert!(html.contains("border-l-destructive"), "danger variant has destructive border");
+        assert!(
+            html.contains("border-l-destructive"),
+            "danger variant has destructive border"
+        );
     }
 
     // ─── ProductTile tests ────────────────────────────────────────────
@@ -7273,15 +7350,30 @@ mod tests {
         let html = render_product_tile(&props);
         assert!(html.contains("Margherita"), "shows product name");
         assert!(html.contains("\u{20AC}8,50"), "shows price");
-        assert!(html.contains("data-qty-inc=\"qty_p1\""), "inc button has data attr");
-        assert!(html.contains("data-qty-dec=\"qty_p1\""), "dec button has data attr");
-        assert!(html.contains("data-qty-display=\"qty_p1\""), "display span has data attr");
-        assert!(html.contains("data-qty-input=\"qty_p1\""), "hidden input has data attr");
+        assert!(
+            html.contains("data-qty-inc=\"qty_p1\""),
+            "inc button has data attr"
+        );
+        assert!(
+            html.contains("data-qty-dec=\"qty_p1\""),
+            "dec button has data attr"
+        );
+        assert!(
+            html.contains("data-qty-display=\"qty_p1\""),
+            "display span has data attr"
+        );
+        assert!(
+            html.contains("data-qty-input=\"qty_p1\""),
+            "hidden input has data attr"
+        );
         assert!(html.contains("type=\"button\""), "buttons use type=button");
         assert!(html.contains("type=\"hidden\""), "hidden input present");
         assert!(html.contains("min-h-[44px]"), "44px touch target height");
         assert!(html.contains("min-w-[44px]"), "44px touch target width");
-        assert!(html.contains("touch-manipulation"), "touch-manipulation on container");
+        assert!(
+            html.contains("touch-manipulation"),
+            "touch-manipulation on container"
+        );
         assert!(html.contains("value=\"0\""), "default quantity is 0");
     }
 
@@ -7303,8 +7395,16 @@ mod tests {
     fn test_render_data_table_rows() {
         let props = DataTableProps {
             columns: vec![
-                Column { key: "name".into(), label: "Nome".into(), format: None },
-                Column { key: "price".into(), label: "Prezzo".into(), format: None },
+                Column {
+                    key: "name".into(),
+                    label: "Nome".into(),
+                    format: None,
+                },
+                Column {
+                    key: "price".into(),
+                    label: "Prezzo".into(),
+                    format: None,
+                },
             ],
             data_path: "items".into(),
             row_actions: None,
@@ -7329,9 +7429,11 @@ mod tests {
     #[test]
     fn test_render_data_table_with_actions() {
         let props = DataTableProps {
-            columns: vec![
-                Column { key: "name".into(), label: "Nome".into(), format: None },
-            ],
+            columns: vec![Column {
+                key: "name".into(),
+                label: "Nome".into(),
+                format: None,
+            }],
             data_path: "items".into(),
             row_actions: Some(vec![
                 DropdownMenuAction {
@@ -7366,16 +7468,24 @@ mod tests {
             "items": [{"id": "p1", "name": "Margherita"}]
         });
         let html = render_data_table(&props, &data);
-        assert!(html.contains("data-dropdown-toggle"), "DropdownMenu trigger present");
-        assert!(html.contains("text-destructive"), "destructive action in menu");
+        assert!(
+            html.contains("data-dropdown-toggle"),
+            "DropdownMenu trigger present"
+        );
+        assert!(
+            html.contains("text-destructive"),
+            "destructive action in menu"
+        );
     }
 
     #[test]
     fn test_render_data_table_empty() {
         let props = DataTableProps {
-            columns: vec![
-                Column { key: "name".into(), label: "Nome".into(), format: None },
-            ],
+            columns: vec![Column {
+                key: "name".into(),
+                label: "Nome".into(),
+                format: None,
+            }],
             data_path: "items".into(),
             row_actions: None,
             empty_message: None,
@@ -7383,15 +7493,26 @@ mod tests {
         };
         let data = json!({"items": []});
         let html = render_data_table(&props, &data);
-        assert!(html.contains("Nessun elemento trovato"), "default empty message");
+        assert!(
+            html.contains("Nessun elemento trovato"),
+            "default empty message"
+        );
     }
 
     #[test]
     fn test_render_data_table_mobile_cards() {
         let props = DataTableProps {
             columns: vec![
-                Column { key: "name".into(), label: "Nome".into(), format: None },
-                Column { key: "price".into(), label: "Prezzo".into(), format: None },
+                Column {
+                    key: "name".into(),
+                    label: "Nome".into(),
+                    format: None,
+                },
+                Column {
+                    key: "price".into(),
+                    label: "Prezzo".into(),
+                    format: None,
+                },
             ],
             data_path: "items".into(),
             row_actions: None,
@@ -7436,7 +7557,10 @@ mod tests {
             "trigger has data-modal-open"
         );
         assert!(html.contains("data-modal-close"), "has close button");
-        assert!(html.contains("Chiudi"), "close button has Italian aria-label");
+        assert!(
+            html.contains("Chiudi"),
+            "close button has Italian aria-label"
+        );
         assert!(!html.contains("<details"), "no details element");
         assert!(!html.contains("<summary"), "no summary element");
     }
@@ -7481,7 +7605,10 @@ mod tests {
             max_width: None,
         };
         let html = render_form(&props, &serde_json::Value::Null);
-        assert!(!html.contains("max-w-2xl"), "default form has no max-width wrapper");
+        assert!(
+            !html.contains("max-w-2xl"),
+            "default form has no max-width wrapper"
+        );
     }
 
     #[test]
@@ -7494,7 +7621,10 @@ mod tests {
         };
         let html = render_form_section(&props, &serde_json::Value::Null);
         assert!(html.contains("md:grid"), "two-column uses grid");
-        assert!(html.contains("md:grid-cols-5"), "two-column uses 5-col grid");
+        assert!(
+            html.contains("md:grid-cols-5"),
+            "two-column uses 5-col grid"
+        );
         assert!(html.contains("md:col-span-2"), "description takes 2 cols");
         assert!(html.contains("md:col-span-3"), "controls take 3 cols");
     }
@@ -7518,10 +7648,22 @@ mod tests {
             list: None,
         };
         let html = render_input(&props, &serde_json::Value::Null);
-        assert!(html.contains("aria-invalid=\"true\""), "input has aria-invalid");
-        assert!(html.contains("aria-describedby=\"err-email\""), "input has aria-describedby");
-        assert!(html.contains("id=\"err-email\""), "error paragraph has matching id");
-        assert!(html.contains("Campo obbligatorio"), "error message rendered");
+        assert!(
+            html.contains("aria-invalid=\"true\""),
+            "input has aria-invalid"
+        );
+        assert!(
+            html.contains("aria-describedby=\"err-email\""),
+            "input has aria-describedby"
+        );
+        assert!(
+            html.contains("id=\"err-email\""),
+            "error paragraph has matching id"
+        );
+        assert!(
+            html.contains("Campo obbligatorio"),
+            "error message rendered"
+        );
     }
 
     #[test]
@@ -7542,7 +7684,10 @@ mod tests {
         };
         let html = render_input(&props, &serde_json::Value::Null);
         assert!(!html.contains("<label"), "hidden input has no label");
-        assert!(!html.contains("space-y-1"), "hidden input has no wrapper div");
+        assert!(
+            !html.contains("space-y-1"),
+            "hidden input has no wrapper div"
+        );
         assert!(html.contains("type=\"hidden\""), "hidden input present");
     }
 
@@ -7563,7 +7708,10 @@ mod tests {
         };
         let html = render_switch(&props, &serde_json::Value::Null);
         assert!(html.contains("role=\"switch\""), "switch has role=switch");
-        assert!(html.contains("aria-checked=\"true\""), "checked switch has aria-checked=true");
+        assert!(
+            html.contains("aria-checked=\"true\""),
+            "checked switch has aria-checked=true"
+        );
     }
 
     // ── Tabs ARIA tests ────────────────────────────────────────────────────
@@ -7573,15 +7721,32 @@ mod tests {
         let props = TabsProps {
             default_tab: "general".into(),
             tabs: vec![
-                Tab { value: "general".into(), label: "Generale".into(), children: vec![] },
-                Tab { value: "advanced".into(), label: "Avanzate".into(), children: vec![] },
+                Tab {
+                    value: "general".into(),
+                    label: "Generale".into(),
+                    children: vec![],
+                },
+                Tab {
+                    value: "advanced".into(),
+                    label: "Avanzate".into(),
+                    children: vec![],
+                },
             ],
         };
         let html = render_tabs(&props, &serde_json::Value::Null);
         assert!(html.contains("id=\"tab-btn-general\""), "tab button has id");
-        assert!(html.contains("aria-controls=\"tab-panel-general\""), "tab button has aria-controls");
-        assert!(html.contains("id=\"tab-panel-general\""), "tab panel has id");
-        assert!(html.contains("aria-labelledby=\"tab-btn-general\""), "tab panel has aria-labelledby");
+        assert!(
+            html.contains("aria-controls=\"tab-panel-general\""),
+            "tab button has aria-controls"
+        );
+        assert!(
+            html.contains("id=\"tab-panel-general\""),
+            "tab panel has id"
+        );
+        assert!(
+            html.contains("aria-labelledby=\"tab-btn-general\""),
+            "tab panel has aria-labelledby"
+        );
     }
 
     // ── Collapsible ARIA tests ─────────────────────────────────────────────
@@ -7594,7 +7759,10 @@ mod tests {
             children: vec![],
         };
         let html = render_collapsible(&props, &serde_json::Value::Null);
-        assert!(html.contains("aria-expanded=\"false\""), "closed collapsible has aria-expanded=false");
+        assert!(
+            html.contains("aria-expanded=\"false\""),
+            "closed collapsible has aria-expanded=false"
+        );
     }
 
     // ── ActionCard href tests ──────────────────────────────────────────────
@@ -7609,9 +7777,18 @@ mod tests {
             href: Some("/ordini/nuovo".into()),
         };
         let html = render_action_card(&props);
-        assert!(html.contains("<a href=\"/ordini/nuovo\""), "card wraps in <a> with href");
-        assert!(html.contains("aria-label=\"Nuovo ordine\""), "card link has aria-label");
-        assert!(!html.contains("<div class=\"rounded"), "no div wrapper when href present");
+        assert!(
+            html.contains("<a href=\"/ordini/nuovo\""),
+            "card wraps in <a> with href"
+        );
+        assert!(
+            html.contains("aria-label=\"Nuovo ordine\""),
+            "card link has aria-label"
+        );
+        assert!(
+            !html.contains("<div class=\"rounded"),
+            "no div wrapper when href present"
+        );
     }
 
     #[test]
@@ -7624,7 +7801,10 @@ mod tests {
             href: None,
         };
         let html = render_action_card(&props);
-        assert!(html.contains("<div class=\"rounded"), "uses div when no href");
+        assert!(
+            html.contains("<div class=\"rounded"),
+            "uses div when no href"
+        );
         assert!(!html.contains("<a "), "no anchor when no href");
     }
 
@@ -7640,7 +7820,10 @@ mod tests {
             button_type: None,
         };
         let html = render_button(&props);
-        assert!(html.contains("type=\"button\""), "default button type is button");
+        assert!(
+            html.contains("type=\"button\""),
+            "default button type is button"
+        );
         assert!(!html.contains("type=\"submit\""), "default is not submit");
     }
 
@@ -7656,15 +7839,22 @@ mod tests {
             button_type: Some(ButtonType::Submit),
         };
         let html = render_button(&props);
-        assert!(html.contains("type=\"submit\""), "submit button type is submit");
+        assert!(
+            html.contains("type=\"submit\""),
+            "submit button type is submit"
+        );
     }
 
     #[test]
     fn data_table_row_actions_url_templating() {
-        use crate::component::*;
         use crate::action::*;
+        use crate::component::*;
         let props = DataTableProps {
-            columns: vec![Column { key: "name".into(), label: "Name".into(), format: None }],
+            columns: vec![Column {
+                key: "name".into(),
+                label: "Name".into(),
+                format: None,
+            }],
             data_path: "items".into(),
             row_actions: Some(vec![DropdownMenuAction {
                 label: "Delete".into(),
@@ -7681,7 +7871,13 @@ mod tests {
         };
         let data = serde_json::json!({ "items": [{"id": "42", "name": "Widget"}] });
         let html = render_data_table(&props, &data);
-        assert!(html.contains("/items/42/delete"), "URL must have {{row_key}} replaced with actual row key value '42'");
-        assert!(!html.contains("{row_key}"), "No unreplaced {{row_key}} placeholders should remain");
+        assert!(
+            html.contains("/items/42/delete"),
+            "URL must have {{row_key}} replaced with actual row key value '42'"
+        );
+        assert!(
+            !html.contains("{row_key}"),
+            "No unreplaced {{row_key}} placeholders should remain"
+        );
     }
 }

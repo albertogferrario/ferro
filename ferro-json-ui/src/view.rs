@@ -144,7 +144,7 @@ mod tests {
                     description: None,
                     children: vec![],
                     footer: vec![],
-                max_width: None,
+                    max_width: None,
                 }),
                 action: None,
                 visibility: None,
@@ -318,7 +318,7 @@ mod tests {
                     disabled: Some(false),
                     icon: None,
                     icon_position: None,
-                                button_type: None,
+                    button_type: None,
                 }),
                 action: Some(Action {
                     handler: "admin.delete_all".to_string(),
