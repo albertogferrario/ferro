@@ -1,0 +1,104 @@
+# Phase 64: Ferro Projections [FERRO REPO] - Context
+
+**Gathered:** 2026-04-05
+**Status:** Ready for planning
+
+<domain>
+## Phase Boundary
+
+Add a `TemplateRenderer` implementation of the existing `Renderer` trait in `ferro-projections` that produces typed template contexts from `ServiceDef` definitions. These contexts are consumed by MiniJinja in Phase 65 to render business data into HTML templates. This phase runs in the ferro repo (`../../albertogferrario/ferro/`), not in gestiscilo.it.
+
+</domain>
+
+<decisions>
+## Implementation Decisions
+
+### Template context structure
+- **D-01:** Output is a `serde_json::Value` (consistent with `Renderer` trait signature) organized as a nested object grouped by domain entity — e.g., `{ "business": { "name": "...", "phone": "..." }, "products": [...], "actions": [...], "states": {...} }`
+- **D-02:** Top-level keys are semantic groups derived from the ServiceDef: entity fields, actions, and state machine states — not a flat key dump
+
+### Field-to-key mapping
+- **D-03:** Template variable names use the field names as-is from the ServiceDef (e.g., a field named `"total"` with meaning `Money` appears as `total` in the context, not remapped to `"price"`)
+- **D-04:** `FieldMeaning` drives which fields are included in the template context (all fields with semantic meaning) — it does not rename fields
+
+### Action representation
+- **D-05:** Actions appear as rich objects in the template context: `{ "name": "add_to_cart", "display_name": "Add to Cart", "inputs": [...] }` — not just string identifiers
+- **D-06:** This gives template authors enough metadata to render action buttons with labels and wire up `data-action` attributes without a second lookup
+
+### State machine exposure
+- **D-07:** All state machine states are included as typed enum values with display names — e.g., `{ "states": [{ "name": "pending", "display_name": "In attesa" }, ...] }`
+- **D-08:** Transitions are included so templates can show available actions per state (e.g., status badges, allowed operations)
+
+### Claude's Discretion
+- Internal module organization within `ferro-projections/src/render/`
+- Helper function decomposition
+- Test structure and fixture design
+- Whether to add a `TemplateContext` wrapper struct or return raw `serde_json::Value`
+
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+
+### Ferro projections crate
+- `ferro-projections/src/lib.rs` — Public API surface, re-exports
+- `ferro-projections/src/render/mod.rs` — `Renderer` trait definition, `RenderContext`, `RenderMode`
+- `ferro-projections/src/render/json_ui.rs` — Existing `JsonUiRenderer` implementation (reference pattern)
+- `ferro-projections/src/render/field_map.rs` — Field mapping utilities
+- `ferro-projections/src/service.rs` — `ServiceDef` struct with fields, actions, guards, relationships, state machine
+- `ferro-projections/src/field.rs` — `FieldDef`, `FieldMeaning`, `DataType`, `infer_meaning()`
+- `ferro-projections/src/action.rs` — `ActionDef`, `InputDef`, `GuardDef`
+- `ferro-projections/src/state.rs` — `StateMachine`, `StateDef`, `Transition`, `Warning`
+
+### Requirements
+- `.planning/REQUIREMENTS.md` §Ferro Projections — PROJ-01 through PROJ-04
+
+</canonical_refs>
+
+<code_context>
+## Existing Code Insights
+
+### Reusable Assets
+- `Renderer` trait: Already defined with `fn render(&self, service: &ServiceDef, intents: &[IntentScore], ctx: &RenderContext) -> Result<serde_json::Value, Error>` — new renderer implements this
+- `JsonUiRenderer`: Existing implementation in `render/json_ui.rs` — reference for how to traverse ServiceDef and produce output
+- `field_display_name()`: Converts snake_case to Title Case — reusable for template context keys
+- `is_system_field()`: Filters out Identifier/CreatedAt/UpdatedAt — useful for excluding system fields from template context
+- `FieldMeaning` enum: 18 semantic variants + Custom fallback — drives field categorization
+- `ServiceDef` builder API: Fields, actions, guards, relationships, state machines all accessible via public fields
+
+### Established Patterns
+- Renderer returns `serde_json::Value` (not typed structs) — keeps output format flexible
+- Builder pattern with method chaining for ServiceDef, ActionDef, StateMachine
+- JSON Schema support via `schemars` on all projection types
+- Validation via `StateMachine::validate()` with structured `Warning` enum
+
+### Integration Points
+- New file: `ferro-projections/src/render/template.rs` (alongside `json_ui.rs`)
+- Re-export from `ferro-projections/src/lib.rs` (add `pub use render::template::TemplateRenderer`)
+- Consumed by gestiscilo.it in Phase 65 via the ferro path dependency
+
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+No specific requirements — open to standard approaches. The existing `JsonUiRenderer` serves as the reference implementation pattern.
+
+</specifics>
+
+<deferred>
+## Deferred Ideas
+
+None — discussion stayed within phase scope.
+
+### Reviewed Todos (not folded)
+- "Add granular module selection to onboarding step 2" — unrelated to ferro framework projections; belongs in app-level UI work
+
+</deferred>
+
+---
+
+*Phase: 64-ferro-projections-ferro-repo*
+*Context gathered: 2026-04-05*
