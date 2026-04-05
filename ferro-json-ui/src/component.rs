@@ -1674,7 +1674,6 @@ mod tests {
                 visibility: None,
             }],
             footer: vec![],
-                max_width: None,
             trigger_label: Some("Open".to_string()),
         });
         let json = serde_json::to_string(&modal).unwrap();
@@ -1843,7 +1842,6 @@ mod tests {
                 description: None,
                 children: vec![],
                 footer: vec![],
-                max_width: None,
                 trigger_label: None,
             }),
             Component::Text(TextProps {
@@ -2057,6 +2055,7 @@ mod tests {
             title: "Actions".to_string(),
             description: None,
             children: vec![],
+            max_width: None,
             footer: vec![ComponentNode {
                 key: "cancel".to_string(),
                 component: Component::Button(ButtonProps {

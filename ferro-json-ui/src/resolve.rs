@@ -522,6 +522,7 @@ mod tests {
             component: Component::Card(CardProps {
                 title: "Users".to_string(),
                 description: None,
+                max_width: None,
                 children: vec![ComponentNode {
                     key: "btn".to_string(),
                     component: Component::Button(ButtonProps {

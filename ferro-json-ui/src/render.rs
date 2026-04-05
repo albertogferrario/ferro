@@ -397,8 +397,7 @@ fn render_action_card(props: &ActionCardProps) -> String {
     } else {
         (
             format!(
-                "<div class=\"rounded-lg border-l-4 {} border border-border bg-card shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-surface transition-colors duration-150\">",
-                border_class,
+                "<div class=\"rounded-lg border-l-4 {border_class} border border-border bg-card shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-surface transition-colors duration-150\">"
             ),
             "</div>".to_string(),
         )
@@ -532,9 +531,8 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
         let is_default = col.id == default_id;
         let hidden = if is_default { "" } else { " hidden" };
         html.push_str(&format!(
-            "<div data-tab-panel=\"{}\" class=\"{}\">",
+            "<div data-tab-panel=\"{}\" class=\"space-y-3{hidden}\">",
             html_escape(&col.id),
-            format!("space-y-3{hidden}"),
         ));
         for child in &col.children {
             html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
@@ -769,10 +767,10 @@ fn render_card(props: &CardProps, data: &Value) -> String {
     match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
         FormMaxWidth::Default => {}
         FormMaxWidth::Narrow => {
-            html = format!("<div class=\"max-w-2xl mx-auto\">{}</div>", html);
+            html = format!("<div class=\"max-w-2xl mx-auto\">{html}</div>");
         }
         FormMaxWidth::Wide => {
-            html = format!("<div class=\"max-w-4xl mx-auto\">{}</div>", html);
+            html = format!("<div class=\"max-w-4xl mx-auto\">{html}</div>");
         }
     }
 
@@ -975,8 +973,8 @@ fn render_form(props: &FormProps, data: &Value) -> String {
     // FIX-02: wrap in max-width container when specified
     let html = match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
         FormMaxWidth::Default => html,
-        FormMaxWidth::Narrow => format!("<div class=\"max-w-2xl mx-auto\">{}</div>", html),
-        FormMaxWidth::Wide => format!("<div class=\"max-w-4xl mx-auto\">{}</div>", html),
+        FormMaxWidth::Narrow => format!("<div class=\"max-w-2xl mx-auto\">{html}</div>"),
+        FormMaxWidth::Wide => format!("<div class=\"max-w-4xl mx-auto\">{html}</div>"),
     };
     html
 }
@@ -1155,7 +1153,7 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                     cloned
                 }).collect();
                 let dropdown_props = DropdownMenuProps {
-                    menu_id: format!("dt-{}", row_key_value),
+                    menu_id: format!("dt-{row_key_value}"),
                     trigger_label: "\u{22EE}".to_string(),
                     items: templated_items,
                     trigger_variant: None,
@@ -1220,7 +1218,7 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                     cloned
                 }).collect();
                 let dropdown_props = DropdownMenuProps {
-                    menu_id: format!("dt-m-{}", row_key_value),
+                    menu_id: format!("dt-m-{row_key_value}"),
                     trigger_label: "\u{22EE}".to_string(),
                     items: templated_items,
                     trigger_variant: None,
@@ -3624,9 +3622,9 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("rounded-lg border border-border bg-card shadow-sm"));
+        assert!(html.contains("rounded-lg border border-border bg-card shadow-sm overflow-visible"));
         assert!(html
-            .contains("<h3 class=\"text-lg font-semibold leading-snug text-text\">My Card</h3>"));
+            .contains("<h3 class=\"text-base font-semibold leading-snug text-text\">My Card</h3>"));
         assert!(html.contains("<p class=\"mt-1 text-sm text-text-muted\">A description</p>"));
     }
 
@@ -3646,7 +3644,7 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(
-            html.contains("mt-4 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto")
+            html.contains("mt-3 flex flex-wrap gap-3 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto overflow-visible")
         );
         assert!(html.contains("Child content"));
     }
@@ -3659,6 +3657,7 @@ mod tests {
                 title: "Card".to_string(),
                 description: None,
                 children: vec![],
+                max_width: None,
                 footer: vec![button_node(
                     "btn",
                     "Save",
@@ -3722,7 +3721,6 @@ mod tests {
                 description: None,
                 children: vec![],
                 footer: vec![],
-                max_width: None,
                 trigger_label: None,
             }),
             action: None,
@@ -5392,7 +5390,7 @@ mod tests {
             },
         ));
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("grid grid-cols-4 gap-6"));
+        assert!(html.contains("grid w-full grid-cols-4 gap-6"));
         assert!(html.contains("Cell 1"));
     }
 
@@ -5474,7 +5472,7 @@ mod tests {
         ));
         let html = render_to_html(&view, &json!({}));
         assert!(
-            html.contains("grid grid-cols-3 gap-4"),
+            html.contains("grid w-full grid-cols-3 gap-4"),
             "non-scrollable should use grid-cols-N"
         );
         assert!(
@@ -5709,7 +5707,7 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("pb-4"), "flex container with pb-4");
         assert!(html.contains(
-            "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">My Page</h2>"
+            "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text truncate\">My Page</h2>"
         ));
         assert!(!html.contains("<nav"), "no breadcrumb nav when empty");
         assert!(!html.contains("flex-shrink-0"), "no actions div when empty");
@@ -5737,10 +5735,8 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html
-            .contains("<nav class=\"flex items-center space-x-2 text-sm text-text-muted mb-1\">"));
-        assert!(html.contains("<a href=\"/\" class=\"hover:text-text\">Home</a>"));
-        assert!(html.contains("<span>Users</span>"));
+        assert!(html.contains("<a href=\"/\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap\">Home</a>"));
+        assert!(html.contains("<span class=\"text-sm text-text-muted whitespace-nowrap\">Users</span>"));
         assert!(
             html.contains("<svg"),
             "SVG chevron separator between breadcrumb items"
@@ -5774,8 +5770,8 @@ mod tests {
         });
         let html = render_to_html(&view, &json!({}));
         assert!(
-            html.contains("flex-shrink-0"),
-            "actions wrapper with flex-shrink-0"
+            html.contains("flex flex-wrap items-center gap-2"),
+            "actions wrapper with flex"
         );
         assert!(
             html.contains(">Add New</button>"),
@@ -6995,8 +6991,6 @@ mod tests {
 
     #[test]
     fn test_render_dropdown_menu() {
-        use crate::action::ConfirmDialog;
-
         let props = DropdownMenuProps {
             menu_id: "actions-1".to_string(),
             trigger_label: "Azioni".to_string(),
@@ -7129,7 +7123,7 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
 
         assert!(html.contains("hidden md:block"), "desktop wrapper present");
-        assert!(html.contains("min-w-[280px]"), "column min width");
+        assert!(html.contains("min-w-[260px]"), "column min width");
         assert!(html.contains("overflow-x-auto"), "scrollable container");
         assert!(html.contains("Nuovi"), "first column title");
         assert!(html.contains("In corso"), "second column title");
@@ -7157,8 +7151,6 @@ mod tests {
 
     #[test]
     fn test_render_kanban_board_custom_default_column() {
-        use crate::component::KanbanBoardProps;
-
         let mut props = make_kanban_props();
         props.mobile_default_column = Some("progress".to_string());
         let view = JsonUiView::new().component(ComponentNode::kanban_board("kb", props));
@@ -7195,8 +7187,7 @@ mod tests {
             event_count: 0,
         };
         let html = render_calendar_cell(&props);
-        assert!(html.contains("text-text-muted"), "out-of-month is muted");
-        assert!(html.contains("opacity-50"), "out-of-month has opacity");
+        assert!(html.contains("opacity-40"), "out-of-month has opacity");
     }
 
     #[test]
@@ -7208,8 +7199,8 @@ mod tests {
             event_count: 3,
         };
         let html = render_calendar_cell(&props);
-        assert!(html.contains(">3</span>"), "shows event count");
-        assert!(html.contains("text-primary"), "count styled as primary");
+        assert!(html.contains("w-1.5 h-1.5 rounded-full bg-primary"), "shows event dots");
+        assert!(html.contains("flex gap-1"), "dots container present");
     }
 
     #[test]
@@ -7431,7 +7422,6 @@ mod tests {
             description: None,
             children: vec![],
             footer: vec![],
-                max_width: None,
             trigger_label: Some("Open".into()),
         };
         let html = render_modal(&props, &serde_json::Value::Null);
@@ -7459,7 +7449,6 @@ mod tests {
             description: Some("A description".into()),
             children: vec![],
             footer: vec![],
-                max_width: None,
             trigger_label: None,
         };
         let html = render_modal(&props, &serde_json::Value::Null);

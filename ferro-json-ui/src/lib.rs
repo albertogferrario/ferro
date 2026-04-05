@@ -28,6 +28,7 @@
 //!             title: "User Management".to_string(),
 //!             description: None,
 //!             children: vec![],
+//!             max_width: None,
 //!             footer: vec![],
 //!         }),
 //!         action: None,
