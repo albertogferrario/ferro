@@ -150,14 +150,17 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - [ ] Publish to crates.io (manual step using PUBLISHING.md)
 - [ ] Public announcement and marketing
 
-## Current Milestone: v11.0 Framework Consolidation Audit
+## Current Milestone: v12.0 JSON-UI v2 — Spec-Driven Rendering
 
-**Goal:** Comprehensive audit of documentation accuracy/completeness and framework philosophy consistency across all 14 crates, then fix everything found.
+**Goal:** Pivot ferro-json-ui from Rust-built component trees to flat, JSON-first specs. AI generates specs at runtime; developers write static JSON files. Handlers become data-only providers.
 
 **Target features:**
-- Full documentation audit (accuracy, quality, cross-references, examples, gaps)
-- Philosophy audit (agent-first consistency, pattern coherence across crates)
-- Audit-then-fix approach: report phases followed by fix phases
+- v2 spec format: flat `elements` map + `root` key (replaces nested `Vec<ComponentNode>`)
+- Props separation: `props` object per element (cleaner schema validation)
+- Formalized catalog: `Catalog` struct with `prompt()`, `validate()`, `json_schema()`
+- Server-side expressions: `$data` and `$template` resolved at render time
+- Page loader: framework loads JSON files, merges handler data, renders HTML
+- CLI/MCP updates for v2 format with migration utility
 
 ### Out of Scope
 

@@ -16,9 +16,9 @@
 - ✅ [**v6.0 ferro-lang — Localization**](milestones/v6.0-ROADMAP.md) — Phases 58-66 (shipped 2026-02-13)
 - ✅ **v6.1 Fix Known Issues** — Phase 67 (shipped 2026-02-24)
 - ✅ **v7.0 Resend Integration** — Phase 68 (shipped 2026-02-25)
-- 🔧 **v7.1 Static File Serving** — Phase 69
-- 🔧 **v7.2 CI Stability** — Phase 70
-- 🔧 **v7.3 Vite Manifest** — Phase 71
+- ✅ **v7.1 Static File Serving** — Phase 69 (shipped)
+- ✅ **v7.2 CI Stability** — Phase 70 (shipped)
+- ✅ **v7.3 Vite Manifest** — Phase 71 (shipped)
 - ✅ **v7.4 Security Hardening** — Phases 72-74 (shipped 2026-02-26)
 - ✅ **v7.5 Type Generator Fix** — Phase 75 (shipped 2026-02-27)
 - ✅ **v7.6 Default API Scaffold** — Phase 76 (shipped 2026-02-27)
@@ -28,12 +28,12 @@
 - ✅ **v8.1 API DX Polish** — Phase 83 (shipped 2026-02-28)
 - ✅ [**v9.0 Service Projections**](milestones/v9.0-ROADMAP.md) — Phases 84-94 (shipped 2026-03-01)
 - ✅ [**v10.0 JSON-UI Visual Overhaul**](milestones/v10.0-ROADMAP.md) — Phases 102-107 (shipped 2026-03-26)
-- 🚧 **v11.0 Framework Consolidation Audit** — Phases 108-114 (in progress)
+- ✅ **v11.0 Framework Consolidation Audit** — Phases 108-114 (shipped 2026-04-05)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned)
 
 ---
 
-### 🚧 v11.0 Framework Consolidation Audit (In Progress)
+### ✅ v11.0 Framework Consolidation Audit (Shipped 2026-04-05)
 
 **Milestone Goal:** Comprehensive audit and fix of documentation accuracy, completeness, and agent-first philosophy consistency across all 14 crates — preparing Ferro for crates.io publication.
 
@@ -45,7 +45,7 @@
 - [x] **Phase 111: Documentation Coverage** - Create missing user docs for Service Projections and derive macros (completed 2026-03-26)
 - [x] **Phase 112: Agent-First Philosophy** - Rewrite introduction and add agent workflow guides (completed 2026-03-26)
 - [x] **Phase 113: Pattern Coherence** - Standardize code examples and resolve COMPONENT_CATALOG duplication (completed 2026-03-27)
-- [ ] **Phase 114: Metadata & Publication Readiness** - Fix Cargo.toml gaps, missing_docs, and stub READMEs
+- [x] **Phase 114: Metadata & Publication Readiness** - Fix Cargo.toml gaps, missing_docs, and stub READMEs (completed 2026-04-05)
 
 ## Phase Details
 
