@@ -191,19 +191,27 @@ impl SessionStore for DatabaseSessionDriver {
 pub mod sessions {
     use sea_orm::entity::prelude::*;
 
+    /// SeaORM model for the `sessions` database table.
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm(table_name = "sessions")]
     pub struct Model {
+        /// Unique session identifier (UUID or random token).
         #[sea_orm(primary_key, auto_increment = false)]
         pub id: String,
+        /// ID of the authenticated user, or `None` for guest sessions.
         pub user_id: Option<i64>,
+        /// Serialized session payload (JSON).
         #[sea_orm(column_type = "Text")]
         pub payload: String,
+        /// CSRF token bound to this session.
         pub csrf_token: String,
+        /// When the session was first created.
         pub created_at: Option<chrono::DateTime<chrono::Utc>>,
+        /// Timestamp of the most recent request that used this session.
         pub last_activity: chrono::DateTime<chrono::Utc>,
     }
 
+    /// SeaORM relation enum for the sessions entity (no relations defined).
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
     pub enum Relation {}
 

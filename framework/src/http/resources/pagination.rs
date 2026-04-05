@@ -16,11 +16,17 @@ use serde::Serialize;
 /// ```
 #[derive(Serialize, Clone, Debug)]
 pub struct PaginationMeta {
+    /// The current page number (1-indexed).
     pub current_page: u64,
+    /// Number of items per page.
     pub per_page: u64,
+    /// Total number of items across all pages.
     pub total: u64,
+    /// The index of the last page.
     pub last_page: u64,
+    /// 1-based index of the first item on the current page, or 0 if empty.
     pub from: u64,
+    /// 1-based index of the last item on the current page, or 0 if empty.
     pub to: u64,
 }
 
@@ -91,9 +97,13 @@ impl PaginationMeta {
 /// `prev` is `None` on the first page; `next` is `None` on the last page.
 #[derive(Serialize, Clone, Debug)]
 pub struct PaginationLinks {
+    /// URL for the first page.
     pub first: String,
+    /// URL for the last page.
     pub last: String,
+    /// URL for the previous page, or `None` on the first page.
     pub prev: Option<String>,
+    /// URL for the next page, or `None` on the last page.
     pub next: Option<String>,
 }
 

@@ -16,16 +16,22 @@ use serde::Serialize;
 /// Response wrapper for debug endpoints
 #[derive(Debug, Serialize)]
 pub struct DebugResponse<T: Serialize> {
+    /// Whether the debug operation succeeded.
     pub success: bool,
+    /// The debug payload.
     pub data: T,
+    /// RFC 3339 timestamp of when the response was generated.
     pub timestamp: String,
 }
 
 /// Error response for debug endpoints
 #[derive(Debug, Serialize)]
 pub struct DebugErrorResponse {
+    /// Always `false` for error responses.
     pub success: bool,
+    /// Human-readable error description.
     pub error: String,
+    /// RFC 3339 timestamp of when the error occurred.
     pub timestamp: String,
 }
 
@@ -77,6 +83,7 @@ pub fn handle_routes() -> hyper::Response<Full<Bytes>> {
 /// Global middleware info for introspection
 #[derive(Debug, Serialize)]
 pub struct MiddlewareInfo {
+    /// Names of globally registered middleware, in registration order.
     pub global: Vec<String>,
 }
 

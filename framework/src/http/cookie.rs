@@ -8,20 +8,29 @@ use std::time::Duration;
 /// SameSite cookie attribute
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum SameSite {
+    /// Cookie is sent only for same-site requests.
     Strict,
+    /// Cookie is sent for same-site requests and top-level cross-site navigations.
     #[default]
     Lax,
+    /// Cookie is sent for all requests, including cross-site.
     None,
 }
 
 /// Cookie options with secure defaults
 #[derive(Clone, Debug)]
 pub struct CookieOptions {
+    /// Prevents client-side JavaScript from accessing the cookie.
     pub http_only: bool,
+    /// Restricts the cookie to HTTPS connections only.
     pub secure: bool,
+    /// Controls cross-site request behavior.
     pub same_site: SameSite,
+    /// URL path scope for the cookie.
     pub path: String,
+    /// Domain scope for the cookie, or `None` for the current domain.
     pub domain: Option<String>,
+    /// Expiry duration after which the cookie is deleted, or `None` for session cookies.
     pub max_age: Option<Duration>,
 }
 

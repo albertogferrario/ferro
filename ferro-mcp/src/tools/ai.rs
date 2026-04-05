@@ -274,8 +274,7 @@ pub async fn delete_expense(req: Request) -> Response {
         assert_eq!(result.total, 1);
         assert_eq!(result.call_sites[0].file, "src/handler.rs");
         assert_eq!(result.call_sites[0].line, 6);
-        assert!(result
-            .call_sites[0]
+        assert!(result.call_sites[0]
             .context
             .contains("request_confirmation"));
     }

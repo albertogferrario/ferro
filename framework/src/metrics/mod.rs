@@ -71,13 +71,21 @@ pub struct MetricsSnapshot {
 /// View of route metrics for serialization (includes computed avg)
 #[derive(Debug, Serialize)]
 pub struct RouteMetricsView {
+    /// Route pattern (e.g., "/users/{id}").
     pub route: String,
+    /// HTTP method (e.g., "GET", "POST").
     pub method: String,
+    /// Total number of requests for this route.
     pub count: u64,
+    /// Average response time in milliseconds.
     pub avg_duration_ms: f64,
+    /// Minimum response time in ms, or `None` if no requests recorded.
     pub min_duration_ms: Option<u64>,
+    /// Maximum response time in milliseconds.
     pub max_duration_ms: u64,
+    /// Number of error responses (4xx and 5xx).
     pub error_count: u64,
+    /// Ratio of error responses to total requests (0.0–1.0).
     pub error_rate: f64,
 }
 

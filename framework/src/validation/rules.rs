@@ -13,6 +13,7 @@ use std::sync::LazyLock;
 /// Field must be present and not empty.
 pub struct Required;
 
+/// Creates a required validation rule.
 pub const fn required() -> Required {
     Required
 }
@@ -48,6 +49,7 @@ pub struct RequiredIf {
     value: Value,
 }
 
+/// Creates a required_if validation rule.
 pub fn required_if(other: impl Into<String>, value: impl Into<Value>) -> RequiredIf {
     RequiredIf {
         other: other.into(),
@@ -77,6 +79,7 @@ impl Rule for RequiredIf {
 /// Field must be a string.
 pub struct IsString;
 
+/// Creates a string validation rule.
 pub const fn string() -> IsString {
     IsString
 }
@@ -101,6 +104,7 @@ impl Rule for IsString {
 /// Field must be an integer.
 pub struct IsInteger;
 
+/// Creates an integer validation rule.
 pub const fn integer() -> IsInteger {
     IsInteger
 }
@@ -134,6 +138,7 @@ impl Rule for IsInteger {
 /// Field must be numeric.
 pub struct Numeric;
 
+/// Creates a numeric validation rule.
 pub const fn numeric() -> Numeric {
     Numeric
 }
@@ -167,6 +172,7 @@ impl Rule for Numeric {
 /// Field must be a boolean.
 pub struct IsBoolean;
 
+/// Creates a boolean validation rule.
 pub const fn boolean() -> IsBoolean {
     IsBoolean
 }
@@ -208,6 +214,7 @@ impl Rule for IsBoolean {
 /// Field must be an array.
 pub struct IsArray;
 
+/// Creates an array validation rule.
 pub const fn array() -> IsArray {
     IsArray
 }
@@ -238,6 +245,7 @@ pub struct Min {
     min: f64,
 }
 
+/// Creates a min validation rule.
 pub fn min(min: impl Into<f64>) -> Min {
     Min { min: min.into() }
 }
@@ -277,6 +285,7 @@ pub struct Max {
     max: f64,
 }
 
+/// Creates a max validation rule.
 pub fn max(max: impl Into<f64>) -> Max {
     Max { max: max.into() }
 }
@@ -317,6 +326,7 @@ pub struct Between {
     max: f64,
 }
 
+/// Creates a between validation rule.
 pub fn between(min: impl Into<f64>, max: impl Into<f64>) -> Between {
     Between {
         min: min.into(),
@@ -366,6 +376,7 @@ static EMAIL_REGEX: LazyLock<Regex> =
 /// Field must be a valid email address.
 pub struct Email;
 
+/// Creates an email validation rule.
 pub const fn email() -> Email {
     Email
 }
@@ -396,6 +407,7 @@ static URL_REGEX: LazyLock<Regex> =
 /// Field must be a valid URL.
 pub struct Url;
 
+/// Creates a URL validation rule.
 pub const fn url() -> Url {
     Url
 }
@@ -425,6 +437,7 @@ pub struct Regex_ {
     pattern: Regex,
 }
 
+/// Creates a regex validation rule.
 pub fn regex(pattern: &str) -> Regex_ {
     Regex_ {
         pattern: Regex::new(pattern).expect("Invalid regex pattern"),
@@ -456,6 +469,7 @@ static ALPHA_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z]+$"
 /// Field must contain only alphabetic characters.
 pub struct Alpha;
 
+/// Creates an alpha validation rule.
 pub const fn alpha() -> Alpha {
     Alpha
 }
@@ -485,6 +499,7 @@ static ALPHA_NUM_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z
 /// Field must contain only alphanumeric characters.
 pub struct AlphaNum;
 
+/// Creates an alpha_num validation rule.
 pub const fn alpha_num() -> AlphaNum {
     AlphaNum
 }
@@ -517,6 +532,7 @@ static ALPHA_DASH_REGEX: LazyLock<Regex> =
 /// Field must contain only alphanumeric characters, dashes, and underscores.
 pub struct AlphaDash;
 
+/// Creates an alpha_dash validation rule.
 pub const fn alpha_dash() -> AlphaDash {
     AlphaDash
 }
@@ -554,6 +570,7 @@ pub struct Confirmed {
     confirmation_field: String,
 }
 
+/// Creates a confirmed validation rule.
 pub fn confirmed() -> Confirmed {
     Confirmed {
         confirmation_field: String::new(), // Will be set based on field name
@@ -593,6 +610,7 @@ pub struct In {
     values: Vec<Value>,
 }
 
+/// Creates an in_array validation rule.
 pub fn in_array<I, V>(values: I) -> In
 where
     I: IntoIterator<Item = V>,
@@ -629,6 +647,7 @@ pub struct NotIn {
     values: Vec<Value>,
 }
 
+/// Creates a not_in validation rule.
 pub fn not_in<I, V>(values: I) -> NotIn
 where
     I: IntoIterator<Item = V>,
@@ -665,6 +684,7 @@ pub struct Different {
     other: String,
 }
 
+/// Creates a different validation rule.
 pub fn different(other: impl Into<String>) -> Different {
     Different {
         other: other.into(),
@@ -701,6 +721,7 @@ pub struct Same {
     other: String,
 }
 
+/// Creates a same validation rule.
 pub fn same(other: impl Into<String>) -> Same {
     Same {
         other: other.into(),
@@ -737,6 +758,7 @@ impl Rule for Same {
 /// Field must be a valid date.
 pub struct Date;
 
+/// Creates a date validation rule.
 pub const fn date() -> Date {
     Date
 }
@@ -776,6 +798,7 @@ impl Rule for Date {
 /// Field is optional - only validate if present.
 pub struct Nullable;
 
+/// Creates a nullable validation rule.
 pub const fn nullable() -> Nullable {
     Nullable
 }
@@ -794,6 +817,7 @@ impl Rule for Nullable {
 /// Field must be accepted (yes, on, 1, true).
 pub struct Accepted;
 
+/// Creates an accepted validation rule.
 pub const fn accepted() -> Accepted {
     Accepted
 }

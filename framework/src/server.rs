@@ -23,10 +23,8 @@ use tokio::net::TcpListener;
 type WsInterceptor = Box<
     dyn Fn(
             hyper::Request<hyper::body::Incoming>,
-        ) -> Result<
-            hyper::Response<Full<Bytes>>,
-            hyper::Request<hyper::body::Incoming>,
-        > + Send
+        ) -> Result<hyper::Response<Full<Bytes>>, hyper::Request<hyper::body::Incoming>>
+        + Send
         + Sync,
 >;
 
@@ -91,10 +89,9 @@ impl Server {
     where
         F: Fn(
                 hyper::Request<hyper::body::Incoming>,
-            ) -> Result<
-                hyper::Response<Full<Bytes>>,
-                hyper::Request<hyper::body::Incoming>,
-            > + Send
+            )
+                -> Result<hyper::Response<Full<Bytes>>, hyper::Request<hyper::body::Incoming>>
+            + Send
             + Sync
             + 'static,
     {

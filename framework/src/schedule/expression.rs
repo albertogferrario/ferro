@@ -8,12 +8,19 @@ use chrono::{Datelike, Local, Timelike};
 /// Day of week enum for scheduling
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DayOfWeek {
+    /// Represents Sunday (cron value 0).
     Sunday = 0,
+    /// Represents Monday (cron value 1).
     Monday = 1,
+    /// Represents Tuesday (cron value 2).
     Tuesday = 2,
+    /// Represents Wednesday (cron value 3).
     Wednesday = 3,
+    /// Represents Thursday (cron value 4).
     Thursday = 4,
+    /// Represents Friday (cron value 5).
     Friday = 5,
+    /// Represents Saturday (cron value 6).
     Saturday = 6,
 }
 

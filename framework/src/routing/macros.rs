@@ -78,10 +78,15 @@ fn convert_route_params(path: &str) -> String {
 /// HTTP method for route definitions
 #[derive(Clone, Copy)]
 pub enum HttpMethod {
+    /// HTTP GET method.
     Get,
+    /// HTTP POST method.
     Post,
+    /// HTTP PUT method.
     Put,
+    /// HTTP PATCH method.
     Patch,
+    /// HTTP DELETE method.
     Delete,
 }
 
