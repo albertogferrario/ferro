@@ -178,7 +178,10 @@ mod tests {
         let fields = result["fields"].as_object().unwrap();
 
         // System field excluded
-        assert!(!fields.contains_key("id"), "id (Identifier) must be excluded");
+        assert!(
+            !fields.contains_key("id"),
+            "id (Identifier) must be excluded"
+        );
         // Domain fields included
         assert!(fields.contains_key("total"), "total must be present");
         assert!(fields.contains_key("status"), "status must be present");
@@ -186,8 +189,7 @@ mod tests {
 
     #[test]
     fn field_values_include_metadata() {
-        let svc = ServiceDef::new("order")
-            .field("total", DataType::Float, FieldMeaning::Money);
+        let svc = ServiceDef::new("order").field("total", DataType::Float, FieldMeaning::Money);
 
         let result = render(&svc);
         let total = &result["fields"]["total"];
@@ -252,8 +254,8 @@ mod tests {
 
     #[test]
     fn no_state_machine_produces_null() {
-        let svc = ServiceDef::new("product")
-            .field("name", DataType::String, FieldMeaning::EntityName);
+        let svc =
+            ServiceDef::new("product").field("name", DataType::String, FieldMeaning::EntityName);
 
         let result = render(&svc);
         assert!(result["state_machine"].is_null());
@@ -261,8 +263,7 @@ mod tests {
 
     #[test]
     fn service_display_name_present() {
-        let svc = ServiceDef::new("order")
-            .display_name("Order Management");
+        let svc = ServiceDef::new("order").display_name("Order Management");
 
         let result = render(&svc);
         assert_eq!(result["service"], "Order Management");
@@ -277,8 +278,8 @@ mod tests {
 
     #[test]
     fn empty_actions_produces_empty_array() {
-        let svc = ServiceDef::new("product")
-            .field("name", DataType::String, FieldMeaning::EntityName);
+        let svc =
+            ServiceDef::new("product").field("name", DataType::String, FieldMeaning::EntityName);
 
         let result = render(&svc);
         let actions = result["actions"].as_array().unwrap();
