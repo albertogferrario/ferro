@@ -185,7 +185,9 @@ Phases execute in numeric order: 108 → 109 → 110 → 111 → 112 → 113 →
   2. Fields, actions, and state machine states appear as semantic groups in the output
   3. Re-exported from `ferro-projections/src/lib.rs`
   4. Tests validate output structure for ServiceDefs with fields, actions, and state machines
-**Plans**: 0 plans (ready for planning)
+**Plans**: 1 plan
+Plans:
+- [ ] 114.1-01-PLAN.md — Implement TemplateRenderer with tests and re-export
 
 ---
 
