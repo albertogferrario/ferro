@@ -29,6 +29,7 @@
 - ✅ [**v9.0 Service Projections**](milestones/v9.0-ROADMAP.md) — Phases 84-94 (shipped 2026-03-01)
 - ✅ [**v10.0 JSON-UI Visual Overhaul**](milestones/v10.0-ROADMAP.md) — Phases 102-107 (shipped 2026-03-26)
 - ✅ **v11.0 Framework Consolidation Audit** — Phases 108-114 (shipped 2026-04-05)
+- 📋 **v11.1 Template Renderer** — Phase 114.1 (planned)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned)
 
 ---
@@ -164,7 +165,27 @@ Phases execute in numeric order: 108 → 109 → 110 → 111 → 112 → 113 →
 | 111. Documentation Coverage | 2/2 | Complete    | 2026-03-26 |
 | 112. Agent-First Philosophy | 2/2 | Complete    | 2026-03-26 |
 | 113. Pattern Coherence | 2/2 | Complete    | 2026-03-27 |
-| 114. Metadata & Publication Readiness | 0/2 | Not started | - |
+| 114. Metadata & Publication Readiness | 2/2 | Complete | 2026-04-05 |
+
+---
+
+### 📋 v11.1 Template Renderer (Planned)
+
+**Milestone Goal:** Add a `TemplateRenderer` to ferro-projections that produces typed template contexts from `ServiceDef` definitions — consumed by MiniJinja template rendering.
+
+## Phases
+
+- [ ] **Phase 114.1: Template Renderer** — Implement `Renderer` trait for template contexts with grouped fields, rich actions, and state machine exposure
+
+### Phase 114.1: Template Renderer
+**Goal**: Add `TemplateRenderer` implementation of the `Renderer` trait in ferro-projections that produces structured `serde_json::Value` contexts from ServiceDef definitions
+**Depends on**: Phase 94 (Service Projections shipped)
+**Success Criteria** (what must be TRUE):
+  1. `TemplateRenderer` implements the `Renderer` trait and produces grouped template contexts
+  2. Fields, actions, and state machine states appear as semantic groups in the output
+  3. Re-exported from `ferro-projections/src/lib.rs`
+  4. Tests validate output structure for ServiceDefs with fields, actions, and state machines
+**Plans**: 0 plans (ready for planning)
 
 ---
 
