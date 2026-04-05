@@ -314,30 +314,36 @@ impl Inertia {
     since = "0.2.0",
     note = "Use Inertia::render() instead - thread-local storage is async-unsafe"
 )]
+/// Deprecated thread-local Inertia context (use `Inertia::render()` instead).
 pub struct InertiaContext;
 
 #[allow(deprecated)]
 impl InertiaContext {
+    /// No-op — kept for compilation compatibility.
     #[deprecated(note = "Use Inertia::render() instead")]
     pub fn set(_ctx: InertiaContextData) {
         // No-op - kept for compilation compatibility during migration
     }
 
+    /// Always returns false — kept for compilation compatibility.
     #[deprecated(note = "Use Inertia::is_inertia_request(&req) instead")]
     pub fn is_inertia_request() -> bool {
         false
     }
 
+    /// Returns empty string — kept for compilation compatibility.
     #[deprecated(note = "Use req.path() instead")]
     pub fn current_path() -> String {
         String::new()
     }
 
+    /// No-op — kept for compilation compatibility.
     #[deprecated(note = "No longer needed")]
     pub fn clear() {
         // No-op
     }
 
+    /// Always returns None — kept for compilation compatibility.
     #[deprecated(note = "Use req methods instead")]
     pub fn get() -> Option<InertiaContextData> {
         None
@@ -348,7 +354,10 @@ impl InertiaContext {
 #[deprecated(since = "0.2.0", note = "Use Request methods instead")]
 #[derive(Clone, Default)]
 pub struct InertiaContextData {
+    /// Request path.
     pub path: String,
+    /// Whether the request is an Inertia request.
     pub is_inertia: bool,
+    /// Asset version for cache busting.
     pub version: Option<String>,
 }

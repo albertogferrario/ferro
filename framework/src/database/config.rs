@@ -5,8 +5,11 @@ use crate::config::{env, env_optional};
 /// Database type enumeration
 #[derive(Debug, Clone, PartialEq)]
 pub enum DatabaseType {
+    /// PostgreSQL database.
     Postgres,
+    /// SQLite database.
     Sqlite,
+    /// Unrecognized database driver.
     Unknown,
 }
 

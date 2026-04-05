@@ -17,6 +17,7 @@ pub struct Request {
 }
 
 impl Request {
+    /// Create a new request from a raw hyper request.
     pub fn new(inner: hyper::Request<hyper::body::Incoming>) -> Self {
         Self {
             inner,
@@ -26,6 +27,7 @@ impl Request {
         }
     }
 
+    /// Attach route parameters extracted from the URL path.
     pub fn with_params(mut self, params: HashMap<String, String>) -> Self {
         self.params = params;
         self
@@ -339,6 +341,8 @@ impl Request {
 /// Contains metadata needed for body parsing without the body itself.
 #[derive(Clone)]
 pub struct RequestParts {
+    /// Route parameters extracted from the URL path.
     pub params: HashMap<String, String>,
+    /// Content-Type header value, if present.
     pub content_type: Option<String>,
 }

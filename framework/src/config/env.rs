@@ -3,11 +3,17 @@ use std::path::Path;
 /// Environment type enumeration
 #[derive(Debug, Clone, PartialEq)]
 pub enum Environment {
+    /// Local development environment.
     Local,
+    /// Shared development environment.
     Development,
+    /// Pre-production staging environment.
     Staging,
+    /// Production environment.
     Production,
+    /// Automated test environment.
     Testing,
+    /// User-defined environment name.
     Custom(String),
 }
 

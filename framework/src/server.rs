@@ -28,6 +28,7 @@ type WsInterceptor = Box<
         + Sync,
 >;
 
+/// HTTP server that binds routes, middleware, and optional WebSocket handling.
 pub struct Server {
     router: Arc<Router>,
     middleware: MiddlewareRegistry,
@@ -37,6 +38,7 @@ pub struct Server {
 }
 
 impl Server {
+    /// Create a server with default host/port and no global middleware.
     pub fn new(router: impl Into<Router>) -> Self {
         Self {
             router: Arc::new(router.into()),
@@ -47,6 +49,7 @@ impl Server {
         }
     }
 
+    /// Create a server from environment configuration, booting all services.
     pub fn from_config(router: impl Into<Router>) -> Self {
         // Initialize the App container
         App::init();
@@ -117,11 +120,13 @@ impl Server {
         self
     }
 
+    /// Override the listen host address.
     pub fn host(mut self, host: &str) -> Self {
         self.host = host.to_string();
         self
     }
 
+    /// Override the listen port.
     pub fn port(mut self, port: u16) -> Self {
         self.port = port;
         self
@@ -131,6 +136,7 @@ impl Server {
         SocketAddr::new(self.host.parse().unwrap(), self.port)
     }
 
+    /// Start listening and serving requests until the process is terminated.
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Bootstrap cache (Redis with in-memory fallback)
         Cache::bootstrap().await;

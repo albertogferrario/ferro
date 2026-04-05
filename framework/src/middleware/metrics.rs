@@ -31,6 +31,7 @@ use std::time::Instant;
 pub struct MetricsMiddleware;
 
 impl MetricsMiddleware {
+    /// Create a new metrics middleware instance.
     pub fn new() -> Self {
         Self
     }

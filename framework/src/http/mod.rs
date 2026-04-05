@@ -3,6 +3,7 @@ pub mod cookie;
 mod extract;
 mod form_request;
 mod request;
+/// API resource and pagination types.
 pub mod resources;
 mod response;
 
@@ -22,6 +23,7 @@ pub use response::{
 /// `FrameworkError::param()` instead.
 #[derive(Debug)]
 pub struct ParamError {
+    /// Name of the missing route parameter.
     pub param_name: String,
 }
 

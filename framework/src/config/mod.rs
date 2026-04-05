@@ -18,8 +18,11 @@
 //! println!("Server port: {}", server.port);
 //! ```
 
+/// Environment detection and `.env` file loading.
 pub mod env;
+/// Typed configuration providers (app, server, lang).
 pub mod providers;
+/// In-memory configuration repository.
 pub mod repository;
 
 pub use env::{env, env_optional, env_required, load_dotenv, Environment};

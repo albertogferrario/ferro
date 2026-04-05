@@ -463,6 +463,7 @@ pub enum GroupItem {
 
 /// Trait for types that can be converted into a GroupItem
 pub trait IntoGroupItem {
+    /// Convert this value into a group item for the route builder.
     fn into_group_item(self) -> GroupItem;
 }
 
@@ -863,12 +864,19 @@ macro_rules! routes {
 /// Actions available for resource routing
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ResourceAction {
+    /// List all resources (GET /resources).
     Index,
+    /// Show creation form (GET /resources/create).
     Create,
+    /// Persist a new resource (POST /resources).
     Store,
+    /// Display a single resource (GET /resources/{id}).
     Show,
+    /// Show edit form (GET /resources/{id}/edit).
     Edit,
+    /// Update an existing resource (PUT /resources/{id}).
     Update,
+    /// Delete a resource (DELETE /resources/{id}).
     Destroy,
 }
 

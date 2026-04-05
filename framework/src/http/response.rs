@@ -14,6 +14,7 @@ pub struct HttpResponse {
 pub type Response = Result<HttpResponse, HttpResponse>;
 
 impl HttpResponse {
+    /// Create an empty 200 OK response.
     pub fn new() -> Self {
         Self {
             status: 200,
@@ -160,7 +161,9 @@ impl Default for HttpResponse {
 
 /// Extension trait for Response to enable method chaining on macros
 pub trait ResponseExt {
+    /// Set the HTTP status code.
     fn status(self, code: u16) -> Self;
+    /// Append a response header.
     fn header(self, name: impl Into<String>, value: impl Into<String>) -> Self;
 }
 

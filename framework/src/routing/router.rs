@@ -182,6 +182,7 @@ pub struct Router {
 }
 
 impl Router {
+    /// Create an empty router with no routes registered.
     pub fn new() -> Self {
         Self {
             get_routes: MatchitRouter::new(),
