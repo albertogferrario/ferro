@@ -30,7 +30,7 @@
 - ✅ [**v10.0 JSON-UI Visual Overhaul**](milestones/v10.0-ROADMAP.md) — Phases 102-107 (shipped 2026-03-26)
 - ✅ **v11.0 Framework Consolidation Audit** — Phases 108-114 (shipped 2026-04-05)
 - 📋 **v11.1 Template Renderer** — Phase 114.1 (planned)
-- 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned)
+- 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract)
 
 ---
 
@@ -193,16 +193,33 @@ Plans:
 
 ### 📋 v12.0 JSON-UI v2 — Spec-Driven Rendering (Planned)
 
-**Milestone Goal:** Pivot ferro-json-ui from nested component trees built in Rust to flat, JSON-first specs that AI generates at runtime or developers write as static files. Adopt Vercel json-render's proven patterns (flat element map, props separation, formalized catalog) while keeping Ferro's strengths (server-side HTML rendering, compile-time safety, zero client JS).
+**Milestone Goal:** Pivot ferro-json-ui from nested component trees built in Rust to flat, JSON-first specs with JSON Schema as the validation contract. AI generates specs constrained by schema; developers write static JSON files validated by the same schema. Handlers become data-only providers.
 
-**Context:** Vercel json-render validates the same thesis — AI → JSON → UI. Their architecture is more mature: flat element maps (better for AI generation and streaming), separated props (cleaner schema validation), and formalized catalogs (machine-readable, generates LLM prompts). Ferro should adopt these structural patterns while keeping its server-authoritative model.
+**Context:** Three proven approaches inform this design:
+- **Vercel json-render** (13k+ GitHub stars, Jan 2026): flat element maps, Zod-defined catalogs, AI-constrained generation. Validates the AI → JSON → UI thesis. Early issues: infinite re-render bugs, tight Zod coupling, expensive model dependency.
+- **JSON Forms** (jsonforms.io): two-schema separation — JSON Schema for data, UI Schema for layout hints. Framework-agnostic core with pluggable renderers. Pain points: slow array rendering, limited layout types (4), low maintenance velocity.
+- **react-jsonschema-form** (rjsf): JSON Schema → auto-generated forms with uiSchema overrides. Pain points: catastrophic performance with large oneOf (86 variants freezes UI), full re-render on every keystroke, schema version lag.
+- **Production SDUI** (Airbnb, DoorDash, Lyft): GraphQL unions or protobuf for component typing, 3-tier hierarchy (Screen > Section > Component), version fragmentation is the hardest operational problem.
+
+Ferro adopts the structural patterns (flat element map, props separation, formalized catalog with JSON Schema export) while keeping its server-authoritative model. The key enrichment over the original plan: **JSON Schema becomes the single source of truth** for validation, AI generation constraints, and tooling interop.
+
+**Key risks identified by domain research:**
+1. **Inner platform effect** (HIGH): Expression system must stay minimal (`$data` + `$template` only). Every SDUI system warns about schemas becoming programming languages.
+2. **AI schema complexity** (HIGH): 36-component oneOf is too complex for LLM structured output. Two-tier strategy: concise prompt + per-component schemas.
+3. **Manual JsonSchema impls** (HIGH): Component enum + recursive Props structs need ~200 lines of manual `JsonSchema` implementations.
+4. **Schema size** (LOW): Estimated 40-80 KB for full catalog — acceptable for validation, too large for AI prompts.
+
+**Rust ecosystem:** schemars 1.2.0 (generation, already in Cargo.lock) + jsonschema 0.45.0 (validation, to add). Both target JSON Schema 2020-12, no known incompatibilities. Compiled validators for zero per-request overhead.
 
 **What changes:**
 - Spec format: flat `elements` map + `root` key (replaces nested `Vec<ComponentNode>`)
 - Props: separate `props` object per element (replaces flattened custom serialization)
 - Catalog: machine-readable struct with `prompt()`, `validate()`, `json_schema()` (replaces `COMPONENT_CATALOG` const string)
+- JSON Schema contract: per-component schemas via `schemars::JsonSchema` derives, full spec schema, standalone export
 - Expressions: `$data` and `$template` resolved server-side at render time (enriches current `data_path`)
+- Schema-driven projection: `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping
 - Page loader: framework loads JSON spec files, merges handler data, renders HTML
+- AI constraints: `catalog.prompt()` embeds JSON Schema for structured output; `catalog.validate()` uses `jsonschema` crate
 - **Clean break**: v1 types (`JsonUiView`, nested `ComponentNode`) are removed entirely — no backward compatibility layer
 
 **What stays:**
@@ -215,26 +232,33 @@ Plans:
 
 ## Phases
 
-- [ ] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, and v1 backward compatibility
+- [ ] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, clean break from v1
 - [ ] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
-- [ ] **Phase 117: Catalog Formalization** — Machine-readable `Catalog` with `prompt()`, `validate()`, `json_schema()`
+- [ ] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export
+- [ ] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings
 - [ ] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time
 - [ ] **Phase 119: Page Loader** — Framework loads JSON spec files, merges handler data, integrates with layouts
-- [ ] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format, add v1→v2 migration utility
+- [ ] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format with JSON Schema as structured output constraint
 - [ ] **Phase 121: Documentation & Field Test** — Update all JSON-UI docs, convert one gestiscilo page as proof of concept
 
 ## Phase Details
 
 ### Phase 115: Spec v2 Data Structures
-**Goal**: Replace v1 types with the v2 spec format — flat element map, props separation, clean break
+**Goal**: Replace v1 types with the v2 spec format — flat element map, props separation, manual `JsonSchema` impl for Component enum, clean break
 **Depends on**: Nothing (first phase of milestone)
-**Requirements**: SPEC-01, SPEC-02, SPEC-03
+**Requirements**: SPEC-01, SPEC-02, SPEC-03, SPEC-04
+**Caveats** (from domain research):
+  - Component enum has custom ser/de (not `#[serde(tag = "type")]`), so `#[derive(JsonSchema)]` won't work. Need manual impl building `oneOf` with `"type"` discriminator const. ~200 lines.
+  - ~10 Props structs containing recursive `Vec<ComponentNode>` currently skip `JsonSchema` derive. Must add manual impls using `$ref: "#"` for self-references (schemars 1.x handles this).
+  - Max nesting depth: enforce 3 levels (Screen > Section > Component) — matches Airbnb/DoorDash/Lyft production patterns.
 **Success Criteria** (what must be TRUE):
   1. `Spec` struct exists with `root: String`, `elements: HashMap<String, Element>`, `title`, `layout`, `data`
   2. `Element` struct has `type_name`, `props: serde_json::Value`, `children: Vec<String>`, `action`, `visible`
   3. `Spec::from_json()` parses flat JSON specs and round-trips cleanly (serialize → deserialize = identity)
   4. `JsonUiView`, nested `ComponentNode`, and `Vec<ComponentNode>` patterns are deleted — clean break, no v1 types remain
   5. Schema version is `ferro-json-ui/v2`
+  6. All Component variants and Props structs implement `JsonSchema` (manual impls where derive is blocked by custom ser/de or recursion)
+  7. Spec nesting depth is validated: reject specs deeper than 3 levels
 
 ### Phase 116: Flat Element Renderer
 **Goal**: New render pipeline that walks the flat element map by ID lookups, replacing the recursive tree walker
@@ -248,27 +272,50 @@ Plans:
   5. Plugin components render correctly in v2 specs
   6. Old `render_to_html(view, data)` function is deleted
 
-### Phase 117: Catalog Formalization
-**Goal**: Replace the `COMPONENT_CATALOG` const string with a machine-readable `Catalog` struct that generates LLM prompts and validates specs
+### Phase 117: Catalog & JSON Schema
+**Goal**: Replace `COMPONENT_CATALOG` const string with a machine-readable `Catalog` backed by JSON Schema. Each component's props schema is derived from `schemars::JsonSchema` impls (Phase 115). The catalog validates specs, generates LLM prompts, and exports standalone schema files.
 **Depends on**: Phase 116
-**Requirements**: CAT-01, CAT-02, CAT-03, CAT-04
+**Requirements**: CAT-01, CAT-02, CAT-03, CAT-04, SCHEMA-01, SCHEMA-02, SCHEMA-03
+**Caveats** (from domain research):
+  - Full catalog schema (36-component oneOf) estimated at 40-80 KB — too large for AI system prompts. `catalog.prompt()` must emit a concise text summary, NOT the raw JSON Schema.
+  - `jsonschema` crate doesn't optimize oneOf with discriminators (checks sub-schemas sequentially). Add pre-dispatch by `"type"` string for O(1) per-element validation.
+  - Compile the schema validator once at startup via `jsonschema::validator_for()`, reuse for all requests. No per-request compilation.
+  - AI models work reliably with per-component schemas but may produce malformed output when given 30+ component oneOf. Two-tier strategy: concise prompt + per-component structured output.
 **Success Criteria** (what must be TRUE):
   1. `Catalog::build()` auto-discovers all Component variants with descriptions and JSON Schema per props struct
-  2. `catalog.prompt()` generates a system prompt suitable for constraining LLM output to valid specs
-  3. `catalog.validate(&spec)` returns typed errors for unknown component types, invalid props, missing required fields
-  4. `catalog.json_schema()` exports a complete JSON Schema document for the full spec format
-  5. `COMPONENT_CATALOG` const string is either replaced by `catalog.prompt()` output or generated from the same source
+  2. `catalog.prompt()` generates a concise text system prompt summarizing components, props, and constraints — NOT the raw JSON Schema (too large for AI context)
+  3. `catalog.validate(&spec)` validates specs using the `jsonschema` crate with compiled validator — returns typed errors for unknown component types, invalid props, missing required fields. Pre-dispatches by `"type"` string before full schema validation.
+  4. `catalog.json_schema()` exports the complete JSON Schema document for the full v2 spec format (root + elements + all component types via `oneOf`)
+  5. `catalog.component_schema("Card")` returns the JSON Schema for a single component's props — for targeted AI structured output generation
+  6. `ferro json-ui:schema` CLI command exports the spec schema to stdout or file — consumable by external tools and IDEs
+  7. `COMPONENT_CATALOG` const string is replaced by `catalog.prompt()` output
+  8. Schema validator is compiled once (e.g., in `Catalog::build()`) and reused — no per-validation compilation
+
+### Phase 117.1: Schema-Driven Projections
+**Goal**: Bridge ferro-projections and ferro-json-ui v2 — generate v2 specs directly from ServiceDef definitions using JSON Schema type mappings instead of hardcoded `field_to_input()` / `field_to_column()` functions
+**Depends on**: Phase 117
+**Requirements**: PROJ-01, PROJ-02, PROJ-03
+**Success Criteria** (what must be TRUE):
+  1. `Spec::from_service_def(service, intents, ctx)` produces a valid v2 spec from a ServiceDef
+  2. `DataType` + `FieldMeaning` → component selection uses the catalog's JSON Schema (not hardcoded match arms)
+  3. Intent-to-layout mapping produces flat element specs (Browse → table layout, Collect → form layout, etc.)
+  4. Output validates against `catalog.json_schema()` — projections and catalog are consistent by construction (two-pass: generate then validate)
+  5. `render/json_ui.rs` (v1 JsonUiRenderer) and `render/field_map.rs` are replaced by the new schema-driven pipeline
 
 ### Phase 118: Server-Side Expressions
-**Goal**: Add `$data` and `$template` expression types that resolve against handler data at render time
+**Goal**: Add `$data` and `$template` expression types that resolve against handler data at render time. Hard cap: ONLY these two expression types. No `$if`, `$for`, `$state`, `$bind`.
 **Depends on**: Phase 116
 **Requirements**: EXPR-01, EXPR-02, EXPR-03
+**Caveats** (from domain research):
+  - Inner platform effect is the #1 strategic risk in SDUI. Every production SDUI system (Airbnb, DoorDash, Lyft) warns about schemas evolving into programming languages. `$data` and `$template` are the correct scope — resist pressure to add conditionals or loops.
+  - Binding expressions (`{{query.data}}`) used by Appsmith/ToolJet/Retool are more flexible but harder to validate at compile time. Ferro's `$data`/`$template` approach is deliberately simpler.
 **Success Criteria** (what must be TRUE):
   1. `{"$data": "path/to/value"}` in any props field resolves against `spec.data` before rendering
   2. `{"$template": "Hello, {user.name}!"}` interpolates data paths within strings
   3. Expressions work in all props positions (string, number, boolean values)
   4. Missing data paths resolve to `null`/empty — never panic
   5. Expressions are evaluated before component rendering, so renderers receive resolved concrete values
+  6. No other expression types exist — only `$data` and `$template`. This is a hard architectural constraint, not a backlog item.
 
 ### Phase 119: Page Loader
 **Goal**: Framework-level support for loading JSON spec files and merging with handler-provided data
@@ -276,21 +323,28 @@ Plans:
 **Requirements**: LOAD-01, LOAD-02, LOAD-03
 **Success Criteria** (what must be TRUE):
   1. `Spec::from_file("path/to/page.json")` or `include_str!()` loads and parses specs
-  2. Handler data merges into `spec.data` (handler data takes precedence over spec defaults)
-  3. Layout data (sidebar, header, sse_url) injects automatically for dashboard-layout specs
-  4. Loaded specs are cached (compiled once, reused across requests)
-  5. Dev mode: file watcher reloads specs on change (hot reload without recompilation)
+  2. Loaded specs are validated against `catalog.json_schema()` at load time using the compiled validator — invalid specs fail fast with clear errors
+  3. Handler data merges into `spec.data` (handler data takes precedence over spec defaults)
+  4. Layout data (sidebar, header, sse_url) injects automatically for dashboard-layout specs
+  5. Loaded specs are cached (compiled once, reused across requests)
+  6. Dev mode: file watcher reloads specs on change (hot reload without recompilation)
 
 ### Phase 120: CLI & MCP Updates
-**Goal**: Update all AI-facing tools to generate v2 specs
+**Goal**: Update all AI-facing tools to generate v2 specs using two-tier AI strategy (concise prompt + per-component structured output)
 **Depends on**: Phase 117, Phase 119
-**Requirements**: TOOL-01, TOOL-02, TOOL-03
+**Requirements**: TOOL-01, TOOL-02, TOOL-03, TOOL-04
+**Caveats** (from domain research):
+  - Two-pass AI generation reduces hallucination: generate description first, then structured spec. v0.dev and Lovable both use this pattern.
+  - LLMs hallucinate to fill arrays — may generate unnecessary components. Validate AI output against schema and flag suspiciously large specs.
+  - Token overhead: JSON output costs ~2-3x tokens vs free text. Per-component schema keeps overhead manageable.
 **Success Criteria** (what must be TRUE):
-  1. `ferro make:json-view` generates v2 flat specs
-  2. MCP `json_ui_generate` tool uses `catalog.prompt()` for LLM context and produces v2 specs
-  3. MCP `json_ui_inspect` tool works with v2 format
-  4. All code templates in ferro-mcp use v2 spec format
-  5. No references to v1 types remain in CLI or MCP code
+  1. `ferro make:json-view` generates v2 flat specs using two-pass generation (describe → structure)
+  2. MCP `json_ui_generate` tool uses `catalog.prompt()` for concise context and `catalog.component_schema()` for per-component structured output
+  3. MCP `json_ui_catalog` tool exposes JSON Schema per component (replaces text-only catalog inspection)
+  4. MCP `json_ui_inspect` tool works with v2 format and reports validation errors against schema
+  5. All code templates in ferro-mcp use v2 spec format
+  6. No references to v1 types remain in CLI or MCP code
+  7. Generated specs are validated against `catalog.json_schema()` before being returned to the user
 
 ### Phase 121: Documentation & Field Test
 **Goal**: Complete docs rewrite for v2 and validate with a real gestiscilo page conversion
@@ -298,19 +352,22 @@ Plans:
 **Requirements**: DOC-01, DOC-02, FIELD-01
 **Success Criteria** (what must be TRUE):
   1. All JSON-UI documentation pages rewritten for v2 spec format with flat element examples — no v1 references remain
-  2. One gestiscilo dashboard page (e.g., pagamenti) converted from Rust component tree to JSON spec file — handler reduced to data-only
-  3. Converted page renders identically to the Rust-built version
+  2. JSON Schema export documented with usage examples (IDE validation, external tool integration, AI structured output)
+  3. Expression system documented with explicit "hard cap" rationale — only `$data` and `$template`, with explanation of why no `$if`/`$for`
+  4. One gestiscilo dashboard page (e.g., pagamenti) converted from Rust component tree to JSON spec file — handler reduced to data-only
+  5. Converted page renders identically to the Rust-built version
 
 ## Progress
 
 **Execution Order:**
-Phases execute in order: 115 → 116 → 117 → 118 (parallel with 117) → 119 → 120 → 121
+Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 117) → 119 → 120 → 121
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 115. Spec v2 Data Structures | 0/? | Not started | - |
 | 116. Flat Element Renderer | 0/? | Not started | - |
-| 117. Catalog Formalization | 0/? | Not started | - |
+| 117. Catalog & JSON Schema | 0/? | Not started | - |
+| 117.1. Schema-Driven Projections | 0/? | Not started | - |
 | 118. Server-Side Expressions | 0/? | Not started | - |
 | 119. Page Loader | 0/? | Not started | - |
 | 120. CLI & MCP Updates | 0/? | Not started | - |
