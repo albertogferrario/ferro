@@ -1903,7 +1903,7 @@ fn render_image(props: &ImageProps) -> String {
         None => String::new(),
     };
     format!(
-        "<img src=\"{}\" alt=\"{}\" class=\"w-full rounded-md object-cover\"{} loading=\"lazy\">",
+        "<img src=\"{}\" alt=\"{}\" class=\"w-full rounded-md object-cover object-top\"{} loading=\"lazy\">",
         html_escape(&props.src),
         html_escape(&props.alt),
         style_attr,
