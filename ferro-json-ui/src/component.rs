@@ -456,6 +456,15 @@ pub struct ProgressProps {
     pub label: Option<String>,
 }
 
+/// Props for Image component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ImageProps {
+    pub src: String,
+    pub alt: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aspect_ratio: Option<String>,
+}
+
 /// Props for Avatar component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct AvatarProps {
@@ -924,6 +933,7 @@ pub enum Component {
     ActionCard(ActionCardProps),
     ProductTile(ProductTileProps),
     DataTable(DataTableProps),
+    Image(ImageProps),
     Plugin(PluginProps),
 }
 
@@ -989,6 +999,7 @@ impl Serialize for Component {
             Component::ActionCard(p) => serialize_tagged(serializer, "ActionCard", p),
             Component::ProductTile(p) => serialize_tagged(serializer, "ProductTile", p),
             Component::DataTable(p) => serialize_tagged(serializer, "DataTable", p),
+            Component::Image(p) => serialize_tagged(serializer, "Image", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -1118,6 +1129,9 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "DataTable" => serde_json::from_value::<DataTableProps>(value)
                 .map(Component::DataTable)
+                .map_err(de::Error::custom),
+            "Image" => serde_json::from_value::<ImageProps>(value)
+                .map(Component::Image)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -1505,6 +1519,16 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::DataTable(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create an Image component node.
+    pub fn image(key: impl Into<String>, props: ImageProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::Image(props),
             action: None,
             visibility: None,
         }
@@ -1951,8 +1975,13 @@ mod tests {
                 user_avatar: None,
                 logout_url: None,
             }),
+            Component::Image(ImageProps {
+                src: "/img/screenshot.png".to_string(),
+                alt: "Page screenshot".to_string(),
+                aspect_ratio: None,
+            }),
         ];
-        assert_eq!(components.len(), 26, "should have 26 component variants");
+        assert_eq!(components.len(), 27, "should have 27 component variants");
         let expected_types = [
             "Card",
             "Table",
@@ -1980,6 +2009,7 @@ mod tests {
             "NotificationDropdown",
             "Sidebar",
             "Header",
+            "Image",
         ];
         for (component, expected_type) in components.iter().zip(expected_types.iter()) {
             let json = serde_json::to_value(component).unwrap();
@@ -3458,6 +3488,57 @@ mod tests {
                 assert!(props.buttons.is_empty());
             }
             _ => panic!("expected ButtonGroup"),
+        }
+    }
+
+    #[test]
+    fn image_round_trips() {
+        let json = r#"{"type": "Image", "src": "/img/s.png", "alt": "Screenshot"}"#;
+        let component: Component = serde_json::from_str(json).unwrap();
+        match component {
+            Component::Image(props) => {
+                assert_eq!(props.src, "/img/s.png");
+                assert_eq!(props.alt, "Screenshot");
+                assert!(props.aspect_ratio.is_none());
+            }
+            _ => panic!("expected Image"),
+        }
+    }
+
+    #[test]
+    fn all_known_types_round_trip() {
+        let known_types: &[(&str, &str)] = &[
+            ("Alert", r#"{"type":"Alert","message":"m"}"#),
+            ("Avatar", r#"{"type":"Avatar","alt":"a"}"#),
+            ("Badge", r#"{"type":"Badge","label":"b"}"#),
+            ("Breadcrumb", r#"{"type":"Breadcrumb","items":[]}"#),
+            ("Button", r#"{"type":"Button","label":"b"}"#),
+            ("CalendarCell", r#"{"type":"CalendarCell","day":1}"#),
+            ("Checkbox", r#"{"type":"Checkbox","field":"f","label":"l"}"#),
+            ("Image", r#"{"type":"Image","src":"/img/s.png","alt":"a"}"#),
+            ("Input", r#"{"type":"Input","field":"f","label":"l"}"#),
+            ("Pagination", r#"{"type":"Pagination","current_page":1,"per_page":10,"total":0}"#),
+            ("Progress", r#"{"type":"Progress","value":50}"#),
+            ("Select", r#"{"type":"Select","field":"f","label":"l","options":[]}"#),
+            ("Separator", r#"{"type":"Separator"}"#),
+            ("Skeleton", r#"{"type":"Skeleton"}"#),
+            ("Text", r#"{"type":"Text","content":"c"}"#),
+        ];
+        for (type_name, json_str) in known_types {
+            let component: Component =
+                serde_json::from_str(json_str).unwrap_or_else(|e| panic!("failed to parse {type_name}: {e}"));
+            let serialized = serde_json::to_value(&component).unwrap();
+            assert_eq!(
+                serialized["type"], *type_name,
+                "type mismatch for {type_name}"
+            );
+            let reparsed: Component = serde_json::from_value(serialized)
+                .unwrap_or_else(|e| panic!("failed to reparse {type_name}: {e}"));
+            assert_eq!(
+                serde_json::to_value(&reparsed).unwrap()["type"],
+                *type_name,
+                "round-trip type mismatch for {type_name}"
+            );
         }
     }
 }
