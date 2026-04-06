@@ -3757,7 +3757,7 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("border-t border-border px-6 py-4 flex items-center gap-2"));
+        assert!(html.contains("border-t border-border px-6 py-4 flex items-center justify-between gap-2"));
         assert!(html.contains(">Save</button>"));
     }
 
