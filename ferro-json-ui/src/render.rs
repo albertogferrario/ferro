@@ -16,9 +16,9 @@ use crate::component::{
     CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
     ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuAction, DropdownMenuProps,
     EmptyStateProps, FormMaxWidth, FormProps, FormSectionLayout, FormSectionProps, GapSize,
-    GridProps, HeaderProps, IconPosition, InputProps, InputType, KanbanBoardProps, ModalProps,
-    NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps, PluginProps,
-    ProductTileProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
+    GridProps, HeaderProps, IconPosition, ImageProps, InputProps, InputType, KanbanBoardProps,
+    ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps,
+    PluginProps, ProductTileProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
     SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
     ToastProps, ToastVariant,
 };
@@ -184,7 +184,8 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::CalendarCell(_)
         | Component::ActionCard(_)
         | Component::ProductTile(_)
-        | Component::DataTable(_) => {}
+        | Component::DataTable(_)
+        | Component::Image(_) => {}
         Component::KanbanBoard(props) => {
             for col in &props.columns {
                 for child in &col.children {
@@ -323,6 +324,9 @@ fn render_component(component: &Component, data: &Value) -> String {
 
         // Container components (responsive).
         Component::KanbanBoard(props) => render_kanban_board(props, data),
+
+        // Image component.
+        Component::Image(props) => render_image(props),
 
         // Plugin components (rendered via plugin registry).
         Component::Plugin(props) => render_plugin(props, data),
@@ -755,7 +759,7 @@ fn render_card(props: &CardProps, data: &Value) -> String {
     }
     html.push_str("</div>"); // close p-6
     if !props.footer.is_empty() {
-        html.push_str("<div class=\"border-t border-border px-6 py-4 flex items-center gap-2\">");
+        html.push_str("<div class=\"border-t border-border px-6 py-4 flex items-center justify-between gap-2\">");
         for child in &props.footer {
             html.push_str(&render_node(child, data));
         }
@@ -1891,6 +1895,19 @@ fn render_avatar(props: &AvatarProps) -> String {
             html_escape(&initials)
         )
     }
+}
+
+fn render_image(props: &ImageProps) -> String {
+    let style_attr = match &props.aspect_ratio {
+        Some(ratio) => format!(" style=\"aspect-ratio: {}\"", html_escape(ratio)),
+        None => String::new(),
+    };
+    format!(
+        "<img src=\"{}\" alt=\"{}\" class=\"w-full rounded-md object-cover\"{} loading=\"lazy\">",
+        html_escape(&props.src),
+        html_escape(&props.alt),
+        style_attr,
+    )
 }
 
 // ── CMP-02: Skeleton shimmer animation ──────────────────────────────────
@@ -3170,6 +3187,62 @@ mod tests {
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains(">Al</span>"));
         assert!(html.contains("h-12 w-12 text-base"));
+    }
+
+    // ── Image ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn image_with_aspect_ratio() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "img".to_string(),
+            component: Component::Image(ImageProps {
+                src: "/img/page.png".to_string(),
+                alt: "Page".to_string(),
+                aspect_ratio: Some("16/9".to_string()),
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("<img"));
+        assert!(html.contains("src=\"/img/page.png\""));
+        assert!(html.contains("alt=\"Page\""));
+        assert!(html.contains("w-full rounded-md object-cover"));
+        assert!(html.contains("style=\"aspect-ratio: 16/9\""));
+        assert!(html.contains("loading=\"lazy\""));
+    }
+
+    #[test]
+    fn image_without_aspect_ratio_omits_style() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "img".to_string(),
+            component: Component::Image(ImageProps {
+                src: "/img/page.png".to_string(),
+                alt: "Page".to_string(),
+                aspect_ratio: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(!html.contains("style="));
+        assert!(html.contains("loading=\"lazy\""));
+    }
+
+    #[test]
+    fn image_xss_src_escaped() {
+        let view = JsonUiView::new().component(ComponentNode {
+            key: "img".to_string(),
+            component: Component::Image(ImageProps {
+                src: "x\" onerror=\"alert(1)".to_string(),
+                alt: "Test".to_string(),
+                aspect_ratio: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+        let html = render_to_html(&view, &json!({}));
+        assert!(html.contains("src=\"x&quot; onerror=&quot;alert(1)\""));
     }
 
     // ── 10. Skeleton ────────────────────────────────────────────────────
