@@ -14,6 +14,7 @@ pub mod deploy_check;
 pub mod do_init;
 pub mod docker_compose;
 pub mod docker_init;
+pub mod doctor;
 pub mod generate_routes;
 pub mod generate_types;
 pub mod ignore_sync;

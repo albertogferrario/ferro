@@ -449,6 +449,12 @@ enum Commands {
         #[arg(long)]
         force: bool,
     },
+    /// Run health checks against the current Ferro project (D-01..D-09)
+    Doctor {
+        /// Emit machine-readable JSON instead of colored human output
+        #[arg(long)]
+        json: bool,
+    },
     /// Check local API readiness for MCP integration
     #[command(name = "api:check")]
     ApiCheck {
@@ -686,6 +692,9 @@ fn main() {
         }
         Commands::CiInit { force } => {
             commands::ci_init::run(force);
+        }
+        Commands::Doctor { json } => {
+            commands::doctor::run(json);
         }
         Commands::ApiCheck {
             url,
