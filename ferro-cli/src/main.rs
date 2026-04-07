@@ -1,6 +1,7 @@
 mod ai;
 mod analyzer;
 mod commands;
+mod deploy;
 mod project;
 mod templates;
 
