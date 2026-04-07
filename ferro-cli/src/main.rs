@@ -340,39 +340,19 @@ enum Commands {
         /// SQL query to execute
         query: String,
     },
-    /// Generate a production-ready Dockerfile
+    /// Generate a production-ready Dockerfile (stub — Phase 122.2 Plan 06)
     #[command(name = "docker:init")]
     DockerInit {
-        /// Overwrite existing Dockerfile, .dockerignore, and scripts/rewrite-ferro-deps.sh
+        /// Overwrite existing Dockerfile and .dockerignore
         #[arg(long)]
         force: bool,
-
-        /// Git ref (branch, tag, or sha) to pin ferro* crates to in Docker builds
-        #[arg(long, default_value = "main")]
-        ferro_ref: String,
-
-        /// Comma-separated apt packages to install in the runtime stage (e.g. "chromium,fonts-liberation")
-        #[arg(long, value_delimiter = ',')]
-        runtime_deps: Vec<String>,
     },
-    /// Generate DigitalOcean App Platform deployment spec (.do/app.yaml)
+    /// Generate DigitalOcean App Platform deployment spec (stub — Phase 122.2 Plan 07)
     #[command(name = "do:init")]
     DoInit {
-        /// GitHub repository in `owner/repo` form
-        #[arg(long)]
-        repo: String,
-
-        /// DigitalOcean region slug (fra1, nyc, ams, sfo, ...)
-        #[arg(long, default_value = "fra1")]
-        region: String,
-
         /// Overwrite existing .do/app.yaml
         #[arg(long)]
         force: bool,
-
-        /// Git ref to pin ferro* crates for Docker builds
-        #[arg(long, default_value = "main")]
-        ferro_ref: String,
     },
     /// Generate docker-compose.yml for local development
     #[command(name = "docker:compose")]
@@ -642,20 +622,11 @@ fn main() {
         Commands::DbQuery { query } => {
             commands::db_query::run(query);
         }
-        Commands::DockerInit {
-            force,
-            ferro_ref,
-            runtime_deps,
-        } => {
-            commands::docker_init::run(force, &ferro_ref, &runtime_deps);
+        Commands::DockerInit { force } => {
+            commands::docker_init::run(force);
         }
-        Commands::DoInit {
-            repo,
-            region,
-            force,
-            ferro_ref,
-        } => {
-            commands::do_init::run(&repo, &region, force, &ferro_ref);
+        Commands::DoInit { force } => {
+            commands::do_init::run(force);
         }
         Commands::DockerCompose {
             with_mailpit,
