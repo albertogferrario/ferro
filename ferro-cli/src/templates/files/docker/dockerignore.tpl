@@ -41,3 +41,16 @@ LICENSE
 
 # Test files
 tests/
+
+# Local databases and SQLite files
+database.db
+*.sqlite*
+
+# Planning and workspace notes (never ship to Docker context)
+.planning/
+
+# User-uploaded files and runtime data
+storage/
+data/
+
+# NOTE: .gitignore/.dockerignore drift audit deferred to Phase 124.
