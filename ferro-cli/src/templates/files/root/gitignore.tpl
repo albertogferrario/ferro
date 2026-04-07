@@ -1,4 +1,4 @@
-# Generated from templates/files/root/ignore_patterns.toml — edit there, run ferro ignore:sync
+# Static .gitignore — Phase 122.2 §8
 
 # rust
 /target
@@ -17,8 +17,31 @@ frontend/src/types/
 # ide
 .idea
 .vscode
+*.swp
+*.swo
+.DS_Store
 
 # env
 .env
 .env.local
 .env.*.local
+.env.production
+
+# sqlite
+database.db
+*.sqlite*
+
+# planning
+.planning/
+
+# storage
+storage/
+data/
+
+# secrets
+*.pem
+*.key
+
+# logs
+*.log
+tmp/

@@ -1,4 +1,4 @@
-# Generated from templates/files/root/ignore_patterns.toml — edit there, run ferro ignore:sync
+# Static .dockerignore — Phase 122.2 §8
 
 # rust
 target/
