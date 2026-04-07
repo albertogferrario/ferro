@@ -1,0 +1,294 @@
+# Phase 122.2 — Deploy simplification
+
+## Context
+Phases 122, 122.1, 123, and 124 built ~1500 LOC of deploy scaffolding with
+~6 custom heuristics that generated a recurring stream of bugs. Phase 122.1
+patched 4 heuristic bugs; live UAT against gestiscilo/mkmenu exposed that
+the whole category of "infer user intent from .env.example" was the wrong
+foundation. A feature-by-feature discussion reframed the deploy story around
+two rules:
+
+1. **Cargo.toml metadata = provider-neutral Dockerfile inputs** (runtime apt,
+   copy dirs, ferro version pin). Describes *the image*, not *where it runs*.
+2. **`.do/app.yaml` = DO's own spec, user-owned after scaffold.** `do:init`
+   is a one-shot generator, not a sync tool. `do:init --force` is a reset
+   operation.
+
+Additional insight: ferro is published on crates.io as `ferro-rs` and the
+GitHub repo is public. The Phase 122 premise "for private ferro git repos"
+was stale; four features built on it (GITHUB_TOKEN, git config insteadOf,
+scripts/rewrite-ferro-deps.sh, --ferro-ref, deploy:check git ls-remote) are
+obsolete and being deleted.
+
+And the source of env values: `.env.example` is a tutorial file with inline
+comments and localhost defaults — every 122.1 parser bug came from trying
+to interpret it. `.env.production` is the honest source. Ferro does not
+manage secret *values* at all — it reads `.env.production` only to discover
+the list of keys and emits a commented scaffold in `.do/app.yaml`. Values
+stay on the developer's machine and in the DO dashboard.
+
+## Goal
+Replace the Phase 122/122.1/123/124 deploy machinery with a simpler, heuristic-
+light, provider-honest shape. Cut custom logic from ~1500 LOC to ~375 LOC.
+Reduce surviving heuristics from 6 to 1. Delete 3 MCP deploy tools and fold
+surviving checks into `ferro doctor`.
+
+## Scope
+
+### 1. Cargo.toml metadata reader
+New module `ferro-cli/src/project_metadata.rs` (or extend `project.rs`) that
+reads `[package.metadata.ferro.deploy]` from the project Cargo.toml. Schema:
+
+```toml
+[package.metadata.ferro.deploy]
+runtime_apt = ["chromium", "fonts-liberation"]   # default: []
+copy_dirs   = ["themes", "lang", "public", "migrations"]  # default: these 4
+ferro_version = "0.1.87"                          # optional override
+```
+
+- All fields optional, sensible defaults as shown.
+- Unit tests for parser, defaults, missing table, invalid types.
+
+### 2. Dockerfile renderer rewrite
+Delete the current Phase 122 Dockerfile renderer and rewrite against the
+simpler contract:
+
+- **Frontend stage**: conditional on `frontend/package.json` existence (kept).
+- **Base image**: read `rust-toolchain.toml` `[toolchain] channel` if present,
+  emit `rust:{channel}-slim-bookworm`. Default (no file): `rust:stable-slim-bookworm`.
+  No hardcoded version fallback.
+- **Multi-bin build**: `cargo build --release` followed by one `--bin NAME`
+  per `[[bin]]` entry in Cargo.toml. One runtime `COPY --from=backend-builder
+  /app/target/release/NAME /usr/local/bin/NAME` per bin.
+- **Copy dirs**: for each entry in `copy_dirs` metadata (default themes/lang/
+  public/migrations), check existence, emit `COPY X X` only if present.
+- **Runtime apt**: from `runtime_apt` metadata. When non-empty, emit one
+  `RUN apt-get update && apt-get install -y --no-install-recommends <pkgs> &&
+  rm -rf /var/lib/apt/lists/*` block with marker comment `# ferro:runtime-apt`.
+- **cargo-chef**: simple `COPY . .` in planner stage + `cargo chef prepare`;
+  builder stage uses the recipe. No workspace enumeration — cargo-chef handles
+  workspaces natively.
+- **Path→version rewrite**: a new small helper
+  `ferro-cli/src/deploy/rewrite_ferro_version.rs` (~30 LOC) runs at `docker:init`
+  time. Reads project Cargo.toml, finds every `ferro*` dep with `path = "..."`,
+  rewrites to `version = "<ferro_version>"` using `ferro_version` metadata
+  override if set, else reads the path-dep's actual workspace version, else
+  falls back to `"*"`. Writes to `Cargo.docker.toml` (committed). Dockerfile
+  planner and builder stages do `COPY Cargo.docker.toml Cargo.toml` before
+  cargo work.
+
+Delete from the old Dockerfile template:
+- `ARG GITHUB_TOKEN=""` and `git config insteadOf` stanza.
+- Invocation of `scripts/rewrite-ferro-deps.sh`.
+- Workspace-member enumeration in the planner stage.
+
+### 3. `ferro docker:init` command rewrite
+- Remove flags: `--ferro-ref`, `--runtime-deps`.
+- Keep flags: `--force`.
+- New flag: `--ferro-version` (optional, one-shot override of metadata
+  `ferro_version`, does NOT mutate Cargo.toml).
+- Writes: `Dockerfile`, `.dockerignore` (static template, see #8), and
+  `Cargo.docker.toml` (output of the rewriter). NOT `scripts/rewrite-ferro-deps.sh`
+  (delete the generator).
+- Walk-up Cargo.toml discovery stays.
+
+### 4. `.do/app.yaml` starter renderer
+New simpler `.do/app.yaml` starter template. Only structural fields and
+commented scaffolding. Delete the current renderer.
+
+Starter content:
+```yaml
+# Generated by ferro do:init — edit to your needs
+# Ferro does not manage this file after initial scaffolding.
+name: {sanitized_package_name}
+region: fra1
+
+services:
+  - name: web
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      repo: {auto_detected_from_git_remote}
+      branch: main
+      deploy_on_push: true
+    http_port: 8080
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+
+# workers: (one entry per non-test/dev/debug [[bin]] other than the service)
+workers:
+  - name: {bin_name}
+    dockerfile_path: Dockerfile
+    source_dir: /
+    run_command: /usr/local/bin/{bin_name}
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+
+envs:
+  # Set values in DO dashboard or via `doctl apps update`:
+  # - APP_ENV
+  # - APP_URL
+  # - DATABASE_URL
+  # - RESEND_API_KEY
+```
+
+Behavior:
+- **App name**: sanitize package name (lowercase, `_` → `-`, strip non
+  `[a-z0-9-]`, collapse dashes). This is the only sanitizer we keep because
+  DO requires it and the alternative is a cryptic remote failure.
+- **Region**: hardcoded `fra1` in template. User edits post-scaffold.
+- **Repo**: auto-detect via `git remote get-url origin`. Parse both HTTPS
+  (`https://github.com/owner/repo(.git)?`) and SSH (`git@github.com:owner/repo(.git)?`)
+  forms. Fall back to `owner/your-repo` placeholder on parse failure or no
+  remote. No user-provided `--repo` flag.
+- **Services**: one entry. `name: web`. Dockerfile path hardcoded.
+- **Workers**: read `[[bin]]` entries, exclude bins matching `is_test_like_bin`
+  filter (names starting with `test_`, `test-`, `dev_`, `dev-`, `debug_`,
+  `debug-`). First `[[bin]]` matching the sanitized package name → web
+  service (implicit). Other non-excluded bins → workers block entries.
+- **Envs**: commented-out scaffold. Parse `.env.production` for keys only
+  (no values). Emit one comment line per key inside the `envs:` block.
+  Error with template suggestion if `.env.production` missing:
+  ```
+  .env.production not found.
+  Create it from .env.example and fill in production values:
+    cp .env.example .env.production
+    $EDITOR .env.production
+  ```
+- **Databases**: no `databases:` block generated. Deleted.
+
+### 5. `ferro do:init` command rewrite
+- Remove flags: `--region`, `--repo`, `--ferro-ref`.
+- Keep flags: `--force`.
+- Writes: `.do/app.yaml` only. Does NOT write `.github/workflows/ci.yml`
+  (decoupled, see #7).
+- Errors loudly if `.env.production` is missing.
+
+### 6. `.env.production` parser
+Tiny key-only parser in `ferro-cli/src/deploy/env_production.rs` (~20 LOC):
+- Open `.env.production`.
+- Iterate lines.
+- Skip lines starting with `#` (after trim).
+- Skip blank lines.
+- Split first `=` → take left half (key), trim, yield.
+- Return `Vec<String>` of keys.
+
+No value parsing. No comment stripping. No escaping. No classification.
+
+Delete: `ferro-cli/src/deploy/env_example.rs`, `ferro-cli/src/deploy/classify.rs`
+(the SECRET regex classifier).
+
+### 7. Decouple `ci.yml` from `do:init`
+- Remove the `render_ci_workflow()` call from `do_init.rs`.
+- Remove `ci.yml` from files `do:init` writes.
+- Keep `ferro-cli/src/commands/ci_init.rs` as the single entry point.
+- Keep `ferro-cli/src/templates/files/ci/github-actions-ci.yml.tpl` unchanged
+  (5-job template — fmt/clippy/test/api:check/validate:contracts).
+
+### 8. Static ignore templates
+Delete the `ignore_patterns.toml` + unified renderer abstraction from Phase 124.
+
+- Delete: `ferro-cli/src/templates/files/root/ignore_patterns.toml`,
+  `ferro-cli/src/templates/ignore_patterns.rs`,
+  `ferro-cli/src/commands/ignore_sync.rs`, `ferro ignore:sync` command.
+- Keep: `ferro-cli/src/templates/files/docker/dockerignore.tpl` and
+  `ferro-cli/src/templates/files/root/gitignore.tpl` as **static** files
+  containing the union of patterns (including the Phase 122 additions:
+  `database.db`, `*.sqlite*`, `.planning/`, `storage/`, `data/`).
+- Body-equality protection in file writing logic goes away.
+
+### 9. Delete deploy MCP tools
+- Delete `ferro-mcp/src/tools/deploy_check.rs` + registration + tests.
+- Delete `ferro-mcp/src/tools/deploy_diff_env.rs` + registration + tests.
+- Delete `ferro-mcp/src/tools/runtime_requirements.rs` + registration + tests.
+- Delete `ferro-mcp/src/tools/deploy_common.rs` (cross-crate bridge).
+- Delete `ferro-cli/src/deploy/runtime_deps.rs` (crate→apt registry).
+
+### 10. Revert ferro-cli ↔ ferro-mcp circular dep workaround
+Subprocess architecture introduced in Phase 123 plan 02 is no longer needed
+after #9.
+
+- Delete `ferro-mcp/src/bin/ferro-mcp.rs` (standalone binary).
+- Remove `ferro-cli` as a dep of `ferro-mcp` from `ferro-mcp/Cargo.toml`.
+- Re-add `ferro-mcp` as a dep of `ferro-cli` in `ferro-cli/Cargo.toml`.
+- Rewrite `ferro-cli/src/commands/mcp.rs` to launch ferro-mcp **in-process**
+  instead of subprocess.
+
+### 11. Delete `deploy_check` CLI command
+The CLI `ferro deploy:check` command was primarily wrapping git ls-remote
+for the obsolete ferro-ref scenario.
+
+- Delete `ferro-cli/src/commands/deploy_check.rs`.
+- Delete command registration in main.rs.
+- Surviving deploy checks are absorbed into `ferro doctor` (see #12).
+
+### 12. `ferro doctor` revised check list
+Replace the Phase 124 check list with:
+
+1. **Toolchain match** — rustc/cargo version vs `rust-toolchain.toml` if present.
+2. **DB connection** — open `DATABASE_URL`, run `SELECT 1`.
+3. **Migrations pending** — pending vs applied count.
+4. **Local env parity** — `.env.example` keys vs `.env` keys.
+5. **Deploy env parity** — `.env.production` keys vs `.do/app.yaml` commented
+   envs scaffold. Skipped if either file missing.
+6. **`Cargo.docker.toml` staleness** — if file exists, check if all `ferro*`
+   deps still match current `Cargo.toml` path-dep workspace versions. Warn on
+   drift.
+7. **Generated artifacts** — `Dockerfile` / `.dockerignore` / `.do/app.yaml`
+   presence (warn-level).
+8. **`DATABASE_URL` not sqlite in production context** — if `.env.production`
+   exists and its `DATABASE_URL` starts with `sqlite:` → error.
+9. **Dirty git tree / unpushed commits** — `git status --porcelain` and
+   `git log @{upstream}..HEAD`.
+
+Delete checks: workspace cargo-chef target dirs (Phase 124 feature obsoleted
+by #2), path deps "warn for prod" framing (obsoleted by #6 `Cargo.docker.toml`
+staleness).
+
+Keep the check registry pattern, JSON output, exit-code contract.
+
+### 13. Delete golden fixture tests
+- Delete `ferro-cli/tests/golden.rs`.
+- Delete `ferro-cli/tests/fixtures/` (gestiscilo and mkmenu fixture trees).
+- Remove `exclude = ["ferro-cli/tests/fixtures"]` from workspace `Cargo.toml`.
+- Replace with unit tests on individual renderers and helpers in their own
+  `#[cfg(test)] mod tests` blocks.
+
+## Verification
+After implementation:
+
+1. `cargo fmt --all -- --check && cargo clippy --all --all-targets -- -D warnings && cargo test --all-features` — all clean.
+
+2. Regenerate scaffolding against real `../../gestiscilo-it/app`:
+   - `ferro docker:init` produces a Dockerfile with multi-bin (`gestiscilo` +
+     `screenshot-worker`), frontend stage absent, runtime apt block with
+     `chromium fonts-liberation` from metadata, `Cargo.docker.toml` with
+     ferro path deps rewritten to version deps.
+   - `ferro do:init` produces `.do/app.yaml` with:
+     - `name: gestiscilo` (sanitized from package name)
+     - `region: fra1`
+     - `github.repo` auto-detected from `git remote get-url origin`
+     - `workers:` block with `screenshot-worker` only
+     - `envs:` block with commented-out list of `.env.production` keys
+     - No `databases:` block
+   - `Cargo.docker.toml` contains ferro deps with `version =` instead of `path =`.
+   - `.github/workflows/ci.yml` NOT written.
+3. `ferro doctor` runs all 9 checks against gestiscilo and returns sensible results.
+4. `ferro mcp` still launches the MCP server (in-process now).
+5. `cargo.toml` of both ferro-cli and ferro-mcp contain no circular dep.
+6. LOC count of Phase 122 + 122.1 + 123 + 124 deploy code post-simplification:
+   target ~375 LOC (down from ~1500).
+
+## Out of scope
+- Supporting other cloud providers beyond DigitalOcean App Platform.
+- Managing secret values (explicitly deferred — Ferro takes no position on
+  secret management, user handles via DO dashboard, doctl, or whatever).
+- Auto-fixing `ferro doctor` findings.
+- Replacing `ferro new` project scaffolding (separate concern; `ferro new`
+  may optionally call `ci:init` as part of its work — decision deferred).
+- Deploy targets beyond Docker (e.g. native binaries, serverless).
+
+## Cross-phase reference
+See conversation transcript and feature-by-feature decisions from session
+2026-04-07. All 35 features enumerated from Phases 122/122.1/123/124 were
+discussed individually; this SCOPE encodes the resolved decisions.
