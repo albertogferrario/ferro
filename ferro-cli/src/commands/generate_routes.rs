@@ -816,7 +816,6 @@ pub fn generate_routes_to_file(project_path: &Path, output_path: &Path) -> Resul
 }
 
 /// Main entry point for route generation (standalone use)
-#[allow(dead_code)]
 pub fn run(output: Option<String>) {
     let project_path = Path::new(".");
 

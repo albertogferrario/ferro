@@ -58,6 +58,17 @@ enum Commands {
         #[arg(long, short = 'w')]
         watch: bool,
     },
+    /// Generate type-safe TypeScript route helpers (or stable JSON with --json)
+    #[command(name = "generate-routes")]
+    GenerateRoutes {
+        /// Output file path (TS mode only, default: frontend/src/types/routes.ts)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+
+        /// Emit stable JSON schema to stdout instead of writing TypeScript (D-10..D-12)
+        #[arg(long)]
+        json: bool,
+    },
     /// Generate a new middleware
     #[command(name = "make:middleware")]
     MakeMiddleware {
@@ -468,6 +479,13 @@ fn main() {
         }
         Commands::GenerateTypes { output, watch } => {
             commands::generate_types::run(output, watch);
+        }
+        Commands::GenerateRoutes { output, json } => {
+            if json {
+                commands::generate_routes::run_json();
+            } else {
+                commands::generate_routes::run(output);
+            }
         }
         Commands::MakeMiddleware { name } => {
             commands::make_middleware::run(name);
