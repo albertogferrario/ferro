@@ -18,7 +18,7 @@ const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-depende
 /// rooted at the directory containing `cargo_toml`. See plan 122-02 interfaces.
 pub fn render_rewrite_script(cargo_toml: &Path, ferro_ref: &str) -> io::Result<String> {
     let content = fs::read_to_string(cargo_toml)?;
-    let crates = discover_ferro_path_deps(&content);
+    let crates = find_ferro_path_deps(&content);
 
     let mut script = String::new();
     script.push_str("#!/usr/bin/env bash\n");
@@ -43,7 +43,7 @@ pub fn render_rewrite_script(cargo_toml: &Path, ferro_ref: &str) -> io::Result<S
 /// Walk the dependency tables of a parsed `Cargo.toml` string and collect every
 /// key starting with `ferro` whose value is a table containing a `path` field.
 /// Preserves insertion order, deduplicates. Returns empty Vec on parse failure.
-fn discover_ferro_path_deps(content: &str) -> Vec<String> {
+pub fn find_ferro_path_deps(content: &str) -> Vec<String> {
     let parsed: Value = match content.parse() {
         Ok(v) => v,
         Err(_) => return Vec::new(),
@@ -136,6 +136,12 @@ tokio = { version = "1", features = ["full"] }
     fn errors_when_cargo_toml_missing() {
         let err = render_rewrite_script(Path::new("/nonexistent/Cargo.toml"), "main").unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::NotFound);
+    }
+
+    #[test]
+    fn find_ferro_path_deps_public_wrapper() {
+        let deps = find_ferro_path_deps("[dependencies]\nferro = { path = \"..\" }\n");
+        assert_eq!(deps, vec!["ferro".to_string()]);
     }
 
     #[test]
