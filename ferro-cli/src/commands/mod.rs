@@ -1,5 +1,6 @@
 pub mod api_check;
 pub mod boost_install;
+pub mod ci_init;
 pub mod claude_install;
 pub mod clean;
 pub mod db_fresh;

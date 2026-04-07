@@ -442,6 +442,13 @@ enum Commands {
         #[arg(long)]
         force: bool,
     },
+    /// Generate a GitHub Actions CI workflow at .github/workflows/ci.yml
+    #[command(name = "ci:init")]
+    CiInit {
+        /// Overwrite an existing workflow file
+        #[arg(long)]
+        force: bool,
+    },
     /// Check local API readiness for MCP integration
     #[command(name = "api:check")]
     ApiCheck {
@@ -676,6 +683,9 @@ fn main() {
         }
         Commands::IgnoreSync { dry_run, force } => {
             commands::ignore_sync::run(dry_run, force);
+        }
+        Commands::CiInit { force } => {
+            commands::ci_init::run(force);
         }
         Commands::ApiCheck {
             url,
