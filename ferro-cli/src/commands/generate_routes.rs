@@ -8,6 +8,7 @@
 
 use console::style;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -44,6 +45,92 @@ impl HttpMethod {
             HttpMethod::Put => "put",
             HttpMethod::Patch => "patch",
             HttpMethod::Delete => "delete",
+        }
+    }
+
+    /// Uppercase HTTP verb used by the stable JSON schema.
+    pub fn as_str_upper(&self) -> &'static str {
+        match self {
+            HttpMethod::Get => "GET",
+            HttpMethod::Post => "POST",
+            HttpMethod::Put => "PUT",
+            HttpMethod::Patch => "PATCH",
+            HttpMethod::Delete => "DELETE",
+        }
+    }
+}
+
+/// Stable JSON schema for `ferro generate-routes --json` (D-10..D-12).
+///
+/// Field names and shape are a PUBLIC CONTRACT consumed by ferro-mcp and
+/// external agents. Additions are allowed; renames or removals are breaking
+/// changes and require a major version bump.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RoutesJson {
+    pub routes: Vec<RouteJson>,
+}
+
+/// Single route entry in [`RoutesJson`].
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RouteJson {
+    /// Uppercase HTTP verb: `"GET" | "POST" | "PUT" | "PATCH" | "DELETE"`.
+    pub method: String,
+    /// Path with `{param}` placeholders, e.g. `"/users/{id}"`.
+    pub path: String,
+    /// Fully-qualified handler: `"controllers::user::show"`.
+    pub handler: String,
+    /// Optional named route, e.g. `"users.show"`.
+    pub name: Option<String>,
+    /// Middleware names attached to this route. Always present (may be empty
+    /// in Phase 124 — middleware parsing is future work, but the field is
+    /// part of the stable contract and never omitted).
+    pub middleware: Vec<String>,
+}
+
+/// Convert scanned routes into the stable [`RoutesJson`] schema.
+pub fn routes_to_json(routes: &[GeneratedRoute]) -> RoutesJson {
+    RoutesJson {
+        routes: routes
+            .iter()
+            .map(|r| RouteJson {
+                method: r.definition.method.as_str_upper().to_string(),
+                path: r.definition.path.clone(),
+                handler: format!(
+                    "{}::{}",
+                    r.definition.handler_module, r.definition.handler_fn
+                ),
+                name: r.definition.name.clone(),
+                middleware: Vec::new(),
+            })
+            .collect(),
+    }
+}
+
+/// Scan routes and serialize to a pretty JSON string.
+pub fn generate_json_string(project_path: &Path) -> Result<String, String> {
+    let routes = scan_routes(project_path)?;
+    let json = routes_to_json(&routes);
+    serde_json::to_string_pretty(&json).map_err(|e| format!("JSON serialize: {e}"))
+}
+
+/// Entry point for `ferro generate-routes --json`. Prints to stdout, exits
+/// non-zero on error.
+pub fn run_json() {
+    let project_path = Path::new(".");
+    if !project_path.join("Cargo.toml").exists() {
+        eprintln!(
+            "{} Not a Ferro project (no Cargo.toml found)",
+            style("Error:").red().bold()
+        );
+        std::process::exit(1);
+    }
+    match generate_json_string(project_path) {
+        Ok(json) => {
+            println!("{json}");
+        }
+        Err(e) => {
+            eprintln!("{} {}", style("Error:").red().bold(), e);
+            std::process::exit(1);
         }
     }
 }
@@ -939,5 +1026,155 @@ mod tests {
 
         let name = generate_params_interface_name(&route);
         assert_eq!(name, "ShelterApplicationsShowParams");
+    }
+
+    // ===== JSON schema tests (Phase 124-02, D-10..D-12) =====
+
+    fn make_route(
+        method: HttpMethod,
+        path: &str,
+        handler_module: &str,
+        handler_fn: &str,
+        name: Option<&str>,
+    ) -> GeneratedRoute {
+        GeneratedRoute {
+            definition: RouteDefinition {
+                method,
+                path: path.to_string(),
+                handler_module: handler_module.to_string(),
+                handler_fn: handler_fn.to_string(),
+                name: name.map(String::from),
+                path_params: Vec::new(),
+            },
+            handler_info: None,
+            request_struct: None,
+        }
+    }
+
+    #[test]
+    fn json_single_get_route_serializes_to_stable_shape() {
+        let routes = vec![make_route(
+            HttpMethod::Get,
+            "/users",
+            "controllers::user",
+            "index",
+            None,
+        )];
+        let json = routes_to_json(&routes);
+        let s = serde_json::to_string(&json).unwrap();
+        assert_eq!(
+            s,
+            r#"{"routes":[{"method":"GET","path":"/users","handler":"controllers::user::index","name":null,"middleware":[]}]}"#
+        );
+    }
+
+    #[test]
+    fn json_named_route_round_trips() {
+        let routes = vec![make_route(
+            HttpMethod::Get,
+            "/users/{id}",
+            "controllers::user",
+            "show",
+            Some("users.show"),
+        )];
+        let json = routes_to_json(&routes);
+        let s = serde_json::to_string(&json).unwrap();
+        let parsed: RoutesJson = serde_json::from_str(&s).unwrap();
+        assert_eq!(parsed, json);
+        assert_eq!(parsed.routes[0].name.as_deref(), Some("users.show"));
+    }
+
+    #[test]
+    fn json_patch_method_is_uppercase() {
+        let routes = vec![make_route(
+            HttpMethod::Patch,
+            "/users/{id}",
+            "controllers::user",
+            "update",
+            None,
+        )];
+        let json = routes_to_json(&routes);
+        assert_eq!(json.routes[0].method, "PATCH");
+    }
+
+    #[test]
+    fn json_handler_combines_module_and_fn() {
+        let routes = vec![make_route(
+            HttpMethod::Post,
+            "/posts",
+            "controllers::blog::post",
+            "store",
+            None,
+        )];
+        let json = routes_to_json(&routes);
+        assert_eq!(json.routes[0].handler, "controllers::blog::post::store");
+    }
+
+    #[test]
+    fn json_omits_path_params_field() {
+        let mut r = make_route(
+            HttpMethod::Get,
+            "/users/{id}",
+            "controllers::user",
+            "show",
+            None,
+        );
+        r.definition.path_params = vec![PathParam {
+            name: "id".to_string(),
+        }];
+        let json = routes_to_json(&[r]);
+        let s = serde_json::to_string(&json).unwrap();
+        assert!(!s.contains("path_params"));
+        assert!(!s.contains("\"params\""));
+    }
+
+    #[test]
+    fn json_middleware_always_present_even_when_empty() {
+        let routes = vec![make_route(
+            HttpMethod::Delete,
+            "/users/{id}",
+            "controllers::user",
+            "destroy",
+            None,
+        )];
+        let json = routes_to_json(&routes);
+        let s = serde_json::to_string(&json).unwrap();
+        assert!(s.contains("\"middleware\":[]"));
+        assert_eq!(json.routes[0].middleware, Vec::<String>::new());
+    }
+
+    #[test]
+    fn json_three_route_fixture_round_trips() {
+        let routes = vec![
+            make_route(
+                HttpMethod::Get,
+                "/users",
+                "controllers::user",
+                "index",
+                Some("users.index"),
+            ),
+            make_route(
+                HttpMethod::Post,
+                "/users",
+                "controllers::user",
+                "store",
+                Some("users.store"),
+            ),
+            make_route(
+                HttpMethod::Delete,
+                "/users/{id}",
+                "controllers::user",
+                "destroy",
+                Some("users.destroy"),
+            ),
+        ];
+        let json = routes_to_json(&routes);
+        let s = serde_json::to_string_pretty(&json).unwrap();
+        let parsed: RoutesJson = serde_json::from_str(&s).unwrap();
+        assert_eq!(parsed, json);
+        assert_eq!(parsed.routes.len(), 3);
+        assert_eq!(parsed.routes[0].method, "GET");
+        assert_eq!(parsed.routes[1].method, "POST");
+        assert_eq!(parsed.routes[2].method, "DELETE");
     }
 }
