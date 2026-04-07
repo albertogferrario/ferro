@@ -694,14 +694,14 @@ Plans:
 **Goal:** Expose deploy lifecycle helpers via ferro-mcp: `deploy_check` (pre-flight against missing env, path deps, sqlite in DATABASE_URL, dirty git tree, missing Dockerfile/app.yaml), `deploy_diff_env` (local .env vs .do/app.yaml drift), `runtime_requirements` (scan source for chromium/ffmpeg/etc and report needed runtime apt packages). Read-only.
 **Requirements**: TBD
 **Depends on:** Phase 122
-**Plans:** 2/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 123-01-PLAN.md — runtime_deps registry + Cargo.toml scanner in ferro-cli
 - [x] 123-02-PLAN.md — ferro-mcp depends on ferro-cli; deploy_common re-exports
-- [ ] 123-03-PLAN.md — deploy_check MCP tool (severity-tagged pre-flight report)
-- [ ] 123-04-PLAN.md — deploy_diff_env MCP tool (.env vs app.yaml drift)
-- [ ] 123-05-PLAN.md — runtime_requirements MCP tool + Dockerfile cross-check
+- [x] 123-03-PLAN.md — deploy_check MCP tool (severity-tagged pre-flight report)
+- [x] 123-04-PLAN.md — deploy_diff_env MCP tool (.env vs app.yaml drift)
+- [x] 123-05-PLAN.md — runtime_requirements MCP tool + Dockerfile cross-check
 
 ### Phase 124: Doctor, introspection, CI scaffold
 
