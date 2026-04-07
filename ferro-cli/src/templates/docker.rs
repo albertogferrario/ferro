@@ -2,18 +2,302 @@
 // Docker Templates
 // ============================================================================
 //
-// Dockerfile rendering rewritten in Phase 122.2 Plan 06. Only the static
-// .dockerignore and docker-compose helpers remain here for the surviving
-// `docker:compose` command and the `new` project scaffold.
+// Phase 122.2 §2: new Dockerfile renderer driven by metadata + rust-toolchain
+// + [[bin]] enumeration. No GITHUB_TOKEN, no shell scripts, no workspace
+// member walking. The static .dockerignore template is reused for the
+// `docker:init` and `new` scaffolds.
+
+use std::fs;
+use std::path::Path;
+
+use toml::Value;
 
 const DOCKERIGNORE_TPL: &str = include_str!("files/docker/dockerignore.tpl");
+const DOCKERFILE_TPL: &str = include_str!("files/docker/Dockerfile.tpl");
 
-/// Static `.dockerignore` body. Phase 122.2 Plan 08 owns the canonical content.
+/// Static `.dockerignore` body. Phase 122.2 Plan 06 owns the canonical content.
 pub fn dockerignore_template() -> &'static str {
     DOCKERIGNORE_TPL
 }
 
-/// Generate docker-compose.yml for local development
+/// Inputs the Dockerfile renderer needs. All fields come from the project
+/// (rust-toolchain.toml, Cargo.toml, on-disk dirs, deploy metadata) and are
+/// fully resolved by the caller — `render_dockerfile` itself does no I/O.
+#[derive(Debug, Clone)]
+pub struct DockerContext {
+    /// Rust release channel — e.g. "stable", "1.90.0".
+    pub rust_channel: String,
+    /// Whether `frontend/package.json` exists in the project root.
+    pub has_frontend: bool,
+    /// All `[[bin]]` names declared in the project Cargo.toml.
+    pub bins: Vec<String>,
+    /// `metadata.copy_dirs` filtered down to dirs that actually exist.
+    pub copy_dirs_present: Vec<String>,
+    /// Verbatim `metadata.runtime_apt`.
+    pub runtime_apt: Vec<String>,
+}
+
+/// Render a Dockerfile from the supplied context. Pure string substitution.
+pub fn render_dockerfile(ctx: &DockerContext) -> String {
+    let frontend_stage = if ctx.has_frontend {
+        FRONTEND_STAGE_BODY.to_string()
+    } else {
+        String::new()
+    };
+
+    let bin_builds = ctx
+        .bins
+        .iter()
+        .map(|b| format!("RUN cargo build --release --bin {b}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let bin_copies = ctx
+        .bins
+        .iter()
+        .map(|b| format!("COPY --from=backend-builder /app/target/release/{b} /usr/local/bin/{b}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let copy_dirs = ctx
+        .copy_dirs_present
+        .iter()
+        .map(|d| format!("COPY {d} {d}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let runtime_apt = if ctx.runtime_apt.is_empty() {
+        String::new()
+    } else {
+        let pkgs = ctx.runtime_apt.join(" ");
+        format!(
+            "# ferro:runtime-apt\nRUN apt-get update \\\n    && apt-get install -y --no-install-recommends {pkgs} \\\n    && rm -rf /var/lib/apt/lists/*"
+        )
+    };
+
+    DOCKERFILE_TPL
+        .replace("{{FRONTEND_STAGE}}", &frontend_stage)
+        .replace("{{RUST_CHANNEL}}", &ctx.rust_channel)
+        .replace("{{BIN_BUILDS}}", &bin_builds)
+        .replace("{{BIN_COPIES}}", &bin_copies)
+        .replace("{{COPY_DIRS}}", &copy_dirs)
+        .replace("{{RUNTIME_APT}}", &runtime_apt)
+}
+
+const FRONTEND_STAGE_BODY: &str = r#"
+FROM node:20-bookworm-slim AS frontend-builder
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci || npm install
+COPY frontend/ ./
+RUN npm run build
+"#;
+
+/// Read `[toolchain] channel` from `<root>/rust-toolchain.toml`. Defaults to
+/// `"stable"` when the file is missing or unparseable.
+pub fn read_rust_channel(project_root: &Path) -> String {
+    let path = project_root.join("rust-toolchain.toml");
+    let Ok(content) = fs::read_to_string(&path) else {
+        return "stable".to_string();
+    };
+    let Ok(parsed) = content.parse::<Value>() else {
+        return "stable".to_string();
+    };
+    parsed
+        .get("toolchain")
+        .and_then(|t| t.get("channel"))
+        .and_then(|c| c.as_str())
+        .map(String::from)
+        .unwrap_or_else(|| "stable".to_string())
+}
+
+/// Parse `<root>/Cargo.toml` and return every `[[bin]] name`. Falls back to
+/// `[package] name` if no `[[bin]]` table is declared. Errors when Cargo.toml
+/// is unreadable or unparseable.
+pub fn read_bins(project_root: &Path) -> anyhow::Result<Vec<String>> {
+    let path = project_root.join("Cargo.toml");
+    let content = fs::read_to_string(&path)
+        .map_err(|e| anyhow::anyhow!("failed to read {}: {e}", path.display()))?;
+    let parsed: Value = content
+        .parse()
+        .map_err(|e| anyhow::anyhow!("failed to parse {}: {e}", path.display()))?;
+
+    let from_bins: Vec<String> = parsed
+        .get("bin")
+        .and_then(|b| b.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|entry| entry.get("name").and_then(|n| n.as_str()).map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if !from_bins.is_empty() {
+        return Ok(from_bins);
+    }
+
+    let pkg_name = parsed
+        .get("package")
+        .and_then(|p| p.get("name"))
+        .and_then(|n| n.as_str())
+        .map(String::from);
+
+    Ok(pkg_name.into_iter().collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn ctx() -> DockerContext {
+        DockerContext {
+            rust_channel: "stable".to_string(),
+            has_frontend: false,
+            bins: vec!["app".to_string()],
+            copy_dirs_present: vec![],
+            runtime_apt: vec![],
+        }
+    }
+
+    #[test]
+    fn frontend_stage_present_only_when_has_frontend() {
+        let mut c = ctx();
+        c.has_frontend = false;
+        assert!(!render_dockerfile(&c).contains("frontend-builder"));
+        c.has_frontend = true;
+        assert!(render_dockerfile(&c).contains("frontend-builder"));
+    }
+
+    #[test]
+    fn base_image_uses_rust_channel() {
+        let mut c = ctx();
+        c.rust_channel = "1.90.0".into();
+        let out = render_dockerfile(&c);
+        assert!(out.contains("rust:1.90.0-slim-bookworm"));
+    }
+
+    #[test]
+    fn multi_bin_emits_per_bin_build_and_copy() {
+        let mut c = ctx();
+        c.bins = vec!["web".into(), "worker".into()];
+        let out = render_dockerfile(&c);
+        assert!(out.contains("cargo build --release --bin web"));
+        assert!(out.contains("cargo build --release --bin worker"));
+        assert!(out.contains(
+            "COPY --from=backend-builder /app/target/release/web /usr/local/bin/web"
+        ));
+        assert!(out.contains(
+            "COPY --from=backend-builder /app/target/release/worker /usr/local/bin/worker"
+        ));
+    }
+
+    #[test]
+    fn copy_dirs_emits_only_present_entries() {
+        let mut c = ctx();
+        c.copy_dirs_present = vec!["themes".into(), "migrations".into()];
+        let out = render_dockerfile(&c);
+        assert!(out.contains("COPY themes themes"));
+        assert!(out.contains("COPY migrations migrations"));
+        assert!(!out.contains("COPY public public"));
+    }
+
+    #[test]
+    fn runtime_apt_empty_emits_no_block() {
+        let c = ctx();
+        let out = render_dockerfile(&c);
+        assert!(!out.contains("ferro:runtime-apt"));
+    }
+
+    #[test]
+    fn runtime_apt_nonempty_emits_marker_and_packages() {
+        let mut c = ctx();
+        c.runtime_apt = vec!["chromium".into(), "fonts-liberation".into()];
+        let out = render_dockerfile(&c);
+        assert!(out.contains("# ferro:runtime-apt"));
+        assert!(out.contains("chromium fonts-liberation"));
+    }
+
+    #[test]
+    fn planner_and_builder_copy_cargo_docker_toml() {
+        let out = render_dockerfile(&ctx());
+        // Two occurrences: planner stage + builder stage.
+        assert_eq!(out.matches("COPY Cargo.docker.toml Cargo.toml").count(), 2);
+    }
+
+    #[test]
+    fn no_obsolete_phase_122_features() {
+        let out = render_dockerfile(&ctx());
+        for forbidden in ["GITHUB_TOKEN", "insteadOf", "rewrite-ferro-deps"] {
+            assert!(!out.contains(forbidden), "found forbidden token: {forbidden}");
+        }
+    }
+
+    #[test]
+    fn read_rust_channel_returns_default_when_missing() {
+        let tmp = TempDir::new().unwrap();
+        assert_eq!(read_rust_channel(tmp.path()), "stable");
+    }
+
+    #[test]
+    fn read_rust_channel_returns_channel_from_toolchain() {
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("rust-toolchain.toml"),
+            "[toolchain]\nchannel = \"1.90.0\"\n",
+        )
+        .unwrap();
+        assert_eq!(read_rust_channel(tmp.path()), "1.90.0");
+    }
+
+    #[test]
+    fn read_bins_returns_bin_names() {
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("Cargo.toml"),
+            r#"
+[package]
+name = "demo"
+
+[[bin]]
+name = "web"
+
+[[bin]]
+name = "worker"
+"#,
+        )
+        .unwrap();
+        assert_eq!(read_bins(tmp.path()).unwrap(), vec!["web", "worker"]);
+    }
+
+    #[test]
+    fn read_bins_falls_back_to_package_name() {
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("Cargo.toml"), "[package]\nname = \"solo\"\n").unwrap();
+        assert_eq!(read_bins(tmp.path()).unwrap(), vec!["solo"]);
+    }
+
+    /// Phase 122.2 §2: the renderer must mention the runtime-apt marker so the
+    /// pattern is greppable for downstream tooling and tests.
+    #[test]
+    fn renderer_module_mentions_runtime_apt_marker() {
+        // ferro:runtime-apt
+        let mut c = ctx();
+        c.runtime_apt = vec!["foo".into()];
+        assert!(render_dockerfile(&c).contains("# ferro:runtime-apt"));
+    }
+
+    /// Generate docker-compose.yml for local development
+    #[test]
+    fn dockerignore_is_static_passthrough() {
+        assert!(dockerignore_template().contains("database.db"));
+    }
+}
+
+// ============================================================================
+// docker-compose.yml renderer (unchanged from Phase 122)
+// ============================================================================
+
 pub fn docker_compose_template(
     project_name: &str,
     include_mailpit: bool,
