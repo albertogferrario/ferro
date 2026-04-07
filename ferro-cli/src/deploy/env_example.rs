@@ -29,12 +29,36 @@ pub fn parse_env_example(content: &str) -> Vec<EnvEntry> {
         if key.is_empty() {
             continue;
         }
+        let trimmed_val = value.trim();
+        let stripped = strip_inline_comment(trimmed_val);
         out.push(EnvEntry {
             key,
-            value: value.trim().to_string(),
+            value: stripped.to_string(),
         });
     }
     out
+}
+
+/// Strip a trailing ` #comment` from an unquoted value.
+///
+/// Rules (D-01..D-03):
+/// - Values starting with `"` or `'` are returned as-is (D-02).
+/// - Otherwise, the first `#` preceded by whitespace terminates the value;
+///   everything from that whitespace onward is removed (D-01).
+/// - A `#` with no preceding whitespace is treated as part of the value (D-03).
+fn strip_inline_comment(value: &str) -> &str {
+    let bytes = value.as_bytes();
+    if bytes.first() == Some(&b'"') || bytes.first() == Some(&b'\'') {
+        return value;
+    }
+    let mut prev_ws = false;
+    for (i, b) in bytes.iter().enumerate() {
+        if *b == b'#' && prev_ws {
+            return value[..i].trim_end();
+        }
+        prev_ws = *b == b' ' || *b == b'\t';
+    }
+    value
 }
 
 #[cfg(test)]
@@ -76,5 +100,29 @@ mod tests {
     fn trims_key_and_value() {
         let got = parse_env_example("  SPACED  =  value  ");
         assert_eq!(got, vec![pair("SPACED", "value")]);
+    }
+
+    #[test]
+    fn strips_trailing_inline_comment() {
+        let got = parse_env_example("APP_ENV=local          # local, staging");
+        assert_eq!(got, vec![pair("APP_ENV", "local")]);
+    }
+
+    #[test]
+    fn preserves_hash_inside_quoted_value() {
+        let got = parse_env_example("KEY=\"foo#bar\"");
+        assert_eq!(got, vec![pair("KEY", "\"foo#bar\"")]);
+    }
+
+    #[test]
+    fn preserves_hash_with_no_leading_space() {
+        let got = parse_env_example("KEY=#literal");
+        assert_eq!(got, vec![pair("KEY", "#literal")]);
+    }
+
+    #[test]
+    fn strips_multiple_spaces_before_comment() {
+        let got = parse_env_example("APP_DEBUG=true      # Set false in production");
+        assert_eq!(got, vec![pair("APP_DEBUG", "true")]);
     }
 }
