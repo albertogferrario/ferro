@@ -135,8 +135,35 @@ fn build_databases_block() -> String {
     String::from("\ndatabases:\n  - name: db\n    engine: PG\n    production: true\n")
 }
 
+/// True if a bin is a test/dev/debug helper that should not ship as a
+/// production DO worker.
+/// Heuristic: name prefix OR `src/bin/<stem>.rs` stem prefix in
+/// {test_, test-, dev_, dev-, debug_, debug-}.
+/// TODO(122.1): also honor [[bin]] required-features once
+/// project::BinEntry exposes it.
+fn is_test_like_bin(b: &BinEntry) -> bool {
+    const PREFIXES: &[&str] = &["test_", "test-", "dev_", "dev-", "debug_", "debug-"];
+    if PREFIXES.iter().any(|p| b.name.starts_with(p)) {
+        return true;
+    }
+    if let Some(path) = b.path.as_deref() {
+        if let Some(stem) = std::path::Path::new(path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+        {
+            if PREFIXES.iter().any(|p| stem.starts_with(p)) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn build_workers_block(server: &str, bins: &[BinEntry]) -> String {
-    let workers: Vec<&BinEntry> = bins.iter().filter(|b| b.name != server).collect();
+    let workers: Vec<&BinEntry> = bins
+        .iter()
+        .filter(|b| b.name != server && !is_test_like_bin(b))
+        .collect();
     if workers.is_empty() {
         return String::new();
     }
@@ -329,6 +356,52 @@ mod tests {
         let out = build_envs_block(&envs);
         assert!(out.contains("value: ${db.DATABASE_URL}"));
         assert!(!out.contains("# Override"));
+    }
+
+    fn bin_with_path(name: &str, path: &str) -> BinEntry {
+        BinEntry {
+            name: name.to_string(),
+            path: Some(path.to_string()),
+        }
+    }
+
+    #[test]
+    fn workers_block_excludes_test_parser() {
+        let bins = vec![bin("mkmenu_ferro"), bin("test_parser")];
+        assert_eq!(build_workers_block("mkmenu_ferro", &bins), "");
+    }
+
+    #[test]
+    fn workers_block_keeps_screenshot_worker() {
+        let bins = vec![bin("gestiscilo"), bin("screenshot-worker")];
+        let out = build_workers_block("gestiscilo", &bins);
+        assert!(out.contains("- name: screenshot-worker"));
+        assert!(!out.contains("- name: gestiscilo"));
+    }
+
+    #[test]
+    fn workers_block_excludes_all_test_dev_debug_prefixes() {
+        let bins = vec![
+            bin("app"),
+            bin("dev_tool"),
+            bin("debug-helper"),
+            bin("test-foo"),
+            bin("real-worker"),
+        ];
+        let out = build_workers_block("app", &bins);
+        assert!(out.contains("- name: real-worker"));
+        assert!(!out.contains("dev_tool"));
+        assert!(!out.contains("debug-helper"));
+        assert!(!out.contains("test-foo"));
+    }
+
+    #[test]
+    fn workers_block_excludes_by_path_stem() {
+        let bins = vec![
+            bin("app"),
+            bin_with_path("odd_name", "src/bin/test_parser.rs"),
+        ];
+        assert_eq!(build_workers_block("app", &bins), "");
     }
 
     #[test]
