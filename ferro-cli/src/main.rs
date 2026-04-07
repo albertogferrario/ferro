@@ -209,6 +209,21 @@ enum Commands {
         /// Name of the migration (e.g., create_users_table, add_email_to_users)
         name: String,
     },
+    /// Generate a feature module skeleton (controller/model/views/routes)
+    #[command(name = "make:module")]
+    MakeModule {
+        /// Name of the module (e.g., orders, user_profile)
+        name: String,
+        /// Also drop a migration stub under migration/src/
+        #[arg(long)]
+        with_migration: bool,
+        /// Skip views/ subtree (headless module)
+        #[arg(long)]
+        no_views: bool,
+        /// Overwrite existing files
+        #[arg(long, short = 'f')]
+        force: bool,
+    },
     /// Generate a new authorization policy
     #[command(name = "make:policy")]
     MakePolicy {
@@ -569,6 +584,14 @@ fn main() {
         }
         Commands::MakeMigration { name } => {
             commands::make_migration::run(name);
+        }
+        Commands::MakeModule {
+            name,
+            with_migration,
+            no_views,
+            force,
+        } => {
+            commands::make_module::run(name, with_migration, no_views, force);
         }
         Commands::MakePolicy { name, model } => {
             commands::make_policy::run(name, model);

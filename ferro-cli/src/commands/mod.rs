@@ -33,6 +33,7 @@ pub mod make_lang;
 pub mod make_listener;
 pub mod make_middleware;
 pub mod make_migration;
+pub mod make_module;
 pub mod make_notification;
 pub mod make_policy;
 pub mod make_projection;
