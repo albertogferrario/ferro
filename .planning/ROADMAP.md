@@ -722,10 +722,11 @@ Plans:
 **Goal:** `ferro make:module <name>` creating `controllers/`, `models/`, `views/`, `routes.rs` skeleton enforcing feature-module convention. Split ferro-json-ui monolithic IIFE in `runtime.rs` into named functions (tabs, SSE, toasts, sidebar) with a small dispatcher, still emitted as one file but testable in isolation.
 **Requirements**: TBD
 **Depends on:** Phase 122
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 125 to break down)
+- [ ] 125-01-PLAN.md — ferro make:module command + stub templates + clap wiring (D-01..D-05)
+- [ ] 125-02-PLAN.md — ferro-json-ui runtime split into per-concern submodules + ferroRuntime dispatcher (D-06..D-11)
 
 ---
 
