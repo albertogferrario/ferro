@@ -53,10 +53,15 @@ The `api:check` and `validate:contracts` steps shell out via
 ferro-cli version pinned in the project's `Cargo.lock`, with no extra
 install step and no risk of version drift between local and CI.
 
-## DigitalOcean projects
+## Relationship to `do:init`
 
-Projects deploying to DigitalOcean App Platform should also run
-`ferro do:init`, which generates `.do/app.yaml` (and, in a future
-release, wires the same CI workflow into the `do:init` flow). For now,
-run `ferro ci:init` and `ferro do:init` independently — both are
-idempotent.
+`ci:init` and [`do:init`](./do-init.md) are intentionally decoupled:
+
+- `do:init` scaffolds DigitalOcean App Platform deploy config
+  (`.do/app.yaml`).
+- `ci:init` scaffolds the GitHub Actions workflow
+  (`.github/workflows/ci.yml`).
+
+They are independent commands with no shared state and no implicit
+chaining — a project can adopt CI without deploying to DO, and vice
+versa. Run whichever you need; both are idempotent.
