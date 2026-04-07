@@ -40,13 +40,18 @@ pub struct CreateUserRequest {
 Mark traits for dependency injection:
 
 ```rust
-use ferro::service;
+use ferro::{injectable, service};
 
-#[service]
+#[service(ConcreteUserService)]
 pub trait UserService: Send + Sync {
     async fn find(&self, id: i64) -> Option<User>;
 }
+
+#[injectable]
+pub struct ConcreteUserService;
 ```
+
+The `(ConcreteType)` argument binds the trait to its concrete implementation for the service container.
 
 ### `#[injectable]`
 
