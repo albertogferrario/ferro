@@ -1,8 +1,10 @@
 # Ferro
 
-A batteries-included web framework for Rust.
+A batteries-included Rust web framework optimized for AI-assisted authoring.
 
-Ferro brings a Laravel-style developer experience to Rust: expressive routing, dependency injection, an ORM layer, background jobs, events, notifications, real-time broadcasting, server-driven UIs, and first-class agent tooling via an in-process MCP introspection server. It is designed for agent-assisted development — every subsystem exposes typed introspection so coding assistants can reason about your application without guessing.
+Ferro is built for developers whose primary authoring tool is an AI coding agent (Claude Code, Cursor, and similar). Every subsystem exposes typed introspection through an in-process MCP server (`ferro-mcp`), so an agent connected to your project can read routes, models, handlers, validations, and generation context as tool calls instead of guessing from source.
+
+The defining feature is **service projections**: describe a service and intent, get a working UI. The `ferro-projections` crate maps typed model pipelines to rendered views, so an agent can scaffold an end-to-end CRUD or workflow surface from a single declaration. At v1.0 the output is visual (HTML via JSON-UI); the underlying model is media-independent.
 
 ## What's included
 
@@ -46,9 +48,17 @@ tokio = { version = "1", features = ["full"] }
 - User guide: <https://docs.ferro-rs.dev/>
 - Repository: <https://github.com/albertogferrario/ferro>
 
+## Agent workflow
+
+1. Install `ferro-cli` and create a project.
+2. Point your AI agent at `ferro-mcp` via its MCP configuration.
+3. The agent introspects the project (`application_info`, `list_routes`, `list_models`, `list_projections`) and generates code, projections, and views against the live application surface.
+
+There is no bundled agent UI. `ferro-mcp` is the v1.0 product surface — the API your agent talks to.
+
 ## Status
 
-v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0.
+v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. No public announcements yet; the framework is being developed in the open and is not feature-frozen.
 
 ## License
 
