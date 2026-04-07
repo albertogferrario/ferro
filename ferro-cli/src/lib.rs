@@ -8,5 +8,6 @@ pub mod ai;
 pub mod analyzer;
 pub mod commands;
 pub mod deploy;
+pub mod doctor;
 pub mod project;
 pub mod templates;
