@@ -5,7 +5,7 @@
 **Use ferro-mcp first.** The MCP tools provide instant introspection:
 - `application_info` - Project state, models, installed crates
 - `list_routes` - All endpoints
-- `database_schema` - Table structure
+- `db_schema` - Table structure
 - `last_error` - Debug failures
 
 ## Workspace Structure
@@ -21,8 +21,16 @@
 | `ferro-storage` | File storage abstraction | `src/lib.rs` |
 | `ferro-cache` | Caching with tags | `src/lib.rs` |
 | `ferro-macros` | Proc macros | `src/lib.rs` |
-| `ferro-mcp` | MCP introspection server | `src/tools/` |
+| `ferro-mcp` | MCP introspection library, launched in-process by `ferro mcp` subcommand | `src/tools/` |
 | `ferro-inertia` | Inertia.js adapter | `src/lib.rs` |
+| `ferro-json-ui` | JSON-based server-driven UI schema and renderer | `src/lib.rs` |
+| `ferro-lang` | Localization (per-locale translation files) | `src/lib.rs` |
+| `ferro-api-mcp` | Standalone MCP server bridging OpenAPI specs to MCP tools | `src/lib.rs` |
+| `ferro-projections` | Service projection definitions (typed model→UI pipeline) | `src/lib.rs` |
+| `ferro-stripe` | Stripe payment and subscription integration | `src/lib.rs` |
+| `ferro-theme` | Semantic theme tokens and intent template schema | `src/lib.rs` |
+| `ferro-ai` | AI structured classification and confirmation primitives | `src/lib.rs` |
+| `ferro-whatsapp` | WhatsApp Business Cloud API integration | `src/lib.rs` |
 | `app` | Sample application | Reference implementation |
 
 ## Key Patterns
