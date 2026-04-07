@@ -406,8 +406,7 @@ fn render_calendar_cell(props: &CalendarCellProps) -> String {
         html.push_str("</div>");
     } else if total > 3 {
         html.push_str(&format!(
-            "<span class=\"mt-auto pt-1 text-xs font-medium text-primary\">{} prenot.</span>",
-            total
+            "<span class=\"mt-auto pt-1 text-xs font-medium text-primary\">{total} prenot.</span>"
         ));
     }
 
@@ -3269,7 +3268,7 @@ mod tests {
         assert!(html.contains("<img"));
         assert!(html.contains("src=\"/img/page.png\""));
         assert!(html.contains("alt=\"Page\""));
-        assert!(html.contains("w-full rounded-md object-cover"));
+        assert!(html.contains("w-full h-full rounded-md object-cover"));
         assert!(html.contains("style=\"aspect-ratio: 16/9\""));
         assert!(html.contains("loading=\"lazy\""));
     }
