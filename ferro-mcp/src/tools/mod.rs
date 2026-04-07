@@ -51,6 +51,7 @@ pub mod relation_map;
 pub mod render_projection;
 pub mod request_metrics;
 pub mod route_dependencies;
+pub mod runtime_requirements;
 pub mod search_docs;
 pub mod session_inspect;
 pub mod stripe;
