@@ -78,10 +78,20 @@ fn build_envs_block(entries: &[EnvEntry]) -> String {
     }
     let mut out = String::from("    envs:\n");
     for e in entries {
+        let is_db = e.key.eq_ignore_ascii_case("DATABASE_URL");
+        let placeholder = !is_db && should_placeholder(&e.key, &e.value);
+        if placeholder {
+            out.push_str(&format!(
+                "      # Override in DO App Platform secrets (was: {})\n",
+                e.value
+            ));
+        }
         out.push_str(&format!("      - key: {}\n", e.key));
         out.push_str("        scope: RUN_TIME\n");
-        if e.key.eq_ignore_ascii_case("DATABASE_URL") {
+        if is_db {
             out.push_str("        value: ${db.DATABASE_URL}\n");
+        } else if placeholder {
+            out.push_str(&format!("        value: ${{{}}}\n", e.key));
         } else {
             out.push_str(&format!("        value: \"{}\"\n", yaml_escape(&e.value)));
         }
@@ -90,6 +100,35 @@ fn build_envs_block(entries: &[EnvEntry]) -> String {
         }
     }
     out
+}
+
+/// Decide whether an env entry's value should be replaced with a `${KEY}`
+/// placeholder in `.do/app.yaml`. Dev defaults (localhost, empty, relative
+/// paths, `file:` refs) are unsafe to ship to production.
+fn should_placeholder(key: &str, value: &str) -> bool {
+    if key.eq_ignore_ascii_case("DATABASE_URL") {
+        return false;
+    }
+    if key.ends_with("_PORT") {
+        return false;
+    }
+    let v = value.trim();
+    if v.is_empty() {
+        return true;
+    }
+    if v.contains("localhost") || v.contains("127.0.0.1") || v.contains("0.0.0.0") {
+        return true;
+    }
+    if v.starts_with("file:") {
+        return true;
+    }
+    if v.starts_with("./") || v.starts_with("../") {
+        return true;
+    }
+    if !v.contains("://") && !v.starts_with('/') && v.contains('/') {
+        return true;
+    }
+    false
 }
 
 fn build_databases_block() -> String {
@@ -244,6 +283,52 @@ mod tests {
         assert_eq!(sanitize_do_app_name("foo__bar"), "foo-bar");
         assert_eq!(sanitize_do_app_name("app.name"), "appname");
         assert_eq!(sanitize_do_app_name("gestiscilo"), "gestiscilo");
+    }
+
+    #[test]
+    fn should_placeholder_covers_all_branches() {
+        assert!(should_placeholder("APP_URL", "http://localhost:8080"));
+        assert!(should_placeholder("APP_URL", "http://127.0.0.1:8080"));
+        assert!(should_placeholder("APP_URL", "http://0.0.0.0:8080"));
+        assert!(should_placeholder("DATA_DIR", "./data"));
+        assert!(should_placeholder("DATA_DIR", "data/local"));
+        assert!(should_placeholder("CONFIG", "file:./config.toml"));
+        assert!(should_placeholder("SOMETHING", ""));
+        assert!(should_placeholder("SOMETHING", "   "));
+        assert!(!should_placeholder("APP_URL", "https://gestiscilo.it"));
+        assert!(!should_placeholder("SERVER_PORT", "8080"));
+        assert!(!should_placeholder("SERVER_PORT", "3000"));
+        assert!(!should_placeholder(
+            "DATABASE_URL",
+            "postgres://localhost/x"
+        ));
+        assert!(!should_placeholder("STRIPE_SECRET_KEY", "sk_test_xxx"));
+    }
+
+    #[test]
+    fn envs_block_substitutes_localhost_app_url() {
+        let envs = vec![env("APP_URL", "http://localhost:8080")];
+        let out = build_envs_block(&envs);
+        assert!(out.contains("# Override in DO App Platform secrets (was: http://localhost:8080)"));
+        assert!(out.contains("value: ${APP_URL}"));
+        assert!(!out.contains("value: \"http://localhost:8080\""));
+    }
+
+    #[test]
+    fn envs_block_keeps_production_url_literal() {
+        let envs = vec![env("APP_URL", "https://gestiscilo.it")];
+        let out = build_envs_block(&envs);
+        assert!(out.contains("value: \"https://gestiscilo.it\""));
+        assert!(!out.contains("# Override"));
+        assert!(!out.contains("value: ${APP_URL}"));
+    }
+
+    #[test]
+    fn envs_block_database_url_unchanged_by_placeholder_logic() {
+        let envs = vec![env("DATABASE_URL", "postgres://user:pass@localhost/db")];
+        let out = build_envs_block(&envs);
+        assert!(out.contains("value: ${db.DATABASE_URL}"));
+        assert!(!out.contains("# Override"));
     }
 
     #[test]
