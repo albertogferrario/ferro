@@ -1,0 +1,9 @@
+[package]
+name = "mkmenu"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ferro = { path = "../../../framework" }
+ferro-json-ui = { path = "../../../ferro-json-ui" }
+serde = "1"
