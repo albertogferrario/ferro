@@ -340,12 +340,15 @@ enum Commands {
         /// SQL query to execute
         query: String,
     },
-    /// Generate a production-ready Dockerfile (stub — Phase 122.2 Plan 06)
+    /// Generate a production-ready Dockerfile, .dockerignore, and Cargo.docker.toml
     #[command(name = "docker:init")]
     DockerInit {
         /// Overwrite existing Dockerfile and .dockerignore
         #[arg(long)]
         force: bool,
+        /// One-shot ferro version override (does not mutate Cargo.toml)
+        #[arg(long)]
+        ferro_version: Option<String>,
     },
     /// Generate DigitalOcean App Platform deployment spec (stub — Phase 122.2 Plan 07)
     #[command(name = "do:init")]
@@ -622,8 +625,11 @@ fn main() {
         Commands::DbQuery { query } => {
             commands::db_query::run(query);
         }
-        Commands::DockerInit { force } => {
-            commands::docker_init::run(force);
+        Commands::DockerInit {
+            force,
+            ferro_version,
+        } => {
+            commands::docker_init::run_with(force, ferro_version);
         }
         Commands::DoInit { force } => {
             commands::do_init::run(force);

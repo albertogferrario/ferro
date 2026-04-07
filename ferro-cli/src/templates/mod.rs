@@ -1,7 +1,7 @@
 mod ai_boost;
 mod auth;
 pub mod ci_workflow;
-mod docker;
+pub mod docker;
 mod entity;
 mod make;
 pub mod module;

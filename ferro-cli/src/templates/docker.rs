@@ -145,6 +145,40 @@ pub fn read_bins(project_root: &Path) -> anyhow::Result<Vec<String>> {
     Ok(pkg_name.into_iter().collect())
 }
 
+// ============================================================================
+// docker-compose.yml renderer (unchanged from Phase 122)
+// ============================================================================
+
+pub fn docker_compose_template(
+    project_name: &str,
+    include_mailpit: bool,
+    include_minio: bool,
+) -> String {
+    let mailpit_service = if include_mailpit {
+        include_str!("files/docker/mailpit.service.tpl").replace("{project_name}", project_name)
+    } else {
+        String::new()
+    };
+
+    let minio_service = if include_minio {
+        include_str!("files/docker/minio.service.tpl").replace("{project_name}", project_name)
+    } else {
+        String::new()
+    };
+
+    let additional_volumes = if include_minio {
+        "\n  minio_data:".to_string()
+    } else {
+        String::new()
+    };
+
+    include_str!("files/docker/docker-compose.yml.tpl")
+        .replace("{project_name}", project_name)
+        .replace("{mailpit_service}", &mailpit_service)
+        .replace("{minio_service}", &minio_service)
+        .replace("{additional_volumes}", &additional_volumes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -184,9 +218,9 @@ mod tests {
         let out = render_dockerfile(&c);
         assert!(out.contains("cargo build --release --bin web"));
         assert!(out.contains("cargo build --release --bin worker"));
-        assert!(out.contains(
-            "COPY --from=backend-builder /app/target/release/web /usr/local/bin/web"
-        ));
+        assert!(
+            out.contains("COPY --from=backend-builder /app/target/release/web /usr/local/bin/web")
+        );
         assert!(out.contains(
             "COPY --from=backend-builder /app/target/release/worker /usr/local/bin/worker"
         ));
@@ -229,7 +263,10 @@ mod tests {
     fn no_obsolete_phase_122_features() {
         let out = render_dockerfile(&ctx());
         for forbidden in ["GITHUB_TOKEN", "insteadOf", "rewrite-ferro-deps"] {
-            assert!(!out.contains(forbidden), "found forbidden token: {forbidden}");
+            assert!(
+                !out.contains(forbidden),
+                "found forbidden token: {forbidden}"
+            );
         }
     }
 
@@ -273,7 +310,11 @@ name = "worker"
     #[test]
     fn read_bins_falls_back_to_package_name() {
         let tmp = TempDir::new().unwrap();
-        fs::write(tmp.path().join("Cargo.toml"), "[package]\nname = \"solo\"\n").unwrap();
+        fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname = \"solo\"\n",
+        )
+        .unwrap();
         assert_eq!(read_bins(tmp.path()).unwrap(), vec!["solo"]);
     }
 
@@ -292,38 +333,4 @@ name = "worker"
     fn dockerignore_is_static_passthrough() {
         assert!(dockerignore_template().contains("database.db"));
     }
-}
-
-// ============================================================================
-// docker-compose.yml renderer (unchanged from Phase 122)
-// ============================================================================
-
-pub fn docker_compose_template(
-    project_name: &str,
-    include_mailpit: bool,
-    include_minio: bool,
-) -> String {
-    let mailpit_service = if include_mailpit {
-        include_str!("files/docker/mailpit.service.tpl").replace("{project_name}", project_name)
-    } else {
-        String::new()
-    };
-
-    let minio_service = if include_minio {
-        include_str!("files/docker/minio.service.tpl").replace("{project_name}", project_name)
-    } else {
-        String::new()
-    };
-
-    let additional_volumes = if include_minio {
-        "\n  minio_data:".to_string()
-    } else {
-        String::new()
-    };
-
-    include_str!("files/docker/docker-compose.yml.tpl")
-        .replace("{project_name}", project_name)
-        .replace("{mailpit_service}", &mailpit_service)
-        .replace("{minio_service}", &minio_service)
-        .replace("{additional_volumes}", &additional_volumes)
 }
