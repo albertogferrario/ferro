@@ -1,8 +1,7 @@
 //! Settings controller
 
 use ferro::{
-    redirect, serde_json, Auth, Inertia, InertiaProps, Request, Response,
-    SavedInertiaContext,
+    serde_json, Auth, Inertia, InertiaProps, Request, Response, SavedInertiaContext,
 };
 use serde::{Deserialize, Serialize};
 

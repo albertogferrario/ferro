@@ -9,7 +9,7 @@ name = "{package_name}"
 path = "src/main.rs"
 
 [dependencies]
-ferro = {{ git = "https://github.com/albertogferrario/ferro.git" }}
+ferro = {{ package = "ferro-rs", version = "0.2" }}
 tokio = {{ version = "1", features = ["full"] }}
 sea-orm-migration = {{ version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls"] }}
 sea-orm = {{ version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls", "macros"] }}
