@@ -733,7 +733,7 @@ Plans:
 **Goal:** Replace the Phase 122/122.1/123/124 deploy machinery with a simpler, heuristic-light, provider-honest shape. Cut custom logic from ~1500 LOC to ~375 LOC. Reduce surviving heuristics from 6 to 1. Delete the 3 deploy MCP tools, revert the ferro-cli↔ferro-mcp circular-dep workaround to in-process launch, delete the golden fixture suite, and fold surviving deploy checks into `ferro doctor`. New Cargo.toml `[package.metadata.ferro.deploy]` schema (runtime_apt, copy_dirs, ferro_version) drives the new Dockerfile renderer. New `.env.production` key-only parser replaces the `.env.example` SECRET classifier. `.do/app.yaml` becomes a one-shot starter owned by the user after scaffold. See `phases/122.2-deploy-simplification/SCOPE.md`.
 **Requirements**: SCOPE §1..§13 + Verification
 **Depends on:** Phase 122, 122.1, 123, 124
-**Plans:** 5/9 plans executed
+**Plans:** 7/9 plans executed
 
 Plans:
 - [x] 122.2-01-PLAN.md — Delete ferro-mcp deploy tools (SCOPE §9)
@@ -741,8 +741,8 @@ Plans:
 - [x] 122.2-03-PLAN.md — Delete obsolete ferro-cli deploy modules, commands, golden tests (SCOPE §6, §8, §11, §13)
 - [x] 122.2-04-PLAN.md — Stub docker_init and do_init before Wave 2 rewrite (SCOPE §2-§5 prep)
 - [x] 122.2-05-PLAN.md — Metadata reader + env_production parser + rewrite_ferro_version rewriter (SCOPE §1, §2, §6)
-- [ ] 122.2-06-PLAN.md — New Dockerfile renderer + static ignores + docker:init rewrite (SCOPE §2, §3, §8)
-- [ ] 122.2-07-PLAN.md — New app.yaml renderer + do:init rewrite + decouple ci.yml (SCOPE §4, §5, §7)
+- [x] 122.2-06-PLAN.md — New Dockerfile renderer + static ignores + docker:init rewrite (SCOPE §2, §3, §8)
+- [x] 122.2-07-PLAN.md — New app.yaml renderer + do:init rewrite + decouple ci.yml (SCOPE §4, §5, §7)
 - [ ] 122.2-08-PLAN.md — ferro doctor 9-check revision (SCOPE §12)
 - [ ] 122.2-09-PLAN.md — Live UAT against gestiscilo-it/app + phase-end gate (SCOPE §Verification)
 
