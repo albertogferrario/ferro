@@ -1233,10 +1233,10 @@ impl FerroMcpService {
         serde_json::to_string_pretty(&templates).unwrap_or_else(|_| "{}".to_string())
     }
 
-    /// Get a structured catalog of all JSON-UI components (20 built-in + plugin components like Map)
+    /// Get a structured catalog of all JSON-UI components (39 built-in + plugin components like Map)
     #[tool(
         name = "json_ui_catalog",
-        description = "Get a structured reference of all JSON-UI components: 20 built-in components \
+        description = "Get a structured reference of all JSON-UI components: 39 built-in components \
             plus plugin components (Map, etc.) with their props, types, variants, and builder API.\n\n\
             **When to use:** Understanding available JSON-UI components before building a view, \
             checking prop names and types for a specific component, learning the builder pattern \

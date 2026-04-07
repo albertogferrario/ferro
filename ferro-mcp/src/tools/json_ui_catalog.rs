@@ -1,5 +1,9 @@
-//! JSON-UI component catalog tool — structured reference of all 20 built-in
+//! JSON-UI component catalog tool — structured reference of all built-in
 //! components plus plugin components (Map, etc.).
+//
+// CATALOG IS HAND-MAINTAINED FROM ferro_json_ui::component::Component.
+// When a new Component variant is added to ferro-json-ui, this catalog MUST be updated.
+// TODO(ferro): derive this at compile time via a schemars-based introspection pass.
 
 use serde::Serialize;
 
@@ -73,7 +77,7 @@ JsonUiView::new() -> JsonUiView
 
 ComponentNode { key: String, component: Component, action: Option<Action>, visibility: Option<Visibility> }
   - key: Unique identifier for this node in the view tree
-  - component: One of the 20 Component enum variants
+  - component: One of the Component enum variants
   - action: Optional Action binding (click/submit handler)
   - visibility: Optional Visibility rule (show/hide based on data path)";
 
@@ -623,6 +627,407 @@ fn build_catalog() -> Vec<CatalogComponent> {
             ],
             variants: None,
         },
+        CatalogComponent {
+            name: "StatCard".to_string(),
+            description: "Live-updatable metric card with label, value, icon, and optional SSE target."
+                .to_string(),
+            props: vec![
+                prop("label", "String", true, "Metric label"),
+                prop("value", "String", true, "Metric value"),
+                prop("icon", "Option<String>", false, "Icon name"),
+                prop("subtitle", "Option<String>", false, "Secondary text under the value"),
+                prop(
+                    "sse_target",
+                    "Option<String>",
+                    false,
+                    "SSE target key for live updates (data-sse-target on the value element)",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "Checklist".to_string(),
+            description: "Onboarding-style checklist with optional dismissal and server-side state."
+                .to_string(),
+            props: vec![
+                prop("title", "String", true, "Checklist title"),
+                prop(
+                    "items",
+                    "Vec<ChecklistItem>",
+                    true,
+                    "Items: { label, checked, href? }",
+                ),
+                prop(
+                    "dismissible",
+                    "bool",
+                    false,
+                    "Whether the checklist can be dismissed (default: true)",
+                ),
+                prop("dismiss_label", "Option<String>", false, "Dismiss button label"),
+                prop(
+                    "data_key",
+                    "Option<String>",
+                    false,
+                    "Server-side state persistence key",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "Toast".to_string(),
+            description: "Declarative notification intent consumed by the JS runtime via data attributes."
+                .to_string(),
+            props: vec![
+                prop("message", "String", true, "Toast message text"),
+                prop("variant", "ToastVariant", false, "Visual style (default: info)"),
+                prop(
+                    "timeout",
+                    "Option<u32>",
+                    false,
+                    "Seconds before auto-dismiss (default: 5)",
+                ),
+                prop(
+                    "dismissible",
+                    "bool",
+                    false,
+                    "Whether the toast can be manually dismissed (default: true)",
+                ),
+            ],
+            variants: Some(vec![
+                "info".to_string(),
+                "success".to_string(),
+                "warning".to_string(),
+                "error".to_string(),
+            ]),
+        },
+        CatalogComponent {
+            name: "NotificationDropdown".to_string(),
+            description: "Dropdown listing notification items with icons, timestamps, and read state."
+                .to_string(),
+            props: vec![
+                prop(
+                    "notifications",
+                    "Vec<NotificationItem>",
+                    true,
+                    "Items: { icon?, text, timestamp?, read, action_url? }",
+                ),
+                prop(
+                    "empty_text",
+                    "Option<String>",
+                    false,
+                    "Text shown when there are no notifications",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "Sidebar".to_string(),
+            description: "Dashboard sidebar with fixed top/bottom items and collapsible nav groups."
+                .to_string(),
+            props: vec![
+                prop(
+                    "fixed_top",
+                    "Vec<SidebarNavItem>",
+                    false,
+                    "Pinned items rendered above groups",
+                ),
+                prop(
+                    "groups",
+                    "Vec<SidebarGroup>",
+                    false,
+                    "Collapsible groups: { label, collapsed, items }",
+                ),
+                prop(
+                    "fixed_bottom",
+                    "Vec<SidebarNavItem>",
+                    false,
+                    "Pinned items rendered below groups",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "Header".to_string(),
+            description: "Dashboard top bar with business name, notification badge, and user menu."
+                .to_string(),
+            props: vec![
+                prop("business_name", "String", true, "Business/application name"),
+                prop(
+                    "notification_count",
+                    "Option<u32>",
+                    false,
+                    "Unread notification count for the badge",
+                ),
+                prop("user_name", "Option<String>", false, "Current user name"),
+                prop("user_avatar", "Option<String>", false, "Current user avatar URL"),
+                prop("logout_url", "Option<String>", false, "URL for the logout link"),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "Grid".to_string(),
+            description: "Responsive multi-column grid layout with configurable breakpoint columns, gap, and optional horizontal scroll mode."
+                .to_string(),
+            props: vec![
+                prop("columns", "u8", false, "Base (mobile) columns 1-12 (default: 2)"),
+                prop(
+                    "md_columns",
+                    "Option<u8>",
+                    false,
+                    "Columns at md breakpoint (768px+)",
+                ),
+                prop(
+                    "lg_columns",
+                    "Option<u8>",
+                    false,
+                    "Columns at lg breakpoint (1024px+)",
+                ),
+                prop("gap", "GapSize", false, "Gap between items: none, sm, md, lg, xl"),
+                prop(
+                    "scrollable",
+                    "Option<bool>",
+                    false,
+                    "Enable Trello-style horizontal scroll layout",
+                ),
+                prop("children", "Vec<ComponentNode>", false, "Grid children"),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "Collapsible".to_string(),
+            description: "Expandable <details>/<summary> section.".to_string(),
+            props: vec![
+                prop("title", "String", true, "Summary title"),
+                prop("expanded", "bool", false, "Whether the section starts expanded"),
+                prop("children", "Vec<ComponentNode>", false, "Hidden/expanded content"),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "EmptyState".to_string(),
+            description: "Standardized empty view with title, description, and optional call-to-action."
+                .to_string(),
+            props: vec![
+                prop("title", "String", true, "Empty state title"),
+                prop("description", "Option<String>", false, "Supporting text"),
+                prop("action", "Option<Action>", false, "Optional CTA action"),
+                prop("action_label", "Option<String>", false, "Label for the CTA button"),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "FormSection".to_string(),
+            description: "Visual grouping within a form with title, description, and layout variant."
+                .to_string(),
+            props: vec![
+                prop("title", "String", true, "Section title"),
+                prop("description", "Option<String>", false, "Section description"),
+                prop("children", "Vec<ComponentNode>", false, "Fields inside the section"),
+                prop(
+                    "layout",
+                    "Option<FormSectionLayout>",
+                    false,
+                    "Layout: stacked (default) or two_column",
+                ),
+            ],
+            variants: Some(vec!["stacked".to_string(), "two_column".to_string()]),
+        },
+        CatalogComponent {
+            name: "PageHeader".to_string(),
+            description: "Page title with optional breadcrumb trail and action buttons.".to_string(),
+            props: vec![
+                prop("title", "String", true, "Page title"),
+                prop(
+                    "breadcrumb",
+                    "Vec<BreadcrumbItem>",
+                    false,
+                    "Breadcrumb items: { label, url? }",
+                ),
+                prop(
+                    "actions",
+                    "Vec<ComponentNode>",
+                    false,
+                    "Action components rendered on the right",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "ButtonGroup".to_string(),
+            description: "Horizontal button row with a consistent gap between buttons.".to_string(),
+            props: vec![prop(
+                "buttons",
+                "Vec<ComponentNode>",
+                false,
+                "Button components rendered inline",
+            )],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "DropdownMenu".to_string(),
+            description: "Trigger button with an absolutely-positioned action panel (kebab menu)."
+                .to_string(),
+            props: vec![
+                prop("menu_id", "String", true, "Unique id for the menu element"),
+                prop("trigger_label", "String", true, "Label for the trigger button"),
+                prop(
+                    "items",
+                    "Vec<DropdownMenuAction>",
+                    true,
+                    "Menu items: { label, action, destructive }",
+                ),
+                prop(
+                    "trigger_variant",
+                    "Option<ButtonVariant>",
+                    false,
+                    "Visual style of the trigger button",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "DataTable".to_string(),
+            description: "Stripe-style alternating-row table with per-row DropdownMenu, mobile card fallback, and empty state."
+                .to_string(),
+            props: vec![
+                prop(
+                    "columns",
+                    "Vec<Column>",
+                    true,
+                    "Column definitions: { key, label, format? }",
+                ),
+                prop(
+                    "data_path",
+                    "String",
+                    true,
+                    "Data path to the array of rows (e.g., \"/data/products\")",
+                ),
+                prop(
+                    "row_actions",
+                    "Option<Vec<DropdownMenuAction>>",
+                    false,
+                    "Per-row dropdown menu actions",
+                ),
+                prop("empty_message", "Option<String>", false, "Message when empty"),
+                prop(
+                    "row_key",
+                    "Option<String>",
+                    false,
+                    "Row key field for stable identification",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "KanbanBoard".to_string(),
+            description: "Horizontally scrollable kanban columns on desktop, tab-based switching on mobile."
+                .to_string(),
+            props: vec![
+                prop(
+                    "columns",
+                    "Vec<KanbanColumnProps>",
+                    true,
+                    "Columns: { id, title, count, children }",
+                ),
+                prop(
+                    "mobile_default_column",
+                    "Option<String>",
+                    false,
+                    "Column id shown by default on mobile",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "CalendarCell".to_string(),
+            description: "Single day cell in a month grid with today highlight, out-of-month muting, and event indicators."
+                .to_string(),
+            props: vec![
+                prop("day", "u8", true, "Day of month (1-31)"),
+                prop("is_today", "bool", false, "Whether this day is today"),
+                prop(
+                    "is_current_month",
+                    "bool",
+                    false,
+                    "Whether this day belongs to the current month",
+                ),
+                prop("event_count", "u32", false, "Number of events on this day"),
+                prop(
+                    "dot_colors",
+                    "Vec<String>",
+                    false,
+                    "Per-event Tailwind color classes (e.g., \"bg-blue-500\")",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "ActionCard".to_string(),
+            description: "Horizontal clickable row with icon, title, description, and chevron; variant-colored left border."
+                .to_string(),
+            props: vec![
+                prop("title", "String", true, "Card title"),
+                prop("description", "String", true, "Card description"),
+                prop("icon", "Option<String>", false, "Icon name"),
+                prop(
+                    "variant",
+                    "ActionCardVariant",
+                    false,
+                    "Visual style (default, setup, danger)",
+                ),
+                prop(
+                    "href",
+                    "Option<String>",
+                    false,
+                    "Navigation URL; when set the card renders as an <a>",
+                ),
+            ],
+            variants: Some(vec![
+                "default".to_string(),
+                "setup".to_string(),
+                "danger".to_string(),
+            ]),
+        },
+        CatalogComponent {
+            name: "ProductTile".to_string(),
+            description: "Touch-friendly POS product tile with name, price, and +/- quantity controls bound to a hidden form field."
+                .to_string(),
+            props: vec![
+                prop("product_id", "String", true, "Stable product identifier"),
+                prop("name", "String", true, "Product name"),
+                prop("price", "String", true, "Formatted product price"),
+                prop("field", "String", true, "Form field name for the quantity input"),
+                prop(
+                    "default_quantity",
+                    "Option<u32>",
+                    false,
+                    "Initial quantity value",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "Image".to_string(),
+            description: "Image element with optional aspect ratio and skeleton placeholder fallback on load error."
+                .to_string(),
+            props: vec![
+                prop("src", "String", true, "Image source URL"),
+                prop("alt", "String", true, "Alt text for accessibility"),
+                prop(
+                    "aspect_ratio",
+                    "Option<String>",
+                    false,
+                    "CSS aspect ratio (e.g., \"16/9\")",
+                ),
+                prop(
+                    "placeholder_label",
+                    "Option<String>",
+                    false,
+                    "Label shown in the skeleton placeholder behind the image",
+                ),
+            ],
+            variants: None,
+        },
     ]
 }
 
@@ -700,8 +1105,8 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.components.len(),
-            20,
-            "Catalog should contain all 20 built-in components, got {}",
+            39,
+            "Catalog should contain all 39 built-in components, got {}",
             catalog.components.len()
         );
 
@@ -727,6 +1132,25 @@ mod tests {
             "Progress",
             "Avatar",
             "Skeleton",
+            "StatCard",
+            "Checklist",
+            "Toast",
+            "NotificationDropdown",
+            "Sidebar",
+            "Header",
+            "Grid",
+            "Collapsible",
+            "EmptyState",
+            "FormSection",
+            "PageHeader",
+            "ButtonGroup",
+            "DropdownMenu",
+            "DataTable",
+            "KanbanBoard",
+            "CalendarCell",
+            "ActionCard",
+            "ProductTile",
+            "Image",
         ];
         for name in &expected {
             assert!(names.contains(name), "Missing component: {name}");
@@ -842,7 +1266,8 @@ mod tests {
             );
             // All components have at least one prop except Skeleton (all optional) and Separator
             // But even those have props defined
-            if component.name != "Separator" && component.name != "Skeleton" {
+            let no_required = ["Separator", "Skeleton", "Sidebar", "Grid", "ButtonGroup"];
+            if !no_required.contains(&component.name.as_str()) {
                 assert!(
                     component.props.iter().any(|p| p.required),
                     "{} should have at least one required prop",
