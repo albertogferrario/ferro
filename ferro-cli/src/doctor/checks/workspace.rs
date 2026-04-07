@@ -16,16 +16,44 @@ impl DoctorCheck for WorkspaceCheck {
     }
 }
 
-pub(crate) fn check_impl(_root: &Path) -> CheckResult {
-    CheckResult::ok(NAME, "stub")
+pub(crate) fn check_impl(root: &Path) -> CheckResult {
+    let target = root.join("target").is_dir();
+    let recipe = root.join("recipe.json").is_file();
+
+    match (target, recipe) {
+        (true, true) => CheckResult::ok(NAME, "target/ and recipe.json present"),
+        (true, false) => CheckResult::warn(NAME, "recipe.json missing")
+            .with_details("Run `cargo chef prepare` to enable cached Docker builds"),
+        (false, true) => CheckResult::warn(NAME, "target/ missing"),
+        (false, false) => CheckResult::warn(NAME, "target/ and recipe.json missing")
+            .with_details("Run `cargo build` and `cargo chef prepare`"),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn name_is_workspace() {
         assert_eq!(WorkspaceCheck.name(), "workspace");
+    }
+
+    #[test]
+    fn missing_artifacts_warns() {
+        let tmp = TempDir::new().unwrap();
+        let r = check_impl(tmp.path());
+        assert_eq!(r.status, crate::doctor::check::CheckStatus::Warn);
+    }
+
+    #[test]
+    fn both_present_is_ok() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir(tmp.path().join("target")).unwrap();
+        fs::write(tmp.path().join("recipe.json"), "{}").unwrap();
+        let r = check_impl(tmp.path());
+        assert_eq!(r.status, crate::doctor::check::CheckStatus::Ok);
     }
 }
