@@ -189,8 +189,7 @@ Err(HttpResponse::server_error("Something went wrong"))
 ### Custom Status
 
 ```rust
-Ok(HttpResponse::new(StatusCode::ACCEPTED)
-    .json(data))
+Ok(HttpResponse::json(data).status(202))
 ```
 
 ### Response Headers
