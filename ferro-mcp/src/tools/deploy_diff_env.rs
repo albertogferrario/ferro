@@ -118,9 +118,8 @@ pub fn execute(project_root: &Path) -> Result<DiffEnvReport> {
             "deploy_diff_env: .do/app.yaml not found".to_string(),
         ));
     }
-    let yaml = fs::read_to_string(&app_yaml_path).map_err(|e| {
-        McpError::ToolError(format!("deploy_diff_env: read .do/app.yaml: {e}"))
-    })?;
+    let yaml = fs::read_to_string(&app_yaml_path)
+        .map_err(|e| McpError::ToolError(format!("deploy_diff_env: read .do/app.yaml: {e}")))?;
     let remote_entries = parse_app_yaml_envs(&yaml);
 
     let mut map: BTreeMap<String, DiffRow> = BTreeMap::new();
@@ -221,7 +220,11 @@ mod tests {
         // APP_URL is not secret -> Aligned.
         assert_eq!(app_url.classification, Classification::Aligned);
 
-        let db = report.rows.iter().find(|r| r.key == "DATABASE_URL").unwrap();
+        let db = report
+            .rows
+            .iter()
+            .find(|r| r.key == "DATABASE_URL")
+            .unwrap();
         assert_eq!(db.classification, Classification::MissingRemote);
 
         let foo = report.rows.iter().find(|r| r.key == "FOO").unwrap();
@@ -233,19 +236,22 @@ mod tests {
     #[test]
     fn test_secret_marked_plain_flagged() {
         let td = TempDir::new().unwrap();
-        fs::write(
-            td.path().join(".env"),
-            "DATABASE_URL=postgres://x\n",
-        )
-        .unwrap();
+        fs::write(td.path().join(".env"), "DATABASE_URL=postgres://x\n").unwrap();
         write_app_yaml(
             td.path(),
             "services:\n  - name: web\n    envs:\n      - key: DATABASE_URL\n        value: postgres://prod\n        scope: RUN_AND_BUILD_TIME\n",
         );
 
         let report = execute(td.path()).unwrap();
-        assert_eq!(report.secrets_marked_plain, vec!["DATABASE_URL".to_string()]);
-        let db = report.rows.iter().find(|r| r.key == "DATABASE_URL").unwrap();
+        assert_eq!(
+            report.secrets_marked_plain,
+            vec!["DATABASE_URL".to_string()]
+        );
+        let db = report
+            .rows
+            .iter()
+            .find(|r| r.key == "DATABASE_URL")
+            .unwrap();
         assert_eq!(db.classification, Classification::ScopeMismatch);
         assert_eq!(report.drift_count, 1);
     }
@@ -253,11 +259,7 @@ mod tests {
     #[test]
     fn test_aligned_secret_with_type_secret() {
         let td = TempDir::new().unwrap();
-        fs::write(
-            td.path().join(".env"),
-            "DATABASE_URL=postgres://x\n",
-        )
-        .unwrap();
+        fs::write(td.path().join(".env"), "DATABASE_URL=postgres://x\n").unwrap();
         write_app_yaml(
             td.path(),
             "services:\n  - name: web\n    envs:\n      - key: DATABASE_URL\n        value: postgres://prod\n        scope: RUN_AND_BUILD_TIME\n        type: SECRET\n",
@@ -265,7 +267,11 @@ mod tests {
 
         let report = execute(td.path()).unwrap();
         assert!(report.secrets_marked_plain.is_empty());
-        let db = report.rows.iter().find(|r| r.key == "DATABASE_URL").unwrap();
+        let db = report
+            .rows
+            .iter()
+            .find(|r| r.key == "DATABASE_URL")
+            .unwrap();
         assert_eq!(db.classification, Classification::Aligned);
         assert_eq!(report.drift_count, 0);
     }
@@ -303,10 +309,7 @@ mod tests {
     fn test_rows_sorted_alphabetically() {
         let td = TempDir::new().unwrap();
         fs::write(td.path().join(".env"), "ZETA=1\nALPHA=2\nMIKE=3\n").unwrap();
-        write_app_yaml(
-            td.path(),
-            "services:\n  - name: web\n    envs: []\n",
-        );
+        write_app_yaml(td.path(), "services:\n  - name: web\n    envs: []\n");
         let report = execute(td.path()).unwrap();
         let keys: Vec<&str> = report.rows.iter().map(|r| r.key.as_str()).collect();
         assert_eq!(keys, vec!["ALPHA", "MIKE", "ZETA"]);

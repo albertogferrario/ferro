@@ -391,6 +391,24 @@ impl FerroMcpService {
         }
     }
 
+    /// Compare local env source against .do/app.yaml envs block. Read-only.
+    #[tool(
+        name = "deploy_diff_env",
+        description = "Compare local .env (or .env.example fallback) against .do/app.yaml envs block. Read-only. \
+            Returns key/local/remote rows with drift classification (aligned, missing_local, missing_remote, scope_mismatch) \
+            and flags secrets marked as plain (is_secret keys without type: SECRET in app.yaml).\n\n\
+            **Returns:** { source: env|env_example, rows: [{key, local, remote, classification}], drift_count, secrets_marked_plain: [...] }.\n\n\
+            **Combine with:** `deploy_check` for full pre-flight validation."
+    )]
+    pub async fn deploy_diff_env(&self) -> String {
+        match tools::deploy_diff_env::execute(&self.project_root) {
+            Ok(report) => {
+                serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
+    }
+
     /// Execute a read-only SQL query against the database
     #[tool(
         name = "db_query",
