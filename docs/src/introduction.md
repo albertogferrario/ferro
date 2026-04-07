@@ -1,25 +1,25 @@
 # Ferro Framework
 
-Ferro is an agent-first Rust web framework with Laravel-inspired conventions. It exposes its entire structure through MCP (Model Context Protocol), giving AI agents the same understanding of your application that developers have — routes, models, handlers, validations, and generation hints available as tool calls.
+Ferro is a Rust web framework optimized for AI-assisted authoring. It is built for developers whose primary authoring tool is a coding agent (Claude Code, Cursor, and similar), and exposes every subsystem through an in-process MCP (Model Context Protocol) server. An agent connected to your project reads routes, models, handlers, validations, and generation context as tool calls — not by parsing source.
 
-Ferro brings the developer experience of Laravel to Rust, providing familiar patterns and conventions while leveraging Rust's safety and performance. It is batteries-included: routing, database, authentication, queues, and 50+ other features work out of the box with sensible defaults.
+The defining feature is **service projections**: declare a service and intent, get a working UI. The `ferro-projections` crate (shipped in v9.0) maps typed model pipelines to rendered views, so an agent can scaffold an end-to-end CRUD or workflow surface from a single declaration. At v1.0 the output is visual (HTML via JSON-UI, shipped in v10.0); the underlying model is media-independent and intended to drive other sensory channels in later versions.
 
-## Features
+There is no bundled agent UI. `ferro-mcp` is the v1.0 product surface — the API your agent talks to.
 
-- **MCP Introspection** - 57 built-in tools for AI agent integration
-- **Routing** - Expressive route definitions with middleware support
-- **Database** - SeaORM integration with migrations and models
-- **Validation** - Laravel-style validation with declarative rules
-- **Authentication** - Session-based auth with guards
-- **Inertia.js** - Full-stack React/TypeScript with compile-time validation
-- **Service Projections** - Automatic UI generation from model definitions
-- **Events** - Event dispatcher with sync/async listeners
-- **Queues** - Background job processing with Redis
-- **Notifications** - Multi-channel notifications (mail, database, slack)
-- **Broadcasting** - WebSocket channels with authorization
-- **Storage** - File storage abstraction (local, S3)
-- **Caching** - Cache with tags support
-- **Testing** - Test utilities and factories
+## What's included
+
+- **Service projections** — typed model→UI pipelines via `ferro-projections`
+- **JSON-UI** — server-rendered, server-driven UIs with 30+ components and a plugin system
+- **MCP introspection** — 80+ tools via `ferro-mcp` for agent-assisted development
+- **Routing and middleware** — macro-based routes, typed extractors, middleware pipeline
+- **Database** — SeaORM-based models, migrations, and query builder
+- **Validation** — declarative rule sets with structured errors
+- **Authentication** — session-based auth with guards and policies
+- **Inertia.js** — full-stack React/TypeScript with compile-time component validation
+- **Events, queues, notifications, broadcasting** — async workflows out of the box
+- **Storage and caching** — pluggable backends (local/S3, in-memory/Redis)
+- **Localization, theming, Stripe, AI, WhatsApp** — first-party crates for common needs
+- **Deploy and CI scaffolding** — `ferro do:init`, `ferro ci:init`, `ferro doctor`
 
 ## Quick Example
 
@@ -44,18 +44,20 @@ pub fn routes() -> Router {
 
 ## Philosophy
 
-**Agent-first** - Ferro exposes its entire structure via MCP so agents understand the application the same way developers do. Routes, models, handlers, services, projections, and generation hints are all available as tool calls. AI agents are first-class participants in the development workflow, not an afterthought.
+**Agent-first authoring** — Ferro is designed for the case where a human directs an AI agent and the agent writes the code. Every subsystem exposes typed introspection so the agent can reason about the application without guessing.
 
-**Convention over configuration** - Sensible defaults that work out of the box. Follow the conventions and the framework gets out of your way.
+**Projection over hand-assembly** — UIs are derived from typed services and intents, not hand-wired component trees. The framework prefers declarations the agent can generate and refine.
 
-**Developer experience** - Clear error messages, helpful CLI, and comprehensive documentation. The same clarity that makes Ferro readable for developers makes it navigable for agents.
+**Convention over configuration** — Predictable file layout and naming so introspection produces useful answers and generated code lands in the right place.
 
-**Type safety** - Compile-time validation of routes, components, and queries. Inertia component paths, route parameters, and database queries are checked at compile time.
+**Type safety** — Routes, Inertia component paths, JSON-UI views, and database queries are validated at compile time. Mistakes surface as build errors the agent can read and fix.
 
-**Performance** - Async-first design built on Tokio.
+**Async-first** — Built on Tokio.
+
+## Status
+
+Ferro is pre-1.0. Breaking changes are allowed between minor versions until 1.0. The framework is being developed in the open without public announcements; current milestone work targets v12.0 spec-driven rendering.
 
 ## Getting Started
 
-Ready to start building? Head to the [Installation](getting-started/installation.md) guide.
-
-Want to connect an AI agent to your project? See [Working with Agents](getting-started/working-with-agents.md).
+To start building, see the [Installation](getting-started/installation.md) guide. To wire an AI agent to your project via `ferro-mcp`, see [Working with Agents](getting-started/working-with-agents.md).
