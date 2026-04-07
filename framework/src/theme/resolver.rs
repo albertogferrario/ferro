@@ -50,7 +50,7 @@ pub trait ThemeResolver: Send + Sync {
 /// field is added to `TenantContext`. For v1, the plan name doubles as
 /// theme selector.
 pub struct TenantThemeResolver {
-    /// moka TTL cache: theme_name -> Arc<Theme>
+    /// moka TTL cache: theme_name -> `Arc<Theme>`
     cache: moka::sync::Cache<String, Arc<Theme>>,
     /// Base directory containing theme subdirectories
     themes_dir: String,

@@ -31,21 +31,21 @@ async-trait = "0.1"
 bytes = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-ferro-macros = { path = "../ferro-macros", version = "0.1" }
-ferro-events = { path = "../ferro-events", version = "0.1" }
-ferro-queue = { path = "../ferro-queue", version = "0.1" }
-ferro-notifications = { path = "../ferro-notifications", version = "0.1" }
-ferro-broadcast = { path = "../ferro-broadcast", version = "0.1" }
-ferro-storage = { path = "../ferro-storage", version = "0.1" }
-ferro-cache = { path = "../ferro-cache", version = "0.1" }
-ferro-lang = { path = "../ferro-lang", version = "0.1" }
-ferro-inertia = { path = "../ferro-inertia", version = "0.1", optional = true }
-ferro-json-ui = { path = "../ferro-json-ui", version = "0.1", optional = true }
-ferro-projections = { path = "../ferro-projections", version = "0.1", optional = true }
-ferro-ai = { path = "../ferro-ai", version = "0.1", optional = true }
-ferro-stripe = { path = "../ferro-stripe", version = "0.1", optional = true }
-ferro-theme = { path = "../ferro-theme", version = "0.1", optional = true }
-ferro-whatsapp = { path = "../ferro-whatsapp", version = "0.1", optional = true }
+ferro-macros = { path = "../ferro-macros", version = "0.2" }
+ferro-events = { path = "../ferro-events", version = "0.2" }
+ferro-queue = { path = "../ferro-queue", version = "0.2" }
+ferro-notifications = { path = "../ferro-notifications", version = "0.2" }
+ferro-broadcast = { path = "../ferro-broadcast", version = "0.2" }
+ferro-storage = { path = "../ferro-storage", version = "0.2" }
+ferro-cache = { path = "../ferro-cache", version = "0.2" }
+ferro-lang = { path = "../ferro-lang", version = "0.2" }
+ferro-inertia = { path = "../ferro-inertia", version = "0.2", optional = true }
+ferro-json-ui = { path = "../ferro-json-ui", version = "0.2", optional = true }
+ferro-projections = { path = "../ferro-projections", version = "0.2", optional = true }
+ferro-ai = { path = "../ferro-ai", version = "0.2", optional = true }
+ferro-stripe = { path = "../ferro-stripe", version = "0.2", optional = true }
+ferro-theme = { path = "../ferro-theme", version = "0.2", optional = true }
+ferro-whatsapp = { path = "../ferro-whatsapp", version = "0.2", optional = true }
 dotenvy = "0.15"
 inventory = "0.3"
 sea-orm = { version = "1.0", features = ["sqlx-postgres", "sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }

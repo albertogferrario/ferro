@@ -10,7 +10,7 @@ use ferro_events::Event;
 pub struct WhatsAppTextReceived {
     /// WhatsApp message ID (`wamid.xxx`). Use for delivery status correlation.
     pub wamid: String,
-    /// Sender identity resolved via [`WhatsAppConfig::is_owner`].
+    /// Sender identity resolved via [the `is_owner` closure in `WhatsAppConfig`].
     pub sender_identity: SenderIdentity,
     /// Text body of the message.
     pub text: String,

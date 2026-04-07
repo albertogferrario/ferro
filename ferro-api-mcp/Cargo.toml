@@ -6,6 +6,9 @@ license.workspace = true
 description = "Standalone MCP server that bridges OpenAPI specs to MCP tools"
 repository = "https://github.com/albertogferrario/ferro"
 keywords = ["mcp", "openapi", "ferro", "api", "tools"]
+categories = ["development-tools", "web-programming"]
+homepage = "https://ferro-rs.dev"
+readme = "README.md"
 
 [[bin]]
 name = "ferro-api-mcp"

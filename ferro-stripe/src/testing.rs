@@ -1,7 +1,7 @@
 //! Test helpers for ferro-stripe integration testing.
 //!
 //! Provides factory functions for [`SubscriptionInfo`] in various states and
-//! utilities for generating signed webhook payloads compatible with [`verify_webhook`].
+//! utilities for generating signed webhook payloads compatible with the `verify_webhook` function.
 //!
 //! # Feature Gate
 //!

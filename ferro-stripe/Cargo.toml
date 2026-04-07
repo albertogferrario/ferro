@@ -22,8 +22,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 async-trait = "0.1"
-ferro-events = { path = "../ferro-events", version = "0.1" }
-ferro-queue = { path = "../ferro-queue", version = "0.1" }
+ferro-events = { path = "../ferro-events", version = "0.2" }
+ferro-queue = { path = "../ferro-queue", version = "0.2" }
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"

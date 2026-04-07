@@ -142,14 +142,14 @@ jobs:
           VERSION=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Publish Wave 1 (no internal dependencies)
+      - name: Publish Wave 1a (pure leaf crates, no internal deps)
         run: |
-          echo "Publishing Wave 1 crates..."
+          echo "Publishing Wave 1a crates..."
 
-          # Wave 1: Crates with no internal dependencies
-          WAVE1_CRATES="ferro-macros ferro-events ferro-queue ferro-notifications ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-ai ferro-theme ferro-json-ui ferro-inertia ferro-projections ferro-api-mcp ferro-stripe ferro-whatsapp"
+          # Wave 1a: Crates with ZERO internal ferro-* dependencies
+          WAVE1A_CRATES="ferro-macros ferro-events ferro-queue ferro-notifications ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-theme ferro-json-ui ferro-inertia ferro-api-mcp"
 
-          for crate in $WAVE1_CRATES; do
+          for crate in $WAVE1A_CRATES; do
             echo "Publishing $crate..."
             # Capture output to check for "already exists" error
             if OUTPUT=$(cargo publish -p $crate --no-verify 2>&1); then
@@ -167,16 +167,48 @@ jobs:
             sleep 5
           done
 
-      - name: Wait for crates.io index update
+      - name: Wait for crates.io index update (Wave 1a)
         run: |
-          echo "Waiting for crates.io to index Wave 1 crates..."
+          echo "Waiting for crates.io to index Wave 1a crates..."
           sleep 30
 
-      - name: Publish Wave 2 (depends on Wave 1)
+      - name: Publish Wave 1b (depends on Wave 1a leaves only)
+        run: |
+          echo "Publishing Wave 1b crates..."
+
+          # Wave 1b: Crates that depend on Wave 1a crates
+          # ferro-ai         -> ferro-events
+          # ferro-projections-> ferro-theme
+          # ferro-stripe     -> ferro-events, ferro-queue
+          # ferro-whatsapp   -> ferro-events, ferro-queue
+          WAVE1B_CRATES="ferro-ai ferro-projections ferro-stripe ferro-whatsapp"
+
+          for crate in $WAVE1B_CRATES; do
+            echo "Publishing $crate..."
+            if OUTPUT=$(cargo publish -p $crate --no-verify 2>&1); then
+              echo "$crate published successfully"
+            else
+              if echo "$OUTPUT" | grep -q "already exists\|already uploaded"; then
+                echo "$crate already published, skipping"
+              else
+                echo "Failed to publish $crate"
+                echo "$OUTPUT"
+                exit 1
+              fi
+            fi
+            sleep 5
+          done
+
+      - name: Wait for crates.io index update (Wave 1b)
+        run: |
+          echo "Waiting for crates.io to index Wave 1b crates..."
+          sleep 30
+
+      - name: Publish Wave 2 (framework + mcp)
         run: |
           echo "Publishing Wave 2 crates..."
 
-          # Wave 2: Framework and MCP
+          # Wave 2: Framework and MCP (depend on Wave 1a + 1b)
           WAVE2_CRATES="ferro-rs ferro-mcp"
 
           for crate in $WAVE2_CRATES; do

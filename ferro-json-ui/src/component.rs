@@ -659,8 +659,8 @@ pub struct GridProps {
     /// Gap between grid items.
     #[serde(default)]
     pub gap: GapSize,
-    /// Enables horizontal scroll mode. Children get min-w-[280px] and the grid
-    /// uses grid-flow-col auto-cols layout for Trello-like horizontal scrolling.
+    /// Enables horizontal scroll mode. Children get `min-w-[280px]` and the grid
+    /// uses `grid-flow-col` auto-cols layout for Trello-like horizontal scrolling.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scrollable: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -671,7 +671,7 @@ fn default_grid_columns() -> u8 {
     2
 }
 
-/// Props for Collapsible section — expandable <details>/<summary>.
+/// Props for Collapsible section — expandable `<details>`/`<summary>`.
 // JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CollapsibleProps {
