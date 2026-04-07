@@ -340,7 +340,7 @@ enum Commands {
         /// SQL query to execute
         query: String,
     },
-    /// Generate a production-ready Dockerfile, .dockerignore, and Cargo.docker.toml
+    /// Generate Dockerfile, .dockerignore, and Cargo.docker.toml for containerized deployment. Reads [package.metadata.ferro.deploy] for runtime_apt and copy_dirs.
     #[command(name = "docker:init")]
     DockerInit {
         /// Overwrite existing Dockerfile and .dockerignore
@@ -350,7 +350,7 @@ enum Commands {
         #[arg(long)]
         ferro_version: Option<String>,
     },
-    /// Generate DigitalOcean App Platform deployment spec (stub — Phase 122.2 Plan 07)
+    /// Generate .do/app.yaml deployment spec for DigitalOcean App Platform. Detects bins, workers, and env keys from .env.production.
     #[command(name = "do:init")]
     DoInit {
         /// Overwrite existing .do/app.yaml
