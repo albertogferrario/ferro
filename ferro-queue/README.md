@@ -17,7 +17,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ferro-queue = "0.1"
+ferro-queue = "0.2"
 ```
 
 Or use it through the main Ferro framework which re-exports all queue types.

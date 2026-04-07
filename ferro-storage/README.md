@@ -64,7 +64,7 @@ Enable the `s3` feature:
 
 ```toml
 [dependencies]
-ferro-storage = { version = "0.1", features = ["s3"] }
+ferro-storage = { version = "0.2", features = ["s3"] }
 ```
 
 ## License

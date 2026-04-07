@@ -63,7 +63,7 @@ Enable the `redis-backend` feature:
 
 ```toml
 [dependencies]
-ferro-cache = { version = "0.1", features = ["redis-backend"] }
+ferro-cache = { version = "0.2", features = ["redis-backend"] }
 ```
 
 ```rust
