@@ -1,6 +1,6 @@
 # `ferro doctor`
 
-Single-command project health diagnostics. Runs seven checks in declared
+Single-command project health diagnostics. Runs nine checks in declared
 order, prints colored human output by default, or a stable JSON schema with
 `--json` for agent / CI consumption.
 
@@ -20,15 +20,21 @@ Use `ferro:info` for understanding, `ferro doctor` for validation.
 
 Checks run in this exact order (D-01):
 
-| # | Name               | Purpose                                                       | Reuses                                          |
-| - | ------------------ | ------------------------------------------------------------- | ----------------------------------------------- |
-| 1 | `toolchain`        | `rustc --version` vs `rust-toolchain.toml` channel (D-02)     | `project::resolve_rust_base_image` (Phase 122)  |
-| 2 | `db_connection`    | `DATABASE_URL` reachable via `cargo run -- db:status` (D-03)  | shared subprocess helper                        |
-| 3 | `migrations`       | Pending vs applied migration count (D-04)                     | `cargo run -- db:status` subprocess             |
-| 4 | `env_completeness` | Every key in `.env.example` is set in `.env` (D-05)           | `deploy::env_example::parse_env_example` (P122) |
-| 5 | `path_deps`        | Any `ferro*` path dep — always Warn never Error (D-06)        | `deploy::ferro_deps::find_ferro_path_deps` (P123) |
-| 6 | `workspace`        | cargo-chef `target/` and `recipe.json` present (D-07)         | —                                               |
-| 7 | `artifacts`        | `Dockerfile`, `.dockerignore`, `.do/app.yaml` present (D-08)  | —                                               |
+| # | Name                           | Purpose                                                                           |
+| - | ------------------------------ | --------------------------------------------------------------------------------- |
+| 1 | `toolchain_match`              | `rustc --version` vs `rust-toolchain.toml` channel                                |
+| 2 | `db_connection`                | `DATABASE_URL` reachable via `cargo run -- db:status`                             |
+| 3 | `migrations_pending`           | Pending vs applied migration count                                                |
+| 4 | `local_env_parity`             | Every key in `.env.example` is set in `.env`                                      |
+| 5 | `deploy_env_parity`            | `.env.production` keys match the commented envs scaffold in `.do/app.yaml`        |
+| 6 | `cargo_docker_toml_staleness`  | `Cargo.docker.toml` is up to date vs `Cargo.toml` path deps                       |
+| 7 | `generated_artifacts`          | `Dockerfile`, `.dockerignore`, `.do/app.yaml` present                             |
+| 8 | `database_url_sqlite_in_prod`  | Warns if `DATABASE_URL` in `.env.production` points at SQLite                     |
+| 9 | `git_clean_and_pushed`         | Working tree clean and `HEAD` pushed to the tracked remote                        |
+
+Check #4 (`local_env_parity`) and #5 (`deploy_env_parity`) are powered by the
+`deploy::env_production::parse_env_production_keys` module, which parses
+`.env.production` for key names only (values are never read).
 
 ## Status semantics
 
@@ -64,12 +70,12 @@ on dev-mode path deps.
   },
   "checks": [
     {
-      "name": "toolchain",
+      "name": "toolchain_match",
       "status": "ok",
       "message": "rustc 1.88.0 matches channel 1.88.0"
     },
     {
-      "name": "artifacts",
+      "name": "generated_artifacts",
       "status": "warn",
       "message": "1 artifact(s) missing",
       "details": "missing: .do/app.yaml"
@@ -82,7 +88,7 @@ Field reference:
 
 - `summary.overall` — `ok` | `warn` | `error` — worst status across all checks.
 - `summary.ok` / `warn` / `error` — counts.
-- `checks[].name` — stable identifier (one of the seven names above).
+- `checks[].name` — stable identifier (one of the nine names above).
 - `checks[].status` — `ok` | `warn` | `error`.
 - `checks[].message` — short human-readable summary.
 - `checks[].details` — optional, present only when extra context exists.
