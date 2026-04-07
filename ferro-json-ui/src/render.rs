@@ -255,9 +255,19 @@ fn render_node(node: &ComponentNode, data: &Value) -> String {
     if let Some(ref action) = node.action {
         if action.method == HttpMethod::Get {
             if let Some(ref url) = action.url {
+                // Block-level components (like Image) need the wrapping
+                // anchor to fill the available width so their aspect-ratio
+                // container doesn't collapse. Inline style overrides the
+                // `[&>a]:w-auto` rule used by Card/Form for action buttons.
+                let style_attr = if matches!(node.component, Component::Image(_)) {
+                    " style=\"width:100%\""
+                } else {
+                    ""
+                };
                 return format!(
-                    "<a href=\"{}\" class=\"block\">{}</a>",
+                    "<a href=\"{}\" class=\"block\"{}>{}</a>",
                     html_escape(url),
+                    style_attr,
                     component_html
                 );
             }
@@ -5483,7 +5493,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 4,
                 md_columns: None,
-            lg_columns: None,
+                lg_columns: None,
                 gap: crate::component::GapSize::Lg,
                 scrollable: None,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
@@ -5501,7 +5511,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 20,
                 md_columns: None,
-            lg_columns: None,
+                lg_columns: None,
                 gap: crate::component::GapSize::default(),
                 scrollable: None,
                 children: vec![],
@@ -5518,7 +5528,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 1,
                 md_columns: Some(3),
-            lg_columns: None,
+                lg_columns: None,
                 gap: crate::component::GapSize::Md,
                 scrollable: None,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
@@ -5535,7 +5545,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 3,
                 md_columns: None,
-            lg_columns: None,
+                lg_columns: None,
                 gap: crate::component::GapSize::Md,
                 scrollable: Some(true),
                 children: vec![
@@ -5568,7 +5578,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 3,
                 md_columns: None,
-            lg_columns: None,
+                lg_columns: None,
                 gap: crate::component::GapSize::Md,
                 scrollable: None,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
