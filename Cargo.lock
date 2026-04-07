@@ -1631,6 +1631,7 @@ dependencies = [
  "dirs",
  "dotenvy",
  "ferro-json-ui",
+ "ferro-mcp",
  "ferro-projections",
  "notify",
  "notify-debouncer-mini",

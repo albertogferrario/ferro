@@ -2,7 +2,6 @@
 
 use console::style;
 use std::path::PathBuf;
-use std::process::Command;
 
 pub fn run(cwd: Option<String>) {
     eprintln!(
@@ -20,31 +19,29 @@ pub fn run(cwd: Option<String>) {
         project_root.display()
     );
 
-    // Spawn the `ferro-mcp` binary as a subprocess. This avoids a library-level
-    // dependency on the ferro-mcp crate (which depends on ferro-cli for shared
-    // deploy helpers per D-12), breaking what would otherwise be a cyclic
-    // package dependency.
-    let status = Command::new("ferro-mcp")
-        .arg(project_root.as_os_str())
-        .status();
+    if let Err(e) = std::env::set_current_dir(&project_root) {
+        eprintln!(
+            "{} Failed to chdir to project root: {}",
+            style("[ERROR]").red().bold(),
+            e
+        );
+        std::process::exit(1);
+    }
 
-    match status {
-        Ok(s) if s.success() => {}
-        Ok(s) => {
-            eprintln!(
-                "{} ferro-mcp exited with status {}",
-                style("[ERROR]").red().bold(),
-                s
-            );
-            std::process::exit(s.code().unwrap_or(1));
-        }
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
         Err(e) => {
             eprintln!(
-                "{} Failed to spawn ferro-mcp binary: {} (is it installed and on PATH?)",
+                "{} Failed to create tokio runtime: {}",
                 style("[ERROR]").red().bold(),
                 e
             );
             std::process::exit(1);
         }
+    };
+
+    if let Err(e) = runtime.block_on(ferro_mcp::run()) {
+        eprintln!("{} ferro-mcp failed: {}", style("[ERROR]").red().bold(), e);
+        std::process::exit(1);
     }
 }
