@@ -10,7 +10,7 @@ use std::process::Command;
 
 pub struct ToolchainCheck;
 
-const NAME: &str = "toolchain";
+const NAME: &str = "toolchain_match";
 const DEFAULT_IMAGE: &str = "rust:1.88-slim-bookworm";
 
 impl DoctorCheck for ToolchainCheck {
@@ -63,7 +63,7 @@ mod tests {
 
     #[test]
     fn name_is_toolchain() {
-        assert_eq!(ToolchainCheck.name(), "toolchain");
+        assert_eq!(ToolchainCheck.name(), "toolchain_match");
     }
 
     #[test]
@@ -71,7 +71,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let result = check_impl(tmp.path());
         // rustc is present in dev env; should be Warn (no toolchain.toml).
-        assert_eq!(result.name, "toolchain");
+        assert_eq!(result.name, "toolchain_match");
         // Either Warn (rustc installed, no toml) or Error (rustc missing in CI).
         // Never panics — that's the contract.
     }

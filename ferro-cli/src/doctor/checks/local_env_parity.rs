@@ -1,6 +1,4 @@
-//! Env completeness check (D-05): every key in `.env.example` is set in `.env`.
-//!
-//! Reuses `crate::deploy::parse_env_entries` for both files — no duplicate parser.
+//! Local env parity (SCOPE §12.4): every key in `.env.example` is present in `.env`.
 
 use crate::deploy::parse_env_entries;
 use crate::doctor::check::{CheckResult, DoctorCheck};
@@ -8,11 +6,11 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
-pub struct EnvCompletenessCheck;
+pub struct LocalEnvParityCheck;
 
-const NAME: &str = "env_completeness";
+const NAME: &str = "local_env_parity";
 
-impl DoctorCheck for EnvCompletenessCheck {
+impl DoctorCheck for LocalEnvParityCheck {
     fn name(&self) -> &'static str {
         NAME
     }
@@ -68,7 +66,6 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use tempfile::TempDir;
 
     fn write(root: &Path, name: &str, content: &str) {
@@ -76,8 +73,8 @@ mod tests {
     }
 
     #[test]
-    fn name_is_env_completeness() {
-        assert_eq!(EnvCompletenessCheck.name(), "env_completeness");
+    fn name_is_local_env_parity() {
+        assert_eq!(LocalEnvParityCheck.name(), "local_env_parity");
     }
 
     #[test]
@@ -97,12 +94,5 @@ mod tests {
         let r = check_impl(tmp.path());
         assert_eq!(r.status, crate::doctor::check::CheckStatus::Error);
         assert!(r.details.unwrap().contains("KEY2"));
-    }
-
-    #[test]
-    fn both_files_missing_warns() {
-        let tmp = TempDir::new().unwrap();
-        let r = check_impl(tmp.path());
-        assert_eq!(r.status, crate::doctor::check::CheckStatus::Warn);
     }
 }

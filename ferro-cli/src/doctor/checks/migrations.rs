@@ -9,7 +9,7 @@ use std::path::Path;
 
 pub struct MigrationsCheck;
 
-const NAME: &str = "migrations";
+const NAME: &str = "migrations_pending";
 
 impl DoctorCheck for MigrationsCheck {
     fn name(&self) -> &'static str {
@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn name_is_migrations() {
-        assert_eq!(MigrationsCheck.name(), "migrations");
+        assert_eq!(MigrationsCheck.name(), "migrations_pending");
     }
 
     #[test]
