@@ -372,61 +372,6 @@ impl FerroMcpService {
         }
     }
 
-    /// Pre-flight deploy validation. Read-only.
-    #[tool(
-        name = "deploy_check",
-        description = "Pre-flight deploy validation. Read-only. Returns a structured report with severity per finding: \
-            missing Dockerfile/.do/app.yaml, ferro path deps in Cargo.toml (blocks deploy), sqlite DATABASE_URL (blocks prod), \
-            env drift between .env.example and .do/app.yaml, dirty git tree, unpushed commits on the current branch. \
-            Use before triggering DigitalOcean App Platform deploys.\n\n\
-            **Returns:** { status: ok|warnings|blocked, findings: [{code, severity, message, detail}], checked: {...} }.\n\n\
-            **Combine with:** `application_info` for project overview."
-    )]
-    pub async fn deploy_check(&self) -> String {
-        match tools::deploy_check::execute(&self.project_root) {
-            Ok(report) => {
-                serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
-            }
-            Err(e) => format!("{{\"error\": \"{e}\"}}"),
-        }
-    }
-
-    /// Compare local env source against .do/app.yaml envs block. Read-only.
-    #[tool(
-        name = "deploy_diff_env",
-        description = "Compare local .env (or .env.example fallback) against .do/app.yaml envs block. Read-only. \
-            Returns key/local/remote rows with drift classification (aligned, missing_local, missing_remote, scope_mismatch) \
-            and flags secrets marked as plain (is_secret keys without type: SECRET in app.yaml).\n\n\
-            **Returns:** { source: env|env_example, rows: [{key, local, remote, classification}], drift_count, secrets_marked_plain: [...] }.\n\n\
-            **Combine with:** `deploy_check` for full pre-flight validation."
-    )]
-    pub async fn deploy_diff_env(&self) -> String {
-        match tools::deploy_diff_env::execute(&self.project_root) {
-            Ok(report) => {
-                serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
-            }
-            Err(e) => format!("{{\"error\": \"{e}\"}}"),
-        }
-    }
-
-    /// Scan project Cargo.toml for runtime crate dependencies and report
-    /// required Debian apt packages. Cross-checks the project Dockerfile.
-    /// Read-only.
-    #[tool(
-        name = "runtime_requirements",
-        description = "Scan project Cargo.toml for runtime crate dependencies (chromiumoxide, ffmpeg-next, pdfium, ...) and report required Debian apt packages. Cross-checks the project Dockerfile and lists packages missing from it. Read-only.\n\n\
-            **Returns:** { required: [{crate_name, apt_packages}], dockerfile_present, installed_in_dockerfile: [...], missing_in_dockerfile: [...] }.\n\n\
-            **Combine with:** `deploy_check` for full pre-flight validation."
-    )]
-    pub async fn runtime_requirements(&self) -> String {
-        match tools::runtime_requirements::execute(&self.project_root) {
-            Ok(report) => {
-                serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
-            }
-            Err(e) => format!("{{\"error\": \"{e}\"}}"),
-        }
-    }
-
     /// Execute a read-only SQL query against the database
     #[tool(
         name = "db_query",
