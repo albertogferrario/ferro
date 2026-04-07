@@ -12,6 +12,7 @@ pub mod database_schema;
 pub mod dependency_graph;
 pub mod deploy_check;
 pub mod deploy_common;
+pub mod deploy_diff_env;
 pub mod diagnose_error;
 pub mod explain_model;
 pub mod explain_route;
