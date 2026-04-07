@@ -1,6 +1,5 @@
 //! do:init command - Generate DigitalOcean App Platform deployment spec
 
-use crate::templates;
 use console::style;
 use std::fs;
 use std::path::Path;
@@ -54,7 +53,10 @@ pub fn run(github_repo: Option<String>) {
     }
 
     // Generate and write app.yaml
-    let content = templates::do_app_yaml_template(&package_name, &repo);
+    // Legacy bridge — replaced by render_app_yaml in plan 122-05 task 2.
+    let content = format!(
+        "name: {package_name}\nregion: nyc\nservices:\n  - name: web\n    github:\n      repo: {repo}\n"
+    );
 
     if let Err(e) = fs::write(&app_yaml_path, content) {
         eprintln!(

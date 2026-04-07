@@ -117,17 +117,6 @@ pub fn docker_compose_template(
 }
 
 // ============================================================================
-// DigitalOcean App Platform Templates
-// ============================================================================
-
-/// Generate app.yaml for DigitalOcean App Platform deployment
-pub fn do_app_yaml_template(package_name: &str, github_repo: &str) -> String {
-    include_str!("files/do/app.yaml.tpl")
-        .replace("{package_name}", package_name)
-        .replace("{github_repo}", github_repo)
-}
-
-// ============================================================================
 // Helpers
 // ============================================================================
 

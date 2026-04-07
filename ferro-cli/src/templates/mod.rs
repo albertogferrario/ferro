@@ -1,5 +1,7 @@
 mod ai_boost;
 mod auth;
+#[path = "do.rs"]
+pub mod do_spec;
 mod docker;
 mod entity;
 mod make;
