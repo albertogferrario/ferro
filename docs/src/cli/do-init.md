@@ -76,5 +76,3 @@ handles GitHub Actions. Run them independently as needed.
 - [`ferro ci:init`](./ci-init.md) — standalone CI workflow scaffold.
 - `ferro docker:init` — Dockerfile generation (see [CLI reference](../reference/cli.md#ferro-dockerinit)).
 - [`ferro doctor`](./doctor.md) — project health diagnostics.
-</content>
-</invoke>
