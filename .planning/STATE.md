@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
-status: planning
-stopped_at: Completed 114.1-template-renderer 114.1-01-PLAN.md
-last_updated: "2026-04-05T05:13:38.002Z"
-last_activity: 2026-04-05
+milestone: v12.0
+milestone_name: JSON-UI v2 — Spec-Driven Rendering
+status: ready
+stopped_at: v11.1 milestone completed
+last_updated: "2026-04-07T00:16:02.677Z"
+last_activity: 2026-04-07
 progress:
-  total_phases: 7
-  completed_phases: 6
-  total_plans: 13
-  completed_plans: 11
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
   percent: 96
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-26)
 Phase: 114.1 of 114 (P0 Accuracy Fixes)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-04-05
+Last activity: 2026-04-07
 
 Progress: [██████████] 96%
 
@@ -87,6 +87,14 @@ None.
 ### Blockers/Concerns
 
 - [Research flag] Phase 113: COMPONENT_CATALOG resolution needs design decision evaluation (shared data file vs build script vs new crate) — evaluate options before scoping
+
+### Roadmap Evolution
+
+- Phase 122 added: Deploy scaffold core rewrite (docker_init/do_init/templates rewrite, path→git ferro dep handling, multi-bin + worker support) — driven by gestiscilo deployment work
+- Phase 123 added: Deploy MCP tools (deploy_check, deploy_diff_env, runtime_requirements) — read-only deploy diagnostics surfaced via ferro-mcp
+- Phase 124 added: Doctor, introspection, CI scaffold (ferro doctor, routes --json, ci.yml generation, ignore_patterns sync)
+- Phase 125 added: Module scaffolder + ferro-json-ui runtime split (make:module convention, runtime IIFE refactor)
+- [CLI bug] `gsd-tools phase add` assigned 115 four times in one batch — does not detect previously added phases when computing next integer; also collided with an unrelated active milestone (JSON-UI v2 already at 115-121). Manually renumbered to 122-125. File against gsd-tools.
 
 ## Session Continuity
 

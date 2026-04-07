@@ -1,5 +1,47 @@
 # Project Milestones: Ferro Framework
 
+## v11.1 Template Renderer (Shipped: 2026-04-07)
+
+**Phases completed:** 1 phases, 1 plans, 2 tasks
+
+**Key accomplishments:**
+
+- TemplateRenderer struct implementing Renderer trait: produces intent-agnostic serde_json::Value context with fields (object), actions (array with inputs), and state_machine (object or null)
+
+---
+
+## v11.0 Framework Consolidation Audit (Shipped: 2026-04-07)
+
+**Phases completed:** 7 phases, 13 plans, 14 tasks
+
+**Key accomplishments:**
+
+- 24 stale `ferro_rs::` import paths corrected to `ferro::` across multi-tenancy, actions, and data-binding docs
+- CLI reference examples now use real logic (tracing + SeaORM patterns), S3 marked shipped, and README presents JSON-UI as a delivered feature with a corrected crate badge
+- All 65 MCP tool descriptions audited — one doc bug fixed (CodeTemplatesParams missing 'api' category), three cross-references added for newer tools
+- FerroModel and ValidateRules documented with complete worked examples on a dedicated derive-macros.md page linked between Database and Validation in SUMMARY.md
+- introduction.md rewritten with agent-first identity and MCP callouts; new Working with Agents guide covers ferro-mcp setup for Claude Desktop, Claude Code, and generic stdio with discovery loop and agent-to-CLI workflow
+- Standardized 22 documentation files to use explicit crate-root imports, #[handler] attributes, and ? / .expect() error propagation instead of glob imports and .unwrap()
+- COMPONENT_CATALOG moved from two identical 100+ line local constants to a single pub const in ferro-json-ui, with ferro-cli and ferro-mcp importing it via direct dependency.
+
+---
+
+## --help --help (Shipped: 2026-04-07)
+
+**Phases completed:** 7 phases, 13 plans, 14 tasks
+
+**Key accomplishments:**
+
+- 24 stale `ferro_rs::` import paths corrected to `ferro::` across multi-tenancy, actions, and data-binding docs
+- CLI reference examples now use real logic (tracing + SeaORM patterns), S3 marked shipped, and README presents JSON-UI as a delivered feature with a corrected crate badge
+- All 65 MCP tool descriptions audited — one doc bug fixed (CodeTemplatesParams missing 'api' category), three cross-references added for newer tools
+- FerroModel and ValidateRules documented with complete worked examples on a dedicated derive-macros.md page linked between Database and Validation in SUMMARY.md
+- introduction.md rewritten with agent-first identity and MCP callouts; new Working with Agents guide covers ferro-mcp setup for Claude Desktop, Claude Code, and generic stdio with discovery loop and agent-to-CLI workflow
+- Standardized 22 documentation files to use explicit crate-root imports, #[handler] attributes, and ? / .expect() error propagation instead of glob imports and .unwrap()
+- COMPONENT_CATALOG moved from two identical 100+ line local constants to a single pub const in ferro-json-ui, with ferro-cli and ferro-mcp importing it via direct dependency.
+
+---
+
 ## v10.0 JSON-UI Visual Overhaul (Shipped: 2026-03-26)
 
 **Delivered:** Professional visual quality uplift across all JSON-UI components — Inter font, surface elevation, typography scale, form polish, interactive states, and SVG icon refinements.
@@ -7,6 +49,7 @@
 **Phases completed:** 102-107 (8 plans total)
 
 **Key accomplishments:**
+
 - Inter Variable font loaded via Bunny Fonts CDN with correct Tailwind v4 --font-sans token namespace (Phase 102)
 - Three-tier surface elevation hierarchy (background → surface → card) with WCAG 4.5:1 dark mode contrast verification (Phase 103)
 - Typography scale: H1/H2 tight tracking, H3 snug, body relaxed line-height across all text elements (Phase 104)
@@ -15,6 +58,7 @@
 - SVG icons for alerts/bell/breadcrumb/collapsible, CSS shimmer animation for skeleton, font-semibold active tabs (Phase 107)
 
 **Stats:**
+
 - 39 files changed (+6,847, -204 lines)
 - 6 phases, 8 plans, 46 commits
 - 2 days (2026-03-24 → 2026-03-26)
@@ -32,6 +76,7 @@
 **Phases completed:** 83 (5 plans total)
 
 **Key accomplishments:**
+
 - `ferro make:api-key` CLI command generates API keys with SHA-256 hashing, SQL/Rust code snippets (8 tests)
 - Route-level x-MCP builder API: .mcp_tool_name(), .mcp_description(), .mcp_hint(), .mcp_hidden() with group-level defaults (5 tests)
 - Sensitive field auto-exclusion in make:api with --exclude/--include-all flags and 8 known patterns (8 tests)
@@ -40,6 +85,7 @@
 - Complete API-to-MCP documentation: Quick Start Workflow and Route Customization guides
 
 **Stats:**
+
 - 20 files changed (+1,995, -78 lines)
 - 1 phase, 5 plans, 10 tasks
 - 1 day (2026-02-28)
@@ -57,6 +103,7 @@
 **Phases completed:** 58-66 (11 plans total)
 
 **Key accomplishments:**
+
 - Created ferro-lang crate with JSON translation loading, :param interpolation, and pipe-separated pluralization with range syntax
 - Per-request locale detection via task_local! with LangMiddleware (Accept-Language + query param)
 - OnceLock-based validation bridge decoupling all 22 rules from ferro-lang with English fallback
@@ -65,6 +112,7 @@
 - MCP introspection (list_lang_files) + comprehensive documentation page (253 lines)
 
 **Stats:**
+
 - 69 files changed (+6,811, -85 lines)
 - 9 phases, 11 plans, 48 commits
 - 1 day (2026-02-13)
@@ -82,12 +130,14 @@
 **Phases completed:** 54-57 (5 plans total)
 
 **Key accomplishments:**
+
 - Updated env.example.tpl to match all 63 framework env vars (removed 8 phantom, added 23 missing)
 - Split templates/mod.rs from 2,987 to 831 lines across 7 focused modules
 - Audited CONCERNS.md: resolved 6/8 items, rebuilt priority matrix to 4 remaining
 - Fixed deployment templates: health check path, Rust image version, deployment tip text
 
 **Stats:**
+
 - 26 files changed (+4,821, -3,669 lines)
 - 4 phases, 5 plans, 17 commits
 - 1 day (2026-02-13)
@@ -105,6 +155,7 @@
 **Phases completed:** 47-53 (20 plans total)
 
 **Key accomplishments:**
+
 - JSON-UI plugin system with trait-based extensibility, global registry, and Map plugin with Leaflet rendering
 - app-proximity workspace crate — complete social network with auth, geo profiles, location posts, and nearby feeds
 - Geospatial proximity queries with bounding-box + Haversine filtering, nearby users map, and nearby posts feed
@@ -113,6 +164,7 @@
 - JSON-UI field validation: discovered and fixed issues (Div/Section variants, SQLite Haversine in Rust, input step attribute)
 
 **Stats:**
+
 - 104 files changed (+11,900, -77 lines)
 - 3,042 lines of Rust (app-proximity)
 - 7 phases, 20 plans, 82 commits
@@ -131,6 +183,7 @@
 **Phases completed:** 38-46 (24 plans total)
 
 **Key accomplishments:**
+
 - Complete session-based authentication system with bcrypt hashing, Auth facade, AuthUser/OptionalUser extractors, middleware guards, and `ferro make:auth` CLI scaffolding
 - Production-ready API Resources with derive macro, ResourceMap builder, pagination envelope, collection mapping, and batch-loaded relationship support
 - Cache-backed rate limiting with RateLimiter::define() and Throttle middleware supporting named limiters, multiple limits per route, and fail-open behavior
@@ -139,6 +192,7 @@
 - Stabilized foundation: fixed flaky tests, replaced S3 driver panics, removed CDN dependencies, added 100+ unit tests across all new features
 
 **Stats:**
+
 - 128 files changed (+16,105, -878 lines)
 - ~80,900 lines of Rust (total codebase)
 - 9 phases, 24 plans
@@ -157,6 +211,7 @@
 **Phases completed:** 23-32 (24 plans total)
 
 **Key accomplishments:**
+
 - Created ferro-json-ui crate with 20-component catalog (Card, Table, Form, Modal, Tabs, etc.) using serde-tagged enums and shadcn/ui-aligned variants
 - Built complete Rust HTML renderer with Tailwind CSS output, XSS prevention, and progressive enhancement (no-JS modals, SSR tabs)
 - Integrated data binding with slash-separated JSON paths, 11 visibility operators with And/Or/Not composition, and automatic validation error propagation
@@ -166,6 +221,7 @@
 - Created comprehensive documentation: getting-started guide, component reference (all 20), actions, data binding, layouts, and CLI reference updates
 
 **Stats:**
+
 - 336 files changed (+39,266, -1,297 lines)
 - 7,203 lines of Rust (ferro-json-ui crate)
 - 2,134 lines of documentation (6 pages)
@@ -185,6 +241,7 @@
 **Phases completed:** 35-37 (5 plans total)
 
 **Key accomplishments:**
+
 - Added `ferro db:seed` CLI command completing the seeder workflow
 - Unified all database commands under `db:` namespace (db:migrate, db:rollback, db:status, db:fresh, db:seed)
 - Excluded generated TypeScript types directory from version control in project template
@@ -192,6 +249,7 @@
 - Updated scaffold templates, MCP code templates, and documentation with builder pattern
 
 **Stats:**
+
 - 40 files modified (+2098, -310 lines)
 - 3 phases, 5 plans, ~11 tasks
 - 22 days (2026-01-18 to 2026-02-09)
@@ -209,6 +267,7 @@
 **Phases completed:** 33-34 (4 plans total)
 
 **Key accomplishments:**
+
 - Added JSON Accept header fallback for API testing via `render_with_json_fallback()` method
 - Enhanced SavedInertiaContext documentation with Common Patterns and Troubleshooting sections
 - Enabled auto type generation by default in `ferro serve` with file watching
@@ -216,6 +275,7 @@
 - Fixed documentation URLs to use docs.ferro-rs.dev subdomain
 
 **Stats:**
+
 - 34 files modified (+1165, -219 lines)
 - 2 phases, 4 plans, ~12 tasks
 - Same day completion (2026-01-17)
@@ -233,12 +293,14 @@
 **Phases completed:** 22.10 (1 plan total)
 
 **Key accomplishments:**
+
 - Created DO App Platform spec template with service, database, and redis configuration
 - Implemented `ferro do:init --repo owner/repo` command following docker_init pattern
 - Generated YAML includes GitHub integration with deploy-on-push
 - Health check endpoint, environment variables, and database bindings pre-configured
 
 **Stats:**
+
 - 9 files modified (606 insertions)
 - 1 phase, 1 plan, 4 tasks
 - Same day completion (2026-01-17)
@@ -256,6 +318,7 @@
 **Phases completed:** 22.4-22.9 (6 plans total)
 
 **Key accomplishments:**
+
 - Fixed serde case handling with enum-based approach
 - Resolved prop naming collisions with namespaced names
 - Added contract validation CLI command
@@ -264,6 +327,7 @@
 - Mapped ValidationErrors to Record<string, string[]>
 
 **Stats:**
+
 - 6 phases, 6 plans
 - Same day completion (2026-01-17)
 
@@ -280,11 +344,13 @@
 **Phases completed:** 22.1-22.3 (6 plans total)
 
 **Key accomplishments:**
+
 - Fixed proc macro crate path generation
 - Simplified macro path handling
 - Completed remaining rebrand items
 
 **Stats:**
+
 - 3 phases, 6 plans
 - Same day completion (2026-01-17)
 
@@ -301,6 +367,7 @@
 **Phases completed:** 13-22 (13 plans total)
 
 **Key accomplishments:**
+
 - Renamed all 11 crates from cancer-* to ferro-* (framework, CLI, MCP, events, queue, etc.)
 - Updated all documentation, READMEs, and code comments to use "ferro" branding
 - Created comprehensive migration guide for existing users at docs/src/upgrading/migration-guide.md
@@ -309,6 +376,7 @@
 - Migrated sample app to use ferro imports
 
 **Stats:**
+
 - 321 files modified
 - 60,000 lines of Rust (total codebase)
 - 10 phases, 13 plans
@@ -327,6 +395,7 @@
 **Phases completed:** 1-12 (18 plans total)
 
 **Key accomplishments:**
+
 - Simplified handler definitions with #[handler] macro reducing ceremony
 - Created FerroModel derive macro for automatic SeaORM trait implementations
 - Added ValidateRules derive macro for concise validation rule definitions
@@ -335,6 +404,7 @@
 - Implemented actionable error messages with fix suggestions
 
 **Stats:**
+
 - 200+ files modified
 - 60,000 lines of Rust
 - 12 phases, 18 plans
