@@ -1,5 +1,5 @@
 [package]
-name = "mkmenu"
+name = "mkmenu_ferro"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,3 +7,11 @@ edition = "2021"
 ferro = { path = "../../../framework" }
 ferro-json-ui = { path = "../../../ferro-json-ui" }
 serde = "1"
+
+[[bin]]
+name = "mkmenu_ferro"
+path = "src/main.rs"
+
+[[bin]]
+name = "test_parser"
+path = "src/bin/test_parser.rs"

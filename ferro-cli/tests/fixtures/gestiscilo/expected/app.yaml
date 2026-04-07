@@ -24,9 +24,10 @@ services:
       - key: APP_ENV
         scope: RUN_TIME
         value: "production"
+      # Override in DO App Platform secrets (was: http://localhost:8080)
       - key: APP_URL
         scope: RUN_TIME
-        value: "https://gestiscilo.it"
+        value: ${APP_URL}
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${db.DATABASE_URL}

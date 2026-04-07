@@ -16,7 +16,7 @@ use ferro_cli::deploy::env_example::parse_env_example;
 use ferro_cli::project::{
     detect_dirs, package_name, read_bins, read_workspace_members, resolve_rust_base_image,
 };
-use ferro_cli::templates::do_spec::{render_app_yaml, AppYamlContext};
+use ferro_cli::templates::do_spec::{render_app_yaml, sanitize_do_app_name, AppYamlContext};
 use ferro_cli::templates::{render_dockerfile, DockerfileContext};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -57,14 +57,25 @@ const CASES: &[FixtureCase] = &[
 fn render_for(case: &FixtureCase) -> (String, String) {
     let root = fixtures_dir().join(case.name);
     let pkg = package_name(&root);
-    let bins = read_bins(&root);
+    let app_name = sanitize_do_app_name(&pkg);
+    let raw_bins = read_bins(&root);
+    let bins: Vec<_> = raw_bins
+        .iter()
+        .cloned()
+        .map(|mut b| {
+            if b.name == pkg {
+                b.name = app_name.clone();
+            }
+            b
+        })
+        .collect();
     let workspace = read_workspace_members(&root);
     let base_image = resolve_rust_base_image(&root);
     let dirs = detect_dirs(&root);
     let runtime_deps: Vec<String> = case.runtime_deps.iter().map(|s| s.to_string()).collect();
 
     let dctx = DockerfileContext {
-        package_name: &pkg,
+        package_name: &app_name,
         bins: &bins,
         dirs,
         runtime_deps: &runtime_deps,
@@ -77,7 +88,7 @@ fn render_for(case: &FixtureCase) -> (String, String) {
     let env_content = fs::read_to_string(root.join(".env.example")).unwrap_or_default();
     let env_entries = parse_env_example(&env_content);
     let actx = AppYamlContext {
-        package_name: &pkg,
+        package_name: &app_name,
         github_repo: case.repo,
         region: case.region,
         bins: &bins,
