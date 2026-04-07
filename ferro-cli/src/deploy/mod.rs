@@ -7,7 +7,12 @@
 pub mod classify;
 pub mod env_example;
 pub mod ferro_deps;
+pub mod runtime_deps;
 
 pub use classify::is_secret;
 pub use env_example::{parse_env_example, EnvEntry};
 pub use ferro_deps::render_rewrite_script;
+pub use runtime_deps::{
+    scan_runtime_dep_matches, scan_runtime_deps, scan_runtime_deps_str, RuntimeDep,
+    RUNTIME_DEP_REGISTRY,
+};
