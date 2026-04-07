@@ -647,6 +647,9 @@ pub struct GridProps {
     /// Number of columns at md breakpoint (768px+). When set, creates a responsive grid.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub md_columns: Option<u8>,
+    /// Number of columns at lg breakpoint (1024px+). Optional; falls back to md.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lg_columns: Option<u8>,
     /// Gap between grid items.
     #[serde(default)]
     pub gap: GapSize,
@@ -3202,6 +3205,7 @@ mod tests {
         let grid = Component::Grid(GridProps {
             columns: 3,
             md_columns: None,
+            lg_columns: None,
             gap: GapSize::Lg,
             scrollable: None,
             children: vec![ComponentNode::text(
@@ -3517,16 +3521,22 @@ mod tests {
             ("Checkbox", r#"{"type":"Checkbox","field":"f","label":"l"}"#),
             ("Image", r#"{"type":"Image","src":"/img/s.png","alt":"a"}"#),
             ("Input", r#"{"type":"Input","field":"f","label":"l"}"#),
-            ("Pagination", r#"{"type":"Pagination","current_page":1,"per_page":10,"total":0}"#),
+            (
+                "Pagination",
+                r#"{"type":"Pagination","current_page":1,"per_page":10,"total":0}"#,
+            ),
             ("Progress", r#"{"type":"Progress","value":50}"#),
-            ("Select", r#"{"type":"Select","field":"f","label":"l","options":[]}"#),
+            (
+                "Select",
+                r#"{"type":"Select","field":"f","label":"l","options":[]}"#,
+            ),
             ("Separator", r#"{"type":"Separator"}"#),
             ("Skeleton", r#"{"type":"Skeleton"}"#),
             ("Text", r#"{"type":"Text","content":"c"}"#),
         ];
         for (type_name, json_str) in known_types {
-            let component: Component =
-                serde_json::from_str(json_str).unwrap_or_else(|e| panic!("failed to parse {type_name}: {e}"));
+            let component: Component = serde_json::from_str(json_str)
+                .unwrap_or_else(|e| panic!("failed to parse {type_name}: {e}"));
             let serialized = serde_json::to_value(&component).unwrap();
             assert_eq!(
                 serialized["type"], *type_name,

@@ -10,6 +10,10 @@ keywords = ["cli", "scaffold", "ferro", "web", "generator"]
 categories = ["command-line-utilities", "development-tools"]
 readme = "README.md"
 
+[lib]
+name = "ferro_cli"
+path = "src/lib.rs"
+
 [[bin]]
 name = "ferro"
 path = "src/main.rs"

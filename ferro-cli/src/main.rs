@@ -1,9 +1,4 @@
-mod ai;
-mod analyzer;
-mod commands;
-mod deploy;
-mod project;
-mod templates;
+use ferro_cli::commands;
 
 use clap::{Parser, Subcommand};
 

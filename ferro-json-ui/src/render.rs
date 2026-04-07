@@ -1750,13 +1750,17 @@ fn render_button(props: &ButtonProps) -> String {
         label
     };
 
-    let type_attr = match props.button_type.as_ref().unwrap_or(&ButtonType::Button) {
-        ButtonType::Button => "button",
-        ButtonType::Submit => "submit",
+    // When button_type is None, omit the attribute so browsers apply the HTML
+    // default (submit inside a form, no-op elsewhere). This preserves behavior
+    // for forms that rely on the default submit button.
+    let type_attr = match props.button_type.as_ref() {
+        Some(ButtonType::Button) => " type=\"button\"",
+        Some(ButtonType::Submit) => " type=\"submit\"",
+        None => "",
     };
 
     format!(
-        "<button type=\"{type_attr}\" class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
+        "<button{type_attr} class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
     )
 }
 
@@ -2087,10 +2091,13 @@ fn render_grid(props: &GridProps, data: &Value) -> String {
     }
 
     let cols = props.columns.clamp(1, 12);
-    let col_classes = match props.md_columns {
-        Some(md) => format!("grid-cols-{cols} md:grid-cols-{}", md.clamp(1, 12)),
-        None => format!("grid-cols-{cols}"),
-    };
+    let mut col_classes = format!("grid-cols-{cols}");
+    if let Some(md) = props.md_columns {
+        col_classes.push_str(&format!(" md:grid-cols-{}", md.clamp(1, 12)));
+    }
+    if let Some(lg) = props.lg_columns {
+        col_classes.push_str(&format!(" lg:grid-cols-{}", lg.clamp(1, 12)));
+    }
     let mut html = format!("<div class=\"grid w-full {col_classes} {gap}\">");
     for child in &props.children {
         html.push_str(&render_node(child, data));
@@ -2480,11 +2487,14 @@ fn render_sidebar_nav_item(item: &crate::component::SidebarNavItem) -> String {
 
 fn render_header(props: &HeaderProps) -> String {
     let mut html = String::from(
-        "<header class=\"flex items-center justify-between px-6 py-4 bg-background border-b border-border\">",
+        "<header class=\"relative flex items-center justify-between px-6 py-4 bg-background border-b border-border\">",
     );
-    // Business name.
+    // Left spacer keeps justify-between layout intact.
+    html.push_str("<div></div>");
+    // Business name — absolutely centered relative to header, independent of
+    // surrounding elements.
     html.push_str(&format!(
-        "<span class=\"text-lg font-semibold text-text\">{}</span>",
+        "<span class=\"absolute left-1/2 -translate-x-1/2 text-lg font-semibold text-text pointer-events-none\">{}</span>",
         html_escape(&props.business_name)
     ));
     html.push_str("<div class=\"flex items-center gap-4\">");
@@ -3757,7 +3767,8 @@ mod tests {
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
-        assert!(html.contains("border-t border-border px-6 py-4 flex items-center justify-between gap-2"));
+        assert!(html
+            .contains("border-t border-border px-6 py-4 flex items-center justify-between gap-2"));
         assert!(html.contains(">Save</button>"));
     }
 
@@ -5472,6 +5483,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 4,
                 md_columns: None,
+            lg_columns: None,
                 gap: crate::component::GapSize::Lg,
                 scrollable: None,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
@@ -5489,6 +5501,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 20,
                 md_columns: None,
+            lg_columns: None,
                 gap: crate::component::GapSize::default(),
                 scrollable: None,
                 children: vec![],
@@ -5505,6 +5518,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 1,
                 md_columns: Some(3),
+            lg_columns: None,
                 gap: crate::component::GapSize::Md,
                 scrollable: None,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
@@ -5521,6 +5535,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 3,
                 md_columns: None,
+            lg_columns: None,
                 gap: crate::component::GapSize::Md,
                 scrollable: Some(true),
                 children: vec![
@@ -5553,6 +5568,7 @@ mod tests {
             crate::component::GridProps {
                 columns: 3,
                 md_columns: None,
+            lg_columns: None,
                 gap: crate::component::GapSize::Md,
                 scrollable: None,
                 children: vec![text_node("c1", "Cell 1", TextElement::P)],
@@ -7894,10 +7910,24 @@ mod tests {
         };
         let html = render_button(&props);
         assert!(
-            html.contains("type=\"button\""),
-            "default button type is button"
+            !html.contains("type=\""),
+            "default omits type attribute so browser applies HTML default (submit in forms)"
         );
-        assert!(!html.contains("type=\"submit\""), "default is not submit");
+    }
+
+    #[test]
+    fn test_render_button_type_button_explicit() {
+        let props = ButtonProps {
+            label: "Click".into(),
+            variant: ButtonVariant::Default,
+            size: Size::Default,
+            disabled: None,
+            icon: None,
+            icon_position: None,
+            button_type: Some(ButtonType::Button),
+        };
+        let html = render_button(&props);
+        assert!(html.contains("type=\"button\""));
     }
 
     #[test]

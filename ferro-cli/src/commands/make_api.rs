@@ -33,7 +33,7 @@ const SENSITIVE_FIELD_PATTERNS: &[&str] = &[
 ///
 /// Returns references to fields that should be included in the resource.
 /// When `include_all` is true, no auto-exclusion is applied (user `--exclude` still applies).
-pub fn filter_resource_fields<'a>(
+pub(crate) fn filter_resource_fields<'a>(
     fields: &'a [FieldInfo],
     exclude: &[String],
     include_all: bool,
