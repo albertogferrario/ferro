@@ -2,7 +2,7 @@
 
 **A Laravel-inspired web framework for Rust**
 
-[![Crates.io](https://img.shields.io/crates/v/ferro.svg)](https://crates.io/crates/ferro)
+[![Crates.io](https://img.shields.io/crates/v/ferro-rs.svg)](https://crates.io/crates/ferro-rs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Build web applications in Rust with the developer experience you love from Laravel and Rails. Ferro gives you expressive routing, powerful tooling, and batteries-included features—without sacrificing Rust's performance.
@@ -48,17 +48,30 @@ async fn store(_req: Request) -> Response {
 }
 ```
 
-## Why Ferro?
+## What's included
 
-- **Familiar patterns** — Routes, controllers, middleware, service container
+- **Routing and middleware** — macro-based routes, typed extractors, middleware pipeline
+- **Database** — SeaORM-based models, migrations, query builder
+- **Inertia.js integration** — React/TypeScript SPAs with automatic type generation
+- **JSON-UI** — server-rendered, server-driven UIs with 30+ components
+- **Events and listeners** — typed event dispatcher with async listeners
+- **Background jobs** — queue workers with retries and scheduling (`ferro-queue`)
+- **Multi-channel notifications** — mail, database, broadcast, custom channels (`ferro-notifications`)
+- **WebSocket broadcasting** — real-time channels (`ferro-broadcast`)
+- **File storage** — local and S3 drivers (`ferro-storage`)
+- **Caching with tags** — in-memory and Redis backends (`ferro-cache`)
+- **Localization** — per-locale translations (`ferro-lang`)
+- **Semantic theming** — token vocabulary and intent templates (`ferro-theme`)
+- **Service projections** — typed model-to-UI pipelines (`ferro-projections`)
+- **Stripe billing** — subscriptions and payments (`ferro-stripe`)
+- **AI classification + confirmations** — structured LLM output and human-in-the-loop (`ferro-ai`)
+- **WhatsApp messaging** — Business Cloud API (`ferro-whatsapp`)
+- **MCP introspection server** — 80+ agent tools (`ferro-mcp`)
 - **CLI generators** — `ferro make:controller`, `ferro make:model`, `ferro db:migrate`
-- **Database built-in** — Migrations, ORM, query builder
-- **Modern frontend** — First-class Inertia.js + React with automatic TypeScript types
-- **Rust performance** — All the safety and speed, none of the ceremony
 
 ## JSON-UI
 
-An alternative to Inertia for building UIs without a frontend build step. Define views as JSON, render to HTML with Tailwind on the server.
+An alternative to Inertia for building UIs without a frontend build step. Define views as JSON, render to HTML with Tailwind on the server. Shipped in v10.0 with 30+ components and a plugin system.
 
 ```json
 {
@@ -158,6 +171,10 @@ Change a field in Rust, regenerate types, and TypeScript will catch any mismatch
 ## Documentation
 
 Ready to build something? Check out the [full documentation](https://docs.ferro-rs.dev/) to get started.
+
+## Status
+
+v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. Next milestone: v12.0 spec-driven rendering.
 
 ## License
 
