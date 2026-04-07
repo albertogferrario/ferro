@@ -4,6 +4,7 @@ mod auth;
 pub mod do_spec;
 mod docker;
 mod entity;
+pub mod ignore_patterns;
 mod make;
 mod project;
 mod scaffold;
