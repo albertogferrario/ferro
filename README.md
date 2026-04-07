@@ -1,13 +1,16 @@
 # Ferro
 
-**A Laravel-inspired web framework for Rust**
+**A Rust web framework optimized for AI-assisted authoring**
 
 [![Crates.io](https://img.shields.io/crates/v/ferro-rs.svg)](https://crates.io/crates/ferro-rs)
+[![Docs.rs](https://img.shields.io/docsrs/ferro-rs)](https://docs.rs/ferro-rs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Build web applications in Rust with the developer experience you love from Laravel and Rails. Ferro gives you expressive routing, powerful tooling, and batteries-included features—without sacrificing Rust's performance.
+Ferro is the substrate for developers who build alongside AI coding agents (Claude Code, Cursor, and similar). Every subsystem is introspectable through an in-process MCP server, so an agent connected to your project reads routes, models, handlers, and generation context as tool calls instead of guessing from source.
 
-[Website](https://ferro-rs.dev/) | [Documentation](https://docs.ferro-rs.dev/)
+The defining feature is **service projections**: declare a service and intent, get a working UI. `ferro-projections` maps typed model pipelines to rendered views, letting an agent scaffold an end-to-end surface from a single declaration. At v1.0 the output is visual (HTML via JSON-UI); the underlying model is media-independent.
+
+[API reference](https://docs.rs/ferro-rs) · [User guide](https://docs.ferro-rs.dev/) · [Repository](https://github.com/albertogferrario/ferro)
 
 ## Quick Start
 
@@ -18,11 +21,9 @@ cd myapp
 ferro serve
 ```
 
-Your app is now running at `http://localhost:8080`
+Your app is now running at `http://localhost:8080`. Point your AI agent at `ferro-mcp` via its MCP configuration and the agent can introspect and extend the project directly. There is no bundled agent UI — `ferro-mcp` is the v1.0 product surface.
 
 ## Example
-
-If you've used Laravel or Rails, this will feel familiar:
 
 ```rust
 use ferro::{get, post, routes, json_response, Request, Response};
@@ -174,7 +175,7 @@ Ready to build something? Check out the [full documentation](https://docs.ferro-
 
 ## Status
 
-v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. Next milestone: v12.0 spec-driven rendering.
+v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. The framework is being developed in the open with no public announcements; current milestone work targets v12.0 spec-driven rendering.
 
 ## License
 
