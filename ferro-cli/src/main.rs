@@ -334,12 +334,24 @@ enum Commands {
         #[arg(long, value_delimiter = ',')]
         runtime_deps: Vec<String>,
     },
-    /// Generate DigitalOcean App Platform deployment spec
+    /// Generate DigitalOcean App Platform deployment spec (.do/app.yaml)
     #[command(name = "do:init")]
     DoInit {
-        /// GitHub repository (owner/repo format)
-        #[arg(long = "repo", short = 'r')]
-        repo: Option<String>,
+        /// GitHub repository in `owner/repo` form
+        #[arg(long)]
+        repo: String,
+
+        /// DigitalOcean region slug (fra1, nyc, ams, sfo, ...)
+        #[arg(long, default_value = "fra1")]
+        region: String,
+
+        /// Overwrite existing .do/app.yaml
+        #[arg(long)]
+        force: bool,
+
+        /// Git ref to pin ferro* crates for Docker builds
+        #[arg(long, default_value = "main")]
+        ferro_ref: String,
     },
     /// Generate docker-compose.yml for local development
     #[command(name = "docker:compose")]
@@ -588,8 +600,13 @@ fn main() {
         } => {
             commands::docker_init::run(force, &ferro_ref, &runtime_deps);
         }
-        Commands::DoInit { repo } => {
-            commands::do_init::run(repo);
+        Commands::DoInit {
+            repo,
+            region,
+            force,
+            ferro_ref,
+        } => {
+            commands::do_init::run(&repo, &region, force, &ferro_ref);
         }
         Commands::DockerCompose {
             with_mailpit,
