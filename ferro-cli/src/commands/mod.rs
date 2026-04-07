@@ -15,6 +15,7 @@ pub mod docker_compose;
 pub mod docker_init;
 pub mod generate_routes;
 pub mod generate_types;
+pub mod ignore_sync;
 pub mod make_action;
 pub mod make_api;
 pub mod make_api_key;

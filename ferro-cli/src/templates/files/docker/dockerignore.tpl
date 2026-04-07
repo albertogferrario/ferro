@@ -1,56 +1,58 @@
-# Rust build artifacts
+# Generated from templates/files/root/ignore_patterns.toml — edit there, run ferro ignore:sync
+
+# rust
 target/
 
-# Node modules
+# node
 frontend/node_modules/
-
-# Frontend build output (built in Docker)
 frontend/dist/
 
-# IDE and editor files
+# build
+public/assets/
+
+# ide
 .idea/
 .vscode/
 *.swp
 *.swo
 .DS_Store
 
-# Environment files (provide at runtime)
+# env
 .env
 .env.*
 !.env.example
 
-# Git
+# sqlite
+database.db
+*.sqlite*
+
+# planning
+.planning/
+
+# storage
+storage/
+data/
+
+# secrets
+*.pem
+*.key
+
+# logs_tmp
+*.log
+tmp/
+
+# git
 .git/
 .gitignore
 
-# Docker files
+# docker
 Dockerfile
 docker-compose*.yml
 .dockerignore
 
-# Build artifacts
-public/assets/
-
-# Logs and temp files
-*.log
-tmp/
-
-# Documentation
+# docs
 *.md
 LICENSE
 
-# Test files
+# tests
 tests/
-
-# Local databases and SQLite files
-database.db
-*.sqlite*
-
-# Planning and workspace notes (never ship to Docker context)
-.planning/
-
-# User-uploaded files and runtime data
-storage/
-data/
-
-# NOTE: .gitignore/.dockerignore drift audit deferred to Phase 124.

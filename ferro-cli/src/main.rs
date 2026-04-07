@@ -421,6 +421,16 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Reconcile .gitignore and .dockerignore against the canonical ignore_patterns.toml
+    #[command(name = "ignore:sync")]
+    IgnoreSync {
+        /// Show drift without writing files (exit 2 if drift detected)
+        #[arg(long)]
+        dry_run: bool,
+        /// Overwrite existing files even if they contain custom patterns
+        #[arg(long)]
+        force: bool,
+    },
     /// Check local API readiness for MCP integration
     #[command(name = "api:check")]
     ApiCheck {
@@ -645,6 +655,9 @@ fn main() {
         }
         Commands::ValidateContracts { filter, json } => {
             commands::validate_contracts::run(filter, json);
+        }
+        Commands::IgnoreSync { dry_run, force } => {
+            commands::ignore_sync::run(dry_run, force);
         }
         Commands::ApiCheck {
             url,
