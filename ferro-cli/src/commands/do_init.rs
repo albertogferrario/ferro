@@ -3,7 +3,7 @@
 use console::style;
 use std::fs;
 
-use crate::deploy::env_example::{parse_env_example, EnvEntry};
+use crate::deploy::{parse_env_entries, EnvEntry};
 use crate::project::{find_project_root, package_name, read_bins};
 use crate::templates::ci_workflow::{render_ci_workflow, CiWorkflowContext};
 use crate::templates::do_spec::{render_app_yaml, sanitize_do_app_name, AppYamlContext};
@@ -64,7 +64,7 @@ pub fn run(repo: &str, region: &str, force: bool, ferro_ref: &str) {
         })
         .collect();
     let env_entries: Vec<EnvEntry> = fs::read_to_string(root.join(".env.example"))
-        .map(|s| parse_env_example(&s))
+        .map(|s| parse_env_entries(&s))
         .unwrap_or_default();
 
     let ctx = AppYamlContext {
@@ -192,7 +192,7 @@ mod tests {
             })
             .collect();
         let env_entries: Vec<EnvEntry> = fs::read_to_string(root.join(".env.example"))
-            .map(|s| parse_env_example(&s))
+            .map(|s| parse_env_entries(&s))
             .unwrap_or_default();
         let ctx = AppYamlContext {
             package_name: &app_name,

@@ -5,8 +5,7 @@
 // Renders `.do/app.yaml` from a typed context. Pure function — no IO.
 // See plan 122-05.
 
-use crate::deploy::classify::is_secret;
-use crate::deploy::env_example::EnvEntry;
+use crate::deploy::{is_secret, EnvEntry};
 use crate::project::BinEntry;
 
 const APP_YAML_TPL: &str = include_str!("files/do/app.yaml.tpl");

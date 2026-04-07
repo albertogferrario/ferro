@@ -1,9 +1,8 @@
 //! Env completeness check (D-05): every key in `.env.example` is set in `.env`.
 //!
-//! Reuses `crate::deploy::env_example::parse_env_example` (Phase 122 helper)
-//! for both files — no duplicate parser.
+//! Reuses `crate::deploy::parse_env_entries` for both files — no duplicate parser.
 
-use crate::deploy::env_example::parse_env_example;
+use crate::deploy::parse_env_entries;
 use crate::doctor::check::{CheckResult, DoctorCheck};
 use std::collections::HashSet;
 use std::fs;
@@ -42,11 +41,11 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
     let example = fs::read_to_string(&example_path).unwrap_or_default();
     let env = fs::read_to_string(&env_path).unwrap_or_default();
 
-    let example_keys: Vec<String> = parse_env_example(&example)
+    let example_keys: Vec<String> = parse_env_entries(&example)
         .into_iter()
         .map(|e| e.key)
         .collect();
-    let env_keys: HashSet<String> = parse_env_example(&env).into_iter().map(|e| e.key).collect();
+    let env_keys: HashSet<String> = parse_env_entries(&env).into_iter().map(|e| e.key).collect();
 
     let missing: Vec<&String> = example_keys
         .iter()

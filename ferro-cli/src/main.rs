@@ -355,13 +355,6 @@ enum Commands {
         #[arg(long, value_delimiter = ',')]
         runtime_deps: Vec<String>,
     },
-    /// Pre-flight: verify the chosen ferro git ref is pushed to the remote
-    #[command(name = "deploy:check")]
-    DeployCheck {
-        /// Git ref to verify (default: main)
-        #[arg(long, default_value = "main")]
-        ferro_ref: String,
-    },
     /// Generate DigitalOcean App Platform deployment spec (.do/app.yaml)
     #[command(name = "do:init")]
     DoInit {
@@ -446,16 +439,6 @@ enum Commands {
         /// Output results as JSON
         #[arg(long)]
         json: bool,
-    },
-    /// Reconcile .gitignore and .dockerignore against the canonical ignore_patterns.toml
-    #[command(name = "ignore:sync")]
-    IgnoreSync {
-        /// Show drift without writing files (exit 2 if drift detected)
-        #[arg(long)]
-        dry_run: bool,
-        /// Overwrite existing files even if they contain custom patterns
-        #[arg(long)]
-        force: bool,
     },
     /// Generate a GitHub Actions CI workflow at .github/workflows/ci.yml
     #[command(name = "ci:init")]
@@ -666,9 +649,6 @@ fn main() {
         } => {
             commands::docker_init::run(force, &ferro_ref, &runtime_deps);
         }
-        Commands::DeployCheck { ferro_ref } => {
-            commands::deploy_check::run(&ferro_ref);
-        }
         Commands::DoInit {
             repo,
             region,
@@ -709,9 +689,6 @@ fn main() {
         }
         Commands::ValidateContracts { filter, json } => {
             commands::validate_contracts::run(filter, json);
-        }
-        Commands::IgnoreSync { dry_run, force } => {
-            commands::ignore_sync::run(dry_run, force);
         }
         Commands::CiInit { force } => {
             commands::ci_init::run(force);

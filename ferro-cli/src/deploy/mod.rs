@@ -1,18 +1,167 @@
-//! Deploy scaffold primitives consumed by `docker:init`, `do:init`, and
-//! `deploy:check` commands. Pure functions only — no filesystem side effects
-//! beyond reading explicit input paths. See plan 122-02.
+//! Deploy scaffold primitives. Phase 122.2 reduced this surface dramatically;
+//! the legacy heuristic modules (env parser with comment stripping, SECRET
+//! classifier, runtime apt registry, shell-script ferro dep rewriter) were
+//! deleted in plan 122.2-03. This module retains a minimal set of pure
+//! helpers used by surviving consumers (do_init, doctor checks, templates)
+//! until plans 04..09 rewrite them against the simpler design in SCOPE.
 
-#![allow(dead_code, unused_imports)] // Consumed by plans 122-03..07.
+#![allow(dead_code)]
 
-pub mod classify;
-pub mod env_example;
-pub mod ferro_deps;
-pub mod runtime_deps;
+use std::fs;
+use std::io;
+use std::path::Path;
+use toml::Value;
 
-pub use classify::is_secret;
-pub use env_example::{parse_env_example, EnvEntry};
-pub use ferro_deps::{find_ferro_path_deps, render_rewrite_script};
-pub use runtime_deps::{
-    scan_runtime_dep_matches, scan_runtime_deps, scan_runtime_deps_str, RuntimeDep,
-    RUNTIME_DEP_REGISTRY,
-};
+// ---------------------------------------------------------------------------
+// Env parsing (.env / .env.example / .env.production)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnvEntry {
+    pub key: String,
+    pub value: String,
+}
+
+/// Parse a `.env`-style file body into ordered (key, value) entries.
+/// Skips blank and comment lines. Splits on the first `=`. Strips a trailing
+/// ` # comment` from unquoted values.
+pub fn parse_env_entries(content: &str) -> Vec<EnvEntry> {
+    let mut out = Vec::new();
+    for raw in content.lines() {
+        let trimmed = raw.trim_start();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let Some((key, value)) = raw.split_once('=') else {
+            continue;
+        };
+        let key = key.trim().to_string();
+        if key.is_empty() {
+            continue;
+        }
+        let stripped = strip_inline_comment(value.trim());
+        out.push(EnvEntry {
+            key,
+            value: stripped.to_string(),
+        });
+    }
+    out
+}
+
+fn strip_inline_comment(value: &str) -> &str {
+    let bytes = value.as_bytes();
+    if bytes.first() == Some(&b'"') || bytes.first() == Some(&b'\'') {
+        return value;
+    }
+    let mut prev_ws = false;
+    for (i, b) in bytes.iter().enumerate() {
+        if *b == b'#' && prev_ws {
+            return value[..i].trim_end();
+        }
+        prev_ws = *b == b' ' || *b == b'\t';
+    }
+    value
+}
+
+// ---------------------------------------------------------------------------
+// Secret-key classification (legacy heuristic — to be removed by plan 04/05)
+// ---------------------------------------------------------------------------
+
+/// True if a key looks like a secret by name. Suffixes `_KEY`, `_SECRET`,
+/// `_PASSWORD`, `_TOKEN`, or exact `DATABASE_URL`.
+pub fn is_secret(key: &str) -> bool {
+    let upper = key.to_ascii_uppercase();
+    if upper == "DATABASE_URL" {
+        return true;
+    }
+    upper.ends_with("_KEY")
+        || upper.ends_with("_SECRET")
+        || upper.ends_with("_PASSWORD")
+        || upper.ends_with("_TOKEN")
+}
+
+// ---------------------------------------------------------------------------
+// ferro path dep discovery (used by doctor path check + dockerfile rewrite)
+// ---------------------------------------------------------------------------
+
+const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
+
+/// Walk dependency tables of a parsed Cargo.toml string and collect every key
+/// starting with `ferro` whose value is a table containing a `path` field.
+pub fn find_ferro_path_deps(content: &str) -> Vec<String> {
+    let parsed: Value = match content.parse() {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    let mut out: Vec<String> = Vec::new();
+    for table_name in DEP_TABLES {
+        let Some(table) = parsed.get(*table_name).and_then(|v| v.as_table()) else {
+            continue;
+        };
+        for (key, value) in table {
+            if !key.starts_with("ferro") {
+                continue;
+            }
+            let is_path_dep = value
+                .as_table()
+                .map(|t| t.contains_key("path"))
+                .unwrap_or(false);
+            if is_path_dep && !out.iter().any(|k| k == key) {
+                out.push(key.clone());
+            }
+        }
+    }
+    out
+}
+
+// ---------------------------------------------------------------------------
+// Legacy rewrite script renderer — kept compiling for docker_init until
+// plan 04 deletes the script entirely in favor of Cargo.docker.toml.
+// ---------------------------------------------------------------------------
+
+const FERRO_REPO: &str = "https://github.com/albertogferrario/ferro";
+
+pub fn render_rewrite_script(cargo_toml: &Path, ferro_ref: &str) -> io::Result<String> {
+    let content = fs::read_to_string(cargo_toml)?;
+    let crates = find_ferro_path_deps(&content);
+    let mut script = String::new();
+    script.push_str("#!/usr/bin/env bash\n");
+    script.push_str("# Generated by ferro docker:init — do not edit\n");
+    script.push_str("set -euo pipefail\n\n");
+    script.push_str(&format!("FERRO_REF=\"{ferro_ref}\"\n"));
+    script.push_str(&format!("FERRO_REPO=\"{FERRO_REPO}\"\n\n"));
+    script.push_str("CARGO_TOML=\"${1:-Cargo.toml}\"\n\n");
+    for crate_name in crates {
+        script.push_str(&format!(
+            "sed -i -E \"s|^({crate_name})\\s*=\\s*\\{{\\s*path\\s*=\\s*\\\"[^\\\"]+\\\"([^}}]*)\\}}|\\1 = {{ git = \\\"$FERRO_REPO\\\", branch = \\\"$FERRO_REF\\\"\\2}}|\" \"$CARGO_TOML\"\n"
+        ));
+    }
+    Ok(script)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_env_entries_basic() {
+        let got = parse_env_entries("# c\nFOO=bar\n\nBAZ=qux # tail");
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].key, "FOO");
+        assert_eq!(got[0].value, "bar");
+        assert_eq!(got[1].value, "qux");
+    }
+
+    #[test]
+    fn is_secret_suffixes() {
+        assert!(is_secret("STRIPE_SECRET_KEY"));
+        assert!(is_secret("DATABASE_URL"));
+        assert!(!is_secret("APP_URL"));
+    }
+
+    #[test]
+    fn finds_ferro_path_deps() {
+        let deps = find_ferro_path_deps("[dependencies]\nferro = { path = \"..\" }\n");
+        assert_eq!(deps, vec!["ferro".to_string()]);
+    }
+}

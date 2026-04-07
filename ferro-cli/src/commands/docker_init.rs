@@ -7,7 +7,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-use crate::deploy::ferro_deps::render_rewrite_script;
+use crate::deploy::render_rewrite_script;
 use crate::project::{
     detect_dirs, find_project_root, package_name, read_bins, read_workspace_members,
     resolve_rust_base_image,

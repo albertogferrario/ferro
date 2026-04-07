@@ -22,9 +22,6 @@ members = [
     "ferro-ai",
     "ferro-whatsapp",
 ]
-exclude = [
-    "ferro-cli/tests/fixtures",
-]
 
 [workspace.package]
 version = "0.1.88"

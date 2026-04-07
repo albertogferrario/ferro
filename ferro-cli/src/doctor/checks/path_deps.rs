@@ -1,10 +1,10 @@
 //! Path deps check (D-06): warn (never error) on any `ferro*` path dep.
 //!
-//! Reuses `crate::deploy::ferro_deps::find_ferro_path_deps` (Phase 123).
-//! Production-context detection (warn vs ok) is future work — Phase 124
-//! always emits Warn when path deps exist.
+//! Reuses `crate::deploy::find_ferro_path_deps`. Production-context detection
+//! (warn vs ok) is future work — currently always emits Warn when path deps
+//! exist.
 
-use crate::deploy::ferro_deps::find_ferro_path_deps;
+use crate::deploy::find_ferro_path_deps;
 use crate::doctor::check::{CheckResult, CheckStatus, DoctorCheck};
 use std::fs;
 use std::path::Path;

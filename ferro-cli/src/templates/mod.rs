@@ -5,7 +5,6 @@ pub mod ci_workflow;
 pub mod do_spec;
 mod docker;
 mod entity;
-pub mod ignore_patterns;
 mod make;
 pub mod module;
 mod project;
