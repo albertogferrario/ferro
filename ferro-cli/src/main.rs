@@ -1,6 +1,7 @@
 mod ai;
 mod analyzer;
 mod commands;
+mod project;
 mod templates;
 
 use clap::{Parser, Subcommand};
