@@ -85,26 +85,6 @@ pub fn render_dockerignore(_extra_entries: &[&str]) -> String {
     DOCKERIGNORE_TPL.to_string()
 }
 
-#[doc(hidden)]
-pub fn dockerfile_template(package_name: &str) -> String {
-    // Temporary shim kept only to avoid breaking existing callers during
-    // phase 122 rollout. Removed by plan 122-04.
-    let bins = vec![BinEntry {
-        name: package_name.to_string(),
-        path: None,
-    }];
-    let ctx = DockerfileContext {
-        package_name,
-        bins: &bins,
-        dirs: ProjectDirs::default(),
-        runtime_deps: &[],
-        rust_base_image: "rust:1.88-slim-bookworm",
-        workspace_members: &[],
-        ferro_ref: "main",
-    };
-    render_dockerfile(&ctx)
-}
-
 /// Generate docker-compose.yml for local development
 pub fn docker_compose_template(
     project_name: &str,

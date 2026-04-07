@@ -530,12 +530,6 @@ mod tests {
     // -------------------------------------------------------------------------
 
     #[test]
-    fn test_dockerfile_template_substitution() {
-        let result = dockerfile_template("my_app");
-        assert!(result.contains("my_app"));
-    }
-
-    #[test]
     fn test_dockerignore_template_not_empty() {
         assert!(!dockerignore_template().is_empty());
     }

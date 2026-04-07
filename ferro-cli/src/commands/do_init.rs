@@ -71,7 +71,7 @@ pub fn run(github_repo: Option<String>) {
     );
 
     // Generate Dockerfile and .dockerignore if they don't exist
-    if !super::docker_init::generate() {
+    if !super::docker_init::generate(false, "main", &[]) {
         println!(
             "{} Dockerfile already exists, skipping generation",
             style("✓").green()
