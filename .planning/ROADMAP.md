@@ -708,12 +708,12 @@ Plans:
 **Goal:** `ferro doctor` (toolchain + DB + migrations + env completeness in one command), `ferro routes --json` (machine-readable for MCP/agents), CI workflow scaffold dropped by `do:init` (`.github/workflows/ci.yml` running `cargo test`, `ferro api:check`, `ferro validate:contracts`), keep `.dockerignore` and `.gitignore` in sync via shared template.
 **Requirements**: D-01..D-22 (decisions in 124-CONTEXT.md)
 **Depends on:** Phase 122, Phase 123
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 - [x] 124-01-PLAN.md — ignore_patterns.toml single source of truth + ignore:sync command
 - [x] 124-02-PLAN.md — ferro generate-routes --json (stable schema for agents/MCP)
-- [ ] 124-03-PLAN.md — GitHub Actions CI workflow template + ferro ci:init command
+- [x] 124-03-PLAN.md — GitHub Actions CI workflow template + ferro ci:init command
 - [ ] 124-04-PLAN.md — ferro doctor (7 health checks, human + JSON output)
 - [ ] 124-05-PLAN.md — wire ci.yml generation into do:init
 
