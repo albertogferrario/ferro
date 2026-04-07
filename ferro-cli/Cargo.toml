@@ -39,7 +39,6 @@ regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ferro-json-ui = { path = "../ferro-json-ui", version = "0.1" }
-ferro-mcp = { path = "../ferro-mcp", version = "0.1" }
 ferro-projections = { path = "../ferro-projections", version = "0.1", optional = true }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 rand = "0.8"
