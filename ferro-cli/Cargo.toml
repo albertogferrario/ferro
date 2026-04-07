@@ -44,6 +44,7 @@ ferro-projections = { path = "../ferro-projections", version = "0.1", optional =
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 rand = "0.8"
 sha2 = "0.10"
+anyhow = "1"
 
 [features]
 default = ["projections"]

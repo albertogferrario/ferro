@@ -17,6 +17,93 @@ use toml::Value;
 const DEFAULT_RUST_IMAGE: &str = "rust:1.88-slim-bookworm";
 const DEFAULT_PACKAGE_NAME: &str = "app";
 
+/// Phase 122.2 §1: provider-neutral Dockerfile inputs declared by the project
+/// in `[package.metadata.ferro.deploy]`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FerroDeployMetadata {
+    pub runtime_apt: Vec<String>,
+    pub copy_dirs: Vec<String>,
+    pub ferro_version: Option<String>,
+}
+
+impl Default for FerroDeployMetadata {
+    fn default() -> Self {
+        Self {
+            runtime_apt: vec![],
+            copy_dirs: vec![
+                "themes".into(),
+                "lang".into(),
+                "public".into(),
+                "migrations".into(),
+            ],
+            ferro_version: None,
+        }
+    }
+}
+
+/// Read `<root>/Cargo.toml` and return `[package.metadata.ferro.deploy]`.
+/// Missing table → defaults. Invalid field types → Err.
+pub fn read_deploy_metadata(project_root: &Path) -> anyhow::Result<FerroDeployMetadata> {
+    let path = project_root.join("Cargo.toml");
+    let content = fs::read_to_string(&path)
+        .map_err(|e| anyhow::anyhow!("failed to read {}: {e}", path.display()))?;
+    let parsed: Value = content
+        .parse()
+        .map_err(|e| anyhow::anyhow!("failed to parse {}: {e}", path.display()))?;
+
+    let Some(table) = parsed
+        .get("package")
+        .and_then(|p| p.get("metadata"))
+        .and_then(|m| m.get("ferro"))
+        .and_then(|f| f.get("deploy"))
+    else {
+        return Ok(FerroDeployMetadata::default());
+    };
+
+    let mut meta = FerroDeployMetadata::default();
+
+    if let Some(v) = table.get("runtime_apt") {
+        let arr = v.as_array().ok_or_else(|| {
+            anyhow::anyhow!("[package.metadata.ferro.deploy].runtime_apt must be an array")
+        })?;
+        meta.runtime_apt = arr
+            .iter()
+            .map(|item| {
+                item.as_str().map(String::from).ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "[package.metadata.ferro.deploy].runtime_apt entries must be strings"
+                    )
+                })
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+    }
+
+    if let Some(v) = table.get("copy_dirs") {
+        let arr = v.as_array().ok_or_else(|| {
+            anyhow::anyhow!("[package.metadata.ferro.deploy].copy_dirs must be an array")
+        })?;
+        meta.copy_dirs = arr
+            .iter()
+            .map(|item| {
+                item.as_str().map(String::from).ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "[package.metadata.ferro.deploy].copy_dirs entries must be strings"
+                    )
+                })
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+    }
+
+    if let Some(v) = table.get("ferro_version") {
+        let s = v.as_str().ok_or_else(|| {
+            anyhow::anyhow!("[package.metadata.ferro.deploy].ferro_version must be a string")
+        })?;
+        meta.ferro_version = Some(s.to_string());
+    }
+
+    Ok(meta)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BinEntry {
     pub name: String,
@@ -329,6 +416,76 @@ path = "src/bin/beta.rs"
                 ..Default::default()
             }
         );
+    }
+
+    #[test]
+    fn read_deploy_metadata_full_table() {
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "Cargo.toml",
+            r#"
+[package]
+name = "x"
+
+[package.metadata.ferro.deploy]
+runtime_apt = ["chromium", "fonts-liberation"]
+copy_dirs = ["themes", "public"]
+ferro_version = "0.1.87"
+"#,
+        );
+        let m = read_deploy_metadata(tmp.path()).unwrap();
+        assert_eq!(m.runtime_apt, vec!["chromium", "fonts-liberation"]);
+        assert_eq!(m.copy_dirs, vec!["themes", "public"]);
+        assert_eq!(m.ferro_version.as_deref(), Some("0.1.87"));
+    }
+
+    #[test]
+    fn read_deploy_metadata_partial_uses_defaults() {
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "Cargo.toml",
+            r#"
+[package]
+name = "x"
+
+[package.metadata.ferro.deploy]
+runtime_apt = ["chromium"]
+"#,
+        );
+        let m = read_deploy_metadata(tmp.path()).unwrap();
+        assert_eq!(m.runtime_apt, vec!["chromium"]);
+        assert_eq!(
+            m.copy_dirs,
+            vec!["themes", "lang", "public", "migrations"]
+        );
+        assert_eq!(m.ferro_version, None);
+    }
+
+    #[test]
+    fn read_deploy_metadata_missing_table_returns_default() {
+        let tmp = TempDir::new().unwrap();
+        write(tmp.path(), "Cargo.toml", "[package]\nname = \"x\"\n");
+        let m = read_deploy_metadata(tmp.path()).unwrap();
+        assert_eq!(m, FerroDeployMetadata::default());
+    }
+
+    #[test]
+    fn read_deploy_metadata_invalid_type_errors() {
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "Cargo.toml",
+            r#"
+[package]
+name = "x"
+
+[package.metadata.ferro.deploy]
+runtime_apt = "not-an-array"
+"#,
+        );
+        assert!(read_deploy_metadata(tmp.path()).is_err());
     }
 
     #[test]
