@@ -488,6 +488,7 @@ mod tests {
                 confirm: None,
                 on_success: None,
                 on_error: None,
+                target: None,
             }),
             visibility: None,
         });
@@ -549,6 +550,7 @@ mod tests {
                         confirm: None,
                         on_success: None,
                         on_error: None,
+                        target: None,
                     },
                     guard: None,
                     max_width: None,
