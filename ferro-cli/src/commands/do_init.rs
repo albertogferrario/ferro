@@ -5,6 +5,7 @@ use std::fs;
 
 use crate::deploy::env_example::{parse_env_example, EnvEntry};
 use crate::project::{find_project_root, package_name, read_bins};
+use crate::templates::ci_workflow::{render_ci_workflow, CiWorkflowContext};
 use crate::templates::do_spec::{render_app_yaml, AppYamlContext};
 
 pub fn run(repo: &str, region: &str, force: bool, ferro_ref: &str) {
@@ -72,6 +73,38 @@ pub fn run(repo: &str, region: &str, force: bool, ferro_ref: &str) {
         std::process::exit(1);
     }
     println!("{} Wrote {}", style("✓").green(), app_yaml.display());
+
+    // Phase 124 D-13: also drop .github/workflows/ci.yml using the Plan 03 renderer.
+    let workflows_dir = root.join(".github/workflows");
+    let ci_yml = workflows_dir.join("ci.yml");
+    if ci_yml.exists() && !force {
+        println!(
+            "{} {} already exists — leaving untouched (rerun do:init --force to overwrite)",
+            style("•").dim(),
+            ci_yml.display()
+        );
+    } else {
+        if let Err(e) = fs::create_dir_all(&workflows_dir) {
+            eprintln!(
+                "{} Failed to create {}: {}",
+                style("Error:").red().bold(),
+                workflows_dir.display(),
+                e
+            );
+            std::process::exit(1);
+        }
+        let ci_content = render_ci_workflow(&CiWorkflowContext { package_name: &pkg });
+        if let Err(e) = fs::write(&ci_yml, ci_content) {
+            eprintln!(
+                "{} Failed to write {}: {}",
+                style("Error:").red().bold(),
+                ci_yml.display(),
+                e
+            );
+            std::process::exit(1);
+        }
+        println!("{} Generated {}", style("✓").green(), ci_yml.display());
+    }
 
     // Ensure Dockerfile + rewrite script exist.
     super::docker_init::generate(force, ferro_ref, &[]);
