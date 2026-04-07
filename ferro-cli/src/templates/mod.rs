@@ -1,6 +1,8 @@
 mod ai_boost;
 mod auth;
 pub mod ci_workflow;
+#[path = "do.rs"]
+pub mod do_;
 pub mod docker;
 mod entity;
 mod make;
