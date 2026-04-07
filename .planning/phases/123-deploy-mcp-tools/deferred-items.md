@@ -1,0 +1,1 @@
+- ferro-json-ui/src/render.rs:391 — clippy::uninlined_format_args (pre-existing, unrelated to 123-01)
