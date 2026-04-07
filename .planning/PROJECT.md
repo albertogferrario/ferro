@@ -2,11 +2,124 @@
 
 ## What This Is
 
-A production-ready, agent-first web framework for Rust. Ferro enables AI agents to build complete web applications from natural language descriptions — with reduced boilerplate, deep introspection via MCP, intelligent CLI scaffolding, session authentication, API resources, rate limiting, and real-time WebSocket broadcasting.
+A Rust web framework whose long-term reach is media-independent computation: applications expressed as data + intent, projected onto a medium. At v1.0 the medium is visual (HTML/CSS via JSON-UI). Audio, voice, and physical projections are aspirational, deferred to v2.0+.
 
-## Core Value
+Ferro is the engine. It is named industrially on purpose. It is not the product non-developers will ever see.
 
-Agents can go from "I want an app that does X" to a working, deployed application with minimal friction. Every framework decision optimizes for agent comprehension and generation capability.
+## Audience
+
+**Primary, present:** agent-assisted humans — developers using AI agents (Cursor, Claude Code, and similar) as their primary build interface. Ferro's surface is shaped for an agent reading it through MCP, not for hand-typing.
+
+**Not the audience:**
+- Non-developers directly. They are reached later via a separate **Builder Brand** (name TBD) — a human-facing tool built ON ferro, with its own aesthetics. The Builder does not need to exist for ferro v1.0.
+- Pure agents with no human in the loop. The human stays in the loop for direction, judgment, and validation.
+
+## Two-Brand Model
+
+| | Ferro | Builder Brand (future) |
+|---|---|---|
+| What | Raw engine, infrastructure | Human-facing app builder |
+| Audience | Agent-assisted developers | Non-developers |
+| Aesthetic | Industrial, durable, minimal | Beautiful, friendly, mass-market |
+| Status | Active (pre-1.0) | Does not exist yet |
+
+Non-developers never see ferro. Ferro does not need to look approachable to them.
+
+## Killer Feature
+
+**Projection / intent.** Already shipped as `ferro-projections` (v9.0): 7 structural intents (Browse, Focus, Collect, Process, Summarize, Analyze, Track), signal analyzers, and a `JsonUiRenderer` that turns a `ServiceDef` into a rendered view.
+
+This is the bet. It is not "Laravel for Rust." It reaches for the territory Bret Victor and Alan Kay pointed at: computation that is not married to a single presentation medium. At v1.0 it is visual-only. The reach is multimodal.
+
+v12.0 (JSON-UI v2 + spec-driven rendering) is polish on the killer feature, not its creation.
+
+## v1.0 Criterion
+
+v1.0 ships when **all** of the following hold:
+
+1. **Visual stack is feature-complete.** No critical gaps for the case-study set below.
+2. **Projection/intent is validated** through four checks:
+   - Gestiscilo migration (real product runs on it)
+   - Synthetic benchmark suite (canonical app classes)
+   - Time-to-app test (an agent-assisted human reaches a working app in target time)
+   - Agent-success-rate test (agents generate correct projections at acceptable rate)
+3. **Case-study coverage** combining two stances:
+   - Deliberate diversification (domains gestiscilo does not cover, to prevent overfitting)
+   - Synthetic catalog of canonical app classes
+4. **Conceptual coherence pass** across all 20 crates. Surface holds together as one mental model.
+5. **Beauty across 4 dimensions** (see below).
+6. **No stop-loss on projection/intent.** If checks reveal gaps, iterate through real cases. The bet is not abandoned.
+
+The Builder Brand **does not** need to exist for v1.0. v1.0 is years away.
+
+## Beauty as Design Criterion
+
+Four dimensions, all required, ordered by **investment priority** (substance first):
+
+1. **Compressive** — tiny input produces disproportionate output. Ferro's bet. Currently: strongest direction.
+2. **Operational** — it just works; setup, errors, edges. Currently: debt being paid down.
+3. **Conceptual** — small core in the developer's mental model. Currently: mid; Phase 113 was the first pass; coherence is now a continuous tax (see below).
+4. **Aesthetic** — visual polish of rendered output, docs, surface. Currently: weakest. Acceptable for now because the audience is agent-assisted developers, not end users.
+
+A weakness in any one dimension is a v1.0 blocker. Ordering reflects where time goes when something has to give.
+
+## How Ferro Evolves
+
+### Forcing function: gestiscilo (co-dependent)
+
+Gestiscilo's commercial roadmap is what drives ferro's evolution. The 20-crate sprawl exists because gestiscilo needed each one. The two projects are co-dependent — gestiscilo gets a substrate, ferro gets a real workload.
+
+**Mitigation against overfitting:**
+- Deliberate diversification — apps built in domains gestiscilo does not touch.
+- Synthetic catalog of canonical app classes — covers shapes gestiscilo will never encounter.
+
+### Continuous coherence tax
+
+Conceptual coherence is enforced **at write-time, every phase**, not retro-patched periodically. Every new feature phase asks: *does this fit the existing surface, or does the surface evolve to absorb it?* No phase ships without answering.
+
+### No stop-loss on projection/intent
+
+The killer feature is the bet. If validation reveals gaps, the response is iteration through more real cases, not retreat to a Laravel-shaped framework.
+
+## Named Weaknesses
+
+- **Multimodal generation is unprobed.** The 7 intents may be subtly web-shaped (e.g. Process = kanban assumes drag-drop and concurrent visibility — both are visual affordances). Cheap probe: sketch one intent across audio/voice on paper for one gestiscilo feature. Deferred to v2.0+ but tracked, not denied.
+- **Aesthetic dimension is the weakest of the four.** Acceptable pre-1.0; not acceptable at 1.0.
+- **Operational debt** in setup, error reporting, and edge cases. Actively being paid down.
+
+## Solo-Dev Leverage Sources
+
+- AI agents implementing under direction.
+- GSD workflow tooling (this `.planning/` system).
+- Gestiscilo dual-purpose hours — every gestiscilo feature is also a ferro test.
+- Time horizon as slack — v1.0 is years away. No quarterly pressure.
+- Eventually not solo (someday). Not assumed for v1.0.
+
+## Day-One v1.0 Experience
+
+A vibe coder installs `ferro-cli`, wires their existing agent (Cursor, Claude Code, etc.) to `ferro-mcp` via standard MCP config, and the agent introspects ferro through MCP tools, generates projections, and ferro renders.
+
+There is **no bundled agent UX**. `ferro-mcp` IS the v1.0 product surface — not the Rust crate API. The audit work on MCP tool descriptions, `json_ui_catalog`, and `code_templates` accuracy is making the actual product work correctly.
+
+## Public Discoverability Stance
+
+Ferro must be beautiful for any visitor — agent-assisted developers choosing a substrate form first impressions fast. But:
+
+- No marketing copy.
+- No release announcements.
+- No "what's new for users."
+
+Polish is for first-impression credibility, not for user comms. Ferro is published on crates.io as `ferro-rs` and the repo is public. That is the entire distribution.
+
+## Status
+
+- **Pre-1.0.** Breaking changes acceptable across all 0.x.
+- Published on crates.io as `ferro-rs`. Repo public.
+- v0.2.0 just shipped.
+- 20 workspace crates.
+- Current milestone tracking continues below.
+
+---
 
 ## Requirements
 
@@ -135,6 +248,12 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - ✓ Post-scaffold guidance with MCP config snippets for Claude Desktop/Code — v8.1
 - ✓ Complete API-to-MCP documentation (Quick Start Workflow, Route Customization) — v8.1
 
+**v9.0 Service Projections (shipped 2026-03-23):**
+- ✓ ferro-projections crate: ServiceDef → IntentGraph → JsonUiRenderer pipeline — v9.0
+- ✓ 7 structural intents (Browse, Focus, Collect, Process, Summarize, Analyze, Track) — v9.0
+- ✓ 5 signal analyzers ranking IntentScore — v9.0
+- ✓ Killer-feature substrate: projection/intent shipped — v9.0
+
 **v10.0 JSON-UI Visual Overhaul (shipped 2026-03-26):**
 - ✓ Inter Variable font loaded via Bunny Fonts CDN with correct Tailwind v4 --font-sans token — v10.0
 - ✓ Three-tier surface elevation (background → surface → card) with WCAG 4.5:1 dark mode contrast — v10.0
@@ -147,8 +266,10 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Publish to crates.io (manual step using PUBLISHING.md)
-- [ ] Public announcement and marketing
+- [ ] v12.0 JSON-UI v2 spec-driven rendering
+- [ ] Continuous coherence tax across all 20 crates
+- [ ] Case-study diversification (non-gestiscilo domains)
+- [ ] Synthetic canonical-app-class catalog
 
 ## Current Milestone: v12.0 JSON-UI v2 — Spec-Driven Rendering
 
@@ -182,44 +303,45 @@ Agents can go from "I want an app that does X" to a working, deployed applicatio
 - Expression language beyond `$data` and `$template` — no `$if`, `$for`, `$state`. Inner platform effect is the #1 strategic risk in SDUI (Airbnb, DoorDash, Lyft all learned this). Keep expressions minimal.
 - Full catalog schema in AI prompts — 36-component oneOf produces 40-80 KB schema, too large for system prompts. Use per-component schemas for AI; full schema only for validation.
 - JSON Typedef (JTD) as alternative schema format — simpler than JSON Schema but adds a second format. Revisit only if third-party plugin authors struggle with JSON Schema.
+- Multimodal projection (audio/voice/physical) — named weakness, deferred to v2.0+
+- Bundled agent UX — ferro-mcp + user's existing agent IS the product surface
+- Marketing / announcements — discoverability through credibility, not comms
 
 ## Next Milestone: TBD
 
 ## Context
 
 **Current State:**
-- ~90,000 lines of Rust across 14 crates (including ferro-api-mcp)
-- v10.0 shipped: JSON-UI Visual Overhaul — Inter font, surface elevation, typography, form polish, interactive states, SVG icons
-- v9.0 shipped: Service Projections — ServiceDef → IntentGraph → Renderer pipeline, protocol specification
-- v8.1 added: API DX polish — make:api-key, api:check, field exclusion, x-MCP route API
-- v8.0 added: ferro-api-mcp standalone binary — OpenAPI-to-MCP bridge for consumer AI agents
-- Framework production-ready for crates.io publication
-- 426 ferro-json-ui unit tests + comprehensive workspace test coverage
-- Sample application (app/) demonstrating Inertia integration with API layer
-- Comprehensive MCP introspection (35+ tools) + consumer MCP bridge (ferro-api-mcp)
+- ~90,000 lines of Rust across 20 crates
+- v10.0 shipped: JSON-UI Visual Overhaul
+- v9.0 shipped: Service Projections — killer feature substrate
+- v0.2.0 published on crates.io as `ferro-rs`
+- Pre-1.0; breaking changes acceptable
+- Sample application (app/) demonstrating Inertia integration
+- Comprehensive MCP introspection (35+ tools) — this is the v1.0 product surface
 
 **Tech Stack:**
 - Rust 2021 edition
 - Axum web framework
 - SeaORM database layer
-- React/Inertia.js frontend (full-stack SPA)
-- JSON-UI server-side rendering (zero-JS alternative)
+- React/Inertia.js frontend (full-stack SPA option)
+- JSON-UI server-side rendering (zero-JS option, projection target)
 - Redis for queue/cache/broadcast
 
-**Primary use case:** Agent-built applications for non-technical users. This requires:
-- Patterns simple enough for agents to reliably generate
-- Introspection deep enough for agents to understand existing code
-- Error messages clear enough for agents to self-correct
+**Primary use case:** Agent-assisted humans building applications. Ferro's surface is shaped for an agent reading it through MCP, with a human directing.
 
 Reference codebase documentation in `.planning/codebase/`:
 - ARCHITECTURE.md — Layer breakdown and request lifecycle
 - STACK.md — Dependencies and tooling
 - PATTERNS.md, HOTSPOTS.md, TESTING.md, CONVENTIONS.md, DOCUMENTATION.md
 
+See also `.planning/VISION.md` for the deeper philosophical thesis.
+
 ## Constraints
 
 - **Compatibility**: Existing sample app works with framework
 - **Rust Edition**: 2021 edition, no nightly-only features
+- **Coherence**: Every phase enforces conceptual coherence at write-time
 
 ## Key Decisions
 
@@ -227,13 +349,22 @@ Reference codebase documentation in `.planning/codebase/`:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Agent-first over developer-first | Non-technical users via agents is the target market | ✓ Good |
-| Breaking changes acceptable | No backwards compatibility constraint allows cleaner APIs | ✓ Good |
+| Agent-assisted humans, not pure agents or non-developers | Humans direct, agents implement; non-devs reached via separate Builder Brand | ✓ Good |
+| Two-brand model (Ferro / Builder Brand) | Engine and end-user product have different aesthetics and audiences | ✓ Good |
+| Projection/intent as the bet | Reaches for media-independent computation; not Laravel competition | ✓ Good |
+| Visual-only at v1.0, multimodal at v2.0+ | Multimodal is unprobed; ship the medium we know first | ✓ Good |
+| ferro-mcp IS the v1.0 product surface | Day-one experience is "wire your agent to ferro-mcp"; not the Rust crate API | ✓ Good |
+| No bundled agent UX | Vibe coders bring their own agent (Cursor, Claude Code, etc.) | ✓ Good |
+| Continuous coherence tax | Coherence enforced at write-time per phase, not retro-patched | ✓ Good |
+| No stop-loss on projection/intent | The bet is iterated through real cases, not abandoned | ✓ Good |
+| Gestiscilo as forcing function with diversification mitigation | Real workload prevents toy framework; diversification prevents overfitting | ✓ Good |
+| Substance-first beauty ordering | Compressive → operational → conceptual → aesthetic when time is scarce | ✓ Good |
+| No marketing, no announcements | Polish is for first-impression credibility, not user comms | ✓ Good |
+| Breaking changes acceptable | Pre-1.0; no backwards compatibility constraint allows cleaner APIs | ✓ Good |
 | FerroModel derive on entities | Apply derive to entity files (auto-generated) not model files | ✓ Good |
 | ValidateRules not Validate | Avoid conflict with validator crate's `Validate` derive | ✓ Good |
 | Tool vs Resource for MCP | Implemented features as tools rather than MCP resources for simpler agent consumption | ✓ Good |
-| Rebrand to "ferro" | Name appropriate for crates.io publication and public release | ✓ Good |
-| Alias pattern for migration | Keep code imports working during phased rename | ✓ Good |
+| Rebrand to "ferro" | Industrial name appropriate for engine, distinct from future Builder Brand | ✓ Good |
 | JSON fallback opt-in | `render_with_json_fallback()` per route for security | ✓ Good |
 | accepts_json() on InertiaRequest | Framework-agnostic Accept header detection | ✓ Good |
 | Docs URL: docs.ferro-rs.dev | Dedicated subdomain for documentation | ✓ Good |
@@ -263,23 +394,15 @@ Reference codebase documentation in `.planning/codebase/`:
 | Inline SVG via concat! macro | Avoids data URI which fails in CDN mode; self-contained per component | ✓ Good |
 | Dark mode pair 6 trade-off | 4.45:1 accepted (0.05 below AA) — lowering primary L breaks pair 5 | ⚠️ Revisit |
 | Shimmer CSS injected inline | Keeps skeleton self-contained; no external stylesheet dependency | ✓ Good |
-| Flat element map for v2 specs | Better for AI generation (no nesting depth), streaming (patch by ID), human readability. Adopted from Vercel json-render | Planned |
-| Props object separation in v2 | Clean boundary between structural fields (type, children, action) and component-specific props. Enables schema validation | Planned |
-| Server-side expressions only | `$data` and `$template` resolved at render time. Skip client-side `$state`/`$bindState` — server-authoritative model is correct for business tools | Planned |
-| No client-side state system | Vercel json-render's StateStore solves a problem Ferro doesn't have. Server round-trips are the right model. | Planned |
-| Clean break: delete v1 entirely | No backward compat layer. v1 types (JsonUiView, nested ComponentNode) are removed. Simpler codebase, no dual-format complexity. gestiscilo migrates all pages in one milestone | Planned |
-| JSON Schema as validation contract | `schemars` derives already exist on all props structs. Using `jsonschema` crate for runtime validation gives: zero custom validation logic, AI-constrainable structured output, standalone `.schema.json` for external tooling. Informed by JSON Forms (two-schema pattern) and json-render (Zod catalog) | Planned |
-| Per-component schema export | `catalog.component_schema("Card")` enables targeted AI generation — LLM only needs the schema for components it's generating, not the full catalog | Planned |
-| Schema-driven projections replace field_map.rs | ServiceDef → v2 Spec uses catalog JSON Schema for type mapping instead of hardcoded match arms. Projections and catalog stay consistent by construction | Planned |
-| Defer UI Schema hints layer | JSON Forms' `ui` per-element object (widget overrides, col_span, help_text) adds developer ergonomics but AI doesn't need it. Revisit post-v12.0 | Planned |
-| Manual JsonSchema impl for Component enum | Component has custom ser/de (not `#[serde(tag = "type")]`), so derive won't work. Need manual impl building oneOf with discriminator. ~200 lines. Recursive Props structs (containing `Vec<ComponentNode>`) also need manual impls. | Planned |
-| Two-tier AI prompt strategy | Full catalog schema (40-80 KB) is too large for system prompts. `catalog.prompt()` emits concise text summary; `catalog.component_schema()` provides JSON Schema for structured output per component. Models work reliably at per-component granularity, fail at 30+ component oneOf. | Planned |
-| Hard cap on expression language | Only `$data` and `$template`. No `$if`, `$for`, `$state`, `$bind`. Inner platform effect is the #1 strategic risk — DoorDash, Airbnb, and every SDUI system warn about schemas evolving into programming languages. | Planned |
-| Pre-dispatch validation by type string | `jsonschema` crate doesn't optimize oneOf with discriminators (checks sequentially). Pre-dispatch by `"type"` field to the correct sub-schema for O(1) validation per element. | Planned |
-| Compiled validator at startup | `jsonschema` compiled validators cache schema compilation. Compile once at `Application::run()`, validate every incoming spec. No per-request overhead. | Planned |
-| Max nesting depth: 3 levels | All production SDUI systems (Airbnb, DoorDash, Lyft) limit to Screen > Section > Component. Enforce in `catalog.validate()`. Keeps AI generation reliable and rendering predictable. | Planned |
-| schemars 1.2 + jsonschema 0.45 | Both target JSON Schema 2020-12. No known incompatibilities. Standard Rust pair for schema generation + validation. schemars already in Cargo.lock. | Planned |
-| Two-pass AI generation for complex pages | Generate description first, then structured spec second. Reduces hallucination. v0.dev and Lovable both use this pattern. Apply to `make:json-view` and `json_ui_generate`. | Planned |
+| Flat element map for v2 specs | Better for AI generation, streaming, human readability | Planned |
+| Props object separation in v2 | Clean boundary enables schema validation | Planned |
+| Server-side expressions only | `$data` and `$template`; server-authoritative model | Planned |
+| Clean break: delete v1 entirely | Pre-1.0; no backward compat layer | Planned |
+| JSON Schema as validation contract | `schemars` already on props structs; enables AI structured output + standalone schema | Planned |
+| Per-component schema export | Targeted AI generation; full catalog schema is too large for prompts | Planned |
+| Schema-driven projections replace field_map.rs | Projections and catalog stay consistent by construction | Planned |
+| Hard cap on expression language | Inner platform effect is the #1 strategic risk in SDUI | Planned |
+| Max nesting depth: 3 levels | All production SDUI systems converge here; keeps generation reliable | Planned |
 
 ---
-*Last updated: 2026-04-05 after v12.0 domain research*
+*Last updated: 2026-04-08 — vision pass after long philosophical session*
