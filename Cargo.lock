@@ -1714,7 +1714,6 @@ dependencies = [
  "dirs",
  "dotenvy",
  "ferro-ai",
- "ferro-cli",
  "ferro-json-ui",
  "ferro-projections",
  "once_cell",
