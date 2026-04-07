@@ -90,7 +90,7 @@ pub fn inertia_page_template(component_name: &str) -> String {
     <div className="font-sans p-8 max-w-xl mx-auto">
       <h1 className="text-3xl font-bold">{component_name}</h1>
       <p className="mt-2">
-        Edit <code className="bg-gray-100 px-1 rounded">frontend/src/pages/{component_name}.tsx</code> to get started.
+        Edit <code className="bg-muted px-1 rounded">frontend/src/pages/{component_name}.tsx</code> to get started.
       </p>
     </div>
   )

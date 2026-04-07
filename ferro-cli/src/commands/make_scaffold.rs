@@ -1112,15 +1112,15 @@ export default function Index({{ {plural} }}: Props) {{
         <h1 className="text-2xl font-bold">{name_display}</h1>
         <Link
           href="/{plural}/create"
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="bg-primary text-primary-foreground px-4 py-2 rounded hover:opacity-90"
         >
           Create {name}
         </Link>
       </div>
 
-      <table className="min-w-full bg-white border border-gray-200">
+      <table className="min-w-full bg-card border border-border">
         <thead>
-          <tr className="bg-gray-100">
+          <tr className="bg-muted">
             <th className="px-4 py-2 text-left">ID</th>
 {headers}            <th className="px-4 py-2 text-left">Actions</th>
           </tr>
@@ -1132,13 +1132,13 @@ export default function Index({{ {plural} }}: Props) {{
 {cells}              <td className="px-4 py-2">
                 <Link
                   href={{`/{plural}/${{{snake}.id}}`}}
-                  className="text-blue-500 hover:underline mr-2"
+                  className="text-primary hover:underline mr-2"
                 >
                   View
                 </Link>
                 <Link
                   href={{`/{plural}/${{{snake}.id}}/edit`}}
-                  className="text-green-500 hover:underline"
+                  className="text-primary hover:underline"
                 >
                   Edit
                 </Link>
@@ -1181,7 +1181,7 @@ fn generate_show_page(
         .map(|f| {
             format!(
                 r#"        <div className="mb-4">
-          <label className="block text-gray-700 font-bold">{label}</label>
+          <label className="block text-foreground font-bold">{label}</label>
           <p>{{{snake}.{field}}}</p>
         </div>
 "#,
@@ -1220,37 +1220,37 @@ export default function Show({{ {snake} }}: Props) {{
           <div>
             <Link
               href="/{plural}"
-              className="text-gray-500 hover:underline mr-4"
+              className="text-muted-foreground hover:underline mr-4"
             >
               Back to list
             </Link>
             <Link
               href={{`/{plural}/${{{snake}.id}}/edit`}}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded hover:opacity-90 mr-2"
             >
               Edit
             </Link>
             <button
               onClick={{handleDelete}}
-              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              className="bg-destructive text-destructive-foreground px-4 py-2 rounded hover:opacity-90"
             >
               Delete
             </button>
           </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-card shadow rounded-lg p-6">
           <div className="mb-4">
-            <label className="block text-gray-700 font-bold">ID</label>
+            <label className="block text-foreground font-bold">ID</label>
             <p>{{{snake}.id}}</p>
           </div>
 {field_displays}
           <div className="mb-4">
-            <label className="block text-gray-700 font-bold">Created At</label>
+            <label className="block text-foreground font-bold">Created At</label>
             <p>{{new Date({snake}.created_at).toLocaleString()}}</p>
           </div>
           <div className="mb-4">
-            <label className="block text-gray-700 font-bold">Updated At</label>
+            <label className="block text-foreground font-bold">Updated At</label>
             <p>{{new Date({snake}.updated_at).toLocaleString()}}</p>
           </div>
         </div>
@@ -1294,7 +1294,7 @@ fn generate_create_page(
                     let target_snake = to_snake_case(&fk.target_model);
                     format!(
                         r#"        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{label}</label>
+          <label className="block text-foreground mb-2">{label}</label>
           <select
             value={{data.{field}}}
             onChange={{e => setData('{field}', parseInt(e.target.value) || 0)}}
@@ -1307,7 +1307,7 @@ fn generate_create_page(
               </option>
             ))}}
           </select>
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1321,14 +1321,14 @@ fn generate_create_page(
                     format!(
                         r#"        {{/* TODO: Replace with select once {target_model} model exists */}}
         <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{label}</label>
+          <label className="block text-foreground mb-2">{label}</label>
           <input
             type="number"
             value={{data.{field}}}
             onChange={{e => setData('{field}', parseInt(e.target.value) || 0)}}
             className="w-full border rounded px-3 py-2"
           />
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1342,14 +1342,14 @@ fn generate_create_page(
                 if input_type == "textarea" {
                     format!(
                         r#"        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{label}</label>
+          <label className="block text-foreground mb-2">{label}</label>
           <textarea
             value={{data.{field}}}
             onChange={{e => setData('{field}', e.target.value)}}
             className="w-full border rounded px-3 py-2"
             rows={{4}}
           />
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1365,9 +1365,9 @@ fn generate_create_page(
               onChange={{e => setData('{field}', e.target.checked)}}
               className="mr-2"
             />
-            <span className="text-gray-700">{label}</span>
+            <span className="text-foreground">{label}</span>
           </label>
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1376,14 +1376,14 @@ fn generate_create_page(
                 } else {
                     format!(
                         r#"        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{label}</label>
+          <label className="block text-foreground mb-2">{label}</label>
           <input
             type="{input_type}"
             value={{data.{field}}}
             onChange={{e => setData('{field}', e.target.value)}}
             className="w-full border rounded px-3 py-2"
           />
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1471,18 +1471,18 @@ export default function Create({{ {fk_destructure}errors: serverErrors }}: Props
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Create {name}</h1>
-          <Link href="/{plural_snake}" className="text-gray-500 hover:underline">
+          <Link href="/{plural_snake}" className="text-muted-foreground hover:underline">
             Back to list
           </Link>
         </div>
 
-        <form onSubmit={{handleSubmit}} className="bg-white shadow rounded-lg p-6">
+        <form onSubmit={{handleSubmit}} className="bg-card shadow rounded-lg p-6">
 {form_inputs}
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={{processing}}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded hover:opacity-90 disabled:opacity-50"
             >
               {{processing ? 'Creating...' : 'Create {name}'}}
             </button>
@@ -1520,7 +1520,7 @@ fn generate_edit_page(
                     let target_snake = to_snake_case(&fk.target_model);
                     format!(
                         r#"        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{label}</label>
+          <label className="block text-foreground mb-2">{label}</label>
           <select
             value={{data.{field}}}
             onChange={{e => setData('{field}', parseInt(e.target.value) || 0)}}
@@ -1533,7 +1533,7 @@ fn generate_edit_page(
               </option>
             ))}}
           </select>
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1547,14 +1547,14 @@ fn generate_edit_page(
                     format!(
                         r#"        {{/* TODO: Replace with select once {target_model} model exists */}}
         <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{label}</label>
+          <label className="block text-foreground mb-2">{label}</label>
           <input
             type="number"
             value={{data.{field}}}
             onChange={{e => setData('{field}', parseInt(e.target.value) || 0)}}
             className="w-full border rounded px-3 py-2"
           />
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1568,14 +1568,14 @@ fn generate_edit_page(
                 if input_type == "textarea" {
                     format!(
                         r#"        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{label}</label>
+          <label className="block text-foreground mb-2">{label}</label>
           <textarea
             value={{data.{field}}}
             onChange={{e => setData('{field}', e.target.value)}}
             className="w-full border rounded px-3 py-2"
             rows={{4}}
           />
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1591,9 +1591,9 @@ fn generate_edit_page(
               onChange={{e => setData('{field}', e.target.checked)}}
               className="mr-2"
             />
-            <span className="text-gray-700">{label}</span>
+            <span className="text-foreground">{label}</span>
           </label>
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1602,14 +1602,14 @@ fn generate_edit_page(
                 } else {
                     format!(
                         r#"        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">{label}</label>
+          <label className="block text-foreground mb-2">{label}</label>
           <input
             type="{input_type}"
             value={{data.{field}}}
             onChange={{e => setData('{field}', e.target.value)}}
             className="w-full border rounded px-3 py-2"
           />
-          {{errors.{field} && <p className="text-red-500 text-sm mt-1">{{errors.{field}}}</p>}}
+          {{errors.{field} && <p className="text-destructive text-sm mt-1">{{errors.{field}}}</p>}}
         </div>
 "#,
                         label = to_pascal_case(&f.name),
@@ -1695,18 +1695,18 @@ export default function Edit({{ {snake}, {fk_destructure}errors: serverErrors }}
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Edit {name}</h1>
-          <Link href="/{plural}" className="text-gray-500 hover:underline">
+          <Link href="/{plural}" className="text-muted-foreground hover:underline">
             Back to list
           </Link>
         </div>
 
-        <form onSubmit={{handleSubmit}} className="bg-white shadow rounded-lg p-6">
+        <form onSubmit={{handleSubmit}} className="bg-card shadow rounded-lg p-6">
 {form_inputs}
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={{processing}}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded hover:opacity-90 disabled:opacity-50"
             >
               {{processing ? 'Saving...' : 'Save Changes'}}
             </button>
