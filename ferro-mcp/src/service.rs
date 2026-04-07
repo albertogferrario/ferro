@@ -409,6 +409,24 @@ impl FerroMcpService {
         }
     }
 
+    /// Scan project Cargo.toml for runtime crate dependencies and report
+    /// required Debian apt packages. Cross-checks the project Dockerfile.
+    /// Read-only.
+    #[tool(
+        name = "runtime_requirements",
+        description = "Scan project Cargo.toml for runtime crate dependencies (chromiumoxide, ffmpeg-next, pdfium, ...) and report required Debian apt packages. Cross-checks the project Dockerfile and lists packages missing from it. Read-only.\n\n\
+            **Returns:** { required: [{crate_name, apt_packages}], dockerfile_present, installed_in_dockerfile: [...], missing_in_dockerfile: [...] }.\n\n\
+            **Combine with:** `deploy_check` for full pre-flight validation."
+    )]
+    pub async fn runtime_requirements(&self) -> String {
+        match tools::runtime_requirements::execute(&self.project_root) {
+            Ok(report) => {
+                serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
+    }
+
     /// Execute a read-only SQL query against the database
     #[tool(
         name = "db_query",

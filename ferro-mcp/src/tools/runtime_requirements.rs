@@ -108,10 +108,7 @@ pub fn execute(project_root: &Path) -> Result<RuntimeRequirementsReport> {
             let content = fs::read_to_string(&dockerfile_path).unwrap_or_default();
             let installed = parse_dockerfile_apt_packages(&content);
             let installed_set: BTreeSet<String> = installed.iter().cloned().collect();
-            let missing: Vec<String> = required_set
-                .difference(&installed_set)
-                .cloned()
-                .collect();
+            let missing: Vec<String> = required_set.difference(&installed_set).cloned().collect();
             (true, installed, missing)
         } else {
             (false, Vec::new(), Vec::new())
@@ -163,7 +160,10 @@ chromiumoxide = "0.5"
             r.required[0].apt_packages,
             vec!["chromium".to_string(), "fonts-liberation".to_string()]
         );
-        assert_eq!(r.installed_in_dockerfile, vec!["ca-certificates".to_string()]);
+        assert_eq!(
+            r.installed_in_dockerfile,
+            vec!["ca-certificates".to_string()]
+        );
         assert_eq!(
             r.missing_in_dockerfile,
             vec!["chromium".to_string(), "fonts-liberation".to_string()]
