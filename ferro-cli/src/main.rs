@@ -321,7 +321,19 @@ enum Commands {
     },
     /// Generate a production-ready Dockerfile
     #[command(name = "docker:init")]
-    DockerInit,
+    DockerInit {
+        /// Overwrite existing Dockerfile, .dockerignore, and scripts/rewrite-ferro-deps.sh
+        #[arg(long)]
+        force: bool,
+
+        /// Git ref (branch, tag, or sha) to pin ferro* crates to in Docker builds
+        #[arg(long, default_value = "main")]
+        ferro_ref: String,
+
+        /// Comma-separated apt packages to install in the runtime stage (e.g. "chromium,fonts-liberation")
+        #[arg(long, value_delimiter = ',')]
+        runtime_deps: Vec<String>,
+    },
     /// Generate DigitalOcean App Platform deployment spec
     #[command(name = "do:init")]
     DoInit {
@@ -569,8 +581,12 @@ fn main() {
         Commands::DbQuery { query } => {
             commands::db_query::run(query);
         }
-        Commands::DockerInit => {
-            commands::docker_init::run();
+        Commands::DockerInit {
+            force,
+            ferro_ref,
+            runtime_deps,
+        } => {
+            commands::docker_init::run(force, &ferro_ref, &runtime_deps);
         }
         Commands::DoInit { repo } => {
             commands::do_init::run(repo);
