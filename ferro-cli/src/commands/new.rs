@@ -60,6 +60,15 @@ fn get_project_name(name: Option<String>, no_interaction: bool) -> String {
         return "my-ferro-app".to_string();
     }
 
+    // Refuse to prompt when stdin is not a TTY — dialoguer would panic otherwise.
+    if !std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+        eprintln!(
+            "{} project name required when not running in an interactive terminal.\n  Usage: ferro new <name>",
+            style("Error:").red().bold()
+        );
+        std::process::exit(1);
+    }
+
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Project name")
         .default("my-ferro-app".to_string())
