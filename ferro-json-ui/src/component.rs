@@ -463,6 +463,12 @@ pub struct ImageProps {
     pub alt: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aspect_ratio: Option<String>,
+    /// Optional label shown in a skeleton placeholder that sits behind the
+    /// image. When the image fails to load (or is still being generated),
+    /// the `<img>` is hidden via `onerror` and the placeholder remains
+    /// visible, keeping the container at its aspect-ratio size.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder_label: Option<String>,
 }
 
 /// Props for Avatar component.
@@ -796,6 +802,10 @@ pub struct CalendarCellProps {
     pub is_current_month: bool,
     #[serde(default)]
     pub event_count: u32,
+    /// Optional per-event Tailwind color classes (e.g. "bg-blue-500").
+    /// When non-empty, colored dots are rendered instead of plain primary dots.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dot_colors: Vec<String>,
 }
 
 /// Visual variant for action cards.
@@ -1718,6 +1728,7 @@ mod tests {
                 confirm: None,
                 on_success: None,
                 on_error: None,
+                target: None,
             },
             fields: vec![ComponentNode {
                 key: "email-input".to_string(),
@@ -1767,6 +1778,7 @@ mod tests {
                 confirm: None,
                 on_success: None,
                 on_error: None,
+                target: None,
             }),
             visibility: Some(Visibility::Condition(VisibilityCondition {
                 path: "/auth/user/role".to_string(),
@@ -1813,6 +1825,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 },
                 fields: vec![],
                 method: None,
@@ -1982,6 +1995,7 @@ mod tests {
                 src: "/img/screenshot.png".to_string(),
                 alt: "Page screenshot".to_string(),
                 aspect_ratio: None,
+                placeholder_label: None,
             }),
         ];
         assert_eq!(components.len(), 27, "should have 27 component variants");

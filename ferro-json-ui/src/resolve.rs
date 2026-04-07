@@ -13,6 +13,13 @@ use crate::view::JsonUiView;
 /// Resolve a single action using the callback.
 fn resolve_action(action: &mut Action, resolver: &impl Fn(&str) -> Option<String>) {
     if action.url.is_none() {
+        // Literal paths (starting with "/") are passed through as-is so
+        // callers can use Action::get("/dashboard/...") without registering
+        // a named route.
+        if action.handler.starts_with('/') {
+            action.url = Some(action.handler.clone());
+            return;
+        }
         if let Some(url) = resolver(&action.handler) {
             action.url = Some(url);
         }
@@ -478,6 +485,7 @@ mod tests {
             confirm: None,
             on_success: None,
             on_error: None,
+            target: None,
         }
     }
 

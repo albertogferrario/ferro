@@ -255,6 +255,12 @@ fn render_node(node: &ComponentNode, data: &Value) -> String {
     if let Some(ref action) = node.action {
         if action.method == HttpMethod::Get {
             if let Some(ref url) = action.url {
+                let target_attr = match action.target.as_deref() {
+                    Some(t) => {
+                        format!(" target=\"{}\" rel=\"noopener noreferrer\"", html_escape(t))
+                    }
+                    None => String::new(),
+                };
                 // Block-level components (like Image) need the wrapping
                 // anchor to fill the available width so their aspect-ratio
                 // container doesn't collapse. Inline style overrides the
@@ -265,9 +271,10 @@ fn render_node(node: &ComponentNode, data: &Value) -> String {
                     ""
                 };
                 return format!(
-                    "<a href=\"{}\" class=\"block\"{}>{}</a>",
+                    "<a href=\"{}\" class=\"block\"{}{}>{}</a>",
                     html_escape(url),
                     style_attr,
+                    target_attr,
                     component_html
                 );
             }
@@ -374,17 +381,33 @@ fn render_calendar_cell(props: &CalendarCellProps) -> String {
         ));
     }
 
-    // Event indicators — dots for 1-3 events, count badge for 4+
-    if props.event_count > 0 && props.event_count <= 3 {
+    // Event indicators. When dot_colors is provided, render one colored dot
+    // per entry (up to 3). Otherwise fall back to plain primary dots based on
+    // event_count. For >3 events, show a count label.
+    let total = if !props.dot_colors.is_empty() {
+        props.dot_colors.len() as u32
+    } else {
+        props.event_count
+    };
+    if total > 0 && total <= 3 {
         html.push_str("<div class=\"flex gap-1 mt-auto pt-1\">");
-        for _ in 0..props.event_count {
-            html.push_str("<span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>");
+        if props.dot_colors.is_empty() {
+            for _ in 0..total {
+                html.push_str("<span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>");
+            }
+        } else {
+            for color in props.dot_colors.iter().take(3) {
+                html.push_str(&format!(
+                    "<span class=\"w-1.5 h-1.5 rounded-full {}\"></span>",
+                    html_escape(color)
+                ));
+            }
         }
         html.push_str("</div>");
-    } else if props.event_count > 3 {
+    } else if total > 3 {
         html.push_str(&format!(
             "<span class=\"mt-auto pt-1 text-xs font-medium text-primary\">{} prenot.</span>",
-            props.event_count
+            total
         ));
     }
 
@@ -1912,15 +1935,31 @@ fn render_avatar(props: &AvatarProps) -> String {
 }
 
 fn render_image(props: &ImageProps) -> String {
-    let style_attr = match &props.aspect_ratio {
+    let container_style = match &props.aspect_ratio {
         Some(ratio) => format!(" style=\"aspect-ratio: {}\"", html_escape(ratio)),
         None => String::new(),
     };
+
+    // Placeholder sits behind the image in the same box. When the `<img>`
+    // fails to load, onerror hides it so the placeholder remains visible.
+    let placeholder = match &props.placeholder_label {
+        Some(label) => format!(
+            "<div class=\"absolute inset-0 flex items-center justify-center \
+             rounded-md bg-surface text-xs text-text-muted\">{}</div>",
+            html_escape(label)
+        ),
+        None => String::from("<div class=\"absolute inset-0 rounded-md bg-surface\"></div>"),
+    };
+
     format!(
-        "<img src=\"{}\" alt=\"{}\" class=\"w-full rounded-md object-cover object-top\"{} loading=\"lazy\">",
-        html_escape(&props.src),
-        html_escape(&props.alt),
-        style_attr,
+        "<div class=\"relative w-full\"{container_style}>\
+            {placeholder}\
+            <img src=\"{src}\" alt=\"{alt}\" \
+                 class=\"relative w-full h-full rounded-md object-cover object-top\" \
+                 loading=\"lazy\" onerror=\"this.style.display='none'\">\
+         </div>",
+        src = html_escape(&props.src),
+        alt = html_escape(&props.alt),
     )
 }
 
@@ -2616,6 +2655,7 @@ mod tests {
             confirm: None,
             on_success: None,
             on_error: None,
+            target: None,
         }
     }
 
@@ -2627,6 +2667,7 @@ mod tests {
             confirm: None,
             on_success: None,
             on_error: None,
+            target: None,
         }
     }
 
@@ -3219,6 +3260,7 @@ mod tests {
                 src: "/img/page.png".to_string(),
                 alt: "Page".to_string(),
                 aspect_ratio: Some("16/9".to_string()),
+                placeholder_label: None,
             }),
             action: None,
             visibility: None,
@@ -3240,6 +3282,7 @@ mod tests {
                 src: "/img/page.png".to_string(),
                 alt: "Page".to_string(),
                 aspect_ratio: None,
+                placeholder_label: None,
             }),
             action: None,
             visibility: None,
@@ -3257,6 +3300,7 @@ mod tests {
                 src: "x\" onerror=\"alert(1)".to_string(),
                 alt: "Test".to_string(),
                 aspect_ratio: None,
+                placeholder_label: None,
             }),
             action: None,
             visibility: None,
@@ -3893,6 +3937,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 },
                 fields: vec![],
                 method: None,
@@ -3922,6 +3967,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 },
                 fields: vec![],
                 method: None,
@@ -3948,6 +3994,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 },
                 fields: vec![],
                 method: Some(HttpMethod::Put),
@@ -3974,6 +4021,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 },
                 fields: vec![],
                 method: None,
@@ -5459,6 +5507,7 @@ mod tests {
                 confirm: None,
                 on_success: None,
                 on_error: None,
+                target: None,
             }),
             visibility: Some(Visibility::Condition(VisibilityCondition {
                 path: "/auth/user/role".to_string(),
@@ -5611,6 +5660,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 },
                 fields: vec![],
                 method: None,
@@ -5639,6 +5689,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 },
                 fields: vec![],
                 method: None,
@@ -5722,6 +5773,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 }),
                 action_label: Some("New order".into()),
             },
@@ -5774,6 +5826,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 }),
             },
         ));
@@ -7120,6 +7173,7 @@ mod tests {
                         confirm: None,
                         on_success: None,
                         on_error: None,
+                        target: None,
                     },
                     destructive: false,
                 },
@@ -7132,6 +7186,7 @@ mod tests {
                         confirm: None,
                         on_success: None,
                         on_error: None,
+                        target: None,
                     },
                     destructive: true,
                 },
@@ -7197,6 +7252,7 @@ mod tests {
                     }),
                     on_success: None,
                     on_error: None,
+                    target: None,
                 },
                 destructive: true,
             }],
@@ -7328,6 +7384,7 @@ mod tests {
             is_today: true,
             is_current_month: true,
             event_count: 0,
+            dot_colors: vec![],
         };
         let html = render_calendar_cell(&props);
         assert!(html.contains("bg-primary"), "today has bg-primary");
@@ -7346,6 +7403,7 @@ mod tests {
             is_today: false,
             is_current_month: false,
             event_count: 0,
+            dot_colors: vec![],
         };
         let html = render_calendar_cell(&props);
         assert!(html.contains("opacity-40"), "out-of-month has opacity");
@@ -7358,6 +7416,7 @@ mod tests {
             is_today: false,
             is_current_month: true,
             event_count: 3,
+            dot_colors: vec![],
         };
         let html = render_calendar_cell(&props);
         assert!(
@@ -7374,6 +7433,7 @@ mod tests {
             is_today: false,
             is_current_month: true,
             event_count: 1,
+            dot_colors: vec![],
         };
         let html = render_calendar_cell(&props);
         assert!(
@@ -7544,6 +7604,7 @@ mod tests {
                         confirm: None,
                         on_success: None,
                         on_error: None,
+                        target: None,
                     },
                     destructive: false,
                 },
@@ -7556,6 +7617,7 @@ mod tests {
                         confirm: None,
                         on_success: None,
                         on_error: None,
+                        target: None,
                     },
                     destructive: true,
                 },

@@ -327,6 +327,7 @@ mod tests {
                     confirm: None,
                     on_success: None,
                     on_error: None,
+                    target: None,
                 }),
                 visibility: Some(Visibility::Condition(VisibilityCondition {
                     path: "/auth/user/role".to_string(),

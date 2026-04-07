@@ -218,7 +218,7 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
 /// Render the header shell from HeaderProps for DashboardLayout.
 fn layout_header_html(props: &HeaderProps) -> String {
     let mut html = String::from(
-        "<header class=\"sticky top-0 z-30 flex items-center justify-between \
+        "<header class=\"sticky top-0 z-30 relative flex items-center \
          px-4 py-3 bg-background border-b border-border md:pl-72\">",
     );
     // Mobile hamburger button — visible only on small screens.
@@ -229,12 +229,13 @@ fn layout_header_html(props: &HeaderProps) -> String {
          <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
          d=\"M4 6h16M4 12h16M4 18h16\"/></svg></button>",
     );
-    // Business name.
+    // Business name — absolutely centered relative to the header box,
+    // independent of hamburger/notification/user elements.
     html.push_str(&format!(
-        "<span class=\"text-lg font-semibold text-text\">{}</span>",
+        "<span class=\"absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-lg font-semibold text-text pointer-events-none\">{}</span>",
         html_escape(&props.business_name)
     ));
-    html.push_str("<div class=\"flex items-center gap-4\">");
+    html.push_str("<div class=\"ml-auto flex items-center gap-4\">");
     // Notification bell with dropdown toggle.
     html.push_str("<div class=\"relative\">");
     if let Some(count) = props.notification_count {

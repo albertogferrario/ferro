@@ -81,6 +81,10 @@ pub struct Action {
     pub on_success: Option<ActionOutcome>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on_error: Option<ActionOutcome>,
+    /// Anchor target for navigation (GET) actions — e.g. "_blank" to open
+    /// in a new tab. When set, `rel="noopener noreferrer"` is added.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
 }
 
 impl Action {
@@ -93,6 +97,7 @@ impl Action {
             confirm: None,
             on_success: None,
             on_error: None,
+            target: None,
         }
     }
 
@@ -164,6 +169,7 @@ mod tests {
             confirm: None,
             on_success: None,
             on_error: None,
+            target: None,
         };
         let json = serde_json::to_value(&action).unwrap();
         assert_eq!(json["handler"], "users.store");
@@ -187,6 +193,7 @@ mod tests {
                 url: "/users".to_string(),
             }),
             on_error: Some(ActionOutcome::ShowErrors),
+            target: None,
         };
         let json = serde_json::to_string(&action).unwrap();
         let parsed: Action = serde_json::from_str(&json).unwrap();
@@ -243,6 +250,7 @@ mod tests {
             confirm: None,
             on_success: None,
             on_error: None,
+            target: None,
         };
         let json = serde_json::to_value(&action).unwrap();
         assert!(json.get("url").is_none(), "url should be omitted when None");
@@ -257,6 +265,7 @@ mod tests {
             confirm: None,
             on_success: None,
             on_error: None,
+            target: None,
         };
         let json = serde_json::to_value(&action).unwrap();
         assert_eq!(json["url"], "/users");
@@ -271,6 +280,7 @@ mod tests {
             confirm: None,
             on_success: None,
             on_error: None,
+            target: None,
         };
         let json = serde_json::to_string(&action).unwrap();
         let parsed: Action = serde_json::from_str(&json).unwrap();

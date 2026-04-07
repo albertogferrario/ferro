@@ -124,14 +124,7 @@ mod tests {
         assert!(!p.categories.is_empty());
         let names: Vec<&str> = p.categories.iter().map(|c| c.name.as_str()).collect();
         for required in [
-            "rust",
-            "node",
-            "ide",
-            "env",
-            "sqlite",
-            "planning",
-            "storage",
-            "secrets",
+            "rust", "node", "ide", "env", "sqlite", "planning", "storage", "secrets",
         ] {
             assert!(
                 names.contains(&required),
