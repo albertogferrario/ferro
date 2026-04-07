@@ -1057,33 +1057,68 @@ ferro db:query "SELECT COUNT(*) FROM posts"
 
 ### `ferro do:init`
 
-Initialize DigitalOcean App Platform deployment. Generates the app spec and Dockerfile in one step.
+Initialize DigitalOcean App Platform deployment. Generates `.do/app.yaml` only
+— CI and Dockerfile scaffolding are handled by separate commands (`ci:init`,
+`docker:init`).
 
 ```bash
-ferro do:init --repo owner/repo
+ferro do:init           # write .do/app.yaml if missing
+ferro do:init --force   # regenerate an existing spec
 ```
 
-**Generated files:**
-- `.do/app.yaml` — App Platform spec with service config (add env vars via dashboard)
-- `Dockerfile` — Production-ready multi-stage build (if not present)
-- `.dockerignore` — Excludes build artifacts (if not present)
+The GitHub repo is auto-detected from `git remote get-url origin`; the region
+is hardcoded to `fra1` in the template (edit the file afterwards to change
+it). The command reads `.env.production` to enumerate env keys for a
+commented-out scaffold; if `.env.production` is missing the command fails
+hard.
+
+**Generated file:**
+- `.do/app.yaml` — App Platform spec with sanitized app name, auto-detected
+  `github.repo`, `region: fra1`, a `services:` web entry, a `workers:` entry
+  per non-test `[[bin]]`, and a commented-out `envs:` scaffold. No
+  `databases:` block is emitted.
 
 **Options:**
-- `--repo`, `-r` — GitHub repository in `owner/repo` format (required)
+- `--force`, `-f` — Overwrite an existing `.do/app.yaml`.
+
+See [`do:init`](../cli/do-init.md) for the full page.
 
 ## Docker Commands
 
 ### `ferro docker:init`
 
-Generate a production-ready Dockerfile. Also called automatically by `do:init` if no Dockerfile exists.
+Generate a production-ready Dockerfile plus a `Cargo.docker.toml` used to
+rewrite path dependencies to published versions during the Docker build.
 
 ```bash
-ferro docker:init
+ferro docker:init                      # use the default ferro version
+ferro docker:init --ferro-version 0.2  # pin a specific ferro release
+ferro docker:init --force              # overwrite existing files
 ```
 
+**Options:**
+- `--force`, `-f` — Overwrite existing `Dockerfile` / `Cargo.docker.toml`.
+- `--ferro-version` — Published ferro version to rewrite path deps to.
+
 **Generated files:**
-- `Dockerfile`
+- `Dockerfile` — multi-stage build, base image defaults to
+  `rust:stable-slim-bookworm`.
+- `Cargo.docker.toml` — path→version rewrite used during `docker build`.
 - `.dockerignore`
+
+**`[package.metadata.ferro.deploy]` in `Cargo.toml`:**
+
+`docker:init` reads optional deploy metadata from the project's `Cargo.toml`:
+
+```toml
+[package.metadata.ferro.deploy]
+runtime_apt = ["libpq5", "ca-certificates"]
+copy_dirs = ["migrations", "templates"]
+```
+
+- `runtime_apt` — additional apt packages installed into the runtime stage.
+- `copy_dirs` — extra directories copied from the builder into the runtime
+  image.
 
 ### `ferro docker:compose`
 
@@ -1352,8 +1387,10 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `db:seed` | Run database seeders |
 | `db:sync` | Sync database schema |
 | `db:query` | Execute raw SQL query |
-| `do:init` | Initialize DigitalOcean App Platform deployment |
-| `docker:init` | Generate Dockerfile and .dockerignore |
+| `do:init` | Generate DigitalOcean App Platform spec (`.do/app.yaml`) |
+| `ci:init` | Generate GitHub Actions CI workflow (`.github/workflows/ci.yml`) |
+| `doctor` | Run project health diagnostics (nine checks) |
+| `docker:init` | Generate Dockerfile, Cargo.docker.toml, and .dockerignore |
 | `docker:compose` | Manage Docker Compose |
 | `schedule:run` | Run due scheduled tasks |
 | `schedule:work` | Start scheduler worker |
