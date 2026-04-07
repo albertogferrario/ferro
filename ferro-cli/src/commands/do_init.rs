@@ -6,7 +6,7 @@ use std::fs;
 use crate::deploy::env_example::{parse_env_example, EnvEntry};
 use crate::project::{find_project_root, package_name, read_bins};
 use crate::templates::ci_workflow::{render_ci_workflow, CiWorkflowContext};
-use crate::templates::do_spec::{render_app_yaml, AppYamlContext};
+use crate::templates::do_spec::{render_app_yaml, sanitize_do_app_name, AppYamlContext};
 
 pub fn run(repo: &str, region: &str, force: bool, ferro_ref: &str) {
     if !is_valid_repo(repo) {
@@ -50,13 +50,25 @@ pub fn run(repo: &str, region: &str, force: bool, ferro_ref: &str) {
     }
 
     let pkg = package_name(&root);
-    let bins = read_bins(&root);
+    let app_name = sanitize_do_app_name(&pkg);
+    // Rename the server bin from the raw package name to the sanitized app name so
+    // the workers filter in render_app_yaml (which matches bin.name against
+    // ctx.package_name) correctly identifies the web service.
+    let bins: Vec<_> = read_bins(&root)
+        .into_iter()
+        .map(|mut b| {
+            if b.name == pkg {
+                b.name = app_name.clone();
+            }
+            b
+        })
+        .collect();
     let env_entries: Vec<EnvEntry> = fs::read_to_string(root.join(".env.example"))
         .map(|s| parse_env_example(&s))
         .unwrap_or_default();
 
     let ctx = AppYamlContext {
-        package_name: &pkg,
+        package_name: &app_name,
         github_repo: repo,
         region,
         bins: &bins,
@@ -169,12 +181,21 @@ mod tests {
         }
         fs::create_dir_all(&do_dir).unwrap();
         let pkg = package_name(root);
-        let bins = read_bins(root);
+        let app_name = sanitize_do_app_name(&pkg);
+        let bins: Vec<_> = read_bins(root)
+            .into_iter()
+            .map(|mut b| {
+                if b.name == pkg {
+                    b.name = app_name.clone();
+                }
+                b
+            })
+            .collect();
         let env_entries: Vec<EnvEntry> = fs::read_to_string(root.join(".env.example"))
             .map(|s| parse_env_example(&s))
             .unwrap_or_default();
         let ctx = AppYamlContext {
-            package_name: &pkg,
+            package_name: &app_name,
             github_repo: repo,
             region,
             bins: &bins,
@@ -196,5 +217,23 @@ mod tests {
         assert!(yaml.contains("APP_URL"));
         assert!(yaml.contains("${db.DATABASE_URL}"));
         assert!(yaml.contains("databases:"));
+    }
+
+    #[test]
+    fn writes_app_yaml_sanitizes_package_name() {
+        let td = TempDir::new().unwrap();
+        fs::write(
+            td.path().join("Cargo.toml"),
+            "[package]\nname = \"mkmenu_ferro\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+        fs::write(td.path().join(".env.example"), "APP_URL=https://x.io\n").unwrap();
+        run_for_test(td.path(), "owner/repo", "fra1", true);
+        let yaml = fs::read_to_string(td.path().join(".do/app.yaml")).unwrap();
+        assert!(
+            yaml.contains("name: mkmenu-ferro"),
+            "expected sanitized name, got:\n{yaml}"
+        );
+        assert!(!yaml.contains("name: mkmenu_ferro"));
     }
 }
