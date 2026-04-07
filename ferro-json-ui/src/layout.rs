@@ -572,7 +572,10 @@ impl Layout for DashboardLayout {
             String::new()
         };
 
-        let runtime_script = format!("<script>\n{}\n</script>", crate::runtime::FERRO_RUNTIME_JS);
+        let runtime_script = format!(
+            "<script>\n{}\n</script>",
+            crate::runtime::FERRO_RUNTIME_JS.as_str()
+        );
         let scripts = if ctx.scripts.is_empty() {
             runtime_script
         } else {
