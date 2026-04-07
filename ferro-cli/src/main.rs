@@ -334,6 +334,13 @@ enum Commands {
         #[arg(long, value_delimiter = ',')]
         runtime_deps: Vec<String>,
     },
+    /// Pre-flight: verify the chosen ferro git ref is pushed to the remote
+    #[command(name = "deploy:check")]
+    DeployCheck {
+        /// Git ref to verify (default: main)
+        #[arg(long, default_value = "main")]
+        ferro_ref: String,
+    },
     /// Generate DigitalOcean App Platform deployment spec (.do/app.yaml)
     #[command(name = "do:init")]
     DoInit {
@@ -599,6 +606,9 @@ fn main() {
             runtime_deps,
         } => {
             commands::docker_init::run(force, &ferro_ref, &runtime_deps);
+        }
+        Commands::DeployCheck { ferro_ref } => {
+            commands::deploy_check::run(&ferro_ref);
         }
         Commands::DoInit {
             repo,
