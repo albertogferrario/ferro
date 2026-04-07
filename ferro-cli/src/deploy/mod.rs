@@ -4,6 +4,9 @@
 
 #![allow(dead_code)]
 
+pub mod env_production;
+pub mod rewrite_ferro_version;
+
 use toml::Value;
 
 // ---------------------------------------------------------------------------

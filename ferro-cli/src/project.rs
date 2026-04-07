@@ -456,10 +456,7 @@ runtime_apt = ["chromium"]
         );
         let m = read_deploy_metadata(tmp.path()).unwrap();
         assert_eq!(m.runtime_apt, vec!["chromium"]);
-        assert_eq!(
-            m.copy_dirs,
-            vec!["themes", "lang", "public", "migrations"]
-        );
+        assert_eq!(m.copy_dirs, vec!["themes", "lang", "public", "migrations"]);
         assert_eq!(m.ferro_version, None);
     }
 
