@@ -19,7 +19,7 @@ Server-side [Inertia.js](https://inertiajs.com) adapter for the Ferro framework.
 
 ```toml
 [dependencies]
-ferro-inertia = "0.1"
+ferro-inertia = "0.2"
 ```
 
 ## Quick Start
@@ -125,52 +125,59 @@ X-Inertia-Partial-Component: Dashboard
 
 Only the requested props (`user`, `notifications`) will be included in the response.
 
-## Framework Examples
+## Usage in Ferro
 
-### Axum
+`ferro-inertia` is ferro-coupled: the `Request` and `HttpResponse` types come from the framework, and `Inertia::render` accepts a `&Request` directly. The `ferro` crate re-exports `Inertia`, `InertiaProps`, and `SavedInertiaContext`.
+
+### Basic render
 
 ```rust
-use axum::{response::IntoResponse, http::StatusCode};
-use ferro_inertia::InertiaHttpResponse;
+use ferro::{handler, Inertia, InertiaProps, Request, Response};
 
-impl IntoResponse for InertiaHttpResponse {
-    fn into_response(self) -> axum::response::Response {
-        let mut response = axum::response::Response::builder()
-            .status(StatusCode::from_u16(self.status).unwrap());
+#[derive(InertiaProps)]
+pub struct HomeProps {
+    pub title: String,
+}
 
-        for (name, value) in self.headers {
-            response = response.header(name, value);
-        }
-
-        response
-            .header("Content-Type", self.content_type)
-            .body(self.body.into())
-            .unwrap()
-    }
+#[handler]
+pub async fn index(req: Request) -> Response {
+    Inertia::render(&req, "Home", HomeProps {
+        title: "Welcome".to_string(),
+    })
 }
 ```
 
-### Actix-web
+Component paths (`"Home"`) are validated at compile time against the frontend component tree.
+
+### Form handlers — `SavedInertiaContext`
+
+`req.input().await` consumes the request, which means you lose access to the Inertia headers needed by `render`. Save the context first, then use `render_ctx`:
 
 ```rust
-use actix_web::HttpResponse;
-use ferro_inertia::InertiaHttpResponse;
+use ferro::{handler, Inertia, Request, Response, SavedInertiaContext};
 
-impl From<InertiaHttpResponse> for HttpResponse {
-    fn from(res: InertiaHttpResponse) -> Self {
-        let mut builder = HttpResponse::build(
-            actix_web::http::StatusCode::from_u16(res.status).unwrap()
-        );
+#[handler]
+pub async fn store(req: Request) -> Response {
+    let ctx = SavedInertiaContext::from(&req);
+    let form = req.input().await?;  // Consumes req
 
-        for (name, value) in res.headers {
-            builder.insert_header((name, value));
-        }
+    // ... validate and persist ...
 
-        builder
-            .content_type(res.content_type)
-            .body(res.body)
-    }
+    Inertia::render_ctx(&ctx, "Users/Show", ShowProps { /* ... */ })
 }
+```
+
+### Shared props
+
+```rust
+use ferro::{Inertia, InertiaShared};
+
+let shared = InertiaShared::new()
+    .auth(current_user)
+    .csrf(csrf_token)
+    .flash(flash_messages);
+
+Inertia::render_with_shared(&req, "Dashboard", props, &shared)
 ```
 
 ## License
