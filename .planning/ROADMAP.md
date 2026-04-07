@@ -733,10 +733,10 @@ Plans:
 **Goal:** Replace the Phase 122/122.1/123/124 deploy machinery with a simpler, heuristic-light, provider-honest shape. Cut custom logic from ~1500 LOC to ~375 LOC. Reduce surviving heuristics from 6 to 1. Delete the 3 deploy MCP tools, revert the ferro-cli↔ferro-mcp circular-dep workaround to in-process launch, delete the golden fixture suite, and fold surviving deploy checks into `ferro doctor`. New Cargo.toml `[package.metadata.ferro.deploy]` schema (runtime_apt, copy_dirs, ferro_version) drives the new Dockerfile renderer. New `.env.production` key-only parser replaces the `.env.example` SECRET classifier. `.do/app.yaml` becomes a one-shot starter owned by the user after scaffold. See `phases/122.2-deploy-simplification/SCOPE.md`.
 **Requirements**: SCOPE §1..§13 + Verification
 **Depends on:** Phase 122, 122.1, 123, 124
-**Plans:** 9 plans
+**Plans:** 1/9 plans executed
 
 Plans:
-- [ ] 122.2-01-PLAN.md — Delete ferro-mcp deploy tools (SCOPE §9)
+- [x] 122.2-01-PLAN.md — Delete ferro-mcp deploy tools (SCOPE §9)
 - [ ] 122.2-02-PLAN.md — Revert ferro-cli↔ferro-mcp circular dep, in-process mcp launch (SCOPE §10)
 - [ ] 122.2-03-PLAN.md — Delete obsolete ferro-cli deploy modules, commands, golden tests (SCOPE §6, §8, §11, §13)
 - [ ] 122.2-04-PLAN.md — Stub docker_init and do_init before Wave 2 rewrite (SCOPE §2-§5 prep)
