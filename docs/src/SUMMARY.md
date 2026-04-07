@@ -56,6 +56,10 @@
 # Reference
 
 - [CLI Reference](reference/cli.md)
+  - [do:init](cli/do-init.md)
+  - [ci:init](cli/ci-init.md)
+  - [doctor](cli/doctor.md)
+  - [routes:json-schema](cli/routes-json-schema.md)
 
 # Upgrading
 
