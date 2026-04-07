@@ -11,6 +11,35 @@ use crate::project::BinEntry;
 
 const APP_YAML_TPL: &str = include_str!("files/do/app.yaml.tpl");
 
+/// Sanitize a Cargo package name into a DO App Platform-compliant app name.
+/// Lowercase, `_` → `-`, drop any char not in `[a-z0-9-]`, collapse consecutive `-`.
+pub fn sanitize_do_app_name(pkg: &str) -> String {
+    let mut out = String::with_capacity(pkg.len());
+    let mut prev_dash = false;
+    for c in pkg.chars() {
+        let c = c.to_ascii_lowercase();
+        let mapped = if c == '_' {
+            Some('-')
+        } else if c.is_ascii_alphanumeric() || c == '-' {
+            Some(c)
+        } else {
+            None
+        };
+        if let Some(ch) = mapped {
+            if ch == '-' {
+                if prev_dash {
+                    continue;
+                }
+                prev_dash = true;
+            } else {
+                prev_dash = false;
+            }
+            out.push(ch);
+        }
+    }
+    out
+}
+
 /// Context driving DO `app.yaml` rendering.
 pub struct AppYamlContext<'a> {
     pub package_name: &'a str,
@@ -206,6 +235,15 @@ mod tests {
         assert!(!out.contains("envs:"));
         assert!(!out.contains("databases:"));
         assert!(!out.contains("\nworkers:"));
+    }
+
+    #[test]
+    fn sanitize_do_app_name_cases() {
+        assert_eq!(sanitize_do_app_name("mkmenu_ferro"), "mkmenu-ferro");
+        assert_eq!(sanitize_do_app_name("MyApp_v2"), "myapp-v2");
+        assert_eq!(sanitize_do_app_name("foo__bar"), "foo-bar");
+        assert_eq!(sanitize_do_app_name("app.name"), "appname");
+        assert_eq!(sanitize_do_app_name("gestiscilo"), "gestiscilo");
     }
 
     #[test]
