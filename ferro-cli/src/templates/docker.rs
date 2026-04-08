@@ -6,6 +6,12 @@
 // + [[bin]] enumeration. No GITHUB_TOKEN, no shell scripts, no workspace
 // member walking. The static .dockerignore template is reused for the
 // `docker:init` and `new` scaffolds.
+//
+// Phase 127 Plan 02: the ENTRYPOINT block is composed from a caller-resolved
+// `web_bin` (see `crate::deploy::bin_detect::detect_web_bin`) — the renderer
+// stays pure and does no I/O. `detect_web_bin` is called at the boundary in
+// `commands::docker_init` so tests can exercise the renderer with any
+// arbitrary web_bin without touching the filesystem.
 
 use std::fs;
 use std::path::Path;
@@ -31,6 +37,8 @@ pub struct DockerContext {
     pub has_frontend: bool,
     /// All `[[bin]]` names declared in the project Cargo.toml.
     pub bins: Vec<String>,
+    /// Resolved web bin name (D-02). Used for the runtime ENTRYPOINT.
+    pub web_bin: String,
     /// `metadata.copy_dirs` filtered down to dirs that actually exist.
     pub copy_dirs_present: Vec<String>,
     /// Verbatim `metadata.runtime_apt`.
@@ -44,13 +52,6 @@ pub fn render_dockerfile(ctx: &DockerContext) -> String {
     } else {
         String::new()
     };
-
-    let bin_builds = ctx
-        .bins
-        .iter()
-        .map(|b| format!("RUN cargo build --release --bin {b}"))
-        .collect::<Vec<_>>()
-        .join("\n");
 
     let bin_copies = ctx
         .bins
@@ -86,13 +87,24 @@ pub fn render_dockerfile(ctx: &DockerContext) -> String {
         format!("{}-slim-bookworm", ctx.rust_channel)
     };
 
-    DOCKERFILE_TPL
+    let entrypoint_block = format!(
+        "ENTRYPOINT [\"/usr/local/bin/{}\"]\nCMD [\"serve\"]",
+        ctx.web_bin
+    );
+
+    let rendered = DOCKERFILE_TPL
         .replace("{{FRONTEND_STAGE}}", &frontend_stage)
         .replace("{{RUST_IMAGE_TAG}}", &rust_image_tag)
-        .replace("{{BIN_BUILDS}}", &bin_builds)
+        .replace("{{ENTRYPOINT}}", &entrypoint_block)
         .replace("{{BIN_COPIES}}", &bin_copies)
         .replace("{{COPY_DIRS}}", &copy_dirs)
-        .replace("{{RUNTIME_APT}}", &runtime_apt)
+        .replace("{{RUNTIME_APT}}", &runtime_apt);
+
+    debug_assert!(
+        !rendered.contains("{{"),
+        "unresolved template token in rendered Dockerfile:\n{rendered}"
+    );
+    rendered
 }
 
 const FRONTEND_STAGE_BODY: &str = r#"
@@ -200,6 +212,7 @@ mod tests {
             rust_channel: "stable".to_string(),
             has_frontend: false,
             bins: vec!["app".to_string()],
+            web_bin: "app".to_string(),
             copy_dirs_present: vec![],
             runtime_apt: vec![],
         }
@@ -235,12 +248,14 @@ mod tests {
     }
 
     #[test]
-    fn multi_bin_emits_per_bin_build_and_copy() {
+    fn multi_bin_emits_per_bin_copy_without_per_bin_build() {
         let mut c = ctx();
         c.bins = vec!["web".into(), "worker".into()];
+        c.web_bin = "web".into();
         let out = render_dockerfile(&c);
-        assert!(out.contains("cargo build --release --bin web"));
-        assert!(out.contains("cargo build --release --bin worker"));
+        // D-10: no per-bin build invocations; the plain `cargo build --release`
+        // already builds every declared [[bin]].
+        assert_eq!(out.matches("cargo build --release --bin").count(), 0);
         assert!(
             out.contains("COPY --from=backend-builder /app/target/release/web /usr/local/bin/web")
         );
@@ -355,5 +370,86 @@ name = "worker"
     #[test]
     fn dockerignore_is_static_passthrough() {
         assert!(dockerignore_template().contains("database.db"));
+    }
+}
+
+#[cfg(test)]
+mod entrypoint_tests {
+    use super::*;
+
+    fn test_ctx_single(bin: &str) -> DockerContext {
+        DockerContext {
+            rust_channel: "stable".to_string(),
+            has_frontend: false,
+            bins: vec![bin.to_string()],
+            web_bin: bin.to_string(),
+            copy_dirs_present: vec![],
+            runtime_apt: vec![],
+        }
+    }
+
+    fn test_ctx_multi(web: &str, bins: &[&str]) -> DockerContext {
+        DockerContext {
+            rust_channel: "stable".to_string(),
+            has_frontend: false,
+            bins: bins.iter().map(|s| s.to_string()).collect(),
+            web_bin: web.to_string(),
+            copy_dirs_present: vec![],
+            runtime_apt: vec![],
+        }
+    }
+
+    #[test]
+    fn entrypoint_emitted_for_single_bin() {
+        let out = render_dockerfile(&test_ctx_single("myapp"));
+        assert!(out.contains(r#"ENTRYPOINT ["/usr/local/bin/myapp"]"#));
+        assert!(out.contains(r#"CMD ["serve"]"#));
+    }
+
+    #[test]
+    fn entrypoint_emitted_for_multi_bin() {
+        let out = render_dockerfile(&test_ctx_multi("api", &["api", "worker"]));
+        assert!(out.contains(r#"ENTRYPOINT ["/usr/local/bin/api"]"#));
+    }
+
+    #[test]
+    fn cmd_is_serve() {
+        let out = render_dockerfile(&test_ctx_single("x"));
+        assert!(out.contains(r#"CMD ["serve"]"#));
+    }
+
+    #[test]
+    fn dockerfile_single_build_invocation() {
+        let out = render_dockerfile(&test_ctx_single("x"));
+        let build_releases = out.matches("cargo build --release").count();
+        assert_eq!(
+            build_releases, 1,
+            "expected exactly one `cargo build --release`"
+        );
+        assert_eq!(out.matches("cargo build --release --bin").count(), 0);
+    }
+
+    #[test]
+    fn no_unresolved_tokens_in_dockerfile() {
+        let out = render_dockerfile(&test_ctx_single("x"));
+        assert!(!out.contains("{{"), "unresolved token(s) in output:\n{out}");
+    }
+
+    #[test]
+    fn dockerignore_whitelists_readme() {
+        let out = dockerignore_template();
+        assert!(out.contains("*.md"));
+        assert!(out.contains("!README.md"));
+        let idx_whitelist = out.find("!README.md").unwrap();
+        let before = &out[..idx_whitelist];
+        let last_line = before
+            .lines()
+            .rev()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("");
+        assert!(
+            last_line.trim_start().starts_with('#'),
+            "expected comment above !README.md, got: {last_line}"
+        );
     }
 }

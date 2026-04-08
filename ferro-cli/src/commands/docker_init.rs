@@ -4,6 +4,7 @@
 use std::fs;
 use std::path::Path;
 
+use crate::deploy::bin_detect::detect_web_bin;
 use crate::deploy::rewrite_ferro_version::rewrite_cargo_docker_toml;
 use crate::project::{find_project_root, read_deploy_metadata};
 use crate::templates::docker::{
@@ -38,10 +39,12 @@ fn execute(force: bool, ferro_version_flag: Option<&str>) -> anyhow::Result<()> 
         .cloned()
         .collect();
 
+    let web_bin = detect_web_bin(&root)?;
     let ctx = DockerContext {
         rust_channel,
         has_frontend,
         bins,
+        web_bin,
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt.clone(),
     };
