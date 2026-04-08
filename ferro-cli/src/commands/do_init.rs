@@ -85,8 +85,7 @@ fn run_inner(force: bool, dry_run: bool) -> anyhow::Result<()> {
         // 127-04-PLAN explicitly calls this out). Render errors remain hard
         // errors (D-19).
         let metadata = read_deploy_metadata(&root)?;
-        let cargo_docker =
-            compute_cargo_docker_toml(&root, metadata.ferro_version.as_deref())?;
+        let cargo_docker = compute_cargo_docker_toml(&root, metadata.ferro_version.as_deref())?;
         let files = [
             RenderedFile {
                 relative_path: ".do/app.yaml".into(),
@@ -185,10 +184,7 @@ mod tests {
     fn do_init_footer_line_count() {
         let s = do_init_footer();
         let n = s.lines().filter(|l| !l.trim().is_empty()).count();
-        assert!(
-            (3..=5).contains(&n),
-            "footer has {n} non-empty lines: {s}"
-        );
+        assert!((3..=5).contains(&n), "footer has {n} non-empty lines: {s}");
         assert!(s.is_ascii(), "footer must be ASCII-only");
     }
 

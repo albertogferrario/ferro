@@ -11,9 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::deploy::bin_detect::detect_web_bin;
-use crate::deploy::rewrite_ferro_version::{
-    compute_cargo_docker_toml, persist_cargo_docker_toml,
-};
+use crate::deploy::rewrite_ferro_version::{compute_cargo_docker_toml, persist_cargo_docker_toml};
 use crate::project::{find_project_root, package_name, read_deploy_metadata};
 use crate::templates::docker::{
     dockerignore_template, read_bins, read_rust_channel, render_dockerfile, DockerContext,
@@ -48,11 +46,7 @@ pub fn run_with(force: bool, ferro_version: Option<String>, dry_run: bool) {
 
 /// Library-level entry point used by integration tests. Returns `Result`
 /// instead of printing to stderr, so tests can assert on failures.
-pub fn execute(
-    force: bool,
-    ferro_version_flag: Option<&str>,
-    dry_run: bool,
-) -> anyhow::Result<()> {
+pub fn execute(force: bool, ferro_version_flag: Option<&str>, dry_run: bool) -> anyhow::Result<()> {
     let root = find_project_root(None)
         .map_err(|e| anyhow::anyhow!("could not locate project Cargo.toml: {e}"))?;
 
@@ -168,10 +162,7 @@ mod footer_tests {
     fn docker_init_footer_line_count() {
         let s = docker_init_footer("app");
         let n = s.lines().filter(|l| !l.trim().is_empty()).count();
-        assert!(
-            (3..=5).contains(&n),
-            "footer has {n} non-empty lines: {s}"
-        );
+        assert!((3..=5).contains(&n), "footer has {n} non-empty lines: {s}");
         assert!(s.is_ascii(), "footer must be ASCII-only");
     }
 }
