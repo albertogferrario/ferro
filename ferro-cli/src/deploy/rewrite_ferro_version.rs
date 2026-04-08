@@ -20,18 +20,45 @@ const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-depende
 /// Rewrite the project Cargo.toml into `<project_root>/Cargo.docker.toml`,
 /// replacing every `ferro*` path dep with a version dep. Returns the path of
 /// the file written.
+///
+/// Thin wrapper around [`compute_cargo_docker_toml`] + [`persist_cargo_docker_toml`]
+/// — callers that need a `--dry-run` path should use `compute_*` directly and
+/// skip the persist step (Phase 127 D-18).
 pub fn rewrite_cargo_docker_toml(
     project_root: &Path,
     ferro_version_override: Option<&str>,
 ) -> anyhow::Result<PathBuf> {
+    let rewritten = compute_cargo_docker_toml(project_root, ferro_version_override)?;
+    let out_path = project_root.join("Cargo.docker.toml");
+    persist_cargo_docker_toml(&out_path, &rewritten)?;
+    Ok(out_path)
+}
+
+/// Pure compute — reads source `Cargo.toml` from disk and returns the
+/// rewritten `Cargo.docker.toml` contents as a `String`. Does NOT write.
+///
+/// The only filesystem reads are the project `Cargo.toml` itself and any
+/// `ferro*` path-dep `Cargo.toml` files consulted to resolve workspace
+/// versions — no target files are created or modified. Used by `--dry-run`
+/// (Phase 127 D-18) and as the first half of [`rewrite_cargo_docker_toml`].
+pub fn compute_cargo_docker_toml(
+    project_root: &Path,
+    ferro_version_override: Option<&str>,
+) -> anyhow::Result<String> {
     let cargo_path = project_root.join("Cargo.toml");
     let content = fs::read_to_string(&cargo_path)
         .map_err(|e| anyhow::anyhow!("failed to read {}: {e}", cargo_path.display()))?;
-    let rewritten = rewrite_contents(&content, project_root, ferro_version_override)?;
-    let out_path = project_root.join("Cargo.docker.toml");
-    fs::write(&out_path, rewritten)
-        .map_err(|e| anyhow::anyhow!("failed to write {}: {e}", out_path.display()))?;
-    Ok(out_path)
+    rewrite_contents(&content, project_root, ferro_version_override)
+}
+
+/// Persist previously-computed `Cargo.docker.toml` contents at `path`.
+///
+/// Split from [`compute_cargo_docker_toml`] so `--dry-run` can skip this
+/// step entirely (Phase 127 D-18).
+pub fn persist_cargo_docker_toml(path: &Path, contents: &str) -> anyhow::Result<()> {
+    fs::write(path, contents)
+        .map_err(|e| anyhow::anyhow!("failed to write {}: {e}", path.display()))?;
+    Ok(())
 }
 
 /// Pure string-in/string-out rewriter used by `rewrite_cargo_docker_toml`
@@ -339,6 +366,45 @@ serde = "1"
         assert!(body.contains("path"));
         assert!(body.contains("mything"));
         assert!(body.contains("serde"));
+    }
+
+    /// D-18: `compute_cargo_docker_toml` returns rewritten contents without
+    /// creating or modifying `Cargo.docker.toml` on disk.
+    #[test]
+    fn compute_returns_string_without_writing() {
+        let tmp = TempDir::new().unwrap();
+        let project = tmp.path().join("project");
+        write(
+            &project.join("Cargo.toml"),
+            r#"
+[package]
+name = "demo"
+version = "0.1.0"
+
+[dependencies]
+ferro = { path = "../framework" }
+"#,
+        );
+        write(
+            &tmp.path().join("framework/Cargo.toml"),
+            "[package]\nname = \"ferro\"\nversion = \"0.2.0\"\n",
+        );
+
+        let out = compute_cargo_docker_toml(&project, Some("0.2.0")).expect("compute");
+        assert!(out.contains("ferro = { version = \"0.2.0\""));
+        assert!(
+            !project.join("Cargo.docker.toml").exists(),
+            "compute must not write Cargo.docker.toml"
+        );
+    }
+
+    /// D-18: `persist_cargo_docker_toml` writes exactly the supplied bytes.
+    #[test]
+    fn persist_writes_computed_contents() {
+        let tmp = TempDir::new().unwrap();
+        let target = tmp.path().join("Cargo.docker.toml");
+        persist_cargo_docker_toml(&target, "foo = \"bar\"\n").expect("persist");
+        assert_eq!(fs::read_to_string(&target).unwrap(), "foo = \"bar\"\n");
     }
 
     /// D-11: dependency table key order must survive the rewrite. `toml_edit`
