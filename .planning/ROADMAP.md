@@ -228,57 +228,46 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 120. CLI & MCP Updates | 0/? | Not started | - |
 | 121. Documentation & Field Test | 0/? | Not started | - |
 
-**v12.0 scope is held firm.** No expansion beyond the 8 phases above. The killer feature (projection/intent) already exists in v9.0 ferro-projections; v12.0 polishes the rendering target.
+**v12.0 scope is held firm.** No expansion beyond the 8 phases above. The projection / intent abstraction already exists in v9.0 ferro-projections; v12.0 refines the rendering target.
 
 ---
 
 ## v1.0 Criteria
 
-Ferro v1.0 is the first release where the framework is considered feature-complete for its target domain. Years away. No dates.
+Ferro v1.0 is the first release where the framework is considered feature-complete for its target domain. No target date.
 
 **Modality:**
 - Visual modality complete (HTML + Tailwind, server-rendered).
-- Audio and physical modalities are explicit non-goals for v1.0.
+- Additional rendering modalities (audio, physical) are out of scope for v1.0.
 
-**Projection / intent validation** (all four required):
-1. Full gestiscilo migration onto projections + intents.
-2. Synthetic canonical-catalog benchmark suite covering the 7 intents.
-3. Time-to-app test: how fast a new application can be assembled from projections.
-4. Agent-success-rate test: rate at which an LLM can drive ferro end-to-end.
+**Projection / intent validation:**
+- Validated through real-world applications and a synthetic catalog of canonical app classes covering the seven intents.
 
 **Quality bars:**
 - Conceptual coherence pass complete across all 20 crates.
 - Beauty across four dimensions: aesthetic, conceptual, operational, compressive.
 
-**Explicit non-requirements:**
-- Builder tool is NOT required for v1.0.
-- No stop-loss on projection/intent: if validation reveals problems, iterate with real cases and ultrathinking — do not pivot away from the killer feature.
-
 ---
 
-## Future Milestones (v2.0+ deferred)
+## Future Milestones (v2.0+)
 
 Items intentionally out of v1.0 scope. No phase numbers, no dates.
 
 | Item | Target | Notes |
 |------|--------|-------|
-| **Multimodal generation probe** | someday, low cost / high signal | Sketch one intent across audio / voice / CLI on paper for one gestiscilo feature. Goal: discover whether the 7 intents (Browse, Focus, Collect, Process, Summarize, Analyze, Track) are modality-agnostic or web-shaped. Process (kanban-shaped) and Collect (form-shaped) are the suspected weak points. Cheap, paper-only. |
-| **Audio modality renderer** | v2.0+ | Ferro renders projections as voice / conversational interfaces. Requires intent rework if the multimodal probe reveals web-shape. |
-| **Physical modality** | v3.0+ aspiration | Haptic, gesture, IoT actuators, tangible UI. Long-term media-independent computation reach. |
-| **[Builder Brand] tool** | post-v12.0, separate project | Non-developer-facing builder that uses ferro as substrate. Separate brand, name TBD. NOT a ferro milestone — tracked here only as a downstream consumer note. |
-
-**Load-bearing weakness:** multimodal is currently theoretical and unprobed. Named explicitly so it does not get silently absorbed into v1.0 scope.
+| **Multimodal generation exploration** | exploratory | Evaluate whether the seven intents (Browse, Focus, Collect, Process, Summarize, Analyze, Track) generalize cleanly to non-visual rendering targets. Inform any required revision of the intent vocabulary. |
+| **Audio modality renderer** | v2.0+ | Render projections as voice / conversational interfaces. May require intent vocabulary revision. |
+| **Physical modality** | v3.0+ | Haptic, gesture, and tangible rendering targets. |
 
 ---
 
 ## Design Principles
 
-Operating principles applied across every phase. Long form lives in [`.planning/VISION.md`](VISION.md).
+Operating principles applied across every phase. See [`.planning/VISION.md`](VISION.md) for the full design philosophy.
 
-- **Substance-first investment ordering:** compressive → operational → conceptual → aesthetic. Spend on the deepest layer first.
-- **Continuous every-phase coherence tax:** each phase pays a coherence cost against the existing 20 crates; no deferred cleanup milestones.
-- **Co-dependent gestiscilo forcing function:** gestiscilo is the real-world consumer that prevents ferro from drifting into theory.
-- **Maximum-quality on every axis:** narrow scope only when delivery is structurally impossible. The single narrowing accepted so far is multimodal at v1.0.
+- **Substance-first investment ordering:** compressive → operational → conceptual → aesthetic.
+- **Continuous conceptual coherence:** every phase pays a coherence cost against the existing 20 crates at write-time; no deferred cleanup milestones.
+- **Validation through real-world applications and synthetic catalogs:** the projection / intent system is iterated against both.
 
 ---
 
