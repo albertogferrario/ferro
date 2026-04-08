@@ -20,7 +20,6 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 COPY Cargo.docker.toml Cargo.toml
 RUN cargo build --release
-{{BIN_BUILDS}}
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
@@ -31,3 +30,4 @@ RUN apt-get update \
 {{BIN_COPIES}}
 {{COPY_DIRS}}
 EXPOSE 8080
+{{ENTRYPOINT}}

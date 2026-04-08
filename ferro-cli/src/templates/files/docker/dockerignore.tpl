@@ -52,6 +52,8 @@ docker-compose*.yml
 
 # docs
 *.md
+# README.md is whitelisted so cargo's `readme = "README.md"` resolves at build time (ferro 127, D-20/D-21).
+!README.md
 LICENSE
 
 # tests
