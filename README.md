@@ -21,7 +21,7 @@ cd myapp
 ferro serve
 ```
 
-Your app is now running at `http://localhost:8080`. Point your AI agent at `ferro-mcp` via its MCP configuration and the agent can introspect and extend the project directly. There is no bundled agent UI — `ferro-mcp` is the v1.0 product surface.
+Your app is now running at `http://localhost:8080`. Point your AI agent at `ferro-mcp` via its MCP configuration and the agent can introspect and extend the project directly. There is no bundled agent UI — `ferro-mcp` is the introspection layer your agent talks to.
 
 ## Example
 
@@ -175,7 +175,7 @@ Ready to build something? Check out the [full documentation](https://docs.ferro-
 
 ## Status
 
-v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. The framework is being developed in the open with no public announcements; current milestone work targets v12.0 spec-driven rendering.
+v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. Current milestone work targets v12.0 spec-driven rendering.
 
 ## License
 
