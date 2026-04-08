@@ -249,6 +249,32 @@ Ferro v1.0 is the first release where the framework is considered feature-comple
 
 ---
 
+## Pre-v1.0 Work Items
+
+Concrete items that contribute to v1.0 readiness. Not assigned to specific phases yet.
+
+| Item | Notes |
+|------|-------|
+| **MCP integration documentation for common AI development environments** | Document how to wire `ferro-mcp` into Claude Code, Cursor, and other agent runtimes that follow the MCP standard. |
+| **Audit projection MCP tool descriptions for completeness** | Verify `list_projections`, `inspect_projection`, `render_projection`, `validate_projection`, and `projection_coverage` tool descriptions are complete and accurate enough to author projections without out-of-band guidance. |
+| **Improve projection authoring guide via MCP introspection** | Identify gaps in tool descriptions, examples, and field-level documentation that an agent would need to compose a projection cleanly. |
+| **Document the agent-assisted deploy workflow end-to-end** | A complete walkthrough of `ferro docker:init` → `ferro do:init` → `ferro doctor` → push, with the role MCP introspection plays at each step. |
+| **Projection-driven starter template for `ferro new`** | Add an option to scaffold a project that exercises the projection / intent system end-to-end as the default example, alongside the current scaffold. |
+| **Iteration loop ergonomics for projection-driven development** | Investigate the change → rebuild cycle for projection-driven apps. Identify whether incremental compilation, hot reload, or runtime spec swapping reduces friction. |
+| **`ferro doctor` multi-bin support** | `db_connection` and `migrations_pending` checks should automatically pass `--bin <pkg>` for workspaces without `default-run`. Tracked in `.planning/phases/122.2-deploy-simplification/122.2-VERIFICATION.md`. |
+
+---
+
+## Experiments
+
+Lightweight investigations queued without commitment to a phase. Each is intended to inform a future design decision rather than ship a feature.
+
+| Experiment | Cost | Goal |
+|------------|------|------|
+| **Intent vocabulary cross-modality sketch** | hours | Take one intent (e.g. `Process`) and one real feature using it. Sketch on paper how the same feature would be expressed as a single-screen mobile flow, a voice interaction, and a CLI command. Identify which fields the projection needs that it does not currently have, and which existing fields stop being meaningful. Inform any future intent vocabulary revision. |
+
+---
+
 ## Future Milestones (v2.0+)
 
 Items intentionally out of v1.0 scope. No phase numbers, no dates.

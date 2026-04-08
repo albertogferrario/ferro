@@ -1,11 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: Completed 122.2-08-PLAN.md
-last_updated: "2026-04-07T19:18:26.323Z"
-last_activity: 2026-04-07
+milestone: v12.0
+milestone_name: JSON-UI v2 — Spec-Driven Rendering
+status: ready
+stopped_at: 0.2.0 release prep complete; ready to push origin master
+last_updated: "2026-04-08T00:00:00.000Z"
+last_activity: 2026-04-08
+release:
+  version: "0.2.0"
+  state: "release-ready, awaiting push"
+  commits_ahead_of_origin: 627
 progress:
   total_phases: 127
   completed_phases: 113
@@ -18,17 +22,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-26)
+See: .planning/PROJECT.md and .planning/VISION.md
 
-**Core value:** Agents can go from "I want an app that does X" to a working, deployed application with minimal friction.
-**Current focus:** Phase 122.2 — deploy-simplification
+**Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
+**Current focus:** v0.2.0 release-ready (workspace prepared, awaiting push). Next milestone: v12.0 JSON-UI v2.
 
 ## Current Position
 
-Phase: 122.2 (deploy-simplification) — EXECUTING
-Plan: 7 of 9
-Status: Ready to execute
-Last activity: 2026-04-07
+Workspace version: 0.2.0
+Status: release-ready, awaiting push to origin/master
+Last activity: 2026-04-08
+Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
 
@@ -99,7 +103,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None.
+- Push workspace to origin/master to publish v0.2.0 (627 commits ahead).
+- Ferro doctor `db_connection` and `migrations_pending` checks should auto-resolve `--bin <pkg>` for multi-bin projects without `default-run`. Tracked in `.planning/phases/122.2-deploy-simplification/122.2-VERIFICATION.md`.
 
 ### Blockers/Concerns
 
@@ -115,6 +120,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-07T19:18:26.318Z
-Stopped at: Completed 122.2-08-PLAN.md
+Last session: 2026-04-08
+Stopped at: 0.2.0 release prep complete + developer surface alignment audit + design philosophy documentation. Workspace is release-ready.
 Resume file: None
+Next action: `git push origin master` to publish v0.2.0 when ready.
