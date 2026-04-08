@@ -1,31 +1,21 @@
-//! Phase 122.2 §2 path→version rewriter.
+//! Phase 122.2 §2 path→version rewriter (Phase 127 D-11, D-12 toml_edit migration).
 //!
 //! At `docker:init` time we read the project `Cargo.toml`, find every `ferro*`
 //! dependency declared as a path dep, and rewrite it as a version dep into
 //! `Cargo.docker.toml`. The Dockerfile then `COPY Cargo.docker.toml Cargo.toml`
 //! before any cargo work, so the build pulls ferro from crates.io rather than
 //! requiring the workspace checkout to be present in the build context.
+//!
+//! Uses `toml_edit` rather than the value-level `toml` crate so dependency
+//! table key order, sibling tables, and whitespace survive the rewrite
+//! byte-for-byte — the only mutations are `path` removal and `version`
+//! insertion inside the touched ferro* deps.
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use toml::map::Map;
-use toml::Value;
+use toml_edit::{DocumentMut, Item, Value};
 
 const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
-
-/// Keys preserved verbatim from the original path-dep table when rewriting it
-/// into a version dep. `path` is intentionally absent (it's what we're
-/// stripping). Anything else cargo accepts on a registry dep is preserved so
-/// `package = "..."` renames, `features = [...]`, `default-features = false`,
-/// `optional = true`, etc. survive the rewrite.
-const PRESERVED_DEP_KEYS: &[&str] = &[
-    "package",
-    "features",
-    "default-features",
-    "optional",
-    "registry",
-    "rename",
-];
 
 /// Rewrite the project Cargo.toml into `<project_root>/Cargo.docker.toml`,
 /// replacing every `ferro*` path dep with a version dep. Returns the path of
@@ -37,36 +27,65 @@ pub fn rewrite_cargo_docker_toml(
     let cargo_path = project_root.join("Cargo.toml");
     let content = fs::read_to_string(&cargo_path)
         .map_err(|e| anyhow::anyhow!("failed to read {}: {e}", cargo_path.display()))?;
-    let mut parsed: Value = content
+    let rewritten = rewrite_contents(&content, project_root, ferro_version_override)?;
+    let out_path = project_root.join("Cargo.docker.toml");
+    fs::write(&out_path, rewritten)
+        .map_err(|e| anyhow::anyhow!("failed to write {}: {e}", out_path.display()))?;
+    Ok(out_path)
+}
+
+/// Pure string-in/string-out rewriter used by `rewrite_cargo_docker_toml`
+/// and the regression tests. Preserves dependency-table key order.
+pub fn rewrite_contents(
+    contents: &str,
+    project_root: &Path,
+    ferro_version_override: Option<&str>,
+) -> anyhow::Result<String> {
+    let mut doc: DocumentMut = contents
         .parse()
-        .map_err(|e| anyhow::anyhow!("failed to parse {}: {e}", cargo_path.display()))?;
+        .map_err(|e| anyhow::anyhow!("failed to parse Cargo.toml: {e}"))?;
 
     for table_name in DEP_TABLES {
-        let Some(table) = parsed.get_mut(*table_name).and_then(|v| v.as_table_mut()) else {
+        let Some(table_item) = doc.get_mut(table_name) else {
             continue;
         };
-        let keys: Vec<String> = table
+        let Some(table) = table_item.as_table_like_mut() else {
+            continue;
+        };
+
+        // Collect ferro* keys that are path deps. Iterate by key name to avoid
+        // aliasing the table while mutating.
+        let ferro_keys: Vec<String> = table
             .iter()
-            .filter(|(k, v)| {
-                k.starts_with("ferro")
-                    && v.as_table()
-                        .map(|t| t.contains_key("path"))
-                        .unwrap_or(false)
+            .filter_map(|(k, v)| {
+                if !k.starts_with("ferro") {
+                    return None;
+                }
+                let is_path_dep = match v {
+                    Item::Value(Value::InlineTable(t)) => t.contains_key("path"),
+                    Item::Table(t) => t.contains_key("path"),
+                    _ => false,
+                };
+                if is_path_dep {
+                    Some(k.to_string())
+                } else {
+                    None
+                }
             })
-            .map(|(k, _)| k.clone())
             .collect();
 
-        for key in keys {
-            let original = table
-                .get(&key)
-                .and_then(|v| v.as_table())
-                .cloned()
-                .unwrap_or_default();
-
-            let path_str = original
-                .get("path")
-                .and_then(|p| p.as_str())
-                .map(String::from);
+        for key in ferro_keys {
+            let path_str: Option<String> = match table.get(&key) {
+                Some(Item::Value(Value::InlineTable(t))) => {
+                    t.get("path").and_then(|v| v.as_str()).map(String::from)
+                }
+                Some(Item::Table(t)) => t
+                    .get("path")
+                    .and_then(|i| i.as_value())
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                _ => None,
+            };
 
             let version = match ferro_version_override {
                 Some(v) => v.to_string(),
@@ -76,32 +95,33 @@ pub fn rewrite_cargo_docker_toml(
                     .unwrap_or_else(|| "*".to_string()),
             };
 
-            let mut replacement = Map::new();
-            replacement.insert("version".to_string(), Value::String(version));
-            for preserved in PRESERVED_DEP_KEYS {
-                if let Some(v) = original.get(*preserved) {
-                    replacement.insert((*preserved).to_string(), v.clone());
+            match table.get_mut(&key) {
+                Some(Item::Value(Value::InlineTable(t))) => {
+                    t.remove("path");
+                    // Overwrite-or-insert `version` while preserving sibling
+                    // keys (package, features, default-features, optional,
+                    // registry, rename, etc.) in their original order.
+                    t.insert("version", Value::from(version));
                 }
+                Some(Item::Table(t)) => {
+                    t.remove("path");
+                    t.insert("version", toml_edit::value(version));
+                }
+                _ => {}
             }
-            table.insert(key, Value::Table(replacement));
         }
     }
 
-    let serialized = toml::to_string_pretty(&parsed)
-        .map_err(|e| anyhow::anyhow!("failed to serialize Cargo.docker.toml: {e}"))?;
-    let out_path = project_root.join("Cargo.docker.toml");
-    fs::write(&out_path, serialized)
-        .map_err(|e| anyhow::anyhow!("failed to write {}: {e}", out_path.display()))?;
-    Ok(out_path)
+    Ok(doc.to_string())
 }
 
 fn read_path_dep_version(project_root: &Path, rel_path: &str) -> Option<String> {
     let dep_cargo = project_root.join(rel_path).join("Cargo.toml");
     let content = fs::read_to_string(&dep_cargo).ok()?;
-    let parsed: Value = content.parse().ok()?;
-    parsed
-        .get("package")?
+    let doc: DocumentMut = content.parse().ok()?;
+    doc.get("package")?
         .get("version")?
+        .as_value()?
         .as_str()
         .map(String::from)
 }
@@ -141,9 +161,8 @@ ferro = { path = "../framework" }
 
         let out = rewrite_cargo_docker_toml(&project, Some("0.1.87")).unwrap();
         let body = fs::read_to_string(&out).unwrap();
-        assert!(body.contains("[dependencies.ferro]") || body.contains("ferro = "));
         assert!(body.contains("0.1.87"));
-        assert!(!body.contains("path"));
+        assert!(!body.contains("path ="));
     }
 
     #[test]
@@ -169,7 +188,7 @@ ferro = { path = "../framework" }
         let out = rewrite_cargo_docker_toml(&project, None).unwrap();
         let body = fs::read_to_string(&out).unwrap();
         assert!(body.contains("0.1.87"));
-        assert!(!body.contains("path"));
+        assert!(!body.contains("path ="));
     }
 
     #[test]
@@ -224,10 +243,8 @@ serde = "1"
 
         let out = rewrite_cargo_docker_toml(&project, None).unwrap();
         let body = fs::read_to_string(&out).unwrap();
-        // Three ferro* deps rewritten, each carrying the version.
         assert_eq!(body.matches("0.1.87").count(), 3);
-        assert!(!body.contains("path"));
-        // serde untouched.
+        assert!(!body.contains("path ="));
         assert!(body.contains("serde"));
     }
 
@@ -262,7 +279,8 @@ ferro-json-ui = { path = "../ferro-json-ui", default-features = false, optional 
 
         let out = rewrite_cargo_docker_toml(&project, Some("0.2.0")).unwrap();
         let body = fs::read_to_string(&out).unwrap();
-        let parsed: Value = body.parse().unwrap();
+        // Parse with toml (value-level) to sanity-check semantic content.
+        let parsed: toml::Value = body.parse().unwrap();
         let deps = parsed
             .get("dependencies")
             .and_then(|v| v.as_table())
@@ -321,5 +339,61 @@ serde = "1"
         assert!(body.contains("path"));
         assert!(body.contains("mything"));
         assert!(body.contains("serde"));
+    }
+
+    /// D-11: dependency table key order must survive the rewrite. `toml_edit`
+    /// keeps keys in source order, unlike the value-level `toml` crate which
+    /// re-serialized alphabetically.
+    #[test]
+    fn preserves_dep_table_order() {
+        let tmp = TempDir::new().unwrap();
+        let project = tmp.path().join("project");
+        write(
+            &project.join("Cargo.toml"),
+            r#"
+[package]
+name = "app"
+version = "0.1.0"
+
+[dependencies]
+zed = "1.0"
+alpha = "2.0"
+ferro = { path = "../framework" }
+middle = "3.0"
+beta = "4.0"
+gamma = "5.0"
+"#,
+        );
+        write(
+            &tmp.path().join("framework/Cargo.toml"),
+            "[package]\nname = \"ferro\"\nversion = \"0.2.0\"\n",
+        );
+
+        let out = rewrite_cargo_docker_toml(&project, Some("0.2.0")).unwrap();
+        let body = fs::read_to_string(&out).unwrap();
+
+        // Extract key names from the [dependencies] block preserving order.
+        let deps_block = body
+            .split("[dependencies]")
+            .nth(1)
+            .expect("deps block present");
+        let keys: Vec<&str> = deps_block
+            .lines()
+            .filter_map(|l| {
+                let t = l.trim();
+                if t.is_empty() || t.starts_with('[') || t.starts_with('#') {
+                    return None;
+                }
+                t.split('=').next().map(str::trim)
+            })
+            .take(6)
+            .collect();
+
+        assert_eq!(
+            keys,
+            vec!["zed", "alpha", "ferro", "middle", "beta", "gamma"]
+        );
+        assert!(!body.contains("../framework"));
+        assert!(body.contains("ferro = { version = \"0.2.0\""));
     }
 }
