@@ -831,12 +831,12 @@ Plans:
 **Goal:** Make the artifacts that `docker:init` and `do:init` emit actually runnable end-to-end. Today even a successful `docker build` produces an image that silently exits because the Dockerfile has no `ENTRYPOINT` or `CMD` (REPORT item 18) — the same gap will break DigitalOcean App Platform `web` services because the generated `app.yaml` has no `run_command`. Alongside this critical fix, sweep the small template-quality issues from the same gestiscilo session: stop running `cargo build --release` three times, stop reordering dep tables on re-serialization, generate real `envs:` entries instead of comment scaffolds, add a "Next steps" footer to both init commands, ship `--dry-run` for both init commands, and stop generating cargo warnings from `.dockerignore`-excluded README files. Absorbs REPORT items 5, 6, 7, 9, 10, 16, 18. Sequenced first because item 18 is a hard deploy blocker.
 **Requirements**: TBD
 **Depends on:** Phase 122.2
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 127-01-PLAN.md — Foundation helpers: toml_edit dep, bin_detect, secret_keys, structured .env.example parser, rewrite_ferro_version migration
 - [x] 127-02-PLAN.md — Dockerfile template: ENTRYPOINT/CMD token wiring, single build invocation, .dockerignore README whitelist
-- [ ] 127-03-PLAN.md — DO template: real envs block from .env.example with secret typing, no run_command on web service
+- [x] 127-03-PLAN.md — DO template: real envs block from .env.example with secret typing, no run_command on web service
 - [ ] 127-04-PLAN.md — Command wiring: compute/persist split, --dry-run flag, cargo-style Next steps footer
 
 ---
