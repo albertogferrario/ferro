@@ -122,7 +122,7 @@ fn map_response_error(status: u16, body: &str) -> Error {
 }
 
 /// Returns the (url, payload) for a given message and phone_number_id, for testing.
-#[cfg(any(test, feature = "test-helpers"))]
+#[cfg(test)]
 pub(crate) fn build_api_payload(
     to: &str,
     message: &Message,
