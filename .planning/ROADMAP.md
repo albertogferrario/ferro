@@ -814,6 +814,52 @@ Plans:
 - [x] 122.2-08-PLAN.md — ferro doctor 9-check revision (SCOPE §12)
 - [ ] 122.2-09-PLAN.md — Live UAT against gestiscilo-it/app + phase-end gate (SCOPE §Verification)
 
+### Phase 126: Deploy experience feedback triage
+
+**Goal:** Read `phases/126-deploy-experience-feedback/REPORT.md` (field notes from the first end-to-end gestiscilo deploy against the Phase 122.2 scaffold — 2 fixed bugs already shipped, 9 sharp edges still present, 6 DX improvements), cross-reference each item against existing phases 122–125, and produce a `PROPOSAL.md` classifying every item as: already-in-scope / new-phase / follow-up-plan / dropped. Analysis only — no implementation. Output is a concrete actionable proposal the user reviews before any new phases are added. See `phases/126-deploy-experience-feedback/SCOPE.md`.
+**Requirements**: TBD
+**Depends on:** Phase 122.2
+**Plans:** 0 plans
+
+Plans:
+- [x] 126-01 — Triage REPORT items and write PROPOSAL.md ✅
+
+---
+
+### Phase 127: Generated artifact polish (deploy blocker fix + template hygiene)
+
+**Goal:** Make the artifacts that `docker:init` and `do:init` emit actually runnable end-to-end. Today even a successful `docker build` produces an image that silently exits because the Dockerfile has no `ENTRYPOINT` or `CMD` (REPORT item 18) — the same gap will break DigitalOcean App Platform `web` services because the generated `app.yaml` has no `run_command`. Alongside this critical fix, sweep the small template-quality issues from the same gestiscilo session: stop running `cargo build --release` three times, stop reordering dep tables on re-serialization, generate real `envs:` entries instead of comment scaffolds, add a "Next steps" footer to both init commands, ship `--dry-run` for both init commands, and stop generating cargo warnings from `.dockerignore`-excluded README files. Absorbs REPORT items 5, 6, 7, 9, 10, 16, 18. Sequenced first because item 18 is a hard deploy blocker.
+**Requirements**: TBD
+**Depends on:** Phase 122.2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 127 to break down)
+
+---
+
+### Phase 128: Deploy preflight (`ferro doctor` deploy checks + drift detection)
+
+**Goal:** Catch deploy failures *before* a 1–10 minute Docker round-trip. Extend `ferro doctor` (Phase 124 surface) with deploy-specific checks the gestiscilo session discovered one painful build at a time: `copy_dirs` entries that collide with `.dockerignore` (REPORT item 3), version skew between local path deps and the rewritten `Cargo.docker.toml` (items 4, 13), and `Cargo.docker.toml` staleness vs `Cargo.toml` (item 17). Also ship the interactive `ferro deploy:init` scaffolder for the `[package.metadata.ferro.deploy]` block (item 15) so users do not have to hand-type the table from docs. The same check registry is exposed via the existing Phase 123 `deploy_check` MCP tool — one implementation, two surfaces (per Phase 126 PROPOSAL.md D-07 resolution). Absorbs REPORT items 3, 4, 13, 15, 17.
+**Requirements**: TBD
+**Depends on:** Phase 123, Phase 124, Phase 122.2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 128 to break down)
+
+---
+
+### Phase 129: Publish workflow refinement (gated bumps, per-crate version notes)
+
+**Goal:** Stop releasing every workspace member on docs-only or CI-only commits. Gate the auto-patch-bump on whether any *library* crate actually changed (REPORT item 8) — `ferro-cli/`-only or `docs/`-only pushes should not churn versions on every other crate. Document in `PUBLISHING.md` that `ferro_version` is currently a single global field (item 14) and add a per-crate override hook for the day a crate desyncs from the lockstep release; do not implement desync support until a real desync forces it. Absorbs REPORT items 8, 14. Maintainer ergonomics — lowest user-pain of the three follow-ups.
+**Requirements**: TBD
+**Depends on:** None
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 129 to break down)
+
 ---
 
 ## Progress Summary
