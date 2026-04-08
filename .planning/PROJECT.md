@@ -236,7 +236,42 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - Multimodal projection (audio/voice/physical) — v2.0+ direction
 - Bundled agent UX — `ferro-mcp` plus the user's existing agent is the supported workflow
 
-## Next Milestone: TBD
+## Next Milestone: v13.0 Road to v1.0
+
+**Goal:** Close the gap between 0.2.0 and v1.0 by addressing known work across the four design dimensions — aesthetic, conceptual, operational, compressive — applied in substance-first investment priority order. v13.0 is a sustained investment program spanning multiple minor releases, not a single-feature milestone.
+
+**Scope by priority:**
+
+*Compressive — validation of projection / intent (priority 1):*
+- Gestiscilo migration to projection-driven rendering as the first real-world validation
+- Synthetic canonical-class catalog with regression tests across the seven intents
+- Agent-success-rate measurement via `ferro-mcp` introspection
+- Time-to-working-app benchmark
+- Intent vocabulary cross-modality sketch experiment
+
+*Operational — polish and documentation (priority 2):*
+- MCP integration documentation for Claude Code, Cursor, and common agent runtimes
+- Projection MCP tool description audit (`list_projections`, `inspect_projection`, `render_projection`, `validate_projection`, `projection_coverage`)
+- Projection authoring guide via MCP introspection
+- Agent-assisted deploy workflow end-to-end walkthrough
+- Projection-driven starter template option for `ferro new`
+- Iteration loop ergonomics investigation
+- `ferro doctor` multi-bin `--bin <pkg>` auto-resolution
+
+*Conceptual — coherence pass (priority 3):*
+- Systematic coherence audit across all 20 crates — first pass since Phase 113
+- Cross-cutting consistency: naming, error patterns, middleware shapes, CLI verbs, file layouts, module organization
+- Refactor outlier crates into prevailing patterns
+
+*Aesthetic — incremental polish (priority 4):*
+- mdBook custom theme (colors, typography, code block styling)
+- Crates.io README polish (shields, visual hierarchy, clear CTA)
+- GitHub repo social preview image
+- Simple logo / wordmark
+
+**Relationship to v12.0:** v12.0 (JSON-UI v2) runs first and refines the rendering target. v13.0 begins after v12.0 and may overlap with late v12.0 phases. Target date: none. Multiple minor releases (0.3.x, 0.4.x, 0.5.x) expected across v13.0's span.
+
+
 
 ## Context
 

@@ -31,6 +31,7 @@
 - ✅ [**v11.0 Framework Consolidation Audit**](milestones/v11.0-ROADMAP.md) — Phases 108-114 (shipped 2026-04-05)
 - ✅ [**v11.1 Template Renderer**](milestones/v11.1-ROADMAP.md) — Phase 114.1 (shipped 2026-04-05)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract)
+- 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19 requirements (COMP-01..05, OPER-01..07, CONC-01..03, AEST-01..04) in `.planning/REQUIREMENTS.md`. Phase numbering continues after v12.0. No target date.
 
 ---
 

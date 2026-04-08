@@ -25,7 +25,7 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** v0.2.0 release-ready (workspace prepared, awaiting push). Next milestone: v12.0 JSON-UI v2.
+**Current focus:** v0.2.0 release-ready (workspace prepared, awaiting push). Next milestone: v12.0 JSON-UI v2. Queued after v12.0: v13.0 Road to v1.0 (19 requirements defined in REQUIREMENTS.md).
 
 ## Current Position
 
