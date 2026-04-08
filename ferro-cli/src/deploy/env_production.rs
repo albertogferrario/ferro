@@ -28,6 +28,94 @@ pub fn read_env_production_keys(path: &Path) -> anyhow::Result<Vec<String>> {
     Ok(keys)
 }
 
+/// Structured line from `.env.example` used by `do:init` envs-block rendering
+/// (D-09). Preserves key order and blank-line separators from the source file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EnvLine {
+    Key(String),
+    Blank,
+    Comment,
+}
+
+/// Parse `.env.example` preserving key order and blank-line separators.
+///
+/// Blank lines in the source become a `Blank` variant so the resulting
+/// `envs:` block in `.do/app.yaml` keeps the human grouping. Comment lines
+/// become `Comment` (consumers may drop them). Keys are trimmed.
+pub fn parse_env_example_structured(contents: &str) -> Vec<EnvLine> {
+    let mut out = Vec::new();
+    for raw in contents.lines() {
+        let line = raw.trim_end();
+        if line.trim().is_empty() {
+            out.push(EnvLine::Blank);
+            continue;
+        }
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('#') {
+            out.push(EnvLine::Comment);
+            continue;
+        }
+        if let Some(eq) = trimmed.find('=') {
+            let key = trimmed[..eq].trim().to_string();
+            if !key.is_empty() {
+                out.push(EnvLine::Key(key));
+            }
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod structured_tests {
+    use super::*;
+
+    #[test]
+    fn env_example_parser_preserves_order() {
+        let input = "Z=1\nA=2\nM=3\n";
+        let out = parse_env_example_structured(input);
+        let keys: Vec<_> = out
+            .iter()
+            .filter_map(|l| match l {
+                EnvLine::Key(k) => Some(k.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(keys, vec!["Z", "A", "M"]);
+    }
+
+    #[test]
+    fn env_example_parser_preserves_blank_separators() {
+        let input = "A=1\n\nB=2\n";
+        let out = parse_env_example_structured(input);
+        assert_eq!(
+            out,
+            vec![
+                EnvLine::Key("A".into()),
+                EnvLine::Blank,
+                EnvLine::Key("B".into())
+            ]
+        );
+    }
+
+    #[test]
+    fn env_example_parser_skips_comments() {
+        let input = "# header\nA=1\n";
+        let out = parse_env_example_structured(input);
+        assert!(out
+            .iter()
+            .any(|l| matches!(l, EnvLine::Key(k) if k == "A")));
+    }
+
+    #[test]
+    fn env_example_parser_trims_keys() {
+        let input = "  KEY  =val\n";
+        let out = parse_env_example_structured(input);
+        assert!(out
+            .iter()
+            .any(|l| matches!(l, EnvLine::Key(k) if k == "KEY")));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
