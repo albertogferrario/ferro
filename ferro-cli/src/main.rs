@@ -349,6 +349,9 @@ enum Commands {
         /// One-shot ferro version override (does not mutate Cargo.toml)
         #[arg(long)]
         ferro_version: Option<String>,
+        /// Render every output file to stdout without touching the filesystem
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Generate .do/app.yaml deployment spec for DigitalOcean App Platform. Detects bins, workers, and env keys from .env.production.
     #[command(name = "do:init")]
@@ -356,6 +359,9 @@ enum Commands {
         /// Overwrite existing .do/app.yaml
         #[arg(long)]
         force: bool,
+        /// Render every output file to stdout without touching the filesystem
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Generate docker-compose.yml for local development
     #[command(name = "docker:compose")]
@@ -628,11 +634,12 @@ fn main() {
         Commands::DockerInit {
             force,
             ferro_version,
+            dry_run,
         } => {
-            commands::docker_init::run_with(force, ferro_version);
+            commands::docker_init::run_with(force, ferro_version, dry_run);
         }
-        Commands::DoInit { force } => {
-            commands::do_init::run(force);
+        Commands::DoInit { force, dry_run } => {
+            commands::do_init::run_with(force, dry_run);
         }
         Commands::DockerCompose {
             with_mailpit,

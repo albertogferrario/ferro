@@ -8,22 +8,34 @@ use console::style;
 use std::fs;
 use std::path::Path;
 
+use crate::commands::docker_init::{print_dry_run, RenderedFile};
 use crate::deploy::bin_detect::detect_web_bin;
 use crate::deploy::env_production::parse_env_example_structured;
-use crate::project::{find_project_root, package_name};
+use crate::deploy::rewrite_ferro_version::compute_cargo_docker_toml;
+use crate::project::{find_project_root, package_name, read_deploy_metadata};
 use crate::templates::do_::{
     is_test_like_bin, parse_git_remote, render_app_yaml, sanitize_do_app_name, AppYamlContext,
 };
 use crate::templates::docker::read_bins;
 
 pub fn run(force: bool) {
-    if let Err(e) = run_inner(force) {
+    run_with(force, false);
+}
+
+/// Full entry point supporting `--dry-run`.
+pub fn run_with(force: bool, dry_run: bool) {
+    if let Err(e) = run_inner(force, dry_run) {
         eprintln!("{} {e}", style("Error:").red().bold());
         std::process::exit(1);
     }
 }
 
-fn run_inner(force: bool) -> anyhow::Result<()> {
+/// Library-level entry point used by integration tests. Returns `Result`.
+pub fn execute(force: bool, dry_run: bool) -> anyhow::Result<()> {
+    run_inner(force, dry_run)
+}
+
+fn run_inner(force: bool, dry_run: bool) -> anyhow::Result<()> {
     let root = find_project_root(None)
         .map_err(|_| anyhow::anyhow!("Cargo.toml not found (searched upward from CWD)"))?;
     let pkg = package_name(&root);
@@ -66,10 +78,43 @@ fn run_inner(force: bool) -> anyhow::Result<()> {
     };
     let yaml = render_app_yaml(&ctx);
 
+    if dry_run {
+        // D-17: render every output to memory and print with headers. Also
+        // include the computed Cargo.docker.toml so the preview covers the
+        // full set of deploy artifacts the user will need (the must_have in
+        // 127-04-PLAN explicitly calls this out). Render errors remain hard
+        // errors (D-19).
+        let metadata = read_deploy_metadata(&root)?;
+        let cargo_docker =
+            compute_cargo_docker_toml(&root, metadata.ferro_version.as_deref())?;
+        let files = [
+            RenderedFile {
+                relative_path: ".do/app.yaml".into(),
+                contents: yaml,
+            },
+            RenderedFile {
+                relative_path: "Cargo.docker.toml".into(),
+                contents: cargo_docker,
+            },
+        ];
+        print_dry_run(&files);
+        return Ok(());
+    }
+
     let target = root.join(".do/app.yaml");
     write_with_force(&target, &yaml, force)?;
     println!("{} Generated {}", style("✓").green(), target.display());
+
+    // D-13, D-15: cargo-style "Next steps" footer.
+    print!("{}", do_init_footer());
     Ok(())
+}
+
+/// Build the cargo-style "Next steps" footer for `do:init`. Pure string —
+/// the `print!` call site exists so tests can assert on the content directly.
+fn do_init_footer() -> String {
+    "\nNext steps:\n  Review .do/app.yaml and populate envs.\n  doctl apps create --spec .do/app.yaml\n"
+        .to_string()
 }
 
 fn detect_github_repo(root: &Path) -> Option<String> {
@@ -130,6 +175,40 @@ mod tests {
     }
 
     #[test]
+    fn do_init_footer_contents() {
+        let s = do_init_footer();
+        assert!(s.contains("doctl apps create --spec"));
+        assert!(s.contains(".do/app.yaml"));
+    }
+
+    #[test]
+    fn do_init_footer_line_count() {
+        let s = do_init_footer();
+        let n = s.lines().filter(|l| !l.trim().is_empty()).count();
+        assert!(
+            (3..=5).contains(&n),
+            "footer has {n} non-empty lines: {s}"
+        );
+        assert!(s.is_ascii(), "footer must be ASCII-only");
+    }
+
+    #[test]
+    fn dry_run_propagates_render_error() {
+        // D-19: --dry-run must not demote render errors to soft warnings.
+        // Running run_inner in an empty tempdir (no Cargo.toml) hits the
+        // hard error at find_project_root.
+        let td = TempDir::new().unwrap();
+        let prev = std::env::current_dir().unwrap();
+        std::env::set_current_dir(td.path()).unwrap();
+        let result = run_inner(true, true);
+        std::env::set_current_dir(prev).unwrap();
+        assert!(
+            result.is_err(),
+            "dry-run must propagate render errors as Err"
+        );
+    }
+
+    #[test]
     fn run_inner_succeeds_with_missing_env_example() {
         // Phase 127 D-06: missing .env.example is a warning, not an error.
         let td = TempDir::new().unwrap();
@@ -141,7 +220,7 @@ mod tests {
         write(td.path(), "src/main.rs", "fn main() {}\n");
         let prev = std::env::current_dir().unwrap();
         std::env::set_current_dir(td.path()).unwrap();
-        let result = run_inner(true);
+        let result = run_inner(true, false);
         std::env::set_current_dir(prev).unwrap();
         assert!(
             result.is_ok(),
