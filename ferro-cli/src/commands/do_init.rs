@@ -8,6 +8,7 @@ use console::style;
 use std::fs;
 use std::path::Path;
 
+use crate::deploy::bin_detect::detect_web_bin;
 use crate::deploy::env_production::read_env_production_keys;
 use crate::project::{find_project_root, package_name};
 use crate::templates::do_::{
@@ -31,11 +32,7 @@ fn run_inner(force: bool) -> anyhow::Result<()> {
     let repo = detect_github_repo(&root).unwrap_or_else(|| "owner/your-repo".to_string());
 
     let bins = read_bins(&root)?;
-    let web_bin = bins
-        .iter()
-        .find(|b| **b == name || **b == pkg)
-        .cloned()
-        .unwrap_or_else(|| name.clone());
+    let web_bin = detect_web_bin(&root)?;
     let workers: Vec<String> = bins
         .iter()
         .filter(|b| **b != web_bin)

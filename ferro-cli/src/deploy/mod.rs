@@ -4,8 +4,10 @@
 
 #![allow(dead_code)]
 
+pub mod bin_detect;
 pub mod env_production;
 pub mod rewrite_ferro_version;
+pub mod secret_keys;
 
 use toml::Value;
 

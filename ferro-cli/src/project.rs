@@ -24,6 +24,7 @@ pub struct FerroDeployMetadata {
     pub runtime_apt: Vec<String>,
     pub copy_dirs: Vec<String>,
     pub ferro_version: Option<String>,
+    pub web_bin: Option<String>,
 }
 
 impl Default for FerroDeployMetadata {
@@ -37,6 +38,7 @@ impl Default for FerroDeployMetadata {
                 "migrations".into(),
             ],
             ferro_version: None,
+            web_bin: None,
         }
     }
 }
@@ -99,6 +101,13 @@ pub fn read_deploy_metadata(project_root: &Path) -> anyhow::Result<FerroDeployMe
             anyhow::anyhow!("[package.metadata.ferro.deploy].ferro_version must be a string")
         })?;
         meta.ferro_version = Some(s.to_string());
+    }
+
+    if let Some(v) = table.get("web_bin") {
+        let s = v.as_str().ok_or_else(|| {
+            anyhow::anyhow!("[package.metadata.ferro.deploy].web_bin must be a string")
+        })?;
+        meta.web_bin = Some(s.to_string());
     }
 
     Ok(meta)
