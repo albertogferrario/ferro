@@ -54,11 +54,11 @@ tokio = { version = "1", features = ["full"] }
 2. Point your AI agent at `ferro-mcp` via its MCP configuration.
 3. The agent introspects the project (`application_info`, `list_routes`, `list_models`, `list_projections`) and generates code, projections, and views against the live application surface.
 
-There is no bundled agent UI. `ferro-mcp` is the v1.0 product surface — the API your agent talks to.
+There is no bundled agent UI. `ferro-mcp` is the introspection layer your agent talks to.
 
 ## Status
 
-v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. No public announcements yet; the framework is being developed in the open and is not feature-frozen.
+v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. The framework is developed in the open and is not feature-frozen.
 
 ## License
 
