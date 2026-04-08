@@ -13,6 +13,20 @@ use toml::Value;
 
 const DEP_TABLES: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
+/// Keys preserved verbatim from the original path-dep table when rewriting it
+/// into a version dep. `path` is intentionally absent (it's what we're
+/// stripping). Anything else cargo accepts on a registry dep is preserved so
+/// `package = "..."` renames, `features = [...]`, `default-features = false`,
+/// `optional = true`, etc. survive the rewrite.
+const PRESERVED_DEP_KEYS: &[&str] = &[
+    "package",
+    "features",
+    "default-features",
+    "optional",
+    "registry",
+    "rename",
+];
+
 /// Rewrite the project Cargo.toml into `<project_root>/Cargo.docker.toml`,
 /// replacing every `ferro*` path dep with a version dep. Returns the path of
 /// the file written.
@@ -43,10 +57,14 @@ pub fn rewrite_cargo_docker_toml(
             .collect();
 
         for key in keys {
-            let path_str = table
+            let original = table
                 .get(&key)
                 .and_then(|v| v.as_table())
-                .and_then(|t| t.get("path"))
+                .cloned()
+                .unwrap_or_default();
+
+            let path_str = original
+                .get("path")
                 .and_then(|p| p.as_str())
                 .map(String::from);
 
@@ -60,6 +78,11 @@ pub fn rewrite_cargo_docker_toml(
 
             let mut replacement = Map::new();
             replacement.insert("version".to_string(), Value::String(version));
+            for preserved in PRESERVED_DEP_KEYS {
+                if let Some(v) = original.get(*preserved) {
+                    replacement.insert((*preserved).to_string(), v.clone());
+                }
+            }
             table.insert(key, Value::Table(replacement));
         }
     }
@@ -206,6 +229,75 @@ serde = "1"
         assert!(!body.contains("path"));
         // serde untouched.
         assert!(body.contains("serde"));
+    }
+
+    /// Regression: gestiscilo declares `ferro = { path = "...", package = "ferro-rs",
+    /// features = ["json-ui", "theme"] }`. The rewriter must preserve `package` and
+    /// `features` so the resulting dep resolves to crate `ferro-rs` on crates.io
+    /// with the requested features, not a phantom crate literally named `ferro`.
+    #[test]
+    fn preserves_package_rename_and_features() {
+        let tmp = TempDir::new().unwrap();
+        let project = tmp.path().join("project");
+        write(
+            &project.join("Cargo.toml"),
+            r#"
+[package]
+name = "demo"
+version = "0.1.0"
+
+[dependencies]
+ferro = { path = "../framework", package = "ferro-rs", features = ["json-ui", "theme"] }
+ferro-json-ui = { path = "../ferro-json-ui", default-features = false, optional = true }
+"#,
+        );
+        write(
+            &tmp.path().join("framework/Cargo.toml"),
+            "[package]\nname = \"ferro-rs\"\nversion = \"0.2.0\"\n",
+        );
+        write(
+            &tmp.path().join("ferro-json-ui/Cargo.toml"),
+            "[package]\nname = \"ferro-json-ui\"\nversion = \"0.2.0\"\n",
+        );
+
+        let out = rewrite_cargo_docker_toml(&project, Some("0.2.0")).unwrap();
+        let body = fs::read_to_string(&out).unwrap();
+        let parsed: Value = body.parse().unwrap();
+        let deps = parsed
+            .get("dependencies")
+            .and_then(|v| v.as_table())
+            .unwrap();
+
+        let ferro = deps.get("ferro").and_then(|v| v.as_table()).unwrap();
+        assert_eq!(ferro.get("version").and_then(|v| v.as_str()), Some("0.2.0"));
+        assert_eq!(
+            ferro.get("package").and_then(|v| v.as_str()),
+            Some("ferro-rs"),
+            "package rename must survive rewrite"
+        );
+        let features: Vec<&str> = ferro
+            .get("features")
+            .and_then(|v| v.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert_eq!(features, vec!["json-ui", "theme"]);
+        assert!(ferro.get("path").is_none(), "path must be stripped");
+
+        let json_ui = deps
+            .get("ferro-json-ui")
+            .and_then(|v| v.as_table())
+            .unwrap();
+        assert_eq!(
+            json_ui.get("default-features").and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            json_ui.get("optional").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        assert!(json_ui.get("path").is_none());
     }
 
     #[test]

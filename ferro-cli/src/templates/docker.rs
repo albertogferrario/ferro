@@ -75,9 +75,20 @@ pub fn render_dockerfile(ctx: &DockerContext) -> String {
         )
     };
 
+    // Docker Hub publishes `rust:slim-bookworm` (unversioned, tracks stable)
+    // and `rust:<version>-slim-bookworm` (e.g. `rust:1.90.0-slim-bookworm`).
+    // There is no `rust:stable-slim-bookworm` tag, so when the channel is the
+    // generic "stable" we drop the prefix instead of constructing a phantom
+    // tag that fails to pull.
+    let rust_image_tag = if ctx.rust_channel == "stable" {
+        "slim-bookworm".to_string()
+    } else {
+        format!("{}-slim-bookworm", ctx.rust_channel)
+    };
+
     DOCKERFILE_TPL
         .replace("{{FRONTEND_STAGE}}", &frontend_stage)
-        .replace("{{RUST_CHANNEL}}", &ctx.rust_channel)
+        .replace("{{RUST_IMAGE_TAG}}", &rust_image_tag)
         .replace("{{BIN_BUILDS}}", &bin_builds)
         .replace("{{BIN_COPIES}}", &bin_copies)
         .replace("{{COPY_DIRS}}", &copy_dirs)
@@ -209,6 +220,18 @@ mod tests {
         c.rust_channel = "1.90.0".into();
         let out = render_dockerfile(&c);
         assert!(out.contains("rust:1.90.0-slim-bookworm"));
+    }
+
+    /// Regression: `rust:stable-slim-bookworm` does not exist on Docker Hub.
+    /// When the channel is the generic "stable", we must emit the unversioned
+    /// `rust:slim-bookworm` tag (which tracks stable) instead.
+    #[test]
+    fn stable_channel_emits_unversioned_slim_bookworm() {
+        let mut c = ctx();
+        c.rust_channel = "stable".into();
+        let out = render_dockerfile(&c);
+        assert!(out.contains("FROM rust:slim-bookworm AS chef"));
+        assert!(!out.contains("rust:stable-slim-bookworm"));
     }
 
     #[test]
