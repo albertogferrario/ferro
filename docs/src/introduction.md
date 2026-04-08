@@ -2,9 +2,9 @@
 
 Ferro is a Rust web framework optimized for AI-assisted authoring. It is built for developers whose primary authoring tool is a coding agent (Claude Code, Cursor, and similar), and exposes every subsystem through an in-process MCP (Model Context Protocol) server. An agent connected to your project reads routes, models, handlers, validations, and generation context as tool calls — not by parsing source.
 
-The defining feature is **service projections**: declare a service and intent, get a working UI. The `ferro-projections` crate (shipped in v9.0) maps typed model pipelines to rendered views, so an agent can scaffold an end-to-end CRUD or workflow surface from a single declaration. At v1.0 the output is visual (HTML via JSON-UI, shipped in v10.0); the underlying model is media-independent and intended to drive other sensory channels in later versions.
+The defining feature is **service projections**: declare a service and intent, get a working UI. The `ferro-projections` crate (shipped in v9.0) maps typed model pipelines to rendered views, so an agent can scaffold an end-to-end CRUD or workflow surface from a single declaration. At v1.0 the output is visual (HTML via JSON-UI, shipped in v10.0); the underlying model is designed to support additional rendering modalities over time.
 
-There is no bundled agent UI. `ferro-mcp` is the v1.0 product surface — the API your agent talks to.
+There is no bundled agent UI. `ferro-mcp` is the introspection layer your agent talks to.
 
 ## What's included
 
@@ -56,7 +56,7 @@ pub fn routes() -> Router {
 
 ## Status
 
-Ferro is pre-1.0. Breaking changes are allowed between minor versions until 1.0. The framework is being developed in the open without public announcements; current milestone work targets v12.0 spec-driven rendering.
+Ferro is pre-1.0. Breaking changes are allowed between minor versions until 1.0. Current milestone work targets v12.0 spec-driven rendering.
 
 ## Getting Started
 
