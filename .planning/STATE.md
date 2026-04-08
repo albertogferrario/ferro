@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.0
-milestone_name: JSON-UI v2 — Spec-Driven Rendering
-status: ready
-stopped_at: 0.2.0 release prep complete; ready to push origin master
-last_updated: "2026-04-08T00:00:00.000Z"
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
+status: release-ready, awaiting push to origin/master
+stopped_at: Phase 126 complete
+last_updated: "2026-04-08T03:29:05.353Z"
 last_activity: 2026-04-08
-release:
-  version: "0.2.0"
-  state: "release-ready, awaiting push"
-  commits_ahead_of_origin: 627
 progress:
-  total_phases: 127
-  completed_phases: 113
-  total_plans: 271
-  completed_plans: 260
+  total_phases: 8
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 96
 ---
 
@@ -117,10 +113,11 @@ Recent decisions affecting current work:
 - Phase 124 added: Doctor, introspection, CI scaffold (ferro doctor, routes --json, ci.yml generation, ignore_patterns sync)
 - Phase 125 added: Module scaffolder + ferro-json-ui runtime split (make:module convention, runtime IIFE refactor)
 - [CLI bug] `gsd-tools phase add` assigned 115 four times in one batch — does not detect previously added phases when computing next integer; also collided with an unrelated active milestone (JSON-UI v2 already at 115-121). Manually renumbered to 122-125. File against gsd-tools.
+- Phase 126 added (2026-04-08): Deploy experience feedback triage — analysis-only phase pointing the next agent at `phases/126-deploy-experience-feedback/REPORT.md` (field notes from first end-to-end gestiscilo deploy: 2 fixed bugs already shipped in 0.2.1, 9 sharp edges still present, 6 DX improvements). Agent must produce `PROPOSAL.md` classifying every item before any new ferro work is scoped.
 
 ## Session Continuity
 
-Last session: 2026-04-08
-Stopped at: 0.2.0 release prep complete + developer surface alignment audit + design philosophy documentation. Workspace is release-ready.
+Last session: 2026-04-08T03:29:05.349Z
+Stopped at: Phase 126 complete
 Resume file: None
 Next action: `git push origin master` to publish v0.2.0 when ready.
