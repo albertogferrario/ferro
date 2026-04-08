@@ -4,6 +4,7 @@ name: {{NAME}}
 region: fra1
 
 services:
+  # The container command comes from the Dockerfile ENTRYPOINT (ferro 127, D-05).
   - name: web
     dockerfile_path: Dockerfile
     source_dir: /
@@ -17,5 +18,4 @@ services:
 
 {{WORKERS_BLOCK}}
 envs:
-  # Set values in DO dashboard or via `doctl apps update`:
-{{ENV_COMMENTS}}
+{{ENVS_BLOCK}}

@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::deploy::bin_detect::detect_web_bin;
-use crate::deploy::env_production::read_env_production_keys;
+use crate::deploy::env_production::parse_env_example_structured;
 use crate::project::{find_project_root, package_name};
 use crate::templates::do_::{
     is_test_like_bin, parse_git_remote, render_app_yaml, sanitize_do_app_name, AppYamlContext,
@@ -40,20 +40,29 @@ fn run_inner(force: bool) -> anyhow::Result<()> {
         .cloned()
         .collect();
 
-    let env_path = root.join(".env.production");
-    if !env_path.exists() {
-        anyhow::bail!(
-            ".env.production not found.\nCreate it from .env.example and fill in production values:\n  cp .env.example .env.production\n  $EDITOR .env.production"
-        );
-    }
-    let env_keys = read_env_production_keys(&env_path)?;
+    // Phase 127 D-06: derive envs from `.env.example` (the shape source of
+    // truth) rather than `.env.production` (which stays on the dev machine).
+    // Missing `.env.example` is a warning, not an error — the rendered envs:
+    // block will simply be empty.
+    let env_example_path = root.join(".env.example");
+    let env_lines = match fs::read_to_string(&env_example_path) {
+        Ok(contents) => Some(parse_env_example_structured(&contents)),
+        Err(_) => {
+            eprintln!(
+                "{} .env.example not found; rendering empty envs: block. \
+                 Populate envs in .do/app.yaml before `doctl apps create`.",
+                style("warning:").yellow().bold()
+            );
+            None
+        }
+    };
 
     let ctx = AppYamlContext {
         name,
         repo,
         web_bin,
         workers,
-        env_keys,
+        env_lines,
     };
     let yaml = render_app_yaml(&ctx);
 
@@ -121,19 +130,25 @@ mod tests {
     }
 
     #[test]
-    fn run_inner_errors_on_missing_env_production() {
+    fn run_inner_succeeds_with_missing_env_example() {
+        // Phase 127 D-06: missing .env.example is a warning, not an error.
         let td = TempDir::new().unwrap();
         write(
             td.path(),
             "Cargo.toml",
-            "[package]\nname = \"sample\"\nversion = \"0.1.0\"\n",
+            "[package]\nname = \"sample\"\nversion = \"0.1.0\"\n\n[[bin]]\nname = \"sample\"\npath = \"src/main.rs\"\n",
         );
-        // Run from inside the project root via CWD swap.
+        write(td.path(), "src/main.rs", "fn main() {}\n");
         let prev = std::env::current_dir().unwrap();
         std::env::set_current_dir(td.path()).unwrap();
-        let result = run_inner(false);
+        let result = run_inner(true);
         std::env::set_current_dir(prev).unwrap();
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains(".env.production not found"));
+        assert!(
+            result.is_ok(),
+            "run_inner must succeed without .env.example: {result:?}"
+        );
+        let yaml = fs::read_to_string(td.path().join(".do/app.yaml")).expect("app.yaml written");
+        assert!(!yaml.contains("- key: "), "envs block must be empty");
+        assert!(yaml.contains("envs:"));
     }
 }
