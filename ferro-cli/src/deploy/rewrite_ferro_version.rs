@@ -387,6 +387,91 @@ ferro = { path = "../framework" }
         );
     }
 
+    /// Phase 129 / REPORT §14: `ferro_versions` override table is a schema
+    /// reservation parsed in `project.rs` but not yet consumed by the rewriter.
+    /// This test locks in the current toml_edit behavior — the
+    /// `[package.metadata.ferro.deploy.ferro_versions]` table must survive
+    /// `rewrite_cargo_docker_toml` byte-identically because the rewriter only
+    /// mutates `[dependencies]*` tables.
+    #[test]
+    fn preserves_ferro_versions_override_roundtrip() {
+        let tmp = TempDir::new().unwrap();
+        let project = tmp.path().join("project");
+        write(
+            &project.join("Cargo.toml"),
+            r#"
+[package]
+name = "demo"
+version = "0.1.0"
+
+[dependencies]
+ferro = { path = "../framework" }
+
+[package.metadata.ferro.deploy]
+ferro_version = "0.2.0"
+
+[package.metadata.ferro.deploy.ferro_versions]
+ferro-json-ui = "0.2.1"
+ferro-whatsapp = "0.2.0"
+"#,
+        );
+        write(
+            &tmp.path().join("framework/Cargo.toml"),
+            "[package]\nname = \"ferro\"\nversion = \"0.2.0\"\n",
+        );
+
+        let out = rewrite_cargo_docker_toml(&project, Some("0.2.0")).unwrap();
+        let body = fs::read_to_string(&out).unwrap();
+
+        // Dep table rewritten as expected.
+        assert!(
+            body.contains("ferro = { version = \"0.2.0\""),
+            "ferro dep should be rewritten to a version dep: {body}"
+        );
+        assert!(
+            !body.contains("../framework"),
+            "path dep should be stripped: {body}"
+        );
+
+        // ferro_versions override survives byte-wise.
+        assert!(
+            body.contains("[package.metadata.ferro.deploy.ferro_versions]"),
+            "override table header missing: {body}"
+        );
+        assert!(
+            body.contains("ferro-json-ui = \"0.2.1\""),
+            "override entry missing: {body}"
+        );
+        assert!(
+            body.contains("ferro-whatsapp = \"0.2.0\""),
+            "override entry missing: {body}"
+        );
+
+        // And semantically.
+        let parsed: toml::Value = body.parse().unwrap();
+        let overrides = parsed
+            .get("package")
+            .unwrap()
+            .get("metadata")
+            .unwrap()
+            .get("ferro")
+            .unwrap()
+            .get("deploy")
+            .unwrap()
+            .get("ferro_versions")
+            .unwrap()
+            .as_table()
+            .unwrap();
+        assert_eq!(
+            overrides.get("ferro-json-ui").and_then(|v| v.as_str()),
+            Some("0.2.1")
+        );
+        assert_eq!(
+            overrides.get("ferro-whatsapp").and_then(|v| v.as_str()),
+            Some("0.2.0")
+        );
+    }
+
     /// D-18: `persist_cargo_docker_toml` writes exactly the supplied bytes.
     #[test]
     fn persist_writes_computed_contents() {
