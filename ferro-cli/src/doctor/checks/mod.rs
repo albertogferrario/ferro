@@ -1,6 +1,7 @@
-//! Concrete doctor checks. SCOPE §12 — 9 revised checks.
+//! Concrete doctor checks. SCOPE §12 — 11 revised checks.
 
 pub mod cargo_docker_toml_staleness;
+pub mod copy_dirs_dockerignore_collision;
 pub mod database_url_sqlite_in_prod;
 pub mod db_connection;
 pub mod deploy_env_parity;
@@ -11,6 +12,7 @@ pub mod migrations;
 pub mod toolchain;
 
 pub use cargo_docker_toml_staleness::CargoDockerTomlStalenessCheck;
+pub use copy_dirs_dockerignore_collision::CopyDirsDockerignoreCollisionCheck;
 pub use database_url_sqlite_in_prod::DatabaseUrlSqliteInProdCheck;
 pub use db_connection::DbConnectionCheck;
 pub use deploy_env_parity::DeployEnvParityCheck;
