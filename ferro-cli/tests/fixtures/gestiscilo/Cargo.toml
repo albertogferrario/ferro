@@ -1,0 +1,19 @@
+[package]
+name = "gestiscilo"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "gestiscilo"
+path = "src/main.rs"
+
+[[bin]]
+name = "screenshot-worker"
+path = "src/bin/screenshot_worker.rs"
+
+# The Cargo.toml at 6f6d397 has no [package.metadata.ferro.deploy] table.
+# The scaffolder defaults apply: copy_dirs = ["themes", "lang", "public", "migrations"].
+# Only "themes" is present on disk in this fixture tree; the others are absent.
+# runtime_apt is evidence from the committed Dockerfile's # ferro:runtime-apt block.
+[package.metadata.ferro.deploy]
+runtime_apt = ["chromium", "fonts-liberation", "ca-certificates"]

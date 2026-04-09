@@ -1,0 +1,154 @@
+# Hand-maintained. ferro 0.1.72 `do:init` output is incomplete for this
+# project (wrong region, no envs block, no workers block, unwanted health_check).
+# See .planning/phases/75-re-scaffold-dockerfile-and-digitalocean-app-spec/75-VERIFICATION.md.
+# Do NOT run `ferro do:init --force` against this file until the upstream
+# scaffolder is fixed — it will overwrite with a broken template.
+name: gestiscilo
+region: fra1
+
+services:
+  # The container command comes from the Dockerfile ENTRYPOINT.
+  - name: web
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      repo: gestiscilo-it/app
+      branch: main
+      deploy_on_push: true
+    http_port: 8080
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+
+# workers: (one entry per non-test/dev/debug [[bin]] other than the service)
+workers:
+  - name: screenshot-worker
+    dockerfile_path: Dockerfile
+    source_dir: /
+    run_command: /usr/local/bin/screenshot-worker
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+
+envs:
+  - key: APP_NAME
+    value: ""
+    scope: RUN_TIME
+  - key: APP_ENV
+    value: ""
+    scope: RUN_TIME
+  - key: APP_URL
+    value: ""
+    scope: RUN_TIME
+  - key: BASE_URL
+    value: ""
+    scope: RUN_TIME
+
+  - key: APP_LOCALE
+    value: ""
+    scope: RUN_TIME
+  - key: APP_FALLBACK_LOCALE
+    value: ""
+    scope: RUN_TIME
+
+  - key: SERVER_HOST
+    value: ""
+    scope: RUN_TIME
+  - key: SERVER_PORT
+    value: ""
+    scope: RUN_TIME
+
+  - key: DATABASE_URL
+    value: ""
+    scope: RUN_TIME
+  - key: DB_MAX_CONNECTIONS
+    value: ""
+    scope: RUN_TIME
+  - key: DB_MIN_CONNECTIONS
+    value: ""
+    scope: RUN_TIME
+  - key: DB_CONNECT_TIMEOUT
+    value: ""
+    scope: RUN_TIME
+  - key: DB_LOGGING
+    value: ""
+    scope: RUN_TIME
+
+  - key: SESSION_LIFETIME
+    value: ""
+    scope: RUN_TIME
+  - key: SESSION_ABSOLUTE_LIFETIME
+    value: ""
+    scope: RUN_TIME
+  - key: SESSION_COOKIE
+    value: ""
+    scope: RUN_TIME
+  - key: SESSION_SECURE
+    value: ""
+    scope: RUN_TIME
+  - key: SESSION_SAME_SITE
+    value: ""
+    scope: RUN_TIME
+
+  - key: MAIL_DRIVER
+    value: ""
+    scope: RUN_TIME
+  - key: MAIL_FROM_ADDRESS
+    value: ""
+    scope: RUN_TIME
+  - key: MAIL_FROM_NAME
+    value: ""
+    scope: RUN_TIME
+  - key: RESEND_API_KEY
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+
+  - key: SPACES_BUCKET
+    value: ""
+    scope: RUN_TIME
+  - key: SPACES_ENDPOINT
+    value: ""
+    scope: RUN_TIME
+  - key: SPACES_REGION
+    value: ""
+    scope: RUN_TIME
+  - key: SPACES_KEY
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+  - key: SPACES_SECRET
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+
+  - key: STRIPE_SECRET_KEY
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+  - key: STRIPE_WEBHOOK_SECRET
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+
+  - key: WHATSAPP_APP_SECRET
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+  - key: WHATSAPP_VERIFY_TOKEN
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+
+  - key: ANTHROPIC_API_KEY
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+
+  - key: APP_DEBUG
+    value: ""
+    scope: RUN_TIME
+  - key: SEED_DEMO_DATA
+    value: ""
+    scope: RUN_TIME
+  - key: FERRO_COLLECT_METRICS
+    value: ""
+    scope: RUN_TIME
