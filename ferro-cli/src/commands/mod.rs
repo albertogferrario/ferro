@@ -10,6 +10,7 @@ pub mod db_rollback;
 pub mod db_seed;
 pub mod db_status;
 pub mod db_sync;
+pub mod deploy_init;
 pub mod do_init;
 pub mod docker_compose;
 pub mod docker_init;

@@ -363,6 +363,16 @@ enum Commands {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Write [package.metadata.ferro.deploy] into root Cargo.toml with interactive prompts and sensible defaults.
+    #[command(name = "deploy:init")]
+    DeployInit {
+        /// Skip interactive prompts and use detected defaults.
+        #[arg(long)]
+        yes: bool,
+        /// Print the generated [package.metadata.ferro.deploy] block without writing.
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Generate docker-compose.yml for local development
     #[command(name = "docker:compose")]
     DockerCompose {
@@ -640,6 +650,9 @@ fn main() {
         }
         Commands::DoInit { force, dry_run } => {
             commands::do_init::run_with(force, dry_run);
+        }
+        Commands::DeployInit { yes, dry_run } => {
+            commands::deploy_init::run(yes, dry_run);
         }
         Commands::DockerCompose {
             with_mailpit,
