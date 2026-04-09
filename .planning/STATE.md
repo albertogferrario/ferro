@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: verifying
-stopped_at: Completed 129-03-PLAN.md
-last_updated: "2026-04-09T15:08:46.883Z"
+status: executing
+stopped_at: Completed 131-01-PLAN.md
+last_updated: "2026-04-09T20:13:55.113Z"
 last_activity: 2026-04-09
 progress:
-  total_phases: 130
-  completed_phases: 118
-  total_plans: 283
-  completed_plans: 273
+  total_phases: 132
+  completed_phases: 119
+  total_plans: 287
+  completed_plans: 275
   percent: 96
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 129 — publish-workflow-refinement
+**Current focus:** Phase 131 — scaffolder-multibin-copydirs-runtime-apt
 
 ## Current Position
 
-Phase: 129
-Plan: Not started
+Phase: 131 (scaffolder-multibin-copydirs-runtime-apt) — EXECUTING
+Plan: 2 of 3
 Workspace version: 0.2.0
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-04-09
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
@@ -89,6 +89,7 @@ Progress: [██████████] 96%
 | Phase 129-publish-workflow-refinement P01 | 2 | 2 tasks | 1 files |
 | Phase 129-publish-workflow-refinement P02 | 2min | 3 tasks | 2 files |
 | Phase 129 P03 | 2min | 2 tasks | 1 files |
+| Phase 131 P01 | 20min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -127,10 +128,12 @@ Recent decisions affecting current work:
 - Phase 125 added: Module scaffolder + ferro-json-ui runtime split (make:module convention, runtime IIFE refactor)
 - [CLI bug] `gsd-tools phase add` assigned 115 four times in one batch — does not detect previously added phases when computing next integer; also collided with an unrelated active milestone (JSON-UI v2 already at 115-121). Manually renumbered to 122-125. File against gsd-tools.
 - Phase 126 added (2026-04-08): Deploy experience feedback triage — analysis-only phase pointing the next agent at `phases/126-deploy-experience-feedback/REPORT.md` (field notes from first end-to-end gestiscilo deploy: 2 fixed bugs already shipped in 0.2.1, 9 sharp edges still present, 6 DX improvements). Agent must produce `PROPOSAL.md` classifying every item before any new ferro work is scoped.
+- Phase 131 added (2026-04-09): Scaffolder multi-bin, copy_dirs, runtime_apt, DO app.yaml robustness, drift detection — promoted from `.planning/backlog/gestiscilo-scaffolder-multibin-gap.md` (gestiscilo-it Phase 75 field test gap). CLI bug recurred again (returned phase 1); manually renumbered.
+- Phase 130 added (2026-04-09): Invert dep convention (simple) — retire `Cargo.docker.toml` and `cargo_docker_toml_staleness` doctor check; Docker builds use `Cargo.toml` directly; local ferro dev via uncommitted `[patch.crates-io]`. Source: `.planning/proposals/dep-override-convention.md` (simplified per user direction — no new CLI verbs, no new doctor check). CLI bug recurred: `gsd-tools phase add` returned phase 1 instead of 130; manually renumbered.
 
 ## Session Continuity
 
-Last session: 2026-04-09T15:06:25.973Z
-Stopped at: Completed 129-03-PLAN.md
+Last session: 2026-04-09T20:13:55.106Z
+Stopped at: Completed 131-01-PLAN.md
 Resume file: None
 Next action: `git push origin master` to publish v0.2.0 when ready.
