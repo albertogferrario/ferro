@@ -866,6 +866,28 @@ Plans:
 Plans:
 - [x] TBD (run /gsd:plan-phase 129 to break down) (completed 2026-04-09)
 
+### Phase 130: Invert dep convention (simple)
+
+**Goal:** Retire `Cargo.docker.toml` and the `cargo_docker_toml_staleness` doctor check. Docker builds use `Cargo.toml` directly. Local ferro development happens via a hand-written, uncommitted `[patch.crates-io]` block. No new CLI verbs, no new doctor check, no hooks, no CLAUDE.md section.
+**Requirements**: P130-R1 (delete cargo_docker_toml_staleness check), P130-R2 (delete ferro_version_skew check and rewrite_ferro_version module), P130-R3 (remove Cargo.docker.toml generation from docker:init and do:init), P130-R4 (Dockerfile template builds from Cargo.toml directly), P130-R5 (Cargo.toml scaffold hint comment for local [patch.crates-io] dev)
+**Depends on:** Phase 129
+**Plans:** 1 plan
+
+Plans:
+- [ ] 130-01-PLAN.md — Delete Cargo.docker.toml infrastructure, update templates and docs
+
+### Phase 131: Scaffolder multi-bin, copy_dirs, runtime_apt, DO app.yaml robustness, drift detection
+
+**Goal:** Make `ferro docker:init` and `ferro do:init` handle non-trivial projects without hand-maintenance. (1) Multi-bin detection — build and wire every `[[bin]]` (web + workers) in Dockerfile and `.do/app.yaml`. (2) Runtime `copy_dirs` from `[package.metadata.ferro.docker]` (e.g. `themes/`, `migrations/`). (3) Runtime apt packages from `runtime_apt` metadata. (4) `.do/app.yaml` robustness — preserve `region`/`name`/repo binding on `--force`; fix envs-from-`.env.example` path; drop unconditional `health_check`; remove dead Node.js frontend build stage for server-rendered projects. (5) `ferro doctor` check `docker_template_drift` that re-runs scaffolder in-memory and diffs against committed files. Test bed: gestiscilo-it commit `6f6d397` must become byte-identical to scaffolder output. Source: `.planning/backlog/gestiscilo-scaffolder-multibin-gap.md`.
+**Requirements**: REQ-131-01, REQ-131-02, REQ-131-03, REQ-131-04, REQ-131-05, REQ-131-06, REQ-131-07, REQ-131-08, REQ-131-09, REQ-131-10, REQ-131-11
+**Depends on:** Phase 130
+**Plans:** 3 plans
+
+Plans:
+- [ ] 131-01-PLAN.md — Freeze gestiscilo 6f6d397 fixtures and write byte-identical regeneration tests (Wave 0 gap audit)
+- [ ] 131-02-PLAN.md — .do/app.yaml identity preservation on --force and docker_template_drift doctor check
+- [ ] 131-03-PLAN.md — Collapse duplicate read_bins into single canonical reader
+
 ---
 
 ## Progress Summary
