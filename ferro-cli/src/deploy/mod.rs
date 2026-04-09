@@ -6,26 +6,9 @@
 
 pub mod bin_detect;
 pub mod env_production;
-pub mod rewrite_ferro_version;
 pub mod secret_keys;
 
-use std::path::Path;
 use toml::Value;
-
-/// Read `package.version` from a path dep's `Cargo.toml`. Shared by
-/// `cargo_docker_toml_staleness` and `ferro_version_skew` checks and by
-/// the `Cargo.docker.toml` rewriter. Returns `None` if the file is
-/// missing, unparseable, or lacks `package.version`.
-pub(crate) fn read_path_dep_version(project_root: &Path, rel_path: &str) -> Option<String> {
-    let dep_cargo = project_root.join(rel_path).join("Cargo.toml");
-    let content = std::fs::read_to_string(&dep_cargo).ok()?;
-    let parsed: Value = content.parse().ok()?;
-    parsed
-        .get("package")?
-        .get("version")?
-        .as_str()
-        .map(String::from)
-}
 
 // ---------------------------------------------------------------------------
 // Env parsing (.env / .env.example / .env.production)

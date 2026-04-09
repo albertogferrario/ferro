@@ -25,13 +25,10 @@ pub struct FerroDeployMetadata {
     pub runtime_apt: Vec<String>,
     pub copy_dirs: Vec<String>,
     pub ferro_version: Option<String>,
-    // TODO(Phase 129 / REPORT §14): Schema-only reservation for per-crate
-    // version overrides. Rewrite logic currently applies `ferro_version`
-    // globally to all ferro crates. When a real desync occurs, resolve
-    // per-crate overrides here before calling
-    // `deploy::rewrite_ferro_version::rewrite_cargo_docker_toml`. Until
-    // then, `ferro_version` above is authoritative and this map is parsed,
-    // round-tripped, and ignored. See
+    // Schema-only reservation for per-crate version overrides. Currently
+    // parsed, round-tripped, and ignored. Phase 130 retired the
+    // `Cargo.docker.toml` rewriter that used to consume these; a future
+    // deploy path may resurrect the field. See
     // .planning/phases/129-publish-workflow-refinement/.
     pub ferro_versions: Option<BTreeMap<String, String>>,
     pub web_bin: Option<String>,

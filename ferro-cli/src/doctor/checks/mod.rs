@@ -1,24 +1,20 @@
-//! Concrete doctor checks. SCOPE §12 — 11 revised checks.
+//! Concrete doctor checks.
 
-pub mod cargo_docker_toml_staleness;
 pub mod copy_dirs_dockerignore_collision;
 pub mod database_url_sqlite_in_prod;
 pub mod db_connection;
 pub mod deploy_env_parity;
 pub mod dirty_git_tree;
-pub mod ferro_version_skew;
 pub mod generated_artifacts;
 pub mod local_env_parity;
 pub mod migrations;
 pub mod toolchain;
 
-pub use cargo_docker_toml_staleness::CargoDockerTomlStalenessCheck;
 pub use copy_dirs_dockerignore_collision::CopyDirsDockerignoreCollisionCheck;
 pub use database_url_sqlite_in_prod::DatabaseUrlSqliteInProdCheck;
 pub use db_connection::DbConnectionCheck;
 pub use deploy_env_parity::DeployEnvParityCheck;
 pub use dirty_git_tree::DirtyGitTreeCheck;
-pub use ferro_version_skew::FerroVersionSkewCheck;
 pub use generated_artifacts::GeneratedArtifactsCheck;
 pub use local_env_parity::LocalEnvParityCheck;
 pub use migrations::MigrationsCheck;

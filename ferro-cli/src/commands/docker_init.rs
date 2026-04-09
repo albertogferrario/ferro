@@ -1,17 +1,21 @@
-//! `ferro docker:init` — generate a production-ready Dockerfile, static
-//! .dockerignore, and Cargo.docker.toml from project metadata. Phase 122.2 §3.
+//! `ferro docker:init` — generate a production-ready Dockerfile and static
+//! `.dockerignore` from project metadata. Phase 122.2 §3.
 //!
 //! Phase 127 Plan 04: `--dry-run` renders every output file to memory and
 //! prints it to stdout without touching the filesystem (D-17, D-18). The
 //! "Next steps" footer (D-13, D-14) is printed after a successful
 //! non-dry-run invocation and is suppressed in dry-run (D-16). Render
 //! errors remain hard errors in both modes (D-19).
+//!
+//! Phase 130: the `Cargo.docker.toml` dual-manifest is retired. Docker builds
+//! read `Cargo.toml` directly; ferro developers who need to point at an
+//! unpublished local checkout maintain an uncommitted `[patch.crates-io]`
+//! block by hand.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::deploy::bin_detect::detect_web_bin;
-use crate::deploy::rewrite_ferro_version::{compute_cargo_docker_toml, persist_cargo_docker_toml};
 use crate::project::{find_project_root, package_name, read_deploy_metadata};
 use crate::templates::docker::{
     dockerignore_template, read_bins, read_rust_channel, render_dockerfile, DockerContext,
@@ -46,7 +50,11 @@ pub fn run_with(force: bool, ferro_version: Option<String>, dry_run: bool) {
 
 /// Library-level entry point used by integration tests. Returns `Result`
 /// instead of printing to stderr, so tests can assert on failures.
-pub fn execute(force: bool, ferro_version_flag: Option<&str>, dry_run: bool) -> anyhow::Result<()> {
+pub fn execute(
+    force: bool,
+    _ferro_version_flag: Option<&str>,
+    dry_run: bool,
+) -> anyhow::Result<()> {
     let root = find_project_root(None)
         .map_err(|e| anyhow::anyhow!("could not locate project Cargo.toml: {e}"))?;
 
@@ -75,11 +83,6 @@ pub fn execute(force: bool, ferro_version_flag: Option<&str>, dry_run: bool) -> 
     // every mode, including --dry-run (D-19).
     let dockerfile = render_dockerfile(&ctx);
 
-    // Version override precedence: --ferro-version flag → metadata.ferro_version
-    // → path-dep workspace version → "*".
-    let override_str = ferro_version_flag.or(metadata.ferro_version.as_deref());
-    let cargo_docker = compute_cargo_docker_toml(&root, override_str)?;
-
     let files: Vec<RenderedFile> = vec![
         RenderedFile {
             relative_path: "Dockerfile".into(),
@@ -88,10 +91,6 @@ pub fn execute(force: bool, ferro_version_flag: Option<&str>, dry_run: bool) -> 
         RenderedFile {
             relative_path: ".dockerignore".into(),
             contents: dockerignore_template().to_string(),
-        },
-        RenderedFile {
-            relative_path: "Cargo.docker.toml".into(),
-            contents: cargo_docker,
         },
     ];
 
@@ -102,19 +101,14 @@ pub fn execute(force: bool, ferro_version_flag: Option<&str>, dry_run: bool) -> 
         return Ok(());
     }
 
-    // Persist. Template outputs honor --force; Cargo.docker.toml is always
-    // regenerated (it's a derived artifact, not user-edited).
+    // Persist. Template outputs honor --force.
     for f in &files {
         let target = root.join(&f.relative_path);
-        if f.relative_path == Path::new("Cargo.docker.toml") {
-            persist_cargo_docker_toml(&target, &f.contents)?;
-        } else {
-            write_if_absent_or_force(&target, &f.contents, force)?;
-        }
+        write_if_absent_or_force(&target, &f.contents, force)?;
     }
 
     println!(
-        "docker:init wrote Dockerfile, .dockerignore, Cargo.docker.toml in {}",
+        "docker:init wrote Dockerfile and .dockerignore in {}",
         root.display()
     );
 

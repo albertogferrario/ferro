@@ -340,7 +340,7 @@ enum Commands {
         /// SQL query to execute
         query: String,
     },
-    /// Generate Dockerfile, .dockerignore, and Cargo.docker.toml for containerized deployment. Reads [package.metadata.ferro.deploy] for runtime_apt and copy_dirs.
+    /// Generate Dockerfile and .dockerignore for containerized deployment. Reads [package.metadata.ferro.deploy] for runtime_apt and copy_dirs.
     #[command(name = "docker:init")]
     DockerInit {
         /// Overwrite existing Dockerfile and .dockerignore
@@ -451,7 +451,7 @@ enum Commands {
         /// Emit machine-readable JSON instead of colored human output
         #[arg(long)]
         json: bool,
-        /// Run only deploy-category checks (cargo_docker_toml_staleness, copy_dirs_dockerignore_collision, ferro_version_skew)
+        /// Run only deploy-category checks (copy_dirs_dockerignore_collision)
         #[arg(long)]
         deploy: bool,
     },

@@ -11,8 +11,7 @@ use std::path::Path;
 use crate::commands::docker_init::{print_dry_run, RenderedFile};
 use crate::deploy::bin_detect::detect_web_bin;
 use crate::deploy::env_production::parse_env_example_structured;
-use crate::deploy::rewrite_ferro_version::compute_cargo_docker_toml;
-use crate::project::{find_project_root, package_name, read_deploy_metadata};
+use crate::project::{find_project_root, package_name};
 use crate::templates::do_::{
     is_test_like_bin, parse_git_remote, render_app_yaml, sanitize_do_app_name, AppYamlContext,
 };
@@ -79,23 +78,12 @@ fn run_inner(force: bool, dry_run: bool) -> anyhow::Result<()> {
     let yaml = render_app_yaml(&ctx);
 
     if dry_run {
-        // D-17: render every output to memory and print with headers. Also
-        // include the computed Cargo.docker.toml so the preview covers the
-        // full set of deploy artifacts the user will need (the must_have in
-        // 127-04-PLAN explicitly calls this out). Render errors remain hard
-        // errors (D-19).
-        let metadata = read_deploy_metadata(&root)?;
-        let cargo_docker = compute_cargo_docker_toml(&root, metadata.ferro_version.as_deref())?;
-        let files = [
-            RenderedFile {
-                relative_path: ".do/app.yaml".into(),
-                contents: yaml,
-            },
-            RenderedFile {
-                relative_path: "Cargo.docker.toml".into(),
-                contents: cargo_docker,
-            },
-        ];
+        // D-17: render every output to memory and print with headers.
+        // Render errors remain hard errors (D-19).
+        let files = [RenderedFile {
+            relative_path: ".do/app.yaml".into(),
+            contents: yaml,
+        }];
         print_dry_run(&files);
         return Ok(());
     }
