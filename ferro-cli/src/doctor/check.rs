@@ -232,12 +232,21 @@ mod tests {
             "database_url_sqlite_in_prod",
             "git_clean_and_pushed",
         ];
+        let deploy_names = &["copy_dirs_dockerignore_collision", "docker_template_drift"];
         for check in default_checks() {
             if general_names.contains(&check.name()) {
                 assert_eq!(
                     check.category(),
                     CheckCategory::General,
                     "{} should be General",
+                    check.name()
+                );
+            }
+            if deploy_names.contains(&check.name()) {
+                assert_eq!(
+                    check.category(),
+                    CheckCategory::Deploy,
+                    "{} should be Deploy",
                     check.name()
                 );
             }
