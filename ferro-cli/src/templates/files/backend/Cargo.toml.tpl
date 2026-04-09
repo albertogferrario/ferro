@@ -8,6 +8,7 @@ description = "{description}"
 name = "{package_name}"
 path = "src/main.rs"
 
+# Local ferro dev: append an uncommitted [patch.crates-io] block at the bottom of this file.
 [dependencies]
 ferro = {{ package = "ferro-rs", version = "0.2" }}
 tokio = {{ version = "1", features = ["full"] }}

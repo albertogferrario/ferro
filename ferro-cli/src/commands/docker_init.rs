@@ -7,8 +7,8 @@
 //! non-dry-run invocation and is suppressed in dry-run (D-16). Render
 //! errors remain hard errors in both modes (D-19).
 //!
-//! Phase 130: the `Cargo.docker.toml` dual-manifest is retired. Docker builds
-//! read `Cargo.toml` directly; ferro developers who need to point at an
+//! Phase 130: the dual-manifest pattern is retired. Docker builds read the
+//! project `Cargo.toml` directly; ferro developers who need to point at an
 //! unpublished local checkout maintain an uncommitted `[patch.crates-io]`
 //! block by hand.
 

@@ -11,14 +11,12 @@ RUN apt-get update \
 
 FROM chef AS planner
 COPY . .
-COPY Cargo.docker.toml Cargo.toml
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS backend-builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-COPY Cargo.docker.toml Cargo.toml
 RUN cargo build --release
 
 FROM debian:bookworm-slim AS runtime

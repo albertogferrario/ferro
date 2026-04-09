@@ -1087,23 +1087,22 @@ See [`do:init`](../cli/do-init.md) for the full page.
 
 ### `ferro docker:init`
 
-Generate a production-ready Dockerfile plus a `Cargo.docker.toml` used to
-rewrite path dependencies to published versions during the Docker build.
+Generate a production-ready Dockerfile and `.dockerignore`. The Docker build
+consumes the project `Cargo.toml` directly — no dual manifest is written.
+Developers working against an unpublished ferro checkout maintain an
+uncommitted `[patch.crates-io]` block in their project `Cargo.toml`.
 
 ```bash
-ferro docker:init                      # use the default ferro version
-ferro docker:init --ferro-version 0.2  # pin a specific ferro release
-ferro docker:init --force              # overwrite existing files
+ferro docker:init          # write Dockerfile + .dockerignore
+ferro docker:init --force  # overwrite existing files
 ```
 
 **Options:**
-- `--force`, `-f` — Overwrite existing `Dockerfile` / `Cargo.docker.toml`.
-- `--ferro-version` — Published ferro version to rewrite path deps to.
+- `--force`, `-f` — Overwrite existing `Dockerfile` / `.dockerignore`.
 
 **Generated files:**
 - `Dockerfile` — multi-stage build, base image defaults to
-  `rust:stable-slim-bookworm`.
-- `Cargo.docker.toml` — path→version rewrite used during `docker build`.
+  `rust:slim-bookworm`.
 - `.dockerignore`
 
 **`[package.metadata.ferro.deploy]` in `Cargo.toml`:**
@@ -1390,7 +1389,7 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `do:init` | Generate DigitalOcean App Platform spec (`.do/app.yaml`) |
 | `ci:init` | Generate GitHub Actions CI workflow (`.github/workflows/ci.yml`) |
 | `doctor` | Run project health diagnostics (nine checks) |
-| `docker:init` | Generate Dockerfile, Cargo.docker.toml, and .dockerignore |
+| `docker:init` | Generate Dockerfile and .dockerignore |
 | `docker:compose` | Manage Docker Compose |
 | `schedule:run` | Run due scheduled tasks |
 | `schedule:work` | Start scheduler worker |

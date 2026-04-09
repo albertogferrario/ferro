@@ -26,9 +26,9 @@ pub struct FerroDeployMetadata {
     pub copy_dirs: Vec<String>,
     pub ferro_version: Option<String>,
     // Schema-only reservation for per-crate version overrides. Currently
-    // parsed, round-tripped, and ignored. Phase 130 retired the
-    // `Cargo.docker.toml` rewriter that used to consume these; a future
-    // deploy path may resurrect the field. See
+    // parsed, round-tripped, and ignored. Phase 130 retired the path→version
+    // rewriter that used to consume these; a future deploy path may
+    // resurrect the field. See
     // .planning/phases/129-publish-workflow-refinement/.
     pub ferro_versions: Option<BTreeMap<String, String>>,
     pub web_bin: Option<String>,

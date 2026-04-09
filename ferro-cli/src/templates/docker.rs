@@ -291,10 +291,12 @@ mod tests {
     }
 
     #[test]
-    fn planner_and_builder_copy_cargo_docker_toml() {
+    fn dockerfile_copies_workspace_in_both_stages() {
         let out = render_dockerfile(&ctx());
-        // Two occurrences: planner stage + builder stage.
-        assert_eq!(out.matches("COPY Cargo.docker.toml Cargo.toml").count(), 2);
+        // `COPY . .` provides the workspace for planner + builder stages;
+        // no dual-manifest overlay is copied on top.
+        assert_eq!(out.matches("COPY . .").count(), 2);
+        assert!(!out.contains("Cargo.docker"));
     }
 
     #[test]

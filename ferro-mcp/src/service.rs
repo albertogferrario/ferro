@@ -377,8 +377,7 @@ impl FerroMcpService {
         name = "deploy_check",
         description = "Run deploy preflight checks (category: Deploy). \
             Executes `ferro doctor --deploy --json` and returns the JSON Report. \
-            Catches copy_dirs/.dockerignore collisions, ferro version skew between \
-            local path deps and Cargo.docker.toml, and Cargo.docker.toml staleness. \
+            Catches copy_dirs/.dockerignore collisions before a Docker round-trip. \
             \n\n**Use when:** Before `docker:init` or `do:init` to catch deploy \
             failures before a 1–10 minute Docker round-trip. \
             \n\n**Combine with:** `application_info` for project state, `list_commands` \

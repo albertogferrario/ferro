@@ -63,14 +63,10 @@ fn dry_run_no_filesystem_writes() {
 
     let after = snapshot_dir(tmp.path());
     assert_eq!(before, after, "dry-run must not modify the filesystem");
-    assert!(
-        !tmp.path().join("Cargo.docker.toml").exists(),
-        "Cargo.docker.toml must not be persisted in dry-run"
-    );
 }
 
 #[test]
-fn dry_run_no_cargo_docker_toml_persisted() {
+fn dry_run_persists_nothing() {
     let _guard = CHDIR_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let tmp = tempfile::tempdir().unwrap();
     write_fixture_project(tmp.path());
@@ -81,7 +77,6 @@ fn dry_run_no_cargo_docker_toml_persisted() {
     std::env::set_current_dir(prev).unwrap();
 
     assert!(result.is_ok(), "docker:init --dry-run failed: {result:?}");
-    assert!(!tmp.path().join("Cargo.docker.toml").exists());
     assert!(!tmp.path().join("Dockerfile").exists());
     assert!(!tmp.path().join(".dockerignore").exists());
 }

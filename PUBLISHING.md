@@ -154,11 +154,11 @@ the same version on every release. The authoritative version lives in the
 workspace-root `Cargo.toml` `version` field and is propagated to each member
 crate on publish.
 
-Consumer projects pin ferro by setting a single `ferro_version` field in
-`[package.metadata.ferro.deploy]` inside their own `Cargo.toml`. The
-`ferro-cli` `docker:init` command reads this field and rewrites every ferro
-path dependency to that version when emitting `Cargo.docker.toml`. One field,
-one version, every ferro crate.
+Consumer projects pin ferro by depending on `ferro-rs` directly in their
+project `Cargo.toml`. Developers working against an unpublished local
+checkout add an uncommitted `[patch.crates-io]` block at the bottom of
+the project `Cargo.toml` — Docker builds then consume that manifest as-is
+without any rewrite step.
 
 Release checklist:
 
