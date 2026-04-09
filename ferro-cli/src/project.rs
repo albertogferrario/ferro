@@ -9,6 +9,7 @@
 
 #![allow(dead_code)] // Consumed by plans 122-02..07; tests cover the full surface.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -24,6 +25,15 @@ pub struct FerroDeployMetadata {
     pub runtime_apt: Vec<String>,
     pub copy_dirs: Vec<String>,
     pub ferro_version: Option<String>,
+    // TODO(Phase 129 / REPORT §14): Schema-only reservation for per-crate
+    // version overrides. Rewrite logic currently applies `ferro_version`
+    // globally to all ferro crates. When a real desync occurs, resolve
+    // per-crate overrides here before calling
+    // `deploy::rewrite_ferro_version::rewrite_cargo_docker_toml`. Until
+    // then, `ferro_version` above is authoritative and this map is parsed,
+    // round-tripped, and ignored. See
+    // .planning/phases/129-publish-workflow-refinement/.
+    pub ferro_versions: Option<BTreeMap<String, String>>,
     pub web_bin: Option<String>,
 }
 
@@ -38,6 +48,7 @@ impl Default for FerroDeployMetadata {
                 "migrations".into(),
             ],
             ferro_version: None,
+            ferro_versions: None,
             web_bin: None,
         }
     }
@@ -101,6 +112,22 @@ pub fn read_deploy_metadata(project_root: &Path) -> anyhow::Result<FerroDeployMe
             anyhow::anyhow!("[package.metadata.ferro.deploy].ferro_version must be a string")
         })?;
         meta.ferro_version = Some(s.to_string());
+    }
+
+    if let Some(v) = table.get("ferro_versions") {
+        let t = v.as_table().ok_or_else(|| {
+            anyhow::anyhow!("[package.metadata.ferro.deploy].ferro_versions must be a table")
+        })?;
+        let mut map = BTreeMap::new();
+        for (k, val) in t {
+            let s = val.as_str().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "[package.metadata.ferro.deploy].ferro_versions.{k} must be a string"
+                )
+            })?;
+            map.insert(k.clone(), s.to_string());
+        }
+        meta.ferro_versions = Some(map);
     }
 
     if let Some(v) = table.get("web_bin") {
@@ -492,6 +519,78 @@ runtime_apt = "not-an-array"
 "#,
         );
         assert!(read_deploy_metadata(tmp.path()).is_err());
+    }
+
+    #[test]
+    fn parses_ferro_versions_override() {
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "Cargo.toml",
+            r#"
+[package]
+name = "x"
+
+[package.metadata.ferro.deploy]
+ferro_version = "0.2.0"
+
+[package.metadata.ferro.deploy.ferro_versions]
+ferro-json-ui = "0.2.1"
+ferro-whatsapp = "0.2.0"
+"#,
+        );
+        let m = read_deploy_metadata(tmp.path()).unwrap();
+        assert_eq!(m.ferro_version.as_deref(), Some("0.2.0"));
+        let overrides = m.ferro_versions.expect("ferro_versions parsed");
+        assert_eq!(
+            overrides.get("ferro-json-ui").map(String::as_str),
+            Some("0.2.1")
+        );
+        assert_eq!(
+            overrides.get("ferro-whatsapp").map(String::as_str),
+            Some("0.2.0")
+        );
+    }
+
+    #[test]
+    fn rejects_ferro_versions_wrong_type() {
+        // Case A: not a table at all.
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "Cargo.toml",
+            r#"
+[package]
+name = "x"
+
+[package.metadata.ferro.deploy]
+ferro_versions = "not-a-table"
+"#,
+        );
+        let err = read_deploy_metadata(tmp.path()).unwrap_err().to_string();
+        assert!(
+            err.contains("ferro_versions must be a table"),
+            "unexpected error: {err}"
+        );
+
+        // Case B: entry value is not a string.
+        let tmp2 = TempDir::new().unwrap();
+        write(
+            tmp2.path(),
+            "Cargo.toml",
+            r#"
+[package]
+name = "x"
+
+[package.metadata.ferro.deploy.ferro_versions]
+ferro-json-ui = 1
+"#,
+        );
+        let err2 = read_deploy_metadata(tmp2.path()).unwrap_err().to_string();
+        assert!(
+            err2.contains("ferro_versions.ferro-json-ui must be a string"),
+            "unexpected error: {err2}"
+        );
     }
 
     #[test]
