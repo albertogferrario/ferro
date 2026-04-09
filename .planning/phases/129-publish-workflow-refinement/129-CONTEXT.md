@@ -56,9 +56,12 @@ Out of scope:
   top-level `*.md`, top-level config files that don't affect published
   artifacts (`.gitignore`, `.editorconfig`, `rustfmt.toml`, etc.).
 - **D-04:** When no library crate changed since the last tag, the
-  `check-version` job sets `should_publish=no` (new value) and the
+  `check-version` job sets `should_publish=none` (new value) and the
   `bump-version` / publish jobs are skipped entirely. No tag, no commit, no
-  release churn.
+  release churn. (Value is `none` rather than `no` to avoid YAML 1.1 boolean
+  coercion — `no` is a valid YAML bool literal and would be unsafe in
+  downstream `if:` expressions. Downstream gates use explicit
+  `== 'bump' || == 'yes'` equality.)
 - **D-05:** When at least one library crate changed, behavior is unchanged
   from today (bump patch, commit, tag, publish waves).
 - **D-06:** The gate check runs inside the existing `check-version` job in
