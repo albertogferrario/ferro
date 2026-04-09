@@ -104,14 +104,12 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
             let Some(local_version) = read_path_dep_version(root, rel_path) else {
                 continue;
             };
-            let docker_version = dt
-                .get(key)
-                .and_then(|v| {
-                    v.as_table()
-                        .and_then(|t| t.get("version"))
-                        .and_then(|v| v.as_str())
-                        .or_else(|| v.as_str())
-                });
+            let docker_version = dt.get(key).and_then(|v| {
+                v.as_table()
+                    .and_then(|t| t.get("version"))
+                    .and_then(|v| v.as_str())
+                    .or_else(|| v.as_str())
+            });
             let Some(docker_version) = docker_version else {
                 continue;
             };

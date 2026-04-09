@@ -1,13 +1,13 @@
-//! `ferro doctor` — runs all 7 health checks (D-01..D-09, D-22).
+//! `ferro doctor` — runs all 11 health checks (D-01..D-09, D-22).
 //!
 //! Complementary to `ferro:info` MCP tool — does not replace it.
 
-use crate::doctor::check::{CheckStatus, Report};
+use crate::doctor::check::{CheckCategory, CheckStatus, Report};
 use crate::doctor::registry::default_checks;
 use crate::project::find_project_root;
 use console::style;
 
-pub fn run(json: bool) {
+pub fn run(json: bool, deploy_only: bool) {
     let root = match find_project_root(None) {
         Ok(r) => r,
         Err(_) => {
@@ -19,7 +19,15 @@ pub fn run(json: bool) {
         }
     };
 
-    let checks = default_checks();
+    let all_checks = default_checks();
+    let checks: Vec<_> = if deploy_only {
+        all_checks
+            .into_iter()
+            .filter(|c| c.category() == CheckCategory::Deploy)
+            .collect()
+    } else {
+        all_checks
+    };
     let results: Vec<_> = checks.iter().map(|c| c.run(&root)).collect();
     let report = Report::build(results);
 

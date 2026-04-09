@@ -220,15 +220,27 @@ mod tests {
     }
 
     #[test]
-    fn default_category_is_general_for_all_registry_checks() {
+    fn non_deploy_checks_return_general_category() {
         use crate::doctor::registry::default_checks;
+        let general_names = &[
+            "toolchain_match",
+            "db_connection",
+            "migrations_pending",
+            "local_env_parity",
+            "deploy_env_parity",
+            "generated_artifacts",
+            "database_url_sqlite_in_prod",
+            "git_clean_and_pushed",
+        ];
         for check in default_checks() {
-            assert_eq!(
-                check.category(),
-                CheckCategory::General,
-                "{} should default to General",
-                check.name()
-            );
+            if general_names.contains(&check.name()) {
+                assert_eq!(
+                    check.category(),
+                    CheckCategory::General,
+                    "{} should be General",
+                    check.name()
+                );
+            }
         }
     }
 }

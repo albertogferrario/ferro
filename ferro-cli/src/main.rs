@@ -451,6 +451,9 @@ enum Commands {
         /// Emit machine-readable JSON instead of colored human output
         #[arg(long)]
         json: bool,
+        /// Run only deploy-category checks (cargo_docker_toml_staleness, copy_dirs_dockerignore_collision, ferro_version_skew)
+        #[arg(long)]
+        deploy: bool,
     },
     /// Check local API readiness for MCP integration
     #[command(name = "api:check")]
@@ -690,8 +693,8 @@ fn main() {
         Commands::CiInit { force } => {
             commands::ci_init::run(force);
         }
-        Commands::Doctor { json } => {
-            commands::doctor::run(json);
+        Commands::Doctor { json, deploy } => {
+            commands::doctor::run(json, deploy);
         }
         Commands::ApiCheck {
             url,

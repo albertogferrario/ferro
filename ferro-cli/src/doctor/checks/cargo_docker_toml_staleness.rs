@@ -19,6 +19,9 @@ impl DoctorCheck for CargoDockerTomlStalenessCheck {
     fn run(&self, root: &Path) -> CheckResult {
         check_impl(root)
     }
+    fn category(&self) -> crate::doctor::check::CheckCategory {
+        crate::doctor::check::CheckCategory::Deploy
+    }
 }
 
 pub(crate) fn check_impl(root: &Path) -> CheckResult {
