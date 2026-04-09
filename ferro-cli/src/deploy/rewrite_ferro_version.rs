@@ -118,7 +118,7 @@ pub fn rewrite_contents(
                 Some(v) => v.to_string(),
                 None => path_str
                     .as_deref()
-                    .and_then(|p| read_path_dep_version(project_root, p))
+                    .and_then(|p| super::read_path_dep_version(project_root, p))
                     .unwrap_or_else(|| "*".to_string()),
             };
 
@@ -140,17 +140,6 @@ pub fn rewrite_contents(
     }
 
     Ok(doc.to_string())
-}
-
-fn read_path_dep_version(project_root: &Path, rel_path: &str) -> Option<String> {
-    let dep_cargo = project_root.join(rel_path).join("Cargo.toml");
-    let content = fs::read_to_string(&dep_cargo).ok()?;
-    let doc: DocumentMut = content.parse().ok()?;
-    doc.get("package")?
-        .get("version")?
-        .as_value()?
-        .as_str()
-        .map(String::from)
 }
 
 #[cfg(test)]

@@ -80,7 +80,7 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
             let Some(rel_path) = cargo_path else {
                 continue;
             };
-            if let Some(workspace_version) = read_path_dep_version(root, rel_path) {
+            if let Some(workspace_version) = crate::deploy::read_path_dep_version(root, rel_path) {
                 if workspace_version != docker_version {
                     drift.push(format!(
                         "{key}: Cargo.docker.toml={docker_version}, workspace={workspace_version}"
@@ -99,17 +99,6 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
         )
         .with_details(drift.join("; "))
     }
-}
-
-fn read_path_dep_version(project_root: &Path, rel_path: &str) -> Option<String> {
-    let dep_cargo = project_root.join(rel_path).join("Cargo.toml");
-    let content = fs::read_to_string(&dep_cargo).ok()?;
-    let parsed: Value = content.parse().ok()?;
-    parsed
-        .get("package")?
-        .get("version")?
-        .as_str()
-        .map(String::from)
 }
 
 #[cfg(test)]
