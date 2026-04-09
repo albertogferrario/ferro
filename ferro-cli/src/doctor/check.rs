@@ -6,6 +6,14 @@
 use serde::Serialize;
 use std::path::Path;
 
+/// Filter bucket for `ferro doctor --deploy` and MCP `deploy_check` (Phase 128 D-02).
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CheckCategory {
+    General,
+    Deploy,
+}
+
 /// Status of a single doctor check (D-09).
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -63,6 +71,11 @@ impl CheckResult {
 pub trait DoctorCheck {
     fn name(&self) -> &'static str;
     fn run(&self, root: &Path) -> CheckResult;
+    /// Filter bucket for `ferro doctor --deploy` and MCP `deploy_check`
+    /// (Phase 128 D-02). Defaults to `General`.
+    fn category(&self) -> CheckCategory {
+        CheckCategory::General
+    }
 }
 
 /// Aggregate report — emitted as human or JSON output.
@@ -204,5 +217,18 @@ mod tests {
         let result = CheckResult::ok("x", "fine");
         let s = serde_json::to_string(&result).unwrap();
         assert!(!s.contains("details"));
+    }
+
+    #[test]
+    fn default_category_is_general_for_all_registry_checks() {
+        use crate::doctor::registry::default_checks;
+        for check in default_checks() {
+            assert_eq!(
+                check.category(),
+                CheckCategory::General,
+                "{} should default to General",
+                check.name()
+            );
+        }
     }
 }
