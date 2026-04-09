@@ -359,6 +359,9 @@ mod tests {
 
     #[test]
     fn dry_run_writes_zero_files() {
+        let _guard = crate::commands::CWD_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let td = TempDir::new().unwrap();
         let cargo_body =
             "[package]\nname = \"x\"\nversion = \"0.1.0\"\n\n[[bin]]\nname = \"x\"\npath = \"src/main.rs\"\n";

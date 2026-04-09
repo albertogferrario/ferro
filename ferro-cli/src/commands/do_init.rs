@@ -190,6 +190,9 @@ mod tests {
 
     #[test]
     fn dry_run_propagates_render_error() {
+        let _guard = crate::commands::CWD_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         // D-19: --dry-run must not demote render errors to soft warnings.
         // Running run_inner in an empty tempdir (no Cargo.toml) hits the
         // hard error at find_project_root.
@@ -206,6 +209,9 @@ mod tests {
 
     #[test]
     fn run_inner_succeeds_with_missing_env_example() {
+        let _guard = crate::commands::CWD_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         // Phase 127 D-06: missing .env.example is a warning, not an error.
         let td = TempDir::new().unwrap();
         write(

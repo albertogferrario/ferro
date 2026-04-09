@@ -53,3 +53,11 @@ pub mod schedule_work;
 pub mod serve;
 pub mod storage_link;
 pub mod validate_contracts;
+
+/// Process-wide lock for tests that mutate `std::env::current_dir`.
+///
+/// `set_current_dir` is global state, so parallel tests that touch it race.
+/// Tests should acquire this mutex before calling `set_current_dir` and hold
+/// it until they restore the previous directory.
+#[cfg(test)]
+pub(crate) static CWD_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
