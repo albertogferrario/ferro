@@ -1,6 +1,6 @@
 # `ferro doctor`
 
-Single-command project health diagnostics. Runs nine checks in declared
+Single-command project health diagnostics. Runs eleven checks in declared
 order, prints colored human output by default, or a stable JSON schema with
 `--json` for agent / CI consumption.
 
@@ -20,17 +20,19 @@ Use `ferro:info` for understanding, `ferro doctor` for validation.
 
 Checks run in this exact order (D-01):
 
-| # | Name                           | Purpose                                                                           |
-| - | ------------------------------ | --------------------------------------------------------------------------------- |
-| 1 | `toolchain_match`              | `rustc --version` vs `rust-toolchain.toml` channel                                |
-| 2 | `db_connection`                | `DATABASE_URL` reachable via `cargo run -- db:status`                             |
-| 3 | `migrations_pending`           | Pending vs applied migration count                                                |
-| 4 | `local_env_parity`             | Every key in `.env.example` is set in `.env`                                      |
-| 5 | `deploy_env_parity`            | `.env.production` keys match the commented envs scaffold in `.do/app.yaml`        |
-| 6 | `cargo_docker_toml_staleness`  | `Cargo.docker.toml` is up to date vs `Cargo.toml` path deps                       |
-| 7 | `generated_artifacts`          | `Dockerfile`, `.dockerignore`, `.do/app.yaml` present                             |
-| 8 | `database_url_sqlite_in_prod`  | Warns if `DATABASE_URL` in `.env.production` points at SQLite                     |
-| 9 | `git_clean_and_pushed`         | Working tree clean and `HEAD` pushed to the tracked remote                        |
+| #  | Name                                  | Category  | Purpose                                                                    |
+| -- | ------------------------------------- | --------- | -------------------------------------------------------------------------- |
+| 1  | `toolchain_match`                     | General   | `rustc --version` vs `rust-toolchain.toml` channel                        |
+| 2  | `db_connection`                       | General   | `DATABASE_URL` reachable via `cargo run -- db:status`                     |
+| 3  | `migrations_pending`                  | General   | Pending vs applied migration count                                         |
+| 4  | `local_env_parity`                    | General   | Every key in `.env.example` is set in `.env`                               |
+| 5  | `deploy_env_parity`                   | General   | `.env.production` keys match the commented envs scaffold in `.do/app.yaml` |
+| 6  | `cargo_docker_toml_staleness`         | Deploy    | `Cargo.docker.toml` is up to date vs `Cargo.toml` path deps               |
+| 7  | `generated_artifacts`                 | General   | `Dockerfile`, `.dockerignore`, `.do/app.yaml` present                     |
+| 8  | `database_url_sqlite_in_prod`         | General   | Warns if `DATABASE_URL` in `.env.production` points at SQLite             |
+| 9  | `git_clean_and_pushed`                | General   | Working tree clean and `HEAD` pushed to the tracked remote                |
+| 10 | `copy_dirs_dockerignore_collision`    | Deploy    | `copy_dirs` entries not silently excluded by `.dockerignore`              |
+| 11 | `ferro_version_skew`                  | Deploy    | Local ferro path-dep versions match what `Cargo.docker.toml` rewrites to  |
 
 Check #4 (`local_env_parity`) and #5 (`deploy_env_parity`) are powered by the
 `deploy::env_production::parse_env_production_keys` module, which parses
@@ -111,3 +113,72 @@ ferro doctor --json | jq '.checks[] | select(.status == "error")'
 # Use in CI as a gate
 ferro doctor || exit 1
 ```
+
+## Deploy filter (`--deploy`)
+
+`ferro doctor --deploy` runs only the three checks with category `Deploy`
+(`cargo_docker_toml_staleness`, `copy_dirs_dockerignore_collision`,
+`ferro_version_skew`). The same filter is available via the `deploy_check` MCP
+tool (see below). Combining `--deploy` with `--json` produces the same Report
+schema as a full run, filtered to those three checks.
+
+```bash
+ferro doctor --deploy
+ferro doctor --deploy --json | jq '.summary'
+```
+
+## Preflight checks
+
+The three `Deploy`-category checks catch failures that would otherwise surface
+only after a 1–10 minute Docker round-trip.
+
+- **`copy_dirs_dockerignore_collision`** — flags any `copy_dirs` entry in
+  `[package.metadata.ferro.deploy]` that is excluded by `.dockerignore`, which
+  would silently drop files from the Docker build context.
+
+- **`ferro_version_skew`** — compares the version of each local `ferro*` path
+  dependency against the version that `Cargo.docker.toml` rewrites to. Returns
+  `warn` for patch-only drift and `error` when major or minor versions diverge,
+  since a major/minor mismatch means the production image runs a materially
+  different framework version than the local build.
+
+- **`cargo_docker_toml_staleness`** — verifies that `Cargo.docker.toml` is
+  consistent with `Cargo.toml` path dependencies (pre-existing check, now
+  tagged `Deploy`).
+
+## `ferro deploy:init`
+
+Scaffolds the `[package.metadata.ferro.deploy]` table in the root `Cargo.toml`.
+Detects sensible defaults (binary name, common directories) and writes the block
+in-place using `toml_edit`, preserving comments and key order.
+
+```bash
+ferro deploy:init [--yes] [--dry-run]
+```
+
+- `--yes` — accept all detected defaults without interactive prompts. Errors if
+  a required value (e.g., `web_bin`) cannot be inferred.
+- `--dry-run` — print the block that would be written without modifying any
+  files.
+
+Example block produced for a project with a `migrations/` directory and a
+binary named `myapp`:
+
+```toml
+[package.metadata.ferro.deploy]
+runtime_apt = []
+copy_dirs = ["migrations"]
+web_bin = "myapp"
+```
+
+If `[package.metadata.ferro.deploy]` already exists in `Cargo.toml`, the
+command prompts for a collision policy: **abort** (default), **overwrite**
+(replace existing values), or **merge** (add missing keys only). Passing
+`--yes` without a pre-existing table always succeeds; with a pre-existing table
+it defaults to abort — use interactive mode to select overwrite or merge.
+
+## `deploy_check` MCP tool
+
+The `deploy_check` MCP tool is the MCP surface of the same deploy check
+registry. Internally it runs `ferro doctor --deploy --json` from the project
+root and returns the JSON Report verbatim.
