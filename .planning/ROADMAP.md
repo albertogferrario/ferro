@@ -844,12 +844,15 @@ Plans:
 ### Phase 128: Deploy preflight (`ferro doctor` deploy checks + drift detection)
 
 **Goal:** Catch deploy failures *before* a 1–10 minute Docker round-trip. Extend `ferro doctor` (Phase 124 surface) with deploy-specific checks the gestiscilo session discovered one painful build at a time: `copy_dirs` entries that collide with `.dockerignore` (REPORT item 3), version skew between local path deps and the rewritten `Cargo.docker.toml` (items 4, 13), and `Cargo.docker.toml` staleness vs `Cargo.toml` (item 17). Also ship the interactive `ferro deploy:init` scaffolder for the `[package.metadata.ferro.deploy]` block (item 15) so users do not have to hand-type the table from docs. The same check registry is exposed via the existing Phase 123 `deploy_check` MCP tool — one implementation, two surfaces (per Phase 126 PROPOSAL.md D-07 resolution). Absorbs REPORT items 3, 4, 13, 15, 17.
-**Requirements**: TBD
+**Requirements**: REPORT-03, REPORT-04, REPORT-13, REPORT-15, REPORT-17
 **Depends on:** Phase 123, Phase 124, Phase 122.2
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 128 to break down)
+- [ ] 128-01-PLAN.md — DoctorCheck CheckCategory + shared read_path_dep_version helper (foundation)
+- [ ] 128-02-PLAN.md — copy_dirs_dockerignore_collision + ferro_version_skew + registry + --deploy flag
+- [ ] 128-03-PLAN.md — ferro deploy:init scaffolder with --dry-run and --yes
+- [ ] 128-04-PLAN.md — MCP deploy_check tool + deploy docs update
 
 ---
 
