@@ -12,11 +12,10 @@ use crate::commands::docker_init::{print_dry_run, RenderedFile};
 use crate::deploy::app_yaml_existing::parse_existing;
 use crate::deploy::bin_detect::detect_web_bin;
 use crate::deploy::env_production::parse_env_example_structured;
-use crate::project::{find_project_root, package_name};
+use crate::project::{find_project_root, package_name, read_bins};
 use crate::templates::do_::{
     is_test_like_bin, parse_git_remote, render_app_yaml, sanitize_do_app_name, AppYamlContext,
 };
-use crate::templates::docker::read_bins;
 
 pub fn run(force: bool) {
     run_with(force, false);
@@ -43,7 +42,7 @@ fn run_inner(force: bool, dry_run: bool) -> anyhow::Result<()> {
 
     let repo = detect_github_repo(&root).unwrap_or_else(|| "owner/your-repo".to_string());
 
-    let bins = read_bins(&root)?;
+    let bins: Vec<String> = read_bins(&root).into_iter().map(|b| b.name).collect();
     let web_bin = detect_web_bin(&root)?;
     let workers: Vec<String> = bins
         .iter()

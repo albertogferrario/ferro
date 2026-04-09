@@ -7,8 +7,8 @@
 
 use crate::deploy::bin_detect::detect_web_bin;
 use crate::doctor::check::{CheckCategory, CheckResult, DoctorCheck};
-use crate::project::read_deploy_metadata;
-use crate::templates::docker::{read_bins, read_rust_channel, render_dockerfile, DockerContext};
+use crate::project::{read_bins, read_deploy_metadata};
+use crate::templates::docker::{read_rust_channel, render_dockerfile, DockerContext};
 use std::fs;
 use std::path::Path;
 
@@ -47,10 +47,7 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
         Err(e) => return CheckResult::error(NAME, format!("metadata: {e}")),
     };
 
-    let bins = match read_bins(root) {
-        Ok(b) => b,
-        Err(e) => return CheckResult::error(NAME, format!("read_bins: {e}")),
-    };
+    let bins: Vec<String> = read_bins(root).into_iter().map(|b| b.name).collect();
 
     let web_bin = match detect_web_bin(root) {
         Ok(w) => w,

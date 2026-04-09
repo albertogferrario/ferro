@@ -36,6 +36,13 @@ pub struct DockerContext {
     /// Whether `frontend/package.json` exists in the project root.
     pub has_frontend: bool,
     /// All `[[bin]]` names declared in the project Cargo.toml.
+    ///
+    /// Callers obtain bin entries via `crate::project::read_bins` (which
+    /// returns `Vec<BinEntry>`) and convert to names at the call site:
+    /// `bins: read_bins(root).into_iter().map(|b| b.name).collect()`.
+    /// The renderer only needs names; keeping this field as `Vec<String>`
+    /// preserves the "pure render" boundary (no project-module types leak into
+    /// the template module).
     pub bins: Vec<String>,
     /// Resolved web bin name (D-02). Used for the runtime ENTRYPOINT.
     pub web_bin: String,
@@ -118,6 +125,8 @@ RUN npm run build
 
 /// Read `[toolchain] channel` from `<root>/rust-toolchain.toml`. Defaults to
 /// `"stable"` when the file is missing or unparseable.
+///
+/// Note: `[[bin]]` enumeration is handled by `crate::project::read_bins`.
 pub fn read_rust_channel(project_root: &Path) -> String {
     let path = project_root.join("rust-toolchain.toml");
     let Ok(content) = fs::read_to_string(&path) else {
@@ -132,40 +141,6 @@ pub fn read_rust_channel(project_root: &Path) -> String {
         .and_then(|c| c.as_str())
         .map(String::from)
         .unwrap_or_else(|| "stable".to_string())
-}
-
-/// Parse `<root>/Cargo.toml` and return every `[[bin]] name`. Falls back to
-/// `[package] name` if no `[[bin]]` table is declared. Errors when Cargo.toml
-/// is unreadable or unparseable.
-pub fn read_bins(project_root: &Path) -> anyhow::Result<Vec<String>> {
-    let path = project_root.join("Cargo.toml");
-    let content = fs::read_to_string(&path)
-        .map_err(|e| anyhow::anyhow!("failed to read {}: {e}", path.display()))?;
-    let parsed: Value = content
-        .parse()
-        .map_err(|e| anyhow::anyhow!("failed to parse {}: {e}", path.display()))?;
-
-    let from_bins: Vec<String> = parsed
-        .get("bin")
-        .and_then(|b| b.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|entry| entry.get("name").and_then(|n| n.as_str()).map(String::from))
-                .collect()
-        })
-        .unwrap_or_default();
-
-    if !from_bins.is_empty() {
-        return Ok(from_bins);
-    }
-
-    let pkg_name = parsed
-        .get("package")
-        .and_then(|p| p.get("name"))
-        .and_then(|n| n.as_str())
-        .map(String::from);
-
-    Ok(pkg_name.into_iter().collect())
 }
 
 // ============================================================================
@@ -325,37 +300,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(read_rust_channel(tmp.path()), "1.90.0");
-    }
-
-    #[test]
-    fn read_bins_returns_bin_names() {
-        let tmp = TempDir::new().unwrap();
-        fs::write(
-            tmp.path().join("Cargo.toml"),
-            r#"
-[package]
-name = "demo"
-
-[[bin]]
-name = "web"
-
-[[bin]]
-name = "worker"
-"#,
-        )
-        .unwrap();
-        assert_eq!(read_bins(tmp.path()).unwrap(), vec!["web", "worker"]);
-    }
-
-    #[test]
-    fn read_bins_falls_back_to_package_name() {
-        let tmp = TempDir::new().unwrap();
-        fs::write(
-            tmp.path().join("Cargo.toml"),
-            "[package]\nname = \"solo\"\n",
-        )
-        .unwrap();
-        assert_eq!(read_bins(tmp.path()).unwrap(), vec!["solo"]);
     }
 
     /// Phase 122.2 §2: the renderer must mention the runtime-apt marker so the

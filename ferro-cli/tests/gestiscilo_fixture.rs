@@ -13,13 +13,11 @@ use std::path::PathBuf;
 use ferro_cli::deploy::app_yaml_existing::parse_existing;
 use ferro_cli::deploy::bin_detect::detect_web_bin;
 use ferro_cli::deploy::env_production::parse_env_example_structured;
-use ferro_cli::project::read_deploy_metadata;
+use ferro_cli::project::{read_bins, read_deploy_metadata};
 use ferro_cli::templates::do_::{
     is_test_like_bin, render_app_yaml, sanitize_do_app_name, AppYamlContext,
 };
-use ferro_cli::templates::docker::{
-    read_bins, read_rust_channel, render_dockerfile, DockerContext,
-};
+use ferro_cli::templates::docker::{read_rust_channel, render_dockerfile, DockerContext};
 
 fn fixture_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/gestiscilo")
@@ -30,7 +28,7 @@ fn fixture_dir() -> PathBuf {
 fn build_docker_context() -> DockerContext {
     let root = fixture_dir();
     let metadata = read_deploy_metadata(&root).expect("read_deploy_metadata");
-    let bins = read_bins(&root).expect("read_bins");
+    let bins: Vec<String> = read_bins(&root).into_iter().map(|b| b.name).collect();
     let web_bin = detect_web_bin(&root).expect("detect_web_bin");
     let rust_channel = read_rust_channel(&root);
     let copy_dirs_present: Vec<String> = metadata
@@ -54,7 +52,7 @@ fn build_docker_context() -> DockerContext {
 fn build_app_yaml_context() -> AppYamlContext {
     let root = fixture_dir();
     let metadata = read_deploy_metadata(&root).expect("read_deploy_metadata");
-    let bins = read_bins(&root).expect("read_bins");
+    let bins: Vec<String> = read_bins(&root).into_iter().map(|b| b.name).collect();
     let web_bin = detect_web_bin(&root).expect("detect_web_bin");
     let pkg_name = ferro_cli::project::package_name(&root);
     let app_name = sanitize_do_app_name(&pkg_name);
@@ -207,7 +205,7 @@ fn dockerfile_has_no_frontend_builder_when_frontend_absent() {
 #[test]
 fn dockerfile_covers_every_bin() {
     let root = fixture_dir();
-    let bins = read_bins(&root).expect("read_bins");
+    let bins: Vec<String> = read_bins(&root).into_iter().map(|b| b.name).collect();
     assert!(
         !bins.is_empty(),
         "fixture must declare at least one [[bin]]"
@@ -231,7 +229,7 @@ fn dockerfile_covers_every_bin() {
 #[test]
 fn app_yaml_workers_from_non_web_bins() {
     let root = fixture_dir();
-    let bins = read_bins(&root).expect("read_bins");
+    let bins: Vec<String> = read_bins(&root).into_iter().map(|b| b.name).collect();
     let web_bin = detect_web_bin(&root).expect("detect_web_bin");
     let worker_bins: Vec<&String> = bins
         .iter()

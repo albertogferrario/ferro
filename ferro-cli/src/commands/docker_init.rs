@@ -16,9 +16,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::deploy::bin_detect::detect_web_bin;
-use crate::project::{find_project_root, package_name, read_deploy_metadata};
+use crate::project::{find_project_root, package_name, read_bins, read_deploy_metadata};
 use crate::templates::docker::{
-    dockerignore_template, read_bins, read_rust_channel, render_dockerfile, DockerContext,
+    dockerignore_template, read_rust_channel, render_dockerfile, DockerContext,
 };
 
 /// One rendered output file carried in memory between the render and persist
@@ -60,7 +60,7 @@ pub fn execute(
 
     let metadata = read_deploy_metadata(&root)?;
     let rust_channel = read_rust_channel(&root);
-    let bins = read_bins(&root)?;
+    let bins: Vec<String> = read_bins(&root).into_iter().map(|b| b.name).collect();
     let has_frontend = root.join("frontend/package.json").is_file();
     let copy_dirs_present: Vec<String> = metadata
         .copy_dirs

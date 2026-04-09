@@ -6,8 +6,7 @@
 
 use std::path::Path;
 
-use crate::project::{package_name, read_deploy_metadata};
-use crate::templates::docker::read_bins;
+use crate::project::{package_name, read_bins, read_deploy_metadata};
 
 /// Resolve the web bin name using the D-02 4-step order:
 /// 1. `[package.metadata.ferro.deploy].web_bin` explicit override
@@ -21,12 +20,12 @@ pub fn detect_web_bin(project_root: &Path) -> anyhow::Result<String> {
         }
     }
     let pkg = package_name(project_root);
-    let bins = read_bins(project_root)?;
-    if bins.iter().any(|b| b == &pkg) {
+    let bins = read_bins(project_root);
+    if bins.iter().any(|b| b.name == pkg) {
         return Ok(pkg);
     }
     if let Some(first) = bins.first() {
-        return Ok(first.clone());
+        return Ok(first.name.clone());
     }
     Ok(pkg)
 }
