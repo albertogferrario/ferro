@@ -861,7 +861,7 @@ Plans:
 **Goal:** Stop releasing every workspace member on docs-only or CI-only commits. Gate the auto-patch-bump on whether any *library* crate actually changed (REPORT item 8) — `ferro-cli/`-only or `docs/`-only pushes should not churn versions on every other crate. Document in `PUBLISHING.md` that `ferro_version` is currently a single global field (item 14) and add a per-crate override hook for the day a crate desyncs from the lockstep release; do not implement desync support until a real desync forces it. Absorbs REPORT items 8, 14. Maintainer ergonomics — lowest user-pain of the three follow-ups.
 **Requirements**: TBD
 **Depends on:** None
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 129 to break down)
