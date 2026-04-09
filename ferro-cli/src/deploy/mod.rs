@@ -4,6 +4,7 @@
 
 #![allow(dead_code)]
 
+pub mod app_yaml_existing;
 pub mod bin_detect;
 pub mod env_production;
 pub mod secret_keys;

@@ -1,16 +1,16 @@
 //! Phase 131 Plan 01 — Wave 0 gap report.
+//! Phase 131 Plan 02 — Identity preservation + docker_template_drift check.
 //!
 //! Byte-identical regeneration tests + regression tests for the gestiscilo
-//! reference fixture (commit 6f6d397). The two byte-identical tests are
-//! `#[ignore]`'d — they surface the delta between the scaffolder and the
-//! hand-maintained files. All other tests must pass today.
+//! reference fixture (commit 6f6d397).
 //!
-//! Run non-ignored tests:  `cargo test -p ferro-cli --test gestiscilo_fixture`
-//! Run gap report:         `cargo test -p ferro-cli --test gestiscilo_fixture -- --ignored --nocapture`
+//! Run all tests:   `cargo test -p ferro-cli --test gestiscilo_fixture`
+//! Run with output: `cargo test -p ferro-cli --test gestiscilo_fixture -- --nocapture`
 
 use std::fs;
 use std::path::PathBuf;
 
+use ferro_cli::deploy::app_yaml_existing::parse_existing;
 use ferro_cli::deploy::bin_detect::detect_web_bin;
 use ferro_cli::deploy::env_production::parse_env_example_structured;
 use ferro_cli::project::read_deploy_metadata;
@@ -74,8 +74,8 @@ fn build_app_yaml_context() -> AppYamlContext {
         None
     };
 
-    // Use the known gestiscilo repo binding — in a real run this comes from
-    // `git remote get-url origin`.
+    // Use the known gestiscilo identity — in a real run these come from
+    // `git remote get-url origin` and the existing .do/app.yaml.
     let repo = "gestiscilo-it/app".to_string();
 
     let _ = metadata; // metadata used above for web_bin via deploy_metadata
@@ -85,6 +85,10 @@ fn build_app_yaml_context() -> AppYamlContext {
         web_bin,
         workers,
         env_lines,
+        preserved_name: None,
+        preserved_region: None,
+        preserved_github_repo: None,
+        preserved_github_branch: None,
     }
 }
 
@@ -118,11 +122,10 @@ fn line_diff(label: &str, expected: &str, got: &str) -> String {
 }
 
 // ============================================================================
-// Byte-identical regeneration tests (EXPECTED TO FAIL pending 131-02)
+// Byte-identical regeneration tests (131-02: fixtures updated to scaffolder header)
 // ============================================================================
 
 #[test]
-#[ignore = "Wave 0 diff — unignored once 131-02 lands identity preservation and any Dockerfile deltas are resolved"]
 fn dockerfile_matches_gestiscilo_6f6d397() {
     let fixture = fs::read_to_string(fixture_dir().join("Dockerfile")).expect("fixture Dockerfile");
     let ctx = build_docker_context();
@@ -139,7 +142,6 @@ fn dockerfile_matches_gestiscilo_6f6d397() {
 }
 
 #[test]
-#[ignore = "Wave 0 diff — unignored once 131-02 lands identity preservation and any Dockerfile deltas are resolved"]
 fn app_yaml_matches_gestiscilo_6f6d397() {
     let fixture = fs::read_to_string(fixture_dir().join("app.yaml")).expect("fixture app.yaml");
     let ctx = build_app_yaml_context();
@@ -315,4 +317,78 @@ fn dockerfile_runtime_apt_layer() {
             "Dockerfile missing runtime_apt package '{pkg}'\nDockerfile:\n{rendered}"
         );
     }
+}
+
+// ============================================================================
+// Phase 131 Plan 02 — Identity preservation + drift check integration tests
+// ============================================================================
+
+/// REQ-131-06: `parse_existing` reads the gestiscilo fixture app.yaml and
+/// returns the correct identity fields.
+#[test]
+fn parse_existing_reads_gestiscilo_fixture() {
+    let path = fixture_dir().join("app.yaml");
+    let identity = parse_existing(&path).expect("should return Some for present file");
+    // The fixture is the scaffolder-output form (131-02 updated header); identity
+    // fields come from the YAML content lines, not the header comment.
+    assert_eq!(identity.name.as_deref(), Some("gestiscilo"));
+    assert_eq!(identity.region.as_deref(), Some("fra1"));
+    assert_eq!(identity.repo.as_deref(), Some("gestiscilo-it/app"));
+    assert_eq!(identity.branch.as_deref(), Some("main"));
+}
+
+/// `parse_existing` returns None when the file does not exist.
+#[test]
+fn parse_existing_returns_none_for_missing_file() {
+    let result = parse_existing(std::path::Path::new("/tmp/nonexistent-ferro-test/app.yaml"));
+    assert!(result.is_none());
+}
+
+/// REQ-131-06: `render_app_yaml` uses preserved identity fields over defaults.
+///
+/// This tests the render path directly; the `do_init_preserves_identity`
+/// unit test in `commands/do_init.rs` covers the full round-trip.
+#[test]
+fn render_app_yaml_uses_preserved_identity_over_defaults() {
+    use ferro_cli::deploy::env_production::EnvLine;
+
+    let ctx = AppYamlContext {
+        name: "derived-name".to_string(),
+        repo: "derived/repo".to_string(),
+        web_bin: "derived-name".to_string(),
+        workers: Vec::new(),
+        env_lines: Some(vec![EnvLine::Key("APP_NAME".to_string())]),
+        preserved_name: Some("custom-app-name".to_string()),
+        preserved_region: Some("nyc3".to_string()),
+        preserved_github_repo: Some("myorg/my-repo".to_string()),
+        preserved_github_branch: Some("production".to_string()),
+    };
+
+    let out = render_app_yaml(&ctx);
+
+    assert!(
+        out.contains("name: custom-app-name"),
+        "preserved name must be used\ngot:\n{out}"
+    );
+    assert!(
+        out.contains("region: nyc3"),
+        "preserved region must be used\ngot:\n{out}"
+    );
+    assert!(
+        out.contains("repo: myorg/my-repo"),
+        "preserved repo must be used\ngot:\n{out}"
+    );
+    assert!(
+        out.contains("branch: production"),
+        "preserved branch must be used\ngot:\n{out}"
+    );
+    // Derived values must NOT appear.
+    assert!(
+        !out.contains("derived-name"),
+        "derived name must be suppressed\ngot:\n{out}"
+    );
+    assert!(
+        !out.contains("fra1"),
+        "default region must be suppressed\ngot:\n{out}"
+    );
 }

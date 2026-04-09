@@ -29,6 +29,18 @@ pub struct AppYamlContext {
     /// `.env.example` is missing — the renderer emits an empty envs block and
     /// the caller logs a warning (D-06 graceful missing-file path).
     pub env_lines: Option<Vec<EnvLine>>,
+    /// Identity override: DO App Platform app name from an existing file.
+    /// When `Some`, takes precedence over `name` (derived from package name).
+    pub preserved_name: Option<String>,
+    /// Identity override: DO region slug from an existing file.
+    /// When `Some`, takes precedence over the default (`fra1`).
+    pub preserved_region: Option<String>,
+    /// Identity override: `github.repo` from an existing file.
+    /// When `Some`, takes precedence over the git-remote-derived `repo`.
+    pub preserved_github_repo: Option<String>,
+    /// Identity override: `github.branch` from an existing file.
+    /// When `Some`, takes precedence over the default (`main`).
+    pub preserved_github_branch: Option<String>,
 }
 
 /// Render `.do/app.yaml` from a fully-resolved context.
@@ -38,9 +50,21 @@ pub fn render_app_yaml(ctx: &AppYamlContext) -> String {
         Some(lines) => render_envs_block_from_lines(lines),
         None => String::new(),
     };
+
+    // Preserved identity fields take precedence over derived defaults.
+    let name = ctx.preserved_name.as_deref().unwrap_or(ctx.name.as_str());
+    let region = ctx.preserved_region.as_deref().unwrap_or("fra1");
+    let repo = ctx
+        .preserved_github_repo
+        .as_deref()
+        .unwrap_or(ctx.repo.as_str());
+    let branch = ctx.preserved_github_branch.as_deref().unwrap_or("main");
+
     let rendered = TEMPLATE
-        .replace("{{NAME}}", &ctx.name)
-        .replace("{{REPO}}", &ctx.repo)
+        .replace("{{NAME}}", name)
+        .replace("{{REGION}}", region)
+        .replace("{{REPO}}", repo)
+        .replace("{{GITHUB_BRANCH}}", branch)
         .replace("{{WORKERS_BLOCK}}", &workers_block)
         .replace("{{ENVS_BLOCK}}", &envs_block);
     debug_assert!(
@@ -200,6 +224,10 @@ mod tests {
                     .map(|k| EnvLine::Key(k.to_string()))
                     .collect(),
             ),
+            preserved_name: None,
+            preserved_region: None,
+            preserved_github_repo: None,
+            preserved_github_branch: None,
         }
     }
 
@@ -210,6 +238,10 @@ mod tests {
             web_bin: name.to_string(),
             workers: Vec::new(),
             env_lines: None,
+            preserved_name: None,
+            preserved_region: None,
+            preserved_github_repo: None,
+            preserved_github_branch: None,
         }
     }
 
@@ -435,6 +467,10 @@ mod app_yaml_structure_tests {
             web_bin: "x".into(),
             workers: Vec::new(),
             env_lines: Some(vec![EnvLine::Key("APP_NAME".into())]),
+            preserved_name: None,
+            preserved_region: None,
+            preserved_github_repo: None,
+            preserved_github_branch: None,
         };
         let out = render_app_yaml(&c);
         // Locate the web service block (between `services:` and the workers block).
@@ -458,6 +494,10 @@ mod app_yaml_structure_tests {
             web_bin: "x".into(),
             workers: Vec::new(),
             env_lines: Some(vec![EnvLine::Key("APP_NAME".into())]),
+            preserved_name: None,
+            preserved_region: None,
+            preserved_github_repo: None,
+            preserved_github_branch: None,
         };
         let out = render_app_yaml(&c);
         assert!(
