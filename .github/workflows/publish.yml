@@ -13,17 +13,67 @@ jobs:
     name: Check Version
     runs-on: ubuntu-latest
     outputs:
-      should_publish: ${{ steps.check.outputs.should_publish }}
-      version: ${{ steps.check.outputs.version }}
-      new_version: ${{ steps.check.outputs.new_version }}
+      should_publish: ${{ steps.check.outputs.should_publish || steps.skip.outputs.should_publish }}
+      version: ${{ steps.check.outputs.version || steps.skip.outputs.version }}
+      new_version: ${{ steps.check.outputs.new_version || steps.skip.outputs.new_version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Library-change gate (Phase 129, REPORT §8).
+      #
+      # A push only triggers a patch bump + crates.io release if at least one file
+      # under a library crate path changed since the last v* tag. Paths under
+      # ferro-cli/, app/, docs/, .github/, .planning/, scripts/, top-level *.md,
+      # LICENSE, Cargo.lock, and top-level config files (.gitignore, .editorconfig,
+      # rustfmt.toml, bacon.toml, deny.toml, dev.sh, llms.txt, rust-toolchain.toml)
+      # are NOT library changes. Workspace-root Cargo.toml IS a library change
+      # (workspace version / dep updates).
+      #
+      # First-run edge case: no v* tag yet → treat as library change (publish).
+      - name: Check for library crate changes
+        id: gate
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "No prior v* tag — first publish, treating as library change"
+            LIB_CHANGED=1
+          else
+            CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD)
+            echo "Changed paths since $LAST_TAG:"
+            echo "$CHANGED"
+
+            LIB_CHANGED=0
+            while IFS= read -r path; do
+              case "$path" in
+                ferro-cli/*|app/*) continue ;;
+                docs/*|.github/*|.planning/*|scripts/*) continue ;;
+                *.md|LICENSE|.gitignore|.editorconfig|rustfmt.toml) continue ;;
+                bacon.toml|deny.toml|dev.sh|llms.txt|rust-toolchain.toml) continue ;;
+                Cargo.lock) continue ;;
+                "") continue ;;
+                *) LIB_CHANGED=1; echo "Library change detected: $path"; break ;;
+              esac
+            done <<< "$CHANGED"
+          fi
+          echo "lib_changed=$LIB_CHANGED" >> $GITHUB_OUTPUT
+
+      - name: Skip publish (no library crate changed)
+        id: skip
+        if: steps.gate.outputs.lib_changed == '0'
+        run: |
+          VERSION=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+          LAST_TAG=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo "")
+          echo "Skipping publish: no library crate changed since $LAST_TAG"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "new_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "should_publish=none" >> $GITHUB_OUTPUT
+
       - name: Check if version is tagged
         id: check
+        if: steps.gate.outputs.lib_changed == '1'
         run: |
           # Get current version from Cargo.toml
           VERSION=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
@@ -82,7 +132,7 @@ jobs:
   test:
     name: Test
     needs: [check-version, bump-version]
-    if: always() && needs.check-version.outputs.should_publish != ''
+    if: always() && (needs.check-version.outputs.should_publish == 'bump' || needs.check-version.outputs.should_publish == 'yes')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -112,7 +162,7 @@ jobs:
   publish:
     name: Publish to crates.io
     needs: [check-version, bump-version, test]
-    if: always() && needs.test.result == 'success' && needs.check-version.outputs.should_publish != ''
+    if: always() && needs.test.result == 'success' && (needs.check-version.outputs.should_publish == 'bump' || needs.check-version.outputs.should_publish == 'yes')
     runs-on: ubuntu-latest
     permissions:
       contents: write
