@@ -578,6 +578,27 @@ mod tests {
         assert!(!env_example().is_empty());
     }
 
+    #[test]
+    fn test_readme_substitution() {
+        let result = readme("my-app", "My App", "A test description");
+        assert!(result.contains("# My App"));
+        assert!(result.contains("A test description"));
+        assert!(result.contains("cd my-app"));
+        assert!(result.contains("ferro serve"));
+        assert!(result.contains("ferro db:migrate"));
+    }
+
+    #[test]
+    fn test_gitignore_does_not_ignore_cargo_lock() {
+        // Binary crates must commit Cargo.lock for reproducible builds.
+        let content = gitignore();
+        // No bare `Cargo.lock` line (comments mentioning it are fine).
+        assert!(
+            !content.lines().any(|l| l.trim() == "Cargo.lock"),
+            "gitignore template must not ignore Cargo.lock for binary crates"
+        );
+    }
+
     // -------------------------------------------------------------------------
     // AI Development Boost Template Tests
     // -------------------------------------------------------------------------

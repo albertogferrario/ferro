@@ -95,6 +95,15 @@ None — plan executed exactly as written. The plan's full implementation sketch
 
 None. The scaffolder writes all fields (`runtime_apt`, `copy_dirs`, `web_bin`) with real detected or prompted values. No placeholder text.
 
+## Self-Check: PASSED
+
+- `ferro-cli/src/commands/deploy_init.rs` — FOUND
+- Commit `6bc977e0` — FOUND
+- Commit `4668890e` — FOUND
+- All 7 unit tests pass (including `dry_run_writes_zero_files`)
+- `cargo build -p ferro-cli` — PASSED
+- `ferro deploy:init --help` — prints synopsis
+
 ---
 *Phase: 128-deploy-preflight*
 *Completed: 2026-04-09*

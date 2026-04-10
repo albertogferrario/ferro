@@ -36,9 +36,7 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
     }
     let ignore_content = match fs::read_to_string(&dockerignore) {
         Ok(s) => s,
-        Err(e) => {
-            return CheckResult::error(NAME, format!("failed to read .dockerignore: {e}"))
-        }
+        Err(e) => return CheckResult::error(NAME, format!("failed to read .dockerignore: {e}")),
     };
     let ignore_lines: Vec<&str> = ignore_content
         .lines()
@@ -52,9 +50,7 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
         for line in &ignore_lines {
             let stripped = line.trim_end_matches('/');
             if stripped == entry_head || stripped == entry.as_str() {
-                collisions.push(format!(
-                    "'{entry}' excluded by .dockerignore rule '{line}'"
-                ));
+                collisions.push(format!("'{entry}' excluded by .dockerignore rule '{line}'"));
                 break;
             }
         }
@@ -65,7 +61,10 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
     } else {
         CheckResult::error(
             NAME,
-            format!("{} copy_dirs entries collide with .dockerignore", collisions.len()),
+            format!(
+                "{} copy_dirs entries collide with .dockerignore",
+                collisions.len()
+            ),
         )
         .with_details(collisions.join("; "))
     }

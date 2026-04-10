@@ -2,7 +2,7 @@
 
 # rust
 /target
-Cargo.lock
+# Note: Cargo.lock is committed for binary crates to guarantee reproducible builds.
 
 # node
 frontend/node_modules

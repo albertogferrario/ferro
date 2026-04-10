@@ -101,9 +101,7 @@ mod structured_tests {
     fn env_example_parser_skips_comments() {
         let input = "# header\nA=1\n";
         let out = parse_env_example_structured(input);
-        assert!(out
-            .iter()
-            .any(|l| matches!(l, EnvLine::Key(k) if k == "A")));
+        assert!(out.iter().any(|l| matches!(l, EnvLine::Key(k) if k == "A")));
     }
 
     #[test]

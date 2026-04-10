@@ -160,6 +160,14 @@ fn create_project(
     // Write backend files
     write_backend_files(project_path, package_name, description, author)?;
 
+    // Write README at project root
+    let project_title = to_title_case(project_name);
+    write_file(
+        project_path,
+        "README.md",
+        &templates::readme(project_name, &project_title, description),
+    )?;
+
     // Write frontend files
     write_frontend_files(project_path, project_name)?;
 

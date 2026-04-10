@@ -218,6 +218,13 @@ pub fn env_example() -> &'static str {
     include_str!("files/root/env.example.tpl")
 }
 
+pub fn readme(project_name: &str, project_title: &str, description: &str) -> String {
+    include_str!("files/root/README.md.tpl")
+        .replace("{project_name}", project_name)
+        .replace("{project_title}", project_title)
+        .replace("{description}", description)
+}
+
 // Schedule templates
 
 /// Template for schedule.rs registration file
