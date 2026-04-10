@@ -6,62 +6,20 @@ use std::path::PathBuf;
 
 /// Embedded skill files - these are compiled into the binary
 const SKILLS: &[(&str, &str)] = &[
-    (
-        "help.md",
-        include_str!("../../../.claude/commands/ferro/help.md"),
-    ),
-    (
-        "info.md",
-        include_str!("../../../.claude/commands/ferro/info.md"),
-    ),
-    (
-        "routes.md",
-        include_str!("../../../.claude/commands/ferro/routes.md"),
-    ),
-    (
-        "route-explain.md",
-        include_str!("../../../.claude/commands/ferro/route-explain.md"),
-    ),
-    (
-        "model.md",
-        include_str!("../../../.claude/commands/ferro/model.md"),
-    ),
-    (
-        "models.md",
-        include_str!("../../../.claude/commands/ferro/models.md"),
-    ),
-    (
-        "controller.md",
-        include_str!("../../../.claude/commands/ferro/controller.md"),
-    ),
-    (
-        "middleware.md",
-        include_str!("../../../.claude/commands/ferro/middleware.md"),
-    ),
-    (
-        "db.md",
-        include_str!("../../../.claude/commands/ferro/db.md"),
-    ),
-    (
-        "test.md",
-        include_str!("../../../.claude/commands/ferro/test.md"),
-    ),
-    (
-        "serve.md",
-        include_str!("../../../.claude/commands/ferro/serve.md"),
-    ),
-    (
-        "new.md",
-        include_str!("../../../.claude/commands/ferro/new.md"),
-    ),
-    (
-        "tinker.md",
-        include_str!("../../../.claude/commands/ferro/tinker.md"),
-    ),
-    (
-        "diagnose.md",
-        include_str!("../../../.claude/commands/ferro/diagnose.md"),
-    ),
+    ("help.md", include_str!("skills/help.md")),
+    ("info.md", include_str!("skills/info.md")),
+    ("routes.md", include_str!("skills/routes.md")),
+    ("route-explain.md", include_str!("skills/route-explain.md")),
+    ("model.md", include_str!("skills/model.md")),
+    ("models.md", include_str!("skills/models.md")),
+    ("controller.md", include_str!("skills/controller.md")),
+    ("middleware.md", include_str!("skills/middleware.md")),
+    ("db.md", include_str!("skills/db.md")),
+    ("test.md", include_str!("skills/test.md")),
+    ("serve.md", include_str!("skills/serve.md")),
+    ("new.md", include_str!("skills/new.md")),
+    ("tinker.md", include_str!("skills/tinker.md")),
+    ("diagnose.md", include_str!("skills/diagnose.md")),
 ];
 
 pub fn run(force: bool, list: bool) {
