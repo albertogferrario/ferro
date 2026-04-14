@@ -87,6 +87,12 @@ pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resol
 pub use view::{JsonUiView, SCHEMA_VERSION};
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
 
+#[cfg(feature = "projections")]
+pub mod projection;
+
+#[cfg(feature = "projections")]
+pub use projection::{JsonUiRenderer, RenderMode, VisualContext};
+
 /// Concise reference of all JSON-UI components for AI generation prompts.
 ///
 /// Used by ferro-cli (AI view generation) and ferro-mcp (json_ui_generate tool)

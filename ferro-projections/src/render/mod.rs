@@ -2,8 +2,8 @@
 //!
 //! Defines the `Renderer` trait and `BaseContext` (modality-agnostic fields)
 //! that translate `ServiceDef` + `IntentScore` into renderable output.
-//! Visual-specific types (`VisualContext`, `RenderMode`, `JsonUiRenderer`) live
-//! behind the `visual` feature flag in the `json_ui` module.
+//! Concrete renderer implementations (e.g., `JsonUiRenderer`) live in their
+//! respective output crates (e.g., `ferro-json-ui`).
 
 pub mod field_map;
 #[cfg(feature = "visual")]
@@ -85,7 +85,7 @@ pub fn field_display_name(name: &str) -> String {
 
 /// Returns true for system/infrastructure field meanings that should not
 /// contribute to domain intent signals or appear in user-facing layouts.
-pub(crate) fn is_system_field(meaning: &FieldMeaning) -> bool {
+pub fn is_system_field(meaning: &FieldMeaning) -> bool {
     matches!(
         meaning,
         FieldMeaning::Identifier | FieldMeaning::CreatedAt | FieldMeaning::UpdatedAt

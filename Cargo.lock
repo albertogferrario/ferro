@@ -1679,6 +1679,8 @@ dependencies = [
 name = "ferro-json-ui"
 version = "0.2.2"
 dependencies = [
+ "ferro-projections",
+ "ferro-theme",
  "schemars",
  "serde",
  "serde_json",
@@ -1846,6 +1848,7 @@ version = "0.2.2"
 dependencies = [
  "async-trait",
  "aws-config",
+ "aws-credential-types",
  "aws-sdk-s3",
  "bytes",
  "dashmap",
