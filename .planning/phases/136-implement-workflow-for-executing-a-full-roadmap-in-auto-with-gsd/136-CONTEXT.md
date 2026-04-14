@@ -18,7 +18,7 @@ The workflow takes a milestone name as input and runs all incomplete phases in t
 ### Orchestrator Architecture
 - **D-01:** GitHub Actions workflow (`.github/workflows/gsd-roadmap.yml`). Runs entirely outside Claude's context window on GitHub infrastructure.
 - **D-02:** One fresh `claude` CLI invocation per phase. No batching, no context reuse across phases. Simple and predictable.
-- **D-03:** The workflow accepts a milestone name as a `workflow_dispatch` input. It runs all incomplete phases in that milestone.
+- **D-03:** The workflow accepts two `workflow_dispatch` inputs: (1) path to the roadmap file to run (e.g. `.planning/ROADMAP.md`), and (2) milestone name within that roadmap. It runs all incomplete phases in the specified milestone of the specified roadmap.
 
 ### State Tracking
 - **D-04:** No new state file. Use existing `gsd-tools roadmap analyze` to determine which phases are incomplete. The script re-reads roadmap state before each phase to catch dynamically inserted phases.
