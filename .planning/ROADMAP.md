@@ -916,6 +916,16 @@ Plans:
 
 **Field test:** gestiscilo-it will drop `src/services/storage.rs` and its `SPACES_*` env vars in favor of `ferro::Storage::disk("s3")` with `AWS_*` vars once this phase ships.
 
+### Phase 133: Remove envs block from do:init scaffolder
+
+**Goal:** Stop generating the `envs:` block in `.do/app.yaml`. Users configure environment variables directly in the DigitalOcean dashboard or via `doctl` — the app spec should only declare infrastructure (services, workers, regions, instance sizing), not runtime configuration. The current scaffolder reads `.env.example` and emits an envs block that duplicates what the user already manages through the platform UI, creating a maintenance burden and a false-positive in `deploy_env_parity`.
+
+Remove the envs-from-`.env.example` rendering path in `do:init`. Remove the `deploy_env_parity` doctor check (it exists only to validate the envs block that is being removed). Update the gestiscilo fixture to reflect the envs-free `.do/app.yaml`.
+
+**Exit criteria:** `ferro do:init --force` produces an `.do/app.yaml` with no `envs:` block; `ferro doctor` no longer includes `deploy_env_parity`.
+
+**Depends on:** Phase 132
+
 ---
 
 ### 🚧 v11.5 Projection Architecture Prep
