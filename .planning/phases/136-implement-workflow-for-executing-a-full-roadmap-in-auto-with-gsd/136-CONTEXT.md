@@ -6,9 +6,9 @@
 <domain>
 ## Phase Boundary
 
-A shell script that drives an entire milestone's worth of phases through the GSD pipeline (discuss → plan → execute) automatically, one fresh `claude` CLI invocation per phase. This is the **outer orchestrator** that `/gsd:autonomous` cannot be — it survives context window exhaustion by running outside Claude entirely.
+A GitHub Actions workflow that drives an entire milestone's worth of phases through the GSD pipeline (discuss → plan → execute) automatically, one fresh `claude` CLI invocation per phase. This is the **outer orchestrator** that `/gsd:autonomous` cannot be — it survives context window exhaustion by running outside Claude entirely on GitHub infrastructure.
 
-The script takes a milestone name as parameter and runs all incomplete phases in that milestone sequentially, each in an isolated context window.
+The workflow takes a milestone name as input and runs all incomplete phases in that milestone sequentially, each in an isolated context window. On failure it stops and opens a GitHub issue.
 
 </domain>
 
@@ -16,9 +16,9 @@ The script takes a milestone name as parameter and runs all incomplete phases in
 ## Implementation Decisions
 
 ### Orchestrator Architecture
-- **D-01:** Shell script (bash), not a node command or Claude skill. Runs entirely outside Claude's context window.
+- **D-01:** GitHub Actions workflow (`.github/workflows/gsd-roadmap.yml`). Runs entirely outside Claude's context window on GitHub infrastructure.
 - **D-02:** One fresh `claude` CLI invocation per phase. No batching, no context reuse across phases. Simple and predictable.
-- **D-03:** The script accepts a milestone name as a required parameter. It runs all incomplete phases in that milestone.
+- **D-03:** The workflow accepts a milestone name as a `workflow_dispatch` input. It runs all incomplete phases in that milestone.
 
 ### State Tracking
 - **D-04:** No new state file. Use existing `gsd-tools roadmap analyze` to determine which phases are incomplete. The script re-reads roadmap state before each phase to catch dynamically inserted phases.
@@ -27,13 +27,15 @@ The script takes a milestone name as parameter and runs all incomplete phases in
 - **D-05:** On phase failure: stop the roadmap run immediately and open a GitHub issue via `gh issue create`.
 - **D-06:** Issue format is minimal: title = "Phase N failed: [phase name]", body = exit code + last few lines of output + link to phase directory.
 
-### Script Location
-- **D-07:** Standalone shell script at `~/.claude/get-shit-done/bin/gsd-roadmap-run.sh`. No skill wrapper, no gsd-tools subcommand. Minimal packaging.
+### Workflow Location
+- **D-07:** `.github/workflows/gsd-roadmap.yml` — committed to the repo. Triggered via `workflow_dispatch` from the GitHub Actions UI or `gh workflow run`.
 
 ### Claude's Discretion
-- Exact `claude` CLI flags and invocation pattern (how to pass `--auto`, how to pipe the `/gsd:autonomous` or `/gsd:discuss-phase --auto` command)
+- Exact `claude` CLI flags and invocation pattern (how to pass `--auto`, how to pipe the commands)
 - How to detect success vs failure from Claude CLI exit codes or output parsing
-- Whether to pass `--from N` to `/gsd:autonomous` or invoke individual `/gsd:discuss-phase`, `/gsd:plan-phase`, `/gsd:execute-phase` per phase
+- Whether to use `/gsd:autonomous --from N` or invoke individual `/gsd:discuss-phase`, `/gsd:plan-phase`, `/gsd:execute-phase` per phase
+- Runner setup: how to install `claude` CLI, `node`, `gsd-tools` on the GitHub Actions runner
+- Whether to use a self-hosted runner or GitHub-hosted runner
 
 </decisions>
 
@@ -68,8 +70,9 @@ The script takes a milestone name as parameter and runs all incomplete phases in
 - `--no-transition` flag on execute-phase prevents inter-phase transition prompts
 
 ### Integration Points
-- `claude` CLI — The shell script spawns this as a subprocess per phase
-- `gh` CLI — Used to create GitHub issues on failure
+- `claude` CLI — Installed on the GitHub Actions runner, invoked per phase
+- `gh` CLI — Natively available in GitHub Actions runners, used for issue creation on failure
+- `GITHUB_TOKEN` — Auto-provided by GitHub Actions, used by `gh` for issue creation
 - `.planning/ROADMAP.md` — Source of truth for phase list and completion status
 
 </code_context>
