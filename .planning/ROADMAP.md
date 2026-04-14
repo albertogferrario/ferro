@@ -30,6 +30,8 @@
 - ✅ [**v10.0 JSON-UI Visual Overhaul**](milestones/v10.0-ROADMAP.md) — Phases 102-107 (shipped 2026-03-26)
 - ✅ [**v11.0 Framework Consolidation Audit**](milestones/v11.0-ROADMAP.md) — Phases 108-114 (shipped 2026-04-05)
 - ✅ [**v11.1 Template Renderer**](milestones/v11.1-ROADMAP.md) — Phase 114.1 (shipped 2026-04-05)
+- ✅ **v11.2 Deploy & Scaffolder Hardening** — Phases 122-131 (shipped 2026-04-14)
+- 🚧 **v11.3 S3 Storage Driver** — Phase 132
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract)
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19 requirements (COMP-01..05, OPER-01..07, CONC-01..03, AEST-01..04) in `.planning/REQUIREMENTS.md`. Phase numbering continues after v12.0. No target date.
 
@@ -888,6 +890,14 @@ Plans:
 - [x] 131-02-PLAN.md — .do/app.yaml identity preservation on --force and docker_template_drift doctor check
 - [x] 131-03-PLAN.md — Collapse duplicate read_bins into single canonical reader
 
+### 🚧 v11.3 S3 Storage Driver
+
+**Milestone Goal:** Replace the stub S3 driver in ferro-storage with a working implementation backed by `aws-sdk-s3`, enabling gestiscilo to drop its hand-rolled storage service.
+
+## Phases
+
+- [ ] **Phase 132: Implement ferro-storage S3 Driver**
+
 ### Phase 132: Implement ferro-storage S3 Driver
 
 **Goal:** Replace the stub `S3Driver` in `ferro-storage/src/drivers/s3.rs` with a working implementation using the already-declared `aws-sdk-s3` dependency. The S3 feature gate and config wiring (`AWS_*` env vars, `DiskConfig`, `DiskDriver::S3`) are already in place — only the driver methods need real implementations.
@@ -931,6 +941,8 @@ Implement all 15 `StorageDriver` trait methods (`exists`, `get`, `put`, `delete`
 | v10.0 JSON-UI Visual Overhaul | 102-107 | 8 | ✅ Complete | 2026-03-26 |
 | v11.0 Framework Consolidation Audit | 108-114 | 13 | ✅ Shipped | 2026-04-05 |
 | v11.1 Template Renderer | 114.1 | 1 | ✅ Shipped | 2026-04-05 |
+| v11.2 Deploy & Scaffolder Hardening | 122-131 | 49 | ✅ Shipped | 2026-04-14 |
+| v11.3 S3 Storage Driver | 132 | ? | 🚧 In Progress | - |
 | v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121 | ? | 📋 Planned | - |
 
-**Total: 23 milestones shipped, 205 plans complete. 13 plans in progress.**
+**Total: 25 milestones shipped, 255 plans complete.**
