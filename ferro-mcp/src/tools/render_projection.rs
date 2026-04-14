@@ -5,8 +5,8 @@ use std::path::Path;
 
 use ferro_projections::{
     derive_intents, ActionDef, Cardinality, DataType, FieldMeaning, GuardDef, InputDef, IntentHint,
-    JsonUiRenderer, RenderContext, RenderMode, Renderer, ServiceDef, StateDef, StateMachine,
-    Transition,
+    JsonUiRenderer, RenderMode, Renderer, ServiceDef, StateDef, StateMachine, Transition,
+    VisualContext,
 };
 use regex::Regex;
 use std::fs;
@@ -69,7 +69,7 @@ pub fn execute(
     };
 
     let idx = intent_index.unwrap_or(0);
-    let ctx = RenderContext {
+    let ctx = VisualContext {
         intent_index: idx,
         current_state: None,
         mode: render_mode,

@@ -240,8 +240,8 @@ pub use ferro_whatsapp::{
 pub use ferro_projections::{
     derive_intents, infer_meaning, ActionDef, Cardinality, DataType, Error as ProjectionsError,
     FieldDef, FieldMeaning, GuardDef, InputDef, Intent, IntentHint, IntentScore, JsonUiRenderer,
-    NavigationHint, RelationshipDef, RenderContext, RenderMode, Renderer, ServiceDef, StateDef,
-    StateMachine, Transition, Warning as ProjectionsWarning,
+    NavigationHint, RelationshipDef, RenderMode, Renderer, ServiceDef, StateDef, StateMachine,
+    Transition, VisualContext, Warning as ProjectionsWarning,
 };
 
 // Re-export async_trait for middleware implementations
