@@ -32,7 +32,7 @@
 - ✅ [**v11.1 Template Renderer**](milestones/v11.1-ROADMAP.md) — Phase 114.1 (shipped 2026-04-05)
 - ✅ **v11.2 Deploy & Scaffolder Hardening** — Phases 122-131 (shipped 2026-04-14)
 - ✅ **v11.3 S3 Storage Driver** — Phase 132 (shipped 2026-04-14)
-- 📋 **v11.5 Projection Architecture Prep** — Phases 133-135. Generalize Renderer trait, relocate renderers to output crates, break ferro-projections → ferro-theme dependency. Prerequisite for v12.0 and v14.0.
+- 🚧 **v11.5 Projection Architecture Prep** — Phases 133-135. Generalize Renderer trait, relocate renderers to output crates, break ferro-projections → ferro-theme dependency. Prerequisite for v12.0 and v14.0.
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation) and v11.5 (generalized Renderer trait).
@@ -918,7 +918,7 @@ Plans:
 
 ---
 
-### 📋 v11.5 Projection Architecture Prep
+### 🚧 v11.5 Projection Architecture Prep
 
 **Milestone Goal:** Refactor the projection rendering pipeline so the Renderer trait is modality-agnostic. This unblocks v12.0 (which rewrites the visual renderer) and v14.0 (which adds non-visual renderers). Without this, channel adapters would be bolted on rather than projected through.
 
