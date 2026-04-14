@@ -946,6 +946,13 @@ Concrete changes: (1) `Renderer` trait gains `type Output` and `type Context: De
 
 **Exit criteria:** `Renderer` trait has associated types. `cargo test --all-features` passes. ferro-projections no longer depends on ferro-theme. `ThemeTemplates` is consumed by `JsonUiRenderer`'s context, not by the base trait.
 
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 133-01-PLAN.md — Refactor Renderer trait, split context types, gate ferro-theme
+- [ ] 133-02-PLAN.md — Update ferro-mcp imports for compilation
+
 **Depends on:** Phase 132
 
 ### Phase 134: Relocate renderers to output crates
@@ -967,6 +974,16 @@ This is the time-to-working-projection bottleneck. An agent should be able to go
 **Exit criteria:** `ServiceDef::from_model(model_metadata)` produces a reasonable ServiceDef from SeaORM column types. `ferro-mcp` has a `generate_projection` tool. A round-trip test demonstrates: create model → derive ServiceDef → derive intents → render.
 
 **Depends on:** Phase 134
+
+### Phase 136: implement workflow for executing a full roadmap in auto with gsd
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 135
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 136 to break down)
 
 ---
 
