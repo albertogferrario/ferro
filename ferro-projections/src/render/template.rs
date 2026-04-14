@@ -10,7 +10,7 @@ use crate::error::Error;
 use crate::intent::IntentScore;
 use crate::service::ServiceDef;
 
-use super::{is_system_field, RenderContext, Renderer};
+use super::{is_system_field, BaseContext, Renderer};
 
 /// Template context renderer producing structured JSON from service definitions.
 ///
@@ -43,7 +43,7 @@ use super::{is_system_field, RenderContext, Renderer};
 ///
 /// ```
 /// use ferro_projections::{
-///     ServiceDef, DataType, FieldMeaning, derive_intents, TemplateRenderer, Renderer, RenderContext,
+///     ServiceDef, DataType, FieldMeaning, derive_intents, TemplateRenderer, Renderer, BaseContext,
 /// };
 ///
 /// let svc = ServiceDef::new("order")
@@ -53,7 +53,7 @@ use super::{is_system_field, RenderContext, Renderer};
 ///
 /// let intents = derive_intents(&svc);
 /// let renderer = TemplateRenderer;
-/// let result = renderer.render(&svc, &intents, &RenderContext::default());
+/// let result = renderer.render(&svc, &intents, &BaseContext::default());
 /// assert!(result.is_ok());
 ///
 /// let json = result.unwrap();
@@ -64,11 +64,14 @@ use super::{is_system_field, RenderContext, Renderer};
 pub struct TemplateRenderer;
 
 impl Renderer for TemplateRenderer {
+    type Output = serde_json::Value;
+    type Context = BaseContext;
+
     fn render(
         &self,
         service: &ServiceDef,
         _intents: &[IntentScore],
-        _ctx: &RenderContext,
+        _ctx: &BaseContext,
     ) -> Result<Value, Error> {
         // Build fields map: keyed by name, excluding system fields.
         let mut fields = Map::new();
@@ -163,7 +166,7 @@ mod tests {
         let intents = derive_intents(svc);
         let renderer = TemplateRenderer;
         renderer
-            .render(svc, &intents, &RenderContext::default())
+            .render(svc, &intents, &BaseContext::default())
             .expect("render must succeed")
     }
 
