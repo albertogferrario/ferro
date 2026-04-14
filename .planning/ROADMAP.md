@@ -934,7 +934,7 @@ Remove the envs-from-`.env.example` rendering path in `do:init`. Remove the `dep
 
 ## Phases
 
-- [ ] **Phase 133: Generalize Renderer trait**
+- [x] **Phase 133: Generalize Renderer trait** (completed 2026-04-14)
 - [ ] **Phase 134: Relocate renderers to output crates**
 - [ ] **Phase 135: ServiceDef derivation bridge**
 
@@ -947,11 +947,11 @@ Concrete changes: (1) `Renderer` trait gains `type Output` and `type Context: De
 **Exit criteria:** `Renderer` trait has associated types. `cargo test --all-features` passes. ferro-projections no longer depends on ferro-theme. `ThemeTemplates` is consumed by `JsonUiRenderer`'s context, not by the base trait.
 
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 133-01-PLAN.md — Refactor Renderer trait, split context types, gate ferro-theme
-- [ ] 133-02-PLAN.md — Update ferro-mcp imports for compilation
+- [x] 133-02-PLAN.md — Update ferro-mcp imports for compilation
 
 **Depends on:** Phase 132
 
