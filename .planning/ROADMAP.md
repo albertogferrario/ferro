@@ -900,16 +900,6 @@ Implement all 15 `StorageDriver` trait methods (`exists`, `get`, `put`, `delete`
 
 **Field test:** gestiscilo-it will drop `src/services/storage.rs` and its `SPACES_*` env vars in favor of `ferro::Storage::disk("s3")` with `AWS_*` vars once this phase ships.
 
-### Phase 133: Unify ferro-storage Env Vars with DO Spaces Convention
-
-**Goal:** Add `SPACES_*` → `AWS_*` env var aliasing in `StorageConfig::from_env()` so DigitalOcean Spaces users can use either convention. When `AWS_ACCESS_KEY_ID` is not set but `SPACES_KEY` is, fall back to the Spaces names. This removes the need for downstream apps to duplicate env vars or pick one convention.
-
-Map: `SPACES_KEY` → `AWS_ACCESS_KEY_ID`, `SPACES_SECRET` → `AWS_SECRET_ACCESS_KEY`, `SPACES_REGION` → `AWS_DEFAULT_REGION`, `SPACES_BUCKET` → `AWS_BUCKET`, `SPACES_ENDPOINT` → `AWS_URL`.
-
-**Exit criteria:** `StorageConfig::from_env()` reads both `AWS_*` and `SPACES_*` with `AWS_*` taking precedence; unit tests verify fallback.
-
-**Depends on:** Phase 132
-
 ---
 
 ## Progress Summary
