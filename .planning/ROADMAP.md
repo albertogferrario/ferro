@@ -896,7 +896,7 @@ Plans:
 
 ## Phases
 
-- [ ] **Phase 132: Implement ferro-storage S3 Driver**
+- [x] **Phase 132: Implement ferro-storage S3 Driver** (completed 2026-04-14)
 
 ### Phase 132: Implement ferro-storage S3 Driver
 
@@ -904,10 +904,10 @@ Plans:
 
 Implement all 15 `StorageDriver` trait methods (`exists`, `get`, `put`, `delete`, `copy`, `size`, `metadata`, `url`, `temporary_url`, `files`, `all_files`, `directories`, `make_directory`, `delete_directory`). Use `aws-sdk-s3` client initialized from the `DiskConfig` fields (`bucket`, `region`) and `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` credentials. Support custom endpoints via `AWS_URL` for S3-compatible providers (DigitalOcean Spaces, MinIO, R2). Add integration tests gated behind an `s3-tests` feature that run against a real bucket.
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 132-01-PLAN.md — S3Driver implementation, facade wiring, unit tests, integration test scaffold
+- [x] 132-01-PLAN.md — S3Driver implementation, facade wiring, unit tests, integration test scaffold
 **Exit criteria:** `Storage::disk("s3").put("test.txt", bytes).await` works against DigitalOcean Spaces; all 15 trait methods return real results instead of `Error::not_implemented`; gestiscilo can replace its hand-rolled `src/services/storage.rs` with `ferro::Storage`.
 
 **Depends on:** Phase 131
