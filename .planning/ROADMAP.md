@@ -983,13 +983,13 @@ This is the time-to-working-projection bottleneck. An agent should be able to go
 
 ### Phase 136: implement workflow for executing a full roadmap in auto with gsd
 
-**Goal:** Shell script outer orchestrator that drives an entire milestone through the GSD pipeline — one fresh claude CLI invocation per phase, with failure handling via GitHub issues.
+**Goal:** GitHub Actions workflow that drives an entire milestone through the GSD pipeline — one fresh claude CLI invocation per phase, with failure handling via GitHub issues.
 **Requirements**: TBD
 **Depends on:** Phase 135
 **Plans:** 1 plan
 
 Plans:
-- [ ] 136-01-PLAN.md — Create gsd-roadmap-run.sh orchestrator script and validate with dry-run
+- [ ] 136-01-PLAN.md — Create gsd-roadmap.yml GitHub Actions workflow with dry-run mode
 
 ---
 
