@@ -947,10 +947,10 @@ Concrete changes: (1) `Renderer` trait gains `type Output` and `type Context: De
 **Exit criteria:** `Renderer` trait has associated types. `cargo test --all-features` passes. ferro-projections no longer depends on ferro-theme. `ThemeTemplates` is consumed by `JsonUiRenderer`'s context, not by the base trait.
 
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 133-01-PLAN.md — Refactor Renderer trait, split context types, gate ferro-theme
+- [x] 133-01-PLAN.md — Refactor Renderer trait, split context types, gate ferro-theme
 - [ ] 133-02-PLAN.md — Update ferro-mcp imports for compilation
 
 **Depends on:** Phase 132
