@@ -965,10 +965,10 @@ This establishes the pattern for v14.0: each output crate provides its own `Rend
 
 **Depends on:** Phase 133
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 134-01-PLAN.md — Relocate JsonUiRenderer + field_map + relationship_map to ferro-json-ui behind projections feature
+- [x] 134-01-PLAN.md — Relocate JsonUiRenderer + field_map + relationship_map to ferro-json-ui behind projections feature
 - [ ] 134-02-PLAN.md — Clean ferro-projections, update ferro-mcp imports
 
 ### Phase 135: ServiceDef derivation bridge
