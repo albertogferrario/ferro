@@ -1,9 +1,12 @@
 //! Rendering abstraction layer for service projections.
 //!
-//! Defines the `Renderer` trait and supporting types (`RenderContext`, `RenderMode`)
-//! that translate `ServiceDef` + `IntentScore` into renderable JSON output.
+//! Defines the `Renderer` trait and `BaseContext` (modality-agnostic fields)
+//! that translate `ServiceDef` + `IntentScore` into renderable output.
+//! Visual-specific types (`VisualContext`, `RenderMode`, `JsonUiRenderer`) live
+//! behind the `visual` feature flag in the `json_ui` module.
 
 pub mod field_map;
+#[cfg(feature = "visual")]
 pub mod json_ui;
 pub mod relationship_map;
 pub mod template;
@@ -13,55 +16,36 @@ use crate::field::FieldMeaning;
 use crate::intent::IntentScore;
 use crate::service::ServiceDef;
 
-use ferro_theme::ThemeTemplates;
-use serde::{Deserialize, Serialize};
-
-/// Controls whether fields render as read-only display or editable inputs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum RenderMode {
-    /// Read-only view (detail pages, lists, summaries).
-    Display,
-    /// Editable form view (create, edit).
-    Input,
-}
-
-/// Context passed to a renderer for a single render call.
-#[derive(Debug, Clone)]
-pub struct RenderContext {
+/// Modality-agnostic rendering context shared by all `Renderer` implementations.
+///
+/// Visual-only fields (render mode, theme templates) live in `VisualContext`
+/// inside the `visual`-gated `json_ui` module.
+#[derive(Debug, Clone, Default)]
+pub struct BaseContext {
     /// Which intent to render (0 = primary). Index into the `intents` slice.
     pub intent_index: usize,
     /// Current workflow state name (relevant for Process/Track intents).
     pub current_state: Option<String>,
-    /// Display or Input mode.
-    pub mode: RenderMode,
-    /// Optional theme template overrides. `None` means use built-in layouts.
-    pub templates: Option<ThemeTemplates>,
 }
 
-impl Default for RenderContext {
-    fn default() -> Self {
-        Self {
-            intent_index: 0,
-            current_state: None,
-            mode: RenderMode::Display,
-            templates: None,
-        }
-    }
-}
-
-/// Trait for rendering a service definition into a JSON view specification.
+/// Trait for rendering a service definition into output of an associated type.
 ///
 /// Implementations translate `ServiceDef` + scored intents into renderer-specific
-/// JSON output (e.g., JSON-UI component trees). The output is `serde_json::Value`
-/// to avoid coupling to any specific UI framework types.
+/// output. The associated `Output` and `Context` types allow renderers to operate
+/// on different targets (JSON-UI visual trees, template contexts, voice payloads,
+/// etc.) without coupling to any single output format.
 pub trait Renderer: Send + Sync {
-    /// Renders a service definition into a JSON view specification.
+    /// The output type produced by this renderer (e.g., `serde_json::Value`).
+    type Output;
+    /// The context type consumed by this renderer. Must implement `Default`.
+    type Context: Default;
+
+    /// Renders a service definition into the renderer's output type.
     ///
     /// # Arguments
     /// * `service` - The service definition to render
     /// * `intents` - Scored intents from structural analysis (sorted by confidence)
-    /// * `ctx` - Rendering context (which intent, mode, state)
+    /// * `ctx` - Rendering context (renderer-specific)
     ///
     /// # Errors
     /// Returns `Error::Render` if the rendering process fails.
@@ -69,8 +53,8 @@ pub trait Renderer: Send + Sync {
         &self,
         service: &ServiceDef,
         intents: &[IntentScore],
-        ctx: &RenderContext,
-    ) -> Result<serde_json::Value, Error>;
+        ctx: &Self::Context,
+    ) -> Result<Self::Output, Error>;
 }
 
 /// Converts a snake_case field name to a title case display label.
@@ -113,12 +97,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn render_context_default() {
-        let ctx = RenderContext::default();
+    fn base_context_default() {
+        let ctx = BaseContext::default();
         assert_eq!(ctx.intent_index, 0);
         assert!(ctx.current_state.is_none());
-        assert_eq!(ctx.mode, RenderMode::Display);
-        assert!(ctx.templates.is_none());
     }
 
     #[test]
@@ -155,26 +137,5 @@ mod tests {
         assert!(!is_system_field(&FieldMeaning::FreeText));
         assert!(!is_system_field(&FieldMeaning::Status));
         assert!(!is_system_field(&FieldMeaning::Custom("x".into())));
-    }
-
-    #[test]
-    fn render_mode_serde_round_trip() {
-        for mode in [RenderMode::Display, RenderMode::Input] {
-            let json = serde_json::to_string(&mode).unwrap();
-            let parsed: RenderMode = serde_json::from_str(&json).unwrap();
-            assert_eq!(mode, parsed);
-        }
-    }
-
-    #[test]
-    fn render_mode_display_serializes_snake_case() {
-        assert_eq!(
-            serde_json::to_string(&RenderMode::Display).unwrap(),
-            r#""display""#
-        );
-        assert_eq!(
-            serde_json::to_string(&RenderMode::Input).unwrap(),
-            r#""input""#
-        );
     }
 }

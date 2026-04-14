@@ -2,8 +2,11 @@
 //!
 //! Implements the `Renderer` trait to translate `ServiceDef` + `IntentScore[]` into
 //! a JSON view specification with layout strategies for each intent type.
+//!
+//! This module is only compiled when the `visual` feature is enabled.
 
 use ferro_theme::{IntentSlotTemplate, ThemeTemplates};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::error::Error;
@@ -14,7 +17,44 @@ use crate::service::ServiceDef;
 
 use super::field_map::{field_to_column, field_to_display, field_to_input};
 use super::relationship_map::relationship_to_component;
-use super::{field_display_name, is_system_field, RenderContext, RenderMode, Renderer};
+use super::{field_display_name, is_system_field, Renderer};
+
+/// Controls whether fields render as read-only display or editable inputs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RenderMode {
+    /// Read-only view (detail pages, lists, summaries).
+    Display,
+    /// Editable form view (create, edit).
+    Input,
+}
+
+/// Visual rendering context for `JsonUiRenderer`.
+///
+/// Extends the modality-agnostic fields from `BaseContext` with visual-specific
+/// concerns: render mode and theme template overrides.
+#[derive(Debug, Clone)]
+pub struct VisualContext {
+    /// Which intent to render (0 = primary). Index into the `intents` slice.
+    pub intent_index: usize,
+    /// Current workflow state name (relevant for Process/Track intents).
+    pub current_state: Option<String>,
+    /// Display or Input mode.
+    pub mode: RenderMode,
+    /// Optional theme template overrides. `None` means use built-in layouts.
+    pub templates: Option<ThemeTemplates>,
+}
+
+impl Default for VisualContext {
+    fn default() -> Self {
+        Self {
+            intent_index: 0,
+            current_state: None,
+            mode: RenderMode::Display,
+            templates: None,
+        }
+    }
+}
 
 /// Returns true for DateTime-family field meanings that Track views expose.
 fn is_datetime_field(meaning: &FieldMeaning) -> bool {
@@ -41,7 +81,7 @@ fn is_numeric_field(meaning: &FieldMeaning) -> bool {
 /// # Example
 ///
 /// ```
-/// use ferro_projections::{ServiceDef, DataType, FieldMeaning, derive_intents, JsonUiRenderer, Renderer, RenderContext};
+/// use ferro_projections::{ServiceDef, DataType, FieldMeaning, derive_intents, JsonUiRenderer, Renderer, VisualContext};
 ///
 /// let product = ServiceDef::new("product")
 ///     .display_name("Product")
@@ -51,7 +91,7 @@ fn is_numeric_field(meaning: &FieldMeaning) -> bool {
 ///
 /// let intents = derive_intents(&product);
 /// let renderer = JsonUiRenderer;
-/// let result = renderer.render(&product, &intents, &RenderContext::default());
+/// let result = renderer.render(&product, &intents, &VisualContext::default());
 /// assert!(result.is_ok());
 ///
 /// let json = result.unwrap();
@@ -62,11 +102,14 @@ fn is_numeric_field(meaning: &FieldMeaning) -> bool {
 pub struct JsonUiRenderer;
 
 impl Renderer for JsonUiRenderer {
+    type Output = serde_json::Value;
+    type Context = VisualContext;
+
     fn render(
         &self,
         service: &ServiceDef,
         intents: &[IntentScore],
-        ctx: &RenderContext,
+        ctx: &VisualContext,
     ) -> Result<Value, Error> {
         let intent_score = intents.get(ctx.intent_index).ok_or_else(|| {
             Error::Render(format!(
@@ -325,7 +368,7 @@ impl JsonUiRenderer {
     /// Displays current state as a Badge, guard requirements as an Alert,
     /// and transition-triggering actions as Buttons. Falls back to Focus
     /// layout if no state machine is defined.
-    fn render_process(&self, service: &ServiceDef, ctx: &RenderContext) -> Vec<Value> {
+    fn render_process(&self, service: &ServiceDef, ctx: &VisualContext) -> Vec<Value> {
         let sm = match &service.state_machine {
             Some(sm) => sm,
             None => return self.render_focus(service),
@@ -398,7 +441,7 @@ impl JsonUiRenderer {
     ///
     /// Combines a Collect-style form (for editing process data) with
     /// transition action buttons from the state machine.
-    fn render_process_input(&self, service: &ServiceDef, ctx: &RenderContext) -> Vec<Value> {
+    fn render_process_input(&self, service: &ServiceDef, ctx: &VisualContext) -> Vec<Value> {
         let mut components = self.render_collect(service);
 
         // Add transition buttons after the form if state machine exists
@@ -567,7 +610,7 @@ impl JsonUiRenderer {
         &self,
         service: &ServiceDef,
         template: &IntentSlotTemplate,
-        ctx: &RenderContext,
+        ctx: &VisualContext,
     ) -> Vec<Value> {
         let mut components: Vec<Value> = Vec::new();
 
@@ -588,7 +631,7 @@ impl JsonUiRenderer {
         service: &ServiceDef,
         slot: &str,
         template: &IntentSlotTemplate,
-        ctx: &RenderContext,
+        ctx: &VisualContext,
     ) -> Vec<Value> {
         let title = service
             .display_name
@@ -1022,17 +1065,47 @@ mod tests {
         }
     }
 
-    fn default_ctx() -> RenderContext {
-        RenderContext::default()
+    fn default_ctx() -> VisualContext {
+        VisualContext::default()
     }
 
-    fn input_ctx() -> RenderContext {
-        RenderContext {
+    fn input_ctx() -> VisualContext {
+        VisualContext {
             intent_index: 0,
             current_state: None,
             mode: RenderMode::Input,
             templates: None,
         }
+    }
+
+    #[test]
+    fn visual_context_default() {
+        let ctx = VisualContext::default();
+        assert_eq!(ctx.intent_index, 0);
+        assert!(ctx.current_state.is_none());
+        assert_eq!(ctx.mode, RenderMode::Display);
+        assert!(ctx.templates.is_none());
+    }
+
+    #[test]
+    fn render_mode_serde_round_trip() {
+        for mode in [RenderMode::Display, RenderMode::Input] {
+            let json = serde_json::to_string(&mode).unwrap();
+            let parsed: RenderMode = serde_json::from_str(&json).unwrap();
+            assert_eq!(mode, parsed);
+        }
+    }
+
+    #[test]
+    fn render_mode_display_serializes_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&RenderMode::Display).unwrap(),
+            r#""display""#
+        );
+        assert_eq!(
+            serde_json::to_string(&RenderMode::Input).unwrap(),
+            r#""input""#
+        );
     }
 
     fn order_service() -> ServiceDef {
@@ -1241,7 +1314,7 @@ mod tests {
     fn render_returns_error_for_out_of_bounds_intent_index() {
         let service = order_service();
         let intents = vec![browse_intent()];
-        let ctx = RenderContext {
+        let ctx = VisualContext {
             intent_index: 5,
             current_state: None,
             mode: RenderMode::Display,
@@ -1588,7 +1661,7 @@ mod tests {
         let service = workflow_service();
         let intents = vec![process_intent()];
         // Current state is "draft" which has guarded transition (has_required_fields)
-        let ctx = RenderContext {
+        let ctx = VisualContext {
             intent_index: 0,
             current_state: Some("draft".to_string()),
             mode: RenderMode::Display,
@@ -1610,7 +1683,7 @@ mod tests {
     fn process_shows_current_state_in_badge() {
         let service = workflow_service();
         let intents = vec![process_intent()];
-        let ctx = RenderContext {
+        let ctx = VisualContext {
             intent_index: 0,
             current_state: Some("pending".to_string()),
             mode: RenderMode::Display,
@@ -2054,7 +2127,7 @@ mod tests {
             }
         }
 
-        // -- RenderContext variation tests --
+        // -- VisualContext variation tests --
 
         #[test]
         fn secondary_intent_renders_different_layout() {
@@ -2073,7 +2146,7 @@ mod tests {
             );
 
             // Render secondary intent
-            let ctx = RenderContext {
+            let ctx = VisualContext {
                 intent_index: 1,
                 current_state: None,
                 mode: RenderMode::Display,
@@ -2093,7 +2166,7 @@ mod tests {
                 .field("bio", DataType::String, FieldMeaning::FreeText);
 
             let intents = derive_intents(&service);
-            let ctx = RenderContext {
+            let ctx = VisualContext {
                 intent_index: 0,
                 current_state: None,
                 mode: RenderMode::Input,
@@ -2131,7 +2204,7 @@ mod tests {
                 matching_signals: vec!["test".into()],
             }];
 
-            let ctx = RenderContext {
+            let ctx = VisualContext {
                 intent_index: 0,
                 current_state: Some("open".to_string()),
                 mode: RenderMode::Display,
@@ -2309,7 +2382,7 @@ mod tests {
 
         #[test]
         fn render_context_default_has_templates_none() {
-            let ctx = RenderContext::default();
+            let ctx = VisualContext::default();
             assert!(ctx.templates.is_none());
         }
 
@@ -2319,15 +2392,15 @@ mod tests {
             let intents = vec![browse_intent()];
 
             // No templates at all (baseline)
-            let ctx_no_templates = RenderContext::default();
+            let ctx_no_templates = VisualContext::default();
             let result_no_templates = JsonUiRenderer
                 .render(&service, &intents, &ctx_no_templates)
                 .unwrap();
 
             // Explicit None templates
-            let ctx_none_templates = RenderContext {
+            let ctx_none_templates = VisualContext {
                 templates: None,
-                ..RenderContext::default()
+                ..VisualContext::default()
             };
             let result_none_templates = JsonUiRenderer
                 .render(&service, &intents, &ctx_none_templates)
@@ -2353,9 +2426,9 @@ mod tests {
                 ..ThemeTemplates::default()
             };
 
-            let ctx = RenderContext {
+            let ctx = VisualContext {
                 templates: Some(templates),
-                ..RenderContext::default()
+                ..VisualContext::default()
             };
 
             let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
@@ -2384,9 +2457,9 @@ mod tests {
             };
 
             // Browse intent uses template
-            let browse_ctx = RenderContext {
+            let browse_ctx = VisualContext {
                 templates: Some(templates.clone()),
-                ..RenderContext::default()
+                ..VisualContext::default()
             };
             let browse_result = JsonUiRenderer
                 .render(&service, &[browse_intent()], &browse_ctx)
@@ -2395,9 +2468,9 @@ mod tests {
             assert_eq!(browse_components[0]["type"], "Text"); // template override
 
             // Focus intent uses built-in (no template for focus)
-            let focus_ctx = RenderContext {
+            let focus_ctx = VisualContext {
                 templates: Some(templates),
-                ..RenderContext::default()
+                ..VisualContext::default()
             };
             let focus_result = JsonUiRenderer
                 .render(&service, &[focus_intent()], &focus_ctx)
@@ -2425,9 +2498,9 @@ mod tests {
                 ..ThemeTemplates::default()
             };
 
-            let ctx = RenderContext {
+            let ctx = VisualContext {
                 templates: Some(templates),
-                ..RenderContext::default()
+                ..VisualContext::default()
             };
 
             let result = JsonUiRenderer
@@ -2468,9 +2541,9 @@ mod tests {
                 ..ThemeTemplates::default()
             };
 
-            let ctx = RenderContext {
+            let ctx = VisualContext {
                 templates: Some(templates),
-                ..RenderContext::default()
+                ..VisualContext::default()
             };
 
             let result = JsonUiRenderer.render(&service, &intents, &ctx).unwrap();
@@ -2490,15 +2563,15 @@ mod tests {
             let intents = vec![browse_intent()];
 
             // No templates
-            let ctx_no_templates = RenderContext::default();
+            let ctx_no_templates = VisualContext::default();
             let result_no_templates = JsonUiRenderer
                 .render(&service, &intents, &ctx_no_templates)
                 .unwrap();
 
             // Empty ThemeTemplates (all None)
-            let ctx_empty = RenderContext {
+            let ctx_empty = VisualContext {
                 templates: Some(ThemeTemplates::default()),
-                ..RenderContext::default()
+                ..VisualContext::default()
             };
             let result_empty = JsonUiRenderer
                 .render(&service, &intents, &ctx_empty)
