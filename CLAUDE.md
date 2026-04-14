@@ -6,6 +6,8 @@ Ferro is a Rust web framework optimized for AI-assisted authoring. Its surface i
 
 The **core abstraction is projection / intent** (`ferro-projections`, shipped in v9.0; v12.0 refines its rendering target). The framework is built around this abstraction; new design decisions should keep it clear and central.
 
+**Rendering architecture:** The `Renderer` trait uses associated types for output and context — it is modality-agnostic. Renderers live in their output crate (e.g., `JsonUiRenderer` in ferro-json-ui), not in ferro-projections. ferro-projections owns only the trait, `derive_intents()`, and `ServiceDef`. When adding rendering capabilities, add a `Renderer` implementation in the output crate, do not add dependencies to ferro-projections.
+
 `ferro-mcp` is the introspection layer agents use to read routes, models, handlers, and generation context. MCP tool descriptions, `json_ui_catalog` accuracy, `code_templates` accuracy, and `generation_context` quality are part of the framework's surface and held to the same quality bar as the Rust API.
 
 ## Architecture Principles

@@ -31,9 +31,11 @@
 - ✅ [**v11.0 Framework Consolidation Audit**](milestones/v11.0-ROADMAP.md) — Phases 108-114 (shipped 2026-04-05)
 - ✅ [**v11.1 Template Renderer**](milestones/v11.1-ROADMAP.md) — Phase 114.1 (shipped 2026-04-05)
 - ✅ **v11.2 Deploy & Scaffolder Hardening** — Phases 122-131 (shipped 2026-04-14)
-- 🚧 **v11.3 S3 Storage Driver** — Phase 132
-- 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract)
-- 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19 requirements (COMP-01..05, OPER-01..07, CONC-01..03, AEST-01..04) in `.planning/REQUIREMENTS.md`. Phase numbering continues after v12.0. No target date.
+- ✅ **v11.3 S3 Storage Driver** — Phase 132 (shipped 2026-04-14)
+- 📋 **v11.5 Projection Architecture Prep** — Phases 133-135. Generalize Renderer trait, relocate renderers to output crates, break ferro-projections → ferro-theme dependency. Prerequisite for v12.0 and v14.0.
+- 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
+- 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
+- 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation) and v11.5 (generalized Renderer trait).
 
 ---
 
@@ -916,6 +918,48 @@ Plans:
 
 ---
 
+### 📋 v11.5 Projection Architecture Prep
+
+**Milestone Goal:** Refactor the projection rendering pipeline so the Renderer trait is modality-agnostic. This unblocks v12.0 (which rewrites the visual renderer) and v14.0 (which adds non-visual renderers). Without this, channel adapters would be bolted on rather than projected through.
+
+## Phases
+
+- [ ] **Phase 133: Generalize Renderer trait**
+- [ ] **Phase 134: Relocate renderers to output crates**
+- [ ] **Phase 135: ServiceDef derivation bridge**
+
+### Phase 133: Generalize Renderer trait
+
+**Goal:** Replace the visual-only `Renderer` trait with a modality-agnostic version. The current trait returns `serde_json::Value` and takes a `RenderContext` containing `ThemeTemplates` — both assumptions lock renderers to JSON-UI output. Introduce associated `Output` and `Context` types so each renderer declares its own output format and context needs.
+
+Concrete changes: (1) `Renderer` trait gains `type Output` and `type Context: Default`, replacing hardcoded `serde_json::Value` return and `RenderContext` parameter. (2) Current `RenderContext` (with `ThemeTemplates`) becomes `VisualContext` — the context type for visual renderers only. (3) `TemplateRenderer` and `JsonUiRenderer` updated to implement the new trait. (4) `ferro-projections → ferro-theme` dependency removed — `ThemeTemplates` stays in ferro-theme but is only referenced by visual renderers, not by the core trait.
+
+**Exit criteria:** `Renderer` trait has associated types. `cargo test --all-features` passes. ferro-projections no longer depends on ferro-theme. `ThemeTemplates` is consumed by `JsonUiRenderer`'s context, not by the base trait.
+
+**Depends on:** Phase 132
+
+### Phase 134: Relocate renderers to output crates
+
+**Goal:** Move `JsonUiRenderer` and its supporting modules (`field_map.rs`, `relationship_map.rs`) from `ferro-projections/src/render/` to `ferro-json-ui`. ferro-projections retains: the `Renderer` trait, `derive_intents()`, `ServiceDef`, `IntentScore`, and `TemplateRenderer` (generic JSON output). ferro-json-ui gains a dependency on ferro-projections for the trait and types.
+
+This establishes the pattern for v14.0: each output crate provides its own `Renderer` implementation. A WhatsApp renderer would live in ferro-whatsapp with a `projections` feature flag, not in ferro-projections.
+
+**Exit criteria:** `JsonUiRenderer` importable from `ferro_json_ui`, not from `ferro_projections`. `ferro-projections/src/render/` contains only `mod.rs` (trait), `template.rs`. All existing tests pass. MCP tools and CLI updated to import from new location.
+
+**Depends on:** Phase 133
+
+### Phase 135: ServiceDef derivation bridge
+
+**Goal:** Reduce the gap between a SeaORM model and a working projection. Currently ServiceDef is hand-authored via the builder API. Add a `ServiceDef::from_model()` derivation that infers fields, data types, and field meanings from SeaORM model metadata. Also expose this through ferro-mcp as a `generate_projection` tool that produces a ServiceDef from `db_schema` + `list_routes` output.
+
+This is the time-to-working-projection bottleneck. An agent should be able to go from `cargo new` to a rendered projection without hand-writing ServiceDef builders.
+
+**Exit criteria:** `ServiceDef::from_model(model_metadata)` produces a reasonable ServiceDef from SeaORM column types. `ferro-mcp` has a `generate_projection` tool. A round-trip test demonstrates: create model → derive ServiceDef → derive intents → render.
+
+**Depends on:** Phase 134
+
+---
+
 ## Progress Summary
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -946,7 +990,8 @@ Plans:
 | v11.0 Framework Consolidation Audit | 108-114 | 13 | ✅ Shipped | 2026-04-05 |
 | v11.1 Template Renderer | 114.1 | 1 | ✅ Shipped | 2026-04-05 |
 | v11.2 Deploy & Scaffolder Hardening | 122-131 | 49 | ✅ Shipped | 2026-04-14 |
-| v11.3 S3 Storage Driver | 132 | ? | 🚧 In Progress | - |
+| v11.3 S3 Storage Driver | 132 | 1 | ✅ Shipped | 2026-04-14 |
+| v11.5 Projection Architecture Prep | 133-135 | ? | 📋 Planned | - |
 | v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121 | ? | 📋 Planned | - |
 
 **Total: 25 milestones shipped, 255 plans complete.**

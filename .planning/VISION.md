@@ -51,6 +51,12 @@ Conceptual coherence is enforced at write-time. Every new feature asks: *does th
 
 The projection / intent system is validated against real applications and a synthetic catalog of canonical app classes. Both are used to surface gaps and inform iteration on the intent vocabulary, signal analyzers, and renderers.
 
+## Rendering architecture
+
+The `Renderer` trait in ferro-projections defines the projection boundary: `ServiceDef + IntentScore[] → rendered output`. The trait uses associated types for output and context, so each rendering modality declares its own output format. Visual renderers produce JSON-UI specs. A conversational renderer would produce message payloads. A voice renderer would produce structured scripts. The trait itself carries no modality-specific assumptions.
+
+Renderers live in their output crate, not in ferro-projections. ferro-json-ui provides `JsonUiRenderer`. A future ferro-whatsapp projection would provide `WhatsAppRenderer` behind a feature flag. ferro-projections owns only the trait definition, `derive_intents()`, and `ServiceDef` — the schema layer.
+
 ## Roadmap direction
 
-The visual modality is the v1.0 target. Additional rendering modalities (audio, voice, physical surfaces) are v2.0+ directions. The intent vocabulary is expected to evolve as additional modalities are explored.
+The visual modality is the v1.0 target. Additional rendering modalities (conversational text, voice, structured API) are v2.0+ directions. The Renderer trait is designed to support this without architectural surgery — each new modality adds a renderer implementation in its own crate, reusing the same intent derivation pipeline. The intent vocabulary is expected to evolve as additional modalities are explored.

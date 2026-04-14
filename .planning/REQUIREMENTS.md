@@ -30,6 +30,7 @@ Organized by substance-first investment priority. Each maps to a planned phase i
 - [ ] **CONC-01**: Systematic coherence audit across all 20 crates. First pass since Phase 113.
 - [ ] **CONC-02**: Cross-cutting consistency audit covering naming, error patterns, middleware shapes, CLI verbs, file layouts, and module organization.
 - [ ] **CONC-03**: Refactor outlier crates into prevailing patterns identified in CONC-01 and CONC-02.
+- [ ] **CONC-04**: Crate consolidation audit. Evaluate whether small leaf crates consumed only by `framework` (ferro-broadcast 1.3k lines, ferro-cache 1.2k, ferro-lang 1.2k, ferro-theme 476 lines) should remain independent or become framework modules. ferro-events and ferro-queue earn independence (consumed by ferro-stripe, ferro-ai, ferro-whatsapp). Decision criteria: is the crate consumed outside `framework`? If not, consolidation reduces cognitive overhead without losing functionality.
 
 ### Aesthetic — incremental polish
 
@@ -42,11 +43,24 @@ Organized by substance-first investment priority. Each maps to a planned phase i
 
 Deferred to future releases. Tracked but not in the v13.0 scope.
 
+### Channel projection — non-visual rendering modalities
+
+The projection/intent system's core claim is that an application is data plus intent, and a rendered medium is a projection of that pair. At v1.0 the projection target is visual (HTML via ferro-json-ui). v2 extends this to non-visual channels: conversational text, voice, structured API responses.
+
+The architectural challenge is that the current `Renderer` trait returns `serde_json::Value` (designed for JSON-UI component trees). Non-visual channels produce fundamentally different output types: WhatsApp `Message` payloads, voice scripts, structured API responses. The trait must evolve, and COMP-05's cross-modality sketch must validate whether the seven intents survive contact with non-visual rendering before any of this is built.
+
+**Prerequisite:** COMP-05 (cross-modality sketch) and v12.0 (Renderer trait evolution in JSON-UI v2).
+
+- **CHAN-01**: Generalize the projection output type. The `Renderer` trait currently returns `serde_json::Value`. Introduce a generic or associated type so renderers can produce channel-native output (typed WhatsApp messages, voice prompt sequences, CLI output) instead of forcing everything through JSON. This is a ferro-projections change, not a new crate.
+- **CHAN-02**: Conversational text projection (`ferro-projections` renderer). Maps intents to message sequences using ferro-whatsapp's existing `Message` type as output. Stateless per-render: Browse → paginated text list, Focus → detail card message, Collect → prompted question, Process → status with reply buttons, Summarize → summary message. No multi-turn conversation state — that is application logic, not framework rendering.
+- **CHAN-03**: Voice projection (renderer). Maps intents to structured voice prompts consumable by external voice APIs. Output is a serializable script (prompt text + expected response type + branching hints), not a direct API integration. The application chooses which voice provider to call with the script.
+- **CHAN-04**: Inbound intent classification. Use ferro-ai's existing `Classifier` to classify inbound text/voice input into the service's ranked intents. Takes user input + `ServiceDef` → best-matching `IntentScore`. Reuses the structural intent vocabulary — does not introduce a parallel classification system.
+- **CHAN-05**: Intent vocabulary revision if COMP-05 reveals the current seven intents need reshaping for non-visual rendering. This is a research outcome, not a feature — it may result in changes to `ferro-projections/src/intent.rs` or may confirm the vocabulary is sufficient.
+
 ### Additional rendering modalities
 
-- **MULT-01**: Audio modality renderer — render projections as voice or conversational interfaces.
-- **MULT-02**: Physical modality — haptic, gesture, and tangible rendering targets.
-- **MULT-03**: Intent vocabulary revision if cross-modality sketch (COMP-05) reveals the current seven intents need reshaping for non-visual rendering.
+- **MULT-01**: Physical modality — haptic, gesture, and tangible rendering targets. Exploratory only.
+- **MULT-02**: Structured API projection. Render a ServiceDef as a typed API response schema (OpenAPI fragment or GraphQL type) — the "headless" projection where the consumer is another program, not a human.
 
 ## Out of Scope
 
@@ -83,19 +97,20 @@ Phase mappings populated during roadmap planning. Phases 115–121 (v12.0) run f
 | CONC-01 | v13.0 Phase (TBD) | Pending |
 | CONC-02 | v13.0 Phase (TBD) | Pending |
 | CONC-03 | v13.0 Phase (TBD) | Pending |
+| CONC-04 | v13.0 Phase (TBD) | Pending |
 | AEST-01 | v13.0 Phase (TBD) | Pending |
 | AEST-02 | v13.0 Phase (TBD) | Pending |
 | AEST-03 | v13.0 Phase (TBD) | Pending |
 | AEST-04 | v13.0 Phase (TBD) | Pending |
 
 **Coverage:**
-- v13.0 requirements: 19 total
+- v13.0 requirements: 20 total
 - Mapped to phases: 0 (pending roadmap planning when v13.0 begins)
-- Unmapped: 19 ⚠️
+- Unmapped: 20 ⚠️
 
 Phase mapping happens when v13.0 begins execution, after v12.0 completes.
 
 ---
 
 *Requirements defined: 2026-04-08*
-*Last updated: 2026-04-08 at v13.0 milestone creation*
+*Last updated: 2026-04-14 — added CONC-04 (crate consolidation), rewrote CHAN-01..05 and MULT requirements*

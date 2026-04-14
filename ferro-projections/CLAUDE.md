@@ -2,7 +2,9 @@
 
 ## Crate Purpose
 
-Schema-only service definitions. No runtime engines, no closures. Everything serializable and introspectable.
+Schema-only service definitions and the modality-agnostic `Renderer` trait. No runtime engines, no closures. Everything serializable and introspectable.
+
+**Boundary rule:** ferro-projections owns the `Renderer` trait, `derive_intents()`, `ServiceDef`, and `TemplateRenderer` (generic JSON output). Concrete renderers for specific output formats (JSON-UI, WhatsApp, voice) live in their respective output crates, not here. Do not add rendering dependencies to this crate.
 
 ## Key Conventions
 
