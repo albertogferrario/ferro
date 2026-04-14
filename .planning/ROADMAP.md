@@ -965,6 +965,12 @@ This establishes the pattern for v14.0: each output crate provides its own `Rend
 
 **Depends on:** Phase 133
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 134-01-PLAN.md — Relocate JsonUiRenderer + field_map + relationship_map to ferro-json-ui behind projections feature
+- [ ] 134-02-PLAN.md — Clean ferro-projections, update ferro-mcp imports
+
 ### Phase 135: ServiceDef derivation bridge
 
 **Goal:** Reduce the gap between a SeaORM model and a working projection. Currently ServiceDef is hand-authored via the builder API. Add a `ServiceDef::from_model()` derivation that infers fields, data types, and field meanings from SeaORM model metadata. Also expose this through ferro-mcp as a `generate_projection` tool that produces a ServiceDef from `db_schema` + `list_routes` output.
