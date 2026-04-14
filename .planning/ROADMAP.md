@@ -888,6 +888,28 @@ Plans:
 - [x] 131-02-PLAN.md — .do/app.yaml identity preservation on --force and docker_template_drift doctor check
 - [x] 131-03-PLAN.md — Collapse duplicate read_bins into single canonical reader
 
+### Phase 132: Implement ferro-storage S3 Driver
+
+**Goal:** Replace the stub `S3Driver` in `ferro-storage/src/drivers/s3.rs` with a working implementation using the already-declared `aws-sdk-s3` dependency. The S3 feature gate and config wiring (`AWS_*` env vars, `DiskConfig`, `DiskDriver::S3`) are already in place — only the driver methods need real implementations.
+
+Implement all 15 `StorageDriver` trait methods (`exists`, `get`, `put`, `delete`, `copy`, `size`, `metadata`, `url`, `temporary_url`, `files`, `all_files`, `directories`, `make_directory`, `delete_directory`). Use `aws-sdk-s3` client initialized from the `DiskConfig` fields (`bucket`, `region`) and `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` credentials. Support custom endpoints via `AWS_URL` for S3-compatible providers (DigitalOcean Spaces, MinIO, R2). Add integration tests gated behind an `s3-tests` feature that run against a real bucket.
+
+**Exit criteria:** `Storage::disk("s3").put("test.txt", bytes).await` works against DigitalOcean Spaces; all 15 trait methods return real results instead of `Error::not_implemented`; gestiscilo can replace its hand-rolled `src/services/storage.rs` with `ferro::Storage`.
+
+**Depends on:** Phase 131
+
+**Field test:** gestiscilo-it will drop `src/services/storage.rs` and its `SPACES_*` env vars in favor of `ferro::Storage::disk("s3")` with `AWS_*` vars once this phase ships.
+
+### Phase 133: Unify ferro-storage Env Vars with DO Spaces Convention
+
+**Goal:** Add `SPACES_*` → `AWS_*` env var aliasing in `StorageConfig::from_env()` so DigitalOcean Spaces users can use either convention. When `AWS_ACCESS_KEY_ID` is not set but `SPACES_KEY` is, fall back to the Spaces names. This removes the need for downstream apps to duplicate env vars or pick one convention.
+
+Map: `SPACES_KEY` → `AWS_ACCESS_KEY_ID`, `SPACES_SECRET` → `AWS_SECRET_ACCESS_KEY`, `SPACES_REGION` → `AWS_DEFAULT_REGION`, `SPACES_BUCKET` → `AWS_BUCKET`, `SPACES_ENDPOINT` → `AWS_URL`.
+
+**Exit criteria:** `StorageConfig::from_env()` reads both `AWS_*` and `SPACES_*` with `AWS_*` taking precedence; unit tests verify fallback.
+
+**Depends on:** Phase 132
+
 ---
 
 ## Progress Summary
