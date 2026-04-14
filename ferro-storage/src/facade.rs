@@ -199,10 +199,19 @@ impl Storage {
             }
             #[cfg(feature = "s3")]
             DiskDriver::S3 => {
-                tracing::warn!(
-                    "S3 driver is not yet implemented; all operations will return errors"
-                );
-                Arc::new(crate::drivers::S3Driver)
+                let bucket = config.bucket.clone().unwrap_or_default();
+                let region = config
+                    .region
+                    .clone()
+                    .unwrap_or_else(|| "us-east-1".to_string());
+                let url_base = config.url.clone();
+                let endpoint_url = std::env::var("AWS_URL").ok();
+                Arc::new(crate::drivers::S3Driver::new(
+                    bucket,
+                    region,
+                    url_base,
+                    endpoint_url,
+                ))
             }
         }
     }
