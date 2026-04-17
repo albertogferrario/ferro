@@ -4,7 +4,7 @@ milestone: v11.5
 milestone_name: Projection Architecture Prep
 status: verifying
 stopped_at: Completed 134-02-PLAN.md
-last_updated: "2026-04-17T16:07:28.606Z"
+last_updated: "2026-04-17T16:10:59.946Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 24
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 134 (relocate-renderers-to-output-crates) — EXECUTING
-Plan: 2 of 2
+Phase: 136
+Plan: Not started
 Workspace version: 0.2.0
 Status: Phase complete — ready for verification
 Last activity: 2026-04-17
