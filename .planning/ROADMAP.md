@@ -989,7 +989,7 @@ This is the time-to-working-projection bottleneck. An agent should be able to go
 **Plans:** 1 plan
 
 Plans:
-- [ ] 136-01-PLAN.md — Create gsd-roadmap.yml GitHub Actions workflow with dry-run mode
+- [ ] 136-01-PLAN.md — Create gsd-roadmap.yml workflow: phase loop, claude CLI per phase, failure issues
 
 ---
 
