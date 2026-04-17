@@ -32,15 +32,15 @@ pub struct GenerateProjectionResult {
 /// derivation and returns the full result.
 pub fn execute(project_root: &Path, model_name: &str) -> Result<GenerateProjectionResult, String> {
     // 1. Find model via list_models::execute()
-    let models = list_models::execute(project_root)
-        .map_err(|e| format!("Failed to list models: {e}"))?;
+    let models =
+        list_models::execute(project_root).map_err(|e| format!("Failed to list models: {e}"))?;
 
     let model = models
         .iter()
         .find(|m| m.name == model_name)
         .ok_or_else(|| {
             let available: Vec<&str> = models.iter().map(|m| m.name.as_str()).collect();
-            format!("Model '{}' not found. Available: {:?}", model_name, available)
+            format!("Model '{model_name}' not found. Available: {available:?}")
         })?;
 
     // 2. Convert ModelDetails -> ModelMetadata
