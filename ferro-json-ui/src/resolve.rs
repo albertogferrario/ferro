@@ -1,21 +1,23 @@
-//! Resolvers for JSON-UI component trees.
+//! Resolvers for v2 JSON-UI Spec element maps.
 //!
-//! Walks a `JsonUiView`'s component tree and resolves action handler
-//! references to URLs and validation errors to form field error messages.
-//! Both resolvers keep ferro-json-ui decoupled from the framework.
+//! Walks a `Spec`'s flat element map and resolves action handler names to
+//! URLs, or populates per-field validation errors on form-like elements.
+//!
+//! Phase 115: flat iteration only. No tree descent — children are ID
+//! strings, not nested structs. Action resolution is per-element.
 
 use std::collections::HashMap;
 
-use crate::action::Action;
-use crate::component::{Component, ComponentNode};
-use crate::view::JsonUiView;
+use serde_json::Value;
 
-/// Resolve a single action using the callback.
+use crate::action::Action;
+use crate::spec::{Element, Spec};
+
+/// Resolve a single action using the callback. Literal paths (starting
+/// with '/') are passed through as-is so callers can use
+/// `Action::get("/dashboard/...")` without registering a named route.
 fn resolve_action(action: &mut Action, resolver: &impl Fn(&str) -> Option<String>) {
     if action.url.is_none() {
-        // Literal paths (starting with "/") are passed through as-is so
-        // callers can use Action::get("/dashboard/...") without registering
-        // a named route.
         if action.handler.starts_with('/') {
             action.url = Some(action.handler.clone());
             return;
@@ -26,458 +28,89 @@ fn resolve_action(action: &mut Action, resolver: &impl Fn(&str) -> Option<String
     }
 }
 
-/// Recursively resolve all actions within a component node.
-fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> Option<String>) {
-    // Resolve the node-level action (any component can have one).
-    if let Some(ref mut action) = node.action {
-        resolve_action(action, resolver);
-    }
-
-    // Recurse into component-specific children.
-    match &mut node.component {
-        Component::Card(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-            for child in &mut props.footer {
-                resolve_component_node(child, resolver);
-            }
+/// Resolve every `Element.action` via the provided resolver closure.
+///
+/// Mutates in place. Silent on missing handlers — use
+/// `resolve_actions_strict` if you want to collect missing names.
+pub fn resolve_actions(spec: &mut Spec, resolver: impl Fn(&str) -> Option<String>) {
+    for el in spec.elements.values_mut() {
+        if let Some(action) = el.action.as_mut() {
+            resolve_action(action, &resolver);
         }
-        Component::Form(props) => {
-            resolve_action(&mut props.action, resolver);
-            for field in &mut props.fields {
-                resolve_component_node(field, resolver);
-            }
-        }
-        Component::Modal(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-            for child in &mut props.footer {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::Tabs(props) => {
-            for tab in &mut props.tabs {
-                for child in &mut tab.children {
-                    resolve_component_node(child, resolver);
-                }
-            }
-        }
-        Component::Table(props) => {
-            if let Some(ref mut row_actions) = props.row_actions {
-                for action in row_actions {
-                    resolve_action(action, resolver);
-                }
-            }
-        }
-        Component::Grid(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::Collapsible(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::FormSection(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::PageHeader(props) => {
-            for child in &mut props.actions {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::ButtonGroup(props) => {
-            for child in &mut props.buttons {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::DropdownMenu(props) => {
-            for item in &mut props.items {
-                resolve_action(&mut item.action, resolver);
-            }
-        }
-        Component::KanbanBoard(props) => {
-            for col in &mut props.columns {
-                for child in &mut col.children {
-                    resolve_component_node(child, resolver);
-                }
-            }
-        }
-        Component::EmptyState(props) => {
-            if let Some(ref mut action) = props.action {
-                resolve_action(action, resolver);
-            }
-        }
-        Component::Switch(props) => {
-            if let Some(ref mut action) = props.action {
-                resolve_action(action, resolver);
-            }
-        }
-        Component::DataTable(props) => {
-            if let Some(ref mut actions) = props.row_actions {
-                for item in actions {
-                    resolve_action(&mut item.action, resolver);
-                }
-            }
-        }
-        // Leaf components with no children or actions to resolve.
-        Component::Button(_)
-        | Component::Input(_)
-        | Component::Select(_)
-        | Component::Alert(_)
-        | Component::Badge(_)
-        | Component::Text(_)
-        | Component::Checkbox(_)
-        | Component::Separator(_)
-        | Component::DescriptionList(_)
-        | Component::Breadcrumb(_)
-        | Component::Pagination(_)
-        | Component::Progress(_)
-        | Component::Avatar(_)
-        | Component::Skeleton(_)
-        | Component::StatCard(_)
-        | Component::Checklist(_)
-        | Component::Toast(_)
-        | Component::NotificationDropdown(_)
-        | Component::Sidebar(_)
-        | Component::Header(_)
-        | Component::CalendarCell(_)
-        | Component::ActionCard(_)
-        | Component::ProductTile(_)
-        | Component::Image(_)
-        | Component::Plugin(_) => {}
     }
 }
 
-/// Walk the entire component tree and resolve all action handler names to URLs.
-///
-/// The resolver callback maps a handler name (e.g. `"users.store"`) to an
-/// optional URL (e.g. `Some("/users")`). Actions whose handler cannot be
-/// resolved are left with `url: None`.
-pub fn resolve_actions(view: &mut JsonUiView, resolver: impl Fn(&str) -> Option<String>) {
-    for node in &mut view.components {
-        resolve_component_node(node, &resolver);
-    }
-}
-
-/// Walk the entire component tree and resolve all actions, returning an error
-/// for any handler that cannot be resolved.
-///
-/// Returns `Ok(())` if all handlers resolve successfully, or `Err(Vec<String>)`
-/// containing the names of all unresolvable handlers.
+/// Strict variant: returns `Err(missing_handlers)` if any handler did not
+/// resolve to a URL. Literal `/path` handlers are always considered
+/// resolved.
 pub fn resolve_actions_strict(
-    view: &mut JsonUiView,
+    spec: &mut Spec,
     resolver: impl Fn(&str) -> Option<String>,
 ) -> Result<(), Vec<String>> {
-    let mut unresolved: Vec<String> = Vec::new();
-
-    let collecting_resolver = |handler: &str| -> Option<String> { resolver(handler) };
-
-    // First resolve everything.
-    resolve_actions(view, collecting_resolver);
-
-    // Then collect unresolved handlers by walking the tree again.
-    for node in &view.components {
-        collect_unresolved_node(node, &mut unresolved);
+    let mut missing: Vec<String> = Vec::new();
+    for el in spec.elements.values_mut() {
+        if let Some(action) = el.action.as_mut() {
+            resolve_action(action, &resolver);
+            if action.url.is_none() {
+                missing.push(action.handler.clone());
+            }
+        }
     }
-
-    if unresolved.is_empty() {
+    if missing.is_empty() {
         Ok(())
     } else {
-        Err(unresolved)
+        Err(missing)
     }
 }
 
-/// Collect handler names from actions that have no resolved URL.
-fn collect_unresolved_action(action: &Action, unresolved: &mut Vec<String>) {
-    if action.url.is_none() {
-        unresolved.push(action.handler.clone());
+/// Populate validation errors onto any element whose props contain a
+/// `"name"` field (or `"field"` field) matching an error key.
+pub fn resolve_errors(spec: &mut Spec, errors: &HashMap<String, Vec<String>>) {
+    for el in spec.elements.values_mut() {
+        attach_errors(el, errors, false);
     }
 }
 
-/// Recursively collect unresolved actions from a component node.
-fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
-    if let Some(ref action) = node.action {
-        collect_unresolved_action(action, unresolved);
-    }
-
-    match &node.component {
-        Component::Card(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-            for child in &props.footer {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::Form(props) => {
-            collect_unresolved_action(&props.action, unresolved);
-            for field in &props.fields {
-                collect_unresolved_node(field, unresolved);
-            }
-        }
-        Component::Modal(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-            for child in &props.footer {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::Tabs(props) => {
-            for tab in &props.tabs {
-                for child in &tab.children {
-                    collect_unresolved_node(child, unresolved);
-                }
-            }
-        }
-        Component::Table(props) => {
-            if let Some(ref row_actions) = props.row_actions {
-                for action in row_actions {
-                    collect_unresolved_action(action, unresolved);
-                }
-            }
-        }
-        Component::Grid(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::Collapsible(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::FormSection(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::PageHeader(props) => {
-            for child in &props.actions {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::ButtonGroup(props) => {
-            for child in &props.buttons {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::DropdownMenu(props) => {
-            for item in &props.items {
-                collect_unresolved_action(&item.action, unresolved);
-            }
-        }
-        Component::KanbanBoard(props) => {
-            for col in &props.columns {
-                for child in &col.children {
-                    collect_unresolved_node(child, unresolved);
-                }
-            }
-        }
-        Component::EmptyState(props) => {
-            if let Some(ref action) = props.action {
-                collect_unresolved_action(action, unresolved);
-            }
-        }
-        Component::Switch(props) => {
-            if let Some(ref action) = props.action {
-                collect_unresolved_action(action, unresolved);
-            }
-        }
-        Component::DataTable(props) => {
-            if let Some(ref actions) = props.row_actions {
-                for item in actions {
-                    collect_unresolved_action(&item.action, unresolved);
-                }
-            }
-        }
-        Component::Button(_)
-        | Component::Input(_)
-        | Component::Select(_)
-        | Component::Alert(_)
-        | Component::Badge(_)
-        | Component::Text(_)
-        | Component::Checkbox(_)
-        | Component::Separator(_)
-        | Component::DescriptionList(_)
-        | Component::Breadcrumb(_)
-        | Component::Pagination(_)
-        | Component::Progress(_)
-        | Component::Avatar(_)
-        | Component::Skeleton(_)
-        | Component::StatCard(_)
-        | Component::Checklist(_)
-        | Component::Toast(_)
-        | Component::NotificationDropdown(_)
-        | Component::Sidebar(_)
-        | Component::Header(_)
-        | Component::CalendarCell(_)
-        | Component::ActionCard(_)
-        | Component::ProductTile(_)
-        | Component::Image(_)
-        | Component::Plugin(_) => {}
+/// Variant that writes the full error bag onto every element (regardless
+/// of name match).
+pub fn resolve_errors_all(spec: &mut Spec, errors: &HashMap<String, Vec<String>>) {
+    for el in spec.elements.values_mut() {
+        attach_errors(el, errors, true);
     }
 }
 
-// ---------------------------------------------------------------------------
-// Validation error resolution
-// ---------------------------------------------------------------------------
-
-/// Walk the component tree and set the first validation error message on each
-/// matching form field component (Input, Select, Checkbox, Switch).
-///
-/// Only fields whose `error` is currently `None` are updated; explicit errors
-/// set by the caller take priority.
-pub fn resolve_errors(view: &mut JsonUiView, errors: &HashMap<String, Vec<String>>) {
-    for node in &mut view.components {
-        resolve_errors_node(node, errors, false);
-    }
-}
-
-/// Walk the component tree and set all validation error messages (joined with
-/// `". "`) on each matching form field component.
-///
-/// Same precedence rule: existing errors are not overwritten.
-pub fn resolve_errors_all(view: &mut JsonUiView, errors: &HashMap<String, Vec<String>>) {
-    for node in &mut view.components {
-        resolve_errors_node(node, errors, true);
-    }
-}
-
-/// Set the error string on a form field if the errors map contains its field name.
-fn set_field_error(
-    error_slot: &mut Option<String>,
-    field: &str,
-    errors: &HashMap<String, Vec<String>>,
-    all: bool,
-) {
-    if error_slot.is_some() {
-        return; // explicit error takes priority
-    }
-    if let Some(messages) = errors.get(field) {
-        if !messages.is_empty() {
-            if all {
-                *error_slot = Some(messages.join(". "));
-            } else {
-                *error_slot = Some(messages[0].clone());
-            }
+fn attach_errors(el: &mut Element, errors: &HashMap<String, Vec<String>>, all: bool) {
+    let Some(props_obj) = el.props.as_object_mut() else {
+        return;
+    };
+    // Match by either `name` or `field` prop (inputs use `field`, other
+    // elements commonly use `name`).
+    let key = props_obj
+        .get("name")
+        .or_else(|| props_obj.get("field"))
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    if let Some(k) = key {
+        if let Some(msgs) = errors.get(&k) {
+            props_obj.insert(
+                "errors".to_string(),
+                Value::Array(msgs.iter().cloned().map(Value::String).collect()),
+            );
         }
-    }
-}
-
-/// Recursively resolve validation errors within a component node.
-fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<String>>, all: bool) {
-    match &mut node.component {
-        Component::Input(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
+    } else if all {
+        if let Ok(errors_value) = serde_json::to_value(errors) {
+            props_obj.insert("errors".to_string(), errors_value);
         }
-        Component::Select(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
-        }
-        Component::Checkbox(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
-        }
-        Component::Switch(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
-        }
-        Component::Card(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
-            }
-            for child in &mut props.footer {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::Form(props) => {
-            for field in &mut props.fields {
-                resolve_errors_node(field, errors, all);
-            }
-        }
-        Component::Modal(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
-            }
-            for child in &mut props.footer {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::Tabs(props) => {
-            for tab in &mut props.tabs {
-                for child in &mut tab.children {
-                    resolve_errors_node(child, errors, all);
-                }
-            }
-        }
-        Component::Grid(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::Collapsible(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::FormSection(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::PageHeader(props) => {
-            for child in &mut props.actions {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::ButtonGroup(props) => {
-            for child in &mut props.buttons {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        // Leaf components with no form field semantics.
-        Component::Table(_)
-        | Component::Button(_)
-        | Component::Alert(_)
-        | Component::Badge(_)
-        | Component::Text(_)
-        | Component::Separator(_)
-        | Component::DescriptionList(_)
-        | Component::Breadcrumb(_)
-        | Component::Pagination(_)
-        | Component::Progress(_)
-        | Component::Avatar(_)
-        | Component::Skeleton(_)
-        | Component::StatCard(_)
-        | Component::Checklist(_)
-        | Component::Toast(_)
-        | Component::NotificationDropdown(_)
-        | Component::Sidebar(_)
-        | Component::Header(_)
-        | Component::EmptyState(_)
-        | Component::DropdownMenu(_)
-        | Component::KanbanBoard(_)
-        | Component::CalendarCell(_)
-        | Component::ActionCard(_)
-        | Component::ProductTile(_)
-        | Component::DataTable(_)
-        | Component::Image(_)
-        | Component::Plugin(_) => {}
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::action::HttpMethod;
-    use crate::component::*;
+    use crate::action::{Action, HttpMethod};
+    use crate::spec::{Element, Spec};
 
-    /// Helper to build a simple action.
-    fn make_action(handler: &str) -> Action {
+    fn action(handler: &str) -> Action {
         Action {
             handler: handler.to_string(),
             url: None,
@@ -489,665 +122,104 @@ mod tests {
         }
     }
 
-    /// Helper resolver that maps known handlers to URLs.
-    fn test_resolver(handler: &str) -> Option<String> {
-        match handler {
-            "users.store" => Some("/users".to_string()),
-            "users.show" => Some("/users/{id}".to_string()),
-            "users.destroy" => Some("/users/{id}".to_string()),
-            "users.create" => Some("/users/create".to_string()),
-            "posts.index" => Some("/posts".to_string()),
-            _ => None,
-        }
+    #[test]
+    fn resolve_actions_populates_url_from_resolver() {
+        let mut spec = Spec::builder()
+            .element("btn", Element::new("Button").action(action("users.create")))
+            .build()
+            .unwrap();
+
+        resolve_actions(&mut spec, |h| {
+            if h == "users.create" {
+                Some("/users".to_string())
+            } else {
+                None
+            }
+        });
+
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(el.action.as_ref().unwrap().url.as_deref(), Some("/users"));
     }
 
     #[test]
-    fn resolve_button_with_action() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "btn".to_string(),
-            component: Component::Button(ButtonProps {
-                label: "Create".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            action: Some(make_action("users.store")),
-            visibility: None,
-        });
+    fn resolve_actions_passes_through_literal_paths() {
+        let mut spec = Spec::builder()
+            .element("btn", Element::new("Button").action(action("/dashboard")))
+            .build()
+            .unwrap();
 
-        resolve_actions(&mut view, test_resolver);
+        resolve_actions(&mut spec, |_| None);
 
+        let el = spec.elements.get("btn").unwrap();
         assert_eq!(
-            view.components[0].action.as_ref().unwrap().url,
-            Some("/users".to_string())
+            el.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard")
         );
     }
 
     #[test]
-    fn resolve_nested_card_children() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "card".to_string(),
-            component: Component::Card(CardProps {
-                title: "Users".to_string(),
-                description: None,
-                max_width: None,
-                children: vec![ComponentNode {
-                    key: "btn".to_string(),
-                    component: Component::Button(ButtonProps {
-                        label: "Create".to_string(),
-                        variant: ButtonVariant::Default,
-                        size: Size::Default,
-                        disabled: None,
-                        icon: None,
-                        icon_position: None,
-                        button_type: None,
-                    }),
-                    action: Some(make_action("users.create")),
-                    visibility: None,
-                }],
-                footer: vec![ComponentNode {
-                    key: "footer-btn".to_string(),
-                    component: Component::Button(ButtonProps {
-                        label: "Save".to_string(),
-                        variant: ButtonVariant::Default,
-                        size: Size::Default,
-                        disabled: None,
-                        icon: None,
-                        icon_position: None,
-                        button_type: None,
-                    }),
-                    action: Some(make_action("users.store")),
-                    visibility: None,
-                }],
-            }),
-            action: None,
-            visibility: None,
-        });
+    fn resolve_actions_strict_reports_missing() {
+        let mut spec = Spec::builder()
+            .element(
+                "btn",
+                Element::new("Button").action(action("missing.handler")),
+            )
+            .build()
+            .unwrap();
 
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Card(props) => {
-                assert_eq!(
-                    props.children[0].action.as_ref().unwrap().url,
-                    Some("/users/create".to_string())
-                );
-                assert_eq!(
-                    props.footer[0].action.as_ref().unwrap().url,
-                    Some("/users".to_string())
-                );
-            }
-            _ => panic!("expected Card"),
-        }
-    }
-
-    #[test]
-    fn resolve_form_action() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "form".to_string(),
-            component: Component::Form(FormProps {
-                action: make_action("users.store"),
-                fields: vec![ComponentNode {
-                    key: "name".to_string(),
-                    component: Component::Input(InputProps {
-                        field: "name".to_string(),
-                        label: "Name".to_string(),
-                        input_type: InputType::Text,
-                        placeholder: None,
-                        required: None,
-                        disabled: None,
-                        error: None,
-                        description: None,
-                        default_value: None,
-                        data_path: None,
-                        step: None,
-                        list: None,
-                    }),
-                    action: None,
-                    visibility: None,
-                }],
-                method: None,
-                guard: None,
-                max_width: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Form(props) => {
-                assert_eq!(props.action.url, Some("/users".to_string()));
-            }
-            _ => panic!("expected Form"),
-        }
-    }
-
-    #[test]
-    fn resolve_table_row_actions() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "table".to_string(),
-            component: Component::Table(TableProps {
-                columns: vec![Column {
-                    key: "name".to_string(),
-                    label: "Name".to_string(),
-                    format: None,
-                }],
-                data_path: "/data/users".to_string(),
-                row_actions: Some(vec![
-                    make_action("users.show"),
-                    make_action("users.destroy"),
-                ]),
-                empty_message: None,
-                sortable: None,
-                sort_column: None,
-                sort_direction: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Table(props) => {
-                let row_actions = props.row_actions.as_ref().unwrap();
-                assert_eq!(row_actions[0].url, Some("/users/{id}".to_string()));
-                assert_eq!(row_actions[1].url, Some("/users/{id}".to_string()));
-            }
-            _ => panic!("expected Table"),
-        }
-    }
-
-    #[test]
-    fn resolve_tabs_children() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "tabs".to_string(),
-            component: Component::Tabs(TabsProps {
-                default_tab: "general".to_string(),
-                tabs: vec![
-                    Tab {
-                        value: "general".to_string(),
-                        label: "General".to_string(),
-                        children: vec![ComponentNode {
-                            key: "btn1".to_string(),
-                            component: Component::Button(ButtonProps {
-                                label: "Save".to_string(),
-                                variant: ButtonVariant::Default,
-                                size: Size::Default,
-                                disabled: None,
-                                icon: None,
-                                icon_position: None,
-                                button_type: None,
-                            }),
-                            action: Some(make_action("users.store")),
-                            visibility: None,
-                        }],
-                    },
-                    Tab {
-                        value: "posts".to_string(),
-                        label: "Posts".to_string(),
-                        children: vec![ComponentNode {
-                            key: "btn2".to_string(),
-                            component: Component::Button(ButtonProps {
-                                label: "View Posts".to_string(),
-                                variant: ButtonVariant::Default,
-                                size: Size::Default,
-                                disabled: None,
-                                icon: None,
-                                icon_position: None,
-                                button_type: None,
-                            }),
-                            action: Some(make_action("posts.index")),
-                            visibility: None,
-                        }],
-                    },
-                ],
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Tabs(props) => {
-                assert_eq!(
-                    props.tabs[0].children[0].action.as_ref().unwrap().url,
-                    Some("/users".to_string())
-                );
-                assert_eq!(
-                    props.tabs[1].children[0].action.as_ref().unwrap().url,
-                    Some("/posts".to_string())
-                );
-            }
-            _ => panic!("expected Tabs"),
-        }
-    }
-
-    #[test]
-    fn resolve_modal_children_and_footer() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "modal".to_string(),
-            component: Component::Modal(ModalProps {
-                id: "modal-confirm".to_string(),
-                title: "Confirm".to_string(),
-                description: None,
-                children: vec![ComponentNode {
-                    key: "info".to_string(),
-                    component: Component::Text(TextProps {
-                        content: "Are you sure?".to_string(),
-                        element: TextElement::P,
-                    }),
-                    action: None,
-                    visibility: None,
-                }],
-                footer: vec![ComponentNode {
-                    key: "confirm-btn".to_string(),
-                    component: Component::Button(ButtonProps {
-                        label: "Delete".to_string(),
-                        variant: ButtonVariant::Destructive,
-                        size: Size::Default,
-                        disabled: None,
-                        icon: None,
-                        icon_position: None,
-                        button_type: None,
-                    }),
-                    action: Some(make_action("users.destroy")),
-                    visibility: None,
-                }],
-                trigger_label: Some("Open".to_string()),
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Modal(props) => {
-                assert_eq!(
-                    props.footer[0].action.as_ref().unwrap().url,
-                    Some("/users/{id}".to_string())
-                );
-            }
-            _ => panic!("expected Modal"),
-        }
-    }
-
-    #[test]
-    fn unresolvable_handler_leaves_url_none() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "btn".to_string(),
-            component: Component::Button(ButtonProps {
-                label: "Unknown".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            action: Some(make_action("nonexistent.handler")),
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        assert_eq!(view.components[0].action.as_ref().unwrap().url, None);
-    }
-
-    #[test]
-    fn strict_with_missing_handler_returns_error() {
-        let mut view = JsonUiView::new()
-            .component(ComponentNode {
-                key: "btn1".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "OK".to_string(),
-                    variant: ButtonVariant::Default,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                    button_type: None,
-                }),
-                action: Some(make_action("users.store")),
-                visibility: None,
-            })
-            .component(ComponentNode {
-                key: "btn2".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Bad".to_string(),
-                    variant: ButtonVariant::Default,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                    button_type: None,
-                }),
-                action: Some(make_action("unknown.handler")),
-                visibility: None,
-            });
-
-        let result = resolve_actions_strict(&mut view, test_resolver);
+        let result = resolve_actions_strict(&mut spec, |_| None);
         assert!(result.is_err());
-        let errors = result.unwrap_err();
-        assert_eq!(errors, vec!["unknown.handler"]);
-
-        // The known handler should still be resolved.
-        assert_eq!(
-            view.components[0].action.as_ref().unwrap().url,
-            Some("/users".to_string())
-        );
+        assert_eq!(result.unwrap_err(), vec!["missing.handler".to_string()]);
     }
 
     #[test]
-    fn strict_with_all_resolved_returns_ok() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "btn".to_string(),
-            component: Component::Button(ButtonProps {
-                label: "Create".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            action: Some(make_action("users.store")),
-            visibility: None,
-        });
+    fn resolve_errors_matches_by_name_prop() {
+        let mut spec = Spec::builder()
+            .element("email", Element::new("Input").prop("name", "email"))
+            .build()
+            .unwrap();
 
-        let result = resolve_actions_strict(&mut view, test_resolver);
-        assert!(result.is_ok());
-    }
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["required".to_string()]);
 
-    // -----------------------------------------------------------------------
-    // resolve_errors tests
-    // -----------------------------------------------------------------------
+        resolve_errors(&mut spec, &errors);
 
-    fn make_errors(pairs: &[(&str, &[&str])]) -> HashMap<String, Vec<String>> {
-        pairs
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.iter().map(|s| s.to_string()).collect()))
-            .collect()
-    }
-
-    fn make_input_node(key: &str, field: &str) -> ComponentNode {
-        ComponentNode {
-            key: key.to_string(),
-            component: Component::Input(InputProps {
-                field: field.to_string(),
-                label: field.to_string(),
-                input_type: InputType::Text,
-                placeholder: None,
-                required: None,
-                disabled: None,
-                error: None,
-                description: None,
-                default_value: None,
-                data_path: None,
-                step: None,
-                list: None,
-            }),
-            action: None,
-            visibility: None,
-        }
+        let el = spec.elements.get("email").unwrap();
+        let err_val = el.props.as_object().unwrap().get("errors").unwrap();
+        assert_eq!(err_val, &serde_json::json!(["required"]));
     }
 
     #[test]
-    fn resolve_errors_populates_input_error() {
-        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
-        let errors = make_errors(&[("email", &["Email is required"])]);
-        resolve_errors(&mut view, &errors);
+    fn resolve_errors_matches_by_field_prop() {
+        let mut spec = Spec::builder()
+            .element("email", Element::new("Input").prop("field", "email"))
+            .build()
+            .unwrap();
 
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(props.error, Some("Email is required".to_string()));
-            }
-            _ => panic!("expected Input"),
-        }
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["required".to_string()]);
+
+        resolve_errors(&mut spec, &errors);
+
+        let el = spec.elements.get("email").unwrap();
+        let err_val = el.props.as_object().unwrap().get("errors").unwrap();
+        assert_eq!(err_val, &serde_json::json!(["required"]));
     }
 
     #[test]
-    fn resolve_errors_populates_select_error() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "role-select".to_string(),
-            component: Component::Select(SelectProps {
-                field: "role".to_string(),
-                label: "Role".to_string(),
-                options: vec![SelectOption {
-                    value: "admin".to_string(),
-                    label: "Admin".to_string(),
-                }],
-                placeholder: None,
-                required: None,
-                disabled: None,
-                error: None,
-                description: None,
-                default_value: None,
-                data_path: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("role", &["Role is required"])]);
-        resolve_errors(&mut view, &errors);
+    fn resolve_errors_all_writes_full_bag_when_no_match() {
+        let mut spec = Spec::builder()
+            .element("card", Element::new("Card").prop("title", "t"))
+            .build()
+            .unwrap();
 
-        match &view.components[0].component {
-            Component::Select(props) => {
-                assert_eq!(props.error, Some("Role is required".to_string()));
-            }
-            _ => panic!("expected Select"),
-        }
-    }
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["required".to_string()]);
 
-    #[test]
-    fn resolve_errors_populates_checkbox_error() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "terms-checkbox".to_string(),
-            component: Component::Checkbox(CheckboxProps {
-                field: "terms".to_string(),
-                value: None,
-                label: "Accept Terms".to_string(),
-                description: None,
-                checked: None,
-                data_path: None,
-                required: None,
-                disabled: None,
-                error: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("terms", &["You must accept the terms"])]);
-        resolve_errors(&mut view, &errors);
+        resolve_errors_all(&mut spec, &errors);
 
-        match &view.components[0].component {
-            Component::Checkbox(props) => {
-                assert_eq!(props.error, Some("You must accept the terms".to_string()));
-            }
-            _ => panic!("expected Checkbox"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_populates_switch_error() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "notif-switch".to_string(),
-            component: Component::Switch(SwitchProps {
-                field: "notifications".to_string(),
-                label: "Notifications".to_string(),
-                description: None,
-                checked: None,
-                data_path: None,
-                required: None,
-                disabled: None,
-                error: None,
-                action: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("notifications", &["Must enable notifications"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Switch(props) => {
-                assert_eq!(props.error, Some("Must enable notifications".to_string()));
-            }
-            _ => panic!("expected Switch"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_does_not_overwrite_existing() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "email-input".to_string(),
-            component: Component::Input(InputProps {
-                field: "email".to_string(),
-                label: "Email".to_string(),
-                input_type: InputType::Email,
-                placeholder: None,
-                required: None,
-                disabled: None,
-                error: Some("Custom error".to_string()),
-                description: None,
-                default_value: None,
-                data_path: None,
-                step: None,
-                list: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("email", &["Validation error"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(props.error, Some("Custom error".to_string()));
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_nested_in_form() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "form".to_string(),
-            component: Component::Form(FormProps {
-                action: make_action("users.store"),
-                fields: vec![
-                    make_input_node("name-input", "name"),
-                    make_input_node("email-input", "email"),
-                ],
-                method: None,
-                guard: None,
-                max_width: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[
-            ("name", &["Name is required"]),
-            ("email", &["Email is invalid"]),
-        ]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Form(props) => {
-                match &props.fields[0].component {
-                    Component::Input(p) => {
-                        assert_eq!(p.error, Some("Name is required".to_string()));
-                    }
-                    _ => panic!("expected Input"),
-                }
-                match &props.fields[1].component {
-                    Component::Input(p) => {
-                        assert_eq!(p.error, Some("Email is invalid".to_string()));
-                    }
-                    _ => panic!("expected Input"),
-                }
-            }
-            _ => panic!("expected Form"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_nested_in_card() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "card".to_string(),
-            component: Component::Card(CardProps {
-                title: "User".to_string(),
-                description: None,
-                children: vec![make_input_node("name-input", "name")],
-                footer: vec![],
-                max_width: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("name", &["Name is required"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Card(props) => match &props.children[0].component {
-                Component::Input(p) => {
-                    assert_eq!(p.error, Some("Name is required".to_string()));
-                }
-                _ => panic!("expected Input"),
-            },
-            _ => panic!("expected Card"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_no_matching_field() {
-        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
-        let errors = make_errors(&[("unknown_field", &["Some error"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(props.error, None);
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_all_concatenates_messages() {
-        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
-        let errors = make_errors(&[("email", &["Too short", "Invalid format", "Already taken"])]);
-        resolve_errors_all(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(
-                    props.error,
-                    Some("Too short. Invalid format. Already taken".to_string())
-                );
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_empty_errors_map() {
-        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
-        let errors: HashMap<String, Vec<String>> = HashMap::new();
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(props.error, None);
-            }
-            _ => panic!("expected Input"),
-        }
+        let el = spec.elements.get("card").unwrap();
+        let err_val = el.props.as_object().unwrap().get("errors").unwrap();
+        assert_eq!(err_val["email"], serde_json::json!(["required"]));
     }
 }
