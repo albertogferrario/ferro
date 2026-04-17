@@ -19,5 +19,5 @@ pub use relationship::{Cardinality, NavigationHint, RelationshipDef};
 pub use render::template::TemplateRenderer;
 pub use render::{BaseContext, Renderer};
 
-pub use service::ServiceDef;
+pub use service::{FieldMetadata, ModelMetadata, ServiceDef};
 pub use state::{StateDef, StateMachine, Transition, Warning};

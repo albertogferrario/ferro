@@ -193,10 +193,7 @@ mod tests {
             DataType::from_column_type("Option<String>"),
             DataType::String
         );
-        assert_eq!(
-            DataType::from_column_type("Option<i32>"),
-            DataType::Integer
-        );
+        assert_eq!(DataType::from_column_type("Option<i32>"), DataType::Integer);
         assert_eq!(
             DataType::from_column_type("Option<DateTime<Utc>>"),
             DataType::DateTime
