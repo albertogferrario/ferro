@@ -75,6 +75,36 @@ fn default_true() -> bool {
     true
 }
 
+impl DataType {
+    /// Infers a DataType from a Rust/SeaORM column type string.
+    ///
+    /// Strips `Option<>` wrappers before matching. Falls back to `String`
+    /// for unrecognized types.
+    pub fn from_column_type(type_str: &str) -> Self {
+        let inner = if let Some(stripped) = type_str
+            .strip_prefix("Option<")
+            .and_then(|s| s.strip_suffix('>'))
+        {
+            stripped
+        } else {
+            type_str
+        };
+
+        match inner {
+            "i32" | "i64" | "u32" | "u64" | "i8" | "i16" | "u8" | "u16" => Self::Integer,
+            "f32" | "f64" => Self::Float,
+            "bool" => Self::Boolean,
+            "Uuid" | "uuid::Uuid" => Self::Uuid,
+            s if s.contains("Decimal") => Self::Float,
+            s if s.starts_with("DateTime") || s.contains("chrono::") => Self::DateTime,
+            s if s.starts_with("NaiveDate") => Self::Date,
+            "Vec<u8>" => Self::Binary,
+            s if s.contains("Json") || s.contains("serde_json") => Self::Json,
+            _ => Self::String,
+        }
+    }
+}
+
 /// Infers a [`FieldMeaning`] from a field name using common naming conventions.
 ///
 /// Applies seven inference rules based on patterns found across the codebase:
@@ -118,6 +148,60 @@ pub fn infer_meaning(field_name: &str) -> FieldMeaning {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn from_column_type_mappings() {
+        assert_eq!(DataType::from_column_type("i32"), DataType::Integer);
+        assert_eq!(DataType::from_column_type("i64"), DataType::Integer);
+        assert_eq!(DataType::from_column_type("u32"), DataType::Integer);
+        assert_eq!(DataType::from_column_type("u64"), DataType::Integer);
+        assert_eq!(DataType::from_column_type("i8"), DataType::Integer);
+        assert_eq!(DataType::from_column_type("i16"), DataType::Integer);
+        assert_eq!(DataType::from_column_type("u8"), DataType::Integer);
+        assert_eq!(DataType::from_column_type("u16"), DataType::Integer);
+        assert_eq!(DataType::from_column_type("f32"), DataType::Float);
+        assert_eq!(DataType::from_column_type("f64"), DataType::Float);
+        assert_eq!(DataType::from_column_type("bool"), DataType::Boolean);
+        assert_eq!(DataType::from_column_type("String"), DataType::String);
+        assert_eq!(DataType::from_column_type("Uuid"), DataType::Uuid);
+        assert_eq!(DataType::from_column_type("uuid::Uuid"), DataType::Uuid);
+        assert_eq!(
+            DataType::from_column_type("DateTime<Utc>"),
+            DataType::DateTime
+        );
+        assert_eq!(
+            DataType::from_column_type("chrono::DateTime<chrono::Utc>"),
+            DataType::DateTime
+        );
+        assert_eq!(DataType::from_column_type("NaiveDate"), DataType::Date);
+        assert_eq!(DataType::from_column_type("Vec<u8>"), DataType::Binary);
+        assert_eq!(
+            DataType::from_column_type("serde_json::Value"),
+            DataType::Json
+        );
+        assert_eq!(DataType::from_column_type("Json"), DataType::Json);
+        assert_eq!(DataType::from_column_type("Decimal"), DataType::Float);
+        assert_eq!(
+            DataType::from_column_type("UnknownCustomType"),
+            DataType::String
+        );
+    }
+
+    #[test]
+    fn from_column_type_option_stripping() {
+        assert_eq!(
+            DataType::from_column_type("Option<String>"),
+            DataType::String
+        );
+        assert_eq!(
+            DataType::from_column_type("Option<i32>"),
+            DataType::Integer
+        );
+        assert_eq!(
+            DataType::from_column_type("Option<DateTime<Utc>>"),
+            DataType::DateTime
+        );
+    }
 
     #[test]
     fn data_type_is_copy() {
