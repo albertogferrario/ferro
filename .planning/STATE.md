@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.5
-milestone_name: Projection Architecture Prep
-status: verifying
-stopped_at: Completed 135-02-PLAN.md
-last_updated: "2026-04-17T18:04:01.884Z"
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
+status: completed
+stopped_at: Phase 115 context gathered (--auto)
+last_updated: "2026-04-17T22:25:36.849Z"
 last_activity: 2026-04-17
 progress:
-  total_phases: 24
-  completed_phases: 15
-  total_plans: 53
-  completed_plans: 52
-  percent: 96
+  total_phases: 8
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 135 — servicedef-derivation-bridge
+**Current focus:** v12.0 JSON-UI v2 — Spec-Driven Rendering
 
 ## Current Position
 
-Phase: 136
+Phase: 115 (not started)
 Plan: Not started
 Workspace version: 0.2.0
-Status: Phase complete — ready for verification
+Status: Milestone v11.5 complete — v12.0 ready to begin
 Last activity: 2026-04-17
-Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
+Current milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
-Progress: [██████████] 96%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -143,7 +143,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-17T18:00:33.550Z
-Stopped at: Completed 135-02-PLAN.md
-Resume file: None
-Next action: `git push origin master` to publish v0.2.0 when ready.
+Last session: 2026-04-17T22:25:36.844Z
+Stopped at: Phase 115 context gathered (--auto)
+Resume file: .planning/phases/115-spec-v2-data-structures/115-CONTEXT.md
+Next action: Begin v12.0 Phase 115 (Spec v2 Data Structures). Push to origin when ready.
