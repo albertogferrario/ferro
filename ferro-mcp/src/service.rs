@@ -309,6 +309,12 @@ pub struct ProjectionCoverageParams {
     pub include_intents: Option<bool>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct GenerateProjectionParams {
+    /// Model name (e.g., "User", "Order"). Case-sensitive, matches the struct name from SeaORM entity definitions.
+    pub model_name: String,
+}
+
 // AI classification and confirmation tool params.
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct TestClassifierParams {
@@ -1508,6 +1514,29 @@ impl FerroMcpService {
     ) -> String {
         let report = tools::projection_coverage::execute(&self.project_root);
         serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Generate a ServiceDef projection from a SeaORM model
+    #[tool(
+        name = "generate_projection",
+        description = "Generate a ServiceDef projection from a SeaORM model by inferring fields, data types, and semantic meanings.\n\n\
+            **When to use:** Creating a new projection for a model, understanding what ServiceDef would be derived \
+            from existing models, bootstrapping projection-driven features.\n\n\
+            **Returns:** Serialized ServiceDef JSON, ranked intent scores, and notes on what needs manual enrichment \
+            (actions, state machines, relationships).\n\n\
+            **Combine with:** `list_models` to see available models, `render_projection` to render the result, \
+            `inspect_projection` to compare with hand-authored projections."
+    )]
+    pub async fn generate_projection(
+        &self,
+        params: Parameters<GenerateProjectionParams>,
+    ) -> String {
+        match tools::generate_projection::execute(&self.project_root, &params.0.model_name) {
+            Ok(result) => {
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{}\"}}", e.replace('"', "\\\"")),
+        }
     }
 
     /// Report Stripe configuration status (env vars, scaffold presence)
