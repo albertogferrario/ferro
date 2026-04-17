@@ -10,12 +10,7 @@ homepage = "https://ferro-rs.dev"
 readme = "README.md"
 categories = ["web-programming", "data-structures"]
 
-[features]
-default = ["visual"]
-visual = ["ferro-theme"]
-
 [dependencies]
-ferro-theme = { path = "../ferro-theme", version = "0.2", optional = true }
 schemars = { version = "1", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

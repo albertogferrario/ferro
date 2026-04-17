@@ -19,7 +19,5 @@ pub use relationship::{Cardinality, NavigationHint, RelationshipDef};
 pub use render::template::TemplateRenderer;
 pub use render::{BaseContext, Renderer};
 
-#[cfg(feature = "visual")]
-pub use render::json_ui::{JsonUiRenderer, RenderMode, VisualContext};
 pub use service::ServiceDef;
 pub use state::{StateDef, StateMachine, Transition, Warning};

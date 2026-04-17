@@ -2,13 +2,9 @@
 //!
 //! Defines the `Renderer` trait and `BaseContext` (modality-agnostic fields)
 //! that translate `ServiceDef` + `IntentScore` into renderable output.
-//! Concrete renderer implementations (e.g., `JsonUiRenderer`) live in their
-//! respective output crates (e.g., `ferro-json-ui`).
+//! Concrete renderer implementations live in their respective output crates
+//! (e.g., `JsonUiRenderer` in ferro-json-ui).
 
-pub mod field_map;
-#[cfg(feature = "visual")]
-pub mod json_ui;
-pub mod relationship_map;
 pub mod template;
 
 use crate::error::Error;
@@ -19,7 +15,7 @@ use crate::service::ServiceDef;
 /// Modality-agnostic rendering context shared by all `Renderer` implementations.
 ///
 /// Visual-only fields (render mode, theme templates) live in `VisualContext`
-/// inside the `visual`-gated `json_ui` module.
+/// inside `ferro-json-ui`.
 #[derive(Debug, Clone, Default)]
 pub struct BaseContext {
     /// Which intent to render (0 = primary). Index into the `intents` slice.
