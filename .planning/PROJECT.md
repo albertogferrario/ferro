@@ -279,10 +279,12 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - ~90,000 lines of Rust across 20 crates
 - v10.0 shipped: JSON-UI Visual Overhaul
 - v9.0 shipped: Service Projections — projection / intent substrate
+- v11.5 shipped: Projection Architecture Prep (Renderer trait generalization, renderer relocation, ServiceDef derivation bridge)
 - v0.2.0 published on crates.io as `ferro-rs`
 - Pre-1.0; breaking changes acceptable
 - Sample application (app/) demonstrating Inertia integration
 - Comprehensive MCP introspection (35+ tools) — this is the v1.0 product surface
+- `ServiceDef::from_model()` derivation bridge — agents can generate projections from model metadata without hand-writing builders
 
 **Tech Stack:**
 - Rust 2021 edition
@@ -365,5 +367,7 @@ See also `.planning/VISION.md` for design philosophy.
 | Hard cap on expression language | Inner platform effect is the #1 strategic risk in SDUI | Planned |
 | Max nesting depth: 3 levels | All production SDUI systems converge here; keeps generation reliable | Planned |
 
+| ServiceDef::from_model() derivation bridge | Agents generate projections from model metadata; no hand-written builders | ✓ Good |
+
 ---
-*Last updated: design philosophy pass*
+*Last updated: 2026-04-17 — Phase 135 complete*
