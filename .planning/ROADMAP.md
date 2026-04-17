@@ -936,7 +936,7 @@ Remove the envs-from-`.env.example` rendering path in `do:init`. Remove the `dep
 
 - [x] **Phase 133: Generalize Renderer trait** (completed 2026-04-14)
 - [x] **Phase 134: Relocate renderers to output crates** (completed 2026-04-17)
-- [ ] **Phase 135: ServiceDef derivation bridge**
+- [x] **Phase 135: ServiceDef derivation bridge** (completed 2026-04-17)
 
 ### Phase 133: Generalize Renderer trait
 
@@ -981,11 +981,11 @@ This is the time-to-working-projection bottleneck. An agent should be able to go
 
 **Depends on:** Phase 134
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 135-01-PLAN.md — ModelMetadata, DataType::from_column_type(), ServiceDef::from_model() in ferro-projections
-- [ ] 135-02-PLAN.md — generate_projection MCP tool in ferro-mcp
+- [x] 135-02-PLAN.md — generate_projection MCP tool in ferro-mcp
 
 ### Phase 136: implement workflow for executing a full roadmap in auto with gsd
 
