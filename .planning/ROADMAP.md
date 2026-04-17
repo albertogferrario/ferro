@@ -990,12 +990,13 @@ Plans:
 ### Phase 136: implement workflow for executing a full roadmap in auto with gsd
 
 **Goal:** GitHub Actions workflow that drives an entire milestone through the GSD pipeline — one fresh claude CLI invocation per phase, with failure handling via GitHub issues.
+**Status:** Workflow committed, awaiting live test before marking complete.
 **Requirements**: TBD
 **Depends on:** Phase 135
 **Plans:** 1 plan
 
 Plans:
-- [ ] 136-01-PLAN.md — Create gsd-roadmap.yml workflow: phase loop, claude CLI per phase, failure issues
+- [x] 136-01-PLAN.md — Create gsd-roadmap.yml workflow: phase loop, claude CLI per phase, failure issues
 
 ---
 
