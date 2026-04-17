@@ -4,10 +4,46 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::action::{ActionDef, GuardDef};
-use crate::field::{DataType, FieldDef, FieldMeaning};
+use crate::field::{infer_meaning, DataType, FieldDef, FieldMeaning};
 use crate::intent::IntentHint;
 use crate::relationship::{Cardinality, RelationshipDef};
 use crate::state::{StateMachine, Warning};
+
+/// Intermediate representation of a model for ServiceDef derivation.
+///
+/// Decouples ferro-projections from ORM-specific types. Callers populate
+/// this from their own model parsing and pass it to `ServiceDef::from_model()`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelMetadata {
+    pub name: String,
+    pub display_name: Option<String>,
+    pub table: Option<String>,
+    pub fields: Vec<FieldMetadata>,
+}
+
+/// Metadata for a single model field.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FieldMetadata {
+    pub name: String,
+    /// Raw Rust/SeaORM type string (e.g., "String", "i32", "Option<Uuid>").
+    pub column_type: String,
+    pub is_primary_key: bool,
+    pub is_nullable: bool,
+}
+
+/// Converts snake_case to Title Case ("order_item" -> "Order Item").
+fn snake_to_title(s: &str) -> String {
+    s.split('_')
+        .map(|word| {
+            let mut c = word.chars();
+            match c.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + c.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
 
 /// A service definition describing a domain entity and its fields.
 ///
@@ -218,6 +254,40 @@ impl ServiceDef {
     pub fn state_machine(mut self, machine: StateMachine) -> Self {
         self.state_machine = Some(machine);
         self
+    }
+
+    /// Derives a ServiceDef from model metadata.
+    ///
+    /// Infers `DataType` from column type strings and `FieldMeaning` from field names.
+    /// System fields (`id`, `created_at`, `updated_at`, primary keys) are marked read-only.
+    /// Actions, state machines, and relationships are not derived.
+    pub fn from_model(meta: &ModelMetadata) -> Self {
+        let display = meta
+            .display_name
+            .clone()
+            .unwrap_or_else(|| snake_to_title(&meta.name));
+
+        let mut def = Self::new(&meta.name).display_name(display);
+
+        for field in &meta.fields {
+            let data_type = DataType::from_column_type(&field.column_type);
+            let meaning = infer_meaning(&field.name);
+
+            let is_system = matches!(field.name.as_str(), "id" | "created_at" | "updated_at")
+                || field.is_primary_key;
+
+            def.fields.push(FieldDef {
+                name: field.name.clone(),
+                data_type,
+                meaning,
+                required: !field.is_nullable,
+                is_list: false,
+                readable: true,
+                writable: !is_system,
+            });
+        }
+
+        def
     }
 
     /// Validates the service definition and returns warnings for potential issues.
@@ -1414,5 +1484,116 @@ mod tests {
         let json = serde_json::to_string_pretty(&service).unwrap();
         let parsed: ServiceDef = serde_json::from_str(&json).unwrap();
         assert_eq!(service, parsed);
+    }
+
+    fn order_meta() -> ModelMetadata {
+        ModelMetadata {
+            name: "order".to_string(),
+            display_name: None,
+            table: Some("orders".to_string()),
+            fields: vec![
+                FieldMetadata {
+                    name: "id".into(),
+                    column_type: "i32".into(),
+                    is_primary_key: true,
+                    is_nullable: false,
+                },
+                FieldMetadata {
+                    name: "total".into(),
+                    column_type: "f64".into(),
+                    is_primary_key: false,
+                    is_nullable: false,
+                },
+                FieldMetadata {
+                    name: "status".into(),
+                    column_type: "String".into(),
+                    is_primary_key: false,
+                    is_nullable: false,
+                },
+                FieldMetadata {
+                    name: "notes".into(),
+                    column_type: "Option<String>".into(),
+                    is_primary_key: false,
+                    is_nullable: true,
+                },
+                FieldMetadata {
+                    name: "created_at".into(),
+                    column_type: "DateTime<Utc>".into(),
+                    is_primary_key: false,
+                    is_nullable: false,
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn from_model_basic() {
+        let meta = order_meta();
+        let def = ServiceDef::from_model(&meta);
+        assert_eq!(def.name, "order");
+        assert_eq!(def.display_name.as_deref(), Some("Order"));
+        assert_eq!(def.fields.len(), 5);
+    }
+
+    #[test]
+    fn from_model_system_fields_read_only() {
+        let meta = order_meta();
+        let def = ServiceDef::from_model(&meta);
+        let id = def.fields.iter().find(|f| f.name == "id").unwrap();
+        assert!(!id.writable, "id must be read-only");
+        let created_at = def.fields.iter().find(|f| f.name == "created_at").unwrap();
+        assert!(!created_at.writable, "created_at must be read-only");
+        let total = def.fields.iter().find(|f| f.name == "total").unwrap();
+        assert!(total.writable, "total must be writable");
+    }
+
+    #[test]
+    fn from_model_nullable_to_required() {
+        let meta = order_meta();
+        let def = ServiceDef::from_model(&meta);
+        let notes = def.fields.iter().find(|f| f.name == "notes").unwrap();
+        assert!(!notes.required, "nullable field must have required: false");
+        let total = def.fields.iter().find(|f| f.name == "total").unwrap();
+        assert!(
+            total.required,
+            "non-nullable field must have required: true"
+        );
+    }
+
+    #[test]
+    fn from_model_display_name_override() {
+        let meta = ModelMetadata {
+            name: "order".to_string(),
+            display_name: Some("Custom Name".to_string()),
+            table: None,
+            fields: vec![],
+        };
+        let def = ServiceDef::from_model(&meta);
+        assert_eq!(def.display_name.as_deref(), Some("Custom Name"));
+    }
+
+    #[test]
+    fn from_model_snake_to_title() {
+        let meta = ModelMetadata {
+            name: "order_item".to_string(),
+            display_name: None,
+            table: None,
+            fields: vec![],
+        };
+        let def = ServiceDef::from_model(&meta);
+        assert_eq!(def.display_name.as_deref(), Some("Order Item"));
+    }
+
+    #[test]
+    fn round_trip_model_to_intents() {
+        use crate::derive::derive_intents;
+
+        let meta = order_meta();
+        let def = ServiceDef::from_model(&meta);
+        let intents = derive_intents(&def);
+        assert!(
+            !intents.is_empty(),
+            "derive_intents must produce at least one intent score"
+        );
     }
 }
