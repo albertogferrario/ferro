@@ -1267,7 +1267,7 @@ impl FerroMcpService {
             and action API. Use component=\"Map\" to inspect the Map plugin.\n\n\
             **Returns:** Built-in component definitions, plugin component definitions, \
             props (name, type, required, description), available variants, \
-            JsonUiView builder API, and Action builder API.\n\n\
+            Spec builder API, and Action builder API.\n\n\
             **Combine with:** `json_ui_inspect` to see existing views or inspect a specific component schema, \
             `code_templates` with category=json_view for copy-paste view boilerplate."
     )]

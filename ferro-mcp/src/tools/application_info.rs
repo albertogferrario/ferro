@@ -16,7 +16,7 @@ pub struct ApplicationInfo {
     pub environment: String,
     pub installed_crates: Vec<CrateInfo>,
     pub models: Vec<ModelInfo>,
-    pub json_ui_views: JsonUiViewsStatus,
+    pub json_ui_views: JsonUiSpecsStatus,
     pub features: FeatureSummary,
     pub broadcasting: BroadcastingStatus,
     pub claude_code_skills: ClaudeCodeSkillsStatus,
@@ -54,7 +54,7 @@ pub struct ClaudeCodeSkillsStatus {
 }
 
 #[derive(Debug, Serialize)]
-pub struct JsonUiViewsStatus {
+pub struct JsonUiSpecsStatus {
     pub available: bool,
     pub view_count: usize,
     pub views_dir: String,
@@ -94,7 +94,7 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
     let models = introspection::models::scan_models(project_root);
 
     // Scan for JSON-UI views
-    let json_ui_views = scan_json_ui_views(project_root);
+    let json_ui_views = scan_json_ui_specs(project_root);
 
     // Scan v4.0 feature counts
     let features = scan_feature_counts(project_root);
@@ -241,12 +241,14 @@ fn get_installed_crates(project_root: &Path) -> Result<Vec<CrateInfo>> {
     Ok(crates)
 }
 
-fn scan_json_ui_views(project_root: &Path) -> JsonUiViewsStatus {
+/// Scans for legacy v1 patterns. TODO(Phase 120): add a parallel v2 scanner
+/// that looks for `-> Spec` and counts flat-spec usages alongside v1 counts.
+fn scan_json_ui_specs(project_root: &Path) -> JsonUiSpecsStatus {
     let views_dir = project_root.join("src").join("views");
     let views_dir_display = "src/views/".to_string();
 
     if !views_dir.exists() {
-        return JsonUiViewsStatus {
+        return JsonUiSpecsStatus {
             available: false,
             view_count: 0,
             views_dir: views_dir_display,
@@ -271,7 +273,7 @@ fn scan_json_ui_views(project_root: &Path) -> JsonUiViewsStatus {
         })
         .unwrap_or(0);
 
-    JsonUiViewsStatus {
+    JsonUiSpecsStatus {
         available: true,
         view_count,
         views_dir: views_dir_display,

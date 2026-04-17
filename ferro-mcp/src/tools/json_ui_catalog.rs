@@ -1,9 +1,9 @@
 //! JSON-UI component catalog tool — structured reference of all built-in
 //! components plus plugin components (Map, etc.).
 //
-// CATALOG IS HAND-MAINTAINED FROM ferro_json_ui::component::Component.
-// When a new Component variant is added to ferro-json-ui, this catalog MUST be updated.
-// TODO(ferro): derive this at compile time via a schemars-based introspection pass.
+// CATALOG IS HAND-MAINTAINED FROM ferro_json_ui::component Props structs.
+// When a new Props struct is added to ferro-json-ui, this catalog MUST be updated.
+// TODO(Phase 117): derive this at compile time via a schemars-based introspection pass.
 
 use serde::Serialize;
 
@@ -67,19 +67,29 @@ pub fn execute(component: Option<&str>) -> JsonUiCatalog {
 }
 
 const BUILDER_API: &str = "\
-JsonUiView::new() -> JsonUiView
+Spec::builder() -> SpecBuilder
   .title(impl Into<String>) -> Self
   .layout(impl Into<String>) -> Self
   .data(serde_json::Value) -> Self
-  .errors(HashMap<String, Vec<String>>) -> Self
-  .component(ComponentNode) -> Self
-  .components(Vec<ComponentNode>) -> Self
+  .element(id, Element) -> Self
+  .build() -> Result<Spec, SpecError>
 
-ComponentNode { key: String, component: Component, action: Option<Action>, visibility: Option<Visibility> }
-  - key: Unique identifier for this node in the view tree
-  - component: One of the Component enum variants
-  - action: Optional Action binding (click/submit handler)
-  - visibility: Optional Visibility rule (show/hide based on data path)";
+Element::new(type_name: impl Into<String>) -> ElementBuilder
+  .prop(key, value) -> Self (accumulates into props: serde_json::Value)
+  .child(id: impl Into<String>) -> Self (child element id reference)
+  .action(Action) -> Self (click/submit handler)
+  .visible(Visibility) -> Self (show/hide based on data path)
+
+Spec { $schema, root, elements: HashMap<String, Element>, title?, layout?, data? }
+  - $schema: \"ferro-json-ui/v2\"
+  - root: id of the root element
+  - elements: flat map of element id -> Element
+Element { type: String, props: Value, children: Vec<String>, action?, visible? }
+  - type: component type name (e.g. \"Card\", \"DataTable\", \"Map\")
+  - props: component-specific properties as a JSON value
+  - children: element id references (no nested structures — flat lookup)
+  - action: optional Action binding
+  - visible: optional Visibility rule";
 
 const ACTION_API: &str = "\
 Action::new(handler) -> Action (POST)
@@ -166,13 +176,13 @@ fn build_catalog() -> Vec<CatalogComponent> {
                 ),
                 prop(
                     "children",
-                    "Vec<ComponentNode>",
+                    "Vec<String>",
                     false,
                     "Nested components inside the card body",
                 ),
                 prop(
                     "footer",
-                    "Vec<ComponentNode>",
+                    "Vec<String>",
                     false,
                     "Components in the card footer",
                 ),
@@ -236,7 +246,7 @@ fn build_catalog() -> Vec<CatalogComponent> {
                 prop("action", "Action", true, "Action to execute on form submit"),
                 prop(
                     "fields",
-                    "Vec<ComponentNode>",
+                    "Vec<String>",
                     true,
                     "Form field components (Input, Select, Checkbox, etc.)",
                 ),
@@ -400,13 +410,13 @@ fn build_catalog() -> Vec<CatalogComponent> {
                 prop("description", "Option<String>", false, "Modal description"),
                 prop(
                     "children",
-                    "Vec<ComponentNode>",
+                    "Vec<String>",
                     false,
                     "Content components inside the modal body",
                 ),
                 prop(
                     "footer",
-                    "Vec<ComponentNode>",
+                    "Vec<String>",
                     false,
                     "Components in the modal footer",
                 ),
@@ -789,7 +799,7 @@ fn build_catalog() -> Vec<CatalogComponent> {
                     false,
                     "Enable Trello-style horizontal scroll layout",
                 ),
-                prop("children", "Vec<ComponentNode>", false, "Grid children"),
+                prop("children", "Vec<String>", false, "Grid children"),
             ],
             variants: None,
         },
@@ -799,7 +809,7 @@ fn build_catalog() -> Vec<CatalogComponent> {
             props: vec![
                 prop("title", "String", true, "Summary title"),
                 prop("expanded", "bool", false, "Whether the section starts expanded"),
-                prop("children", "Vec<ComponentNode>", false, "Hidden/expanded content"),
+                prop("children", "Vec<String>", false, "Hidden/expanded content"),
             ],
             variants: None,
         },
@@ -822,7 +832,7 @@ fn build_catalog() -> Vec<CatalogComponent> {
             props: vec![
                 prop("title", "String", true, "Section title"),
                 prop("description", "Option<String>", false, "Section description"),
-                prop("children", "Vec<ComponentNode>", false, "Fields inside the section"),
+                prop("children", "Vec<String>", false, "Fields inside the section"),
                 prop(
                     "layout",
                     "Option<FormSectionLayout>",
@@ -845,7 +855,7 @@ fn build_catalog() -> Vec<CatalogComponent> {
                 ),
                 prop(
                     "actions",
-                    "Vec<ComponentNode>",
+                    "Vec<String>",
                     false,
                     "Action components rendered on the right",
                 ),
@@ -857,7 +867,7 @@ fn build_catalog() -> Vec<CatalogComponent> {
             description: "Horizontal button row with a consistent gap between buttons.".to_string(),
             props: vec![prop(
                 "buttons",
-                "Vec<ComponentNode>",
+                "Vec<String>",
                 false,
                 "Button components rendered inline",
             )],
@@ -1225,12 +1235,12 @@ mod tests {
     fn test_builder_api_present() {
         let catalog = execute(None);
         assert!(
-            catalog.builder_api.contains("JsonUiView::new()"),
-            "Builder API should document JsonUiView::new()"
+            catalog.builder_api.contains("Spec::builder()"),
+            "Builder API should document Spec::builder()"
         );
         assert!(
-            catalog.builder_api.contains("ComponentNode"),
-            "Builder API should document ComponentNode"
+            catalog.builder_api.contains("Element::new"),
+            "Builder API should document Element::new"
         );
     }
 

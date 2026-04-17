@@ -78,9 +78,11 @@ pub fn execute(
 
     // Render
     let renderer = JsonUiRenderer;
-    let json_ui = renderer
+    let spec = renderer
         .render(&service, &intents, &ctx)
         .map_err(|e| format!("render error: {e}"))?;
+    let json_ui = serde_json::to_value(&spec)
+        .map_err(|e| format!("failed to serialize Spec to JSON: {e}"))?;
 
     let selected = intents
         .get(idx)
@@ -482,7 +484,7 @@ mod tests {
             intent: "Browse".to_string(),
             confidence: 0.85,
             mode: "display".to_string(),
-            json_ui: serde_json::json!({"$schema": "ferro-json-ui/v1"}),
+            json_ui: serde_json::json!({"$schema": "ferro-json-ui/v2"}),
             all_intents: vec![IntentInfo {
                 intent: "Browse".to_string(),
                 confidence: 0.85,
@@ -498,7 +500,7 @@ mod tests {
         assert!(json_str.contains("Browse"));
         assert!(json_str.contains("0.85"));
         assert!(json_str.contains("display"));
-        assert!(json_str.contains("ferro-json-ui/v1"));
+        assert!(json_str.contains("ferro-json-ui/v2"));
         assert!(json_str.contains("all_intents"));
     }
 

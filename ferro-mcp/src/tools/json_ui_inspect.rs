@@ -1,5 +1,13 @@
 //! JSON-UI inspect tool - discovers existing JSON-UI views in a project
 //! and inspects component schemas (including plugin components like Map).
+//!
+//! v1 scanner — matches v1 `JsonUiView` / `Component::X` patterns in user source.
+//!
+//! TODO(Phase 120): rewrite regexes to scan for `-> Spec` and parse flat specs.
+//! In the meantime this tool returns no results for v2 codebases; the tool
+//! name stays stable for MCP consumers. The literal strings `JsonUiView` and
+//! `Component::` appearing below in regex bodies are INTENTIONAL v1 artifacts —
+//! do not update them in Phase 115.
 
 use regex::Regex;
 use serde::Serialize;
