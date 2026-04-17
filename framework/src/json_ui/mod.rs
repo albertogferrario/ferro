@@ -7,23 +7,16 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use ferro_rs::{JsonUi, JsonUiView, ComponentNode, Component, CardProps, Response};
+//! use ferro_rs::{JsonUi, Spec, Element, Response};
 //!
 //! pub async fn index() -> Response {
-//!     let view = JsonUiView::new()
+//!     let spec = Spec::builder()
 //!         .title("Dashboard")
-//!         .component(ComponentNode {
-//!             key: "welcome".to_string(),
-//!             component: Component::Card(CardProps {
-//!                 title: "Welcome".to_string(),
-//!                 description: None,
-//!                 children: vec![],
-//!             }),
-//!             action: None,
-//!             visibility: None,
-//!         });
+//!         .element("welcome", Element::new("Card").prop("title", "Welcome"))
+//!         .build()
+//!         .expect("spec is valid");
 //!
-//!     JsonUi::render(&view, &serde_json::json!({}))
+//!     JsonUi::render(&spec, &serde_json::json!({}))
 //! }
 //! ```
 
@@ -31,62 +24,62 @@ use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
 use ferro_json_ui::{
-    render_layout, render_to_html_with_plugins, resolve_actions, resolve_errors, JsonUiConfig,
-    JsonUiView, LayoutContext,
+    render_layout, render_spec_to_html_with_plugins, resolve_actions, resolve_errors,
+    JsonUiConfig, LayoutContext, Spec,
 };
 
 /// Stateless JSON-UI renderer.
 ///
-/// Provides methods for rendering JSON-UI views as HTML or JSON responses.
+/// Provides methods for rendering JSON-UI specs as HTML or JSON responses.
 /// Follows the same pattern as `Inertia` -- a unit struct with static methods.
 pub struct JsonUi;
 
 impl JsonUi {
-    /// Clone the view and resolve all action handler names to URLs.
-    fn resolve(view: &JsonUiView) -> JsonUiView {
-        let mut resolved = view.clone();
+    /// Clone the spec and resolve all action handler names to URLs.
+    fn resolve(spec: &Spec) -> Spec {
+        let mut resolved = spec.clone();
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
         resolved
     }
 
-    /// Render a JSON-UI view as an HTML response.
+    /// Render a JSON-UI spec as an HTML response.
     ///
-    /// Returns the view as a full HTML page with rendered component HTML and Tailwind classes.
+    /// Returns the spec as a full HTML page with rendered element HTML and Tailwind classes.
     /// All action handler references are resolved to URLs before rendering.
-    /// The view JSON and data are embedded as `data-view` and `data-props` attributes
+    /// The spec JSON and data are embedded as `data-view` and `data-props` attributes
     /// on the wrapper div for potential JS hydration.
-    pub fn render(view: &JsonUiView, data: &serde_json::Value) -> Response {
-        Self::render_with_config(view, data, &JsonUiConfig::new())
+    pub fn render(spec: &Spec, data: &serde_json::Value) -> Response {
+        Self::render_with_config(spec, data, &JsonUiConfig::new())
     }
 
     /// Render with custom configuration.
     pub fn render_with_config(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         config: &JsonUiConfig,
     ) -> Response {
-        let resolved = Self::resolve(view);
+        let resolved = Self::resolve(spec);
         Self::build_response(&resolved, data, config)
     }
 
-    /// Build an HTML response from a resolved view using the layout system.
+    /// Build an HTML response from a resolved spec using the layout system.
     ///
     /// Shared implementation for both `render_with_config` and `render_with_errors_config`.
-    /// Serializes view/data, builds head content, renders components, then dispatches
+    /// Serializes spec/data, builds head content, renders elements, then dispatches
     /// to the layout registry for the final HTML shell.
     fn build_response(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         config: &JsonUiConfig,
     ) -> Response {
-        let view_json = serde_json::to_string(view).map_err(|e| {
+        let spec_json = serde_json::to_string(spec).map_err(|e| {
             HttpResponse::text(format!("JSON-UI serialization error: {e}")).status(500)
         })?;
         let data_json = serde_json::to_string(data).map_err(|e| {
             HttpResponse::text(format!("JSON-UI data serialization error: {e}")).status(500)
         })?;
 
-        let title = view.title.as_deref().unwrap_or("Ferro");
+        let title = spec.title.as_deref().unwrap_or("Ferro");
 
         let mut head = String::new();
         // Inter Variable via Bunny Fonts — loaded unconditionally so font renders
@@ -115,7 +108,7 @@ impl JsonUi {
             }
         }
 
-        let result = render_to_html_with_plugins(view, data);
+        let result = render_spec_to_html_with_plugins(spec, data);
 
         // Append plugin CSS assets to the head string.
         let full_head = if result.css_head.is_empty() {
@@ -129,12 +122,12 @@ impl JsonUi {
             content: &result.html,
             head: &full_head,
             body_class: &config.body_class,
-            view_json: &view_json,
+            view_json: &spec_json,
             data_json: &data_json,
             scripts: &result.scripts,
         };
 
-        let layout_name = view.layout.as_deref();
+        let layout_name = spec.layout.as_deref();
         let html = render_layout(layout_name, &ctx);
 
         Ok(HttpResponse::text(html)
@@ -142,92 +135,91 @@ impl JsonUi {
             .header("Content-Type", "text/html; charset=utf-8"))
     }
 
-    /// Return the view as JSON (for API consumers or debugging).
+    /// Return the spec as JSON (for API consumers or debugging).
     ///
     /// All action handler references are resolved to URLs before output.
-    /// If `data` is non-null, it takes precedence over the view's embedded data.
-    /// If `data` is null, falls back to the view's `.data` field.
-    pub fn render_json(view: &JsonUiView, data: &serde_json::Value) -> Response {
-        let view = Self::resolve(view);
-        let effective_data = if data.is_null() { &view.data } else { data };
+    /// If `data` is non-null, it takes precedence over the spec's embedded data.
+    /// If `data` is null, falls back to the spec's `.data` field.
+    pub fn render_json(spec: &Spec, data: &serde_json::Value) -> Response {
+        let spec = Self::resolve(spec);
+        let effective_data = if data.is_null() { &spec.data } else { data };
         let payload = serde_json::json!({
-            "view": view,
+            "spec": spec,
             "data": effective_data,
         });
         Ok(HttpResponse::json(payload))
     }
 
-    /// Clone the view, resolve actions, and populate validation errors on form fields.
-    fn resolve_with_errors(view: &JsonUiView, errors: &HashMap<String, Vec<String>>) -> JsonUiView {
-        let mut resolved = view.clone();
+    /// Clone the spec, resolve actions, and populate validation errors on form fields.
+    fn resolve_with_errors(spec: &Spec, errors: &HashMap<String, Vec<String>>) -> Spec {
+        let mut resolved = spec.clone();
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
         resolve_errors(&mut resolved, errors);
-        resolved.errors = Some(errors.clone());
         resolved
     }
 
-    /// Render a JSON-UI view as HTML with validation errors populated on form fields.
+    /// Render a JSON-UI spec as HTML with validation errors populated on form fields.
     ///
     /// Same as `render()` but also populates error messages on matching form field
-    /// components (Input, Select, Checkbox, Switch) and sets `view.errors`.
+    /// elements (Input, Select, Checkbox, Switch) via their `field` or `name` prop.
     pub fn render_with_errors(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         errors: &HashMap<String, Vec<String>>,
     ) -> Response {
-        Self::render_with_errors_config(view, data, errors, &JsonUiConfig::new())
+        Self::render_with_errors_config(spec, data, errors, &JsonUiConfig::new())
     }
 
     /// Render with errors and custom configuration.
     fn render_with_errors_config(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         errors: &HashMap<String, Vec<String>>,
         config: &JsonUiConfig,
     ) -> Response {
-        let resolved = Self::resolve_with_errors(view, errors);
+        let resolved = Self::resolve_with_errors(spec, errors);
         Self::build_response(&resolved, data, config)
     }
 
-    /// Return the view as JSON with validation errors populated on form fields.
+    /// Return the spec as JSON with validation errors populated on form fields.
     ///
     /// Same as `render_json()` but also populates error messages on matching
-    /// form field components and sets `view.errors`.
+    /// form field elements.
     pub fn render_json_with_errors(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         errors: &HashMap<String, Vec<String>>,
     ) -> Response {
-        let view = Self::resolve_with_errors(view, errors);
-        let effective_data = if data.is_null() { &view.data } else { data };
+        let spec = Self::resolve_with_errors(spec, errors);
+        let effective_data = if data.is_null() { &spec.data } else { data };
         let payload = serde_json::json!({
-            "view": view,
+            "spec": spec,
             "data": effective_data,
         });
         Ok(HttpResponse::json(payload))
     }
 
-    /// Render a JSON-UI view as HTML, accepting a framework `ValidationError` directly.
+    /// Render a JSON-UI spec as HTML, accepting a framework `ValidationError` directly.
     ///
     /// Extracts the error map via `.all()` and delegates to `render_with_errors()`.
     /// This is the primary convenience method for handlers.
     pub fn render_validation_error(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         validation_error: &crate::validation::ValidationError,
     ) -> Response {
-        Self::render_with_errors(view, data, validation_error.all())
+        Self::render_with_errors(spec, data, validation_error.all())
     }
 
     /// Return JSON with validation errors from a framework `ValidationError`.
     ///
     /// JSON variant of `render_validation_error()`.
     pub fn render_json_validation_error(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         validation_error: &crate::validation::ValidationError,
     ) -> Response {
-        Self::render_json_with_errors(view, data, validation_error.all())
+        Self::render_json_with_errors(spec, data, validation_error.all())
     }
 }
 
