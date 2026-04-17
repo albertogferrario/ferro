@@ -32,10 +32,11 @@
 - ✅ [**v11.1 Template Renderer**](milestones/v11.1-ROADMAP.md) — Phase 114.1 (shipped 2026-04-05)
 - ✅ **v11.2 Deploy & Scaffolder Hardening** — Phases 122-131 (shipped 2026-04-14)
 - ✅ **v11.3 S3 Storage Driver** — Phase 132 (shipped 2026-04-14)
-- 🚧 **v11.5 Projection Architecture Prep** — Phases 133-135. Generalize Renderer trait, relocate renderers to output crates, break ferro-projections → ferro-theme dependency. Prerequisite for v12.0 and v14.0.
+- ✅ **v11.5 Projection Architecture Prep** — Phases 133-135 (shipped 2026-04-17). Generalize Renderer trait, relocate renderers to output crates, ServiceDef derivation bridge.
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
+- 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
-- 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation) and v11.5 (generalized Renderer trait).
+- 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
 
 ---
 
@@ -48,6 +49,15 @@ Phases 108–114 — full details archived in [milestones/v11.0-ROADMAP.md](mile
 ### ✅ v11.1 Template Renderer (Shipped 2026-04-05)
 
 Phase 114.1 — full details archived in [milestones/v11.1-ROADMAP.md](milestones/v11.1-ROADMAP.md).
+
+---
+
+### ✅ v11.5 Projection Architecture Prep (Shipped 2026-04-17)
+
+Phases 133–135:
+- **133**: Generalized `Renderer` trait with associated `Output` and `Context` types (modality-agnostic)
+- **134**: Relocated `JsonUiRenderer` from ferro-projections to ferro-json-ui; broke ferro-projections → ferro-theme dependency
+- **135**: `ServiceDef::from_model()` derivation bridge + `generate_projection` MCP tool
 
 ---
 
@@ -234,6 +244,76 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 121. Documentation & Field Test | 0/? | Not started | - |
 
 **v12.0 scope is held firm.** No expansion beyond the 8 phases above. The projection / intent abstraction already exists in v9.0 ferro-projections; v12.0 refines the rendering target.
+
+---
+
+### 📋 v12.1 Form Validation DX (Planned)
+
+**Milestone Goal:** Eliminate form validation boilerplate across Ferro apps. Currently every controller manually validates fields, builds redirect URLs with query params, maps error codes to user-facing strings, and handles DB constraint violations as raw 500 errors. This milestone adds a `Validator` struct, old input preservation via flash, and DB constraint error mapping — reducing ~50 lines of per-form boilerplate to ~5.
+
+**Source:** gestiscilo-it field test (2026-04-18). Uniqueness constraint violations on page slug_path surfaced as raw SQL errors on a separate page instead of inline form errors.
+
+**What changes:**
+- `Validator` struct with declarative rules (`required`, `max_len`, `custom`, `unique`)
+- Old input flash: on validation failure, all submitted values are flashed into the session
+- `req.old("field")` and `req.validation_error("field")` convenience methods on `Request`
+- `errors.redirect_back()` helper that flashes errors + old input and redirects to `Referer`
+- DB constraint middleware that catches `UNIQUE constraint failed` / `duplicate key value` and converts to validation-style redirect-back
+
+**What stays:**
+- Session flash mechanism (`session.flash()` / `session.get_flash()`) — already exists, used as foundation
+- Manual validation remains possible for cases where the declarative API doesn't fit
+- Query-param error passing still works — `Validator` is additive, not a breaking change
+
+## Phases
+
+- [ ] **Phase 137: Validator & Old Input** — `Validator` struct with sync rules (`required`, `max_len`, `min_len`, `regex`, `in_list`, `custom`), old input flash on failure, `req.old()` and `req.validation_error()` methods, `redirect_back()` with flashed state
+- [ ] **Phase 138: Async Validation Rules** — `unique` and other DB-backed rules via `validate_async()`, SeaORM integration for uniqueness checks with exclude-self support (for updates)
+- [ ] **Phase 139: DB Constraint Error Mapping** — Opt-in middleware that catches SQLite/Postgres constraint violation errors from SeaORM and converts them to validation-style redirect-back responses with field-level errors
+
+## Phase Details
+
+### Phase 137: Validator & Old Input
+**Goal**: Declarative form validation with automatic old input preservation and inline error display
+**Depends on**: Nothing (uses existing session flash)
+**Success Criteria** (what must be TRUE):
+  1. `Validator::new().required("name", "Required").max_len("name", 200)` builds a rule set
+  2. `validator.validate(&HashMap<String, String>)` returns `Result<(), ValidationErrors>`
+  3. `ValidationErrors::redirect_back(&req)` flashes errors and old input into session, returns 302 to `Referer` (or explicit fallback URL)
+  4. `req.old("field_name")` returns `Option<String>` from flash — previous submission's value
+  5. `req.validation_error("field_name")` returns `Option<String>` — the error message for that field
+  6. Flash data is consumed on read (one-request lifetime, per existing flash behavior)
+  7. Custom rule: `.custom("field", |v| predicate, "message")` for app-specific validation
+  8. All rules are sync — no DB access in this phase
+
+### Phase 138: Async Validation Rules
+**Goal**: DB-backed validation rules, primarily `unique` for constraint pre-checking
+**Depends on**: Phase 137
+**Success Criteria** (what must be TRUE):
+  1. `validator.validate_async(&data).await` runs both sync and async rules
+  2. `.unique::<Entity>(field, filter, "message")` checks uniqueness via SeaORM query
+  3. `.unique_except::<Entity>(field, exclude_id, filter, "message")` excludes current record (for updates)
+  4. Async rules run after sync rules pass — no DB queries if basic validation fails
+  5. Custom async rule: `.custom_async("field", |v| async_predicate, "message")`
+
+### Phase 139: DB Constraint Error Mapping
+**Goal**: Catch DB constraint violations and convert to user-friendly redirect-back responses
+**Depends on**: Phase 137
+**Success Criteria** (what must be TRUE):
+  1. `ConstraintErrorMiddleware` catches `UNIQUE constraint failed` (SQLite) and `duplicate key value violates unique constraint` (Postgres) from SeaORM errors
+  2. Extracts the column name from the error message and maps it to a field-level error
+  3. Redirects back with the error flashed, same as `ValidationErrors::redirect_back()`
+  4. Middleware is opt-in — must be explicitly added to route groups
+  5. Does not swallow non-constraint DB errors — only handles uniqueness violations
+  6. Acts as a safety net for TOCTOU races after Phase 138's pre-check
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 137. Validator & Old Input | 0/? | Not started | - |
+| 138. Async Validation Rules | 0/? | Not started | - |
+| 139. DB Constraint Error Mapping | 0/? | Not started | - |
 
 ---
 
