@@ -935,7 +935,7 @@ Remove the envs-from-`.env.example` rendering path in `do:init`. Remove the `dep
 ## Phases
 
 - [x] **Phase 133: Generalize Renderer trait** (completed 2026-04-14)
-- [ ] **Phase 134: Relocate renderers to output crates**
+- [x] **Phase 134: Relocate renderers to output crates** (completed 2026-04-17)
 - [ ] **Phase 135: ServiceDef derivation bridge**
 
 ### Phase 133: Generalize Renderer trait
@@ -965,11 +965,11 @@ This establishes the pattern for v14.0: each output crate provides its own `Rend
 
 **Depends on:** Phase 133
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 134-01-PLAN.md — Relocate JsonUiRenderer + field_map + relationship_map to ferro-json-ui behind projections feature
-- [ ] 134-02-PLAN.md — Clean ferro-projections, update ferro-mcp imports
+- [x] 134-02-PLAN.md — Clean ferro-projections, update ferro-mcp imports
 
 ### Phase 135: ServiceDef derivation bridge
 
