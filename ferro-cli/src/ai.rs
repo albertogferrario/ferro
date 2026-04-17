@@ -93,56 +93,39 @@ pub fn build_view_context(name: &str, description: &str) -> (String, String) {
          code for src/views/ files.\n\n\
          Rules:\n\
          - Import only types actually used from `use ferro::{{...}};`\n\
-         - Use the builder pattern: `JsonUiView::new().title().layout().component()`\n\
-         - Use .layout(\"app\") unless the view is for auth (use \"auth\")\n\
+         - Use the builder pattern: `Spec::builder().title().layout().element(id, Element::new(type).prop(k, v))`\n\
+         - Use .layout(\"dashboard\") for app views, \"auth\" for authentication flows\n\
          - Use real route handler names for actions when matching routes exist\n\
-         - Use data_path bindings for form fields when matching model fields exist\n\
+         - Use data_path bindings (e.g. \"/data/users\") for data-backed components when matching model fields exist\n\
+         - Elements are flat and keyed by id; children reference other elements by id string\n\
+         - The root element id is always \"root\" — emit `.element(\"root\", ...)` as the tree root\n\
          - Return ONLY Rust source code, no explanation\n\n\
          {COMPONENT_CATALOG}\n\n\
          <example>\n\
          Input: user_list view showing all users in a table with edit and delete actions\n\
          Output:\n\
          //! User List JSON-UI view\n\n\
-         use ferro::{{\n\
-             Action, Component, ComponentNode, JsonUiView, TableColumn, TableProps, TextElement, \
-         TextProps,\n\
-         }};\n\n\
-         pub fn view() -> JsonUiView {{\n\
-             JsonUiView::new()\n\
+         use ferro::{{Action, Spec, Element, JsonUi, Response}};\n\n\
+         pub async fn view() -> Response {{\n\
+             let spec = Spec::builder()\n\
                  .title(\"User List\")\n\
-                 .layout(\"app\")\n\
-                 .component(ComponentNode {{\n\
-                     key: \"heading\".to_string(),\n\
-                     component: Component::Text(TextProps {{\n\
-                         content: \"User List\".to_string(),\n\
-                         element: TextElement::H1,\n\
-                     }}),\n\
-                     action: None,\n\
-                     visibility: None,\n\
-                 }})\n\
-                 .component(ComponentNode {{\n\
-                     key: \"users_table\".to_string(),\n\
-                     component: Component::Table(TableProps {{\n\
-                         columns: vec![\n\
-                             TableColumn {{ key: \"name\".to_string(), label: \"Name\".to_string(), \
-         format: None }},\n\
-                             TableColumn {{ key: \"email\".to_string(), label: \
-         \"Email\".to_string(), format: None }},\n\
-                         ],\n\
-                         data_path: \"users\".to_string(),\n\
-                         row_actions: Some(vec![\n\
-                             Action::get(\"user_controller.edit\"),\n\
-                             Action::delete(\"user_controller.destroy\").confirm_danger(\"Delete \
-         user\"),\n\
-                         ]),\n\
-                         empty_message: Some(\"No users found.\".to_string()),\n\
-                         sortable: None,\n\
-                         sort_column: None,\n\
-                         sort_direction: None,\n\
-                     }}),\n\
-                     action: None,\n\
-                     visibility: None,\n\
-                 }})\n\
+                 .layout(\"dashboard\")\n\
+                 .element(\n\
+                     \"root\",\n\
+                     Element::new(\"DataTable\")\n\
+                         .prop(\n\
+                             \"columns\",\n\
+                             serde_json::json!([\n\
+                                 {{\"key\": \"name\", \"label\": \"Name\"}},\n\
+                                 {{\"key\": \"email\", \"label\": \"Email\"}},\n\
+                             ]),\n\
+                         )\n\
+                         .prop(\"data_path\", \"/data/users\")\n\
+                         .prop(\"empty_message\", \"No users found.\"),\n\
+                 )\n\
+                 .build()\n\
+                 .expect(\"spec is valid\");\n\n\
+             JsonUi::render(&spec, &serde_json::json!({{}}))\n\
          }}\n\
          </example>",
     );

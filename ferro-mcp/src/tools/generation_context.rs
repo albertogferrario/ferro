@@ -113,11 +113,18 @@ let ctx = SavedInertiaContext::from(&req);
 let form = req.input::<CreateForm>().await?;  // Consumes req
 // ... process form ...
 Inertia::render_ctx(&ctx, "Users/Show", UserProps { user })"#.to_string(),
-            json_ui_view: r#"pub fn user_list() -> JsonUiView {
-    JsonUiView::new()
+            json_ui_view: r#"pub async fn user_list() -> Response {
+    let spec = Spec::builder()
         .title("Users")
-        .layout("app")
-        .component(Component::Table(Table { /* ... */ }).into_node())
+        .layout("dashboard")
+        .element(
+            "root",
+            Element::new("DataTable").prop("data_path", "/data/users"),
+        )
+        .build()
+        .expect("spec is valid");
+
+    JsonUi::render(&spec, &serde_json::json!({}))
 }"#.to_string(),
         },
         avoid: vec![
@@ -140,7 +147,7 @@ use serde::Deserialize;"#.to_string(),
             model: r#"use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};"#.to_string(),
             validation: r#"use ferro::{Validator, required, email, min, max, string, rules};"#.to_string(),
-            json_ui_view: r#"use ferro::{Component, ComponentNode, JsonUiView, /* component-specific types */};"#.to_string(),
+            json_ui_view: r#"use ferro::{Spec, Element, JsonUi, Response, /* Action, Visibility, ... */};"#.to_string(),
         },
     }
 }

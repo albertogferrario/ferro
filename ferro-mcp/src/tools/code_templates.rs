@@ -906,37 +906,32 @@ fn json_view_templates() -> Vec<CodeTemplate> {
             category: "json_view".to_string(),
             description: "A minimal JSON-UI view with title, heading text, and one card component"
                 .to_string(),
-            code: r#"use ferro::{Component, ComponentNode, JsonUiView, CardProps, TextElement, TextProps};
+            code: r#"use ferro::{Spec, Element, JsonUi, Response};
 
-pub fn view() -> JsonUiView {
-    JsonUiView::new()
+pub async fn view() -> Response {
+    let spec = Spec::builder()
         .title("{{title}}")
         .layout("app")
-        .component(ComponentNode {
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {
-                content: "{{title}}".to_string(),
-                element: TextElement::H1,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "main-card".to_string(),
-            component: Component::Card(CardProps {
-                title: "{{title}}".to_string(),
-                description: None,
-                children: vec![],
-                footer: vec![],
-            }),
-            action: None,
-            visibility: None,
-        })
+        .element(
+            "root",
+            Element::new("Card")
+                .prop("title", "{{title}}")
+                .child("heading"),
+        )
+        .element(
+            "heading",
+            Element::new("Text")
+                .prop("content", "{{title}}")
+                .prop("element", "h1"),
+        )
+        .build()
+        .expect("spec is valid");
+
+    JsonUi::render(&spec, &serde_json::json!({}))
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::{Component, ComponentNode, JsonUiView, CardProps, TextElement, TextProps};"
-                    .to_string(),
+                "use ferro::{Spec, Element, JsonUi, Response};".to_string(),
             ],
             placeholders: vec![
                 Placeholder {
@@ -955,69 +950,64 @@ pub fn view() -> JsonUiView {
             name: "list_view".to_string(),
             category: "json_view".to_string(),
             description:
-                "A view with a table, pagination, and create action button for listing resources"
+                "A view with a data table, pagination, and create action button for listing resources"
                     .to_string(),
-            code: r#"use ferro::{Action, Component, ComponentNode, JsonUiView, PaginationProps, TableColumn, TableProps, TextElement, TextProps};
+            code: r#"use ferro::{Action, Spec, Element, JsonUi, Response};
 
-pub fn view() -> JsonUiView {
-    JsonUiView::new()
+pub async fn view() -> Response {
+    let spec = Spec::builder()
         .title("{{title}}")
-        .layout("app")
-        .component(ComponentNode {
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {
-                content: "{{title}}".to_string(),
-                element: TextElement::H1,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "create-btn".to_string(),
-            component: Component::Button(ferro::ButtonProps {
-                label: "Create {{Entity}}".to_string(),
-                variant: ferro::ButtonVariant::Default,
-                size: ferro::Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-            }),
-            action: Some(Action::get("{{entity}}.create")),
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "{{entity}}-table".to_string(),
-            component: Component::Table(TableProps {
-                columns: vec![
-                    TableColumn { key: "id".to_string(), label: "ID".to_string(), format: None },
-                    TableColumn { key: "name".to_string(), label: "Name".to_string(), format: None },
-                ],
-                data_path: "/data/{{entity}}s".to_string(),
-                row_actions: Some(vec![Action::get("{{entity}}.show")]),
-                empty_message: Some("No {{entity}}s found".to_string()),
-                sortable: None,
-                sort_column: None,
-                sort_direction: None,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "pagination".to_string(),
-            component: Component::Pagination(PaginationProps {
-                current_page: 1,
-                total_pages: 1,
-                per_page: Some(20),
-                total_items: Some(0),
-            }),
-            action: None,
-            visibility: None,
-        })
+        .layout("dashboard")
+        .element(
+            "root",
+            Element::new("Card")
+                .prop("title", "{{title}}")
+                .child("heading")
+                .child("create-btn")
+                .child("{{entity}}-table")
+                .child("pagination"),
+        )
+        .element(
+            "heading",
+            Element::new("Text")
+                .prop("content", "{{title}}")
+                .prop("element", "h1"),
+        )
+        .element(
+            "create-btn",
+            Element::new("Button")
+                .prop("label", "Create {{Entity}}")
+                .prop("variant", "default")
+                .action(Action::get("{{entity}}.create")),
+        )
+        .element(
+            "{{entity}}-table",
+            Element::new("DataTable")
+                .prop(
+                    "columns",
+                    serde_json::json!([
+                        {"key": "id", "label": "ID"},
+                        {"key": "name", "label": "Name"},
+                    ]),
+                )
+                .prop("data_path", "/data/{{entity}}s")
+                .prop("empty_message", "No {{entity}}s found"),
+        )
+        .element(
+            "pagination",
+            Element::new("Pagination")
+                .prop("current_page", 1)
+                .prop("per_page", 20)
+                .prop("total", 0),
+        )
+        .build()
+        .expect("spec is valid");
+
+    JsonUi::render(&spec, &serde_json::json!({}))
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::{Action, Component, ComponentNode, JsonUiView, PaginationProps, TableColumn, TableProps, TextElement, TextProps};"
-                    .to_string(),
+                "use ferro::{Action, Spec, Element, JsonUi, Response};".to_string(),
             ],
             placeholders: vec![
                 Placeholder {
@@ -1046,68 +1036,58 @@ pub fn view() -> JsonUiView {
             name: "form_view".to_string(),
             category: "json_view".to_string(),
             description: "A view with a form containing input fields and a submit button".to_string(),
-            code: r#"use ferro::{Action, Component, ComponentNode, FormProps, InputProps, InputType, JsonUiView, TextElement, TextProps};
+            code: r#"use ferro::{Action, Spec, Element, JsonUi, Response};
 
-pub fn view() -> JsonUiView {
-    JsonUiView::new()
+pub async fn view() -> Response {
+    let spec = Spec::builder()
         .title("{{title}}")
         .layout("app")
-        .component(ComponentNode {
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {
-                content: "{{title}}".to_string(),
-                element: TextElement::H1,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "{{entity}}-form".to_string(),
-            component: Component::Form(FormProps {
-                action: "{{action_handler}}".to_string(),
-                method: "POST".to_string(),
-                fields: vec![
-                    ComponentNode {
-                        key: "name-field".to_string(),
-                        component: Component::Input(InputProps {
-                            name: "name".to_string(),
-                            label: Some("Name".to_string()),
-                            input_type: InputType::Text,
-                            placeholder: Some("Enter name".to_string()),
-                            required: Some(true),
-                            disabled: None,
-                            value: None,
-                            error: None,
-                        }),
-                        action: None,
-                        visibility: None,
-                    },
-                    ComponentNode {
-                        key: "email-field".to_string(),
-                        component: Component::Input(InputProps {
-                            name: "email".to_string(),
-                            label: Some("Email".to_string()),
-                            input_type: InputType::Email,
-                            placeholder: Some("Enter email".to_string()),
-                            required: Some(true),
-                            disabled: None,
-                            value: None,
-                            error: None,
-                        }),
-                        action: None,
-                        visibility: None,
-                    },
-                ],
-                submit_label: Some("Save {{Entity}}".to_string()),
-            }),
-            action: Some(Action::new("{{action_handler}}")),
-            visibility: None,
-        })
+        .element(
+            "root",
+            Element::new("Card")
+                .prop("title", "{{title}}")
+                .child("heading")
+                .child("{{entity}}-form"),
+        )
+        .element(
+            "heading",
+            Element::new("Text")
+                .prop("content", "{{title}}")
+                .prop("element", "h1"),
+        )
+        .element(
+            "{{entity}}-form",
+            Element::new("Form")
+                .child("name-field")
+                .child("email-field")
+                .action(Action::new("{{action_handler}}")),
+        )
+        .element(
+            "name-field",
+            Element::new("Input")
+                .prop("field", "name")
+                .prop("label", "Name")
+                .prop("input_type", "text")
+                .prop("placeholder", "Enter name")
+                .prop("required", true),
+        )
+        .element(
+            "email-field",
+            Element::new("Input")
+                .prop("field", "email")
+                .prop("label", "Email")
+                .prop("input_type", "email")
+                .prop("placeholder", "Enter email")
+                .prop("required", true),
+        )
+        .build()
+        .expect("spec is valid");
+
+    JsonUi::render(&spec, &serde_json::json!({}))
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::{Action, Component, ComponentNode, FormProps, InputProps, InputType, JsonUiView, TextElement, TextProps};"
-                    .to_string(),
+                "use ferro::{Action, Spec, Element, JsonUi, Response};".to_string(),
             ],
             placeholders: vec![
                 Placeholder {

@@ -104,35 +104,30 @@ pub fn json_view_template(name: &str, title: &str, layout: &str) -> String {
     format!(
         r#"//! {title} JSON-UI view
 
-use ferro::{{
-    ComponentNode, Component, CardProps, JsonUiView, TextElement, TextProps,
-}};
+use ferro::{{Spec, Element, JsonUi, Response}};
 
 /// Build the {title} view.
-pub fn view() -> JsonUiView {{
-    JsonUiView::new()
+pub async fn view() -> Response {{
+    let spec = Spec::builder()
         .title("{title}")
         .layout("{layout}")
-        .component(ComponentNode {{
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {{
-                content: "{title}".to_string(),
-                element: TextElement::H1,
-            }}),
-            action: None,
-            visibility: None,
-        }})
-        .component(ComponentNode {{
-            key: "card".to_string(),
-            component: Component::Card(CardProps {{
-                title: "{title}".to_string(),
-                description: Some("Edit src/views/{name}.rs to customize this view.".to_string()),
-                children: vec![],
-                footer: vec![],
-            }}),
-            action: None,
-            visibility: None,
-        }})
+        .element(
+            "root",
+            Element::new("Card")
+                .prop("title", "{title}")
+                .prop("description", "Edit src/views/{name}.rs to customize this view.")
+                .child("heading"),
+        )
+        .element(
+            "heading",
+            Element::new("Text")
+                .prop("content", "{title}")
+                .prop("element", "h1"),
+        )
+        .build()
+        .expect("spec is valid");
+
+    JsonUi::render(&spec, &serde_json::json!({{}}))
 }}
 "#,
     )

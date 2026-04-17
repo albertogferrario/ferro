@@ -67,43 +67,42 @@ pub struct ViewConventions {
 /// Complete example of a well-structured JSON-UI view
 const VIEW_EXAMPLE: &str = r#"//! User List JSON-UI view
 
-use ferro::{
-    Action, Component, ComponentNode, JsonUiView, TableColumn, TableProps, TextElement, TextProps,
-};
+use ferro::{Action, Spec, Element, JsonUi, Response};
 
-pub fn view() -> JsonUiView {
-    JsonUiView::new()
+pub async fn view() -> Response {
+    let spec = Spec::builder()
         .title("User List")
-        .layout("app")
-        .component(ComponentNode {
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {
-                content: "User List".to_string(),
-                element: TextElement::H1,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "users_table".to_string(),
-            component: Component::Table(TableProps {
-                columns: vec![
-                    TableColumn { key: "name".to_string(), label: "Name".to_string(), format: None },
-                    TableColumn { key: "email".to_string(), label: "Email".to_string(), format: None },
-                ],
-                data_path: "users".to_string(),
-                row_actions: Some(vec![
-                    Action::get("user_controller.edit"),
-                    Action::delete("user_controller.destroy").confirm_danger("Delete user"),
-                ]),
-                empty_message: Some("No users found.".to_string()),
-                sortable: None,
-                sort_column: None,
-                sort_direction: None,
-            }),
-            action: None,
-            visibility: None,
-        })
+        .layout("dashboard")
+        .element(
+            "root",
+            Element::new("Card")
+                .prop("title", "User List")
+                .child("heading")
+                .child("users_table"),
+        )
+        .element(
+            "heading",
+            Element::new("Text")
+                .prop("content", "User List")
+                .prop("element", "h1"),
+        )
+        .element(
+            "users_table",
+            Element::new("DataTable")
+                .prop(
+                    "columns",
+                    serde_json::json!([
+                        {"key": "name", "label": "Name"},
+                        {"key": "email", "label": "Email"},
+                    ]),
+                )
+                .prop("data_path", "/data/users")
+                .prop("empty_message", "No users found."),
+        )
+        .build()
+        .expect("spec is valid");
+
+    JsonUi::render(&spec, &serde_json::json!({}))
 }
 "#;
 
@@ -128,8 +127,8 @@ pub fn execute(
         example: VIEW_EXAMPLE.to_string(),
         conventions: ViewConventions {
             file_location: "src/views/{name}.rs".to_string(),
-            function_signature: "pub fn view() -> JsonUiView".to_string(),
-            import_pattern: "use ferro::{...};".to_string(),
+            function_signature: "pub async fn view() -> Response".to_string(),
+            import_pattern: "use ferro::{Spec, Element, JsonUi, Response, ...};".to_string(),
             layout_default: "app".to_string(),
         },
         description: description.map(|s| s.to_string()),
@@ -290,9 +289,12 @@ mod tests {
         assert_eq!(result.conventions.file_location, "src/views/{name}.rs");
         assert_eq!(
             result.conventions.function_signature,
-            "pub fn view() -> JsonUiView"
+            "pub async fn view() -> Response"
         );
-        assert_eq!(result.conventions.import_pattern, "use ferro::{...};");
+        assert_eq!(
+            result.conventions.import_pattern,
+            "use ferro::{Spec, Element, JsonUi, Response, ...};"
+        );
         assert_eq!(result.conventions.layout_default, "app");
     }
 
@@ -302,8 +304,8 @@ mod tests {
         let result = execute(&non_existent, None, None);
 
         assert!(!result.example.is_empty());
-        assert!(result.example.contains("JsonUiView"));
-        assert!(result.example.contains("pub fn view()"));
+        assert!(result.example.contains("Spec::builder()"));
+        assert!(result.example.contains("pub async fn view()"));
     }
 
     #[test]
@@ -326,8 +328,8 @@ mod tests {
             example: "example code".to_string(),
             conventions: ViewConventions {
                 file_location: "src/views/{name}.rs".to_string(),
-                function_signature: "pub fn view() -> JsonUiView".to_string(),
-                import_pattern: "use ferro::{...};".to_string(),
+                function_signature: "pub async fn view() -> Response".to_string(),
+                import_pattern: "use ferro::{Spec, Element, JsonUi, Response, ...};".to_string(),
                 layout_default: "app".to_string(),
             },
             description: Some("A user management view".to_string()),
