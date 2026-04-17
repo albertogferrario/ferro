@@ -48,6 +48,7 @@ pub mod plugin;
 pub mod plugins;
 pub mod render;
 pub mod resolve;
+pub mod spec;
 pub mod view;
 pub mod visibility;
 
@@ -85,6 +86,12 @@ pub use render::{render_to_html, render_to_html_with_plugins, RenderResult};
 // collect_plugin_types is pub(crate) — internal render pipeline helper
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
 pub use view::{JsonUiView, SCHEMA_VERSION};
+// v2 Spec re-exports. Plan 115-01 is additive — Plan 115-02 deletes v1 and unaliases
+// SCHEMA_VERSION back to the unaliased name once `view.rs` is gone.
+pub use spec::{
+    Element, ElementBuilder, Spec, SpecBuilder, SpecError, MAX_NESTING_DEPTH,
+    SCHEMA_VERSION as SCHEMA_VERSION_V2,
+};
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
 
 #[cfg(feature = "projections")]
