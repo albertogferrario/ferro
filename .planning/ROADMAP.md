@@ -123,7 +123,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 **Plans:** 5 plans
 
 Plans:
-- [ ] 115-01-PLAN.md — Create spec.rs (Spec, Element, builders, SpecError, from_json, validation) + tests/fixtures + round_trip.rs + reject.rs — additive re-exports
+- [x] 115-01-PLAN.md — Create spec.rs (Spec, Element, builders, SpecError, from_json, validation) + tests/fixtures + round_trip.rs + reject.rs — additive re-exports
 - [ ] 115-02-PLAN.md — Delete v1 types (JsonUiView, Component, ComponentNode, PluginProps, view.rs) and rewrite render.rs / resolve.rs / projection/mod.rs / lib.rs for v2
 - [ ] 115-03-PLAN.md — Migrate framework/src/json_ui/mod.rs (JsonUi::render(&Spec, ...)) + framework/src/lib.rs re-exports + port ~30 inline tests
 - [ ] 115-04-PLAN.md — Migrate ferro-mcp (8 files) + ferro-cli templates (3 files) to v2 syntax — workspace-wide build green
@@ -234,7 +234,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 115. Spec v2 Data Structures | 0/5 | In progress | - |
+| 115. Spec v2 Data Structures | 1/5 | In Progress|  |
 | 116. Flat Element Renderer | 0/? | Not started | - |
 | 117. Catalog & JSON Schema | 0/? | Not started | - |
 | 117.1. Schema-Driven Projections | 0/? | Not started | - |
