@@ -14,6 +14,7 @@ pub mod deploy_check;
 pub mod diagnose_error;
 pub mod explain_model;
 pub mod explain_route;
+pub mod generate_projection;
 pub mod generate_types;
 pub mod generation_context;
 pub mod get_config;
