@@ -1,0 +1,7 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "map",
+  "elements": {
+    "map": {"type": "Map", "props": {"center": [51.5, -0.09], "zoom": 13}}
+  }
+}
