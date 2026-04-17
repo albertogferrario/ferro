@@ -6,9 +6,9 @@
 //! and `AuthLayout` (centered card). `DashboardLayout` is an optional layout
 //! that users register themselves with per-app config.
 //!
-//! A global `LayoutRegistry` maps layout names to implementations. Views
-//! specify a layout via `JsonUiView.layout`, and the render pipeline looks
-//! it up in the registry.
+//! A global `LayoutRegistry` maps layout names to implementations. Specs
+//! specify a layout via `Spec.layout`, and the render pipeline looks it up
+//! in the registry.
 
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};

@@ -812,3 +812,246 @@ pub struct ProductTileProps {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_quantity: Option<u32>,
 }
+
+#[cfg(test)]
+mod schema_smoke_tests {
+    //! Runtime `schema_for!` smoke tests per D-32.
+    //!
+    //! Each test asserts that the generated JSON Schema for the given Props
+    //! struct is a non-empty JSON object with a populated `properties` field.
+    //! This proves the `JsonSchema` derive executes without panic on every
+    //! surviving Props struct — a compile-time `#[derive(JsonSchema)]` alone
+    //! does not prove the generated code runs.
+    //!
+    //! One `#[test]` per type for clear failure localization.
+
+    use super::*;
+
+    fn assert_schema_nonempty_object<T: schemars::JsonSchema>(type_label: &str) {
+        let schema = schemars::schema_for!(T);
+        let value = serde_json::to_value(&schema).expect("schema serializes to JSON");
+        assert!(
+            value.is_object(),
+            "{type_label}: schema must be a JSON object"
+        );
+        let props = value
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .map(|o| !o.is_empty())
+            .unwrap_or(false);
+        assert!(
+            props,
+            "{type_label}: schema must have a non-empty `properties` field"
+        );
+    }
+
+    #[test]
+    fn schema_for_card_props_generates() {
+        assert_schema_nonempty_object::<CardProps>("CardProps");
+    }
+
+    #[test]
+    fn schema_for_table_props_generates() {
+        assert_schema_nonempty_object::<TableProps>("TableProps");
+    }
+
+    #[test]
+    fn schema_for_form_props_generates() {
+        assert_schema_nonempty_object::<FormProps>("FormProps");
+    }
+
+    #[test]
+    fn schema_for_button_props_generates() {
+        assert_schema_nonempty_object::<ButtonProps>("ButtonProps");
+    }
+
+    #[test]
+    fn schema_for_input_props_generates() {
+        assert_schema_nonempty_object::<InputProps>("InputProps");
+    }
+
+    #[test]
+    fn schema_for_select_props_generates() {
+        assert_schema_nonempty_object::<SelectProps>("SelectProps");
+    }
+
+    #[test]
+    fn schema_for_alert_props_generates() {
+        assert_schema_nonempty_object::<AlertProps>("AlertProps");
+    }
+
+    #[test]
+    fn schema_for_badge_props_generates() {
+        assert_schema_nonempty_object::<BadgeProps>("BadgeProps");
+    }
+
+    #[test]
+    fn schema_for_modal_props_generates() {
+        assert_schema_nonempty_object::<ModalProps>("ModalProps");
+    }
+
+    #[test]
+    fn schema_for_text_props_generates() {
+        assert_schema_nonempty_object::<TextProps>("TextProps");
+    }
+
+    #[test]
+    fn schema_for_checkbox_props_generates() {
+        assert_schema_nonempty_object::<CheckboxProps>("CheckboxProps");
+    }
+
+    #[test]
+    fn schema_for_switch_props_generates() {
+        assert_schema_nonempty_object::<SwitchProps>("SwitchProps");
+    }
+
+    #[test]
+    fn schema_for_separator_props_generates() {
+        assert_schema_nonempty_object::<SeparatorProps>("SeparatorProps");
+    }
+
+    #[test]
+    fn schema_for_description_list_props_generates() {
+        assert_schema_nonempty_object::<DescriptionListProps>("DescriptionListProps");
+    }
+
+    #[test]
+    fn schema_for_tab_generates() {
+        assert_schema_nonempty_object::<Tab>("Tab");
+    }
+
+    #[test]
+    fn schema_for_tabs_props_generates() {
+        assert_schema_nonempty_object::<TabsProps>("TabsProps");
+    }
+
+    #[test]
+    fn schema_for_breadcrumb_props_generates() {
+        assert_schema_nonempty_object::<BreadcrumbProps>("BreadcrumbProps");
+    }
+
+    #[test]
+    fn schema_for_pagination_props_generates() {
+        assert_schema_nonempty_object::<PaginationProps>("PaginationProps");
+    }
+
+    #[test]
+    fn schema_for_progress_props_generates() {
+        assert_schema_nonempty_object::<ProgressProps>("ProgressProps");
+    }
+
+    #[test]
+    fn schema_for_image_props_generates() {
+        assert_schema_nonempty_object::<ImageProps>("ImageProps");
+    }
+
+    #[test]
+    fn schema_for_avatar_props_generates() {
+        assert_schema_nonempty_object::<AvatarProps>("AvatarProps");
+    }
+
+    #[test]
+    fn schema_for_skeleton_props_generates() {
+        assert_schema_nonempty_object::<SkeletonProps>("SkeletonProps");
+    }
+
+    #[test]
+    fn schema_for_stat_card_props_generates() {
+        assert_schema_nonempty_object::<StatCardProps>("StatCardProps");
+    }
+
+    #[test]
+    fn schema_for_checklist_props_generates() {
+        assert_schema_nonempty_object::<ChecklistProps>("ChecklistProps");
+    }
+
+    #[test]
+    fn schema_for_toast_props_generates() {
+        assert_schema_nonempty_object::<ToastProps>("ToastProps");
+    }
+
+    #[test]
+    fn schema_for_notification_dropdown_props_generates() {
+        assert_schema_nonempty_object::<NotificationDropdownProps>("NotificationDropdownProps");
+    }
+
+    #[test]
+    fn schema_for_sidebar_props_generates() {
+        assert_schema_nonempty_object::<SidebarProps>("SidebarProps");
+    }
+
+    #[test]
+    fn schema_for_header_props_generates() {
+        assert_schema_nonempty_object::<HeaderProps>("HeaderProps");
+    }
+
+    #[test]
+    fn schema_for_grid_props_generates() {
+        assert_schema_nonempty_object::<GridProps>("GridProps");
+    }
+
+    #[test]
+    fn schema_for_collapsible_props_generates() {
+        assert_schema_nonempty_object::<CollapsibleProps>("CollapsibleProps");
+    }
+
+    #[test]
+    fn schema_for_empty_state_props_generates() {
+        assert_schema_nonempty_object::<EmptyStateProps>("EmptyStateProps");
+    }
+
+    #[test]
+    fn schema_for_form_section_props_generates() {
+        assert_schema_nonempty_object::<FormSectionProps>("FormSectionProps");
+    }
+
+    #[test]
+    fn schema_for_page_header_props_generates() {
+        assert_schema_nonempty_object::<PageHeaderProps>("PageHeaderProps");
+    }
+
+    #[test]
+    fn schema_for_button_group_props_generates() {
+        assert_schema_nonempty_object::<ButtonGroupProps>("ButtonGroupProps");
+    }
+
+    #[test]
+    fn schema_for_dropdown_menu_action_generates() {
+        assert_schema_nonempty_object::<DropdownMenuAction>("DropdownMenuAction");
+    }
+
+    #[test]
+    fn schema_for_dropdown_menu_props_generates() {
+        assert_schema_nonempty_object::<DropdownMenuProps>("DropdownMenuProps");
+    }
+
+    #[test]
+    fn schema_for_data_table_props_generates() {
+        assert_schema_nonempty_object::<DataTableProps>("DataTableProps");
+    }
+
+    #[test]
+    fn schema_for_kanban_column_props_generates() {
+        assert_schema_nonempty_object::<KanbanColumnProps>("KanbanColumnProps");
+    }
+
+    #[test]
+    fn schema_for_kanban_board_props_generates() {
+        assert_schema_nonempty_object::<KanbanBoardProps>("KanbanBoardProps");
+    }
+
+    #[test]
+    fn schema_for_calendar_cell_props_generates() {
+        assert_schema_nonempty_object::<CalendarCellProps>("CalendarCellProps");
+    }
+
+    #[test]
+    fn schema_for_action_card_props_generates() {
+        assert_schema_nonempty_object::<ActionCardProps>("ActionCardProps");
+    }
+
+    #[test]
+    fn schema_for_product_tile_props_generates() {
+        assert_schema_nonempty_object::<ProductTileProps>("ProductTileProps");
+    }
+}
