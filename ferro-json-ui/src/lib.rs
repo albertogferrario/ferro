@@ -1,42 +1,29 @@
 //! # Ferro JSON-UI
 //!
-//! Stable JSON-based server-driven UI schema types for the Ferro framework.
+//! JSON-based server-driven UI schema types for the Ferro framework.
 //!
-//! This crate defines the typed foundation for JSON-UI: a declarative
-//! component system where the server sends JSON descriptions that are
-//! rendered to HTML. Components, actions, and visibility rules are all
-//! defined as Rust types with serde serialization and JSON Schema generation.
+//! This crate defines the v2 `Spec` foundation: a flat, ID-keyed element map
+//! with parse-time structural validation. Typed `*Props` structs describe
+//! per-component prop shape and feed the Phase 117 catalog via `JsonSchema`.
 //!
 //! ## Schema Structure
 //!
-//! A JSON-UI view consists of:
-//! - **Components** - UI elements (Card, Table, Form, Button, etc.)
+//! A JSON-UI Spec consists of:
+//! - **Spec** - Top-level container: `$schema`, `root`, `elements`, `title?`, `layout?`, `data?`
+//! - **Element** - Single UI node: `type` (string), `props` (Value), `children` (Vec<String> of IDs), `action?`, `visible?`
 //! - **Actions** - Handler references with confirmations and outcomes
 //! - **Visibility** - Conditional rendering based on data conditions
-//! - **View** - Top-level container with layout and title
 //!
 //! ## Example
 //!
 //! ```rust
-//! use ferro_json_ui::{JsonUiView, ComponentNode, Component, CardProps};
+//! use ferro_json_ui::{Spec, Element};
 //!
-//! let view = JsonUiView::new()
-//!     .title("Users")
-//!     .component(ComponentNode {
-//!         key: "header".to_string(),
-//!         component: Component::Card(CardProps {
-//!             title: "User Management".to_string(),
-//!             description: None,
-//!             children: vec![],
-//!             max_width: None,
-//!             footer: vec![],
-//!         }),
-//!         action: None,
-//!         visibility: None,
-//!     });
-//!
-//! let json = view.to_json().unwrap();
-//! assert!(json.contains("\"$schema\":\"ferro-json-ui/v1\""));
+//! let spec = Spec::builder()
+//!     .title("Demo")
+//!     .element("root", Element::new("Text").prop("content", "Hi"))
+//!     .build()
+//!     .unwrap();
 //! ```
 
 pub mod action;
@@ -49,7 +36,6 @@ pub mod plugins;
 pub mod render;
 pub mod resolve;
 pub mod spec;
-pub mod view;
 pub mod visibility;
 
 pub(crate) mod runtime;
@@ -59,14 +45,14 @@ pub use component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType,
     ButtonVariant, CardProps, CheckboxProps, ChecklistItem, ChecklistProps, CollapsibleProps,
-    Column, ColumnFormat, Component, ComponentNode, DataTableProps, DescriptionItem,
-    DescriptionListProps, DropdownMenuAction, DropdownMenuProps, EmptyStateProps, FormMaxWidth,
-    FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps,
-    InputProps, InputType, KanbanBoardProps, KanbanColumnProps, ModalProps,
-    NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps, PaginationProps,
-    PluginProps, ProductTileProps, ProgressProps, SelectOption, SelectProps, SeparatorProps,
-    SidebarGroup, SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps,
-    SwitchProps, Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    Column, ColumnFormat, DataTableProps, DescriptionItem, DescriptionListProps,
+    DropdownMenuAction, DropdownMenuProps, EmptyStateProps, FormMaxWidth, FormProps,
+    FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps, InputProps,
+    InputType, KanbanBoardProps, KanbanColumnProps, ModalProps, NotificationDropdownProps,
+    NotificationItem, Orientation, PageHeaderProps, PaginationProps, ProductTileProps,
+    ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem,
+    SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
+    TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers
@@ -82,15 +68,10 @@ pub use plugin::{
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
 };
 pub use plugins::{register_built_in_plugins, MapPlugin};
-pub use render::{render_to_html, render_to_html_with_plugins, RenderResult};
-// collect_plugin_types is pub(crate) — internal render pipeline helper
+pub use render::{render_spec_to_html, render_spec_to_html_with_plugins, RenderResult};
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
-pub use view::{JsonUiView, SCHEMA_VERSION};
-// v2 Spec re-exports. Plan 115-01 is additive — Plan 115-02 deletes v1 and unaliases
-// SCHEMA_VERSION back to the unaliased name once `view.rs` is gone.
 pub use spec::{
-    Element, ElementBuilder, Spec, SpecBuilder, SpecError, MAX_NESTING_DEPTH,
-    SCHEMA_VERSION as SCHEMA_VERSION_V2,
+    Element, ElementBuilder, Spec, SpecBuilder, SpecError, MAX_NESTING_DEPTH, SCHEMA_VERSION,
 };
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
 
@@ -113,13 +94,13 @@ Props: content (String), element (h1|h2|h3|span|div|section|p)
 Props: label (String), variant (default|secondary|destructive|outline|ghost|link), size (xs|sm|default|lg), disabled (Option<bool>), icon (Option<String>), icon_position (Option<left|right>)
 
 ### Card
-Props: title (String), description (Option<String>), children (Vec<ComponentNode>), footer (Vec<ComponentNode>)
+Props: title (String), description (Option<String>), children (Vec<String>), footer (Vec<String>)
 
 ### Table
 Props: columns (Vec<Column {key, label, format?}>), data_path (String), row_actions (Option<Vec<Action>>), empty_message (Option<String>), sortable (Option<bool>), sort_column (Option<String>), sort_direction (Option<asc|desc>)
 
 ### Form
-Props: action (Action), fields (Vec<ComponentNode>), method (Option<GET|POST|PUT|PATCH|DELETE>)
+Props: action (Action), fields (Vec<String>), method (Option<GET|POST|PUT|PATCH|DELETE>)
 
 ### Input
 Props: field (String), label (String), input_type (text|email|password|number|textarea|hidden|date|time|url|tel|search), placeholder (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>), description (Option<String>), default_value (Option<String>), data_path (Option<String>), step (Option<String>)
@@ -134,7 +115,7 @@ Props: message (String), variant (info|success|warning|error), title (Option<Str
 Props: label (String), variant (default|secondary|destructive|outline)
 
 ### Modal
-Props: title (String), description (Option<String>), children (Vec<ComponentNode>), footer (Vec<ComponentNode>), trigger_label (Option<String>)
+Props: title (String), description (Option<String>), children (Vec<String>), footer (Vec<String>), trigger_label (Option<String>)
 
 ### Checkbox
 Props: field (String), label (String), description (Option<String>), checked (Option<bool>), data_path (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>)
@@ -179,9 +160,9 @@ Note: Leaflet CSS/JS loaded via CDN automatically. Works inside Tabs/Modals (Int
 Props: handler (String "controller.method" format), method (GET|POST|PUT|PATCH|DELETE), confirm (Option<ConfirmDialog {title, message?, variant: default|danger}>), on_success (Option<ActionOutcome>), on_error (Option<ActionOutcome>)
 Builders: Action::new("handler") (POST), Action::get("handler"), Action::delete("handler"), .confirm("title"), .confirm_danger("title")
 
-## ComponentNode
-Wraps every component: key (String), component (Component variant), action (Option<Action>), visibility (Option<Visibility>)
+## Element
+Every Spec element: type (String), props (Value), children (Vec<String> of element IDs), action (Option<Action>), visible (Option<Visibility>)
 
-## JsonUiView Builder
-JsonUiView::new().title("Title").layout("app").data(json).component(node).components(vec_of_nodes)
+## Spec Builder
+Spec::builder().title("Title").layout("app").data(json).element("id", Element::new("Type").prop(k, v).child("child-id")).build()
 "#;
