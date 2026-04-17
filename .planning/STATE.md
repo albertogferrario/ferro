@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.5
 milestone_name: Projection Architecture Prep
-status: verifying
-stopped_at: Phase 135 context gathered
-last_updated: "2026-04-17T17:38:11.573Z"
+status: executing
+stopped_at: Completed 135-01-PLAN.md
+last_updated: "2026-04-17T17:54:53.388Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 24
   completed_phases: 14
-  total_plans: 51
-  completed_plans: 50
+  total_plans: 53
+  completed_plans: 51
   percent: 96
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 134 — relocate-renderers-to-output-crates
+**Current focus:** Phase 135 — servicedef-derivation-bridge
 
 ## Current Position
 
-Phase: 136
-Plan: Not started
+Phase: 135 (servicedef-derivation-bridge) — EXECUTING
+Plan: 2 of 2
 Workspace version: 0.2.0
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-04-17
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
@@ -97,6 +97,7 @@ Progress: [██████████] 96%
 | Phase 133-generalize-renderer-trait P02 | 5min | 1 tasks | 4 files |
 | Phase 134-relocate-renderers-to-output-crates P01 | 15min | 1 tasks | 6 files |
 | Phase 134-relocate-renderers-to-output-crates P02 | 4min | 2 tasks | 10 files |
+| Phase 135-servicedef-derivation-bridge P01 | 8min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -141,7 +142,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-17T17:38:11.562Z
-Stopped at: Phase 135 context gathered
-Resume file: .planning/phases/135-servicedef-derivation-bridge/135-CONTEXT.md
+Last session: 2026-04-17T17:54:53.383Z
+Stopped at: Completed 135-01-PLAN.md
+Resume file: None
 Next action: `git push origin master` to publish v0.2.0 when ready.
