@@ -1759,7 +1759,6 @@ dependencies = [
 name = "ferro-projections"
 version = "0.2.2"
 dependencies = [
- "ferro-theme",
  "schemars",
  "serde",
  "serde_json",
