@@ -981,6 +981,12 @@ This is the time-to-working-projection bottleneck. An agent should be able to go
 
 **Depends on:** Phase 134
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 135-01-PLAN.md — ModelMetadata, DataType::from_column_type(), ServiceDef::from_model() in ferro-projections
+- [ ] 135-02-PLAN.md — generate_projection MCP tool in ferro-mcp
+
 ### Phase 136: implement workflow for executing a full roadmap in auto with gsd
 
 **Goal:** GitHub Actions workflow that drives an entire milestone through the GSD pipeline — one fresh claude CLI invocation per phase, with failure handling via GitHub issues.
