@@ -3,10 +3,10 @@
 use serde::Serialize;
 use std::path::Path;
 
+use ferro_json_ui::{JsonUiRenderer, RenderMode, VisualContext};
 use ferro_projections::{
     derive_intents, ActionDef, Cardinality, DataType, FieldMeaning, GuardDef, InputDef, IntentHint,
-    JsonUiRenderer, RenderMode, Renderer, ServiceDef, StateDef, StateMachine, Transition,
-    VisualContext,
+    Renderer, ServiceDef, StateDef, StateMachine, Transition,
 };
 use regex::Regex;
 use std::fs;

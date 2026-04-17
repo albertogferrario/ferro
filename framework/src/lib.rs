@@ -239,10 +239,13 @@ pub use ferro_whatsapp::{
 #[cfg(feature = "projections")]
 pub use ferro_projections::{
     derive_intents, infer_meaning, ActionDef, Cardinality, DataType, Error as ProjectionsError,
-    FieldDef, FieldMeaning, GuardDef, InputDef, Intent, IntentHint, IntentScore, JsonUiRenderer,
-    NavigationHint, RelationshipDef, RenderMode, Renderer, ServiceDef, StateDef, StateMachine,
-    Transition, VisualContext, Warning as ProjectionsWarning,
+    FieldDef, FieldMeaning, GuardDef, InputDef, Intent, IntentHint, IntentScore, NavigationHint,
+    RelationshipDef, Renderer, ServiceDef, StateDef, StateMachine, Transition,
+    Warning as ProjectionsWarning,
 };
+// Re-export visual renderer types from ferro-json-ui
+#[cfg(feature = "projections")]
+pub use ferro_json_ui::{JsonUiRenderer, RenderMode, VisualContext};
 
 // Re-export async_trait for middleware implementations
 pub use async_trait::async_trait;
