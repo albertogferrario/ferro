@@ -22,6 +22,9 @@ pub mod component_map;
 #[allow(dead_code)]
 pub mod intent_layout;
 
+#[allow(dead_code)]
+pub mod builder;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
