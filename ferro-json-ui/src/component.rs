@@ -147,6 +147,9 @@ pub struct CardProps {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_width: Option<FormMaxWidth>,
+    /// IDs of footer elements (resolved against `Spec.elements`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub footer: Vec<String>,
 }
 
 /// Props for Table component.
@@ -303,6 +306,9 @@ pub struct ModalProps {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger_label: Option<String>,
+    /// IDs of footer elements (resolved against `Spec.elements`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub footer: Vec<String>,
 }
 
 /// Props for Text component.
@@ -392,6 +398,9 @@ pub struct DescriptionListProps {
 pub struct Tab {
     pub value: String,
     pub label: String,
+    /// IDs of elements rendered inside this tab's panel.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<String>,
 }
 
 /// Props for Tabs component.
@@ -694,6 +703,9 @@ pub struct PageHeaderProps {
     pub title: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub breadcrumb: Vec<BreadcrumbItem>,
+    /// IDs of action button elements rendered to the right of the title.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub actions: Vec<String>,
 }
 
 /// Props for ButtonGroup component -- horizontal button row with consistent gap.
@@ -743,6 +755,9 @@ pub struct KanbanColumnProps {
     pub id: String,
     pub title: String,
     pub count: u32,
+    /// IDs of elements rendered inside this column.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<String>,
 }
 
 /// Props for KanbanBoard component — horizontal scrollable columns on desktop, tab-based on mobile.
@@ -1053,5 +1068,45 @@ mod schema_smoke_tests {
     #[test]
     fn schema_for_product_tile_props_generates() {
         assert_schema_nonempty_object::<ProductTileProps>("ProductTileProps");
+    }
+
+    #[test]
+    fn card_props_round_trips_footer() {
+        let original = CardProps {
+            title: "Hero".to_string(),
+            description: None,
+            max_width: None,
+            footer: vec!["btn1".to_string(), "btn2".to_string()],
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: CardProps = serde_json::from_str(&json).unwrap();
+        assert_eq!(original.footer, parsed.footer);
+    }
+
+    #[test]
+    fn tab_round_trips_children() {
+        let original = Tab {
+            value: "overview".to_string(),
+            label: "Overview".to_string(),
+            children: vec!["panel1".to_string()],
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: Tab = serde_json::from_str(&json).unwrap();
+        assert_eq!(original.children, parsed.children);
+    }
+
+    #[test]
+    fn card_props_omits_empty_footer_in_json() {
+        let card = CardProps {
+            title: "Card".to_string(),
+            description: None,
+            max_width: None,
+            footer: Vec::new(),
+        };
+        let json = serde_json::to_string(&card).unwrap();
+        assert!(
+            !json.contains("\"footer\""),
+            "empty footer must be skipped, got: {json}"
+        );
     }
 }
