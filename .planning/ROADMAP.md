@@ -127,7 +127,7 @@ Plans:
 - [x] 115-02-PLAN.md — Delete v1 types (JsonUiView, Component, ComponentNode, PluginProps, view.rs) and rewrite render.rs / resolve.rs / projection/mod.rs / lib.rs for v2
 - [x] 115-03-PLAN.md — Migrate framework/src/json_ui/mod.rs (JsonUi::render(&Spec, ...)) + framework/src/lib.rs re-exports + port ~30 inline tests
 - [x] 115-04-PLAN.md — Migrate ferro-mcp (8 files) + ferro-cli templates (3 files) to v2 syntax — workspace-wide build green
-- [ ] 115-05-PLAN.md — Full workspace verification: fmt + clippy + test all green; 7 ROADMAP success criteria confirmed
+- [x] 115-05-PLAN.md — Full workspace verification: fmt + clippy + test all green; 7 ROADMAP success criteria confirmed
 
 
 ### Phase 116: Flat Element Renderer
@@ -234,7 +234,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 115. Spec v2 Data Structures | 4/5 | In Progress|  |
+| 115. Spec v2 Data Structures | 5/5 | Complete   | 2026-04-18 |
 | 116. Flat Element Renderer | 0/? | Not started | - |
 | 117. Catalog & JSON Schema | 0/? | Not started | - |
 | 117.1. Schema-Driven Projections | 0/? | Not started | - |
