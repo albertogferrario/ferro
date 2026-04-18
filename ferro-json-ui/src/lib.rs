@@ -94,13 +94,13 @@ Props: content (String), element (h1|h2|h3|span|div|section|p)
 Props: label (String), variant (default|secondary|destructive|outline|ghost|link), size (xs|sm|default|lg), disabled (Option<bool>), icon (Option<String>), icon_position (Option<left|right>)
 
 ### Card
-Props: title (String), description (Option<String>), children (Vec<String>), footer (Vec<String>)
+Props: title (String), description (Option<String>), max_width (Option<FormMaxWidth>), footer (Vec<String> of element IDs). Body children come from Element.children.
 
 ### Table
 Props: columns (Vec<Column {key, label, format?}>), data_path (String), row_actions (Option<Vec<Action>>), empty_message (Option<String>), sortable (Option<bool>), sort_column (Option<String>), sort_direction (Option<asc|desc>)
 
 ### Form
-Props: action (Action), fields (Vec<String>), method (Option<GET|POST|PUT|PATCH|DELETE>)
+Props: action (Action), method (Option<GET|POST|PUT|PATCH|DELETE>). Form fields come from Element.children.
 
 ### Input
 Props: field (String), label (String), input_type (text|email|password|number|textarea|hidden|date|time|url|tel|search), placeholder (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>), description (Option<String>), default_value (Option<String>), data_path (Option<String>), step (Option<String>)
@@ -115,7 +115,7 @@ Props: message (String), variant (info|success|warning|error), title (Option<Str
 Props: label (String), variant (default|secondary|destructive|outline)
 
 ### Modal
-Props: title (String), description (Option<String>), children (Vec<String>), footer (Vec<String>), trigger_label (Option<String>)
+Props: id (String), title (String), description (Option<String>), trigger_label (Option<String>), footer (Vec<String> of element IDs). Body children come from Element.children.
 
 ### Checkbox
 Props: field (String), label (String), description (Option<String>), checked (Option<bool>), data_path (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>)
@@ -130,7 +130,7 @@ Props: orientation (Option<horizontal|vertical>)
 Props: items (Vec<DescriptionItem {label, value, format?}>), columns (Option<u8>)
 
 ### Tabs
-Props: default_tab (String), tabs (Vec<Tab {value, label, children}>)
+Props: default_tab (String), tabs (Vec<Tab {value, label, children: Vec<String> of element IDs}>)
 
 ### Breadcrumb
 Props: items (Vec<BreadcrumbItem {label, url?}>)
@@ -146,6 +146,12 @@ Props: src (Option<String>), alt (String), fallback (Option<String>), size (Opti
 
 ### Skeleton
 Props: width (Option<String>), height (Option<String>), rounded (Option<bool>)
+
+### PageHeader
+Props: title (String), breadcrumb (Vec<BreadcrumbItem>), actions (Vec<String> of element IDs)
+
+### KanbanBoard
+Props: columns (Vec<KanbanColumnProps {id, title, count, children: Vec<String> of element IDs}>)
 
 ## Plugin Components
 
