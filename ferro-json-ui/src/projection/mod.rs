@@ -16,6 +16,9 @@ pub mod relationship_map;
 #[allow(dead_code)]
 pub mod error;
 
+#[allow(dead_code)]
+pub mod component_map;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
