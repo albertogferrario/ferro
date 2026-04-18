@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 117.1 context gathered
-last_updated: "2026-04-18T19:51:35.803Z"
+stopped_at: Phase 118 context gathered
+last_updated: "2026-04-18T22:09:16.806Z"
 last_activity: 2026-04-18
 progress:
-  total_phases: 141
+  total_phases: 142
   completed_phases: 128
   total_plans: 316
   completed_plans: 305
@@ -148,7 +148,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-18T17:52:03.624Z
-Stopped at: Phase 117.1 context gathered
-Resume file: .planning/phases/117.1-schema-driven-projections/117.1-CONTEXT.md
+Last session: 2026-04-18T22:09:16.775Z
+Stopped at: Phase 118 context gathered
+Resume file: .planning/phases/118-server-side-expressions/118-CONTEXT.md
 Next action: Execute Phase 117 Plan 06 — implement Catalog::prompt() and replace COMPONENT_CATALOG const across ferro-mcp and ferro-cli.
