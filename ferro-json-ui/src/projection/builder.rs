@@ -60,6 +60,19 @@ impl Spec {
         intents: &[IntentScore],
         ctx: &VisualContext,
     ) -> Result<Spec, ProjectionError> {
+        // Argument-shape errors short-circuit before `global_catalog()` is
+        // touched — callers with malformed inputs should not pay the cost
+        // of OnceLock catalog construction, and this keeps error paths
+        // immune to OnceLock pollution in test processes.
+        if intents.is_empty() {
+            return Err(ProjectionError::EmptyIntents);
+        }
+        if ctx.intent_index >= intents.len() {
+            return Err(ProjectionError::IntentIndexOutOfBounds {
+                requested: ctx.intent_index,
+                available: intents.len(),
+            });
+        }
         Self::from_service_def_with_catalog(service, intents, ctx, global_catalog())
     }
 
