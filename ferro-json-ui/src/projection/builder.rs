@@ -237,16 +237,10 @@ fn build_display_spec(
     let layout = template.layout.as_deref().unwrap_or("Card");
 
     let mut aux_elements: Vec<(String, ElementBuilder)> = Vec::new();
-    let mut root_children: Vec<String> = Vec::new();
 
     let root = match layout {
         "DataTable" => emit_datatable_root(service),
-        "Card" => emit_card_root(
-            service,
-            &template.slots,
-            &mut aux_elements,
-            &mut root_children,
-        ),
+        "Card" => emit_card_root(service, &template.slots, &mut aux_elements),
         "Form" => {
             // Collect intent in Display mode — reuse the Input pipeline so the
             // Form always carries a required `action` prop (Pitfall 1).
@@ -308,20 +302,25 @@ fn emit_datatable_root(service: &ServiceDef) -> ElementBuilder {
 /// more child elements per slot name (fields -> DescriptionList,
 /// relationships -> one element per relationship, metadata ->
 /// DescriptionList of system fields).
+///
+/// Card-layout children are attached inline to the returned `ElementBuilder`;
+/// the outer builder owns only `aux_elements`. Slot emitters write both into
+/// `aux` (flat element table) and a local `children` vec, and the Card
+/// element receives them via `el.child(..)` before being returned.
 fn emit_card_root(
     service: &ServiceDef,
     slots: &[String],
     aux: &mut Vec<(String, ElementBuilder)>,
-    children_out: &mut Vec<String>,
 ) -> ElementBuilder {
+    let mut children: Vec<String> = Vec::new();
     for slot in slots {
         match slot.as_str() {
             "title" => { /* captured as CardProps.title below */ }
-            "fields" => emit_fields_as_description_list(service, aux, children_out),
-            "relationships" => emit_relationships(service, aux, children_out),
-            "actions" => emit_actions_placeholder(service, aux, children_out),
-            "metadata" => emit_metadata(service, aux, children_out),
-            "body" => emit_body_placeholder(aux, children_out),
+            "fields" => emit_fields_as_description_list(service, aux, &mut children),
+            "relationships" => emit_relationships(service, aux, &mut children),
+            "actions" => emit_actions_placeholder(service, aux, &mut children),
+            "metadata" => emit_metadata(service, aux, &mut children),
+            "body" => emit_body_placeholder(aux, &mut children),
             // Non-applicable slots are silently skipped. Intent layouts align
             // slots to layouts; mismatches only occur with theme overrides,
             // where a no-op skip is the documented contract.
@@ -337,8 +336,8 @@ fn emit_card_root(
     })
     .expect("CardProps serialization cannot fail");
     let mut el = element_with_props("Card", props);
-    for id in children_out.iter() {
-        el = el.child(id.clone());
+    for id in children {
+        el = el.child(id);
     }
     el
 }
