@@ -144,6 +144,7 @@ Plans:
 
 ### Phase 117: Catalog & JSON Schema
 **Goal**: Replace `COMPONENT_CATALOG` const string with a machine-readable `Catalog` backed by JSON Schema. Each component's props schema is derived from `schemars::JsonSchema` impls (Phase 115). The catalog validates specs, generates LLM prompts, and exports standalone schema files.
+**Progress**: Plan 01/07 complete — jsonschema 0.46 dep added, catalog.rs scaffold created, drift-guard test passing
 **Depends on**: Phase 116
 **Requirements**: CAT-01, CAT-02, CAT-03, CAT-04, SCHEMA-01, SCHEMA-02, SCHEMA-03
 **Caveats** (from domain research):

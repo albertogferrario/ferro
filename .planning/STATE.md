@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 117 context gathered
-last_updated: "2026-04-18T03:31:06.985Z"
-last_activity: 2026-04-18 -- Phase 116 planning complete
+stopped_at: Phase 117 Plan 01 complete
+last_updated: "2026-04-18T13:11:24Z"
+last_activity: 2026-04-18 -- Phase 117 Plan 01 complete (jsonschema dep + catalog.rs scaffold)
 progress:
   total_phases: 140
   completed_phases: 126
-  total_plans: 306
-  completed_plans: 295
-  percent: 96
+  total_plans: 313
+  completed_plans: 296
+  percent: 94
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 116 — flat-element-renderer
+**Current focus:** Phase 117 — catalog-and-json-schema
 
 ## Current Position
 
-Phase: 116 (flat-element-renderer) — EXECUTING
-Plan: 1 of 6
+Phase: 117 (catalog-and-json-schema) — EXECUTING
+Plan: 2 of 7
 Workspace version: 0.2.0
-Status: Ready to execute
-Last activity: 2026-04-18 -- Phase 116 planning complete
+Status: Executing Phase 117
+Last activity: 2026-04-18 -- Phase 117 Plan 01 complete (jsonschema dep + catalog.rs scaffold)
 Current milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 14%
 
 ## Performance Metrics
 
