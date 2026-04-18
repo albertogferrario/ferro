@@ -281,6 +281,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - v9.0 shipped: Service Projections — projection / intent substrate
 - v11.5 shipped: Projection Architecture Prep (Renderer trait generalization, renderer relocation, ServiceDef derivation bridge)
 - Phase 117 shipped: Catalog & JSON Schema — machine-readable `Catalog` with 39 built-in components, compiled jsonschema validator, per-component schema accessor, concise `prompt()` output (≤ 8 KB), full spec schema export via `ferro json-ui:schema` CLI, `COMPONENT_CATALOG` const retired
+- Phase 117.1 shipped: Schema-Driven Projections — `Spec::from_service_def()` bridges ferro-projections and ferro-json-ui v2 via catalog-verified meaning→component dispatch, intent→layout template resolution, and two-pass generate-then-validate; legacy `field_map.rs` and `relationship_map.rs` deleted
 - v0.2.0 published on crates.io as `ferro-rs`
 - Pre-1.0; breaking changes acceptable
 - Sample application (app/) demonstrating Inertia integration
@@ -371,4 +372,4 @@ See also `.planning/VISION.md` for design philosophy.
 | ServiceDef::from_model() derivation bridge | Agents generate projections from model metadata; no hand-written builders | ✓ Good |
 
 ---
-*Last updated: 2026-04-18 — Phase 117 complete*
+*Last updated: 2026-04-18 — Phase 117.1 complete*
