@@ -837,10 +837,7 @@ mod tests {
 
     #[test]
     fn switch_without_action_no_form_wrap() {
-        let el = mk_element(
-            "Switch",
-            json!({"field": "active", "label": "Active"}),
-        );
+        let el = mk_element("Switch", json!({"field": "active", "label": "Active"}));
         let spec = mk_spec("root", el.clone());
         let html = render_switch(&el, &spec, &json!({}), 1);
         assert!(
@@ -913,7 +910,10 @@ mod tests {
             .element(
                 "root",
                 Element::new("Form")
-                    .prop("action", json!({"handler": "save", "method": "POST", "url": "/save"}))
+                    .prop(
+                        "action",
+                        json!({"handler": "save", "method": "POST", "url": "/save"}),
+                    )
                     .child("i1")
                     .child("i2"),
             )
@@ -946,10 +946,7 @@ mod tests {
         let spec = mk_spec("root", el.clone());
         let html = render_form(&el, &spec, &json!({}), 1);
         assert!(html.contains("action=\"/submit\""), "got: {html}");
-        assert!(
-            !html.contains("<!-- ferro-json-ui: action"),
-            "got: {html}"
-        );
+        assert!(!html.contains("<!-- ferro-json-ui: action"), "got: {html}");
     }
 
     #[test]
