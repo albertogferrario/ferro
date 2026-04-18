@@ -198,8 +198,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 118-01-PLAN.md — Create expression.rs resolver module (resolve_expressions, $data / $template helpers, 28 unit tests) + register in ferro-json-ui/src/lib.rs
-- [ ] 118-02-PLAN.md — Wire resolve_expressions into framework JsonUi::resolve + JsonUi::resolve_with_errors + 4 end-to-end integration tests covering every public render path
+- [x] 118-01-PLAN.md — Create expression.rs resolver module (resolve_expressions, $data / $template helpers, 28 unit tests) + register in ferro-json-ui/src/lib.rs
+- [x] 118-02-PLAN.md — Wire resolve_expressions into framework JsonUi::resolve + JsonUi::resolve_with_errors + 4 end-to-end integration tests covering every public render path
 
 ### Phase 119: Page Loader
 **Goal**: Framework-level support for loading JSON spec files and merging with handler-provided data
@@ -252,7 +252,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 116. Flat Element Renderer | 6/6 | Complete   | 2026-04-18 |
 | 117. Catalog & JSON Schema | 7/7 | Complete    | 2026-04-18 |
 | 117.1. Schema-Driven Projections | 3/3 | Complete    | 2026-04-18 |
-| 118. Server-Side Expressions | 0/? | Not started | - |
+| 118. Server-Side Expressions | 2/2 | Complete   | 2026-04-18 |
 | 119. Page Loader | 0/? | Not started | - |
 | 120. CLI & MCP Updates | 0/? | Not started | - |
 | 121. Documentation & Field Test | 0/? | Not started | - |
