@@ -750,6 +750,189 @@ impl Catalog {
         entries.sort_by(|a, b| a.name.cmp(&b.name));
         entries.into_iter()
     }
+
+    /// Generate a concise text system prompt summarizing every component.
+    ///
+    /// Format: `## Component Catalog` header, then one `### <Name>` section
+    /// per component (built-ins then plugins, both sorted by name). Each
+    /// section contains the description, a single `Props:` line with
+    /// `name (Type)` tuples, and (when non-empty) a `Slots:` line.
+    ///
+    /// The prompt is intentionally CONCISE (≤ 8 KB, CONTEXT D-17) — the full
+    /// JSON Schema is NOT embedded. Consumers wanting machine-readable schemas
+    /// use [`Self::json_schema`] or [`Self::component_schema`] (Plan 07 CLI).
+    ///
+    /// Deterministic (CONTEXT D-18): two builds of the same catalog yield
+    /// byte-identical output; order within sections follows alphabetical order
+    /// via [`Self::components_sorted`] and [`Self::plugin_components_sorted`].
+    pub fn prompt(&self) -> String {
+        let mut out = String::with_capacity(8 * 1024);
+        out.push_str("## Component Catalog\n\n");
+        for spec in self.components_sorted() {
+            render_component_section(&mut out, spec);
+        }
+        if self.plugin_components.is_empty() {
+            return out;
+        }
+        out.push_str("## Plugin Components\n\n");
+        for spec in self.plugin_components_sorted() {
+            render_component_section(&mut out, spec);
+        }
+        out
+    }
+}
+
+// ── Prompt generation helpers ─────────────────────────────────────────────────
+
+/// Append a single component section to `out`.
+///
+/// Shape:
+/// ```text
+/// ### Card
+/// Content container with title and optional footer slot.
+/// Props: title (String), description (Option<String>), ...
+/// Slots: footer (Vec<String> of element IDs) — body children come from Element.children.
+///
+/// ```
+fn render_component_section(out: &mut String, spec: &ComponentSpec) {
+    out.push_str("### ");
+    out.push_str(&spec.name);
+    out.push('\n');
+    out.push_str(&spec.description);
+    out.push('\n');
+
+    let props_line = render_props_line(&spec.props_schema);
+    if !props_line.is_empty() {
+        out.push_str("Props: ");
+        out.push_str(&props_line);
+        out.push('\n');
+    }
+    if !spec.slot_fields.is_empty() {
+        out.push_str("Slots: ");
+        out.push_str(&spec.slot_fields.join(", "));
+        out.push_str(" (Vec<String> of element IDs) — body children come from Element.children.\n");
+    }
+    out.push('\n');
+}
+
+/// Render the `Props:` line for a schemars-derived Props schema.
+///
+/// Walks `schema.properties` in serde-emit order. For each field:
+/// - `Option<T>` schemas (schemars emits `anyOf: [{...}, {type: null}]`) render as `Option<T>`.
+/// - Enum fields with ≤ 8 `enum` entries render inline as `name (a|b|c)`.
+/// - Enum fields with > 8 entries render as `name (one of N — see schema)`.
+/// - Plain scalar fields render as `name (String)` / `(i64)` / `(bool)`.
+/// - Array types render as `name (Vec<T>)`.
+///
+/// Returns an empty string if the schema has no `properties` map.
+fn render_props_line(schema: &Value) -> String {
+    let Some(obj) = schema.as_object() else {
+        return String::new();
+    };
+    let Some(props) = obj.get("properties").and_then(|v| v.as_object()) else {
+        return String::new();
+    };
+    let required: std::collections::HashSet<&str> = obj
+        .get("required")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str())
+                .collect::<std::collections::HashSet<_>>()
+        })
+        .unwrap_or_default();
+
+    let parts: Vec<String> = props
+        .iter()
+        .map(|(name, field_schema)| {
+            let ty = render_field_type(field_schema, required.contains(name.as_str()));
+            format!("{name} ({ty})")
+        })
+        .collect();
+    parts.join(", ")
+}
+
+/// Render a single field's type string from its JSON Schema.
+fn render_field_type(schema: &Value, is_required: bool) -> String {
+    // 1) Detect enum inline: {type: "string", enum: [...]} or {enum: [...]}
+    if let Some(variants) = schema.get("enum").and_then(|v| v.as_array()) {
+        let names: Vec<&str> = variants.iter().filter_map(|v| v.as_str()).collect();
+        let inner = render_enum_inline(&names);
+        return wrap_optional(inner, is_required);
+    }
+    // 2) anyOf / oneOf with null → Option<T>
+    for key in ["anyOf", "oneOf"] {
+        if let Some(arr) = schema.get(key).and_then(|v| v.as_array()) {
+            let has_null = arr
+                .iter()
+                .any(|v| v.get("type").and_then(|t| t.as_str()) == Some("null"));
+            let non_null: Vec<&Value> = arr
+                .iter()
+                .filter(|v| v.get("type").and_then(|t| t.as_str()) != Some("null"))
+                .collect();
+            if has_null && non_null.len() == 1 {
+                let inner = render_field_type(non_null[0], true);
+                return format!("Option<{inner}>");
+            }
+        }
+    }
+    // 3) type: ["T", "null"] → Option<T>
+    if let Some(types) = schema.get("type").and_then(|v| v.as_array()) {
+        let non_null: Vec<&str> = types
+            .iter()
+            .filter_map(|v| v.as_str())
+            .filter(|s| *s != "null")
+            .collect();
+        let has_null = types.iter().any(|v| v.as_str() == Some("null"));
+        if has_null && non_null.len() == 1 {
+            return format!("Option<{}>", rust_for_json_type(non_null[0], schema));
+        }
+    }
+    // 4) Plain type
+    if let Some(t) = schema.get("type").and_then(|v| v.as_str()) {
+        let inner = rust_for_json_type(t, schema);
+        return wrap_optional(inner, is_required);
+    }
+    // 5) Fallback: $ref or complex
+    wrap_optional("<see schema>".to_string(), is_required)
+}
+
+/// Map a JSON Schema `type` + optional `items` to a Rust-ish type name.
+fn rust_for_json_type(t: &str, schema: &Value) -> String {
+    match t {
+        "string" => "String".to_string(),
+        "integer" => "i64".to_string(),
+        "number" => "f64".to_string(),
+        "boolean" => "bool".to_string(),
+        "array" => {
+            if let Some(items) = schema.get("items") {
+                let inner = render_field_type(items, true);
+                format!("Vec<{inner}>")
+            } else {
+                "Vec<Value>".to_string()
+            }
+        }
+        "object" => "Object".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Render an enum's variants inline when count ≤ 8, else collapse.
+fn render_enum_inline(variants: &[&str]) -> String {
+    if variants.len() <= 8 {
+        variants.join("|")
+    } else {
+        format!("one of {} — see schema", variants.len())
+    }
+}
+
+/// Wrap inner type in `Option<...>` when the field is not required.
+fn wrap_optional(inner: String, is_required: bool) -> String {
+    if is_required {
+        inner
+    } else {
+        format!("Option<{inner}>")
+    }
 }
 
 // ── Global singleton ───────────────────────────────────────────────────────────
@@ -1414,6 +1597,77 @@ mod tests {
         assert_eq!(
             plugin_names, plugin_sorted,
             "plugin_components_sorted must yield ascending order"
+        );
+    }
+
+    // ── prompt() tests (Plan 06) ─────────────────────────────────────────────
+
+    #[test]
+    fn prompt_under_size_budget() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let prompt = cat.prompt();
+        let bytes = prompt.len();
+        assert!(
+            bytes <= 8 * 1024,
+            "prompt() is {bytes} bytes, exceeds 8 KB budget (CONTEXT D-17)"
+        );
+    }
+
+    #[test]
+    fn prompt_mentions_every_builtin() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let prompt = cat.prompt();
+        for name in crate::render::BUILTIN_TYPES.iter() {
+            let heading = format!("### {name}\n");
+            assert!(
+                prompt.contains(&heading),
+                "prompt() missing section heading for '{name}'"
+            );
+        }
+    }
+
+    #[test]
+    fn prompt_is_deterministic() {
+        let cat1 = Catalog::build_builtins_only().expect("build 1");
+        let cat2 = Catalog::build_builtins_only().expect("build 2");
+        assert_eq!(
+            cat1.prompt(),
+            cat2.prompt(),
+            "prompt() must be deterministic"
+        );
+    }
+
+    #[test]
+    fn prompt_documents_slot_fields() {
+        // CardProps has slot_fields = ["footer"] (set in Plan 02). The prompt
+        // must include a `Slots:` line for Card.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let prompt = cat.prompt();
+        let card_start = prompt.find("### Card\n").expect("Card section present");
+        let card_slice = &prompt[card_start..];
+        // End at the next ### heading (or EOF).
+        let end = card_slice[3..]
+            .find("### ")
+            .map(|i| i + 3)
+            .unwrap_or(card_slice.len());
+        let card_section = &card_slice[..end];
+        assert!(
+            card_section.contains("Slots: footer"),
+            "Card section missing 'Slots: footer' line:\n{card_section}"
+        );
+    }
+
+    #[test]
+    fn prompt_is_not_raw_json_schema() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let prompt = cat.prompt();
+        assert!(
+            prompt.starts_with("## Component Catalog"),
+            "prompt() should start with Markdown header, not JSON"
+        );
+        assert!(
+            !prompt.contains("\"$schema\""),
+            "prompt() must not embed raw JSON Schema (ROADMAP caveat)"
         );
     }
 }
