@@ -280,11 +280,17 @@ fn build_display_spec(
 
 /// Browse / Track root. `fields` slot populates `DataTableProps.columns`
 /// directly — no child elements (Pitfall 3 keeps depth at 1).
+///
+/// Meanings with `column: None` in `lookup_meaning` (Identifier, ForeignKey,
+/// ImageUrl, Sensitive) are excluded — this prevents sensitive data (e.g.
+/// password hashes) from leaking into Browse/Track projections even when
+/// the underlying `FieldDef` is marked `readable = true`.
 fn emit_datatable_root(service: &ServiceDef) -> ElementBuilder {
     let columns: Vec<Column> = service
         .fields
         .iter()
         .filter(|f| f.readable && !is_system_field(&f.meaning))
+        .filter(|f| lookup_meaning(&f.meaning).column.is_some())
         .map(build_column_for_field)
         .collect();
     let props = serde_json::to_value(DataTableProps {
@@ -393,6 +399,11 @@ fn emit_statcard_root(
 
 /// `fields` slot for Card-shaped layouts: a DescriptionList of every
 /// readable, non-system field (D-10 excludes Identifier/CreatedAt/UpdatedAt).
+///
+/// Meanings with `display: None` in `lookup_meaning` (ForeignKey, Sensitive)
+/// are excluded — this prevents sensitive data (e.g. password hashes) from
+/// leaking into Focus projections even when the underlying `FieldDef` is
+/// marked `readable = true`.
 fn emit_fields_as_description_list(
     service: &ServiceDef,
     aux: &mut Vec<(String, ElementBuilder)>,
@@ -402,6 +413,7 @@ fn emit_fields_as_description_list(
         .fields
         .iter()
         .filter(|f| f.readable && !is_system_field(&f.meaning))
+        .filter(|f| lookup_meaning(&f.meaning).display.is_some())
         .map(build_description_item)
         .collect();
     if items.is_empty() {
@@ -715,6 +727,85 @@ mod tests {
         assert_eq!(
             root.type_name, "StatCard",
             "theme override must win over default_template"
+        );
+    }
+
+    #[test]
+    fn sensitive_field_never_appears_in_display_or_column() {
+        // WR-01 regression: a `readable=true` field with `Sensitive` meaning
+        // (e.g. password hash) must not appear in a DataTable column or a
+        // DescriptionList item — even though `is_system_field` returns false
+        // for it. The gate is `lookup_meaning(&meaning).column.is_some()` /
+        // `.display.is_some()` in the respective slot emitters.
+        let service = ServiceDef::new("user")
+            .display_name("User")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("password_hash", DataType::String, FieldMeaning::Sensitive);
+        let intents = derive_intents(&service);
+        let cat = clean_catalog();
+
+        // Browse (DataTable) projection must not list `password_hash` as a column.
+        let browse_idx = intents
+            .iter()
+            .position(|i| matches!(i.intent, Intent::Browse))
+            .unwrap_or(0);
+        let browse_ctx = VisualContext {
+            intent_index: browse_idx,
+            mode: RenderMode::Display,
+            ..Default::default()
+        };
+        let browse_spec =
+            Spec::from_service_def_with_catalog(&service, &intents, &browse_ctx, &cat).unwrap();
+        let browse_root = browse_spec.elements.get(&browse_spec.root).unwrap();
+        let columns = browse_root
+            .props
+            .get("columns")
+            .and_then(|c| c.as_array())
+            .expect("columns array present");
+        let column_keys: Vec<&str> = columns
+            .iter()
+            .filter_map(|c| c.get("key").and_then(|k| k.as_str()))
+            .collect();
+        assert!(
+            !column_keys.contains(&"password_hash"),
+            "Sensitive field leaked into DataTable columns: {column_keys:?}"
+        );
+
+        // Focus (Card with DescriptionList) projection must not list
+        // `password_hash` as a DescriptionItem.
+        let focus_idx = intents
+            .iter()
+            .position(|i| matches!(i.intent, Intent::Focus))
+            .unwrap_or(0);
+        let focus_ctx = VisualContext {
+            intent_index: focus_idx,
+            mode: RenderMode::Display,
+            ..Default::default()
+        };
+        let focus_spec =
+            Spec::from_service_def_with_catalog(&service, &intents, &focus_ctx, &cat).unwrap();
+        // Look for a DescriptionList element; confirm no item labels match
+        // the Sensitive field's display name.
+        let leaked = focus_spec.elements.values().any(|el| {
+            el.type_name == "DescriptionList"
+                && el
+                    .props
+                    .get("items")
+                    .and_then(|i| i.as_array())
+                    .map(|arr| {
+                        arr.iter().any(|item| {
+                            item.get("label")
+                                .and_then(|l| l.as_str())
+                                .map(|s| s.to_lowercase().contains("password"))
+                                .unwrap_or(false)
+                        })
+                    })
+                    .unwrap_or(false)
+        });
+        assert!(
+            !leaked,
+            "Sensitive field leaked into a DescriptionList item"
         );
     }
 
