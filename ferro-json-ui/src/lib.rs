@@ -66,6 +66,7 @@ pub use layout::{
 // layouts by name string ("dashboard", "app", "auth"), not by struct.
 // navigation, sidebar, footer, global_registry are framework-internal.
 pub use catalog::{global_catalog, Catalog, CatalogError, ComponentSpec};
+pub use expression::resolve_expressions;
 pub use plugin::{
     collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
