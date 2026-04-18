@@ -4,7 +4,7 @@
 //! - `call_anthropic`: Makes a blocking request to the Anthropic Messages API.
 //! - `build_view_context`: Assembles a prompt with component catalog, project models, and routes.
 
-use ferro_json_ui::COMPONENT_CATALOG;
+use ferro_json_ui::global_catalog;
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -88,6 +88,7 @@ pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String>
 /// - User prompt: project models, routes, view name and description (dynamic, per-request)
 pub fn build_view_context(name: &str, description: &str) -> (String, String) {
     // System prompt: static content that benefits from prompt caching
+    let catalog_prompt = global_catalog().prompt();
     let system = format!(
         "You are a Ferro framework JSON-UI view code generator. Generate only valid Rust source \
          code for src/views/ files.\n\n\
@@ -100,7 +101,7 @@ pub fn build_view_context(name: &str, description: &str) -> (String, String) {
          - Elements are flat and keyed by id; children reference other elements by id string\n\
          - The root element id is always \"root\" — emit `.element(\"root\", ...)` as the tree root\n\
          - Return ONLY Rust source code, no explanation\n\n\
-         {COMPONENT_CATALOG}\n\n\
+         {catalog_prompt}\n\n\
          <example>\n\
          Input: user_list view showing all users in a table with edit and delete actions\n\
          Output:\n\
