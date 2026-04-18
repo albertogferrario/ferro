@@ -710,6 +710,46 @@ impl Catalog {
             Err(errors)
         }
     }
+
+    /// Return the per-component Props JSON Schema for `type_name`, or `None`
+    /// if the name is not registered as a built-in or plugin component.
+    ///
+    /// The returned schema is Props-only (NOT wrapped in the Element envelope
+    /// used by [`Self::json_schema`]). This is the schema shape Phase 120 AI
+    /// structured-output generation consumes, and what `ferro json-ui:schema
+    /// --component <name>` prints.
+    ///
+    /// The reference has the same lifetime as `&self` — zero-copy (CONTEXT D-15).
+    ///
+    /// Lookup is unified across built-ins and plugins via the
+    /// `per_component_schemas` map populated in [`Self::build`] (CONTEXT D-20
+    /// — plugin schemas are stored identically after meta-validation).
+    pub fn component_schema(&self, type_name: &str) -> Option<&Value> {
+        self.per_component_schemas.get(type_name)
+    }
+
+    /// Iterate built-in [`ComponentSpec`] entries sorted by name (ascending).
+    ///
+    /// Deterministic ordering is required by CONTEXT D-18 so that
+    /// [`Self::json_schema`], `prompt()` (Plan 06), and ferro-mcp
+    /// `json_ui_catalog` output (Plan 06 migration) produce byte-stable
+    /// results for snapshot tests.
+    pub fn components_sorted(&self) -> impl Iterator<Item = &ComponentSpec> {
+        let mut entries: Vec<&ComponentSpec> = self.components.values().collect();
+        entries.sort_by(|a, b| a.name.cmp(&b.name));
+        entries.into_iter()
+    }
+
+    /// Iterate plugin [`ComponentSpec`] entries sorted by name (ascending).
+    ///
+    /// Separate from built-ins so consumers can format them in a distinct
+    /// section (ferro-mcp `json_ui_catalog.CatalogResponse` preserves the
+    /// `components` / `plugin_components` split per CONTEXT D-24).
+    pub fn plugin_components_sorted(&self) -> impl Iterator<Item = &ComponentSpec> {
+        let mut entries: Vec<&ComponentSpec> = self.plugin_components.values().collect();
+        entries.sort_by(|a, b| a.name.cmp(&b.name));
+        entries.into_iter()
+    }
 }
 
 // ── Global singleton ───────────────────────────────────────────────────────────
@@ -1269,5 +1309,111 @@ mod tests {
             Err(other) => panic!("expected BuildFailed mentioning BadPlugin_117, got: {other:?}"),
             Ok(_) => panic!("expected build to fail due to invalid plugin schema"),
         }
+    }
+
+    // ── component_schema / sorted accessor tests (Plan 05) ───────────────────
+
+    #[test]
+    fn component_schema_returns_props_only() {
+        // ROADMAP SC-5 canonical example: catalog.component_schema("Card") must
+        // return the CardProps schema (NOT the Element wrapper from
+        // $defs/Element.properties.props in the full schema).
+        let cat = Catalog::build_builtins_only().expect("build");
+        let schema = cat
+            .component_schema("Card")
+            .expect("Card is a built-in component");
+
+        // A Props schema is an object with a `properties` map. The Element
+        // envelope would have a `type` + `props` + `children` layout — we
+        // assert the Props-only shape by checking for CardProps fields.
+        let obj = schema
+            .as_object()
+            .expect("Card props schema is a JSON object");
+
+        // Expect "type": "object" or equivalent (schemars uses `type` or `oneOf`).
+        assert!(
+            obj.contains_key("type") || obj.contains_key("oneOf") || obj.contains_key("anyOf"),
+            "CardProps schema should be a structural object schema; got {obj:?}"
+        );
+
+        // Expect CardProps-specific field "title" exists in `properties`.
+        if let Some(props) = obj.get("properties").and_then(|v| v.as_object()) {
+            assert!(
+                props.contains_key("title"),
+                "CardProps schema.properties should include 'title'; got keys: {:?}",
+                props.keys().collect::<Vec<_>>()
+            );
+        } else {
+            panic!(
+                "CardProps schema missing top-level 'properties' map — \
+                 sanitizer or Plan 02 may be wrong. Got: {}",
+                serde_json::to_string_pretty(schema).unwrap_or_default()
+            );
+        }
+
+        // Must NOT be the Element envelope (would mean we accidentally returned
+        // full_schema["$defs"]["Element"] or similar — CONTEXT D-19).
+        let is_element_wrapper = obj
+            .get("properties")
+            .and_then(|v| v.as_object())
+            .map(|p| p.contains_key("children") && p.contains_key("props"))
+            .unwrap_or(false);
+        assert!(
+            !is_element_wrapper,
+            "component_schema('Card') returned an Element wrapper; must be Props-only (CONTEXT D-19)"
+        );
+    }
+
+    #[test]
+    fn component_schema_none_for_unknown() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        assert!(
+            cat.component_schema("NotARealComponent_117_05").is_none(),
+            "unknown component must return None"
+        );
+        // Empty string is also "unknown".
+        assert!(cat.component_schema("").is_none());
+    }
+
+    #[test]
+    fn component_schema_resolves_every_builtin() {
+        // Parallel safety net for SC-5: every name in BUILTIN_TYPES must have a
+        // per-component schema. If any is missing, Plan 02's BUILTIN_SPECS table
+        // or the build loop dropped an entry.
+        let cat = Catalog::build_builtins_only().expect("build");
+        for name in crate::render::BUILTIN_TYPES.iter() {
+            assert!(
+                cat.component_schema(name).is_some(),
+                "built-in '{name}' has no per-component schema"
+            );
+        }
+    }
+
+    #[test]
+    fn components_sorted_yields_ascending_by_name() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let names: Vec<String> = cat
+            .components_sorted()
+            .map(|spec| spec.name.clone())
+            .collect();
+        assert_eq!(names.len(), crate::render::BUILTIN_TYPES.len());
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(
+            names, sorted,
+            "components_sorted must yield ascending order"
+        );
+
+        // plugin_components_sorted returns the plugin side; may be empty.
+        let plugin_names: Vec<String> = cat
+            .plugin_components_sorted()
+            .map(|spec| spec.name.clone())
+            .collect();
+        let mut plugin_sorted = plugin_names.clone();
+        plugin_sorted.sort();
+        assert_eq!(
+            plugin_names, plugin_sorted,
+            "plugin_components_sorted must yield ascending order"
+        );
     }
 }
