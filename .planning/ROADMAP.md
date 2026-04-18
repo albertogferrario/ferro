@@ -237,7 +237,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 |-------|----------------|--------|-----------|
 | 115. Spec v2 Data Structures | 5/5 | Complete   | 2026-04-18 |
 | 116. Flat Element Renderer | 6/6 | Complete   | 2026-04-18 |
-| 117. Catalog & JSON Schema | 3/7 | In Progress|  |
+| 117. Catalog & JSON Schema | 4/7 | In Progress|  |
 | 117.1. Schema-Driven Projections | 0/? | Not started | - |
 | 118. Server-Side Expressions | 0/? | Not started | - |
 | 119. Page Loader | 0/? | Not started | - |
