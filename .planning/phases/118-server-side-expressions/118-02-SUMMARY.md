@@ -64,12 +64,12 @@ Each test asserts BOTH the resolved value is present AND the `$data`/`$template`
 | No forbidden sigils in touched files (`grep -nE '"\$(if\|for\|state\|bind\|ref\|concat\|let)"' framework/src/json_ui/mod.rs`) | empty |
 | No new dependencies (`git diff ferro-json-ui/Cargo.toml framework/Cargo.toml`) | empty |
 
-### Deferred per thermal constraint
+### Workspace-wide gates (deferred then run)
 
-The following workspace-wide gates are deferred — the user requested reduced CPU load, and package-scoped equivalents already ran clean:
+After the initial package-scoped checks passed, the full workspace gates were run on user request:
 
-- `cargo clippy --all --all-targets -- -D warnings` — superset of the package-scoped clippy; the transitive dependency check is redundant when `ferro-rs` (which depends on everything touched) already clippies clean with `-D warnings`.
-- `cargo test --all-features` — the workspace verifier (next phase step) or a final thermal-permissive run can take this.
+- `cargo clippy --all --all-targets -- -D warnings` → clean (20+ crates checked, 47.88s)
+- `cargo test --all-features` → all green (no failures across ~2100 unit + integration + doc tests)
 
 ## Deviations
 
@@ -78,4 +78,4 @@ The following workspace-wide gates are deferred — the user requested reduced C
 ## Unblocks
 
 - **Phase 119** — Page Loader will codify the parse → `resolve_actions` → `resolve_expressions` → `Catalog::validate` → render order at the file-load entry point. The wiring and pipeline position are now proven end-to-end by Plan 118-02's integration tests.
-- **Phase 118 is closed code-wise.** Outstanding: optional workspace-wide gate run when thermally permissible; phase-level verifier will make the final call.
+- **Phase 118 is closed code-wise with all gates green** (package-scoped + workspace-wide fmt/clippy/test). Phase-level verifier can take the final sign-off.
