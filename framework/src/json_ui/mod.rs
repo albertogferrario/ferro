@@ -1016,10 +1016,7 @@ mod tests {
     fn test_plugin_assets_deduplicated_across_elements() {
         let spec = Spec::builder()
             .title("Two Maps")
-            .element(
-                "root",
-                Element::new("Grid").child("map-a").child("map-b"),
-            )
+            .element("root", Element::new("Grid").child("map-a").child("map-b"))
             .element(
                 "map-a",
                 Element::new("Map")
