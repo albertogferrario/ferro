@@ -176,7 +176,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 117.1-01-PLAN.md — Foundational types: ProjectionError enum + MEANING_COMPONENT_TABLE (lookup_meaning + typed Props helpers + drift guard) + intent_layout (default_template + pick_intent_template)
+- [x] 117.1-01-PLAN.md — Foundational types: ProjectionError enum + MEANING_COMPONENT_TABLE (lookup_meaning + typed Props helpers + drift guard) + intent_layout (default_template + pick_intent_template)
 - [ ] 117.1-02-PLAN.md — Spec::from_service_def orchestrator in builder.rs: slot-based display pipeline, Input-mode Form collapse (D-11), system-field filter (D-10), template override (D-05), Catalog::validate two-pass (D-06)
 - [ ] 117.1-03-PLAN.md — Clean break: delete field_map.rs + relationship_map.rs, slim projection/mod.rs, rewire JsonUiRenderer::render as one-line delegate, add ProjectionError to lib.rs re-exports, full workspace quality gate
 
@@ -245,7 +245,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 115. Spec v2 Data Structures | 5/5 | Complete   | 2026-04-18 |
 | 116. Flat Element Renderer | 6/6 | Complete   | 2026-04-18 |
 | 117. Catalog & JSON Schema | 7/7 | Complete    | 2026-04-18 |
-| 117.1. Schema-Driven Projections | 0/? | Not started | - |
+| 117.1. Schema-Driven Projections | 1/3 | In Progress|  |
 | 118. Server-Side Expressions | 0/? | Not started | - |
 | 119. Page Loader | 0/? | Not started | - |
 | 120. CLI & MCP Updates | 0/? | Not started | - |
