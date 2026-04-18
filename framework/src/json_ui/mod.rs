@@ -706,6 +706,156 @@ mod tests {
         );
     }
 
+    // ------------------------------------------------------------------------
+    // Expression resolution tests
+    // ------------------------------------------------------------------------
+
+    fn expression_spec_with_data_marker() -> Spec {
+        Spec::builder()
+            .data(serde_json::json!({"greeting": "Hello"}))
+            .element(
+                "root",
+                Element::new("Text").prop("content", serde_json::json!({"$data": "/greeting"})),
+            )
+            .build()
+            .expect("spec builder should succeed")
+    }
+
+    #[test]
+    fn render_resolves_data_expression_before_html_emission() {
+        let spec = expression_spec_with_data_marker();
+        let result = JsonUi::render(&spec, &serde_json::json!({}));
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Hello"),
+            "rendered HTML must contain resolved value, got: {body}"
+        );
+        assert!(
+            !body.contains("$data"),
+            "rendered HTML must NOT contain '$data' marker, got: {body}"
+        );
+    }
+
+    #[test]
+    fn render_json_returns_spec_with_no_expression_markers() {
+        let spec = expression_spec_with_data_marker();
+        let result = JsonUi::render_json(&spec, &serde_json::Value::Null);
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Hello"),
+            "render_json must contain resolved string value, got: {body}"
+        );
+        assert!(
+            !body.contains("$data"),
+            "render_json must NOT contain '$data' marker, got: {body}"
+        );
+    }
+
+    #[test]
+    fn render_with_config_honors_expression_resolution() {
+        let spec = Spec::builder()
+            .data(serde_json::json!({"count": 42}))
+            .element(
+                "root",
+                Element::new("Text").prop("content", serde_json::json!({"$data": "/count"})),
+            )
+            .build()
+            .expect("spec builder should succeed");
+        let result =
+            JsonUi::render_with_config(&spec, &serde_json::json!({}), &JsonUiConfig::new());
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("42"),
+            "render_with_config must render resolved numeric value, got: {body}"
+        );
+        assert!(
+            !body.contains("$data"),
+            "render_with_config output must NOT contain '$data' marker"
+        );
+    }
+
+    #[test]
+    fn render_with_errors_resolves_expressions_then_applies_errors() {
+        let spec = Spec::builder()
+            .data(serde_json::json!({"field_label": "Email"}))
+            .element(
+                "form_field",
+                Element::new("Input").prop("field", "email").prop(
+                    "label",
+                    serde_json::json!({"$template": "Errors for {/field_label}"}),
+                ),
+            )
+            .build()
+            .expect("spec builder should succeed");
+
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["is required".to_string()]);
+
+        let result = JsonUi::render_with_errors(&spec, &serde_json::json!({}), &errors);
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Errors for Email"),
+            "render_with_errors must render template against resolved spec.data, got: {body}"
+        );
+        assert!(
+            body.contains("is required"),
+            "render_with_errors must attach error message after template resolution, got: {body}"
+        );
+        assert!(
+            !body.contains("{/field_label}"),
+            "render_with_errors output must NOT contain unresolved template placeholder"
+        );
+        assert!(
+            !body.contains("$template"),
+            "render_with_errors output must NOT contain '$template' marker"
+        );
+    }
+
+    #[test]
+    fn render_json_with_errors_returns_resolved_spec_with_errors() {
+        // Pins must_haves truth #5: render_json_with_errors inherits expression
+        // resolution via resolve_with_errors. Returns JSON payload
+        // {"spec": resolved_spec, "data": effective_data}.
+        let spec = Spec::builder()
+            .data(serde_json::json!({"user_name": "Alice"}))
+            .element(
+                "form_field",
+                Element::new("Input").prop("field", "email").prop(
+                    "label",
+                    serde_json::json!({"$template": "Hello, {/user_name}"}),
+                ),
+            )
+            .build()
+            .expect("spec builder should succeed");
+
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["is invalid".to_string()]);
+
+        let result = JsonUi::render_json_with_errors(&spec, &serde_json::Value::Null, &errors);
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Hello, Alice"),
+            "render_json_with_errors must return resolved template output, got: {body}"
+        );
+        assert!(
+            body.contains("is invalid"),
+            "render_json_with_errors must attach error message to the email field, got: {body}"
+        );
+        assert!(
+            !body.contains("$template"),
+            "render_json_with_errors output must NOT contain '$template' marker, got: {body}"
+        );
+        assert!(
+            !body.contains("{/user_name}"),
+            "render_json_with_errors output must NOT contain unresolved template placeholder, got: {body}"
+        );
+    }
+
     // -----------------------------------------------------------------------
     // Layout integration tests
     // -----------------------------------------------------------------------
