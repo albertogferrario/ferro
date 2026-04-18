@@ -94,7 +94,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 
 - [ ] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, clean break from v1
 - [x] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
-- [ ] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export
+- [x] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export (completed 2026-04-18)
 - [ ] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings
 - [ ] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time
 - [ ] **Phase 119: Page Loader** — Framework loads JSON spec files, merges handler data, integrates with layouts
@@ -237,7 +237,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 |-------|----------------|--------|-----------|
 | 115. Spec v2 Data Structures | 5/5 | Complete   | 2026-04-18 |
 | 116. Flat Element Renderer | 6/6 | Complete   | 2026-04-18 |
-| 117. Catalog & JSON Schema | 7/7 | Complete   | 2026-04-18 |
+| 117. Catalog & JSON Schema | 7/7 | Complete    | 2026-04-18 |
 | 117.1. Schema-Driven Projections | 0/? | Not started | - |
 | 118. Server-Side Expressions | 0/? | Not started | - |
 | 119. Page Loader | 0/? | Not started | - |
@@ -767,7 +767,7 @@ Operating principles applied across every phase. See [`.planning/VISION.md`](VIS
 **Goal:** Rewrite ferro-cli `docker_init`/`do_init` and templates so generated `Dockerfile` + `.do/app.yaml` work for real Ferro apps with zero hand-patching. Conditional frontend stage, multi-binary support, runtime extras hook, themes/lang/public/migrations detection, GITHUB_TOKEN ARG, rust-toolchain.toml pickup, workspace-aware cargo-chef recipe. Path→git ferro dep rewrite via generated `scripts/rewrite-ferro-deps.sh` invoked from Dockerfile + CLI pre-flight verifying ferro git ref is pushed/reachable. `app.yaml` gains `--region`, envs block from `.env.example` with auto SECRET classification, optional `databases:` block, `workers:` for non-server bins. CLI commands gain `--force`, walk-up Cargo.toml lookup, owner/repo validation, shared `project::package_name()` helper. `.dockerignore` adds `database.db`, `*.sqlite*`, `.planning/`, `storage/`, `data/`. Validation: regenerating in gestiscilo and mkmenu produces working builds with zero hand edits. See `phases/122-deploy-scaffold-core-rewrite/SCOPE.md`.
 **Requirements**: TBD
 **Depends on:** Phase 121
-**Plans:** 8/8 plans complete
+**Plans:** 7/7 plans complete
 
 Plans:
 - [x] TBD (run /gsd:plan-phase 122 to break down) (completed 2026-04-07)
