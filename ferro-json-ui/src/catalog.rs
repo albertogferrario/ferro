@@ -2,7 +2,7 @@
 //!
 //! Machine-readable registry of every built-in and plugin JSON-UI component.
 //!
-//! Phase 117 replaces the hand-maintained `COMPONENT_CATALOG` const string with
+//! Phase 117 replaces the hand-maintained component reference string with
 //! this auto-derived catalog that reads per-component JSON Schema from the
 //! `#[derive(JsonSchema)]` attributes already present on every `*Props` struct
 //! (Phase 115). The Catalog pre-computes five artifacts at build time:
@@ -45,7 +45,7 @@ use crate::component::{
 pub struct ComponentSpec {
     /// Component type name as it appears in the Spec's `"type"` field.
     pub name: String,
-    /// Short imperative description matching the voice of the legacy `COMPONENT_CATALOG`.
+    /// Short imperative description used in prompt output and catalog tooling.
     pub description: String,
     /// JSON Schema object for the component's Props struct (schemars output).
     pub props_schema: Value,
