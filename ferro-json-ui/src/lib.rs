@@ -31,6 +31,7 @@ pub mod catalog;
 pub mod component;
 pub mod config;
 pub mod data;
+pub mod expression;
 pub mod layout;
 pub mod plugin;
 pub mod plugins;
