@@ -543,9 +543,10 @@ mod tests {
     use std::collections::HashMap;
 
     /// A form spec with two Input children identified by field name. The
-    /// placeholder renderer does not walk the element graph, but the resolver
-    /// still populates per-element `props.errors` so the serialized spec (in
-    /// the `data-view` attribute and in the placeholder body) reflects them.
+    /// v2 walker renders each Input with its `props.errors` array, which
+    /// `resolve_errors` populates per-field before render. Error strings
+    /// surface both in the rendered Input markup and (for JSON handlers)
+    /// in the serialized spec under `data-view`.
     fn form_spec_with_inputs() -> Spec {
         let action = Action {
             handler: "users.store".to_string(),
@@ -603,9 +604,10 @@ mod tests {
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
 
-        // Each input's props.errors field is populated by resolve_errors; the
-        // serialized spec (embedded in data-view and printed by the placeholder
-        // renderer) therefore contains the error strings.
+        // resolve_errors populates each Input's props.errors array; the v2
+        // walker renders each Input body so the error strings appear in the
+        // HTML directly, and the data-view serialized spec embedded in the
+        // page also carries them.
         assert!(
             body.contains("Name is required"),
             "body should contain 'Name is required'"
@@ -958,12 +960,10 @@ mod tests {
     // Plugin integration tests
     // -----------------------------------------------------------------------
 
-    // The placeholder renderer in Phase 115 does not walk the element graph,
-    // which means it does not collect plugin CSS/JS assets (no Leaflet link,
-    // no Leaflet script tag, no `data-ferro-map` container). Phase 116's real
-    // walker restores this behavior; until then the test below stays ignored.
+    // Plugin integration: MapPlugin is auto-registered in the global plugin
+    // registry. The v2 walker dispatches unknown type_names ("Map") through
+    // the plugin registry and collects CSS/JS assets for head/body injection.
     #[test]
-    #[ignore = "TODO(Phase 116): placeholder renderer does not collect plugin assets"]
     fn test_plugin_component_renders_in_full_page() {
         // MapPlugin is auto-registered via the global registry OnceLock init.
         let spec = Spec::builder()

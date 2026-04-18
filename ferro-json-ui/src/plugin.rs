@@ -516,9 +516,8 @@ mod tests {
     }
 
     // ── Plugin pipeline integration tests ─────────────────────────────
-    // TODO(Phase 116): Leaflet asset collection tests (test_map_plugin_full_pipeline,
-    // test_plugin_assets_deduplication) were deleted because the Phase 115
-    // placeholder renderer does not walk elements and does not collect plugin
-    // assets. Phase 116's flat-element walker restores asset collection; those
-    // integration tests should be re-added there against the v2 Spec API.
+    // End-to-end plugin asset collection is exercised at the framework
+    // level (see `framework::json_ui::mod::tests::test_plugin_component_renders_in_full_page`)
+    // and by the walker itself (see `render::tests::walker_plugin_*` in
+    // `render/mod.rs`). Crate-local tests stay focused on the registry API.
 }
