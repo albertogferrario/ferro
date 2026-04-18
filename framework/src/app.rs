@@ -318,11 +318,7 @@ where
     }
 
     #[cfg(feature = "json-ui")]
-    async fn run_json_ui_schema(
-        output: Option<String>,
-        pretty: bool,
-        component: Option<String>,
-    ) {
+    async fn run_json_ui_schema(output: Option<String>, pretty: bool, component: Option<String>) {
         // Build a local Catalog so BuildFailed surfaces as non-zero exit
         // (NOT a panic via global_catalog's `expect`). RESEARCH §8 L-1 pattern.
         let catalog = match ferro_json_ui::Catalog::build() {

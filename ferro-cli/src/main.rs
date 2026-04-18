@@ -314,6 +314,21 @@ enum Commands {
     /// Show the status of all migrations
     #[command(name = "db:status")]
     DbStatus,
+    /// Export the JSON-UI v2 spec schema (full spec or a single component's Props)
+    #[command(name = "json-ui:schema")]
+    JsonUiSchema {
+        /// Write to file instead of stdout
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+
+        /// Pretty-print JSON output (default behavior — flag accepted for explicitness)
+        #[arg(long)]
+        pretty: bool,
+
+        /// Export only the Props schema for a single component (e.g., "Card")
+        #[arg(long)]
+        component: Option<String>,
+    },
     /// Drop all tables and re-run all migrations
     #[command(name = "db:fresh")]
     DbFresh,
@@ -628,6 +643,13 @@ fn main() {
         }
         Commands::DbStatus => {
             commands::db_status::run();
+        }
+        Commands::JsonUiSchema {
+            output,
+            pretty,
+            component,
+        } => {
+            commands::json_ui_schema::run(output, pretty, component);
         }
         Commands::DbFresh => {
             commands::db_fresh::run();

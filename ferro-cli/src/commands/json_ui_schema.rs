@@ -40,10 +40,7 @@ pub fn run(output: Option<String>, pretty: bool, component: Option<String>) {
         .expect("Failed to execute cargo command");
 
     if !status.success() {
-        eprintln!(
-            "{} Schema export failed",
-            style("Error:").red().bold()
-        );
+        eprintln!("{} Schema export failed", style("Error:").red().bold());
         std::process::exit(1);
     }
 }
