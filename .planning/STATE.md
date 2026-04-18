@@ -4,14 +4,14 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
 stopped_at: Phase 117 Plan 02 complete
-last_updated: "2026-04-18T14:04:40Z"
-last_activity: 2026-04-18 -- Phase 117 Plan 02 complete (BUILTIN_SPECS 39 entries + Catalog::build() discovery + sanitize_schema)
+last_updated: "2026-04-18T13:30:08.679Z"
+last_activity: 2026-04-18
 progress:
   total_phases: 140
   completed_phases: 126
   total_plans: 313
-  completed_plans: 297
-  percent: 94
+  completed_plans: 298
+  percent: 95
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 117 (catalog-and-json-schema) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Workspace version: 0.2.0
-Status: Executing Phase 117
-Last activity: 2026-04-18 -- Phase 117 Plan 01 complete (jsonschema dep + catalog.rs scaffold)
+Status: Ready to execute
+Last activity: 2026-04-18
 Current milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [█░░░░░░░░░] 14%
@@ -99,6 +99,7 @@ Progress: [█░░░░░░░░░] 14%
 | Phase 134-relocate-renderers-to-output-crates P02 | 4min | 2 tasks | 10 files |
 | Phase 135-servicedef-derivation-bridge P01 | 8min | 2 tasks | 3 files |
 | Phase 135-servicedef-derivation-bridge P02 | 6min | 2 tasks | 3 files |
+| Phase 117-catalog-and-json-schema P03 | 8min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -143,7 +144,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-18T14:04:40Z
+Last session: 2026-04-18T13:30:02.314Z
 Stopped at: Phase 117 Plan 02 complete
-Resume file: .planning/phases/117-catalog-and-json-schema/117-02-SUMMARY.md
+Resume file: None
 Next action: Execute Phase 117 Plan 03 — assemble full_schema oneOf + compile jsonschema::Validator.
