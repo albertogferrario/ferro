@@ -95,7 +95,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 - [ ] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, clean break from v1
 - [x] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
 - [x] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export (completed 2026-04-18)
-- [ ] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings
+- [x] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings (completed 2026-04-18)
 - [ ] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time
 - [ ] **Phase 119: Page Loader** — Framework loads JSON spec files, merges handler data, integrates with layouts
 - [ ] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format with JSON Schema as structured output constraint
@@ -173,7 +173,7 @@ Plans:
   4. Output validates against `catalog.json_schema()` — projections and catalog are consistent by construction (two-pass: generate then validate)
   5. `render/json_ui.rs` (v1 JsonUiRenderer) and `render/field_map.rs` are replaced by the new schema-driven pipeline
 
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 117.1-01-PLAN.md — Foundational types: ProjectionError enum + MEANING_COMPONENT_TABLE (lookup_meaning + typed Props helpers + drift guard) + intent_layout (default_template + pick_intent_template)
@@ -245,7 +245,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 115. Spec v2 Data Structures | 5/5 | Complete   | 2026-04-18 |
 | 116. Flat Element Renderer | 6/6 | Complete   | 2026-04-18 |
 | 117. Catalog & JSON Schema | 7/7 | Complete    | 2026-04-18 |
-| 117.1. Schema-Driven Projections | 3/3 | Complete   | 2026-04-18 |
+| 117.1. Schema-Driven Projections | 3/3 | Complete    | 2026-04-18 |
 | 118. Server-Side Expressions | 0/? | Not started | - |
 | 119. Page Loader | 0/? | Not started | - |
 | 120. CLI & MCP Updates | 0/? | Not started | - |
