@@ -192,7 +192,7 @@ fn build_input_spec(service: &ServiceDef) -> Result<Spec, ProjectionError> {
         let Some(type_name) = choice.input else {
             continue;
         };
-        let props = input_props_for(type_name, field);
+        let props = input_props_for(type_name, field)?;
         let id = format!("field_{}", field.name);
         field_elements.push((id.clone(), element_with_props(type_name, props)));
         children_ids.push(id);
@@ -210,18 +210,28 @@ fn build_input_spec(service: &ServiceDef) -> Result<Spec, ProjectionError> {
 }
 
 /// Dispatch the typed Props builder for a given input-mode component name.
-/// The `type_name` comes from `lookup_meaning(...).input`, which is one of
-/// `"Input" | "Select" | "Switch"` per the Plan 01 component_map.
-fn input_props_for(type_name: &str, field: &FieldDef) -> serde_json::Value {
+/// The `type_name` comes from `lookup_meaning(...).input`, which today is
+/// one of `"Input" | "Select" | "Switch"` per the Plan 01 component_map.
+///
+/// Unknown `type_name` values surface as `ProjectionError::UnknownComponent`
+/// rather than being silently coerced into `InputProps`. The existing
+/// catalog-name drift guard (`meaning_table_components_exist_in_catalog`)
+/// only checks that referenced names exist as catalog components — it does
+/// not prove that every `input` value is one of the three dispatched names.
+/// If a future meaning adds a new input component (e.g. `DatePicker`) this
+/// branch is the choke point that forces the dispatch table to be updated
+/// alongside the meaning table.
+fn input_props_for(
+    type_name: &str,
+    field: &FieldDef,
+) -> Result<serde_json::Value, ProjectionError> {
     match type_name {
-        "Input" => build_input_props(field),
-        "Select" => build_select_props(field),
-        "Switch" => build_switch_props(field),
-        // Unknown input components fall back to Input so that validation
-        // still receives a non-null, well-formed typed Props payload.
-        // The drift guard test in component_map.rs ensures we never hit
-        // this branch in practice.
-        _ => build_input_props(field),
+        "Input" => Ok(build_input_props(field)),
+        "Select" => Ok(build_select_props(field)),
+        "Switch" => Ok(build_switch_props(field)),
+        other => Err(ProjectionError::UnknownComponent {
+            type_name: other.to_string(),
+        }),
     }
 }
 
@@ -815,6 +825,30 @@ mod tests {
             !leaked,
             "Sensitive field leaked into a DescriptionList item"
         );
+    }
+
+    #[test]
+    fn input_props_for_unknown_type_returns_unknown_component_error() {
+        // WR-04 regression: input_props_for must refuse unknown type names
+        // rather than silently coercing them to InputProps. This is the
+        // choke point that forces the dispatch table to be updated when a
+        // new input component is added to `component_map.rs`.
+        let field = ferro_projections::FieldDef {
+            name: "x".into(),
+            data_type: DataType::String,
+            meaning: FieldMeaning::Email,
+            required: false,
+            is_list: false,
+            readable: true,
+            writable: true,
+        };
+        let result = super::input_props_for("DatePicker", &field);
+        match result {
+            Err(ProjectionError::UnknownComponent { type_name }) => {
+                assert_eq!(type_name, "DatePicker");
+            }
+            other => panic!("expected UnknownComponent, got {other:?}"),
+        }
     }
 
     #[test]
