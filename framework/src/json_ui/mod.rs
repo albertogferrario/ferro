@@ -1009,4 +1009,41 @@ mod tests {
             "should contain init script"
         );
     }
+
+    /// Assets deduplicated — one `leaflet.css` link even when the spec
+    /// references the Map plugin from multiple elements (CONTEXT D-18).
+    #[test]
+    fn test_plugin_assets_deduplicated_across_elements() {
+        let spec = Spec::builder()
+            .title("Two Maps")
+            .element(
+                "root",
+                Element::new("Grid").child("map-a").child("map-b"),
+            )
+            .element(
+                "map-a",
+                Element::new("Map")
+                    .prop("center", serde_json::json!([51.505, -0.09]))
+                    .prop("zoom", 13),
+            )
+            .element(
+                "map-b",
+                Element::new("Map")
+                    .prop("center", serde_json::json!([40.7128, -74.006]))
+                    .prop("zoom", 12),
+            )
+            .build()
+            .expect("two-map spec is valid");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&spec, &data);
+
+        assert!(result.is_ok(), "render should succeed");
+        let body = response_body(ok_response(result));
+
+        let css_link_count = body.matches("leaflet.css").count();
+        assert_eq!(
+            css_link_count, 1,
+            "expected exactly 1 leaflet.css occurrence, found {css_link_count}"
+        );
+    }
 }
