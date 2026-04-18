@@ -19,6 +19,9 @@ pub mod error;
 #[allow(dead_code)]
 pub mod component_map;
 
+#[allow(dead_code)]
+pub mod intent_layout;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 

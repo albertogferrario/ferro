@@ -962,7 +962,7 @@ impl Catalog {
     ///
     /// Tests that register plugins with invalid schemas pollute the global registry.
     /// This helper produces a clean, plugin-free catalog safe for use in any test order.
-    fn build_builtins_only() -> Result<Self, CatalogError> {
+    pub(crate) fn build_builtins_only() -> Result<Self, CatalogError> {
         let mut components = HashMap::with_capacity(BUILTIN_SPECS.len());
         let mut per_component_schemas = HashMap::with_capacity(BUILTIN_SPECS.len());
         for (name, desc, schema_fn, slots) in BUILTIN_SPECS {

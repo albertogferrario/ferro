@@ -351,15 +351,20 @@ pub fn build_relationship_button_props(rel: &RelationshipDef) -> serde_json::Val
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::global_catalog;
+    use crate::catalog::Catalog;
 
     /// Every component name referenced by `lookup_meaning` (or
-    /// `RELATIONSHIP_COMPONENT_TABLE`) MUST exist as a key in
-    /// `global_catalog().components`. This test fails CI loudly if anyone
-    /// renames a built-in component without updating the table.
+    /// `RELATIONSHIP_COMPONENT_TABLE`) MUST exist as a key in the
+    /// built-in catalog. This test fails CI loudly if anyone renames a
+    /// built-in component without updating the table.
+    ///
+    /// Uses `Catalog::build_builtins_only()` rather than `global_catalog()`
+    /// so that plugin-registration test pollution (see `BadPlugin_117` in
+    /// `catalog.rs` tests) does not cause false failures when the
+    /// projector's drift guard runs after the plugin test.
     #[test]
     fn meaning_table_components_exist_in_catalog() {
-        let cat = global_catalog();
+        let cat = Catalog::build_builtins_only().expect("build builtins");
         let all_meanings = [
             FieldMeaning::Identifier,
             FieldMeaning::ForeignKey,
@@ -405,7 +410,7 @@ mod tests {
     /// ("Text" / "Input") components, both of which exist in the catalog.
     #[test]
     fn custom_meaning_fallback_uses_catalog_components() {
-        let cat = global_catalog();
+        let cat = Catalog::build_builtins_only().expect("build builtins");
         let choice = lookup_meaning(&FieldMeaning::Custom("anything".into()));
         assert_eq!(choice.display, Some("Text"));
         assert_eq!(choice.input, Some("Input"));
