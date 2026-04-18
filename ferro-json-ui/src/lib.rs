@@ -81,4 +81,4 @@ pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
 pub mod projection;
 
 #[cfg(feature = "projections")]
-pub use projection::{JsonUiRenderer, RenderMode, VisualContext};
+pub use projection::{JsonUiRenderer, ProjectionError, RenderMode, VisualContext};
