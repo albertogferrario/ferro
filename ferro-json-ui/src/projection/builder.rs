@@ -362,18 +362,27 @@ fn emit_kanban_root(service: &ServiceDef) -> ElementBuilder {
 }
 
 /// Summarize root. StatCard has no child-element slots; `metadata` adds a
-/// sibling DescriptionList (so it still validates and stays inside depth 3).
+/// sibling DescriptionList in `spec.elements` but it is intentionally **not
+/// reachable from the root via `children`** — StatCard's catalog shape
+/// forbids child elements.
+///
+/// The orphan is accepted by `Catalog::validate` (which does not enforce
+/// reachability) and is pinned by the
+/// `statcard_metadata_is_orphan_element` regression test. Consumers that
+/// expect every element to be reachable from the root must treat the
+/// Summarize/StatCard + metadata combination as a known exception, or
+/// switch to the Card layout (Analyze intent already does this).
+///
+/// A future phase that introduces a StatCard-with-metadata wrapper (e.g.
+/// Card(StatCard, DescriptionList)) should remove this branch and delete
+/// the orphan-pinning test.
 fn emit_statcard_root(
     service: &ServiceDef,
     slots: &[String],
     aux: &mut Vec<(String, ElementBuilder)>,
 ) -> ElementBuilder {
-    // The metadata slot emits a sibling element — but StatCard itself has
-    // no `children` convention, so we append it to `aux` without wiring
-    // it into the root. Callers iterating `spec.elements` can still see it.
-    // This is aligned with how other "no-child container" components behave
-    // in the existing renderer; catalog validation permits orphan aux
-    // elements as long as they reference valid type_names.
+    // `dropped` is intentionally thrown away — the id from emit_metadata is
+    // not wired into StatCard. See the doc comment above for the contract.
     let mut dropped: Vec<String> = Vec::new();
     for slot in slots {
         if slot == "metadata" {
@@ -805,6 +814,60 @@ mod tests {
         assert!(
             !leaked,
             "Sensitive field leaked into a DescriptionList item"
+        );
+    }
+
+    #[test]
+    fn statcard_metadata_is_orphan_element() {
+        // WR-03 contract pin: Summarize → StatCard with a `metadata` slot
+        // emits a DescriptionList into `spec.elements` that is deliberately
+        // NOT reachable from the root via `children`. StatCard's catalog
+        // shape forbids children, so the metadata lives as a sibling that
+        // validates but is not rendered as a child of the root. This test
+        // fails loudly if a future refactor either (a) stops emitting the
+        // element or (b) starts wiring it into the root — both require
+        // updating the documented contract in `emit_statcard_root`.
+        let service = sample_service();
+        let intents = derive_intents(&service);
+        let templates = ThemeTemplates {
+            browse: Some(IntentModeTemplates {
+                display: IntentSlotTemplate {
+                    slots: vec!["title".into(), "stats".into(), "metadata".into()],
+                    layout: Some("StatCard".into()),
+                },
+                input: IntentSlotTemplate::default(),
+            }),
+            focus: None,
+            collect: None,
+            process: None,
+            summarize: None,
+            analyze: None,
+            track: None,
+        };
+        let ctx = VisualContext {
+            intent_index: intents
+                .iter()
+                .position(|i| matches!(i.intent, Intent::Browse))
+                .unwrap_or(0),
+            mode: RenderMode::Display,
+            templates: Some(templates),
+            ..Default::default()
+        };
+        let cat = clean_catalog();
+        let spec = Spec::from_service_def_with_catalog(&service, &intents, &ctx, &cat)
+            .expect("StatCard+metadata projects");
+        // `metadata_list` is present as a sibling of the root.
+        assert!(
+            spec.elements.contains_key("metadata_list"),
+            "metadata DescriptionList must be emitted as a sibling element"
+        );
+        // …but it is NOT referenced from the root's children.
+        let root = spec.elements.get(&spec.root).unwrap();
+        assert_eq!(root.type_name, "StatCard");
+        assert!(
+            !root.children.contains(&"metadata_list".to_string()),
+            "StatCard root must not claim metadata_list as a child: {:?}",
+            root.children
         );
     }
 
