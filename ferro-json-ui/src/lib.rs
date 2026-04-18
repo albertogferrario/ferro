@@ -27,6 +27,7 @@
 //! ```
 
 pub mod action;
+pub mod catalog;
 pub mod component;
 pub mod config;
 pub mod data;
@@ -63,6 +64,7 @@ pub use layout::{
 // AppLayout, AuthLayout, DefaultLayout are pub in layout.rs but not user-facing — users select
 // layouts by name string ("dashboard", "app", "auth"), not by struct.
 // navigation, sidebar, footer, global_registry are framework-internal.
+pub use catalog::{global_catalog, Catalog, CatalogError, ComponentSpec};
 pub use plugin::{
     collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
