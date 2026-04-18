@@ -24,8 +24,8 @@ use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
 use ferro_json_ui::{
-    render_layout, render_spec_to_html_with_plugins, resolve_actions, resolve_errors, JsonUiConfig,
-    LayoutContext, Spec,
+    render_layout, render_spec_to_html_with_plugins, resolve_actions, resolve_errors,
+    resolve_expressions, JsonUiConfig, LayoutContext, Spec,
 };
 
 /// Stateless JSON-UI renderer.
@@ -35,10 +35,12 @@ use ferro_json_ui::{
 pub struct JsonUi;
 
 impl JsonUi {
-    /// Clone the spec and resolve all action handler names to URLs.
+    /// Clone the spec, resolve action handler names to URLs, and resolve
+    /// `$data` / `$template` expression nodes in element props.
     fn resolve(spec: &Spec) -> Spec {
         let mut resolved = spec.clone();
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
+        resolve_expressions(&mut resolved);
         resolved
     }
 
@@ -146,10 +148,12 @@ impl JsonUi {
         Ok(HttpResponse::json(payload))
     }
 
-    /// Clone the spec, resolve actions, and populate validation errors on form fields.
+    /// Clone the spec, resolve actions, resolve `$data` / `$template`
+    /// expressions, then populate validation errors on form fields.
     fn resolve_with_errors(spec: &Spec, errors: &HashMap<String, Vec<String>>) -> Spec {
         let mut resolved = spec.clone();
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
+        resolve_expressions(&mut resolved);
         resolve_errors(&mut resolved, errors);
         resolved
     }
