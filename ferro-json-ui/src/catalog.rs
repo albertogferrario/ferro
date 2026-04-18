@@ -63,7 +63,8 @@ pub struct ComponentSpec {
 /// Constructed once via [`Catalog::build`] and accessed globally through
 /// [`global_catalog`]. All fields are `pub(crate)` — external callers use the
 /// accessor methods added in Plans 02–05.
-// full_schema and validator are populated in Plan 03; suppress dead_code until then.
+// components, plugin_components, per_component_schemas, and validator are consumed
+// by Plan 04's validate() pipeline and MCP tooling. Suppress dead_code until then.
 #[allow(dead_code)]
 pub struct Catalog {
     /// Built-in components keyed by type name.
@@ -398,6 +399,114 @@ fn sanitize_schema(mut schema: Value) -> Value {
     schema
 }
 
+// ── Schema assembly ────────────────────────────────────────────────────────────
+
+/// Hoist all `$defs` entries from a schemars-generated schema into a shared map.
+///
+/// schemars emits nested type definitions under `$defs` on the schema root. When
+/// component schemas are embedded as `allOf[1]` in the oneOf, the `jsonschema`
+/// validator resolves `$ref` pointers from the *assembled* root — so every
+/// component-local `$defs` entry must be merged up to the top level.
+fn hoist_defs(schema: &mut Value, shared_defs: &mut serde_json::Map<String, Value>) {
+    if let Some(obj) = schema.as_object_mut() {
+        if let Some(Value::Object(defs)) = obj.remove("$defs") {
+            for (k, v) in defs {
+                shared_defs.entry(k).or_insert(v);
+            }
+        }
+    }
+}
+
+/// Hand-assemble the full spec JSON Schema document from per-component schemas.
+///
+/// Root: `$schema`, `root`, `elements` (HashMap<String, Element>), optional `title` /
+/// `layout` / `data`. `$defs/Element` uses a `oneOf` at the element level —
+/// each variant pins `"type": { "const": "X" }` on the element object itself and
+/// validates `props` against that component's Props schema (CONTEXT D-13).
+///
+/// Variants are sorted by name to guarantee deterministic output (CONTEXT D-18).
+///
+/// `$defs` from every per-component schema are hoisted to the root so that `$ref`
+/// pointers (e.g., `#/$defs/ConfirmDialog`) resolve against the assembled document.
+fn assemble_full_schema(per_component: &HashMap<String, Value>) -> Result<Value, CatalogError> {
+    // Start with Action and Visibility defs — their nested types ($defs) are hoisted too.
+    let mut action_schema = sanitize_schema(to_value(schema_for!(crate::action::Action))?);
+    let mut visibility_schema =
+        sanitize_schema(to_value(schema_for!(crate::visibility::Visibility))?);
+
+    // Collect shared $defs — starts with action + visibility nested types.
+    let mut shared_defs: serde_json::Map<String, Value> = serde_json::Map::new();
+    hoist_defs(&mut action_schema, &mut shared_defs);
+    hoist_defs(&mut visibility_schema, &mut shared_defs);
+
+    // Deterministic oneOf at the Element level — sorted by name (CONTEXT D-18).
+    // Each variant describes a complete element object: pins `type` via const on the
+    // element itself, then validates `props` against that component's Props schema.
+    let mut names: Vec<&String> = per_component.keys().collect();
+    names.sort();
+    let one_of: Vec<Value> = names
+        .into_iter()
+        .map(|name| {
+            let mut props_schema = per_component[name].clone();
+            // Hoist component-local $defs so $ref pointers resolve from the assembled root.
+            hoist_defs(&mut props_schema, &mut shared_defs);
+            serde_json::json!({
+                "allOf": [
+                    {
+                        "type": "object",
+                        "required": ["type"],
+                        "properties": {
+                            "type": { "const": name }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "props": props_schema,
+                            "children": { "type": "array", "items": { "type": "string" } },
+                            "action":   { "$ref": "#/$defs/Action" },
+                            "visible":  { "$ref": "#/$defs/Visibility" }
+                        }
+                    }
+                ]
+            })
+        })
+        .collect();
+
+    // Merge the framework-level $defs (Element, Action, Visibility) with the hoisted ones.
+    // Framework entries take precedence and must not be overwritten by component defs.
+    shared_defs
+        .entry("Action".to_string())
+        .or_insert(action_schema);
+    shared_defs
+        .entry("Visibility".to_string())
+        .or_insert(visibility_schema);
+    // Element is the discriminated union itself — oneOf over all component variants.
+    shared_defs.insert(
+        "Element".to_string(),
+        serde_json::json!({ "oneOf": one_of }),
+    );
+
+    Ok(serde_json::json!({
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "ferro-json-ui/v2",
+        "type": "object",
+        "required": ["$schema", "root", "elements"],
+        "properties": {
+            "$schema":  { "const": "ferro-json-ui/v2" },
+            "root":     { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_-]{0,127}$" },
+            "elements": {
+                "type": "object",
+                "additionalProperties": { "$ref": "#/$defs/Element" }
+            },
+            "title":    { "type": ["string", "null"] },
+            "layout":   { "type": ["string", "null"] },
+            "data":     true
+        },
+        "$defs": shared_defs
+    }))
+}
+
 // ── Catalog impl ───────────────────────────────────────────────────────────────
 
 impl Catalog {
@@ -476,21 +585,30 @@ impl Catalog {
             );
         }
 
-        // === Stubs for Plan 03 ===
-        // full_schema and validator are populated in Plan 03 (oneOf assembly +
-        // validator compilation). For now use a trivial valid JSON Schema so the
-        // struct fields hold real values.
-        let placeholder_schema = serde_json::json!({ "type": "object" });
-        let validator = jsonschema::validator_for(&placeholder_schema)
-            .map_err(|e| CatalogError::BuildFailed(format!("compiling placeholder schema: {e}")))?;
+        // === Assemble full schema (CONTEXT D-13, D-14, D-15) ===
+        let full_schema = assemble_full_schema(&per_component_schemas)?;
+
+        // === Compile validator ONCE (SCHEMA-03) ===
+        let validator = jsonschema::validator_for(&full_schema)
+            .map_err(|e| CatalogError::BuildFailed(format!("compiling full spec schema: {e}")))?;
 
         Ok(Catalog {
             components,
             plugin_components,
-            full_schema: Value::Null,
+            full_schema,
             per_component_schemas,
             validator,
         })
+    }
+
+    /// Return the fully-assembled spec JSON Schema document.
+    ///
+    /// Shape: root with `$schema`, `root`, `elements`, plus `$defs`
+    /// containing `Element` (with a discriminated `oneOf` over all
+    /// component Props) and `Action` / `Visibility` references.
+    /// Zero-copy — the returned `&Value` lives as long as the Catalog.
+    pub fn json_schema(&self) -> &Value {
+        &self.full_schema
     }
 }
 
@@ -514,6 +632,43 @@ pub fn global_catalog() -> &'static Catalog {
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+impl Catalog {
+    /// Build a catalog from built-in specs only, skipping the global plugin registry.
+    ///
+    /// Tests that register plugins with invalid schemas pollute the global registry.
+    /// This helper produces a clean, plugin-free catalog safe for use in any test order.
+    fn build_builtins_only() -> Result<Self, CatalogError> {
+        let mut components = HashMap::with_capacity(BUILTIN_SPECS.len());
+        let mut per_component_schemas = HashMap::with_capacity(BUILTIN_SPECS.len());
+        for (name, desc, schema_fn, slots) in BUILTIN_SPECS {
+            let raw = schema_fn();
+            let schema = sanitize_schema(raw);
+            per_component_schemas.insert((*name).to_string(), schema.clone());
+            components.insert(
+                (*name).to_string(),
+                ComponentSpec {
+                    name: (*name).to_string(),
+                    description: (*desc).to_string(),
+                    props_schema: schema,
+                    is_plugin: false,
+                    slot_fields: slots.iter().map(|s| (*s).to_string()).collect(),
+                },
+            );
+        }
+        let full_schema = assemble_full_schema(&per_component_schemas)?;
+        let validator = jsonschema::validator_for(&full_schema)
+            .map_err(|e| CatalogError::BuildFailed(format!("compiling full spec schema: {e}")))?;
+        Ok(Catalog {
+            components,
+            plugin_components: HashMap::new(),
+            full_schema,
+            per_component_schemas,
+            validator,
+        })
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -631,6 +786,132 @@ mod tests {
         // Existing $defs should remain, no definitions key introduced.
         assert!(twice.get("definitions").is_none());
         assert!(twice.get("$defs").is_some());
+    }
+
+    #[test]
+    fn json_schema_has_spec_envelope_shape() {
+        // Use build_builtins_only() to avoid global plugin registry pollution
+        // from build_discovers_plugins_and_rejects_invalid_schema (BadPlugin_117).
+        let cat = Catalog::build_builtins_only().expect("build");
+        let schema = cat.json_schema();
+        assert_eq!(schema["$id"], "ferro-json-ui/v2");
+        assert_eq!(schema["type"], "object");
+        let required: Vec<&str> = schema["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(required.contains(&"$schema"));
+        assert!(required.contains(&"root"));
+        assert!(required.contains(&"elements"));
+    }
+
+    #[test]
+    fn json_schema_has_action_and_visibility_defs() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let schema = cat.json_schema();
+        assert!(
+            schema["$defs"]["Action"].is_object(),
+            "$defs/Action missing"
+        );
+        assert!(
+            schema["$defs"]["Visibility"].is_object(),
+            "$defs/Visibility missing"
+        );
+        assert!(
+            schema["$defs"]["Element"].is_object(),
+            "$defs/Element missing"
+        );
+    }
+
+    #[test]
+    fn json_schema_oneof_covers_all_builtins() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let schema = cat.json_schema();
+        // oneOf is at the Element level (discriminates on element.type, not props.type).
+        let one_of = schema["$defs"]["Element"]["oneOf"]
+            .as_array()
+            .expect("Element.oneOf is an array");
+
+        // Extract every const discriminator from the allOf[0] branch.
+        let mut discriminators: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
+        for variant in one_of {
+            let c = variant["allOf"][0]["properties"]["type"]["const"]
+                .as_str()
+                .expect("every variant pins a type const");
+            discriminators.insert(c.to_string());
+        }
+
+        for name in crate::render::BUILTIN_TYPES.iter() {
+            assert!(
+                discriminators.contains(*name),
+                "oneOf is missing discriminator for '{name}'"
+            );
+        }
+
+        // Built-ins only — exactly BUILTIN_TYPES.len() variants.
+        assert_eq!(
+            discriminators.len(),
+            crate::render::BUILTIN_TYPES.len(),
+            "oneOf variant count mismatch"
+        );
+    }
+
+    #[test]
+    fn json_schema_is_valid() {
+        use jsonschema::draft202012;
+        let cat = Catalog::build_builtins_only().expect("build");
+        let schema = cat.json_schema();
+        assert!(
+            draft202012::meta::is_valid(schema),
+            "assembled full_schema did not meta-validate as Draft 2020-12"
+        );
+    }
+
+    #[test]
+    fn validator_is_compiled_once_and_usable() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        // The validator field is private — we prove it's real by validating
+        // a minimal valid spec value. If the validator were stale / null /
+        // placeholder, this would fail or mis-report.
+        let minimal_valid = serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "r",
+            "elements": {
+                "r": { "type": "Text", "props": { "content": "hi" } }
+            }
+        });
+        // Should succeed — full-schema envelope accepts this shape.
+        assert!(cat.validator.is_valid(&minimal_valid));
+    }
+
+    #[test]
+    fn validator_rejects_wrong_schema_version() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let wrong_version = serde_json::json!({
+            "$schema": "ferro-json-ui/v99-wrong",
+            "root": "r",
+            "elements": {
+                "r": { "type": "Text", "props": { "content": "hi" } }
+            }
+        });
+        assert!(
+            !cat.validator.is_valid(&wrong_version),
+            "validator should reject unknown $schema version via const"
+        );
+    }
+
+    #[test]
+    fn oneof_variants_are_deterministic_sorted() {
+        let cat1 = Catalog::build_builtins_only().expect("build 1");
+        let cat2 = Catalog::build_builtins_only().expect("build 2");
+        // Byte-exact equality guarantees deterministic output (CONTEXT D-18).
+        assert_eq!(
+            serde_json::to_string(cat1.json_schema()).unwrap(),
+            serde_json::to_string(cat2.json_schema()).unwrap()
+        );
     }
 
     /// Combined plugin discovery + invalid schema rejection test.
