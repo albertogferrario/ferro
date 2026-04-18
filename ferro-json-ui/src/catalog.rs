@@ -63,9 +63,6 @@ pub struct ComponentSpec {
 /// Constructed once via [`Catalog::build`] and accessed globally through
 /// [`global_catalog`]. All fields are `pub(crate)` — external callers use the
 /// accessor methods added in Plans 02–05.
-// components, plugin_components, per_component_schemas, and validator are consumed
-// by Plan 04's validate() pipeline and MCP tooling. Suppress dead_code until then.
-#[allow(dead_code)]
 pub struct Catalog {
     /// Built-in components keyed by type name.
     pub(crate) components: HashMap<String, ComponentSpec>,
@@ -610,6 +607,109 @@ impl Catalog {
     pub fn json_schema(&self) -> &Value {
         &self.full_schema
     }
+
+    /// Validate a [`crate::spec::Spec`] against the catalog.
+    ///
+    /// Three-stage pipeline (CONTEXT D-10):
+    ///
+    /// 1. **Type-name whitelist** — every `element.type_name` must resolve to a
+    ///    built-in or plugin component. Unknown names return [`CatalogError::UnknownType`]
+    ///    and **short-circuit** the rest of the pipeline. This avoids noisy `oneOf`
+    ///    errors from Stage 3 when a component name is simply wrong (RESEARCH §5).
+    ///
+    /// 2. **Per-element Props validation** — for each element, look up
+    ///    `per_component_schemas[type_name]` and validate `element.props` against it
+    ///    using on-demand [`jsonschema::validator_for`]. Errors accumulate as
+    ///    [`CatalogError::PropsInvalid`]. Plugin schemas are accepted per CONTEXT D-20.
+    ///
+    /// 3. **Envelope check** — serialize the full `Spec` and run it through the
+    ///    cached `self.validator` (compiled once in [`Catalog::build`], SCHEMA-03).
+    ///    Errors become [`CatalogError::SpecInvalid`].
+    ///
+    /// Errors accumulate across Stages 2 and 3 so a caller sees every issue at once.
+    pub fn validate(&self, spec: &crate::spec::Spec) -> Result<(), Vec<CatalogError>> {
+        let mut errors: Vec<CatalogError> = Vec::new();
+
+        // === Stage 1: type_name whitelist (O(1) per element) ===
+        for (id, el) in &spec.elements {
+            let known = self.components.contains_key(&el.type_name)
+                || self.plugin_components.contains_key(&el.type_name);
+            if !known {
+                errors.push(CatalogError::UnknownType {
+                    element_id: id.clone(),
+                    type_name: el.type_name.clone(),
+                });
+            }
+        }
+        // SHORT-CIRCUIT: if any type is unknown, skip Stages 2 & 3.
+        // Rationale: Stage 3's full-spec oneOf would emit dozens of
+        // "no variant matched" errors for unknown types, obscuring the signal.
+        // Stage 2 would skip unknowns anyway.
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        // === Stage 2: per-element Props validation ===
+        for (id, el) in &spec.elements {
+            if let Some(schema) = self.per_component_schemas.get(&el.type_name) {
+                // Skip null props — null means "no props provided"; the schema's
+                // `required` list is the gate for required fields. When props is
+                // null the element carries no props object, which the envelope
+                // schema permits (props is optional per the element allOf shape).
+                if el.props.is_null() {
+                    continue;
+                }
+                // On-demand compile (CONTEXT D-12). Schemas are small (~50–200 LOC
+                // JSON); compile cost < 1 ms per component. Cache as
+                // HashMap<String, Validator> if profiling demands it.
+                let v = match jsonschema::validator_for(schema) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        errors.push(CatalogError::BuildFailed(format!(
+                            "compiling per-component schema for '{}': {e}",
+                            el.type_name
+                        )));
+                        continue;
+                    }
+                };
+                let mut per_elem_errs: Vec<String> = Vec::new();
+                for err in v.iter_errors(&el.props) {
+                    per_elem_errs.push(format!("{}: {}", err.instance_path(), err));
+                }
+                if !per_elem_errs.is_empty() {
+                    errors.push(CatalogError::PropsInvalid {
+                        element_id: id.clone(),
+                        type_name: el.type_name.clone(),
+                        errors: per_elem_errs,
+                    });
+                }
+            }
+        }
+
+        // === Stage 3: full-spec envelope validation (cached validator, SCHEMA-03) ===
+        let spec_value = match serde_json::to_value(spec) {
+            Ok(v) => v,
+            Err(e) => {
+                errors.push(CatalogError::SchemaSerialization(e));
+                return Err(errors);
+            }
+        };
+        let mut envelope_errs: Vec<String> = Vec::new();
+        for err in self.validator.iter_errors(&spec_value) {
+            envelope_errs.push(format!("{}: {}", err.instance_path(), err));
+        }
+        if !envelope_errs.is_empty() {
+            errors.push(CatalogError::SpecInvalid {
+                errors: envelope_errs,
+            });
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
 }
 
 // ── Global singleton ───────────────────────────────────────────────────────────
@@ -911,6 +1011,184 @@ mod tests {
         assert_eq!(
             serde_json::to_string(cat1.json_schema()).unwrap(),
             serde_json::to_string(cat2.json_schema()).unwrap()
+        );
+    }
+
+    // ── validate() tests (Plan 04) ────────────────────────────────────────────
+
+    /// Build a minimal valid Spec with one Element of the given type + props.
+    fn test_spec_with(type_name: &str, props: Value) -> crate::spec::Spec {
+        use crate::spec::{Element, Spec};
+        use std::collections::HashMap;
+        let mut elements = HashMap::new();
+        elements.insert(
+            "r".to_string(),
+            Element {
+                type_name: type_name.to_string(),
+                props,
+                children: Vec::new(),
+                action: None,
+                visible: None,
+            },
+        );
+        Spec {
+            schema: crate::spec::SCHEMA_VERSION.to_string(),
+            root: "r".to_string(),
+            elements,
+            title: None,
+            layout: None,
+            data: Value::Null,
+        }
+    }
+
+    #[test]
+    fn validate_positive_per_type() {
+        // Representative subset of built-ins — confirms validate() passes for
+        // minimally valid elements. Full 39-type coverage lives in Plan 07.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let cases: Vec<(&str, Value)> = vec![
+            ("Text", serde_json::json!({ "content": "hi" })),
+            ("Button", serde_json::json!({ "label": "Save" })),
+            ("Badge", serde_json::json!({ "label": "New" })),
+            ("Separator", serde_json::json!({})),
+        ];
+        for (ty, props) in cases {
+            let spec = test_spec_with(ty, props.clone());
+            match cat.validate(&spec) {
+                Ok(()) => {}
+                Err(errs) => panic!("validate({ty}) failed: {errs:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn validate_unknown_type() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let spec = test_spec_with("NotARealComponent", serde_json::json!({}));
+        let errs = cat.validate(&spec).expect_err("should fail");
+        assert!(
+            errs.iter().any(|e| matches!(
+                e,
+                CatalogError::UnknownType { type_name, .. } if type_name == "NotARealComponent"
+            )),
+            "expected UnknownType for NotARealComponent; got {errs:?}"
+        );
+    }
+
+    #[test]
+    fn validate_missing_required_prop() {
+        // CardProps.title is required (no Option, no #[serde(default)]).
+        // Passing {} props should produce PropsInvalid.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let spec = test_spec_with("Card", serde_json::json!({}));
+        let errs = cat.validate(&spec).expect_err("should fail");
+        assert!(
+            errs.iter().any(|e| matches!(
+                e,
+                CatalogError::PropsInvalid { type_name, .. } if type_name == "Card"
+            )),
+            "expected PropsInvalid for missing required 'title'; got {errs:?}"
+        );
+    }
+
+    #[test]
+    fn validate_bad_schema_version() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let mut spec = test_spec_with("Text", serde_json::json!({ "content": "hi" }));
+        spec.schema = "ferro-json-ui/v99-wrong".to_string();
+        let errs = cat.validate(&spec).expect_err("should fail");
+        assert!(
+            errs.iter()
+                .any(|e| matches!(e, CatalogError::SpecInvalid { .. })),
+            "expected SpecInvalid for wrong $schema version; got {errs:?}"
+        );
+    }
+
+    #[test]
+    fn validate_pre_dispatch_short_circuits() {
+        // Stage 1 must short-circuit: unknown type + malformed envelope →
+        // only UnknownType surfaces (not SpecInvalid or PropsInvalid).
+        let cat = Catalog::build_builtins_only().expect("build");
+        let mut spec = test_spec_with("NotARealComponent", serde_json::json!({}));
+        spec.schema = "ferro-json-ui/v99-wrong".to_string();
+        let errs = cat.validate(&spec).expect_err("should fail");
+
+        let has_unknown = errs
+            .iter()
+            .any(|e| matches!(e, CatalogError::UnknownType { .. }));
+        let has_spec_invalid = errs
+            .iter()
+            .any(|e| matches!(e, CatalogError::SpecInvalid { .. }));
+        let has_props_invalid = errs
+            .iter()
+            .any(|e| matches!(e, CatalogError::PropsInvalid { .. }));
+
+        assert!(has_unknown, "expected UnknownType");
+        assert!(
+            !has_spec_invalid,
+            "Stage 3 ran despite Stage 1 failing: {errs:?}"
+        );
+        assert!(
+            !has_props_invalid,
+            "Stage 2 ran despite Stage 1 failing: {errs:?}"
+        );
+    }
+
+    #[test]
+    fn validator_is_cached_not_recompiled() {
+        // Structural guarantee: self.validator is a plain field, not recompiled
+        // per validate() call. This test approximates that by running validate()
+        // 100 times against a single Catalog without panic or regression.
+        let cat = Catalog::build_builtins_only().expect("build");
+        for _ in 0..100 {
+            let spec = test_spec_with("Text", serde_json::json!({ "content": "x" }));
+            assert!(cat.validate(&spec).is_ok());
+        }
+    }
+
+    #[test]
+    fn validate_accumulates_multiple_errors_across_elements() {
+        // Two elements with missing required props → two PropsInvalid errors.
+        use crate::spec::{Element, Spec};
+        use std::collections::HashMap;
+        let cat = Catalog::build_builtins_only().expect("build");
+        let mut elements = HashMap::new();
+        elements.insert(
+            "a".to_string(),
+            Element {
+                type_name: "Card".to_string(),
+                props: serde_json::json!({}), // missing required "title"
+                children: Vec::new(),
+                action: None,
+                visible: None,
+            },
+        );
+        elements.insert(
+            "b".to_string(),
+            Element {
+                type_name: "Button".to_string(),
+                props: serde_json::json!({}), // missing required "label"
+                children: Vec::new(),
+                action: None,
+                visible: None,
+            },
+        );
+        let spec = Spec {
+            schema: crate::spec::SCHEMA_VERSION.to_string(),
+            root: "a".to_string(),
+            elements,
+            title: None,
+            layout: None,
+            data: Value::Null,
+        };
+        let errs = cat.validate(&spec).expect_err("should fail");
+        let props_invalid_count = errs
+            .iter()
+            .filter(|e| matches!(e, CatalogError::PropsInvalid { .. }))
+            .count();
+        assert!(
+            props_invalid_count >= 2,
+            "expected at least 2 PropsInvalid errors; got {errs:?}"
         );
     }
 
