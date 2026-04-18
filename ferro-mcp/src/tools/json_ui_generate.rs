@@ -3,7 +3,7 @@
 //! This tool does NOT call any AI API. It provides structured context so the
 //! consuming agent can write the view itself, avoiding double-LLM calls.
 
-use ferro_json_ui::COMPONENT_CATALOG;
+use ferro_json_ui::global_catalog;
 use regex::Regex;
 use serde::Serialize;
 use std::fs;
@@ -120,7 +120,7 @@ pub fn execute(
     let existing_views = list_existing_views(project_root);
 
     JsonUiGenerationContext {
-        component_catalog: COMPONENT_CATALOG.to_string(),
+        component_catalog: global_catalog().prompt(),
         models,
         routes,
         existing_views,
