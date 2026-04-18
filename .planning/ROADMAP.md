@@ -93,7 +93,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 ## Phases
 
 - [ ] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, clean break from v1
-- [ ] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
+- [x] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
 - [ ] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export
 - [ ] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings
 - [ ] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time
