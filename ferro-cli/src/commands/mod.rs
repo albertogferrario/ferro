@@ -17,6 +17,7 @@ pub mod docker_init;
 pub mod doctor;
 pub mod generate_routes;
 pub mod generate_types;
+pub mod json_ui_schema;
 pub mod make_action;
 pub mod make_api;
 pub mod make_api_key;
