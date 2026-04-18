@@ -26,7 +26,7 @@ use crate::render::html_escape;
 pub struct LayoutContext<'a> {
     /// Page title for the `<title>` element.
     pub title: &'a str,
-    /// Rendered component HTML fragment (output of `render_to_html`).
+    /// Rendered component HTML fragment (output of `render_spec_to_html`).
     pub content: &'a str,
     /// Additional `<head>` content (Tailwind CDN link, custom styles).
     pub head: &'a str,
