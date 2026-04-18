@@ -195,6 +195,12 @@ Plans:
   5. Expressions are evaluated before component rendering, so renderers receive resolved concrete values
   6. No other expression types exist — only `$data` and `$template`. This is a hard architectural constraint, not a backlog item.
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 118-01-PLAN.md — Create expression.rs resolver module (resolve_expressions, $data / $template helpers, 28 unit tests) + register in ferro-json-ui/src/lib.rs
+- [ ] 118-02-PLAN.md — Wire resolve_expressions into framework JsonUi::resolve + JsonUi::resolve_with_errors + 4 end-to-end integration tests covering every public render path
+
 ### Phase 119: Page Loader
 **Goal**: Framework-level support for loading JSON spec files and merging with handler-provided data
 **Depends on**: Phase 118
