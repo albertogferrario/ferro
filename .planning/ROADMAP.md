@@ -173,6 +173,13 @@ Plans:
   4. Output validates against `catalog.json_schema()` — projections and catalog are consistent by construction (two-pass: generate then validate)
   5. `render/json_ui.rs` (v1 JsonUiRenderer) and `render/field_map.rs` are replaced by the new schema-driven pipeline
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 117.1-01-PLAN.md — Foundational types: ProjectionError enum + MEANING_COMPONENT_TABLE (lookup_meaning + typed Props helpers + drift guard) + intent_layout (default_template + pick_intent_template)
+- [ ] 117.1-02-PLAN.md — Spec::from_service_def orchestrator in builder.rs: slot-based display pipeline, Input-mode Form collapse (D-11), system-field filter (D-10), template override (D-05), Catalog::validate two-pass (D-06)
+- [ ] 117.1-03-PLAN.md — Clean break: delete field_map.rs + relationship_map.rs, slim projection/mod.rs, rewire JsonUiRenderer::render as one-line delegate, add ProjectionError to lib.rs re-exports, full workspace quality gate
+
 ### Phase 118: Server-Side Expressions
 **Goal**: Add `$data` and `$template` expression types that resolve against handler data at render time. Hard cap: ONLY these two expression types. No `$if`, `$for`, `$state`, `$bind`.
 **Depends on**: Phase 116
