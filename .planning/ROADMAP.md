@@ -33,6 +33,7 @@
 - ✅ **v11.2 Deploy & Scaffolder Hardening** — Phases 122-131 (shipped 2026-04-14)
 - ✅ **v11.3 S3 Storage Driver** — Phase 132 (shipped 2026-04-14)
 - ✅ **v11.5 Projection Architecture Prep** — Phases 133-135 (shipped 2026-04-17). Generalize Renderer trait, relocate renderers to output crates, ServiceDef derivation bridge.
+- 📋 **v11.6 ferro-stripe Capability Refactor** — Phases 140-143. Reshape `ferro-stripe` from Stripe-product axis (`connect/`, `subscription/`) to capability axis (`checkout`, `refund`, `account`, `webhook`); land `CheckoutBuilder` / `CheckoutIntent`, `ProcessedEventLog` trait, fully-typed events (no `event_json` smuggling), `SyncDispatcher` as default path for payment-correctness events, queue path opt-in for eventual-consistency events. Source: gestiscilo-it v6.3 field test. [Design](../../../gestiscilo-it/app/docs/superpowers/specs/2026-04-19-stripe-checkout-published-pages-design.md)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -58,6 +59,118 @@ Phases 133–135:
 - **133**: Generalized `Renderer` trait with associated `Output` and `Context` types (modality-agnostic)
 - **134**: Relocated `JsonUiRenderer` from ferro-projections to ferro-json-ui; broke ferro-projections → ferro-theme dependency
 - **135**: `ServiceDef::from_model()` derivation bridge + `generate_projection` MCP tool
+
+---
+
+### 📋 v11.6 ferro-stripe Capability Refactor (Phases 140-143, planned)
+
+**Milestone Goal:** Reshape `ferro-stripe` along the capability axis and elevate protocol-level concerns (idempotency, typed events, signature verification, sync vs eventual-consistency dispatch) into the framework. Today's ferro-stripe splits its modules by Stripe product (`connect/`, `subscription/`) rather than capability, defaults all webhook handling to queue-job dispatch (wrong for payment-correctness events), stubs idempotency with a TODO, and ships a single-line-item `create_connect_checkout` helper too thin to replace hand-rolled `CreateCheckoutSession` usage. Pre-1.0 is the one chance to fix this before consumer assumptions ossify.
+
+**Source:** gestiscilo-it v6.3 Online Checkout & Payments field test. [Cross-repo design](../../../gestiscilo-it/app/docs/superpowers/specs/2026-04-19-stripe-checkout-published-pages-design.md).
+
+**What changes:**
+- Module layout: `checkout.rs` / `refund.rs` / `account.rs` / `webhook/{verify,events,sync,queue}` / `idempotency.rs` / `client.rs`. `connect::*` and `subscription::*` removed.
+- `CheckoutBuilder` → `CheckoutIntent` primitive (typed return carrying `session_id`, `url`, `expires_at`, `idempotency_key`). Replaces `create_connect_checkout` / `create_subscription_checkout`.
+- `ProcessedEventLog` trait + `MemoryProcessedLog` impl; recommended SQL schema documented. Apps implement against their DB. Replaces the stubbed `is_processed` free fn.
+- Typed events drop `event_json: String` smuggling; every event carries fully-parsed fields.
+- `SyncDispatcher::on::<E, _>(handler)` registers per-event-type handlers; `dispatch` returns `Result` so webhook endpoints return 500 on handler error and Stripe retries. Default path.
+- Existing queue-based `ProcessStripeWebhook` relocates to `webhook::queue` — opt-in for eventual-consistency events (subscription drift, analytics).
+- `refund::create` and `account::retrieve` added (missing today).
+- `client.rs` adds `Stripe::with(key)` scoped override alongside the static default for per-tenant key scenarios.
+
+**What stays:**
+- `Stripe::init` static default facade.
+- `verify_webhook` signature function.
+- `ferro-events` / `ferro-queue` dependencies.
+- Connect Standard destination-charge pattern.
+
+**Breaking-change ledger** — see design doc §4.6. Versions: ferro-stripe 0.3.x → 0.4 → 0.5 → 0.6 → 0.7 across phases 140-143, each release CI-green on master.
+
+**Key risks:**
+1. **Idempotency semantics** (MEDIUM): must guarantee exactly-once application of state effects even under concurrent dispatchers. Solved by DB-level unique constraint on the `event_id` column inside the app-implemented log, plus handler-side state-conflict errors.
+2. **Event typing maintenance** (LOW): each new Stripe event type needs a typed struct + parser + dispatcher wiring. Documented in module comments; minor ongoing work.
+3. **Consumer migration** (LOW): the current `ferro-stripe` consumer is gestiscilo; no external consumers pre-1.0. Breaking changes are absorbed in-workspace.
+
+## Phases
+
+- [ ] **Phase 140: ProcessedEventLog trait + MemoryProcessedLog** — `idempotency.rs` trait + in-memory impl + recommended SQL schema. `ferro-stripe 0.4.0`.
+- [ ] **Phase 141: Capability-axis module reshape** — new `checkout.rs` with `CheckoutBuilder`/`CheckoutIntent`; `refund.rs` (new); `account.rs` (absorbs `billing_portal_url`, adds `retrieve_account`); `connect::*`/`subscription::*` removed; `client.rs::Stripe::with(key)` added. `ferro-stripe 0.5.0`.
+- [ ] **Phase 142: Typed events + SyncDispatcher** — events drop `event_json`, parse into typed fields; `webhook/sync.rs` `SyncDispatcher`; existing queue path relocates to `webhook/queue.rs` and becomes opt-in. `ferro-stripe 0.6.0`.
+- [ ] **Phase 143: Missing event types** — `StripeCheckoutExpired`, `StripePaymentIntentFailed`, `StripeChargeRefunded`, `StripeChargeDisputeCreated`, `StripeConnectAccountUpdated` typed structs, parsers, dispatcher wiring. `ferro-stripe 0.7.0`.
+
+## Phase Details
+
+### Phase 140: ProcessedEventLog trait + MemoryProcessedLog
+
+**Goal:** Land the idempotency primitive so all subsequent work (and downstream consumers) has a single place to hang webhook de-duplication. Replace the stubbed `is_processed` free fn with a trait plus an in-memory impl for tests.
+
+**Depends on:** nothing (first phase of milestone).
+
+**Success Criteria:**
+  1. New module `ferro-stripe/src/idempotency.rs` declares `#[async_trait] pub trait ProcessedEventLog { async fn try_mark_processed(&self, event_id: &str) -> Result<bool, Error>; }`
+  2. `MemoryProcessedLog` impl (DashMap-backed) returns `Ok(true)` on first insert, `Ok(false)` on subsequent calls with the same `event_id`
+  3. Module doc comment ships the recommended SQL schema for consumer apps: `CREATE TABLE stripe_processed_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`
+  4. Existing `webhook::is_processed` free fn removed; no callers remain
+  5. Unit tests: true-then-false contract; concurrent `try_mark_processed` from 2 tokio tasks applies once
+  6. `ferro-stripe 0.4.0` released; ferro workspace CI green
+
+**Plans**: TBD
+
+### Phase 141: Capability-axis module reshape
+
+**Goal:** Replace the product-axis module tree (`connect/`, `subscription/`) with the capability-axis tree (`checkout`, `refund`, `account`). Introduce `CheckoutBuilder`/`CheckoutIntent` as the primary checkout primitive, with multi-line-item support, optional Connect destination, required idempotency key, and a typed return that carries `session_id` / `url` / `expires_at`.
+
+**Depends on:** Phase 140 (ProcessedEventLog shipped so consumer adoption can proceed in parallel with 142/143).
+
+**Success Criteria:**
+  1. `connect/checkout.rs` and `subscription/checkout.rs` deleted; module tree matches design §4.1
+  2. `CheckoutBuilder::new(Mode::Payment|Subscription)` with combinators `.line_item`, `.success_url`, `.cancel_url`, `.metadata`, `.customer_email`, `.customer_email_opt`, `.destination(account_id, fee_cents)`, `.idempotency_key` (required)
+  3. `CheckoutBuilder::create()` returns `CheckoutIntent { session_id, url, expires_at, idempotency_key }`; returns `Err(Error::MissingIdempotencyKey)` when key not set
+  4. `refund.rs` ships `create(charge_id, amount_cents, idempotency_key, reason) -> Refund` and `retrieve(refund_id) -> Refund`
+  5. `account.rs` consolidates `create_account`, `create_link`, `retrieve_account` (new), and `billing_portal_url` (renamed from `subscription::checkout::billing_portal_url`)
+  6. `client.rs::Stripe::with(&str) -> Client` scoped override alongside the static default
+  7. All pub re-exports in `lib.rs` updated; no dead imports
+  8. `ferro-stripe 0.5.0` released; `cargo test --all-features` + `cargo clippy --all -- -D warnings` pass
+  9. CHANGELOG entry documents the breaking changes and migration path
+
+**Plans**: TBD
+
+### Phase 142: Typed events + SyncDispatcher
+
+**Goal:** Drop `event_json: String` from all typed event structs and parse full typed payloads at webhook receipt. Ship `SyncDispatcher` as the default webhook-handling path; relocate the existing `ProcessStripeWebhook` queue job to `webhook/queue.rs` as opt-in for eventual-consistency events.
+
+**Depends on:** Phase 141 (module layout in place).
+
+**Success Criteria:**
+  1. All existing event structs (`StripeCheckoutCompleted`, `StripeSubscriptionUpdated`, `StripeSubscriptionDeleted`, `StripeInvoicePaid`, `StripeConnectPaymentSucceeded`) updated to carry fully-parsed fields; `event_json` field removed from every struct
+  2. `StripeEvent` marker trait: `pub trait StripeEvent: Send + Sync + 'static { fn from_raw(event: &stripe::Event) -> Option<Self> where Self: Sized; }`
+  3. `SyncDispatcher` in `webhook/sync.rs` with `new() -> Self`, `on<E: StripeEvent, H, Fut>(handler) -> Self`, `async dispatch(event: stripe::Event) -> Result<(), Error>`
+  4. `dispatch` returns `Err` when any handler returns `Err`; unknown event types are logged and return `Ok(())` (no-op)
+  5. `ProcessStripeWebhook` job moves from `webhook/events.rs` to `webhook/queue.rs`; still functional as opt-in
+  6. Doc comments explicitly guide consumers: sync for payment-correctness events, queue for eventual-consistency events
+  7. Unit tests: `Err` handler bubbles up; `Ok` path; unknown event no-op; dispatcher thread-safe across `Arc`
+  8. `ferro-stripe 0.6.0` released; workspace CI green
+
+**Plans**: TBD
+
+### Phase 143: Missing event types
+
+**Goal:** Add the five event types the v6.3 correctness gap requires. Each gets a typed struct, a parser, and dispatcher wiring — identical shape to the existing `StripeCheckoutCompleted` pattern after Phase 142's reshape.
+
+**Depends on:** Phase 142.
+
+**Success Criteria:**
+  1. `StripeCheckoutExpired` (event `checkout.session.expired`) carries `event_id`, `session_id`, `metadata`
+  2. `StripePaymentIntentFailed` (event `payment_intent.payment_failed`) carries `event_id`, `payment_intent_id`, `session_id` (Option), `failure_code`, `failure_message`, `metadata`
+  3. `StripeChargeRefunded` (event `charge.refunded`) carries `event_id`, `charge_id`, `payment_intent_id`, `amount_refunded_cents`, `metadata`
+  4. `StripeChargeDisputeCreated` (event `charge.dispute.created`) carries `event_id`, `charge_id`, `payment_intent_id`, `dispute_reason`, `amount_cents`
+  5. `StripeConnectAccountUpdated` (event `account.updated`) carries `event_id`, `account_id`, `charges_enabled`, `payouts_enabled`, `details_submitted`
+  6. Each type implements `StripeEvent::from_raw` with robust optional-field handling
+  7. `SyncDispatcher` dispatch-table entries for all five types
+  8. Golden-JSON fixtures per event type in `tests/fixtures/stripe_events/`; parser-contract test asserts field-by-field match
+  9. `ferro-stripe 0.7.0` released; workspace CI green
+
+**Plans**: TBD
 
 ---
 
