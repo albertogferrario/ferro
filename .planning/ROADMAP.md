@@ -96,7 +96,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 - [x] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
 - [x] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export (completed 2026-04-18)
 - [x] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings (completed 2026-04-18)
-- [ ] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time
+- [x] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time (completed 2026-04-19)
 - [ ] **Phase 119: Page Loader** — Framework loads JSON spec files, merges handler data, integrates with layouts
 - [ ] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format with JSON Schema as structured output constraint
 - [ ] **Phase 121: Documentation & Field Test** — Update all JSON-UI docs, convert one gestiscilo page as proof of concept
@@ -195,7 +195,7 @@ Plans:
   5. Expressions are evaluated before component rendering, so renderers receive resolved concrete values
   6. No other expression types exist — only `$data` and `$template`. This is a hard architectural constraint, not a backlog item.
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 118-01-PLAN.md — Create expression.rs resolver module (resolve_expressions, $data / $template helpers, 28 unit tests) + register in ferro-json-ui/src/lib.rs
@@ -252,7 +252,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 116. Flat Element Renderer | 6/6 | Complete   | 2026-04-18 |
 | 117. Catalog & JSON Schema | 7/7 | Complete    | 2026-04-18 |
 | 117.1. Schema-Driven Projections | 3/3 | Complete    | 2026-04-18 |
-| 118. Server-Side Expressions | 2/2 | Complete   | 2026-04-18 |
+| 118. Server-Side Expressions | 2/2 | Complete    | 2026-04-19 |
 | 119. Page Loader | 0/? | Not started | - |
 | 120. CLI & MCP Updates | 0/? | Not started | - |
 | 121. Documentation & Field Test | 0/? | Not started | - |
