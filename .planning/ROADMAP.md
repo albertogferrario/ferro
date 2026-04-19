@@ -1067,16 +1067,6 @@ Plans:
 - [x] 135-01-PLAN.md — ModelMetadata, DataType::from_column_type(), ServiceDef::from_model() in ferro-projections
 - [x] 135-02-PLAN.md — generate_projection MCP tool in ferro-mcp
 
-### Phase 136: implement workflow for executing a full roadmap in auto with gsd
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 135
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 136 to break down)
-
 ---
 
 ## Progress Summary

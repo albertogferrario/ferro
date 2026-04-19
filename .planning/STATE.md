@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.5
 milestone_name: Projection Architecture Prep
 status: verifying
-stopped_at: Completed 133-02-PLAN.md
-last_updated: "2026-04-14T02:38:46.454Z"
-last_activity: 2026-04-14
+stopped_at: Completed 135-02-PLAN.md
+last_updated: "2026-04-17T18:04:01.884Z"
+last_activity: 2026-04-17
 progress:
   total_phases: 24
-  completed_phases: 13
-  total_plans: 48
-  completed_plans: 48
+  completed_phases: 15
+  total_plans: 53
+  completed_plans: 52
   percent: 96
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 133 — generalize-renderer-trait
+**Current focus:** Phase 135 — servicedef-derivation-bridge
 
 ## Current Position
 
-Phase: 133 (generalize-renderer-trait) — EXECUTING
-Plan: 2 of 2
+Phase: 135
+Plan: Complete
 Workspace version: 0.2.0
 Status: Phase complete — ready for verification
-Last activity: 2026-04-14
+Last activity: 2026-04-17
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -95,6 +95,10 @@ Progress: [██████████] 96%
 | Phase 132 P01 | 11min | 2 tasks | 4 files |
 | Phase 133-generalize-renderer-trait P01 | 3.5min | 1 tasks | 5 files |
 | Phase 133-generalize-renderer-trait P02 | 5min | 1 tasks | 4 files |
+| Phase 134-relocate-renderers-to-output-crates P01 | 15min | 1 tasks | 6 files |
+| Phase 134-relocate-renderers-to-output-crates P02 | 4min | 2 tasks | 10 files |
+| Phase 135-servicedef-derivation-bridge P01 | 8min | 2 tasks | 3 files |
+| Phase 135-servicedef-derivation-bridge P02 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -135,11 +139,10 @@ Recent decisions affecting current work:
 - Phase 126 added (2026-04-08): Deploy experience feedback triage — analysis-only phase pointing the next agent at `phases/126-deploy-experience-feedback/REPORT.md` (field notes from first end-to-end gestiscilo deploy: 2 fixed bugs already shipped in 0.2.1, 9 sharp edges still present, 6 DX improvements). Agent must produce `PROPOSAL.md` classifying every item before any new ferro work is scoped.
 - Phase 131 added (2026-04-09): Scaffolder multi-bin, copy_dirs, runtime_apt, DO app.yaml robustness, drift detection — promoted from `.planning/backlog/gestiscilo-scaffolder-multibin-gap.md` (gestiscilo-it Phase 75 field test gap). CLI bug recurred again (returned phase 1); manually renumbered.
 - Phase 130 added (2026-04-09): Invert dep convention (simple) — retire `Cargo.docker.toml` and `cargo_docker_toml_staleness` doctor check; Docker builds use `Cargo.toml` directly; local ferro dev via uncommitted `[patch.crates-io]`. Source: `.planning/proposals/dep-override-convention.md` (simplified per user direction — no new CLI verbs, no new doctor check). CLI bug recurred: `gsd-tools phase add` returned phase 1 instead of 130; manually renumbered.
-- Phase 136 added: implement workflow for executing a full roadmap in auto with gsd
 
 ## Session Continuity
 
-Last session: 2026-04-14T02:38:46.449Z
-Stopped at: Completed 133-02-PLAN.md
+Last session: 2026-04-17T18:00:33.550Z
+Stopped at: Completed 135-02-PLAN.md
 Resume file: None
 Next action: `git push origin master` to publish v0.2.0 when ready.
