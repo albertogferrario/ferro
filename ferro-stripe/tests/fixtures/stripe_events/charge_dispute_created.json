@@ -1,0 +1,32 @@
+{
+  "id": "evt_test_dispute_created_001",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1700000004,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "charge.dispute.created",
+  "data": {
+    "object": {
+      "id": "dp_test_001",
+      "object": "dispute",
+      "amount": 3000,
+      "charge": "ch_test_disputed_001",
+      "payment_intent": "pi_test_disp_001",
+      "currency": "usd",
+      "livemode": false,
+      "reason": "fraudulent",
+      "status": "needs_response",
+      "is_charge_refundable": false,
+      "evidence_details": {
+        "due_by": 1700600000,
+        "has_evidence": false,
+        "past_due": false,
+        "submission_count": 0
+      },
+      "balance_transactions": [],
+      "created": 1700000004
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "evt_test_sub_updated_001",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1700000006,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "customer.subscription.updated",
+  "data": {
+    "object": {
+      "id": "sub_test_updated_001",
+      "object": "subscription",
+      "customer": "cus_test_sub_001",
+      "status": "active",
+      "livemode": false,
+      "cancel_at_period_end": false,
+      "created": 1700000000,
+      "current_period_end": 1702592006,
+      "current_period_start": 1700000006,
+      "items": { "object": "list", "data": [], "has_more": false, "url": "/v1/subscription_items" },
+      "metadata": {}
+    }
+  }
+}

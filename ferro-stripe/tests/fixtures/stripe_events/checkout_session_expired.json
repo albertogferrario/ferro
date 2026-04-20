@@ -1,0 +1,38 @@
+{
+  "id": "evt_test_checkout_expired_001",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1700000001,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "checkout.session.expired",
+  "data": {
+    "object": {
+      "id": "cs_test_expired_001",
+      "object": "checkout.session",
+      "metadata": { "order_id": "order_exp" },
+      "mode": "payment",
+      "payment_status": "unpaid",
+      "status": "expired",
+      "success_url": "https://example.com/ok",
+      "cancel_url": "https://example.com/cancel",
+      "livemode": false,
+      "created": 1700000001,
+      "expires_at": 1700086401,
+      "custom_fields": [],
+      "custom_text": {
+        "shipping_address": null,
+        "submit": null,
+        "after_submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "shipping_options": [],
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "status": null
+      }
+    }
+  }
+}
