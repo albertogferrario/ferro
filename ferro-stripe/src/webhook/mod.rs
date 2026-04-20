@@ -7,3 +7,10 @@ pub mod sync;
 pub mod verify;
 
 pub use verify::verify_webhook;
+pub use events::StripeEvent;
+pub use events::{
+    ProcessStripeWebhook, StripeChargeDisputeCreated, StripeChargeRefunded,
+    StripeCheckoutCompleted, StripeCheckoutExpired, StripeConnectAccountUpdated,
+    StripeConnectPaymentSucceeded, StripeInvoicePaid, StripePaymentIntentFailed,
+    StripeSubscriptionDeleted, StripeSubscriptionUpdated,
+};
