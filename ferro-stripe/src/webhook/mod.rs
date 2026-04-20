@@ -6,7 +6,6 @@ pub mod queue;
 pub mod sync;
 pub mod verify;
 
-pub use verify::verify_webhook;
 pub use events::StripeEvent;
 pub use events::{
     StripeChargeDisputeCreated, StripeChargeRefunded, StripeCheckoutCompleted,
@@ -14,5 +13,6 @@ pub use events::{
     StripeInvoicePaid, StripePaymentIntentFailed, StripeSubscriptionDeleted,
     StripeSubscriptionUpdated,
 };
-pub use sync::SyncDispatcher;
 pub use queue::ProcessStripeWebhook;
+pub use sync::SyncDispatcher;
+pub use verify::verify_webhook;

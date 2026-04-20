@@ -37,9 +37,8 @@ async fn dispatch_ok_path_completes_and_invokes_handler() {
 
 #[tokio::test]
 async fn dispatch_bubbles_handler_error() {
-    let dispatcher = SyncDispatcher::new().on(|_: StripeInvoicePaid| async {
-        Err::<(), Error>(Error::Stripe("boom".into()))
-    });
+    let dispatcher = SyncDispatcher::new()
+        .on(|_: StripeInvoicePaid| async { Err::<(), Error>(Error::Stripe("boom".into())) });
 
     let event = parse_event(&mock_invoice_paid_event("in_test_002", "cus_test_002"));
     let result = dispatcher.dispatch(event).await;
@@ -62,9 +61,15 @@ async fn dispatch_unknown_event_returns_ok_and_handler_is_not_invoked() {
     });
 
     // Dispatch a checkout.session.completed event — no handler registered for it.
-    let event = parse_event(&mock_checkout_completed_event("cs_test_003", "cus_test_003"));
+    let event = parse_event(&mock_checkout_completed_event(
+        "cs_test_003",
+        "cus_test_003",
+    ));
     let result = dispatcher.dispatch(event).await;
-    assert!(result.is_ok(), "unknown event should return Ok, got {result:?}");
+    assert!(
+        result.is_ok(),
+        "unknown event should return Ok, got {result:?}"
+    );
     assert_eq!(
         calls.load(Ordering::SeqCst),
         0,

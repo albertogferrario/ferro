@@ -8,22 +8,20 @@ use std::collections::HashMap;
 
 use ferro_stripe::{
     StripeChargeDisputeCreated, StripeChargeRefunded, StripeCheckoutCompleted,
-    StripeCheckoutExpired, StripeConnectAccountUpdated, StripeConnectPaymentSucceeded,
-    StripeEvent, StripeInvoicePaid, StripePaymentIntentFailed, StripeSubscriptionDeleted,
+    StripeCheckoutExpired, StripeConnectAccountUpdated, StripeConnectPaymentSucceeded, StripeEvent,
+    StripeInvoicePaid, StripePaymentIntentFailed, StripeSubscriptionDeleted,
     StripeSubscriptionUpdated,
 };
 
 fn parse_event(raw: &str) -> stripe::Event {
-    serde_json::from_str::<stripe::Event>(raw)
-        .expect("fixture should deserialize as stripe::Event")
+    serde_json::from_str::<stripe::Event>(raw).expect("fixture should deserialize as stripe::Event")
 }
 
 // --- StripeCheckoutCompleted ---
 
 const CHECKOUT_COMPLETED: &str =
     include_str!("fixtures/stripe_events/checkout_session_completed.json");
-const CHECKOUT_EXPIRED: &str =
-    include_str!("fixtures/stripe_events/checkout_session_expired.json");
+const CHECKOUT_EXPIRED: &str = include_str!("fixtures/stripe_events/checkout_session_expired.json");
 
 #[test]
 fn checkout_session_completed_parses_all_fields() {
@@ -75,8 +73,7 @@ fn checkout_expired_rejects_completed_event() {
 
 // --- StripePaymentIntentFailed ---
 
-const PI_FAILED: &str =
-    include_str!("fixtures/stripe_events/payment_intent_payment_failed.json");
+const PI_FAILED: &str = include_str!("fixtures/stripe_events/payment_intent_payment_failed.json");
 
 #[test]
 fn payment_intent_failed_parses_all_fields() {
@@ -92,7 +89,10 @@ fn payment_intent_failed_parses_all_fields() {
         Some("Your card was declined.")
     );
     assert_eq!(
-        typed.metadata.get("checkout_session_id").map(String::as_str),
+        typed
+            .metadata
+            .get("checkout_session_id")
+            .map(String::as_str),
         Some("cs_test_related_001")
     );
     assert_eq!(
@@ -122,8 +122,7 @@ fn charge_refunded_parses_all_fields() {
 
 // --- StripeChargeDisputeCreated ---
 
-const DISPUTE_CREATED: &str =
-    include_str!("fixtures/stripe_events/charge_dispute_created.json");
+const DISPUTE_CREATED: &str = include_str!("fixtures/stripe_events/charge_dispute_created.json");
 
 #[test]
 fn charge_dispute_created_parses_all_fields() {
@@ -155,10 +154,8 @@ fn account_updated_parses_all_fields() {
 
 // --- StripeSubscriptionUpdated + Deleted ---
 
-const SUB_UPDATED: &str =
-    include_str!("fixtures/stripe_events/customer_subscription_updated.json");
-const SUB_DELETED: &str =
-    include_str!("fixtures/stripe_events/customer_subscription_deleted.json");
+const SUB_UPDATED: &str = include_str!("fixtures/stripe_events/customer_subscription_updated.json");
+const SUB_DELETED: &str = include_str!("fixtures/stripe_events/customer_subscription_deleted.json");
 
 #[test]
 fn subscription_updated_parses_all_fields() {
@@ -199,8 +196,8 @@ const INVOICE_PAID: &str = include_str!("fixtures/stripe_events/invoice_paid.jso
 #[test]
 fn invoice_paid_parses_all_fields() {
     let event = parse_event(INVOICE_PAID);
-    let typed = StripeInvoicePaid::from_raw(&event)
-        .expect("from_raw should return Some for invoice.paid");
+    let typed =
+        StripeInvoicePaid::from_raw(&event).expect("from_raw should return Some for invoice.paid");
     assert_eq!(typed.event_id, "evt_test_invoice_paid_001");
     assert_eq!(typed.invoice_id, "in_test_paid_001");
     assert_eq!(typed.customer_id, "cus_test_inv_001");

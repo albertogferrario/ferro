@@ -141,8 +141,6 @@ impl std::fmt::Debug for TenantFailureMode {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;

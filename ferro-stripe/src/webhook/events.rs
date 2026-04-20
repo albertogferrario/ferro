@@ -86,10 +86,7 @@ impl StripeEvent for StripeCheckoutCompleted {
             stripe::EventObject::CheckoutSession(session) => Some(Self {
                 event_id: event.id.to_string(),
                 session_id: session.id.to_string(),
-                payment_intent_id: session
-                    .payment_intent
-                    .as_ref()
-                    .map(|e| e.id().to_string()),
+                payment_intent_id: session.payment_intent.as_ref().map(|e| e.id().to_string()),
                 amount_total_cents: session.amount_total.unwrap_or(0),
                 currency: session.currency.map(|c| c.to_string()).unwrap_or_default(),
                 metadata: session.metadata.clone().unwrap_or_default(),
@@ -249,10 +246,7 @@ impl StripeEvent for StripeChargeRefunded {
             stripe::EventObject::Charge(charge) => Some(Self {
                 event_id: event.id.to_string(),
                 charge_id: charge.id.to_string(),
-                payment_intent_id: charge
-                    .payment_intent
-                    .as_ref()
-                    .map(|e| e.id().to_string()),
+                payment_intent_id: charge.payment_intent.as_ref().map(|e| e.id().to_string()),
                 amount_refunded_cents: charge.amount_refunded,
                 metadata: charge.metadata.clone(),
             }),
@@ -282,10 +276,7 @@ impl StripeEvent for StripeChargeDisputeCreated {
             stripe::EventObject::Dispute(dispute) => Some(Self {
                 event_id: event.id.to_string(),
                 charge_id: dispute.charge.id().to_string(),
-                payment_intent_id: dispute
-                    .payment_intent
-                    .as_ref()
-                    .map(|e| e.id().to_string()),
+                payment_intent_id: dispute.payment_intent.as_ref().map(|e| e.id().to_string()),
                 dispute_reason: dispute.reason.clone(),
                 amount_cents: dispute.amount,
             }),

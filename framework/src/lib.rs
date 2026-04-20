@@ -94,9 +94,10 @@ pub use ferro_json_ui::{
 pub use ferro_stripe::{
     account, checkout, refund, verify_webhook, CheckoutBuilder, CheckoutIntent,
     Error as StripeError, LineItem, MemoryProcessedLog, Mode, ProcessStripeWebhook,
-    ProcessedEventLog, Stripe, StripeCheckoutCompleted, StripeConfig,
-    StripeConnectPaymentSucceeded, StripeInvoicePaid, StripeSubscriptionDeleted,
-    StripeSubscriptionUpdated,
+    ProcessedEventLog, Stripe, StripeChargeDisputeCreated, StripeChargeRefunded,
+    StripeCheckoutCompleted, StripeCheckoutExpired, StripeConfig, StripeConnectAccountUpdated,
+    StripeConnectPaymentSucceeded, StripeEvent, StripeInvoicePaid, StripePaymentIntentFailed,
+    StripeSubscriptionDeleted, StripeSubscriptionUpdated, SyncDispatcher,
 };
 #[cfg(feature = "theme")]
 pub use ferro_theme::{IntentModeTemplates, IntentSlotTemplate, Theme, ThemeError, ThemeTemplates};

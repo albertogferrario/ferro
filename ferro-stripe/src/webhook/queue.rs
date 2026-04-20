@@ -65,19 +65,22 @@ impl ProcessStripeWebhook {
 #[ferro_queue::async_trait]
 impl ferro_queue::Job for ProcessStripeWebhook {
     async fn handle(&self) -> Result<(), ferro_queue::Error> {
-        let dispatcher = self.dispatcher.as_ref().expect(
-            "ProcessStripeWebhook requires dispatcher — use ProcessStripeWebhook::new()",
-        );
-        let event: stripe::Event = serde_json::from_str(&self.raw_body).map_err(|e| {
-            ferro_queue::Error::JobFailed {
+        let dispatcher = self
+            .dispatcher
+            .as_ref()
+            .expect("ProcessStripeWebhook requires dispatcher — use ProcessStripeWebhook::new()");
+        let event: stripe::Event =
+            serde_json::from_str(&self.raw_body).map_err(|e| ferro_queue::Error::JobFailed {
                 job: "ProcessStripeWebhook".to_string(),
                 message: format!("parse stripe event: {e}"),
-            }
-        })?;
-        dispatcher.dispatch(event).await.map_err(|e| ferro_queue::Error::JobFailed {
-            job: "ProcessStripeWebhook".to_string(),
-            message: e.to_string(),
-        })
+            })?;
+        dispatcher
+            .dispatch(event)
+            .await
+            .map_err(|e| ferro_queue::Error::JobFailed {
+                job: "ProcessStripeWebhook".to_string(),
+                message: e.to_string(),
+            })
     }
 
     fn name(&self) -> &'static str {
@@ -120,20 +123,17 @@ mod tests {
     async fn handle_dispatches_parsed_event_through_dispatcher() {
         let flag = Arc::new(AtomicBool::new(false));
         let flag_clone = Arc::clone(&flag);
-        let dispatcher = Arc::new(
-            SyncDispatcher::new().on(move |_: StripeCheckoutCompleted| {
-                let flag = Arc::clone(&flag_clone);
-                async move {
-                    flag.store(true, Ordering::SeqCst);
-                    Ok(())
-                }
-            }),
-        );
+        let dispatcher = Arc::new(SyncDispatcher::new().on(move |_: StripeCheckoutCompleted| {
+            let flag = Arc::clone(&flag_clone);
+            async move {
+                flag.store(true, Ordering::SeqCst);
+                Ok(())
+            }
+        }));
 
         // Reuse Plan 03 fixture for a realistic stripe::Event JSON body.
-        let raw = include_str!(
-            "../../tests/fixtures/stripe_events/checkout_session_completed.json"
-        );
+        let raw =
+            include_str!("../../tests/fixtures/stripe_events/checkout_session_completed.json");
 
         let job = ProcessStripeWebhook::new(
             "checkout.session.completed".to_string(),
@@ -145,7 +145,10 @@ mod tests {
         use ferro_queue::Job;
         let result = job.handle().await;
         assert!(result.is_ok(), "handle should succeed, got {result:?}");
-        assert!(flag.load(Ordering::SeqCst), "registered handler should have run");
+        assert!(
+            flag.load(Ordering::SeqCst),
+            "registered handler should have run"
+        );
     }
 
     #[tokio::test]

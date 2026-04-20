@@ -196,12 +196,11 @@ impl Request {
     /// Returns `None` when no flash errors exist, no session is active, or the field has no error.
     pub fn validation_error(&self, field: &str) -> Option<String> {
         let errors: Option<std::collections::HashMap<String, Vec<String>>> =
-            crate::session::session()
-                .and_then(|s| {
-                    s.get::<std::collections::HashMap<String, Vec<String>>>(
-                        "_flash.old._validation_errors",
-                    )
-                });
+            crate::session::session().and_then(|s| {
+                s.get::<std::collections::HashMap<String, Vec<String>>>(
+                    "_flash.old._validation_errors",
+                )
+            });
         errors.and_then(|map| map.get(field).and_then(|v| v.first()).cloned())
     }
 
@@ -422,8 +421,8 @@ mod tests {
     async fn test_session_absent_old_returns_none() {
         // Outside any SESSION_CONTEXT scope, session() returns None.
         // old() delegates to session().and_then(...) so it must also return None.
-        let val = crate::session::session()
-            .and_then(|s| s.get::<String>("_flash.old._old_input.email"));
+        let val =
+            crate::session::session().and_then(|s| s.get::<String>("_flash.old._old_input.email"));
         assert_eq!(val, None);
     }
 
@@ -439,9 +438,7 @@ mod tests {
     #[tokio::test]
     async fn test_session_absent_has_validation_errors_false() {
         let val = crate::session::session()
-            .and_then(|s| {
-                s.get::<HashMap<String, Vec<String>>>("_flash.old._validation_errors")
-            })
+            .and_then(|s| s.get::<HashMap<String, Vec<String>>>("_flash.old._validation_errors"))
             .map(|m| !m.is_empty())
             .unwrap_or(false);
         assert!(!val);
@@ -453,7 +450,10 @@ mod tests {
     async fn test_old_reads_from_flash_old_key() {
         let mut session = SessionData::new("test-id".to_string(), "csrf".to_string());
         // Simulate age_flash_data() having moved the flash to _flash.old.*
-        session.put("_flash.old._old_input.email", "user@example.com".to_string());
+        session.put(
+            "_flash.old._old_input.email",
+            "user@example.com".to_string(),
+        );
 
         let ctx = Arc::new(RwLock::new(Some(session)));
         let val = SESSION_CONTEXT

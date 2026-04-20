@@ -509,7 +509,7 @@ fn render_kanban_board(props: &KanbanBoardProps, data: &Value) -> String {
     let mut html = String::new();
 
     // ── Desktop view: horizontal scrollable columns ──────────────────
-    html.push_str("<div class=\"hidden md:block overflow-x-auto\">");
+    html.push_str("<div class=\"hidden md:block overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden\">");
     html.push_str("<div class=\"flex gap-4\" style=\"min-width: min-content;\">");
 
     for col in &props.columns {
@@ -1116,7 +1116,7 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
 
     // --- Desktop table (hidden on mobile) ---
     html.push_str(
-        "<div class=\"hidden md:block rounded-lg border border-border overflow-hidden\">",
+        "<div class=\"hidden md:block rounded-lg border border-border overflow-visible\">",
     );
 
     if items.is_empty() {
@@ -1148,9 +1148,31 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
         // Body
         html.push_str("<tbody>");
         for (index, row) in items.iter().enumerate() {
-            html.push_str(
-                "<tr class=\"even:bg-surface hover:bg-surface/80 transition-colors duration-150 border-t border-border\">"
-            );
+            let row_key_value = if let Some(ref rk) = props.row_key {
+                row.get(rk)
+                    .and_then(|v| match v {
+                        Value::String(s) => Some(s.clone()),
+                        Value::Number(n) => Some(n.to_string()),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| index.to_string())
+            } else {
+                index.to_string()
+            };
+            let href = props
+                .row_href
+                .as_ref()
+                .map(|p| p.replace("{row_key}", &row_key_value));
+            if let Some(ref url) = href {
+                html.push_str(&format!(
+                    "<tr class=\"even:bg-surface hover:bg-surface/80 transition-colors duration-150 border-t border-border cursor-pointer\" onclick=\"window.location='{}'\">",
+                    html_escape(url)
+                ));
+            } else {
+                html.push_str(
+                    "<tr class=\"even:bg-surface hover:bg-surface/80 transition-colors duration-150 border-t border-border\">"
+                );
+            }
             for col in &props.columns {
                 let cell_value = row.get(&col.key);
                 let cell_text = match cell_value {
@@ -1220,7 +1242,31 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
         ));
     } else {
         for (index, row) in items.iter().enumerate() {
-            html.push_str("<div class=\"rounded-lg border border-border bg-card p-4 space-y-2\">");
+            let row_key_value = if let Some(ref rk) = props.row_key {
+                row.get(rk)
+                    .and_then(|v| match v {
+                        Value::String(s) => Some(s.clone()),
+                        Value::Number(n) => Some(n.to_string()),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| index.to_string())
+            } else {
+                index.to_string()
+            };
+            let mobile_href = props
+                .row_href
+                .as_ref()
+                .map(|p| p.replace("{row_key}", &row_key_value));
+            if let Some(ref url) = mobile_href {
+                html.push_str(&format!(
+                    "<a href=\"{}\" class=\"block rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface transition-colors\">",
+                    html_escape(url)
+                ));
+            } else {
+                html.push_str(
+                    "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2\">",
+                );
+            }
             for col in &props.columns {
                 let cell_value = row.get(&col.key);
                 let cell_text = match cell_value {
@@ -1276,7 +1322,11 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                 html.push_str(&render_dropdown_menu(&dropdown_props));
                 html.push_str("</div>");
             }
-            html.push_str("</div>");
+            if mobile_href.is_some() {
+                html.push_str("</a>");
+            } else {
+                html.push_str("</div>");
+            }
         }
     }
     html.push_str("</div>");
@@ -2184,15 +2234,15 @@ fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
 
 fn render_empty_state(props: &EmptyStateProps) -> String {
     let mut html = String::from(
-        "<div class=\"flex flex-col items-center justify-center py-16 px-6 text-center\">",
+        "<div class=\"flex flex-col items-center justify-center py-8 px-6 text-center\">",
     );
     html.push_str(&format!(
-        "<h3 class=\"text-xl font-semibold text-text\">{}</h3>",
+        "<p class=\"text-sm text-text-muted\">{}</p>",
         html_escape(&props.title)
     ));
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
-            "<p class=\"mt-2 text-sm text-text-muted max-w-sm\">{}</p>",
+            "<p class=\"mt-1 text-sm text-text-muted\">{}</p>",
             html_escape(desc)
         ));
     }
@@ -2200,7 +2250,7 @@ fn render_empty_state(props: &EmptyStateProps) -> String {
         let label = props.action_label.as_deref().unwrap_or("Action");
         let url = action.url.as_deref().unwrap_or("#");
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"mt-6 inline-flex items-center justify-center rounded-md \
+            "<a href=\"{}\" class=\"mt-4 inline-flex items-center justify-center rounded-md \
              border border-border bg-card text-text px-4 py-2 text-sm font-medium \
              hover:bg-surface transition-colors\">{}</a>",
             html_escape(url),
@@ -7568,6 +7618,7 @@ mod tests {
             row_actions: None,
             empty_message: None,
             row_key: None,
+            row_href: None,
         };
         let data = json!({
             "items": [
@@ -7623,6 +7674,7 @@ mod tests {
             ]),
             empty_message: None,
             row_key: Some("id".into()),
+            row_href: None,
         };
         let data = json!({
             "items": [{"id": "p1", "name": "Margherita"}]
@@ -7650,6 +7702,7 @@ mod tests {
             row_actions: None,
             empty_message: None,
             row_key: None,
+            row_href: None,
         };
         let data = json!({"items": []});
         let html = render_data_table(&props, &data);
@@ -7678,6 +7731,7 @@ mod tests {
             row_actions: None,
             empty_message: None,
             row_key: None,
+            row_href: None,
         };
         let data = json!({
             "items": [
@@ -8042,6 +8096,7 @@ mod tests {
             }]),
             empty_message: None,
             row_key: Some("id".into()),
+            row_href: None,
         };
         let data = serde_json::json!({ "items": [{"id": "42", "name": "Widget"}] });
         let html = render_data_table(&props, &data);

@@ -52,7 +52,9 @@ pub struct SyncDispatcher {
 impl SyncDispatcher {
     /// Creates an empty dispatcher with no registered handlers.
     pub fn new() -> Self {
-        Self { handlers: Vec::new() }
+        Self {
+            handlers: Vec::new(),
+        }
     }
 
     /// Registers a handler for a single typed event `E`.
