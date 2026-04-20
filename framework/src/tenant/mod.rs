@@ -141,16 +141,7 @@ impl std::fmt::Debug for TenantFailureMode {
     }
 }
 
-impl Clone for TenantFailureMode {
-    fn clone(&self) -> Self {
-        match self {
-            Self::NotFound => Self::NotFound,
-            Self::Forbidden => Self::Forbidden,
-            Self::Allow => Self::Allow,
-            Self::Custom(_) => panic!("TenantFailureMode::Custom cannot be cloned"),
-        }
-    }
-}
+
 
 #[cfg(test)]
 mod tests {
