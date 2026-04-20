@@ -95,7 +95,7 @@ Phases 133–135:
 
 #### Phases
 
-- [ ] **Phase 140: Core reshape** — module tree + `CheckoutBuilder`/`CheckoutIntent` + `ProcessedEventLog`/`MemoryProcessedLog` + remove `connect::*`/`subscription::*` + `Stripe::with(key)`. `ferro-stripe 0.4.0`.
+- [x] **Phase 140: Core reshape** — module tree + `CheckoutBuilder`/`CheckoutIntent` + `ProcessedEventLog`/`MemoryProcessedLog` + remove `connect::*`/`subscription::*` + `Stripe::with(key)`. `ferro-stripe 0.4.0`. (completed 2026-04-20)
 - [ ] **Phase 141: Protocol uplift** — typed events (drop `event_json`), `SyncDispatcher` as sole handler registry, queue path opt-in with `Arc<SyncDispatcher>`, all 5 new event types, golden-JSON fixtures. `ferro-stripe 0.5.0`.
 - [ ] **Phase 142: ferro-mcp parity** — update `stripe_webhook_events` and `stripe_config_status` for capability-axis module tree and `SyncDispatcher` handler discovery.
 
@@ -123,7 +123,7 @@ Phases 133–135:
   13. `ferro-stripe 0.4.0` released; `cargo test --all-features` + `cargo clippy --all -- -D warnings` pass
   14. CHANGELOG entry documents every breaking change and migration path
 
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 - [x] 140-01-PLAN.md — Foundation: dashmap dep, Error::MissingIdempotencyKey, Stripe::with(key) (Wave 1)
 - [x] 140-02-PLAN.md — idempotency.rs: ProcessedEventLog trait + MemoryProcessedLog + tests (Wave 1)
