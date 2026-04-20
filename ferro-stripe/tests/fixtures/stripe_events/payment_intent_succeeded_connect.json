@@ -17,6 +17,10 @@
       "amount_received": 5000,
       "currency": "usd",
       "livemode": false,
+      "capture_method": "automatic",
+      "confirmation_method": "automatic",
+      "created": 1700000009,
+      "payment_method_types": ["card"],
       "metadata": {},
       "status": "succeeded"
     }

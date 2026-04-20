@@ -32,7 +32,8 @@
         "enabled": false,
         "liability": null,
         "status": null
-      }
+      },
+      "payment_method_types": ["card"]
     }
   }
 }

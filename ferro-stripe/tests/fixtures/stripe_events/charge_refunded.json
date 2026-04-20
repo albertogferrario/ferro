@@ -17,6 +17,15 @@
       "currency": "usd",
       "livemode": false,
       "metadata": { "order_id": "order_ref" },
+      "billing_details": {
+        "address": { "city": null, "country": null, "line1": null, "line2": null, "postal_code": null, "state": null },
+        "email": null,
+        "name": null,
+        "phone": null
+      },
+      "captured": true,
+      "created": 1700000003,
+      "disputed": false,
       "paid": true,
       "payment_intent": "pi_test_ref_001",
       "refunded": true,

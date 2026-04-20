@@ -15,11 +15,15 @@
       "status": "canceled",
       "livemode": false,
       "cancel_at_period_end": false,
+      "billing_cycle_anchor": 1700000007,
       "created": 1700000000,
       "current_period_end": 1702592007,
       "current_period_start": 1700000007,
       "items": { "object": "list", "data": [], "has_more": false, "url": "/v1/subscription_items" },
-      "metadata": {}
+      "metadata": {},
+      "currency": "usd",
+      "start_date": 1700000000,
+      "automatic_tax": { "enabled": false, "liability": null }
     }
   }
 }

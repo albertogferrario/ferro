@@ -20,6 +20,10 @@
         "checkout_session_id": "cs_test_related_001",
         "order_id": "order_99"
       },
+      "capture_method": "automatic",
+      "confirmation_method": "automatic",
+      "created": 1700000002,
+      "payment_method_types": ["card"],
       "status": "requires_payment_method",
       "last_payment_error": {
         "type": "card_error",
