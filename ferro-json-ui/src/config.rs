@@ -109,8 +109,8 @@ mod tests {
 
     #[test]
     fn stylesheet_urls_builder_replaces_entire_list() {
-        let c = JsonUiConfig::new()
-            .stylesheet_urls(vec!["/a.css".to_string(), "/b.css".to_string()]);
+        let c =
+            JsonUiConfig::new().stylesheet_urls(vec!["/a.css".to_string(), "/b.css".to_string()]);
         assert_eq!(c.stylesheet_urls, vec!["/a.css", "/b.css"]);
         assert!(
             !c.stylesheet_urls

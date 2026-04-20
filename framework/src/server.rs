@@ -410,7 +410,10 @@ mod ferro_base_css_route_tests {
             .await
             .expect("body collect")
             .to_bytes();
-        assert_eq!(body_bytes.as_ref(), ferro_json_ui::FERRO_BASE_CSS.as_bytes());
+        assert_eq!(
+            body_bytes.as_ref(),
+            ferro_json_ui::FERRO_BASE_CSS.as_bytes()
+        );
         assert!(!body_bytes.is_empty());
     }
 }

@@ -438,10 +438,8 @@ mod tests {
     fn stylesheet_urls_emitted_in_order_and_replaces_default() {
         let view = sample_view();
         let data = serde_json::json!({});
-        let config = JsonUiConfig::new().stylesheet_urls(vec![
-            "/a.css".to_string(),
-            "/b.css".to_string(),
-        ]);
+        let config =
+            JsonUiConfig::new().stylesheet_urls(vec!["/a.css".to_string(), "/b.css".to_string()]);
         let result = JsonUi::render_with_config(&view, &data, &config);
         let body = html_body(ok_response(result));
 
@@ -479,8 +477,8 @@ mod tests {
         // app forwards untrusted values into .stylesheet_urls(...).
         let view = sample_view();
         let data = serde_json::json!({});
-        let config = JsonUiConfig::new()
-            .stylesheet_urls(vec![r#"/s.css?a=1&b=2&q=<x>""#.to_string()]);
+        let config =
+            JsonUiConfig::new().stylesheet_urls(vec![r#"/s.css?a=1&b=2&q=<x>""#.to_string()]);
         let result = JsonUi::render_with_config(&view, &data, &config);
         let body = html_body(ok_response(result));
 
