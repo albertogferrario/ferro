@@ -90,7 +90,7 @@ impl StorageConfig {
                 driver: DiskDriver::S3,
                 root: None,
                 url: None,
-                bucket: Some(bucket),
+                bucket: Some(bucket.clone()),
                 region: Some(region),
             };
             // Resolve public file URL base (used by Storage::url() to build asset URLs).
