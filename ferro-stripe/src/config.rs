@@ -52,11 +52,23 @@ mod tests {
 
     #[test]
     fn from_env_returns_config_error_when_key_missing() {
-        // Remove env vars if set (test isolation)
+        // Save existing values so other tests are not affected by the removal.
+        let old_key = std::env::var("STRIPE_SECRET_KEY").ok();
+        let old_secret = std::env::var("STRIPE_WEBHOOK_SECRET").ok();
+
         std::env::remove_var("STRIPE_SECRET_KEY");
         std::env::remove_var("STRIPE_WEBHOOK_SECRET");
+
         let result = StripeConfig::from_env();
         assert!(matches!(result, Err(Error::Config(_))));
+
+        // Restore to avoid polluting the process-global env for other tests.
+        if let Some(k) = old_key {
+            std::env::set_var("STRIPE_SECRET_KEY", k);
+        }
+        if let Some(s) = old_secret {
+            std::env::set_var("STRIPE_WEBHOOK_SECRET", s);
+        }
     }
 
     #[test]
