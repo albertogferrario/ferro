@@ -767,6 +767,9 @@ pub struct DataTableProps {
     pub empty_message: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub row_key: Option<String>,
+    /// URL pattern for row click navigation. Use `{row_key}` as placeholder.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_href: Option<String>,
 }
 
 /// Props for a single column in a KanbanBoard.
