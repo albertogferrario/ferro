@@ -106,9 +106,9 @@ This phase does NOT include:
 <specifics>
 ## Specific Ideas
 
-- The "production failure in Safari" is the concrete motivation. The success signal is: gestiscilo.it login page renders fully styled in iPhone Safari with zero CDN requests.
+- The "production failure in Safari" is the concrete motivation. The success signal is: gestiscilo.it login page renders fully styled in iPhone Safari with zero CDN requests. This validation happens in the downstream gestiscilo consumer phase (see Phase Boundary above), not as a deliverable of this framework phase.
 - Tailwind v4 standalone binary is Rust-native — no Node. The same binary used to generate the checked-in CSS can be documented for contributors who add new utility classes to ferro-json-ui.
-- gestiscilo's `themes/gestiscilo/tokens.css` currently uses `@theme` syntax. Converting it to plain `:root { --color-...: ... }` is part of this phase's acceptance criteria.
+- gestiscilo's `themes/gestiscilo/tokens.css` currently uses `@theme` syntax and will need conversion to plain `:root { --color-...: ... }`. That conversion is a **validation step for the gestiscilo consumer phase**, not a deliverable of this phase. This framework phase provides the tooling the gestiscilo phase will rely on: (a) Plan 02 converts `ferro-theme/assets/default.css` as the reference shape, and (b) Plan 04 updates the `ferro make:theme` scaffolder so new themes (and the gestiscilo conversion) have a canonical plain-CSS template to follow.
 
 </specifics>
 
