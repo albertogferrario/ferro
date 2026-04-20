@@ -1862,13 +1862,12 @@ dependencies = [
 
 [[package]]
 name = "ferro-stripe"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "async-stripe",
  "async-trait",
  "chrono",
  "dashmap",
- "ferro-events",
  "ferro-queue",
  "hex",
  "hmac",
@@ -1877,6 +1876,7 @@ dependencies = [
  "sha2",
  "thiserror 2.0.17",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

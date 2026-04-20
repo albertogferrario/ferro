@@ -124,12 +124,34 @@ pub fn mock_invoice_paid_event(invoice_id: &str, customer_id: &str) -> String {
     .to_string()
 }
 
-/// Re-exports [`signed_webhook_payload`] from the webhook module for convenience.
+/// Generates a valid Stripe-signature header for testing webhook verification.
 ///
-/// Generates a Stripe-compatible `t={ts},v1={hmac}` signature header.
-/// The returned `(signature_header, timestamp)` pair is ready for use with
-/// [`crate::verify_webhook`].
-pub use crate::webhook::events::signed_webhook_payload;
+/// Returns `(signature_header, timestamp)` where signature_header is formatted
+/// as `t={timestamp},v1={hmac_sha256}` and timestamp is the current Unix time.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let (sig, ts) = signed_webhook_payload(r#"{"id":"evt_1"}"#, "whsec_secret");
+/// let event = verify_webhook(r#"{"id":"evt_1"}"#, &sig, "whsec_secret");
+/// assert!(event.is_ok());
+/// ```
+pub fn signed_webhook_payload(payload: &str, secret: &str) -> (String, i64) {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+
+    let timestamp = chrono::Utc::now().timestamp();
+    let signed_payload = format!("{timestamp}.{payload}");
+
+    let mut mac =
+        Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
+    mac.update(signed_payload.as_bytes());
+    let result = mac.finalize();
+    let signature = hex::encode(result.into_bytes());
+
+    let header = format!("t={timestamp},v1={signature}");
+    (header, timestamp)
+}
 
 #[cfg(test)]
 mod tests {

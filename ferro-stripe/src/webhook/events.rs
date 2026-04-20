@@ -1,21 +1,39 @@
-use ferro_events::Event;
+use std::collections::HashMap;
+
+/// Marker trait for typed Stripe webhook event structs.
+///
+/// Every event struct implements this trait. `from_raw` converts a
+/// verified [`stripe::Event`] to the typed struct, or returns `None`
+/// when the event type (or data object variant) does not match.
+pub trait StripeEvent: Send + Sync + 'static {
+    fn from_raw(event: &stripe::Event) -> Option<Self>
+    where
+        Self: Sized;
+}
 
 /// Stripe webhook event for `customer.subscription.updated`.
 ///
 /// Emitted when a subscription's status, plan, or billing cycle changes.
 #[derive(Debug, Clone)]
 pub struct StripeSubscriptionUpdated {
-    /// The raw JSON body of the Stripe event.
-    pub event_json: String,
-    /// The Stripe subscription ID (sub_xxx).
+    pub event_id: String,
     pub subscription_id: String,
-    /// The Stripe customer ID (cus_xxx).
     pub customer_id: String,
 }
 
-impl Event for StripeSubscriptionUpdated {
-    fn name(&self) -> &'static str {
-        "stripe.customer.subscription.updated"
+impl StripeEvent for StripeSubscriptionUpdated {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::CustomerSubscriptionUpdated {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::Subscription(sub) => Some(Self {
+                event_id: event.id.to_string(),
+                subscription_id: sub.id.to_string(),
+                customer_id: sub.customer.id().to_string(),
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -24,17 +42,24 @@ impl Event for StripeSubscriptionUpdated {
 /// Emitted when a subscription is canceled and the billing period ends.
 #[derive(Debug, Clone)]
 pub struct StripeSubscriptionDeleted {
-    /// The raw JSON body of the Stripe event.
-    pub event_json: String,
-    /// The Stripe subscription ID (sub_xxx).
+    pub event_id: String,
     pub subscription_id: String,
-    /// The Stripe customer ID (cus_xxx).
     pub customer_id: String,
 }
 
-impl Event for StripeSubscriptionDeleted {
-    fn name(&self) -> &'static str {
-        "stripe.customer.subscription.deleted"
+impl StripeEvent for StripeSubscriptionDeleted {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::CustomerSubscriptionDeleted {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::Subscription(sub) => Some(Self {
+                event_id: event.id.to_string(),
+                subscription_id: sub.id.to_string(),
+                customer_id: sub.customer.id().to_string(),
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -43,17 +68,35 @@ impl Event for StripeSubscriptionDeleted {
 /// Emitted when a checkout session finishes successfully.
 #[derive(Debug, Clone)]
 pub struct StripeCheckoutCompleted {
-    /// The raw JSON body of the Stripe event.
-    pub event_json: String,
-    /// The Stripe checkout session ID (cs_xxx).
+    pub event_id: String,
     pub session_id: String,
-    /// The Stripe customer ID if present (cus_xxx).
-    pub customer_id: Option<String>,
+    pub payment_intent_id: Option<String>,
+    pub amount_total_cents: i64,
+    pub currency: String,
+    pub metadata: HashMap<String, String>,
+    pub customer_email: Option<String>,
 }
 
-impl Event for StripeCheckoutCompleted {
-    fn name(&self) -> &'static str {
-        "stripe.checkout.session.completed"
+impl StripeEvent for StripeCheckoutCompleted {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::CheckoutSessionCompleted {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::CheckoutSession(session) => Some(Self {
+                event_id: event.id.to_string(),
+                session_id: session.id.to_string(),
+                payment_intent_id: session
+                    .payment_intent
+                    .as_ref()
+                    .map(|e| e.id().to_string()),
+                amount_total_cents: session.amount_total.unwrap_or(0),
+                currency: session.currency.map(|c| c.to_string()).unwrap_or_default(),
+                metadata: session.metadata.clone().unwrap_or_default(),
+                customer_email: session.customer_email.clone(),
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -62,17 +105,27 @@ impl Event for StripeCheckoutCompleted {
 /// Emitted when an invoice is paid successfully.
 #[derive(Debug, Clone)]
 pub struct StripeInvoicePaid {
-    /// The raw JSON body of the Stripe event.
-    pub event_json: String,
-    /// The Stripe invoice ID (in_xxx).
+    pub event_id: String,
     pub invoice_id: String,
-    /// The Stripe customer ID (cus_xxx).
     pub customer_id: String,
 }
 
-impl Event for StripeInvoicePaid {
-    fn name(&self) -> &'static str {
-        "stripe.invoice.paid"
+impl StripeEvent for StripeInvoicePaid {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::InvoicePaid {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::Invoice(inv) => {
+                let customer_id = inv.customer.as_ref().map(|e| e.id().to_string())?;
+                Some(Self {
+                    event_id: event.id.to_string(),
+                    invoice_id: inv.id.to_string(),
+                    customer_id,
+                })
+            }
+            _ => None,
+        }
     }
 }
 
@@ -81,17 +134,193 @@ impl Event for StripeInvoicePaid {
 /// Emitted when a payment intent succeeds on a connected Stripe account.
 #[derive(Debug, Clone)]
 pub struct StripeConnectPaymentSucceeded {
-    /// The raw JSON body of the Stripe event.
-    pub event_json: String,
-    /// The Stripe payment intent ID (pi_xxx).
+    pub event_id: String,
     pub payment_intent_id: String,
-    /// The connected Stripe account ID (acct_xxx).
     pub connect_account_id: String,
 }
 
-impl Event for StripeConnectPaymentSucceeded {
-    fn name(&self) -> &'static str {
-        "stripe.connect.payment_intent.succeeded"
+impl StripeEvent for StripeConnectPaymentSucceeded {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::PaymentIntentSucceeded {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::PaymentIntent(pi) => {
+                let connect_account_id = event.account.as_ref()?.to_string();
+                Some(Self {
+                    event_id: event.id.to_string(),
+                    payment_intent_id: pi.id.to_string(),
+                    connect_account_id,
+                })
+            }
+            _ => None,
+        }
+    }
+}
+
+/// Stripe webhook event for `checkout.session.expired`.
+///
+/// Emitted when a checkout session expires without being completed.
+#[derive(Debug, Clone)]
+pub struct StripeCheckoutExpired {
+    pub event_id: String,
+    pub session_id: String,
+    pub metadata: HashMap<String, String>,
+}
+
+impl StripeEvent for StripeCheckoutExpired {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::CheckoutSessionExpired {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::CheckoutSession(session) => Some(Self {
+                event_id: event.id.to_string(),
+                session_id: session.id.to_string(),
+                metadata: session.metadata.clone().unwrap_or_default(),
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// Stripe webhook event for `payment_intent.payment_failed`.
+///
+/// Emitted when a payment attempt on a PaymentIntent fails.
+#[derive(Debug, Clone)]
+pub struct StripePaymentIntentFailed {
+    pub event_id: String,
+    pub payment_intent_id: String,
+    pub session_id: Option<String>,
+    pub failure_code: Option<String>,
+    pub failure_message: Option<String>,
+    pub metadata: HashMap<String, String>,
+}
+
+impl StripeEvent for StripePaymentIntentFailed {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::PaymentIntentPaymentFailed {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::PaymentIntent(pi) => {
+                let failure_code = pi
+                    .last_payment_error
+                    .as_ref()
+                    .and_then(|e| e.code.as_ref())
+                    .map(|c| c.to_string());
+                let failure_message = pi
+                    .last_payment_error
+                    .as_ref()
+                    .and_then(|e| e.message.clone());
+                let session_id = pi.metadata.get("checkout_session_id").cloned();
+                Some(Self {
+                    event_id: event.id.to_string(),
+                    payment_intent_id: pi.id.to_string(),
+                    session_id,
+                    failure_code,
+                    failure_message,
+                    metadata: pi.metadata.clone(),
+                })
+            }
+            _ => None,
+        }
+    }
+}
+
+/// Stripe webhook event for `charge.refunded`.
+///
+/// Emitted when a charge is refunded.
+#[derive(Debug, Clone)]
+pub struct StripeChargeRefunded {
+    pub event_id: String,
+    pub charge_id: String,
+    pub payment_intent_id: Option<String>,
+    pub amount_refunded_cents: i64,
+    pub metadata: HashMap<String, String>,
+}
+
+impl StripeEvent for StripeChargeRefunded {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::ChargeRefunded {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::Charge(charge) => Some(Self {
+                event_id: event.id.to_string(),
+                charge_id: charge.id.to_string(),
+                payment_intent_id: charge
+                    .payment_intent
+                    .as_ref()
+                    .map(|e| e.id().to_string()),
+                amount_refunded_cents: charge.amount_refunded,
+                metadata: charge.metadata.clone(),
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// Stripe webhook event for `charge.dispute.created`.
+///
+/// Emitted when a dispute is opened on a charge.
+#[derive(Debug, Clone)]
+pub struct StripeChargeDisputeCreated {
+    pub event_id: String,
+    pub charge_id: String,
+    pub payment_intent_id: Option<String>,
+    pub dispute_reason: String,
+    pub amount_cents: i64,
+}
+
+impl StripeEvent for StripeChargeDisputeCreated {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::ChargeDisputeCreated {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::Dispute(dispute) => Some(Self {
+                event_id: event.id.to_string(),
+                charge_id: dispute.charge.id().to_string(),
+                payment_intent_id: dispute
+                    .payment_intent
+                    .as_ref()
+                    .map(|e| e.id().to_string()),
+                dispute_reason: dispute.reason.clone(),
+                amount_cents: dispute.amount,
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// Stripe webhook event for `account.updated` (Connect).
+///
+/// Emitted when a connected account's details change.
+#[derive(Debug, Clone)]
+pub struct StripeConnectAccountUpdated {
+    pub event_id: String,
+    pub account_id: String,
+    pub charges_enabled: bool,
+    pub payouts_enabled: bool,
+    pub details_submitted: bool,
+}
+
+impl StripeEvent for StripeConnectAccountUpdated {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::AccountUpdated {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::Account(acct) => Some(Self {
+                event_id: event.id.to_string(),
+                account_id: acct.id.to_string(),
+                charges_enabled: acct.charges_enabled.unwrap_or(false),
+                payouts_enabled: acct.payouts_enabled.unwrap_or(false),
+                details_submitted: acct.details_submitted.unwrap_or(false),
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -99,13 +328,13 @@ impl Event for StripeConnectPaymentSucceeded {
 ///
 /// Webhook handlers dispatch this job immediately after signature verification,
 /// returning HTTP 200 to Stripe without blocking on event processing.
-/// The job then dispatches the appropriate ferro-events Event based on event_type.
+/// Plan 04 relocates this struct to `webhook/queue.rs` and wires it to `SyncDispatcher`.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProcessStripeWebhook {
     /// The Stripe event type string (e.g. "customer.subscription.updated").
     pub event_type: String,
     /// The raw JSON body of the Stripe event.
-    pub event_json: String,
+    pub raw_body: String,
     /// The connected account ID for Connect webhooks (None for platform webhooks).
     pub connect_account_id: Option<String>,
 }
@@ -113,40 +342,9 @@ pub struct ProcessStripeWebhook {
 #[ferro_queue::async_trait]
 impl ferro_queue::Job for ProcessStripeWebhook {
     async fn handle(&self) -> Result<(), ferro_queue::Error> {
-        match self.event_type.as_str() {
-            "customer.subscription.updated" => {
-                if let Some(event) = parse_subscription_updated(&self.event_json) {
-                    event.dispatch_sync();
-                }
-            }
-            "customer.subscription.deleted" => {
-                if let Some(event) = parse_subscription_deleted(&self.event_json) {
-                    event.dispatch_sync();
-                }
-            }
-            "checkout.session.completed" => {
-                if let Some(event) = parse_checkout_completed(&self.event_json) {
-                    event.dispatch_sync();
-                }
-            }
-            "invoice.paid" => {
-                if let Some(event) = parse_invoice_paid(&self.event_json) {
-                    event.dispatch_sync();
-                }
-            }
-            "payment_intent.succeeded" => {
-                if let Some(connect_id) = self.connect_account_id.clone() {
-                    if let Some(event) =
-                        parse_connect_payment_succeeded(&self.event_json, connect_id)
-                    {
-                        event.dispatch_sync();
-                    }
-                }
-            }
-            // Unknown event types are silently ignored — Stripe sends many event types
-            // and only a subset are handled by this integration.
-            _ => {}
-        }
+        // Temporary: full SyncDispatcher wiring lands in Plan 04.
+        // This keeps the crate compiling while Plan 02 builds SyncDispatcher
+        // and Plan 04 moves this struct to webhook/queue.rs.
         Ok(())
     }
 
@@ -155,183 +353,48 @@ impl ferro_queue::Job for ProcessStripeWebhook {
     }
 }
 
-fn parse_subscription_updated(event_json: &str) -> Option<StripeSubscriptionUpdated> {
-    let v: serde_json::Value = serde_json::from_str(event_json).ok()?;
-    let sub = v.get("data")?.get("object")?;
-    let subscription_id = sub.get("id")?.as_str()?.to_string();
-    let customer_id = sub.get("customer")?.as_str()?.to_string();
-    Some(StripeSubscriptionUpdated {
-        event_json: event_json.to_string(),
-        subscription_id,
-        customer_id,
-    })
-}
-
-fn parse_subscription_deleted(event_json: &str) -> Option<StripeSubscriptionDeleted> {
-    let v: serde_json::Value = serde_json::from_str(event_json).ok()?;
-    let sub = v.get("data")?.get("object")?;
-    let subscription_id = sub.get("id")?.as_str()?.to_string();
-    let customer_id = sub.get("customer")?.as_str()?.to_string();
-    Some(StripeSubscriptionDeleted {
-        event_json: event_json.to_string(),
-        subscription_id,
-        customer_id,
-    })
-}
-
-fn parse_checkout_completed(event_json: &str) -> Option<StripeCheckoutCompleted> {
-    let v: serde_json::Value = serde_json::from_str(event_json).ok()?;
-    let session = v.get("data")?.get("object")?;
-    let session_id = session.get("id")?.as_str()?.to_string();
-    let customer_id = session
-        .get("customer")
-        .and_then(|c| c.as_str())
-        .map(|s| s.to_string());
-    Some(StripeCheckoutCompleted {
-        event_json: event_json.to_string(),
-        session_id,
-        customer_id,
-    })
-}
-
-fn parse_invoice_paid(event_json: &str) -> Option<StripeInvoicePaid> {
-    let v: serde_json::Value = serde_json::from_str(event_json).ok()?;
-    let invoice = v.get("data")?.get("object")?;
-    let invoice_id = invoice.get("id")?.as_str()?.to_string();
-    let customer_id = invoice.get("customer")?.as_str()?.to_string();
-    Some(StripeInvoicePaid {
-        event_json: event_json.to_string(),
-        invoice_id,
-        customer_id,
-    })
-}
-
-fn parse_connect_payment_succeeded(
-    event_json: &str,
-    connect_account_id: String,
-) -> Option<StripeConnectPaymentSucceeded> {
-    let v: serde_json::Value = serde_json::from_str(event_json).ok()?;
-    let pi = v.get("data")?.get("object")?;
-    let payment_intent_id = pi.get("id")?.as_str()?.to_string();
-    Some(StripeConnectPaymentSucceeded {
-        event_json: event_json.to_string(),
-        payment_intent_id,
-        connect_account_id,
-    })
-}
-
-/// Generates a valid Stripe-signature header for testing webhook verification.
-///
-/// Returns `(signature_header, timestamp)` where signature_header is formatted
-/// as `t={timestamp},v1={hmac_sha256}` and timestamp is the current Unix time.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let (sig, ts) = signed_webhook_payload(r#"{"id":"evt_1"}"#, "whsec_secret");
-/// let event = verify_webhook(r#"{"id":"evt_1"}"#, &sig, "whsec_secret");
-/// assert!(event.is_ok());
-/// ```
-pub fn signed_webhook_payload(payload: &str, secret: &str) -> (String, i64) {
-    use hmac::{Hmac, Mac};
-    use sha2::Sha256;
-
-    let timestamp = chrono::Utc::now().timestamp();
-    let signed_payload = format!("{timestamp}.{payload}");
-
-    let mut mac =
-        Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
-    mac.update(signed_payload.as_bytes());
-    let result = mac.finalize();
-    let signature = hex::encode(result.into_bytes());
-
-    let header = format!("t={timestamp},v1={signature}");
-    (header, timestamp)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn subscription_updated_event_name() {
-        let event = StripeSubscriptionUpdated {
-            event_json: "{}".to_string(),
-            subscription_id: "sub_123".to_string(),
-            customer_id: "cus_123".to_string(),
-        };
-        assert_eq!(event.name(), "stripe.customer.subscription.updated");
-    }
-
-    #[test]
-    fn subscription_deleted_event_name() {
-        let event = StripeSubscriptionDeleted {
-            event_json: "{}".to_string(),
-            subscription_id: "sub_123".to_string(),
-            customer_id: "cus_123".to_string(),
-        };
-        assert_eq!(event.name(), "stripe.customer.subscription.deleted");
-    }
-
-    #[test]
-    fn checkout_completed_event_name() {
-        let event = StripeCheckoutCompleted {
-            event_json: "{}".to_string(),
-            session_id: "cs_123".to_string(),
-            customer_id: None,
-        };
-        assert_eq!(event.name(), "stripe.checkout.session.completed");
-    }
-
-    #[test]
-    fn invoice_paid_event_name() {
-        let event = StripeInvoicePaid {
-            event_json: "{}".to_string(),
-            invoice_id: "in_123".to_string(),
-            customer_id: "cus_123".to_string(),
-        };
-        assert_eq!(event.name(), "stripe.invoice.paid");
-    }
-
-    #[test]
-    fn connect_payment_succeeded_event_name() {
-        let event = StripeConnectPaymentSucceeded {
-            event_json: "{}".to_string(),
-            payment_intent_id: "pi_123".to_string(),
-            connect_account_id: "acct_123".to_string(),
-        };
-        assert_eq!(event.name(), "stripe.connect.payment_intent.succeeded");
-    }
-
-    // Compile-time check: all event types are Clone + Send + Sync
     fn _assert_clone_send_sync<T: Clone + Send + Sync>() {}
+    fn _assert_stripe_event<T: StripeEvent>() {}
 
     #[test]
     fn events_are_clone_send_sync() {
         _assert_clone_send_sync::<StripeSubscriptionUpdated>();
         _assert_clone_send_sync::<StripeSubscriptionDeleted>();
         _assert_clone_send_sync::<StripeCheckoutCompleted>();
+        _assert_clone_send_sync::<StripeCheckoutExpired>();
         _assert_clone_send_sync::<StripeInvoicePaid>();
+        _assert_clone_send_sync::<StripePaymentIntentFailed>();
+        _assert_clone_send_sync::<StripeChargeRefunded>();
+        _assert_clone_send_sync::<StripeChargeDisputeCreated>();
+        _assert_clone_send_sync::<StripeConnectAccountUpdated>();
         _assert_clone_send_sync::<StripeConnectPaymentSucceeded>();
     }
 
     #[test]
-    fn signed_webhook_payload_generates_valid_signature() {
-        let payload = r#"{"id":"evt_test","type":"invoice.paid"}"#;
-        let (sig, _ts) = signed_webhook_payload(payload, "whsec_test");
-        // Parse the signature to verify format
-        assert!(sig.starts_with("t="), "signature should start with t=");
-        assert!(sig.contains(",v1="), "signature should contain ,v1=");
+    fn all_event_types_implement_stripe_event() {
+        _assert_stripe_event::<StripeSubscriptionUpdated>();
+        _assert_stripe_event::<StripeSubscriptionDeleted>();
+        _assert_stripe_event::<StripeCheckoutCompleted>();
+        _assert_stripe_event::<StripeCheckoutExpired>();
+        _assert_stripe_event::<StripeInvoicePaid>();
+        _assert_stripe_event::<StripePaymentIntentFailed>();
+        _assert_stripe_event::<StripeChargeRefunded>();
+        _assert_stripe_event::<StripeChargeDisputeCreated>();
+        _assert_stripe_event::<StripeConnectAccountUpdated>();
+        _assert_stripe_event::<StripeConnectPaymentSucceeded>();
     }
 
     #[test]
     fn process_stripe_webhook_job_name() {
         let job = ProcessStripeWebhook {
             event_type: "invoice.paid".to_string(),
-            event_json: "{}".to_string(),
+            raw_body: "{}".to_string(),
             connect_account_id: None,
         };
-        // Job::name() is a method on the Job trait
         use ferro_queue::Job;
         assert_eq!(job.name(), "ProcessStripeWebhook");
     }

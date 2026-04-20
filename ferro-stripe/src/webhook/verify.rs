@@ -25,7 +25,7 @@ pub fn verify_webhook(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::webhook::events::signed_webhook_payload;
+    use crate::testing::signed_webhook_payload;
 
     const TEST_SECRET: &str = "whsec_test_secret";
 
