@@ -50,6 +50,15 @@ impl Stripe {
             .get()
             .expect("Stripe::init() not called before Stripe::config()")
     }
+
+    /// Returns a scoped Stripe client for the given API key.
+    ///
+    /// Use for per-tenant direct-charges scenarios where a different
+    /// Stripe account key is needed per request.
+    /// Does not affect the global static client initialized by [`Stripe::init`].
+    pub fn with(api_key: &str) -> stripe::Client {
+        stripe::Client::new(api_key)
+    }
 }
 
 #[cfg(test)]
