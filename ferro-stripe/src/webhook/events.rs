@@ -71,6 +71,9 @@ pub struct StripeCheckoutCompleted {
     pub event_id: String,
     pub session_id: String,
     pub payment_intent_id: Option<String>,
+    /// Total amount in cents. `0` when `amount_total` is absent from the
+    /// Stripe event (free or setup-mode sessions). Callers must not use
+    /// this field alone to assert that payment was received.
     pub amount_total_cents: i64,
     pub currency: String,
     pub metadata: HashMap<String, String>,
