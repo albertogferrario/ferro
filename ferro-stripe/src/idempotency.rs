@@ -87,19 +87,16 @@ mod tests {
     #[tokio::test]
     async fn memory_log_true_then_false() {
         let log = MemoryProcessedLog::new();
-        assert_eq!(
+        assert!(
             log.try_mark_processed("evt_001").await.unwrap(),
-            true,
             "first call with a new id must return Ok(true)"
         );
-        assert_eq!(
-            log.try_mark_processed("evt_001").await.unwrap(),
-            false,
+        assert!(
+            !log.try_mark_processed("evt_001").await.unwrap(),
             "second call with the same id must return Ok(false)"
         );
-        assert_eq!(
+        assert!(
             log.try_mark_processed("evt_002").await.unwrap(),
-            true,
             "different id must return Ok(true) even after an earlier id was seen"
         );
     }
