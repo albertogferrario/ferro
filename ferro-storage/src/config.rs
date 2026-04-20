@@ -50,7 +50,8 @@ impl StorageConfig {
     /// - `AWS_SECRET_ACCESS_KEY`: S3 secret key
     /// - `AWS_DEFAULT_REGION`: S3 region (default: "us-east-1")
     /// - `AWS_BUCKET`: S3 bucket name
-    /// - `AWS_URL`: S3 URL base
+    /// - `AWS_PUBLIC_URL`: Public base URL for generated file URLs (overrides `AWS_URL` for this purpose)
+    /// - `AWS_URL`: S3 API endpoint; also used as public URL base if `AWS_PUBLIC_URL` is not set
     ///
     /// # Example
     ///
@@ -92,7 +93,9 @@ impl StorageConfig {
                 bucket: Some(bucket),
                 region: Some(region),
             };
-            if let Ok(url) = env::var("AWS_URL") {
+            // AWS_PUBLIC_URL takes precedence — use it when the public file URL
+            // differs from the API endpoint (e.g. DigitalOcean Spaces, Cloudflare R2).
+            if let Ok(url) = env::var("AWS_PUBLIC_URL").or_else(|_| env::var("AWS_URL")) {
                 s3_config.url = Some(url);
             }
             disks.insert("s3".to_string(), s3_config);
