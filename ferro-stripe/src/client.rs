@@ -51,3 +51,31 @@ impl Stripe {
             .expect("Stripe::init() not called before Stripe::config()")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn with_does_not_populate_global_static() {
+        // Calling Stripe::with should not initialize STRIPE_CLIENT.
+        // This test relies on the fact that Stripe::init has not been called
+        // in this test process. (Each `cargo test` binary is a fresh process.)
+        let _scoped = Stripe::with("sk_test_scoped_key");
+        assert!(
+            STRIPE_CLIENT.get().is_none(),
+            "Stripe::with must not populate the global static client"
+        );
+    }
+
+    #[test]
+    fn with_returns_independent_client_values() {
+        // Compile-time proof that `with` returns a `stripe::Client` by value,
+        // and two calls produce two distinct values (not a shared reference).
+        let a: stripe::Client = Stripe::with("sk_test_a");
+        let b: stripe::Client = Stripe::with("sk_test_b");
+        // Clients have no public equality; assert the values are usable by dropping them.
+        drop(a);
+        drop(b);
+    }
+}
