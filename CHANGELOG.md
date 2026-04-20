@@ -1,0 +1,121 @@
+# Changelog
+
+All notable changes to Ferro crates are documented here. Format loosely follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## ferro-stripe
+
+### [0.4.0] — 2026-04-20
+
+Capability-axis refactor. The crate is reorganized around Stripe capabilities
+(checkout, refund, account, idempotency, webhook) rather than Stripe products
+(connect, subscription). Consumer-facing symbols change significantly; see
+the migration table below.
+
+#### Added
+
+- `checkout::CheckoutBuilder` — consuming builder for Stripe Checkout Sessions
+  covering both `Payment` and `Subscription` modes, Connect destination charges,
+  metadata, and required idempotency keys.
+- `checkout::CheckoutIntent` — typed return from `CheckoutBuilder::create()`
+  carrying `session_id`, `url`, `expires_at`, `idempotency_key`.
+- `checkout::Mode` — `Payment` | `Subscription`.
+- `checkout::LineItem` — typed line-item input for `CheckoutBuilder`.
+- `refund::create(charge_id, amount_cents, idempotency_key, reason)` and
+  `refund::retrieve(refund_id)` — first-class refund surface.
+- `account::create_account`, `account::retrieve_account` — new Connect account
+  operations (complementing the existing `create_link` and `billing_portal_url`
+  which moved to `account::` unchanged).
+- `idempotency::ProcessedEventLog` — async trait for deduplicating Stripe
+  webhook events on `event_id`. Apps ship a DB-backed impl; the recommended
+  SQL schema is in the module doc.
+- `idempotency::MemoryProcessedLog` — in-memory reference implementation
+  backed by `DashMap`, intended for tests and single-process development.
+- `client::Stripe::with(api_key)` — returns a scoped `stripe::Client` without
+  touching the global static. Use for per-tenant direct-charges scenarios.
+- `webhook::sync` and `webhook::queue` — empty modules reserving the file
+  locations for Phase 141's `SyncDispatcher` and queue-path relocation.
+- `webhook::verify::verify_webhook` — the HMAC-verification fn moved out of
+  `webhook/mod.rs` into a dedicated submodule. Public behavior unchanged.
+- `Error::MissingIdempotencyKey` — returned by `CheckoutBuilder::create()`
+  when `.idempotency_key()` was not called before `.create()`.
+
+#### Removed (breaking)
+
+| Removed symbol | Replacement | Notes |
+|---|---|---|
+| `webhook::is_processed` (and `lib` re-export) | `idempotency::ProcessedEventLog::try_mark_processed` | The stub was never correct; apps must implement the trait against their DB. |
+| `connect::checkout::create_connect_checkout` | `CheckoutBuilder::new(Mode::Payment).destination(...).create()` | Destination charge is now explicit on the builder. |
+| `subscription::checkout::create_subscription_checkout` | `CheckoutBuilder::new(Mode::Subscription).create()` | Single checkout entry point. |
+| `connect::checkout::create_account_link` | `account::create_link` | Same signature; moved path. |
+| `subscription::checkout::billing_portal_url` | `account::billing_portal_url` | Same signature; moved path. |
+| `subscription::sync::plan_from_subscription` | (app responsibility) | Mapping from `stripe::Subscription` to plan name is app logic. |
+| `subscription::sync::subscription_info_from_stripe` | (app responsibility) | Ditto. |
+| `subscription::SubscriptionInfo` | `framework::tenant::subscription::SubscriptionInfo` (within this workspace) or app-local type (external consumers) | Type was app state, not a Stripe-API wrapper. |
+| `subscription::SubscriptionStatus` | `framework::tenant::subscription::SubscriptionStatus` | See above. |
+| `subscription::plan_satisfies` | `framework::tenant::subscription::plan_satisfies` (within workspace) or app-local 5-line fn | Plan-hierarchy logic is app concern, not Stripe. |
+| `connect::ConnectAccount` | Use Stripe account ID as `String` directly | The wrapper added nothing. |
+| `webhook::handler::handle_platform_webhook` / `handle_connect_webhook` | Phase 141 will provide `SyncDispatcher`-based replacements. For Phase 140, consumers should call `verify_webhook` directly and dispatch `ProcessStripeWebhook` manually via `ferro_queue::dispatch`. | Temporary gap; narrow window since the queue path is being reshaped in Phase 141 anyway. |
+
+#### Changed (breaking)
+
+- Module layout: `connect/` and `subscription/` directories are gone. Modules
+  now reflect capabilities: `checkout`, `refund`, `account`, `idempotency`,
+  `webhook`. Imports must be updated accordingly.
+- `CheckoutBuilder::create()` returns `Err(Error::MissingIdempotencyKey)` when
+  `.idempotency_key()` was not set. This is a runtime check, not a typestate
+  (chosen for simplicity; typestate may be revisited pre-1.0).
+
+#### Unchanged
+
+- `Stripe::init` static facade and global client pattern.
+- `StripeConfig::from_env()` and all environment-variable names.
+- `verify_webhook` signature (`raw_body`, `signature`, `secret`) — only the
+  path changed (from `webhook::verify_webhook` to `webhook::verify::verify_webhook`;
+  `ferro_stripe::verify_webhook` still works via re-export).
+- The five webhook event structs (`StripeCheckoutCompleted`, `StripeSubscriptionUpdated`,
+  `StripeSubscriptionDeleted`, `StripeInvoicePaid`, `StripeConnectPaymentSucceeded`)
+  keep their current shape. Phase 141 drops the `event_json: String` field.
+- `testing::signed_webhook_payload` (location unchanged).
+
+#### Migration guide
+
+Replace old call sites mechanically:
+
+```rust
+// Before
+let url = ferro_stripe::create_connect_checkout(
+    &account_id, 1000, "usd", success, cancel, Some(100),
+).await?;
+
+// After
+let intent = ferro_stripe::CheckoutBuilder::new(ferro_stripe::Mode::Payment)
+    .destination(&account_id, Some(100))
+    .line_item(ferro_stripe::LineItem {
+        name: "Payment".into(),
+        description: None,
+        unit_amount_cents: 1000,
+        quantity: 1,
+        currency: "usd".into(),
+    })
+    .success_url(success)
+    .cancel_url(cancel)
+    .idempotency_key(&order_idempotency_key)
+    .create()
+    .await?;
+let url = intent.url;
+```
+
+```rust
+// Before
+if ferro_stripe::is_processed(&event.id) { return Ok(()); }
+
+// After
+if !self.log.try_mark_processed(&event.id).await? {
+    // Already processed — skip side effects.
+    return Ok(());
+}
+// where `self.log: Arc<dyn ProcessedEventLog>` is injected by the app.
+```
+
+See the crate-level doc on `ferro-stripe` for full examples.

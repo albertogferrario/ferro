@@ -91,8 +91,8 @@ mod tests {
     use super::*;
     use crate::http::HttpResponse;
     use crate::tenant::context::{tenant_scope, with_tenant_scope};
-    use crate::tenant::TenantContext;
     use crate::tenant::subscription::{SubscriptionInfo, SubscriptionStatus};
+    use crate::tenant::TenantContext;
     use hyper_util::rt::TokioIo;
     use std::sync::Arc;
     use std::sync::Mutex;
