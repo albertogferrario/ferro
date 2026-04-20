@@ -169,7 +169,10 @@ Phases 133–135:
   5. `ferro mcp` JSON schema regenerated for any changed tool signatures
   6. Workspace CI green; `ferro-mcp` version bumped
 
-**Plans**: TBD
+**Plans:** 2 plans
+
+- [ ] 142-01-PLAN.md — Update ferro-mcp/src/tools/stripe.rs: WebhookEventInfo + StripeConfigStatus structs, walkdir-based scan, dual-regex (closure + turbofish), capability-axis fields, tests
+- [ ] 142-02-PLAN.md — Update ferro-mcp/src/service.rs MCP tool descriptions for the three Stripe tools; bump workspace version 0.2.2 → 0.2.3
 
 ---
 

@@ -444,17 +444,19 @@ description = "Report the tenant_billing table schema parsed from app migration 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Deduplication of duplicate (event_type, file, line) tuples**
    - What we know: CONTEXT.md specifics section says "deduplicated (event_type, file, line) tuples".
    - What's unclear: Whether the two regex patterns (closure + turbofish) could match the same line.
    - Recommendation: Deduplicate after collecting all matches using a `HashSet<(String, String, u32)>` before building the final `Vec`. Low-risk addition.
+   - RESOLVED: Deduplication is not implemented in the plan. The two regex patterns are mutually exclusive by syntax — closure form `\.on\(\s*\|` and turbofish `\.on::<` cannot match the same character sequence. Double-matching a single line is impossible; no HashSet needed.
 
 2. **`scaffold_files` behavior when `webhook/` subdir exists**
    - What we know: D-08 says flat listing, non-recursive. `fs::read_dir` only lists direct children of `src/stripe/`.
    - What's unclear: Whether the existing `fs::read_dir` filter already excludes directories (it filters on `.extension() == "rs"`, so directories are excluded naturally).
    - Recommendation: Confirmed safe — directories have no `.rs` extension; no behavior change needed.
+   - RESOLVED: Confirmed safe. Directories have no `.rs` extension; the existing `filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))` naturally excludes the `webhook/` subdirectory. No code change needed.
 
 ---
 
