@@ -218,9 +218,13 @@ impl CheckoutBuilder {
             .single()
             .unwrap_or_else(Utc::now);
 
+        let url = session.url.ok_or_else(|| {
+            Error::Stripe("checkout session created but url field was absent".to_string())
+        })?;
+
         Ok(CheckoutIntent {
             session_id: session.id.to_string(),
-            url: session.url.unwrap_or_default(),
+            url,
             expires_at,
             idempotency_key,
         })
