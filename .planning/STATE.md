@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.5
-milestone_name: Projection Architecture Prep
+milestone: v11.6
+milestone_name: ferro-stripe Capability Refactor
 status: verifying
 stopped_at: Completed 135-02-PLAN.md
 last_updated: "2026-04-17T18:04:01.884Z"

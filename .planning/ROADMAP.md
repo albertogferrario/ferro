@@ -91,14 +91,14 @@ Phases 133–135:
 2. **Event typing maintenance** (LOW): each new Stripe event type needs a typed struct + parser + dispatcher wiring. Documented in module comments; minor ongoing work.
 3. **Consumer migration** (LOW): the current `ferro-stripe` consumer is gestiscilo; no external consumers pre-1.0. Breaking changes are absorbed in-workspace.
 
-## Phases
+#### Phases
 
 - [ ] **Phase 140: ProcessedEventLog trait + MemoryProcessedLog** — `idempotency.rs` trait + in-memory impl + recommended SQL schema. `ferro-stripe 0.4.0`.
 - [ ] **Phase 141: Capability-axis module reshape** — new `checkout.rs` with `CheckoutBuilder`/`CheckoutIntent`; `refund.rs` (new); `account.rs` (absorbs `billing_portal_url`, adds `retrieve_account`); `connect::*`/`subscription::*` removed; `client.rs::Stripe::with(key)` added. `ferro-stripe 0.5.0`.
 - [ ] **Phase 142: Typed events + SyncDispatcher** — events drop `event_json`, parse into typed fields; `webhook/sync.rs` `SyncDispatcher`; existing queue path relocates to `webhook/queue.rs` and becomes opt-in. `ferro-stripe 0.6.0`.
 - [ ] **Phase 143: Missing event types** — `StripeCheckoutExpired`, `StripePaymentIntentFailed`, `StripeChargeRefunded`, `StripeChargeDisputeCreated`, `StripeConnectAccountUpdated` typed structs, parsers, dispatcher wiring. `ferro-stripe 0.7.0`.
 
-## Phase Details
+#### Phase Details
 
 ### Phase 140: ProcessedEventLog trait + MemoryProcessedLog
 
@@ -224,7 +224,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 - [ ] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format with JSON Schema as structured output constraint
 - [ ] **Phase 121: Documentation & Field Test** — Update all JSON-UI docs, convert one gestiscilo page as proof of concept
 
-## Phase Details
+#### Phase Details
 
 ### Phase 115: Spec v2 Data Structures
 **Goal**: Replace v1 types with the v2 spec format — flat element map, props separation, manual `JsonSchema` impl for Component enum, clean break
@@ -340,7 +340,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
   4. One gestiscilo dashboard page (e.g., pagamenti) converted from Rust component tree to JSON spec file — handler reduced to data-only
   5. Converted page renders identically to the Rust-built version
 
-## Progress
+#### Progress
 
 **Execution Order:**
 Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 117) → 119 → 120 → 121
@@ -378,13 +378,13 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 - Manual validation remains possible for cases where the declarative API doesn't fit
 - Query-param error passing still works — `Validator` is additive, not a breaking change
 
-## Phases
+#### Phases
 
 - [ ] **Phase 137: Validator & Old Input** — `Validator` struct with sync rules (`required`, `max_len`, `min_len`, `regex`, `in_list`, `custom`), old input flash on failure, `req.old()` and `req.validation_error()` methods, `redirect_back()` with flashed state
 - [ ] **Phase 138: Async Validation Rules** — `unique` and other DB-backed rules via `validate_async()`, SeaORM integration for uniqueness checks with exclude-self support (for updates)
 - [ ] **Phase 139: DB Constraint Error Mapping** — Opt-in middleware that catches SQLite/Postgres constraint violation errors from SeaORM and converts them to validation-style redirect-back responses with field-level errors
 
-## Phase Details
+#### Phase Details
 
 ### Phase 137: Validator & Old Input
 **Goal**: Declarative form validation with automatic old input preservation and inline error display
@@ -420,7 +420,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
   5. Does not swallow non-constraint DB errors — only handles uniqueness violations
   6. Acts as a safety net for TOCTOU races after Phase 138's pre-check
 
-## Progress
+#### Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
