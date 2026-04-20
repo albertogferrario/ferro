@@ -128,7 +128,7 @@ Phases 133–135:
 - [x] 140-01-PLAN.md — Foundation: dashmap dep, Error::MissingIdempotencyKey, Stripe::with(key) (Wave 1)
 - [x] 140-02-PLAN.md — idempotency.rs: ProcessedEventLog trait + MemoryProcessedLog + tests (Wave 1)
 - [x] 140-03-PLAN.md — New capability files: checkout.rs (CheckoutBuilder/CheckoutIntent), refund.rs, account.rs (Wave 2)
-- [ ] 140-04-PLAN.md — Module restructure: delete connect/, subscription/, handler.rs; extract webhook/verify.rs; add sync/queue stubs; rewrite lib.rs (Wave 3)
+- [x] 140-04-PLAN.md — Module restructure: delete connect/, subscription/, handler.rs; extract webhook/verify.rs; add sync/queue stubs; rewrite lib.rs (Wave 3)
 - [ ] 140-05-PLAN.md — Framework consumer migration + CHANGELOG + ferro-stripe 0.4.0 version bump (Wave 4)
 
 ### Phase 141: Protocol uplift
