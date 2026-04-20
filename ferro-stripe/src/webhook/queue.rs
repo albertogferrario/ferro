@@ -13,8 +13,9 @@
 //! `dispatcher` field is runtime-only (`#[serde(skip)]`) and must be
 //! re-injected by the caller at enqueue time via
 //! [`ProcessStripeWebhook::new`]. Jobs deserialized without a dispatcher
-//! will panic on [`handle`][ferro_queue::Job::handle] — this is a
-//! programming error, not a runtime condition.
+//! will return [`ferro_queue::Error::JobFailed`] on
+//! [`handle`][ferro_queue::Job::handle] so the queue can mark the job
+//! failed and continue processing other jobs.
 //!
 //! [`SyncDispatcher`]: crate::webhook::sync::SyncDispatcher
 //! [`SyncDispatcher::on`]: crate::webhook::sync::SyncDispatcher::on
@@ -68,7 +69,10 @@ impl ferro_queue::Job for ProcessStripeWebhook {
         let dispatcher = self
             .dispatcher
             .as_ref()
-            .expect("ProcessStripeWebhook requires dispatcher — use ProcessStripeWebhook::new()");
+            .ok_or_else(|| ferro_queue::Error::JobFailed {
+                job: "ProcessStripeWebhook".to_string(),
+                message: "dispatcher not injected — use ProcessStripeWebhook::new()".to_string(),
+            })?;
         let event: stripe::Event =
             serde_json::from_str(&self.raw_body).map_err(|e| ferro_queue::Error::JobFailed {
                 job: "ProcessStripeWebhook".to_string(),
