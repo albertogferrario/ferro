@@ -2,13 +2,14 @@
 //!
 //! Provides three tools:
 //! - `stripe_config_status` — reports env var presence and scaffold existence
-//! - `stripe_webhook_events` — lists listener implementations discovered from source
+//! - `stripe_webhook_events` — lists SyncDispatcher handler registrations discovered from source
 //! - `stripe_subscription_info` — reports tenant_billing table schema from migrations
 
 use regex::Regex;
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
+use walkdir::WalkDir;
 
 // ---------------------------------------------------------------------------
 // stripe_config_status
@@ -27,6 +28,14 @@ pub struct StripeConfigStatus {
     pub scaffold_exists: bool,
     /// List of scaffold files found in src/stripe/.
     pub scaffold_files: Vec<String>,
+    /// True when src/stripe/checkout.rs exists.
+    pub checkout_exists: bool,
+    /// True when src/stripe/refund.rs exists.
+    pub refund_exists: bool,
+    /// True when src/stripe/account.rs exists.
+    pub account_exists: bool,
+    /// True when src/stripe/webhook/ directory exists.
+    pub webhook_dir_exists: bool,
 }
 
 /// Report Stripe configuration status for the project.
@@ -88,6 +97,11 @@ pub fn stripe_config_status(project_root: &Path) -> StripeConfigStatus {
         Vec::new()
     };
 
+    let checkout_exists = scaffold_dir.join("checkout.rs").is_file();
+    let refund_exists = scaffold_dir.join("refund.rs").is_file();
+    let account_exists = scaffold_dir.join("account.rs").is_file();
+    let webhook_dir_exists = scaffold_dir.join("webhook").is_dir();
+
     let configured = keys_missing.is_empty();
 
     StripeConfigStatus {
@@ -96,6 +110,10 @@ pub fn stripe_config_status(project_root: &Path) -> StripeConfigStatus {
         keys_missing,
         scaffold_exists,
         scaffold_files,
+        checkout_exists,
+        refund_exists,
+        account_exists,
+        webhook_dir_exists,
     }
 }
 
@@ -103,47 +121,73 @@ pub fn stripe_config_status(project_root: &Path) -> StripeConfigStatus {
 // stripe_webhook_events
 // ---------------------------------------------------------------------------
 
-/// A discovered event listener in the Stripe listeners file.
+/// A discovered SyncDispatcher handler registration in the project source.
 #[derive(Debug, Serialize)]
 pub struct WebhookEventInfo {
-    /// The Ferro event type (e.g., "StripeSubscriptionUpdated").
+    /// The event type name (e.g., "StripeSubscriptionUpdated").
     pub event_type: String,
-    /// The listener struct name (e.g., "SyncSubscriptionPlan").
-    pub listener: String,
-    /// Relative file path where the listener is defined.
+    /// Relative file path where the handler registration appears.
     pub file: String,
+    /// 1-based line number of the `.on(...)` call.
+    pub line: u32,
 }
 
-/// List of discovered Stripe webhook event listeners.
+/// List of discovered Stripe webhook event handler registrations.
 #[derive(Debug, Serialize)]
 pub struct StripeWebhookEvents {
     pub events: Vec<WebhookEventInfo>,
 }
 
-/// Scan src/stripe/listeners.rs for Listener impl blocks.
+/// Scan src/ for SyncDispatcher webhook handler registrations.
 pub fn stripe_webhook_events(project_root: &Path) -> StripeWebhookEvents {
-    let listeners_path = project_root.join("src/stripe/listeners.rs");
-
-    if !listeners_path.exists() {
+    let src_dir = project_root.join("src");
+    if !src_dir.is_dir() {
         return StripeWebhookEvents { events: Vec::new() };
     }
 
-    let content = match fs::read_to_string(&listeners_path) {
-        Ok(c) => c,
-        Err(_) => return StripeWebhookEvents { events: Vec::new() },
-    };
+    // Primary: closure form  .on(|ident: EventType| ...)
+    let re_closure = Regex::new(r"\.on\(\s*\|[a-zA-Z_]+:\s*(\w+)\s*\|").unwrap();
+    // Secondary: turbofish form  .on::<EventType
+    let re_turbofish = Regex::new(r"\.on::<(\w+)").unwrap();
 
-    // Match: impl Listener<EventType> for StructName
-    let re = Regex::new(r"impl\s+Listener<(\w+)>\s+for\s+(\w+)").unwrap();
+    let mut events = Vec::new();
 
-    let events: Vec<WebhookEventInfo> = re
-        .captures_iter(&content)
-        .map(|cap| WebhookEventInfo {
-            event_type: cap[1].to_string(),
-            listener: cap[2].to_string(),
-            file: "src/stripe/listeners.rs".to_string(),
-        })
-        .collect();
+    for entry in WalkDir::new(&src_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().map(|ext| ext == "rs").unwrap_or(false))
+    {
+        let content = match fs::read_to_string(entry.path()) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let relative = entry
+            .path()
+            .strip_prefix(project_root)
+            .unwrap_or(entry.path())
+            .to_string_lossy()
+            .to_string();
+
+        for cap in re_closure.captures_iter(&content) {
+            let byte_offset = cap.get(0).unwrap().start();
+            let line = (content[..byte_offset].lines().count() + 1) as u32;
+            events.push(WebhookEventInfo {
+                event_type: cap[1].to_string(),
+                file: relative.clone(),
+                line,
+            });
+        }
+
+        for cap in re_turbofish.captures_iter(&content) {
+            let byte_offset = cap.get(0).unwrap().start();
+            let line = (content[..byte_offset].lines().count() + 1) as u32;
+            events.push(WebhookEventInfo {
+                event_type: cap[1].to_string(),
+                file: relative.clone(),
+                line,
+            });
+        }
+    }
 
     StripeWebhookEvents { events }
 }
@@ -364,12 +408,34 @@ mod tests {
             keys_missing: vec!["STRIPE_WEBHOOK_SECRET".to_string()],
             scaffold_exists: false,
             scaffold_files: Vec::new(),
+            checkout_exists: false,
+            refund_exists: false,
+            account_exists: false,
+            webhook_dir_exists: false,
         };
 
         let json = serde_json::to_string(&status).unwrap();
         assert!(json.contains("STRIPE_SECRET_KEY"));
         assert!(json.contains("STRIPE_WEBHOOK_SECRET"));
         assert!(json.contains("\"configured\":false"));
+        assert!(json.contains("\"checkout_exists\":false"));
+    }
+
+    #[test]
+    fn test_config_status_capability_axis_fields() {
+        let tmp = TempDir::new().unwrap();
+        let stripe_dir = tmp.path().join("src/stripe");
+        fs::create_dir_all(&stripe_dir).unwrap();
+        fs::write(stripe_dir.join("checkout.rs"), "// checkout").unwrap();
+        fs::write(stripe_dir.join("refund.rs"), "// refund").unwrap();
+        // account.rs absent intentionally
+        fs::create_dir_all(stripe_dir.join("webhook")).unwrap();
+
+        let status = stripe_config_status(tmp.path());
+        assert!(status.checkout_exists);
+        assert!(status.refund_exists);
+        assert!(!status.account_exists);
+        assert!(status.webhook_dir_exists);
     }
 
     #[test]
@@ -403,64 +469,53 @@ mod tests {
     #[test]
     fn test_webhook_events_parses_listeners() {
         let tmp = TempDir::new().unwrap();
-        let stripe_dir = tmp.path().join("src/stripe");
-        fs::create_dir_all(&stripe_dir).unwrap();
+        fs::create_dir_all(tmp.path().join("src/stripe")).unwrap();
 
         let content = r#"
-use ferro::{async_trait, EventError, Listener};
-use ferro::{StripeSubscriptionUpdated, StripeSubscriptionDeleted};
+use ferro_stripe::{SyncDispatcher, StripeSubscriptionUpdated};
+use std::sync::Arc;
 
-pub struct SyncSubscriptionPlan;
-
-#[async_trait]
-impl Listener<StripeSubscriptionUpdated> for SyncSubscriptionPlan {
-    async fn handle(&self, event: &StripeSubscriptionUpdated) -> Result<(), EventError> {
+let dispatcher = SyncDispatcher::new()
+    .on(|event: StripeSubscriptionUpdated| async move {
         Ok(())
-    }
-}
-
-pub struct HandleSubscriptionDeleted;
-
-#[async_trait]
-impl Listener<StripeSubscriptionDeleted> for HandleSubscriptionDeleted {
-    async fn handle(&self, event: &StripeSubscriptionDeleted) -> Result<(), EventError> {
-        Ok(())
-    }
-}
+    });
 "#;
-        fs::write(stripe_dir.join("listeners.rs"), content).unwrap();
+        fs::write(tmp.path().join("src/stripe/mod.rs"), content).unwrap();
 
         let result = stripe_webhook_events(tmp.path());
-        assert_eq!(result.events.len(), 2);
+        assert_eq!(result.events.len(), 1);
+        assert_eq!(result.events[0].event_type, "StripeSubscriptionUpdated");
+        assert!(result.events[0].line > 0);
+        assert!(result.events[0].file.contains("src/stripe/mod.rs"));
+    }
 
-        let event_types: Vec<&str> = result
-            .events
-            .iter()
-            .map(|e| e.event_type.as_str())
-            .collect();
-        assert!(event_types.contains(&"StripeSubscriptionUpdated"));
-        assert!(event_types.contains(&"StripeSubscriptionDeleted"));
+    #[test]
+    fn test_webhook_events_turbofish() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir_all(tmp.path().join("src/stripe")).unwrap();
 
-        let listeners: Vec<&str> = result.events.iter().map(|e| e.listener.as_str()).collect();
-        assert!(listeners.contains(&"SyncSubscriptionPlan"));
-        assert!(listeners.contains(&"HandleSubscriptionDeleted"));
+        let content = r#"
+dispatcher.on::<StripeCheckoutCompleted, _, _>(handler)
+"#;
+        fs::write(tmp.path().join("src/stripe/checkout.rs"), content).unwrap();
 
-        for event in &result.events {
-            assert_eq!(event.file, "src/stripe/listeners.rs");
-        }
+        let result = stripe_webhook_events(tmp.path());
+        assert_eq!(result.events.len(), 1);
+        assert_eq!(result.events[0].event_type, "StripeCheckoutCompleted");
+        assert!(result.events[0].line > 0);
     }
 
     #[test]
     fn test_webhook_events_serializes() {
         let info = WebhookEventInfo {
             event_type: "StripeSubscriptionUpdated".to_string(),
-            listener: "SyncSubscriptionPlan".to_string(),
-            file: "src/stripe/listeners.rs".to_string(),
+            file: "src/stripe/mod.rs".to_string(),
+            line: 6,
         };
         let events = StripeWebhookEvents { events: vec![info] };
         let json = serde_json::to_string(&events).unwrap();
         assert!(json.contains("StripeSubscriptionUpdated"));
-        assert!(json.contains("SyncSubscriptionPlan"));
+        assert!(json.contains("\"line\":6"));
     }
 
     // --- stripe_subscription_info tests ---
