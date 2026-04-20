@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
+milestone: v11.7
+milestone_name: Tailwind Static CSS Pipeline
 status: executing
-stopped_at: Phase 142 context gathered
-last_updated: "2026-04-20T16:05:42.371Z"
+stopped_at: Phase 143 context gathered
+last_updated: "2026-04-20T19:43:49.315Z"
 last_activity: 2026-04-20 -- Phase 142 planning complete
 progress:
-  total_phases: 139
-  completed_phases: 126
+  total_phases: 140
+  completed_phases: 127
   total_plans: 305
-  completed_plans: 293
-  percent: 96
+  completed_plans: 295
+  percent: 97
 ---
 
 # Project State
@@ -141,10 +141,11 @@ Recent decisions affecting current work:
 - Phase 126 added (2026-04-08): Deploy experience feedback triage — analysis-only phase pointing the next agent at `phases/126-deploy-experience-feedback/REPORT.md` (field notes from first end-to-end gestiscilo deploy: 2 fixed bugs already shipped in 0.2.1, 9 sharp edges still present, 6 DX improvements). Agent must produce `PROPOSAL.md` classifying every item before any new ferro work is scoped.
 - Phase 131 added (2026-04-09): Scaffolder multi-bin, copy_dirs, runtime_apt, DO app.yaml robustness, drift detection — promoted from `.planning/backlog/gestiscilo-scaffolder-multibin-gap.md` (gestiscilo-it Phase 75 field test gap). CLI bug recurred again (returned phase 1); manually renumbered.
 - Phase 130 added (2026-04-09): Invert dep convention (simple) — retire `Cargo.docker.toml` and `cargo_docker_toml_staleness` doctor check; Docker builds use `Cargo.toml` directly; local ferro dev via uncommitted `[patch.crates-io]`. Source: `.planning/proposals/dep-override-convention.md` (simplified per user direction — no new CLI verbs, no new doctor check). CLI bug recurred: `gsd-tools phase add` returned phase 1 instead of 130; manually renumbered.
+- Phase 143 inserted (2026-04-20): Tailwind static CSS pipeline (URGENT) — opened new milestone v11.7. Source: gestiscilo-it production field report — `@tailwindcss/browser@4` runtime JIT fails on Safari, renders login page as unstyled HTML. Replace with pre-built static CSS. Manually scaffolded (gsd-tools phase insert rejected because STATE.md milestone field still says v11.0 but v11.6 and earlier have shipped — STATE drift is a separate cleanup). Context: `.planning/phases/143-tailwind-static-css-pipeline/143-CONTEXT.md`.
 
 ## Session Continuity
 
-Last session: 2026-04-20T15:48:10.542Z
-Stopped at: Phase 142 context gathered
-Resume file: .planning/phases/142-ferro-mcp-parity/142-CONTEXT.md
+Last session: 2026-04-20T19:43:49.285Z
+Stopped at: Phase 143 context gathered
+Resume file: .planning/phases/143-tailwind-static-css-pipeline/143-CONTEXT.md
 Next action: `/gsd-plan-phase 142` — ferro-mcp-parity
