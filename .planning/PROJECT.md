@@ -368,6 +368,10 @@ See also `.planning/VISION.md` for design philosophy.
 | Max nesting depth: 3 levels | All production SDUI systems converge here; keeps generation reliable | Planned |
 
 | ServiceDef::from_model() derivation bridge | Agents generate projections from model metadata; no hand-written builders | ✓ Good |
+| StripeEvent::from_raw pattern-matches EventObject | No JSON re-serialization; type guard is `event.type_` check before object match | ✓ Good |
+| BoxedHandler returns (bool, Result) tuple | `bool` flag distinguishes "no handler matched" from handler returning Ok(()); enables unknown-event logging | ✓ Good |
+| Missing SyncDispatcher → Err(JobFailed) not panic | Queue workers survive misconfiguration; recoverable error lets queue mark job failed and continue | ✓ Good |
+| amount_total_cents: i64 with zero-means-absent doc | Zero maps to absent Stripe field on free/setup sessions; callers must not use field alone to assert payment | ✓ Good |
 
 ---
-*Last updated: 2026-04-17 — Phase 135 complete*
+*Last updated: 2026-04-20 — Phase 141 complete*
