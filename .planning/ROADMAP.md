@@ -33,7 +33,7 @@
 - ✅ **v11.2 Deploy & Scaffolder Hardening** — Phases 122-131 (shipped 2026-04-14)
 - ✅ **v11.3 S3 Storage Driver** — Phase 132 (shipped 2026-04-14)
 - ✅ **v11.5 Projection Architecture Prep** — Phases 133-135 (shipped 2026-04-17). Generalize Renderer trait, relocate renderers to output crates, ServiceDef derivation bridge.
-- 📋 **v11.6 ferro-stripe Capability Refactor** — Phases 140-142. Reshape `ferro-stripe` from Stripe-product axis (`connect/`, `subscription/`) to capability axis (`checkout`, `refund`, `account`, `webhook`); land `CheckoutBuilder` / `CheckoutIntent`, `ProcessedEventLog` trait, fully-typed events (no `event_json` smuggling), `SyncDispatcher` as the sole handler registry for both sync and queue dispatch paths (Stripe events do not implement `ferro_events::Event`), queue path opt-in for eventual-consistency events. Source: gestiscilo-it v6.3 field test. [Design](research/v11.6-FERRO-STRIPE-REFACTOR.md)
+- ✅ **v11.6 ferro-stripe Capability Refactor** — Phases 140-142. Reshape `ferro-stripe` from Stripe-product axis (`connect/`, `subscription/`) to capability axis (`checkout`, `refund`, `account`, `webhook`); land `CheckoutBuilder` / `CheckoutIntent`, `ProcessedEventLog` trait, fully-typed events (no `event_json` smuggling), `SyncDispatcher` as the sole handler registry for both sync and queue dispatch paths (Stripe events do not implement `ferro_events::Event`), queue path opt-in for eventual-consistency events. Source: gestiscilo-it v6.3 field test. [Design](research/v11.6-FERRO-STRIPE-REFACTOR.md)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -62,7 +62,7 @@ Phases 133–135:
 
 ---
 
-### 📋 v11.6 ferro-stripe Capability Refactor (Phases 140-142, planned)
+### ✅ v11.6 ferro-stripe Capability Refactor (Phases 140-142, shipped 2026-04-20)
 
 **Milestone Goal:** Reshape `ferro-stripe` along the capability axis and elevate protocol-level concerns (idempotency, typed events, signature verification, sync vs eventual-consistency dispatch) into the framework. Today's ferro-stripe splits its modules by Stripe product (`connect/`, `subscription/`) rather than capability, defaults all webhook handling to queue-job dispatch (wrong for payment-correctness events), stubs idempotency with a TODO, and ships a single-line-item `create_connect_checkout` helper too thin to replace hand-rolled `CreateCheckoutSession` usage. Pre-1.0 is the one chance to fix this before consumer assumptions ossify.
 
@@ -171,8 +171,8 @@ Phases 133–135:
 
 **Plans:** 2 plans
 
-- [ ] 142-01-PLAN.md — Update ferro-mcp/src/tools/stripe.rs: WebhookEventInfo + StripeConfigStatus structs, walkdir-based scan, dual-regex (closure + turbofish), capability-axis fields, tests
-- [ ] 142-02-PLAN.md — Update ferro-mcp/src/service.rs MCP tool descriptions for the three Stripe tools; bump workspace version 0.2.2 → 0.2.3
+- [x] 142-01-PLAN.md — Update ferro-mcp/src/tools/stripe.rs: WebhookEventInfo + StripeConfigStatus structs, walkdir-based scan, dual-regex (closure + turbofish), capability-axis fields, tests
+- [x] 142-02-PLAN.md — Update ferro-mcp/src/service.rs MCP tool descriptions for the three Stripe tools; bump workspace version 0.2.2 → 0.2.3
 
 ---
 
