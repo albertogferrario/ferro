@@ -59,10 +59,11 @@ pub use error::Error;
 pub use idempotency::{MemoryProcessedLog, ProcessedEventLog};
 pub use webhook::events::StripeEvent;
 pub use webhook::events::{
-    ProcessStripeWebhook, StripeChargeDisputeCreated, StripeChargeRefunded,
-    StripeCheckoutCompleted, StripeCheckoutExpired, StripeConnectAccountUpdated,
-    StripeConnectPaymentSucceeded, StripeInvoicePaid, StripePaymentIntentFailed,
-    StripeSubscriptionDeleted, StripeSubscriptionUpdated,
+    StripeChargeDisputeCreated, StripeChargeRefunded, StripeCheckoutCompleted,
+    StripeCheckoutExpired, StripeConnectAccountUpdated, StripeConnectPaymentSucceeded,
+    StripeInvoicePaid, StripePaymentIntentFailed, StripeSubscriptionDeleted,
+    StripeSubscriptionUpdated,
 };
+pub use webhook::queue::ProcessStripeWebhook;
 pub use webhook::sync::SyncDispatcher;
 pub use webhook::verify::verify_webhook;

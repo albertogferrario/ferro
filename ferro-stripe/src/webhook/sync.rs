@@ -116,6 +116,14 @@ impl Default for SyncDispatcher {
     }
 }
 
+impl std::fmt::Debug for SyncDispatcher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SyncDispatcher")
+            .field("handlers_count", &self.handlers.len())
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

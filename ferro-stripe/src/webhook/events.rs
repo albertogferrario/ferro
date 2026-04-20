@@ -324,35 +324,6 @@ impl StripeEvent for StripeConnectAccountUpdated {
     }
 }
 
-/// Background job that processes a Stripe webhook event asynchronously.
-///
-/// Webhook handlers dispatch this job immediately after signature verification,
-/// returning HTTP 200 to Stripe without blocking on event processing.
-/// Plan 04 relocates this struct to `webhook/queue.rs` and wires it to `SyncDispatcher`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ProcessStripeWebhook {
-    /// The Stripe event type string (e.g. "customer.subscription.updated").
-    pub event_type: String,
-    /// The raw JSON body of the Stripe event.
-    pub raw_body: String,
-    /// The connected account ID for Connect webhooks (None for platform webhooks).
-    pub connect_account_id: Option<String>,
-}
-
-#[ferro_queue::async_trait]
-impl ferro_queue::Job for ProcessStripeWebhook {
-    async fn handle(&self) -> Result<(), ferro_queue::Error> {
-        // Temporary: full SyncDispatcher wiring lands in Plan 04.
-        // This keeps the crate compiling while Plan 02 builds SyncDispatcher
-        // and Plan 04 moves this struct to webhook/queue.rs.
-        Ok(())
-    }
-
-    fn name(&self) -> &'static str {
-        "ProcessStripeWebhook"
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,16 +357,5 @@ mod tests {
         _assert_stripe_event::<StripeChargeDisputeCreated>();
         _assert_stripe_event::<StripeConnectAccountUpdated>();
         _assert_stripe_event::<StripeConnectPaymentSucceeded>();
-    }
-
-    #[test]
-    fn process_stripe_webhook_job_name() {
-        let job = ProcessStripeWebhook {
-            event_type: "invoice.paid".to_string(),
-            raw_body: "{}".to_string(),
-            connect_account_id: None,
-        };
-        use ferro_queue::Job;
-        assert_eq!(job.name(), "ProcessStripeWebhook");
     }
 }
