@@ -109,7 +109,7 @@ impl StorageConfig {
                 } else {
                     "http"
                 };
-                Some(format!("{}://{}.{}", scheme, bucket, host))
+                Some(format!("{scheme}://{bucket}.{host}"))
             } else {
                 None
             };
