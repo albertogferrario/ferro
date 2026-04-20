@@ -445,7 +445,8 @@ fn render_action_card(props: &ActionCardProps) -> String {
 
     let mut html = open_tag;
 
-    // Optional icon.
+    // Optional icon. Raw HTML passthrough — must be developer-supplied SVG only.
+    // This field is set at schema-authoring time and is not reachable from user data.
     if let Some(ref icon) = props.icon {
         html.push_str(&format!(
             "<div class=\"w-10 h-10 flex-shrink-0 rounded-md bg-surface flex items-center justify-center text-text-muted\">{icon}</div>",
@@ -634,7 +635,7 @@ fn render_dropdown_menu(props: &DropdownMenuProps) -> String {
         };
 
         let onclick = if item.action.confirm.is_some() {
-            " onclick=\"return confirm(this.dataset.confirmTitle || this.dataset.confirmMessage)\""
+            " onclick=\"return confirm(this.dataset.confirmMessage || this.dataset.confirmTitle)\""
         } else {
             ""
         };
