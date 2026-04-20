@@ -1867,6 +1867,7 @@ dependencies = [
  "async-stripe",
  "async-trait",
  "chrono",
+ "dashmap",
  "ferro-events",
  "ferro-queue",
  "hex",
