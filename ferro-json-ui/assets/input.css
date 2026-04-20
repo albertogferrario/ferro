@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Scan ferro-json-ui and framework Rust source files for utility class literals. */
+@source "../../ferro-json-ui/src";
+@source "../../framework/src";
+
+/*
+ * Safelist classes that may be emitted via string concatenation at runtime
+ * (e.g., `format!("bg-{}", variant)`). Tailwind v4.1+ @source inline() forces
+ * these into the output even if no literal use is found by the scanner.
+ *
+ * Add new entries here when a render.rs component constructs class names
+ * from variable parts. Leave empty for now — audit in a later task if
+ * visual regressions appear.
+ */
+@source inline("bg-background bg-surface bg-card bg-border text-text text-text-muted bg-primary text-primary-foreground bg-secondary text-secondary-foreground bg-accent bg-destructive bg-success bg-warning rounded-sm rounded-md rounded-lg rounded-full shadow-sm shadow-md shadow-lg font-sans font-mono");
