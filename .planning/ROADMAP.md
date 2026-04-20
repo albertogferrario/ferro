@@ -211,14 +211,14 @@ Phases 133–135:
 
 #### Phases
 
-- [ ] **Phase 143: Tailwind static CSS pipeline** — see [context](phases/143-tailwind-static-css-pipeline/143-CONTEXT.md).
+- [x] **Phase 143: Tailwind static CSS pipeline** — see [context](phases/143-tailwind-static-css-pipeline/143-CONTEXT.md). (completed 2026-04-20)
 
 **Plans:** 4 plans
 
-- [ ] 143-01-PLAN.md — Create ferro-base.css static asset pipeline: Tailwind CLI input, regeneration script, embed module, CI drift check
-- [ ] 143-02-PLAN.md — Convert ferro-theme default.css from `@theme` syntax to plain `:root { ... }` CSS variables
-- [ ] 143-03-PLAN.md — Wire framework: JsonUiConfig stylesheet_urls field, flip tailwind_cdn default, head injection, /_ferro/ferro-base.css route, plain <style> theme injection, all tests
-- [ ] 143-04-PLAN.md — Update ferro-cli make:theme scaffolder tokens.css template to plain CSS and update related tests
+- [x] 143-01-PLAN.md — Create ferro-base.css static asset pipeline: Tailwind CLI input, regeneration script, embed module, CI drift check
+- [x] 143-02-PLAN.md — Convert ferro-theme default.css from `@theme` syntax to plain `:root { ... }` CSS variables
+- [x] 143-03-PLAN.md — Wire framework: JsonUiConfig stylesheet_urls field, flip tailwind_cdn default, head injection, /_ferro/ferro-base.css route, plain <style> theme injection, all tests
+- [x] 143-04-PLAN.md — Update ferro-cli make:theme scaffolder tokens.css template to plain CSS and update related tests
 
 ---
 

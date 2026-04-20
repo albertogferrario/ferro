@@ -184,6 +184,16 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - ✓ 5 signal analyzers ranking IntentScore — v9.0
 - ✓ Killer-feature substrate: projection/intent shipped — v9.0
 
+**v11.7 Tailwind Static CSS Pipeline (shipped 2026-04-21):**
+- ✓ `ferro-base.css` pre-built via Tailwind v4 standalone CLI and embedded at compile time (`include_str!`) — v11.7
+- ✓ `JsonUiConfig::tailwind_cdn` default flipped to `false`; CDN remains as explicit opt-in — v11.7
+- ✓ `JsonUiConfig::stylesheet_urls: Vec<String>` added; default `["/_ferro/ferro-base.css"]` — v11.7
+- ✓ `/_ferro/ferro-base.css` static route (exact-string-match, zero-copy `Bytes::from_static`, 24h cache) — v11.7
+- ✓ Theme injection changed from `<style type="text/tailwindcss">` to plain `<style>` with CSS variable overrides — v11.7
+- ✓ `ferro-theme/assets/default.css` converted from `@theme` to `:root { }` + `@media prefers-color-scheme: dark` — v11.7
+- ✓ `ferro make:theme` scaffolder emits plain CSS (`:root { }`) not Tailwind `@theme` syntax — v11.7
+- ✓ CI drift job (`ferro-base-css-drift`) ensures committed CSS stays in sync with source — v11.7
+
 **v10.0 JSON-UI Visual Overhaul (shipped 2026-03-26):**
 - ✓ Inter Variable font loaded via Bunny Fonts CDN with correct Tailwind v4 --font-sans token — v10.0
 - ✓ Three-tier surface elevation (background → surface → card) with WCAG 4.5:1 dark mode contrast — v10.0
@@ -367,6 +377,10 @@ See also `.planning/VISION.md` for design philosophy.
 | Hard cap on expression language | Inner platform effect is the #1 strategic risk in SDUI | Planned |
 | Max nesting depth: 3 levels | All production SDUI systems converge here; keeps generation reliable | Planned |
 
+| Static CSS pipeline replaces Tailwind CDN runtime | `@tailwindcss/browser@4` is dev-only per Tailwind docs; fails silently on Safari/WebKit; field-confirmed on gestiscilo.it | ✓ Good |
+| `stylesheet_urls` replaces `tailwind_cdn` as primary CSS injection | Vec<String> is composable; apps append their own token files; CDN flag remains for explicit opt-in | ✓ Good |
+| `html_escape()` on `stylesheet_urls` values before href emission | Defense-in-depth for app-provided URLs; ASVS L1 V5.3 | ✓ Good |
+| Exact-string-match for `/_ferro/ferro-base.css` route | No path parsing → path traversal structurally impossible | ✓ Good |
 | ServiceDef::from_model() derivation bridge | Agents generate projections from model metadata; no hand-written builders | ✓ Good |
 | StripeEvent::from_raw pattern-matches EventObject | No JSON re-serialization; type guard is `event.type_` check before object match | ✓ Good |
 | BoxedHandler returns (bool, Result) tuple | `bool` flag distinguishes "no handler matched" from handler returning Ok(()); enables unknown-event logging | ✓ Good |
@@ -374,4 +388,4 @@ See also `.planning/VISION.md` for design philosophy.
 | amount_total_cents: i64 with zero-means-absent doc | Zero maps to absent Stripe field on free/setup sessions; callers must not use field alone to assert payment | ✓ Good |
 
 ---
-*Last updated: 2026-04-20 — Phase 141 complete*
+*Last updated: 2026-04-21 — Phase 143 complete (v11.7 Tailwind Static CSS Pipeline)*
