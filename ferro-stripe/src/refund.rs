@@ -9,6 +9,11 @@ use crate::Error;
 /// - `amount_cents: None` issues a full refund; `Some(n)` issues a partial refund of `n` cents.
 /// - `idempotency_key` SHOULD be a deterministic string per logical refund so that
 ///   retries do not produce duplicate refunds.
+///
+///   NOTE: async-stripe 0.41 does not forward this key to the Stripe API.
+///   Stripe-layer deduplication is NOT guaranteed until this crate upgrades.
+///   Application-layer deduplication (e.g. a DB unique constraint on charge_id)
+///   is required to prevent duplicate refunds on retry.
 /// - `reason` is optional; when `None`, Stripe omits the field.
 pub async fn create(
     charge_id: &str,
