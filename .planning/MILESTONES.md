@@ -1,5 +1,21 @@
 # Project Milestones: Ferro Framework
 
+## v11.7 Tailwind Static CSS Pipeline (Shipped: 2026-04-20)
+
+**Phases completed:** 1 phase (143), 4 plans
+
+**Key accomplishments:**
+
+- Pre-built `ferro-base.css` (36 KB) embedded at compile time via `include_str!`, eliminating the in-browser Tailwind JIT runtime that failed on Safari/WebKit
+- Framework serves `/_ferro/ferro-base.css` automatically with `Cache-Control: public, max-age=86400`; CI drift check enforces the committed file stays in sync with Tailwind CLI output
+- `JsonUiConfig::stylesheet_urls: Vec<String>` added (default `["/_ferro/ferro-base.css"]`); `tailwind_cdn` default flipped to `false`
+- Theme injection migrated from `<style type="text/tailwindcss">` (Tailwind-CDN-specific magic MIME) to plain `<style>` with `:root { }` CSS variable overrides
+- `ferro make:theme` scaffolder updated to emit plain CSS `:root { }` blocks instead of Tailwind `@theme { }` syntax
+
+**Known deferred tech debt:** D-08 — no test for "app appends own token URL alongside ferro-base default" via `stylesheet_urls`; mechanism verified correct, coverage gap only.
+
+---
+
 ## v11.1 Template Renderer (Shipped: 2026-04-07)
 
 **Phases completed:** 1 phases, 1 plans, 2 tasks

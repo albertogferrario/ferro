@@ -287,10 +287,10 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 **Current State:**
 - ~90,000 lines of Rust across 20 crates
-- v10.0 shipped: JSON-UI Visual Overhaul
-- v9.0 shipped: Service Projections — projection / intent substrate
-- v11.5 shipped: Projection Architecture Prep (Renderer trait generalization, renderer relocation, ServiceDef derivation bridge)
-- v0.2.0 published on crates.io as `ferro-rs`
+- v11.7 shipped: Tailwind Static CSS Pipeline — Safari/WebKit production fix; static CSS with compile-time embedding
+- v11.6 shipped: ferro-stripe Capability Refactor — capability-axis module tree, SyncDispatcher, typed events
+- v11.5 shipped: Projection Architecture Prep — Renderer trait generalization, renderer relocation, ServiceDef derivation bridge
+- v0.2.0 published on crates.io as `ferro-rs`; workspace at 0.2.2+
 - Pre-1.0; breaking changes acceptable
 - Sample application (app/) demonstrating Inertia integration
 - Comprehensive MCP introspection (35+ tools) — this is the v1.0 product surface
@@ -388,4 +388,4 @@ See also `.planning/VISION.md` for design philosophy.
 | amount_total_cents: i64 with zero-means-absent doc | Zero maps to absent Stripe field on free/setup sessions; callers must not use field alone to assert payment | ✓ Good |
 
 ---
-*Last updated: 2026-04-21 — Phase 143 complete (v11.7 Tailwind Static CSS Pipeline)*
+*Last updated: 2026-04-21 after v11.7 milestone*

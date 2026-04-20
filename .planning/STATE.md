@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v11.7
 milestone_name: Tailwind Static CSS Pipeline
 status: milestone_complete
-stopped_at: Phase 143 complete, v11.7 milestone done — ready to complete milestone
+stopped_at: v11.7 archived — ready for /gsd-new-milestone
 last_updated: "2026-04-21T00:00:00.000Z"
 last_activity: 2026-04-21
 progress:
