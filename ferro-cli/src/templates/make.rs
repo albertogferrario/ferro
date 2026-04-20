@@ -473,6 +473,7 @@ pub fn seeder_template(file_name: &str, struct_name: &str) -> String {
 //! Created with `ferro make:seeder {file_name}`
 
 use ferro::{{async_trait, FrameworkError, Seeder}};
+use sea_orm::DatabaseConnection;
 
 /// {struct_name} - A database seeder
 ///
@@ -496,14 +497,12 @@ pub struct {struct_name};
 
 #[async_trait]
 impl Seeder for {struct_name} {{
-    async fn run(&self) -> Result<(), FrameworkError> {{
-        // TODO: Implement seeder logic
+    async fn run(&self, db: &DatabaseConnection) -> Result<(), FrameworkError> {{
+        // TODO: Implement seeder logic using `db`
         // Example:
-        // User::create()
-        //     .set_name("Admin")
-        //     .set_email("admin@example.com")
-        //     .insert()
-        //     .await?;
+        // use sea_orm::{{ActiveModelTrait, ActiveValue::Set}};
+        // users::ActiveModel {{ name: Set("Admin".into()), ..Default::default() }}
+        //     .insert(db).await?;
 
         Ok(())
     }}

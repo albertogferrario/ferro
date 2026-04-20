@@ -40,6 +40,7 @@
 
 use crate::FrameworkError;
 use async_trait::async_trait;
+use sea_orm::DatabaseConnection;
 
 /// Trait for database seeders
 ///
@@ -49,9 +50,10 @@ use async_trait::async_trait;
 pub trait Seeder: Send + Sync + 'static {
     /// Run the seeder
     ///
-    /// This method should insert records into the database.
-    /// Use the model builders to create records fluently.
-    async fn run(&self) -> Result<(), FrameworkError>;
+    /// Receives a direct database connection. Use it for all DB operations,
+    /// including `Migrator::fresh(db)` — this connection is non-pooled and
+    /// works correctly with DDL operations.
+    async fn run(&self, db: &DatabaseConnection) -> Result<(), FrameworkError>;
 
     /// Optional: Define seeders that must run before this one
     ///
@@ -140,7 +142,7 @@ impl SeederRegistry {
     }
 
     /// Run all registered seeders
-    pub async fn run_all(&self) -> Result<(), FrameworkError> {
+    pub async fn run_all(&self, db: &DatabaseConnection) -> Result<(), FrameworkError> {
         if self.seeders.is_empty() {
             println!("No seeders registered.");
             return Ok(());
@@ -152,7 +154,7 @@ impl SeederRegistry {
             print!("  Seeding: {}...", entry.name);
             let seeder = (entry.factory)();
 
-            match seeder.run().await {
+            match seeder.run(db).await {
                 Ok(()) => println!(" done"),
                 Err(e) => {
                     println!(" FAILED");
@@ -169,7 +171,7 @@ impl SeederRegistry {
     }
 
     /// Run a specific seeder by name
-    pub async fn run_one(&self, name: &str) -> Result<(), FrameworkError> {
+    pub async fn run_one(&self, name: &str, db: &DatabaseConnection) -> Result<(), FrameworkError> {
         let entry = self
             .seeders
             .iter()
@@ -184,7 +186,7 @@ impl SeederRegistry {
 
         println!("Running seeder: {}", entry.name);
         let seeder = (entry.factory)();
-        seeder.run().await?;
+        seeder.run(db).await?;
         println!("Seeder completed!");
 
         Ok(())
@@ -206,7 +208,7 @@ pub trait DatabaseSeeder: Send + Sync {
     fn register(&self) -> SeederRegistry;
 
     /// Run all registered seeders
-    async fn run(&self) -> Result<(), FrameworkError> {
-        self.register().run_all().await
+    async fn run(&self, db: &DatabaseConnection) -> Result<(), FrameworkError> {
+        self.register().run_all(db).await
     }
 }
