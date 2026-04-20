@@ -95,6 +95,19 @@ impl JsonUi {
             "<link rel=\"preconnect\" href=\"https://fonts.bunny.net\">\
              <link href=\"https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap\" rel=\"stylesheet\">",
         );
+        // Emit one <link> per configured stylesheet URL, in order.
+        // Defaults to the framework-served pre-built base CSS at /_ferro/ferro-base.css.
+        // URL values are HTML-escaped before emission into the href attribute — even
+        // though the config API is app-controlled (trusted), defense-in-depth prevents
+        // attribute-context injection if an app forwards an untrusted value through
+        // `.stylesheet_urls(...)`. Same discipline the existing layout code uses for
+        // data attributes.
+        for url in &config.stylesheet_urls {
+            head.push_str(&format!(
+                r#"<link rel="stylesheet" href="{}">"#,
+                html_escape(url)
+            ));
+        }
         if config.tailwind_cdn {
             head.push_str(
                 r#"<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>"#,
@@ -103,15 +116,13 @@ impl JsonUi {
         if let Some(custom) = &config.custom_head {
             head.push_str(custom);
         }
-        // Inject active theme CSS after Tailwind CDN and custom_head so the CDN
-        // can process @theme directives, and before plugin CSS so themes apply first.
+        // Inject active theme CSS as a plain <style>. theme.css must contain
+        // standard CSS (:root { ... }) — not Tailwind's @theme syntax, which
+        // only works under the CDN browser runtime.
         #[cfg(feature = "theme")]
         {
             if let Some(theme) = crate::theme::context::current_theme() {
-                head.push_str(&format!(
-                    "<style type=\"text/tailwindcss\">{}</style>",
-                    theme.css
-                ));
+                head.push_str(&format!("<style>{}</style>", theme.css));
             }
         }
 
@@ -231,11 +242,12 @@ impl JsonUi {
     }
 }
 
-/// Escape characters that are meaningful in HTML text content (test-only).
+/// Escape characters that are meaningful in HTML text/attribute context.
 ///
-/// The layout system handles escaping in production code. This function
-/// is retained for the html_escape unit test.
-#[cfg(test)]
+/// Used by head-assembly code (e.g., stylesheet URL href emission) to
+/// prevent attribute-context injection via URL values. Covers the five
+/// characters called out by the OWASP HTML entity encoding guidance:
+/// `&`, `<`, `>`, `"`, `'`.
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -263,6 +275,14 @@ mod tests {
         let hyper = response.into_hyper();
         let body_bytes = hyper.into_body();
         format!("{body_bytes:?}")
+    }
+
+    /// Extract the raw HTML body string from an HttpResponse.
+    ///
+    /// Unlike `response_body`, this returns the actual HTML content rather than
+    /// a Debug-formatted representation. Use for assertions on HTML tag content.
+    fn html_body(response: HttpResponse) -> String {
+        response.body().to_string()
     }
 
     fn sample_view() -> JsonUiView {
@@ -366,6 +386,114 @@ mod tests {
 
         let body = response_body(ok_response(result));
         assert!(body.contains("dark bg-black"));
+    }
+
+    #[test]
+    fn default_config_emits_ferro_base_css_link_and_no_cdn_script() {
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&view, &data);
+        let body = html_body(ok_response(result));
+
+        assert!(
+            body.contains(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css">"#),
+            "default config must emit <link> to /_ferro/ferro-base.css; body was: {body}"
+        );
+        assert!(
+            !body.contains("@tailwindcss/browser"),
+            "default config must NOT emit the Tailwind CDN script"
+        );
+    }
+
+    #[test]
+    fn tailwind_cdn_opt_in_coexists_with_default_stylesheet_urls() {
+        // D-14: both <link> and <script> appear; no mutual-exclusion logic.
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let config = JsonUiConfig::new().tailwind_cdn(true);
+        let result = JsonUi::render_with_config(&view, &data, &config);
+        let body = html_body(ok_response(result));
+
+        assert!(
+            body.contains(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css">"#),
+            "<link> must be present even when CDN is opted in"
+        );
+        assert!(
+            body.contains("@tailwindcss/browser"),
+            "CDN script must be present when tailwind_cdn(true) is set"
+        );
+
+        // Ordering: <link> before <script>.
+        let link_pos = body
+            .find(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css">"#)
+            .expect("link must exist");
+        let cdn_pos = body.find("@tailwindcss/browser").expect("cdn must exist");
+        assert!(
+            link_pos < cdn_pos,
+            "<link> tags must precede the CDN <script>"
+        );
+    }
+
+    #[test]
+    fn stylesheet_urls_emitted_in_order_and_replaces_default() {
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let config = JsonUiConfig::new().stylesheet_urls(vec![
+            "/a.css".to_string(),
+            "/b.css".to_string(),
+        ]);
+        let result = JsonUi::render_with_config(&view, &data, &config);
+        let body = html_body(ok_response(result));
+
+        assert!(body.contains(r#"<link rel="stylesheet" href="/a.css">"#));
+        assert!(body.contains(r#"<link rel="stylesheet" href="/b.css">"#));
+        assert!(
+            !body.contains(r#"href="/_ferro/ferro-base.css""#),
+            "custom stylesheet_urls must replace the default, not append"
+        );
+        let a_pos = body.find("/a.css").unwrap();
+        let b_pos = body.find("/b.css").unwrap();
+        assert!(a_pos < b_pos, "stylesheet_urls order must be preserved");
+    }
+
+    #[test]
+    fn empty_stylesheet_urls_emits_no_ferro_base_link() {
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let config = JsonUiConfig::new().stylesheet_urls(vec![]);
+        let result = JsonUi::render_with_config(&view, &data, &config);
+        let body = html_body(ok_response(result));
+
+        assert!(
+            !body.contains(r#"href="/_ferro/ferro-base.css""#),
+            "empty stylesheet_urls must not emit the default link"
+        );
+        // Bunny Fonts is always present as a separate <link> — do NOT assert
+        // absence of all <link> tags.
+    }
+
+    #[test]
+    fn stylesheet_urls_are_html_escaped_in_href_attribute() {
+        // URL with the five characters html_escape handles: &, <, >, ", '.
+        // Locks in defense-in-depth against attribute-context injection if an
+        // app forwards untrusted values into .stylesheet_urls(...).
+        let view = sample_view();
+        let data = serde_json::json!({});
+        let config = JsonUiConfig::new()
+            .stylesheet_urls(vec![r#"/s.css?a=1&b=2&q=<x>""#.to_string()]);
+        let result = JsonUi::render_with_config(&view, &data, &config);
+        let body = html_body(ok_response(result));
+
+        // Escaped form must be present.
+        assert!(
+            body.contains(r#"href="/s.css?a=1&amp;b=2&amp;q=&lt;x&gt;&quot;">"#),
+            "URL must be HTML-escaped in href; body was: {body}"
+        );
+        // Raw unescaped form must NOT appear inside the href attribute.
+        assert!(
+            !body.contains(r#"href="/s.css?a=1&b=2&q=<x>""#),
+            "raw unescaped URL must not appear in href"
+        );
     }
 
     #[test]
@@ -876,7 +1004,7 @@ mod tests {
         #[tokio::test]
         async fn theme_css_injected_into_head_when_theme_active() {
             let mut custom_theme = Theme::default_theme();
-            custom_theme.css = "@theme { --color-primary: red; }".to_string();
+            custom_theme.css = ":root { --color-primary: red; }".to_string();
             let scope = theme_scope();
             {
                 let mut guard = scope.write().await;
@@ -891,9 +1019,12 @@ mod tests {
             .await;
 
             assert!(
-                body.contains("<style type=\"text/tailwindcss\">")
-                    && body.contains("--color-primary: red"),
-                "theme CSS should be injected as a <style type=\"text/tailwindcss\"> tag"
+                body.contains("<style>") && body.contains("--color-primary: red"),
+                "theme CSS should be injected as a plain <style> tag"
+            );
+            assert!(
+                !body.contains(r#"<style type="text/tailwindcss">"#),
+                "theme CSS must not use the Tailwind-CDN-only type=\"text/tailwindcss\" attribute"
             );
         }
 
@@ -916,7 +1047,7 @@ mod tests {
         #[tokio::test]
         async fn theme_css_injected_after_tailwind_cdn() {
             let mut custom_theme = Theme::default_theme();
-            custom_theme.css = "@theme { --color-test: blue; }".to_string();
+            custom_theme.css = ":root { --color-test: blue; }".to_string();
             let scope = theme_scope();
             {
                 let mut guard = scope.write().await;
@@ -944,7 +1075,7 @@ mod tests {
         #[tokio::test]
         async fn theme_css_does_not_duplicate_custom_head_content() {
             let mut custom_theme = Theme::default_theme();
-            custom_theme.css = "@theme { --color-custom: purple; }".to_string();
+            custom_theme.css = ":root { --color-custom: purple; }".to_string();
             let scope = theme_scope();
             {
                 let mut guard = scope.write().await;
