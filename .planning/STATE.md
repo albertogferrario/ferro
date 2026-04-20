@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.6
-milestone_name: ferro-stripe Capability Refactor
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
 status: verifying
-stopped_at: Completed 135-02-PLAN.md
-last_updated: "2026-04-17T18:04:01.884Z"
+stopped_at: Phase 140 context gathered
+last_updated: "2026-04-20T01:34:37.418Z"
 last_activity: 2026-04-17
 progress:
-  total_phases: 24
-  completed_phases: 15
-  total_plans: 53
-  completed_plans: 52
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 96
 ---
 
@@ -142,7 +142,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-17T18:00:33.550Z
-Stopped at: Completed 135-02-PLAN.md
-Resume file: None
+Last session: 2026-04-20T01:34:37.415Z
+Stopped at: Phase 140 context gathered
+Resume file: .planning/phases/140-core-reshape/140-CONTEXT.md
 Next action: `git push origin master` to publish v0.2.0 when ready.
