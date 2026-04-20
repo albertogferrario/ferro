@@ -64,4 +64,5 @@ pub use webhook::events::{
     StripeConnectPaymentSucceeded, StripeInvoicePaid, StripePaymentIntentFailed,
     StripeSubscriptionDeleted, StripeSubscriptionUpdated,
 };
+pub use webhook::sync::SyncDispatcher;
 pub use webhook::verify::verify_webhook;

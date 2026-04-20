@@ -40,7 +40,24 @@ pub fn mock_checkout_completed_event(session_id: &str, customer_id: &str) -> Str
                 "object": "checkout.session",
                 "customer": customer_id,
                 "payment_status": "paid",
-                "status": "complete"
+                "status": "complete",
+                "created": 1700000000_i64,
+                "expires_at": 1700086400_i64,
+                "livemode": false,
+                "mode": "payment",
+                "payment_method_types": ["card"],
+                "custom_fields": [],
+                "custom_text": {
+                    "after_submit": null,
+                    "shipping_address": null,
+                    "submit": null,
+                    "terms_of_service_acceptance": null
+                },
+                "shipping_options": [],
+                "automatic_tax": {
+                    "enabled": false,
+                    "status": null
+                }
             }
         }
     })

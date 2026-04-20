@@ -14,3 +14,4 @@ pub use events::{
     StripeConnectPaymentSucceeded, StripeInvoicePaid, StripePaymentIntentFailed,
     StripeSubscriptionDeleted, StripeSubscriptionUpdated,
 };
+pub use sync::SyncDispatcher;
