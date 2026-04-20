@@ -93,11 +93,23 @@ impl StorageConfig {
                 bucket: Some(bucket),
                 region: Some(region),
             };
-            // AWS_PUBLIC_URL takes precedence — use it when the public file URL
-            // differs from the API endpoint (e.g. DigitalOcean Spaces, Cloudflare R2).
-            if let Ok(url) = env::var("AWS_PUBLIC_URL").or_else(|_| env::var("AWS_URL")) {
-                s3_config.url = Some(url);
-            }
+            // Resolve public file URL base (used by Storage::url() to build asset URLs).
+            // Priority: AWS_PUBLIC_URL → computed from AWS_URL+bucket → AWS_URL bare.
+            // Auto-compute handles providers like DigitalOcean Spaces and Cloudflare R2
+            // where the public URL is {bucket}.{endpoint_host} but the API endpoint is
+            // just {endpoint_host}.
+            let public_url = if let Ok(explicit) = env::var("AWS_PUBLIC_URL") {
+                Some(explicit)
+            } else if let Ok(api_url) = env::var("AWS_URL") {
+                let host = api_url
+                    .trim_start_matches("https://")
+                    .trim_start_matches("http://");
+                let scheme = if api_url.starts_with("https://") { "https" } else { "http" };
+                Some(format!("{}://{}.{}", scheme, bucket, host))
+            } else {
+                None
+            };
+            s3_config.url = public_url;
             disks.insert("s3".to_string(), s3_config);
         }
 
