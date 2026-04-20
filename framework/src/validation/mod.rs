@@ -2,6 +2,33 @@
 //!
 //! Provides Laravel-inspired validation with declarative rules.
 //!
+//! ## Flash round-trip (Phase 137)
+//!
+//! On validation failure a POST handler can redirect back and preserve both
+//! errors and old form input in the session flash:
+//!
+//! ```rust,ignore
+//! use ferro_rs::validation::{Validator, rules::*};
+//! use ferro_rs::rules;
+//!
+//! // POST handler
+//! let data = req.input::<serde_json::Value>().await?;
+//! if let Err(e) = Validator::new(&data)
+//!     .rules("name", rules![required()])
+//!     .validate()
+//! {
+//!     let referer = req.header("Referer");
+//!     return e.with_old_input(&data).redirect_back(referer);
+//! }
+//!
+//! // GET handler — repopulate form fields
+//! InputProps {
+//!     default_value: req.old("name"),
+//!     error: req.validation_error("name"),
+//!     ..Default::default()
+//! }
+//! ```
+//!
 //! # Example
 //!
 //! ```rust,ignore
