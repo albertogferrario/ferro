@@ -1544,9 +1544,11 @@ impl FerroMcpService {
         name = "stripe_config_status",
         description = "Report Stripe configuration status for the current project.\n\n\
             **When to use:** Verifying Stripe is configured before running the app, \
-            checking which env vars are set, confirming the scaffold exists.\n\n\
-            **Returns:** configured (bool), keys_present, keys_missing, scaffold_exists, scaffold_files.\n\n\
-            **Combine with:** `stripe_webhook_events` to check event listeners, \
+            checking which env vars are set, confirming the scaffold and capability-axis \
+            module layout (checkout, refund, account, webhook) exist.\n\n\
+            **Returns:** configured (bool), keys_present, keys_missing, scaffold_exists, \
+            scaffold_files, checkout_exists, refund_exists, account_exists, webhook_dir_exists.\n\n\
+            **Combine with:** `stripe_webhook_events` to check event handlers, \
             `stripe_subscription_info` to inspect the billing table schema, \
             `get_config` to view Stripe env var values."
     )]
@@ -1558,13 +1560,15 @@ impl FerroMcpService {
         serde_json::to_string_pretty(&status).unwrap_or_else(|_| "{}".to_string())
     }
 
-    /// List Stripe webhook event listeners discovered in the project source
+    /// List Stripe webhook event handlers discovered in the project source
     #[tool(
         name = "stripe_webhook_events",
-        description = "List Stripe webhook event listeners discovered in src/stripe/listeners.rs.\n\n\
+        description = "Scan project source for SyncDispatcher webhook handler registrations. \
+            Returns event types and file locations for all `.on(|event: EventType| ...)` \
+            calls found in `src/`.\n\n\
             **When to use:** Understanding which Stripe events the app handles, \
-            checking listener coverage, debugging missing event handling.\n\n\
-            **Returns:** events array with event_type, listener struct name, and file path.\n\n\
+            checking handler coverage, debugging missing event handling.\n\n\
+            **Returns:** events array with event_type, file path, and line number.\n\n\
             **Combine with:** `stripe_config_status` to verify setup, \
             `list_jobs` to see ProcessStripeWebhook job."
     )]
@@ -1576,12 +1580,13 @@ impl FerroMcpService {
         serde_json::to_string_pretty(&events).unwrap_or_else(|_| "{}".to_string())
     }
 
-    /// Report tenant_billing table schema from migration files
+    /// Report tenant_billing table schema from app migration files
     #[tool(
         name = "stripe_subscription_info",
-        description = "Report the tenant_billing table schema parsed from migration files.\n\n\
-            **When to use:** Checking the billing table structure, understanding column types \
-            and nullability, verifying the migration was generated.\n\n\
+        description = "Report the tenant_billing table schema parsed from app migration files.\n\n\
+            **When to use:** Checking the app billing table structure, understanding column types \
+            and nullability, verifying the migration was generated. Scans app migrations for \
+            `tenant_billing` — not the ferro-stripe framework module.\n\n\
             **Returns:** table_exists, migration_file path, columns (name, sql_type, nullable, default), indexes.\n\n\
             **Combine with:** `list_migrations` to see migration status, \
             `db_schema` for live table introspection after migration."
