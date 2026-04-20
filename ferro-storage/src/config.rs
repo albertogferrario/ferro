@@ -104,7 +104,11 @@ impl StorageConfig {
                 let host = api_url
                     .trim_start_matches("https://")
                     .trim_start_matches("http://");
-                let scheme = if api_url.starts_with("https://") { "https" } else { "http" };
+                let scheme = if api_url.starts_with("https://") {
+                    "https"
+                } else {
+                    "http"
+                };
                 Some(format!("{}://{}.{}", scheme, bucket, host))
             } else {
                 None
