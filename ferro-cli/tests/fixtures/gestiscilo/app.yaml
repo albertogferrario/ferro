@@ -32,6 +32,9 @@ envs:
   - key: APP_ENV
     value: ""
     scope: RUN_TIME
+  - key: APP_DEBUG
+    value: ""
+    scope: RUN_TIME
   - key: APP_URL
     value: ""
     scope: RUN_TIME
@@ -43,6 +46,9 @@ envs:
     value: ""
     scope: RUN_TIME
   - key: APP_FALLBACK_LOCALE
+    value: ""
+    scope: RUN_TIME
+  - key: LANG_PATH
     value: ""
     scope: RUN_TIME
 
@@ -81,7 +87,56 @@ envs:
   - key: SESSION_SECURE
     value: ""
     scope: RUN_TIME
+  - key: SESSION_PATH
+    value: ""
+    scope: RUN_TIME
   - key: SESSION_SAME_SITE
+    value: ""
+    scope: RUN_TIME
+
+  - key: CACHE_DRIVER
+    value: ""
+    scope: RUN_TIME
+  - key: CACHE_PREFIX
+    value: ""
+    scope: RUN_TIME
+  - key: QUEUE_CONNECTION
+    value: ""
+    scope: RUN_TIME
+  - key: QUEUE_DEFAULT
+    value: ""
+    scope: RUN_TIME
+  - key: QUEUE_RETRY_AFTER
+    value: ""
+    scope: RUN_TIME
+
+  - key: FILESYSTEM_DISK
+    value: ""
+    scope: RUN_TIME
+  - key: FILESYSTEM_PUBLIC_URL
+    value: ""
+    scope: RUN_TIME
+  - key: STORAGE_PATH
+    value: ""
+    scope: RUN_TIME
+  - key: AWS_ACCESS_KEY_ID
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+  - key: AWS_SECRET_ACCESS_KEY
+    value: ""
+    type: SECRET
+    scope: RUN_AND_BUILD_TIME
+  - key: AWS_DEFAULT_REGION
+    value: ""
+    scope: RUN_TIME
+  - key: AWS_BUCKET
+    value: ""
+    scope: RUN_TIME
+  - key: AWS_URL
+    value: ""
+    scope: RUN_TIME
+  - key: AWS_PUBLIC_URL
     value: ""
     scope: RUN_TIME
 
@@ -95,24 +150,6 @@ envs:
     value: ""
     scope: RUN_TIME
   - key: RESEND_API_KEY
-    value: ""
-    type: SECRET
-    scope: RUN_AND_BUILD_TIME
-
-  - key: SPACES_BUCKET
-    value: ""
-    scope: RUN_TIME
-  - key: SPACES_ENDPOINT
-    value: ""
-    scope: RUN_TIME
-  - key: SPACES_REGION
-    value: ""
-    scope: RUN_TIME
-  - key: SPACES_KEY
-    value: ""
-    type: SECRET
-    scope: RUN_AND_BUILD_TIME
-  - key: SPACES_SECRET
     value: ""
     type: SECRET
     scope: RUN_AND_BUILD_TIME
@@ -140,9 +177,6 @@ envs:
     type: SECRET
     scope: RUN_AND_BUILD_TIME
 
-  - key: APP_DEBUG
-    value: ""
-    scope: RUN_TIME
   - key: SEED_DEMO_DATA
     value: ""
     scope: RUN_TIME

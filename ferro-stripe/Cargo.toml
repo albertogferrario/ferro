@@ -32,5 +32,9 @@ hex = "0.4"
 [features]
 test-helpers = []
 
+[[test]]
+name = "dispatcher"
+required-features = ["test-helpers"]
+
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
