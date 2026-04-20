@@ -1179,6 +1179,29 @@ Plans:
 - [x] 135-01-PLAN.md — ModelMetadata, DataType::from_column_type(), ServiceDef::from_model() in ferro-projections
 - [x] 135-02-PLAN.md — generate_projection MCP tool in ferro-mcp
 
+### Phase 141: protocol-uplift
+
+**Goal:** Drop `event_json: String` from the five existing typed event structs and remove their `ferro_events::Event` impls. Ship `SyncDispatcher` in `webhook/sync.rs` as the sole handler registry. Relocate `ProcessStripeWebhook` to `webhook/queue.rs` wired to `Arc<SyncDispatcher>`. Add five new event types (`StripeCheckoutExpired`, `StripePaymentIntentFailed`, `StripeChargeRefunded`, `StripeChargeDisputeCreated`, `StripeConnectAccountUpdated`) with fully-parsed fields via the `StripeEvent::from_raw` trait method. Provide golden-JSON fixtures with parser-contract tests. Release `ferro-stripe 0.5.0`.
+**Requirements**: SC-1..SC-14 (Phase 141 success criteria in milestone §"Phase 141: Protocol uplift")
+**Depends on:** Phase 140
+**Plans:** 4 plans
+
+Plans:
+- [ ] 141-01-PLAN.md — Foundation: Cargo.toml deps + StripeEvent trait + 10 reshaped/new event structs + relocate signed_webhook_payload (Wave 1)
+- [ ] 141-02-PLAN.md — SyncDispatcher in webhook/sync.rs + integration tests (tests/dispatcher.rs) (Wave 2)
+- [ ] 141-03-PLAN.md — 10 golden-JSON fixtures + parser-contract integration tests (Wave 2)
+- [ ] 141-04-PLAN.md — Relocate ProcessStripeWebhook to webhook/queue.rs + framework re-exports + full workspace gate (Wave 3)
+
+### Phase 142: protocol-uplift
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 141
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 142 to break down)
+
 ---
 
 ## Progress Summary

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 141 context gathered
-last_updated: "2026-04-20T14:02:37.958Z"
-last_activity: 2026-04-20
+stopped_at: context exhaustion at 90% (2026-04-20)
+last_updated: "2026-04-20T14:30:03.676Z"
+last_activity: 2026-04-20 -- Phase 141 execution started
 progress:
   total_phases: 139
   completed_phases: 125
-  total_plans: 299
+  total_plans: 303
   completed_plans: 289
-  percent: 97
+  percent: 95
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 140 — core-reshape
+**Current focus:** Phase 141 — protocol-uplift
 
 ## Current Position
 
-Phase: 140
-Plan: Not started
+Phase: 141 (protocol-uplift) — EXECUTING
+Plan: 1 of 4
 Workspace version: 0.2.0
-Status: Executing Phase 140
-Last activity: 2026-04-20
+Status: Executing Phase 141
+Last activity: 2026-04-20 -- Phase 141 execution started
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -142,7 +142,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-20T14:02:37.882Z
-Stopped at: Phase 141 context gathered
-Resume file: .planning/phases/141-protocol-uplift/141-CONTEXT.md
+Last session: 2026-04-20T14:28:47.415Z
+Stopped at: context exhaustion at 90% (2026-04-20)
+Resume file: None
 Next action: `git push origin master` to publish v0.2.0 when ready.
