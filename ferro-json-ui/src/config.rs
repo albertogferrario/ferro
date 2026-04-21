@@ -51,7 +51,7 @@ impl Default for JsonUiConfig {
             tailwind_cdn: false,
             stylesheet_urls: vec!["/_ferro/ferro-base.css".to_string()],
             custom_head: None,
-            body_class: "dark bg-background text-text font-sans".to_string(),
+            body_class: "bg-background text-text font-sans".to_string(),
         }
     }
 }
