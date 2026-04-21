@@ -29,6 +29,15 @@
 /// router, bypassing `register_route` for the alternate so the
 /// introspection registry stays canonical.
 pub(crate) fn combine_group_path(prefix: &str, route_path: &str) -> (String, Option<String>) {
+    // `strip_suffix('/')` removes at most one trailing slash. Callers in
+    // `macros.rs` and `group.rs` receive user-supplied prefixes that should
+    // have already passed `validate_route_path`, so a prefix ending in `//`
+    // indicates a contract violation upstream. Surface it in debug builds
+    // rather than silently producing a canonical form with a stray slash.
+    debug_assert!(
+        !prefix.ends_with("//"),
+        "combine_group_path: prefix must not end with multiple slashes (got {prefix:?})"
+    );
     let stripped = prefix.strip_suffix('/').unwrap_or(prefix);
 
     if route_path == "/" {
