@@ -176,7 +176,7 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
         InputType::Textarea => {
             let val = resolved_value.as_deref().unwrap_or("");
             html.push_str(&format!(
-                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
                 html_escape(&props.field),
                 html_escape(&props.field),
                 border_class,
@@ -213,7 +213,7 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                 InputType::Textarea | InputType::Hidden => unreachable!(),
             };
             html.push_str(&format!(
-                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
                 input_type,
                 html_escape(&props.field),
                 html_escape(&props.field),
@@ -325,7 +325,7 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
 
     html.push_str("<div class=\"relative\">");
     html.push_str(&format!(
-        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} pr-10 px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} pr-10 px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
         html_escape(&props.field),
         html_escape(&props.field),
         border_class,

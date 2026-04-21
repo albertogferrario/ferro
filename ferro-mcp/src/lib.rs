@@ -13,8 +13,7 @@ pub use server::McpServer;
 /// Uses the current working directory as the project root (the CLI sets it via
 /// `set_current_dir` before calling this).
 pub async fn run() -> anyhow::Result<()> {
-    let project_root =
-        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let project_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
     let server = McpServer::with_project_root(project_root);
     server
