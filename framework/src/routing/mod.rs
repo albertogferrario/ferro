@@ -1,5 +1,6 @@
 mod group;
 mod macros;
+mod path;
 mod router;
 
 pub use group::{GroupBuilder, GroupRouter};
