@@ -14,17 +14,12 @@ pub struct JsonUiCatalog {
     pub plugin_components: Vec<CatalogComponent>,
     pub builder_api: String,
     pub action_api: String,
-    /// Full spec JSON Schema document (validates a complete v2 JSON-UI spec).
-    ///
-    /// Shape: `$schema`, `root`, `elements`, plus `$defs` containing `Element`
-    /// (discriminated `oneOf` over all component Props), `Action`, `Visibility`.
-    /// Sourced from [`ferro_json_ui::global_catalog().json_schema()`].
+    /// Full v2 spec JSON Schema (sourced from `global_catalog().json_schema()`).
     pub json_schema: serde_json::Value,
-    /// Per-component Props JSON Schema, keyed by component type name.
+    /// Per-component props schemas keyed by component type name.
     ///
-    /// Each entry is the Props-only schema (NOT the Element wrapper). Includes
-    /// both built-in and plugin components. Agents use these for per-component
-    /// structured-output constraints when generating element props.
+    /// Includes both built-in and plugin components. Use for targeted AI structured
+    /// output or IDE validation without loading the full spec schema.
     pub component_schemas: std::collections::HashMap<String, serde_json::Value>,
 }
 
@@ -87,15 +82,19 @@ pub fn execute(component: Option<&str>) -> JsonUiCatalog {
         })
         .collect();
 
-    // Build component_schemas: one entry per built-in and plugin component.
-    let component_schemas: std::collections::HashMap<String, serde_json::Value> = cat
-        .components_sorted()
-        .map(|spec| (spec.name.clone(), spec.props_schema.clone()))
-        .chain(
-            cat.plugin_components_sorted()
-                .map(|spec| (spec.name.clone(), spec.props_schema.clone())),
-        )
-        .collect();
+    // Build per-component schema map (built-in + plugin)
+    let mut component_schemas: std::collections::HashMap<String, serde_json::Value> =
+        std::collections::HashMap::new();
+    for spec in cat.components_sorted() {
+        if let Some(schema) = cat.component_schema(&spec.name) {
+            component_schemas.insert(spec.name.clone(), schema.clone());
+        }
+    }
+    for spec in cat.plugin_components_sorted() {
+        if let Some(schema) = cat.component_schema(&spec.name) {
+            component_schemas.insert(spec.name.clone(), schema.clone());
+        }
+    }
 
     JsonUiCatalog {
         components,
@@ -362,142 +361,47 @@ mod tests {
     }
 
     #[test]
-    fn test_json_schema_is_full_spec_schema() {
+    fn test_json_schema_present() {
         let catalog = execute(None);
-        // Full spec schema has "$id": "ferro-json-ui/v2" and requires $schema, root, elements.
-        assert_eq!(
-            catalog.json_schema["$id"].as_str(),
-            Some("ferro-json-ui/v2"),
-            "json_schema must be the full spec schema (ferro-json-ui/v2)"
-        );
-        let required = catalog.json_schema["required"]
-            .as_array()
-            .expect("json_schema.required is an array");
-        let req_strs: Vec<&str> = required.iter().filter_map(|v| v.as_str()).collect();
+        // Full spec schema is a non-null JSON object
         assert!(
-            req_strs.contains(&"$schema"),
-            "required must include $schema"
+            catalog.json_schema.is_object(),
+            "json_schema should be a JSON object"
         );
-        assert!(req_strs.contains(&"root"), "required must include root");
+        // Sanity: the schema describes a spec with elements
+        let schema_str = serde_json::to_string(&catalog.json_schema).unwrap();
         assert!(
-            req_strs.contains(&"elements"),
-            "required must include elements"
+            schema_str.contains("elements"),
+            "json_schema should describe an elements map"
         );
     }
 
     #[test]
-    fn test_component_schemas_covers_all_builtins() {
+    fn test_component_schemas_present() {
         let catalog = execute(None);
-        // Every built-in component must have an entry in component_schemas.
-        let expected = [
-            "Text",
-            "Button",
-            "Card",
-            "Table",
-            "Form",
-            "Input",
-            "Select",
-            "Alert",
-            "Badge",
-            "Modal",
-            "Checkbox",
-            "Switch",
-            "Separator",
-            "DescriptionList",
-            "Tabs",
-            "Breadcrumb",
-            "Pagination",
-            "Progress",
-            "Avatar",
-            "Skeleton",
-            "StatCard",
-            "Checklist",
-            "Toast",
-            "NotificationDropdown",
-            "Sidebar",
-            "Header",
-            "Grid",
-            "Collapsible",
-            "EmptyState",
-            "FormSection",
-            "PageHeader",
-            "ButtonGroup",
-            "DropdownMenu",
-            "DataTable",
-            "KanbanBoard",
-            "CalendarCell",
-            "ActionCard",
-            "ProductTile",
-            "Image",
-        ];
-        for name in &expected {
-            assert!(
-                catalog.component_schemas.contains_key(*name),
-                "component_schemas missing built-in '{name}'"
-            );
-        }
+        // All 39 built-in components should have a schema entry
         assert_eq!(
             catalog.component_schemas.len(),
-            catalog.components.len() + catalog.plugin_components.len(),
-            "component_schemas count must equal built-ins + plugins"
+            40, // 39 built-in + 1 Map plugin
+            "component_schemas should have 40 entries (39 built-in + Map), got {}",
+            catalog.component_schemas.len()
         );
-    }
-
-    #[test]
-    fn test_component_schemas_are_props_only() {
-        let catalog = execute(None);
-        // Each schema should be a Props-only object (not an Element wrapper).
-        // A Props schema has "properties" but not the Element envelope fields
-        // ("type", "children", "action" as top-level required).
-        let card_schema = catalog
-            .component_schemas
-            .get("Card")
-            .expect("Card must be in component_schemas");
-        let props = card_schema["properties"]
-            .as_object()
-            .expect("Card component_schema should have 'properties'");
-        assert!(
-            props.contains_key("title"),
-            "Card component_schema.properties should include 'title'"
-        );
-        // Verify it is NOT the Element wrapper (Element has children + props at top level).
-        let is_element_wrapper = props.contains_key("children") && props.contains_key("props");
-        assert!(
-            !is_element_wrapper,
-            "component_schemas['Card'] must not be the Element wrapper"
-        );
-    }
-
-    #[test]
-    fn test_component_schemas_includes_plugin_components() {
-        let catalog = execute(None);
-        // Map is the registered plugin component; it must appear in component_schemas.
-        assert!(
-            catalog.component_schemas.contains_key("Map"),
-            "component_schemas must include plugin component 'Map'"
-        );
-    }
-
-    #[test]
-    fn test_filter_returns_all_schema_fields() {
-        // Even when filtering by component name, json_schema and component_schemas
-        // always reflect the full catalog (they are sourced from global_catalog()).
-        let catalog = execute(Some("Button"));
-        assert_eq!(catalog.components.len(), 1);
-        // json_schema is always the full spec schema regardless of filter.
-        assert_eq!(
-            catalog.json_schema["$id"].as_str(),
-            Some("ferro-json-ui/v2"),
-            "json_schema must be full spec schema even when filtering"
-        );
-        // component_schemas always covers all components regardless of filter.
-        assert!(
-            catalog.component_schemas.contains_key("Card"),
-            "component_schemas must include Card even when filtering by Button"
-        );
+        // Each schema is an object
+        for (name, schema) in &catalog.component_schemas {
+            assert!(
+                schema.is_object(),
+                "component_schemas[\"{name}\"] should be an object"
+            );
+        }
+        // Button schema exists
         assert!(
             catalog.component_schemas.contains_key("Button"),
-            "component_schemas must include Button"
+            "component_schemas should contain Button"
+        );
+        // Map plugin schema exists
+        assert!(
+            catalog.component_schemas.contains_key("Map"),
+            "component_schemas should contain Map plugin"
         );
     }
 

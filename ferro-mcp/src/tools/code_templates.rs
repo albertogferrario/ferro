@@ -904,7 +904,7 @@ fn json_view_templates() -> Vec<CodeTemplate> {
         CodeTemplate {
             name: "basic_view".to_string(),
             category: "json_view".to_string(),
-            description: "A minimal v2 JSON-UI spec with title, heading text, and one card component. Save as src/views/{{view_name}}.json."
+            description: "Minimal v2 JSON spec: card with a heading. Save as src/views/{{view_name}}.json."
                 .to_string(),
             code: r#"{
   "$schema": "ferro-json-ui/v2",
@@ -928,12 +928,12 @@ fn json_view_templates() -> Vec<CodeTemplate> {
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View file name (snake_case, no extension)".to_string(),
+                    description: "Spec file name without extension (snake_case)".to_string(),
                     example: "dashboard".to_string(),
                 },
                 Placeholder {
                     name: "{{title}}".to_string(),
-                    description: "Page title displayed in the view".to_string(),
+                    description: "Page title shown in the card and browser tab".to_string(),
                     example: "Dashboard".to_string(),
                 },
             ],
@@ -941,9 +941,8 @@ fn json_view_templates() -> Vec<CodeTemplate> {
         CodeTemplate {
             name: "list_view".to_string(),
             category: "json_view".to_string(),
-            description:
-                "A v2 JSON-UI spec with a data table, pagination, and create action button for listing resources. Save as src/views/{{view_name}}.json."
-                    .to_string(),
+            description: "v2 JSON spec: data table with create button and pagination. Save as src/views/{{view_name}}.json."
+                .to_string(),
             code: r#"{
   "$schema": "ferro-json-ui/v2",
   "title": "{{title}}",
@@ -986,12 +985,12 @@ fn json_view_templates() -> Vec<CodeTemplate> {
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View file name (snake_case, no extension)".to_string(),
+                    description: "Spec file name without extension (snake_case)".to_string(),
                     example: "users_index".to_string(),
                 },
                 Placeholder {
                     name: "{{title}}".to_string(),
-                    description: "Page title displayed in the view".to_string(),
+                    description: "Page title".to_string(),
                     example: "Users".to_string(),
                 },
                 Placeholder {
@@ -1009,7 +1008,7 @@ fn json_view_templates() -> Vec<CodeTemplate> {
         CodeTemplate {
             name: "form_view".to_string(),
             category: "json_view".to_string(),
-            description: "A v2 JSON-UI spec with a form containing input fields and a submit button. Save as src/views/{{view_name}}.json.".to_string(),
+            description: "v2 JSON spec: form with name and email inputs. Save as src/views/{{view_name}}.json.".to_string(),
             code: r#"{
   "$schema": "ferro-json-ui/v2",
   "title": "{{title}}",
@@ -1058,12 +1057,12 @@ fn json_view_templates() -> Vec<CodeTemplate> {
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View file name (snake_case, no extension)".to_string(),
+                    description: "Spec file name without extension (snake_case)".to_string(),
                     example: "users_create".to_string(),
                 },
                 Placeholder {
                     name: "{{title}}".to_string(),
-                    description: "Page title displayed in the view".to_string(),
+                    description: "Page title".to_string(),
                     example: "Create User".to_string(),
                 },
                 Placeholder {
@@ -1078,7 +1077,7 @@ fn json_view_templates() -> Vec<CodeTemplate> {
                 },
                 Placeholder {
                     name: "{{action_handler}}".to_string(),
-                    description: "Route handler name for form submission".to_string(),
+                    description: "Route handler name for form submission (controller.method)".to_string(),
                     example: "users.store".to_string(),
                 },
             ],
@@ -1086,7 +1085,7 @@ fn json_view_templates() -> Vec<CodeTemplate> {
         CodeTemplate {
             name: "json_view_handler".to_string(),
             category: "json_view".to_string(),
-            description: "Rust handler that loads and renders a v2 JSON-UI spec file via JsonUi::render_file. Pair with a src/views/{{view_name}}.json spec file.".to_string(),
+            description: "Rust handler that loads and renders a v2 JSON spec file via JsonUi::render_file.".to_string(),
             code: r#"#[handler]
 pub async fn {{view_name}}(req: Request) -> Response {
     let data = serde_json::json!({});
@@ -1099,7 +1098,7 @@ pub async fn {{view_name}}(req: Request) -> Response {
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "Handler function name and matching JSON spec file stem (snake_case)".to_string(),
+                    description: "Handler function name and matching spec file stem (snake_case)".to_string(),
                     example: "dashboard".to_string(),
                 },
             ],
