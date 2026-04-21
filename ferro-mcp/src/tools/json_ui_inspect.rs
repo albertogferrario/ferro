@@ -75,13 +75,22 @@ pub fn inspect_component(component_type: &str) -> ComponentSchemaInfo {
     // Check plugin registry
     let catalog = super::json_ui_catalog::execute(Some(component_type));
     let plugin_entry = catalog.plugin_components.into_iter().next();
-    let schema = ferro_json_ui::with_plugin(component_type, |plugin| plugin.props_schema());
+    if plugin_entry.is_some() {
+        let schema = ferro_json_ui::with_plugin(component_type, |plugin| plugin.props_schema());
+        return ComponentSchemaInfo {
+            name: component_type.to_string(),
+            is_plugin: true,
+            props_schema: schema,
+            catalog_entry: plugin_entry,
+        };
+    }
 
+    // Unknown — no matching built-in or plugin
     ComponentSchemaInfo {
         name: component_type.to_string(),
-        is_plugin: true,
-        props_schema: schema,
-        catalog_entry: plugin_entry,
+        is_plugin: false,
+        props_schema: None,
+        catalog_entry: None,
     }
 }
 
@@ -353,7 +362,7 @@ mod tests {
     fn test_inspect_unknown_component() {
         let info = inspect_component("NonExistent");
         assert_eq!(info.name, "NonExistent");
-        assert!(info.is_plugin);
+        assert!(!info.is_plugin);
         assert!(info.props_schema.is_none());
         assert!(info.catalog_entry.is_none());
     }
