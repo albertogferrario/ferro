@@ -118,3 +118,10 @@ pub(crate) fn combine_group_path(prefix: &str, route_path: &str) -> (String, Opt
 ---
 *Phase: 144-fix-root-path-routing-in-group-routes*
 *Completed: 2026-04-21*
+
+## Self-Check: PASSED
+
+- FOUND: `framework/src/routing/path.rs`
+- FOUND: `framework/src/routing/mod.rs`
+- FOUND: `.planning/phases/144-fix-root-path-routing-in-group-routes/144-01-SUMMARY.md`
+- FOUND: commit `66c109b0`
