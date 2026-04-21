@@ -1270,14 +1270,14 @@ Plans:
 **Goal:** `get!("/", handler)` registered inside a non-root `group!("/prefix", { ... })` is reachable at both `/prefix` and `/prefix/`. Trailing-slash prefix normalization applied in both the macro-based (`GroupDef::register_with_inherited`) and builder-based (`GroupBuilder::finalize`) group implementations. Route introspection (`get_registered_routes()`, `ferro-mcp list_routes`) continues to report one canonical entry per logical handler. Ships as patch release 0.2.13.
 **Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-13 (from 144-CONTEXT.md)
 **Depends on:** Phase 143
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 144-01-PLAN.md — combine_group_path helper + 8-row matrix test (Wave 0, new framework/src/routing/path.rs)
 - [x] 144-02-PLAN.md — apply helper in GroupDef::register_with_inherited + add insert_*_alias methods on Router; inline tests for D-01..D-04, D-06, D-08 (Wave 1)
 - [x] 144-03-PLAN.md — apply helper in GroupBuilder::finalize; mirrored test module for D-05, D-11 lockstep (Wave 1, parallel with Plan 02)
 - [x] 144-04-PLAN.md — integration tests for D-07, D-10, middleware-on-both-variants, gestiscilo reproducer (Wave 2)
-- [ ] 144-05-PLAN.md — docs (routing.md, middleware.md, rustdoc), CHANGELOG 0.2.13 entry (neutral voice), workspace version bump, final full gate (Wave 3)
+- [x] 144-05-PLAN.md — docs (routing.md, middleware.md, rustdoc), CHANGELOG 0.2.13 entry (neutral voice), workspace version bump, final full gate (Wave 3)
 ---
 
 ## Progress Summary
