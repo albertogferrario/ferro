@@ -14,6 +14,10 @@ pub struct JsonUiCatalog {
     pub plugin_components: Vec<CatalogComponent>,
     pub builder_api: String,
     pub action_api: String,
+    /// Full spec JSON Schema (suitable for schema-based validation).
+    pub json_schema: serde_json::Value,
+    /// Per-component props JSON Schema, keyed by type name.
+    pub component_schemas: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// A single component in the catalog.
@@ -75,11 +79,24 @@ pub fn execute(component: Option<&str>) -> JsonUiCatalog {
         })
         .collect();
 
+    // Build component_schemas from all built-in and plugin component specs
+    let component_schemas: std::collections::HashMap<String, serde_json::Value> = cat
+        .components_sorted()
+        .chain(cat.plugin_components_sorted())
+        .filter_map(|spec| {
+            cat.component_schema(&spec.name)
+                .cloned()
+                .map(|schema| (spec.name.clone(), schema))
+        })
+        .collect();
+
     JsonUiCatalog {
         components,
         plugin_components,
         builder_api: BUILDER_API.to_string(),
         action_api: ACTION_API.to_string(),
+        json_schema: cat.json_schema().clone(),
+        component_schemas,
     }
 }
 
@@ -330,9 +347,35 @@ mod tests {
         assert!(json_str.contains("plugin_components"));
         assert!(json_str.contains("builder_api"));
         assert!(json_str.contains("action_api"));
+        assert!(json_str.contains("json_schema"));
+        assert!(json_str.contains("component_schemas"));
         assert!(json_str.contains("Button"));
         assert!(json_str.contains("Map"));
         assert!(json_str.contains("props"));
+    }
+
+    #[test]
+    fn test_json_schema_present() {
+        let catalog = execute(None);
+        // Full spec schema must be a non-null JSON object
+        assert!(
+            catalog.json_schema.is_object(),
+            "json_schema should be a JSON object"
+        );
+    }
+
+    #[test]
+    fn test_component_schemas_present() {
+        let catalog = execute(None);
+        // Should have at least one entry per built-in component
+        assert!(
+            !catalog.component_schemas.is_empty(),
+            "component_schemas should not be empty"
+        );
+        assert!(
+            catalog.component_schemas.contains_key("Button"),
+            "component_schemas should contain Button"
+        );
     }
 
     #[test]
