@@ -113,18 +113,25 @@ let ctx = SavedInertiaContext::from(&req);
 let form = req.input::<CreateForm>().await?;  // Consumes req
 // ... process form ...
 Inertia::render_ctx(&ctx, "Users/Show", UserProps { user })"#.to_string(),
-            json_ui_view: r#"pub async fn user_list() -> Response {
-    let spec = Spec::builder()
-        .title("Users")
-        .layout("dashboard")
-        .element(
-            "root",
-            Element::new("DataTable").prop("data_path", "/data/users"),
-        )
-        .build()
-        .expect("spec is valid");
+            json_ui_view: r#"// View spec: src/views/user_list.json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Users",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "DataTable",
+      "props": { "data_path": "/data/users" }
+    }
+  }
+}
 
-    JsonUi::render(&spec, &serde_json::json!({}))
+// Rust handler loads and renders the spec file
+#[handler]
+pub async fn user_list(req: Request) -> Response {
+    let data = serde_json::json!({});
+    JsonUi::render_file("views/user_list.json", data)
 }"#.to_string(),
         },
         avoid: vec![
@@ -147,7 +154,7 @@ use serde::Deserialize;"#.to_string(),
             model: r#"use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};"#.to_string(),
             validation: r#"use ferro::{Validator, required, email, min, max, string, rules};"#.to_string(),
-            json_ui_view: r#"use ferro::{Spec, Element, JsonUi, Response, /* Action, Visibility, ... */};"#.to_string(),
+            json_ui_view: r#"use ferro::{handler, Request, Response, JsonUi};"#.to_string(),
         },
     }
 }

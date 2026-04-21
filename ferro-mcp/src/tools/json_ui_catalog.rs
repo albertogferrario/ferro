@@ -14,6 +14,13 @@ pub struct JsonUiCatalog {
     pub plugin_components: Vec<CatalogComponent>,
     pub builder_api: String,
     pub action_api: String,
+    /// Full v2 spec JSON Schema (sourced from `global_catalog().json_schema()`).
+    pub json_schema: serde_json::Value,
+    /// Per-component props schemas keyed by component type name.
+    ///
+    /// Includes both built-in and plugin components. Use for targeted AI structured
+    /// output or IDE validation without loading the full spec schema.
+    pub component_schemas: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// A single component in the catalog.
@@ -75,11 +82,27 @@ pub fn execute(component: Option<&str>) -> JsonUiCatalog {
         })
         .collect();
 
+    // Build per-component schema map (built-in + plugin)
+    let mut component_schemas: std::collections::HashMap<String, serde_json::Value> =
+        std::collections::HashMap::new();
+    for spec in cat.components_sorted() {
+        if let Some(schema) = cat.component_schema(&spec.name) {
+            component_schemas.insert(spec.name.clone(), schema.clone());
+        }
+    }
+    for spec in cat.plugin_components_sorted() {
+        if let Some(schema) = cat.component_schema(&spec.name) {
+            component_schemas.insert(spec.name.clone(), schema.clone());
+        }
+    }
+
     JsonUiCatalog {
         components,
         plugin_components,
         builder_api: BUILDER_API.to_string(),
         action_api: ACTION_API.to_string(),
+        json_schema: cat.json_schema().clone(),
+        component_schemas,
     }
 }
 
@@ -330,9 +353,56 @@ mod tests {
         assert!(json_str.contains("plugin_components"));
         assert!(json_str.contains("builder_api"));
         assert!(json_str.contains("action_api"));
+        assert!(json_str.contains("json_schema"));
+        assert!(json_str.contains("component_schemas"));
         assert!(json_str.contains("Button"));
         assert!(json_str.contains("Map"));
         assert!(json_str.contains("props"));
+    }
+
+    #[test]
+    fn test_json_schema_present() {
+        let catalog = execute(None);
+        // Full spec schema is a non-null JSON object
+        assert!(
+            catalog.json_schema.is_object(),
+            "json_schema should be a JSON object"
+        );
+        // Sanity: the schema describes a spec with elements
+        let schema_str = serde_json::to_string(&catalog.json_schema).unwrap();
+        assert!(
+            schema_str.contains("elements"),
+            "json_schema should describe an elements map"
+        );
+    }
+
+    #[test]
+    fn test_component_schemas_present() {
+        let catalog = execute(None);
+        // All 39 built-in components should have a schema entry
+        assert_eq!(
+            catalog.component_schemas.len(),
+            40, // 39 built-in + 1 Map plugin
+            "component_schemas should have 40 entries (39 built-in + Map), got {}",
+            catalog.component_schemas.len()
+        );
+        // Each schema is an object
+        for (name, schema) in &catalog.component_schemas {
+            assert!(
+                schema.is_object(),
+                "component_schemas[\"{name}\"] should be an object"
+            );
+        }
+        // Button schema exists
+        assert!(
+            catalog.component_schemas.contains_key("Button"),
+            "component_schemas should contain Button"
+        );
+        // Map plugin schema exists
+        assert!(
+            catalog.component_schemas.contains_key("Map"),
+            "component_schemas should contain Map plugin"
+        );
     }
 
     #[test]
