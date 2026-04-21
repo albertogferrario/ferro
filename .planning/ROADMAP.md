@@ -35,6 +35,7 @@
 - ✅ **v11.5 Projection Architecture Prep** — Phases 133-135 (shipped 2026-04-17). Generalize Renderer trait, relocate renderers to output crates, ServiceDef derivation bridge.
 - ✅ **v11.6 ferro-stripe Capability Refactor** — Phases 140-142. Reshape `ferro-stripe` from Stripe-product axis (`connect/`, `subscription/`) to capability axis (`checkout`, `refund`, `account`, `webhook`); land `CheckoutBuilder` / `CheckoutIntent`, `ProcessedEventLog` trait, fully-typed events (no `event_json` smuggling), `SyncDispatcher` as the sole handler registry for both sync and queue dispatch paths (Stripe events do not implement `ferro_events::Event`), queue path opt-in for eventual-consistency events. Source: gestiscilo-it v6.3 field test. [Design](research/v11.6-FERRO-STRIPE-REFACTOR.md)
 - ✅ **v11.7 Tailwind Static CSS Pipeline** — Phase 143 (shipped 2026-04-21). Pre-built `ferro-base.css` embedded at compile time, served from `/_ferro/ferro-base.css`; `tailwind_cdn` default flipped to `false`; `stylesheet_urls` added; theme injection migrated to plain `<style>`. Full details archived in [milestones/v11.7-ROADMAP.md](milestones/v11.7-ROADMAP.md).
+- 🚧 **v11.8 HttpResponse Header Semantics Fix** — Phase 143.1 (INSERTED, urgent 2026-04-21). `HttpResponse::header()` currently pushes instead of replacing, producing comma-joined Content-Type headers like `text/plain,text/html; charset=utf-8` for every `JsonUi::render` response. Safari reads the first value and renders raw text — the actual cause of the gestiscilo.it field report that drove phase 143. Fix is replace-semantics (case-insensitive) plus an `append_header()` escape hatch for `Set-Cookie`. Phase 143 remains valuable (pre-built CSS > dev-only CDN) but did not and could not fix the reported Safari bug. [Context](phases/143.1-http-response-header-replace-semantics/143.1-CONTEXT.md)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -180,6 +181,41 @@ Phases 133–135:
 ### ✅ v11.7 Tailwind Static CSS Pipeline (Phase 143 — Shipped 2026-04-21)
 
 Phase 143 — full details archived in [milestones/v11.7-ROADMAP.md](milestones/v11.7-ROADMAP.md).
+
+---
+
+### 🚧 v11.8 HttpResponse Header Semantics Fix (Phase 143.1 — Urgent 2026-04-21)
+
+**Milestone Goal:** Fix the actual Safari "raw text" bug that phase 143 tried to solve. `HttpResponse::header(name, value)` pushes rather than replaces, so every `JsonUi::render` response emits a double `Content-Type` header (`text/plain` from `HttpResponse::text()` plus the intended `text/html; charset=utf-8` from the follow-up `.header()` call). Cloudflare comma-joins them; Safari reads the first value and renders the HTML source as plain text.
+
+**Source:** Live Chrome DevTools MCP capture of gestiscilo.it/accedi, 2026-04-21, confirming `content-type: text/plain,text/html; charset=utf-8` on the wire after phase 143 shipped.
+
+**Relationship to phase 143:** The gestiscilo Safari field report that drove phase 143 was misdiagnosed as a `@tailwindcss/browser@4` failure. The runtime never executed because Safari interpreted the whole response as plain text. Phase 143's static CSS pipeline is still a net architectural improvement (dev-only CDN out of prod, no WASM download, no third-party dependency), but it did not and could not fix the reported bug. Do not roll back 143; do capture the misdiagnosis in its retrospective.
+
+**What changes:**
+- `framework/src/http/response.rs::header()` — replace semantics, case-insensitive name match.
+- `framework/src/http/response.rs::append_header()` — new method preserving current push behaviour, used only by `cookie()`.
+- `framework/src/http/response.rs::cookie()` — routed through `append_header` to preserve multi-cookie support.
+- No API removal. No behaviour change for any other method.
+
+**What stays:**
+- `Vec<(String, String)>` header storage — fine once replace-semantics lands.
+- All existing constructors (`text`, `json`, `bytes`, `file_download`, etc.) — their prepopulated Content-Types now behave correctly when overridden.
+
+**Success criteria:**
+1. `HttpResponse::text("x").header("Content-Type", "text/html").headers()` returns exactly one Content-Type entry equal to `text/html`.
+2. Multi-cookie responses still emit multiple `Set-Cookie` headers on the wire.
+3. Case-insensitive replace: `.header("Content-Type", ...)` replaces a prior `"content-type"`.
+4. gestiscilo.it `/accedi` wire response shows `content-type: text/html; charset=utf-8` — no comma, no `text/plain`.
+5. Safari desktop + iOS render gestiscilo.it pages as styled HTML.
+
+**Release:** ferro 0.2.5 patch (workspace version verified as 0.2.4 at plan-time — one-patch-step bump). Downstream: gestiscilo bumps `ferro_version` to 0.2.5 and `cargo update`.
+
+#### Phases
+
+**Plans:** 1 plan
+
+- [ ] 143.1-01-PLAN.md — Apply replace-semantics to `HttpResponse::header()`, add `append_header()` escape hatch, reroute `cookie()`, expose `headers()` accessor, update docstrings and stale json_ui comment, add 5 unit tests, bump workspace version 0.2.4 → 0.2.5.
 
 ---
 
