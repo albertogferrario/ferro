@@ -196,7 +196,7 @@ pub fn build_json_view_pass1(name: &str, description: &str) -> (String, String) 
 ///
 /// Returns `(system_prompt, user_prompt)` ready for `call_anthropic_structured`.
 /// Pass 2 receives the plain-text plan from Pass 1 and produces a structured JSON spec.
-pub fn build_json_view_pass2(pass1_result: &str, _schema: &serde_json::Value) -> (String, String) {
+pub fn build_json_view_pass2(pass1_result: &str) -> (String, String) {
     let system = format!(
         "You are a JSON-UI v2 spec generator for the Ferro framework.\n\n\
          Component plan from previous step:\n{pass1_result}\n\n\
@@ -338,13 +338,13 @@ fn scan_models() -> String {
             let rest = &content[struct_start..];
             let mut depth = 1;
             let mut struct_end = rest.len();
-            for (i, ch) in rest.chars().enumerate() {
+            for (byte_idx, ch) in rest.char_indices() {
                 match ch {
                     '{' => depth += 1,
                     '}' => {
                         depth -= 1;
                         if depth == 0 {
-                            struct_end = i;
+                            struct_end = byte_idx;
                             break;
                         }
                     }

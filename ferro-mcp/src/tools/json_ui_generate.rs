@@ -173,13 +173,13 @@ fn scan_models(project_root: &Path, filter_model: Option<&str>) -> Vec<ModelCont
             // Find closing brace
             let mut depth = 1;
             let mut struct_end = rest.len();
-            for (i, ch) in rest.chars().enumerate() {
+            for (byte_idx, ch) in rest.char_indices() {
                 match ch {
                     '{' => depth += 1,
                     '}' => {
                         depth -= 1;
                         if depth == 0 {
-                            struct_end = i;
+                            struct_end = byte_idx;
                             break;
                         }
                     }
