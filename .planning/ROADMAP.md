@@ -1265,6 +1265,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 142 to break down)
 
+### Phase 144: Fix root path routing in group routes
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 143
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 144 to break down)
+
 ---
 
 ## Progress Summary
