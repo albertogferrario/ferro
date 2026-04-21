@@ -35,7 +35,7 @@
 - ✅ **v11.5 Projection Architecture Prep** — Phases 133-135 (shipped 2026-04-17). Generalize Renderer trait, relocate renderers to output crates, ServiceDef derivation bridge.
 - ✅ **v11.6 ferro-stripe Capability Refactor** — Phases 140-142. Reshape `ferro-stripe` from Stripe-product axis (`connect/`, `subscription/`) to capability axis (`checkout`, `refund`, `account`, `webhook`); land `CheckoutBuilder` / `CheckoutIntent`, `ProcessedEventLog` trait, fully-typed events (no `event_json` smuggling), `SyncDispatcher` as the sole handler registry for both sync and queue dispatch paths (Stripe events do not implement `ferro_events::Event`), queue path opt-in for eventual-consistency events. Source: gestiscilo-it v6.3 field test. [Design](research/v11.6-FERRO-STRIPE-REFACTOR.md)
 - ✅ **v11.7 Tailwind Static CSS Pipeline** — Phase 143 (shipped 2026-04-21). Pre-built `ferro-base.css` embedded at compile time, served from `/_ferro/ferro-base.css`; `tailwind_cdn` default flipped to `false`; `stylesheet_urls` added; theme injection migrated to plain `<style>`. Full details archived in [milestones/v11.7-ROADMAP.md](milestones/v11.7-ROADMAP.md).
-- 🚧 **v11.8 HttpResponse Header Semantics Fix** — Phase 143.1 (INSERTED, urgent 2026-04-21). `HttpResponse::header()` currently pushes instead of replacing, producing comma-joined Content-Type headers like `text/plain,text/html; charset=utf-8` for every `JsonUi::render` response. Safari reads the first value and renders raw text — the actual cause of the gestiscilo.it field report that drove phase 143. Fix is replace-semantics (case-insensitive) plus an `append_header()` escape hatch for `Set-Cookie`. Phase 143 remains valuable (pre-built CSS > dev-only CDN) but did not and could not fix the reported Safari bug. [Context](phases/143.1-http-response-header-replace-semantics/143.1-CONTEXT.md)
+- ✅ **v11.8 HttpResponse Header Semantics Fix** — Phase 143.1 (shipped 2026-04-21). `HttpResponse::header()` currently pushes instead of replacing, producing comma-joined Content-Type headers like `text/plain,text/html; charset=utf-8` for every `JsonUi::render` response. Safari reads the first value and renders raw text — the actual cause of the gestiscilo.it field report that drove phase 143. Fix is replace-semantics (case-insensitive) plus an `append_header()` escape hatch for `Set-Cookie`. Phase 143 remains valuable (pre-built CSS > dev-only CDN) but did not and could not fix the reported Safari bug. [Context](phases/143.1-http-response-header-replace-semantics/143.1-CONTEXT.md)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -184,7 +184,7 @@ Phase 143 — full details archived in [milestones/v11.7-ROADMAP.md](milestones/
 
 ---
 
-### 🚧 v11.8 HttpResponse Header Semantics Fix (Phase 143.1 — Urgent 2026-04-21)
+### ✅ v11.8 HttpResponse Header Semantics Fix (Phase 143.1 — Shipped 2026-04-21)
 
 **Milestone Goal:** Fix the actual Safari "raw text" bug that phase 143 tried to solve. `HttpResponse::header(name, value)` pushes rather than replaces, so every `JsonUi::render` response emits a double `Content-Type` header (`text/plain` from `HttpResponse::text()` plus the intended `text/html; charset=utf-8` from the follow-up `.header()` call). Cloudflare comma-joins them; Safari reads the first value and renders the HTML source as plain text.
 
@@ -215,7 +215,7 @@ Phase 143 — full details archived in [milestones/v11.7-ROADMAP.md](milestones/
 
 **Plans:** 1 plan
 
-- [ ] 143.1-01-PLAN.md — Apply replace-semantics to `HttpResponse::header()`, add `append_header()` escape hatch, reroute `cookie()`, expose `headers()` accessor, update docstrings and stale json_ui comment, add 5 unit tests, bump workspace version 0.2.4 → 0.2.5.
+- [x] 143.1-01-PLAN.md — Apply replace-semantics to `HttpResponse::header()`, add `append_header()` escape hatch, reroute `cookie()`, expose `headers()` accessor, update docstrings and stale json_ui comment, add 5 unit tests, bump workspace version 0.2.4 → 0.2.5.
 
 ---
 
@@ -1287,3 +1287,4 @@ Plans:
 | v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121 | ? | 📋 Planned | - |
 
 **Total: 28 milestones shipped, 270 plans complete.**
+mplete.**

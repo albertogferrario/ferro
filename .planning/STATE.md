@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v11.8
 milestone_name: HttpResponse Header Semantics Fix
-status: executing
-stopped_at: Phase 143.1 context gathered
-last_updated: "2026-04-21T00:59:37.808Z"
-last_activity: 2026-04-21 -- Phase 143.1 planning complete
+status: phase_complete
+stopped_at: Phase 143.1 executed — cargo test pending (disk space)
+last_updated: "2026-04-21T09:00:00.000Z"
+last_activity: 2026-04-21 -- Phase 143.1 implementation committed, tests pending
 progress:
   total_phases: 3
   completed_phases: 3
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** v11.7 complete — next: /gsd-complete-milestone v11.7
+**Current focus:** Phase 143.1 — http-response-header-replace-semantics
 
 ## Current Position
 
-Phase: 143
-Plan: Not started
-Workspace version: 0.2.0
-Status: Ready to execute
-Last activity: 2026-04-21 -- Phase 143.1 planning complete
+Phase: 143.1 (http-response-header-replace-semantics) — COMPLETE
+Plan: 1 of 1
+Workspace version: 0.2.5
+Status: Phase 143.1 implementation complete — run cargo test to confirm
+Last activity: 2026-04-21 -- Phase 143.1 execution started
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
