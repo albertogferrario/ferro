@@ -904,39 +904,31 @@ fn json_view_templates() -> Vec<CodeTemplate> {
         CodeTemplate {
             name: "basic_view".to_string(),
             category: "json_view".to_string(),
-            description: "A minimal JSON-UI view with title, heading text, and one card component"
+            description: "A minimal v2 JSON-UI spec with title, heading text, and one card component. Save as src/views/{{view_name}}.json."
                 .to_string(),
-            code: r#"use ferro::{Spec, Element, JsonUi, Response};
-
-pub async fn view() -> Response {
-    let spec = Spec::builder()
-        .title("{{title}}")
-        .layout("app")
-        .element(
-            "root",
-            Element::new("Card")
-                .prop("title", "{{title}}")
-                .child("heading"),
-        )
-        .element(
-            "heading",
-            Element::new("Text")
-                .prop("content", "{{title}}")
-                .prop("element", "h1"),
-        )
-        .build()
-        .expect("spec is valid");
-
-    JsonUi::render(&spec, &serde_json::json!({}))
+            code: r#"{
+  "$schema": "ferro-json-ui/v2",
+  "title": "{{title}}",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": { "title": "{{title}}" },
+      "children": ["heading"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "{{title}}", "element": "h1" }
+    }
+  }
 }"#
             .to_string(),
-            imports: vec![
-                "use ferro::{Spec, Element, JsonUi, Response};".to_string(),
-            ],
+            imports: vec![],
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View module name (snake_case, used for file name)".to_string(),
+                    description: "View file name (snake_case, no extension)".to_string(),
                     example: "dashboard".to_string(),
                 },
                 Placeholder {
@@ -950,69 +942,51 @@ pub async fn view() -> Response {
             name: "list_view".to_string(),
             category: "json_view".to_string(),
             description:
-                "A view with a data table, pagination, and create action button for listing resources"
+                "A v2 JSON-UI spec with a data table, pagination, and create action button for listing resources. Save as src/views/{{view_name}}.json."
                     .to_string(),
-            code: r#"use ferro::{Action, Spec, Element, JsonUi, Response};
-
-pub async fn view() -> Response {
-    let spec = Spec::builder()
-        .title("{{title}}")
-        .layout("dashboard")
-        .element(
-            "root",
-            Element::new("Card")
-                .prop("title", "{{title}}")
-                .child("heading")
-                .child("create-btn")
-                .child("{{entity}}-table")
-                .child("pagination"),
-        )
-        .element(
-            "heading",
-            Element::new("Text")
-                .prop("content", "{{title}}")
-                .prop("element", "h1"),
-        )
-        .element(
-            "create-btn",
-            Element::new("Button")
-                .prop("label", "Create {{Entity}}")
-                .prop("variant", "default")
-                .action(Action::get("{{entity}}.create")),
-        )
-        .element(
-            "{{entity}}-table",
-            Element::new("DataTable")
-                .prop(
-                    "columns",
-                    serde_json::json!([
-                        {"key": "id", "label": "ID"},
-                        {"key": "name", "label": "Name"},
-                    ]),
-                )
-                .prop("data_path", "/data/{{entity}}s")
-                .prop("empty_message", "No {{entity}}s found"),
-        )
-        .element(
-            "pagination",
-            Element::new("Pagination")
-                .prop("current_page", 1)
-                .prop("per_page", 20)
-                .prop("total", 0),
-        )
-        .build()
-        .expect("spec is valid");
-
-    JsonUi::render(&spec, &serde_json::json!({}))
+            code: r#"{
+  "$schema": "ferro-json-ui/v2",
+  "title": "{{title}}",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": { "title": "{{title}}" },
+      "children": ["heading", "create-btn", "{{entity}}-table", "pagination"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "{{title}}", "element": "h1" }
+    },
+    "create-btn": {
+      "type": "Button",
+      "props": { "label": "Create {{Entity}}", "variant": "default" },
+      "action": { "handler": "{{entity}}.create", "method": "GET" }
+    },
+    "{{entity}}-table": {
+      "type": "DataTable",
+      "props": {
+        "columns": [
+          { "key": "id", "label": "ID" },
+          { "key": "name", "label": "Name" }
+        ],
+        "data_path": "/data/{{entity}}s",
+        "empty_message": "No {{entity}}s found"
+      }
+    },
+    "pagination": {
+      "type": "Pagination",
+      "props": { "current_page": 1, "per_page": 20, "total": 0 }
+    }
+  }
 }"#
             .to_string(),
-            imports: vec![
-                "use ferro::{Action, Spec, Element, JsonUi, Response};".to_string(),
-            ],
+            imports: vec![],
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View module name (snake_case, used for file name)".to_string(),
+                    description: "View file name (snake_case, no extension)".to_string(),
                     example: "users_index".to_string(),
                 },
                 Placeholder {
@@ -1035,64 +1009,56 @@ pub async fn view() -> Response {
         CodeTemplate {
             name: "form_view".to_string(),
             category: "json_view".to_string(),
-            description: "A view with a form containing input fields and a submit button".to_string(),
-            code: r#"use ferro::{Action, Spec, Element, JsonUi, Response};
-
-pub async fn view() -> Response {
-    let spec = Spec::builder()
-        .title("{{title}}")
-        .layout("app")
-        .element(
-            "root",
-            Element::new("Card")
-                .prop("title", "{{title}}")
-                .child("heading")
-                .child("{{entity}}-form"),
-        )
-        .element(
-            "heading",
-            Element::new("Text")
-                .prop("content", "{{title}}")
-                .prop("element", "h1"),
-        )
-        .element(
-            "{{entity}}-form",
-            Element::new("Form")
-                .child("name-field")
-                .child("email-field")
-                .action(Action::new("{{action_handler}}")),
-        )
-        .element(
-            "name-field",
-            Element::new("Input")
-                .prop("field", "name")
-                .prop("label", "Name")
-                .prop("input_type", "text")
-                .prop("placeholder", "Enter name")
-                .prop("required", true),
-        )
-        .element(
-            "email-field",
-            Element::new("Input")
-                .prop("field", "email")
-                .prop("label", "Email")
-                .prop("input_type", "email")
-                .prop("placeholder", "Enter email")
-                .prop("required", true),
-        )
-        .build()
-        .expect("spec is valid");
-
-    JsonUi::render(&spec, &serde_json::json!({}))
+            description: "A v2 JSON-UI spec with a form containing input fields and a submit button. Save as src/views/{{view_name}}.json.".to_string(),
+            code: r#"{
+  "$schema": "ferro-json-ui/v2",
+  "title": "{{title}}",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": { "title": "{{title}}" },
+      "children": ["heading", "{{entity}}-form"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "{{title}}", "element": "h1" }
+    },
+    "{{entity}}-form": {
+      "type": "Form",
+      "props": {},
+      "children": ["name-field", "email-field"],
+      "action": { "handler": "{{action_handler}}", "method": "POST" }
+    },
+    "name-field": {
+      "type": "Input",
+      "props": {
+        "field": "name",
+        "label": "Name",
+        "input_type": "text",
+        "placeholder": "Enter name",
+        "required": true
+      }
+    },
+    "email-field": {
+      "type": "Input",
+      "props": {
+        "field": "email",
+        "label": "Email",
+        "input_type": "email",
+        "placeholder": "Enter email",
+        "required": true
+      }
+    }
+  }
 }"#
             .to_string(),
-            imports: vec![
-                "use ferro::{Action, Spec, Element, JsonUi, Response};".to_string(),
-            ],
+            imports: vec![],
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View module name (snake_case, used for file name)".to_string(),
+                    description: "View file name (snake_case, no extension)".to_string(),
                     example: "users_create".to_string(),
                 },
                 Placeholder {
@@ -1114,6 +1080,27 @@ pub async fn view() -> Response {
                     name: "{{action_handler}}".to_string(),
                     description: "Route handler name for form submission".to_string(),
                     example: "users.store".to_string(),
+                },
+            ],
+        },
+        CodeTemplate {
+            name: "json_view_handler".to_string(),
+            category: "json_view".to_string(),
+            description: "Rust handler that loads and renders a v2 JSON-UI spec file via JsonUi::render_file. Pair with a src/views/{{view_name}}.json spec file.".to_string(),
+            code: r#"#[handler]
+pub async fn {{view_name}}(req: Request) -> Response {
+    let data = serde_json::json!({});
+    JsonUi::render_file("views/{{view_name}}.json", data)
+}"#
+            .to_string(),
+            imports: vec![
+                "use ferro::{handler, Request, Response, JsonUi};".to_string(),
+            ],
+            placeholders: vec![
+                Placeholder {
+                    name: "{{view_name}}".to_string(),
+                    description: "Handler function name and matching JSON spec file stem (snake_case)".to_string(),
+                    example: "dashboard".to_string(),
                 },
             ],
         },
