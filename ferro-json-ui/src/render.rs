@@ -1258,7 +1258,20 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                 .row_href
                 .as_ref()
                 .map(|p| p.replace("{row_key}", &row_key_value));
-            if let Some(ref url) = mobile_href {
+            let has_actions = props.row_actions.is_some();
+            // When both row_href and row_actions are present, wrapping actions inside <a>
+            // produces nested anchors which the browser ejects from the parent, breaking
+            // layout. Use an outer <div> so the link covers only the data rows.
+            let use_outer_wrapper = mobile_href.is_some() && has_actions;
+            if use_outer_wrapper {
+                html.push_str(
+                    "<div class=\"rounded-lg border border-border bg-card overflow-hidden\">",
+                );
+                html.push_str(&format!(
+                    "<a href=\"{}\" class=\"block p-4 space-y-2 hover:bg-surface transition-colors\">",
+                    html_escape(mobile_href.as_ref().unwrap())
+                ));
+            } else if let Some(ref url) = mobile_href {
                 html.push_str(&format!(
                     "<a href=\"{}\" class=\"block rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface transition-colors\">",
                     html_escape(url)
@@ -1285,6 +1298,9 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                     html_escape(&cell_text)
                 ));
             }
+            if use_outer_wrapper {
+                html.push_str("</a>");
+            }
             if let Some(ref actions) = props.row_actions {
                 let row_key_value = if let Some(ref rk) = props.row_key {
                     row.get(rk)
@@ -1301,7 +1317,6 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                     .iter()
                     .map(|a| {
                         let mut cloned = a.clone();
-                        // Resolve URL from handler if url is None, then apply row_key template
                         let base_url = cloned
                             .action
                             .url
@@ -1319,11 +1334,13 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                     items: templated_items,
                     trigger_variant: None,
                 };
-                html.push_str("<div class=\"pt-2 border-t border-border flex justify-end\">");
+                html.push_str("<div class=\"px-4 pb-3 pt-2 border-t border-border flex justify-end\">");
                 html.push_str(&render_dropdown_menu(&dropdown_props));
                 html.push_str("</div>");
             }
-            if mobile_href.is_some() {
+            if use_outer_wrapper {
+                html.push_str("</div>");
+            } else if mobile_href.is_some() {
                 html.push_str("</a>");
             } else {
                 html.push_str("</div>");
