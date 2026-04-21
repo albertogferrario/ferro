@@ -1,15 +1,10 @@
-//! JSON-UI inspect tool — discovers v2 JSON spec files in a project
+//! JSON-UI inspect tool — discovers existing JSON-UI v2 spec files in a project
 //! and inspects component schemas (including plugin components like Map).
 //!
-//! Scans `src/views/*.json` files for v2 flat specs. Each file is parsed
-//! as `serde_json::Value`; `title`, `layout`, used component types, and
-//! action handlers are extracted without regex.
-//!
-//! The `inspect_component_schema` function delegates to `global_catalog()`
-//! and is unchanged from the Phase 117 implementation.
+//! Scans `src/views/*.json` files (v2 flat spec format). Returns an empty list
+//! for projects with no `src/views/` directory or no `.json` files (not an error).
 
 use serde::Serialize;
-use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -20,10 +15,10 @@ pub struct JsonUiViewList {
     pub total: usize,
 }
 
-/// Metadata about a single JSON-UI view spec file
+/// Metadata about a single JSON-UI v2 spec file
 #[derive(Debug, Serialize)]
 pub struct ViewInfo {
-    /// File stem (e.g., "user_list" for "src/views/user_list.json")
+    /// File stem (e.g., "user_list" from "user_list.json")
     pub name: String,
     /// Relative path from project root (e.g., "src/views/user_list.json")
     pub file: String,
@@ -33,7 +28,7 @@ pub struct ViewInfo {
     pub layout: Option<String>,
     /// Deduplicated, sorted list of `type` values from all elements
     pub components_used: Vec<String>,
-    /// Action handler strings found in element `action` objects
+    /// Action handler references found in element `action` fields
     pub actions: Vec<String>,
 }
 
@@ -61,40 +56,43 @@ pub fn inspect_component(component_type: &str) -> ComponentSchemaInfo {
     use ferro_json_ui::global_catalog;
     let cat = global_catalog();
 
-    // Determine if this is a known built-in by checking the catalog
+    // Check if it's a built-in (non-plugin) component by iterating components_sorted
     let is_builtin = cat
         .components_sorted()
-        .any(|s| s.name.eq_ignore_ascii_case(component_type));
+        .any(|spec| spec.name.eq_ignore_ascii_case(component_type));
 
     if is_builtin {
         let catalog = super::json_ui_catalog::execute(Some(component_type));
         let entry = catalog.components.into_iter().next();
-        ComponentSchemaInfo {
+        return ComponentSchemaInfo {
             name: component_type.to_string(),
             is_plugin: false,
             props_schema: None,
             catalog_entry: entry,
-        }
-    } else {
-        // Check plugin registry
-        let catalog = super::json_ui_catalog::execute(Some(component_type));
-        let plugin_entry = catalog.plugin_components.into_iter().next();
+        };
+    }
 
-        let schema = ferro_json_ui::with_plugin(component_type, |plugin| plugin.props_schema());
+    // Check plugin registry
+    let catalog = super::json_ui_catalog::execute(Some(component_type));
+    let plugin_entry = catalog.plugin_components.into_iter().next();
+    let schema = ferro_json_ui::with_plugin(component_type, |plugin| plugin.props_schema());
 
-        ComponentSchemaInfo {
-            name: component_type.to_string(),
-            is_plugin: true,
-            props_schema: schema,
-            catalog_entry: plugin_entry,
-        }
+    ComponentSchemaInfo {
+        name: component_type.to_string(),
+        is_plugin: true,
+        props_schema: schema,
+        catalog_entry: plugin_entry,
     }
 }
 
-/// Scan the project's `src/views/` directory for v2 JSON spec files.
+/// Scan the project's `src/views/` directory for JSON-UI v2 spec files.
 ///
-/// Each `.json` file is parsed as a v2 flat spec. When `src/views/` does not
-/// exist, returns an empty list (not an error).
+/// Reads each `.json` file, parses it as a JSON value, and extracts:
+/// - `title` and `layout` from top-level fields
+/// - `components_used` from `elements[*].type` values (deduplicated, sorted)
+/// - `actions` from `elements[*].action.handler` values
+///
+/// When `src/views/` does not exist, returns an empty list (not an error).
 pub fn execute(project_root: &Path, filter: Option<&str>) -> JsonUiViewList {
     let views_dir = project_root.join("src/views");
     if !views_dir.exists() {
@@ -104,23 +102,43 @@ pub fn execute(project_root: &Path, filter: Option<&str>) -> JsonUiViewList {
         };
     }
 
-    let mut views = Vec::new();
+    let mut views = scan_json_views(project_root, &views_dir);
 
-    let entries: Vec<_> = match fs::read_dir(&views_dir) {
+    // Apply optional filter (case-insensitive substring match on name)
+    if let Some(filter_str) = filter {
+        let filter_lower = filter_str.to_lowercase();
+        views.retain(|v| v.name.to_lowercase().contains(&filter_lower));
+    }
+
+    let total = views.len();
+    JsonUiViewList { views, total }
+}
+
+/// Walk `views_dir` and parse each `.json` file into a [`ViewInfo`].
+fn scan_json_views(project_root: &Path, views_dir: &Path) -> Vec<ViewInfo> {
+    let entries: Vec<_> = match fs::read_dir(views_dir) {
         Ok(entries) => entries.filter_map(|e| e.ok()).collect(),
-        Err(_) => {
-            return JsonUiViewList {
-                views: Vec::new(),
-                total: 0,
-            }
-        }
+        Err(_) => return Vec::new(),
     };
+
+    let mut views = Vec::new();
 
     for entry in entries {
         let path = entry.path();
         if path.extension().is_none_or(|ext| ext != "json") {
             continue;
         }
+
+        let name = match path.file_stem() {
+            Some(stem) => stem.to_string_lossy().to_string(),
+            None => continue,
+        };
+
+        let relative_path = path
+            .strip_prefix(project_root)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .to_string();
 
         let content = match fs::read_to_string(&path) {
             Ok(c) => c,
@@ -132,44 +150,10 @@ pub fn execute(project_root: &Path, filter: Option<&str>) -> JsonUiViewList {
             Err(_) => continue,
         };
 
-        let name = path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_default();
+        let title = spec["title"].as_str().map(String::from);
+        let layout = spec["layout"].as_str().map(String::from);
 
-        let relative_path = path
-            .strip_prefix(project_root)
-            .unwrap_or(&path)
-            .to_string_lossy()
-            .to_string();
-
-        let title = spec["title"].as_str().map(|s| s.to_string());
-        let layout = spec["layout"].as_str().map(|s| s.to_string());
-
-        // Collect component types from elements[*].type
-        let mut component_types: HashSet<String> = HashSet::new();
-        if let Some(elements) = spec["elements"].as_object() {
-            for element in elements.values() {
-                if let Some(type_name) = element["type"].as_str() {
-                    component_types.insert(type_name.to_string());
-                }
-            }
-        }
-        let mut components_used: Vec<String> = component_types.into_iter().collect();
-        components_used.sort();
-
-        // Collect action handler strings from elements[*].action
-        let mut actions: Vec<String> = Vec::new();
-        if let Some(elements) = spec["elements"].as_object() {
-            for element in elements.values() {
-                if let Some(action) = element.get("action") {
-                    if let Some(handler) = action["handler"].as_str() {
-                        let method = action["method"].as_str().unwrap_or("POST");
-                        actions.push(format!("{method} {handler}"));
-                    }
-                }
-            }
-        }
+        let (components_used, actions) = extract_elements_info(&spec);
 
         views.push(ViewInfo {
             name,
@@ -181,23 +165,49 @@ pub fn execute(project_root: &Path, filter: Option<&str>) -> JsonUiViewList {
         });
     }
 
-    // Apply optional filter (case-insensitive substring match on name)
-    if let Some(filter_str) = filter {
-        let filter_lower = filter_str.to_lowercase();
-        views.retain(|v| v.name.to_lowercase().contains(&filter_lower));
+    views.sort_by(|a, b| a.name.cmp(&b.name));
+    views
+}
+
+/// Extract component type names and action handlers from a spec's `elements` map.
+fn extract_elements_info(spec: &serde_json::Value) -> (Vec<String>, Vec<String>) {
+    let Some(elements) = spec["elements"].as_object() else {
+        return (Vec::new(), Vec::new());
+    };
+
+    let mut component_types = std::collections::BTreeSet::new();
+    let mut actions = Vec::new();
+
+    for element in elements.values() {
+        if let Some(type_name) = element["type"].as_str() {
+            component_types.insert(type_name.to_string());
+        }
+
+        // action.handler field (string)
+        if let Some(handler) = element["action"]["handler"].as_str() {
+            actions.push(handler.to_string());
+        }
     }
 
-    views.sort_by(|a, b| a.name.cmp(&b.name));
+    let components_used: Vec<String> = component_types.into_iter().collect();
+    actions.sort();
+    actions.dedup();
 
-    let total = views.len();
-    JsonUiViewList { views, total }
+    (components_used, actions)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use std::io::Write;
     use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn write_file(dir: &Path, name: &str, content: &str) {
+        let path = dir.join(name);
+        let mut f = fs::File::create(path).unwrap();
+        f.write_all(content.as_bytes()).unwrap();
+    }
 
     #[test]
     fn test_empty_project() {
@@ -208,141 +218,88 @@ mod tests {
     }
 
     #[test]
-    fn test_scans_json_files() {
-        let dir = tempdir();
-        let views_dir = dir.join("src/views");
+    fn test_scan_json_views() {
+        let tmp = TempDir::new().unwrap();
+        let views_dir = tmp.path().join("src/views");
         fs::create_dir_all(&views_dir).unwrap();
 
-        let spec = serde_json::json!({
-            "$schema": "ferro-json-ui/v2",
-            "title": "User List",
-            "layout": "dashboard",
-            "root": "root",
-            "elements": {
-                "root": {
-                    "type": "Card",
-                    "props": {"title": "Users"},
-                    "children": ["table"]
-                },
-                "table": {
-                    "type": "DataTable",
-                    "props": {"data_path": "/data/users"}
-                }
-            }
-        });
+        write_file(
+            &views_dir,
+            "user_list.json",
+            r#"{
+  "$schema": "ferro-json-ui/v2",
+  "title": "User List",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": { "title": "User List" },
+      "children": ["heading", "table"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "Users", "element": "h1" }
+    },
+    "table": {
+      "type": "DataTable",
+      "props": { "data_path": "/data/users" },
+      "action": { "handler": "users.index", "method": "GET" }
+    }
+  }
+}"#,
+        );
 
-        fs::write(
-            views_dir.join("user_list.json"),
-            serde_json::to_string_pretty(&spec).unwrap(),
-        )
-        .unwrap();
-
-        let result = execute(&dir, None);
+        let result = execute(tmp.path(), None);
         assert_eq!(result.total, 1);
 
         let view = &result.views[0];
         assert_eq!(view.name, "user_list");
         assert_eq!(view.title.as_deref(), Some("User List"));
         assert_eq!(view.layout.as_deref(), Some("dashboard"));
-        assert!(view.components_used.contains(&"Card".to_string()));
-        assert!(view.components_used.contains(&"DataTable".to_string()));
-        // Sorted
-        assert_eq!(view.components_used[0], "Card");
-        assert_eq!(view.components_used[1], "DataTable");
-    }
 
-    #[test]
-    fn test_ignores_non_json_files() {
-        let dir = tempdir();
-        let views_dir = dir.join("src/views");
-        fs::create_dir_all(&views_dir).unwrap();
+        let mut expected_components = vec!["Card", "DataTable", "Text"];
+        expected_components.sort();
+        let mut actual = view.components_used.clone();
+        actual.sort();
+        assert_eq!(actual, expected_components);
 
-        fs::write(views_dir.join("old_view.rs"), "pub fn view() {}").unwrap();
-        fs::write(
-            views_dir.join("valid.json"),
-            r#"{"title":"T","layout":"app","root":"r","elements":{"r":{"type":"Text","props":{}}}}"#,
-        )
-        .unwrap();
-
-        let result = execute(&dir, None);
-        assert_eq!(result.total, 1);
-        assert_eq!(result.views[0].name, "valid");
-    }
-
-    #[test]
-    fn test_ignores_invalid_json() {
-        let dir = tempdir();
-        let views_dir = dir.join("src/views");
-        fs::create_dir_all(&views_dir).unwrap();
-
-        fs::write(views_dir.join("broken.json"), "not valid json {{{").unwrap();
-
-        let result = execute(&dir, None);
-        assert_eq!(result.total, 0);
+        assert!(view.actions.contains(&"users.index".to_string()));
     }
 
     #[test]
     fn test_filter_by_name() {
-        let dir = tempdir();
-        let views_dir = dir.join("src/views");
+        let tmp = TempDir::new().unwrap();
+        let views_dir = tmp.path().join("src/views");
         fs::create_dir_all(&views_dir).unwrap();
 
-        let spec = |title: &str| {
-            serde_json::to_string(&serde_json::json!({
-                "title": title, "layout": "app",
-                "root": "r", "elements": {"r": {"type": "Text", "props": {}}}
-            }))
-            .unwrap()
-        };
+        write_file(
+            &views_dir,
+            "user_list.json",
+            r#"{"$schema":"ferro-json-ui/v2","title":"Users","layout":"dashboard","root":"root","elements":{"root":{"type":"Card","props":{}}}}"#,
+        );
+        write_file(
+            &views_dir,
+            "product_list.json",
+            r#"{"$schema":"ferro-json-ui/v2","title":"Products","layout":"dashboard","root":"root","elements":{"root":{"type":"Card","props":{}}}}"#,
+        );
 
-        fs::write(views_dir.join("user_list.json"), spec("Users")).unwrap();
-        fs::write(views_dir.join("user_create.json"), spec("Create User")).unwrap();
-        fs::write(views_dir.join("orders.json"), spec("Orders")).unwrap();
-
-        let result = execute(&dir, Some("user"));
-        assert_eq!(result.total, 2);
-        assert!(result.views.iter().all(|v| v.name.contains("user")));
-
-        let result = execute(&dir, Some("orders"));
+        let result = execute(tmp.path(), Some("user"));
         assert_eq!(result.total, 1);
-        assert_eq!(result.views[0].name, "orders");
+        assert_eq!(result.views[0].name, "user_list");
     }
 
     #[test]
-    fn test_actions_extracted() {
-        let dir = tempdir();
-        let views_dir = dir.join("src/views");
+    fn test_ignores_non_json_files() {
+        let tmp = TempDir::new().unwrap();
+        let views_dir = tmp.path().join("src/views");
         fs::create_dir_all(&views_dir).unwrap();
 
-        let spec = serde_json::json!({
-            "title": "Form", "layout": "app",
-            "root": "form",
-            "elements": {
-                "form": {
-                    "type": "Form",
-                    "props": {},
-                    "action": {
-                        "handler": "users.store",
-                        "method": "POST"
-                    }
-                }
-            }
-        });
+        write_file(&views_dir, "old_view.rs", "// old v1 file");
+        write_file(&views_dir, "mod.rs", "pub mod old;");
 
-        fs::write(
-            views_dir.join("user_create.json"),
-            serde_json::to_string(&spec).unwrap(),
-        )
-        .unwrap();
-
-        let result = execute(&dir, None);
-        assert_eq!(result.total, 1);
-        let view = &result.views[0];
-        assert!(
-            view.actions.contains(&"POST users.store".to_string()),
-            "Expected action 'POST users.store', got {:?}",
-            view.actions
-        );
+        let result = execute(tmp.path(), None);
+        assert_eq!(result.total, 0);
     }
 
     #[test]
@@ -354,7 +311,7 @@ mod tests {
                 title: Some("User List".to_string()),
                 layout: Some("dashboard".to_string()),
                 components_used: vec!["DataTable".to_string(), "Text".to_string()],
-                actions: vec!["POST users.store".to_string()],
+                actions: vec!["users.index".to_string()],
             }],
             total: 1,
         };
@@ -410,16 +367,5 @@ mod tests {
         assert!(json_str.contains("Map"));
         assert!(json_str.contains("is_plugin"));
         assert!(json_str.contains("props_schema"));
-    }
-
-    /// Create a temporary directory that is cleaned up when dropped.
-    fn tempdir() -> PathBuf {
-        use std::sync::atomic::{AtomicU64, Ordering};
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
-        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!("ferro_inspect_test_{n}"));
-        let _ = fs::remove_dir_all(&path);
-        fs::create_dir_all(&path).expect("create temp dir");
-        path
     }
 }

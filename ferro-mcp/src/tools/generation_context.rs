@@ -74,7 +74,7 @@ pub fn execute() -> GenerationContext {
             migrations: "migration/src/m{timestamp}_{name}.rs".to_string(),
             middleware: "src/middleware/{name}.rs".to_string(),
             services: "src/services/{name}.rs".to_string(),
-            views: "src/views/{name}.rs".to_string(),
+            views: "src/views/{name}.json (v2 flat spec) + handler in src/controllers/{name}.rs".to_string(),
         },
         common_patterns: CommonPatterns {
             crud_handler: r#"#[handler]
@@ -113,7 +113,7 @@ let ctx = SavedInertiaContext::from(&req);
 let form = req.input::<CreateForm>().await?;  // Consumes req
 // ... process form ...
 Inertia::render_ctx(&ctx, "Users/Show", UserProps { user })"#.to_string(),
-            json_ui_view: r#"// View spec: src/views/user_list.json
+            json_ui_view: r#"// src/views/user_list.json (v2 flat spec)
 {
   "$schema": "ferro-json-ui/v2",
   "title": "Users",
@@ -127,12 +127,13 @@ Inertia::render_ctx(&ctx, "Users/Show", UserProps { user })"#.to_string(),
   }
 }
 
-// Rust handler loads and renders the spec file
+// Paired Rust handler
 #[handler]
 pub async fn user_list(req: Request) -> Response {
     let data = serde_json::json!({});
     JsonUi::render_file("views/user_list.json", data)
-}"#.to_string(),
+}"#
+            .to_string(),
         },
         avoid: vec![
             "Don't use unwrap() in handlers - return proper Response errors".to_string(),
@@ -145,8 +146,8 @@ pub async fn user_list(req: Request) -> Response {
             "Don't use panic! or expect() in request handlers - return errors".to_string(),
             "Don't block async runtime with sync operations - use spawn_blocking if needed".to_string(),
             "Don't store sensitive data in session without encryption".to_string(),
-            "Don't import unused JSON-UI component types - only import what the view actually uses".to_string(),
-            "Don't forget .layout(\"app\") on JSON-UI views - views without layout render as raw HTML".to_string(),
+            "Don't create JSON-UI views as .rs files - views are .json spec files loaded by JsonUi::render_file".to_string(),
+            "Don't omit the layout field in JSON-UI specs - views without layout render as raw HTML".to_string(),
         ],
         imports: ImportTemplates {
             handler: r#"use ferro::{handler, Request, Response, HttpResponse, ResponseExt};
@@ -154,7 +155,7 @@ use serde::Deserialize;"#.to_string(),
             model: r#"use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};"#.to_string(),
             validation: r#"use ferro::{Validator, required, email, min, max, string, rules};"#.to_string(),
-            json_ui_view: r#"use ferro::{handler, Request, Response, JsonUi};"#.to_string(),
+            json_ui_view: r#"use ferro::{JsonUi, Response};"#.to_string(),
         },
     }
 }

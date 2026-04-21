@@ -99,35 +99,39 @@ pub fn inertia_page_template(component_name: &str) -> String {
     )
 }
 
-/// Template for generating a JSON-UI view file (--no-ai fallback).
-pub fn json_view_template(name: &str, title: &str, layout: &str) -> String {
+/// Template for generating a JSON-UI v2 spec file (--no-ai fallback).
+///
+/// Returns a flat JSON spec that can be loaded with `JsonUi::render_file`.
+pub fn json_view_template(_name: &str, title: &str, layout: &str) -> String {
     format!(
-        r#"//! {title} JSON-UI view
+        r#"{{
+  "$schema": "ferro-json-ui/v2",
+  "title": "{title}",
+  "layout": "{layout}",
+  "root": "root",
+  "elements": {{
+    "root": {{
+      "type": "Card",
+      "props": {{ "title": "{title}" }},
+      "children": ["heading"]
+    }},
+    "heading": {{
+      "type": "Text",
+      "props": {{ "content": "{title}", "element": "h1" }}
+    }}
+  }}
+}}
+"#,
+    )
+}
 
-use ferro::{{Spec, Element, JsonUi, Response}};
-
-/// Build the {title} view.
-pub async fn view() -> Response {{
-    let spec = Spec::builder()
-        .title("{title}")
-        .layout("{layout}")
-        .element(
-            "root",
-            Element::new("Card")
-                .prop("title", "{title}")
-                .prop("description", "Edit src/views/{name}.rs to customize this view.")
-                .child("heading"),
-        )
-        .element(
-            "heading",
-            Element::new("Text")
-                .prop("content", "{title}")
-                .prop("element", "h1"),
-        )
-        .build()
-        .expect("spec is valid");
-
-    JsonUi::render(&spec, &serde_json::json!({{}}))
+/// Handler template paired with a JSON-UI v2 spec file.
+pub fn json_view_handler_template(name: &str) -> String {
+    format!(
+        r#"#[handler]
+pub async fn {name}(req: Request) -> Response {{
+    let data = serde_json::json!({{}});
+    JsonUi::render_file("views/{name}.json", data)
 }}
 "#,
     )

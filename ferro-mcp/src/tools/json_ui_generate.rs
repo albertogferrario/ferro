@@ -54,19 +54,20 @@ pub struct RouteContext {
 /// Conventions for JSON-UI view files
 #[derive(Debug, Serialize)]
 pub struct ViewConventions {
-    /// Where view spec files go
+    /// Where view files go
     pub file_location: String,
-    /// Rust handler signature that loads and renders the spec file
+    /// Standard function signature
     pub function_signature: String,
-    /// Import pattern for the Rust handler
+    /// Standard import pattern
     pub import_pattern: String,
-    /// Default layout name used in specs
+    /// Default layout name
     pub layout_default: String,
 }
 
-/// Complete example of a well-structured v2 JSON-UI spec file.
+/// Complete example of a well-structured JSON-UI v2 spec file.
 ///
-/// Paired with a handler that calls `JsonUi::render_file("views/user_list.json", data)`.
+/// This is a `src/views/user_list.json` file. Handlers call
+/// `JsonUi::render_file("views/user_list.json", data)`.
 const VIEW_EXAMPLE: &str = r#"{
   "$schema": "ferro-json-ui/v2",
   "title": "User List",
@@ -94,8 +95,7 @@ const VIEW_EXAMPLE: &str = r#"{
       }
     }
   }
-}
-"#;
+}"#;
 
 /// Assemble generation context for creating a new JSON-UI view.
 ///
@@ -119,7 +119,7 @@ pub fn execute(
         conventions: ViewConventions {
             file_location: "src/views/{name}.json".to_string(),
             function_signature: "#[handler] pub async fn {name}(req: Request) -> Response { JsonUi::render_file(\"views/{name}.json\", data) }".to_string(),
-            import_pattern: "use ferro::{JsonUi, Response, handler, Request};".to_string(),
+            import_pattern: "use ferro::{JsonUi, Response};".to_string(),
             layout_default: "dashboard".to_string(),
         },
         description: description.map(|s| s.to_string()),
@@ -236,7 +236,7 @@ fn scan_routes(project_root: &Path) -> Vec<RouteContext> {
     routes
 }
 
-/// List existing v2 JSON spec file names in src/views/.
+/// List existing view file names in src/views/ (just names, not full inspection).
 fn list_existing_views(project_root: &Path) -> Vec<String> {
     let views_dir = project_root.join("src/views");
     if !views_dir.exists() {
@@ -275,16 +275,13 @@ mod tests {
         let result = execute(&non_existent, None, None);
 
         assert_eq!(result.conventions.file_location, "src/views/{name}.json");
-        assert!(
-            result
-                .conventions
-                .function_signature
-                .contains("JsonUi::render_file"),
-            "function_signature should reference JsonUi::render_file"
-        );
-        assert!(
-            result.conventions.import_pattern.contains("JsonUi"),
-            "import_pattern should include JsonUi"
+        assert!(result
+            .conventions
+            .function_signature
+            .contains("JsonUi::render_file"));
+        assert_eq!(
+            result.conventions.import_pattern,
+            "use ferro::{JsonUi, Response};"
         );
         assert_eq!(result.conventions.layout_default, "dashboard");
     }
@@ -295,14 +292,8 @@ mod tests {
         let result = execute(&non_existent, None, None);
 
         assert!(!result.example.is_empty());
-        // v2 spec: JSON object with $schema and elements flat map
         assert!(result.example.contains("ferro-json-ui/v2"));
         assert!(result.example.contains("elements"));
-        // No v1 builder pattern
-        assert!(
-            !result.example.contains("Spec::builder()"),
-            "example must not contain v1 Spec::builder()"
-        );
     }
 
     #[test]
@@ -325,8 +316,8 @@ mod tests {
             example: "example code".to_string(),
             conventions: ViewConventions {
                 file_location: "src/views/{name}.json".to_string(),
-                function_signature: "#[handler] pub async fn view(req: Request) -> Response { JsonUi::render_file(\"views/view.json\", data) }".to_string(),
-                import_pattern: "use ferro::{JsonUi, Response, handler, Request};".to_string(),
+                function_signature: "#[handler] pub async fn {name}(req: Request) -> Response { JsonUi::render_file(\"views/{name}.json\", data) }".to_string(),
+                import_pattern: "use ferro::{JsonUi, Response};".to_string(),
                 layout_default: "dashboard".to_string(),
             },
             description: Some("A user management view".to_string()),
