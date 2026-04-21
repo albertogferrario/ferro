@@ -138,8 +138,10 @@ pub use theme::{
 pub use inertia::InertiaContext;
 pub use metrics::{get_metrics, MetricsSnapshot, RouteMetrics, RouteMetricsView};
 pub use middleware::{
-    register_global_middleware, Limit, LimiterResponse, MetricsMiddleware, Middleware,
-    MiddlewareFuture, MiddlewareRegistry, Next, RateLimiter, SecurityHeaders, Throttle,
+    get_pre_route_middleware, register_global_middleware, register_pre_route_middleware,
+    rewrite_request_path, Limit, LimiterResponse, MetricsMiddleware, Middleware, MiddlewareFuture,
+    MiddlewareRegistry, Next, PreRouteMiddleware, PreRouteResult, RateLimiter, SecurityHeaders,
+    Throttle,
 };
 pub use routing::{
     // Internal functions used by macros (hidden from docs)
@@ -384,6 +386,21 @@ macro_rules! text_response {
 macro_rules! global_middleware {
     ($middleware:expr) => {
         $crate::register_global_middleware($middleware)
+    };
+}
+
+/// Register a pre-route middleware that runs before path extraction and route matching.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// // In bootstrap.rs
+/// pre_route_middleware!(middleware::host::HostMiddleware::new());
+/// ```
+#[macro_export]
+macro_rules! pre_route_middleware {
+    ($middleware:expr) => {
+        $crate::register_pre_route_middleware($middleware)
     };
 }
 

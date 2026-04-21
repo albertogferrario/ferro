@@ -41,6 +41,7 @@
 
 mod chain;
 mod metrics;
+mod pre_route;
 mod rate_limit;
 mod registry;
 mod security_headers;
@@ -49,6 +50,10 @@ pub use metrics::MetricsMiddleware;
 pub use security_headers::SecurityHeaders;
 
 pub use chain::MiddlewareChain;
+pub use pre_route::{
+    get_pre_route_middleware, register_pre_route_middleware, rewrite_request_path,
+    PreRouteMiddleware, PreRouteResult,
+};
 pub use rate_limit::{Limit, LimiterResponse, RateLimiter, Throttle};
 pub use registry::get_global_middleware_info;
 pub use registry::register_global_middleware;

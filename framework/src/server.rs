@@ -225,9 +225,17 @@ async fn handle_request(
         };
     }
 
-    // Note: Inertia context is now read directly from Request headers
-    // via req.is_inertia(), req.inertia_version(), etc.
-    // No thread-local storage needed - this is async-safe.
+    // Run pre-route middleware (e.g. custom domain path rewriting) before routing.
+    let pre_route = crate::middleware::get_pre_route_middleware();
+    for hook in &pre_route {
+        match hook.handle(req).await {
+            Ok(rewritten) => req = rewritten,
+            Err(response) => return response,
+        }
+    }
+
+    let method = req.method().clone();
+    let path = req.uri().path().to_string();
 
     let response = match router.match_route(&method, &path) {
         Some((handler, params, route_pattern)) => {
