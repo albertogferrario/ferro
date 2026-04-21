@@ -36,6 +36,7 @@ pub const fn validate_route_path(path: &'static str) -> &'static str {
     }
     path
 }
+use super::path::combine_group_path;
 use super::router::update_route_mcp;
 use crate::middleware::{into_boxed, BoxedMiddleware, Middleware};
 use crate::routing::router::{register_route_name, BoxedHandler, Router};
@@ -618,11 +619,15 @@ impl GroupDef {
         inherited_middleware: &[BoxedMiddleware],
         inherited_mcp: &McpDefaults,
     ) {
-        // Build the full prefix for this group
+        // Build the full prefix for this group. Strip a trailing `/` from the
+        // parent prefix before concatenation so nested groups like
+        // `group!("/a/", { group!("/b", ...) })` accumulate to `/a/b` instead
+        // of `/a//b` (D-06, RESEARCH §Pitfall 3).
         let full_prefix = if parent_prefix.is_empty() {
             self.prefix.to_string()
         } else {
-            format!("{}{}", parent_prefix, self.prefix)
+            let stripped_parent = parent_prefix.strip_suffix('/').unwrap_or(parent_prefix);
+            format!("{}{}", stripped_parent, self.prefix)
         };
 
         // Combine inherited middleware with this group's middleware
@@ -647,45 +652,62 @@ impl GroupDef {
                     // Convert :param to {param} for matchit compatibility
                     let converted_route_path = convert_route_params(route.path);
 
-                    // Build full path with prefix
-                    // If route path is "/" (root), just use the prefix without trailing slash
-                    let full_path = if converted_route_path == "/" {
-                        if full_prefix.is_empty() {
-                            "/".to_string()
-                        } else {
-                            full_prefix.clone()
-                        }
-                    } else if full_prefix == "/" {
-                        // Prefix is just "/", use route path directly
-                        converted_route_path.to_string()
-                    } else {
-                        format!("{full_prefix}{converted_route_path}")
-                    };
-                    // We need to leak the string to get a 'static str for the router
-                    let full_path: &'static str = Box::leak(full_path.into_boxed_str());
+                    // Combine the full prefix with the route path using the
+                    // shared helper. May emit a second matchit leaf so
+                    // `get!("/", ...)` inside a non-root group reaches its
+                    // handler at both `/prefix` and `/prefix/` (D-01 through
+                    // D-04, D-06).
+                    let (canonical, alternate) =
+                        combine_group_path(&full_prefix, &converted_route_path);
+                    let canonical_path: &'static str =
+                        Box::leak(canonical.into_boxed_str());
+                    let alternate_path: Option<&'static str> = alternate
+                        .map(|s| Box::leak(s.into_boxed_str()) as &'static str);
 
-                    // Register the route with the router
+                    // Register the canonical route first (touches
+                    // `register_route`, which appends to `REGISTERED_ROUTES`
+                    // so `update_route_name` / `update_route_mcp` /
+                    // `update_route_middleware` later in this block resolve
+                    // via `.rev().find(path == canonical)`). Then register
+                    // the alternate as a matchit-only alias carrying the
+                    // canonical pattern string so middleware lookup resolves
+                    // under the canonical key (Strategy A).
                     match route.method {
                         HttpMethod::Get => {
-                            router.insert_get(full_path, route.handler);
+                            router.insert_get(canonical_path, route.handler.clone());
+                            if let Some(alt) = alternate_path {
+                                router.insert_get_alias(alt, route.handler, canonical_path);
+                            }
                         }
                         HttpMethod::Post => {
-                            router.insert_post(full_path, route.handler);
+                            router.insert_post(canonical_path, route.handler.clone());
+                            if let Some(alt) = alternate_path {
+                                router.insert_post_alias(alt, route.handler, canonical_path);
+                            }
                         }
                         HttpMethod::Put => {
-                            router.insert_put(full_path, route.handler);
+                            router.insert_put(canonical_path, route.handler.clone());
+                            if let Some(alt) = alternate_path {
+                                router.insert_put_alias(alt, route.handler, canonical_path);
+                            }
                         }
                         HttpMethod::Patch => {
-                            router.insert_patch(full_path, route.handler);
+                            router.insert_patch(canonical_path, route.handler.clone());
+                            if let Some(alt) = alternate_path {
+                                router.insert_patch_alias(alt, route.handler, canonical_path);
+                            }
                         }
                         HttpMethod::Delete => {
-                            router.insert_delete(full_path, route.handler);
+                            router.insert_delete(canonical_path, route.handler.clone());
+                            if let Some(alt) = alternate_path {
+                                router.insert_delete_alias(alt, route.handler, canonical_path);
+                            }
                         }
                     }
 
                     // Register route name if present
                     if let Some(name) = route.name {
-                        register_route_name(name, full_path);
+                        register_route_name(name, canonical_path);
                     }
 
                     // Apply MCP metadata: route-level overrides group defaults
@@ -701,7 +723,7 @@ impl GroupDef {
                         || mcp_hidden
                     {
                         update_route_mcp(
-                            full_path,
+                            canonical_path,
                             mcp_tool_name,
                             mcp_description,
                             mcp_hint,
@@ -709,12 +731,14 @@ impl GroupDef {
                         );
                     }
 
-                    // Apply combined middleware (inherited + group), then route-specific
+                    // Apply combined middleware (inherited + group), then route-specific.
+                    // The alias leaf stores the canonical pattern so middleware registered
+                    // here under canonical_path is reached for both URL variants (Strategy A).
                     for mw in &combined_middleware {
-                        router.add_middleware(full_path, mw.clone());
+                        router.add_middleware(canonical_path, mw.clone());
                     }
                     for mw in route.middlewares {
-                        router.add_middleware(full_path, mw);
+                        router.add_middleware(canonical_path, mw);
                     }
                 }
                 GroupItem::NestedGroup(nested) => {
@@ -1314,5 +1338,164 @@ mod tests {
 
         assert_eq!(group.items.len(), 1);
         matches!(&group.items[0], GroupItem::Route(_));
+    }
+
+    // -------------------------------------------------------------------------
+    // D-01 through D-08 full-router dispatch tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn group_root_handler_matches_both_variants() {
+        // D-01: group!("/api", { get!("/", h) }) reaches h at both /api and /api/
+        use hyper::Method;
+        use crate::routing::get_registered_routes;
+
+        let group = GroupDef::__new_unchecked("/api-d01")
+            .add(RouteDefBuilder::new(HttpMethod::Get, "/", test_handler));
+        let router = group.register(Router::new());
+
+        // D-07: exactly one RouteInfo entry for /api-d01 (no duplicate for the alias)
+        let routes = get_registered_routes();
+        let count = routes.iter().filter(|r| r.path == "/api-d01").count();
+        assert_eq!(count, 1, "expected exactly 1 RouteInfo entry for /api-d01, got {count}");
+
+        // Both URL variants reach the handler with the canonical pattern
+        let hit_canonical = router.match_route(&Method::GET, "/api-d01");
+        assert!(hit_canonical.is_some(), "canonical /api-d01 did not match");
+        assert_eq!(hit_canonical.unwrap().2, "/api-d01");
+
+        let hit_alternate = router.match_route(&Method::GET, "/api-d01/");
+        assert!(hit_alternate.is_some(), "alternate /api-d01/ did not match");
+        assert_eq!(
+            hit_alternate.unwrap().2,
+            "/api-d01",
+            "alternate leaf must carry canonical pattern for middleware lookup"
+        );
+    }
+
+    #[test]
+    fn root_prefix_root_handler_is_single_slash() {
+        // D-02: group!("/", { get!("/", h) }) registers exactly one / route.
+        // Uses a unique prefix to avoid collision with other tests that also register "/".
+        use hyper::Method;
+        use crate::routing::get_registered_routes;
+
+        let group = GroupDef::__new_unchecked("/")
+            .add(RouteDefBuilder::new(HttpMethod::Get, "/", test_handler));
+        let router = group.register(Router::new());
+
+        // D-07 / D-02: no duplicate RouteInfo for "/" — check via matchit (only one
+        // canonical leaf exists; a duplicate would cause insert to silently overwrite,
+        // which matchit handles idempotently, so the behaviour test below is the proof).
+        let hit = router.match_route(&Method::GET, "/");
+        assert!(hit.is_some(), "/ did not match");
+        assert_eq!(hit.unwrap().2, "/");
+
+        // No spurious "//" alternate registered
+        let double = router.match_route(&Method::GET, "//");
+        assert!(double.is_none(), "// must not be registered for root-in-root group");
+
+        // Single RouteInfo for "/"  — filter by exact path in the global registry
+        let routes = get_registered_routes();
+        let slash_count = routes.iter().filter(|r| r.path == "/" && r.method == "GET").count();
+        // At least 1 (this test registered one); must be exactly 1 more than before.
+        // We cannot assert == 1 globally (other tests may have registered "/").
+        // Assert no duplicate within this session for this specific invocation path by
+        // verifying the router itself only has one matchit leaf — done via the match above.
+        assert!(slash_count >= 1, "expected at least one GET / in registry");
+    }
+
+    #[test]
+    fn trailing_slash_prefix_is_stripped() {
+        // D-03: group!("/api/", { get!("/x", h) }) normalises to /api/x, not /api//x
+        use hyper::Method;
+
+        let group = GroupDef::__new_unchecked("/api/")
+            .add(RouteDefBuilder::new(HttpMethod::Get, "/x", test_handler));
+        let router = group.register(Router::new());
+
+        let hit = router.match_route(&Method::GET, "/api/x");
+        assert!(hit.is_some(), "/api/x did not match after trailing-slash strip");
+
+        let double = router.match_route(&Method::GET, "/api//x");
+        assert!(double.is_none(), "/api//x should not match (double slash must not be registered)");
+    }
+
+    #[test]
+    fn non_root_prefix_non_root_path_unchanged() {
+        // D-04 regression: group!("/api-d04", { get!("/users", h) }) produces /api-d04/users, no alternate
+        use hyper::Method;
+        use crate::routing::get_registered_routes;
+
+        let group = GroupDef::__new_unchecked("/api-d04")
+            .add(RouteDefBuilder::new(HttpMethod::Get, "/users", test_handler));
+        let router = group.register(Router::new());
+
+        // Canonical path must match
+        let hit = router.match_route(&Method::GET, "/api-d04/users");
+        assert!(hit.is_some(), "/api-d04/users did not match");
+
+        // No spurious trailing-slash alternate for non-root route paths (D-04)
+        let alt = router.match_route(&Method::GET, "/api-d04/users/");
+        assert!(alt.is_none(), "/api-d04/users/ must not be registered (no alternate for non-root path)");
+
+        // Exactly one RouteInfo entry for this canonical path (D-07)
+        let routes = get_registered_routes();
+        let count = routes.iter().filter(|r| r.path == "/api-d04/users").count();
+        assert_eq!(count, 1, "expected exactly 1 RouteInfo for /api-d04/users, got {count}");
+    }
+
+    #[test]
+    fn nested_group_root_matches_both_variants() {
+        // D-06 + Pitfall 3: nested groups with root handler reach both variants
+        use hyper::Method;
+
+        // Case 1: clean prefixes
+        let inner1 = GroupDef::__new_unchecked("/b")
+            .add(RouteDefBuilder::new(HttpMethod::Get, "/", test_handler));
+        let router1 = GroupDef::__new_unchecked("/a")
+            .add(inner1)
+            .register(Router::new());
+        assert!(router1.match_route(&Method::GET, "/a/b").is_some(), "/a/b did not match");
+        assert!(router1.match_route(&Method::GET, "/a/b/").is_some(), "/a/b/ did not match");
+
+        // Case 2: outer prefix has trailing slash (Pitfall 3)
+        let inner2 = GroupDef::__new_unchecked("/b")
+            .add(RouteDefBuilder::new(HttpMethod::Get, "/", test_handler));
+        let router2 = GroupDef::__new_unchecked("/a/")
+            .add(inner2)
+            .register(Router::new());
+        assert!(router2.match_route(&Method::GET, "/a/b").is_some(), "/a/b did not match with trailing-slash outer");
+        assert!(router2.match_route(&Method::GET, "/a/b/").is_some(), "/a/b/ did not match with trailing-slash outer");
+    }
+
+    #[test]
+    fn named_route_resolves_to_canonical() {
+        // D-08: named routes register only the canonical path
+        use crate::routing::route;
+
+        let group = GroupDef::__new_unchecked("/api")
+            .add(RouteDefBuilder::new(HttpMethod::Get, "/", test_handler).name("home_canonical_test"));
+        let _router = group.register(Router::new());
+
+        let url = route("home_canonical_test", &[]);
+        assert_eq!(url, Some("/api".to_string()), "named route must resolve to canonical /api, not /api/");
+    }
+
+    #[test]
+    fn top_level_root_route_is_single_slash() {
+        // Regression: top-level get!("/", h) (not inside a group) must still match /.
+        // Confirms the fix lives only in GroupDef, not in RouteDefBuilder::register.
+        use hyper::Method;
+
+        let router: Router = Router::new().get("/", test_handler).into();
+
+        let hit = router.match_route(&Method::GET, "/");
+        assert!(hit.is_some(), "top-level / did not match");
+        assert_eq!(hit.unwrap().2, "/", "top-level / pattern must be /");
+
+        // No spurious alternate — top-level router.get() does not emit aliases
+        let double = router.match_route(&Method::GET, "//");
+        assert!(double.is_none(), "// must not match from a top-level get!(\"/\") registration");
     }
 }

@@ -28,8 +28,6 @@
 /// Returns `(canonical, alternate)`; the caller inserts both into the
 /// router, bypassing `register_route` for the alternate so the
 /// introspection registry stays canonical.
-// Consumers arrive in Plans 02 and 03 via `use super::path::combine_group_path;`.
-#[allow(dead_code)]
 pub(crate) fn combine_group_path(prefix: &str, route_path: &str) -> (String, Option<String>) {
     let stripped = prefix.strip_suffix('/').unwrap_or(prefix);
 
