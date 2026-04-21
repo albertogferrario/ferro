@@ -345,6 +345,13 @@ Plans:
   5. Loaded specs are cached (compiled once, reused across requests)
   6. Dev mode: file watcher reloads specs on change (hot reload without recompilation)
 
+**Plans:** 0/3 plans
+
+Plans:
+- [ ] 119-01-PLAN.md — Add Spec::merge_data consuming-builder method (shallow top-level merge, Null→Object init, non-Object ignored)
+- [ ] 119-02-PLAN.md — Create ferro-json-ui/src/loader.rs (LoadError enum, global spec cache, load_cached with dev-mode mtime invalidation) + lib.rs re-exports
+- [ ] 119-03-PLAN.md — Add JsonUi::render_file to framework (load_cached + merge_data + delegate to render_with_config; dev/prod-gated 500 bodies)
+
 ### Phase 120: CLI & MCP Updates
 **Goal**: Update all AI-facing tools to generate v2 specs using two-tier AI strategy (concise prompt + per-component structured output)
 **Depends on**: Phase 117, Phase 119
