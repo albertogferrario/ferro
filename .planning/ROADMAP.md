@@ -393,7 +393,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 117.1. Schema-Driven Projections | 3/3 | Complete    | 2026-04-18 |
 | 118. Server-Side Expressions | 2/2 | Complete    | 2026-04-19 |
 | 119. Page Loader | 2/3 | In Progress|  |
-| 120. CLI & MCP Updates | 0/? | Not started | - |
+| 120. CLI & MCP Updates | 5/5 | Complete   | 2026-04-21 |
 | 121. Documentation & Field Test | 0/? | Not started | - |
 
 **v12.0 scope is held firm.** No expansion beyond the 8 phases above. The projection / intent abstraction already exists in v9.0 ferro-projections; v12.0 refines the rendering target.
