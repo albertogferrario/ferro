@@ -5,12 +5,49 @@
 @source "../../framework/src";
 
 /*
- * Safelist classes that may be emitted via string concatenation at runtime
- * (e.g., `format!("bg-{}", variant)`). Tailwind v4.1+ @source inline() forces
- * these into the output even if no literal use is found by the scanner.
+ * Register ferro's custom design tokens as inline theme variables.
  *
- * Add new entries here when a render.rs component constructs class names
- * from variable parts. Leave empty for now — audit in a later task if
- * visual regressions appear.
+ * @theme inline tells Tailwind v4 to generate utility classes (bg-background,
+ * text-text, border-border, etc.) as var() references. The actual values come
+ * from the theme CSS injected at runtime by ThemeMiddleware, so dark mode and
+ * per-tenant themes continue to work without rebuilding the CSS.
+ *
+ * @source inline() cannot generate utilities for unknown color tokens — it only
+ * safelists classes Tailwind already knows about. @theme inline is required.
  */
-@source inline("bg-background bg-surface bg-card bg-border text-text text-text-muted bg-primary text-primary-foreground bg-secondary text-secondary-foreground bg-accent bg-destructive bg-success bg-warning rounded-sm rounded-md rounded-lg rounded-full shadow-sm shadow-md shadow-lg font-sans font-mono");
+@theme inline {
+  /* Surface tokens */
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-card: var(--color-card);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+
+  /* Role tokens */
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-foreground: var(--color-secondary-foreground);
+  --color-accent: var(--color-accent);
+  --color-destructive: var(--color-destructive);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+
+  /* Shape tokens */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+
+  /* Shadow tokens */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+}
+
+/*
+ * Safelist classes emitted via runtime string concatenation
+ * (e.g., `format!("bg-{}", variant)`).
+ */
+@source inline("font-sans font-mono");
