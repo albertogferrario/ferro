@@ -4,14 +4,14 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
 stopped_at: Phase 144 context gathered
-last_updated: "2026-04-21T20:40:33.271Z"
-last_activity: 2026-04-21 -- Phase 144 execution started
+last_updated: "2026-04-21T22:21:52.617Z"
+last_activity: 2026-04-21
 progress:
   total_phases: 144
-  completed_phases: 129
+  completed_phases: 130
   total_plans: 326
-  completed_plans: 300
-  percent: 92
+  completed_plans: 305
+  percent: 94
 ---
 
 # Project State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 144 (fix-root-path-routing-in-group-routes) — EXECUTING
-Plan: 1 of 5
+Phase: 144
+Plan: Not started
 Workspace version: 0.2.5
 Status: Executing Phase 144
-Last activity: 2026-04-21 -- Phase 144 execution started
+Last activity: 2026-04-21
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -38,7 +38,7 @@ Progress: [██████████] 96%
 
 **Velocity:**
 
-- Total plans completed: 17
+- Total plans completed: 22
 - Average duration: —
 - Total execution time: —
 
@@ -49,6 +49,7 @@ Progress: [██████████] 96%
 | 140 | 5 | - | - |
 | 141 | 4 | - | - |
 | 143 | 4 | - | - |
+| 144 | 5 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
