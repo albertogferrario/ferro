@@ -303,8 +303,8 @@ mod tests {
     }
 
     /// Check that a hyper response contains a Content-Type header with the given value.
-    /// Handles the case where multiple Content-Type headers exist (HttpResponse::text()
-    /// sets text/plain, then .header() adds the correct one).
+    /// After the phase 143.1 header replace-semantics fix, only one Content-Type
+    /// entry is emitted per response; `get_all` now yields a single-element iterator.
     fn has_content_type(
         hyper: &hyper::Response<http_body_util::Full<bytes::Bytes>>,
         expected: &str,

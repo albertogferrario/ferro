@@ -114,10 +114,33 @@ impl HttpResponse {
         &self.body
     }
 
-    /// Add a header to the response
+    /// Set a response header, replacing any existing header with the same name.
+    ///
+    /// The name match is case-insensitive (ASCII). Use [`append_header`](Self::append_header)
+    /// for legitimately multi-value headers such as `Set-Cookie`, `Vary`, or `Link`.
     pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        let name = name.into();
+        self.headers.retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
+        self.headers.push((name, value.into()));
+        self
+    }
+
+    /// Append a response header without removing any existing entry with the same name.
+    ///
+    /// Intended for headers that legitimately carry multiple values on separate lines,
+    /// such as `Set-Cookie` (RFC 6265 §4.1), `Vary`, and `Link`. For single-value
+    /// headers like `Content-Type` or `Location`, use [`header`](Self::header) instead.
+    pub fn append_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.push((name.into(), value.into()));
         self
+    }
+
+    /// Get the response headers as a borrowed slice.
+    ///
+    /// Returns all header entries in insertion order. Multi-value headers
+    /// (e.g. `Set-Cookie`) appear as multiple entries with the same name.
+    pub fn headers(&self) -> &[(String, String)] {
+        &self.headers
     }
 
     /// Add a Set-Cookie header to the response
@@ -133,7 +156,7 @@ impl HttpResponse {
     /// ```
     pub fn cookie(self, cookie: Cookie) -> Self {
         let header_value = cookie.to_header_value();
-        self.header("Set-Cookie", header_value)
+        self.append_header("Set-Cookie", header_value)
     }
 
     /// Wrap this response in Ok() for use as Response type
@@ -163,7 +186,7 @@ impl Default for HttpResponse {
 pub trait ResponseExt {
     /// Set the HTTP status code.
     fn status(self, code: u16) -> Self;
-    /// Append a response header.
+    /// Set a response header, replacing any existing header with the same name (case-insensitive).
     fn header(self, name: impl Into<String>, value: impl Into<String>) -> Self;
 }
 
@@ -583,7 +606,11 @@ mod tests {
             .iter()
             .filter(|(k, _)| k == "Set-Cookie")
             .collect();
-        assert_eq!(cookies.len(), 2, "both Set-Cookie entries must be preserved");
+        assert_eq!(
+            cookies.len(),
+            2,
+            "both Set-Cookie entries must be preserved"
+        );
     }
 
     #[test]
@@ -605,11 +632,7 @@ mod tests {
         let resp = HttpResponse::new()
             .append_header("X-Tag", "a")
             .append_header("X-Tag", "b");
-        let count = resp
-            .headers()
-            .iter()
-            .filter(|(k, _)| k == "X-Tag")
-            .count();
+        let count = resp.headers().iter().filter(|(k, _)| k == "X-Tag").count();
         assert_eq!(count, 2, "append_header must not strip existing entries");
     }
 
