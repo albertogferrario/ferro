@@ -129,8 +129,8 @@ fn generate_with_ai(file_name: &str, title: &str, layout_name: &str, description
     };
 
     // ── Pass 2: structured spec ───────────────────────────────────────────
+    let (sys2, usr2) = ai::build_json_view_pass2(&pass1_result);
     let schema = ferro_json_ui::global_catalog().json_schema().clone();
-    let (sys2, usr2) = ai::build_json_view_pass2(&pass1_result, &schema);
     let json_str = match ai::call_anthropic_structured(&sys2, &usr2, schema) {
         Ok(s) => s,
         Err(e) => {
