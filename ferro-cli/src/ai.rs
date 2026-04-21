@@ -205,8 +205,9 @@ pub fn build_json_view_pass2(pass1_result: &str, _schema: &serde_json::Value) ->
          All element ids are unique strings. Use flat elements map — no nesting."
     );
 
-    let user = "Generate the complete JSON-UI v2 spec for the view described in the component plan."
-        .to_string();
+    let user =
+        "Generate the complete JSON-UI v2 spec for the view described in the component plan."
+            .to_string();
 
     (system, user)
 }

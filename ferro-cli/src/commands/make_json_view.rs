@@ -112,18 +112,17 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
 /// Pass 2: structured JSON via `call_anthropic_structured` + `catalog.json_schema()`.
 /// On any failure (HTTP error, unparseable spec, catalog validation error), prints a
 /// yellow warning to stderr and falls back to the static template.
-fn generate_with_ai(
-    file_name: &str,
-    title: &str,
-    layout_name: &str,
-    description: &str,
-) -> String {
+fn generate_with_ai(file_name: &str, title: &str, layout_name: &str, description: &str) -> String {
     // ── Pass 1: plain-text plan ────────────────────────────────────────────
     let (sys1, usr1) = ai::build_json_view_pass1(file_name, description);
     let pass1_result = match ai::call_anthropic_plain(&sys1, &usr1) {
         Ok(text) => text,
         Err(e) => {
-            eprintln!("{} AI Pass 1 failed: {}", style("Warning:").yellow().bold(), e);
+            eprintln!(
+                "{} AI Pass 1 failed: {}",
+                style("Warning:").yellow().bold(),
+                e
+            );
             eprintln!("{}", style("Falling back to static template.").dim());
             return templates::json_view_template(file_name, title, layout_name);
         }
@@ -135,7 +134,11 @@ fn generate_with_ai(
     let json_str = match ai::call_anthropic_structured(&sys2, &usr2, schema) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("{} AI Pass 2 failed: {}", style("Warning:").yellow().bold(), e);
+            eprintln!(
+                "{} AI Pass 2 failed: {}",
+                style("Warning:").yellow().bold(),
+                e
+            );
             eprintln!("{}", style("Falling back to static template.").dim());
             return templates::json_view_template(file_name, title, layout_name);
         }
