@@ -408,7 +408,15 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 118. Server-Side Expressions | 0/? | Not started | - |
 | 119. Page Loader | 0/? | Not started | - |
 | 120. CLI & MCP Updates | 0/5 | Planned | - |
-| 121. Documentation & Field Test | 0/? | Not started | - |
+| 121. Documentation & Field Test | 0/6 | Planned | - |
+
+**Plans:**
+- [ ] 121-01-PLAN.md — Add JsonUi::render_file to framework (Wave 1, FIELD-01 blocker)
+- [ ] 121-02-PLAN.md — Rewrite getting-started.md, actions.md, features/json-ui.md (Wave 2, DOC-01)
+- [ ] 121-03-PLAN.md — Rewrite components.md and data-binding.md (Wave 2, DOC-01)
+- [ ] 121-04-PLAN.md — Rewrite layouts.md and plugins.md (Wave 2, DOC-01)
+- [ ] 121-05-PLAN.md — Create expressions.md, json-schema.md, update SUMMARY.md (Wave 3, DOC-02)
+- [ ] 121-06-PLAN.md — Field test: pagamenti.json + handler + route (Wave 4, FIELD-01)
 
 **v12.0 scope is held firm.** No expansion beyond the 8 phases above. The projection / intent abstraction already exists in v9.0 ferro-projections; v12.0 refines the rendering target.
 
