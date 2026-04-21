@@ -66,23 +66,26 @@ pub fn routes() -> Router {
 Redirect the tenant to a Stripe-hosted checkout page to select a plan:
 
 ```rust
-use ferro::{create_subscription_checkout, handler, HttpResponse, Request, Response};
+use ferro::{CheckoutBuilder, LineItem, Mode, handler, HttpResponse, Request, Response};
 
 #[handler]
 pub async fn upgrade(req: Request) -> Response {
-    let customer_id = "cus_xxx"; // from tenant DB record
-    let price_id = "price_xxx";  // from Stripe dashboard
+    let intent = CheckoutBuilder::new(Mode::Subscription)
+        .line_item(LineItem {
+            name: "Pro Plan".into(),
+            description: None,
+            unit_amount_cents: 1500,
+            quantity: 1,
+            currency: "usd".into(),
+        })
+        .success_url("https://app.example.com/billing/success")
+        .cancel_url("https://app.example.com/billing/cancel")
+        .idempotency_key(&format!("upgrade-{}", chrono::Utc::now().timestamp()))
+        .create()
+        .await
+        .map_err(|e| HttpResponse::text(e.to_string()).status(500))?;
 
-    let url = create_subscription_checkout(
-        customer_id,
-        price_id,
-        "https://app.example.com/billing/success",
-        "https://app.example.com/billing/cancel",
-    )
-    .await
-    .map_err(|e| HttpResponse::text(e.to_string()).status(500))?;
-
-    Ok(HttpResponse::redirect(&url))
+    Ok(HttpResponse::redirect(&intent.url))
 }
 ```
 
@@ -91,13 +94,13 @@ pub async fn upgrade(req: Request) -> Response {
 Redirect the tenant to Stripe's hosted portal for self-service plan management:
 
 ```rust
-use ferro::{billing_portal_url, handler, HttpResponse, Request, Response};
+use ferro::{account, handler, HttpResponse, Request, Response};
 
 #[handler]
 pub async fn manage_billing(req: Request) -> Response {
     let customer_id = "cus_xxx";
 
-    let url = billing_portal_url(
+    let url = account::billing_portal_url(
         customer_id,
         "https://app.example.com/settings",
     )
@@ -158,10 +161,10 @@ Returns `403 JSON` when the plan requirement is not met:
 
 ### Plan Hierarchy
 
-The plan tier comparison is available directly:
+The plan tier comparison is available in the framework's tenant module:
 
 ```rust
-use ferro::plan_satisfies;
+use ferro::tenant::subscription::plan_satisfies;
 
 plan_satisfies("enterprise", "pro")   // true
 plan_satisfies("pro", "free")         // true
@@ -176,13 +179,13 @@ plan_satisfies("custom", "custom")    // true — unknown plans match themselves
 Create an account link to start the Stripe Connect onboarding flow:
 
 ```rust
-use ferro::{create_account_link, handler, HttpResponse, Request, Response};
+use ferro::{account, handler, HttpResponse, Request, Response};
 
 #[handler]
 pub async fn connect_onboarding(req: Request) -> Response {
     let account_id = "acct_xxx"; // stored on the tenant record
 
-    let url = create_account_link(
+    let url = account::create_link(
         account_id,
         "https://app.example.com/connect/refresh",
         "https://app.example.com/connect/return",
@@ -199,27 +202,29 @@ pub async fn connect_onboarding(req: Request) -> Response {
 Process a one-time payment on behalf of a connected account:
 
 ```rust
-use ferro::{create_connect_checkout, handler, HttpResponse, Request, Response};
+use ferro::{CheckoutBuilder, LineItem, Mode, handler, HttpResponse, Request, Response};
 
 #[handler]
 pub async fn pay(req: Request) -> Response {
     let connect_id = "acct_xxx";
-    let fee = Stripe::config().application_fee_percent.map(|p| {
-        (price_cents as f64 * p / 100.0) as i64
-    });
+    // <!-- TODO(140): reword narrative for capability-axis -->
+    let intent = CheckoutBuilder::new(Mode::Payment)
+        .destination(connect_id, Some(100)) // 100 cents application fee
+        .line_item(LineItem {
+            name: "Payment".into(),
+            description: None,
+            unit_amount_cents: 2000, // $20.00
+            quantity: 1,
+            currency: "usd".into(),
+        })
+        .success_url("https://app.example.com/pay/success")
+        .cancel_url("https://app.example.com/pay/cancel")
+        .idempotency_key(&format!("pay-{}", chrono::Utc::now().timestamp()))
+        .create()
+        .await
+        .map_err(|e| HttpResponse::text(e.to_string()).status(500))?;
 
-    let url = create_connect_checkout(
-        connect_id,
-        2000,          // $20.00 in cents
-        "usd",
-        "https://app.example.com/pay/success",
-        "https://app.example.com/pay/cancel",
-        fee,
-    )
-    .await
-    .map_err(|e| HttpResponse::text(e.to_string()).status(500))?;
-
-    Ok(HttpResponse::redirect(&url))
+    Ok(HttpResponse::redirect(&intent.url))
 }
 ```
 
@@ -300,14 +305,31 @@ impl Listener<StripeSubscriptionDeleted> for SyncSubscriptionPlan {
 
 ### Idempotency
 
-`ferro::stripe_is_processed(event_id)` is a stub that always returns `false`. Implement idempotency in your event listeners by recording processed event IDs in a DB table and checking before applying changes.
+Implement `ferro::ProcessedEventLog` against your database and call `try_mark_processed(&event.id)` at the top of each webhook handler — returns `Ok(false)` when the event was already processed. Use `ferro::MemoryProcessedLog` in tests and single-process development only.
+
+```rust
+use ferro::{ProcessedEventLog, MemoryProcessedLog};
+use std::sync::Arc;
+
+// In tests:
+let log = Arc::new(MemoryProcessedLog::default());
+
+// In your webhook job (inject Arc<dyn ProcessedEventLog> via your DI container):
+if !self.log.try_mark_processed(&event.id).await? {
+    // Already processed — skip side effects.
+    return Ok(());
+}
+```
+
+For production, implement the trait against a `processed_stripe_events` table — see `ferro_stripe::idempotency` module docs for the recommended SQL schema.
 
 ## TenantContext Enrichment
 
 When the tenant billing table is populated, attach subscription state to `TenantContext`:
 
 ```rust
-use ferro::{SubscriptionInfo, TenantContext};
+use ferro::tenant::subscription::SubscriptionInfo;
+use ferro::TenantContext;
 
 // In your DbTenantLookup closure:
 let subscription = load_billing_from_db(tenant_id).await;
@@ -320,7 +342,7 @@ TenantContext {
 }
 ```
 
-`SubscriptionInfo` fields:
+`SubscriptionInfo` is now defined in `ferro::tenant::subscription` (framework-local type, not a Stripe-API wrapper). Fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -367,20 +389,25 @@ ferro-stripe = { version = "*", features = ["test-helpers"] }
 
 ### Mock Subscriptions
 
-```rust
-use ferro_stripe::testing::*;
+<!-- TODO(140): reword narrative for capability-axis — subscription mock helpers were removed in 0.4.0; construct SubscriptionInfo directly from ferro::tenant::subscription -->
 
-let active  = mock_subscription_active("pro");       // Active, 30d period end
-let trial   = mock_subscription_trialing("pro");     // Trialing, 14d trial end
-let canceled = mock_subscription_canceled("pro");    // Canceled, period ended
-let past_due = mock_subscription_past_due("pro");    // PastDue, period active
-let grace   = mock_subscription_on_grace("pro");     // Active, cancel_at_period_end=true
-let connect = mock_subscription_with_connect("pro", "acct_123"); // Active with Connect
+Construct `SubscriptionInfo` directly from `ferro::tenant::subscription` in tests:
+
+```rust
+use ferro::tenant::subscription::{SubscriptionInfo, SubscriptionStatus};
+
+let active = SubscriptionInfo {
+    stripe_subscription_id: "sub_test".into(),
+    plan: "pro".into(),
+    status: SubscriptionStatus::Active,
+    trial_ends_at: None,
+    cancel_at_period_end: false,
+    current_period_end: chrono::Utc::now() + chrono::Duration::days(30),
+    stripe_connect_account_id: None,
+};
 
 assert!(active.subscribed());
-assert!(trial.on_trial());
-assert!(grace.on_grace_period());
-assert!(!canceled.subscribed());
+assert!(!active.on_trial());
 ```
 
 ### Webhook Testing

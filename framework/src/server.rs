@@ -220,6 +220,7 @@ async fn handle_request(
             "/_ferro/metrics" => crate::debug::handle_metrics(),
             "/_ferro/queue/jobs" => crate::debug::handle_queue_jobs().await,
             "/_ferro/queue/stats" => crate::debug::handle_queue_stats().await,
+            "/_ferro/ferro-base.css" => serve_ferro_base_css(),
             _ => HttpResponse::text("404 Not Found").status(404).into_hyper(),
         };
     }
@@ -326,6 +327,22 @@ async fn health_response(query: &str) -> hyper::Response<Full<Bytes>> {
         .unwrap()
 }
 
+/// Serve the pre-built ferro-json-ui base CSS.
+///
+/// The bytes are embedded at compile time via ferro_json_ui::FERRO_BASE_CSS.
+/// Response: 200, text/css, 24h cache. No user input reaches this handler —
+/// the match arm is an exact string, and the body is static framework content.
+fn serve_ferro_base_css() -> hyper::Response<Full<Bytes>> {
+    let css = ferro_json_ui::FERRO_BASE_CSS;
+    hyper::Response::builder()
+        .status(200)
+        .header("Content-Type", "text/css; charset=utf-8")
+        .header("Content-Length", css.len().to_string())
+        .header("Cache-Control", "public, max-age=86400")
+        .body(Full::new(Bytes::from_static(css.as_bytes())))
+        .unwrap()
+}
+
 /// Check database health by attempting a simple query
 async fn check_database_health() -> Result<(), String> {
     use crate::database::DB;
@@ -344,4 +361,59 @@ async fn check_database_health() -> Result<(), String> {
         .map_err(|e| format!("Database query failed: {e}"))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod ferro_base_css_route_tests {
+    use super::*;
+    use http_body_util::BodyExt;
+
+    #[tokio::test]
+    async fn serve_ferro_base_css_returns_200_with_text_css_content_type() {
+        let response = serve_ferro_base_css();
+
+        assert_eq!(response.status(), 200, "expected 200 OK");
+
+        let ct = response
+            .headers()
+            .get("Content-Type")
+            .expect("Content-Type header missing")
+            .to_str()
+            .unwrap();
+        assert_eq!(ct, "text/css; charset=utf-8");
+
+        let cc = response
+            .headers()
+            .get("Cache-Control")
+            .expect("Cache-Control header missing")
+            .to_str()
+            .unwrap();
+        assert_eq!(cc, "public, max-age=86400");
+
+        let cl = response
+            .headers()
+            .get("Content-Length")
+            .expect("Content-Length header missing")
+            .to_str()
+            .unwrap()
+            .parse::<usize>()
+            .expect("Content-Length must be an integer");
+        assert_eq!(cl, ferro_json_ui::FERRO_BASE_CSS.len());
+    }
+
+    #[tokio::test]
+    async fn serve_ferro_base_css_body_equals_embedded_constant() {
+        let response = serve_ferro_base_css();
+        let body_bytes = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body collect")
+            .to_bytes();
+        assert_eq!(
+            body_bytes.as_ref(),
+            ferro_json_ui::FERRO_BASE_CSS.as_bytes()
+        );
+        assert!(!body_bytes.is_empty());
+    }
 }

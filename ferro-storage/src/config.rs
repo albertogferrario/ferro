@@ -50,7 +50,8 @@ impl StorageConfig {
     /// - `AWS_SECRET_ACCESS_KEY`: S3 secret key
     /// - `AWS_DEFAULT_REGION`: S3 region (default: "us-east-1")
     /// - `AWS_BUCKET`: S3 bucket name
-    /// - `AWS_URL`: S3 URL base
+    /// - `AWS_PUBLIC_URL`: Public base URL for generated file URLs (overrides `AWS_URL` for this purpose)
+    /// - `AWS_URL`: S3 API endpoint; also used as public URL base if `AWS_PUBLIC_URL` is not set
     ///
     /// # Example
     ///
@@ -89,12 +90,30 @@ impl StorageConfig {
                 driver: DiskDriver::S3,
                 root: None,
                 url: None,
-                bucket: Some(bucket),
+                bucket: Some(bucket.clone()),
                 region: Some(region),
             };
-            if let Ok(url) = env::var("AWS_URL") {
-                s3_config.url = Some(url);
-            }
+            // Resolve public file URL base (used by Storage::url() to build asset URLs).
+            // Priority: AWS_PUBLIC_URL → computed from AWS_URL+bucket → AWS_URL bare.
+            // Auto-compute handles providers like DigitalOcean Spaces and Cloudflare R2
+            // where the public URL is {bucket}.{endpoint_host} but the API endpoint is
+            // just {endpoint_host}.
+            let public_url = if let Ok(explicit) = env::var("AWS_PUBLIC_URL") {
+                Some(explicit)
+            } else if let Ok(api_url) = env::var("AWS_URL") {
+                let host = api_url
+                    .trim_start_matches("https://")
+                    .trim_start_matches("http://");
+                let scheme = if api_url.starts_with("https://") {
+                    "https"
+                } else {
+                    "http"
+                };
+                Some(format!("{scheme}://{bucket}.{host}"))
+            } else {
+                None
+            };
+            s3_config.url = public_url;
             disks.insert("s3".to_string(), s3_config);
         }
 

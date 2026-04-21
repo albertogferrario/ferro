@@ -168,6 +168,56 @@ impl Request {
         self.query_as(name).unwrap_or(default)
     }
 
+    // ── Phase 137: validation flash round-trip helpers ────────────────────────
+
+    /// Read a previously-submitted form value from session flash.
+    ///
+    /// After a POST handler calls `ValidationError::with_old_input(&data).redirect_back(...)`,
+    /// the GET handler retrieves the value with `req.old("field_name")` and passes it as
+    /// `InputProps.default_value` to repopulate the form.
+    ///
+    /// Reads from `_flash.old._old_input.<field>` without clearing (read-only semantics).
+    /// Flash aging (move new→old→deleted) is handled by the session middleware at request
+    /// boundaries, so multiple reads in the same GET handler are safe.
+    ///
+    /// Returns `None` when no flash value exists, no session is active, or the key is absent.
+    pub fn old(&self, field: &str) -> Option<String> {
+        let key = format!("_flash.old._old_input.{field}");
+        crate::session::session().and_then(|s| s.get::<String>(&key))
+    }
+
+    /// Read the first validation error message for a field from session flash.
+    ///
+    /// After a POST handler calls `errors.redirect_back(...)`, the GET handler calls
+    /// `req.validation_error("field_name")` and passes the result as `InputProps.error`.
+    ///
+    /// Reads from `_flash.old._validation_errors` without clearing (read-only semantics).
+    ///
+    /// Returns `None` when no flash errors exist, no session is active, or the field has no error.
+    pub fn validation_error(&self, field: &str) -> Option<String> {
+        let errors: Option<std::collections::HashMap<String, Vec<String>>> =
+            crate::session::session().and_then(|s| {
+                s.get::<std::collections::HashMap<String, Vec<String>>>(
+                    "_flash.old._validation_errors",
+                )
+            });
+        errors.and_then(|map| map.get(field).and_then(|v| v.first()).cloned())
+    }
+
+    /// Returns `true` when any validation errors were flashed from a prior request.
+    ///
+    /// Useful for rendering a form-wide error summary banner.
+    pub fn has_validation_errors(&self) -> bool {
+        crate::session::session()
+            .and_then(|s| {
+                s.get::<std::collections::HashMap<String, Vec<String>>>(
+                    "_flash.old._validation_errors",
+                )
+            })
+            .map(|m| !m.is_empty())
+            .unwrap_or(false)
+    }
+
     /// Get the inner hyper request
     pub fn inner(&self) -> &hyper::Request<hyper::body::Incoming> {
         &self.inner
@@ -345,4 +395,129 @@ pub struct RequestParts {
     pub params: HashMap<String, String>,
     /// Content-Type header value, if present.
     pub content_type: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    // Phase 137: unit tests for old() / validation_error() / has_validation_errors().
+    //
+    // The Request struct wraps hyper::body::Incoming which cannot be constructed
+    // in unit tests.  We therefore test the underlying session-reading logic
+    // directly (the same code path the methods delegate to) using
+    // SESSION_CONTEXT.scope() to inject a session.
+    //
+    // Full end-to-end round-trips (POST → flash → GET → InputProps) live in the
+    // gestiscilo integration test scaffold (validation_roundtrip_tests.rs).
+
+    use crate::session::middleware::SESSION_CONTEXT;
+    use crate::session::store::SessionData;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    // ── No-session guard tests ────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_session_absent_old_returns_none() {
+        // Outside any SESSION_CONTEXT scope, session() returns None.
+        // old() delegates to session().and_then(...) so it must also return None.
+        let val =
+            crate::session::session().and_then(|s| s.get::<String>("_flash.old._old_input.email"));
+        assert_eq!(val, None);
+    }
+
+    #[tokio::test]
+    async fn test_session_absent_validation_error_returns_none() {
+        let val = crate::session::session().and_then(|s| {
+            s.get::<HashMap<String, Vec<String>>>("_flash.old._validation_errors")
+                .and_then(|map| map.get("email").and_then(|v| v.first()).cloned())
+        });
+        assert_eq!(val, None);
+    }
+
+    #[tokio::test]
+    async fn test_session_absent_has_validation_errors_false() {
+        let val = crate::session::session()
+            .and_then(|s| s.get::<HashMap<String, Vec<String>>>("_flash.old._validation_errors"))
+            .map(|m| !m.is_empty())
+            .unwrap_or(false);
+        assert!(!val);
+    }
+
+    // ── Session-present tests (direct logic, mirrors Request method bodies) ───
+
+    #[tokio::test]
+    async fn test_old_reads_from_flash_old_key() {
+        let mut session = SessionData::new("test-id".to_string(), "csrf".to_string());
+        // Simulate age_flash_data() having moved the flash to _flash.old.*
+        session.put(
+            "_flash.old._old_input.email",
+            "user@example.com".to_string(),
+        );
+
+        let ctx = Arc::new(RwLock::new(Some(session)));
+        let val = SESSION_CONTEXT
+            .scope(ctx, async {
+                crate::session::session()
+                    .and_then(|s| s.get::<String>("_flash.old._old_input.email"))
+            })
+            .await;
+
+        assert_eq!(val, Some("user@example.com".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_validation_error_reads_first_message_for_field() {
+        let mut session = SessionData::new("test-id".to_string(), "csrf".to_string());
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert(
+            "email".to_string(),
+            vec!["Inserisci un indirizzo email valido".to_string()],
+        );
+        session.put("_flash.old._validation_errors", &errors);
+
+        let ctx = Arc::new(RwLock::new(Some(session)));
+        let (email_err, other_err) = SESSION_CONTEXT
+            .scope(ctx, async {
+                let email_err = crate::session::session().and_then(|s| {
+                    s.get::<HashMap<String, Vec<String>>>("_flash.old._validation_errors")
+                        .and_then(|map| map.get("email").and_then(|v| v.first()).cloned())
+                });
+                // Reading the same session twice must not clear the data.
+                let other_err = crate::session::session().and_then(|s| {
+                    s.get::<HashMap<String, Vec<String>>>("_flash.old._validation_errors")
+                        .and_then(|map| map.get("name").and_then(|v| v.first()).cloned())
+                });
+                (email_err, other_err)
+            })
+            .await;
+
+        assert_eq!(
+            email_err,
+            Some("Inserisci un indirizzo email valido".to_string())
+        );
+        assert_eq!(other_err, None);
+    }
+
+    #[tokio::test]
+    async fn test_multiple_reads_do_not_clear_flash() {
+        // Validates read-only semantics: calling session().get() twice returns
+        // the same value (unlike get_flash which clears on read).
+        let mut session = SessionData::new("test-id".to_string(), "csrf".to_string());
+        session.put("_flash.old._old_input.name", "Mario".to_string());
+
+        let ctx = Arc::new(RwLock::new(Some(session)));
+        let (first, second) = SESSION_CONTEXT
+            .scope(ctx, async {
+                let a = crate::session::session()
+                    .and_then(|s| s.get::<String>("_flash.old._old_input.name"));
+                let b = crate::session::session()
+                    .and_then(|s| s.get::<String>("_flash.old._old_input.name"));
+                (a, b)
+            })
+            .await;
+
+        assert_eq!(first, Some("Mario".to_string()));
+        assert_eq!(second, Some("Mario".to_string()));
+    }
 }

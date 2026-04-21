@@ -12,7 +12,7 @@ const DEFAULT_THEME_CSS: &str = include_str!("../assets/default.css");
 /// - [`Theme::from_path()`] — loads from a filesystem directory.
 #[derive(Debug, Clone)]
 pub struct Theme {
-    /// CSS content using Tailwind v4 `@theme` syntax.
+    /// CSS content as plain CSS variable declarations (`:root { ... }`).
     pub css: String,
 
     /// Optional intent template overrides; all-`None` means built-in layouts apply.
@@ -22,7 +22,9 @@ pub struct Theme {
 impl Theme {
     /// Returns the embedded default theme.
     ///
-    /// The CSS uses Tailwind v4 `@theme` with 23 semantic token slots (light + dark).
+    /// The CSS contains plain `:root { ... }` CSS variable declarations for all 23
+    /// semantic token slots (light and dark modes). Safe to inject into a `<style>` tag
+    /// without Tailwind processing.
     /// Templates are all-`None` — built-in intent layouts apply unchanged.
     pub fn default_theme() -> Self {
         Self {

@@ -361,12 +361,20 @@ where
         seeders_fn: Option<Box<dyn FnOnce() -> SeederRegistry + Send>>,
         class: Option<String>,
     ) {
-        // Initialize database connection for seeders
-        let config = crate::database::DatabaseConfig::from_env();
-        if let Err(e) = crate::database::DB::init_with(config).await {
-            eprintln!("Failed to connect to database: {e}");
-            std::process::exit(1);
-        }
+        let database_url = match std::env::var("DATABASE_URL") {
+            Ok(u) => u,
+            Err(_) => {
+                eprintln!("DATABASE_URL must be set");
+                std::process::exit(1);
+            }
+        };
+        let db = match sea_orm::Database::connect(&database_url).await {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Failed to connect to database: {e}");
+                std::process::exit(1);
+            }
+        };
 
         let registry = match seeders_fn {
             Some(f) => f(),
@@ -378,8 +386,8 @@ where
         };
 
         let result = match class {
-            Some(name) => registry.run_one(&name).await,
-            None => registry.run_all().await,
+            Some(name) => registry.run_one(&name, &db).await,
+            None => registry.run_all(&db).await,
         };
 
         if let Err(e) = result {

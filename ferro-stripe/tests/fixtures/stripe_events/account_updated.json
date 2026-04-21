@@ -1,0 +1,19 @@
+{
+  "id": "evt_test_account_updated_001",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1700000005,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "account.updated",
+  "data": {
+    "object": {
+      "id": "acct_test_001",
+      "object": "account",
+      "charges_enabled": true,
+      "payouts_enabled": true,
+      "details_submitted": true
+    }
+  }
+}

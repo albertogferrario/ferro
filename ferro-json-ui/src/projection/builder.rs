@@ -303,6 +303,7 @@ fn emit_datatable_root(service: &ServiceDef) -> ElementBuilder {
         row_actions: None,
         empty_message: None,
         row_key: None,
+        row_href: None,
     })
     .expect("DataTableProps serialization cannot fail");
     element_with_props("DataTable", props)

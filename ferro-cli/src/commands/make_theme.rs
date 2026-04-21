@@ -1,4 +1,7 @@
 //! make:theme command — scaffold theme files for the Ferro theme system
+//!
+//! Scaffolds plain CSS variable declarations (`:root { ... }`) compatible
+//! with ferro-json-ui's `<style>` injection path.
 
 use console::style;
 use std::fs;
@@ -7,7 +10,7 @@ use std::path::Path;
 /// Generate theme scaffold files in `themes/{name}/`.
 ///
 /// Creates:
-/// - `themes/{name}/tokens.css` — Tailwind v4 `@theme` block with all 23 semantic token slots
+/// - `themes/{name}/tokens.css` — plain CSS `:root { ... }` block with all 23 semantic token slots
 /// - `themes/{name}/theme.json` — empty JSON object for partial intent template overrides
 ///
 /// Returns an error if `themes/{name}/` already exists.
@@ -25,7 +28,7 @@ pub fn make_theme_in_dir(name: &str, base: &Path) -> Result<(), Box<dyn std::err
 
     fs::create_dir_all(&theme_dir)?;
 
-    // Write tokens.css — Tailwind v4 @theme authoring format
+    // Write tokens.css — plain CSS variables, injectable into <style> without Tailwind processing
     let tokens_path = theme_dir.join("tokens.css");
     fs::write(&tokens_path, tokens_css_template())?;
 
@@ -69,9 +72,14 @@ pub fn run(name: &str) {
 }
 
 fn tokens_css_template() -> &'static str {
-    r#"@import "tailwindcss";
+    r#"/* Theme tokens — plain CSS variables.
+ *
+ * Injected into <style> by ferro-json-ui at render time.
+ * MUST use standard CSS (:root { ... }) — not Tailwind's @theme syntax,
+ * which only works under the Tailwind browser runtime (dev-only).
+ */
 
-@theme {
+:root {
   /* Surface tokens */
   --color-background: oklch(100% 0 0);
   --color-surface: oklch(97% 0 0);
@@ -107,7 +115,7 @@ fn tokens_css_template() -> &'static str {
 }
 
 @media (prefers-color-scheme: dark) {
-  @theme {
+  :root {
     --color-background: oklch(12% 0 0);
     --color-surface: oklch(17% 0 0);
     --color-card: oklch(20% 0 0);
@@ -206,17 +214,27 @@ mod tests {
     }
 
     #[test]
-    fn test_make_theme_tokens_css_has_theme_block() {
+    fn test_make_theme_tokens_css_has_root_block_and_no_tailwind_syntax() {
         let tmp = TempDir::new().unwrap();
         make_theme_in_dir("test", tmp.path()).unwrap();
 
         let css = read_file(&tmp.path().join("themes/test/tokens.css"));
 
-        assert!(css.contains("@import \"tailwindcss\";"), "missing @import");
-        assert!(css.contains("@theme {"), "missing @theme block");
+        // Must NOT contain Tailwind-CDN-only syntax.
+        assert!(
+            !css.contains("@import \"tailwindcss\""),
+            "scaffolded tokens.css must not contain @import \"tailwindcss\" — it is Tailwind-CDN-specific"
+        );
+        assert!(
+            !css.contains("@theme {"),
+            "scaffolded tokens.css must not contain @theme {{...}} — it is Tailwind-CDN-specific"
+        );
+
+        // Must contain plain CSS :root block with the primary token.
+        assert!(css.contains(":root {"), "missing :root {{...}} block");
         assert!(
             css.contains("--color-primary:"),
-            "missing --color-primary in @theme"
+            "missing --color-primary declaration"
         );
     }
 
@@ -234,6 +252,11 @@ mod tests {
         assert!(
             css.contains("oklch(12%"),
             "missing dark mode background value"
+        );
+        // Dark mode block must use :root, not @theme { ... }.
+        assert!(
+            !css.contains("@theme {"),
+            "dark-mode block must use :root {{...}}, not @theme {{...}}"
         );
     }
 

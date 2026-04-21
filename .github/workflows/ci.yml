@@ -89,3 +89,19 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.88.0
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-features
+
+  ferro-base-css-drift:
+    name: ferro-base.css drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate ferro-base.css via pinned Tailwind CLI
+        run: bash scripts/gen-ferro-base-css.sh
+      - name: Diff against committed ferro-base.css
+        run: |
+          if ! git diff --exit-code ferro-json-ui/assets/ferro-base.css; then
+            echo "::error::ferro-base.css is out of date."
+            echo "Run 'bash scripts/gen-ferro-base-css.sh' locally and commit the result."
+            exit 1
+          fi
+          echo "ferro-base.css is up to date."

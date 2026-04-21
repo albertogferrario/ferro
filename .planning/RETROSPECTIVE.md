@@ -2,6 +2,41 @@
 
 *A living document updated after each milestone. Lessons feed forward into future planning.*
 
+## Milestone: v11.7 — Tailwind Static CSS Pipeline
+
+**Shipped:** 2026-04-21
+**Phases:** 1 (143) | **Plans:** 4
+
+### What Was Built
+- Pre-built `ferro-base.css` (36 KB) embedded at compile time via `include_str!`, eliminating in-browser Tailwind JIT
+- `/_ferro/ferro-base.css` static route with zero-copy `Bytes::from_static` and 24h `Cache-Control`
+- CI drift check (`ferro-base-css-drift` job) enforcing committed CSS stays in sync with Tailwind CLI output
+- `JsonUiConfig::stylesheet_urls: Vec<String>` field + `tailwind_cdn` default flipped to `false`
+- Theme injection migrated from `<style type="text/tailwindcss">` magic MIME to plain `<style>` CSS variable overrides
+- `ferro make:theme` scaffolder updated to emit plain `:root { }` CSS (not `@theme { }`)
+
+### What Worked
+- Urgent insertion pattern (single-phase milestone) worked well — clear scope, fast execution, all 4 plans done in one day
+- XSS-safe href emission via `html_escape()` on `stylesheet_urls` was caught and added proactively during Plan 03
+- Exact-string-match route dispatch (`/_ferro/ferro-base.css`) makes path traversal structurally impossible without extra logic
+- Bootstrapping with a placeholder CSS (then replacing via CLI) unblocked the compile-time embedding before CLI install
+
+### What Was Inefficient
+- VERIFICATION.md not generated at milestone close — required a post-hoc gsd-verifier run; process gap, not substance gap
+- Roadmap tool couldn't parse phase 143's detail section format — `missing_phase_details: ["143"]` throughout
+
+### Patterns Established
+- `include_str!` for static assets: committed binary/text asset + `pub const` re-exported from `lib.rs`
+- Exact-string-match for framework-owned routes (no path parsing → no path traversal)
+- CI drift pattern: generate → diff → fail with actionable error message
+
+### Key Lessons
+1. `@tailwindcss/browser@4` is documented as dev-only — production CDN CSS must always be pre-built. Verify CDN script limitations against the vendor docs.
+2. A single urgent phase milestone (v11.7 = just Phase 143) is a valid pattern for production hotfixes; don't force it into a larger milestone.
+3. Run `/gsd-verify-work` before closing any phase, even when UAT passed manually — VERIFICATION.md is the formal artifact that audit checks.
+
+---
+
 ## Milestone: v10.0 — JSON-UI Visual Overhaul
 
 **Shipped:** 2026-03-26

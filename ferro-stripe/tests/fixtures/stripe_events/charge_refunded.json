@@ -1,0 +1,35 @@
+{
+  "id": "evt_test_charge_refunded_001",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1700000003,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "charge.refunded",
+  "data": {
+    "object": {
+      "id": "ch_test_refunded_001",
+      "object": "charge",
+      "amount": 2000,
+      "amount_captured": 2000,
+      "amount_refunded": 2000,
+      "currency": "usd",
+      "livemode": false,
+      "metadata": { "order_id": "order_ref" },
+      "billing_details": {
+        "address": { "city": null, "country": null, "line1": null, "line2": null, "postal_code": null, "state": null },
+        "email": null,
+        "name": null,
+        "phone": null
+      },
+      "captured": true,
+      "created": 1700000003,
+      "disputed": false,
+      "paid": true,
+      "payment_intent": "pi_test_ref_001",
+      "refunded": true,
+      "status": "succeeded"
+    }
+  }
+}

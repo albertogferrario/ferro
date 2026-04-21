@@ -16,7 +16,7 @@ use super::store::{SessionData, SessionStore};
 // Task-local session context using tokio's task_local macro
 // This is async-safe unlike thread_local which can lose data across await points
 tokio::task_local! {
-    static SESSION_CONTEXT: Arc<RwLock<Option<SessionData>>>;
+    pub(crate) static SESSION_CONTEXT: Arc<RwLock<Option<SessionData>>>;
 }
 
 /// Get the current session (read-only)

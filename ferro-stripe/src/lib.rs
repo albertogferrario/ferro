@@ -1,48 +1,69 @@
 //! # ferro-stripe
 //!
-//! Stripe payment integration for the Ferro framework.
-//!
-//! Provides two billing dimensions:
-//! - Platform subscriptions: the Ferro application charges tenants for plan tiers (Free/Pro/Enterprise)
-//! - Stripe Connect: tenants collect one-time payments from their end users via their own connected account
+//! Stripe payment integration for the Ferro framework, organized along
+//! the capability axis: [`checkout`], [`refund`], [`account`],
+//! [`idempotency`], [`webhook`].
 //!
 //! ## Quick Start
 //!
 //! ```rust,ignore
 //! use ferro_stripe::{Stripe, StripeConfig};
 //!
-//! // Initialize once at app startup
+//! // Initialize once at app startup.
 //! let config = StripeConfig::from_env().expect("Stripe config not set");
 //! Stripe::init(config);
-//!
-//! // Check subscription state in handlers
-//! let tenant = current_tenant()?;
-//! if let Some(sub) = &tenant.subscription {
-//!     if sub.subscribed() {
-//!         // grant access
-//!     }
-//! }
 //! ```
+//!
+//! ## Creating a Checkout session
+//!
+//! ```rust,ignore
+//! use ferro_stripe::{CheckoutBuilder, Mode, LineItem};
+//!
+//! let intent = CheckoutBuilder::new(Mode::Payment)
+//!     .line_item(LineItem {
+//!         name: "Widget".into(),
+//!         description: None,
+//!         unit_amount_cents: 1000,
+//!         quantity: 1,
+//!         currency: "usd".into(),
+//!     })
+//!     .success_url("https://example.com/ok")
+//!     .cancel_url("https://example.com/cancel")
+//!     .idempotency_key("order-42")
+//!     .create()
+//!     .await?;
+//! ```
+//!
+//! ## Webhook idempotency
+//!
+//! Implement [`ProcessedEventLog`] against your database (see the module
+//! docs on [`idempotency`] for the recommended SQL schema). Use
+//! [`MemoryProcessedLog`] in tests and single-process development only.
 
+pub mod account;
+pub mod checkout;
 pub mod client;
 pub mod config;
-pub mod connect;
 pub mod error;
-pub mod subscription;
+pub mod idempotency;
+pub mod refund;
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod testing;
 pub mod webhook;
 
+pub use account::{billing_portal_url, create_account, create_link, retrieve_account};
+pub use checkout::{CheckoutBuilder, CheckoutIntent, LineItem, Mode};
 pub use client::Stripe;
 pub use config::StripeConfig;
-pub use connect::checkout::{create_account_link, create_connect_checkout};
-pub use connect::ConnectAccount;
 pub use error::Error;
-pub use subscription::checkout::{billing_portal_url, create_subscription_checkout};
-pub use subscription::sync::{plan_from_subscription, subscription_info_from_stripe};
-pub use subscription::{plan_satisfies, SubscriptionInfo, SubscriptionStatus};
+pub use idempotency::{MemoryProcessedLog, ProcessedEventLog};
+pub use webhook::events::StripeEvent;
 pub use webhook::events::{
-    ProcessStripeWebhook, StripeCheckoutCompleted, StripeConnectPaymentSucceeded,
-    StripeInvoicePaid, StripeSubscriptionDeleted, StripeSubscriptionUpdated,
+    StripeChargeDisputeCreated, StripeChargeRefunded, StripeCheckoutCompleted,
+    StripeCheckoutExpired, StripeConnectAccountUpdated, StripeConnectPaymentSucceeded,
+    StripeInvoicePaid, StripePaymentIntentFailed, StripeSubscriptionDeleted,
+    StripeSubscriptionUpdated,
 };
-pub use webhook::{is_processed, verify_webhook};
+pub use webhook::queue::ProcessStripeWebhook;
+pub use webhook::sync::SyncDispatcher;
+pub use webhook::verify::verify_webhook;

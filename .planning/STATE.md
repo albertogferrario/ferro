@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: Phase 118 context gathered
-last_updated: "2026-04-19T00:00:39.340Z"
-last_activity: 2026-04-19
+milestone: v11.7
+milestone_name: Tailwind Static CSS Pipeline
+status: milestone_complete
+stopped_at: v11.7 archived — ready for /gsd-new-milestone
+last_updated: "2026-04-21T00:00:00.000Z"
+last_activity: 2026-04-21
 progress:
-  total_phases: 142
-  completed_phases: 129
-  total_plans: 318
-  completed_plans: 307
-  percent: 97
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 118 — server-side-expressions
+**Current focus:** v11.7 complete — next: /gsd-complete-milestone v11.7
 
 ## Current Position
 
-Phase: 122
+Phase: 143
 Plan: Not started
 Workspace version: 0.2.0
-Status: Executing Phase 118
-Last activity: 2026-04-19
-Current milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
+Status: Ready to execute
+Last activity: 2026-04-20
+Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
-Progress: [█░░░░░░░░░] 14%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 12
+- Total plans completed: 17
 - Average duration: —
 - Total execution time: —
 
@@ -46,9 +46,9 @@ Progress: [█░░░░░░░░░] 14%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 117 | 7 | - | - |
-| 117.1 | 3 | - | - |
-| 118 | 2 | - | - |
+| 140 | 5 | - | - |
+| 141 | 4 | - | - |
+| 143 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
@@ -101,9 +101,7 @@ Progress: [█░░░░░░░░░] 14%
 | Phase 134-relocate-renderers-to-output-crates P02 | 4min | 2 tasks | 10 files |
 | Phase 135-servicedef-derivation-bridge P01 | 8min | 2 tasks | 3 files |
 | Phase 135-servicedef-derivation-bridge P02 | 6min | 2 tasks | 3 files |
-| Phase 117-catalog-and-json-schema P03 | 8min | 1 tasks | 1 files |
-| Phase 117-catalog-and-json-schema P04 | 5min | 1 tasks | 1 files |
-| Phase 117-catalog-and-json-schema P05 | 8min | 1 tasks | 1 files |
+| Phase 141 P02 | 15min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -124,7 +122,6 @@ Recent decisions affecting current work:
 - [112-01] Working with Agents guide covers ferro-mcp only — ferro-api-mcp remains on its dedicated api-mcp.md page
 - [112-01] Agent-to-CLI workflow documented within working-with-agents.md as a section, not a separate page
 - [112-01] MCP config command is `ferro mcp` — not a standalone ferro-mcp binary
-- [117-05] component_schema tests use build_builtins_only() — global registry is polluted by plugin rejection test; pattern consistent with Plans 03/04
 
 ### Pending Todos
 
@@ -145,11 +142,11 @@ Recent decisions affecting current work:
 - Phase 126 added (2026-04-08): Deploy experience feedback triage — analysis-only phase pointing the next agent at `phases/126-deploy-experience-feedback/REPORT.md` (field notes from first end-to-end gestiscilo deploy: 2 fixed bugs already shipped in 0.2.1, 9 sharp edges still present, 6 DX improvements). Agent must produce `PROPOSAL.md` classifying every item before any new ferro work is scoped.
 - Phase 131 added (2026-04-09): Scaffolder multi-bin, copy_dirs, runtime_apt, DO app.yaml robustness, drift detection — promoted from `.planning/backlog/gestiscilo-scaffolder-multibin-gap.md` (gestiscilo-it Phase 75 field test gap). CLI bug recurred again (returned phase 1); manually renumbered.
 - Phase 130 added (2026-04-09): Invert dep convention (simple) — retire `Cargo.docker.toml` and `cargo_docker_toml_staleness` doctor check; Docker builds use `Cargo.toml` directly; local ferro dev via uncommitted `[patch.crates-io]`. Source: `.planning/proposals/dep-override-convention.md` (simplified per user direction — no new CLI verbs, no new doctor check). CLI bug recurred: `gsd-tools phase add` returned phase 1 instead of 130; manually renumbered.
-- Phase 136 added: implement workflow for executing a full roadmap in auto with gsd
+- Phase 143 inserted (2026-04-20): Tailwind static CSS pipeline (URGENT) — opened new milestone v11.7. Source: gestiscilo-it production field report — `@tailwindcss/browser@4` runtime JIT fails on Safari, renders login page as unstyled HTML. Replace with pre-built static CSS. Manually scaffolded (gsd-tools phase insert rejected because STATE.md milestone field still says v11.0 but v11.6 and earlier have shipped — STATE drift is a separate cleanup). Context: `.planning/phases/143-tailwind-static-css-pipeline/143-CONTEXT.md`.
 
 ## Session Continuity
 
-Last session: 2026-04-18T22:09:16.775Z
-Stopped at: Phase 118 context gathered
-Resume file: .planning/phases/118-server-side-expressions/118-CONTEXT.md
-Next action: Execute Phase 117 Plan 06 — implement Catalog::prompt() and replace COMPONENT_CATALOG const across ferro-mcp and ferro-cli.
+Last session: 2026-04-21
+Stopped at: Phase 143 complete, v11.7 milestone done
+Resume file: None
+Next action: `/gsd-complete-milestone v11.7`

@@ -43,7 +43,7 @@ ferro-inertia = { path = "../ferro-inertia", version = "0.2", optional = true }
 ferro-json-ui = { path = "../ferro-json-ui", version = "0.2", optional = true }
 ferro-projections = { path = "../ferro-projections", version = "0.2", optional = true }
 ferro-ai = { path = "../ferro-ai", version = "0.2", optional = true }
-ferro-stripe = { path = "../ferro-stripe", version = "0.2", optional = true }
+ferro-stripe = { path = "../ferro-stripe", version = "0.5", optional = true }
 ferro-theme = { path = "../ferro-theme", version = "0.2", optional = true }
 ferro-whatsapp = { path = "../ferro-whatsapp", version = "0.2", optional = true }
 dotenvy = "0.15"

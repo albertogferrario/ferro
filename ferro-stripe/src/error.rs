@@ -20,6 +20,10 @@ pub enum Error {
     /// Event was already processed (idempotency guard).
     #[error("stripe event already processed: {0}")]
     EventAlreadyProcessed(String),
+
+    /// Idempotency key not set on CheckoutBuilder before calling create().
+    #[error("idempotency key required: call .idempotency_key() before .create()")]
+    MissingIdempotencyKey,
 }
 
 impl From<stripe::StripeError> for Error {

@@ -27,6 +27,7 @@
 //! ```
 
 pub mod action;
+pub mod assets;
 pub mod catalog;
 pub mod component;
 pub mod config;
@@ -43,6 +44,7 @@ pub mod visibility;
 pub(crate) mod runtime;
 
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
+pub use assets::FERRO_BASE_CSS;
 pub use component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType,

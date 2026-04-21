@@ -1,7 +1,7 @@
 //! RequiresPlan middleware for plan-based route access control.
 //!
 //! Blocks requests when the current tenant's subscription plan does not satisfy
-//! the required plan tier. Uses [`ferro_stripe::plan_satisfies`] for tier comparison
+//! the required plan tier. Uses [`crate::tenant::subscription::plan_satisfies`] for tier comparison
 //! so higher tiers always satisfy lower requirements (enterprise > pro > free).
 //!
 //! # Example
@@ -74,7 +74,7 @@ impl Middleware for RequiresPlan {
             .status(403));
         }
 
-        if !ferro_stripe::plan_satisfies(&subscription.plan, self.required_plan) {
+        if !crate::tenant::subscription::plan_satisfies(&subscription.plan, self.required_plan) {
             return Err(HttpResponse::json(json!({
                 "error": "Plan does not meet requirement",
                 "required_plan": self.required_plan,
@@ -91,8 +91,8 @@ mod tests {
     use super::*;
     use crate::http::HttpResponse;
     use crate::tenant::context::{tenant_scope, with_tenant_scope};
+    use crate::tenant::subscription::{SubscriptionInfo, SubscriptionStatus};
     use crate::tenant::TenantContext;
-    use ferro_stripe::{SubscriptionInfo, SubscriptionStatus};
     use hyper_util::rt::TokioIo;
     use std::sync::Arc;
     use std::sync::Mutex;

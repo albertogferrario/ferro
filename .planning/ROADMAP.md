@@ -32,10 +32,13 @@
 - ✅ [**v11.1 Template Renderer**](milestones/v11.1-ROADMAP.md) — Phase 114.1 (shipped 2026-04-05)
 - ✅ **v11.2 Deploy & Scaffolder Hardening** — Phases 122-131 (shipped 2026-04-14)
 - ✅ **v11.3 S3 Storage Driver** — Phase 132 (shipped 2026-04-14)
-- 🚧 **v11.5 Projection Architecture Prep** — Phases 133-135. Generalize Renderer trait, relocate renderers to output crates, break ferro-projections → ferro-theme dependency. Prerequisite for v12.0 and v14.0.
+- ✅ **v11.5 Projection Architecture Prep** — Phases 133-135 (shipped 2026-04-17). Generalize Renderer trait, relocate renderers to output crates, ServiceDef derivation bridge.
+- ✅ **v11.6 ferro-stripe Capability Refactor** — Phases 140-142. Reshape `ferro-stripe` from Stripe-product axis (`connect/`, `subscription/`) to capability axis (`checkout`, `refund`, `account`, `webhook`); land `CheckoutBuilder` / `CheckoutIntent`, `ProcessedEventLog` trait, fully-typed events (no `event_json` smuggling), `SyncDispatcher` as the sole handler registry for both sync and queue dispatch paths (Stripe events do not implement `ferro_events::Event`), queue path opt-in for eventual-consistency events. Source: gestiscilo-it v6.3 field test. [Design](research/v11.6-FERRO-STRIPE-REFACTOR.md)
+- ✅ **v11.7 Tailwind Static CSS Pipeline** — Phase 143 (shipped 2026-04-21). Pre-built `ferro-base.css` embedded at compile time, served from `/_ferro/ferro-base.css`; `tailwind_cdn` default flipped to `false`; `stylesheet_urls` added; theme injection migrated to plain `<style>`. Full details archived in [milestones/v11.7-ROADMAP.md](milestones/v11.7-ROADMAP.md).
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
+- 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
-- 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation) and v11.5 (generalized Renderer trait).
+- 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
 
 ---
 
@@ -48,6 +51,135 @@ Phases 108–114 — full details archived in [milestones/v11.0-ROADMAP.md](mile
 ### ✅ v11.1 Template Renderer (Shipped 2026-04-05)
 
 Phase 114.1 — full details archived in [milestones/v11.1-ROADMAP.md](milestones/v11.1-ROADMAP.md).
+
+---
+
+### ✅ v11.5 Projection Architecture Prep (Shipped 2026-04-17)
+
+Phases 133–135:
+- **133**: Generalized `Renderer` trait with associated `Output` and `Context` types (modality-agnostic)
+- **134**: Relocated `JsonUiRenderer` from ferro-projections to ferro-json-ui; broke ferro-projections → ferro-theme dependency
+- **135**: `ServiceDef::from_model()` derivation bridge + `generate_projection` MCP tool
+
+---
+
+### ✅ v11.6 ferro-stripe Capability Refactor (Phases 140-142, shipped 2026-04-20)
+
+**Milestone Goal:** Reshape `ferro-stripe` along the capability axis and elevate protocol-level concerns (idempotency, typed events, signature verification, sync vs eventual-consistency dispatch) into the framework. Today's ferro-stripe splits its modules by Stripe product (`connect/`, `subscription/`) rather than capability, defaults all webhook handling to queue-job dispatch (wrong for payment-correctness events), stubs idempotency with a TODO, and ships a single-line-item `create_connect_checkout` helper too thin to replace hand-rolled `CreateCheckoutSession` usage. Pre-1.0 is the one chance to fix this before consumer assumptions ossify.
+
+**Source:** gestiscilo-it v6.3 Online Checkout & Payments field test. Ferro-side design lives in `.planning/research/v11.6-FERRO-STRIPE-REFACTOR.md` and is self-sufficient. Full cross-repo context (app-side state machine, reservation TTL, refund UX) lives in the gestiscilo repo at `.planning/research/v6.3-ONLINE-CHECKOUT.md` — not linked here because cross-repo relative paths assume a sibling checkout layout.
+
+**What changes:**
+- Module layout: `checkout.rs` / `refund.rs` / `account.rs` / `webhook/{verify,events,sync,queue}` / `idempotency.rs` / `client.rs`. `connect::*` and `subscription::*` removed.
+- `CheckoutBuilder` → `CheckoutIntent` primitive (typed return carrying `session_id`, `url`, `expires_at`, `idempotency_key`). Replaces `create_connect_checkout` / `create_subscription_checkout`.
+- `ProcessedEventLog` trait + `MemoryProcessedLog` impl; recommended SQL schema documented. Apps implement against their DB. Replaces the stubbed `is_processed` free fn.
+- Typed events drop `event_json: String` smuggling; every event carries fully-parsed fields.
+- **Stripe event structs do not implement `ferro_events::Event`.** `SyncDispatcher` is the sole handler registry. `ProcessStripeWebhook` (queue path) holds `Arc<SyncDispatcher>` and delegates to it — both dispatch paths share one handler registration point, eliminating double-fire risk.
+- `SyncDispatcher::on::<E, _>(handler)` registers per-event-type handlers; `dispatch` returns `Result` so webhook endpoints return 500 on handler error and Stripe retries. Default path for payment-correctness events.
+- Existing queue-based `ProcessStripeWebhook` relocates to `webhook::queue` — opt-in for eventual-consistency events (subscription drift, analytics). Accepts `Arc<SyncDispatcher>`.
+- `refund::create` and `account::retrieve` added (missing today).
+- `client.rs` adds `Stripe::with(key)` scoped override alongside the static default for per-tenant key scenarios.
+- ferro-mcp `stripe_webhook_events` and `stripe_config_status` updated for capability-axis structure.
+
+**What stays:**
+- `Stripe::init` static default facade.
+- `verify_webhook` signature function.
+- `ferro-queue` dependency (queue path remains opt-in).
+- Connect Standard destination-charge pattern.
+
+**Breaking-change ledger** — see design doc §4.6. Versions: ferro-stripe 0.3.x → 0.4 → 0.5 across phases 140-141; Phase 142 is ferro-mcp only (no ferro-stripe release).
+
+**Key risks:**
+1. **Idempotency semantics** (MEDIUM): must guarantee exactly-once application of state effects even under concurrent dispatchers. Solved by DB-level unique constraint on the `event_id` column inside the app-implemented log, plus handler-side state-conflict errors.
+2. **Event typing maintenance** (LOW): each new Stripe event type needs a typed struct + parser + dispatcher wiring. Documented in module comments; minor ongoing work.
+3. **Consumer migration** (LOW): the current `ferro-stripe` consumer is gestiscilo; no external consumers pre-1.0. Breaking changes are absorbed in-workspace.
+
+#### Phases
+
+- [x] **Phase 140: Core reshape** — module tree + `CheckoutBuilder`/`CheckoutIntent` + `ProcessedEventLog`/`MemoryProcessedLog` + remove `connect::*`/`subscription::*` + `Stripe::with(key)`. `ferro-stripe 0.4.0`. (completed 2026-04-20)
+- [x] **Phase 141: Protocol uplift** — typed events (drop `event_json`), `SyncDispatcher` as sole handler registry, queue path opt-in with `Arc<SyncDispatcher>`, all 5 new event types, golden-JSON fixtures. `ferro-stripe 0.5.0`. (completed 2026-04-20)
+- [ ] **Phase 142: ferro-mcp parity** — update `stripe_webhook_events` and `stripe_config_status` for capability-axis module tree and `SyncDispatcher` handler discovery.
+
+#### Phase Details
+
+### Phase 140: Core reshape
+
+**Goal:** Replace the product-axis module tree with the capability-axis tree and land three new API surfaces in one coherent release: `CheckoutBuilder`/`CheckoutIntent`, `ProcessedEventLog`/`MemoryProcessedLog`, and `Stripe::with(key)`. Remove all product-axis modules and the stubbed `is_processed` free fn. This is the meaningful unit — neither `CheckoutBuilder` nor `ProcessedEventLog` are useful without the module layout that contextualises them.
+
+**Depends on:** nothing (first phase of milestone).
+
+**Success Criteria:**
+  1. Module tree matches design §3.1: `checkout.rs`, `refund.rs`, `account.rs`, `webhook/{verify,events,sync,queue}`, `idempotency.rs`, `client.rs`. `connect/` and `subscription/` directories deleted.
+  2. `idempotency.rs` declares `#[async_trait] pub trait ProcessedEventLog { async fn try_mark_processed(&self, event_id: &str) -> Result<bool, Error>; }`
+  3. `MemoryProcessedLog` impl (DashMap-backed) returns `Ok(true)` on first insert, `Ok(false)` on subsequent calls with the same `event_id`
+  4. Module doc comment ships the recommended SQL schema: `CREATE TABLE stripe_processed_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`
+  5. `CheckoutBuilder::new(Mode::Payment|Subscription)` with combinators `.line_item`, `.success_url`, `.cancel_url`, `.metadata`, `.customer_email`, `.customer_email_opt`, `.destination(account_id, fee_cents)`, `.idempotency_key` (required before `create()`)
+  6. `CheckoutBuilder::create()` returns `CheckoutIntent { session_id, url, expires_at, idempotency_key }`; returns `Err(Error::MissingIdempotencyKey)` when key not set
+  7. `refund.rs` ships `create(charge_id, amount_cents, idempotency_key, reason) -> Refund` and `retrieve(refund_id) -> Refund`
+  8. `account.rs` consolidates `create_account`, `create_link`, `retrieve_account` (new), `billing_portal_url` (moved from `subscription::checkout`)
+  9. `client.rs::Stripe::with(&str) -> Client` scoped override alongside the static default
+  10. `webhook::is_processed` free fn removed; no callers remain
+  11. All pub re-exports in `lib.rs` updated; no dead imports
+  12. Unit tests: `MemoryProcessedLog` true-then-false contract; concurrent `try_mark_processed` from 2 tokio tasks applies once
+  13. `ferro-stripe 0.4.0` released; `cargo test --all-features` + `cargo clippy --all -- -D warnings` pass
+  14. CHANGELOG entry documents every breaking change and migration path
+
+**Plans:** 5/5 plans complete
+
+- [x] 140-01-PLAN.md — Foundation: dashmap dep, Error::MissingIdempotencyKey, Stripe::with(key) (Wave 1)
+- [x] 140-02-PLAN.md — idempotency.rs: ProcessedEventLog trait + MemoryProcessedLog + tests (Wave 1)
+- [x] 140-03-PLAN.md — New capability files: checkout.rs (CheckoutBuilder/CheckoutIntent), refund.rs, account.rs (Wave 2)
+- [x] 140-04-PLAN.md — Module restructure: delete connect/, subscription/, handler.rs; extract webhook/verify.rs; add sync/queue stubs; rewrite lib.rs (Wave 3)
+- [x] 140-05-PLAN.md — Framework consumer migration + CHANGELOG + ferro-stripe 0.4.0 version bump (Wave 4)
+
+### Phase 141: Protocol uplift
+
+**Goal:** Drop `event_json: String` from all typed event structs and ship `SyncDispatcher` as the default webhook path. Stripe event structs do not implement `ferro_events::Event` — `SyncDispatcher` is the sole handler registry for both dispatch paths. `ProcessStripeWebhook` (queue path) accepts `Arc<SyncDispatcher>` and delegates to it; consumers register handlers once and both paths share that registry. Ship all five new event types in the same release — they follow the identical pattern, and shipping them alongside the framework that handles them is the natural unit.
+
+**Depends on:** Phase 140 (module layout in place).
+
+**Success Criteria:**
+  1. All existing event structs (`StripeCheckoutCompleted`, `StripeSubscriptionUpdated`, `StripeSubscriptionDeleted`, `StripeInvoicePaid`, `StripeConnectPaymentSucceeded`) carry fully-parsed fields; `event_json` field removed; none implement `ferro_events::Event`
+  2. `StripeEvent` marker trait: `pub trait StripeEvent: Send + Sync + 'static { fn from_raw(event: &stripe::Event) -> Option<Self> where Self: Sized; }`
+  3. `SyncDispatcher` in `webhook/sync.rs` with `new() -> Self`, `on<E: StripeEvent, H, Fut>(handler) -> Self`, `async dispatch(event: stripe::Event) -> Result<(), Error>`
+  4. `dispatch` returns `Err` when any handler returns `Err`; unknown event types are logged and return `Ok(())` (no-op)
+  5. `ProcessStripeWebhook` moves to `webhook/queue.rs`; accepts `Arc<SyncDispatcher>`; calls `dispatcher.dispatch(event)` — no separate handler registration on the queue path
+  6. Doc comments guide consumers: sync path for payment-correctness events, queue path for eventual-consistency events
+  7. `StripeCheckoutExpired` (event `checkout.session.expired`) carries `event_id`, `session_id`, `metadata`
+  8. `StripePaymentIntentFailed` (event `payment_intent.payment_failed`) carries `event_id`, `payment_intent_id`, `session_id` (Option), `failure_code`, `failure_message`, `metadata`
+  9. `StripeChargeRefunded` (event `charge.refunded`) carries `event_id`, `charge_id`, `payment_intent_id`, `amount_refunded_cents`, `metadata`
+  10. `StripeChargeDisputeCreated` (event `charge.dispute.created`) carries `event_id`, `charge_id`, `payment_intent_id`, `dispute_reason`, `amount_cents`
+  11. `StripeConnectAccountUpdated` (event `account.updated`) carries `event_id`, `account_id`, `charges_enabled`, `payouts_enabled`, `details_submitted`
+  12. Golden-JSON fixtures per event type in `tests/fixtures/stripe_events/`; parser-contract test asserts field-by-field match
+  13. Unit tests: `Err` handler bubbles up; `Ok` path; unknown event no-op; dispatcher thread-safe across `Arc`
+  14. `ferro-stripe 0.5.0` released; workspace CI green
+
+**Plans**: TBD
+
+### Phase 142: ferro-mcp parity
+
+**Goal:** Update ferro-mcp introspection tools to reflect the capability-axis module tree and `SyncDispatcher` handler discovery. After Phase 141, `stripe_webhook_events` scans for the wrong patterns (`ferro_events::Event` listener impls that no longer exist on Stripe events) and `stripe_config_status` checks a scaffold layout that no longer matches the module structure. Since ferro-mcp is the surface agents read to author applications, a stale introspection layer contradicts the framework's core proposition.
+
+**Depends on:** Phase 141 (final ferro-stripe shape in place).
+
+**Success Criteria:**
+  1. `stripe_webhook_events` discovers `SyncDispatcher::on::<E, _>(handler)` registrations in app source, not `ferro_events` listener impls
+  2. `stripe_config_status` reports scaffold structure matching the capability-axis tree (`checkout.rs`, `refund.rs`, `account.rs`, `webhook/`)
+  3. `stripe_subscription_info` tool updated or retired if the subscription module no longer warrants a distinct introspection surface
+  4. MCP tool descriptions updated to match the `SyncDispatcher` dispatch model
+  5. `ferro mcp` JSON schema regenerated for any changed tool signatures
+  6. Workspace CI green; `ferro-mcp` version bumped
+
+**Plans:** 2 plans
+
+- [x] 142-01-PLAN.md — Update ferro-mcp/src/tools/stripe.rs: WebhookEventInfo + StripeConfigStatus structs, walkdir-based scan, dual-regex (closure + turbofish), capability-axis fields, tests
+- [x] 142-02-PLAN.md — Update ferro-mcp/src/service.rs MCP tool descriptions for the three Stripe tools; bump workspace version 0.2.2 → 0.2.3
+
+---
+
+### ✅ v11.7 Tailwind Static CSS Pipeline (Phase 143 — Shipped 2026-04-21)
+
+Phase 143 — full details archived in [milestones/v11.7-ROADMAP.md](milestones/v11.7-ROADMAP.md).
 
 ---
 
@@ -101,7 +233,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 - [ ] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format with JSON Schema as structured output constraint
 - [ ] **Phase 121: Documentation & Field Test** — Update all JSON-UI docs, convert one gestiscilo page as proof of concept
 
-## Phase Details
+#### Phase Details
 
 ### Phase 115: Spec v2 Data Structures
 **Goal**: Replace v1 types with the v2 spec format — flat element map, props separation, manual `JsonSchema` impl for Component enum, clean break
@@ -241,7 +373,7 @@ Plans:
   4. One gestiscilo dashboard page (e.g., pagamenti) converted from Rust component tree to JSON spec file — handler reduced to data-only
   5. Converted page renders identically to the Rust-built version
 
-## Progress
+#### Progress
 
 **Execution Order:**
 Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 117) → 119 → 120 → 121
@@ -258,6 +390,76 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 121. Documentation & Field Test | 0/? | Not started | - |
 
 **v12.0 scope is held firm.** No expansion beyond the 8 phases above. The projection / intent abstraction already exists in v9.0 ferro-projections; v12.0 refines the rendering target.
+
+---
+
+### 📋 v12.1 Form Validation DX (Planned)
+
+**Milestone Goal:** Eliminate form validation boilerplate across Ferro apps. Currently every controller manually validates fields, builds redirect URLs with query params, maps error codes to user-facing strings, and handles DB constraint violations as raw 500 errors. This milestone adds a `Validator` struct, old input preservation via flash, and DB constraint error mapping — reducing ~50 lines of per-form boilerplate to ~5.
+
+**Source:** gestiscilo-it field test (2026-04-18). Uniqueness constraint violations on page slug_path surfaced as raw SQL errors on a separate page instead of inline form errors.
+
+**What changes:**
+- `Validator` struct with declarative rules (`required`, `max_len`, `custom`, `unique`)
+- Old input flash: on validation failure, all submitted values are flashed into the session
+- `req.old("field")` and `req.validation_error("field")` convenience methods on `Request`
+- `errors.redirect_back()` helper that flashes errors + old input and redirects to `Referer`
+- DB constraint middleware that catches `UNIQUE constraint failed` / `duplicate key value` and converts to validation-style redirect-back
+
+**What stays:**
+- Session flash mechanism (`session.flash()` / `session.get_flash()`) — already exists, used as foundation
+- Manual validation remains possible for cases where the declarative API doesn't fit
+- Query-param error passing still works — `Validator` is additive, not a breaking change
+
+#### Phases
+
+- [ ] **Phase 137: Validator & Old Input** — `Validator` struct with sync rules (`required`, `max_len`, `min_len`, `regex`, `in_list`, `custom`), old input flash on failure, `req.old()` and `req.validation_error()` methods, `redirect_back()` with flashed state
+- [ ] **Phase 138: Async Validation Rules** — `unique` and other DB-backed rules via `validate_async()`, SeaORM integration for uniqueness checks with exclude-self support (for updates)
+- [ ] **Phase 139: DB Constraint Error Mapping** — Opt-in middleware that catches SQLite/Postgres constraint violation errors from SeaORM and converts them to validation-style redirect-back responses with field-level errors
+
+#### Phase Details
+
+### Phase 137: Validator & Old Input
+**Goal**: Declarative form validation with automatic old input preservation and inline error display
+**Depends on**: Nothing (uses existing session flash)
+**Success Criteria** (what must be TRUE):
+  1. `Validator::new().required("name", "Required").max_len("name", 200)` builds a rule set
+  2. `validator.validate(&HashMap<String, String>)` returns `Result<(), ValidationErrors>`
+  3. `ValidationErrors::redirect_back(&req)` flashes errors and old input into session, returns 302 to `Referer` (or explicit fallback URL)
+  4. `req.old("field_name")` returns `Option<String>` from flash — previous submission's value
+  5. `req.validation_error("field_name")` returns `Option<String>` — the error message for that field
+  6. Flash data is consumed on read (one-request lifetime, per existing flash behavior)
+  7. Custom rule: `.custom("field", |v| predicate, "message")` for app-specific validation
+  8. All rules are sync — no DB access in this phase
+
+### Phase 138: Async Validation Rules
+**Goal**: DB-backed validation rules, primarily `unique` for constraint pre-checking
+**Depends on**: Phase 137
+**Success Criteria** (what must be TRUE):
+  1. `validator.validate_async(&data).await` runs both sync and async rules
+  2. `.unique::<Entity>(field, filter, "message")` checks uniqueness via SeaORM query
+  3. `.unique_except::<Entity>(field, exclude_id, filter, "message")` excludes current record (for updates)
+  4. Async rules run after sync rules pass — no DB queries if basic validation fails
+  5. Custom async rule: `.custom_async("field", |v| async_predicate, "message")`
+
+### Phase 139: DB Constraint Error Mapping
+**Goal**: Catch DB constraint violations and convert to user-friendly redirect-back responses
+**Depends on**: Phase 137
+**Success Criteria** (what must be TRUE):
+  1. `ConstraintErrorMiddleware` catches `UNIQUE constraint failed` (SQLite) and `duplicate key value violates unique constraint` (Postgres) from SeaORM errors
+  2. Extracts the column name from the error message and maps it to a field-level error
+  3. Redirects back with the error flashed, same as `ValidationErrors::redirect_back()`
+  4. Middleware is opt-in — must be explicitly added to route groups
+  5. Does not swallow non-constraint DB errors — only handles uniqueness violations
+  6. Acts as a safety net for TOCTOU races after Phase 138's pre-check
+
+#### Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 137. Validator & Old Input | 0/? | Not started | - |
+| 138. Async Validation Rules | 0/? | Not started | - |
+| 139. DB Constraint Error Mapping | 0/? | Not started | - |
 
 ---
 
@@ -1022,6 +1224,29 @@ Plans:
 Plans:
 - [x] 136-01-PLAN.md — Create gsd-roadmap.yml workflow: phase loop, claude CLI per phase, failure issues
 
+### Phase 141: protocol-uplift
+
+**Goal:** Drop `event_json: String` from the five existing typed event structs and remove their `ferro_events::Event` impls. Ship `SyncDispatcher` in `webhook/sync.rs` as the sole handler registry. Relocate `ProcessStripeWebhook` to `webhook/queue.rs` wired to `Arc<SyncDispatcher>`. Add five new event types (`StripeCheckoutExpired`, `StripePaymentIntentFailed`, `StripeChargeRefunded`, `StripeChargeDisputeCreated`, `StripeConnectAccountUpdated`) with fully-parsed fields via the `StripeEvent::from_raw` trait method. Provide golden-JSON fixtures with parser-contract tests. Release `ferro-stripe 0.5.0`.
+**Requirements**: SC-1..SC-14 (Phase 141 success criteria in milestone §"Phase 141: Protocol uplift")
+**Depends on:** Phase 140
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 141-01-PLAN.md — Foundation: Cargo.toml deps + StripeEvent trait + 10 reshaped/new event structs + relocate signed_webhook_payload (Wave 1)
+- [x] 141-02-PLAN.md — SyncDispatcher in webhook/sync.rs + integration tests (tests/dispatcher.rs) (Wave 2)
+- [x] 141-03-PLAN.md — 10 golden-JSON fixtures + parser-contract integration tests (Wave 2)
+- [x] 141-04-PLAN.md — Relocate ProcessStripeWebhook to webhook/queue.rs + framework re-exports + full workspace gate (Wave 3)
+
+### Phase 142: protocol-uplift
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 141
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 142 to break down)
+
 ---
 
 ## Progress Summary
@@ -1055,7 +1280,9 @@ Plans:
 | v11.1 Template Renderer | 114.1 | 1 | ✅ Shipped | 2026-04-05 |
 | v11.2 Deploy & Scaffolder Hardening | 122-131 | 49 | ✅ Shipped | 2026-04-14 |
 | v11.3 S3 Storage Driver | 132 | 1 | ✅ Shipped | 2026-04-14 |
-| v11.5 Projection Architecture Prep | 133-135 | ? | 📋 Planned | - |
+| v11.5 Projection Architecture Prep | 133-135 | 4 | ✅ Shipped | 2026-04-17 |
+| v11.6 ferro-stripe Capability Refactor | 140-142 | 11 | ✅ Shipped | 2026-04-20 |
+| v11.7 Tailwind Static CSS Pipeline | 143 | 4 | ✅ Shipped | 2026-04-21 |
 | v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121 | ? | 📋 Planned | - |
 
-**Total: 25 milestones shipped, 255 plans complete.**
+**Total: 28 milestones shipped, 270 plans complete.**

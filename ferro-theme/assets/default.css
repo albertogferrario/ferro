@@ -1,6 +1,11 @@
-@import "tailwindcss";
+/* Ferro default theme — plain CSS variables.
+ *
+ * Injected verbatim into <style> by framework/src/json_ui/mod.rs.
+ * MUST NOT contain Tailwind-specific at-rules — those are not standard
+ * CSS and browsers ignore the entire block as an unknown at-rule.
+ */
 
-@theme {
+:root {
   /* Surface tokens */
   --color-background: oklch(100% 0 0);
   --color-surface: oklch(97% 0 0);
@@ -36,7 +41,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  @theme {
+  :root {
     --color-background: oklch(12% 0 0);
     --color-surface: oklch(17% 0 0);
     --color-card: oklch(20% 0 0);
@@ -55,7 +60,6 @@
 }
 
 [data-theme="dark"] {
-  /* Same dark values for explicit toggle */
   --color-background: oklch(12% 0 0);
   --color-surface: oklch(17% 0 0);
   --color-card: oklch(20% 0 0);

@@ -180,14 +180,12 @@ async fn fresh_migrations() {
 }
 
 async fn run_seeders(class: Option<String>) {
-    // Initialize database for seeders
-    ferro::database::DB::init().await.expect("Failed to connect to database");
-
+    let db = get_database_connection().await;
     let registry = seeders::register();
 
     let result = match class {
-        Some(name) => registry.run_one(&name).await,
-        None => registry.run_all().await,
+        Some(name) => registry.run_one(&name, &db).await,
+        None => registry.run_all(&db).await,
     };
 
     if let Err(e) = result {

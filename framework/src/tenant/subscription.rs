@@ -1,5 +1,15 @@
+//! Subscription state types used by the tenant middleware and RequiresPlan.
+//!
+//! These were previously re-exported from `ferro-stripe`; they are now
+//! framework-local because they describe tenant state, not the Stripe API.
+//! Mapping from `stripe::Subscription` into these types is the application's
+//! responsibility (previously `ferro_stripe::subscription_info_from_stripe`,
+//! removed in Phase 140).
+
+use serde::{Deserialize, Serialize};
+
 /// Subscription status variants matching Stripe's 8 possible states.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SubscriptionStatus {
     /// Subscription is in trial period.
@@ -21,7 +31,7 @@ pub enum SubscriptionStatus {
 }
 
 /// Subscription state for a tenant, loaded from the tenant_billing table.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SubscriptionInfo {
     /// Stripe subscription ID (sub_xxx).
     pub stripe_subscription_id: String,
@@ -63,17 +73,6 @@ impl SubscriptionInfo {
 ///
 /// Plan ordering: enterprise > pro > free. Higher tiers satisfy lower requirements.
 /// Unknown plans only satisfy themselves.
-///
-/// # Examples
-///
-/// ```
-/// use ferro_stripe::plan_satisfies;
-///
-/// assert!(plan_satisfies("enterprise", "pro"));
-/// assert!(plan_satisfies("pro", "free"));
-/// assert!(!plan_satisfies("free", "pro"));
-/// assert!(plan_satisfies("free", "free"));
-/// ```
 pub fn plan_satisfies(tenant_plan: &str, required_plan: &str) -> bool {
     const TIERS: &[&str] = &["free", "pro", "enterprise"];
     let tenant_rank = TIERS.iter().position(|&p| p == tenant_plan);
@@ -84,60 +83,9 @@ pub fn plan_satisfies(tenant_plan: &str, required_plan: &str) -> bool {
     }
 }
 
-pub mod checkout;
-pub mod sync;
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn make_info(status: SubscriptionStatus, cancel_at_period_end: bool) -> SubscriptionInfo {
-        SubscriptionInfo {
-            stripe_subscription_id: "sub_test".to_string(),
-            plan: "pro".to_string(),
-            status,
-            trial_ends_at: None,
-            cancel_at_period_end,
-            current_period_end: chrono::Utc::now(),
-            stripe_connect_account_id: None,
-        }
-    }
-
-    #[test]
-    fn on_trial_returns_true_only_for_trialing() {
-        assert!(make_info(SubscriptionStatus::Trialing, false).on_trial());
-        assert!(!make_info(SubscriptionStatus::Active, false).on_trial());
-        assert!(!make_info(SubscriptionStatus::Incomplete, false).on_trial());
-        assert!(!make_info(SubscriptionStatus::IncompleteExpired, false).on_trial());
-        assert!(!make_info(SubscriptionStatus::PastDue, false).on_trial());
-        assert!(!make_info(SubscriptionStatus::Canceled, false).on_trial());
-        assert!(!make_info(SubscriptionStatus::Unpaid, false).on_trial());
-        assert!(!make_info(SubscriptionStatus::Paused, false).on_trial());
-    }
-
-    #[test]
-    fn subscribed_returns_true_for_active_and_trialing() {
-        assert!(make_info(SubscriptionStatus::Active, false).subscribed());
-        assert!(make_info(SubscriptionStatus::Trialing, false).subscribed());
-        assert!(!make_info(SubscriptionStatus::Incomplete, false).subscribed());
-        assert!(!make_info(SubscriptionStatus::IncompleteExpired, false).subscribed());
-        assert!(!make_info(SubscriptionStatus::PastDue, false).subscribed());
-        assert!(!make_info(SubscriptionStatus::Canceled, false).subscribed());
-        assert!(!make_info(SubscriptionStatus::Unpaid, false).subscribed());
-        assert!(!make_info(SubscriptionStatus::Paused, false).subscribed());
-    }
-
-    #[test]
-    fn on_grace_period_requires_cancel_at_period_end_and_subscribed() {
-        assert!(make_info(SubscriptionStatus::Active, true).on_grace_period());
-        assert!(make_info(SubscriptionStatus::Trialing, true).on_grace_period());
-        assert!(!make_info(SubscriptionStatus::Active, false).on_grace_period());
-        assert!(!make_info(SubscriptionStatus::Trialing, false).on_grace_period());
-        assert!(!make_info(SubscriptionStatus::Canceled, true).on_grace_period());
-        assert!(!make_info(SubscriptionStatus::PastDue, true).on_grace_period());
-        assert!(!make_info(SubscriptionStatus::Unpaid, true).on_grace_period());
-        assert!(!make_info(SubscriptionStatus::Paused, true).on_grace_period());
-    }
 
     #[test]
     fn plan_satisfies_enterprise_satisfies_pro_and_free() {
@@ -177,20 +125,5 @@ mod tests {
             serde_json::to_string(&SubscriptionStatus::IncompleteExpired).unwrap(),
             "\"incomplete_expired\""
         );
-        assert_eq!(
-            serde_json::to_string(&SubscriptionStatus::Trialing).unwrap(),
-            "\"trialing\""
-        );
-    }
-
-    #[test]
-    fn subscription_info_serializes_to_json_with_all_fields() {
-        let info = make_info(SubscriptionStatus::Active, false);
-        let json = serde_json::to_value(&info).unwrap();
-        assert!(json["stripe_subscription_id"].is_string());
-        assert!(json["plan"].is_string());
-        assert!(json["status"].is_string());
-        assert!(json["cancel_at_period_end"].is_boolean());
-        assert!(json["current_period_end"].is_string());
     }
 }

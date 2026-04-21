@@ -18,6 +18,8 @@ pub mod middleware;
 pub mod requires_plan;
 pub mod resolver;
 pub mod scope;
+#[cfg(feature = "stripe")]
+pub mod subscription;
 pub mod worker;
 
 pub use context::current_tenant;
@@ -52,7 +54,7 @@ pub struct TenantContext {
     pub plan: Option<String>,
     /// Full subscription state (available when stripe feature is enabled).
     #[cfg(feature = "stripe")]
-    pub subscription: Option<ferro_stripe::SubscriptionInfo>,
+    pub subscription: Option<subscription::SubscriptionInfo>,
 }
 
 #[cfg(feature = "stripe")]
@@ -135,17 +137,6 @@ impl std::fmt::Debug for TenantFailureMode {
             Self::Forbidden => write!(f, "Forbidden"),
             Self::Allow => write!(f, "Allow"),
             Self::Custom(_) => write!(f, "Custom(...)"),
-        }
-    }
-}
-
-impl Clone for TenantFailureMode {
-    fn clone(&self) -> Self {
-        match self {
-            Self::NotFound => Self::NotFound,
-            Self::Forbidden => Self::Forbidden,
-            Self::Allow => Self::Allow,
-            Self::Custom(_) => panic!("TenantFailureMode::Custom cannot be cloned"),
         }
     }
 }
@@ -260,7 +251,7 @@ mod tests {
     #[cfg(feature = "stripe")]
     mod stripe_tests {
         use super::*;
-        use ferro_stripe::{SubscriptionInfo, SubscriptionStatus};
+        use crate::tenant::subscription::{SubscriptionInfo, SubscriptionStatus};
 
         fn make_subscription(plan: &str, status: SubscriptionStatus) -> SubscriptionInfo {
             SubscriptionInfo {

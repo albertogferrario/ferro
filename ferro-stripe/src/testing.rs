@@ -1,7 +1,7 @@
 //! Test helpers for ferro-stripe integration testing.
 //!
-//! Provides factory functions for [`SubscriptionInfo`] in various states and
-//! utilities for generating signed webhook payloads compatible with the `verify_webhook` function.
+//! Provides factory functions for generating signed webhook payloads and
+//! typed event JSON strings compatible with the `verify_webhook` function.
 //!
 //! # Feature Gate
 //!
@@ -13,102 +13,12 @@
 //! ```rust,ignore
 //! use ferro_stripe::testing::*;
 //!
-//! // Create a mock active subscription
-//! let sub = mock_subscription_active("pro");
-//! assert!(sub.subscribed());
-//!
 //! // Generate a signed webhook payload for testing
 //! let event = mock_checkout_completed_event("cs_test", "cus_test");
 //! let (sig, _ts) = signed_webhook_payload(&event, "whsec_test");
 //! ```
 
-use crate::subscription::{SubscriptionInfo, SubscriptionStatus};
-use chrono::{Duration, Utc};
-
-/// Returns a [`SubscriptionInfo`] with `Active` status for the given plan.
-///
-/// `current_period_end` is set 30 days from now.
-pub fn mock_subscription_active(plan: &str) -> SubscriptionInfo {
-    SubscriptionInfo {
-        stripe_subscription_id: format!("sub_mock_{plan}"),
-        plan: plan.to_string(),
-        status: SubscriptionStatus::Active,
-        trial_ends_at: None,
-        cancel_at_period_end: false,
-        current_period_end: Utc::now() + Duration::days(30),
-        stripe_connect_account_id: None,
-    }
-}
-
-/// Returns a [`SubscriptionInfo`] with `Trialing` status for the given plan.
-///
-/// `trial_ends_at` is set 14 days from now.
-pub fn mock_subscription_trialing(plan: &str) -> SubscriptionInfo {
-    let trial_ends = Utc::now() + Duration::days(14);
-    SubscriptionInfo {
-        stripe_subscription_id: format!("sub_mock_{plan}"),
-        plan: plan.to_string(),
-        status: SubscriptionStatus::Trialing,
-        trial_ends_at: Some(trial_ends),
-        cancel_at_period_end: false,
-        current_period_end: trial_ends,
-        stripe_connect_account_id: None,
-    }
-}
-
-/// Returns a [`SubscriptionInfo`] with `Canceled` status for the given plan.
-pub fn mock_subscription_canceled(plan: &str) -> SubscriptionInfo {
-    SubscriptionInfo {
-        stripe_subscription_id: format!("sub_mock_{plan}"),
-        plan: plan.to_string(),
-        status: SubscriptionStatus::Canceled,
-        trial_ends_at: None,
-        cancel_at_period_end: false,
-        current_period_end: Utc::now() - Duration::days(1),
-        stripe_connect_account_id: None,
-    }
-}
-
-/// Returns a [`SubscriptionInfo`] with `PastDue` status for the given plan.
-pub fn mock_subscription_past_due(plan: &str) -> SubscriptionInfo {
-    SubscriptionInfo {
-        stripe_subscription_id: format!("sub_mock_{plan}"),
-        plan: plan.to_string(),
-        status: SubscriptionStatus::PastDue,
-        trial_ends_at: None,
-        cancel_at_period_end: false,
-        current_period_end: Utc::now() + Duration::days(1),
-        stripe_connect_account_id: None,
-    }
-}
-
-/// Returns a [`SubscriptionInfo`] with `Active` status and `cancel_at_period_end = true`.
-///
-/// Represents a subscription on a grace period — still active but scheduled to cancel.
-pub fn mock_subscription_on_grace(plan: &str) -> SubscriptionInfo {
-    SubscriptionInfo {
-        stripe_subscription_id: format!("sub_mock_{plan}"),
-        plan: plan.to_string(),
-        status: SubscriptionStatus::Active,
-        trial_ends_at: None,
-        cancel_at_period_end: true,
-        current_period_end: Utc::now() + Duration::days(15),
-        stripe_connect_account_id: None,
-    }
-}
-
-/// Returns an `Active` [`SubscriptionInfo`] with the given Stripe Connect account ID set.
-pub fn mock_subscription_with_connect(plan: &str, connect_id: &str) -> SubscriptionInfo {
-    SubscriptionInfo {
-        stripe_subscription_id: format!("sub_mock_{plan}"),
-        plan: plan.to_string(),
-        status: SubscriptionStatus::Active,
-        trial_ends_at: None,
-        cancel_at_period_end: false,
-        current_period_end: Utc::now() + Duration::days(30),
-        stripe_connect_account_id: Some(connect_id.to_string()),
-    }
-}
+use chrono::Utc;
 
 /// Generates a `checkout.session.completed` event JSON string.
 ///
@@ -119,7 +29,7 @@ pub fn mock_checkout_completed_event(session_id: &str, customer_id: &str) -> Str
         "id": "evt_mock_checkout_completed",
         "object": "event",
         "api_version": "2023-10-16",
-        "created": 1533204620,
+        "created": Utc::now().timestamp(),
         "livemode": false,
         "pending_webhooks": 1,
         "request": null,
@@ -130,7 +40,24 @@ pub fn mock_checkout_completed_event(session_id: &str, customer_id: &str) -> Str
                 "object": "checkout.session",
                 "customer": customer_id,
                 "payment_status": "paid",
-                "status": "complete"
+                "status": "complete",
+                "created": 1700000000_i64,
+                "expires_at": 1700086400_i64,
+                "livemode": false,
+                "mode": "payment",
+                "payment_method_types": ["card"],
+                "custom_fields": [],
+                "custom_text": {
+                    "after_submit": null,
+                    "shipping_address": null,
+                    "submit": null,
+                    "terms_of_service_acceptance": null
+                },
+                "shipping_options": [],
+                "automatic_tax": {
+                    "enabled": false,
+                    "status": null
+                }
             }
         }
     })
@@ -149,7 +76,7 @@ pub fn mock_subscription_updated_event(
         "id": "evt_mock_subscription_updated",
         "object": "event",
         "api_version": "2023-10-16",
-        "created": 1533204620,
+        "created": Utc::now().timestamp(),
         "livemode": false,
         "pending_webhooks": 1,
         "request": null,
@@ -172,7 +99,7 @@ pub fn mock_subscription_deleted_event(subscription_id: &str, customer_id: &str)
         "id": "evt_mock_subscription_deleted",
         "object": "event",
         "api_version": "2023-10-16",
-        "created": 1533204620,
+        "created": Utc::now().timestamp(),
         "livemode": false,
         "pending_webhooks": 1,
         "request": null,
@@ -195,7 +122,7 @@ pub fn mock_invoice_paid_event(invoice_id: &str, customer_id: &str) -> String {
         "id": "evt_mock_invoice_paid",
         "object": "event",
         "api_version": "2023-10-16",
-        "created": 1533204620,
+        "created": Utc::now().timestamp(),
         "livemode": false,
         "pending_webhooks": 1,
         "request": null,
@@ -214,74 +141,39 @@ pub fn mock_invoice_paid_event(invoice_id: &str, customer_id: &str) -> String {
     .to_string()
 }
 
-/// Re-exports [`signed_webhook_payload`] from the webhook module for convenience.
+/// Generates a valid Stripe-signature header for testing webhook verification.
 ///
-/// Generates a Stripe-compatible `t={ts},v1={hmac}` signature header.
-/// The returned `(signature_header, timestamp)` pair is ready for use with
-/// [`crate::verify_webhook`].
-pub use crate::webhook::events::signed_webhook_payload;
+/// Returns `(signature_header, timestamp)` where signature_header is formatted
+/// as `t={timestamp},v1={hmac_sha256}` and timestamp is the current Unix time.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let (sig, ts) = signed_webhook_payload(r#"{"id":"evt_1"}"#, "whsec_secret");
+/// let event = verify_webhook(r#"{"id":"evt_1"}"#, &sig, "whsec_secret");
+/// assert!(event.is_ok());
+/// ```
+pub fn signed_webhook_payload(payload: &str, secret: &str) -> (String, i64) {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+
+    let timestamp = chrono::Utc::now().timestamp();
+    let signed_payload = format!("{timestamp}.{payload}");
+
+    let mut mac =
+        Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
+    mac.update(signed_payload.as_bytes());
+    let result = mac.finalize();
+    let signature = hex::encode(result.into_bytes());
+
+    let header = format!("t={timestamp},v1={signature}");
+    (header, timestamp)
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::verify_webhook;
-
-    #[test]
-    fn mock_subscription_active_has_correct_status_and_plan() {
-        let sub = mock_subscription_active("pro");
-        assert_eq!(sub.status, SubscriptionStatus::Active);
-        assert_eq!(sub.plan, "pro");
-        assert!(!sub.cancel_at_period_end);
-        assert!(sub.trial_ends_at.is_none());
-        assert!(sub.stripe_connect_account_id.is_none());
-    }
-
-    #[test]
-    fn mock_subscription_trialing_has_correct_status_and_trial_end() {
-        let sub = mock_subscription_trialing("starter");
-        assert_eq!(sub.status, SubscriptionStatus::Trialing);
-        assert_eq!(sub.plan, "starter");
-        assert!(sub.trial_ends_at.is_some());
-        let trial_end = sub.trial_ends_at.unwrap();
-        let now = Utc::now();
-        assert!(trial_end > now, "trial_ends_at should be in the future");
-        assert!(
-            trial_end < now + Duration::days(15),
-            "trial_ends_at should be ~14 days out"
-        );
-    }
-
-    #[test]
-    fn mock_subscription_canceled_has_correct_status() {
-        let sub = mock_subscription_canceled("pro");
-        assert_eq!(sub.status, SubscriptionStatus::Canceled);
-        assert_eq!(sub.plan, "pro");
-        assert!(!sub.subscribed());
-    }
-
-    #[test]
-    fn mock_subscription_past_due_has_correct_status() {
-        let sub = mock_subscription_past_due("enterprise");
-        assert_eq!(sub.status, SubscriptionStatus::PastDue);
-        assert_eq!(sub.plan, "enterprise");
-        assert!(!sub.subscribed());
-    }
-
-    #[test]
-    fn mock_subscription_on_grace_is_active_with_cancel_at_period_end() {
-        let sub = mock_subscription_on_grace("pro");
-        assert_eq!(sub.status, SubscriptionStatus::Active);
-        assert!(sub.cancel_at_period_end);
-        assert!(sub.on_grace_period());
-        assert!(sub.subscribed());
-    }
-
-    #[test]
-    fn mock_subscription_with_connect_sets_connect_account_id() {
-        let sub = mock_subscription_with_connect("pro", "acct_123");
-        assert_eq!(sub.status, SubscriptionStatus::Active);
-        assert_eq!(sub.stripe_connect_account_id, Some("acct_123".to_string()));
-    }
 
     #[test]
     fn signed_webhook_payload_round_trips_through_verify_webhook() {
