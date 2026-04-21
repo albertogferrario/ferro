@@ -66,10 +66,7 @@ fn no_duplicate_route_info() {
 
     // Single root-in-group handler — registers 2 matchit leaves but 1 RouteInfo.
     // group!() returns GroupDef; .register(Router::new()) builds and returns the Router.
-    let _router: Router = group!("/api-i01", {
-        get!("/", hello)
-    })
-    .register(Router::new());
+    let _router: Router = group!("/api-i01", { get!("/", hello) }).register(Router::new());
 
     let after = get_registered_routes().len();
 
@@ -79,18 +76,13 @@ fn no_duplicate_route_info() {
         .filter(|r| r.path == "/api-i01")
         .count();
     assert_eq!(
-        count,
-        1,
+        count, 1,
         "group!('/api-i01', {{ get!('/', h) }}) must produce exactly 1 RouteInfo (got {count})",
     );
 
     // Delta must also be 1 (nothing else registered in this serial test).
     let delta = after - before;
-    assert_eq!(
-        delta,
-        1,
-        "expected delta of 1, got {delta}",
-    );
+    assert_eq!(delta, 1, "expected delta of 1, got {delta}",);
 }
 
 #[test]
@@ -109,8 +101,7 @@ fn no_duplicate_route_info_multi_handler_group() {
     let after = get_registered_routes().len();
     let delta = after - before;
     assert_eq!(
-        delta,
-        2,
+        delta, 2,
         "group with 2 handlers must produce exactly 2 RouteInfo entries (got delta {delta})",
     );
 
@@ -252,8 +243,8 @@ fn gestiscilo_reproducer() {
     assert_eq!(pattern, "/s/{slug}/index.html");
 
     // /s/foo/bar.css -> serve_asset
-    let (params, pattern) = dispatch(&router, &Method::GET, "/s/foo/bar.css")
-        .expect("GET /s/foo/bar.css must match");
+    let (params, pattern) =
+        dispatch(&router, &Method::GET, "/s/foo/bar.css").expect("GET /s/foo/bar.css must match");
     assert_eq!(params.get("slug").map(String::as_str), Some("foo"));
     assert_eq!(params.get("path").map(String::as_str), Some("bar.css"));
     assert_eq!(pattern, "/s/{slug}/{*path}");

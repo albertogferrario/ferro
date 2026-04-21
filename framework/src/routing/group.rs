@@ -265,7 +265,10 @@ mod tests {
         // D-07: exactly one RouteInfo entry (alias does not call register_route)
         let routes = get_registered_routes();
         let count = routes.iter().filter(|r| r.path == "/api-b01").count();
-        assert_eq!(count, 1, "expected exactly 1 RouteInfo entry for /api-b01, got {count}");
+        assert_eq!(
+            count, 1,
+            "expected exactly 1 RouteInfo entry for /api-b01, got {count}"
+        );
 
         // Canonical leaf
         let hit_canonical = router.match_route(&Method::GET, "/api-b01");
@@ -326,14 +329,19 @@ mod tests {
 
         let routes = get_registered_routes();
         let count = routes.iter().filter(|r| r.path == "/api-b04/users").count();
-        assert_eq!(count, 1, "expected exactly 1 RouteInfo for /api-b04/users, got {count}");
+        assert_eq!(
+            count, 1,
+            "expected exactly 1 RouteInfo for /api-b04/users, got {count}"
+        );
 
         assert!(
             router.match_route(&Method::GET, "/api-b04/users").is_some(),
             "/api-b04/users did not match"
         );
         assert!(
-            router.match_route(&Method::GET, "/api-b04/users/").is_none(),
+            router
+                .match_route(&Method::GET, "/api-b04/users/")
+                .is_none(),
             "non-root leaf must not emit an alternate"
         );
     }
@@ -369,11 +377,15 @@ mod tests {
             .group("/api-b06p", |r| r.post("/", test_handler))
             .into();
         assert!(
-            router_post.match_route(&Method::POST, "/api-b06p").is_some(),
+            router_post
+                .match_route(&Method::POST, "/api-b06p")
+                .is_some(),
             "POST /api-b06p did not match"
         );
         assert!(
-            router_post.match_route(&Method::POST, "/api-b06p/").is_some(),
+            router_post
+                .match_route(&Method::POST, "/api-b06p/")
+                .is_some(),
             "POST /api-b06p/ did not match"
         );
 
