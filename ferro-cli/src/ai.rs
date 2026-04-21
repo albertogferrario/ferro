@@ -1,9 +1,11 @@
 //! AI-powered view generation via the Anthropic API.
 //!
 //! Provides:
-//! - `call_anthropic`: Makes a blocking request to the Anthropic Messages API.
-//! - `call_anthropic_structured`: Structured output via Anthropic tool_use.
-//! - `generate_json_view`: Two-pass JSON-UI v2 spec generation.
+//! - `call_anthropic_plain`: Makes a blocking request to the Anthropic Messages API, returns plain text.
+//! - `call_anthropic_structured`: Structured output via Anthropic tool_use, returns JSON string.
+//! - `build_json_view_pass1`: Builds system + user prompts for Pass 1 (plain-text plan).
+//! - `build_json_view_pass2`: Builds system + user prompts for Pass 2 (structured spec).
+//! - `generate_json_view`: Two-pass JSON-UI v2 spec generation (higher-level orchestration).
 
 use console::style;
 use ferro_json_ui::{global_catalog, Spec};
@@ -20,6 +22,12 @@ use crate::commands::generate_routes;
 ///
 /// Uses Anthropic best practices: system prompt with cache_control, temperature 0.2
 /// for deterministic output, and 60-second HTTP timeout.
+///
+/// Alias: also exported as `call_anthropic_plain` (the canonical name in Plan 05 interfaces).
+pub fn call_anthropic_plain(system: &str, user_prompt: &str) -> Result<String, String> {
+    call_anthropic(system, user_prompt)
+}
+
 pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String> {
     let api_key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| {
         "ANTHROPIC_API_KEY not set. Export it with:\n  \
@@ -87,12 +95,12 @@ pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String>
 /// mechanism: `tools: [{ name: "emit_spec", input_schema: schema }]` with
 /// `tool_choice: { type: "tool", name: "emit_spec" }`.
 ///
-/// Returns the tool input as a `serde_json::Value` on success.
+/// Returns the tool input serialized as a JSON string on success.
 pub fn call_anthropic_structured(
     system: &str,
     user_prompt: &str,
-    schema: &serde_json::Value,
-) -> Result<serde_json::Value, String> {
+    schema: serde_json::Value,
+) -> Result<String, String> {
     let api_key =
         std::env::var("ANTHROPIC_API_KEY").map_err(|_| "ANTHROPIC_API_KEY not set.".to_string())?;
 
@@ -156,7 +164,51 @@ pub fn call_anthropic_structured(
         .cloned()
         .ok_or_else(|| format!("No tool_use block in response: {text}"))?;
 
-    Ok(tool_input)
+    serde_json::to_string_pretty(&tool_input)
+        .map_err(|e| format!("Failed to serialize tool input: {e}"))
+}
+
+/// Build Pass 1 prompts for JSON-UI v2 view generation (plain-text component plan).
+///
+/// Returns `(system_prompt, user_prompt)` ready for `call_anthropic_plain`.
+pub fn build_json_view_pass1(name: &str, description: &str) -> (String, String) {
+    let catalog = global_catalog();
+    let catalog_prompt = catalog.prompt();
+
+    let system = format!(
+        "You are a JSON-UI v2 view planner for the Ferro framework.\n\n\
+         {catalog_prompt}\n\n\
+         Given a view name and description, produce a concise plain-text component plan: \
+         which components to use, what data each displays, what actions are present. \
+         Do not emit any JSON or code — only a human-readable plan."
+    );
+
+    let user = format!(
+        "View name: {name}\n\
+         Description: {description}\n\n\
+         Describe the component plan for this view."
+    );
+
+    (system, user)
+}
+
+/// Build Pass 2 prompts for JSON-UI v2 view generation (structured spec).
+///
+/// Returns `(system_prompt, user_prompt)` ready for `call_anthropic_structured`.
+/// Pass 2 receives the plain-text plan from Pass 1 and produces a structured JSON spec.
+pub fn build_json_view_pass2(pass1_result: &str, _schema: &serde_json::Value) -> (String, String) {
+    let system = format!(
+        "You are a JSON-UI v2 spec generator for the Ferro framework.\n\n\
+         Component plan from previous step:\n{pass1_result}\n\n\
+         Generate the complete v2 JSON spec matching this plan. \
+         Root element id must be \"root\". \
+         All element ids are unique strings. Use flat elements map — no nesting."
+    );
+
+    let user = "Generate the complete JSON-UI v2 spec for the view described in the component plan."
+        .to_string();
+
+    (system, user)
 }
 
 /// Two-pass AI generation of a JSON-UI v2 spec file.
@@ -203,7 +255,7 @@ pub fn generate_json_view(name: &str, description: &str, layout: &str) -> Result
          Describe the component plan for this view."
     );
 
-    let pass1_result = call_anthropic(&pass1_system, &pass1_user)?;
+    let pass1_result = call_anthropic_plain(&pass1_system, &pass1_user)?;
 
     // --- Pass 2: structure ---
     let schema = catalog.json_schema().clone();
@@ -218,11 +270,7 @@ pub fn generate_json_view(name: &str, description: &str, layout: &str) -> Result
 
     let pass2_user = format!("Generate the complete JSON-UI v2 spec for the \"{name}\" view.");
 
-    let tool_input = call_anthropic_structured(&pass2_system, &pass2_user, &schema)?;
-
-    // Serialize to pretty JSON string
-    let spec_json = serde_json::to_string_pretty(&tool_input)
-        .map_err(|e| format!("Failed to serialize spec: {e}"))?;
+    let spec_json = call_anthropic_structured(&pass2_system, &pass2_user, schema)?;
 
     // Validate against catalog
     match Spec::from_json(&spec_json) {
