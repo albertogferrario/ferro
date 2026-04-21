@@ -81,6 +81,10 @@ fn no_duplicate_route_info() {
     );
 
     // Delta must also be 1 (nothing else registered in this serial test).
+    assert!(
+        after >= before,
+        "route count must be monotonically increasing (before={before}, after={after})"
+    );
     let delta = after - before;
     assert_eq!(delta, 1, "expected delta of 1, got {delta}",);
 }
@@ -99,6 +103,10 @@ fn no_duplicate_route_info_multi_handler_group() {
     .register(Router::new());
 
     let after = get_registered_routes().len();
+    assert!(
+        after >= before,
+        "route count must be monotonically increasing (before={before}, after={after})"
+    );
     let delta = after - before;
     assert_eq!(
         delta, 2,
@@ -265,6 +273,10 @@ fn top_level_root_route_is_single_slash() {
     let router: Router = get!("/", hello).register(Router::new());
 
     let after = get_registered_routes().len();
+    assert!(
+        after >= before,
+        "route count must be monotonically increasing (before={before}, after={after})"
+    );
     assert_eq!(
         after - before,
         1,
