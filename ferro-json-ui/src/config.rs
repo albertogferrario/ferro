@@ -11,9 +11,9 @@
 /// ```rust
 /// use ferro_json_ui::JsonUiConfig;
 ///
-/// // Default: framework-served base CSS, no Tailwind CDN.
+/// // Default: framework-served base CSS with cache-busting version, no Tailwind CDN.
 /// let default_config = JsonUiConfig::new();
-/// assert_eq!(default_config.stylesheet_urls, vec!["/_ferro/ferro-base.css"]);
+/// assert!(default_config.stylesheet_urls[0].starts_with("/_ferro/ferro-base.css"));
 /// assert!(!default_config.tailwind_cdn);
 ///
 /// // Opt into CDN for dev, and override stylesheet list:
