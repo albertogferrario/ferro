@@ -560,4 +560,65 @@ mod tests {
             rt.block_on(async { hyper_resp.into_body().collect().await.unwrap().to_bytes() });
         assert_eq!(collected.as_ref(), &data);
     }
+
+    #[test]
+    fn test_header_replaces_existing() {
+        let resp = HttpResponse::text("x").header("Content-Type", "text/html");
+        let ct: Vec<_> = resp
+            .headers()
+            .iter()
+            .filter(|(k, _)| k.eq_ignore_ascii_case("Content-Type"))
+            .collect();
+        assert_eq!(ct.len(), 1, "expected exactly one Content-Type entry");
+        assert_eq!(ct[0].1, "text/html");
+    }
+
+    #[test]
+    fn test_multi_cookie_preserved() {
+        let resp = HttpResponse::new()
+            .cookie(Cookie::new("a", "1"))
+            .cookie(Cookie::new("b", "2"));
+        let cookies: Vec<_> = resp
+            .headers()
+            .iter()
+            .filter(|(k, _)| k == "Set-Cookie")
+            .collect();
+        assert_eq!(cookies.len(), 2, "both Set-Cookie entries must be preserved");
+    }
+
+    #[test]
+    fn test_header_case_insensitive_replace() {
+        let resp = HttpResponse::new()
+            .append_header("content-type", "text/plain")
+            .header("Content-Type", "text/html");
+        let ct: Vec<_> = resp
+            .headers()
+            .iter()
+            .filter(|(k, _)| k.eq_ignore_ascii_case("Content-Type"))
+            .collect();
+        assert_eq!(ct.len(), 1, "lowercase prior entry must be replaced");
+        assert_eq!(ct[0].1, "text/html");
+    }
+
+    #[test]
+    fn test_append_header_does_not_replace() {
+        let resp = HttpResponse::new()
+            .append_header("X-Tag", "a")
+            .append_header("X-Tag", "b");
+        let count = resp
+            .headers()
+            .iter()
+            .filter(|(k, _)| k == "X-Tag")
+            .count();
+        assert_eq!(count, 2, "append_header must not strip existing entries");
+    }
+
+    #[test]
+    fn test_headers_accessor() {
+        let resp = HttpResponse::text("x");
+        assert!(
+            !resp.headers().is_empty(),
+            "headers() accessor should return the prepopulated Content-Type"
+        );
+    }
 }
