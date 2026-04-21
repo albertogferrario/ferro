@@ -85,14 +85,13 @@ impl Request {
     pub fn set_path(&mut self, new_path: &str) {
         debug_assert!(
             new_path.starts_with('/'),
-            "set_path: path must begin with '/', got {:?}",
-            new_path
+            "set_path: path must begin with '/', got {new_path:?}"
         );
         let old_uri = self.inner.uri();
         // Preserve scheme, authority, and query string; replace path only.
         let mut parts = old_uri.clone().into_parts();
         let path_and_query = match old_uri.query() {
-            Some(q) => format!("{}?{}", new_path, q),
+            Some(q) => format!("{new_path}?{q}"),
             None => new_path.to_string(),
         };
         parts.path_and_query = Some(
