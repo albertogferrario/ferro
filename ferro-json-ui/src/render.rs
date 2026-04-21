@@ -1334,7 +1334,9 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
                     items: templated_items,
                     trigger_variant: None,
                 };
-                html.push_str("<div class=\"px-4 pb-3 pt-2 border-t border-border flex justify-end\">");
+                html.push_str(
+                    "<div class=\"px-4 pb-3 pt-2 border-t border-border flex justify-end\">",
+                );
                 html.push_str(&render_dropdown_menu(&dropdown_props));
                 html.push_str("</div>");
             }
@@ -1399,7 +1401,7 @@ fn render_input(props: &InputProps, data: &Value) -> String {
         InputType::Textarea => {
             let val = resolved_value.as_deref().unwrap_or("");
             html.push_str(&format!(
-                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
                 html_escape(&props.field),
                 html_escape(&props.field),
                 border_class,
@@ -1437,7 +1439,7 @@ fn render_input(props: &InputProps, data: &Value) -> String {
                 InputType::Textarea | InputType::Hidden => unreachable!(),
             };
             html.push_str(&format!(
-                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
                 input_type,
                 html_escape(&props.field),
                 html_escape(&props.field),
@@ -1534,7 +1536,7 @@ fn render_select(props: &SelectProps, data: &Value) -> String {
 
     html.push_str("<div class=\"relative\">");
     html.push_str(&format!(
-        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} pr-10 px-3 py-2 text-sm shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} pr-10 px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
         html_escape(&props.field),
         html_escape(&props.field),
         border_class,
