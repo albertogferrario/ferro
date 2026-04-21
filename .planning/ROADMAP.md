@@ -374,6 +374,15 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
   6. No references to v1 types remain in CLI or MCP code
   7. Generated specs are validated against `catalog.json_schema()` before being returned to the user
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 120-01-PLAN.md — MCP json_ui_catalog: add json_schema + component_schemas fields; generation_context.json_ui_view rewritten to v2 JSON (Wave 1)
+- [ ] 120-02-PLAN.md — MCP json_ui_generate VIEW_EXAMPLE / ViewConventions / list_existing_views + code_templates json_view_templates rewritten to v2 (+ json_view_handler) (Wave 1)
+- [ ] 120-03-PLAN.md — MCP json_ui_inspect rewritten to walk src/views/*.json; BUILTIN_TYPES removed; inspect_component uses global_catalog (Wave 1)
+- [ ] 120-04-PLAN.md — ferro-cli ai.rs: call_anthropic_plain / call_anthropic_structured / build_json_view_pass1 / build_json_view_pass2; build_view_context deleted (Wave 1)
+- [ ] 120-05-PLAN.md — ferro-cli make_json_view + templates/make.rs: .json output, two-pass orchestration, Spec::from_json + catalog.validate with static fallback (Wave 2, depends on 04)
+
 ### Phase 121: Documentation & Field Test
 **Goal**: Complete docs rewrite for v2 and validate with a real gestiscilo page conversion
 **Depends on**: Phase 120
@@ -398,7 +407,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 117.1. Schema-Driven Projections | 0/? | Not started | - |
 | 118. Server-Side Expressions | 0/? | Not started | - |
 | 119. Page Loader | 0/? | Not started | - |
-| 120. CLI & MCP Updates | 0/? | Not started | - |
+| 120. CLI & MCP Updates | 0/5 | Planned | - |
 | 121. Documentation & Field Test | 0/? | Not started | - |
 
 **v12.0 scope is held firm.** No expansion beyond the 8 phases above. The projection / intent abstraction already exists in v9.0 ferro-projections; v12.0 refines the rendering target.
