@@ -1,8 +1,8 @@
 ---
 phase: 144
 slug: fix-root-path-routing-in-group-routes
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-04-21
 ---
@@ -47,7 +47,7 @@ created: 2026-04-21
 | D-06 | 02 | 1 | Nested `group!("/a", { group!("/b", { get!("/", h) }) })` matches `/a/b` and `/a/b/`; `group!("/a/", { group!("/b", …) })` also normalizes | unit | `cargo test -p ferro-rs --lib routing::macros::tests::nested_group_root_matches_both_variants` | ❌ W0 | ⬜ pending |
 | D-07 | 04 | 2 | `get_registered_routes()` contains exactly one `RouteInfo` per logical handler after `group!("/prefix", { get!("/", h) })` | integration | `cargo test -p ferro-rs --test routing_group_trailing_slash -- no_duplicate_route_info` | ❌ W0 — new integration file | ⬜ pending |
 | D-08 | 02 | 1 | Named-route: `get!("/", h).name("home")` inside `group!("/api", …)` → `route_url("home", &[])` returns `/api` (canonical, not `/api/`) | unit | `cargo test -p ferro-rs --lib routing::macros::tests::named_route_resolves_to_canonical` | ❌ W0 | ⬜ pending |
-| gestiscilo | 04 | 2 | `group!("/s/{slug}", { get!("/", root), get!("/index.html", idx), get!("/{*path}", asset) })` reproducer — all four URL shapes reach the right handler with the correct `slug` param | unit | `cargo test -p ferro-rs --lib routing::macros::tests::gestiscilo_reproducer` | ❌ W0 | ⬜ pending |
+| gestiscilo | 04 | 2 | `group!("/s/{slug}", { get!("/", root), get!("/index.html", idx), get!("/{*path}", asset) })` reproducer — all four URL shapes reach the right handler with the correct `slug` param | integration | `cargo test -p ferro-rs --test routing_group_trailing_slash -- gestiscilo_reproducer` | ❌ W0 | ⬜ pending |
 | regression | 02 | 1 | Top-level `get!("/", h)` (outside any group) remains single `/` | unit | `cargo test -p ferro-rs --lib routing::tests::top_level_root_route_is_single_slash` | ❌ W0 | ⬜ pending |
 | middleware | 04 | 2 | Middleware on `group!("/prefix", …).middleware(Mw)` runs for BOTH `GET /prefix` and `GET /prefix/` requests | integration | `cargo test -p ferro-rs --test routing_group_trailing_slash -- middleware_runs_for_both_variants` | ❌ W0 | ⬜ pending |
 
@@ -79,11 +79,11 @@ created: 2026-04-21
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags (`cargo watch` intentionally excluded — each invocation is a one-shot gate)
-- [ ] Feedback latency < 30s for inner loop (routing tests only)
-- [ ] `nyquist_compliant: true` set in frontmatter after planner writes tasks
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags (`cargo watch` intentionally excluded — each invocation is a one-shot gate)
+- [x] Feedback latency < 30s for inner loop (routing tests only)
+- [x] `nyquist_compliant: true` set in frontmatter after planner writes tasks
 
-**Approval:** pending
+**Approval:** approved — planning complete, all plans authored with full `<automated>` coverage. `wave_0_complete` flips to `true` after Plan 01 ships.
