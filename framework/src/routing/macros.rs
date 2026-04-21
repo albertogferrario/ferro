@@ -598,8 +598,16 @@ impl GroupDef {
     ///
     /// # Path Combination
     ///
-    /// - If route path is "/" (root), the full path is just the group prefix
-    /// - Otherwise, prefix and route path are concatenated
+    /// - If the route path is `"/"` and the accumulated group prefix is
+    ///   non-empty, the handler is registered under both `/prefix` and
+    ///   `/prefix/` so it is reachable at either URL. Route introspection
+    ///   and named-route lookup still report one canonical entry at
+    ///   `/prefix` (no trailing slash).
+    /// - A single trailing `/` on the group prefix is stripped before
+    ///   concatenation, so `group!("/api/", { get!("/x", ...) })` produces
+    ///   `/api/x` rather than `/api//x`.
+    /// - A root prefix `"/"` combined with a root route `"/"` stays `"/"`
+    ///   (no `"//"` is ever registered).
     ///
     /// # Middleware Inheritance
     ///

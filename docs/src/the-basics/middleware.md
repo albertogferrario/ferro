@@ -191,6 +191,9 @@ Router::new()
     .middleware(AuthMiddleware)
 ```
 
+Middleware attached to a group applies uniformly to root-path routes inside
+the group, covering both `/prefix` and `/prefix/` variants.
+
 ## Middleware Execution Order
 
 Middleware executes in the following order:
