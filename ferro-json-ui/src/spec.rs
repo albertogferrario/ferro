@@ -134,6 +134,38 @@ impl Spec {
         SpecBuilder::new()
     }
 
+    /// Merge handler-provided data into `spec.data` via a shallow top-level merge.
+    ///
+    /// If `handler_data` is a JSON Object, its keys are inserted into `self.data`,
+    /// overwriting matching keys (handler wins — locked per 119-CONTEXT D-04).
+    /// If `self.data` is `Value::Null` (the default for specs built without `.data(...)`),
+    /// it is initialized to an empty object before inserting — otherwise `as_object_mut()`
+    /// would return `None` and the handler keys would be silently dropped
+    /// (119-RESEARCH §Pitfall 4).
+    ///
+    /// If `handler_data` is not an Object (Null, Array, String, Number, Bool), it is
+    /// silently ignored — a `debug_assert!` fires in dev builds but production never
+    /// panics (119-CONTEXT D-04).
+    ///
+    /// Consuming builder (`mut self -> Self`) for consistency with `SpecBuilder`.
+    pub fn merge_data(mut self, handler_data: serde_json::Value) -> Self {
+        debug_assert!(
+            handler_data.is_null() || handler_data.is_object(),
+            "merge_data expects an Object or Null; non-Object handler_data ignored"
+        );
+        if let Some(obj) = handler_data.as_object() {
+            if self.data.is_null() {
+                self.data = Value::Object(Map::new());
+            }
+            if let Some(data_map) = self.data.as_object_mut() {
+                for (k, v) in obj {
+                    data_map.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        self
+    }
+
     /// Parse a v2 spec from its JSON representation.
     ///
     /// Returns `Ok(spec)` only if the JSON is well-formed AND the element
@@ -740,5 +772,54 @@ mod tests {
         assert!(!json.contains("props"));
         assert!(!json.contains("action"));
         assert!(!json.contains("visible"));
+    }
+
+    #[test]
+    fn merge_data_handler_wins() {
+        let spec = Spec::builder()
+            .element("a", Element::new("Text"))
+            .data(json!({"a": 1, "b": 2}))
+            .build()
+            .unwrap();
+        let merged = spec.merge_data(json!({"b": 99, "c": 3}));
+        assert_eq!(merged.data, json!({"a": 1, "b": 99, "c": 3}));
+    }
+
+    #[test]
+    fn merge_data_ignores_non_object() {
+        // Null is a no-op (allowed by debug_assert).
+        let spec = Spec::builder()
+            .element("a", Element::new("Text"))
+            .data(json!({"a": 1}))
+            .build()
+            .unwrap();
+        let merged = spec.merge_data(Value::Null);
+        assert_eq!(merged.data, json!({"a": 1}));
+        // Array / String / Number variants would trip debug_assert in debug mode,
+        // so we exercise only the Null no-op here. Production behavior for those
+        // variants is covered by inspection — they fall through to the `if let
+        // Some(obj) = handler_data.as_object()` guard and are ignored.
+    }
+
+    #[test]
+    fn merge_data_initializes_null_data() {
+        let spec = Spec::builder()
+            .element("a", Element::new("Text"))
+            .build() // no .data(...) call → spec.data is Value::Null
+            .unwrap();
+        assert_eq!(spec.data, Value::Null);
+        let merged = spec.merge_data(json!({"k": "v"}));
+        assert_eq!(merged.data, json!({"k": "v"}));
+    }
+
+    #[test]
+    fn merge_data_empty_handler_no_op() {
+        let spec = Spec::builder()
+            .element("a", Element::new("Text"))
+            .data(json!({"a": 1}))
+            .build()
+            .unwrap();
+        let merged = spec.merge_data(json!({}));
+        assert_eq!(merged.data, json!({"a": 1}));
     }
 }
