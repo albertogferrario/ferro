@@ -229,9 +229,24 @@ async fn handle_request(
     // via req.is_inertia(), req.inertia_version(), etc.
     // No thread-local storage needed - this is async-safe.
 
-    let response = match router.match_route(&method, &path) {
+    // Run pre-route middleware (path rewrites that affect route matching).
+    // PreRouteMiddleware runs before match_route so set_path() calls influence routing.
+    let mut ferro_request = Request::new(req);
+    for mw in &crate::middleware::get_pre_route_middleware() {
+        ferro_request = match mw.rewrite(ferro_request).await {
+            Ok(r) => r,
+            Err(response) => {
+                // Short-circuit: middleware rejected the request (e.g. unknown domain → 404).
+                return response.into_hyper();
+            }
+        };
+    }
+    // Use the (possibly rewritten) path for route matching and static file serving.
+    let routing_path = ferro_request.path().to_string();
+
+    let response = match router.match_route(&method, &routing_path) {
         Some((handler, params, route_pattern)) => {
-            let request = Request::new(req)
+            let request = ferro_request
                 .with_params(params)
                 .with_route_pattern(route_pattern.clone());
 
@@ -255,14 +270,14 @@ async fn handle_request(
         None => {
             // Try static file serving before fallback (only GET/HEAD)
             if method == hyper::Method::GET || method == hyper::Method::HEAD {
-                if let Some(response) = crate::static_files::try_serve_static_file(&path).await {
+                if let Some(response) = crate::static_files::try_serve_static_file(&routing_path).await {
                     return response;
                 }
             }
 
             // Check for fallback handler
             if let Some((fallback_handler, fallback_middleware)) = router.get_fallback() {
-                let request = Request::new(req).with_params(std::collections::HashMap::new());
+                let request = ferro_request.with_params(std::collections::HashMap::new());
 
                 // Build middleware chain for fallback
                 let mut chain = MiddlewareChain::new();

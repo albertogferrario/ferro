@@ -138,8 +138,9 @@ pub use theme::{
 pub use inertia::InertiaContext;
 pub use metrics::{get_metrics, MetricsSnapshot, RouteMetrics, RouteMetricsView};
 pub use middleware::{
-    register_global_middleware, Limit, LimiterResponse, MetricsMiddleware, Middleware,
-    MiddlewareFuture, MiddlewareRegistry, Next, RateLimiter, SecurityHeaders, Throttle,
+    register_global_middleware, register_pre_route_middleware, Limit, LimiterResponse,
+    MetricsMiddleware, Middleware, MiddlewareFuture, MiddlewareRegistry, Next, PreRouteMiddleware,
+    RateLimiter, SecurityHeaders, Throttle,
 };
 pub use routing::{
     // Internal functions used by macros (hidden from docs)
@@ -384,6 +385,31 @@ macro_rules! text_response {
 macro_rules! global_middleware {
     ($middleware:expr) => {
         $crate::register_global_middleware($middleware)
+    };
+}
+
+/// Register a pre-route middleware that runs before route matching on every request.
+///
+/// Pre-route middleware can call `request.set_path(new_path)` to rewrite the path
+/// before the router selects a handler. Use this for host-based routing, path
+/// aliasing, or any rewrite that must influence which route is matched.
+///
+/// Pre-route middleware runs in registration order, before standard global middleware.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// // In bootstrap.rs
+/// use ferro_rs::pre_route_middleware;
+///
+/// pub fn register() {
+///     pre_route_middleware!(HostMiddleware::new());
+/// }
+/// ```
+#[macro_export]
+macro_rules! pre_route_middleware {
+    ($middleware:expr) => {
+        $crate::register_pre_route_middleware($middleware)
     };
 }
 

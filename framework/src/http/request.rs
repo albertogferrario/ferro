@@ -75,6 +75,36 @@ impl Request {
         self.inner.uri().path()
     }
 
+    /// Rewrite the request path (server-side only — the browser URL is unchanged).
+    ///
+    /// Replaces the URI path component while preserving the scheme, authority, and
+    /// query string. Used by pre-route middleware (e.g. `HostMiddleware`) to map
+    /// custom-domain requests onto internal slug-based routes before routing occurs.
+    ///
+    /// `new_path` must begin with `/`. Panics in debug mode if it does not.
+    pub fn set_path(&mut self, new_path: &str) {
+        debug_assert!(
+            new_path.starts_with('/'),
+            "set_path: path must begin with '/', got {:?}",
+            new_path
+        );
+        let old_uri = self.inner.uri();
+        // Preserve scheme, authority, and query string; replace path only.
+        let mut parts = old_uri.clone().into_parts();
+        let path_and_query = match old_uri.query() {
+            Some(q) => format!("{}?{}", new_path, q),
+            None => new_path.to_string(),
+        };
+        parts.path_and_query = Some(
+            path_and_query
+                .parse()
+                .unwrap_or_else(|_| new_path.parse().expect("invalid path")),
+        );
+        if let Ok(new_uri) = http::Uri::from_parts(parts) {
+            *self.inner.uri_mut() = new_uri;
+        }
+    }
+
     /// Get a route parameter by name (e.g., /users/{id})
     /// Returns Err(ParamError) if the parameter is missing, enabling use of `?` operator
     pub fn param(&self, name: &str) -> Result<&str, ParamError> {
