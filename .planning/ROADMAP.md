@@ -348,8 +348,8 @@ Plans:
 **Plans:** 0/3 plans
 
 Plans:
-- [ ] 119-01-PLAN.md — Add Spec::merge_data consuming-builder method (shallow top-level merge, Null→Object init, non-Object ignored)
-- [ ] 119-02-PLAN.md — Create ferro-json-ui/src/loader.rs (LoadError enum, global spec cache, load_cached with dev-mode mtime invalidation) + lib.rs re-exports
+- [x] 119-01-PLAN.md — Add Spec::merge_data consuming-builder method (shallow top-level merge, Null→Object init, non-Object ignored)
+- [x] 119-02-PLAN.md — Create ferro-json-ui/src/loader.rs (LoadError enum, global spec cache, load_cached with dev-mode mtime invalidation) + lib.rs re-exports
 - [ ] 119-03-PLAN.md — Add JsonUi::render_file to framework (load_cached + merge_data + delegate to render_with_config; dev/prod-gated 500 bodies)
 
 ### Phase 120: CLI & MCP Updates
@@ -392,7 +392,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 117. Catalog & JSON Schema | 7/7 | Complete    | 2026-04-18 |
 | 117.1. Schema-Driven Projections | 3/3 | Complete    | 2026-04-18 |
 | 118. Server-Side Expressions | 2/2 | Complete    | 2026-04-19 |
-| 119. Page Loader | 0/? | Not started | - |
+| 119. Page Loader | 2/3 | In Progress|  |
 | 120. CLI & MCP Updates | 0/? | Not started | - |
 | 121. Documentation & Field Test | 0/? | Not started | - |
 
