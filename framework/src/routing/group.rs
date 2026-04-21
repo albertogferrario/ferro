@@ -41,6 +41,7 @@ enum GroupMethod {
     Get,
     Post,
     Put,
+    Patch,
     Delete,
 }
 
@@ -95,6 +96,14 @@ impl GroupBuilder {
                     if let Some(alt) = alternate.as_deref() {
                         self.outer_router
                             .insert_put_alias(alt, route.handler, &canonical);
+                    }
+                }
+                GroupMethod::Patch => {
+                    self.outer_router
+                        .insert_patch(&canonical, route.handler.clone());
+                    if let Some(alt) = alternate.as_deref() {
+                        self.outer_router
+                            .insert_patch_alias(alt, route.handler, &canonical);
                     }
                 }
                 GroupMethod::Delete => {
@@ -171,6 +180,21 @@ impl GroupRouter {
         let boxed: BoxedHandler = Box::new(move |req| Box::pin(handler(req)));
         self.routes.push(GroupRoute {
             method: GroupMethod::Put,
+            path: path.to_string(),
+            handler: Arc::new(boxed),
+        });
+        self
+    }
+
+    /// Register a PATCH route within the group
+    pub fn patch<H, Fut>(mut self, path: &str, handler: H) -> Self
+    where
+        H: Fn(Request) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    {
+        let boxed: BoxedHandler = Box::new(move |req| Box::pin(handler(req)));
+        self.routes.push(GroupRoute {
+            method: GroupMethod::Patch,
             path: path.to_string(),
             handler: Arc::new(boxed),
         });
@@ -370,8 +394,8 @@ mod tests {
     }
 
     #[test]
-    fn builder_post_and_put_and_delete_aliases_reach_handler() {
-        // Verify all three non-GET verbs emit canonical + alias pairs when
+    fn builder_post_and_put_and_patch_and_delete_aliases_reach_handler() {
+        // Verify all four non-GET verbs emit canonical + alias pairs when
         // route path is "/".
         let router_post: Router = Router::new()
             .group("/api-b06p", |r| r.post("/", test_handler))
@@ -399,6 +423,22 @@ mod tests {
         assert!(
             router_put.match_route(&Method::PUT, "/api-b06u/").is_some(),
             "PUT /api-b06u/ did not match"
+        );
+
+        let router_patch: Router = Router::new()
+            .group("/api-b06a", |r| r.patch("/", test_handler))
+            .into();
+        assert!(
+            router_patch
+                .match_route(&Method::PATCH, "/api-b06a")
+                .is_some(),
+            "PATCH /api-b06a did not match"
+        );
+        assert!(
+            router_patch
+                .match_route(&Method::PATCH, "/api-b06a/")
+                .is_some(),
+            "PATCH /api-b06a/ did not match"
         );
 
         let router_delete: Router = Router::new()
