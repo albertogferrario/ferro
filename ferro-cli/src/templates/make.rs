@@ -99,10 +99,12 @@ pub fn inertia_page_template(component_name: &str) -> String {
     )
 }
 
-/// Template for generating a JSON-UI v2 spec file (--no-ai fallback).
+/// Template for generating a JSON-UI v2 view file (--no-ai fallback).
 ///
-/// Returns a flat JSON spec that can be loaded with `JsonUi::render_file`.
-pub fn json_view_template(_name: &str, title: &str, layout: &str) -> String {
+/// Returns a standalone JSON spec string — not Rust source. The output is intended
+/// to be written directly to `src/views/{name}.json` and served by a handler that
+/// calls `JsonUi::render_file("views/{name}.json", data)`.
+pub fn json_view_template(name: &str, title: &str, layout: &str) -> String {
     format!(
         r#"{{
   "$schema": "ferro-json-ui/v2",
@@ -112,7 +114,10 @@ pub fn json_view_template(_name: &str, title: &str, layout: &str) -> String {
   "elements": {{
     "root": {{
       "type": "Card",
-      "props": {{ "title": "{title}" }},
+      "props": {{
+        "title": "{title}",
+        "description": "Edit src/views/{name}.json to customize this view."
+      }},
       "children": ["heading"]
     }},
     "heading": {{
@@ -123,6 +128,49 @@ pub fn json_view_template(_name: &str, title: &str, layout: &str) -> String {
 }}
 "#,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn json_view_template_is_valid_v2_json() {
+        let out = json_view_template("dashboard", "Dashboard", "dashboard");
+        let v: serde_json::Value =
+            serde_json::from_str(&out).expect("template must be valid JSON");
+        assert_eq!(v["$schema"], "ferro-json-ui/v2");
+        assert_eq!(v["title"], "Dashboard");
+        assert_eq!(v["layout"], "dashboard");
+        assert_eq!(v["root"], "root");
+        assert!(v["elements"]["root"]["type"].as_str() == Some("Card"));
+        assert!(v["elements"]["heading"]["type"].as_str() == Some("Text"));
+    }
+
+    #[test]
+    fn json_view_template_references_name_in_description() {
+        let out = json_view_template("my_page", "My Page", "dashboard");
+        assert!(out.contains("src/views/my_page.json"));
+        assert!(!out.contains("my_page.rs"));
+    }
+
+    #[test]
+    fn json_view_template_has_no_v1_markers() {
+        let out = json_view_template("x", "Y", "dashboard");
+        for marker in ["Spec::builder", "Element::new", "JsonUiView", "use ferro::"] {
+            assert!(
+                !out.contains(marker),
+                "template must not contain v1 marker '{marker}'"
+            );
+        }
+    }
+
+    #[test]
+    fn json_view_template_parses_as_spec() {
+        let out = json_view_template("dashboard", "Dashboard", "dashboard");
+        let spec = ferro_json_ui::Spec::from_json(&out);
+        assert!(spec.is_ok(), "template must parse as a valid Spec: {spec:?}");
+    }
 }
 
 /// Handler template paired with a JSON-UI v2 spec file.
