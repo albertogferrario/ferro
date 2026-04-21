@@ -3,6 +3,40 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## ferro-rs
+
+### [0.2.13] — 2026-04-21
+
+Bug fix: `get!("/", ...)` registered inside `group!("/prefix", { ... })`
+is now reachable at both `/prefix` and `/prefix/`. Previously only
+non-root paths matched; the trailing-slash variant of the root-in-group
+case returned 404. Discovered via a production field application that
+routes under `/s/{slug}/`.
+
+#### Fixed
+
+- Group path combination in both `GroupDef::register_with_inherited`
+  (the macro-based `group!`) and `GroupBuilder::finalize` (the
+  builder-based `Router::group`) now registers a leaf `get!("/", ...)`
+  under both `/prefix` and `/prefix/`. A trailing slash on the group
+  prefix is also correctly stripped, so `group!("/api/", { get!("/x", ...) })`
+  produces `/api/x`, not `/api//x`.
+- Nested-group prefix accumulation strips a trailing slash on the
+  parent prefix before concatenating the child prefix, so
+  `group!("/a/", { group!("/b", { get!("/", h) }) })` accumulates to
+  `/a/b` rather than `/a//b`.
+
+#### Unchanged
+
+- Top-level (non-grouped) `get!("/", ...)` behavior.
+- Route introspection: `get_registered_routes()` and
+  `ferro-mcp list_routes` still show one entry per logical handler —
+  the canonical path without trailing slash.
+- Named-route resolution: `route("foo", &[])` returns the canonical
+  path.
+- Middleware attached to grouped routes fires for both trailing-slash
+  variants.
+
 ## ferro-stripe
 
 ### [0.4.0] — 2026-04-20
