@@ -50,11 +50,11 @@ pub use metrics::MetricsMiddleware;
 pub use security_headers::SecurityHeaders;
 
 pub use chain::MiddlewareChain;
-pub use rate_limit::{Limit, LimiterResponse, RateLimiter, Throttle};
 pub use pre_route_registry::{
     get_pre_route_middleware, register_pre_route_middleware, BoxedPreRouteMiddleware,
     PreRouteMiddleware,
 };
+pub use rate_limit::{Limit, LimiterResponse, RateLimiter, Throttle};
 pub use registry::get_global_middleware_info;
 pub use registry::register_global_middleware;
 pub use registry::MiddlewareRegistry;

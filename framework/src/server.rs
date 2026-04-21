@@ -270,7 +270,9 @@ async fn handle_request(
         None => {
             // Try static file serving before fallback (only GET/HEAD)
             if method == hyper::Method::GET || method == hyper::Method::HEAD {
-                if let Some(response) = crate::static_files::try_serve_static_file(&routing_path).await {
+                if let Some(response) =
+                    crate::static_files::try_serve_static_file(&routing_path).await
+                {
                     return response;
                 }
             }
