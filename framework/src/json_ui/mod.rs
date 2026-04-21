@@ -396,7 +396,7 @@ mod tests {
         let body = html_body(ok_response(result));
 
         assert!(
-            body.contains(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css">"#),
+            body.contains(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css?v="#),
             "default config must emit <link> to /_ferro/ferro-base.css; body was: {body}"
         );
         assert!(
@@ -415,7 +415,7 @@ mod tests {
         let body = html_body(ok_response(result));
 
         assert!(
-            body.contains(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css">"#),
+            body.contains(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css?v="#),
             "<link> must be present even when CDN is opted in"
         );
         assert!(
@@ -425,7 +425,7 @@ mod tests {
 
         // Ordering: <link> before <script>.
         let link_pos = body
-            .find(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css">"#)
+            .find(r#"<link rel="stylesheet" href="/_ferro/ferro-base.css?v="#)
             .expect("link must exist");
         let cdn_pos = body.find("@tailwindcss/browser").expect("cdn must exist");
         assert!(

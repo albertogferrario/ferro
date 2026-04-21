@@ -338,7 +338,7 @@ fn serve_ferro_base_css() -> hyper::Response<Full<Bytes>> {
         .status(200)
         .header("Content-Type", "text/css; charset=utf-8")
         .header("Content-Length", css.len().to_string())
-        .header("Cache-Control", "public, max-age=86400")
+        .header("Cache-Control", "public, max-age=31536000, immutable")
         .body(Full::new(Bytes::from_static(css.as_bytes())))
         .unwrap()
 }
@@ -388,7 +388,7 @@ mod ferro_base_css_route_tests {
             .expect("Cache-Control header missing")
             .to_str()
             .unwrap();
-        assert_eq!(cc, "public, max-age=86400");
+        assert_eq!(cc, "public, max-age=31536000, immutable");
 
         let cl = response
             .headers()
