@@ -1093,6 +1093,7 @@ pub enum Component {
     DataTable(DataTableProps),
     Image(ImageProps),
     KeyValueEditor(KeyValueEditorProps),
+    DetailForm(DetailFormProps),
     Plugin(PluginProps),
 }
 
@@ -1160,6 +1161,7 @@ impl Serialize for Component {
             Component::DataTable(p) => serialize_tagged(serializer, "DataTable", p),
             Component::Image(p) => serialize_tagged(serializer, "Image", p),
             Component::KeyValueEditor(p) => serialize_tagged(serializer, "KeyValueEditor", p),
+            Component::DetailForm(p) => serialize_tagged(serializer, "DetailForm", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -1296,6 +1298,9 @@ impl<'de> Deserialize<'de> for Component {
             "KeyValueEditor" => serde_json::from_value::<KeyValueEditorProps>(value)
                 .map(Component::KeyValueEditor)
                 .map_err(de::Error::custom),
+            "DetailForm" => serde_json::from_value::<DetailFormProps>(value)
+                .map(Component::DetailForm)
+                .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
                 let plugin_type = type_str.to_string();
@@ -1352,6 +1357,29 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::Form(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a DetailForm component node.
+    ///
+    /// Renders the same outer scaffold in both [`EditMode::View`] and
+    /// [`EditMode::Edit`] modes per the structural coherence contract
+    /// (147-UI-SPEC §5). In Edit mode the scaffold is additionally
+    /// wrapped in a `<form>` with method-spoofing for PUT/PATCH/DELETE.
+    ///
+    /// **Authoring rule (Option A, 147-UI-SPEC §9).** When a
+    /// [`DetailField::input`] is an `Input` / `Select` / `Textarea` /
+    /// `Checkbox` / `Switch` component, the caller MUST set the input's
+    /// `label` prop to an empty string. The `<dt>` already provides the
+    /// visible label; DetailForm does not mutate caller-supplied props.
+    /// When Option A is applied, the renderer also emits `aria-label`
+    /// derived from the field's `label` so screen readers retain context.
+    pub fn detail_form(key: impl Into<String>, props: DetailFormProps) -> Self {
+        Self {
+            key: key.into(),
+            component: Component::DetailForm(props),
             action: None,
             visibility: None,
         }
