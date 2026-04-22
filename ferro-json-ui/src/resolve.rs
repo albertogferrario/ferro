@@ -49,6 +49,12 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
                 resolve_component_node(field, resolver);
             }
         }
+        Component::DetailForm(props) => {
+            resolve_action(&mut props.action, resolver);
+            for field in &mut props.fields {
+                resolve_component_node(&mut field.input, resolver);
+            }
+        }
         Component::Modal(props) => {
             for child in &mut props.children {
                 resolve_component_node(child, resolver);
@@ -220,6 +226,12 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
             collect_unresolved_action(&props.action, unresolved);
             for field in &props.fields {
                 collect_unresolved_node(field, unresolved);
+            }
+        }
+        Component::DetailForm(props) => {
+            collect_unresolved_action(&props.action, unresolved);
+            for field in &props.fields {
+                collect_unresolved_node(&field.input, unresolved);
             }
         }
         Component::Modal(props) => {
@@ -399,6 +411,11 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         Component::Form(props) => {
             for field in &mut props.fields {
                 resolve_errors_node(field, errors, all);
+            }
+        }
+        Component::DetailForm(props) => {
+            for field in &mut props.fields {
+                resolve_errors_node(&mut field.input, errors, all);
             }
         }
         Component::Modal(props) => {
