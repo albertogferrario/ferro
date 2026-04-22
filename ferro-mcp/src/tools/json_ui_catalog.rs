@@ -1105,8 +1105,8 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.components.len(),
-            39,
-            "Catalog should contain all 39 built-in components, got {}",
+            41,
+            "Catalog should contain all 41 built-in components (including DetailForm + KeyValueEditor backfill), got {}",
             catalog.components.len()
         );
 
@@ -1151,6 +1151,8 @@ mod tests {
             "ActionCard",
             "ProductTile",
             "Image",
+            "DetailForm",
+            "KeyValueEditor",
         ];
         for name in &expected {
             assert!(names.contains(name), "Missing component: {name}");

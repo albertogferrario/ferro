@@ -1156,4 +1156,138 @@ mod tests {
             _ => panic!("expected Input"),
         }
     }
+
+    // ── DetailForm resolver tests (Phase 147, Wave 0 RED) ─────────────────
+
+    #[test]
+    fn resolve_detail_form_action() {
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "df".to_string(),
+            component: Component::DetailForm(DetailFormProps {
+                mode: EditMode::Edit,
+                action: make_action("users.update"),
+                fields: vec![],
+                edit_url: "/users/1?mode=edit".to_string(),
+                cancel_url: "/users/1".to_string(),
+                edit_label: None,
+                save_label: None,
+                cancel_label: None,
+                method: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+
+        // Resolver knows "users.update" → "/users/1" (add arm if missing in test_resolver).
+        resolve_actions(&mut view, |h: &str| match h {
+            "users.update" => Some("/users/1".to_string()),
+            _ => test_resolver(h),
+        });
+
+        match &view.components[0].component {
+            Component::DetailForm(props) => {
+                assert_eq!(
+                    props.action.url.as_deref(),
+                    Some("/users/1"),
+                    "resolver must populate DetailForm action.url from handler"
+                );
+            }
+            _ => panic!("expected Component::DetailForm"),
+        }
+    }
+
+    #[test]
+    fn resolve_does_not_touch_edit_or_cancel_url() {
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "df".to_string(),
+            component: Component::DetailForm(DetailFormProps {
+                mode: EditMode::View,
+                action: make_action("users.update"),
+                fields: vec![],
+                edit_url: "RAW_EDIT".to_string(),
+                cancel_url: "RAW_CANCEL".to_string(),
+                edit_label: None,
+                save_label: None,
+                cancel_label: None,
+                method: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+
+        resolve_actions(&mut view, test_resolver);
+
+        match &view.components[0].component {
+            Component::DetailForm(props) => {
+                assert_eq!(
+                    props.edit_url, "RAW_EDIT",
+                    "edit_url must not be resolved (D-16)"
+                );
+                assert_eq!(
+                    props.cancel_url, "RAW_CANCEL",
+                    "cancel_url must not be resolved (D-16)"
+                );
+            }
+            _ => panic!("expected Component::DetailForm"),
+        }
+    }
+
+    #[test]
+    fn resolve_errors_propagates_into_detail_form_fields() {
+        // DetailField.input holds an Input; validation error against field name "name"
+        // should attach to the nested InputProps.error after resolve_errors runs.
+        let mut view = JsonUiView::new().component(ComponentNode {
+            key: "df".to_string(),
+            component: Component::DetailForm(DetailFormProps {
+                mode: EditMode::Edit,
+                action: make_action("users.update"),
+                fields: vec![DetailField {
+                    label: "Name".to_string(),
+                    value: "Ada".to_string(),
+                    input: ComponentNode::input(
+                        "name",
+                        InputProps {
+                            field: "name".to_string(),
+                            label: "".to_string(),
+                            input_type: InputType::Text,
+                            placeholder: None,
+                            required: None,
+                            disabled: None,
+                            error: None,
+                            description: None,
+                            default_value: None,
+                            data_path: None,
+                            step: None,
+                            list: None,
+                        },
+                    ),
+                }],
+                edit_url: "/users/1?mode=edit".to_string(),
+                cancel_url: "/users/1".to_string(),
+                edit_label: None,
+                save_label: None,
+                cancel_label: None,
+                method: None,
+            }),
+            action: None,
+            visibility: None,
+        });
+
+        let mut errors = HashMap::new();
+        errors.insert("name".to_string(), vec!["required".to_string()]);
+
+        resolve_errors(&mut view, &errors);
+
+        match &view.components[0].component {
+            Component::DetailForm(props) => match &props.fields[0].input.component {
+                Component::Input(ip) => assert_eq!(
+                    ip.error.as_deref(),
+                    Some("required"),
+                    "validation error must propagate into nested Input inside DetailForm"
+                ),
+                other => panic!("expected Input inside DetailField, got {other:?}"),
+            },
+            _ => panic!("expected Component::DetailForm"),
+        }
+    }
 }
