@@ -1293,13 +1293,15 @@ Plans:
 
 ### Phase 146: Add KeyValueEditor component to ferro-json-ui — dynamic key-value pair editor with suggested keys, custom rows, JSON serialization to hidden field, and runtime behavior in ferro-json-ui IIFE
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Ship a `KeyValueEditor` JSON-UI component that renders a dynamic list of key/value rows backed by a hidden JSON field, supports seeded rows from `data_path`, suggested keys via `<datalist>` or restricted `<select>`, error-state propagation, and event-delegated add/delete/input serialization via a new `setupKeyValueEditor()` runtime module.
+**Requirements**: R1 (html_escape on all dynamic HTML), R2 (data_path pre-fill), R3 (error state classes), R4 (select variant), R5 (datalist variant), R6 (empty hidden field defaults to `{}`), R7 (bundle contains setupKeyValueEditor), R8 (dispatcher invokes setupKeyValueEditor), R9 (serde round-trip)
 **Depends on:** Phase 145
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 146 to break down)
+- [ ] 146-01-PLAN.md — Wave 0 RED tests: 7 render_key_value_editor unit tests in render.rs, 2 serde round-trip tests in component.rs, update both runtime/mod.rs test arrays to require setupKeyValueEditor (Wave 1, no deps)
+- [ ] 146-02-PLAN.md — Rust implementation: KeyValueEditorProps struct + Component::KeyValueEditor variant + serde match arms in component.rs, render_key_value_editor() + dispatch arm in render.rs, public re-export + COMPONENT_CATALOG entry in lib.rs (Wave 2, depends on 01)
+- [ ] 146-03-PLAN.md — Runtime JS: new ferro-json-ui/src/runtime/key_value_editor.rs with ES5 setupKeyValueEditor/initKeyValueEditor/syncHiddenField, wire module decl + SOURCE push + dispatcher call into runtime/mod.rs (Wave 3, depends on 01)
 
 ---
 
