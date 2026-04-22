@@ -1283,14 +1283,14 @@ Plans:
 **Goal:** Replace the external `cargo-watch` dependency in `ferro serve` with an in-process supervisor. Make auto-watch opt-in via `--watch` (off by default). Add a runtime `r` key that triggers a backend rebuild and types regeneration, cancelling any in-flight build. Use `notify-debouncer-mini` for trailing-edge debounce (500 ms fixed) so a burst of file-saves produces one rebuild rather than many.
 **Requirements**: Design spec at `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`. Targets `ferro-cli/src/commands/serve.rs`. Deletes `ensure_cargo_watch()` and `start_type_watcher()`. Adds `notify-debouncer-mini` and `crossterm` deps; drops external `cargo-watch` install step.
 **Depends on:** Phase 144
-**Plans:** 3/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 145-01-PLAN.md — Wave 0 test infrastructure: minimal-serve fixture + integration-test scaffold + pure-function contracts (render_banner, classify_key, KbAction, ReloadTrigger, format_trigger_source, should_spawn_keyboard) + 5 inline #[ignore]-gated unit-test stubs (Wave 0)
 - [x] 145-02a-PLAN.md — Deps, clap surface, deletions, pure helpers: add --watch clap flag, delete ensure_cargo_watch() + start_type_watcher() + cargo-watch spawn path, extract spawn_child_with_prefix, fill render_banner/classify_key/format_trigger_source/should_spawn_keyboard bodies, un-ignore 4 pure-helper tests (Wave 1, depends on 01)
 - [x] 145-02b-PLAN.md — BackendSupervisor + producers + run() rewire: BackendSupervisor struct + RawModeGuard + spawn_keyboard_thread + spawn_file_watcher[_at] + drain_triggers, rewire run() with shutdown ordering per D-29, un-ignore remaining 3 supervisor-dependent tests (Wave 1, depends on 02a)
-- [ ] 145-03-PLAN.md — Integration tests: 4 un-ignored tests in serve_supervisor.rs against minimal-serve fixture covering SIGINT shutdown budget, `r`-key trigger, `--watch` burst coalescing, non-TTY banner; adds Unix libc dev-dep + env-var test hook (Wave 2, depends on 01+02b)
-- [ ] 145-04-PLAN.md — Docs refresh: update docs/src/reference/cli.md serve section (options table, key legend, What-it-does), rewrite ferro-cli/src/commands/skills/serve.md, phase-wide cargo-watch grep gate (Wave 2, depends on 02b, parallel with 03)
+- [x] 145-03-PLAN.md — Integration tests: 4 un-ignored tests in serve_supervisor.rs against minimal-serve fixture covering SIGINT shutdown budget, `r`-key trigger, `--watch` burst coalescing, non-TTY banner; adds Unix libc dev-dep + env-var test hook (Wave 2, depends on 01+02b)
+- [x] 145-04-PLAN.md — Docs refresh: update docs/src/reference/cli.md serve section (options table, key legend, What-it-does), rewrite ferro-cli/src/commands/skills/serve.md, phase-wide cargo-watch grep gate (Wave 2, depends on 02b, parallel with 03)
 
 ### Phase 146: Add KeyValueEditor component to ferro-json-ui — dynamic key-value pair editor with suggested keys, custom rows, JSON serialization to hidden field, and runtime behavior in ferro-json-ui IIFE
 
