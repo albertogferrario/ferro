@@ -1737,15 +1737,22 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
     }
 
     html.push_str("<div class=\"space-y-1\">");
-    html.push_str("<div class=\"flex items-center justify-between\">");
+    let row_class = if props.label.is_empty() {
+        "flex items-center gap-2"
+    } else {
+        "flex items-center justify-between"
+    };
+    html.push_str(&format!("<div class=\"{row_class}\">"));
 
-    // Left side: label + description.
+    // Left side: label + description (omitted when label is empty).
     html.push_str("<div>");
-    html.push_str(&format!(
-        "<label class=\"text-sm font-medium text-text\" for=\"{}\">{}</label>",
-        html_escape(&props.field),
-        html_escape(&props.label)
-    ));
+    if !props.label.is_empty() {
+        html.push_str(&format!(
+            "<label class=\"text-sm font-medium text-text\" for=\"{}\">{}</label>",
+            html_escape(&props.field),
+            html_escape(&props.label)
+        ));
+    }
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
             "<p class=\"text-sm text-text-muted\">{}</p>",
