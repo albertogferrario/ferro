@@ -3699,3 +3699,224 @@ mod key_value_editor_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod detail_form_tests {
+    use super::*;
+    use crate::action::{Action, HttpMethod};
+    use serde_json::json;
+
+    // ── EditMode (D-01, D-02) ─────────────────────────────────────────────
+
+    #[test]
+    fn edit_mode_default_is_view() {
+        assert_eq!(EditMode::default(), EditMode::View);
+    }
+
+    #[test]
+    fn edit_mode_from_query_exact_edit() {
+        assert_eq!(EditMode::from_query(Some("edit")), EditMode::Edit);
+    }
+
+    #[test]
+    fn edit_mode_from_query_case_insensitive_upper() {
+        assert_eq!(EditMode::from_query(Some("EDIT")), EditMode::Edit);
+    }
+
+    #[test]
+    fn edit_mode_from_query_case_insensitive_mixed() {
+        assert_eq!(EditMode::from_query(Some("eDiT")), EditMode::Edit);
+    }
+
+    #[test]
+    fn edit_mode_from_query_title_case() {
+        assert_eq!(EditMode::from_query(Some("Edit")), EditMode::Edit);
+    }
+
+    #[test]
+    fn edit_mode_from_query_none_is_view() {
+        assert_eq!(EditMode::from_query(None), EditMode::View);
+    }
+
+    #[test]
+    fn edit_mode_from_query_empty_is_view() {
+        assert_eq!(EditMode::from_query(Some("")), EditMode::View);
+    }
+
+    #[test]
+    fn edit_mode_from_query_view_literal_is_view() {
+        assert_eq!(EditMode::from_query(Some("view")), EditMode::View);
+    }
+
+    #[test]
+    fn edit_mode_from_query_unknown_is_view() {
+        assert_eq!(EditMode::from_query(Some("anything-else")), EditMode::View);
+    }
+
+    #[test]
+    fn edit_mode_serializes_as_snake_case() {
+        assert_eq!(
+            serde_json::to_value(EditMode::Edit).expect("serialize Edit"),
+            json!("edit")
+        );
+        assert_eq!(
+            serde_json::to_value(EditMode::View).expect("serialize View"),
+            json!("view")
+        );
+        let parsed_edit: EditMode =
+            serde_json::from_value(json!("edit")).expect("deserialize 'edit'");
+        assert_eq!(parsed_edit, EditMode::Edit);
+        let parsed_view: EditMode =
+            serde_json::from_value(json!("view")).expect("deserialize 'view'");
+        assert_eq!(parsed_view, EditMode::View);
+    }
+
+    // ── DetailFormProps serde (D-03, D-04, D-17, D-19) ────────────────────
+
+    fn sample_detail_form_props() -> DetailFormProps {
+        DetailFormProps {
+            mode: EditMode::Edit,
+            action: Action {
+                handler: "users.update".to_string(),
+                url: Some("/users/1".to_string()),
+                method: HttpMethod::Put,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+                target: None,
+            },
+            fields: vec![
+                DetailField {
+                    label: "Name".to_string(),
+                    value: "Ada".to_string(),
+                    input: ComponentNode::input(
+                        "name",
+                        InputProps {
+                            field: "name".to_string(),
+                            label: "".to_string(),
+                            input_type: InputType::Text,
+                            placeholder: None,
+                            required: None,
+                            disabled: None,
+                            error: None,
+                            description: None,
+                            default_value: None,
+                            data_path: None,
+                            step: None,
+                            list: None,
+                        },
+                    ),
+                },
+                DetailField {
+                    label: "Email".to_string(),
+                    value: "ada@example.com".to_string(),
+                    input: ComponentNode::input(
+                        "email",
+                        InputProps {
+                            field: "email".to_string(),
+                            label: "".to_string(),
+                            input_type: InputType::Email,
+                            placeholder: None,
+                            required: None,
+                            disabled: None,
+                            error: None,
+                            description: None,
+                            default_value: None,
+                            data_path: None,
+                            step: None,
+                            list: None,
+                        },
+                    ),
+                },
+            ],
+            edit_url: "/users/1?mode=edit".to_string(),
+            cancel_url: "/users/1".to_string(),
+            edit_label: Some("Modifica".to_string()),
+            save_label: Some("Salva".to_string()),
+            cancel_label: Some("Annulla".to_string()),
+            method: Some(HttpMethod::Put),
+        }
+    }
+
+    #[test]
+    fn detail_form_props_serde_roundtrip() {
+        let original = Component::DetailForm(sample_detail_form_props());
+        let serialized = serde_json::to_value(&original).expect("serialize DetailForm component");
+        assert_eq!(
+            serialized.get("type").and_then(|v| v.as_str()),
+            Some("DetailForm"),
+            "serialized form must have type=DetailForm: {serialized}"
+        );
+        let deserialized: Component =
+            serde_json::from_value(serialized).expect("deserialize DetailForm component");
+        assert_eq!(original, deserialized, "PartialEq round-trip failed");
+    }
+
+    #[test]
+    fn detail_form_props_omits_optional_nones() {
+        let props = DetailFormProps {
+            mode: EditMode::View,
+            action: Action {
+                handler: "x".to_string(),
+                url: None,
+                method: HttpMethod::Post,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+                target: None,
+            },
+            fields: Vec::new(),
+            edit_url: "/x?mode=edit".to_string(),
+            cancel_url: "/x".to_string(),
+            edit_label: None,
+            save_label: None,
+            cancel_label: None,
+            method: None,
+        };
+        let v = serde_json::to_value(&props).expect("serialize");
+        assert!(
+            v.get("edit_label").is_none(),
+            "edit_label=None must be skipped, got: {v}"
+        );
+        assert!(
+            v.get("save_label").is_none(),
+            "save_label=None must be skipped"
+        );
+        assert!(
+            v.get("cancel_label").is_none(),
+            "cancel_label=None must be skipped"
+        );
+        assert!(v.get("method").is_none(), "method=None must be skipped");
+    }
+
+    #[test]
+    fn detail_form_props_defaults_mode_to_view() {
+        let v = json!({
+            "action": {"handler": "x", "method": "POST"},
+            "fields": [],
+            "edit_url": "/x?mode=edit",
+            "cancel_url": "/x"
+        });
+        let props: DetailFormProps =
+            serde_json::from_value(v).expect("deserialize DetailFormProps without mode");
+        assert_eq!(
+            props.mode,
+            EditMode::View,
+            "missing 'mode' must default to View"
+        );
+    }
+
+    // ── ComponentNode::detail_form factory (D-18) ─────────────────────────
+
+    #[test]
+    fn component_node_detail_form_factory_shape() {
+        let node = ComponentNode::detail_form("details", sample_detail_form_props());
+        assert_eq!(node.key, "details");
+        assert!(node.action.is_none());
+        assert!(node.visibility.is_none());
+        assert!(
+            matches!(node.component, Component::DetailForm(_)),
+            "expected Component::DetailForm variant"
+        );
+    }
+}
