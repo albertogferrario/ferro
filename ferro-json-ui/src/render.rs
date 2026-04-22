@@ -615,9 +615,9 @@ fn render_dropdown_menu(props: &DropdownMenuProps) -> String {
     for item in &props.items {
         let url = item.action.url.as_deref().unwrap_or("#");
         let base_class = if item.destructive {
-            "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-150"
+            "block w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-150"
         } else {
-            "block px-4 py-2 text-sm text-text hover:bg-surface transition-colors duration-150"
+            "block w-full text-left px-4 py-2 text-sm text-text hover:bg-surface transition-colors duration-150"
         };
 
         // Confirm dialog data attributes
@@ -674,7 +674,7 @@ fn render_dropdown_menu(props: &DropdownMenuProps) -> String {
                     ));
                 }
                 html.push_str(&format!(
-                    "<button type=\"submit\" class=\"w-full text-left {}\"{}{}>{}</button>",
+                    "<button type=\"submit\" class=\"{}\"{}{}>{}</button>",
                     base_class,
                     confirm_attrs,
                     onclick,
@@ -806,10 +806,14 @@ fn render_card(props: &CardProps, data: &Value) -> String {
     match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
         FormMaxWidth::Default => {}
         FormMaxWidth::Narrow => {
-            html = format!("<div class=\"w-full\"><div class=\"max-w-2xl mx-auto\">{html}</div></div>");
+            html = format!(
+                "<div class=\"w-full\"><div class=\"max-w-2xl mx-auto\">{html}</div></div>"
+            );
         }
         FormMaxWidth::Wide => {
-            html = format!("<div class=\"w-full\"><div class=\"max-w-4xl mx-auto\">{html}</div></div>");
+            html = format!(
+                "<div class=\"w-full\"><div class=\"max-w-4xl mx-auto\">{html}</div></div>"
+            );
         }
     }
 
@@ -1274,7 +1278,7 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
             let use_outer_wrapper = mobile_href.is_some() && has_actions;
             if use_outer_wrapper {
                 html.push_str(
-                    "<div class=\"rounded-lg border border-border bg-card overflow-hidden\">",
+                    "<div class=\"rounded-lg border border-border bg-card overflow-visible\">",
                 );
                 html.push_str(&format!(
                     "<a href=\"{}\" class=\"block p-4 space-y-2 hover:bg-surface transition-colors\">",
@@ -1824,11 +1828,36 @@ fn render_button(props: &ButtonProps) -> String {
         ButtonVariant::Link => "text-primary underline hover:text-primary/80",
     };
 
+    let is_ghost = matches!(props.variant, ButtonVariant::Ghost);
     let size_classes = match props.size {
-        Size::Xs => "px-2 py-1 text-xs",
-        Size::Sm => "px-3 py-1.5 text-sm",
-        Size::Default => "px-4 py-2 text-sm",
-        Size::Lg => "px-6 py-3 text-base",
+        Size::Xs => {
+            if is_ghost {
+                "py-1 text-xs"
+            } else {
+                "px-2 py-1 text-xs"
+            }
+        }
+        Size::Sm => {
+            if is_ghost {
+                "py-1.5 text-sm"
+            } else {
+                "px-3 py-1.5 text-sm"
+            }
+        }
+        Size::Default => {
+            if is_ghost {
+                "py-2 text-sm"
+            } else {
+                "px-4 py-2 text-sm"
+            }
+        }
+        Size::Lg => {
+            if is_ghost {
+                "py-3 text-base"
+            } else {
+                "px-6 py-3 text-base"
+            }
+        }
     };
 
     let disabled_classes = if props.disabled == Some(true) {
@@ -2872,6 +2901,21 @@ mod tests {
         ));
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("text-text hover:bg-surface"));
+        assert!(html.contains("py-2 text-sm"));
+        assert!(!html.contains("px-4"));
+    }
+
+    #[test]
+    fn button_ghost_omits_horizontal_padding_across_sizes() {
+        for size in [Size::Xs, Size::Sm, Size::Default, Size::Lg] {
+            let view =
+                JsonUiView::new().component(button_node("b", "G", ButtonVariant::Ghost, size));
+            let html = render_to_html(&view, &json!({}));
+            assert!(!html.contains("px-2"), "ghost must not set px-2");
+            assert!(!html.contains("px-3"), "ghost must not set px-3");
+            assert!(!html.contains("px-4"), "ghost must not set px-4");
+            assert!(!html.contains("px-6"), "ghost must not set px-6");
+        }
     }
 
     #[test]
