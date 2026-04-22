@@ -707,6 +707,36 @@ pub fn run(
         );
         supervisor_handle = Some(thread::spawn(move || supervisor.run_loop(reload_rx)));
 
+        // Test-only integration hook for 145-03 `r_key_in_no_watch_mode_triggers_one_rebuild`.
+        // When `FERRO_SERVE_TEST_TRIGGER_PIPE` is set to a file path, a side thread polls
+        // that file every 50ms: any `r` character translates to ReloadTrigger::Manual, any
+        // `q` character sets the shutdown flag. The file is truncated after each non-empty
+        // read so repeated writes are seen. In production the env var is unset and this
+        // block is a no-op — guarded entirely by `std::env::var`. NOT part of the stable
+        // CLI surface; documented in plan 145-03.
+        if let Ok(pipe_path) = std::env::var("FERRO_SERVE_TEST_TRIGGER_PIPE") {
+            let tx = reload_tx.clone();
+            let sd = shutdown.clone();
+            thread::spawn(move || loop {
+                if sd.load(Ordering::SeqCst) {
+                    break;
+                }
+                if let Ok(content) = std::fs::read_to_string(&pipe_path) {
+                    if !content.is_empty() {
+                        if content.contains('r') {
+                            let _ = tx.send(ReloadTrigger::Manual);
+                        }
+                        if content.contains('q') {
+                            sd.store(true, Ordering::SeqCst);
+                            break;
+                        }
+                        let _ = std::fs::write(&pipe_path, "");
+                    }
+                }
+                thread::sleep(Duration::from_millis(50));
+            });
+        }
+
         // Drop the original Sender so once both producers exit, the supervisor's
         // recv_timeout sees Disconnected and the loop tears down cleanly.
         drop(reload_tx);

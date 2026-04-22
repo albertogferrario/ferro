@@ -54,3 +54,6 @@ projections = ["dep:ferro-projections"]
 
 [dev-dependencies]
 tempfile = "3.24.0"
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"

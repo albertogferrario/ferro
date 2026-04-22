@@ -1681,6 +1681,7 @@ dependencies = [
  "ferro-json-ui",
  "ferro-mcp",
  "ferro-projections",
+ "libc",
  "notify",
  "notify-debouncer-mini",
  "quote",
