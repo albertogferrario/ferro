@@ -17,10 +17,10 @@ use crate::component::{
     ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuAction, DropdownMenuProps,
     EmptyStateProps, FormMaxWidth, FormProps, FormSectionLayout, FormSectionProps, GapSize,
     GridProps, HeaderProps, IconPosition, ImageProps, InputProps, InputType, KanbanBoardProps,
-    ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps,
-    PluginProps, ProductTileProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
-    SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
-    ToastProps, ToastVariant,
+    KeyValueEditorProps, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
+    PaginationProps, PluginProps, ProductTileProps, ProgressProps, SelectProps, SeparatorProps,
+    SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps,
+    TextElement, TextProps, ToastProps, ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -185,7 +185,8 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         | Component::ActionCard(_)
         | Component::ProductTile(_)
         | Component::DataTable(_)
-        | Component::Image(_) => {}
+        | Component::Image(_)
+        | Component::KeyValueEditor(_) => {}
         Component::KanbanBoard(props) => {
             for col in &props.columns {
                 for child in &col.children {
@@ -311,6 +312,7 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::Select(props) => render_select(props, data),
         Component::Checkbox(props) => render_checkbox(props, data),
         Component::Switch(props) => render_switch(props, data),
+        Component::KeyValueEditor(props) => render_key_value_editor(props, data),
 
         // Layout components.
         Component::Grid(props) => render_grid(props, data),
@@ -1808,6 +1810,197 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
     html
 }
 
+/// Renders a dynamic key/value editor backed by a hidden JSON field.
+///
+/// Emits a `<div data-kv-editor>` wrapper containing a row list, a row
+/// template, an optional `<datalist>`, an "Add row" button, and a hidden
+/// input whose `value` is the JSON object `{"key": "value", ...}`.
+/// The runtime module `key_value_editor` wires add/delete/input events and
+/// keeps the hidden field in sync on every mutation.
+///
+/// `data_path` must resolve to a JSON object; each entry seeds one row.
+/// Non-string leaf values are `serde_json::to_string`-encoded so complex
+/// seed values still round-trip. When `data_path` is absent or does not
+/// resolve to an object, the editor renders with zero rows and `{}` in
+/// the hidden field.
+fn render_key_value_editor(props: &KeyValueEditorProps, data: &Value) -> String {
+    // 1. Resolve initial entries from data_path. Use resolve_path (not
+    //    resolve_path_string) so we can iterate over the object map.
+    let initial_entries: Vec<(String, String)> = if let Some(ref dp) = props.data_path {
+        resolve_path(data, dp)
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| {
+                        let val_str = match v {
+                            Value::String(s) => s.clone(),
+                            Value::Null => String::new(),
+                            other => serde_json::to_string(other).unwrap_or_default(),
+                        };
+                        (k.clone(), val_str)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    // 2. Build the initial JSON payload for the hidden field.
+    let initial_json = if initial_entries.is_empty() {
+        "{}".to_string()
+    } else {
+        let obj: serde_json::Map<String, Value> = initial_entries
+            .iter()
+            .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+            .collect();
+        serde_json::to_string(&Value::Object(obj)).unwrap_or_else(|_| "{}".to_string())
+    };
+
+    // 3. Error state classes (mirrors render_input).
+    let has_error = props.error.is_some();
+    let border_class = if has_error {
+        "border-destructive"
+    } else {
+        "border-border"
+    };
+    let focus_ring_class = if has_error {
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+    } else {
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    };
+
+    // 4. ARIA attributes applied to key and value inputs when an error exists.
+    let field_escaped = html_escape(&props.field);
+    let aria_attrs = if has_error {
+        format!(r#" aria-invalid="true" aria-describedby="err-{field_escaped}""#)
+    } else {
+        String::new()
+    };
+
+    // Shared input class fragment (matches render_input field styling).
+    let input_base = format!(
+        "block w-full rounded-md border {border_class} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none {focus_ring_class}",
+    );
+
+    // Shared select class fragment (compact — no chevron decoration).
+    let select_base = format!(
+        "block w-full appearance-none bg-background rounded-md border {border_class} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none {focus_ring_class}",
+    );
+
+    // Inline delete SVG — 16x16, currentColor, aria-hidden.
+    let delete_svg = r##"<svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>"##;
+
+    // Inline plus SVG for "Add row".
+    let add_svg = r##"<svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>"##;
+
+    // Reusable builder for a single row (used for both prefilled rows and the template row).
+    let render_row = |key_value: Option<(&str, &str)>| -> String {
+        let (key_attr_value, value_attr_value) = match key_value {
+            Some((k, v)) => (html_escape(k), html_escape(v)),
+            None => (String::new(), String::new()),
+        };
+
+        // Key cell: either <input type="text"> + datalist OR <select>.
+        let key_cell = if props.allow_custom_keys {
+            let list_attr = if !props.suggested_keys.is_empty() {
+                format!(r#" list="{field_escaped}-suggestions""#)
+            } else {
+                String::new()
+            };
+            format!(
+                r#"<input type="text" class="{input_base}" placeholder="Key"{list_attr} data-kv-key{aria_attrs} value="{key_attr_value}">"#
+            )
+        } else {
+            let mut s = format!(r#"<select class="{select_base}" data-kv-key{aria_attrs}>"#);
+            s.push_str(r#"<option value="">Select key</option>"#);
+            for k in &props.suggested_keys {
+                let k_escaped = html_escape(k);
+                let selected = if k_escaped == key_attr_value {
+                    " selected"
+                } else {
+                    ""
+                };
+                s.push_str(&format!(
+                    r#"<option value="{k_escaped}"{selected}>{k_escaped}</option>"#
+                ));
+            }
+            s.push_str("</select>");
+            s
+        };
+
+        let value_cell = format!(
+            r#"<input type="text" class="{input_base}" placeholder="Value" data-kv-value{aria_attrs} value="{value_attr_value}">"#
+        );
+
+        let delete_cell = format!(
+            r#"<button type="button" class="flex items-center justify-center min-w-[32px] min-h-[32px] rounded text-text-muted hover:text-destructive transition-colors duration-150" aria-label="Remove row" data-kv-delete>{delete_svg}</button>"#
+        );
+
+        format!(
+            r#"<div class="grid grid-cols-[1fr_1fr_auto] gap-2 items-center" data-kv-row>{key_cell}{value_cell}{delete_cell}</div>"#
+        )
+    };
+
+    // 5. Assemble the outer wrapper.
+    let mut html = String::with_capacity(1024);
+    html.push_str(&format!(
+        r#"<div class="space-y-1" data-kv-editor data-kv-field="{field_escaped}">"#
+    ));
+
+    // 6. Optional label.
+    if let Some(ref label) = props.label {
+        let label_escaped = html_escape(label);
+        html.push_str(&format!(
+            r#"<label class="block text-sm font-medium text-text" for="{field_escaped}">{label_escaped}</label>"#
+        ));
+    }
+
+    // 7. Rows container.
+    html.push_str(r#"<div class="space-y-2" data-kv-rows>"#);
+    for (k, v) in &initial_entries {
+        html.push_str(&render_row(Some((k.as_str(), v.as_str()))));
+    }
+    html.push_str("</div>");
+
+    // 8. Row template (always present, used by JS to clone new rows).
+    html.push_str("<template data-kv-row-template>");
+    html.push_str(&render_row(None));
+    html.push_str("</template>");
+
+    // 9. Datalist — only when allow_custom_keys AND suggested_keys non-empty.
+    if props.allow_custom_keys && !props.suggested_keys.is_empty() {
+        html.push_str(&format!(r#"<datalist id="{field_escaped}-suggestions">"#));
+        for key in &props.suggested_keys {
+            let key_escaped = html_escape(key);
+            html.push_str(&format!(r#"<option value="{key_escaped}">"#));
+        }
+        html.push_str("</datalist>");
+    }
+
+    // 10. Add-row button.
+    html.push_str(&format!(
+        r#"<button type="button" class="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors duration-150" data-kv-add>{add_svg}Add row</button>"#
+    ));
+
+    // 11. Hidden field carrying the serialized JSON.
+    let initial_json_escaped = html_escape(&initial_json);
+    html.push_str(&format!(
+        r#"<input type="hidden" id="{field_escaped}" name="{field_escaped}" value="{initial_json_escaped}">"#
+    ));
+
+    // 12. Optional error paragraph.
+    if let Some(ref error) = props.error {
+        let error_escaped = html_escape(error);
+        html.push_str(&format!(
+            r#"<p id="err-{field_escaped}" class="text-sm text-destructive">{error_escaped}</p>"#
+        ));
+    }
+
+    html.push_str("</div>");
+    html
+}
+
 // ── Leaf component renderers ────────────────────────────────────────────
 
 fn render_text(props: &TextProps) -> String {
@@ -2286,7 +2479,8 @@ const CHEVRON_DOWN: &str = concat!(
 );
 
 fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
-    let mut html = String::from("<details class=\"group rounded-lg border border-border overflow-hidden\"");
+    let mut html =
+        String::from("<details class=\"group rounded-lg border border-border overflow-hidden\"");
     if props.expanded {
         html.push_str(" open");
     }
@@ -4612,6 +4806,7 @@ mod tests {
                 disabled: None,
                 error: None,
                 action: None,
+                compact: false,
             }),
             action: None,
             visibility: None,
@@ -4642,6 +4837,7 @@ mod tests {
                 disabled: None,
                 error: Some("Required".to_string()),
                 action: None,
+                compact: false,
             }),
             action: None,
             visibility: None,
@@ -5965,6 +6161,7 @@ mod tests {
                     on_error: None,
                     target: None,
                 }),
+                compact: false,
             },
         ));
         let html = render_to_html(&view, &json!({}));
@@ -5987,6 +6184,7 @@ mod tests {
                 disabled: None,
                 error: None,
                 action: None,
+                compact: false,
             },
         ));
         let html = render_to_html(&view, &json!({}));
@@ -8030,6 +8228,7 @@ mod tests {
             disabled: None,
             error: None,
             action: None,
+            compact: false,
         };
         let html = render_switch(&props, &serde_json::Value::Null);
         assert!(html.contains("role=\"switch\""), "switch has role=switch");
@@ -8238,15 +8437,30 @@ mod tests {
     fn render_key_value_editor_empty_state() {
         let props = kv_props_minimal("meta");
         let html = render_key_value_editor(&props, &serde_json::Value::Null);
-        assert!(html.contains("data-kv-editor"), "missing data-kv-editor: {html}");
-        assert!(html.contains(r#"data-kv-field="meta""#), "missing data-kv-field attr");
+        assert!(
+            html.contains("data-kv-editor"),
+            "missing data-kv-editor: {html}"
+        );
+        assert!(
+            html.contains(r#"data-kv-field="meta""#),
+            "missing data-kv-field attr"
+        );
         assert!(html.contains(r#"name="meta""#), "missing hidden field name");
-        assert!(html.contains(r#"value="{}""#), "hidden field should default to {{}}");
+        assert!(
+            html.contains(r#"value="{}""#),
+            "hidden field should default to {{}}"
+        );
         assert!(html.contains("data-kv-add"), "missing add-row button");
-        assert!(html.contains("data-kv-row-template"), "missing row template");
+        assert!(
+            html.contains("data-kv-row-template"),
+            "missing row template"
+        );
         // Only the template row should be present (no pre-filled rows).
         let row_occurrences = html.matches("data-kv-row").count();
-        assert!(row_occurrences >= 1, "expected at least the template row, got {row_occurrences}");
+        assert!(
+            row_occurrences >= 1,
+            "expected at least the template row, got {row_occurrences}"
+        );
     }
 
     #[test]
@@ -8255,13 +8469,26 @@ mod tests {
         props.data_path = Some("/meta".to_string());
         let data = json!({"meta": {"alpha": "one", "beta": "two"}});
         let html = render_key_value_editor(&props, &data);
-        assert!(html.contains(r#"value="alpha""#), "missing prefilled key 'alpha'");
-        assert!(html.contains(r#"value="one""#), "missing prefilled value 'one'");
-        assert!(html.contains(r#"value="beta""#), "missing prefilled key 'beta'");
-        assert!(html.contains(r#"value="two""#), "missing prefilled value 'two'");
+        assert!(
+            html.contains(r#"value="alpha""#),
+            "missing prefilled key 'alpha'"
+        );
+        assert!(
+            html.contains(r#"value="one""#),
+            "missing prefilled value 'one'"
+        );
+        assert!(
+            html.contains(r#"value="beta""#),
+            "missing prefilled key 'beta'"
+        );
+        assert!(
+            html.contains(r#"value="two""#),
+            "missing prefilled value 'two'"
+        );
         // Hidden field should contain both entries serialized.
         assert!(
-            html.contains(r#""alpha":"one""#) || html.contains(r#"&quot;alpha&quot;:&quot;one&quot;"#),
+            html.contains(r#""alpha":"one""#)
+                || html.contains(r#"&quot;alpha&quot;:&quot;one&quot;"#),
             "hidden field missing alpha entry: {html}"
         );
     }
@@ -8271,11 +8498,26 @@ mod tests {
         let mut props = kv_props_minimal("meta");
         props.error = Some("required".to_string());
         let html = render_key_value_editor(&props, &serde_json::Value::Null);
-        assert!(html.contains("border-destructive"), "missing error border class");
-        assert!(html.contains("focus-visible:ring-destructive"), "missing error focus ring class");
-        assert!(html.contains(r#"aria-invalid="true""#), "missing aria-invalid");
-        assert!(html.contains(r#"aria-describedby="err-meta""#), "missing aria-describedby");
-        assert!(html.contains(r#"id="err-meta""#), "missing error paragraph id");
+        assert!(
+            html.contains("border-destructive"),
+            "missing error border class"
+        );
+        assert!(
+            html.contains("focus-visible:ring-destructive"),
+            "missing error focus ring class"
+        );
+        assert!(
+            html.contains(r#"aria-invalid="true""#),
+            "missing aria-invalid"
+        );
+        assert!(
+            html.contains(r#"aria-describedby="err-meta""#),
+            "missing aria-describedby"
+        );
+        assert!(
+            html.contains(r#"id="err-meta""#),
+            "missing error paragraph id"
+        );
         assert!(html.contains("required"), "missing error text");
     }
 
@@ -8285,12 +8527,30 @@ mod tests {
         props.allow_custom_keys = false;
         props.suggested_keys = vec!["env".to_string(), "region".to_string()];
         let html = render_key_value_editor(&props, &serde_json::Value::Null);
-        assert!(html.contains("<select"), "missing <select> in select variant");
-        assert!(html.contains("data-kv-key"), "missing data-kv-key on select");
-        assert!(html.contains(r#"<option value="env">env</option>"#), "missing env option");
-        assert!(html.contains(r#"<option value="region">region</option>"#), "missing region option");
-        assert!(!html.contains(r#"list="meta-suggestions""#), "select variant must not use datalist");
-        assert!(!html.contains("<datalist"), "select variant must not render a <datalist>");
+        assert!(
+            html.contains("<select"),
+            "missing <select> in select variant"
+        );
+        assert!(
+            html.contains("data-kv-key"),
+            "missing data-kv-key on select"
+        );
+        assert!(
+            html.contains(r#"<option value="env">env</option>"#),
+            "missing env option"
+        );
+        assert!(
+            html.contains(r#"<option value="region">region</option>"#),
+            "missing region option"
+        );
+        assert!(
+            !html.contains(r#"list="meta-suggestions""#),
+            "select variant must not use datalist"
+        );
+        assert!(
+            !html.contains("<datalist"),
+            "select variant must not render a <datalist>"
+        );
     }
 
     #[test]
@@ -8298,10 +8558,22 @@ mod tests {
         let mut props = kv_props_minimal("meta");
         props.suggested_keys = vec!["env".to_string(), "region".to_string()];
         let html = render_key_value_editor(&props, &serde_json::Value::Null);
-        assert!(html.contains(r#"<datalist id="meta-suggestions">"#), "missing datalist");
-        assert!(html.contains(r#"<option value="env">"#), "missing datalist option env");
-        assert!(html.contains(r#"<option value="region">"#), "missing datalist option region");
-        assert!(html.contains(r#"list="meta-suggestions""#), "key input missing list attr");
+        assert!(
+            html.contains(r#"<datalist id="meta-suggestions">"#),
+            "missing datalist"
+        );
+        assert!(
+            html.contains(r#"<option value="env">"#),
+            "missing datalist option env"
+        );
+        assert!(
+            html.contains(r#"<option value="region">"#),
+            "missing datalist option region"
+        );
+        assert!(
+            html.contains(r#"list="meta-suggestions""#),
+            "key input missing list attr"
+        );
     }
 
     #[test]
@@ -8309,7 +8581,10 @@ mod tests {
         let props = kv_props_minimal("meta");
         let html = render_key_value_editor(&props, &serde_json::Value::Null);
         assert!(html.contains(r#"type="hidden""#), "missing hidden input");
-        assert!(html.contains(r#"value="{}""#), "hidden input should default to {{}}");
+        assert!(
+            html.contains(r#"value="{}""#),
+            "hidden input should default to {{}}"
+        );
     }
 
     #[test]
@@ -8319,9 +8594,18 @@ mod tests {
         let data = json!({"m": {"<k>": "\"v\""}});
         let html = render_key_value_editor(&props, &data);
         // Key with angle brackets must be escaped before reaching the attribute.
-        assert!(!html.contains(r#"value="<k>""#), "unescaped < in key attribute: {html}");
-        assert!(html.contains("&lt;k&gt;"), "expected &lt;k&gt; in escaped output");
+        assert!(
+            !html.contains(r#"value="<k>""#),
+            "unescaped < in key attribute: {html}"
+        );
+        assert!(
+            html.contains("&lt;k&gt;"),
+            "expected &lt;k&gt; in escaped output"
+        );
         // Value with double quotes must be escaped.
-        assert!(html.contains("&quot;v&quot;"), "expected &quot;v&quot; in escaped output");
+        assert!(
+            html.contains("&quot;v&quot;"),
+            "expected &quot;v&quot; in escaped output"
+        );
     }
 }
