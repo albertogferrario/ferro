@@ -468,8 +468,10 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::ProductTile(_)
         | Component::DataTable(_)
         | Component::Image(_)
-        | Component::KeyValueEditor(_)
         | Component::Plugin(_) => {}
+        Component::KeyValueEditor(props) => {
+            set_field_error(&mut props.error, &props.field, errors, all);
+        }
     }
 }
 

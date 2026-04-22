@@ -18,6 +18,33 @@ use std::time::Duration;
 // BackendSupervisor that 145-02b will wire in. Bodies are filled by 145-02a
 // against the inline test oracle below so later plans cannot drift.
 
+/// Emit a stdout line with explicit CRLF so output renders correctly while the
+/// keyboard thread has raw mode enabled (OPOST disabled). Safe when raw mode
+/// is off — the extra \r lands at column 0 which is already the cursor position
+/// after OPOST expands \n to \r\n.
+macro_rules! sprintln {
+    () => {{
+        print!("\r\n");
+        let _ = io::stdout().flush();
+    }};
+    ($($arg:tt)*) => {{
+        print!("{}\r\n", format_args!($($arg)*));
+        let _ = io::stdout().flush();
+    }};
+}
+
+/// stderr counterpart to `sprintln!`.
+macro_rules! seprintln {
+    () => {{
+        eprint!("\r\n");
+        let _ = io::stderr().flush();
+    }};
+    ($($arg:tt)*) => {{
+        eprint!("{}\r\n", format_args!($($arg)*));
+        let _ = io::stderr().flush();
+    }};
+}
+
 /// Reload trigger dispatched to the BackendSupervisor over an mpsc channel (D-06, D-20).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ReloadTrigger {
@@ -249,7 +276,7 @@ fn ensure_npm_dependencies() -> Result<(), String> {
     let node_modules = frontend_path.join("node_modules");
 
     if !node_modules.exists() {
-        println!("{}", style("Installing frontend dependencies...").yellow());
+        sprintln!("{}", style("Installing frontend dependencies...").yellow());
         let npm_install = Command::new("npm")
             .args(["install"])
             .current_dir(frontend_path)
@@ -259,7 +286,7 @@ fn ensure_npm_dependencies() -> Result<(), String> {
         if !npm_install.success() {
             return Err("Failed to install npm dependencies".into());
         }
-        println!(
+        sprintln!(
             "{}",
             style("Frontend dependencies installed successfully.").green()
         );
@@ -301,7 +328,7 @@ fn spawn_keyboard_thread(
         return None;
     }
     if let Err(e) = enable_raw_mode() {
-        eprintln!("{} raw mode unavailable: {e}", style("Warning:").yellow());
+        seprintln!("{} raw mode unavailable: {e}", style("Warning:").yellow());
         return None;
     }
     Some(thread::spawn(move || {
@@ -343,7 +370,7 @@ fn spawn_file_watcher_at(
     tx: Sender<ReloadTrigger>,
 ) -> Option<notify_debouncer_mini::Debouncer<notify::RecommendedWatcher>> {
     if !src.is_dir() {
-        eprintln!(
+        seprintln!(
             "{} {} missing, --watch disabled",
             style("Warning:").yellow(),
             src.display()
@@ -366,12 +393,12 @@ fn spawn_file_watcher_at(
     ) {
         Ok(d) => d,
         Err(e) => {
-            eprintln!("{} notify init failed: {e}", style("Warning:").yellow());
+            seprintln!("{} notify init failed: {e}", style("Warning:").yellow());
             return None;
         }
     };
     if let Err(e) = debouncer.watcher().watch(src, RecursiveMode::Recursive) {
-        eprintln!(
+        seprintln!(
             "{} watch({}) failed: {e}",
             style("Warning:").yellow(),
             src.display()
@@ -440,11 +467,11 @@ impl BackendSupervisor {
             &self.types_output_path,
         ) {
             Ok(count) if count > 0 => {
-                println!("{} Regenerated {} type(s)", style("[types]").blue(), count);
+                sprintln!("{} Regenerated {} type(s)", style("[types]").blue(), count);
             }
             Ok(_) => {}
             Err(e) => {
-                eprintln!("{} Failed to regenerate: {}", style("[types]").yellow(), e);
+                seprintln!("{} Failed to regenerate: {}", style("[types]").yellow(), e);
             }
         }
     }
@@ -465,7 +492,7 @@ impl BackendSupervisor {
         ) {
             Ok(child) => self.current = Some(child),
             Err(e) => {
-                eprintln!("{} {}", style("Error:").red().bold(), e);
+                seprintln!("{} {}", style("Error:").red().bold(), e);
                 self.current = None;
             }
         }
@@ -496,7 +523,7 @@ impl BackendSupervisor {
             match rx.recv_timeout(Duration::from_millis(100)) {
                 Ok(initial) => {
                     let src = Self::drain_triggers(&rx, initial);
-                    println!(
+                    sprintln!(
                         "{} reload triggered ({})",
                         style("[backend]").magenta().bold(),
                         format_trigger_source(src)
@@ -551,7 +578,7 @@ pub fn run(
 
     let vite_port = find_available_port(requested_vite_port, 10);
     if vite_port != requested_vite_port {
-        println!(
+        sprintln!(
             "{} Port {} in use, using {} instead",
             style("[frontend]").cyan().bold(),
             requested_vite_port,
@@ -571,20 +598,20 @@ pub fn run(
 
     if sweep_days > 0 {
         if let Some(cleaned) = clean::run_silent(sweep_days) {
-            println!("{} {}", style("♻").cyan(), cleaned);
+            sprintln!("{} {}", style("♻").cyan(), cleaned);
         }
     }
 
-    println!();
-    println!(
+    sprintln!();
+    sprintln!(
         "{}",
         style("Starting Ferro development servers...").cyan().bold()
     );
-    println!();
+    sprintln!();
 
     // Validate project
     if let Err(e) = validate_ferro_project(backend_only, frontend_only) {
-        eprintln!("{} {}", style("Error:").red().bold(), e);
+        seprintln!("{} {}", style("Error:").red().bold(), e);
         std::process::exit(1);
     }
 
@@ -593,16 +620,16 @@ pub fn run(
         let project_path = Path::new(".");
         let output_path = project_path.join("frontend/src/types/inertia-props.ts");
 
-        println!("{}", style("Generating TypeScript types...").cyan());
+        sprintln!("{}", style("Generating TypeScript types...").cyan());
         match super::generate_types::generate_types_to_file(project_path, &output_path) {
             Ok(0) => {
-                println!(
+                sprintln!(
                     "{}",
                     style("No InertiaProps structs found (skipping type generation)").dim()
                 );
             }
             Ok(count) => {
-                println!(
+                sprintln!(
                     "{} Generated {} type(s) to {}",
                     style("✓").green(),
                     count,
@@ -611,20 +638,20 @@ pub fn run(
             }
             Err(e) => {
                 // Don't fail, just warn - types are a nice-to-have
-                eprintln!(
+                seprintln!(
                     "{} Failed to generate types: {} (continuing anyway)",
                     style("Warning:").yellow(),
                     e
                 );
             }
         }
-        println!();
+        sprintln!();
     }
 
     // Ensure npm dependencies are installed (only if running frontend)
     if !backend_only {
         if let Err(e) = ensure_npm_dependencies() {
-            eprintln!("{} {}", style("Error:").red().bold(), e);
+            seprintln!("{} {}", style("Error:").red().bold(), e);
             std::process::exit(1);
         }
     }
@@ -637,8 +664,8 @@ pub fn run(
     {
         let shutdown = shutdown.clone();
         ctrlc::set_handler(move || {
-            println!();
-            println!("{}", style("Shutting down servers...").yellow());
+            sprintln!();
+            sprintln!("{}", style("Shutting down servers...").yellow());
             shutdown.store(true, Ordering::SeqCst);
         })
         .expect("Error setting Ctrl-C handler");
@@ -671,7 +698,7 @@ pub fn run(
             console::Color::Cyan,
             &[],
         ) {
-            eprintln!("{} {}", style("Error:").red().bold(), e);
+            seprintln!("{} {}", style("Error:").red().bold(), e);
             manager.shutdown_all();
             std::process::exit(1);
         }
@@ -688,7 +715,7 @@ pub fn run(
         let package_name = match get_package_name() {
             Ok(name) => name,
             Err(e) => {
-                eprintln!("{} {}", style("Error:").red().bold(), e);
+                seprintln!("{} {}", style("Error:").red().bold(), e);
                 manager.shutdown_all();
                 std::process::exit(1);
             }
@@ -754,9 +781,9 @@ pub fn run(
         _debouncer = None;
     }
 
-    println!();
-    println!("{}", style("Press Ctrl+C to stop all servers").dim());
-    println!();
+    sprintln!();
+    sprintln!("{}", style("Press Ctrl+C to stop all servers").dim());
+    sprintln!();
 
     // Wait for shutdown signal only — backend-child exits are not grounds for
     // shutting down the serve command (D-12: no auto-respawn means the user
@@ -784,7 +811,7 @@ pub fn run(
     //  5c. Kill Vite via the existing ProcessManager teardown.
     manager.shutdown_all();
     //  6. Final confirmation line.
-    println!("{}", style("Servers stopped.").green());
+    sprintln!("{}", style("Servers stopped.").green());
 }
 
 #[cfg(test)]
