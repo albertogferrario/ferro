@@ -4,7 +4,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use notify::RecursiveMode;
 use notify_debouncer_mini::{new_debouncer, DebouncedEvent};
-use std::io::{BufRead, BufReader, IsTerminal};
+use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -141,7 +141,13 @@ fn spawn_child_with_prefix(
                 break;
             }
             if let Ok(line) = line {
-                println!("{} {}", style(&prefix_out).fg(color).bold(), line);
+                // Emit CRLF explicitly: when the keyboard thread has enabled
+                // raw mode, OPOST is off and a lone \n leaves the cursor
+                // wherever the prior line ended. \r\n is a no-op extra \r when
+                // raw mode is off (cursor already at column 0 after OPOST
+                // expands \n to \r\n), so this is safe in both modes.
+                print!("{} {}\r\n", style(&prefix_out).fg(color).bold(), line);
+                let _ = io::stdout().flush();
             }
         }
     });
@@ -153,7 +159,8 @@ fn spawn_child_with_prefix(
                 break;
             }
             if let Ok(line) = line {
-                eprintln!("{} {}", style(&prefix_err).fg(color).bold(), line);
+                eprint!("{} {}\r\n", style(&prefix_err).fg(color).bold(), line);
+                let _ = io::stderr().flush();
             }
         }
     });
