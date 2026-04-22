@@ -61,13 +61,14 @@ pub use component::{
     BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType,
     ButtonVariant, CardProps, CheckboxProps, ChecklistItem, ChecklistProps, CollapsibleProps,
     Column, ColumnFormat, Component, ComponentNode, DataTableProps, DescriptionItem,
-    DescriptionListProps, DropdownMenuAction, DropdownMenuProps, EmptyStateProps, FormMaxWidth,
-    FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps,
-    InputProps, InputType, KanbanBoardProps, KanbanColumnProps, KeyValueEditorProps, ModalProps,
-    NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps, PaginationProps,
-    PluginProps, ProductTileProps, ProgressProps, SelectOption, SelectProps, SeparatorProps,
-    SidebarGroup, SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps,
-    SwitchProps, Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    DescriptionListProps, DetailField, DetailFormProps, DropdownMenuAction, DropdownMenuProps,
+    EditMode, EmptyStateProps, FormMaxWidth, FormProps, FormSectionProps, GapSize, GridProps,
+    HeaderProps, IconPosition, ImageProps, InputProps, InputType, KanbanBoardProps,
+    KanbanColumnProps, KeyValueEditorProps, ModalProps, NotificationDropdownProps,
+    NotificationItem, Orientation, PageHeaderProps, PaginationProps, PluginProps, ProductTileProps,
+    ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem,
+    SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
+    TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers
@@ -115,6 +116,10 @@ Props: columns (Vec<Column {key, label, format?}>), data_path (String), row_acti
 
 ### Form
 Props: action (Action), fields (Vec<ComponentNode>), method (Option<GET|POST|PUT|PATCH|DELETE>)
+
+### DetailForm
+Props: mode (EditMode: view|edit), action (Action), fields (Vec<DetailField {label, value, input}>), edit_url (String), cancel_url (String), edit_label (Option<String>, default "Modifica"), save_label (Option<String>, default "Salva"), cancel_label (Option<String>, default "Annulla"), method (Option<HttpMethod>)
+Split-mode detail page with inline edit: View mode renders a <dl> with a "Modifica" link; Edit mode wraps the same <dl> in a <form> with "Salva"/"Annulla" actions. Mode is URL-driven via ?mode=edit (server-side only; no JS). Authoring rule (Option A): when DetailField.input is an Input/Select/Textarea/Checkbox/Switch component, the caller MUST set its label to "" — the <dt> provides the visible label. DetailForm does not mutate caller-supplied props; it emits aria-label on each input derived from the field's label so screen readers retain context.
 
 ### Input
 Props: field (String), label (String), input_type (text|email|password|number|textarea|hidden|date|time|url|tel|search), placeholder (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>), description (Option<String>), default_value (Option<String>), data_path (Option<String>), step (Option<String>)
