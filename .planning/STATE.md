@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 146 UI-SPEC approved
-last_updated: "2026-04-22T15:16:16.408Z"
-last_activity: 2026-04-22 -- Phase 145 planning complete
+stopped_at: Completed 145-01-PLAN.md
+last_updated: "2026-04-22T15:33:23.293Z"
+last_activity: 2026-04-22
 progress:
   total_phases: 146
   completed_phases: 130
   total_plans: 331
-  completed_plans: 305
+  completed_plans: 306
   percent: 92
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 144 — fix-root-path-routing-in-group-routes
+**Current focus:** Phase 145 — ferro-serve-manual-reload-key-and-watch-supervisor
 
 ## Current Position
 
-Phase: 144
-Plan: Not started
+Phase: 145 (ferro-serve-manual-reload-key-and-watch-supervisor) — EXECUTING
+Plan: 2 of 5
 Workspace version: 0.2.5
 Status: Ready to execute
-Last activity: 2026-04-22 -- Phase 145 planning complete
+Last activity: 2026-04-22
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -103,6 +103,7 @@ Progress: [██████████] 96%
 | Phase 135-servicedef-derivation-bridge P01 | 8min | 2 tasks | 3 files |
 | Phase 135-servicedef-derivation-bridge P02 | 6min | 2 tasks | 3 files |
 | Phase 141 P02 | 15min | 2 tasks | 5 files |
+| Phase 145 P01 | 11min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,8 @@ Recent decisions affecting current work:
 - [112-01] Working with Agents guide covers ferro-mcp only — ferro-api-mcp remains on its dedicated api-mcp.md page
 - [112-01] Agent-to-CLI workflow documented within working-with-agents.md as a section, not a separate page
 - [112-01] MCP config command is `ferro mcp` — not a standalone ferro-mcp binary
+- [145-01] Test-fixture crates under workspace root need an empty [workspace] table in their Cargo.toml to opt out of the enclosing workspace and build standalone
+- [145-01] classify_key signature declared with final crossterm types (KeyCode, KeyModifiers) at Wave 0 — no Plan-02 signature rewrite needed
 
 ### Pending Todos
 
@@ -150,7 +153,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-22T15:16:16.376Z
-Stopped at: Phase 146 UI-SPEC approved
-Resume file: .planning/phases/146-add-keyvalueeditor-component-to-ferro-json-ui-dynamic-key-va/146-UI-SPEC.md
+Last session: 2026-04-22T15:33:18.372Z
+Stopped at: Completed 145-01-PLAN.md
+Resume file: None
 Next action: `/gsd-complete-milestone v11.7`

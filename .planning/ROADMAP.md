@@ -1283,10 +1283,10 @@ Plans:
 **Goal:** Replace the external `cargo-watch` dependency in `ferro serve` with an in-process supervisor. Make auto-watch opt-in via `--watch` (off by default). Add a runtime `r` key that triggers a backend rebuild and types regeneration, cancelling any in-flight build. Use `notify-debouncer-mini` for trailing-edge debounce (500 ms fixed) so a burst of file-saves produces one rebuild rather than many.
 **Requirements**: Design spec at `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`. Targets `ferro-cli/src/commands/serve.rs`. Deletes `ensure_cargo_watch()` and `start_type_watcher()`. Adds `notify-debouncer-mini` and `crossterm` deps; drops external `cargo-watch` install step.
 **Depends on:** Phase 144
-**Plans:** 4 plans
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] 145-01-PLAN.md — Wave 0 test infrastructure: minimal-serve fixture + integration-test scaffold + pure-function contracts (render_banner, classify_key, KbAction, ReloadTrigger, format_trigger_source, should_spawn_keyboard) + 5 inline #[ignore]-gated unit-test stubs (Wave 0)
+- [x] 145-01-PLAN.md — Wave 0 test infrastructure: minimal-serve fixture + integration-test scaffold + pure-function contracts (render_banner, classify_key, KbAction, ReloadTrigger, format_trigger_source, should_spawn_keyboard) + 5 inline #[ignore]-gated unit-test stubs (Wave 0)
 - [ ] 145-02-PLAN.md — Core rewrite: add crossterm dep, delete ensure_cargo_watch() + start_type_watcher(), add --watch clap flag, implement BackendSupervisor + RawModeGuard + spawn_keyboard_thread + spawn_file_watcher + drain_triggers, fill contract bodies, un-ignore unit tests (Wave 1, depends on 01)
 - [ ] 145-03-PLAN.md — Integration tests: 4 un-ignored tests in serve_supervisor.rs against minimal-serve fixture covering SIGINT shutdown budget, `r`-key trigger, `--watch` burst coalescing, non-TTY banner; adds Unix libc dev-dep + env-var test hook (Wave 2, depends on 01+02)
 - [ ] 145-04-PLAN.md — Docs refresh: update docs/src/reference/cli.md serve section (options table, key legend, What-it-does), rewrite ferro-cli/src/commands/skills/serve.md, phase-wide cargo-watch grep gate (Wave 2, depends on 02, parallel with 03)
