@@ -1895,11 +1895,14 @@ fn render_key_value_editor(props: &KeyValueEditorProps, data: &Value) -> String 
     let add_svg = r##"<svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>"##;
 
     // Reusable builder for a single row (used for both prefilled rows and the template row).
-    let render_row = |key_value: Option<(&str, &str)>| -> String {
+    // `is_template` suppresses aria-invalid/aria-describedby: those attributes describe
+    // a specific input's validity, not cloned rows whose values are not yet invalid.
+    let render_row = |key_value: Option<(&str, &str)>, is_template: bool| -> String {
         let (key_attr_value, value_attr_value) = match key_value {
             Some((k, v)) => (html_escape(k), html_escape(v)),
             None => (String::new(), String::new()),
         };
+        let row_aria = if is_template { "" } else { &aria_attrs[..] };
 
         // Key cell: either <input type="text"> + datalist OR <select>.
         let key_cell = if props.allow_custom_keys {
@@ -1909,10 +1912,10 @@ fn render_key_value_editor(props: &KeyValueEditorProps, data: &Value) -> String 
                 String::new()
             };
             format!(
-                r#"<input type="text" class="{input_base}" placeholder="Key"{list_attr} data-kv-key{aria_attrs} value="{key_attr_value}">"#
+                r#"<input type="text" class="{input_base}" placeholder="Key"{list_attr} data-kv-key{row_aria} value="{key_attr_value}">"#
             )
         } else {
-            let mut s = format!(r#"<select class="{select_base}" data-kv-key{aria_attrs}>"#);
+            let mut s = format!(r#"<select class="{select_base}" data-kv-key{row_aria}>"#);
             s.push_str(r#"<option value="">Select key</option>"#);
             for k in &props.suggested_keys {
                 let k_escaped = html_escape(k);
@@ -1930,7 +1933,7 @@ fn render_key_value_editor(props: &KeyValueEditorProps, data: &Value) -> String 
         };
 
         let value_cell = format!(
-            r#"<input type="text" class="{input_base}" placeholder="Value" data-kv-value{aria_attrs} value="{value_attr_value}">"#
+            r#"<input type="text" class="{input_base}" placeholder="Value" data-kv-value{row_aria} value="{value_attr_value}">"#
         );
 
         let delete_cell = format!(
@@ -1959,13 +1962,14 @@ fn render_key_value_editor(props: &KeyValueEditorProps, data: &Value) -> String 
     // 7. Rows container.
     html.push_str(r#"<div class="space-y-2" data-kv-rows>"#);
     for (k, v) in &initial_entries {
-        html.push_str(&render_row(Some((k.as_str(), v.as_str()))));
+        html.push_str(&render_row(Some((k.as_str(), v.as_str())), false));
     }
     html.push_str("</div>");
 
     // 8. Row template (always present, used by JS to clone new rows).
+    // Template rows are never aria-invalid — they carry no user values yet.
     html.push_str("<template data-kv-row-template>");
-    html.push_str(&render_row(None));
+    html.push_str(&render_row(None, true));
     html.push_str("</template>");
 
     // 9. Datalist — only when allow_custom_keys AND suggested_keys non-empty.
@@ -8497,7 +8501,10 @@ mod tests {
     fn render_key_value_editor_error_state() {
         let mut props = kv_props_minimal("meta");
         props.error = Some("required".to_string());
-        let html = render_key_value_editor(&props, &serde_json::Value::Null);
+        // Use a prefilled row so there is a live row to carry aria attributes.
+        props.data_path = Some("/meta".to_string());
+        let data = json!({"meta": {"key1": "val1"}});
+        let html = render_key_value_editor(&props, &data);
         assert!(
             html.contains("border-destructive"),
             "missing error border class"
@@ -8506,13 +8513,23 @@ mod tests {
             html.contains("focus-visible:ring-destructive"),
             "missing error focus ring class"
         );
+        // aria-invalid must appear on the live row.
         assert!(
             html.contains(r#"aria-invalid="true""#),
-            "missing aria-invalid"
+            "missing aria-invalid on live row"
         );
         assert!(
             html.contains(r#"aria-describedby="err-meta""#),
-            "missing aria-describedby"
+            "missing aria-describedby on live row"
+        );
+        // Template row must NOT carry aria-invalid (it has no validated value yet).
+        let template_start = html
+            .find("data-kv-row-template")
+            .expect("missing template marker");
+        let template_fragment = &html[template_start..];
+        assert!(
+            !template_fragment.contains(r#"aria-invalid="true""#),
+            "template row must not carry aria-invalid"
         );
         assert!(
             html.contains(r#"id="err-meta""#),
