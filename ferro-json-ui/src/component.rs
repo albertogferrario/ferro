@@ -383,6 +383,38 @@ pub struct SwitchProps {
     pub compact: bool,
 }
 
+/// Props for `KeyValueEditor` component.
+///
+/// Renders a dynamic list of key/value rows backed by a hidden `<input>`
+/// that holds the current pairs serialized as a JSON object. The runtime
+/// module `key_value_editor` wires add/remove/input events and keeps the
+/// hidden field in sync on every mutation.
+///
+/// When `data_path` resolves to a JSON object, each entry seeds one row.
+/// `suggested_keys` drives a `<datalist>` (when `allow_custom_keys`) or a
+/// `<select>` (when `!allow_custom_keys`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct KeyValueEditorProps {
+    /// Name of the hidden input that receives the serialized JSON.
+    pub field: String,
+    /// Optional visible label above the editor block.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Keys offered as suggestions (via `<datalist>` or `<select>`).
+    #[serde(default)]
+    pub suggested_keys: Vec<String>,
+    /// If true (default), the key input accepts any text with suggestions;
+    /// if false, the key input is a `<select>` restricted to `suggested_keys`.
+    #[serde(default = "default_true")]
+    pub allow_custom_keys: bool,
+    /// JSON pointer path whose resolved object seeds the initial rows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
+    /// Validation error message rendered below the editor.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 /// Props for Separator component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SeparatorProps {
@@ -954,6 +986,7 @@ pub enum Component {
     ProductTile(ProductTileProps),
     DataTable(DataTableProps),
     Image(ImageProps),
+    KeyValueEditor(KeyValueEditorProps),
     Plugin(PluginProps),
 }
 
@@ -1020,6 +1053,7 @@ impl Serialize for Component {
             Component::ProductTile(p) => serialize_tagged(serializer, "ProductTile", p),
             Component::DataTable(p) => serialize_tagged(serializer, "DataTable", p),
             Component::Image(p) => serialize_tagged(serializer, "Image", p),
+            Component::KeyValueEditor(p) => serialize_tagged(serializer, "KeyValueEditor", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
     }
@@ -1152,6 +1186,9 @@ impl<'de> Deserialize<'de> for Component {
                 .map_err(de::Error::custom),
             "Image" => serde_json::from_value::<ImageProps>(value)
                 .map(Component::Image)
+                .map_err(de::Error::custom),
+            "KeyValueEditor" => serde_json::from_value::<KeyValueEditorProps>(value)
+                .map(Component::KeyValueEditor)
                 .map_err(de::Error::custom),
             _ => {
                 // Unknown type: treat as a plugin component.
@@ -1916,6 +1953,7 @@ mod tests {
                 disabled: None,
                 error: None,
                 action: None,
+                compact: false,
             }),
             Component::Separator(SeparatorProps { orientation: None }),
             Component::DescriptionList(DescriptionListProps {
@@ -2325,6 +2363,7 @@ mod tests {
             disabled: Some(false),
             error: None,
             action: None,
+            compact: false,
         });
         let json = serde_json::to_value(&switch).unwrap();
         assert_eq!(json["type"], "Switch");
@@ -2666,6 +2705,7 @@ mod tests {
             disabled: None,
             error: None,
             action: None,
+            compact: false,
         });
         let json = serde_json::to_value(&switch).unwrap();
         assert_eq!(json["data_path"], "/data/user/notifications_enabled");
@@ -3339,6 +3379,7 @@ mod tests {
             disabled: None,
             error: None,
             action: Some(Action::new("settings.toggle")),
+            compact: false,
         });
         let json = serde_json::to_value(&sw).unwrap();
         assert!(json["action"].is_object());
@@ -3359,6 +3400,7 @@ mod tests {
             disabled: None,
             error: None,
             action: None,
+            compact: false,
         });
         let json = serde_json::to_string(&sw).unwrap();
         assert!(!json.contains("\"action\""));
@@ -3590,8 +3632,8 @@ mod key_value_editor_tests {
             error: Some("required".to_string()),
         });
 
-        let serialized = serde_json::to_value(&original)
-            .expect("serialize KeyValueEditor component");
+        let serialized =
+            serde_json::to_value(&original).expect("serialize KeyValueEditor component");
 
         // Tagged serialization must inject "type": "KeyValueEditor".
         assert_eq!(
@@ -3599,27 +3641,35 @@ mod key_value_editor_tests {
             Some("KeyValueEditor"),
             "serialized form must have type=KeyValueEditor: {serialized}"
         );
-        assert_eq!(serialized.get("field").and_then(|v| v.as_str()), Some("metadata"));
-        assert_eq!(serialized.get("allow_custom_keys").and_then(|v| v.as_bool()), Some(false));
+        assert_eq!(
+            serialized.get("field").and_then(|v| v.as_str()),
+            Some("metadata")
+        );
+        assert_eq!(
+            serialized
+                .get("allow_custom_keys")
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
 
         // Round-trip: deserialize back into Component, assert structural equality.
-        let deserialized: Component = serde_json::from_value(serialized)
-            .expect("deserialize KeyValueEditor component");
+        let deserialized: Component =
+            serde_json::from_value(serialized).expect("deserialize KeyValueEditor component");
         match deserialized {
             Component::KeyValueEditor(ref p) => {
                 assert_eq!(p.field, "metadata");
                 assert_eq!(p.label.as_deref(), Some("Metadata"));
-                assert_eq!(p.suggested_keys, vec!["env".to_string(), "region".to_string()]);
+                assert_eq!(
+                    p.suggested_keys,
+                    vec!["env".to_string(), "region".to_string()]
+                );
                 assert!(!p.allow_custom_keys);
                 assert_eq!(p.data_path.as_deref(), Some("/meta"));
                 assert_eq!(p.error.as_deref(), Some("required"));
             }
             other => panic!("expected KeyValueEditor, got {other:?}"),
         }
-        assert_eq!(
-            original, deserialized,
-            "PartialEq round-trip failed"
-        );
+        assert_eq!(original, deserialized, "PartialEq round-trip failed");
     }
 
     #[test]
@@ -3629,12 +3679,18 @@ mod key_value_editor_tests {
             "type": "KeyValueEditor",
             "field": "meta",
         });
-        let parsed: Component = serde_json::from_value(json_input)
-            .expect("deserialize minimal KeyValueEditor");
+        let parsed: Component =
+            serde_json::from_value(json_input).expect("deserialize minimal KeyValueEditor");
         match parsed {
             Component::KeyValueEditor(p) => {
-                assert!(p.allow_custom_keys, "allow_custom_keys default must be true");
-                assert!(p.suggested_keys.is_empty(), "suggested_keys default must be empty");
+                assert!(
+                    p.allow_custom_keys,
+                    "allow_custom_keys default must be true"
+                );
+                assert!(
+                    p.suggested_keys.is_empty(),
+                    "suggested_keys default must be empty"
+                );
                 assert!(p.label.is_none());
                 assert!(p.data_path.is_none());
                 assert!(p.error.is_none());
