@@ -470,6 +470,127 @@ JSON output:
 }
 ```
 
+### DetailForm
+
+Split-mode detail page with inline edit. Renders the same description-list-style
+scaffold in two modes — View and Edit — driven by a URL query parameter.
+
+**When to use.** Use `DetailForm` instead of a pair of `DescriptionList` (for
+viewing) + `Form` (for editing) when you want the view and edit states to share
+a single structural container, so the user sees the same layout whether they are
+reading or editing. The mode toggle is URL-driven (`?mode=edit`); there is no
+client-side JavaScript state.
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `mode` | `EditMode` | No | `EditMode::View` | Which mode to render. Typically derived from the URL via `EditMode::from_query(req.query("mode").as_deref())` |
+| `action` | `Action` | Yes | - | Form submit target. Resolver populates `action.url` from `action.handler` |
+| `fields` | `Vec<DetailField>` | Yes | - | The rows |
+| `edit_url` | `String` | Yes | - | Href for the "Modifica" link in View mode. Emitted verbatim after `html_escape`; not resolved by the route registry |
+| `cancel_url` | `String` | Yes | - | Href for the "Annulla" link in Edit mode. Emitted verbatim after `html_escape`; not resolved by the route registry |
+| `edit_label` | `Option<String>` | No | `"Modifica"` | Override for the default "Modifica" label |
+| `save_label` | `Option<String>` | No | `"Salva"` | Override for the default "Salva" label |
+| `cancel_label` | `Option<String>` | No | `"Annulla"` | Override for the default "Annulla" label |
+| `method` | `Option<HttpMethod>` | No | - | HTTP method override (else uses `action.method`); PUT/PATCH/DELETE auto-emit `<input type="hidden" name="_method">` spoofing |
+
+**DetailField** defines one row:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | `String` | Yes | Description term shown in both modes as the field label |
+| `value` | `String` | Yes | Display string shown in View mode (plain text, html-escaped at render) |
+| `input` | `ComponentNode` | Yes | Component rendered in Edit mode in place of `value` (typically `Input`, `Select`, `Textarea`, `Switch`, `Checkbox`, or a plugin) |
+
+**EditMode** controls which mode to render:
+
+| Variant | JSON | Description |
+|---------|------|-------------|
+| `View` | `"view"` | Read-only display with a "Modifica" link (default) |
+| `Edit` | `"edit"` | Inline-edit form with "Salva" / "Annulla" actions |
+
+```rust
+use ferro::{ComponentNode, Component, DetailForm, DetailFormProps, DetailField,
+            EditMode, InputProps, InputType, Action, HttpMethod};
+
+let mode = EditMode::from_query(req.query("mode").as_deref());
+
+let node = ComponentNode::detail_form(
+    "user-detail",
+    DetailFormProps {
+        mode,
+        action: Action::new("users.update"),
+        fields: vec![
+            DetailField::new(
+                "Name",
+                user.name.clone(),
+                // Option A: input label must be "" — the <dt> provides the visible label.
+                ComponentNode::input("name", InputProps {
+                    field: "name".to_string(),
+                    label: "".to_string(),
+                    input_type: InputType::Text,
+                    default_value: Some(user.name.clone()),
+                    ..Default::default()
+                }),
+            ),
+            DetailField::new(
+                "Email",
+                user.email.clone(),
+                ComponentNode::input("email", InputProps {
+                    field: "email".to_string(),
+                    label: "".to_string(),
+                    input_type: InputType::Email,
+                    default_value: Some(user.email.clone()),
+                    ..Default::default()
+                }),
+            ),
+        ],
+        edit_url: format!("/users/{}?mode=edit", user.id),
+        cancel_url: format!("/users/{}", user.id),
+        edit_label: None,
+        save_label: None,
+        cancel_label: None,
+        method: Some(HttpMethod::Put),
+    },
+);
+```
+
+JSON output (mode = Edit):
+
+```json
+{
+  "key": "user-detail",
+  "type": "DetailForm",
+  "mode": "edit",
+  "action": { "handler": "users.update", "method": "PUT" },
+  "fields": [
+    {
+      "label": "Name",
+      "value": "Ada Lovelace",
+      "input": { "type": "Input", "field": "name", "label": "", "input_type": "text", "default_value": "Ada Lovelace" }
+    },
+    {
+      "label": "Email",
+      "value": "ada@example.com",
+      "input": { "type": "Input", "field": "email", "label": "", "input_type": "email", "default_value": "ada@example.com" }
+    }
+  ],
+  "edit_url": "/users/1?mode=edit",
+  "cancel_url": "/users/1",
+  "method": "PUT"
+}
+```
+
+**Authoring rule (Option A).** When a `DetailField.input` is an `Input`, `Select`,
+`Textarea`, `Checkbox`, or `Switch` component, the caller MUST set its `label` prop
+to the empty string `""`. The `<dt>` already provides the visible label; a non-empty
+input label produces duplicate UI text. DetailForm does not mutate caller-supplied
+props. For accessibility, callers SHOULD also set `aria-label` on each input derived
+from the field's `label` value so screen readers retain the field name.
+
+**Not included in v1.** Client-side mode toggle (no JS). Optimistic updates.
+Per-field mode override. Custom action buttons beyond Modifica/Salva/Annulla.
+Top-level error banner. i18n binding for default labels (currently Italian literals).
+
 ### Badge
 
 Small label with variant-based styling.
