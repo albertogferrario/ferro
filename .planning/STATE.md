@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: Phase 147 UI-SPEC approved → pattern mapping
-last_updated: "2026-04-22T22:57:20.283Z"
+status: shipped
+stopped_at: Phase 147 complete — DetailForm shipped, all 5 plans verified, 12/12 must-haves green
+last_updated: "2026-04-22T23:50:46.000Z"
 last_activity: 2026-04-22 -- Phase 147 execution started
 progress:
   total_phases: 147
-  completed_phases: 132
+  completed_phases: 133
   total_plans: 339
-  completed_plans: 313
-  percent: 92
+  completed_plans: 318
+  percent: 94
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 147 — detailform-component-for-inline-edit-ferro-json-ui
+**Current focus:** Phase 147 shipped — DetailForm component delivered with structural coherence between View and Edit modes (no runtime JS, three resolver arms, ferro-mcp catalog updated, KeyValueEditor backfill landed)
 
 ## Current Position
 
-Phase: 147 (detailform-component-for-inline-edit-ferro-json-ui) — EXECUTING
-Plan: 1 of 5
+Phase: 147 (detailform-component-for-inline-edit-ferro-json-ui) — COMPLETE
+Plans: 5/5 (Wave 0 RED scaffold + Wave 1 impl all merged)
 Workspace version: 0.2.5
-Status: Executing Phase 147
-Last activity: 2026-04-22 -- Phase 147 execution started
+Status: Phase 147 verified (12/12 must-haves green); ready for next phase
+Last activity: 2026-04-23 -- Phase 147 complete
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -162,7 +162,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-22T22:28:05.169Z
-Stopped at: Phase 147 UI-SPEC approved → pattern mapping
-Resume file: .planning/phases/147-detailform-component-for-inline-edit-ferro-json-ui/147-UI-SPEC.md
+Last session: 2026-04-22T23:50:45.963Z
+Stopped at: Phase 147 complete — DetailForm shipped, all 5 plans verified, 12/12 must-haves green
+Resume file: .planning/phases/147-detailform-component-for-inline-edit-ferro-json-ui/147-VERIFICATION.md
 Next action: `/gsd-complete-milestone v11.7`
