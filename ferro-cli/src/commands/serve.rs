@@ -1,13 +1,20 @@
 use super::clean;
 use console::style;
-use crossterm::event::{KeyCode, KeyModifiers};
-use std::io::{BufRead, BufReader};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use notify::RecursiveMode;
+use notify_debouncer_mini::{new_debouncer, DebouncedEvent};
+use std::io::{BufRead, BufReader, IsTerminal};
 use std::net::TcpListener;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
+// `channel` is used only by Task 2's run() rewire; kept here so import block is complete.
+#[allow(unused_imports)]
+use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::Arc;
-use std::thread;
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 // Phase 145 — pure-function contracts and enums consumed by the
 // BackendSupervisor that 145-02b will wire in. Bodies are filled by 145-02a
@@ -289,6 +296,245 @@ fn find_available_port(start: u16, max_attempts: u16) -> u16 {
         }
     }
     start
+}
+
+/// RAII guard that disables raw mode on Drop. Restores cooked mode on both
+/// normal exit and panic unwind (D-25).
+struct RawModeGuard;
+
+impl Drop for RawModeGuard {
+    fn drop(&mut self) {
+        let _ = disable_raw_mode();
+    }
+}
+
+/// Spawns the crossterm keyboard-input thread. Returns None when stdin is not
+/// a TTY (D-24) or when `enable_raw_mode()` fails (D-26). The returned
+/// JoinHandle can be joined during shutdown so the Drop guard runs
+/// deterministically (D-29 step 4).
+#[allow(dead_code)] // wired into run() by Task 2.
+fn spawn_keyboard_thread(
+    tx: Sender<ReloadTrigger>,
+    shutdown: Arc<AtomicBool>,
+) -> Option<JoinHandle<()>> {
+    let is_tty = std::io::stdin().is_terminal();
+    if !should_spawn_keyboard(is_tty) {
+        return None;
+    }
+    if let Err(e) = enable_raw_mode() {
+        eprintln!("{} raw mode unavailable: {e}", style("Warning:").yellow());
+        return None;
+    }
+    Some(thread::spawn(move || {
+        let _guard = RawModeGuard;
+        while !shutdown.load(Ordering::SeqCst) {
+            match event::poll(Duration::from_millis(100)) {
+                Ok(true) => {}
+                _ => continue,
+            }
+            let Ok(Event::Key(k)) = event::read() else {
+                continue;
+            };
+            // Windows fix: ignore key-release events (crossterm 0.26+).
+            if k.kind != KeyEventKind::Press {
+                continue;
+            }
+            match classify_key(k.code, k.modifiers) {
+                Some(KbAction::Reload) => {
+                    let _ = tx.send(ReloadTrigger::Manual);
+                }
+                Some(KbAction::Quit) => {
+                    shutdown.store(true, Ordering::SeqCst);
+                    break;
+                }
+                None => {}
+            }
+        }
+    }))
+}
+
+/// Inner factoring of the file-watcher so unit tests can inject a short debounce
+/// window and a tempdir path. The public wrapper `spawn_file_watcher` pins the
+/// 500ms window (D-19) and the `src/` path (D-20). Returns `None` on any soft
+/// failure (missing dir, notify init error, initial watch() error) so serve
+/// continues as an effective no-op (D-22).
+#[allow(dead_code)] // wired into run() by Task 2; also exercised by tests.
+fn spawn_file_watcher_at(
+    src: &Path,
+    debounce: Duration,
+    tx: Sender<ReloadTrigger>,
+) -> Option<notify_debouncer_mini::Debouncer<notify::RecommendedWatcher>> {
+    if !src.is_dir() {
+        eprintln!(
+            "{} {} missing, --watch disabled",
+            style("Warning:").yellow(),
+            src.display()
+        );
+        return None;
+    }
+    let mut debouncer = match new_debouncer(
+        debounce,
+        move |res: notify_debouncer_mini::DebounceEventResult| {
+            let Ok(events) = res else {
+                return;
+            };
+            let any_rs = events
+                .iter()
+                .any(|e: &DebouncedEvent| e.path.extension().map(|x| x == "rs").unwrap_or(false));
+            if any_rs {
+                let _ = tx.send(ReloadTrigger::FileChanged);
+            }
+        },
+    ) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("{} notify init failed: {e}", style("Warning:").yellow());
+            return None;
+        }
+    };
+    if let Err(e) = debouncer.watcher().watch(src, RecursiveMode::Recursive) {
+        eprintln!(
+            "{} watch({}) failed: {e}",
+            style("Warning:").yellow(),
+            src.display()
+        );
+        return None;
+    }
+    Some(debouncer)
+}
+
+/// Spawns the production file-watcher with the spec-mandated 500ms debounce
+/// (D-19) against `src/` recursive (D-20).
+#[allow(dead_code)] // wired into run() by Task 2.
+fn spawn_file_watcher(
+    tx: Sender<ReloadTrigger>,
+) -> Option<notify_debouncer_mini::Debouncer<notify::RecommendedWatcher>> {
+    spawn_file_watcher_at(Path::new("src"), Duration::from_millis(500), tx)
+}
+
+/// Owns the backend `cargo run` child exclusively (D-13). Consumes reload
+/// triggers from an mpsc channel, coalescing bursts (D-17) into a single
+/// kill → regenerate types → respawn cycle.
+#[allow(dead_code)] // wired into run() by Task 2; also exercised by tests.
+struct BackendSupervisor {
+    package_name: String,
+    skip_types: bool,
+    project_path: PathBuf,
+    types_output_path: PathBuf,
+    current: Option<Child>,
+    shutdown: Arc<AtomicBool>,
+}
+
+#[allow(dead_code)] // wired into run() by Task 2; also exercised by tests.
+impl BackendSupervisor {
+    fn new(
+        package_name: String,
+        skip_types: bool,
+        project_path: PathBuf,
+        types_output_path: PathBuf,
+        shutdown: Arc<AtomicBool>,
+    ) -> Self {
+        Self {
+            package_name,
+            skip_types,
+            project_path,
+            types_output_path,
+            current: None,
+            shutdown,
+        }
+    }
+
+    /// Kill and reap the in-flight backend child if any. No-op when `current`
+    /// is None (D-11).
+    fn kill_current(&mut self) {
+        if let Some(mut child) = self.current.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+
+    /// Regenerate TypeScript types from Rust InertiaProps structs. Skipped
+    /// when `--skip-types` was passed (D-04). Runs to completion — not
+    /// interruptible by a reload trigger (D-18).
+    fn regenerate_types(&self) {
+        if self.skip_types {
+            return;
+        }
+        match super::generate_types::generate_types_to_file(
+            &self.project_path,
+            &self.types_output_path,
+        ) {
+            Ok(count) if count > 0 => {
+                println!("{} Regenerated {} type(s)", style("[types]").blue(), count);
+            }
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("{} Failed to regenerate: {}", style("[types]").yellow(), e);
+            }
+        }
+    }
+
+    /// Spawn a fresh `cargo run --bin <package>` child via the shared piping
+    /// helper. On spawn failure, `current` is set to None and the supervisor
+    /// waits for the next trigger (D-12: no auto-respawn).
+    fn spawn_backend(&mut self) {
+        let args = ["run", "--bin", self.package_name.as_str()];
+        match spawn_child_with_prefix(
+            "cargo",
+            &args,
+            None,
+            "[backend]",
+            console::Color::Magenta,
+            &[],
+            self.shutdown.clone(),
+        ) {
+            Ok(child) => self.current = Some(child),
+            Err(e) => {
+                eprintln!("{} {}", style("Error:").red().bold(), e);
+                self.current = None;
+            }
+        }
+    }
+
+    /// Drain any additional pending triggers into a single cycle (D-17). The
+    /// caller passes the first trigger already received via `recv_timeout`;
+    /// this method consumes the rest non-blockingly and returns the most
+    /// recent one so the log line reflects the latest source.
+    fn drain_triggers(rx: &Receiver<ReloadTrigger>, initial: ReloadTrigger) -> ReloadTrigger {
+        let mut latest = initial;
+        while let Ok(next) = rx.try_recv() {
+            latest = next;
+        }
+        latest
+    }
+
+    /// Main supervisor loop. Spawns an initial backend, then interleaves
+    /// trigger handling with a shutdown-flag poll via `recv_timeout` (D-16).
+    /// Each trigger runs kill → regen → respawn (D-09, D-10).
+    fn run_loop(&mut self, rx: Receiver<ReloadTrigger>) {
+        self.spawn_backend();
+        loop {
+            if self.shutdown.load(Ordering::SeqCst) {
+                self.kill_current();
+                break;
+            }
+            match rx.recv_timeout(Duration::from_millis(100)) {
+                Ok(initial) => {
+                    let src = Self::drain_triggers(&rx, initial);
+                    println!(
+                        "{} reload triggered ({})",
+                        style("[backend]").magenta().bold(),
+                        format_trigger_source(src)
+                    );
+                    self.kill_current();
+                    self.regenerate_types();
+                    self.spawn_backend();
+                }
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+        }
+    }
 }
 
 pub fn run(
