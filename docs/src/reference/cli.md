@@ -98,22 +98,25 @@ my-app/
 
 ### `ferro serve`
 
-Start the development server with hot reloading for both backend and frontend.
+Start the development server for both backend and frontend. Auto-reload is opt-in via `--watch`; without it, the `r` key triggers rebuilds on demand.
 
 ```bash
-# Start both backend and frontend
+# Start both backend and frontend. No file watching; press r to rebuild on demand.
 ferro serve
 
-# Custom ports
+# Enable file-watch auto-reload with a 500ms trailing-edge debounce.
+ferro serve --watch
+
+# Custom ports.
 ferro serve --port 8080 --frontend-port 5173
 
-# Backend only (no frontend dev server)
+# Backend only (no frontend dev server).
 ferro serve --backend-only
 
-# Frontend only (no Rust compilation)
+# Frontend only (no Rust compilation).
 ferro serve --frontend-only
 
-# Skip TypeScript type generation
+# Skip TypeScript type generation.
 ferro serve --skip-types
 ```
 
@@ -121,19 +124,29 @@ ferro serve --skip-types
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--port` | `3000` | Backend server port |
+| `--port` | `8080` | Backend server port |
 | `--frontend-port` | `5173` | Frontend dev server port |
 | `--backend-only` | `false` | Run only the backend |
 | `--frontend-only` | `false` | Run only the frontend |
-| `--skip-types` | `false` | Don't regenerate TypeScript types |
+| `--skip-types` | `false` | Skip TypeScript type generation |
+| `--watch` | `false` | Enable file-watch auto-reload (500ms debounce) |
+
+**Key bindings (when stdin is a TTY):**
+
+| Key | Action |
+|-----|--------|
+| `r` | Rebuild the backend and regenerate types. If a build is in flight, it is cancelled and restarted. |
+| `q` or Ctrl-C | Graceful shutdown. |
+
+When stdin is not a TTY (for example, when `ferro serve` is piped or run under a process supervisor), the `r` key is unavailable and the banner says so; Ctrl-C still works.
 
 **What it does:**
 
-1. Starts the Rust backend with `cargo watch` for hot reloading
-2. Starts the Vite frontend dev server
-3. Watches Rust files to regenerate TypeScript types automatically
-4. Proxies frontend requests to the backend
-5. Auto-resolves port conflicts — if the frontend port is already in use, the next available port is selected and propagated to the backend via `VITE_DEV_SERVER`
+1. Starts the Rust backend via an in-process supervisor that owns the `cargo run` child directly. Auto-reload is opt-in via `--watch`; without it, the supervisor waits for the `r` key to trigger a rebuild.
+2. Starts the Vite frontend dev server.
+3. With `--watch`, watches `*.rs` files under `src/` with a 500ms trailing-edge debounce; a burst of saves produces one rebuild after the burst settles.
+4. On every rebuild (manual or file-triggered), regenerates TypeScript types from Rust `InertiaProps` structs.
+5. Auto-resolves port conflicts: if the frontend port is in use, the next available port is selected and propagated to the backend via `VITE_DEV_SERVER`.
 
 ### `ferro generate-types`
 
