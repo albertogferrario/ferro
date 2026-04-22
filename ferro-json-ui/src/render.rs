@@ -14,13 +14,13 @@ use crate::component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType, ButtonVariant,
     CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
-    ComponentNode, DataTableProps, DescriptionListProps, DropdownMenuAction, DropdownMenuProps,
-    EmptyStateProps, FormMaxWidth, FormProps, FormSectionLayout, FormSectionProps, GapSize,
-    GridProps, HeaderProps, IconPosition, ImageProps, InputProps, InputType, KanbanBoardProps,
-    KeyValueEditorProps, ModalProps, NotificationDropdownProps, Orientation, PageHeaderProps,
-    PaginationProps, PluginProps, ProductTileProps, ProgressProps, SelectProps, SeparatorProps,
-    SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps,
-    TextElement, TextProps, ToastProps, ToastVariant,
+    ComponentNode, DataTableProps, DescriptionListProps, DetailFormProps, DropdownMenuAction,
+    DropdownMenuProps, EditMode, EmptyStateProps, FormMaxWidth, FormProps, FormSectionLayout,
+    FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps, InputProps,
+    InputType, KanbanBoardProps, KeyValueEditorProps, ModalProps, NotificationDropdownProps,
+    Orientation, PageHeaderProps, PaginationProps, PluginProps, ProductTileProps, ProgressProps,
+    SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps,
+    TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -114,6 +114,11 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
         Component::Form(props) => {
             for field in &props.fields {
                 collect_plugin_types_node(field, types);
+            }
+        }
+        Component::DetailForm(props) => {
+            for field in &props.fields {
+                collect_plugin_types_node(&field.input, types);
             }
         }
         Component::Modal(props) => {
@@ -303,6 +308,7 @@ fn render_component(component: &Component, data: &Value) -> String {
         // Container components.
         Component::Card(props) => render_card(props, data),
         Component::Form(props) => render_form(props, data),
+        Component::DetailForm(props) => render_detail_form(props, data),
         Component::Modal(props) => render_modal(props, data),
         Component::Tabs(props) => render_tabs(props, data),
         Component::Table(props) => render_table(props, data),
@@ -1028,6 +1034,151 @@ fn render_form(props: &FormProps, data: &Value) -> String {
         }
     };
     html
+}
+
+/// Renders a DetailForm — a description-list-style block that toggles between
+/// View and Edit modes via its `mode` prop.
+///
+/// **Structural coherence (147-UI-SPEC §5).** The `<dl>` scaffold, every `<dt>`,
+/// and every `<dd>` wrapper is byte-for-byte identical across modes. Only the
+/// content inside each `<dd>` differs: View emits `html_escape(field.value)`,
+/// Edit renders the inner `ComponentNode` via `render_node`. Edit additionally
+/// wraps the scaffold in a `<form>` with method spoofing for PUT/PATCH/DELETE.
+///
+/// **Option A authoring rule (147-UI-SPEC §9).** When `DetailField.input` is an
+/// Input / Select / Textarea / Checkbox / Switch, the caller MUST set its
+/// `label` prop to the empty string `""` — the `<dt>` provides the visible
+/// label. `render_input` then emits `<label></label>` (a zero-content label)
+/// which is semantically inert and visually invisible. This renderer does NOT
+/// mutate caller-supplied props. Accessibility is preserved in Edit mode by
+/// wrapping each rendered input inside a `role="group"` labeling element whose
+/// `aria-label` is derived from the field's `<dt>` text, so screen readers
+/// retain the field name even though the inner `<label>` is empty.
+///
+/// **html_escape discipline.** Every dynamic string (labels, values, edit_url,
+/// cancel_url, action URL, button labels) is emitted through `html_escape` to
+/// prevent XSS via attribute-breaking characters (T-147-02). The method-spoofed
+/// `value="PUT|PATCH|DELETE"` hidden input is a fixed literal drawn from a
+/// match over `HttpMethod` variants — caller-supplied strings cannot reach it
+/// (T-147-01).
+fn render_detail_form(props: &DetailFormProps, data: &Value) -> String {
+    // 1. Build the shared <dl> body — identical in both modes except for
+    //    <dd> content. Per §5 of 147-UI-SPEC, the <dl> opening tag, every
+    //    <dt>, and every <dd> wrapper must be byte-for-byte identical across
+    //    modes.
+    let mut dl = String::from("<dl class=\"grid grid-cols-1 gap-4\">");
+    for field in &props.fields {
+        dl.push_str("<div>");
+        dl.push_str(&format!(
+            "<dt class=\"text-sm font-medium text-text-muted\">{}</dt>",
+            html_escape(&field.label)
+        ));
+        match props.mode {
+            EditMode::View => {
+                dl.push_str(&format!(
+                    "<dd class=\"mt-1 text-sm text-text\">{}</dd>",
+                    html_escape(&field.value)
+                ));
+            }
+            EditMode::Edit => {
+                // Wrap the rendered input in a role="group" labeling element
+                // whose aria-label is derived from the <dt> text — honors the
+                // §11 accessibility contract without mutating caller props
+                // (per §9 Option A). The outer <dd> tag and classes stay
+                // identical to View mode (structural coherence, §5).
+                dl.push_str(&format!(
+                    "<dd class=\"mt-1 text-sm text-text\"><span role=\"group\" aria-label=\"{}\">{}</span></dd>",
+                    html_escape(&field.label),
+                    render_node(&field.input, data)
+                ));
+            }
+        }
+        dl.push_str("</div>");
+    }
+    dl.push_str("</dl>");
+
+    // 2. Button class strings (distilled from render_button, 147-RESEARCH.md
+    //    §Button Variant Class Strings). No new classes beyond what
+    //    render_form / render_button already emit (§14.2 of UI-SPEC).
+    let btn_base = "inline-flex items-center justify-center rounded-md font-medium \
+                    transition-colors duration-150 motion-reduce:transition-none \
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary \
+                    focus-visible:ring-offset-2 px-4 py-2 text-sm";
+    let btn_primary = "bg-primary text-primary-foreground hover:bg-primary/90";
+    let btn_outline = "border border-border bg-background text-text hover:bg-surface";
+
+    // 3. Action bar — positioned identically in both modes (right-aligned,
+    //    flex gap-2, mt-6 separation from the <dl>); only the button set
+    //    differs per §5.
+    let edit_label = props.edit_label.as_deref().unwrap_or("Modifica");
+    let save_label = props.save_label.as_deref().unwrap_or("Salva");
+    let cancel_label = props.cancel_label.as_deref().unwrap_or("Annulla");
+
+    let action_bar = match props.mode {
+        EditMode::View => format!(
+            "<div class=\"flex gap-2 justify-end mt-6\">\
+                 <a href=\"{url}\" class=\"{base} {outline}\">{label}</a>\
+             </div>",
+            url = html_escape(&props.edit_url),
+            base = btn_base,
+            outline = btn_outline,
+            label = html_escape(edit_label),
+        ),
+        EditMode::Edit => format!(
+            "<div class=\"flex gap-2 justify-end mt-6\">\
+                 <a href=\"{cancel_url}\" class=\"{base} {outline}\">{cancel_label}</a>\
+                 <button type=\"submit\" class=\"{base} {primary}\">{save_label}</button>\
+             </div>",
+            cancel_url = html_escape(&props.cancel_url),
+            cancel_label = html_escape(cancel_label),
+            save_label = html_escape(save_label),
+            base = btn_base,
+            outline = btn_outline,
+            primary = btn_primary,
+        ),
+    };
+
+    // 4. Assemble final output.
+    match props.mode {
+        EditMode::View => format!("<div>{dl}{action_bar}</div>"),
+        EditMode::Edit => {
+            // Method-spoofing block — lifted verbatim from render_form above
+            // (see render_form at render.rs:971-1011). T-147-01: the hidden
+            // `_method` value is one of the fixed HttpMethod variant literals;
+            // caller-supplied strings cannot reach this position.
+            let effective_method = props
+                .method
+                .as_ref()
+                .unwrap_or(&props.action.method)
+                .clone();
+            let (form_method, needs_spoofing) = match effective_method {
+                HttpMethod::Get => ("get", false),
+                HttpMethod::Post => ("post", false),
+                HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => ("post", true),
+            };
+            let action_url = props.action.url.as_deref().unwrap_or("#");
+            let mut html = format!(
+                "<form action=\"{}\" method=\"{}\" class=\"space-y-4\">",
+                html_escape(action_url),
+                form_method
+            );
+            if needs_spoofing {
+                let method_value = match effective_method {
+                    HttpMethod::Put => "PUT",
+                    HttpMethod::Patch => "PATCH",
+                    HttpMethod::Delete => "DELETE",
+                    _ => unreachable!(),
+                };
+                html.push_str(&format!(
+                    "<input type=\"hidden\" name=\"_method\" value=\"{method_value}\">"
+                ));
+            }
+            html.push_str(&dl);
+            html.push_str(&action_bar);
+            html.push_str("</form>");
+            html
+        }
+    }
 }
 
 fn render_table(props: &TableProps, data: &Value) -> String {
