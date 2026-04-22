@@ -1,10 +1,11 @@
 ---
 phase: 146
 slug: add-keyvalueeditor-component-to-ferro-json-ui-dynamic-key-va
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-22
+audited: 2026-04-22
 ---
 
 # Phase 146 — Validation Strategy
@@ -38,15 +39,15 @@ created: 2026-04-22
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 146-01-01 | 01 | 1 | R1 | — | `html_escape` on all dynamic values | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ❌ W0 | ⬜ pending |
-| 146-01-02 | 01 | 1 | R2 | — | Pre-filled rows from data_path object | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ❌ W0 | ⬜ pending |
-| 146-01-03 | 01 | 1 | R3 | — | Error state applies `border-destructive` to inputs | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ❌ W0 | ⬜ pending |
-| 146-01-04 | 01 | 1 | R4 | — | `allow_custom_keys=false` emits `<select>` | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ❌ W0 | ⬜ pending |
-| 146-01-05 | 01 | 1 | R5 | — | Non-empty `suggested_keys` emits `<datalist>` | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ❌ W0 | ⬜ pending |
-| 146-01-06 | 01 | 1 | R6 | — | Empty data_path → hidden field value is `{}` | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ❌ W0 | ⬜ pending |
-| 146-01-07 | 01 | 1 | R9 | — | Serde round-trip: serialize + deserialize KeyValueEditor | unit | `cargo test -p ferro-json-ui` | ❌ W0 | ⬜ pending |
-| 146-02-01 | 02 | 2 | R7 | — | `setupKeyValueEditor` present in JS bundle | unit | `cargo test -p ferro-json-ui bundle_contains_all_setup_functions` | ❌ W0 | ⬜ pending |
-| 146-02-02 | 02 | 2 | R8 | — | `setupKeyValueEditor();` in dispatcher string | unit | `cargo test -p ferro-json-ui dispatcher_invokes_every_setup` | ❌ W0 | ⬜ pending |
+| 146-01-01 | 01 | 1 | R1 | — | `html_escape` on all dynamic values | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ✅ render.rs:8441 | ✅ green |
+| 146-01-02 | 01 | 1 | R2 | — | Pre-filled rows from data_path object | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ✅ render.rs:8471 | ✅ green |
+| 146-01-03 | 01 | 1 | R3 | — | Error state applies `border-destructive` to inputs | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ✅ render.rs:8501 | ✅ green |
+| 146-01-04 | 01 | 1 | R4 | — | `allow_custom_keys=false` emits `<select>` | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ✅ render.rs:8542 | ✅ green |
+| 146-01-05 | 01 | 1 | R5 | — | Non-empty `suggested_keys` emits `<datalist>` | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ✅ render.rs:8574 | ✅ green |
+| 146-01-06 | 01 | 1 | R6 | — | Empty data_path → hidden field value is `{}` | unit | `cargo test -p ferro-json-ui render_key_value_editor` | ✅ render.rs:8597 | ✅ green |
+| 146-01-07 | 01 | 1 | R9 | — | Serde round-trip: serialize + deserialize KeyValueEditor | unit | `cargo test -p ferro-json-ui` | ✅ component.rs:3625 | ✅ green |
+| 146-02-01 | 02 | 2 | R7 | — | `setupKeyValueEditor` present in JS bundle | unit | `cargo test -p ferro-json-ui bundle_contains_all_setup_functions` | ✅ runtime/mod.rs:130 | ✅ green |
+| 146-02-02 | 02 | 2 | R8 | — | `setupKeyValueEditor();` in dispatcher string | unit | `cargo test -p ferro-json-ui dispatcher_invokes_every_setup` | ✅ runtime/mod.rs:162 | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -54,9 +55,9 @@ created: 2026-04-22
 
 ## Wave 0 Requirements
 
-- [ ] `ferro-json-ui/src/render.rs` — add `render_key_value_editor` unit tests in `#[cfg(test)]` block for: empty state, pre-filled rows, error state, select variant, datalist presence, hidden field serialization
-- [ ] `ferro-json-ui/src/component.rs` — add serde round-trip test for `KeyValueEditorProps`
-- [ ] `ferro-json-ui/src/runtime/mod.rs` — update `bundle_contains_all_setup_functions` and `dispatcher_invokes_every_setup` test arrays to include `setupKeyValueEditor`
+- [x] `ferro-json-ui/src/render.rs` — 7 `render_key_value_editor_*` tests (lines 8441–8630): empty state, pre-filled rows, error state, select variant, datalist presence, hidden field serialization, html_escape
+- [x] `ferro-json-ui/src/component.rs` — 2 serde round-trip tests for `KeyValueEditorProps` (lines 3625, 3676)
+- [x] `ferro-json-ui/src/runtime/mod.rs` — `bundle_contains_all_setup_functions` and `dispatcher_invokes_every_setup` arrays include `setupKeyValueEditor`
 
 ---
 
@@ -72,11 +73,21 @@ created: 2026-04-22
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-04-22 — 487 tests passed, 0 failed (`cargo test -p ferro-json-ui --lib`)
+
+---
+
+## Validation Audit 2026-04-22
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 9 (all pre-existing in codebase) |
+| Escalated | 0 |
