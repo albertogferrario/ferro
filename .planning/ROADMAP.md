@@ -1304,6 +1304,20 @@ Plans:
 - [x] 146-02-PLAN.md — Rust implementation: KeyValueEditorProps struct + Component::KeyValueEditor variant + serde match arms in component.rs, render_key_value_editor() + dispatch arm in render.rs, public re-export + COMPONENT_CATALOG entry in lib.rs (Wave 2, depends on 01)
 - [x] 146-03-PLAN.md — Runtime JS: new ferro-json-ui/src/runtime/key_value_editor.rs with ES5 setupKeyValueEditor/initKeyValueEditor/syncHiddenField, wire module decl + SOURCE push + dispatcher call into runtime/mod.rs (Wave 3, depends on 01)
 
+### Phase 147: DetailForm component for inline edit — ferro-json-ui
+
+**Goal:** Ship a `DetailForm` JSON-UI component that renders the same structural container in View and Edit modes, driven by a server-side URL query param (`?mode=edit`); View renders a `<dl>` + "Modifica" link, Edit wraps the same `<dl>` in a `<form>` with "Salva"/"Annulla" actions and method spoofing for PUT/PATCH/DELETE. Adds `EditMode` enum with `from_query()`, `DetailField`, `DetailFormProps`, `Component::DetailForm` variant with serde + resolver arms, `ComponentNode::detail_form` factory, and ferro-mcp catalog entry (also backfills KeyValueEditor catalog gap from Phase 146). No runtime JS.
+**Requirements**: D-01..D-20 (per 147-CONTEXT.md) — EditMode enum + from_query; DetailField/DetailFormProps structs; structural coherence contract (§5 of 147-UI-SPEC); method-spoofing integrity (T-147-01); html_escape XSS mitigation (T-147-02); resolver participation in all three passes; Option-A label authoring rule documented in catalog + docs
+**Depends on:** Phase 146
+**Plans:** 5 plans
+
+Plans:
+- [ ] 147-01-PLAN.md — Wave 0 RED tests: EditMode + DetailFormProps serde tests in component.rs (13 tests); render_detail_form_* tests in render.rs (12+ tests covering View/Edit/spoofing/buttons/escapes/invariance); resolver tests in resolve.rs (3 tests); ferro-mcp exhaustive-list assertion bumped to 41 + DetailForm/KeyValueEditor added to expected names (Wave 0, no deps)
+- [ ] 147-02-PLAN.md — Rust types: EditMode enum + DetailField struct + DetailFormProps struct + Component::DetailForm variant + serde match arms + ComponentNode::detail_form factory in component.rs; public re-exports + ### DetailForm COMPONENT_CATALOG entry in lib.rs (Wave 1, depends on 01)
+- [ ] 147-03-PLAN.md — Renderer: fn render_detail_form in render.rs + dispatch arm in render_component + container arm in collect_plugin_types_node; emits identical <dl> scaffold across modes with html_escape discipline and method-spoofing copied verbatim from render_form (Wave 1, depends on 01)
+- [ ] 147-04-PLAN.md — Resolver: three Component::DetailForm arms in resolve.rs (resolve_component_node, collect_unresolved_node, resolve_errors_node) — mirrors Component::Form, preserves D-16 (edit_url/cancel_url never resolved) (Wave 1, depends on 01)
+- [ ] 147-05-PLAN.md — MCP catalog + docs + CI gate: DetailForm CatalogComponent entry + KeyValueEditor backfill in ferro-mcp/src/tools/json_ui_catalog.rs; ### DetailForm section in docs/src/json-ui/components.md with Option-A rule; full CI gate (cargo fmt + clippy --all --all-targets -- -D warnings + test --all-features) (Wave 1, depends on 01)
+
 ---
 
 ## Progress Summary
