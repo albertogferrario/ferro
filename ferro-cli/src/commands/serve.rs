@@ -1,21 +1,17 @@
 use super::clean;
 use console::style;
 use crossterm::event::{KeyCode, KeyModifiers};
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
 
-// Phase 145 Plan 01 — pure-function contracts and enums consumed by the
-// BackendSupervisor that 145-02a/02b will wire in. Bodies are `todo!()`
-// here; the inline test module below holds their expected behavior so
-// later plans cannot drift from the test oracle.
+// Phase 145 — pure-function contracts and enums consumed by the
+// BackendSupervisor that 145-02b will wire in. Bodies are filled by 145-02a
+// against the inline test oracle below so later plans cannot drift.
 
 /// Reload trigger dispatched to the BackendSupervisor over an mpsc channel (D-06, D-20).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,37 +30,135 @@ pub(super) enum KbAction {
 }
 
 /// Renders the startup banner. Pure function — `is_tty` and `is_watch` are explicit
-/// so tests do not depend on the real stdin state (D-05, D-24).
-#[allow(clippy::todo, dead_code, clippy::too_many_arguments)]
+/// so tests do not depend on the real stdin state (D-05, D-24). Body emits the
+/// spec-verbatim literal from
+/// docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md §CLI surface.
+#[allow(dead_code, clippy::too_many_arguments)] // consumed by 02b; referenced by tests.
 pub(super) fn render_banner(
-    _is_watch: bool,
-    _is_tty: bool,
-    _backend_only: bool,
-    _frontend_only: bool,
-    _backend_host: &str,
-    _backend_port: u16,
-    _vite_port: u16,
+    is_watch: bool,
+    is_tty: bool,
+    backend_only: bool,
+    frontend_only: bool,
+    backend_host: &str,
+    backend_port: u16,
+    vite_port: u16,
 ) -> String {
-    todo!("implemented in 145-02a-PLAN — body must emit the spec-verbatim literal from docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md §CLI surface")
+    use std::fmt::Write;
+    let mut s = String::new();
+    if !frontend_only {
+        let _ = writeln!(s, "Backend server on http://{backend_host}:{backend_port}");
+    }
+    if !backend_only {
+        let _ = writeln!(s, "Frontend server on http://127.0.0.1:{vite_port}");
+    }
+    if !frontend_only {
+        let _ = writeln!(s);
+        if is_tty {
+            let _ = writeln!(s, "  r        rebuild backend + regenerate types");
+        } else {
+            let _ = writeln!(s, "  r        unavailable (non-TTY stdin)");
+        }
+        let _ = writeln!(s, "  q        quit    (or Ctrl+C)");
+        if is_watch {
+            let _ = writeln!(s, "  watch    enabled  (debounce 500ms)");
+        } else {
+            let _ = writeln!(
+                s,
+                "  watch    disabled  (pass --watch to auto-reload on file changes)"
+            );
+        }
+    }
+    s
 }
 
 /// Classifies a keypress. Lowercase `r` → Reload; `q` or Ctrl-C → Quit; else None (D-08).
 /// Signature uses the final crossterm types directly — no placeholder, no Plan-02 rewrite.
-#[allow(clippy::todo, dead_code)]
-pub(super) fn classify_key(_code: KeyCode, _modifiers: KeyModifiers) -> Option<KbAction> {
-    todo!("implemented in 145-02a-PLAN")
+#[allow(dead_code)] // consumed by 02b keyboard thread; referenced by tests.
+pub(super) fn classify_key(code: KeyCode, modifiers: KeyModifiers) -> Option<KbAction> {
+    match (code, modifiers) {
+        (KeyCode::Char('r'), KeyModifiers::NONE) => Some(KbAction::Reload),
+        (KeyCode::Char('q'), KeyModifiers::NONE) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+            Some(KbAction::Quit)
+        }
+        _ => None,
+    }
 }
 
 /// Formats a trigger source for the `[backend] reload triggered ({source})` log line (D-27, D-28).
-#[allow(clippy::todo, dead_code)]
-pub(super) fn format_trigger_source(_t: ReloadTrigger) -> &'static str {
-    todo!("implemented in 145-02a-PLAN")
+#[allow(dead_code)] // consumed by 02b supervisor; referenced by tests.
+pub(super) fn format_trigger_source(t: ReloadTrigger) -> &'static str {
+    match t {
+        ReloadTrigger::Manual => "manual",
+        ReloadTrigger::FileChanged => "file change",
+    }
 }
 
 /// Whether to spawn the keyboard thread. Equivalent to `is_tty`, isolated for testability (D-24).
-#[allow(clippy::todo, dead_code)]
-pub(super) fn should_spawn_keyboard(_is_tty: bool) -> bool {
-    todo!("implemented in 145-02a-PLAN")
+#[allow(dead_code)] // consumed by 02b keyboard gate; referenced by tests.
+pub(super) fn should_spawn_keyboard(is_tty: bool) -> bool {
+    is_tty
+}
+
+/// Spawns a child process and streams its stdout/stderr to the terminal with a
+/// colored prefix. The shutdown flag stops the reader threads when servers shut
+/// down. Extracted from `ProcessManager::spawn_with_prefix_env` so 02b's
+/// `BackendSupervisor` can reuse the same piping logic without duplicating it.
+fn spawn_child_with_prefix(
+    command: &str,
+    args: &[&str],
+    cwd: Option<&Path>,
+    prefix: &str,
+    color: console::Color,
+    env_vars: &[(&str, &str)],
+    shutdown: Arc<AtomicBool>,
+) -> Result<Child, String> {
+    let mut cmd = Command::new(command);
+    cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    for (key, value) in env_vars {
+        cmd.env(key, value);
+    }
+
+    if let Some(dir) = cwd {
+        cmd.current_dir(dir);
+    }
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to spawn {command}: {e}"))?;
+
+    let stdout = child.stdout.take().expect("stdout piped");
+    let stderr = child.stderr.take().expect("stderr piped");
+    let prefix_out = prefix.to_string();
+    let prefix_err = prefix.to_string();
+    let sd_out = shutdown.clone();
+    let sd_err = shutdown;
+
+    thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if sd_out.load(Ordering::SeqCst) {
+                break;
+            }
+            if let Ok(line) = line {
+                println!("{} {}", style(&prefix_out).fg(color).bold(), line);
+            }
+        }
+    });
+
+    thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines() {
+            if sd_err.load(Ordering::SeqCst) {
+                break;
+            }
+            if let Ok(line) = line {
+                eprintln!("{} {}", style(&prefix_err).fg(color).bold(), line);
+            }
+        }
+    });
+
+    Ok(child)
 }
 
 struct ProcessManager {
@@ -100,53 +194,15 @@ impl ProcessManager {
         color: console::Color,
         env_vars: &[(&str, &str)],
     ) -> Result<(), String> {
-        let mut cmd = Command::new(command);
-        cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
-
-        for (key, value) in env_vars {
-            cmd.env(key, value);
-        }
-
-        if let Some(dir) = cwd {
-            cmd.current_dir(dir);
-        }
-
-        let mut child = cmd
-            .spawn()
-            .map_err(|e| format!("Failed to spawn {command}: {e}"))?;
-
-        let stdout = child.stdout.take().unwrap();
-        let stderr = child.stderr.take().unwrap();
-        let shutdown_stdout = self.shutdown.clone();
-        let shutdown_stderr = self.shutdown.clone();
-
-        let prefix_out = prefix.to_string();
-        let prefix_err = prefix.to_string();
-
-        thread::spawn(move || {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines() {
-                if shutdown_stdout.load(Ordering::SeqCst) {
-                    break;
-                }
-                if let Ok(line) = line {
-                    println!("{} {}", style(&prefix_out).fg(color).bold(), line);
-                }
-            }
-        });
-
-        thread::spawn(move || {
-            let reader = BufReader::new(stderr);
-            for line in reader.lines() {
-                if shutdown_stderr.load(Ordering::SeqCst) {
-                    break;
-                }
-                if let Ok(line) = line {
-                    eprintln!("{} {}", style(&prefix_err).fg(color).bold(), line);
-                }
-            }
-        });
-
+        let child = spawn_child_with_prefix(
+            command,
+            args,
+            cwd,
+            prefix,
+            color,
+            env_vars,
+            self.shutdown.clone(),
+        )?;
         self.children.push(child);
         Ok(())
     }
@@ -199,31 +255,6 @@ fn validate_ferro_project(backend_only: bool, frontend_only: bool) -> Result<(),
     }
 
     Ok(())
-}
-
-fn ensure_cargo_watch() -> Result<(), String> {
-    let status = Command::new("cargo")
-        .args(["watch", "--version"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-
-    match status {
-        Ok(s) if s.success() => Ok(()),
-        _ => {
-            println!("{}", style("cargo-watch not found. Installing...").yellow());
-            let install = Command::new("cargo")
-                .args(["install", "cargo-watch"])
-                .status()
-                .map_err(|e| format!("Failed to install cargo-watch: {e}"))?;
-
-            if !install.success() {
-                return Err("Failed to install cargo-watch".into());
-            }
-            println!("{}", style("cargo-watch installed successfully.").green());
-            Ok(())
-        }
-    }
 }
 
 fn ensure_npm_dependencies() -> Result<(), String> {
@@ -372,14 +403,6 @@ pub fn run(
         println!();
     }
 
-    // Ensure cargo-watch is installed (only if running backend)
-    if !frontend_only {
-        if let Err(e) = ensure_cargo_watch() {
-            eprintln!("{} {}", style("Error:").red().bold(), e);
-            std::process::exit(1);
-        }
-    }
-
     // Ensure npm dependencies are installed (only if running frontend)
     if !backend_only {
         if let Err(e) = ensure_npm_dependencies() {
@@ -399,7 +422,10 @@ pub fn run(
     })
     .expect("Error setting Ctrl-C handler");
 
-    // Start backend with cargo-watch
+    // Start backend via a plain `cargo run`. In 02b the BackendSupervisor will
+    // own this child and react to `r` / file-change triggers; for 02a we keep
+    // the no-watch happy path working with a one-shot spawn, matching
+    // pre-phase behavior except that failed compiles no longer auto-respawn.
     if !frontend_only {
         let package_name = match get_package_name() {
             Ok(name) => name,
@@ -416,10 +442,9 @@ pub fn run(
             backend_port
         );
 
-        let run_cmd = format!("run --bin {package_name}");
         if let Err(e) = manager.spawn_with_prefix(
             "cargo",
-            &["watch", "-x", &run_cmd],
+            &["run", "--bin", &package_name],
             None,
             "[backend] ",
             console::Color::Magenta,
@@ -454,13 +479,9 @@ pub fn run(
         }
     }
 
-    // Start file watcher for TypeScript type regeneration
-    if !skip_types && !frontend_only {
-        let shutdown_watcher = manager.shutdown.clone();
-        thread::spawn(move || {
-            start_type_watcher(shutdown_watcher);
-        });
-    }
+    // File-watch + types-regen threading moves into BackendSupervisor in 02b.
+    // 02a leaves the initial startup types-regen (above) in place and does not
+    // start any file watcher here.
 
     println!();
     println!("{}", style("Press Ctrl+C to stop all servers").dim());
@@ -481,88 +502,6 @@ pub fn run(
     println!("{}", style("Servers stopped.").green());
 }
 
-/// File watcher that regenerates TypeScript types when Rust files change
-fn start_type_watcher(shutdown: Arc<AtomicBool>) {
-    let (tx, rx) = channel();
-    let src_path = Path::new("src");
-
-    let watcher_result = RecommendedWatcher::new(
-        move |res| {
-            if let Ok(event) = res {
-                let _ = tx.send(event);
-            }
-        },
-        Config::default().with_poll_interval(Duration::from_secs(2)),
-    );
-
-    let mut watcher = match watcher_result {
-        Ok(w) => w,
-        Err(e) => {
-            eprintln!(
-                "{} Failed to start type watcher: {}",
-                style("[types]").yellow(),
-                e
-            );
-            return;
-        }
-    };
-
-    if let Err(e) = watcher.watch(src_path, RecursiveMode::Recursive) {
-        eprintln!(
-            "{} Failed to watch src directory: {}",
-            style("[types]").yellow(),
-            e
-        );
-        return;
-    }
-
-    println!(
-        "{} Watching for Rust file changes to regenerate types",
-        style("[types]").blue()
-    );
-
-    let project_path = Path::new(".");
-    let output_path = project_path.join("frontend/src/types/inertia-props.ts");
-
-    // Debounce timer to avoid regenerating too frequently
-    let mut last_regen = std::time::Instant::now();
-    let debounce_duration = Duration::from_millis(500);
-
-    loop {
-        if shutdown.load(Ordering::SeqCst) {
-            break;
-        }
-
-        // Use recv_timeout to periodically check shutdown
-        match rx.recv_timeout(Duration::from_millis(100)) {
-            Ok(event) => {
-                // Check if it's a Rust file change
-                let is_rust_change = event
-                    .paths
-                    .iter()
-                    .any(|p| p.extension().map(|e| e == "rs").unwrap_or(false));
-
-                if is_rust_change && last_regen.elapsed() > debounce_duration {
-                    last_regen = std::time::Instant::now();
-
-                    match super::generate_types::generate_types_to_file(project_path, &output_path)
-                    {
-                        Ok(count) if count > 0 => {
-                            println!("{} Regenerated {} type(s)", style("[types]").blue(), count);
-                        }
-                        Ok(_) => {} // No types found, stay quiet
-                        Err(e) => {
-                            eprintln!("{} Failed to regenerate: {}", style("[types]").yellow(), e);
-                        }
-                    }
-                }
-            }
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
-            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -574,7 +513,6 @@ mod tests {
     // These literals are the test oracle for 02a's `render_banner` body.
     // If 02a emits anything different, these assertions fail.
     #[test]
-    #[ignore = "implemented in 145-02a-PLAN — render_banner body is todo!()"]
     fn render_banner_matrix() {
         let b_watch_off_tty = "Backend server on http://127.0.0.1:8080\n\
                                Frontend server on http://127.0.0.1:5173\n\
@@ -621,7 +559,6 @@ mod tests {
 
     // D-08 — lowercase `r` only; uppercase R / unrelated keys return None.
     #[test]
-    #[ignore = "implemented in 145-02a-PLAN — classify_key body is todo!()"]
     fn classify_key_table() {
         assert_eq!(
             classify_key(KeyCode::Char('r'), KeyModifiers::NONE),
@@ -641,7 +578,6 @@ mod tests {
 
     // D-27, D-28 — source label mapping.
     #[test]
-    #[ignore = "implemented in 145-02a-PLAN — format_trigger_source body is todo!()"]
     fn trigger_source_formatting() {
         assert_eq!(format_trigger_source(ReloadTrigger::Manual), "manual");
         assert_eq!(
@@ -652,7 +588,6 @@ mod tests {
 
     // D-24 — should_spawn_keyboard is equivalent to the is_tty input.
     #[test]
-    #[ignore = "implemented in 145-02a-PLAN — should_spawn_keyboard body is todo!()"]
     fn should_spawn_keyboard_gated_on_tty() {
         assert!(should_spawn_keyboard(true));
         assert!(!should_spawn_keyboard(false));

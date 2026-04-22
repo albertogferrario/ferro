@@ -19,3 +19,22 @@ error[E0063]: missing field `compact` in initializer of `component::SwitchProps`
 **Scope decision:** This is pre-existing, unrelated to `ferro serve` / watch supervisor work. Phase 145 scope is `ferro-cli/src/commands/serve.rs` and its deps only. `cargo clippy -p ferro-cli --all-targets -- -D warnings` passes clean on every plan commit.
 
 **Fix (for a separate, small phase or direct commit):** add `compact: false` (or equivalent default) to both `SwitchProps { ... }` initializers, or make `compact` default-derivable. 11 total compile errors downstream of those two sites.
+
+## ferro-json-ui: pre-existing rustfmt drift in render.rs
+
+**Discovered during:** Plan 145-02a Task 1 (running `cargo fmt --all -- --check` after adding the `--watch` flag).
+
+**Error:**
+
+```
+Diff in ferro-json-ui/src/render.rs:2286:
+-    let mut html = String::from("<details class=\"group rounded-lg border border-border overflow-hidden\"");
++    let mut html =
++        String::from("<details class=\"group rounded-lg border border-border overflow-hidden\"");
+```
+
+**Root cause:** Single long-line string literal exceeds `rustfmt`'s default line-width; the file on master has not been re-formatted since. Independent of Phase 145.
+
+**Scope decision:** Pre-existing on master; affects only `ferro-json-ui/src/render.rs`, nothing in `ferro-cli`. Plan 145-02a's gate is scoped to `cargo fmt --package ferro-cli -- --check` (exits 0) mirroring Plan 01's `-p ferro-cli` clippy gate.
+
+**Fix (for a separate, small phase or direct commit):** run `cargo fmt --package ferro-json-ui` and commit the result, once the `SwitchProps.compact` compile errors above are fixed (otherwise rustfmt's output is subject to other churn).
