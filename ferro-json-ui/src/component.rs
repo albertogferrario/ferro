@@ -202,6 +202,112 @@ pub struct FormProps {
     pub max_width: Option<FormMaxWidth>,
 }
 
+/// Which display mode the component uses.
+///
+/// Set from a URL query parameter — typically `?mode=edit` — by
+/// [`EditMode::from_query`]. Defaults to [`EditMode::View`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum EditMode {
+    /// Read-only display with a "Modifica" action.
+    #[default]
+    View,
+    /// Inline-edit form with "Salva" / "Annulla" actions.
+    Edit,
+}
+
+impl EditMode {
+    /// Parse a URL query-parameter value into an `EditMode`.
+    ///
+    /// Returns [`EditMode::Edit`] when `raw` equals `"edit"` (ASCII
+    /// case-insensitive); [`EditMode::View`] otherwise, including when
+    /// `raw` is `None` or any other string.
+    ///
+    /// Handlers typically call this with `req.query("mode").as_deref()`.
+    pub fn from_query(raw: Option<&str>) -> Self {
+        match raw {
+            Some(s) if s.eq_ignore_ascii_case("edit") => EditMode::Edit,
+            _ => EditMode::View,
+        }
+    }
+}
+
+/// A single field row within a [`DetailFormProps`].
+///
+/// Rendered as `<div><dt>{label}</dt><dd>…</dd></div>` in both modes.
+/// In View mode, `<dd>` shows the escaped `value` as plain text.
+/// In Edit mode, `<dd>` renders the `input` [`ComponentNode`] via the
+/// normal component dispatch — making any form-field component (Input,
+/// Select, Textarea, Switch, Checkbox, plugin) usable inside.
+///
+/// **Authoring rule (Option A).** When `input` is an `Input` / `Select` /
+/// `Textarea` / `Checkbox` / `Switch` component, the caller MUST set its
+/// `label` prop to an empty string. The `<dt>` already provides the
+/// visible label; a non-empty input label produces duplicate UI text.
+/// DetailForm does not mutate caller-supplied props.
+// JsonSchema skipped: contains ComponentNode — Component has custom Serialize/Deserialize
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DetailField {
+    /// Description term shown in both modes as the field label.
+    pub label: String,
+    /// Display string shown in View mode (plain text, html_escape'd at render).
+    pub value: String,
+    /// Component rendered in Edit mode in place of `value`.
+    pub input: ComponentNode,
+}
+
+impl DetailField {
+    /// Convenience constructor mirroring [`ComponentNode::input`] ergonomics.
+    pub fn new(label: impl Into<String>, value: impl Into<String>, input: ComponentNode) -> Self {
+        Self {
+            label: label.into(),
+            value: value.into(),
+            input,
+        }
+    }
+}
+
+/// Props for [`crate::Component::DetailForm`].
+///
+/// Renders a description-list-style block in two modes — View and Edit —
+/// driven by the `mode` field. The outer scaffold (`<dl>` + rows) is
+/// byte-for-byte identical across modes per the structural coherence
+/// contract (147-UI-SPEC §5); only the inner `<dd>` content and the
+/// action bar differ. Edit mode additionally wraps the scaffold in a
+/// `<form>` with method spoofing for PUT/PATCH/DELETE.
+///
+/// Mode is URL-driven (server-side only) — no JavaScript. Callers
+/// typically derive `mode` via [`EditMode::from_query`] on
+/// `req.query("mode").as_deref()`.
+// JsonSchema skipped: contains Vec<DetailField> which contains ComponentNode
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DetailFormProps {
+    /// Which mode to render. Defaults to [`EditMode::View`].
+    #[serde(default)]
+    pub mode: EditMode,
+    /// Form submit target (used only in Edit mode; resolver populates `action.url`).
+    pub action: crate::action::Action,
+    /// The rows.
+    pub fields: Vec<DetailField>,
+    /// Href for the "Modifica" button (View mode only). Emitted verbatim after html_escape.
+    pub edit_url: String,
+    /// Href for the "Annulla" button (Edit mode only). Emitted verbatim after html_escape.
+    pub cancel_url: String,
+    /// Override for the default "Modifica" label.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edit_label: Option<String>,
+    /// Override for the default "Salva" label.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub save_label: Option<String>,
+    /// Override for the default "Annulla" label.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cancel_label: Option<String>,
+    /// Override for the form tag's HTTP method (mirrors [`FormProps::method`]).
+    /// Unset means use `action.method`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub method: Option<crate::action::HttpMethod>,
+}
+
 /// HTML button type attribute.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
