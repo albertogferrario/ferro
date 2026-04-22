@@ -800,13 +800,16 @@ fn render_card(props: &CardProps, data: &Value) -> String {
     }
     html.push_str("</div>"); // close outer card
 
+    // Narrow/Wide must occupy a full row in flex-wrap parents so siblings
+    // stack vertically. The outer `w-full` guarantees the flex slot is full
+    // width even though `max-w-*` visually constrains the content.
     match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
         FormMaxWidth::Default => {}
         FormMaxWidth::Narrow => {
-            html = format!("<div class=\"max-w-2xl mx-auto\">{html}</div>");
+            html = format!("<div class=\"w-full\"><div class=\"max-w-2xl mx-auto\">{html}</div></div>");
         }
         FormMaxWidth::Wide => {
-            html = format!("<div class=\"max-w-4xl mx-auto\">{html}</div>");
+            html = format!("<div class=\"w-full\"><div class=\"max-w-4xl mx-auto\">{html}</div></div>");
         }
     }
 
@@ -1006,11 +1009,17 @@ fn render_form(props: &FormProps, data: &Value) -> String {
     }
     html.push_str("</form>");
 
-    // FIX-02: wrap in max-width container when specified
+    // FIX-02: wrap in max-width container when specified. Outer `w-full`
+    // ensures the flex slot spans the full row so siblings stack instead of
+    // packing horizontally when the flex-wrap parent sees two narrow items.
     let html = match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
         FormMaxWidth::Default => html,
-        FormMaxWidth::Narrow => format!("<div class=\"max-w-2xl mx-auto\">{html}</div>"),
-        FormMaxWidth::Wide => format!("<div class=\"max-w-4xl mx-auto\">{html}</div>"),
+        FormMaxWidth::Narrow => {
+            format!("<div class=\"w-full\"><div class=\"max-w-2xl mx-auto\">{html}</div></div>")
+        }
+        FormMaxWidth::Wide => {
+            format!("<div class=\"w-full\"><div class=\"max-w-4xl mx-auto\">{html}</div></div>")
+        }
     };
     html
 }
@@ -7842,6 +7851,29 @@ mod tests {
         assert!(
             !html.contains("max-w-2xl"),
             "default form has no max-width wrapper"
+        );
+    }
+
+    #[test]
+    fn test_render_form_narrow_wraps_in_w_full_flex_slot() {
+        // Regression: two narrow forms/cards in a flex-wrap parent must stack
+        // vertically. The outer wrapper must be `w-full` so the flex slot
+        // spans the row; only the inner wrapper carries `max-w-2xl`.
+        let props = FormProps {
+            action: Action::new("save"),
+            fields: vec![],
+            method: None,
+            guard: None,
+            max_width: Some(FormMaxWidth::Narrow),
+        };
+        let html = render_form(&props, &serde_json::Value::Null);
+        assert!(
+            html.starts_with("<div class=\"w-full\">"),
+            "narrow form outer wrapper must be w-full so flex-wrap stacks siblings: {html}"
+        );
+        assert!(
+            html.contains("<div class=\"max-w-2xl mx-auto\">"),
+            "narrow form inner wrapper must carry max-w-2xl mx-auto"
         );
     }
 
