@@ -9,6 +9,7 @@ mod dismissibles;
 mod dropdowns;
 mod form_guards;
 mod kanban;
+mod key_value_editor;
 mod modals;
 mod notifications;
 mod product_tiles;
@@ -36,6 +37,7 @@ pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(form_guards::SOURCE);
     s.push_str(product_tiles::SOURCE);
     s.push_str(kanban::SOURCE);
+    s.push_str(key_value_editor::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
          \x20       setupSSE();\n\
@@ -44,6 +46,7 @@ pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20       setupNotifications();\n\
          \x20       setupDropdowns();\n\
          \x20       setupKanban();\n\
+         \x20       setupKeyValueEditor();\n\
          \x20       setupSidebar();\n\
          \x20       setupFormGuards();\n\
          \x20       setupProductTiles();\n\
