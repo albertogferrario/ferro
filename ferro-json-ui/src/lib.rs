@@ -63,7 +63,7 @@ pub use component::{
     Column, ColumnFormat, Component, ComponentNode, DataTableProps, DescriptionItem,
     DescriptionListProps, DropdownMenuAction, DropdownMenuProps, EmptyStateProps, FormMaxWidth,
     FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps,
-    InputProps, InputType, KanbanBoardProps, KanbanColumnProps, ModalProps,
+    InputProps, InputType, KanbanBoardProps, KanbanColumnProps, KeyValueEditorProps, ModalProps,
     NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps, PaginationProps,
     PluginProps, ProductTileProps, ProgressProps, SelectOption, SelectProps, SeparatorProps,
     SidebarGroup, SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps,
@@ -136,6 +136,10 @@ Props: field (String), label (String), description (Option<String>), checked (Op
 
 ### Switch
 Props: field (String), label (String), description (Option<String>), checked (Option<bool>), data_path (Option<String>), required (Option<bool>), disabled (Option<bool>), error (Option<String>)
+
+### KeyValueEditor
+Props: field (String), label (Option<String>), suggested_keys (Vec<String>), allow_custom_keys (bool, default true), data_path (Option<String> — must resolve to a JSON object), error (Option<String>)
+Serializes to hidden `<input name="{field}" type="hidden" value="{...json...}">`. When `allow_custom_keys` is true, the key input is a text field with a `<datalist>` from `suggested_keys`; when false, the key input is a `<select>` restricted to `suggested_keys`. Runtime syncs the hidden field on every add/delete/input event.
 
 ### Separator
 Props: orientation (Option<horizontal|vertical>)
