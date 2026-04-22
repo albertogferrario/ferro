@@ -1,9 +1,10 @@
 ---
 phase: 147
 title: DetailForm component for inline edit — ferro-json-ui
-status: draft
+status: approved
 mode: auto
 generated: 2026-04-23
+reviewed_at: 2026-04-23
 precedent: 146-UI-SPEC.md
 ---
 
