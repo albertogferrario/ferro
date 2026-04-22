@@ -266,7 +266,11 @@ pub fn run(
     backend_only: bool,
     frontend_only: bool,
     skip_types: bool,
+    watch: bool,
 ) {
+    // 02b wires the file watcher / supervisor. Bind here to keep the build green.
+    let _ = watch;
+
     // Load .env file from current directory
     let _ = dotenvy::dotenv();
 

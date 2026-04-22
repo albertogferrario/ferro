@@ -47,6 +47,10 @@ enum Commands {
         /// Skip TypeScript type generation
         #[arg(long)]
         skip_types: bool,
+
+        /// Enable file-watch auto-reload (500ms debounce)
+        #[arg(long)]
+        watch: bool,
     },
     /// Generate TypeScript types from Rust InertiaProps structs
     GenerateTypes {
@@ -487,8 +491,16 @@ fn main() {
             backend_only,
             frontend_only,
             skip_types,
+            watch,
         } => {
-            commands::serve::run(port, frontend_port, backend_only, frontend_only, skip_types);
+            commands::serve::run(
+                port,
+                frontend_port,
+                backend_only,
+                frontend_only,
+                skip_types,
+                watch,
+            );
         }
         Commands::GenerateTypes { output, watch } => {
             commands::generate_types::run(output, watch);
