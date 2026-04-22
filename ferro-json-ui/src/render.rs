@@ -1737,32 +1737,33 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
     }
 
     html.push_str("<div class=\"space-y-1\">");
-    let row_class = if props.label.is_empty() {
-        "flex items-center gap-2"
+    let row_class = if props.compact {
+        "flex items-center gap-3"
     } else {
         "flex items-center justify-between"
     };
     html.push_str(&format!("<div class=\"{row_class}\">"));
 
-    // Left side: label + description (omitted when label is empty).
-    html.push_str("<div>");
-    if !props.label.is_empty() {
+    if props.compact {
+        // Compact: toggle first, then label.
+        html.push_str("<label class=\"relative inline-flex items-center cursor-pointer\">");
+    } else {
+        // Standard: label left, toggle right.
+        html.push_str("<div>");
         html.push_str(&format!(
             "<label class=\"text-sm font-medium text-text\" for=\"{}\">{}</label>",
             html_escape(&props.field),
             html_escape(&props.label)
         ));
+        if let Some(ref desc) = props.description {
+            html.push_str(&format!(
+                "<p class=\"text-sm text-text-muted\">{}</p>",
+                html_escape(desc)
+            ));
+        }
+        html.push_str("</div>");
+        html.push_str("<label class=\"relative inline-flex items-center cursor-pointer\">");
     }
-    if let Some(ref desc) = props.description {
-        html.push_str(&format!(
-            "<p class=\"text-sm text-text-muted\">{}</p>",
-            html_escape(desc)
-        ));
-    }
-    html.push_str("</div>");
-
-    // Right side: toggle.
-    html.push_str("<label class=\"relative inline-flex items-center cursor-pointer\">");
     let aria_checked = if is_checked { "true" } else { "false" };
     html.push_str(&format!(
         "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"1\" role=\"switch\" aria-checked=\"{}\" class=\"sr-only peer\"{}",
@@ -1783,6 +1784,13 @@ fn render_switch(props: &SwitchProps, data: &Value) -> String {
     html.push('>');
     html.push_str("<div class=\"w-11 h-6 bg-border rounded-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>");
     html.push_str("</label>");
+    if props.compact {
+        html.push_str(&format!(
+            "<label class=\"text-sm font-medium text-text cursor-pointer\" for=\"{}\">{}</label>",
+            html_escape(&props.field),
+            html_escape(&props.label)
+        ));
+    }
     html.push_str("</div>");
 
     if let Some(ref error) = props.error {

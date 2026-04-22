@@ -377,6 +377,10 @@ pub struct SwitchProps {
     /// form and submits on change.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<Action>,
+    /// Compact mode: label hugs the toggle (gap-3) instead of justify-between.
+    /// Use when the switch is inside a narrow grid column.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub compact: bool,
 }
 
 /// Props for Separator component.
