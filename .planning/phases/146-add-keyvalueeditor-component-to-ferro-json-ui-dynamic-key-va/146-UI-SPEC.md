@@ -43,7 +43,9 @@ Standard 8-point scale used throughout ferro-json-ui. All values are multiples o
 
 Row layout column sizing: `grid grid-cols-[1fr_1fr_auto]` — key and value columns expand equally, delete button column is `auto` (minimum width to fit the icon button).
 
-Exceptions: delete button touch target is `min-w-[32px] min-h-[32px]` to ensure adequate click area on mobile, even though the icon is 16px. No 44px exception required because the button is not an isolated touch target — it sits inline with the row.
+Exceptions:
+- **12px (`px-3`, `gap-3`):** not in the standard {4, 8, 16, 24, 32, 48, 64} set. Declared as a project-wide consistency override — `px-3 py-2` is the established padding in `render_input`, `render_select`, and all ferro-json-ui form component renderers. Using the same value here maintains visual alignment across every form control in the framework.
+- Delete button touch target is `min-w-[32px] min-h-[32px]` to ensure adequate click area on mobile, even though the icon is 16px. No 44px exception required because the button is not an isolated touch target — it sits inline with the row.
 
 ---
 
@@ -63,6 +65,8 @@ Inherits from the existing ferro-json-ui typographic system (source: render.rs `
 ## Color Contract
 
 Semantic token names only — resolved by the consumer's Tailwind v4 theme configuration.
+
+Distribution: 60% dominant surface (`bg-background`), 30% secondary surface (`bg-card` / `bg-surface`), 10% accent (`text-primary` / `bg-primary`). The KeyValueEditor itself sits on the dominant surface and uses the secondary surface tokens only for inherited context; the accent 10% is reserved exclusively for the "Add row" button.
 
 | Role | Token | Usage | Source |
 |------|-------|-------|--------|
