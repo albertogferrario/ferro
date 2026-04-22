@@ -1283,7 +1283,7 @@ Plans:
 **Goal:** Replace the external `cargo-watch` dependency in `ferro serve` with an in-process supervisor. Make auto-watch opt-in via `--watch` (off by default). Add a runtime `r` key that triggers a backend rebuild and types regeneration, cancelling any in-flight build. Use `notify-debouncer-mini` for trailing-edge debounce (500 ms fixed) so a burst of file-saves produces one rebuild rather than many.
 **Requirements**: Design spec at `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`. Targets `ferro-cli/src/commands/serve.rs`. Deletes `ensure_cargo_watch()` and `start_type_watcher()`. Adds `notify-debouncer-mini` and `crossterm` deps; drops external `cargo-watch` install step.
 **Depends on:** Phase 144
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 - [x] 145-01-PLAN.md — Wave 0 test infrastructure: minimal-serve fixture + integration-test scaffold + pure-function contracts (render_banner, classify_key, KbAction, ReloadTrigger, format_trigger_source, should_spawn_keyboard) + 5 inline #[ignore]-gated unit-test stubs (Wave 0)
