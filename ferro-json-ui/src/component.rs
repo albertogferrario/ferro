@@ -3573,3 +3573,73 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod key_value_editor_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn key_value_editor_serde_roundtrip() {
+        let original = Component::KeyValueEditor(KeyValueEditorProps {
+            field: "metadata".to_string(),
+            label: Some("Metadata".to_string()),
+            suggested_keys: vec!["env".to_string(), "region".to_string()],
+            allow_custom_keys: false,
+            data_path: Some("/meta".to_string()),
+            error: Some("required".to_string()),
+        });
+
+        let serialized = serde_json::to_value(&original)
+            .expect("serialize KeyValueEditor component");
+
+        // Tagged serialization must inject "type": "KeyValueEditor".
+        assert_eq!(
+            serialized.get("type").and_then(|v| v.as_str()),
+            Some("KeyValueEditor"),
+            "serialized form must have type=KeyValueEditor: {serialized}"
+        );
+        assert_eq!(serialized.get("field").and_then(|v| v.as_str()), Some("metadata"));
+        assert_eq!(serialized.get("allow_custom_keys").and_then(|v| v.as_bool()), Some(false));
+
+        // Round-trip: deserialize back into Component, assert structural equality.
+        let deserialized: Component = serde_json::from_value(serialized)
+            .expect("deserialize KeyValueEditor component");
+        match deserialized {
+            Component::KeyValueEditor(ref p) => {
+                assert_eq!(p.field, "metadata");
+                assert_eq!(p.label.as_deref(), Some("Metadata"));
+                assert_eq!(p.suggested_keys, vec!["env".to_string(), "region".to_string()]);
+                assert!(!p.allow_custom_keys);
+                assert_eq!(p.data_path.as_deref(), Some("/meta"));
+                assert_eq!(p.error.as_deref(), Some("required"));
+            }
+            other => panic!("expected KeyValueEditor, got {other:?}"),
+        }
+        assert_eq!(
+            original, deserialized,
+            "PartialEq round-trip failed"
+        );
+    }
+
+    #[test]
+    fn key_value_editor_allow_custom_keys_defaults_to_true() {
+        // Serde default: when allow_custom_keys is absent from JSON input, it must be true.
+        let json_input = json!({
+            "type": "KeyValueEditor",
+            "field": "meta",
+        });
+        let parsed: Component = serde_json::from_value(json_input)
+            .expect("deserialize minimal KeyValueEditor");
+        match parsed {
+            Component::KeyValueEditor(p) => {
+                assert!(p.allow_custom_keys, "allow_custom_keys default must be true");
+                assert!(p.suggested_keys.is_empty(), "suggested_keys default must be empty");
+                assert!(p.label.is_none());
+                assert!(p.data_path.is_none());
+                assert!(p.error.is_none());
+            }
+            other => panic!("expected KeyValueEditor, got {other:?}"),
+        }
+    }
+}
