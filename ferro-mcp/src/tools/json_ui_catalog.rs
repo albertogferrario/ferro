@@ -250,6 +250,110 @@ fn build_catalog() -> Vec<CatalogComponent> {
             variants: None,
         },
         CatalogComponent {
+            name: "DetailForm".to_string(),
+            description: "Split-mode detail page with inline edit: View renders a <dl> + 'Modifica' link; Edit wraps the same <dl> in a <form> with 'Salva'/'Annulla' actions. Mode is URL-driven (?mode=edit); server-side only (no JS). Authoring rule (Option A): when DetailField.input is an Input/Select/Textarea/Checkbox/Switch, the caller MUST set its label to \"\" — the <dt> provides the visible label. DetailForm does not mutate caller-supplied props; the caller should also set aria-label on each input derived from the field's label so screen readers retain context.".to_string(),
+            props: vec![
+                prop(
+                    "mode",
+                    "EditMode",
+                    true,
+                    "View (default) or Edit — typically set via EditMode::from_query(req.query(\"mode\").as_deref())",
+                ),
+                prop(
+                    "action",
+                    "Action",
+                    true,
+                    "Form submit target used in Edit mode; resolver populates action.url from action.handler",
+                ),
+                prop(
+                    "fields",
+                    "Vec<DetailField>",
+                    true,
+                    "Rows: { label, value, input: ComponentNode }",
+                ),
+                prop(
+                    "edit_url",
+                    "String",
+                    true,
+                    "Href for the 'Modifica' link (View mode). Emitted verbatim after html_escape; NOT resolved by the route registry",
+                ),
+                prop(
+                    "cancel_url",
+                    "String",
+                    true,
+                    "Href for the 'Annulla' link (Edit mode). Emitted verbatim after html_escape; NOT resolved by the route registry",
+                ),
+                prop(
+                    "edit_label",
+                    "Option<String>",
+                    false,
+                    "Override for the default 'Modifica' label",
+                ),
+                prop(
+                    "save_label",
+                    "Option<String>",
+                    false,
+                    "Override for the default 'Salva' label",
+                ),
+                prop(
+                    "cancel_label",
+                    "Option<String>",
+                    false,
+                    "Override for the default 'Annulla' label",
+                ),
+                prop(
+                    "method",
+                    "Option<HttpMethod>",
+                    false,
+                    "HTTP method override for the form (else uses action.method); PUT/PATCH/DELETE auto-emit <input type=\"hidden\" name=\"_method\"> spoofing",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
+            name: "KeyValueEditor".to_string(),
+            description: "Dynamic key/value editor backed by a hidden JSON field. Renders a list of key/value row inputs plus an 'Add row' button; the runtime JS keeps the hidden field in sync on every add/delete/input. When allow_custom_keys is true, the key input is a text field with a <datalist> from suggested_keys; when false, the key input is a <select> restricted to suggested_keys. Last-write-wins on duplicate keys.".to_string(),
+            props: vec![
+                prop(
+                    "field",
+                    "String",
+                    true,
+                    "Name of the hidden input that receives the serialized JSON object",
+                ),
+                prop(
+                    "label",
+                    "Option<String>",
+                    false,
+                    "Optional visible label above the editor block",
+                ),
+                prop(
+                    "suggested_keys",
+                    "Vec<String>",
+                    false,
+                    "Keys offered as suggestions via <datalist> (custom mode) or <select> options (restricted mode)",
+                ),
+                prop(
+                    "allow_custom_keys",
+                    "bool",
+                    false,
+                    "If true (default), keys can be any text with suggestions; if false, keys are restricted to suggested_keys",
+                ),
+                prop(
+                    "data_path",
+                    "Option<String>",
+                    false,
+                    "JSON pointer path whose resolved object seeds the initial rows",
+                ),
+                prop(
+                    "error",
+                    "Option<String>",
+                    false,
+                    "Validation error message rendered below the editor",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
             name: "Input".to_string(),
             description: "Text input field with type variants, validation error, and data binding."
                 .to_string(),
