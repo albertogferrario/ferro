@@ -1,0 +1,14 @@
+[package]
+name = "minimal-serve"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "minimal-serve"
+path = "src/main.rs"
+
+# Opt out of the enclosing ferro workspace so `cargo build` / `cargo run`
+# inside this directory succeeds standalone (required by integration tests
+# that spawn the real `ferro` binary against this fixture).
+[workspace]

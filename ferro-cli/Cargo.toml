@@ -22,6 +22,7 @@ path = "src/main.rs"
 clap = { version = "4", features = ["derive"] }
 dialoguer = "0.11"
 console = "0.15"
+crossterm = "0.29"
 ctrlc = "3.5"
 syn = { version = "2", features = ["full", "parsing", "visit"] }
 quote = "1"
