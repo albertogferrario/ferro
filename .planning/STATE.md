@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 145-02a-PLAN.md
-last_updated: "2026-04-22T15:52:42.815Z"
-last_activity: 2026-04-22 -- Phase 146 planning complete
+stopped_at: Completed 145-02b-PLAN.md
+last_updated: "2026-04-22T16:15:34.856Z"
+last_activity: 2026-04-22
 progress:
   total_phases: 146
   completed_phases: 130
   total_plans: 334
-  completed_plans: 307
-  percent: 92
+  completed_plans: 310
+  percent: 93
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 145 — ferro-serve-manual-reload-key-and-watch-supervisor
+**Current focus:** Phase 146 — add-keyvalueeditor-component-to-ferro-json-ui-dynamic-key-va
 
 ## Current Position
 
-Phase: 145 (ferro-serve-manual-reload-key-and-watch-supervisor) — EXECUTING
-Plan: 3 of 5
+Phase: 146 (add-keyvalueeditor-component-to-ferro-json-ui-dynamic-key-va) — EXECUTING
+Plan: 2 of 3
 Workspace version: 0.2.5
 Status: Ready to execute
-Last activity: 2026-04-22 -- Phase 146 planning complete
+Last activity: 2026-04-22
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -105,6 +105,7 @@ Progress: [██████████] 96%
 | Phase 141 P02 | 15min | 2 tasks | 5 files |
 | Phase 145 P01 | 11min | 3 tasks | 7 files |
 | Phase 145 P02a | 8min | 2 tasks | 3 files |
+| Phase 145 P02b | 21min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,10 @@ Recent decisions affecting current work:
 - [112-01] MCP config command is `ferro mcp` — not a standalone ferro-mcp binary
 - [145-01] Test-fixture crates under workspace root need an empty [workspace] table in their Cargo.toml to opt out of the enclosing workspace and build standalone
 - [145-01] classify_key signature declared with final crossterm types (KeyCode, KeyModifiers) at Wave 0 — no Plan-02 signature rewrite needed
+- [145-02b] BackendSupervisor owns backend child in its own thread; main thread holds JoinHandle for deterministic shutdown ordering per D-29
+- [145-02b] drop(reload_tx) after cloning to producers lets the supervisor's recv_timeout see Disconnected — belt-and-braces termination path in addition to the AtomicBool shutdown flag
+- [145-02b] debouncer_coalesces_burst uses 500ms production window and "strictly fewer events than raw writes" invariant; plan's 50ms + "exactly one" was flaky under macOS FSEvents + parallel-test CPU contention
+- [145-02b] ProcessManager::any_exited deleted entirely (D-12: backend child exits are not grounds for shutdown); also deleted spawn_with_prefix convenience wrapper since only spawn_with_prefix_env is still called
 
 ### Pending Todos
 
@@ -154,7 +159,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-22T15:47:05.401Z
-Stopped at: Completed 145-02a-PLAN.md
+Last session: 2026-04-22T16:15:34.764Z
+Stopped at: Completed 145-02b-PLAN.md
 Resume file: None
 Next action: `/gsd-complete-milestone v11.7`

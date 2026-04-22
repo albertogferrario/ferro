@@ -1283,7 +1283,7 @@ Plans:
 **Goal:** Replace the external `cargo-watch` dependency in `ferro serve` with an in-process supervisor. Make auto-watch opt-in via `--watch` (off by default). Add a runtime `r` key that triggers a backend rebuild and types regeneration, cancelling any in-flight build. Use `notify-debouncer-mini` for trailing-edge debounce (500 ms fixed) so a burst of file-saves produces one rebuild rather than many.
 **Requirements**: Design spec at `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`. Targets `ferro-cli/src/commands/serve.rs`. Deletes `ensure_cargo_watch()` and `start_type_watcher()`. Adds `notify-debouncer-mini` and `crossterm` deps; drops external `cargo-watch` install step.
 **Depends on:** Phase 144
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 - [x] 145-01-PLAN.md — Wave 0 test infrastructure: minimal-serve fixture + integration-test scaffold + pure-function contracts (render_banner, classify_key, KbAction, ReloadTrigger, format_trigger_source, should_spawn_keyboard) + 5 inline #[ignore]-gated unit-test stubs (Wave 0)
@@ -1296,12 +1296,12 @@ Plans:
 **Goal:** Ship a `KeyValueEditor` JSON-UI component that renders a dynamic list of key/value rows backed by a hidden JSON field, supports seeded rows from `data_path`, suggested keys via `<datalist>` or restricted `<select>`, error-state propagation, and event-delegated add/delete/input serialization via a new `setupKeyValueEditor()` runtime module.
 **Requirements**: R1 (html_escape on all dynamic HTML), R2 (data_path pre-fill), R3 (error state classes), R4 (select variant), R5 (datalist variant), R6 (empty hidden field defaults to `{}`), R7 (bundle contains setupKeyValueEditor), R8 (dispatcher invokes setupKeyValueEditor), R9 (serde round-trip)
 **Depends on:** Phase 145
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 146-01-PLAN.md — Wave 0 RED tests: 7 render_key_value_editor unit tests in render.rs, 2 serde round-trip tests in component.rs, update both runtime/mod.rs test arrays to require setupKeyValueEditor (Wave 1, no deps)
-- [ ] 146-02-PLAN.md — Rust implementation: KeyValueEditorProps struct + Component::KeyValueEditor variant + serde match arms in component.rs, render_key_value_editor() + dispatch arm in render.rs, public re-export + COMPONENT_CATALOG entry in lib.rs (Wave 2, depends on 01)
-- [ ] 146-03-PLAN.md — Runtime JS: new ferro-json-ui/src/runtime/key_value_editor.rs with ES5 setupKeyValueEditor/initKeyValueEditor/syncHiddenField, wire module decl + SOURCE push + dispatcher call into runtime/mod.rs (Wave 3, depends on 01)
+- [x] 146-01-PLAN.md — Wave 0 RED tests: 7 render_key_value_editor unit tests in render.rs, 2 serde round-trip tests in component.rs, update both runtime/mod.rs test arrays to require setupKeyValueEditor (Wave 1, no deps)
+- [x] 146-02-PLAN.md — Rust implementation: KeyValueEditorProps struct + Component::KeyValueEditor variant + serde match arms in component.rs, render_key_value_editor() + dispatch arm in render.rs, public re-export + COMPONENT_CATALOG entry in lib.rs (Wave 2, depends on 01)
+- [x] 146-03-PLAN.md — Runtime JS: new ferro-json-ui/src/runtime/key_value_editor.rs with ES5 setupKeyValueEditor/initKeyValueEditor/syncHiddenField, wire module decl + SOURCE push + dispatcher call into runtime/mod.rs (Wave 3, depends on 01)
 
 ---
 
