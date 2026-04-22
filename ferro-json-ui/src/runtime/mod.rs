@@ -124,6 +124,7 @@ mod tests {
             "setupFormGuards",
             "setupProductTiles",
             "setupKanban",
+            "setupKeyValueEditor",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
@@ -155,6 +156,7 @@ mod tests {
             "setupFormGuards();",
             "setupProductTiles();",
             "setupKanban();",
+            "setupKeyValueEditor();",
         ] {
             assert!(dispatcher.contains(call), "dispatcher missing {call}");
         }
