@@ -989,6 +989,7 @@ mod tests {
                 disabled: None,
                 error: None,
                 action: None,
+                compact: false,
             }),
             action: None,
             visibility: None,
