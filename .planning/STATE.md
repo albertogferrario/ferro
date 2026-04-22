@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 144 context gathered
-last_updated: "2026-04-21T22:21:52.617Z"
+stopped_at: Phase 145 context gathered
+last_updated: "2026-04-22T04:32:08.260Z"
 last_activity: 2026-04-21
 progress:
-  total_phases: 144
+  total_phases: 145
   completed_phases: 130
   total_plans: 326
   completed_plans: 305
@@ -145,10 +145,11 @@ Recent decisions affecting current work:
 - Phase 130 added (2026-04-09): Invert dep convention (simple) — retire `Cargo.docker.toml` and `cargo_docker_toml_staleness` doctor check; Docker builds use `Cargo.toml` directly; local ferro dev via uncommitted `[patch.crates-io]`. Source: `.planning/proposals/dep-override-convention.md` (simplified per user direction — no new CLI verbs, no new doctor check). CLI bug recurred: `gsd-tools phase add` returned phase 1 instead of 130; manually renumbered.
 - Phase 143 inserted (2026-04-20): Tailwind static CSS pipeline (URGENT) — opened new milestone v11.7. Source: gestiscilo-it production field report — `@tailwindcss/browser@4` runtime JIT fails on Safari, renders login page as unstyled HTML. Replace with pre-built static CSS. Manually scaffolded (gsd-tools phase insert rejected because STATE.md milestone field still says v11.0 but v11.6 and earlier have shipped — STATE drift is a separate cleanup). Context: `.planning/phases/143-tailwind-static-css-pipeline/143-CONTEXT.md`.
 - Phase 144 added (2026-04-21): Fix root path routing in group routes — `get!("/", ...)` inside a group does not match the trailing-slash URL. Source: gestiscilo-it field test — `/s/{slug}/` returns 404; `/s/{slug}/index.html` works. The `serve_root` handler is unreachable via the canonical URL.
+- Phase 145 added (2026-04-22): ferro serve manual reload key and watch supervisor — replace external `cargo-watch` with in-process supervisor, flip auto-watch to opt-in via `--watch`, add runtime `r` key for cancel-and-restart rebuilds, unify backend recompile + types regen under one debounced loop. Source: field report — rapid file saves produce compounding stale rebuilds; thermal cost on MacBook. Spec: `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`.
 
 ## Session Continuity
 
-Last session: 2026-04-21T18:46:11.690Z
-Stopped at: Phase 144 context gathered
-Resume file: .planning/phases/144-fix-root-path-routing-in-group-routes/144-CONTEXT.md
+Last session: 2026-04-22T04:32:08.162Z
+Stopped at: Phase 145 context gathered
+Resume file: .planning/phases/145-ferro-serve-manual-reload-key-and-watch-supervisor/145-CONTEXT.md
 Next action: `/gsd-complete-milestone v11.7`
