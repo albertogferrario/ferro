@@ -8625,4 +8625,273 @@ mod tests {
             "expected &quot;v&quot; in escaped output"
         );
     }
+
+    // ── 25. DetailForm (Phase 147, Wave 0 RED) ────────────────────────────
+
+    fn df_props_minimal(mode: EditMode) -> DetailFormProps {
+        DetailFormProps {
+            mode,
+            action: Action {
+                handler: "users.update".to_string(),
+                url: Some("/users/1".to_string()),
+                method: HttpMethod::Post,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+                target: None,
+            },
+            fields: vec![DetailField {
+                label: "Name".to_string(),
+                value: "Ada".to_string(),
+                input: ComponentNode::input(
+                    "name",
+                    InputProps {
+                        field: "name".to_string(),
+                        label: "".to_string(),
+                        input_type: InputType::Text,
+                        placeholder: None,
+                        required: None,
+                        disabled: None,
+                        error: None,
+                        description: None,
+                        default_value: None,
+                        data_path: None,
+                        step: None,
+                        list: None,
+                    },
+                ),
+            }],
+            edit_url: "/users/1?mode=edit".to_string(),
+            cancel_url: "/users/1".to_string(),
+            edit_label: None,
+            save_label: None,
+            cancel_label: None,
+            method: None,
+        }
+    }
+
+    fn render_df(props: DetailFormProps) -> String {
+        let view = JsonUiView::new().component(ComponentNode::detail_form("df", props));
+        render_to_html(&view, &serde_json::Value::Null)
+    }
+
+    #[test]
+    fn render_detail_form_view_mode() {
+        let html = render_df(df_props_minimal(EditMode::View));
+        assert!(
+            html.contains("<dl class=\"grid grid-cols-1 gap-4\">"),
+            "missing <dl> scaffold: {html}"
+        );
+        assert!(
+            html.contains("<dt class=\"text-sm font-medium text-text-muted\">Name</dt>"),
+            "missing <dt> label"
+        );
+        assert!(
+            html.contains("<dd class=\"mt-1 text-sm text-text\">Ada</dd>"),
+            "missing plain <dd> value in View mode: {html}"
+        );
+        assert!(
+            !html.contains("<form"),
+            "View mode must NOT wrap in <form>: {html}"
+        );
+        assert!(
+            !html.contains("name=\"_method\""),
+            "View mode must NOT emit method spoofing"
+        );
+    }
+
+    #[test]
+    fn render_detail_form_edit_mode() {
+        let html = render_df(df_props_minimal(EditMode::Edit));
+        assert!(
+            html.contains("<form"),
+            "Edit mode must wrap in <form>: {html}"
+        );
+        assert!(html.contains("action=\"/users/1\""), "missing action URL");
+        assert!(html.contains("method=\"post\""), "missing method=post");
+        assert!(
+            html.contains("<dl class=\"grid grid-cols-1 gap-4\">"),
+            "missing <dl> scaffold"
+        );
+        // <dd> in Edit mode contains the rendered input (via render_node).
+        assert!(
+            html.contains("<input"),
+            "Edit mode <dd> must contain rendered <input>: {html}"
+        );
+    }
+
+    #[test]
+    fn render_detail_form_scaffold_invariance() {
+        let view_html = render_df(df_props_minimal(EditMode::View));
+        let edit_html = render_df(df_props_minimal(EditMode::Edit));
+        let extract_dl = |h: &str| -> String {
+            let start = h.find("<dl").expect("no <dl in html");
+            let end = h.find("</dl>").expect("no </dl> in html") + "</dl>".len();
+            h[start..end].to_string()
+        };
+        let view_dl = extract_dl(&view_html);
+        let edit_dl = extract_dl(&edit_html);
+        // Only the <dd> contents should differ between View and Edit; the <dl>, <dt>,
+        // and row wrappers must be identical. Per §5 of 147-UI-SPEC the OUTER <dl>
+        // opening tag + classes must match byte-for-byte.
+        let view_open = &view_dl[..view_dl.find('>').expect("dl open") + 1];
+        let edit_open = &edit_dl[..edit_dl.find('>').expect("dl open") + 1];
+        assert_eq!(
+            view_open, edit_open,
+            "<dl> opening tag must be byte-identical"
+        );
+        // <dt> blocks must match as well.
+        for (v_dt, e_dt) in view_dl
+            .match_indices("<dt")
+            .zip(edit_dl.match_indices("<dt"))
+        {
+            let v_end =
+                view_dl[v_dt.0..].find("</dt>").expect("close dt view") + v_dt.0 + "</dt>".len();
+            let e_end =
+                edit_dl[e_dt.0..].find("</dt>").expect("close dt edit") + e_dt.0 + "</dt>".len();
+            assert_eq!(
+                &view_dl[v_dt.0..v_end],
+                &edit_dl[e_dt.0..e_end],
+                "<dt> content must be byte-identical"
+            );
+        }
+    }
+
+    #[test]
+    fn render_detail_form_edit_method_spoofing_put() {
+        let mut props = df_props_minimal(EditMode::Edit);
+        props.method = Some(HttpMethod::Put);
+        let html = render_df(props);
+        assert!(
+            html.contains("method=\"post\""),
+            "spoofed form must still use method=post"
+        );
+        assert!(
+            html.contains("<input type=\"hidden\" name=\"_method\" value=\"PUT\">"),
+            "missing _method=PUT hidden input: {html}"
+        );
+    }
+
+    #[test]
+    fn render_detail_form_edit_method_spoofing_patch() {
+        let mut props = df_props_minimal(EditMode::Edit);
+        props.method = Some(HttpMethod::Patch);
+        let html = render_df(props);
+        assert!(html.contains("method=\"post\""));
+        assert!(html.contains("<input type=\"hidden\" name=\"_method\" value=\"PATCH\">"));
+    }
+
+    #[test]
+    fn render_detail_form_edit_method_spoofing_delete() {
+        let mut props = df_props_minimal(EditMode::Edit);
+        props.method = Some(HttpMethod::Delete);
+        let html = render_df(props);
+        assert!(html.contains("method=\"post\""));
+        assert!(html.contains("<input type=\"hidden\" name=\"_method\" value=\"DELETE\">"));
+    }
+
+    #[test]
+    fn render_detail_form_edit_get_no_spoofing() {
+        let mut props = df_props_minimal(EditMode::Edit);
+        props.action.method = HttpMethod::Get;
+        props.method = None;
+        let html = render_df(props);
+        assert!(html.contains("method=\"get\""));
+        assert!(
+            !html.contains("name=\"_method\""),
+            "GET must not emit method spoofing"
+        );
+    }
+
+    #[test]
+    fn render_detail_form_view_shows_modifica_link() {
+        let html = render_df(df_props_minimal(EditMode::View));
+        assert!(
+            html.contains("<a href=\"/users/1?mode=edit\""),
+            "missing Modifica anchor"
+        );
+        assert!(
+            html.contains(">Modifica</a>"),
+            "missing default Modifica label"
+        );
+    }
+
+    #[test]
+    fn render_detail_form_edit_shows_salva_and_annulla() {
+        let html = render_df(df_props_minimal(EditMode::Edit));
+        assert!(
+            html.contains("<button type=\"submit\""),
+            "missing submit button"
+        );
+        assert!(
+            html.contains(">Salva</button>"),
+            "missing default Salva label"
+        );
+        assert!(
+            html.contains("<a href=\"/users/1\""),
+            "missing Annulla anchor targeting cancel_url"
+        );
+        assert!(
+            html.contains(">Annulla</a>"),
+            "missing default Annulla label"
+        );
+    }
+
+    #[test]
+    fn render_detail_form_view_xss_escapes_strings() {
+        let mut props = df_props_minimal(EditMode::View);
+        props.fields[0].label = "<script>alert(1)</script>".to_string();
+        props.fields[0].value = "\"><svg/onload=alert(2)>".to_string();
+        props.edit_url = "/foo\"/>x".to_string();
+        let html = render_df(props);
+        assert!(
+            !html.contains("<script>alert(1)</script>"),
+            "raw <script> must be escaped: {html}"
+        );
+        assert!(
+            !html.contains("\"><svg/onload"),
+            "raw attribute-break must be escaped"
+        );
+        assert!(
+            html.contains("&lt;script&gt;"),
+            "expected &lt;script&gt; in escaped output"
+        );
+        assert!(html.contains("&quot;"), "expected &quot; in escaped output");
+    }
+
+    #[test]
+    fn render_detail_form_edit_xss_escapes_cancel_url() {
+        let mut props = df_props_minimal(EditMode::Edit);
+        props.cancel_url = "/x\"/>y".to_string();
+        let html = render_df(props);
+        assert!(
+            !html.contains("\"/>y"),
+            "cancel_url must be escaped inside href: {html}"
+        );
+        assert!(
+            html.contains("&quot;"),
+            "expected &quot; in escaped cancel_url"
+        );
+    }
+
+    #[test]
+    fn render_detail_form_custom_labels() {
+        let mut props = df_props_minimal(EditMode::Edit);
+        props.save_label = Some("Save".to_string());
+        props.cancel_label = Some("Cancel".to_string());
+        let html = render_df(props);
+        assert!(html.contains(">Save</button>"), "missing custom Save label");
+        assert!(html.contains(">Cancel</a>"), "missing custom Cancel label");
+    }
+
+    #[test]
+    fn render_detail_form_view_action_bar_below_dl() {
+        let html = render_df(df_props_minimal(EditMode::View));
+        let dl_close = html.find("</dl>").expect("no </dl>");
+        let modifica = html.find(">Modifica</a>").expect("no Modifica anchor");
+        assert!(
+            dl_close < modifica,
+            "action bar must render below <dl>; got dl_close={dl_close}, modifica={modifica}"
+        );
+    }
 }
