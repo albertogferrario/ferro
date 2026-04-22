@@ -8220,4 +8220,108 @@ mod tests {
             "No unreplaced {{row_key}} placeholders should remain"
         );
     }
+
+    // ── KeyValueEditor render tests (Phase 146, Wave 1 RED) ──────────────
+
+    fn kv_props_minimal(field: &str) -> KeyValueEditorProps {
+        KeyValueEditorProps {
+            field: field.to_string(),
+            label: None,
+            suggested_keys: Vec::new(),
+            allow_custom_keys: true,
+            data_path: None,
+            error: None,
+        }
+    }
+
+    #[test]
+    fn render_key_value_editor_empty_state() {
+        let props = kv_props_minimal("meta");
+        let html = render_key_value_editor(&props, &serde_json::Value::Null);
+        assert!(html.contains("data-kv-editor"), "missing data-kv-editor: {html}");
+        assert!(html.contains(r#"data-kv-field="meta""#), "missing data-kv-field attr");
+        assert!(html.contains(r#"name="meta""#), "missing hidden field name");
+        assert!(html.contains(r#"value="{}""#), "hidden field should default to {{}}");
+        assert!(html.contains("data-kv-add"), "missing add-row button");
+        assert!(html.contains("data-kv-row-template"), "missing row template");
+        // Only the template row should be present (no pre-filled rows).
+        let row_occurrences = html.matches("data-kv-row").count();
+        assert!(row_occurrences >= 1, "expected at least the template row, got {row_occurrences}");
+    }
+
+    #[test]
+    fn render_key_value_editor_prefilled_rows() {
+        let mut props = kv_props_minimal("meta");
+        props.data_path = Some("/meta".to_string());
+        let data = json!({"meta": {"alpha": "one", "beta": "two"}});
+        let html = render_key_value_editor(&props, &data);
+        assert!(html.contains(r#"value="alpha""#), "missing prefilled key 'alpha'");
+        assert!(html.contains(r#"value="one""#), "missing prefilled value 'one'");
+        assert!(html.contains(r#"value="beta""#), "missing prefilled key 'beta'");
+        assert!(html.contains(r#"value="two""#), "missing prefilled value 'two'");
+        // Hidden field should contain both entries serialized.
+        assert!(
+            html.contains(r#""alpha":"one""#) || html.contains(r#"&quot;alpha&quot;:&quot;one&quot;"#),
+            "hidden field missing alpha entry: {html}"
+        );
+    }
+
+    #[test]
+    fn render_key_value_editor_error_state() {
+        let mut props = kv_props_minimal("meta");
+        props.error = Some("required".to_string());
+        let html = render_key_value_editor(&props, &serde_json::Value::Null);
+        assert!(html.contains("border-destructive"), "missing error border class");
+        assert!(html.contains("focus-visible:ring-destructive"), "missing error focus ring class");
+        assert!(html.contains(r#"aria-invalid="true""#), "missing aria-invalid");
+        assert!(html.contains(r#"aria-describedby="err-meta""#), "missing aria-describedby");
+        assert!(html.contains(r#"id="err-meta""#), "missing error paragraph id");
+        assert!(html.contains("required"), "missing error text");
+    }
+
+    #[test]
+    fn render_key_value_editor_select_variant() {
+        let mut props = kv_props_minimal("meta");
+        props.allow_custom_keys = false;
+        props.suggested_keys = vec!["env".to_string(), "region".to_string()];
+        let html = render_key_value_editor(&props, &serde_json::Value::Null);
+        assert!(html.contains("<select"), "missing <select> in select variant");
+        assert!(html.contains("data-kv-key"), "missing data-kv-key on select");
+        assert!(html.contains(r#"<option value="env">env</option>"#), "missing env option");
+        assert!(html.contains(r#"<option value="region">region</option>"#), "missing region option");
+        assert!(!html.contains(r#"list="meta-suggestions""#), "select variant must not use datalist");
+        assert!(!html.contains("<datalist"), "select variant must not render a <datalist>");
+    }
+
+    #[test]
+    fn render_key_value_editor_datalist_present() {
+        let mut props = kv_props_minimal("meta");
+        props.suggested_keys = vec!["env".to_string(), "region".to_string()];
+        let html = render_key_value_editor(&props, &serde_json::Value::Null);
+        assert!(html.contains(r#"<datalist id="meta-suggestions">"#), "missing datalist");
+        assert!(html.contains(r#"<option value="env">"#), "missing datalist option env");
+        assert!(html.contains(r#"<option value="region">"#), "missing datalist option region");
+        assert!(html.contains(r#"list="meta-suggestions""#), "key input missing list attr");
+    }
+
+    #[test]
+    fn render_key_value_editor_hidden_field_empty_object() {
+        let props = kv_props_minimal("meta");
+        let html = render_key_value_editor(&props, &serde_json::Value::Null);
+        assert!(html.contains(r#"type="hidden""#), "missing hidden input");
+        assert!(html.contains(r#"value="{}""#), "hidden input should default to {{}}");
+    }
+
+    #[test]
+    fn render_key_value_editor_html_escape_in_prefill() {
+        let mut props = kv_props_minimal("meta");
+        props.data_path = Some("/m".to_string());
+        let data = json!({"m": {"<k>": "\"v\""}});
+        let html = render_key_value_editor(&props, &data);
+        // Key with angle brackets must be escaped before reaching the attribute.
+        assert!(!html.contains(r#"value="<k>""#), "unescaped < in key attribute: {html}");
+        assert!(html.contains("&lt;k&gt;"), "expected &lt;k&gt; in escaped output");
+        // Value with double quotes must be escaped.
+        assert!(html.contains("&quot;v&quot;"), "expected &quot;v&quot; in escaped output");
+    }
 }
