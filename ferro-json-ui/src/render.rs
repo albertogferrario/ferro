@@ -2286,18 +2286,18 @@ const CHEVRON_DOWN: &str = concat!(
 );
 
 fn render_collapsible(props: &CollapsibleProps, data: &Value) -> String {
-    let mut html = String::from("<details class=\"group\"");
+    let mut html = String::from("<details class=\"group rounded-lg border border-border overflow-hidden\"");
     if props.expanded {
         html.push_str(" open");
     }
     html.push('>');
     let aria_expanded = if props.expanded { "true" } else { "false" };
     html.push_str(&format!(
-        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card\" aria-expanded=\"{}\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">{CHEVRON_DOWN}</span></summary>",
+        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface hover:bg-card\" aria-expanded=\"{}\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">{CHEVRON_DOWN}</span></summary>",
         aria_expanded,
         html_escape(&props.title)
     ));
-    html.push_str("<div class=\"px-4 py-3 flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
+    html.push_str("<div class=\"px-4 py-3 bg-card flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">");
     for child in &props.children {
         html.push_str(&render_node(child, data));
     }
