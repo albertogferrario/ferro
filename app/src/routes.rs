@@ -8,6 +8,7 @@ use crate::middleware::AuthMiddleware;
 
 routes! {
     get!("/", controllers::home::index).name("home"),
+    get!("/test-kv", controllers::test_kv::show).name("test.kv"),
     get!("/redirect-example", controllers::user::redirect_example),
     get!("/config", controllers::config_example::show).name("config.show"),
 

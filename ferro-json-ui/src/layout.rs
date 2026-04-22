@@ -294,6 +294,19 @@ fn layout_header_html(props: &HeaderProps) -> String {
     html
 }
 
+/// Combine plugin scripts with the built-in JS runtime.
+fn with_runtime(ctx_scripts: &str) -> String {
+    let runtime = format!(
+        "<script>\n{}\n</script>",
+        crate::runtime::FERRO_RUNTIME_JS.as_str()
+    );
+    if ctx_scripts.is_empty() {
+        runtime
+    } else {
+        format!("{ctx_scripts}\n{runtime}")
+    }
+}
+
 // ── DefaultLayout ───────────────────────────────────────────────────────
 
 /// Minimal layout wrapping content in a valid HTML page.
@@ -306,7 +319,8 @@ pub struct DefaultLayout;
 impl Layout for DefaultLayout {
     fn render(&self, ctx: &LayoutContext) -> String {
         let wrapper = ferro_wrapper(ctx);
-        base_document(ctx.title, ctx.head, ctx.body_class, &wrapper, ctx.scripts)
+        let scripts = with_runtime(ctx.scripts);
+        base_document(ctx.title, ctx.head, ctx.body_class, &wrapper, &scripts)
     }
 }
 
@@ -337,7 +351,8 @@ impl Layout for AppLayout {
     </div>"#,
         );
 
-        base_document(ctx.title, ctx.head, ctx.body_class, &body, ctx.scripts)
+        let scripts = with_runtime(ctx.scripts);
+        base_document(ctx.title, ctx.head, ctx.body_class, &body, &scripts)
     }
 }
 
@@ -363,7 +378,8 @@ impl Layout for AuthLayout {
     </div>"#,
         );
 
-        base_document(ctx.title, ctx.head, ctx.body_class, &body, ctx.scripts)
+        let scripts = with_runtime(ctx.scripts);
+        base_document(ctx.title, ctx.head, ctx.body_class, &body, &scripts)
     }
 }
 
