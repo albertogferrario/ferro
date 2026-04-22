@@ -1,5 +1,6 @@
 use super::clean;
 use console::style;
+use crossterm::event::{KeyCode, KeyModifiers};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
@@ -10,6 +11,61 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+
+// Phase 145 Plan 01 — pure-function contracts and enums consumed by the
+// BackendSupervisor that 145-02a/02b will wire in. Bodies are `todo!()`
+// here; the inline test module below holds their expected behavior so
+// later plans cannot drift from the test oracle.
+
+/// Reload trigger dispatched to the BackendSupervisor over an mpsc channel (D-06, D-20).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)] // variants constructed by 145-02a/02b; referenced by tests.
+pub(super) enum ReloadTrigger {
+    Manual,
+    FileChanged,
+}
+
+/// Result of classifying a keypress in the keyboard thread (D-06, D-07, D-08).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)] // variants constructed by 145-02a; referenced by tests.
+pub(super) enum KbAction {
+    Reload,
+    Quit,
+}
+
+/// Renders the startup banner. Pure function — `is_tty` and `is_watch` are explicit
+/// so tests do not depend on the real stdin state (D-05, D-24).
+#[allow(clippy::todo, dead_code, clippy::too_many_arguments)]
+pub(super) fn render_banner(
+    _is_watch: bool,
+    _is_tty: bool,
+    _backend_only: bool,
+    _frontend_only: bool,
+    _backend_host: &str,
+    _backend_port: u16,
+    _vite_port: u16,
+) -> String {
+    todo!("implemented in 145-02a-PLAN — body must emit the spec-verbatim literal from docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md §CLI surface")
+}
+
+/// Classifies a keypress. Lowercase `r` → Reload; `q` or Ctrl-C → Quit; else None (D-08).
+/// Signature uses the final crossterm types directly — no placeholder, no Plan-02 rewrite.
+#[allow(clippy::todo, dead_code)]
+pub(super) fn classify_key(_code: KeyCode, _modifiers: KeyModifiers) -> Option<KbAction> {
+    todo!("implemented in 145-02a-PLAN")
+}
+
+/// Formats a trigger source for the `[backend] reload triggered ({source})` log line (D-27, D-28).
+#[allow(clippy::todo, dead_code)]
+pub(super) fn format_trigger_source(_t: ReloadTrigger) -> &'static str {
+    todo!("implemented in 145-02a-PLAN")
+}
+
+/// Whether to spawn the keyboard thread. Equivalent to `is_tty`, isolated for testability (D-24).
+#[allow(clippy::todo, dead_code)]
+pub(super) fn should_spawn_keyboard(_is_tty: bool) -> bool {
+    todo!("implemented in 145-02a-PLAN")
+}
 
 struct ProcessManager {
     children: Vec<Child>,
@@ -500,5 +556,139 @@ fn start_type_watcher(shutdown: Arc<AtomicBool>) {
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // D-05, D-24 — banner renders correctly for all four (watch × tty) combinations,
+    // EXACT STRING match against the spec banner literal from
+    // docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md §CLI surface.
+    //
+    // These literals are the test oracle for 02a's `render_banner` body.
+    // If 02a emits anything different, these assertions fail.
+    #[test]
+    #[ignore = "implemented in 145-02a-PLAN — render_banner body is todo!()"]
+    fn render_banner_matrix() {
+        let b_watch_off_tty = "Backend server on http://127.0.0.1:8080\n\
+                               Frontend server on http://127.0.0.1:5173\n\
+                               \n\
+                               \x20\x20r        rebuild backend + regenerate types\n\
+                               \x20\x20q        quit    (or Ctrl+C)\n\
+                               \x20\x20watch    disabled  (pass --watch to auto-reload on file changes)\n";
+        let b_watch_on_tty = "Backend server on http://127.0.0.1:8080\n\
+                              Frontend server on http://127.0.0.1:5173\n\
+                              \n\
+                              \x20\x20r        rebuild backend + regenerate types\n\
+                              \x20\x20q        quit    (or Ctrl+C)\n\
+                              \x20\x20watch    enabled  (debounce 500ms)\n";
+        let b_watch_off_non_tty = "Backend server on http://127.0.0.1:8080\n\
+                                   Frontend server on http://127.0.0.1:5173\n\
+                                   \n\
+                                   \x20\x20r        unavailable (non-TTY stdin)\n\
+                                   \x20\x20q        quit    (or Ctrl+C)\n\
+                                   \x20\x20watch    disabled  (pass --watch to auto-reload on file changes)\n";
+        let b_watch_on_non_tty = "Backend server on http://127.0.0.1:8080\n\
+                                  Frontend server on http://127.0.0.1:5173\n\
+                                  \n\
+                                  \x20\x20r        unavailable (non-TTY stdin)\n\
+                                  \x20\x20q        quit    (or Ctrl+C)\n\
+                                  \x20\x20watch    enabled  (debounce 500ms)\n";
+
+        assert_eq!(
+            render_banner(false, true, false, false, "127.0.0.1", 8080, 5173),
+            b_watch_off_tty,
+        );
+        assert_eq!(
+            render_banner(true, true, false, false, "127.0.0.1", 8080, 5173),
+            b_watch_on_tty,
+        );
+        assert_eq!(
+            render_banner(false, false, false, false, "127.0.0.1", 8080, 5173),
+            b_watch_off_non_tty,
+        );
+        assert_eq!(
+            render_banner(true, false, false, false, "127.0.0.1", 8080, 5173),
+            b_watch_on_non_tty,
+        );
+    }
+
+    // D-08 — lowercase `r` only; uppercase R / unrelated keys return None.
+    #[test]
+    #[ignore = "implemented in 145-02a-PLAN — classify_key body is todo!()"]
+    fn classify_key_table() {
+        assert_eq!(
+            classify_key(KeyCode::Char('r'), KeyModifiers::NONE),
+            Some(KbAction::Reload)
+        );
+        assert_eq!(classify_key(KeyCode::Char('R'), KeyModifiers::SHIFT), None);
+        assert_eq!(
+            classify_key(KeyCode::Char('q'), KeyModifiers::NONE),
+            Some(KbAction::Quit)
+        );
+        assert_eq!(
+            classify_key(KeyCode::Char('c'), KeyModifiers::CONTROL),
+            Some(KbAction::Quit)
+        );
+        assert_eq!(classify_key(KeyCode::Char('x'), KeyModifiers::NONE), None);
+    }
+
+    // D-27, D-28 — source label mapping.
+    #[test]
+    #[ignore = "implemented in 145-02a-PLAN — format_trigger_source body is todo!()"]
+    fn trigger_source_formatting() {
+        assert_eq!(format_trigger_source(ReloadTrigger::Manual), "manual");
+        assert_eq!(
+            format_trigger_source(ReloadTrigger::FileChanged),
+            "file change"
+        );
+    }
+
+    // D-24 — should_spawn_keyboard is equivalent to the is_tty input.
+    #[test]
+    #[ignore = "implemented in 145-02a-PLAN — should_spawn_keyboard body is todo!()"]
+    fn should_spawn_keyboard_gated_on_tty() {
+        assert!(should_spawn_keyboard(true));
+        assert!(!should_spawn_keyboard(false));
+    }
+
+    // D-11 — kill_current is a no-op when current = None.
+    #[test]
+    #[ignore = "implemented in 145-02b-PLAN — BackendSupervisor lives there"]
+    fn kill_current_noop_when_none() {
+        // 02b body: construct BackendSupervisor::new(...), assert current.is_none(),
+        // call kill_current(), assert current is still None and no panic.
+    }
+
+    // D-17 — multiple pending triggers coalesce into one cycle.
+    #[test]
+    #[ignore = "implemented in 145-02b-PLAN — drain_triggers lives there"]
+    fn supervisor_coalesces_multiple_triggers() {
+        // 02b body: build mpsc<ReloadTrigger>, send 3 triggers, drop tx, call
+        // BackendSupervisor::drain_triggers(&rx, first), assert latest matches,
+        // assert rx.try_recv().is_err().
+    }
+
+    // D-19 — debouncer coalesces a burst of *.rs writes into exactly one FileChanged.
+    #[test]
+    #[ignore = "implemented in 145-02b-PLAN — spawn_file_watcher_at lives there"]
+    fn debouncer_coalesces_burst() {
+        // 02b body (per PATTERNS.md §inline tests):
+        //   let tmp = tempfile::TempDir::new().unwrap();
+        //   let src = tmp.path().join("src");
+        //   std::fs::create_dir(&src).unwrap();
+        //   let (tx, rx) = std::sync::mpsc::channel::<ReloadTrigger>();
+        //   let _debouncer = spawn_file_watcher_at(&src, Duration::from_millis(50), tx)
+        //       .expect("debouncer init");
+        //   let start = Instant::now();
+        //   for i in 0..10 {
+        //       std::fs::write(src.join(format!("f{i}.rs")), "fn main(){}").unwrap();
+        //   }
+        //   let evt = rx.recv_timeout(Duration::from_secs(2)).expect("one trigger");
+        //   assert!(matches!(evt, ReloadTrigger::FileChanged));
+        //   assert!(start.elapsed() >= Duration::from_millis(40));
+        //   assert!(rx.recv_timeout(Duration::from_millis(300)).is_err());
     }
 }
