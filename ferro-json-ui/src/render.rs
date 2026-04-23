@@ -2268,7 +2268,7 @@ fn render_button(props: &ButtonProps) -> String {
 }
 
 fn render_badge(props: &BadgeProps) -> String {
-    let base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
+    let base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium !w-fit";
     let variant_classes = match props.variant {
         BadgeVariant::Default => "bg-primary/10 text-primary",
         BadgeVariant::Secondary => "bg-secondary/10 text-secondary-foreground",
