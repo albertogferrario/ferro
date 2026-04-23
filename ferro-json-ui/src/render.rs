@@ -1129,7 +1129,7 @@ fn render_detail_form(props: &DetailFormProps, data: &Value) -> String {
 
     let action_bar = match props.mode {
         EditMode::View => format!(
-            "<div class=\"flex gap-2 justify-end mt-6\">\
+            "<div class=\"flex gap-2 justify-start mt-6\">\
                  <a href=\"{url}\" class=\"{base} {outline}\">{label}</a>\
              </div>",
             url = html_escape(&props.edit_url),
@@ -1138,9 +1138,9 @@ fn render_detail_form(props: &DetailFormProps, data: &Value) -> String {
             label = html_escape(edit_label),
         ),
         EditMode::Edit => format!(
-            "<div class=\"flex gap-2 justify-end mt-6\">\
-                 <a href=\"{cancel_url}\" class=\"{base} {outline}\">{cancel_label}</a>\
+            "<div class=\"flex gap-2 justify-start mt-6\">\
                  <button type=\"submit\" class=\"{base} {primary}\">{save_label}</button>\
+                 <a href=\"{cancel_url}\" class=\"{base} {outline}\">{cancel_label}</a>\
              </div>",
             cancel_url = html_escape(&props.cancel_url),
             cancel_label = html_escape(cancel_label),
