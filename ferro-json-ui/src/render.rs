@@ -779,20 +779,33 @@ fn render_card(props: &CardProps, data: &Value) -> String {
     let mut html = String::from(
         "<div class=\"rounded-lg border border-border bg-card shadow-sm overflow-visible\"><div class=\"p-4\">",
     );
-    html.push_str(&format!(
-        "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
-        html_escape(&props.title)
-    ));
-    if let Some(ref desc) = props.description {
+    // FIXME: workaround — conditional rendering to avoid ghost spacing when title/description are absent
+    let has_header = !props.title.is_empty() || props.description.is_some();
+    if !props.title.is_empty() {
         html.push_str(&format!(
-            "<p class=\"mt-1 text-sm text-text-muted\">{}</p>",
-            html_escape(desc)
+            "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
+            html_escape(&props.title)
+        ));
+    }
+    if let Some(ref desc) = props.description {
+        let p_class = if props.title.is_empty() {
+            "text-sm text-text-muted"
+        } else {
+            "mt-1 text-sm text-text-muted"
+        };
+        html.push_str(&format!(
+            "<p class=\"{p_class}\">{}</p>",
+            html_escape(desc),
+            p_class = p_class,
         ));
     }
     if !props.children.is_empty() {
-        html.push_str(
-            "<div class=\"mt-3 flex flex-wrap gap-3 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto overflow-visible\">",
-        );
+        let children_class = if has_header {
+            "mt-3 flex flex-wrap gap-3 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto overflow-visible"
+        } else {
+            "flex flex-wrap gap-3 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto overflow-visible"
+        };
+        html.push_str(&format!("<div class=\"{children_class}\">"));
         for child in &props.children {
             html.push_str(&render_node(child, data));
         }
