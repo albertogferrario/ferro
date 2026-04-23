@@ -244,6 +244,15 @@ async fn handle_request(
     // Use the (possibly rewritten) path for route matching and static file serving.
     let routing_path = ferro_request.path().to_string();
 
+    // Extract host before request is consumed by routing.
+    let request_host = ferro_request
+        .header("host")
+        .unwrap_or_default()
+        .split(':')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
     let response = match router.match_route(&method, &routing_path) {
         Some((handler, params, route_pattern)) => {
             let request = ferro_request
@@ -260,8 +269,10 @@ async fn handle_request(
             let route_middleware = router.get_route_middleware(&route_pattern);
             chain.extend(route_middleware);
 
-            // 3. Execute chain with handler
-            let response = chain.execute(request, handler).await;
+            // 3. Execute chain with handler inside request host context
+            let response = crate::http::request_context::REQUEST_HOST
+                .scope(request_host, chain.execute(request, handler))
+                .await;
 
             // Unwrap the Result - both Ok and Err contain HttpResponse
             let http_response = response.unwrap_or_else(|e| e);
