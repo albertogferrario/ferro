@@ -653,6 +653,84 @@ JSON output:
 { "key": "user-avatar", "type": "Avatar", "alt": "Alice Johnson", "src": "/images/alice.jpg", "fallback": "AJ", "size": "lg" }
 ```
 
+### Image
+
+Renders a bounded visual asset — either an external image via URL, or a
+server-constructed inline SVG.
+
+**Props**
+
+| Name                | Type              | Required  | Description                                                                              |
+|---------------------|-------------------|-----------|------------------------------------------------------------------------------------------|
+| `src`               | `String`          | one-of    | Image source URL (URL variant). Attribute is HTML-escaped.                               |
+| `svg`               | `String`          | one-of    | Inline SVG emitted verbatim (SVG variant). See **Safety note** below.                    |
+| `alt`               | `String`          | yes       | Alt text for accessibility — required on both variants (compile-enforced).               |
+| `aspect_ratio`      | `Option<String>`  | no        | CSS aspect ratio (e.g., `"16/9"`).                                                       |
+| `placeholder_label` | `Option<String>`  | no        | Label shown in the skeleton placeholder (URL variant only).                              |
+
+Exactly one of `src` or `svg` must be set. Backward-compatibility note: existing
+JSON sending `{"type":"Image","src":"…","alt":"…"}` continues to work unchanged.
+
+> **Safety note — `svg` variant:** The `svg` value is emitted verbatim without
+> HTML escaping. Intended for server-constructed SVG (charts, sparklines, icons).
+> **Not suitable for user-supplied strings.** Callers that incorporate user data
+> into the SVG output are responsible for sanitization before constructing the
+> `svg` variant. The `alt` attribute is HTML-escaped on both variants.
+
+**Rust**
+
+```rust
+use ferro_json_ui::{ComponentNode, ImageProps};
+
+// URL variant
+let url_node = ComponentNode::image(
+    "hero",
+    ImageProps::url("/img/hero.png", "Hero image"),
+);
+
+// SVG variant — server-constructed chart (e.g. from a Rust helper)
+let svg = bar_chart_svg(&weekly_data, 800, 300);
+let chart_node = ComponentNode::image(
+    "revenue-chart",
+    ImageProps::inline_svg(svg, "Incassi settimanali: 150€ lun, 320€ mar, …"),
+);
+```
+
+**JSON**
+
+URL variant:
+
+```json
+{
+  "type": "Image",
+  "src": "/img/hero.png",
+  "alt": "Hero image",
+  "aspect_ratio": "16/9"
+}
+```
+
+SVG variant:
+
+```json
+{
+  "type": "Image",
+  "svg": "<svg viewBox=\"0 0 800 300\">…</svg>",
+  "alt": "Incassi settimanali: 150€ lun, 320€ mar, …"
+}
+```
+
+**Use cases for the SVG variant**
+
+- Server-rendered charts (bar, line, sparkline)
+- Diagrams assembled from typed data on the server
+- Decorative vector assets constructed by Rust code
+- Server-rendered icon sets
+
+**No generic HTML escape hatch.** For rendering HTML (not SVG), no generic
+`HtmlEmbed`-style component exists — by design. If a real use-case demands
+HTML embedding, author a narrower component scoped to the specific content
+shape rather than a generic string-to-HTML escape hatch.
+
 ### Text
 
 Renders text content with semantic HTML element selection.
