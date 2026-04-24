@@ -2170,12 +2170,7 @@ mod tests {
                 user_avatar: None,
                 logout_url: None,
             }),
-            Component::Image(ImageProps {
-                src: "/img/screenshot.png".to_string(),
-                alt: "Page screenshot".to_string(),
-                aspect_ratio: None,
-                placeholder_label: None,
-            }),
+            Component::Image(ImageProps::url("/img/screenshot.png", "Page screenshot")),
         ];
         assert_eq!(components.len(), 27, "should have 27 component variants");
         let expected_types = [
@@ -3694,16 +3689,39 @@ mod tests {
 
     #[test]
     fn image_round_trips() {
+        // URL variant (existing — stays green after refactor)
         let json = r#"{"type": "Image", "src": "/img/s.png", "alt": "Screenshot"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
+        let component: Component = serde_json::from_str(json).expect("URL variant");
         match component {
             Component::Image(props) => {
-                assert_eq!(props.src, "/img/s.png");
+                assert!(
+                    matches!(props.source, ImageSource::Url { .. }),
+                    "URL JSON must deserialize to ImageSource::Url"
+                );
                 assert_eq!(props.alt, "Screenshot");
                 assert!(props.aspect_ratio.is_none());
             }
-            _ => panic!("expected Image"),
+            _ => panic!("expected Component::Image"),
         }
+
+        // InlineSvg variant (new — the phase-148 extension)
+        let json_svg = r#"{"type": "Image", "svg": "<svg></svg>", "alt": "Chart"}"#;
+        let component_svg: Component = serde_json::from_str(json_svg).expect("InlineSvg variant");
+        match component_svg {
+            Component::Image(props) => {
+                assert!(
+                    matches!(props.source, ImageSource::InlineSvg { .. }),
+                    "SVG JSON must deserialize to ImageSource::InlineSvg"
+                );
+                assert_eq!(props.alt, "Chart");
+            }
+            _ => panic!("expected Component::Image"),
+        }
+
+        // Neither src nor svg — must fail (guards D-10 no-source rejection)
+        let json_neither = r#"{"type": "Image", "alt": "Bad"}"#;
+        serde_json::from_str::<Component>(json_neither)
+            .expect_err("input without src or svg must be rejected");
     }
 
     #[test]
@@ -3747,6 +3765,30 @@ mod tests {
                 "round-trip type mismatch for {type_name}"
             );
         }
+
+        // Phase 148: InlineSvg variant round-trip (sibling to the URL fixture row).
+        // Wire-format discrimination: same "type":"Image", "svg" instead of "src".
+        // Option (b): independent block inside the same test, because the fixture
+        // iteration asserts serialized["type"] == tuple name ("Image" != "ImageInlineSvg").
+        let svg_json = r#"{"type":"Image","svg":"<svg/>","alt":"chart"}"#;
+        let parsed: Component =
+            serde_json::from_str(svg_json).expect("InlineSvg JSON must deserialize");
+        let serialized = serde_json::to_value(&parsed).expect("InlineSvg component must serialize");
+        assert_eq!(
+            serialized.get("type").and_then(|v| v.as_str()),
+            Some("Image"),
+            "InlineSvg variant must serialize with type=Image"
+        );
+        assert!(
+            serialized.get("svg").is_some(),
+            "InlineSvg serialization must carry the svg field"
+        );
+        assert!(
+            serialized.get("src").is_none(),
+            "InlineSvg serialization must NOT carry a src field"
+        );
+        let reparsed: Component = serde_json::from_value(serialized).expect("round-trip reparse");
+        assert_eq!(parsed, reparsed, "round-trip must preserve equality");
     }
 }
 
@@ -4052,5 +4094,63 @@ mod detail_form_tests {
             matches!(node.component, Component::DetailForm(_)),
             "expected Component::DetailForm variant"
         );
+    }
+}
+
+#[cfg(test)]
+mod image_source_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn image_source_url_roundtrip() {
+        let parsed: ImageSource =
+            serde_json::from_value(json!({"src": "/a.png"})).expect("Url variant");
+        match parsed {
+            ImageSource::Url { src } => assert_eq!(src, "/a.png"),
+            _ => panic!("expected ImageSource::Url"),
+        }
+    }
+
+    #[test]
+    fn image_source_inline_svg_roundtrip() {
+        let parsed: ImageSource =
+            serde_json::from_value(json!({"svg": "<svg/>"})).expect("InlineSvg variant");
+        match parsed {
+            ImageSource::InlineSvg { svg } => assert_eq!(svg, "<svg/>"),
+            _ => panic!("expected ImageSource::InlineSvg"),
+        }
+    }
+
+    #[test]
+    fn image_source_neither_rejected() {
+        serde_json::from_value::<ImageSource>(json!({}))
+            .expect_err("empty object (no src, no svg) must fail to deserialize");
+    }
+
+    #[test]
+    fn image_props_url_constructor() {
+        let p = ImageProps::url("/a.png", "alt");
+        assert!(matches!(p.source, ImageSource::Url { .. }));
+        match &p.source {
+            ImageSource::Url { src } => assert_eq!(src, "/a.png"),
+            _ => unreachable!(),
+        }
+        assert_eq!(p.alt, "alt");
+        assert!(p.aspect_ratio.is_none());
+        assert!(p.placeholder_label.is_none());
+    }
+
+    #[test]
+    fn image_props_inline_svg_constructor() {
+        let p = ImageProps::inline_svg("<svg/>", "chart");
+        assert!(matches!(p.source, ImageSource::InlineSvg { .. }));
+        match &p.source {
+            ImageSource::InlineSvg { svg } => assert_eq!(svg, "<svg/>"),
+            _ => unreachable!(),
+        }
+        assert_eq!(p.alt, "chart");
+        assert!(p.aspect_ratio.is_none());
+        assert!(p.placeholder_label.is_none());
     }
 }
