@@ -598,19 +598,101 @@ pub struct ProgressProps {
     pub label: Option<String>,
 }
 
-/// Props for Image component.
+/// Source for an [`ImageProps`] component — exactly one of `src` or `svg`.
+///
+/// Wire-format discrimination is by field presence via `#[serde(untagged)]`:
+/// - `{"src": "/logo.png"}` deserializes to `ImageSource::Url`.
+/// - `{"svg": "<svg>…</svg>"}` deserializes to `ImageSource::InlineSvg`.
+///
+/// The `Url` variant is backward-compatible with pre-phase-148 JSON:
+/// existing callers sending `{"type":"Image","src":"…","alt":"…"}` continue
+/// to deserialize unchanged.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum ImageSource {
+    /// External image URL. The `src` attribute is HTML-escaped before emission.
+    Url {
+        /// Image source URL. Rendered as `<img src="{escaped}">`.
+        src: String,
+    },
+    /// Server-constructed inline SVG string.
+    ///
+    /// # Safety
+    ///
+    /// The `svg` value is emitted **verbatim, without HTML escaping**. This is
+    /// the single deliberate `html_escape` bypass in `ferro-json-ui`. It is
+    /// intended for server-constructed SVG — charts, sparklines, icons —
+    /// **not** for user-supplied strings.
+    ///
+    /// Callers that incorporate user data into SVG output are responsible for
+    /// sanitization **before** constructing this variant. Contrast with
+    /// [`ImageSource::Url`]: `src` is always HTML-escaped as an attribute
+    /// value, so `Url` is safe with caller-controlled URL strings.
+    InlineSvg {
+        /// Inline SVG emitted verbatim. See variant-level `# Safety`.
+        svg: String,
+    },
+}
+
+/// Props for an [`Component::Image`] component.
+///
+/// `source` is a flattened [`ImageSource`] — the wire format carries
+/// either `"src"` (URL variant) or `"svg"` (inline-SVG variant) directly
+/// at the top level, with no wrapping `"source"` key. `alt` is required
+/// on both variants (compile-enforced accessibility for the SVG branch).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ImageProps {
-    pub src: String,
+    /// Image source — URL or server-constructed inline SVG.
+    ///
+    /// Flattened into the parent JSON object: the `src` or `svg` field
+    /// appears directly on `ImageProps` in the wire format.
+    #[serde(flatten)]
+    pub source: ImageSource,
+    /// Required alt text for accessibility. HTML-escaped on both source variants.
     pub alt: String,
+    /// Optional CSS aspect ratio (e.g. `"16/9"`). Applied to both variants.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aspect_ratio: Option<String>,
     /// Optional label shown in a skeleton placeholder that sits behind the
-    /// image. When the image fails to load (or is still being generated),
-    /// the `<img>` is hidden via `onerror` and the placeholder remains
-    /// visible, keeping the container at its aspect-ratio size.
+    /// image in the URL variant. When the `<img>` fails to load (or is still
+    /// being generated), the element is hidden via `onerror` and the
+    /// placeholder remains visible. Not rendered for the `InlineSvg` variant.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder_label: Option<String>,
+}
+
+impl ImageProps {
+    /// Construct an [`ImageProps`] backed by an external URL.
+    ///
+    /// Both `src` and `alt` accept `impl Into<String>` for ergonomic call
+    /// sites. `aspect_ratio` and `placeholder_label` default to `None` — set
+    /// them explicitly on the returned struct if needed.
+    pub fn url(src: impl Into<String>, alt: impl Into<String>) -> Self {
+        Self {
+            source: ImageSource::Url { src: src.into() },
+            alt: alt.into(),
+            aspect_ratio: None,
+            placeholder_label: None,
+        }
+    }
+
+    /// Construct an [`ImageProps`] backed by a server-constructed inline SVG.
+    ///
+    /// # Safety
+    ///
+    /// `svg` is emitted verbatim without HTML escaping. Intended for
+    /// server-constructed SVG (charts, sparklines, icons). **Not suitable
+    /// for user-supplied strings.** Callers that incorporate user data into
+    /// `svg` are responsible for sanitization before calling this
+    /// constructor. See [`ImageSource::InlineSvg`] for the full contract.
+    pub fn inline_svg(svg: impl Into<String>, alt: impl Into<String>) -> Self {
+        Self {
+            source: ImageSource::InlineSvg { svg: svg.into() },
+            alt: alt.into(),
+            aspect_ratio: None,
+            placeholder_label: None,
+        }
+    }
 }
 
 /// Props for Avatar component.
