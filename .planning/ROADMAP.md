@@ -1323,7 +1323,14 @@ Plans:
 **Goal:** Add `Component::HtmlEmbed { html: String }` to ferro-json-ui so consumers can inject server-generated raw HTML (e.g. inline SVG charts) into SSR pages without workarounds. The renderer emits the string unescaped inside a wrapping `<div>`; the resolver is a no-op pass-through; MCP catalog entry added.
 **Requirements**: EMBED-01..EMBED-05 — HtmlEmbed variant in Component enum; renderer bypasses html_escape; resolver participates in all three passes (no-op); MCP catalog entry; CI gate green
 **Depends on:** Phase 147
-**Plans:** TBD
+**Plans:** 5/5 plans planned
+
+Plans:
+- [ ] 148-01-PLAN.md — Wave 0 RED tests across 4 files: serde + factory tests in component.rs, 5 render tests in render.rs (including load-bearing XSS passthrough), 3 resolver no-op tests in resolve.rs, exhaustive-list 41→42 + HtmlEmbed appended in json_ui_catalog.rs (Wave 0, no deps)
+- [ ] 148-02-PLAN.md — Rust types: HtmlEmbedProps struct with safety rustdoc + ::new + Component::HtmlEmbed variant + serde arms + ComponentNode::html_embed factory in component.rs; HtmlEmbedProps re-export in lib.rs (Wave 1, depends on 01)
+- [ ] 148-03-PLAN.md — Renderer: render_html_embed function (the one html_escape bypass, with mandatory inline SAFETY CONTRACT comment) + dispatch arm in render_component + collect_plugin_types_node leaf arm in render.rs (Wave 1, depends on 01/02)
+- [ ] 148-04-PLAN.md — Resolver: three leaf OR-chain arms — one per pass (resolve_component_node/collect_unresolved_node/resolve_errors_node) in resolve.rs, grouped no-op per D-11 (Wave 1, depends on 01/02)
+- [ ] 148-05-PLAN.md — MCP catalog + COMPONENT_CATALOG + docs + CI gate: CatalogComponent entry with safety-first description in ferro-mcp; ### HtmlEmbed section in COMPONENT_CATALOG const in ferro-json-ui/src/lib.rs; ### HtmlEmbed docs section with blockquote safety callout; full CI gate (cargo fmt + clippy --all --all-targets -- -D warnings + test --all-features) (Wave 2, depends on 01/02/03/04)
 
 ---
 
