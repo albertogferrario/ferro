@@ -1112,22 +1112,46 @@ fn build_catalog() -> Vec<CatalogComponent> {
         },
         CatalogComponent {
             name: "Image".to_string(),
-            description: "Image element with optional aspect ratio and skeleton placeholder fallback on load error."
+            description: "Bounded visual asset rendered into a box. Accepts either an \
+                          external URL (src) or a server-constructed inline SVG string \
+                          (svg) — exactly one of the two must be set. The URL variant \
+                          HTML-escapes the src attribute; the SVG variant emits the svg string verbatim \
+                          (intended for server-constructed SVG — charts, sparklines, icons — not user input). \
+                          alt is required on both variants (compile-enforced accessibility). \
+                          placeholder_label applies to the URL variant only."
                 .to_string(),
             props: vec![
-                prop("src", "String", true, "Image source URL"),
-                prop("alt", "String", true, "Alt text for accessibility"),
+                prop(
+                    "src",
+                    "String",
+                    false,
+                    "Image source URL (URL variant — use when svg is absent). \
+                     HTML-escaped as an attribute value.",
+                ),
+                prop(
+                    "svg",
+                    "String",
+                    false,
+                    "Inline SVG string emitted verbatim (SVG variant — use when src is absent). \
+                     Server-constructed SVG only; not suitable for user input.",
+                ),
+                prop(
+                    "alt",
+                    "String",
+                    true,
+                    "Alt text for accessibility — required on both source variants.",
+                ),
                 prop(
                     "aspect_ratio",
                     "Option<String>",
                     false,
-                    "CSS aspect ratio (e.g., \"16/9\")",
+                    "CSS aspect ratio (e.g., \"16/9\").",
                 ),
                 prop(
                     "placeholder_label",
                     "Option<String>",
                     false,
-                    "Label shown in the skeleton placeholder behind the image",
+                    "Label shown in the skeleton placeholder behind the image (URL variant only).",
                 ),
             ],
             variants: None,
