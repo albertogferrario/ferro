@@ -167,6 +167,10 @@ Props: value (u8 0-100), max (Option<u8>), label (Option<String>)
 ### Avatar
 Props: src (Option<String>), alt (String), fallback (Option<String>), size (Option<xs|sm|default|lg>)
 
+### Image
+Props: src (Option<String>) OR svg (Option<String>) — exactly one required; alt (String, required for accessibility); aspect_ratio (Option<String>, e.g. "16/9"); placeholder_label (Option<String>, URL variant only)
+Bounded visual asset rendered into a box. URL variant (src): the attribute is HTML-escaped; placeholder_label drives the skeleton fallback. SVG variant (svg): the string is emitted verbatim, intended for server-constructed SVG (charts, sparklines, icons) — not user input. alt is required on both variants (compile-enforced accessibility).
+
 ### Skeleton
 Props: width (Option<String>), height (Option<String>), rounded (Option<bool>)
 
