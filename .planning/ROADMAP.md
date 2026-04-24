@@ -1318,19 +1318,14 @@ Plans:
 - [x] 147-04-PLAN.md — Resolver: three Component::DetailForm arms in resolve.rs (resolve_component_node, collect_unresolved_node, resolve_errors_node) — mirrors Component::Form, preserves D-16 (edit_url/cancel_url never resolved) (Wave 1, depends on 01)
 - [x] 147-05-PLAN.md — MCP catalog + docs + CI gate: DetailForm CatalogComponent entry + KeyValueEditor backfill in ferro-mcp/src/tools/json_ui_catalog.rs; ### DetailForm section in docs/src/json-ui/components.md with Option-A rule; full CI gate (cargo fmt + clippy --all --all-targets -- -D warnings + test --all-features) (Wave 1, depends on 01)
 
-### Phase 148: HtmlEmbed component for ferro-json-ui — unescaped HTML injection
+### Phase 148: ImageProps inline-SVG source — extend Image, don't add HtmlEmbed
 
-**Goal:** Add `Component::HtmlEmbed { html: String }` to ferro-json-ui so consumers can inject server-generated raw HTML (e.g. inline SVG charts) into SSR pages without workarounds. The renderer emits the string unescaped inside a wrapping `<div>`; the resolver is a no-op pass-through; MCP catalog entry added.
-**Requirements**: EMBED-01..EMBED-05 — HtmlEmbed variant in Component enum; renderer bypasses html_escape; resolver participates in all three passes (no-op); MCP catalog entry; CI gate green
+**Goal:** Extend `ferro-json-ui`'s `ImageProps` with an `ImageSource` serde-untagged enum so `Component::Image` can carry either an external URL (current `src`) or a server-constructed inline SVG string. Renderer gains one branch; `alt: String` stays required (compile-enforced a11y); URL wire format stays fully backward-compatible. No new component variant, no new resolver arm, no MCP exhaustive-list bump — the existing `Image` slot absorbs the capability. Unblocks gestiscilo.it v6.1 Statistiche revenue-trend bar chart without introducing a generic HTML escape hatch.
+**Requirements**: IMG-SRC-01..IMG-SRC-05 — ImageSource enum (`Url {src}` / `InlineSvg {svg}`) with untagged serde; ImageProps flattens source + alt stays required; render_image branches on source (URL path unchanged, InlineSvg emits `<div role="img" aria-label="{escaped alt}">{svg verbatim}</div>`); COMPONENT_CATALOG + MCP catalog + docs all reflect both variants with SVG-branch safety callout; CI gate green
 **Depends on:** Phase 147
-**Plans:** 5/5 plans planned
+**Plans:** TBD (target 3–4 plans — Wave 0 RED, Wave 1 impl, Wave 2 surface updates)
 
-Plans:
-- [ ] 148-01-PLAN.md — Wave 0 RED tests across 4 files: serde + factory tests in component.rs, 5 render tests in render.rs (including load-bearing XSS passthrough), 3 resolver no-op tests in resolve.rs, exhaustive-list 41→42 + HtmlEmbed appended in json_ui_catalog.rs (Wave 0, no deps)
-- [ ] 148-02-PLAN.md — Rust types: HtmlEmbedProps struct with safety rustdoc + ::new + Component::HtmlEmbed variant + serde arms + ComponentNode::html_embed factory in component.rs; HtmlEmbedProps re-export in lib.rs (Wave 1, depends on 01)
-- [ ] 148-03-PLAN.md — Renderer: render_html_embed function (the one html_escape bypass, with mandatory inline SAFETY CONTRACT comment) + dispatch arm in render_component + collect_plugin_types_node leaf arm in render.rs (Wave 1, depends on 01/02)
-- [ ] 148-04-PLAN.md — Resolver: three leaf OR-chain arms — one per pass (resolve_component_node/collect_unresolved_node/resolve_errors_node) in resolve.rs, grouped no-op per D-11 (Wave 1, depends on 01/02)
-- [ ] 148-05-PLAN.md — MCP catalog + COMPONENT_CATALOG + docs + CI gate: CatalogComponent entry with safety-first description in ferro-mcp; ### HtmlEmbed section in COMPONENT_CATALOG const in ferro-json-ui/src/lib.rs; ### HtmlEmbed docs section with blockquote safety callout; full CI gate (cargo fmt + clippy --all --all-targets -- -D warnings + test --all-features) (Wave 2, depends on 01/02/03/04)
+Prior planning artifacts for the rejected `Component::HtmlEmbed` scope are archived at `.planning/phases/148-image-inline-svg-source/archive-htmlembed/` for decision-trail traceability (see `148-DISCUSSION-LOG.md`). Re-plan with `/gsd-plan-phase 148 --auto`.
 
 ---
 

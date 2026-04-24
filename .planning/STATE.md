@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 148 UI-SPEC approved
+stopped_at: Phase 148 reworked (HtmlEmbed → Image inline-SVG source) — re-plan pending
 last_updated: "2026-04-24T19:33:23.626Z"
-last_activity: 2026-04-24 -- Phase 148 execution started
+last_activity: 2026-04-24 -- Phase 148 scope reworked: extend Image with ImageSource enum instead of adding HtmlEmbed; old plans archived
 progress:
   total_phases: 148
   completed_phases: 133
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 148 — htmlembed-component-ferro-json-ui
+**Current focus:** Phase 148 — image-inline-svg-source (reworked from HtmlEmbed)
 
 ## Current Position
 
-Phase: 148 (htmlembed-component-ferro-json-ui) — EXECUTING
-Plan: 1 of 5
-Plans: 5/5 (Wave 0 RED scaffold + Wave 1 impl all merged)
+Phase: 148 (image-inline-svg-source) — AWAITING RE-PLAN
+Plan: 0 of TBD (re-plan pending; target 3–4 plans)
+Plans: 0 of TBD — previous 5 plans (HtmlEmbed scope) archived to phase-dir/archive-htmlembed/
 Workspace version: 0.2.5
-Status: Executing Phase 148
-Last activity: 2026-04-24 -- Phase 148 execution started
+Status: Phase 148 reworked — re-plan with /gsd-plan-phase 148 --auto, then execute
+Last activity: 2026-04-24 -- Phase 148 scope reworked: extend ImageProps with ImageSource enum instead of adding Component::HtmlEmbed
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -164,6 +164,6 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-24T19:09:25.021Z
-Stopped at: Phase 148 UI-SPEC approved
-Resume file: .planning/phases/148-htmlembed-component-ferro-json-ui/148-UI-SPEC.md
-Next action: `/gsd-complete-milestone v11.7`
+Stopped at: Phase 148 scope reworked (HtmlEmbed → Image inline-SVG source)
+Resume file: .planning/phases/148-image-inline-svg-source/148-CONTEXT.md
+Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)

@@ -126,3 +126,80 @@
 - Plugin-style sandboxed variant (`HtmlEmbedIframe`)
 - Markdown-aware sibling (`MarkdownEmbed`)
 - Framework-level `#[warning("unescaped")]` marker / Clippy lint
+
+---
+
+## 2026-04-24 — Rework: scope changed from `Component::HtmlEmbed` to extending `Component::Image`
+
+After the planning artifacts were authored, execution was paused mid-wave (no
+production code had been touched yet — only the execution-start STATE.md update
+was committed). Reason for pause: the proposed `Component::HtmlEmbed { html:
+String }` shape was challenged.
+
+### Challenge
+A generic `HtmlEmbed` component:
+1. Reads as a general HTML escape hatch — the name invites misuse with
+   user-supplied content.
+2. Weakens the projection/intent abstraction by adding a pixel-level escape
+   hatch disjoint from any structural concept.
+3. Ships a `<deferred>` list (`class`, `id`, `wrapper_tag`, `data_path`,
+   `sanitize`, iframe sandbox, `MarkdownEmbed`) that reads as the roadmap of
+   a swiss army knife.
+4. Duplicates the "bounded visual asset rendered into a box" concept that
+   `Image` already owns, and loses the compile-enforced `alt` text
+   requirement (a11y regression vs. extending Image).
+
+### Real requirement (from `../../gestiscilo-it/app/.planning/research/v6.1-ANALYTICS-ARCHITECTURE.md`)
+Server-generated inline SVG bar chart for the Statistiche revenue-trend
+chart (gestiscilo Phase 117). No other concrete call-site — "pre-rendered
+markdown", "static HTML widgets", "third-party embed snippets" in the
+original HtmlEmbed context were hypothetical.
+
+### Decision
+Extend `ImageProps` with an `ImageSource` serde-untagged enum:
+
+```rust
+#[serde(untagged)]
+pub enum ImageSource {
+    Url { src: String },
+    InlineSvg { svg: String },
+}
+```
+
+`ImageProps` flattens `source: ImageSource`; `alt: String` stays required
+(a11y win). Wire format stays backward-compatible for the URL case.
+`render_image` gains one branch for the SVG case; the URL branch keeps its
+XSS-escape test verbatim.
+
+Benefits:
+- No new `Component` variant, no exhaustive-list bump, no new resolver arms,
+  no new MCP entry.
+- a11y-enforced: `alt: String` compile-required on both variants.
+- Projection/intent story preserved — `Image` is already the
+  "bounded visual asset" slot.
+- Deferred-feature pressure collapses (`data_path`, `MarkdownEmbed`,
+  iframe sandbox, sanitize) — Image is a bounded scope, not a swiss army knife.
+
+### Archive
+Original HtmlEmbed planning artifacts preserved under
+`archive-htmlembed/` in this directory:
+- `148-CONTEXT.md` — HtmlEmbed scope
+- `148-RESEARCH.md` — HtmlEmbed research
+- `148-PATTERNS.md` — HtmlEmbed patterns
+- `148-UI-SPEC.md` — HtmlEmbed UI spec
+- `148-VALIDATION.md` — HtmlEmbed validation
+- `148-0{1..5}-PLAN.md` — five HtmlEmbed plans
+
+These are kept for historical reference and so the decision trail is
+traceable. They are NOT to be re-used for execution.
+
+### Cross-repo follow-up
+- `gestiscilo-it/app/.planning/research/v6.1-ANALYTICS-ARCHITECTURE.md`
+  — update the "Rendering Strategy" section to reference
+  `ImageProps::inline_svg(svg, alt)` instead of `Component::HtmlEmbed`.
+- `gestiscilo-it/app/.planning/ROADMAP.md` Phases 115-117 — update the
+  dependency note and Phase 117 success criterion #2 wording.
+
+### Re-planning
+`/gsd-plan-phase 148 --auto` will regenerate RESEARCH + PATTERNS + PLAN
+artifacts from the new CONTEXT.md.
