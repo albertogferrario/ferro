@@ -1318,6 +1318,13 @@ Plans:
 - [x] 147-04-PLAN.md — Resolver: three Component::DetailForm arms in resolve.rs (resolve_component_node, collect_unresolved_node, resolve_errors_node) — mirrors Component::Form, preserves D-16 (edit_url/cancel_url never resolved) (Wave 1, depends on 01)
 - [x] 147-05-PLAN.md — MCP catalog + docs + CI gate: DetailForm CatalogComponent entry + KeyValueEditor backfill in ferro-mcp/src/tools/json_ui_catalog.rs; ### DetailForm section in docs/src/json-ui/components.md with Option-A rule; full CI gate (cargo fmt + clippy --all --all-targets -- -D warnings + test --all-features) (Wave 1, depends on 01)
 
+### Phase 148: HtmlEmbed component for ferro-json-ui — unescaped HTML injection
+
+**Goal:** Add `Component::HtmlEmbed { html: String }` to ferro-json-ui so consumers can inject server-generated raw HTML (e.g. inline SVG charts) into SSR pages without workarounds. The renderer emits the string unescaped inside a wrapping `<div>`; the resolver is a no-op pass-through; MCP catalog entry added.
+**Requirements**: EMBED-01..EMBED-05 — HtmlEmbed variant in Component enum; renderer bypasses html_escape; resolver participates in all three passes (no-op); MCP catalog entry; CI gate green
+**Depends on:** Phase 147
+**Plans:** TBD
+
 ---
 
 ## Progress Summary
