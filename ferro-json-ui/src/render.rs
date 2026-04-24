@@ -16,11 +16,12 @@ use crate::component::{
     CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps, Component,
     ComponentNode, DataTableProps, DescriptionListProps, DetailFormProps, DropdownMenuAction,
     DropdownMenuProps, EditMode, EmptyStateProps, FormMaxWidth, FormProps, FormSectionLayout,
-    FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps, InputProps,
-    InputType, KanbanBoardProps, KeyValueEditorProps, ModalProps, NotificationDropdownProps,
-    Orientation, PageHeaderProps, PaginationProps, PluginProps, ProductTileProps, ProgressProps,
-    SelectProps, SeparatorProps, SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps,
-    TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps, ImageSource,
+    InputProps, InputType, KanbanBoardProps, KeyValueEditorProps, ModalProps,
+    NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps, PluginProps,
+    ProductTileProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
+    SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
+    ToastProps, ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -2423,27 +2424,46 @@ fn render_image(props: &ImageProps) -> String {
         None => String::new(),
     };
 
-    // Placeholder sits behind the image in the same box. When the `<img>`
-    // fails to load, onerror hides it so the placeholder remains visible.
-    let placeholder = match &props.placeholder_label {
-        Some(label) => format!(
-            "<div class=\"absolute inset-0 flex items-center justify-center \
-             rounded-md bg-surface text-xs text-text-muted\">{}</div>",
-            html_escape(label)
-        ),
-        None => String::from("<div class=\"absolute inset-0 rounded-md bg-surface\"></div>"),
-    };
-
-    format!(
-        "<div class=\"relative w-full\"{container_style}>\
-            {placeholder}\
-            <img src=\"{src}\" alt=\"{alt}\" \
-                 class=\"relative w-full h-full rounded-md object-cover object-top\" \
-                 loading=\"lazy\" onerror=\"this.style.display='none'\">\
-         </div>",
-        src = html_escape(&props.src),
-        alt = html_escape(&props.alt),
-    )
+    match &props.source {
+        ImageSource::Url { src } => {
+            // Placeholder sits behind the image in the same box. When the `<img>`
+            // fails to load, `onerror` hides it so the placeholder remains visible.
+            let placeholder = match &props.placeholder_label {
+                Some(label) => format!(
+                    "<div class=\"absolute inset-0 flex items-center justify-center \
+                     rounded-md bg-surface text-xs text-text-muted\">{}</div>",
+                    html_escape(label)
+                ),
+                None => {
+                    String::from("<div class=\"absolute inset-0 rounded-md bg-surface\"></div>")
+                }
+            };
+            format!(
+                "<div class=\"relative w-full\"{container_style}>\
+                    {placeholder}\
+                    <img src=\"{src}\" alt=\"{alt}\" \
+                         class=\"relative w-full h-full rounded-md object-cover object-top\" \
+                         loading=\"lazy\" onerror=\"this.style.display='none'\">\
+                 </div>",
+                src = html_escape(src),
+                alt = html_escape(&props.alt),
+            )
+        }
+        ImageSource::InlineSvg { svg } => {
+            // SAFETY: `svg` is emitted verbatim WITHOUT html_escape. This is the one
+            // deliberate html_escape bypass in render_image (and in ferro-json-ui).
+            // Intended for server-constructed SVG (charts, sparklines, icons) — NOT
+            // for user-supplied strings. `alt` IS html_escape'd below (attacker-
+            // controllable via form data etc.), so the asymmetry is scoped.
+            // See ImageSource::InlineSvg rustdoc and 148-CONTEXT.md D-06.
+            format!(
+                "<div class=\"relative w-full\"{container_style}>\
+                    <div role=\"img\" aria-label=\"{alt}\">{svg}</div>\
+                 </div>",
+                alt = html_escape(&props.alt),
+            )
+        }
+    }
 }
 
 // ── CMP-02: Skeleton shimmer animation ──────────────────────────────────
