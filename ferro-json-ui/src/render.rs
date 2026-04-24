@@ -3756,7 +3756,9 @@ mod tests {
         let view = JsonUiView::new().component(ComponentNode {
             key: "img".to_string(),
             component: Component::Image(ImageProps {
-                src: "/img/page.png".to_string(),
+                source: ImageSource::Url {
+                    src: "/img/page.png".to_string(),
+                },
                 alt: "Page".to_string(),
                 aspect_ratio: Some("16/9".to_string()),
                 placeholder_label: None,
@@ -3777,12 +3779,7 @@ mod tests {
     fn image_without_aspect_ratio_omits_style() {
         let view = JsonUiView::new().component(ComponentNode {
             key: "img".to_string(),
-            component: Component::Image(ImageProps {
-                src: "/img/page.png".to_string(),
-                alt: "Page".to_string(),
-                aspect_ratio: None,
-                placeholder_label: None,
-            }),
+            component: Component::Image(ImageProps::url("/img/page.png", "Page")),
             action: None,
             visibility: None,
         });
@@ -3795,17 +3792,78 @@ mod tests {
     fn image_xss_src_escaped() {
         let view = JsonUiView::new().component(ComponentNode {
             key: "img".to_string(),
-            component: Component::Image(ImageProps {
-                src: "x\" onerror=\"alert(1)".to_string(),
-                alt: "Test".to_string(),
-                aspect_ratio: None,
-                placeholder_label: None,
-            }),
+            component: Component::Image(ImageProps::url("x\" onerror=\"alert(1)", "Test")),
             action: None,
             visibility: None,
         });
         let html = render_to_html(&view, &json!({}));
         assert!(html.contains("src=\"x&quot; onerror=&quot;alert(1)\""));
+    }
+
+    #[test]
+    fn inline_svg_renders_div_role_img() {
+        let view = JsonUiView::new().component(ComponentNode::image(
+            "chart",
+            ImageProps::inline_svg("<svg><rect/></svg>", "Revenue chart"),
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(
+            html.contains("<div role=\"img\""),
+            "InlineSvg branch must emit <div role=\"img\">: {html}"
+        );
+        assert!(
+            html.contains("aria-label=\"Revenue chart\""),
+            "InlineSvg branch must emit aria-label from alt: {html}"
+        );
+        assert!(
+            html.contains("<svg><rect/></svg>"),
+            "InlineSvg branch must emit the svg body verbatim: {html}"
+        );
+        assert!(
+            !html.contains("<img"),
+            "InlineSvg branch must NOT emit an <img> tag: {html}"
+        );
+    }
+
+    // LOAD-BEARING: This test documents the deliberate html_escape bypass on the
+    // svg body. If this test ever fails by producing the &lt;script&gt; escaped
+    // form, the Plan 02 implementation has regressed the contract defined at
+    // 148-CONTEXT.md D-06. The asymmetry (svg body unescaped, alt attribute
+    // escaped) is intentional and scoped — the rustdoc on
+    // ImageSource::InlineSvg and ImageProps::inline_svg states the bypass; this
+    // test executes it. Reviewers: do NOT "fix" this test by escaping the svg
+    // body — that would silently revert the phase-148 design decision.
+    #[test]
+    fn inline_svg_with_script_passes_through() {
+        let svg = "<svg><script>alert(1)</script></svg>";
+        let view = JsonUiView::new().component(ComponentNode::image(
+            "chart",
+            ImageProps::inline_svg(svg, "Chart"),
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(
+            html.contains("<script>alert(1)</script>"),
+            "svg body must pass through VERBATIM without escaping — see D-06: {html}"
+        );
+        assert!(
+            !html.contains("&lt;script&gt;"),
+            "svg body must NOT be html_escape'd — see D-06: {html}"
+        );
+    }
+
+    #[test]
+    fn inline_svg_alt_xss_escaped() {
+        // alt IS escaped on both source variants (D-06) — mirrors
+        // image_xss_src_escaped's injection-string pattern for symmetry.
+        let view = JsonUiView::new().component(ComponentNode::image(
+            "chart",
+            ImageProps::inline_svg("<svg/>", "\" onload=\"alert(1)"),
+        ));
+        let html = render_to_html(&view, &json!({}));
+        assert!(
+            html.contains("aria-label=\"&quot; onload=&quot;alert(1)\""),
+            "alt MUST be html_escape'd on the InlineSvg branch: {html}"
+        );
     }
 
     // ── 10. Skeleton ────────────────────────────────────────────────────
