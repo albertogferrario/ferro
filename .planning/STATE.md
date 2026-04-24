@@ -4,8 +4,8 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
 stopped_at: Phase 148 UI-SPEC approved
-last_updated: "2026-04-24T19:31:40.467Z"
-last_activity: 2026-04-24 -- Phase 148 planning complete
+last_updated: "2026-04-24T19:33:23.626Z"
+last_activity: 2026-04-24 -- Phase 148 execution started
 progress:
   total_phases: 148
   completed_phases: 133
@@ -21,15 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 147 shipped — DetailForm component delivered with structural coherence between View and Edit modes (no runtime JS, three resolver arms, ferro-mcp catalog updated, KeyValueEditor backfill landed)
+**Current focus:** Phase 148 — htmlembed-component-ferro-json-ui
 
 ## Current Position
 
-Phase: 147 (detailform-component-for-inline-edit-ferro-json-ui) — COMPLETE
+Phase: 148 (htmlembed-component-ferro-json-ui) — EXECUTING
+Plan: 1 of 5
 Plans: 5/5 (Wave 0 RED scaffold + Wave 1 impl all merged)
 Workspace version: 0.2.5
-Status: Ready to execute
-Last activity: 2026-04-24 -- Phase 148 planning complete
+Status: Executing Phase 148
+Last activity: 2026-04-24 -- Phase 148 execution started
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
