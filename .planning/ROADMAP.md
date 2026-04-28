@@ -1341,7 +1341,7 @@ Source: gestiscilo-it v6.4 Documents & Notifications field test. Two upstream ad
 
 **Phase number reconciliation:** v11.9 inserts itself at the next available ferro phase number (149-150). v12.0 JSON-UI v2 still owns Phases 115-121 in its own scope; v11.9 does not collide.
 
-#### Phase 149: ferro-notifications WhatsApp + InApp channels + MailMessage attachment
+### Phase 149: ferro-notifications WhatsApp + InApp channels + MailMessage attachment
 
 **Goal:** Extend `ferro-notifications` with two new channel adapters and a Mail attachment builder so consumer apps can dispatch transactional notifications across WhatsApp + in-app SSE banners and attach binary files (PDFs) to email. Additive, non-breaking to existing `Notification` impls. `Channel::Push` remains an enum-only stub (no APNs/FCM adapter) — consumer matrix UIs render the column as "coming soon".
 
@@ -1360,7 +1360,7 @@ Source: gestiscilo-it v6.4 Documents & Notifications field test. Two upstream ad
 
 **Plans:** TBD (run `/gsd-plan-phase 149` to break down)
 
-#### Phase 150: ferro-json-ui RichTextEditor component
+### Phase 150: ferro-json-ui RichTextEditor component
 
 **Goal:** Ship a `RichTextEditor` component in `ferro-json-ui` that wraps Quill 2.0.3 (Snow theme, jsDelivr CDN, SRI-pinned, vanilla — no bundler) so consumer apps can author rich-text bodies in dashboard forms without a JS build step. Pattern mirrors the v6.1 `Chart` plugin and the existing `KeyValueEditor` component (Phase 146). Output is dual-format: Delta JSON (canonical, lossless) + sanitized HTML cache (rendering input). Toolbar `formats` whitelist constrained at the component-prop level so consumer apps cannot accidentally enable image/video/HTML-paste paths.
 
