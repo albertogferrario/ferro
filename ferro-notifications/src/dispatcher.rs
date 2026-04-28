@@ -716,6 +716,12 @@ impl NotificationDispatcher {
     /// `ferro_whatsapp::WhatsApp` owns its global state via `WhatsApp::init` (called
     /// once at app startup). The `whatsapp_enabled: false` default ensures this code
     /// path is unreachable unless the consumer opted in.
+    ///
+    /// **Retry is the caller's responsibility.** This dispatcher performs no backoff,
+    /// jitter, or retry on transient failures. Match on the inner [`ferro_whatsapp::Error`]
+    /// via `Error::WhatsApp(inner)` to distinguish retryable variants (e.g. `RateLimit`,
+    /// `NetworkError`) from terminal ones (e.g. invalid phone number); recommended path
+    /// for retry is to enqueue the send through `ferro-queue`.
     async fn send_whatsapp<N: Notifiable + ?Sized>(
         notifiable: &N,
         message: &WhatsAppMessage,
