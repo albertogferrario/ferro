@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 149-05-PLAN.md (WhatsApp channel adapter — static-facade wiring, gated by whatsapp_enabled)
-last_updated: "2026-04-28T22:56:25.802Z"
+stopped_at: Completed 149-06-PLAN.md (InApp channel adapter + Database channel fix — closes ARCH-FINDING-02)
+last_updated: "2026-04-28T23:09:41.491Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 149
   completed_phases: 134
   total_plans: 349
-  completed_plans: 326
-  percent: 93
+  completed_plans: 327
+  percent: 94
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 149 (ferro-notifications-whatsapp-inapp-channels-mailmessage-attachment) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Plans: 0 of 7 — planning complete, ready for /gsd-execute-phase 149
 Workspace version: 0.2.5
 Status: Ready to execute
@@ -116,6 +116,7 @@ Progress: [██████████] 96%
 | Phase 149 P03 | 5m 1s | 2 tasks | 3 files |
 | Phase 149 P04 | 4m 41s | 3 tasks | 2 files |
 | Phase 149 P05 | 4m 7s | 2 tasks | 1 files |
+| Phase 149 P06 | 9m 17s | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,9 @@ Recent decisions affecting current work:
 - [149-05] NotificationConfig::whatsapp_enabled (default false) gates the WhatsApp adapter; from_env reads WHATSAPP_ENABLED and falls back to false on parse failure (matches the legacy SLACK_WEBHOOK_URL / MAIL_FROM_ADDRESS optional-read shape).
 - [149-05] send_whatsapp calls ferro_whatsapp::WhatsApp::send via the static facade (D-04 / ARCH-FINDING-01) — no client object injection. CONFIG.get().map(|c| c.whatsapp_enabled).unwrap_or(false) gate keeps the static-facade panic-on-uninit-init path unreachable for default configurations.
 - [149-05] Channel::InApp arm split out of the shared placeholder collapse as a transitional placeholder ("Channel not configured" wording aligns with the eventual NotificationConfig::in_app: Option<InAppConfig> gate). Plan 06 diff is now a body replacement, not a surrounding-scaffolding edit.
+- [149-06] InApp adapter writes both legs (DB-store first, broadcast second) per D-08; ferro_broadcast::Error mapped via Error::broadcast(e.to_string()) helper since no #[from] is available. Persistence-first ordering means the broker can replay on reconnect from the store; the inverse order would risk silent loss.
+- [149-06] send_database now routes through DatabaseNotificationStore::store(...) when CONFIG.database_store is configured; unconfigured path retains placeholder log for backward-compat (closes ARCH-FINDING-02). The Database channel and the InApp channel both share the same Arc<dyn DatabaseNotificationStore> — no duplicate persistence path.
+- [149-06] inapp_to_database_message normalizes the type-shape mismatch between InAppMessage.data (serde_json::Value, any shape) and DatabaseMessage.data (HashMap<String, Value>, object only): object inputs flatten to fields directly; non-object inputs wrap under the 'payload' key (lossless round-trip).
 
 ### Pending Todos
 
@@ -185,7 +189,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-28T22:56:25.795Z
-Stopped at: Completed 149-05-PLAN.md (WhatsApp channel adapter — static-facade wiring, gated by whatsapp_enabled)
+Last session: 2026-04-28T23:09:41.485Z
+Stopped at: Completed 149-06-PLAN.md (InApp channel adapter + Database channel fix — closes ARCH-FINDING-02)
 Resume file: None
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
