@@ -1352,7 +1352,7 @@ Source: gestiscilo-it v6.4 Documents & Notifications field test. Two upstream ad
 **Success Criteria** (what must be TRUE):
   1. `ferro_notifications::Channel::WhatsApp` and `Channel::InApp` enum variants exist; existing `Channel::Mail`/`Database`/`Slack`/`Sms`/`Push` variants unchanged; the `Push` variant carries no adapter and the dispatcher emits a structured "channel not configured" no-op for it
   2. `Notification::to_whatsapp(&self) -> Option<WhatsAppMessage>` and `Notification::to_in_app(&self) -> Option<InAppMessage>` are added as default-`None` trait methods so all existing `Notification` impls compile unchanged
-  3. `WhatsAppChannel` adapter accepts a `ferro_whatsapp::Client` injected via `NotificationConfig::whatsapp` and dispatches via that client's existing send API
+  3. `WhatsAppChannel` adapter dispatches via the static `ferro_whatsapp::WhatsApp::send` facade (no client injection — `ferro-whatsapp` owns global state via `WhatsApp::init` at app startup); gated by `NotificationConfig::whatsapp_enabled` (default `false`, opt-in via `WHATSAPP_ENABLED` env or builder)
   4. `InAppChannel` adapter accepts an SSE broker handle plus a `DatabaseNotificationStore` trait object and writes both legs on dispatch
   5. `MailMessage::attachment(filename, content_type, bytes)` builder exists; lettre wiring delivers a multi-part email with the attached file; max-size guard returns a typed error at 25 MB; round-trip integration test verifies attachment arrives intact at a Mailpit fixture
   6. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green across the workspace; GH Actions publishes the new ferro-notifications version to crates.io
