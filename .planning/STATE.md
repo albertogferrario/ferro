@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 149-02-PLAN.md (Channel + Notification + Error surface extensions)
-last_updated: "2026-04-28T22:31:16.726Z"
+stopped_at: Completed 149-03-PLAN.md (MailMessage attachment support)
+last_updated: "2026-04-28T22:40:08.923Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 149
   completed_phases: 134
   total_plans: 349
-  completed_plans: 323
+  completed_plans: 324
   percent: 93
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 149 (ferro-notifications-whatsapp-inapp-channels-mailmessage-attachment) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Plans: 0 of 7 — planning complete, ready for /gsd-execute-phase 149
 Workspace version: 0.2.5
 Status: Ready to execute
@@ -113,6 +113,7 @@ Progress: [██████████] 96%
 | Phase 148 P01 | 221s | 2 tasks | 2 files |
 | Phase 149 P01 | 9min | 3 tasks | 6 files |
 | Phase 149 P02 | 4m 12s | 3 tasks | 4 files |
+| Phase 149 P03 | 5m 1s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,9 @@ Recent decisions affecting current work:
 - [149-02] Per-variant `#[serde(rename = "in_app")]` overrides the enum-level `lowercase` rule on Channel to lock the wire form to "in_app" not "inapp"; regression-guard test rejects literal "inapp" deserialization (closes ARCH-FINDING-05 trap, T-149-W1A-01)
 - [149-02] Pulled forward dispatcher exhaustive-match arm fix from plans 04/05 (Rule 3 blocking deviation) — adding new Channel variants forced match exhaustiveness; placeholder arm (`Channel::WhatsApp | Channel::InApp | Channel::Sms | Channel::Push => info!("not implemented")`) is the minimal compile fix, real adapter arms land in plans 04/05
 - [149-02] Pulled forward Error::Broadcast(String) + Error::broadcast helper from plan 06's scope (Rule 2 deviation) — load-bearing primitive for InApp adapter error mapping; one logical error.rs commit avoids re-touching the file in plan 06
+- [149-03] 25 MB per-attachment cap is inclusive (D-11): exactly MAX_ATTACHMENT_BYTES bytes succeeds; one byte over fails with Error::AttachmentTooLarge. No cumulative cap — Resend's 40 MB total is carrier responsibility per CONTEXT.md.
+- [149-03] MailMessage.attachments field carries `#[serde(default)]` so pre-existing JSON payloads (queue jobs, retry envelopes) continue to deserialize after the field is added — backward-compat for already-persisted MailMessage envelopes.
+- [149-03] Pulled forward MailAttachment lib.rs re-export (Rule 3 blocking deviation, identical pattern to Plan 01) — adding `pub use` in mod.rs without a crate-level re-export trips unused-imports under -D warnings.
 
 ### Pending Todos
 
@@ -172,7 +176,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-28T22:31:16.719Z
-Stopped at: Completed 149-02-PLAN.md (Channel + Notification + Error surface extensions)
+Last session: 2026-04-28T22:40:08.917Z
+Stopped at: Completed 149-03-PLAN.md (MailMessage attachment support)
 Resume file: None
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
