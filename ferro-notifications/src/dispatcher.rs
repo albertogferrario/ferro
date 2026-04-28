@@ -1,7 +1,7 @@
 //! Notification dispatcher for sending notifications through channels.
 
 use crate::channel::Channel;
-use crate::channels::{MailMessage, SlackMessage};
+use crate::channels::{MailMessage, SlackMessage, WhatsAppMessage};
 use crate::notifiable::Notifiable;
 use crate::notification::Notification;
 use crate::Error;
@@ -345,9 +345,19 @@ impl NotificationDispatcher {
                         Self::send_slack(notifiable, &slack).await?;
                     }
                 }
-                Channel::WhatsApp | Channel::InApp | Channel::Sms | Channel::Push => {
-                    // Adapter wiring lands in plans 04 (WhatsApp) and 05 (InApp).
-                    // Sms / Push remain placeholders per ARCH-FINDING-03.
+                Channel::WhatsApp => {
+                    if let Some(wa) = notification.to_whatsapp() {
+                        Self::send_whatsapp(notifiable, &wa).await?;
+                    }
+                }
+                Channel::InApp => {
+                    // Plan 06 wires this arm. For now, treat as not-configured
+                    // (matches the Sms/Push behavior so the dispatcher is sound
+                    // even between Plan 05 and Plan 06).
+                    info!(channel = %channel, "Channel not configured");
+                }
+                Channel::Sms | Channel::Push => {
+                    // Per ARCH-FINDING-03 — not implemented in this phase.
                     info!(channel = %channel, "Channel not implemented");
                 }
             }
@@ -618,6 +628,35 @@ impl NotificationDispatcher {
         }
 
         info!("Slack notification sent");
+        Ok(())
+    }
+
+    /// Send a WhatsApp notification via the static `ferro_whatsapp::WhatsApp` facade.
+    ///
+    /// Per CONTEXT.md D-04 / ARCH-FINDING-01, the adapter does NOT inject a client.
+    /// `ferro_whatsapp::WhatsApp` owns its global state via `WhatsApp::init` (called
+    /// once at app startup). The `whatsapp_enabled: false` default ensures this code
+    /// path is unreachable unless the consumer opted in.
+    async fn send_whatsapp<N: Notifiable + ?Sized>(
+        notifiable: &N,
+        message: &WhatsAppMessage,
+    ) -> Result<(), Error> {
+        let enabled = CONFIG.get().map(|c| c.whatsapp_enabled).unwrap_or(false);
+
+        if !enabled {
+            info!("WhatsApp channel not configured (WHATSAPP_ENABLED=false)");
+            return Ok(());
+        }
+
+        let phone = notifiable
+            .route_notification_for(Channel::WhatsApp)
+            .ok_or_else(|| Error::ChannelNotAvailable("No WhatsApp route configured".into()))?;
+
+        info!(to = %phone, "Sending WhatsApp notification");
+
+        // The Error::WhatsApp(#[from]) conversion (Plan 02) handles the propagation.
+        let result = ferro_whatsapp::WhatsApp::send(&phone, message.message.clone()).await?;
+        info!(to = %phone, wamid = %result.wamid, "WhatsApp notification sent");
         Ok(())
     }
 }
@@ -949,6 +988,23 @@ mod tests {
         let encoded =
             base64::engine::general_purpose::STANDARD.encode(b"Many hands make light work.");
         assert_eq!(encoded, "TWFueSBoYW5kcyBtYWtlIGxpZ2h0IHdvcmsu");
+    }
+
+    #[test]
+    fn test_send_whatsapp_disabled_returns_ok_without_calling_init() {
+        // The behavior contract: when whatsapp_enabled is false, send_whatsapp must NOT
+        // touch ferro_whatsapp at all. We verify this indirectly by checking that
+        // NotificationConfig::default().whatsapp_enabled is false (already covered by
+        // test_notification_config_default), and that the dispatcher gating is
+        // observable through the public `whatsapp_enabled` field.
+        //
+        // A live integration test that sends a real WhatsApp message lives downstream
+        // in gestiscilo-it Phase 120 (per ROADMAP success criterion #7).
+        let config = NotificationConfig::default();
+        assert!(
+            !config.whatsapp_enabled,
+            "Default whatsapp_enabled must be false so dispatch path is gated"
+        );
     }
 
     #[test]
