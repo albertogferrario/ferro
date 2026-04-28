@@ -61,8 +61,8 @@ mod notification;
 
 pub use channel::Channel;
 pub use channels::{
-    DatabaseMessage, InAppMessage, InAppSeverity, MailMessage, PushMessage, SlackAttachment,
-    SlackField, SlackMessage, SmsMessage, WhatsAppMessage,
+    DatabaseMessage, InAppMessage, InAppSeverity, MailAttachment, MailMessage, PushMessage,
+    SlackAttachment, SlackField, SlackMessage, SmsMessage, WhatsAppMessage,
 };
 pub use dispatcher::{
     MailConfig, MailDriver, NotificationConfig, NotificationDispatcher, ResendConfig, SmtpConfig,

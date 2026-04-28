@@ -10,6 +10,6 @@ mod whatsapp;
 pub use database::DatabaseMessage;
 pub use future::{PushMessage, SmsMessage};
 pub use in_app::{InAppMessage, InAppSeverity};
-pub use mail::MailMessage;
+pub use mail::{MailAttachment, MailMessage};
 pub use slack::{SlackAttachment, SlackField, SlackMessage};
 pub use whatsapp::WhatsAppMessage;
