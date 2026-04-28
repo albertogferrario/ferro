@@ -1,7 +1,10 @@
 //! Core notification trait.
 
 use crate::channel::Channel;
-use crate::channels::{DatabaseMessage, MailMessage, SlackMessage};
+use crate::channels::{
+    DatabaseMessage, InAppMessage, MailMessage, PushMessage, SlackMessage, SmsMessage,
+    WhatsAppMessage,
+};
 
 /// A notification that can be sent through multiple channels.
 ///
@@ -55,6 +58,26 @@ pub trait Notification: Send + Sync {
         None
     }
 
+    /// Convert the notification to a WhatsApp message (per CONTEXT.md D-02).
+    fn to_whatsapp(&self) -> Option<WhatsAppMessage> {
+        None
+    }
+
+    /// Convert the notification to an in-app SSE message (per CONTEXT.md D-02).
+    fn to_in_app(&self) -> Option<InAppMessage> {
+        None
+    }
+
+    /// Convert the notification to an SMS message (placeholder per ARCH-FINDING-03; no adapter in this phase).
+    fn to_sms(&self) -> Option<SmsMessage> {
+        None
+    }
+
+    /// Convert the notification to a push notification (placeholder per ARCH-FINDING-03; no adapter in this phase).
+    fn to_push(&self) -> Option<PushMessage> {
+        None
+    }
+
     /// Get the notification type name for logging.
     fn notification_type(&self) -> &'static str {
         std::any::type_name::<Self>()
@@ -99,5 +122,29 @@ mod tests {
     fn test_notification_to_database_default() {
         let notification = TestNotification;
         assert!(notification.to_database().is_none());
+    }
+
+    #[test]
+    fn test_notification_to_whatsapp_default() {
+        let notification = TestNotification;
+        assert!(notification.to_whatsapp().is_none());
+    }
+
+    #[test]
+    fn test_notification_to_in_app_default() {
+        let notification = TestNotification;
+        assert!(notification.to_in_app().is_none());
+    }
+
+    #[test]
+    fn test_notification_to_sms_default() {
+        let notification = TestNotification;
+        assert!(notification.to_sms().is_none());
+    }
+
+    #[test]
+    fn test_notification_to_push_default() {
+        let notification = TestNotification;
+        assert!(notification.to_push().is_none());
     }
 }
