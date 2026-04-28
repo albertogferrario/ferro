@@ -667,12 +667,13 @@ impl NotificationDispatcher {
                 "Database notification stored"
             );
         } else {
-            info!(
+            warn!(
                 notifiable_id = %notifiable_id,
                 notifiable_type = %notifiable_type,
                 notification_type = %message.notification_type,
                 data = ?message.data,
-                "Database notification stored (placeholder — no store configured)"
+                "Database notification dropped — no store configured. \
+                 Call NotificationConfig::with_database_store() at startup."
             );
         }
 
