@@ -9,6 +9,13 @@ keywords = ["notifications", "mail", "slack", "ferro", "web"]
 categories = ["web-programming", "asynchronous"]
 readme = "README.md"
 
+[features]
+default = []
+# Opt-in feature for live integration tests (e.g. Mailpit-backed SMTP round-trip).
+# Tests under this feature skip silently when the required env vars are unset, so
+# CI can run them with the feature enabled without requiring external services.
+integration-tests = []
+
 [dependencies]
 async-trait = "0.1"
 base64 = "0.22"
@@ -25,3 +32,4 @@ ferro-whatsapp = { path = "../ferro-whatsapp", version = "0.2" }
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 serial_test = "3"
+reqwest = { version = "0.12", features = ["json"] }
