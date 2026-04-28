@@ -255,6 +255,14 @@ impl MailConfig {
     }
 }
 
+/// Resend API attachment payload.
+#[derive(Serialize)]
+struct ResendAttachment {
+    filename: String,
+    /// Base64-encoded attachment content (standard alphabet, not URL-safe).
+    content: String,
+}
+
 /// Resend API email payload.
 #[derive(Serialize)]
 struct ResendEmailPayload {
@@ -271,6 +279,8 @@ struct ResendEmailPayload {
     bcc: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     reply_to: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    attachments: Vec<ResendAttachment>,
 }
 
 /// The notification dispatcher.
@@ -490,6 +500,17 @@ impl NotificationDispatcher {
             }
         });
 
+        use base64::Engine;
+
+        let attachments: Vec<ResendAttachment> = message
+            .attachments
+            .iter()
+            .map(|att| ResendAttachment {
+                filename: att.filename.clone(),
+                content: base64::engine::general_purpose::STANDARD.encode(&att.content),
+            })
+            .collect();
+
         let payload = ResendEmailPayload {
             from,
             to: vec![to.to_string()],
@@ -503,6 +524,7 @@ impl NotificationDispatcher {
             cc: message.cc.clone(),
             bcc: message.bcc.clone(),
             reply_to: message.reply_to.clone(),
+            attachments,
         };
 
         let client = reqwest::Client::new();
@@ -770,6 +792,7 @@ mod tests {
             cc: vec![],
             bcc: vec![],
             reply_to: None,
+            attachments: vec![],
         };
 
         let json = serde_json::to_value(&payload).unwrap();
@@ -782,6 +805,7 @@ mod tests {
         assert!(json.get("cc").is_none());
         assert!(json.get("bcc").is_none());
         assert!(json.get("reply_to").is_none());
+        assert!(json.get("attachments").is_none());
     }
 
     #[test]
@@ -795,6 +819,7 @@ mod tests {
             cc: vec!["cc@example.com".into()],
             bcc: vec!["bcc@example.com".into()],
             reply_to: Some("reply@example.com".into()),
+            attachments: vec![],
         };
 
         let json = serde_json::to_value(&payload).unwrap();
@@ -803,6 +828,61 @@ mod tests {
         assert_eq!(json["cc"][0], "cc@example.com");
         assert_eq!(json["bcc"][0], "bcc@example.com");
         assert_eq!(json["reply_to"], "reply@example.com");
+    }
+
+    #[test]
+    fn test_resend_payload_no_attachments_omits_field() {
+        // Regression guard: when attachments empty, the JSON payload has NO "attachments" key.
+        let payload = ResendEmailPayload {
+            from: "sender@example.com".into(),
+            to: vec!["recipient@example.com".into()],
+            subject: "Test".into(),
+            html: Some("<p>Hello</p>".into()),
+            text: None,
+            cc: vec![],
+            bcc: vec![],
+            reply_to: None,
+            attachments: vec![],
+        };
+        let json = serde_json::to_value(&payload).unwrap();
+        assert!(
+            json.get("attachments").is_none(),
+            "Empty attachments must not appear in serialized payload (byte-identical-to-today guarantee)"
+        );
+    }
+
+    #[test]
+    fn test_resend_payload_with_attachments_serializes_base64() {
+        let payload = ResendEmailPayload {
+            from: "sender@example.com".into(),
+            to: vec!["recipient@example.com".into()],
+            subject: "Test".into(),
+            html: None,
+            text: Some("body".into()),
+            cc: vec![],
+            bcc: vec![],
+            reply_to: None,
+            attachments: vec![ResendAttachment {
+                filename: "hi.txt".into(),
+                // "hello" -> base64 standard = "aGVsbG8="
+                content: "aGVsbG8=".into(),
+            }],
+        };
+        let json = serde_json::to_value(&payload).unwrap();
+        assert_eq!(json["attachments"][0]["filename"], "hi.txt");
+        assert_eq!(json["attachments"][0]["content"], "aGVsbG8=");
+        assert_eq!(json["attachments"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_base64_encoding_uses_standard_alphabet() {
+        use base64::Engine;
+        // Verify a known fixture: "Many hands make light work."
+        // Standard base64: "TWFueSBoYW5kcyBtYWtlIGxpZ2h0IHdvcmsu"
+        // URL-safe would substitute / and + characters; standard is what Resend expects.
+        let encoded =
+            base64::engine::general_purpose::STANDARD.encode(b"Many hands make light work.");
+        assert_eq!(encoded, "TWFueSBoYW5kcyBtYWtlIGxpZ2h0IHdvcmsu");
     }
 
     #[test]
