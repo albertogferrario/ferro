@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 149-01-PLAN.md (skeleton message types)
-last_updated: "2026-04-28T22:23:42.094Z"
+stopped_at: Completed 149-02-PLAN.md (Channel + Notification + Error surface extensions)
+last_updated: "2026-04-28T22:31:16.726Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 149
   completed_phases: 134
   total_plans: 349
-  completed_plans: 322
-  percent: 92
+  completed_plans: 323
+  percent: 93
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 149 (ferro-notifications-whatsapp-inapp-channels-mailmessage-attachment) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Plans: 0 of 7 — planning complete, ready for /gsd-execute-phase 149
 Workspace version: 0.2.5
 Status: Ready to execute
@@ -112,6 +112,7 @@ Progress: [██████████] 96%
 | Phase 145 P02b | 21min | 2 tasks | 1 files |
 | Phase 148 P01 | 221s | 2 tasks | 2 files |
 | Phase 149 P01 | 9min | 3 tasks | 6 files |
+| Phase 149 P02 | 4m 12s | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [145-02b] ProcessManager::any_exited deleted entirely (D-12: backend child exits are not grounds for shutdown); also deleted spawn_with_prefix convenience wrapper since only spawn_with_prefix_env is still called
 - [149-01] Pulled lib.rs top-level re-exports of new channel types forward from plan 07 (Rule 3 deviation) — needed because CI -D warnings rejects unused-import warnings produced by mod.rs re-exports without crate-level re-exports
 - [149-01] SmsMessage and PushMessage placeholders live in shared channels/future.rs (not separate sms.rs/push.rs files) since they share the unimplemented-but-signature-stable lifecycle
+- [149-02] Per-variant `#[serde(rename = "in_app")]` overrides the enum-level `lowercase` rule on Channel to lock the wire form to "in_app" not "inapp"; regression-guard test rejects literal "inapp" deserialization (closes ARCH-FINDING-05 trap, T-149-W1A-01)
+- [149-02] Pulled forward dispatcher exhaustive-match arm fix from plans 04/05 (Rule 3 blocking deviation) — adding new Channel variants forced match exhaustiveness; placeholder arm (`Channel::WhatsApp | Channel::InApp | Channel::Sms | Channel::Push => info!("not implemented")`) is the minimal compile fix, real adapter arms land in plans 04/05
+- [149-02] Pulled forward Error::Broadcast(String) + Error::broadcast helper from plan 06's scope (Rule 2 deviation) — load-bearing primitive for InApp adapter error mapping; one logical error.rs commit avoids re-touching the file in plan 06
 
 ### Pending Todos
 
@@ -168,7 +172,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-28T22:23:42.088Z
-Stopped at: Completed 149-01-PLAN.md (skeleton message types)
+Last session: 2026-04-28T22:31:16.719Z
+Stopped at: Completed 149-02-PLAN.md (Channel + Notification + Error surface extensions)
 Resume file: None
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)

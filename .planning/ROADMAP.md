@@ -1358,11 +1358,11 @@ Source: gestiscilo-it v6.4 Documents & Notifications field test. Two upstream ad
   6. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green across the workspace; GH Actions publishes the new ferro-notifications version to crates.io
   7. Consumer-side smoke test in gestiscilo-it: `use ferro_notifications::{Channel, WhatsAppChannel, InAppChannel};` resolves; `MailMessage::new().attachment(...)` compiles and sends
 
-**Plans:** 1/7 plans executed
+**Plans:** 2/7 plans executed
 
 Plans:
 - [x] 149-01-PLAN.md — Wave 0: skeleton message types and channels module wiring
-- [ ] 149-02-PLAN.md — Wave 1: Channel + Notification + Error surface (D-01, D-02, D-05, ARCH-FINDING-03)
+- [x] 149-02-PLAN.md — Wave 1: Channel + Notification + Error surface (D-01, D-02, D-05, ARCH-FINDING-03)
 - [ ] 149-03-PLAN.md — Wave 1: MailAttachment + 25MB-capped attachment() builder (D-09, D-10, D-11)
 - [ ] 149-04-PLAN.md — Wave 2: SMTP multipart + Resend base64 attachment payload (D-12)
 - [ ] 149-05-PLAN.md — Wave 3: WhatsApp adapter (D-04, D-14, ARCH-FINDING-01)
