@@ -2,12 +2,12 @@
 
 use crate::channel::Channel;
 use crate::channels::{MailMessage, SlackMessage, WhatsAppMessage};
-use crate::notifiable::Notifiable;
+use crate::notifiable::{DatabaseNotificationStore, Notifiable};
 use crate::notification::Notification;
 use crate::Error;
 use serde::Serialize;
 use std::env;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use tracing::{error, info};
 
 /// Global notification dispatcher configuration.
@@ -26,6 +26,31 @@ pub struct NotificationConfig {
     /// [`ferro_whatsapp::WhatsApp::send`] which requires that
     /// [`ferro_whatsapp::WhatsApp::init`] was called at app startup.
     pub whatsapp_enabled: bool,
+    /// In-app SSE channel configuration (per CONTEXT.md D-07).
+    ///
+    /// When `Some`, `Channel::InApp` dispatches persist via `store` then publish via `broker`.
+    /// When `None`, `Channel::InApp` emits a structured "channel not configured" no-op.
+    pub in_app: Option<InAppConfig>,
+    /// Database notification store (per CONTEXT.md D-13, closes ARCH-FINDING-02).
+    ///
+    /// When `Some`, `Channel::Database` calls `store.store(...)` instead of the placeholder log.
+    /// When `None`, the existing placeholder behavior is preserved (backward-compat).
+    /// Note: `InAppConfig.store` is independent of this field — they may point to the same Arc
+    /// or to different stores.
+    pub database_store: Option<Arc<dyn DatabaseNotificationStore>>,
+}
+
+/// In-app SSE channel configuration.
+///
+/// Combines a `Broadcaster` for real-time fanout and a `DatabaseNotificationStore`
+/// for persistence. Per CONTEXT.md D-08, `Channel::InApp` dispatches write the DB-store
+/// leg first, then publish to the broadcast channel `format!("user.{}", notifiable_id)`.
+#[derive(Clone)]
+pub struct InAppConfig {
+    /// Broadcaster handle for SSE / WebSocket fanout.
+    pub broker: Arc<ferro_broadcast::Broadcaster>,
+    /// Persistence store — typically the same Arc as `NotificationConfig::database_store`.
+    pub store: Arc<dyn DatabaseNotificationStore>,
 }
 
 /// Mail transport driver.
@@ -105,6 +130,10 @@ impl NotificationConfig {
                 .ok()
                 .and_then(|v| v.parse::<bool>().ok())
                 .unwrap_or(false),
+            // `in_app` and `database_store` require typed handles (per CONTEXT.md D-14)
+            // — they are not env-driven.
+            in_app: None,
+            database_store: None,
         }
     }
 
@@ -123,6 +152,21 @@ impl NotificationConfig {
     /// Enable or disable the WhatsApp channel.
     pub fn with_whatsapp_enabled(mut self, enabled: bool) -> Self {
         self.whatsapp_enabled = enabled;
+        self
+    }
+
+    /// Set the in-app channel configuration (per CONTEXT.md D-07).
+    pub fn with_in_app(mut self, config: InAppConfig) -> Self {
+        self.in_app = Some(config);
+        self
+    }
+
+    /// Set the database notification store (per CONTEXT.md D-13).
+    ///
+    /// When configured, `Channel::Database` dispatches call `store.store(...)`
+    /// instead of the placeholder log path.
+    pub fn with_database_store(mut self, store: Arc<dyn DatabaseNotificationStore>) -> Self {
+        self.database_store = Some(store);
         self
     }
 }
@@ -712,6 +756,39 @@ mod tests {
         assert!(config.mail.is_none());
         assert!(config.slack_webhook.is_none());
         assert!(!config.whatsapp_enabled);
+        assert!(config.in_app.is_none());
+        assert!(config.database_store.is_none());
+    }
+
+    #[test]
+    fn test_notification_config_with_database_store_builder() {
+        use crate::channels::DatabaseMessage;
+        use crate::notifiable::DatabaseNotificationStore;
+        use async_trait::async_trait;
+
+        struct NoopStore;
+        #[async_trait]
+        impl DatabaseNotificationStore for NoopStore {
+            async fn store(
+                &self,
+                _: &str,
+                _: &str,
+                _: &str,
+                _: &DatabaseMessage,
+            ) -> Result<(), Error> {
+                Ok(())
+            }
+            async fn mark_as_read(&self, _: &str) -> Result<(), Error> {
+                Ok(())
+            }
+            async fn unread(&self, _: &str) -> Result<Vec<crate::StoredNotification>, Error> {
+                Ok(vec![])
+            }
+        }
+
+        let store: Arc<dyn DatabaseNotificationStore> = Arc::new(NoopStore);
+        let config = NotificationConfig::new().with_database_store(store);
+        assert!(config.database_store.is_some());
     }
 
     #[test]
