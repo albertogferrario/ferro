@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.9
 milestone_name: Notifications & Rich-Text Foundations
-status: ready
-stopped_at: Phase 148 complete (VERIFICATION passed); v11.9 (Phases 149-150) planned and ready for discussion
-last_updated: "2026-04-28T22:59:00.000Z"
-last_activity: 2026-04-24
+status: planning
+stopped_at: Phase 149 context gathered (auto mode); 3 ARCH findings logged + 1 gsd-tools state-rebuild bug noted
+last_updated: "2026-04-28T21:29:36.653Z"
+last_activity: 2026-04-28
 progress:
-  total_phases: 148
-  completed_phases: 134
-  total_plans: 342
-  completed_plans: 321
-  percent: 94
+  total_phases: 2
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 148 — image-inline-svg-source
+**Current focus:** Phase 149 — ferro-notifications WhatsApp + InApp + MailMessage attachment
 
 ## Current Position
 
-Phase: 148
+Phase: 149
 Plan: Not started
-Plans: 0 of TBD — previous 5 plans (HtmlEmbed scope) archived to phase-dir/archive-htmlembed/
+Plans: 0 of TBD — context gathered, ready for /gsd-plan-phase 149
 Workspace version: 0.2.5
-Status: Ready to execute
-Last activity: 2026-04-24
+Status: Ready to plan
+Last activity: 2026-04-28
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -165,7 +165,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-24T20:35:46.711Z
-Stopped at: Completed 148-01-PLAN.md (Wave 0 RED phase)
-Resume file: None
+Last session: 2026-04-28T21:29:36.647Z
+Stopped at: Phase 149 context gathered (auto mode); 3 ARCH findings logged
+Resume file: .planning/phases/149-ferro-notifications-whatsapp-inapp-channels-mailmessage-attachment/149-CONTEXT.md
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
