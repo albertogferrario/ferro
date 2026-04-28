@@ -620,7 +620,22 @@ impl NotificationDispatcher {
             return Err(Error::mail(format!("Resend API error {status}: {body}")));
         }
 
-        info!(to = %to, "Mail notification sent via Resend");
+        // Parse the success body to extract the Resend message id (correlation token
+        // for downstream debugging). Failure to parse is non-fatal: the send already
+        // succeeded per the 2xx status, so we log and continue without an id.
+        let resend_id = match response.json::<serde_json::Value>().await {
+            Ok(body) => body
+                .get("id")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned)
+                .unwrap_or_else(|| "<no-id>".to_string()),
+            Err(e) => {
+                warn!(error = %e, "Resend response parse failed; continuing without id");
+                "<unparseable>".to_string()
+            }
+        };
+
+        info!(to = %to, resend_id = %resend_id, "Mail notification sent via Resend");
         Ok(())
     }
 
