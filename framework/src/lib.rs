@@ -189,9 +189,10 @@ pub use ferro_queue::{
 // Re-export ferro-notifications for multi-channel notifications
 pub use ferro_notifications::{
     Channel as NotificationChannel, ChannelResult, DatabaseMessage, DatabaseNotificationStore,
-    Error as NotificationError, MailConfig, MailDriver, MailMessage, Notifiable, Notification,
-    NotificationConfig, NotificationDispatcher, ResendConfig, SlackAttachment, SlackField,
-    SlackMessage, SmtpConfig, StoredNotification,
+    Error as NotificationError, InAppConfig, InAppMessage, InAppSeverity, MailAttachment,
+    MailConfig, MailDriver, MailMessage, Notifiable, Notification, NotificationConfig,
+    NotificationDispatcher, PushMessage, ResendConfig, SlackAttachment, SlackField, SlackMessage,
+    SmsMessage, SmtpConfig, StoredNotification, WhatsAppMessage,
 };
 
 // Re-export ferro-broadcast for real-time WebSocket channels
@@ -231,7 +232,7 @@ pub use ferro_ai::{
 #[cfg(feature = "whatsapp")]
 pub use ferro_whatsapp::{
     verify_whatsapp_webhook, DeduplicationStore, DeliveryStatus, Error as WhatsAppError,
-    InMemoryDeduplicationStore, Message as WhatsAppMessage, ProcessWhatsAppWebhook,
+    InMemoryDeduplicationStore, Message as WhatsAppRawMessage, ProcessWhatsAppWebhook,
     SendResult as WhatsAppSendResult, SenderIdentity, WhatsApp, WhatsAppConfig,
     WhatsAppStatusUpdate, WhatsAppTextReceived,
 };

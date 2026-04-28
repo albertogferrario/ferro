@@ -65,7 +65,8 @@ pub use channels::{
     SlackAttachment, SlackField, SlackMessage, SmsMessage, WhatsAppMessage,
 };
 pub use dispatcher::{
-    MailConfig, MailDriver, NotificationConfig, NotificationDispatcher, ResendConfig, SmtpConfig,
+    InAppConfig, MailConfig, MailDriver, NotificationConfig, NotificationDispatcher, ResendConfig,
+    SmtpConfig,
 };
 pub use error::Error;
 pub use notifiable::{ChannelResult, DatabaseNotificationStore, Notifiable, StoredNotification};

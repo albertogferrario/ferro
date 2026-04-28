@@ -74,11 +74,11 @@ pub fn init() {
 ### Text Messages
 
 ```rust
-use ferro::{WhatsApp, WhatsAppMessage, WhatsAppSendResult};
+use ferro::{WhatsApp, WhatsAppRawMessage, WhatsAppSendResult};
 
 let result: WhatsAppSendResult = WhatsApp::send(
     "393401234567",
-    WhatsAppMessage::Text {
+    WhatsAppRawMessage::Text {
         body: "Hello from Ferro!".to_string(),
     },
 )
@@ -88,16 +88,18 @@ let result: WhatsAppSendResult = WhatsApp::send(
 println!("Sent with wamid: {}", result.wamid);
 ```
 
+> **Note:** `WhatsAppRawMessage` is the raw `ferro_whatsapp::Message` enum (re-exported under this name to avoid colliding with `ferro_notifications::WhatsAppMessage`, the notification-system wrapper). Use `WhatsAppRawMessage` when calling `WhatsApp::send` directly; use `WhatsAppMessage` (with its `text()`/`template()` builders) when implementing `Notification::to_whatsapp` for the notification dispatcher.
+
 ### Template Messages
 
 Template messages are required for outbound messages to contacts who have not messaged you in the last 24 hours. Templates must be approved by Meta before use.
 
 ```rust
-use ferro::{WhatsApp, WhatsAppMessage};
+use ferro::{WhatsApp, WhatsAppRawMessage};
 
 WhatsApp::send(
     "393401234567",
-    WhatsAppMessage::Template {
+    WhatsAppRawMessage::Template {
         name: "order_confirmation".to_string(),
         language: "it".to_string(),
         parameters: vec![
