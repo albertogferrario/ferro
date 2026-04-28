@@ -319,8 +319,9 @@ impl NotificationDispatcher {
                         Self::send_slack(notifiable, &slack).await?;
                     }
                 }
-                Channel::Sms | Channel::Push => {
-                    // Not implemented yet
+                Channel::WhatsApp | Channel::InApp | Channel::Sms | Channel::Push => {
+                    // Adapter wiring lands in plans 04 (WhatsApp) and 05 (InApp).
+                    // Sms / Push remain placeholders per ARCH-FINDING-03.
                     info!(channel = %channel, "Channel not implemented");
                 }
             }
