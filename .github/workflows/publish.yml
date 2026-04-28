@@ -197,7 +197,7 @@ jobs:
           echo "Publishing Wave 1a crates..."
 
           # Wave 1a: Crates with ZERO internal ferro-* dependencies
-          WAVE1A_CRATES="ferro-macros ferro-events ferro-queue ferro-notifications ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-theme ferro-json-ui ferro-inertia ferro-api-mcp"
+          WAVE1A_CRATES="ferro-macros ferro-events ferro-queue ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-theme ferro-json-ui ferro-inertia ferro-api-mcp"
 
           for crate in $WAVE1A_CRATES; do
             echo "Publishing $crate..."
@@ -227,11 +227,12 @@ jobs:
           echo "Publishing Wave 1b crates..."
 
           # Wave 1b: Crates that depend on Wave 1a crates
-          # ferro-ai         -> ferro-events
-          # ferro-projections-> ferro-theme
-          # ferro-stripe     -> ferro-events, ferro-queue
-          # ferro-whatsapp   -> ferro-events, ferro-queue
-          WAVE1B_CRATES="ferro-ai ferro-projections ferro-stripe ferro-whatsapp"
+          # ferro-ai            -> ferro-events
+          # ferro-projections   -> ferro-theme
+          # ferro-stripe        -> ferro-events, ferro-queue
+          # ferro-whatsapp      -> ferro-events, ferro-queue
+          # ferro-notifications -> ferro-whatsapp, ferro-broadcast (Phase 149 / ARCH-FINDING-05)
+          WAVE1B_CRATES="ferro-ai ferro-projections ferro-stripe ferro-whatsapp ferro-notifications"
 
           for crate in $WAVE1B_CRATES; do
             echo "Publishing $crate..."
