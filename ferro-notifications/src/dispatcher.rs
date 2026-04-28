@@ -732,7 +732,11 @@ impl NotificationDispatcher {
     /// 2. Publishes via `Broadcaster::broadcast` to channel `user.{id}` with event
     ///    `Notification.{notification_type}` and the InAppMessage `data` as payload.
     ///
-    /// Either failure aborts the dispatch (no partial-success silent fallback).
+    /// Returns the first error encountered. The legs are NOT transactional: if the DB
+    /// write succeeds and the broadcast then fails, the persisted row remains and a
+    /// naive retry will create a duplicate. Per CONTEXT.md D-08 this is intentional —
+    /// the broker can replay from the store on reconnect — but callers performing
+    /// manual retries should dedupe on (notifiable_id, notification_type, idempotency-key).
     /// `ferro_broadcast::Error` is mapped via [`Error::broadcast`] (no `#[from]` available).
     async fn send_in_app<N: Notifiable + ?Sized>(
         notifiable: &N,
