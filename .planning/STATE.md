@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.9
-milestone_name: Notifications & Rich-Text Foundations
-status: ready-to-execute
-stopped_at: Phase 149 planned — 7 plans across 6 waves, VERIFICATION PASSED (no blockers, 2 warnings, 1 info-level fix applied)
-last_updated: "2026-04-28T22:04:08.159Z"
-last_activity: 2026-04-28 -- Phase 149 planning complete
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
+status: executing
+stopped_at: Completed 149-01-PLAN.md (skeleton message types)
+last_updated: "2026-04-28T22:23:42.094Z"
+last_activity: 2026-04-28
 progress:
-  total_phases: 2
-  completed_phases: 0
-  total_plans: 7
-  completed_plans: 0
-  percent: 0
+  total_phases: 149
+  completed_phases: 134
+  total_plans: 349
+  completed_plans: 322
+  percent: 92
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 149 — ferro-notifications WhatsApp + InApp + MailMessage attachment
+**Current focus:** Phase 149 — ferro-notifications-whatsapp-inapp-channels-mailmessage-attachment
 
 ## Current Position
 
-Phase: 149
-Plan: Not started
+Phase: 149 (ferro-notifications-whatsapp-inapp-channels-mailmessage-attachment) — EXECUTING
+Plan: 2 of 7
 Plans: 0 of 7 — planning complete, ready for /gsd-execute-phase 149
 Workspace version: 0.2.5
 Status: Ready to execute
-Last activity: 2026-04-28 -- Phase 149 planning complete
+Last activity: 2026-04-28
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -111,6 +111,7 @@ Progress: [██████████] 96%
 | Phase 145 P02a | 8min | 2 tasks | 3 files |
 | Phase 145 P02b | 21min | 2 tasks | 1 files |
 | Phase 148 P01 | 221s | 2 tasks | 2 files |
+| Phase 149 P01 | 9min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,8 @@ Recent decisions affecting current work:
 - [145-02b] drop(reload_tx) after cloning to producers lets the supervisor's recv_timeout see Disconnected — belt-and-braces termination path in addition to the AtomicBool shutdown flag
 - [145-02b] debouncer_coalesces_burst uses 500ms production window and "strictly fewer events than raw writes" invariant; plan's 50ms + "exactly one" was flaky under macOS FSEvents + parallel-test CPU contention
 - [145-02b] ProcessManager::any_exited deleted entirely (D-12: backend child exits are not grounds for shutdown); also deleted spawn_with_prefix convenience wrapper since only spawn_with_prefix_env is still called
+- [149-01] Pulled lib.rs top-level re-exports of new channel types forward from plan 07 (Rule 3 deviation) — needed because CI -D warnings rejects unused-import warnings produced by mod.rs re-exports without crate-level re-exports
+- [149-01] SmsMessage and PushMessage placeholders live in shared channels/future.rs (not separate sms.rs/push.rs files) since they share the unimplemented-but-signature-stable lifecycle
 
 ### Pending Todos
 
@@ -165,7 +168,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-28T21:29:36.647Z
-Stopped at: Phase 149 context gathered (auto mode); 3 ARCH findings logged
-Resume file: .planning/phases/149-ferro-notifications-whatsapp-inapp-channels-mailmessage-attachment/149-CONTEXT.md
+Last session: 2026-04-28T22:23:42.088Z
+Stopped at: Completed 149-01-PLAN.md (skeleton message types)
+Resume file: None
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
