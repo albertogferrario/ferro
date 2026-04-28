@@ -20,6 +20,12 @@ pub struct NotificationConfig {
     pub mail: Option<MailConfig>,
     /// Slack webhook URL.
     pub slack_webhook: Option<String>,
+    /// Enable the WhatsApp channel (per CONTEXT.md D-04).
+    ///
+    /// Defaults to `false`. When `true`, the dispatcher calls
+    /// [`ferro_whatsapp::WhatsApp::send`] which requires that
+    /// [`ferro_whatsapp::WhatsApp::init`] was called at app startup.
+    pub whatsapp_enabled: bool,
 }
 
 /// Mail transport driver.
@@ -95,6 +101,10 @@ impl NotificationConfig {
         Self {
             mail: MailConfig::from_env(),
             slack_webhook: env::var("SLACK_WEBHOOK_URL").ok().filter(|s| !s.is_empty()),
+            whatsapp_enabled: env::var("WHATSAPP_ENABLED")
+                .ok()
+                .and_then(|v| v.parse::<bool>().ok())
+                .unwrap_or(false),
         }
     }
 
@@ -107,6 +117,12 @@ impl NotificationConfig {
     /// Set the Slack webhook URL.
     pub fn slack_webhook(mut self, url: impl Into<String>) -> Self {
         self.slack_webhook = Some(url.into());
+        self
+    }
+
+    /// Enable or disable the WhatsApp channel.
+    pub fn with_whatsapp_enabled(mut self, enabled: bool) -> Self {
+        self.whatsapp_enabled = enabled;
         self
     }
 }
@@ -656,6 +672,56 @@ mod tests {
         let config = NotificationConfig::default();
         assert!(config.mail.is_none());
         assert!(config.slack_webhook.is_none());
+        assert!(!config.whatsapp_enabled);
+    }
+
+    #[test]
+    #[serial]
+    fn test_notification_config_whatsapp_enabled_from_env() {
+        unsafe { env::remove_var("WHATSAPP_ENABLED") };
+        with_env_vars(&[("WHATSAPP_ENABLED", "true")], || {
+            let config = NotificationConfig::from_env();
+            assert!(config.whatsapp_enabled);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn test_notification_config_whatsapp_disabled_when_env_false() {
+        unsafe { env::remove_var("WHATSAPP_ENABLED") };
+        with_env_vars(&[("WHATSAPP_ENABLED", "false")], || {
+            let config = NotificationConfig::from_env();
+            assert!(!config.whatsapp_enabled);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn test_notification_config_whatsapp_disabled_when_env_unset() {
+        unsafe { env::remove_var("WHATSAPP_ENABLED") };
+        let config = NotificationConfig::from_env();
+        assert!(!config.whatsapp_enabled);
+    }
+
+    #[test]
+    #[serial]
+    fn test_notification_config_whatsapp_disabled_when_env_garbage() {
+        unsafe { env::remove_var("WHATSAPP_ENABLED") };
+        with_env_vars(&[("WHATSAPP_ENABLED", "yes-please")], || {
+            let config = NotificationConfig::from_env();
+            assert!(
+                !config.whatsapp_enabled,
+                "non-bool string must fall back to false"
+            );
+        });
+    }
+
+    #[test]
+    fn test_notification_config_with_whatsapp_enabled_builder() {
+        let config = NotificationConfig::new().with_whatsapp_enabled(true);
+        assert!(config.whatsapp_enabled);
+        let config2 = NotificationConfig::new().with_whatsapp_enabled(false);
+        assert!(!config2.whatsapp_enabled);
     }
 
     /// Helper to run env-based tests with clean env var state.
