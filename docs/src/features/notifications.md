@@ -409,3 +409,155 @@ Use `code_templates` with the `notifications` category to generate starter code 
 ### `code_templates`
 
 Returns ready-to-use code snippets for common notification patterns. Pass `category: "notifications"` to get templates for mail, database, and Slack channels, along with the `Notifiable` trait implementation. Useful when scaffolding a new notification type quickly.
+
+## WhatsApp Channel
+
+Send transactional notifications via the WhatsApp Cloud API (Meta). The WhatsApp adapter delegates to [`ferro-whatsapp`](https://docs.rs/ferro-whatsapp), which owns its global state via the static `WhatsApp::init` facade.
+
+### Setup
+
+1. **Initialize ferro-whatsapp once at app startup** (typically in `bootstrap.rs`):
+
+   ```rust
+   use ferro_whatsapp::{WhatsApp, WhatsAppConfig};
+
+   let wa_config = WhatsAppConfig::from_env(Box::new(|phone| {
+       // phone-validation hook — your allowlist or regex check
+       phone.starts_with("39")
+   })).expect("WHATSAPP_* env vars not set");
+   WhatsApp::init(wa_config);
+   ```
+
+2. **Enable the channel in NotificationConfig**:
+
+   ```rust
+   use ferro::{NotificationConfig, NotificationDispatcher};
+
+   let config = NotificationConfig::from_env()    // reads WHATSAPP_ENABLED
+       .with_whatsapp_enabled(true);              // or set programmatically
+   NotificationDispatcher::configure(config);
+   ```
+
+   Default is `false`. When disabled, the dispatcher emits a structured "channel not configured" log and returns `Ok(())` — `ferro-whatsapp` is never touched, so `WhatsApp::init` is not required.
+
+3. **Implement `Notifiable` to provide the recipient phone**:
+
+   ```rust
+   use ferro::{Notifiable, NotificationChannel};
+
+   impl Notifiable for User {
+       fn route_notification_for(&self, channel: NotificationChannel) -> Option<String> {
+           match channel {
+               NotificationChannel::WhatsApp => self.phone.clone(),
+               // ... other channels ...
+               _ => None,
+           }
+       }
+   }
+   ```
+
+4. **Implement `Notification::to_whatsapp`**:
+
+   ```rust
+   use ferro::{Notification, NotificationChannel, WhatsAppMessage};
+
+   impl Notification for OrderShipped {
+       fn via(&self) -> Vec<NotificationChannel> {
+           vec![NotificationChannel::WhatsApp]
+       }
+
+       fn to_whatsapp(&self) -> Option<WhatsAppMessage> {
+           Some(WhatsAppMessage::text(format!(
+               "Your order #{} has shipped — tracking {}",
+               self.order_id, self.tracking
+           )))
+       }
+   }
+   ```
+
+   For approved Meta templates use `WhatsAppMessage::template(name, language, parameters)`.
+
+## In-App (SSE) Channel
+
+Real-time in-app notifications dispatch through two legs in sequence:
+
+1. **Persistence** — written via your `DatabaseNotificationStore` implementation
+2. **Real-time fanout** — published via `ferro-broadcast` to channel `user.{notifiable_id}` with event `Notification.{notification_type}`
+
+If either leg fails the dispatch returns an error — there is no partial-success silent fallback. The persistence-first ordering ensures the broadcaster can replay missed events from the store on client reconnect.
+
+### Setup
+
+```rust
+use std::sync::Arc;
+use ferro::{Broadcaster, InAppConfig, NotificationConfig, NotificationDispatcher};
+
+let broker = Arc::new(Broadcaster::new());
+let store: Arc<dyn ferro::DatabaseNotificationStore> = Arc::new(MyDatabaseStore::new());
+
+let config = NotificationConfig::from_env()
+    .with_in_app(InAppConfig {
+        broker: broker.clone(),
+        store: store.clone(),
+    })
+    .with_database_store(store);    // shared with Channel::Database — same Arc
+
+NotificationDispatcher::configure(config);
+```
+
+> **Authorization note:** The InApp adapter publishes to `user.{id}` channels. You must configure ferro-broadcast's `ChannelAuthorizer` to enforce who can subscribe to those channels. See [Broadcasting](broadcasting.md) for the auth setup.
+
+### Implementing Notifications
+
+```rust
+use ferro::{InAppMessage, InAppSeverity, Notification, NotificationChannel};
+
+impl Notification for OrderShipped {
+    fn via(&self) -> Vec<NotificationChannel> {
+        vec![NotificationChannel::InApp]
+    }
+
+    fn to_in_app(&self) -> Option<InAppMessage> {
+        Some(
+            InAppMessage::new("OrderShipped")
+                .data(serde_json::json!({
+                    "order_id": self.order_id,
+                    "tracking": self.tracking,
+                }))
+                .severity(InAppSeverity::Success),
+        )
+    }
+}
+```
+
+### Mail Attachments
+
+`MailMessage::attachment(filename, content_type, bytes)` adds an inline binary attachment. The builder is fallible — it returns `Err(Error::AttachmentTooLarge)` when `bytes.len()` exceeds the **25 MB per-attachment cap**. Multiple calls accumulate.
+
+```rust
+use ferro::MailMessage;
+
+let pdf_bytes: Vec<u8> = std::fs::read("/tmp/invoice.pdf")?;
+
+let mail = MailMessage::new()
+    .subject("Your invoice is attached")
+    .body("Hi, please find your invoice attached.")
+    .attachment("invoice.pdf", "application/pdf", pdf_bytes)?;
+```
+
+Attachments work on **both** mail drivers:
+
+- **SMTP (lettre):** ferro-notifications builds a `multipart/mixed` email with one `SinglePart` per attachment when `attachments` is non-empty. When empty, the existing single-part path is used (zero regression for non-attachment emails).
+- **Resend (HTTP API):** attachments are base64-encoded and sent as `attachments: [{ filename, content }]` in the JSON payload. Resend has its own 40 MB total-per-email cap which the framework does NOT enforce — Resend surfaces it via API error.
+
+The 25 MB cap is per-attachment and enforced before any allocation past 25 MB:
+
+```rust
+let huge: Vec<u8> = vec![0; 30 * 1024 * 1024];
+match MailMessage::new().attachment("big.bin", "application/octet-stream", huge) {
+    Err(ferro::NotificationError::AttachmentTooLarge { filename, size, limit }) => {
+        eprintln!("Rejected '{filename}': {size} bytes exceeds {limit}-byte limit");
+    }
+    _ => unreachable!(),
+}
+```
