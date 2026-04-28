@@ -8,7 +8,7 @@ use crate::Error;
 use serde::Serialize;
 use std::env;
 use std::sync::{Arc, OnceLock};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Global notification dispatcher configuration.
 static CONFIG: OnceLock<NotificationConfig> = OnceLock::new();
@@ -287,8 +287,16 @@ impl MailConfig {
     }
 
     /// Set SMTP credentials.
+    ///
+    /// No-ops with a warning when the driver is not [`MailDriver::Smtp`] — calling
+    /// `credentials(...)` on a Resend config is almost certainly a caller mistake
+    /// and should not silently mutate the config into an SMTP shape.
     pub fn credentials(mut self, username: impl Into<String>, password: impl Into<String>) -> Self {
-        let smtp = self.smtp.get_or_insert(SmtpConfig {
+        if !matches!(self.driver, MailDriver::Smtp) {
+            warn!("MailConfig::credentials called on non-SMTP driver; ignoring");
+            return self;
+        }
+        let smtp = self.smtp.get_or_insert_with(|| SmtpConfig {
             host: String::new(),
             port: 587,
             username: None,
