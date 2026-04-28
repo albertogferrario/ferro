@@ -1358,7 +1358,7 @@ Source: gestiscilo-it v6.4 Documents & Notifications field test. Two upstream ad
   6. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green across the workspace; GH Actions publishes the new ferro-notifications version to crates.io
   7. Consumer-side smoke test in gestiscilo-it: `use ferro_notifications::{Channel, WhatsAppChannel, InAppChannel};` resolves; `MailMessage::new().attachment(...)` compiles and sends
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 - [x] 149-01-PLAN.md — Wave 0: skeleton message types and channels module wiring
@@ -1367,7 +1367,7 @@ Plans:
 - [x] 149-04-PLAN.md — Wave 2: SMTP multipart + Resend base64 attachment payload (D-12)
 - [x] 149-05-PLAN.md — Wave 3: WhatsApp adapter (D-04, D-14, ARCH-FINDING-01)
 - [x] 149-06-PLAN.md — Wave 4: InApp adapter + DB-store wire (D-06, D-07, D-08, D-13, ARCH-FINDING-02)
-- [ ] 149-07-PLAN.md — Wave 5: Re-exports, publish.yml move, docs, Mailpit integration test, final CI (D-15, D-16, ARCH-FINDING-05)
+- [x] 149-07-PLAN.md — Wave 5: Re-exports, publish.yml move, docs, Mailpit integration test, final CI (D-15, D-16, ARCH-FINDING-05)
 
 ### Phase 150: ferro-json-ui RichTextEditor component
 
