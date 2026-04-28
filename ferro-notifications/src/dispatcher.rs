@@ -363,7 +363,7 @@ impl NotificationDispatcher {
             .as_ref()
             .ok_or_else(|| Error::mail("SMTP config missing for SMTP driver"))?;
 
-        use lettre::message::{header::ContentType, Mailbox};
+        use lettre::message::{header::ContentType, Attachment, Mailbox, MultiPart, SinglePart};
         use lettre::transport::smtp::authentication::Credentials;
         use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 
@@ -408,16 +408,41 @@ impl NotificationDispatcher {
             email_builder = email_builder.bcc(bcc_mailbox);
         }
 
-        let email = if let Some(ref html) = message.html {
-            email_builder
-                .header(ContentType::TEXT_HTML)
-                .body(html.clone())
-                .map_err(|e| Error::mail(format!("Failed to build email: {e}")))?
+        // Body part — single-part for backward-compat when no attachments,
+        // SinglePart wrapped in MultiPart::mixed otherwise.
+        let email = if message.attachments.is_empty() {
+            // Backward-compatible single-part path
+            if let Some(ref html) = message.html {
+                email_builder
+                    .header(ContentType::TEXT_HTML)
+                    .body(html.clone())
+                    .map_err(|e| Error::mail(format!("Failed to build email: {e}")))?
+            } else {
+                email_builder
+                    .header(ContentType::TEXT_PLAIN)
+                    .body(message.body.clone())
+                    .map_err(|e| Error::mail(format!("Failed to build email: {e}")))?
+            }
         } else {
+            // Multipart path — body becomes a SinglePart inside MultiPart::mixed
+            let body_part = if let Some(ref html) = message.html {
+                SinglePart::html(html.clone())
+            } else {
+                SinglePart::plain(message.body.clone())
+            };
+
+            let mut mp = MultiPart::mixed().singlepart(body_part);
+            for att in &message.attachments {
+                let ct = ContentType::parse(&att.content_type).map_err(|e| {
+                    Error::mail(format!("Invalid content-type '{}': {e}", att.content_type))
+                })?;
+                let part = Attachment::new(att.filename.clone()).body(att.content.clone(), ct);
+                mp = mp.singlepart(part);
+            }
+
             email_builder
-                .header(ContentType::TEXT_PLAIN)
-                .body(message.body.clone())
-                .map_err(|e| Error::mail(format!("Failed to build email: {e}")))?
+                .multipart(mp)
+                .map_err(|e| Error::mail(format!("Failed to build multipart email: {e}")))?
         };
 
         let transport = if smtp.tls {
@@ -778,5 +803,19 @@ mod tests {
         assert_eq!(json["cc"][0], "cc@example.com");
         assert_eq!(json["bcc"][0], "bcc@example.com");
         assert_eq!(json["reply_to"], "reply@example.com");
+    }
+
+    #[test]
+    fn test_smtp_multipart_path_compiles_with_attachment() {
+        // Smoke test — actual SMTP send is exercised by the Mailpit integration test in Plan 07.
+        // Here we just construct a MailMessage with an attachment and verify the type compiles end-to-end.
+        use crate::channels::MailMessage;
+        let mail = MailMessage::new()
+            .subject("Test")
+            .body("Hello")
+            .attachment("test.txt", "text/plain", b"hello".to_vec())
+            .expect("under-limit attachment must succeed");
+        assert_eq!(mail.attachments.len(), 1);
+        assert_eq!(mail.attachments[0].content_type, "text/plain");
     }
 }
