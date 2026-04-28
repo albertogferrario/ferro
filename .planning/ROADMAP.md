@@ -36,6 +36,7 @@
 - ✅ **v11.6 ferro-stripe Capability Refactor** — Phases 140-142. Reshape `ferro-stripe` from Stripe-product axis (`connect/`, `subscription/`) to capability axis (`checkout`, `refund`, `account`, `webhook`); land `CheckoutBuilder` / `CheckoutIntent`, `ProcessedEventLog` trait, fully-typed events (no `event_json` smuggling), `SyncDispatcher` as the sole handler registry for both sync and queue dispatch paths (Stripe events do not implement `ferro_events::Event`), queue path opt-in for eventual-consistency events. Source: gestiscilo-it v6.3 field test. [Design](research/v11.6-FERRO-STRIPE-REFACTOR.md)
 - ✅ **v11.7 Tailwind Static CSS Pipeline** — Phase 143 (shipped 2026-04-21). Pre-built `ferro-base.css` embedded at compile time, served from `/_ferro/ferro-base.css`; `tailwind_cdn` default flipped to `false`; `stylesheet_urls` added; theme injection migrated to plain `<style>`. Full details archived in [milestones/v11.7-ROADMAP.md](milestones/v11.7-ROADMAP.md).
 - ✅ **v11.8 HttpResponse Header Semantics Fix** — Phase 143.1 (shipped 2026-04-21). `HttpResponse::header()` currently pushes instead of replacing, producing comma-joined Content-Type headers like `text/plain,text/html; charset=utf-8` for every `JsonUi::render` response. Safari reads the first value and renders raw text — the actual cause of the gestiscilo.it field report that drove phase 143. Fix is replace-semantics (case-insensitive) plus an `append_header()` escape hatch for `Set-Cookie`. Phase 143 remains valuable (pre-built CSS > dev-only CDN) but did not and could not fix the reported Safari bug. [Context](phases/143.1-http-response-header-replace-semantics/143.1-CONTEXT.md)
+- 📋 **v11.9 Notifications & Rich-Text Foundations** — Phases 149-150 (planned 2026-04-28). Source: gestiscilo-it v6.4 Documents & Notifications field test. Extends `ferro-notifications` with `Channel::WhatsApp` + `Channel::InApp` adapters and `MailMessage::attachment()` builder; ships `ferro-json-ui RichTextEditor` component (Quill 2.0.3 plugin pattern) so consumer apps can author rich-text bodies without bundling. Auto-publishes via GH Actions. Single load-bearing prerequisite for gestiscilo-it v6.4 Phase 120 (notification dispatcher) and Phase 125 (document template editor).
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -1331,6 +1332,52 @@ Plans:
 - [x] 148-03-PLAN.md — Wave 2 surface updates + final CI gate: ### Image section added to COMPONENT_CATALOG in ferro-json-ui/src/lib.rs (pre-existing gap closed); ferro-mcp CatalogComponent for Image widened (dual-source description, src + svg props, count stays 41); ### Image section added to docs/src/json-ui/components.md with props table + safety callout + Rust + JSON examples + "no generic HTML escape hatch" pointer; full CI gate (cargo fmt + clippy --all --all-targets -- -D warnings + test --all-features) (Wave 2, depends on 02)
 
 Prior planning artifacts for the rejected `Component::HtmlEmbed` scope are archived at `.planning/phases/148-image-inline-svg-source/archive-htmlembed/` for decision-trail traceability (see `148-DISCUSSION-LOG.md`).
+
+---
+
+### 📋 v11.9 Notifications & Rich-Text Foundations (Phases 149-150, planned 2026-04-28)
+
+Source: gestiscilo-it v6.4 Documents & Notifications field test. Two upstream additions consumed by gestiscilo Phases 120 and 125 respectively. Auto-publishes via GH Actions on push to master; consumer apps (gestiscilo) bump `Cargo.toml` after publish.
+
+**Phase number reconciliation:** v11.9 inserts itself at the next available ferro phase number (149-150). v12.0 JSON-UI v2 still owns Phases 115-121 in its own scope; v11.9 does not collide.
+
+#### Phase 149: ferro-notifications WhatsApp + InApp channels + MailMessage attachment
+
+**Goal:** Extend `ferro-notifications` with two new channel adapters and a Mail attachment builder so consumer apps can dispatch transactional notifications across WhatsApp + in-app SSE banners and attach binary files (PDFs) to email. Additive, non-breaking to existing `Notification` impls. `Channel::Push` remains an enum-only stub (no APNs/FCM adapter) — consumer matrix UIs render the column as "coming soon".
+
+**Source:** gestiscilo-it v6.4 milestone — see `gestiscilo-it/app/.planning/REQUIREMENTS.md` FERRO-01, FERRO-02, FERRO-03, and `.planning/research/v6.4-DOCUMENTS-NOTIFICATIONS-STACK.md` for the full integration design.
+
+**Depends on:** ferro-whatsapp (existing crate); lettre 0.11 (already a transitive dep via ferro-notifications Mail driver).
+
+**Success Criteria** (what must be TRUE):
+  1. `ferro_notifications::Channel::WhatsApp` and `Channel::InApp` enum variants exist; existing `Channel::Mail`/`Database`/`Slack`/`Sms`/`Push` variants unchanged; the `Push` variant carries no adapter and the dispatcher emits a structured "channel not configured" no-op for it
+  2. `Notification::to_whatsapp(&self) -> Option<WhatsAppMessage>` and `Notification::to_in_app(&self) -> Option<InAppMessage>` are added as default-`None` trait methods so all existing `Notification` impls compile unchanged
+  3. `WhatsAppChannel` adapter accepts a `ferro_whatsapp::Client` injected via `NotificationConfig::whatsapp` and dispatches via that client's existing send API
+  4. `InAppChannel` adapter accepts an SSE broker handle plus a `DatabaseNotificationStore` trait object and writes both legs on dispatch
+  5. `MailMessage::attachment(filename, content_type, bytes)` builder exists; lettre wiring delivers a multi-part email with the attached file; max-size guard returns a typed error at 25 MB; round-trip integration test verifies attachment arrives intact at a Mailpit fixture
+  6. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green across the workspace; GH Actions publishes the new ferro-notifications version to crates.io
+  7. Consumer-side smoke test in gestiscilo-it: `use ferro_notifications::{Channel, WhatsAppChannel, InAppChannel};` resolves; `MailMessage::new().attachment(...)` compiles and sends
+
+**Plans:** TBD (run `/gsd-plan-phase 149` to break down)
+
+#### Phase 150: ferro-json-ui RichTextEditor component
+
+**Goal:** Ship a `RichTextEditor` component in `ferro-json-ui` that wraps Quill 2.0.3 (Snow theme, jsDelivr CDN, SRI-pinned, vanilla — no bundler) so consumer apps can author rich-text bodies in dashboard forms without a JS build step. Pattern mirrors the v6.1 `Chart` plugin and the existing `KeyValueEditor` component (Phase 146). Output is dual-format: Delta JSON (canonical, lossless) + sanitized HTML cache (rendering input). Toolbar `formats` whitelist constrained at the component-prop level so consumer apps cannot accidentally enable image/video/HTML-paste paths.
+
+**Source:** gestiscilo-it v6.4 milestone — used by Phase 125 (document template editor). See `gestiscilo-it/app/.planning/REQUIREMENTS.md` DOC-02, DOC-04 for consumer requirements.
+
+**Depends on:** Phase 149 (not strictly — independent — but bundling them in v11.9 keeps the upstream-publish cadence aligned).
+
+**Success Criteria** (what must be TRUE):
+  1. `Component::RichTextEditor(RichTextEditorProps)` exists in the ferro-json-ui component catalog with `name: String` (form field name), `value: Option<String>` (initial Delta JSON or HTML), `formats: Vec<String>` (toolbar whitelist; defaults to bold/italic/underline/lists/headings/links), `placeholder: Option<String>`, `theme: String` (defaults to "snow"); compile-enforced via the existing component derive
+  2. Renderer emits a `<div data-rich-text-editor>` host element plus the Quill IIFE bootstrap in the page footer; Quill is loaded from `cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js` with SRI hash; CSS from `dist/quill.snow.css` with SRI hash
+  3. On form submit, the runtime IIFE serializes the editor state to two hidden inputs: `{name}_delta` (Delta JSON) and `{name}_html` (sanitized HTML); consumer controllers read both
+  4. The `formats` whitelist is enforced both at editor initialization (passed as Quill toolbar config) and at HTML serialization (post-process strips disallowed tags); consumer cannot bypass by mutating the DOM
+  5. Component round-trips via the standard ferro-json-ui JSON-UI serde fixtures; documented under `### RichTextEditor` in `docs/src/json-ui/components.md` with props table + Rust + JSON example
+  6. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green; ferro-json-ui MCP catalog component count incremented and the new component documented in MCP catalog
+  7. ferro-mcp `CatalogComponent` for `RichTextEditor` exposes the schema so AI tooling can generate forms with rich-text fields
+
+**Plans:** TBD (run `/gsd-plan-phase 150` to break down)
 
 ---
 
