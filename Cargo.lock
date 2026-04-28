@@ -1793,6 +1793,7 @@ name = "ferro-notifications"
 version = "0.2.18"
 dependencies = [
  "async-trait",
+ "base64 0.22.1",
  "ferro-whatsapp",
  "lettre",
  "reqwest",
