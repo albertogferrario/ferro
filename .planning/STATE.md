@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 149-04-PLAN.md (Mail driver attachment wiring — SMTP MultiPart + Resend base64)
-last_updated: "2026-04-28T22:48:54.052Z"
+stopped_at: Completed 149-05-PLAN.md (WhatsApp channel adapter — static-facade wiring, gated by whatsapp_enabled)
+last_updated: "2026-04-28T22:56:25.802Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 149
   completed_phases: 134
   total_plans: 349
-  completed_plans: 325
+  completed_plans: 326
   percent: 93
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 149 (ferro-notifications-whatsapp-inapp-channels-mailmessage-attachment) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Plans: 0 of 7 — planning complete, ready for /gsd-execute-phase 149
 Workspace version: 0.2.5
 Status: Ready to execute
@@ -115,6 +115,7 @@ Progress: [██████████] 96%
 | Phase 149 P02 | 4m 12s | 3 tasks | 4 files |
 | Phase 149 P03 | 5m 1s | 2 tasks | 3 files |
 | Phase 149 P04 | 4m 41s | 3 tasks | 2 files |
+| Phase 149 P05 | 4m 7s | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ Recent decisions affecting current work:
 - [149-04] Resend driver uses base64 standard alphabet (NOT URL-safe) for attachment encoding — locked by test_base64_encoding_uses_standard_alphabet against pangram fixture "Many hands make light work." → "TWFueSBoYW5kcyBtYWtlIGxpZ2h0IHdvcmsu" (closes T-149-W2-03; URL-safe would corrupt binary content).
 - [149-04] ResendEmailPayload.attachments uses `#[serde(skip_serializing_if = "Vec::is_empty")]` so the no-attachment JSON wire payload contains NO "attachments" key — byte-identical to today. Existing test_resend_payload_serialization tightened with `assert!(json.get("attachments").is_none())` so it doubles as a backward-compat regression guard alongside the dedicated test_resend_payload_no_attachments_omits_field.
 - [149-04] Function-scoped `use lettre::message::{Attachment, MultiPart, SinglePart};` and `use base64::Engine;` inside the dispatcher's send_mail_smtp / send_mail_resend — matches the existing function-local pattern for header::ContentType + Mailbox; keeps dispatcher.rs's module-level imports tidy.
+- [149-05] NotificationConfig::whatsapp_enabled (default false) gates the WhatsApp adapter; from_env reads WHATSAPP_ENABLED and falls back to false on parse failure (matches the legacy SLACK_WEBHOOK_URL / MAIL_FROM_ADDRESS optional-read shape).
+- [149-05] send_whatsapp calls ferro_whatsapp::WhatsApp::send via the static facade (D-04 / ARCH-FINDING-01) — no client object injection. CONFIG.get().map(|c| c.whatsapp_enabled).unwrap_or(false) gate keeps the static-facade panic-on-uninit-init path unreachable for default configurations.
+- [149-05] Channel::InApp arm split out of the shared placeholder collapse as a transitional placeholder ("Channel not configured" wording aligns with the eventual NotificationConfig::in_app: Option<InAppConfig> gate). Plan 06 diff is now a body replacement, not a surrounding-scaffolding edit.
 
 ### Pending Todos
 
@@ -181,7 +185,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-28T22:48:54.045Z
-Stopped at: Completed 149-04-PLAN.md (Mail driver attachment wiring — SMTP MultiPart + Resend base64)
+Last session: 2026-04-28T22:56:25.795Z
+Stopped at: Completed 149-05-PLAN.md (WhatsApp channel adapter — static-facade wiring, gated by whatsapp_enabled)
 Resume file: None
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
