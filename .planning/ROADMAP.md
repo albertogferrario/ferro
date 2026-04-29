@@ -1386,7 +1386,14 @@ Plans:
   6. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green; ferro-json-ui MCP catalog component count incremented and the new component documented in MCP catalog
   7. ferro-mcp `CatalogComponent` for `RichTextEditor` exposes the schema so AI tooling can generate forms with rich-text fields
 
-**Plans:** TBD (run `/gsd-plan-phase 150` to break down)
+**Plans:** 5 plans
+
+Plans:
+- [ ] 150-01-PLAN.md — Wave 1 RED tests: render_rich_text_editor_* unit tests in render.rs, serde round-trip + theme-default tests in component.rs, runtime/mod.rs test arrays extended to require setupRichTextEditor (Wave 1, no deps)
+- [ ] 150-02-PLAN.md — Quill 2.0.3 SHA-384 SRI bootstrap: compute hashes from live jsDelivr bytes via curl + openssl, create ferro-json-ui/src/assets/quill.rs with four pinned pub(crate) consts (URLs + SRI), promote assets.rs to assets/ directory and wire submodule (Wave 2, depends on 01)
+- [ ] 150-03-PLAN.md — Component variant + render fn + asset injection: RichTextEditorProps + Component::RichTextEditor + serde arms + ComponentNode::rich_text_editor factory in component.rs; render_rich_text_editor + dispatch arm + collect_plugin_types_node enrollment in render.rs; new plugins/rich_text_editor.rs (RichTextEditorPlugin asset-only adapter) registered in global_plugin_registry — first-class component reuses the plugin asset pipeline (D-02) (Wave 3, depends on 01, 02)
+- [ ] 150-04-PLAN.md — Runtime IIFE: new ferro-json-ui/src/runtime/rich_text_editor.rs with ES5 setupRichTextEditor / initRichTextEditor / formatsToToolbarConfig / sanitizeHtmlByFormats; submit interception writes {name}_delta + {name}_html; formats whitelist enforced at init (Quill option) and submit (DOM-walker post-process); wire module + SOURCE push + dispatcher call into runtime/mod.rs (Wave 4, depends on 01, 03)
+- [ ] 150-05-PLAN.md — Public surface + docs + final CI: re-export RichTextEditorProps and RichTextEditorPlugin from lib.rs; ### RichTextEditor in COMPONENT_CATALOG; ferro-mcp CatalogComponent entry + count assertion 41→42; docs/src/json-ui/components.md ### RichTextEditor section; final fmt + clippy -D warnings + test --all-features gate (Wave 5, depends on 03, 04)
 
 ---
 
