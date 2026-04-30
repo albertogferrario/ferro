@@ -128,6 +128,7 @@ mod tests {
             "setupProductTiles",
             "setupKanban",
             "setupKeyValueEditor",
+            "setupRichTextEditor",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
@@ -160,6 +161,7 @@ mod tests {
             "setupProductTiles();",
             "setupKanban();",
             "setupKeyValueEditor();",
+            "setupRichTextEditor();",
         ] {
             assert!(dispatcher.contains(call), "dispatcher missing {call}");
         }
