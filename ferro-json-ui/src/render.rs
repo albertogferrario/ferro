@@ -9164,20 +9164,44 @@ mod tests {
     fn render_rich_text_editor_default_formats() {
         let props = rte_props_minimal("body");
         let html = render_rich_text_editor(&props, &serde_json::Value::Null);
-        assert!(html.contains("data-rich-text-editor"), "missing data-rich-text-editor: {html}");
-        assert!(html.contains(r#"data-rte-name="body""#), "missing data-rte-name attr");
-        assert!(html.contains(r#"data-rte-theme="snow""#), "missing data-rte-theme=snow");
-        assert!(html.contains("data-rte-formats="), "missing data-rte-formats attr");
+        assert!(
+            html.contains("data-rich-text-editor"),
+            "missing data-rich-text-editor: {html}"
+        );
+        assert!(
+            html.contains(r#"data-rte-name="body""#),
+            "missing data-rte-name attr"
+        );
+        assert!(
+            html.contains(r#"data-rte-theme="snow""#),
+            "missing data-rte-theme=snow"
+        );
+        assert!(
+            html.contains("data-rte-formats="),
+            "missing data-rte-formats attr"
+        );
         for fmt in ["bold", "italic", "underline", "list", "header", "link"] {
             assert!(
                 html.contains(fmt),
                 "default formats array missing {fmt}: {html}"
             );
         }
-        assert!(html.contains(r#"name="body_delta""#), "missing _delta hidden input");
-        assert!(html.contains(r#"name="body_html""#), "missing _html hidden input");
-        assert!(html.contains(r#"data-rte-hidden="delta""#), "missing data-rte-hidden=delta");
-        assert!(html.contains(r#"data-rte-hidden="html""#), "missing data-rte-hidden=html");
+        assert!(
+            html.contains(r#"name="body_delta""#),
+            "missing _delta hidden input"
+        );
+        assert!(
+            html.contains(r#"name="body_html""#),
+            "missing _html hidden input"
+        );
+        assert!(
+            html.contains(r#"data-rte-hidden="delta""#),
+            "missing data-rte-hidden=delta"
+        );
+        assert!(
+            html.contains(r#"data-rte-hidden="html""#),
+            "missing data-rte-hidden=html"
+        );
         // Required-flag hidden input must NOT appear when required is None.
         assert!(
             !html.contains(r#"name="body_required""#),
@@ -9197,13 +9221,31 @@ mod tests {
         let after = &html[start + marker.len()..];
         let end = after.find('"').expect("data-rte-formats unterminated");
         let formats_attr = &after[..end];
-        assert!(formats_attr.contains("bold"), "custom formats missing bold: {formats_attr}");
-        assert!(formats_attr.contains("italic"), "custom formats missing italic: {formats_attr}");
-        assert!(formats_attr.contains("link"), "custom formats missing link: {formats_attr}");
-        assert!(!formats_attr.contains("underline"), "custom formats unexpectedly contains underline");
-        assert!(!formats_attr.contains("header"), "custom formats unexpectedly contains header");
+        assert!(
+            formats_attr.contains("bold"),
+            "custom formats missing bold: {formats_attr}"
+        );
+        assert!(
+            formats_attr.contains("italic"),
+            "custom formats missing italic: {formats_attr}"
+        );
+        assert!(
+            formats_attr.contains("link"),
+            "custom formats missing link: {formats_attr}"
+        );
+        assert!(
+            !formats_attr.contains("underline"),
+            "custom formats unexpectedly contains underline"
+        );
+        assert!(
+            !formats_attr.contains("header"),
+            "custom formats unexpectedly contains header"
+        );
         // Note: 'list' might be a substring of nothing else here; still assert exclusion.
-        assert!(!formats_attr.contains("list"), "custom formats unexpectedly contains list");
+        assert!(
+            !formats_attr.contains("list"),
+            "custom formats unexpectedly contains list"
+        );
     }
 
     #[test]
@@ -9229,8 +9271,14 @@ mod tests {
         let mut props = rte_props_minimal("body");
         props.label = Some("Body".to_string());
         let html = render_rich_text_editor(&props, &serde_json::Value::Null);
-        assert!(html.contains("<label"), "missing <label> when label is Some");
-        assert!(html.contains(r#"for="body""#), "missing for=\"body\" on label");
+        assert!(
+            html.contains("<label"),
+            "missing <label> when label is Some"
+        );
+        assert!(
+            html.contains(r#"for="body""#),
+            "missing for=\"body\" on label"
+        );
         assert!(html.contains(">Body</label>"), "missing label text");
         // <label> must precede the <div data-rich-text-editor host.
         let label_pos = html.find("<label").expect("label not found");
@@ -9246,9 +9294,18 @@ mod tests {
         let mut props = rte_props_minimal("body");
         props.error = Some("Required".to_string());
         let html = render_rich_text_editor(&props, &serde_json::Value::Null);
-        assert!(html.contains("border-destructive"), "missing border-destructive class");
-        assert!(html.contains(r#"id="err-body""#), "missing error paragraph id");
-        assert!(html.contains("text-destructive"), "missing text-destructive class");
+        assert!(
+            html.contains("border-destructive"),
+            "missing border-destructive class"
+        );
+        assert!(
+            html.contains(r#"id="err-body""#),
+            "missing error paragraph id"
+        );
+        assert!(
+            html.contains("text-destructive"),
+            "missing text-destructive class"
+        );
         assert!(html.contains(">Required</p>"), "missing error message text");
     }
 
@@ -9272,8 +9329,14 @@ mod tests {
             html.contains(r#"name="body_required""#),
             "required=Some(true) must emit body_required hidden input: {html}"
         );
-        assert!(html.contains("data-rte-required"), "missing data-rte-required marker");
-        assert!(html.contains(r#"value="1""#), "required hidden input must have value=1");
+        assert!(
+            html.contains("data-rte-required"),
+            "missing data-rte-required marker"
+        );
+        assert!(
+            html.contains(r#"value="1""#),
+            "required hidden input must have value=1"
+        );
     }
 
     #[test]
@@ -9289,10 +9352,7 @@ mod tests {
             html.contains("&lt;script&gt;x&lt;/script&gt;"),
             "expected escaped script tag: {html}"
         );
-        assert!(
-            html.contains("&quot;"),
-            "expected escaped quote: {html}"
-        );
+        assert!(html.contains("&quot;"), "expected escaped quote: {html}");
     }
 
     #[test]
@@ -9306,7 +9366,9 @@ mod tests {
         let result = render_to_html_with_plugins(&view, &json!({}));
         // CSS asset
         assert!(
-            result.css_head.contains("cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css"),
+            result
+                .css_head
+                .contains("cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css"),
             "css_head missing Quill snow CSS URL: {}",
             result.css_head
         );
@@ -9320,7 +9382,9 @@ mod tests {
         );
         // JS asset
         assert!(
-            result.scripts.contains("cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"),
+            result
+                .scripts
+                .contains("cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"),
             "scripts missing Quill JS URL: {}",
             result.scripts
         );

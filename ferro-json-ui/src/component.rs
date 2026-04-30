@@ -4247,11 +4247,7 @@ mod rich_text_editor_tests {
         let original = Component::RichTextEditor(RichTextEditorProps {
             name: "body".to_string(),
             value: Some(r#"{"ops":[{"insert":"hello\n"}]}"#.to_string()),
-            formats: vec![
-                "bold".to_string(),
-                "italic".to_string(),
-                "link".to_string(),
-            ],
+            formats: vec!["bold".to_string(), "italic".to_string(), "link".to_string()],
             placeholder: Some("Type here...".to_string()),
             theme: "snow".to_string(),
             label: Some("Body".to_string()),
@@ -4260,8 +4256,8 @@ mod rich_text_editor_tests {
             required: Some(true),
         });
 
-        let serialized = serde_json::to_value(&original)
-            .expect("serialize RichTextEditor component");
+        let serialized =
+            serde_json::to_value(&original).expect("serialize RichTextEditor component");
 
         assert_eq!(
             serialized.get("type").and_then(|v| v.as_str()),
@@ -4277,8 +4273,8 @@ mod rich_text_editor_tests {
             Some("snow")
         );
 
-        let deserialized: Component = serde_json::from_value(serialized)
-            .expect("deserialize RichTextEditor component");
+        let deserialized: Component =
+            serde_json::from_value(serialized).expect("deserialize RichTextEditor component");
 
         match deserialized {
             Component::RichTextEditor(ref p) => {
@@ -4293,10 +4289,7 @@ mod rich_text_editor_tests {
             }
             other => panic!("expected RichTextEditor, got {other:?}"),
         }
-        assert_eq!(
-            original, deserialized,
-            "PartialEq round-trip failed"
-        );
+        assert_eq!(original, deserialized, "PartialEq round-trip failed");
     }
 
     #[test]
@@ -4306,17 +4299,23 @@ mod rich_text_editor_tests {
             "type": "RichTextEditor",
             "name": "body",
         });
-        let parsed: Component = serde_json::from_value(json_input)
-            .expect("deserialize minimal RichTextEditor");
+        let parsed: Component =
+            serde_json::from_value(json_input).expect("deserialize minimal RichTextEditor");
         match parsed {
             Component::RichTextEditor(p) => {
                 assert_eq!(p.theme, "snow", "theme default must be \"snow\"");
                 // Default formats per D-18: bold, italic, underline, list, header, link
-                assert_eq!(p.formats.len(), 6, "default formats must have 6 entries: {:?}", p.formats);
+                assert_eq!(
+                    p.formats.len(),
+                    6,
+                    "default formats must have 6 entries: {:?}",
+                    p.formats
+                );
                 for fmt in ["bold", "italic", "underline", "list", "header", "link"] {
                     assert!(
                         p.formats.iter().any(|f| f == fmt),
-                        "default formats missing {fmt}: {:?}", p.formats
+                        "default formats missing {fmt}: {:?}",
+                        p.formats
                     );
                 }
                 assert!(p.value.is_none());
