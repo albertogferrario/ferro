@@ -9136,4 +9136,227 @@ mod tests {
             "action bar must render below <dl>; got dl_close={dl_close}, modifica={modifica}"
         );
     }
+
+    // ── RichTextEditor render tests (Phase 150, Wave 1 RED) ─────────────
+
+    fn rte_props_minimal(name: &str) -> RichTextEditorProps {
+        RichTextEditorProps {
+            name: name.to_string(),
+            value: None,
+            formats: vec![
+                "bold".to_string(),
+                "italic".to_string(),
+                "underline".to_string(),
+                "list".to_string(),
+                "header".to_string(),
+                "link".to_string(),
+            ],
+            placeholder: None,
+            theme: "snow".to_string(),
+            label: None,
+            error: None,
+            data_path: None,
+            required: None,
+        }
+    }
+
+    #[test]
+    fn render_rich_text_editor_default_formats() {
+        let props = rte_props_minimal("body");
+        let html = render_rich_text_editor(&props, &serde_json::Value::Null);
+        assert!(html.contains("data-rich-text-editor"), "missing data-rich-text-editor: {html}");
+        assert!(html.contains(r#"data-rte-name="body""#), "missing data-rte-name attr");
+        assert!(html.contains(r#"data-rte-theme="snow""#), "missing data-rte-theme=snow");
+        assert!(html.contains("data-rte-formats="), "missing data-rte-formats attr");
+        for fmt in ["bold", "italic", "underline", "list", "header", "link"] {
+            assert!(
+                html.contains(fmt),
+                "default formats array missing {fmt}: {html}"
+            );
+        }
+        assert!(html.contains(r#"name="body_delta""#), "missing _delta hidden input");
+        assert!(html.contains(r#"name="body_html""#), "missing _html hidden input");
+        assert!(html.contains(r#"data-rte-hidden="delta""#), "missing data-rte-hidden=delta");
+        assert!(html.contains(r#"data-rte-hidden="html""#), "missing data-rte-hidden=html");
+        // Required-flag hidden input must NOT appear when required is None.
+        assert!(
+            !html.contains(r#"name="body_required""#),
+            "body_required must not appear when required is None"
+        );
+    }
+
+    #[test]
+    fn render_rich_text_editor_custom_formats() {
+        let mut props = rte_props_minimal("body");
+        props.formats = vec!["bold".to_string(), "italic".to_string(), "link".to_string()];
+        let html = render_rich_text_editor(&props, &serde_json::Value::Null);
+        // Locate the data-rte-formats="..." attribute substring and assert what it
+        // contains / excludes.
+        let marker = r#"data-rte-formats=""#;
+        let start = html.find(marker).expect("data-rte-formats= attr not found");
+        let after = &html[start + marker.len()..];
+        let end = after.find('"').expect("data-rte-formats unterminated");
+        let formats_attr = &after[..end];
+        assert!(formats_attr.contains("bold"), "custom formats missing bold: {formats_attr}");
+        assert!(formats_attr.contains("italic"), "custom formats missing italic: {formats_attr}");
+        assert!(formats_attr.contains("link"), "custom formats missing link: {formats_attr}");
+        assert!(!formats_attr.contains("underline"), "custom formats unexpectedly contains underline");
+        assert!(!formats_attr.contains("header"), "custom formats unexpectedly contains header");
+        // Note: 'list' might be a substring of nothing else here; still assert exclusion.
+        assert!(!formats_attr.contains("list"), "custom formats unexpectedly contains list");
+    }
+
+    #[test]
+    fn render_rich_text_editor_with_value_html() {
+        let mut props = rte_props_minimal("body");
+        props.value = Some("<p>Hello <b>world</b></p>".to_string());
+        let html = render_rich_text_editor(&props, &serde_json::Value::Null);
+        // Initial value must NOT appear as raw HTML inside the wrapper text content.
+        // It must appear escaped so JS-disabled clients see the text rather than DOM.
+        // The IIFE rehydrates this back to real DOM on init (D-12).
+        assert!(
+            !html.contains("<b>world</b>"),
+            "value must be html-escaped at render time: {html}"
+        );
+        assert!(
+            html.contains("&lt;b&gt;world&lt;/b&gt;"),
+            "expected escaped initial value: {html}"
+        );
+    }
+
+    #[test]
+    fn render_rich_text_editor_with_label() {
+        let mut props = rte_props_minimal("body");
+        props.label = Some("Body".to_string());
+        let html = render_rich_text_editor(&props, &serde_json::Value::Null);
+        assert!(html.contains("<label"), "missing <label> when label is Some");
+        assert!(html.contains(r#"for="body""#), "missing for=\"body\" on label");
+        assert!(html.contains(">Body</label>"), "missing label text");
+        // <label> must precede the <div data-rich-text-editor host.
+        let label_pos = html.find("<label").expect("label not found");
+        let host_pos = html.find("data-rich-text-editor").expect("host not found");
+        assert!(
+            label_pos < host_pos,
+            "<label> must precede <div data-rich-text-editor>: label_pos={label_pos} host_pos={host_pos}"
+        );
+    }
+
+    #[test]
+    fn render_rich_text_editor_with_error() {
+        let mut props = rte_props_minimal("body");
+        props.error = Some("Required".to_string());
+        let html = render_rich_text_editor(&props, &serde_json::Value::Null);
+        assert!(html.contains("border-destructive"), "missing border-destructive class");
+        assert!(html.contains(r#"id="err-body""#), "missing error paragraph id");
+        assert!(html.contains("text-destructive"), "missing text-destructive class");
+        assert!(html.contains(">Required</p>"), "missing error message text");
+    }
+
+    #[test]
+    fn render_rich_text_editor_with_placeholder() {
+        let mut props = rte_props_minimal("body");
+        props.placeholder = Some("Type here...".to_string());
+        let html = render_rich_text_editor(&props, &serde_json::Value::Null);
+        assert!(
+            html.contains(r#"data-rte-placeholder="Type here...""#),
+            "missing data-rte-placeholder attr: {html}"
+        );
+    }
+
+    #[test]
+    fn render_rich_text_editor_required_emits_hidden() {
+        let mut props = rte_props_minimal("body");
+        props.required = Some(true);
+        let html = render_rich_text_editor(&props, &serde_json::Value::Null);
+        assert!(
+            html.contains(r#"name="body_required""#),
+            "required=Some(true) must emit body_required hidden input: {html}"
+        );
+        assert!(html.contains("data-rte-required"), "missing data-rte-required marker");
+        assert!(html.contains(r#"value="1""#), "required hidden input must have value=1");
+    }
+
+    #[test]
+    fn render_rich_text_editor_html_escapes_dynamic_attrs() {
+        let mut props = rte_props_minimal("body");
+        props.placeholder = Some(r#""><script>x</script>"#.to_string());
+        let html = render_rich_text_editor(&props, &serde_json::Value::Null);
+        assert!(
+            !html.contains("<script>x</script>"),
+            "raw <script> must not appear unescaped: {html}"
+        );
+        assert!(
+            html.contains("&lt;script&gt;x&lt;/script&gt;"),
+            "expected escaped script tag: {html}"
+        );
+        assert!(
+            html.contains("&quot;"),
+            "expected escaped quote: {html}"
+        );
+    }
+
+    #[test]
+    fn render_rich_text_editor_emits_quill_sri_assets_via_pipeline() {
+        let view = JsonUiView::new().component(crate::component::ComponentNode {
+            key: "body".to_string(),
+            component: Component::RichTextEditor(rte_props_minimal("body")),
+            action: None,
+            visibility: None,
+        });
+        let result = render_to_html_with_plugins(&view, &json!({}));
+        // CSS asset
+        assert!(
+            result.css_head.contains("cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css"),
+            "css_head missing Quill snow CSS URL: {}",
+            result.css_head
+        );
+        assert!(
+            result.css_head.contains(r#"integrity="sha384-"#),
+            "css_head missing sha384 integrity attr"
+        );
+        assert!(
+            result.css_head.contains(r#"crossorigin="anonymous""#),
+            "css_head missing crossorigin=anonymous"
+        );
+        // JS asset
+        assert!(
+            result.scripts.contains("cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"),
+            "scripts missing Quill JS URL: {}",
+            result.scripts
+        );
+        assert!(
+            result.scripts.contains(r#"integrity="sha384-"#),
+            "scripts missing sha384 integrity attr"
+        );
+        assert!(
+            result.scripts.contains(r#"crossorigin="anonymous""#),
+            "scripts missing crossorigin=anonymous"
+        );
+
+        // Dedup: two editors on one page → exactly one Quill asset entry each.
+        let view2 = JsonUiView::new()
+            .component(crate::component::ComponentNode {
+                key: "body1".to_string(),
+                component: Component::RichTextEditor(rte_props_minimal("body1")),
+                action: None,
+                visibility: None,
+            })
+            .component(crate::component::ComponentNode {
+                key: "body2".to_string(),
+                component: Component::RichTextEditor(rte_props_minimal("body2")),
+                action: None,
+                visibility: None,
+            });
+        let result2 = render_to_html_with_plugins(&view2, &json!({}));
+        assert_eq!(
+            result2.scripts.matches("quill.js").count(),
+            1,
+            "Quill JS must appear exactly once even with two editors"
+        );
+        assert_eq!(
+            result2.css_head.matches("quill.snow.css").count(),
+            1,
+            "Quill CSS must appear exactly once even with two editors"
+        );
+    }
 }
