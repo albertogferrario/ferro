@@ -4,13 +4,14 @@
 //! then prints the full /auth/verify URL. Useful for admin impersonation and
 //! local development.
 
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
 use console::style;
 use rand::RngCore;
 use sea_orm::{ConnectionTrait, Database, DbBackend, Statement, Value};
 use sha2::{Digest, Sha256};
 use std::env;
 use std::process;
+use uuid::Uuid;
 
 pub fn run(email: String) {
     dotenvy::dotenv().ok();
@@ -76,35 +77,21 @@ async fn generate_link(database_url: &str, app_url: &str, email: &str) -> Result
         None => return Err(format!("No user found with email: {email}")),
     };
 
-    // 32-byte random token encoded as hex (matches the application auth controller)
+    // 32-byte random token encoded as hex (matches the application auth controller).
     let mut raw = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut raw);
     let token_raw: String = raw.iter().map(|b| format!("{b:02x}")).collect();
 
-    // SHA256 of the hex string stored as binary blob
+    // SHA256 of the hex string stored as binary blob.
     let token_hash: Vec<u8> = Sha256::digest(token_raw.as_bytes()).to_vec();
 
-    // UUID v4 from random bytes
-    let mut uid = [0u8; 16];
-    rand::thread_rng().fill_bytes(&mut uid);
-    uid[6] = (uid[6] & 0x0f) | 0x40;
-    uid[8] = (uid[8] & 0x3f) | 0x80;
-    let uuid = format!(
-        "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
-        u32::from_be_bytes(uid[0..4].try_into().unwrap()),
-        u16::from_be_bytes(uid[4..6].try_into().unwrap()),
-        u16::from_be_bytes(uid[6..8].try_into().unwrap()),
-        u16::from_be_bytes(uid[8..10].try_into().unwrap()),
-        {
-            let mut b = [0u8; 8];
-            b[2..8].copy_from_slice(&uid[10..16]);
-            u64::from_be_bytes(b)
-        }
-    );
+    let id: Uuid = Uuid::new_v4();
+    let now: DateTime<Utc> = Utc::now();
+    let expires_at: DateTime<Utc> = now + Duration::minutes(15);
 
-    let now = Utc::now();
-    let expires_at = now + Duration::minutes(15);
-
+    // Bind native typed `Value` variants. SeaORM's Postgres driver maps these
+    // to `uuid` / `timestamptz` directly; the SQLite driver stores them as
+    // text/blob via the same code path. No SQL casts needed.
     let insert_sql = match backend {
         DbBackend::Postgres => {
             "INSERT INTO magic_link_tokens (id, user_id, token_hash, expires_at, created_at) \
@@ -120,15 +107,11 @@ async fn generate_link(database_url: &str, app_url: &str, email: &str) -> Result
         backend,
         insert_sql,
         [
-            Value::String(Some(Box::new(uuid))),
+            Value::Uuid(Some(Box::new(id))),
             Value::BigInt(Some(user_id)),
             Value::Bytes(Some(Box::new(token_hash))),
-            Value::String(Some(Box::new(
-                expires_at.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string(),
-            ))),
-            Value::String(Some(Box::new(
-                now.format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string(),
-            ))),
+            Value::ChronoDateTimeUtc(Some(Box::new(expires_at))),
+            Value::ChronoDateTimeUtc(Some(Box::new(now))),
         ],
     ))
     .await
