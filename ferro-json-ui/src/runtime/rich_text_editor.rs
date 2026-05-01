@@ -151,9 +151,16 @@ pub(super) const SOURCE: &str = r#"
         wrapper.appendChild(p);
     }
 
-    // Minimal CSS.escape polyfill scoped to id strings (ES5-safe).
+    // CSS selector escaping for id strings. Delegates to the standard
+    // CSS.escape when available (all modern browsers); falls back to a
+    // hand-rolled polyfill for environments that lack it.
     function cssEscapeId(id) {
-        return String(id).replace(/(["\\#.()\[\]:>+~*=^$|])/g, '\\$1');
+        if (typeof CSS !== 'undefined' && CSS.escape) {
+            return CSS.escape(id);
+        }
+        // Fallback: covers common CSS selector metacharacters.
+        // Callers must ensure id is a simple identifier on very old browsers.
+        return String(id).replace(/(["\\#.()\[\]:>+~*=^$|!@,%?; ])/g, '\\$1');
     }
 
     function formatsToToolbarConfig(formats) {
