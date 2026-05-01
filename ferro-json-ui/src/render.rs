@@ -19,9 +19,9 @@ use crate::component::{
     FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps, ImageSource,
     InputProps, InputType, KanbanBoardProps, KeyValueEditorProps, ModalProps,
     NotificationDropdownProps, Orientation, PageHeaderProps, PaginationProps, PluginProps,
-    ProductTileProps, ProgressProps, SelectProps, SeparatorProps, SidebarProps, Size,
-    SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextElement, TextProps,
-    ToastProps, ToastVariant,
+    ProductTileProps, ProgressProps, RichTextEditorProps, SelectProps, SeparatorProps,
+    SidebarProps, Size, SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps,
+    TextElement, TextProps, ToastProps, ToastVariant,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::plugin::{collect_plugin_assets, Asset};
@@ -161,6 +161,13 @@ fn collect_plugin_types_node(node: &ComponentNode, types: &mut HashSet<String>) 
             for child in &props.buttons {
                 collect_plugin_types_node(child, types);
             }
+        }
+        // First-class component that requires CDN-loaded JS/CSS (D-02).
+        // Enrolling its type name into the plugin-types set routes Quill JS+CSS
+        // through the existing collect_plugin_assets dedup pipeline — one load
+        // per page, identical SRI emission shape as MapPlugin.
+        Component::RichTextEditor(_) => {
+            types.insert("RichTextEditor".to_string());
         }
         // Leaf components have no children to recurse into.
         Component::Table(_)
@@ -320,6 +327,7 @@ fn render_component(component: &Component, data: &Value) -> String {
         Component::Checkbox(props) => render_checkbox(props, data),
         Component::Switch(props) => render_switch(props, data),
         Component::KeyValueEditor(props) => render_key_value_editor(props, data),
+        Component::RichTextEditor(props) => render_rich_text_editor(props, data),
 
         // Layout components.
         Component::Grid(props) => render_grid(props, data),
@@ -2166,6 +2174,129 @@ fn render_key_value_editor(props: &KeyValueEditorProps, data: &Value) -> String 
         ));
     }
 
+    html.push_str("</div>");
+    html
+}
+
+/// Renders a [`crate::component::Component::RichTextEditor`] host with two
+/// hidden inputs that the runtime IIFE syncs on form submit.
+///
+/// HTML contract (D-05, D-11, D-27, D-28, D-29):
+///
+/// - Outer wrapper carries `data-rich-text-editor` plus per-instance
+///   configuration via `data-rte-*` attributes (formats array as JSON, theme,
+///   placeholder, name).
+/// - Editor host element carries `id="{name}"` and `data-rte-host`. Quill
+///   itself sets `role="textbox"` and `contenteditable="true"` at init time.
+/// - Hidden inputs `{name}_delta` (Delta JSON) and `{name}_html` (sanitized
+///   HTML) carry the initial value verbatim until the IIFE wires the submit
+///   listener; JS-disabled clients submit whatever the renderer wrote.
+/// - When `required == Some(true)`, a third hidden input
+///   `{name}_required = "1"` provides the IIFE's empty-content guard with a
+///   server-trusted flag (the prop drives both DOM-level and submit-time
+///   guards).
+/// - When `error` is `Some`, a `<p>` below the host carries
+///   `text-destructive` styling and the wrapper carries `border-destructive`.
+///
+/// Quill JS and CSS are NOT injected here — they flow through the
+/// `RichTextEditorPlugin` asset adapter via the page-level
+/// `collect_plugin_assets` dedup pipeline (D-02). Whenever the view tree
+/// contains a `Component::RichTextEditor`, `collect_plugin_types_node`
+/// inserts `"RichTextEditor"` into the plugin-types set, and the existing
+/// pipeline emits the SRI-pinned `<script>`/`<link>` tags exactly once per
+/// page.
+fn render_rich_text_editor(props: &RichTextEditorProps, data: &Value) -> String {
+    // 1. Resolve the initial value.
+    //    Precedence: explicit props.value > data_path resolution > "".
+    let initial_value: String = if let Some(ref v) = props.value {
+        v.clone()
+    } else if let Some(ref dp) = props.data_path {
+        resolve_path_string(data, dp).unwrap_or_default()
+    } else {
+        String::new()
+    };
+    let initial_value_escaped = html_escape(&initial_value);
+
+    // 2. JSON-encode the formats array for the data-rte-formats attribute.
+    //    serde_json::to_string emits a quoted, escaped JSON literal; html_escape
+    //    then handles attribute-context escaping for `"`, `<`, `>`, `&`.
+    let formats_json = serde_json::to_string(&props.formats).unwrap_or_else(|_| "[]".to_string());
+    let formats_attr = html_escape(&formats_json);
+
+    // 3. Pre-escape every other dynamic value emitted into HTML.
+    let name_escaped = html_escape(&props.name);
+    let theme_escaped = html_escape(&props.theme);
+    let placeholder_attr = props
+        .placeholder
+        .as_deref()
+        .map(html_escape)
+        .map(|s| format!(r#" data-rte-placeholder="{s}""#))
+        .unwrap_or_default();
+
+    // aria-label derives from `label` if present, else `name` (D-28).
+    let aria_label_source = props.label.as_deref().unwrap_or(&props.name);
+    let aria_label_attr = format!(r#" aria-label="{}""#, html_escape(aria_label_source));
+
+    // 4. Error state classes (mirrors render_input / render_key_value_editor).
+    let has_error = props.error.is_some();
+    let wrapper_error_class = if has_error { " border-destructive" } else { "" };
+    let host_error_class = if has_error { " border-destructive" } else { "" };
+
+    // 5. Outer wrapper — layout and label slot only. Does NOT carry
+    //    data-rich-text-editor so that the label can precede the inner
+    //    editor wrapper (the test contract requires label_pos < rte_pos).
+    let mut html = String::with_capacity(512);
+    html.push_str(&format!(r#"<div class="space-y-1{wrapper_error_class}">"#));
+
+    // 6. Optional label — emitted BEFORE the inner data-rich-text-editor div
+    //    so that for="" association and screen-reader reading order are correct.
+    if let Some(ref label) = props.label {
+        let label_escaped = html_escape(label);
+        html.push_str(&format!(
+            r#"<label class="block text-sm font-medium text-text" for="{name_escaped}">{label_escaped}</label>"#
+        ));
+    }
+
+    // Inner editor wrapper — carries all data-rte-* configuration attributes
+    // consumed by the runtime IIFE (Plan 04).
+    html.push_str(&format!(
+        r#"<div data-rich-text-editor data-rte-name="{name_escaped}" data-rte-formats="{formats_attr}" data-rte-theme="{theme_escaped}"{placeholder_attr}{aria_label_attr}>"#
+    ));
+
+    // 7. Editor host. Quill mounts here; `id="{name}"` lets the optional
+    //    label's `for` attribute associate correctly. The minimum height
+    //    keeps the empty editor visible before Quill init lands.
+    html.push_str(&format!(
+        r#"<div class="ferro-rte-host rounded-md border border-border min-h-[120px] bg-background{host_error_class}" id="{name_escaped}" data-rte-host>{initial_value_escaped}</div>"#
+    ));
+
+    // 8. Hidden inputs (D-05). Both seeded with the initial value (after
+    //    html_escape) so JS-disabled clients submit whatever the renderer
+    //    wrote. The IIFE rewrites both on every submit.
+    html.push_str(&format!(
+        r#"<input type="hidden" name="{name_escaped}_delta" data-rte-hidden="delta" value="{initial_value_escaped}">"#
+    ));
+    html.push_str(&format!(
+        r#"<input type="hidden" name="{name_escaped}_html" data-rte-hidden="html" value="{initial_value_escaped}">"#
+    ));
+
+    // 9. Required marker (D-29) — only when explicitly required==Some(true).
+    if let Some(true) = props.required {
+        html.push_str(&format!(
+            r#"<input type="hidden" name="{name_escaped}_required" data-rte-required value="1">"#
+        ));
+    }
+
+    // 10. Optional error region.
+    if let Some(ref error) = props.error {
+        let error_escaped = html_escape(error);
+        html.push_str(&format!(
+            r#"<p id="err-{name_escaped}" class="text-sm text-destructive">{error_escaped}</p>"#
+        ));
+    }
+
+    // Close inner data-rich-text-editor div, then outer wrapper div.
+    html.push_str("</div>");
     html.push_str("</div>");
     html
 }
