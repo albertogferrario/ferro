@@ -1202,6 +1202,93 @@ JSON output:
 { "key": "notifications-switch", "type": "Switch", "field": "notifications", "label": "Enable Notifications", "description": "Receive email notifications", "checked": true, "data_path": "/data/user/notifications_enabled" }
 ```
 
+### RichTextEditor
+
+Rich-text editor backed by [Quill 2.0.3](https://quilljs.com/) (Snow theme,
+jsDelivr CDN, SHA-384 SRI-pinned). Authors get rich-text input in dashboard
+forms with no JS build step. Quill loads once per page (assets are
+deduplicated across multiple editor instances).
+
+On form submit the runtime IIFE writes **two hidden inputs**:
+
+- `{name}_delta` — the canonical Delta JSON (lossless, round-trips through
+  Quill perfectly).
+- `{name}_html` — sanitized HTML (cheap to display, search-indexable,
+  browser-trivially-renderable).
+
+Storing both removes the runtime cost of converting Delta to HTML on every
+read. Consumer controllers read both fields via `req.input()`.
+
+The `formats` array is the **single source of truth** for the toolbar
+allowlist. It constrains both Quill's toolbar (at init) and the HTML
+post-process (at submit). Image / video / HTML-paste paths are not reachable
+through the prop surface.
+
+| Prop          | Type             | Default                                                            | Description                                                                                                                          |
+|---------------|------------------|--------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `name`        | `String`         | —                                                                  | Base form field name. The IIFE emits `{name}_delta` and `{name}_html` on submit.                                                     |
+| `value`       | `Option<String>` | `None`                                                             | Initial content. Auto-detected at runtime: parses as JSON Delta when the string has an `ops` array; otherwise loaded as filtered HTML. |
+| `formats`     | `Vec<String>`    | `["bold","italic","underline","list","header","link"]`             | Toolbar / allowlist whitelist. Drives both Quill's toolbar config and the HTML post-process.                                         |
+| `placeholder` | `Option<String>` | `None`                                                             | Placeholder shown when the editor is empty.                                                                                          |
+| `theme`       | `String`         | `"snow"`                                                           | Quill theme. Only `"snow"` is supported in v1.                                                                                       |
+| `label`       | `Option<String>` | `None`                                                             | Optional label rendered above the editor host.                                                                                       |
+| `error`       | `Option<String>` | `None`                                                             | Validation error rendered below the editor with destructive token styling.                                                           |
+| `data_path`   | `Option<String>` | `None`                                                             | JSON pointer for pre-fill at render time. Overridden by explicit `value` if both are set.                                            |
+| `required`    | `Option<bool>`   | `None`                                                             | When `Some(true)`, the IIFE prevents submission with empty content (after trim) and surfaces a "Required" error.                     |
+
+#### Rust example
+
+```rust
+use ferro_json_ui::{ComponentNode, RichTextEditorProps};
+
+let node = ComponentNode::rich_text_editor(
+    "body",
+    RichTextEditorProps {
+        name: "body".into(),
+        value: None,
+        formats: ["bold", "italic", "underline", "link"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        placeholder: Some("Write something…".into()),
+        theme: "snow".into(),
+        label: Some("Body".into()),
+        error: None,
+        data_path: Some("/data/post/body".into()),
+        required: Some(true),
+    },
+);
+```
+
+The handler reads both hidden inputs on submit:
+
+```rust
+let body_delta = req.input::<String>("body_delta").unwrap_or_default();
+let body_html = req.input::<String>("body_html").unwrap_or_default();
+// Persist body_delta as the canonical record; body_html as the rendering cache.
+```
+
+#### JSON example
+
+```json
+{
+    "type": "RichTextEditor",
+    "name": "body",
+    "formats": ["bold", "italic", "underline", "link"],
+    "placeholder": "Write something…",
+    "theme": "snow",
+    "label": "Body",
+    "data_path": "/data/post/body",
+    "required": true
+}
+```
+
+> **Asset loading.** Quill JS and CSS are loaded once per page from
+> `cdn.jsdelivr.net/npm/quill@2.0.3/`. Both assets carry SHA-384 integrity
+> hashes pinned at compile time and `crossorigin="anonymous"`. Bumping the
+> Quill version is a deliberate phase: re-run the SRI computation and
+> update the constants in `ferro-json-ui/src/assets/quill.rs`.
+
 ### Button
 
 Interactive button with visual variants, sizing, and optional icon.
