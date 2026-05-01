@@ -38,10 +38,12 @@ mod tests {
 
     #[test]
     fn quill_constants_are_non_empty() {
-        assert!(!QUILL_JS_URL.is_empty());
-        assert!(!QUILL_CSS_URL.is_empty());
-        assert!(!QUILL_JS_SRI.is_empty());
-        assert!(!QUILL_CSS_SRI.is_empty());
+        // Verify that none of the constants are accidentally set to an empty string.
+        // Uses assert_ne! to avoid clippy::const_is_empty and clippy::len_zero lints.
+        assert_ne!(QUILL_JS_URL, "", "QUILL_JS_URL must not be empty");
+        assert_ne!(QUILL_CSS_URL, "", "QUILL_CSS_URL must not be empty");
+        assert_ne!(QUILL_JS_SRI, "", "QUILL_JS_SRI must not be empty");
+        assert_ne!(QUILL_CSS_SRI, "", "QUILL_CSS_SRI must not be empty");
     }
 
     #[test]
