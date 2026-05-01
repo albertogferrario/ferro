@@ -4,12 +4,14 @@
 //! `GET /_ferro/ferro-base.css` route. Embedded at compile time —
 //! no runtime file I/O.
 
+pub(crate) mod quill;
+
 /// Pre-built Tailwind CSS covering every utility class emitted by
 /// ferro-json-ui components.
 ///
 /// Regenerate with `scripts/gen-ferro-base-css.sh` after adding or
 /// modifying components that introduce new utility classes.
-pub const FERRO_BASE_CSS: &str = include_str!("../assets/ferro-base.css");
+pub const FERRO_BASE_CSS: &str = include_str!("../../assets/ferro-base.css");
 
 #[cfg(test)]
 mod tests {
