@@ -138,7 +138,7 @@ pub use theme::{
 pub use inertia::InertiaContext;
 pub use metrics::{get_metrics, MetricsSnapshot, RouteMetrics, RouteMetricsView};
 pub use middleware::{
-    register_global_middleware, register_pre_route_middleware, Limit, LimiterResponse,
+    register_global_middleware, register_pre_route_middleware, Cors, Limit, LimiterResponse,
     MetricsMiddleware, Middleware, MiddlewareFuture, MiddlewareRegistry, Next, PreRouteMiddleware,
     RateLimiter, SecurityHeaders, Throttle,
 };

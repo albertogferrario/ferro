@@ -220,7 +220,12 @@ async fn handle_request(
             "/_ferro/metrics" => crate::debug::handle_metrics(),
             "/_ferro/queue/jobs" => crate::debug::handle_queue_jobs().await,
             "/_ferro/queue/stats" => crate::debug::handle_queue_stats().await,
-            "/_ferro/ferro-base.css" => serve_ferro_base_css(),
+            "/_ferro/ferro-base.css" => {
+                #[cfg(feature = "json-ui")]
+                { serve_ferro_base_css() }
+                #[cfg(not(feature = "json-ui"))]
+                { HttpResponse::text("404 Not Found").status(404).into_hyper() }
+            }
             _ => HttpResponse::text("404 Not Found").status(404).into_hyper(),
         };
     }
@@ -360,6 +365,7 @@ async fn health_response(query: &str) -> hyper::Response<Full<Bytes>> {
 /// The bytes are embedded at compile time via ferro_json_ui::FERRO_BASE_CSS.
 /// Response: 200, text/css, 24h cache. No user input reaches this handler —
 /// the match arm is an exact string, and the body is static framework content.
+#[cfg(feature = "json-ui")]
 fn serve_ferro_base_css() -> hyper::Response<Full<Bytes>> {
     let css = ferro_json_ui::FERRO_BASE_CSS;
     hyper::Response::builder()
@@ -391,7 +397,7 @@ async fn check_database_health() -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "json-ui"))]
 mod ferro_base_css_route_tests {
     use super::*;
     use http_body_util::BodyExt;
