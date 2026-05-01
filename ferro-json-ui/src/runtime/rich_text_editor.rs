@@ -305,9 +305,17 @@ pub(super) const SOURCE: &str = r#"
                 }
                 continue;
             }
-            // For <a>: keep only href and target.
+            // For <a>: keep href; keep target but enforce rel on _blank.
             if (tag === 'A') {
-                if (lower !== 'href' && lower !== 'target') {
+                if (lower === 'href') {
+                    // keep
+                } else if (lower === 'target') {
+                    // Keep only when the value is not _blank, or enforce rel.
+                    var targetVal = el.getAttribute(attr) || '';
+                    if (targetVal === '_blank') {
+                        el.setAttribute('rel', 'noopener noreferrer');
+                    }
+                } else {
                     el.removeAttribute(attr);
                 }
                 continue;
