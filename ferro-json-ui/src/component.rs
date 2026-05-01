@@ -538,6 +538,12 @@ pub struct KeyValueEditorProps {
 pub struct RichTextEditorProps {
     /// Base form field name. The IIFE emits two hidden inputs on submit:
     /// `{name}_delta` (Delta JSON) and `{name}_html` (sanitized HTML).
+    ///
+    /// Must be unique within the **page** (not just within the form). The
+    /// renderer uses `name` as the DOM `id` of the editor host and the error
+    /// element (`err-{name}`). Two editors with the same `name` on one page
+    /// produce duplicate DOM ids, which breaks label association and the
+    /// error-element selector.
     pub name: String,
     /// Initial editor content. Auto-detected at runtime: parses as JSON
     /// (Delta) when the string has an `ops` array; otherwise loaded as HTML
