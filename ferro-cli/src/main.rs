@@ -459,6 +459,12 @@ enum Commands {
         #[arg(long)]
         deploy: bool,
     },
+    /// Generate a magic-link login URL for a given email (bypasses email delivery)
+    #[command(name = "auth:link")]
+    AuthLink {
+        /// Email address of the user to impersonate
+        email: String,
+    },
     /// Check local API readiness for MCP integration
     #[command(name = "api:check")]
     ApiCheck {
@@ -707,6 +713,9 @@ fn main() {
         }
         Commands::Doctor { json, deploy } => {
             commands::doctor::run(json, deploy);
+        }
+        Commands::AuthLink { email } => {
+            commands::auth_link::run(email);
         }
         Commands::ApiCheck {
             url,
