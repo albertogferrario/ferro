@@ -32,11 +32,7 @@ pub fn run(email: String) {
     rt.block_on(async {
         match generate_link(&database_url, &app_url, &email).await {
             Ok(url) => {
-                println!(
-                    "{} {}",
-                    style("Magic link for").dim(),
-                    style(&email).cyan()
-                );
+                println!("{} {}", style("Magic link for").dim(), style(&email).cyan());
                 println!("{}", url);
                 println!("{}", style("Expires in 15 minutes.").dim());
             }
@@ -48,11 +44,7 @@ pub fn run(email: String) {
     });
 }
 
-async fn generate_link(
-    database_url: &str,
-    app_url: &str,
-    email: &str,
-) -> Result<String, String> {
+async fn generate_link(database_url: &str, app_url: &str, email: &str) -> Result<String, String> {
     let backend = if database_url.starts_with("sqlite") {
         DbBackend::Sqlite
     } else {
