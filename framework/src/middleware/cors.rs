@@ -179,15 +179,24 @@ mod tests {
     fn test_permissive_allows_any_origin() {
         let cors = Cors::permissive();
         assert!(matches!(cors.origins, Origins::Any));
-        assert_eq!(cors.allowed_origin(Some("https://example.com")), Some("*".into()));
+        assert_eq!(
+            cors.allowed_origin(Some("https://example.com")),
+            Some("*".into())
+        );
         assert_eq!(cors.allowed_origin(None), Some("*".into()));
     }
 
     #[test]
     fn test_allow_origins_list() {
         let cors = Cors::new().allow_origins(vec!["https://a.com", "https://b.com"]);
-        assert_eq!(cors.allowed_origin(Some("https://a.com")), Some("https://a.com".into()));
-        assert_eq!(cors.allowed_origin(Some("https://b.com")), Some("https://b.com".into()));
+        assert_eq!(
+            cors.allowed_origin(Some("https://a.com")),
+            Some("https://a.com".into())
+        );
+        assert_eq!(
+            cors.allowed_origin(Some("https://b.com")),
+            Some("https://b.com".into())
+        );
         assert_eq!(cors.allowed_origin(Some("https://c.com")), None);
         assert_eq!(cors.allowed_origin(None), None);
     }

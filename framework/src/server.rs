@@ -222,9 +222,13 @@ async fn handle_request(
             "/_ferro/queue/stats" => crate::debug::handle_queue_stats().await,
             "/_ferro/ferro-base.css" => {
                 #[cfg(feature = "json-ui")]
-                { serve_ferro_base_css() }
+                {
+                    serve_ferro_base_css()
+                }
                 #[cfg(not(feature = "json-ui"))]
-                { HttpResponse::text("404 Not Found").status(404).into_hyper() }
+                {
+                    HttpResponse::text("404 Not Found").status(404).into_hyper()
+                }
             }
             _ => HttpResponse::text("404 Not Found").status(404).into_hyper(),
         };
