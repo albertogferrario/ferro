@@ -287,6 +287,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 **Current State:**
 - ~90,000 lines of Rust across 20 crates
+- Phase 150 complete — RichTextEditor component in ferro-json-ui (Quill 2.0.3, SRI-pinned, dual-format Delta+HTML)
 - v11.7 shipped: Tailwind Static CSS Pipeline — Safari/WebKit production fix; static CSS with compile-time embedding
 - v11.6 shipped: ferro-stripe Capability Refactor — capability-axis module tree, SyncDispatcher, typed events
 - v11.5 shipped: Projection Architecture Prep — Renderer trait generalization, renderer relocation, ServiceDef derivation bridge
@@ -388,4 +389,4 @@ See also `.planning/VISION.md` for design philosophy.
 | amount_total_cents: i64 with zero-means-absent doc | Zero maps to absent Stripe field on free/setup sessions; callers must not use field alone to assert payment | ✓ Good |
 
 ---
-*Last updated: 2026-04-21 after v11.7 milestone*
+*Last updated: 2026-05-01 after Phase 150 (RichTextEditor component)*
