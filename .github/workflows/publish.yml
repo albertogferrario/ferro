@@ -25,12 +25,13 @@ jobs:
       # Library-change gate (Phase 129, REPORT §8).
       #
       # A push only triggers a patch bump + crates.io release if at least one file
-      # under a library crate path changed since the last v* tag. Paths under
-      # ferro-cli/, app/, docs/, .github/, .planning/, scripts/, top-level *.md,
+      # under a publishable crate path changed since the last v* tag. Paths under
+      # app/, docs/, .github/, .planning/, scripts/, top-level *.md,
       # LICENSE, Cargo.lock, and top-level config files (.gitignore, .editorconfig,
       # rustfmt.toml, bacon.toml, deny.toml, dev.sh, llms.txt, rust-toolchain.toml)
-      # are NOT library changes. Workspace-root Cargo.toml IS a library change
-      # (workspace version / dep updates).
+      # are NOT publishable changes. ferro-cli/* IS a publishable change (ferro-cli
+      # is published to crates.io in Wave 3). Workspace-root Cargo.toml IS a
+      # publishable change (workspace version / dep updates).
       #
       # First-run edge case: no v* tag yet → treat as library change (publish).
       - name: Check for library crate changes
@@ -48,7 +49,7 @@ jobs:
             LIB_CHANGED=0
             while IFS= read -r path; do
               case "$path" in
-                ferro-cli/*|app/*) continue ;;
+                app/*) continue ;;
                 docs/*|.github/*|.planning/*|scripts/*) continue ;;
                 *.md|LICENSE|.gitignore|.editorconfig|rustfmt.toml) continue ;;
                 bacon.toml|deny.toml|dev.sh|llms.txt|rust-toolchain.toml) continue ;;
