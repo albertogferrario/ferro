@@ -157,6 +157,7 @@ fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> 
         | Component::ProductTile(_)
         | Component::Image(_)
         | Component::KeyValueEditor(_)
+        | Component::RichTextEditor(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -335,6 +336,7 @@ fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
         | Component::ProductTile(_)
         | Component::Image(_)
         | Component::KeyValueEditor(_)
+        | Component::RichTextEditor(_)
         | Component::Plugin(_) => {}
     }
 }
@@ -488,6 +490,9 @@ fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<St
         | Component::Plugin(_) => {}
         Component::KeyValueEditor(props) => {
             set_field_error(&mut props.error, &props.field, errors, all);
+        }
+        Component::RichTextEditor(props) => {
+            set_field_error(&mut props.error, &props.name, errors, all);
         }
     }
 }

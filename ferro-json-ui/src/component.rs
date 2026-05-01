@@ -521,6 +521,60 @@ pub struct KeyValueEditorProps {
     pub error: Option<String>,
 }
 
+/// Props for [`Component::RichTextEditor`].
+///
+/// Renders a `<div data-rich-text-editor>` host whose runtime IIFE attaches a
+/// Quill 2.0.3 (Snow theme) editor. On form submit the IIFE writes two hidden
+/// inputs — `{name}_delta` (canonical Delta JSON, lossless) and `{name}_html`
+/// (sanitized HTML, rendering input). The `formats` allowlist is the single
+/// source of truth: it constrains both the Quill toolbar (init time) and the
+/// HTML post-process (submit time). Image / video / HTML-paste paths are not
+/// reachable through the prop surface.
+///
+/// Quill JS+CSS are loaded once per page from jsDelivr, SHA-384 SRI-pinned via
+/// the `RichTextEditorPlugin` asset adapter. Multiple editor instances on the
+/// same page deduplicate the asset to a single load.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RichTextEditorProps {
+    /// Base form field name. The IIFE emits two hidden inputs on submit:
+    /// `{name}_delta` (Delta JSON) and `{name}_html` (sanitized HTML).
+    pub name: String,
+    /// Initial editor content. Auto-detected at runtime: parses as JSON
+    /// (Delta) when the string has an `ops` array; otherwise loaded as HTML
+    /// via `clipboard.dangerouslyPasteHTML` filtered by the `formats`
+    /// allowlist.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    /// Toolbar/allowlist whitelist. Drives both Quill's toolbar config and
+    /// the HTML post-process. Default: `["bold", "italic", "underline",
+    /// "list", "header", "link"]` (D-18).
+    #[serde(default = "default_rte_formats")]
+    pub formats: Vec<String>,
+    /// Optional placeholder shown by Quill when the editor is empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+    /// Quill theme — only `"snow"` is supported in v1. Defaults to `"snow"`.
+    #[serde(default = "default_rte_theme")]
+    pub theme: String,
+    /// Optional visible label rendered above the editor host.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Validation error message rendered below the editor with destructive
+    /// token styling.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    /// JSON pointer for pre-fill at render time. Resolved value is passed as
+    /// the initial editor body (after html_escape). When both `value` and
+    /// `data_path` are set, `value` wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
+    /// When true, the IIFE installs a guard that calls `event.preventDefault`
+    /// on form submit if `quill.getText().trim().length === 0`, surfacing the
+    /// destructive-token error region with a "Required" message.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required: Option<bool>,
+}
+
 /// Props for Separator component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SeparatorProps {
@@ -803,6 +857,32 @@ pub struct ChecklistProps {
 
 fn default_true() -> bool {
     true
+}
+
+/// Default `formats` allowlist for `RichTextEditorProps` (D-18).
+///
+/// Six entries mapping to Quill's actual format names: `list` covers both bullet
+/// and ordered (Quill represents lists as one format with an `ordered` attribute);
+/// `header` covers H1..H3 (Quill represents headings as one format with a level
+/// attribute). The IIFE expands these to the toolbar config at runtime via the
+/// deterministic mapping in D-19.
+fn default_rte_formats() -> Vec<String> {
+    vec![
+        "bold".to_string(),
+        "italic".to_string(),
+        "underline".to_string(),
+        "list".to_string(),
+        "header".to_string(),
+        "link".to_string(),
+    ]
+}
+
+/// Default Quill theme for `RichTextEditorProps` (D-07 / SC-1).
+///
+/// Only `"snow"` is supported in v1 — bubble/custom themes are a deferred phase.
+/// The IIFE treats any non-`"snow"` value as `"snow"` (no error).
+fn default_rte_theme() -> String {
+    "snow".to_string()
 }
 
 /// Props for Toast component (declarative notification intent).
@@ -1175,6 +1255,7 @@ pub enum Component {
     DataTable(DataTableProps),
     Image(ImageProps),
     KeyValueEditor(KeyValueEditorProps),
+    RichTextEditor(RichTextEditorProps),
     DetailForm(DetailFormProps),
     Plugin(PluginProps),
 }
@@ -1243,6 +1324,7 @@ impl Serialize for Component {
             Component::DataTable(p) => serialize_tagged(serializer, "DataTable", p),
             Component::Image(p) => serialize_tagged(serializer, "Image", p),
             Component::KeyValueEditor(p) => serialize_tagged(serializer, "KeyValueEditor", p),
+            Component::RichTextEditor(p) => serialize_tagged(serializer, "RichTextEditor", p),
             Component::DetailForm(p) => serialize_tagged(serializer, "DetailForm", p),
             Component::Plugin(p) => p.serialize(serializer),
         }
@@ -1380,6 +1462,9 @@ impl<'de> Deserialize<'de> for Component {
             "KeyValueEditor" => serde_json::from_value::<KeyValueEditorProps>(value)
                 .map(Component::KeyValueEditor)
                 .map_err(de::Error::custom),
+            "RichTextEditor" => serde_json::from_value::<RichTextEditorProps>(value)
+                .map(Component::RichTextEditor)
+                .map_err(de::Error::custom),
             "DetailForm" => serde_json::from_value::<DetailFormProps>(value)
                 .map(Component::DetailForm)
                 .map_err(de::Error::custom),
@@ -1462,6 +1547,28 @@ impl ComponentNode {
         Self {
             key: key.into(),
             component: Component::DetailForm(props),
+            action: None,
+            visibility: None,
+        }
+    }
+
+    /// Create a [`Component::RichTextEditor`] node.
+    ///
+    /// If `props.name` is empty, the `name` argument is used to populate it.
+    /// Otherwise `props.name` wins — callers that already set the field on
+    /// `props` keep their value (D-26).
+    pub fn rich_text_editor(name: impl Into<String>, props: RichTextEditorProps) -> Self {
+        let name_arg: String = name.into();
+        let final_props = if props.name.is_empty() {
+            let mut p = props;
+            p.name = name_arg.clone();
+            p
+        } else {
+            props
+        };
+        Self {
+            key: name_arg,
+            component: Component::RichTextEditor(final_props),
             action: None,
             visibility: None,
         }
