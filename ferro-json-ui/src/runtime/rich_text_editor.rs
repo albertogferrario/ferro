@@ -93,6 +93,14 @@ pub(super) const SOURCE: &str = r#"
 
         if (initialDelta !== null) {
             quill.setContents(initialDelta);
+        } else if (hostText.length > 0) {
+            // hostText is the HTML-escaped initial value from the server.
+            // Decode HTML entities back to their characters before pasting.
+            host.textContent = '';
+            var tmp = document.createElement('div');
+            tmp.textContent = hostText;
+            var decoded = tmp.innerHTML;
+            quill.clipboard.dangerouslyPasteHTML(decoded);
         }
 
         // Submit interception — capture phase so we run before any other
