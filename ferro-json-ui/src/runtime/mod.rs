@@ -13,6 +13,7 @@ mod key_value_editor;
 mod modals;
 mod notifications;
 mod product_tiles;
+mod rich_text_editor;
 mod sidebar;
 mod sse;
 mod tabs;
@@ -38,6 +39,7 @@ pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(product_tiles::SOURCE);
     s.push_str(kanban::SOURCE);
     s.push_str(key_value_editor::SOURCE);
+    s.push_str(rich_text_editor::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
          \x20       setupSSE();\n\
@@ -47,6 +49,7 @@ pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20       setupDropdowns();\n\
          \x20       setupKanban();\n\
          \x20       setupKeyValueEditor();\n\
+         \x20       setupRichTextEditor();\n\
          \x20       setupSidebar();\n\
          \x20       setupFormGuards();\n\
          \x20       setupProductTiles();\n\
