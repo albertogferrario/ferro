@@ -354,6 +354,67 @@ fn build_catalog() -> Vec<CatalogComponent> {
             variants: None,
         },
         CatalogComponent {
+            name: "RichTextEditor".to_string(),
+            description: "Rich-text editor backed by Quill 2.0.3 (Snow theme, jsDelivr CDN, SHA-384 SRI-pinned). Emits two hidden inputs on submit: `{name}_delta` (Delta JSON, canonical) and `{name}_html` (sanitized HTML). The `formats` whitelist constrains both the Quill toolbar (init time) and the HTML allowlist (submit time) — image/video/HTML-paste paths are not reachable through the prop surface. Quill JS+CSS load once per page, deduplicated across multiple editor instances. Multiple editors in the same form work without ID collisions; each writes its own pair of hidden inputs.".to_string(),
+            props: vec![
+                prop(
+                    "name",
+                    "String",
+                    true,
+                    "Base form field name. The IIFE emits {name}_delta and {name}_html on submit.",
+                ),
+                prop(
+                    "value",
+                    "Option<String>",
+                    false,
+                    "Initial editor content. Auto-detected: parses as JSON Delta when the string has an `ops` array; otherwise loaded as HTML filtered by the formats allowlist.",
+                ),
+                prop(
+                    "formats",
+                    "Vec<String>",
+                    false,
+                    "Toolbar/allowlist whitelist. Drives both Quill's toolbar config and the HTML post-process. Default: [\"bold\",\"italic\",\"underline\",\"list\",\"header\",\"link\"]",
+                ),
+                prop(
+                    "placeholder",
+                    "Option<String>",
+                    false,
+                    "Placeholder shown when the editor is empty.",
+                ),
+                prop(
+                    "theme",
+                    "String",
+                    false,
+                    "Quill theme. Only \"snow\" supported in v1; defaults to \"snow\".",
+                ),
+                prop(
+                    "label",
+                    "Option<String>",
+                    false,
+                    "Optional label rendered above the editor host.",
+                ),
+                prop(
+                    "error",
+                    "Option<String>",
+                    false,
+                    "Validation error rendered below the editor with destructive token styling.",
+                ),
+                prop(
+                    "data_path",
+                    "Option<String>",
+                    false,
+                    "JSON pointer for pre-fill at render time. Overridden by explicit `value` if both set.",
+                ),
+                prop(
+                    "required",
+                    "Option<bool>",
+                    false,
+                    "When true, the IIFE prevents submission when editor content is empty (after trim).",
+                ),
+            ],
+            variants: None,
+        },
+        CatalogComponent {
             name: "Input".to_string(),
             description: "Text input field with type variants, validation error, and data binding."
                 .to_string(),
@@ -1233,8 +1294,8 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.components.len(),
-            41,
-            "Catalog should contain all 41 built-in components (including DetailForm + KeyValueEditor backfill), got {}",
+            42,
+            "Catalog should contain all 42 built-in components (including DetailForm + KeyValueEditor + RichTextEditor backfill), got {}",
             catalog.components.len()
         );
 
@@ -1281,6 +1342,7 @@ mod tests {
             "Image",
             "DetailForm",
             "KeyValueEditor",
+            "RichTextEditor",
         ];
         for name in &expected {
             assert!(names.contains(name), "Missing component: {name}");
