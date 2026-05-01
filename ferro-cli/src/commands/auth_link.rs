@@ -33,7 +33,7 @@ pub fn run(email: String) {
         match generate_link(&database_url, &app_url, &email).await {
             Ok(url) => {
                 println!("{} {}", style("Magic link for").dim(), style(&email).cyan());
-                println!("{}", url);
+                println!("{url}");
                 println!("{}", style("Expires in 15 minutes.").dim());
             }
             Err(e) => {
