@@ -55,10 +55,15 @@ async fn generate_link(database_url: &str, app_url: &str, email: &str) -> Result
         .await
         .map_err(|e| format!("Cannot connect to database: {e}"))?;
 
+    let select_sql = match backend {
+        DbBackend::Postgres => "SELECT id FROM users WHERE email = $1",
+        _ => "SELECT id FROM users WHERE email = ?",
+    };
+
     let row = db
         .query_one(Statement::from_sql_and_values(
             backend,
-            "SELECT id FROM users WHERE email = ?",
+            select_sql,
             [Value::String(Some(Box::new(email.to_string())))],
         ))
         .await
@@ -100,10 +105,20 @@ async fn generate_link(database_url: &str, app_url: &str, email: &str) -> Result
     let now = Utc::now();
     let expires_at = now + Duration::minutes(15);
 
+    let insert_sql = match backend {
+        DbBackend::Postgres => {
+            "INSERT INTO magic_link_tokens (id, user_id, token_hash, expires_at, created_at) \
+             VALUES ($1, $2, $3, $4, $5)"
+        }
+        _ => {
+            "INSERT INTO magic_link_tokens (id, user_id, token_hash, expires_at, created_at) \
+             VALUES (?, ?, ?, ?, ?)"
+        }
+    };
+
     db.execute(Statement::from_sql_and_values(
         backend,
-        "INSERT INTO magic_link_tokens (id, user_id, token_hash, expires_at, created_at) \
-         VALUES (?, ?, ?, ?, ?)",
+        insert_sql,
         [
             Value::String(Some(Box::new(uuid))),
             Value::BigInt(Some(user_id)),
