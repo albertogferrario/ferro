@@ -66,9 +66,9 @@ pub use component::{
     HeaderProps, IconPosition, ImageProps, InputProps, InputType, KanbanBoardProps,
     KanbanColumnProps, KeyValueEditorProps, ModalProps, NotificationDropdownProps,
     NotificationItem, Orientation, PageHeaderProps, PaginationProps, PluginProps, ProductTileProps,
-    ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem,
-    SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
-    TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    ProgressProps, RichTextEditorProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup,
+    SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps,
+    Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers
@@ -83,7 +83,7 @@ pub use plugin::{
     collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
 };
-pub use plugins::{register_built_in_plugins, MapPlugin};
+pub use plugins::{register_built_in_plugins, MapPlugin, RichTextEditorPlugin};
 pub use render::{render_to_html, render_to_html_with_plugins, RenderResult};
 // collect_plugin_types is pub(crate) — internal render pipeline helper
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
@@ -145,6 +145,10 @@ Props: field (String), label (String), description (Option<String>), checked (Op
 ### KeyValueEditor
 Props: field (String), label (Option<String>), suggested_keys (Vec<String>), allow_custom_keys (bool, default true), data_path (Option<String> — must resolve to a JSON object), error (Option<String>)
 Serializes to hidden `<input name="{field}" type="hidden" value="{...json...}">`. When `allow_custom_keys` is true, the key input is a text field with a `<datalist>` from `suggested_keys`; when false, the key input is a `<select>` restricted to `suggested_keys`. Runtime syncs the hidden field on every add/delete/input event.
+
+### RichTextEditor
+Props: name (String), value (Option<String>), formats (Vec<String>, default ["bold","italic","underline","list","header","link"]), placeholder (Option<String>), theme (String, default "snow"), label (Option<String>), error (Option<String>), data_path (Option<String>), required (Option<bool>)
+Rich-text editor backed by Quill 2.0.3 (Snow theme, jsDelivr CDN, SHA-384 SRI-pinned). Emits two hidden inputs on submit: `{name}_delta` (Delta JSON, canonical) and `{name}_html` (sanitized HTML). The `formats` whitelist constrains both the Quill toolbar and the HTML allowlist — image/video/HTML-paste paths are not reachable through the prop surface. Quill JS+CSS load once per page (deduplicated across multiple editor instances).
 
 ### Separator
 Props: orientation (Option<horizontal|vertical>)
