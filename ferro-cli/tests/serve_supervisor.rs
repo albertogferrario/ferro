@@ -128,7 +128,7 @@ fn backend_only_shuts_down_cleanly() {
 
     // Wait for the startup banner — proves the supervisor started successfully.
     assert!(
-        wait_for_stdout_line(&rx, "Backend server on", Duration::from_secs(15)),
+        wait_for_stdout_line(&rx, "q        quit", Duration::from_secs(15)),
         "backend banner not seen"
     );
 
@@ -171,7 +171,7 @@ fn r_key_in_no_watch_mode_triggers_one_rebuild() {
 
     let rx = spawn_stdout_reader(&mut child);
     assert!(
-        wait_for_stdout_line(&rx, "Backend server on", Duration::from_secs(15)),
+        wait_for_stdout_line(&rx, "q        quit", Duration::from_secs(15)),
         "backend banner not seen"
     );
 
@@ -227,7 +227,7 @@ fn watch_mode_debounces_burst() {
 
     let rx = spawn_stdout_reader(&mut child);
     assert!(
-        wait_for_stdout_line(&rx, "Backend server on", Duration::from_secs(15)),
+        wait_for_stdout_line(&rx, "q        quit", Duration::from_secs(15)),
         "backend banner not seen"
     );
     assert!(

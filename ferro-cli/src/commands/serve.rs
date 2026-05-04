@@ -76,10 +76,10 @@ pub(super) fn render_banner(
     use std::fmt::Write;
     let mut s = String::new();
     if !frontend_only {
-        let _ = writeln!(s, "Backend server on http://{backend_host}:{backend_port}");
+        let _ = writeln!(s, "Backend:   http://{backend_host}:{backend_port}");
     }
     if !backend_only {
-        let _ = writeln!(s, "Frontend server on http://127.0.0.1:{vite_port}");
+        let _ = writeln!(s, "Frontend:  http://127.0.0.1:{vite_port}");
     }
     if !frontend_only {
         let _ = writeln!(s);
@@ -826,26 +826,26 @@ mod tests {
     // If 02a emits anything different, these assertions fail.
     #[test]
     fn render_banner_matrix() {
-        let b_watch_off_tty = "Backend server on http://127.0.0.1:8080\n\
-                               Frontend server on http://127.0.0.1:5173\n\
+        let b_watch_off_tty = "Backend:   http://127.0.0.1:8080\n\
+                               Frontend:  http://127.0.0.1:5173\n\
                                \n\
                                \x20\x20r        rebuild backend + regenerate types\n\
                                \x20\x20q        quit    (or Ctrl+C)\n\
                                \x20\x20watch    disabled  (pass --watch to auto-reload on file changes)\n";
-        let b_watch_on_tty = "Backend server on http://127.0.0.1:8080\n\
-                              Frontend server on http://127.0.0.1:5173\n\
+        let b_watch_on_tty = "Backend:   http://127.0.0.1:8080\n\
+                              Frontend:  http://127.0.0.1:5173\n\
                               \n\
                               \x20\x20r        rebuild backend + regenerate types\n\
                               \x20\x20q        quit    (or Ctrl+C)\n\
                               \x20\x20watch    enabled  (debounce 500ms)\n";
-        let b_watch_off_non_tty = "Backend server on http://127.0.0.1:8080\n\
-                                   Frontend server on http://127.0.0.1:5173\n\
+        let b_watch_off_non_tty = "Backend:   http://127.0.0.1:8080\n\
+                                   Frontend:  http://127.0.0.1:5173\n\
                                    \n\
                                    \x20\x20r        unavailable (non-TTY stdin)\n\
                                    \x20\x20q        quit    (or Ctrl+C)\n\
                                    \x20\x20watch    disabled  (pass --watch to auto-reload on file changes)\n";
-        let b_watch_on_non_tty = "Backend server on http://127.0.0.1:8080\n\
-                                  Frontend server on http://127.0.0.1:5173\n\
+        let b_watch_on_non_tty = "Backend:   http://127.0.0.1:8080\n\
+                                  Frontend:  http://127.0.0.1:5173\n\
                                   \n\
                                   \x20\x20r        unavailable (non-TTY stdin)\n\
                                   \x20\x20q        quit    (or Ctrl+C)\n\
