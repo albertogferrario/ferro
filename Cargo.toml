@@ -21,6 +21,7 @@ members = [
     "ferro-theme",
     "ferro-ai",
     "ferro-whatsapp",
+    "ferro-wallet",
 ]
 
 [workspace.package]
