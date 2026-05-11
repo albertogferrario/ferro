@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn error_io_displays_message() {
-        let e = WalletError::Io(std::io::Error::new(std::io::ErrorKind::Other, "disk full"));
+        let e = WalletError::Io(std::io::Error::other("disk full"));
         assert_eq!(e.to_string(), "io: disk full");
     }
 
