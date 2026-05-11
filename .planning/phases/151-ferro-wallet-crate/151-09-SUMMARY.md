@@ -153,6 +153,17 @@ No new threat surface introduced by this plan beyond what the threat model in PL
 - **Doc link cleanup** (6 warnings — see "Issues Encountered"). Fix in a follow-up plan or before the next ferro-wallet release.
 - **State + ROADMAP updates** intentionally deferred until the user confirms the first publish landed (Task 3 resume).
 
+## Task 3 Resolution (2026-05-11)
+
+User performed the first-publish bootstrap from a local terminal and confirmed completion with the signal `pushed and published`.
+
+- `cargo publish -p ferro-wallet` succeeded against crates.io using a personal `publish-new`-scoped token.
+- `git push origin master` completed cleanly (after a `-s ours` merge resolved divergence with origin's redundant CI auto-bump commit `c6618c30`, recorded as merge commit `50e1b5ae`).
+- ferro-wallet 0.2.24 is now resolvable as `ferro-wallet = "0.2.24"` from any downstream `Cargo.toml`.
+- Subsequent releases (0.2.25+) will auto-publish via the existing `.github/workflows/publish.yml` Wave 1a registration (added in PLAN-01); the CI's `publish-update`-scoped token handles every release after this first one.
+
+**ACC-4 status: ✓ green.** Phase 151 is complete.
+
 ## Self-Check: PASSED
 
 Verified before returning to orchestrator:
