@@ -24,7 +24,6 @@ pub const fn pass_type_id_default() -> &'static str {
 /// Fields borrow from the builder + the runtime-constructed `event_ticket_object`
 /// for zero-copy serialization. `iat` is the only timestamp claim — Google's save
 /// endpoint validates the JWT at user-click time, not on a server-side `exp`.
-#[allow(dead_code)] // Wired up by Task 3's `GoogleWalletBuilder::save_jwt`.
 #[derive(Serialize)]
 struct SaveClaims<'a> {
     iss: &'a str,
@@ -47,7 +46,6 @@ struct SaveClaims<'a> {
 ///
 /// - `WalletError::GoogleJwt("private key parse: …")` if `private_key_pem` is not a valid RSA PEM.
 /// - `WalletError::GoogleJwt("encode: …")` if `jsonwebtoken::encode` itself fails.
-#[allow(dead_code)] // Wired up by Task 3's `GoogleWalletBuilder::save_jwt`.
 pub(crate) fn sign_save_jwt(
     builder: &GoogleWalletBuilder,
     event_ticket_object: serde_json::Value,

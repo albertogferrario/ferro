@@ -29,7 +29,6 @@ use crate::WalletError;
 /// Never errors in v1 — every field is derivable from the supplied subject + builder.
 /// The `Result` return is retained for forward compatibility with future fields that
 /// may validate input (e.g. timezone parse for `dateTime`).
-#[allow(dead_code)] // Wired up by Task 3's `GoogleWalletBuilder::save_jwt`.
 pub(crate) fn build_event_ticket_object<S: WalletSubject>(
     builder: &GoogleWalletBuilder,
     subject: &S,

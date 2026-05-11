@@ -15,7 +15,7 @@ pub mod subject;
 pub use apple::ApplePassBuilder;
 pub use config::{AppleConfig, GoogleConfig, WalletConfig};
 pub use error::WalletError;
-// pub use google::GoogleWalletBuilder;   // Restored in PLAN-07 (google builder body lands)
+pub use google::GoogleWalletBuilder;
 pub use subject::{
     auto_foreground, Branding, Field, FieldAlignment, GeoPoint, PassKind, RgbColor, TextColorMode,
     WalletSubject,
