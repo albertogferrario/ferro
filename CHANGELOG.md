@@ -3,6 +3,37 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## ferro-wallet
+
+### [0.2.24] — 2026-05-11
+
+Initial release. Phase 151 — `ferro-wallet` crate (Apple `.pkpass` +
+Google Wallet save-link issuance). Milestone v11.10.
+
+#### Added
+
+- New crate `ferro-wallet` exposing the `WalletSubject` trait,
+  `ApplePassBuilder` (PKCS#7-signed `.pkpass` ZIP via `openssl` + `zip` +
+  `sha1`), and `GoogleWalletBuilder` (RS256-signed save JWT via
+  `jsonwebtoken`, returning a `pay.google.com/gp/v/save/{jwt}` URL).
+- `WalletConfig::from_env` reads `APP_NAME` / `APP_URL` and optional
+  Apple / Google clusters; missing wallet env vars never error (D-02).
+  Mirrors `ferro-inertia::InertiaConfig::app_name` and
+  `ferro-stripe::StripeConfig::from_env` (architecture principle #6 —
+  project-agnostic crates).
+- `images` module — `fit_to` (resize-preserve-aspect + centre-pad onto
+  transparent canvas), `apple_logo_set` (160×50 / 320×100 / 480×150),
+  `apple_icon_set` (29×29 / 58×58 / 87×87, derivable from logo when icon
+  absent), `google_hero` (1032×336).
+- `qr` module — PNG bytes + `data:image/png;base64,…` data-URI helpers
+  via `qrcode-generator`.
+- End-to-end integration tests mint crypto material at runtime — no real
+  Apple WWDR or Google service-account credentials in CI (D-09).
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1a slot
+  reserved in `.github/workflows/publish.yml`. First publish is
+  bootstrapped from a local terminal (CI publish token has
+  `publish-update` scope only); subsequent versions auto-publish.
+
 ## ferro-rs
 
 ### [0.2.13] — 2026-04-21
