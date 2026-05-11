@@ -133,3 +133,68 @@ Implementation reference for code samples, exact API shapes, and full test bodie
 
 Gestiscilo's `wallet-passes` integration plan depends on this phase shipping and a new ferro version being auto-published. Once 151 is verified and the version bumps, gestiscilo's `Cargo.toml` updates `ferro-wallet = "0.2.X"` and the consumer integration proceeds. Until then the consumer uses a local `[patch.crates-io]` (uncommitted) for development.
 </consumer_dependency>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents (researcher, planner, executor) MUST read these before planning or implementing.**
+
+### Primary spec
+- `docs/superpowers/specs/2026-05-11-ferro-wallet-crate.md` — Crate design spec. Authoritative source for: public API surface (§3), two-builder split rationale (§4), crate dependency set (§5), `WalletError` variants (§6), credential-free test strategy (§7), release flow (§8), acceptance criteria (§9), and out-of-band consumer notes (§10). Every API shape in `<decisions>` traces back to this spec.
+
+### Implementation reference (downstream artefact)
+- `../gestiscilo-it/app/docs/superpowers/plans/2026-05-11-wallet-passes.md` Phase A (tasks A1–A10) — Field-test origin of this phase. Contains full reference code for each task. The ferro phase planner should derive its own atomic-commit-aware PLAN files from it, NOT copy verbatim. Path is repo-external; agents that don't have it locally should treat the primary spec as authoritative and use the existing `ferro-stripe` / `ferro-inertia` patterns for fill-in.
+
+### Architectural principle this crate enforces
+- `CLAUDE.md` (project root) §"Architecture Principles" #6 — Project-agnostic crates rule. No hardcoded app identity. Each `ferro-*` crate exposes its own config struct with `app_name` / `app_url` populated from `APP_NAME` / `APP_URL` env vars in `from_env()`. `ferro-wallet` is a textbook application of this rule.
+
+### Roadmap entry
+- `.planning/ROADMAP.md` v11.10 entry — Phase 151 placement, milestone framing, prerequisite-of-gestiscilo-wallet-passes relationship.
+
+</canonical_refs>
+
+<code_context>
+## Existing Code Insights
+
+### Reusable Assets — pattern exemplars to mirror
+- `ferro-inertia/src/lib.rs` (`InertiaConfig::app_name`) — Canonical example of a project-agnostic `ferro-*` config exposing `app_name`. Mirror this shape directly in `WalletConfig`.
+- `ferro-stripe/src/config.rs` (`StripeConfig::from_env`) — Canonical example of env-driven config with optional clusters. The `apple: Option<AppleConfig>` / `google: Option<GoogleConfig>` pattern in D-02 is the same shape (Stripe's `webhook_secret` / publishable key cluster).
+- `ferro-stripe/src/error.rs` — Pattern for `thiserror`-derived error enums with name-prefixed `Display` (D-04). Match the variant naming style.
+- `framework/src/config.rs` (`AppConfig::from_env`) — Source of truth for `APP_NAME` / `APP_URL` defaults (`"Ferro Application"` / `"http://localhost:8080"`). `WalletConfig::from_env` falls back to the same defaults.
+
+### Established Patterns this crate must follow
+- **Workspace member registration** — `Cargo.toml` `[workspace] members` array (line ~3); add `"ferro-wallet"` here.
+- **Workspace version bump** — `Cargo.toml` `[workspace.package] version` (currently `0.2.23`); patch-bump when Phase 151 is verified.
+- **Auto-publish wave registration** — `.github/workflows/publish.yml`; `ferro-wallet` is a leaf crate (no internal deps inside the workspace), so it belongs in Wave 1. Per global memory: "When adding a new crate to the workspace, always add it to `.github/workflows/publish.yml` in the correct wave."
+- **One Error enum per crate** with `thiserror` derive (workspace convention).
+- **Crate README.md** is short — directs reader to the spec, mirrors existing `ferro-stripe/README.md` length & tone.
+
+### Integration Points
+- Workspace root `Cargo.toml` — new member entry + (when version bumped) version field.
+- `.github/workflows/publish.yml` — Wave 1 member list.
+- Downstream callers (out of scope for this phase): gestiscilo-it `Cargo.toml` will add `ferro-wallet = "0.2.X"` after this phase's auto-publish completes. No ferro-side wiring required — `ferro-wallet` is consumed directly by application crates, not via the framework facade.
+
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+- **Two builders, never one.** Apple PKCS#7-over-ZIP and Google RS256-JWT-pointing-at-JSON share nothing at the wire-format level. A unified `WalletBuilder` was considered and rejected (D-01). Builders stay split; `WalletSubject` is the only shared abstraction.
+- **Permissive config.** Missing wallet env vars must never error in `from_env` (D-02). Apple-only or Google-only deployments are first-class.
+- **Test without real credentials.** Both integration tests mint their own crypto material at runtime (D-09) so CI has zero dependency on real Apple WWDR / Google service-account secrets.
+- **Mirror `ferro-stripe`'s feel.** The crate should read like `ferro-stripe` — same config-loading pattern, same error-naming style, same README brevity, same module organisation (mod.rs + supporting files per concern).
+
+</specifics>
+
+<deferred>
+## Deferred Ideas
+
+Out of scope for Phase 151 (deferred to future `ferro-wallet` phases unless otherwise noted):
+
+- **Apple Web Service Protocol** — live pass updates / Express Mode device registration. Adds a server-side endpoint set + auth flow; sizeable enough for its own phase.
+- **Google `objects.patch`** — updating an existing Google Wallet object after first save. Symmetric to the Apple WSP item above.
+- **Locale resolution beyond raw string passthrough** — current API takes the locale string the caller supplies. Negotiation / fallback logic deferred.
+- **Additional pass kinds beyond `EventTicket`** — `Generic` / `Coupon` / `Boarding` / `StoreCard` variants declared in the `PassKind` enum but un-tested in v1. Adding integration tests for each (or moving to a fixture-driven matrix) is its own future phase.
+- **Plain-Apple-Wallet pass type sub-categories** — `eventTicket` is the only Apple top-level pass type exercised. The `Generic` variant is partially mapped; full coverage deferred.
+
+</deferred>
