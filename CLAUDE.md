@@ -22,6 +22,8 @@ The **core abstraction is projection / intent** (`ferro-projections`, shipped in
 
 5. **Beauty is a design criterion, not decoration.** All four dimensions (aesthetic, conceptual, operational, compressive) are required for v1.0, applied in the priority order above.
 
+6. **Project-agnostic crates.** Crates under `ferro-*` are libraries shared across every ferro application; they must not hardcode any application identity (app name, brand strings, copy, URLs). When a crate needs app-level identity — e.g. an `organizationName` on a generated artifact, a "powered by" footer, a default sender name, a callback base URL — it reads framework conventions: `APP_NAME` and `APP_URL`, the same env vars `framework::config::AppConfig` consumes. The pattern: each `ferro-*` crate exposes its own config struct with `app_name` / `app_url` fields populated from those env vars in `from_env()`, mirroring `ferro-inertia::InertiaConfig::app_name`. Reviewers should reject hardcoded strings like `"gestiscilo"`, `"Ferro Application"`, `"https://example.com"`, or any specific tenant identifier inside a `ferro-*` crate. The sole exception is documentation examples explicitly framed as samples.
+
 ## Quick Start
 
 **Use ferro-mcp first.** The MCP tools provide instant introspection:

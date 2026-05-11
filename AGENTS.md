@@ -159,6 +159,10 @@ pub async fn login(req: Request) -> Response {
 
 ## Code Conventions
 
+### Crate Boundaries
+
+`ferro-*` crates are project-agnostic libraries — they must not hardcode application identity (brand names, URLs, copy, tenant strings). When app-level identity is needed (e.g. an `organizationName` on a generated artifact, a default sender, a callback base URL), read `APP_NAME` and `APP_URL` env vars into the crate's own config struct. Pattern reference: `ferro-inertia::InertiaConfig::app_name` — populated from `APP_NAME` in `from_env()`. This guarantees every `ferro-*` crate composes into any host application without source changes. See `CLAUDE.md` architecture principle 6 for the full rationale.
+
 ### File Organization
 
 - `src/actions/` - Business logic handlers
