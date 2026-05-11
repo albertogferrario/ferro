@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 151-02-subject-trait-PLAN.md
-last_updated: "2026-05-11T03:43:09.472Z"
+stopped_at: Completed 151-03-config-PLAN.md
+last_updated: "2026-05-11T03:50:33.887Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 151
   completed_phases: 136
   total_plans: 363
-  completed_plans: 335
-  percent: 92
+  completed_plans: 336
+  percent: 93
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 151 (ferro-wallet-crate) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Plans: 0 of 7 — planning complete, ready for /gsd-execute-phase 149
 Workspace version: 0.2.5
 Status: Ready to execute
@@ -121,6 +121,7 @@ Progress: [██████████] 96%
 | Phase 149 P06 | 9m 17s | 3 tasks | 2 files |
 | Phase 149 P07 | 8m 2s | 7 tasks | 8 files |
 | Phase 151 P02 | 3min | 2 tasks | 2 files |
+| Phase 151 P03 | 4m 15s | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -165,6 +166,10 @@ Recent decisions affecting current work:
 - [149-06] InApp adapter writes both legs (DB-store first, broadcast second) per D-08; ferro_broadcast::Error mapped via Error::broadcast(e.to_string()) helper since no #[from] is available. Persistence-first ordering means the broker can replay on reconnect from the store; the inverse order would risk silent loss.
 - [149-06] send_database now routes through DatabaseNotificationStore::store(...) when CONFIG.database_store is configured; unconfigured path retains placeholder log for backward-compat (closes ARCH-FINDING-02). The Database channel and the InApp channel both share the same Arc<dyn DatabaseNotificationStore> — no duplicate persistence path.
 - [149-06] inapp_to_database_message normalizes the type-shape mismatch between InAppMessage.data (serde_json::Value, any shape) and DatabaseMessage.data (HashMap<String, Value>, object only): object inputs flatten to fields directly; non-object inputs wrap under the 'payload' key (lossless round-trip).
+- [151-03] APP_NAME / APP_URL fallbacks hardcoded to framework::config::AppConfig defaults ("Ferro Application" / "http://localhost:8080") rather than via framework dep — keeps ferro-wallet a true leaf crate per spec §5; any future framework-side default change must be mirrored here, not coupled.
+- [151-03] AppleConfig / GoogleConfig cluster fails to None on ANY missing required var (D-02 permissive) — partial cluster is treated as a misconfiguration and forces the caller to surface it at startup-feature-gate rather than at pass-issuance time. from_env_apple_partial_returns_none locks this in.
+- [151-03] WalletConfig::from_env signature is Result<Self, WalletError> even though the current impl never returns Err — forward-compat for non-wallet validation (e.g. URL parse) without SemVer break. Downstream PLAN-05 / PLAN-07 already use `?` to chain the call.
+- [151-03] EnvGuard RAII + static Mutex<()> chosen over serial_test dev-dep — keeps ferro-wallet's dep set minimal AND provides panic-safe env restore that ferro-stripe's manual save/restore pattern lacks. Std::io::Error is not UnwindSafe so the plan's catch_unwind suggestion was uncompilable.
 
 ### Pending Todos
 
@@ -193,7 +198,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-11T03:43:09.465Z
-Stopped at: Completed 151-02-subject-trait-PLAN.md
+Last session: 2026-05-11T03:50:24.773Z
+Stopped at: Completed 151-03-config-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
