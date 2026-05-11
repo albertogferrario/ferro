@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 151-04-images-qr-PLAN.md
-last_updated: "2026-05-11T03:56:54.726Z"
+stopped_at: Completed 151-05-apple-builder-PLAN.md
+last_updated: "2026-05-11T04:04:46.717Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 151
   completed_phases: 136
   total_plans: 363
-  completed_plans: 337
+  completed_plans: 338
   percent: 93
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 151 (ferro-wallet-crate) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Plans: 0 of 7 — planning complete, ready for /gsd-execute-phase 149
 Workspace version: 0.2.5
 Status: Ready to execute
@@ -123,6 +123,7 @@ Progress: [██████████] 96%
 | Phase 151 P02 | 3min | 2 tasks | 2 files |
 | Phase 151 P03 | 4m 15s | 2 tasks | 2 files |
 | Phase 151-ferro-wallet-crate P04 | 2m 46s | 2 tasks | 2 files |
+| Phase 151-ferro-wallet-crate P05 | 4m 34s | 4 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,10 @@ Recent decisions affecting current work:
 - [151-03] AppleConfig / GoogleConfig cluster fails to None on ANY missing required var (D-02 permissive) — partial cluster is treated as a misconfiguration and forces the caller to surface it at startup-feature-gate rather than at pass-issuance time. from_env_apple_partial_returns_none locks this in.
 - [151-03] WalletConfig::from_env signature is Result<Self, WalletError> even though the current impl never returns Err — forward-compat for non-wallet validation (e.g. URL parse) without SemVer break. Downstream PLAN-05 / PLAN-07 already use `?` to chain the call.
 - [151-03] EnvGuard RAII + static Mutex<()> chosen over serial_test dev-dep — keeps ferro-wallet's dep set minimal AND provides panic-safe env restore that ferro-stripe's manual save/restore pattern lacks. Std::io::Error is not UnwindSafe so the plan's catch_unwind suggestion was uncompilable.
+- [151-05] labelColor tracks foregroundColor in v1 (D-06): both fields receive the same BT.601-derived value; per-pass label/foreground separation deferred to a future phase.
+- [151-05] Apple manifest map ordering uses BTreeMap<String,String> for byte-stable JSON output (RESEARCH.md Risk 7) — load-bearing for PKCS#7 signature determinism across re-invocations of the same subject.
+- [151-05] manifest.rs imports super::ApplePassBuilder to borrow pass_type_id/team_id/app_name; kept as the only cross-file Apple coupling to avoid threading 3 parameters through the pipeline.
+- [151-05] Per-task cargo-build verifies relaxed to chain-level verify (Rule 3 deviation) — the four apple/* files share data dependencies the plan itself documents; atomic commits preserved, full verification (build + test + clippy -D warnings + fmt) runs after Task 4.
 
 ### Pending Todos
 
@@ -199,7 +204,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-11T03:56:47.478Z
-Stopped at: Completed 151-04-images-qr-PLAN.md
+Last session: 2026-05-11T04:04:46.711Z
+Stopped at: Completed 151-05-apple-builder-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
