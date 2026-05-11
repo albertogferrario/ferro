@@ -1,4 +1,86 @@
-// placeholder — body lands in PLAN-05
+//! Apple Wallet `.pkpass` issuance — SHA1 manifest + PKCS#7 detached signature + ZIP packaging.
+
 pub mod manifest;
 pub mod package;
 pub mod sign;
+
+use crate::config::AppleConfig;
+use crate::images;
+use crate::subject::WalletSubject;
+use crate::WalletError;
+
+/// Issues Apple Wallet `.pkpass` files for any [`WalletSubject`].
+///
+/// Constructed once per process (or per signing-material rotation) via
+/// [`ApplePassBuilder::new`], which parses + retains the signing cert,
+/// private key, and WWDR intermediate. [`ApplePassBuilder::build`] then
+/// composes a `.pkpass` ZIP per subject: `pass.json` → image set → SHA1
+/// manifest → PKCS#7 detached signature → ZIP packaging (Stored, never
+/// Deflated — Apple rejects deflated entries).
+pub struct ApplePassBuilder {
+    pub(crate) pass_type_id: String,
+    pub(crate) team_id: String,
+    pub(crate) app_name: String,
+    pub(crate) signing: sign::SigningMaterial,
+}
+
+impl ApplePassBuilder {
+    /// Parse signing material from the provided [`AppleConfig`] and capture
+    /// the pass-type / team identifiers used for every issued pass.
+    ///
+    /// The private key may be passphrase-protected; `cfg.key_password` is
+    /// forwarded to [`sign::SigningMaterial::parse`].
+    pub fn new(cfg: AppleConfig, app_name: String) -> Result<Self, WalletError> {
+        let signing = sign::SigningMaterial::parse(
+            &cfg.cert_pem,
+            &cfg.key_pem,
+            cfg.key_password.as_deref(),
+            &cfg.wwdr_pem,
+        )?;
+        Ok(Self {
+            pass_type_id: cfg.pass_type_id,
+            team_id: cfg.team_id,
+            app_name,
+            signing,
+        })
+    }
+
+    /// Build a complete `.pkpass` ZIP for the given subject.
+    ///
+    /// The output contains exactly nine entries in this order:
+    /// `pass.json`, `manifest.json`, `signature`, `logo.png`, `logo@2x.png`,
+    /// `logo@3x.png`, `icon.png`, `icon@2x.png`, `icon@3x.png`.
+    ///
+    /// The manifest digests `pass.json` + the six image entries only;
+    /// `manifest.json` and `signature` are not part of the digest map.
+    pub fn build<S: WalletSubject>(&self, s: &S) -> Result<Vec<u8>, WalletError> {
+        // 1. pass.json
+        let pass_json_bytes = manifest::build_pass_json(self, s)?;
+
+        // 2. images (logo set + icon set)
+        let branding = s.branding();
+        let mut image_entries = images::apple_logo_set(&branding.logo_png_bytes)?;
+        let icon_entries =
+            images::apple_icon_set(branding.icon_png_bytes.as_deref(), &branding.logo_png_bytes)?;
+        image_entries.extend(icon_entries);
+
+        // 3. manifest = SHA1 of pass.json + each image entry (NOT manifest itself, NOT signature).
+        let mut manifest_inputs: Vec<(String, Vec<u8>)> =
+            vec![("pass.json".to_string(), pass_json_bytes.clone())];
+        manifest_inputs.extend(image_entries.iter().cloned());
+
+        let manifest_bytes = manifest::build_manifest(&manifest_inputs)?;
+
+        // 4. signature = PKCS#7 detached over manifest bytes (DER-encoded).
+        let signature_bytes = self.signing.sign_detached(&manifest_bytes)?;
+
+        // 5. ZIP order: pass.json, manifest.json, signature, then logo×3 + icon×3.
+        let mut zip_entries: Vec<(String, Vec<u8>)> = Vec::with_capacity(9);
+        zip_entries.push(("pass.json".to_string(), pass_json_bytes));
+        zip_entries.push(("manifest.json".to_string(), manifest_bytes));
+        zip_entries.push(("signature".to_string(), signature_bytes));
+        zip_entries.extend(image_entries);
+
+        package::zip_pkpass(&zip_entries)
+    }
+}

@@ -12,7 +12,7 @@ pub mod images;
 pub mod qr;
 pub mod subject;
 
-// pub use apple::ApplePassBuilder;   // Restored in PLAN-05 (apple builder body lands)
+pub use apple::ApplePassBuilder;
 pub use config::{AppleConfig, GoogleConfig, WalletConfig};
 pub use error::WalletError;
 // pub use google::GoogleWalletBuilder;   // Restored in PLAN-07 (google builder body lands)
