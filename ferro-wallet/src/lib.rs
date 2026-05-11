@@ -16,6 +16,7 @@ pub mod subject;
 // pub use config::{AppleConfig, GoogleConfig, WalletConfig};   // Restored in PLAN-03
 pub use error::WalletError;
 // pub use google::GoogleWalletBuilder;   // Restored in PLAN-07 (google builder body lands)
-// pub use subject::{
-//     Branding, Field, FieldAlignment, GeoPoint, PassKind, RgbColor, TextColorMode, WalletSubject,
-// };   // Restored in PLAN-02
+pub use subject::{
+    auto_foreground, Branding, Field, FieldAlignment, GeoPoint, PassKind, RgbColor, TextColorMode,
+    WalletSubject,
+};
