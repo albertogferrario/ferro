@@ -106,27 +106,27 @@ impl AppleConfig {
     /// `APPLE_WALLET_CERT_PEM`, `APPLE_WALLET_KEY_PEM`, `APPLE_WALLET_WWDR_PEM`.
     /// Optional: `APPLE_WALLET_KEY_PASSWORD`.
     pub fn from_env_optional() -> Result<Option<Self>, WalletError> {
-        let pass_type_id = match std::env::var("APPLE_WALLET_PASS_TYPE_ID") {
-            Ok(v) => v,
-            Err(_) => return Ok(None),
+        let pass_type_id = match non_empty_env("APPLE_WALLET_PASS_TYPE_ID") {
+            Some(v) => v,
+            None => return Ok(None),
         };
-        let team_id = match std::env::var("APPLE_WALLET_TEAM_ID") {
-            Ok(v) => v,
-            Err(_) => return Ok(None),
+        let team_id = match non_empty_env("APPLE_WALLET_TEAM_ID") {
+            Some(v) => v,
+            None => return Ok(None),
         };
-        let cert_pem = match std::env::var("APPLE_WALLET_CERT_PEM") {
-            Ok(v) => v,
-            Err(_) => return Ok(None),
+        let cert_pem = match non_empty_env("APPLE_WALLET_CERT_PEM") {
+            Some(v) => v,
+            None => return Ok(None),
         };
-        let key_pem = match std::env::var("APPLE_WALLET_KEY_PEM") {
-            Ok(v) => v,
-            Err(_) => return Ok(None),
+        let key_pem = match non_empty_env("APPLE_WALLET_KEY_PEM") {
+            Some(v) => v,
+            None => return Ok(None),
         };
-        let wwdr_pem = match std::env::var("APPLE_WALLET_WWDR_PEM") {
-            Ok(v) => v,
-            Err(_) => return Ok(None),
+        let wwdr_pem = match non_empty_env("APPLE_WALLET_WWDR_PEM") {
+            Some(v) => v,
+            None => return Ok(None),
         };
-        let key_password = std::env::var("APPLE_WALLET_KEY_PASSWORD").ok();
+        let key_password = non_empty_env("APPLE_WALLET_KEY_PASSWORD");
 
         Ok(Some(Self {
             pass_type_id,
@@ -140,24 +140,24 @@ impl AppleConfig {
 }
 
 impl GoogleConfig {
-    /// Returns `Ok(Some(cfg))` only when all three required Google env vars are set;
-    /// `Ok(None)` if ANY of them is missing. Never returns `Err`.
+    /// Returns `Ok(Some(cfg))` only when all three required Google env vars are set
+    /// AND non-empty; `Ok(None)` if ANY of them is missing or set to "". Never returns `Err`.
     ///
     /// Required vars: `GOOGLE_WALLET_ISSUER_ID`,
     /// `GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_WALLET_SERVICE_ACCOUNT_KEY_PEM`.
     pub fn from_env_optional() -> Result<Option<Self>, WalletError> {
-        let issuer_id = match std::env::var("GOOGLE_WALLET_ISSUER_ID") {
-            Ok(v) => v,
-            Err(_) => return Ok(None),
+        let issuer_id = match non_empty_env("GOOGLE_WALLET_ISSUER_ID") {
+            Some(v) => v,
+            None => return Ok(None),
         };
-        let service_account_email = match std::env::var("GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL") {
-            Ok(v) => v,
-            Err(_) => return Ok(None),
+        let service_account_email = match non_empty_env("GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL") {
+            Some(v) => v,
+            None => return Ok(None),
         };
         let service_account_private_key_pem =
-            match std::env::var("GOOGLE_WALLET_SERVICE_ACCOUNT_KEY_PEM") {
-                Ok(v) => v,
-                Err(_) => return Ok(None),
+            match non_empty_env("GOOGLE_WALLET_SERVICE_ACCOUNT_KEY_PEM") {
+                Some(v) => v,
+                None => return Ok(None),
             };
 
         Ok(Some(Self {
@@ -165,6 +165,17 @@ impl GoogleConfig {
             service_account_email,
             service_account_private_key_pem,
         }))
+    }
+}
+
+/// Read `name` from the environment, returning `None` for both missing AND empty
+/// values. Empty-as-missing makes the wallet env block in `.env.example`
+/// scaffolds safe to ship without forcing the builder to fail at startup when
+/// an operator copies the example to `.env` without filling values.
+fn non_empty_env(name: &str) -> Option<String> {
+    match std::env::var(name) {
+        Ok(v) if !v.is_empty() => Some(v),
+        _ => None,
     }
 }
 
