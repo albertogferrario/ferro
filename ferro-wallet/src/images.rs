@@ -70,6 +70,22 @@ pub fn google_hero(bytes: &[u8]) -> Result<Vec<u8>, WalletError> {
     fit_to(bytes, 1032, 336)
 }
 
+/// Produce the three Apple Wallet strip PNGs (1x/2x/3x).
+///
+/// The strip image is the banner-style background that fills the top of an
+/// `eventTicket` pass — what gives passes their "ticket" look versus the flat
+/// card layout without a strip.
+///
+/// Apple's recommended sizes for `eventTicket` with rectangular barcode:
+/// `("strip.png", 320×84)`, `("strip@2x.png", 640×168)`, `("strip@3x.png", 960×252)`.
+pub fn apple_strip_set(bytes: &[u8]) -> Result<Vec<(String, Vec<u8>)>, WalletError> {
+    Ok(vec![
+        ("strip.png".to_string(), fit_to(bytes, 320, 84)?),
+        ("strip@2x.png".to_string(), fit_to(bytes, 640, 168)?),
+        ("strip@3x.png".to_string(), fit_to(bytes, 960, 252)?),
+    ])
+}
+
 /// Decode the input, centre-square-crop to `side = min(w, h)`, re-encode as PNG.
 fn centre_square_crop_png(bytes: &[u8]) -> Result<Vec<u8>, WalletError> {
     let src =

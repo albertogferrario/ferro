@@ -57,12 +57,17 @@ impl ApplePassBuilder {
         // 1. pass.json
         let pass_json_bytes = manifest::build_pass_json(self, s)?;
 
-        // 2. images (logo set + icon set)
+        // 2. images (logo set + icon set + optional strip set)
         let branding = s.branding();
         let mut image_entries = images::apple_logo_set(&branding.logo_png_bytes)?;
         let icon_entries =
             images::apple_icon_set(branding.icon_png_bytes.as_deref(), &branding.logo_png_bytes)?;
         image_entries.extend(icon_entries);
+        // Strip image (optional) — gives eventTicket passes the banner/ticket look.
+        if let Some(hero) = branding.hero_png_bytes.as_deref() {
+            let strip_entries = images::apple_strip_set(hero)?;
+            image_entries.extend(strip_entries);
+        }
 
         // 3. manifest = SHA1 of pass.json + each image entry (NOT manifest itself, NOT signature).
         let mut manifest_inputs: Vec<(String, Vec<u8>)> =
