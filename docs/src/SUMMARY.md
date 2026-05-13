@@ -45,6 +45,7 @@
 - [WhatsApp](features/whatsapp.md)
 - [Themes](features/themes.md)
 - [Service Projections](features/projections.md)
+- [Live Read-Models](features/live-read-models.md)
 - [AI & Confirmation](features/ai.md)
 
 # JSON-UI
