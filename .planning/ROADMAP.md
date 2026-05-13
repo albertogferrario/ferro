@@ -1441,7 +1441,7 @@ Plans:
 **Goal:** Ship a domain-neutral resource reservation kernel as a new top-level Wave 1b workspace crate (`ferro-reservation`). The crate exposes `ReservationKernel<R: Resource>` with `hold` / `commit` / `release` / `extend` / `run_sweep_once` — a typed, race-free state-transition pipeline composing `ferro-orm::GuardedUpdate` (atomic state transitions), `ferro-audit::AuditEntry` (unconditional audit emission), and `ferro-events::dispatch` (best-effort domain events). Consumers implement the `Resource` trait against their own domain model; the kernel knows nothing about inventory, products, slots, or seats. Anchored by D-48 (concurrent_hold integration test: N=20 vs capacity=5 → exactly 5 succeed), D-49 (proptest properties: capacity invariant + state-machine validity via audit replay), and D-50 (cross-crate showcase: 2 events + 2 audit entries + reconstruct_state).
 **Requirements**: D-01..D-58 (feature-driven phase — every locked decision from 154-CONTEXT.md is a must-have)
 **Depends on:** Phase 152 (ferro-orm GuardedUpdate, shipped 0.2.30), Phase 153 (ferro-audit, shipped 0.2.31)
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 - [x] 154-01-PLAN.md — Scaffold ferro-reservation crate (Cargo.toml, lib.rs with rustdoc + state diagram, full ReservationError body, 8 stub modules)
@@ -1450,7 +1450,7 @@ Plans:
 - [x] 154-04-PLAN.md — Leaf-type bodies: Resource trait, ReservationContext builder, ReservationEvent + ReleaseReason (serde + Event impl), ReservationHandle serde tests
 - [x] 154-05-PLAN.md — ReservationKernel<R> with hold/commit/release/extend (GuardedUpdate + AuditEntry + dispatch ordering) + 7 unit tests covering D-47-1..7
 - [x] 154-06-PLAN.md — run_sweep_once + concurrent_hold integration (D-48) + proptest property tests (D-49) + cross-crate integration (D-50)
-- [ ] 154-07-PLAN.md — Release: user doc page reservations.md, CHANGELOG entry, pre-release gate (fmt+clippy+test+doc), manual first-publish bootstrap to crates.io
+- [x] 154-07-PLAN.md — Release: user doc page reservations.md, CHANGELOG entry, pre-release gate (fmt+clippy+test+doc), manual first-publish bootstrap to crates.io
 
 ### Phase 155: ferro-projection crate — live read-model from domain events with delta broadcast
 
