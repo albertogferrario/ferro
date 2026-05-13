@@ -42,25 +42,13 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     // resource_key JSON NOT NULL — serialized Resource::Key
-                    .col(
-                        ColumnDef::new(Reservations::ResourceKey)
-                            .json()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Reservations::ResourceKey).json().not_null())
                     // window JSON NULL — serialized Resource::Window; NULL when Window = ()
                     .col(ColumnDef::new(Reservations::Window).json().null())
                     // quantity INTEGER NOT NULL — u32 stored as INTEGER
-                    .col(
-                        ColumnDef::new(Reservations::Quantity)
-                            .integer()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Reservations::Quantity).integer().not_null())
                     // status VARCHAR NOT NULL — D-16 stringly-typed (not SeaORM ActiveEnum)
-                    .col(
-                        ColumnDef::new(Reservations::Status)
-                            .string()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Reservations::Status).string().not_null())
                     // expires_at TIMESTAMP NOT NULL — set at hold; mutated by extend
                     .col(
                         ColumnDef::new(Reservations::ExpiresAt)
@@ -75,29 +63,13 @@ impl MigrationTrait for Migration {
                             .default(Expr::current_timestamp()),
                     )
                     // committed_at TIMESTAMP NULL — set on commit
-                    .col(
-                        ColumnDef::new(Reservations::CommittedAt)
-                            .timestamp()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(Reservations::CommittedAt).timestamp().null())
                     // released_at TIMESTAMP NULL — set on release
-                    .col(
-                        ColumnDef::new(Reservations::ReleasedAt)
-                            .timestamp()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(Reservations::ReleasedAt).timestamp().null())
                     // release_reason VARCHAR NULL — serialized ReleaseReason tag
-                    .col(
-                        ColumnDef::new(Reservations::ReleaseReason)
-                            .string()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(Reservations::ReleaseReason).string().null())
                     // tenant_id VARCHAR NULL (D-36 stringly-typed)
-                    .col(
-                        ColumnDef::new(Reservations::TenantId)
-                            .string()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(Reservations::TenantId).string().null())
                     .to_owned(),
             )
             .await?;
@@ -173,17 +145,11 @@ mod tests {
         conn
     }
 
-    async fn name_exists(
-        conn: &sea_orm::DatabaseConnection,
-        name: &str,
-        obj_type: &str,
-    ) -> bool {
+    async fn name_exists(conn: &sea_orm::DatabaseConnection, name: &str, obj_type: &str) -> bool {
         let row = conn
             .query_one(Statement::from_string(
                 sea_orm::DatabaseBackend::Sqlite,
-                format!(
-                    "SELECT name FROM sqlite_master WHERE type='{obj_type}' AND name='{name}'"
-                ),
+                format!("SELECT name FROM sqlite_master WHERE type='{obj_type}' AND name='{name}'"),
             ))
             .await
             .expect("query sqlite_master");
@@ -211,7 +177,9 @@ mod tests {
     async fn migration_down_drops_table() {
         let conn = fresh_db().await;
         assert!(name_exists(&conn, "reservations", "table").await);
-        TestMigrator::down(&conn, Some(1)).await.expect("migrate down");
+        TestMigrator::down(&conn, Some(1))
+            .await
+            .expect("migrate down");
         assert!(
             !name_exists(&conn, "reservations", "table").await,
             "reservations table should be gone after down()"

@@ -115,7 +115,10 @@ mod tests {
             .expect("found");
         assert_eq!(fetched.id, id);
         assert_eq!(fetched.resource_kind, "inventory.unit");
-        assert_eq!(fetched.resource_key, json!({"product": "abc", "tenant": "t1"}));
+        assert_eq!(
+            fetched.resource_key,
+            json!({"product": "abc", "tenant": "t1"})
+        );
         assert_eq!(fetched.window, Some(json!({"date": "2026-05-13"})));
         assert_eq!(fetched.quantity, 3);
         assert_eq!(fetched.status, "held");

@@ -138,10 +138,10 @@ pub use migration::Migration as CreateReservationsTable;
 pub use resource::Resource;
 pub use sweeper::SweepReport;
 
-// SeaORM entity re-export. Plan 154-03 expands `entity.rs` to a full
-// `DeriveEntityModel` block; at that point this re-export will also
-// expose `Model as ReservationModel` and `ActiveModel as ReservationActiveModel`.
-pub use entity::Entity as ReservationEntity;
+// SeaORM entity re-exports for consumers who need native SeaORM query access.
+pub use entity::{
+    ActiveModel as ReservationActiveModel, Entity as ReservationEntity, Model as ReservationModel,
+};
 
 // Re-export `AuditActor` so consumers building `ReservationContext`
 // don't need a direct `ferro-audit` dependency for the common case.
