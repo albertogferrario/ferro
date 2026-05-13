@@ -41,6 +41,6 @@ pub use error::GuardedError;
 pub use guarded::GuardedUpdate;
 
 // Targeted re-exports — consumers calling the builder need these.
-// Do NOT add `pub use sea_orm::*;` (D-03).
+// Do NOT add a wildcard re-export of `sea_orm` (D-03).
 pub use sea_orm::sea_query::{Expr, IntoCondition, SimpleExpr, Value};
 pub use sea_orm::{ColumnTrait, ConnectionTrait, DbErr, EntityTrait};
