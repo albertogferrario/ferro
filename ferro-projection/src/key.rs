@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn display_renders_inner_string() {
         let k = ProjectionKey::new("warehouse-a");
-        assert_eq!(format!("{}", k), "warehouse-a");
+        assert_eq!(format!("{k}"), "warehouse-a");
     }
 
     #[test]
