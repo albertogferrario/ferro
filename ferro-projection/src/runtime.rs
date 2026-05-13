@@ -187,6 +187,94 @@ impl<P: Projection> ProjectionRuntime<P> {
         };
         ferro_events::global_dispatcher().listen::<P::Event, _>(listener);
     }
+
+    /// Discard the persisted snapshot for `key`, fold the supplied event
+    /// sequence through `P::State::default()` via `P::apply`, persist
+    /// the final state, broadcast ONE `"rebuild"` frame, and return
+    /// the rebuilt state (D-17).
+    ///
+    /// Acquires the same per-key Mutex as `apply_event`, so rebuild
+    /// serializes against in-flight applies.
+    ///
+    /// **Not transactional** (D-44). DELETE + folded INSERT under the
+    /// per-key Mutex; if the process crashes mid-rebuild, the snapshot
+    /// is gone but a subsequent `apply_event` re-initializes from
+    /// `Default`.
+    ///
+    /// Empty iterator wipes the snapshot row (D-43): returns
+    /// `P::State::default()` with no insert and no broadcast.
+    ///
+    /// The broadcast event name is `"rebuild"` (overrides
+    /// `P::broadcast_event_name`); payload is the final state. Clients
+    /// reset their local state on receipt of a `"rebuild"` frame
+    /// (D-41).
+    pub async fn rebuild<I>(
+        &self,
+        key: &ProjectionKey,
+        events: I,
+    ) -> Result<P::State, ProjectionError>
+    where
+        I: IntoIterator<Item = P::Event>,
+    {
+        // Acquire per-key Mutex (same shard-drop pattern as apply_event)
+        let lock_arc: Arc<tokio::sync::Mutex<()>> = {
+            self.locks
+                .entry(key.0.clone())
+                .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+                .clone()
+        }; // <-- RefMut drops here
+        let _guard = lock_arc.lock().await;
+
+        // Step 1: DELETE the existing snapshot row (D-42)
+        Entity::delete_by_id((P::NAME.to_string(), key.0.clone()))
+            .exec(&self.db)
+            .await?;
+
+        // Step 2: fold events through Default
+        let mut state = P::State::default();
+        let mut count: i64 = 0;
+        for event in events {
+            let _delta = self.projection.apply(&mut state, &event);
+            count += 1;
+        }
+
+        // Step 3: empty iterator → wipe semantic (D-43)
+        if count == 0 {
+            return Ok(state);
+        }
+
+        // Step 4: persist final state with version = count (D-42)
+        let state_json = serde_json::to_value(&state)?;
+        let now = Utc::now().naive_utc();
+        let am = ActiveModel {
+            projection_name: ActiveValue::Set(P::NAME.to_string()),
+            key: ActiveValue::Set(key.0.clone()),
+            state: ActiveValue::Set(state_json),
+            version: ActiveValue::Set(count),
+            updated_at: ActiveValue::Set(now),
+        };
+        Entity::insert(am).exec(&self.db).await?;
+
+        // Step 5: broadcast ONE "rebuild" frame with full final state (D-41)
+        let channel_name = format!("projection.{}.{}", P::NAME, key.as_str());
+        let send_result = ferro_broadcast::Broadcast::new(self.broadcaster.clone())
+            .channel(channel_name.clone())
+            .event("rebuild")
+            .data(state.clone())
+            .send()
+            .await;
+
+        if let Err(e) = send_result {
+            tracing::warn!(
+                error = %e,
+                channel = %channel_name,
+                "projection rebuild broadcast failed; snapshot persisted"
+            );
+            return Err(ProjectionError::from(e));
+        }
+
+        Ok(state)
+    }
 }
 
 #[cfg(test)]
@@ -474,5 +562,67 @@ mod tests {
 
         // 3 distinct keys → 3 distinct lock entries
         assert_eq!(rt.locks.len(), 3);
+    }
+
+    // D-45 #9: rebuild equivalence with sequential applies
+    #[tokio::test]
+    async fn rebuild_three_events_equals_three_sequential_applies() {
+        // Path A: 3 sequential apply_event calls
+        let rt_a = fresh_runtime(CounterProjection).await;
+        for d in [3, 5, 7] {
+            rt_a.apply_event(&CounterEvent { delta: d })
+                .await
+                .expect("apply");
+        }
+        let state_a = rt_a
+            .read(&ProjectionKey::new("default-key"))
+            .await
+            .expect("read a")
+            .expect("state a");
+
+        // Path B: one rebuild call
+        let rt_b = fresh_runtime(CounterProjection).await;
+        let events: Vec<CounterEvent> = vec![
+            CounterEvent { delta: 3 },
+            CounterEvent { delta: 5 },
+            CounterEvent { delta: 7 },
+        ];
+        let state_b = rt_b
+            .rebuild(&ProjectionKey::new("default-key"), events)
+            .await
+            .expect("rebuild");
+
+        assert_eq!(state_a, state_b);
+        assert_eq!(state_a.total, 15);
+    }
+
+    // D-45 #10: rebuild with empty iterator wipes row and returns Default
+    #[tokio::test]
+    async fn rebuild_empty_deletes_row_and_returns_default() {
+        let rt = fresh_runtime(CounterProjection).await;
+        // Seed a value
+        rt.apply_event(&CounterEvent { delta: 7 })
+            .await
+            .expect("seed");
+        let pre = rt
+            .read(&ProjectionKey::new("default-key"))
+            .await
+            .expect("read pre")
+            .expect("state pre");
+        assert_eq!(pre.total, 7);
+
+        // Rebuild empty
+        let after = rt
+            .rebuild(&ProjectionKey::new("default-key"), Vec::<CounterEvent>::new())
+            .await
+            .expect("rebuild empty");
+        assert_eq!(after.total, 0);
+
+        // Confirm the row is gone
+        let post = rt
+            .read(&ProjectionKey::new("default-key"))
+            .await
+            .expect("read post");
+        assert!(post.is_none(), "row should be wiped");
     }
 }
