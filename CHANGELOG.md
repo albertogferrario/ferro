@@ -3,6 +3,49 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## ferro-orm
+
+### [0.2.30] — 2026-05-13
+
+Initial release. Phase 152 — `ferro-orm` crate (atomic conditional UPDATE
+primitive for race-free counter mutations and state transitions).
+Milestone v11.11.
+
+#### Added
+
+- New crate `ferro-orm` exposing the `GuardedUpdate<E>` builder — compiles
+  to a single `UPDATE … WHERE …` SQL statement, replacing the hand-rolled
+  `read → check → write` pattern wherever a column's value is conditionally
+  mutated. The database engine's per-statement atomicity (SQLite serial
+  writer, Postgres `READ COMMITTED`) is the correctness mechanism;
+  `GuardedUpdate` adds the chainable surface and the rows-affected →
+  `GuardedError` mapping on top.
+- `GuardedUpdate::filter(impl IntoCondition)` — AND-combines multiple
+  filter calls onto an internal `Condition`. Matches `sea_orm::QueryFilter`
+  ergonomics.
+- `GuardedUpdate::set_expr(col, SimpleExpr)` and `set_value(col, Value)` —
+  chainable per-column set, supports value-derived (`Expr::col(…).sub(…)`)
+  and literal (`Value::String(…)`) assignments in the same statement.
+- `GuardedUpdate::exec_one(&conn)` — succeeds iff exactly one row matched;
+  `0 → Err(NoRowsAffected)`, `>1 → Err(TooManyRows { affected })`. Default
+  for race-free counter mutations.
+- `GuardedUpdate::exec_at_most_one(&conn)` — `Ok(true)` on 1 row,
+  `Ok(false)` on 0 rows (predicate failure is a normal outcome),
+  `Err(TooManyRows)` on >1 rows. For optimistic updates.
+- `GuardedError` — `NoRowsAffected | TooManyRows { affected } |
+  EmptyUpdate | Db(#[from] DbErr)`. Display prefix `"guarded: …"`.
+- Targeted re-exports of the SeaORM symbols required by the public API
+  (`EntityTrait`, `ColumnTrait`, `ConnectionTrait`, `IntoCondition`,
+  `SimpleExpr`, `Value`, `DbErr`, `Expr`); no blanket `pub use sea_orm::*`.
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1a slot
+  reserved in `.github/workflows/publish.yml`. First publish is
+  bootstrapped from a local terminal (CI publish token has
+  `publish-update` scope only); subsequent versions auto-publish.
+- New documentation page `docs/src/database/atomic-updates.md` covering
+  the anti-pattern, the API, common patterns (counter decrement, status
+  transition, optimistic concurrency), and the per-statement atomicity
+  contract.
+
 ## ferro-wallet
 
 ### [0.2.24] — 2026-05-11
