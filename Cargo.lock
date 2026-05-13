@@ -2101,6 +2101,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-projection"
+version = "0.2.32"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "dashmap",
+ "ferro-broadcast",
+ "ferro-events",
+ "ferro-reservation",
+ "proptest",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "ferro-projections"
 version = "0.2.32"
 dependencies = [
