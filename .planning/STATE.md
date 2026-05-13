@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: "153-06-PLAN.md checkpoint:human-action Task 6 first-publish bootstrap"
-last_updated: "2026-05-13T18:17:34.121Z"
+stopped_at: Phase 153 complete — ferro-audit v0.2.31 published to crates.io
+last_updated: "2026-05-13T19:23:43.314Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 157
@@ -220,10 +220,11 @@ Recent decisions affecting current work:
 - Phase 144 added (2026-04-21): Fix root path routing in group routes — `get!("/", ...)` inside a group does not match the trailing-slash URL. Source: gestiscilo-it field test — `/s/{slug}/` returns 404; `/s/{slug}/index.html` works. The `serve_root` handler is unreachable via the canonical URL.
 - Phase 145 added (2026-04-22): ferro serve manual reload key and watch supervisor — replace external `cargo-watch` with in-process supervisor, flip auto-watch to opt-in via `--watch`, add runtime `r` key for cancel-and-restart rebuilds, unify backend recompile + types regen under one debounced loop. Source: field report — rapid file saves produce compounding stale rebuilds; thermal cost on MacBook. Spec: `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`.
 - Phases 152-155 added (2026-05-13): v11.11 Resource Reservation & Live Read-Model Primitives milestone created. Source: gestiscilo-it inventory monitoring field test. Four domain-neutral horizontal primitives — 152 `ferro-orm::GuardedUpdate` (atomic conditional updates), 153 `ferro-audit` (structured before/after log), 154 `ferro-reservation` (generic hold/commit/release with TTL, depends on 152+153), 155 `ferro-projection` (live read-model from domain events with broadcast deltas, uses existing ferro-events + ferro-broadcast). Unblocks gestiscilo-it v6.3 Online Checkout (slot hold during Stripe payment) and v6.7 Inventory Monitoring. Design: `research/INVENTORY-PRIMITIVES.md`.
+- Phase 157 added (2026-05-13, URGENT): v11.12 Migration Deploy Safety milestone created. Source: gestiscilo-it 2026-05-13 production breakage — SQLite-hardcoded backfill SQL failed on Postgres, runtime runner swallowed the error via `eprintln!` + continue, no PRE_DEPLOY gate in scaffolded `.do/app.yaml`, server served a stale schema for hours before discovery. Three framework gaps closed at once: backend-portable migration helpers (`ferro_migration::backfill_random_hex` and friends), `ferro do:init` emits a `PRE_DEPLOY` migrate job by default, `ferro doctor --deploy` adds a `migrate_gate` check. Context: `.planning/phases/157-.../157-CONTEXT.md`.
 
 ## Session Continuity
 
-Last session: 2026-05-13T18:17:23.726Z
-Stopped at: 153-06-PLAN.md checkpoint:human-action Task 6 first-publish bootstrap
-Resume file: None
+Last session: 2026-05-13T19:23:43.285Z
+Stopped at: Phase 153 complete — ferro-audit v0.2.31 published to crates.io
+Resume file: .planning/phases/153-ferro-audit-crate-structured-before-after-audit-log-with-rep/153-06-SUMMARY.md
 Next action: Operator runs `cargo publish -p ferro-orm --token <PERSONAL_PUBLISH_TOKEN>` from repo root, then `git push origin master`. Reply "published" with resolved version to close Phase 152 and advance to Phase 153.

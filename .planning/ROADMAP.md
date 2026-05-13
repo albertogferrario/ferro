@@ -39,6 +39,7 @@
 - 📋 **v11.9 Notifications & Rich-Text Foundations** — Phases 149-150 (planned 2026-04-28). Source: gestiscilo-it v6.4 Documents & Notifications field test. Extends `ferro-notifications` with `Channel::WhatsApp` + `Channel::InApp` adapters and `MailMessage::attachment()` builder; ships `ferro-json-ui RichTextEditor` component (Quill 2.0.3 plugin pattern) so consumer apps can author rich-text bodies without bundling. Auto-publishes via GH Actions. Single load-bearing prerequisite for gestiscilo-it v6.4 Phase 120 (notification dispatcher) and Phase 125 (document template editor).
 - 📋 **v11.10 ferro-wallet — Digital Wallet Passes** — Phase 151 (planned 2026-05-11). Source: gestiscilo-it digital wallet booking pass field test. New project-agnostic crate `ferro-wallet` providing the `WalletSubject` trait, `ApplePassBuilder` (PKCS#7-signed `.pkpass`), `GoogleWalletBuilder` (RS256 save-link JWT), and image / QR primitives. Follows architecture principle 6 (project-agnostic, reads `APP_NAME` / `APP_URL` via `WalletConfig::from_env`). Single load-bearing prerequisite for gestiscilo-it wallet booking passes integration. [Context](phases/151-ferro-wallet-crate/151-CONTEXT.md) · [Spec](../docs/superpowers/specs/2026-05-11-ferro-wallet-crate.md)
 - 📋 **v11.11 Resource Reservation & Live Read-Model Primitives** — Phases 152-155 (planned 2026-05-13). Source: gestiscilo-it inventory monitoring field test. Four reusable horizontal primitives: `ferro-orm::GuardedUpdate` (atomic conditional updates), `ferro-audit` (structured before/after log), `ferro-reservation` (generic hold/commit/release with TTL), `ferro-projection` (live read-model from domain events with broadcast deltas). Unblocks gestiscilo-it v6.3 online checkout reservation TTL and v6.7 inventory monitoring. [Design](research/INVENTORY-PRIMITIVES.md)
+- 📋 **v11.12 Migration Deploy Safety** — Phase 157 (planned 2026-05-13, URGENT). Source: gestiscilo-it 2026-05-13 production breakage — SQLite-hardcoded backfill SQL failed on Postgres, runtime runner swallowed the error, no PRE_DEPLOY gate, server served a stale schema. Three framework gaps closed at once: backend-portable migration helpers (`ferro_migration::backfill_random_hex`, etc.), `ferro do:init` emits a `PRE_DEPLOY` migrate job by default, `ferro doctor --deploy` adds a `migrate_gate` check that fails when migrations exist but no PRE_DEPLOY job is configured. [Context](phases/157-migration-deploy-safety-backend-portable-backfill-helpers-fe/157-CONTEXT.md)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -1455,11 +1456,17 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 155 to break down)
 
+### 📋 v11.12 Migration Deploy Safety (Phase 157, planned 2026-05-13, URGENT)
+
+**Source:** gestiscilo-it 2026-05-13 production breakage. Field-test detail in [phases/157-.../157-CONTEXT.md](phases/157-migration-deploy-safety-backend-portable-backfill-helpers-fe/157-CONTEXT.md).
+
+**What ships:** three framework gaps closed in one phase — backend-portable backfill helpers, scaffolder-emitted PRE_DEPLOY migrate job, doctor `migrate_gate` check.
+
 ### Phase 157: Migration deploy safety — backend-portable backfill helpers, ferro do:init PRE_DEPLOY migrate job, ferro doctor check for migrate gate
 
 **Goal:** [To be planned]
 **Requirements**: TBD
-**Depends on:** Phase 156
+**Depends on:** none (independent of v11.11 primitives; can land in parallel)
 **Plans:** 0 plans
 
 Plans:
