@@ -55,6 +55,7 @@ The **core abstraction is projection / intent** (`ferro-projections`, shipped in
 | `ferro-theme` | Semantic theme tokens and intent template schema | `src/lib.rs` |
 | `ferro-ai` | AI structured classification and confirmation primitives | `src/lib.rs` |
 | `ferro-whatsapp` | WhatsApp Business Cloud API integration | `src/lib.rs` |
+| `ferro-orm` | Atomic conditional updates and ORM primitives (`GuardedUpdate`) | `src/lib.rs` |
 | `app` | Sample application | Reference implementation |
 
 ## Key Patterns
