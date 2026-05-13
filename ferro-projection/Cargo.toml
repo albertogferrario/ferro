@@ -1,0 +1,32 @@
+[package]
+name = "ferro-projection"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Live read-model runtime: subscribe to domain events, persist per-key snapshots, broadcast deltas (not the same as ferro-projections plural)"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["projection", "read-model", "events", "broadcast", "ferro"]
+categories = ["database", "asynchronous", "web-programming"]
+readme = "README.md"
+homepage = "https://ferro-rs.dev"
+
+[dependencies]
+sea-orm = "1.0"
+sea-orm-migration = "1.0"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+async-trait = "0.1"
+dashmap = "6"
+tokio = { version = "1", features = ["sync", "rt"] }
+ferro-events    = { path = "../ferro-events",    version = "0.2" }
+ferro-broadcast = { path = "../ferro-broadcast", version = "0.2" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
+proptest = "1"
+ferro-reservation = { path = "../ferro-reservation", version = "0.2" }
