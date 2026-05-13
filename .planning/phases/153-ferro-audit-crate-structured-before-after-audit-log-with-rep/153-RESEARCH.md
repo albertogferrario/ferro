@@ -748,17 +748,17 @@ Add below `atomic-updates.md`:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`created_at` after INSERT on SQLite with UUID PK**
+1. **`created_at` after INSERT on SQLite with UUID PK** — RESOLVED
    - What we know: SeaORM SQLite driver uses `last_insert_rowid()` to re-fetch after INSERT; UUID PKs with `auto_increment = false` may not work with `last_insert_rowid()`.
-   - What's unclear: Whether `insert_and_return()` is available and works cross-dialect for UUID PKs in SeaORM 1.1.
-   - Recommendation: Implement the re-fetch pattern (`find_by_id(new_id).one(conn).await?`) and let the tests (T-D-30-1) confirm it works. If `insert_and_return()` works, it can replace the re-fetch in a follow-up.
+   - What's unclear (was): Whether `insert_and_return()` is available and works cross-dialect for UUID PKs in SeaORM 1.1.
+   - **RESOLUTION:** Mandatory post-INSERT `find_by_id(new_id).one(conn).await?` re-fetch is implemented in Plan 04 (`AuditEntry::write`), explicitly stated in the plan's `must_haves`, task `<action>`, `<acceptance_criteria>`, and `<threat_model>`. The happy-path test (`T-D-30-1`) asserts `created_at != NaiveDateTime::default()` to confirm the DB-stamped value is populated. If a future SeaORM release lands a working cross-dialect `insert_and_return()` for UUID PKs, the re-fetch can be collapsed in a follow-up; the current implementation is forward-compatible.
 
-2. **`DeriveMigrationName` output for `ferro_audit::migration::Migration`**
+2. **`DeriveMigrationName` output for `ferro_audit::migration::Migration`** — RESOLVED
    - What we know: The macro derives the name from the Rust source path / module path.
-   - What's unclear: Exact string produced (`migration`, `ferro_audit__migration__migration`, or something else).
-   - Recommendation: The `schema_migrations` table entry name is an implementation detail; consumers don't need to know it. The migration executes correctly regardless of the stored name. Planner can ignore this — tests will confirm by running `MigratorTrait::up()` without error.
+   - What's unclear (was): Exact string produced (`migration`, `ferro_audit__migration__migration`, or something else).
+   - **RESOLUTION:** The `schema_migrations` table entry name is a SeaORM implementation detail; consumers do not need to know it. The migration executes correctly regardless of the stored name. The Plan 03 unit test (`migration_creates_table_and_indexes`) and the Plan 06 integration test (`replay_round_trip`) both run `MigratorTrait::up()` against in-memory SQLite — any name-related failure surfaces at test time. No planner action required.
 
 ---
 
