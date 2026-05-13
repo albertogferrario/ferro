@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: "154-07 Tasks 1-4 complete; checkpoint at Task 5 (human-action: cargo publish first-publish bootstrap)"
-last_updated: "2026-05-13T21:48:16.167Z"
-last_activity: 2026-05-13
+stopped_at: "154-07 complete — ferro-reservation v0.2.32 published to crates.io; Phase 154 all 7 plans done"
+last_updated: "2026-05-14T00:00:00Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 157
   completed_phases: 140
@@ -25,13 +25,13 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 154 (ferro-reservation-crate-generic-hold-commit-release-with-ttl) — EXECUTING
+Phase: 154 (ferro-reservation-crate-generic-hold-commit-release-with-ttl) — COMPLETE
 Plan: 7 of 7
-Plans: 6 of 6 complete; ferro-audit v0.2.31 live on crates.io
-Workspace version: 0.2.31 (bumped from 0.2.30 in Phase 153 plan 02)
-Status: Ready to execute
-Last activity: 2026-05-13
-Next phase: 154 (ferro-reservation — depends on 152 + 153, both now complete)
+Plans: 7 of 7 complete; ferro-reservation v0.2.32 live on crates.io
+Workspace version: 0.2.32 (bumped from 0.2.31 in Phase 154 plan 02)
+Status: Phase 154 complete; ready for next phase
+Last activity: 2026-05-14
+Next phase: 155 (ferro-projection — live read-model from domain events with delta broadcast)
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%

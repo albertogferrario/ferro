@@ -13,6 +13,7 @@ provides:
   - docs/src/SUMMARY.md nav entry for reservations.md
   - CHANGELOG.md ## ferro-reservation section (D-58)
   - Workspace pre-release gate: fmt + clippy + test + doc all green
+  - ferro-reservation v0.2.32 published to crates.io
 
 affects: [crates-io, docs-rs, STATE.md, ROADMAP.md]
 
@@ -21,6 +22,7 @@ tech-stack:
   patterns:
     - "docs/src/database/*.md structure: anti-pattern → replacement → state diagram → API → lifecycle → context → TTL → events → audit → patterns → schema → errors → consistency → footguns"
     - "CHANGELOG newest-on-top: ## ferro-reservation above ## ferro-audit (Phase 152 D-25 convention)"
+    - "New crate first-publish: personal publish-new-scoped token from local terminal; subsequent versions auto-publish via CI Wave 1b"
 
 key-files:
   created:
@@ -29,30 +31,32 @@ key-files:
     - docs/src/SUMMARY.md
     - CHANGELOG.md
 
-decisions:
+key-decisions:
   - "Workspace version 0.2.32 used in CHANGELOG [0.2.32] — 2026-05-13 heading (no bump needed; plan 02 already bumped 0.2.31 → 0.2.32)"
   - "hold() SQLite concurrency limitation documented explicitly in Consistency Model section (per D-51 and 154-06 Bug #2 — tokio::Mutex pattern confirmed necessary)"
   - "Lifecycle Methods section notes the three-step hold() sequence is not a single atomic statement; callers on SQLite should serialize with a per-resource-key tokio::sync::Mutex"
 
+requirements-completed: []
+
 metrics:
-  duration: 10 min
-  completed: 2026-05-13T21:43:00Z
-  tasks_completed: 4
-  tasks_pending: 1
+  duration: ~15 min
+  completed: 2026-05-13
+  tasks_completed: 5
+  tasks_pending: 0
   files_created: 1
   files_modified: 2
 ---
 
 # Phase 154 Plan 07: Docs, CHANGELOG, and Release Bootstrap Summary
 
-**Tasks 1-4 complete and committed; Task 5 (first-publish manual bootstrap) awaits operator action**
+**ferro-reservation v0.2.32 published to crates.io — race-free resource reservation kernel composing GuardedUpdate + AuditEntry + domain events**
 
 ## Performance
 
-- **Duration:** ~10 min
+- **Duration:** ~15 min (Tasks 1-4 automated) + operator publish bootstrap
 - **Started:** 2026-05-13T21:33:00Z
-- **Completed (Tasks 1-4):** 2026-05-13T21:43:00Z
-- **Tasks:** 4 of 5 completed autonomously; 1 pending operator action
+- **Completed:** 2026-05-13
+- **Tasks:** 5 of 5 complete
 
 ## Accomplishments
 
@@ -125,24 +129,19 @@ test result: ok. 2 passed; 0 failed
 Total: 33 tests, all green
 ```
 
-## Pending: Task 5 — Manual First-Publish Bootstrap
+### Task 5: Manual first-publish bootstrap — operator action (complete)
 
-Task 5 is a `checkpoint:human-action`. The operator must run:
+`cargo publish -p ferro-reservation` executed by operator with a personal
+`publish-new`-scoped token. Confirmed via `cargo search ferro-reservation`:
+`ferro-reservation = "0.2.32"` live on crates.io.
 
-```bash
-cargo publish -p ferro-reservation --token <PERSONAL_PUBLISH_NEW_TOKEN>
-```
+This is the same operational pattern as Phase 151 (ferro-wallet v0.2.29),
+Phase 152 (ferro-orm v0.2.30), and Phase 153 (ferro-audit v0.2.31). CI's
+`CARGO_REGISTRY_TOKEN` carries `publish-update` scope only and cannot create
+new crates; the manual bootstrap is a one-time requirement per new crate.
 
-from a local terminal with a personal `publish-new`-scoped token. CI's
-`CARGO_REGISTRY_TOKEN` has `publish-update` scope only and cannot create new
-crates. This is the same operational pattern as Phase 151 (ferro-wallet),
-Phase 152 (ferro-orm), and Phase 153 (ferro-audit).
-
-After the bootstrap:
-- Subsequent ferro-reservation versions auto-publish via Wave 1b in
-  `.github/workflows/publish.yml` on master push.
-- Push `git push origin master` to trigger the CI workflow.
-- Update STATE.md to record Phase 154 complete.
+Subsequent ferro-reservation versions auto-publish via Wave 1b in
+`.github/workflows/publish.yml` on every master push.
 
 ## Deviations from Plan
 
