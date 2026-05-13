@@ -3,6 +3,92 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## ferro-reservation
+
+### [0.2.32] — 2026-05-13
+
+Initial release. Phase 154 — `ferro-reservation` crate (generic
+hold/commit/release resource reservation kernel with TTL and event
+broadcast).
+
+#### Added
+
+- New crate `ferro-reservation` exposing `ReservationKernel<R: Resource>`
+  with `hold` / `commit` / `release` / `extend` / `run_sweep_once` — a
+  typed, race-free state-transition pipeline for any capacity-constrained
+  resource. Consumers implement the `Resource` trait against their own
+  domain model.
+- `Resource` trait: consumer-implemented capacity model. Associated
+  types `Key` (Hash + Eq + Clone + Send + Sync + Serialize + DeserializeOwned)
+  and `Window` (PartialEq + Clone + Send + Sync + Serialize +
+  DeserializeOwned; use `()` for non-windowed resources). Const
+  `KIND: &'static str` for dotted-namespace identification
+  (`"inventory.unit"`, `"checkout.slot"`, `"api.quota"`). Two async
+  methods `capacity` and `held` generic over `<C: ConnectionTrait>`.
+- `ReservationKernel<R>` with `new(db, resource)` constructor and four
+  state-transition methods. State machine: `held → committed | released
+  | expired`. Terminal states have no outgoing transitions; any attempt
+  surfaces as `ReservationError::ConflictingState`.
+- `ReservationContext` per-call audit metadata bundle: `actor`,
+  `correlation_id`, `tenant_id`, `reason`. Four constructors
+  (`system`, `user`, `job`, `anonymous`) and three consuming
+  builder methods (`with_correlation`, `with_tenant`, `with_reason`).
+- `ReservationHandle` opaque token — full snapshot of hold-time fields
+  with `Serialize + Deserialize` for embedding in Stripe payment intent
+  metadata, queued-job payloads, or other side channels.
+- `ReservationEvent` enum (`Held | Committed | Released | Expired`)
+  implementing `ferro_events::Event` — dispatched via
+  `ferro_events::dispatch` AFTER every successful state transition.
+  Event dispatch is best-effort; failure logs at `tracing::warn!` and
+  does NOT roll back the DB state.
+- `ReleaseReason` enum (`UserCancelled | PaymentFailed | AdminOverride
+  | Other(String)`) — typed reason recorded on the audit log and emitted
+  with `ReservationEvent::Released`.
+- `SweepReport` returned from `run_sweep_once` (`expired_count`,
+  `scanned_at`) for sweep observability.
+- `ReservationError` — `Insufficient { requested, available, capacity }
+  | ConflictingState { id, expected } | NotFound { id } | Db(#[from] DbErr)
+  | Guarded(#[from] GuardedError) | Audit(#[from] AuditError) | Json(#[from]
+  serde_json::Error)`. Display prefix `"reservation: …"`.
+- Unconditional audit emission via `ferro-audit`: every successful
+  state transition writes one `AuditEntry` with
+  `action = "reservation.{held|committed|released|expired|extended}"`.
+  Audit failure surfaces as `ReservationError::Audit` but does NOT
+  roll back the DB state.
+- Race-free state transitions via `ferro-orm::GuardedUpdate`. Every
+  transition predicate includes `Status.eq("held")`; concurrent
+  callers surface as `ConflictingState`. The sweeper uses
+  `exec_at_most_one` so concurrent sweepers tolerate 0-rows-affected
+  as a normal outcome.
+- `run_sweep_once()` — sweeper primitive. Scans for held rows with
+  `expires_at < now`, transitions to expired (LIMIT 500 per call), emits
+  one `ReservationEvent::Expired` + one `AuditEntry` per row with
+  `AuditActor::System`. Consumers schedule sweeps themselves (no
+  `ferro-queue` runtime dependency); three idiomatic patterns
+  documented (`ferro-queue` Job, `tokio::time::interval`, cron CLI).
+- `CreateReservationsTable` migration — consumers register it in their
+  `Migrator` alongside `ferro_audit::CreateAuditLogTable`. Schema: 12
+  columns + 2 composite indexes (`idx_reservations_kind_key_window_status`,
+  `idx_reservations_status_expires`).
+- Targeted re-exports of the SeaORM symbols required by the public API
+  (no blanket `pub use sea_orm::*`). The `ReservationEntity` /
+  `ReservationModel` / `ReservationActiveModel` re-exports enable
+  consumer-side sea-orm-native queries. The `AuditActor` re-export
+  from `ferro-audit` lets consumers build `ReservationContext` without
+  a direct ferro-audit dependency for the common case.
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1b
+  slot reserved in `.github/workflows/publish.yml`. First publish
+  bootstrapped from a local terminal (CI publish token has
+  `publish-update` scope only); subsequent versions auto-publish.
+- New documentation page `docs/src/database/reservations.md` covering
+  the resource/window abstraction, defining a `Resource` impl, kernel
+  construction, the four lifecycle methods, TTL + sweeper (three
+  scheduling idioms), event subscription pattern, audit log inspection,
+  common patterns (slot hold during checkout, ticket reservations, API
+  rate-limit buckets), consistency model (per-statement atomicity,
+  SQLite-validated; Postgres correctness for hold() deferred), and
+  operational footguns.
+
 ## ferro-audit
 
 ### [0.2.31] — 2026-05-13
