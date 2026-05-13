@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: "154-07 complete — ferro-reservation v0.2.32 published to crates.io; Phase 154 all 7 plans done"
-last_updated: "2026-05-14T00:00:00Z"
-last_activity: 2026-05-14
+status: completed
+stopped_at: "154-07 Tasks 1-4 complete; checkpoint at Task 5 (human-action: cargo publish first-publish bootstrap)"
+last_updated: "2026-05-13T22:08:33.906Z"
+last_activity: 2026-05-13
 progress:
   total_phases: 157
   completed_phases: 140
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 154 (ferro-reservation-crate-generic-hold-commit-release-with-ttl) — COMPLETE
-Plan: 7 of 7
+Phase: 155
+Plan: Not started
 Plans: 7 of 7 complete; ferro-reservation v0.2.32 live on crates.io
 Workspace version: 0.2.32 (bumped from 0.2.31 in Phase 154 plan 02)
 Status: Phase 154 complete; ready for next phase
-Last activity: 2026-05-14
+Last activity: 2026-05-13
 Next phase: 155 (ferro-projection — live read-model from domain events with delta broadcast)
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
@@ -40,7 +40,7 @@ Progress: [██████████] 96%
 
 **Velocity:**
 
-- Total plans completed: 45
+- Total plans completed: 52
 - Average duration: —
 - Total execution time: —
 
@@ -57,6 +57,7 @@ Progress: [██████████] 96%
 | 148 | 3 | - | - |
 | 149 | 7 | - | - |
 | 150 | 5 | - | - |
+| 154 | 7 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
