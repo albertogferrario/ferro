@@ -36,6 +36,9 @@ where
     R: Clone,
 {
     fn clone(&self) -> Self {
-        Self { db: self.db.clone(), resource: self.resource.clone() }
+        Self {
+            db: self.db.clone(),
+            resource: self.resource.clone(),
+        }
     }
 }

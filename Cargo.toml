@@ -24,6 +24,7 @@ members = [
     "ferro-wallet",
     "ferro-orm",
     "ferro-audit",
+    "ferro-reservation",
 ]
 
 [workspace.package]

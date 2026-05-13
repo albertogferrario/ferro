@@ -22,14 +22,22 @@ pub enum ReservationEvent {
         quantity: u32,
         expires_at: DateTime<Utc>,
     },
-    Committed { id: Uuid, resource_kind: String, resource_key: JsonValue },
+    Committed {
+        id: Uuid,
+        resource_kind: String,
+        resource_key: JsonValue,
+    },
     Released {
         id: Uuid,
         resource_kind: String,
         resource_key: JsonValue,
         reason: ReleaseReason,
     },
-    Expired { id: Uuid, resource_kind: String, resource_key: JsonValue },
+    Expired {
+        id: Uuid,
+        resource_kind: String,
+        resource_key: JsonValue,
+    },
 }
 
 /// Reason recorded on the audit log + emitted in `ReservationEvent::Released`

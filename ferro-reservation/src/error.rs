@@ -11,7 +11,11 @@ pub enum ReservationError {
     /// `available` (= `capacity - held`) units left. The three values
     /// surface to telemetry and UI ("3 units left, you asked for 5").
     #[error("reservation: insufficient capacity (requested {requested}, available {available} of {capacity})")]
-    Insufficient { requested: u32, available: u32, capacity: u32 },
+    Insufficient {
+        requested: u32,
+        available: u32,
+        capacity: u32,
+    },
 
     /// State-transition predicate failed — the row was not in the expected
     /// state at update time (already committed/released/expired by a
@@ -57,7 +61,11 @@ mod tests {
 
     #[test]
     fn insufficient_display() {
-        let e = ReservationError::Insufficient { requested: 5, available: 3, capacity: 5 };
+        let e = ReservationError::Insufficient {
+            requested: 5,
+            available: 3,
+            capacity: 5,
+        };
         assert_eq!(
             e.to_string(),
             "reservation: insufficient capacity (requested 5, available 3 of 5)"
@@ -67,7 +75,10 @@ mod tests {
     #[test]
     fn conflicting_state_display() {
         let id = Uuid::new_v4();
-        let e = ReservationError::ConflictingState { id, expected: "held" };
+        let e = ReservationError::ConflictingState {
+            id,
+            expected: "held",
+        };
         let s = e.to_string();
         assert!(s.starts_with("reservation: id="), "got: {s}");
         assert!(s.ends_with(" not in expected state 'held'"), "got: {s}");
@@ -95,7 +106,9 @@ mod tests {
         let g = ferro_orm::GuardedError::NoRowsAffected;
         let e: ReservationError = ReservationError::from(g);
         assert!(matches!(e, ReservationError::Guarded(_)));
-        assert!(e.to_string().starts_with("reservation: guarded update error: "));
+        assert!(e
+            .to_string()
+            .starts_with("reservation: guarded update error: "));
     }
 
     #[test]
@@ -112,6 +125,8 @@ mod tests {
             serde_json::from_str::<serde_json::Value>("not json").unwrap_err();
         let e: ReservationError = ReservationError::from(j);
         assert!(matches!(e, ReservationError::Json(_)));
-        assert!(e.to_string().starts_with("reservation: json serialization error: "));
+        assert!(e
+            .to_string()
+            .starts_with("reservation: json serialization error: "));
     }
 }
