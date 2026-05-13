@@ -507,7 +507,7 @@ ferro-reservation = { path = "../ferro-reservation", version = "0.2" }
 
 ---
 
-## §Open Questions
+## §Open Questions (RESOLVED)
 
 CONTEXT.md is comprehensive. Two micro-questions surfaced during research; both are answerable by Claude's discretion within CONTEXT.md's bounds:
 
