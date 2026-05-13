@@ -28,13 +28,18 @@ decisions:
 metrics:
   duration: "448s"
   completed: "2026-05-13T18:16:25Z"
-  tasks_completed: 5
+  tasks_completed: 6
   files_modified: 4
+release:
+  published_version: "0.2.31"
+  published_at: "2026-05-13"
+  crates_io_url: "https://crates.io/crates/ferro-audit"
+  bootstrap_method: "operator personal publish-new token (CI publish-update token cannot create new crates)"
 ---
 
 # Phase 153 Plan 06: Integration Test + Docs + CHANGELOG + Pre-release Gate Summary
 
-**One-liner:** D-31 integration test proves replay round-trip end-to-end; audit-log.md ships the 11-section doc page; CHANGELOG records the v0.2.31 initial release; all 5 pre-release gate commands exit 0; Task 6 (first publish) awaits operator bootstrap.
+**One-liner:** D-31 integration test proves replay round-trip end-to-end; audit-log.md ships the 11-section doc page; CHANGELOG records the v0.2.31 initial release; all 5 pre-release gate commands exit 0; ferro-audit v0.2.31 is live on crates.io.
 
 ## What Was Built
 
