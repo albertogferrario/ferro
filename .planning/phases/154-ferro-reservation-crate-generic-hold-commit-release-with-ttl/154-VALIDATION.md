@@ -1,8 +1,8 @@
 ---
 phase: 154
 slug: ferro-reservation-crate-generic-hold-commit-release-with-ttl
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-05-13
 ---
