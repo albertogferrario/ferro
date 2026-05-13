@@ -69,6 +69,11 @@ impl<R: Resource> ReservationKernel<R> {
         let available = capacity.saturating_sub(held);
 
         // Step 4: enforce invariant
+        if quantity == 0 {
+            return Err(ReservationError::Db(sea_orm::DbErr::Custom(
+                "reservation: quantity must be >= 1".to_string(),
+            )));
+        }
         if quantity > available {
             return Err(ReservationError::Insufficient {
                 requested: quantity,
@@ -94,12 +99,18 @@ impl<R: Resource> ReservationKernel<R> {
                 )))
             })?;
 
+        let quantity_i32 = i32::try_from(quantity).map_err(|_| {
+            ReservationError::Db(sea_orm::DbErr::Custom(format!(
+                "reservation: quantity {quantity} overflows i32 column"
+            )))
+        })?;
+
         let am = reservations::ActiveModel {
             id: ActiveValue::Set(id),
             resource_kind: ActiveValue::Set(R::KIND.to_string()),
             resource_key: ActiveValue::Set(key_json.clone()),
             window: ActiveValue::Set(window_json.clone()),
-            quantity: ActiveValue::Set(quantity as i32),
+            quantity: ActiveValue::Set(quantity_i32),
             status: ActiveValue::Set("held".to_string()),
             expires_at: ActiveValue::Set(expires_at.naive_utc()),
             held_at: ActiveValue::Set(now.naive_utc()),
