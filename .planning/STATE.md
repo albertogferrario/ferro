@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: Phase 151 complete — ferro-wallet 0.2.24 published to crates.io
-last_updated: "2026-05-11T04:41:00.121Z"
-last_activity: 2026-05-11
+status: verifying
+stopped_at: Phase 152 context gathered (--auto)
+last_updated: "2026-05-13T14:45:34.049Z"
+last_activity: 2026-05-11 — ferro-wallet 0.2.24 published, master pushed
 progress:
-  total_phases: 151
+  total_phases: 155
   completed_phases: 137
   total_plans: 363
-  completed_plans: 351
-  percent: 97
+  completed_plans: 342
+  percent: 94
 ---
 
 # Project State
@@ -209,10 +209,11 @@ Recent decisions affecting current work:
 - Phase 143 inserted (2026-04-20): Tailwind static CSS pipeline (URGENT) — opened new milestone v11.7. Source: gestiscilo-it production field report — `@tailwindcss/browser@4` runtime JIT fails on Safari, renders login page as unstyled HTML. Replace with pre-built static CSS. Manually scaffolded (gsd-tools phase insert rejected because STATE.md milestone field still says v11.0 but v11.6 and earlier have shipped — STATE drift is a separate cleanup). Context: `.planning/phases/143-tailwind-static-css-pipeline/143-CONTEXT.md`.
 - Phase 144 added (2026-04-21): Fix root path routing in group routes — `get!("/", ...)` inside a group does not match the trailing-slash URL. Source: gestiscilo-it field test — `/s/{slug}/` returns 404; `/s/{slug}/index.html` works. The `serve_root` handler is unreachable via the canonical URL.
 - Phase 145 added (2026-04-22): ferro serve manual reload key and watch supervisor — replace external `cargo-watch` with in-process supervisor, flip auto-watch to opt-in via `--watch`, add runtime `r` key for cancel-and-restart rebuilds, unify backend recompile + types regen under one debounced loop. Source: field report — rapid file saves produce compounding stale rebuilds; thermal cost on MacBook. Spec: `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`.
+- Phases 152-155 added (2026-05-13): v11.11 Resource Reservation & Live Read-Model Primitives milestone created. Source: gestiscilo-it inventory monitoring field test. Four domain-neutral horizontal primitives — 152 `ferro-orm::GuardedUpdate` (atomic conditional updates), 153 `ferro-audit` (structured before/after log), 154 `ferro-reservation` (generic hold/commit/release with TTL, depends on 152+153), 155 `ferro-projection` (live read-model from domain events with broadcast deltas, uses existing ferro-events + ferro-broadcast). Unblocks gestiscilo-it v6.3 Online Checkout (slot hold during Stripe payment) and v6.7 Inventory Monitoring. Design: `research/INVENTORY-PRIMITIVES.md`.
 
 ## Session Continuity
 
-Last session: 2026-05-11T04:41:00.112Z
-Stopped at: Phase 151 complete — ferro-wallet 0.2.24 published to crates.io
-Resume file: .planning/phases/151-ferro-wallet-crate/151-09-SUMMARY.md
+Last session: 2026-05-13T14:45:34.014Z
+Stopped at: Phase 152 context gathered (--auto)
+Resume file: .planning/phases/152-ferro-orm-guardedupdate-atomic-conditional-updates-for-race-/152-CONTEXT.md
 Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
