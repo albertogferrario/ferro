@@ -402,33 +402,9 @@ mod tests {
     use super::*;
     use async_trait::async_trait;
     use sea_orm::{ColumnTrait, Database, DatabaseConnection, EntityTrait, QueryFilter};
-    use sea_orm_migration::{MigrationTrait, MigratorTrait, SchemaManager};
+    use sea_orm_migration::{MigrationTrait, MigratorTrait};
 
     // ---- Test harness -------------------------------------------------------
-
-    // `DeriveMigrationName` on both ferro_audit::migration::Migration and
-    // crate::migration::Migration generates the name "migration" (file stem
-    // of src/migration.rs). When both are registered in one Migrator the
-    // seaql_migrations table gets a UNIQUE constraint violation on the version
-    // column. We wrap our migration with a distinct name to avoid the collision.
-    struct ReservationMigrationWrapper;
-
-    impl sea_orm_migration::MigrationName for ReservationMigrationWrapper {
-        fn name(&self) -> &str {
-            "create_reservations_table"
-        }
-    }
-
-    #[async_trait]
-    impl MigrationTrait for ReservationMigrationWrapper {
-        async fn up(&self, manager: &SchemaManager) -> Result<(), sea_orm::DbErr> {
-            crate::migration::Migration.up(manager).await
-        }
-
-        async fn down(&self, manager: &SchemaManager) -> Result<(), sea_orm::DbErr> {
-            crate::migration::Migration.down(manager).await
-        }
-    }
 
     struct TestMigrator;
 
@@ -437,7 +413,7 @@ mod tests {
         fn migrations() -> Vec<Box<dyn MigrationTrait>> {
             vec![
                 Box::new(ferro_audit::CreateAuditLogTable),
-                Box::new(ReservationMigrationWrapper),
+                Box::new(crate::migration::Migration),
             ]
         }
     }
