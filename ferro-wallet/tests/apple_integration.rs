@@ -85,13 +85,13 @@ impl WalletSubject for StubBooking {
     fn serial(&self) -> String {
         "BOOK-1".to_string()
     }
-    fn primary(&self) -> Field {
-        Field {
+    fn primary(&self) -> Vec<Field> {
+        vec![Field {
             key: "event".to_string(),
             label: "Event".to_string(),
             value: "Test Event".to_string(),
             alignment: FieldAlignment::Left,
-        }
+        }]
     }
     fn secondary(&self) -> Vec<Field> {
         vec![Field {

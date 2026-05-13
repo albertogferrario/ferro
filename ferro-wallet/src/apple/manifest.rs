@@ -119,7 +119,7 @@ pub(crate) fn build_pass_json<S: WalletSubject>(
     let mut fields = serde_json::Map::new();
     fields.insert(
         "primaryFields".into(),
-        serde_json::Value::Array(vec![serialise_field(&subject.primary())]),
+        serde_json::Value::Array(subject.primary().iter().map(serialise_field).collect()),
     );
     fields.insert(
         "secondaryFields".into(),

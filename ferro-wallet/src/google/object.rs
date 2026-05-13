@@ -38,7 +38,14 @@ pub(crate) fn build_event_ticket_object<S: WalletSubject>(
     let class_id = format!("{}.{}", builder.issuer_id, class_suffix);
     let object_id = format!("{}.{}", builder.issuer_id, subject.serial());
 
-    let primary = subject.primary();
+    // Google's eventTicketObject only has slots for a single headline name —
+    // use the first primary field's value, falling back to a blank string
+    // when the subject returns no primary fields at all.
+    let primary_value = subject
+        .primary()
+        .first()
+        .map(|f| f.value.clone())
+        .unwrap_or_default();
 
     Ok(json!({
         "id": object_id,
@@ -48,11 +55,11 @@ pub(crate) fn build_event_ticket_object<S: WalletSubject>(
             "type": "qrCode",
             "value": subject.barcode_token(),
         },
-        "ticketHolderName": primary.value,
+        "ticketHolderName": primary_value,
         "eventName": {
             "defaultValue": {
                 "language": "en",
-                "value": primary.value,
+                "value": primary_value,
             }
         }
     }))

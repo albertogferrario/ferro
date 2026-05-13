@@ -173,8 +173,11 @@ pub trait WalletSubject {
     /// Google `object.id`).
     fn serial(&self) -> String;
 
-    /// The single most prominent field on the pass.
-    fn primary(&self) -> Field;
+    /// The primary field row. `eventTicket` shows the first entry as the
+    /// large headline; `boardingPass` expects two entries (origin/destination)
+    /// with Apple's transit arrow rendered between them. Return at most two
+    /// fields — extra entries are silently ignored by Apple's renderer.
+    fn primary(&self) -> Vec<Field>;
 
     /// Secondary row — usually 1–4 fields directly under the primary.
     fn secondary(&self) -> Vec<Field>;
