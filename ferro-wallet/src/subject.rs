@@ -9,13 +9,41 @@
 use crate::WalletError;
 use chrono::{DateTime, Utc};
 
-/// Top-level pass category. v1 only exercises [`PassKind::EventTicket`] in integration
-/// tests; [`PassKind::Generic`] and [`PassKind::Coupon`] are declared but not test-covered.
+/// Top-level pass category. `EventTicket` renders a rounded card with an optional
+/// strip banner. `BoardingPass` renders the "tear-off ticket stub" shape with a
+/// perforation line above the barcode and rounded inner notches on each side —
+/// the Trenitalia / airline look. `Generic` and `Coupon` use flatter card chrome.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PassKind {
     EventTicket,
+    BoardingPass(TransitType),
     Generic,
     Coupon,
+}
+
+/// Transit class shown by Apple Wallet on a [`PassKind::BoardingPass`]. Selects
+/// the small transit-mode icon rendered next to the primary fields. Use
+/// [`TransitType::Generic`] for non-transit "ticket-stub style" passes
+/// (admissions, restaurant reservations, etc.).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TransitType {
+    Air,
+    Boat,
+    Bus,
+    Generic,
+    Train,
+}
+
+impl TransitType {
+    pub(crate) fn as_apple_str(&self) -> &'static str {
+        match self {
+            TransitType::Air => "PKTransitTypeAir",
+            TransitType::Boat => "PKTransitTypeBoat",
+            TransitType::Bus => "PKTransitTypeBus",
+            TransitType::Generic => "PKTransitTypeGeneric",
+            TransitType::Train => "PKTransitTypeTrain",
+        }
+    }
 }
 
 /// Field alignment hint surfaced to the wallet renderer. Maps directly to Apple's

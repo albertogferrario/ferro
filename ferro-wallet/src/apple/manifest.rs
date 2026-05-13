@@ -93,9 +93,12 @@ pub(crate) fn build_pass_json<S: WalletSubject>(
         pass.insert("locations".into(), serde_json::Value::Array(locs));
     }
 
-    // Field array key per spec §3 — `eventTicket` for the EventTicket kind.
-    let kind_key = match subject.pass_kind() {
+    // Field array key per spec §3 — `eventTicket` / `boardingPass` / `generic` / `coupon`.
+    // `boardingPass` carries an extra required `transitType` selector.
+    let kind = subject.pass_kind();
+    let kind_key = match &kind {
         crate::subject::PassKind::EventTicket => "eventTicket",
+        crate::subject::PassKind::BoardingPass(_) => "boardingPass",
         crate::subject::PassKind::Generic => "generic",
         crate::subject::PassKind::Coupon => "coupon",
     };
@@ -113,13 +116,30 @@ pub(crate) fn build_pass_json<S: WalletSubject>(
             "textAlignment": alignment,
         })
     };
-    let fields = serde_json::json!({
-        "primaryFields":   [serialise_field(&subject.primary())],
-        "secondaryFields": subject.secondary().iter().map(serialise_field).collect::<Vec<_>>(),
-        "auxiliaryFields": subject.auxiliary().iter().map(serialise_field).collect::<Vec<_>>(),
-        "backFields":      subject.back().iter().map(serialise_field).collect::<Vec<_>>(),
-    });
-    pass.insert(kind_key.to_string(), fields);
+    let mut fields = serde_json::Map::new();
+    fields.insert(
+        "primaryFields".into(),
+        serde_json::Value::Array(vec![serialise_field(&subject.primary())]),
+    );
+    fields.insert(
+        "secondaryFields".into(),
+        serde_json::Value::Array(subject.secondary().iter().map(serialise_field).collect()),
+    );
+    fields.insert(
+        "auxiliaryFields".into(),
+        serde_json::Value::Array(subject.auxiliary().iter().map(serialise_field).collect()),
+    );
+    fields.insert(
+        "backFields".into(),
+        serde_json::Value::Array(subject.back().iter().map(serialise_field).collect()),
+    );
+    if let crate::subject::PassKind::BoardingPass(transit) = &kind {
+        fields.insert(
+            "transitType".into(),
+            serde_json::Value::String(transit.as_apple_str().to_string()),
+        );
+    }
+    pass.insert(kind_key.to_string(), serde_json::Value::Object(fields));
 
     serde_json::to_vec(&serde_json::Value::Object(pass))
         .map_err(|e| WalletError::ApplePackage(format!("pass.json serialise: {e}")))

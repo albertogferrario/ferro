@@ -18,5 +18,5 @@ pub use error::WalletError;
 pub use google::GoogleWalletBuilder;
 pub use subject::{
     auto_foreground, Branding, Field, FieldAlignment, GeoPoint, PassKind, RgbColor, TextColorMode,
-    WalletSubject,
+    TransitType, WalletSubject,
 };
