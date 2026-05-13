@@ -1888,6 +1888,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-audit"
+version = "0.2.30"
+dependencies = [
+ "chrono",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "ferro-broadcast"
 version = "0.2.30"
 dependencies = [
