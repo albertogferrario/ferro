@@ -1425,7 +1425,7 @@ Plans:
 **Goal:** Ship the `ferro-audit` Wave 1a leaf crate — append-only structured before/after audit log with replay-ready query helpers, a SeaORM migration consumers register in their own `Migrator`, and the `AuditEntry::record(action).…write(&conn)` builder API. Includes `AuditActor` typed enum, `AuditTarget` struct, three query helpers (`history_for_target`, `recent_by_actor`, `recent`), pure `reconstruct_state` shallow-merge fold, and `prune_older_than` retention helper. Bumps workspace version 0.2.30 → 0.2.31 and bootstraps first publish to crates.io.
 **Requirements**: D-01..D-40 (feature-driven phase; decision IDs from 153-CONTEXT.md)
 **Depends on:** none (parallel with Phase 152)
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 153-01-PLAN.md — scaffold ferro-audit crate (Cargo.toml, lib.rs, error.rs, actor.rs, target.rs, README.md, stub modules)
@@ -1433,7 +1433,7 @@ Plans:
 - [x] 153-03-PLAN.md — SeaORM entity + migration (audit_log table + 2 indexes) + migration unit test
 - [x] 153-04-PLAN.md — AuditEntry builder + write() with post-INSERT re-fetch + 5 happy-path unit tests
 - [x] 153-05-PLAN.md — query helpers (history_for_target/recent_by_actor/recent) + reconstruct_state + prune_older_than + 4 unit tests
-- [ ] 153-06-PLAN.md — integration test + docs/src/database/audit-log.md + SUMMARY.md nav + CHANGELOG + pre-release gate + first-publish bootstrap (manual checkpoint)
+- [x] 153-06-PLAN.md — integration test + docs/src/database/audit-log.md + SUMMARY.md nav + CHANGELOG + pre-release gate + first-publish bootstrap (manual checkpoint)
 
 ### Phase 154: ferro-reservation crate — generic hold/commit/release with TTL and event broadcast
 
@@ -1454,6 +1454,16 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 155 to break down)
+
+### Phase 157: Migration deploy safety — backend-portable backfill helpers, ferro do:init PRE_DEPLOY migrate job, ferro doctor check for migrate gate
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 156
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 157 to break down)
 
 ---
 
