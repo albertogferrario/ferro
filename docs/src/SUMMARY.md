@@ -33,6 +33,7 @@
 - [Database](features/database.md)
 - [Atomic Updates](database/atomic-updates.md)
 - [Audit Log](database/audit-log.md)
+- [Reservations](database/reservations.md)
 - [Derive Macros](features/derive-macros.md)
 - [Validation](features/validation.md)
 - [Localization](features/localization.md)
