@@ -138,8 +138,8 @@ error.
 2. Call `R::held(&conn, &key, &window)`.
 3. If `held + quantity > capacity` → `Err(Insufficient { requested, available, capacity })`.
 4. INSERT one `reservations` row with `status = 'held'`, `expires_at = now() + ttl`.
-5. Emit `ReservationEvent::Held` via `ferro-events`.
-6. Write one `AuditEntry` with `action = "reservation.held"` via `ferro-audit`.
+5. Write one `AuditEntry` with `action = "reservation.held"` via `ferro-audit`.
+6. Emit `ReservationEvent::Held` via `ferro-events`.
 7. Return `ReservationHandle`.
 
 Note: the capacity check and the INSERT are two separate statements, not a
