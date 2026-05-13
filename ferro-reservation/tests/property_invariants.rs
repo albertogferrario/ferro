@@ -16,7 +16,7 @@
 use async_trait::async_trait;
 use ferro_audit::AuditTarget;
 use ferro_reservation::{
-    ReservationContext, ReservationError, ReservationHandle, ReservationKernel, ReleaseReason,
+    ReleaseReason, ReservationContext, ReservationError, ReservationHandle, ReservationKernel,
     Resource,
 };
 use proptest::prelude::*;
@@ -76,15 +76,10 @@ impl Resource for TestResource {
         use ferro_reservation::ReservationEntity;
         let key_json = serde_json::to_value(key)?;
         let rows = ReservationEntity::find()
+            .filter(<ReservationEntity as EntityTrait>::Column::ResourceKind.eq(Self::KIND))
+            .filter(<ReservationEntity as EntityTrait>::Column::ResourceKey.eq(key_json))
             .filter(
-                <ReservationEntity as EntityTrait>::Column::ResourceKind.eq(Self::KIND),
-            )
-            .filter(
-                <ReservationEntity as EntityTrait>::Column::ResourceKey.eq(key_json),
-            )
-            .filter(
-                <ReservationEntity as EntityTrait>::Column::Status
-                    .is_in(vec!["held", "committed"]),
+                <ReservationEntity as EntityTrait>::Column::Status.is_in(vec!["held", "committed"]),
             )
             .all(conn)
             .await
@@ -129,7 +124,7 @@ proptest! {
                 TestResource { capacity_value: capacity },
             ));
             let hold_lock: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
-            let key = format!("prop1_cap{}_tasks{}", capacity, n_tasks);
+            let key = format!("prop1_cap{capacity}_tasks{n_tasks}");
 
             let mut handles = Vec::with_capacity(n_tasks);
             for _ in 0..n_tasks {
@@ -238,15 +233,13 @@ proptest! {
                     Op::Hold => {
                         // Start a new hold regardless of existing handle
                         // (leaves existing handle 'held' in DB — valid state).
-                        match kernel
+                        // Errors (e.g., capacity exhausted) are ignored.
+                        if let Ok(h) = kernel
                             .hold(&*conn, key.clone(), (), 1, Duration::from_secs(60), &ctx)
                             .await
                         {
-                            Ok(h) => {
-                                all_ids.push(h.id);
-                                current_handle = Some(h);
-                            }
-                            Err(_) => {} // ignore (e.g., capacity exhausted)
+                            all_ids.push(h.id);
+                            current_handle = Some(h);
                         }
                     }
                     Op::Commit => {

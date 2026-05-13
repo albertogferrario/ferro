@@ -19,9 +19,7 @@
 //! any non-determinism, and verifies the DB row count afterward.
 
 use async_trait::async_trait;
-use ferro_reservation::{
-    ReservationContext, ReservationError, ReservationKernel, Resource,
-};
+use ferro_reservation::{ReservationContext, ReservationError, ReservationKernel, Resource};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, PaginatorTrait,
     QueryFilter,
@@ -80,15 +78,10 @@ impl Resource for TestResource {
         use ferro_reservation::ReservationEntity;
         let key_json = serde_json::to_value(key)?;
         let rows = ReservationEntity::find()
+            .filter(<ReservationEntity as EntityTrait>::Column::ResourceKind.eq(Self::KIND))
+            .filter(<ReservationEntity as EntityTrait>::Column::ResourceKey.eq(key_json))
             .filter(
-                <ReservationEntity as EntityTrait>::Column::ResourceKind.eq(Self::KIND),
-            )
-            .filter(
-                <ReservationEntity as EntityTrait>::Column::ResourceKey.eq(key_json),
-            )
-            .filter(
-                <ReservationEntity as EntityTrait>::Column::Status
-                    .is_in(vec!["held", "committed"]),
+                <ReservationEntity as EntityTrait>::Column::Status.is_in(vec!["held", "committed"]),
             )
             .all(conn)
             .await
@@ -165,9 +158,7 @@ async fn concurrent_hold_against_capacity_5_admits_exactly_5() {
         // Verify the DB also says exactly 5 held
         use ferro_reservation::ReservationEntity;
         let held_count = ReservationEntity::find()
-            .filter(
-                <ReservationEntity as EntityTrait>::Column::Status.eq("held"),
-            )
+            .filter(<ReservationEntity as EntityTrait>::Column::Status.eq("held"))
             .count(&*conn)
             .await
             .expect("count");
