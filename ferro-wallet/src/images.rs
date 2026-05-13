@@ -12,6 +12,18 @@ use std::io::Cursor;
 
 use crate::WalletError;
 
+/// Produce a 1×1 fully-transparent PNG. Used as a fallback icon source when a
+/// pass has neither a logo nor an explicit icon — Apple still requires `icon.png`
+/// to be present in the bundle.
+pub fn transparent_1x1_png() -> Result<Vec<u8>, WalletError> {
+    let img = RgbaImage::from_pixel(1, 1, Rgba([0, 0, 0, 0]));
+    let mut out = Cursor::new(Vec::new());
+    DynamicImage::ImageRgba8(img)
+        .write_to(&mut out, ImageFormat::Png)
+        .map_err(|e| WalletError::Image(format!("encode png: {e}")))?;
+    Ok(out.into_inner())
+}
+
 /// Resize `bytes` to fit within `(w, h)` preserving aspect ratio, then centre-pad
 /// onto a transparent canvas of exactly `(w, h)` and encode as PNG.
 pub fn fit_to(bytes: &[u8], w: u32, h: u32) -> Result<Vec<u8>, WalletError> {

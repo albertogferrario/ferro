@@ -57,11 +57,26 @@ impl ApplePassBuilder {
         // 1. pass.json
         let pass_json_bytes = manifest::build_pass_json(self, s)?;
 
-        // 2. images (logo set + icon set + optional strip set)
+        // 2. images (optional logo set + icon set + optional strip set).
+        // Apple Wallet treats `logo.png` as optional — when omitted, `logoText`
+        // renders left-aligned from the header edge instead of being offset by
+        // the reserved logo slot. `icon.png` IS required (used in notifications
+        // and Mail previews), so when no logo is supplied we fall back to a 1×1
+        // transparent icon source.
         let branding = s.branding();
-        let mut image_entries = images::apple_logo_set(&branding.logo_png_bytes)?;
-        let icon_entries =
-            images::apple_icon_set(branding.icon_png_bytes.as_deref(), &branding.logo_png_bytes)?;
+        let mut image_entries: Vec<(String, Vec<u8>)> = Vec::new();
+        let icon_source: Vec<u8> = match (branding.icon_png_bytes.as_deref(), branding.logo_png_bytes.as_deref()) {
+            (Some(_), _) => Vec::new(),                        // icon explicit, no fallback needed
+            (None, Some(logo)) => logo.to_vec(),               // derive icon from logo
+            (None, None) => images::transparent_1x1_png()?,    // both absent — synthesise placeholder
+        };
+        if let Some(logo) = branding.logo_png_bytes.as_deref() {
+            image_entries.extend(images::apple_logo_set(logo)?);
+        }
+        let icon_entries = images::apple_icon_set(
+            branding.icon_png_bytes.as_deref(),
+            &icon_source,
+        )?;
         image_entries.extend(icon_entries);
         // Strip image (optional) — gives eventTicket passes the banner/ticket look.
         if let Some(hero) = branding.hero_png_bytes.as_deref() {

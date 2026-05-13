@@ -125,7 +125,7 @@ impl WalletSubject for StubBooking {
             logo_text: Some("Test".to_string()),
             background_color: RgbColor { r: 0, g: 0, b: 0 },
             text_color_mode: TextColorMode::Auto,
-            logo_png_bytes: tiny_png(200, 80, 200, 50, 50),
+            logo_png_bytes: Some(tiny_png(200, 80, 200, 50, 50)),
             icon_png_bytes: None,
             hero_png_bytes: None,
         }

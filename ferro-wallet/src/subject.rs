@@ -55,7 +55,7 @@ pub struct Branding {
     pub logo_text: Option<String>,
     pub background_color: RgbColor,
     pub text_color_mode: TextColorMode,
-    pub logo_png_bytes: Vec<u8>,
+    pub logo_png_bytes: Option<Vec<u8>>,
     pub icon_png_bytes: Option<Vec<u8>>,
     pub hero_png_bytes: Option<Vec<u8>>,
 }

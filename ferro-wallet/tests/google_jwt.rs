@@ -90,7 +90,7 @@ impl WalletSubject for StubBooking {
             logo_text: None,
             background_color: RgbColor { r: 0, g: 0, b: 0 },
             text_color_mode: TextColorMode::Auto,
-            logo_png_bytes: vec![],
+            logo_png_bytes: None,
             icon_png_bytes: None,
             hero_png_bytes: None,
         }
