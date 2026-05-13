@@ -65,6 +65,8 @@ pub use actor::AuditActor;
 pub use entry::AuditEntry;
 pub use error::AuditError;
 pub use migration::Migration as CreateAuditLogTable;
+pub use prune::prune_older_than;
+pub use query::{history_for_target, recent, recent_by_actor};
 pub use replay::reconstruct_state;
 pub use target::AuditTarget;
 
