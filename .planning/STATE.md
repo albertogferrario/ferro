@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: executing
+status: paused
 stopped_at: Phase 153 complete — ferro-audit v0.2.31 published to crates.io
 last_updated: "2026-05-13T19:23:43.314Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 157
-  completed_phases: 139
+  completed_phases: 140
   total_plans: 375
-  completed_plans: 354
+  completed_plans: 360
   percent: 94
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 153 — ferro-audit-crate-structured-before-after-audit-log-with-rep
+**Current focus:** Phase 153 complete — ferro-audit v0.2.31 published; next phase in v11.11 milestone is 154 (ferro-reservation).
 
 ## Current Position
 
-Phase: 153 (ferro-audit-crate-structured-before-after-audit-log-with-rep) — EXECUTING
-Plan: 5 of 6
-Plans: 5 of 6 fully complete; plan 06 executor portion done, pending operator bootstrap of ferro-orm to crates.io
-Workspace version: 0.2.30 (unchanged — CONTEXT D-23's 0.2.25 superseded by RESEARCH Open Question 1)
-Status: Ready to execute
+Phase: 153 (ferro-audit-crate-structured-before-after-audit-log-with-rep) — COMPLETE ✓
+Plans: 6 of 6 complete; ferro-audit v0.2.31 live on crates.io
+Workspace version: 0.2.31 (bumped from 0.2.30 in Phase 153 plan 02)
+Status: Phase 153 complete and verified
 Last activity: 2026-05-13
+Next phase: 154 (ferro-reservation — depends on 152 + 153, both now complete)
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -202,7 +202,8 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - [Research flag] Phase 113: COMPONENT_CATALOG resolution needs design decision evaluation (shared data file vs build script vs new crate) — evaluate options before scoping
-- Phase 152 PLAN-06: awaiting user manual first-publish bootstrap of ferro-orm to crates.io at the version Cargo.toml records (currently 0.2.30). CI token has publish-update only; first publish needs personal publish-new token from local terminal (RESEARCH Pitfall 5). Task 2 committed (e38536cc — CHANGELOG entry). Resume signal: user replies 'published' with resolved version after crates.io confirms; subsequent versions auto-publish via existing GH Actions workflow. Mirror pattern: Phase 151 PLAN-09 ferro-wallet 0.2.24 bootstrap.
+- [Harness] `isolation="worktree"` agent harness branches from a stale base (~37 commits behind HEAD) — surfaced during Phase 153 plan 01. Cherry-picked the source commit manually and switched plans 02-06 to no-worktree execution. Six locked worktree branches remain in `.claude/worktrees/`; harmless but investigate before parallel-wave phases.
+- [Planner] Phase 153 planner placed 153-01 + 153-02 both in Wave 1 with `depends_on: []` despite Phase 152's proven 1→2 sequential pattern (152-01's verify `cargo build -p ferro-orm` needs workspace membership from 152-02). Executor for 153-01 applied the same deviation Phase 152-01 used (added crate to `[workspace.members]` in plan 01). Future phases scaffolding new workspace crates should default to sequential Wave 1→2.
 
 ### Roadmap Evolution
 
@@ -227,4 +228,4 @@ Recent decisions affecting current work:
 Last session: 2026-05-13T19:23:43.285Z
 Stopped at: Phase 153 complete — ferro-audit v0.2.31 published to crates.io
 Resume file: .planning/phases/153-ferro-audit-crate-structured-before-after-audit-log-with-rep/153-06-SUMMARY.md
-Next action: Operator runs `cargo publish -p ferro-orm --token <PERSONAL_PUBLISH_TOKEN>` from repo root, then `git push origin master`. Reply "published" with resolved version to close Phase 152 and advance to Phase 153.
+Next action: `git push origin master` to ship Phase 153's commits. Next phase: 154 (ferro-reservation) — depends on 152 (ferro-orm, ✓) and 153 (ferro-audit, ✓), both shipped. Run `/gsd-discuss-phase 154 --auto` (or `--chain` for interactive discuss) to proceed when ready.
