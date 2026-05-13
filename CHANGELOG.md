@@ -3,6 +3,45 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## ferro-audit
+
+### [0.2.31] — 2026-05-13
+
+Initial release. Phase 153 — `ferro-audit` crate (append-only structured
+before/after audit log with replay-ready query helpers). Milestone v11.11.
+
+#### Added
+
+- New crate `ferro-audit` exposing the `AuditEntry::record(action).…write(&conn)`
+  chainable builder — persists one row per state-changing operation to an
+  `audit_log` table with typed actor, target, before/after JSON, reason,
+  correlation id, and tenant scoping. The DB-stamped `created_at`
+  (`DEFAULT CURRENT_TIMESTAMP`) is the single source of truth for ordering.
+- `AuditActor` typed enum: `User(String) | System | Job(String) | ApiClient(String) | Anonymous`
+  — stringly-keyed so the crate stays project-agnostic. `System` and `Anonymous`
+  persist `actor_id = NULL`.
+- `AuditTarget` struct: `kind: String, id: String` with `From<(K, I)>` tuple impl.
+  Dotted-namespace convention (`"inventory.unit"`, `"checkout.session"`).
+- `AuditError` — `MissingAction | Db(#[from] DbErr) | Json(#[from] serde_json::Error)`.
+  Display prefix `"audit: …"`.
+- Query helpers `history_for_target` (ASC, indexed), `recent_by_actor` (DESC, limited,
+  indexed), `recent` (DESC, limited, global).
+- `reconstruct_state(&[AuditEntry])` — pure shallow-merge fold of `after` payloads into
+  the final state. The "replay" primitive in the phase title.
+- `prune_older_than(cutoff, &conn)` — caller-driven retention helper returning the deleted
+  row count. Strict less-than (`created_at < cutoff`); preserves rows at the cutoff.
+- `CreateAuditLogTable` migration — consumers register it in their `Migrator`. Schema:
+  12 columns + 2 composite indexes (`idx_audit_target`, `idx_audit_actor`).
+- Targeted re-exports of the SeaORM symbols required by the public API; no blanket
+  `pub use sea_orm::*`. The `AuditLogEntity` re-export enables consumer-side sea-orm-native
+  queries (pagination, custom filters).
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1a slot reserved in
+  `.github/workflows/publish.yml`. First publish bootstrapped from a local terminal
+  (CI publish token has `publish-update` scope only); subsequent versions auto-publish.
+- New documentation page `docs/src/database/audit-log.md` covering the anti-pattern,
+  the API, AuditActor / AuditTarget shape, schema + indexes, replay semantics (shallow
+  merge), retention and GDPR considerations, and the error variants.
+
 ## ferro-orm
 
 ### [0.2.30] — 2026-05-13
