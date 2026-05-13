@@ -1,0 +1,19 @@
+[package]
+name = "ferro-orm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Atomic conditional updates and ORM primitives for the Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["orm", "sea-orm", "atomic", "concurrency", "ferro"]
+categories = ["database"]
+readme = "README.md"
+homepage = "https://ferro-rs.dev"
+
+[dependencies]
+sea-orm = "1.0"
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
