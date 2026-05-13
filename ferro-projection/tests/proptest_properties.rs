@@ -165,7 +165,7 @@ proptest! {
 
             // Per-key final states must be identical
             for k in 0u8..5 {
-                let key = ProjectionKey::new(format!("k-{}", k));
+                let key = ProjectionKey::new(format!("k-{k}"));
                 let s1 = rt_1.read(&key).await.expect("read 1");
                 let s2 = rt_2.read(&key).await.expect("read 2");
                 prop_assert_eq!(s1, s2);

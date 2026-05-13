@@ -105,7 +105,7 @@ async fn concurrent_apply_20_tasks_5_keys_serializes_per_key() {
     // Per-key total must be exactly 4 (no lost increments under contention)
     for key_idx in 0..5u8 {
         let state = runtime
-            .read(&ProjectionKey::new(format!("key-{}", key_idx)))
+            .read(&ProjectionKey::new(format!("key-{key_idx}")))
             .await
             .expect("read")
             .expect("state");
