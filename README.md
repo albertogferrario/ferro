@@ -71,6 +71,7 @@ async fn store(_req: Request) -> Response {
 - **CLI generators** — `ferro make:controller`, `ferro make:model`, `ferro db:migrate`
 - **Structured audit log** — append-only before/after history with replay (`ferro-audit`)
 - **Resource reservations** — race-free hold/commit/release with TTL, audit, and event broadcast (`ferro-reservation`)
+- **Live read-models** — fold domain events into per-key materialized state with WebSocket delta broadcast (`ferro-projection` — not the same as `ferro-projections` plural)
 
 ## JSON-UI
 
