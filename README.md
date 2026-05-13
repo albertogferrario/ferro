@@ -69,6 +69,7 @@ async fn store(_req: Request) -> Response {
 - **WhatsApp messaging** — Business Cloud API (`ferro-whatsapp`)
 - **MCP introspection server** — 80+ agent tools (`ferro-mcp`)
 - **CLI generators** — `ferro make:controller`, `ferro make:model`, `ferro db:migrate`
+- **Structured audit log** — append-only before/after history with replay (`ferro-audit`)
 
 ## JSON-UI
 
