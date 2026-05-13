@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 152 context gathered (--auto)
-last_updated: "2026-05-13T15:18:32.900Z"
-last_activity: 2026-05-13 -- Phase 152 execution started
+stopped_at: Phase 152 PLAN-06 Task 3 — first-publish bootstrap human-action checkpoint
+last_updated: "2026-05-13T16:01:00Z"
+last_activity: 2026-05-13 -- Phase 152 PLAN-06 executor portion complete; awaiting operator bootstrap of ferro-orm to crates.io
 progress:
   total_phases: 156
-  completed_phases: 137
+  completed_phases: 138
   total_plans: 369
-  completed_plans: 342
-  percent: 93
+  completed_plans: 348
+  percent: 94
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 152 (ferro-orm-guardedupdate-atomic-conditional-updates-for-race-) — EXECUTING
-Plan: 1 of 6
-Plans: 9 of 9 — all summaries present; ferro-wallet 0.2.24 published to crates.io
-Workspace version: 0.2.24
-Status: Executing Phase 152
-Last activity: 2026-05-13 -- Phase 152 execution started
+Phase: 152 (ferro-orm-guardedupdate-atomic-conditional-updates-for-race-) — AWAITING HUMAN-ACTION CHECKPOINT (plan 06 Task 3)
+Plan: 6 of 6 — Task 3 (first-publish bootstrap) awaits user; Tasks 1 (gate) + 2 (CHANGELOG e38536cc) complete
+Plans: 5 of 6 fully complete; plan 06 executor portion done, pending operator bootstrap of ferro-orm to crates.io
+Workspace version: 0.2.30 (unchanged — CONTEXT D-23's 0.2.25 superseded by RESEARCH Open Question 1)
+Status: Executing Phase 152 — paused at PLAN-06 Task 3 human-action checkpoint
+Last activity: 2026-05-13 -- Phase 152 plan 06 executor portion complete; human-action checkpoint surfaced for first-publish bootstrap
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -183,6 +183,11 @@ Recent decisions affecting current work:
 - [151-08] Pitfall-3 mitigation: `Validation::new(Algorithm::RS256)` requires `exp` by default; for save JWTs (which carry no `exp`), explicitly set `validate_exp = false` AND `required_spec_claims = HashSet::new()`, then re-arm `set_audience(&[expected])` to keep aud-check active. Reusable pattern across the workspace for any exp-less token (OIDC id-token bearer assertions, Google save JWTs, custom service-to-service JWTs).
 - [151-08] Runtime-mint RSA keypair pattern (D-09 applied): tests/google_jwt.rs uses `openssl::rsa::Rsa::generate(2048)` → `PKey::from_rsa` → `private_key_to_pem_pkcs8` + `public_key_to_pem`. Pairs with production builder's PEM-loading path so the test exercises real parse-and-sign code. No committed credentials; key material discarded when test ends.
 - [151-08] Phase 151 now publish-ready: 38 lib + 1 apple_integration + 2 google_jwt = 41 green tests in ferro-wallet. Plans 01–08 done; only 151-09 (version bump + CHANGELOG + auto-publish) remains.
+- [152-06] Workspace pre-release gate green across all 22 workspace crates at version 0.2.30: fmt + clippy (-D warnings) + build + test (--all-features) + doc (-p ferro-orm) all exit 0 with zero warnings. ferro-orm contributes 12 tests (11 unit + 1 integration / concurrent_decrement).
+- [152-06] CONTEXT D-23's `0.2.25` target was superseded by reality — workspace already advanced to 0.2.30 across earlier phases without re-tagging (RESEARCH Open Question 1). CHANGELOG records `### [0.2.30] — 2026-05-13`; no manual bump performed; the actually-published version is whatever Cargo.toml records at bootstrap time.
+- [152-06] Task 3 returned as human-action checkpoint (Pitfall 5; same pattern as Phase 151 PLAN-09): first publish of a new crate requires personal `publish-new`-scoped crates.io token from a local terminal; CI's `publish-update`-scoped token cannot create a new crate. Auth/credential gates cannot be automated.
+- [152-06] CHANGELOG placement convention reinforced: newest crate at top — `## ferro-orm` inserted above `## ferro-wallet` (which itself sits above `## ferro-rs` from Phase 151 PLAN-09).
+- [152-06] Release plan structure for new workspace crates is now stable across two phases: (1) workspace-wide pre-release gate, (2) CHANGELOG entry under per-crate section, (3) manual first-publish bootstrap from local terminal, (4) push to master so CI auto-publish takes over for subsequent versions.
 
 ### Pending Todos
 
@@ -192,7 +197,7 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - [Research flag] Phase 113: COMPONENT_CATALOG resolution needs design decision evaluation (shared data file vs build script vs new crate) — evaluate options before scoping
-- Phase 151 PLAN-09: awaiting user manual first-publish bootstrap of ferro-wallet 0.2.24 (CI token has publish-update only; first publish needs personal publish-new token from local terminal). Tasks 1+2 committed (5197b37d, 9b64a02d). Resume signal: user replies 'published' with resolved version after crates.io confirms.
+- Phase 152 PLAN-06: awaiting user manual first-publish bootstrap of ferro-orm to crates.io at the version Cargo.toml records (currently 0.2.30). CI token has publish-update only; first publish needs personal publish-new token from local terminal (RESEARCH Pitfall 5). Task 2 committed (e38536cc — CHANGELOG entry). Resume signal: user replies 'published' with resolved version after crates.io confirms; subsequent versions auto-publish via existing GH Actions workflow. Mirror pattern: Phase 151 PLAN-09 ferro-wallet 0.2.24 bootstrap.
 
 ### Roadmap Evolution
 
@@ -213,7 +218,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-13T14:45:34.014Z
-Stopped at: Phase 152 context gathered (--auto)
-Resume file: .planning/phases/152-ferro-orm-guardedupdate-atomic-conditional-updates-for-race-/152-CONTEXT.md
-Next action: `/gsd-plan-phase 148 --auto` (then `/gsd-execute-phase 148 --auto`)
+Last session: 2026-05-13T16:01:00Z
+Stopped at: Phase 152 PLAN-06 Task 3 — first-publish bootstrap human-action checkpoint
+Resume file: .planning/phases/152-ferro-orm-guardedupdate-atomic-conditional-updates-for-race-/152-06-SUMMARY.md
+Next action: Operator runs `cargo publish -p ferro-orm --token <PERSONAL_PUBLISH_TOKEN>` from repo root, then `git push origin master`. Reply "published" with resolved version to close Phase 152 and advance to Phase 153.

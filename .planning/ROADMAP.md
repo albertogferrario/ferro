@@ -1410,14 +1410,14 @@ Plans:
 **Goal:** Ship `ferro-orm` as a new top-level workspace crate exposing `GuardedUpdate<E>` — a chainable builder that compiles to a single `UPDATE … WHERE …` SQL statement, replacing the hand-rolled `read → check → write` pattern wherever a column's value is conditionally mutated. Race-free by construction at the database layer. Foundational kernel for v11.11 (reservation kernel + live read-models depend on this).
 **Requirements**: none — feature-driven phase, `phase_req_ids` is null; locked decisions D-01..D-25 in 152-CONTEXT.md are the must-haves
 **Depends on:** none
-**Plans:** 6 plans
+**Plans:** 5/6 plans executed
 
 Plans:
-- [ ] 152-01-PLAN.md — scaffold ferro-orm crate (Cargo.toml, lib.rs, error.rs, README.md; guarded.rs stub)
-- [ ] 152-02-PLAN.md — register ferro-orm in workspace (root Cargo.toml + publish.yml Wave 1a + CLAUDE.md table row)
-- [ ] 152-03-PLAN.md — implement GuardedUpdate builder body + 7 unit tests (T-16-1..T-16-7)
-- [ ] 152-04-PLAN.md — concurrent_decrement integration test (T-17-1: 10 tokio tasks vs K=3, exactly 3 succeed)
-- [ ] 152-05-PLAN.md — docs/src/database/atomic-updates.md + SUMMARY.md nav entry
+- [x] 152-01-PLAN.md — scaffold ferro-orm crate (Cargo.toml, lib.rs, error.rs, README.md; guarded.rs stub)
+- [x] 152-02-PLAN.md — register ferro-orm in workspace (root Cargo.toml + publish.yml Wave 1a + CLAUDE.md table row)
+- [x] 152-03-PLAN.md — implement GuardedUpdate builder body + 7 unit tests (T-16-1..T-16-7)
+- [x] 152-04-PLAN.md — concurrent_decrement integration test (T-17-1: 10 tokio tasks vs K=3, exactly 3 succeed)
+- [x] 152-05-PLAN.md — docs/src/database/atomic-updates.md + SUMMARY.md nav entry
 - [ ] 152-06-PLAN.md — release: pre-release gate + CHANGELOG entry + first-publish bootstrap (manual checkpoint)
 
 ### Phase 153: ferro-audit crate — structured before/after audit log with replay
