@@ -38,6 +38,7 @@
 - ✅ **v11.8 HttpResponse Header Semantics Fix** — Phase 143.1 (shipped 2026-04-21). `HttpResponse::header()` currently pushes instead of replacing, producing comma-joined Content-Type headers like `text/plain,text/html; charset=utf-8` for every `JsonUi::render` response. Safari reads the first value and renders raw text — the actual cause of the gestiscilo.it field report that drove phase 143. Fix is replace-semantics (case-insensitive) plus an `append_header()` escape hatch for `Set-Cookie`. Phase 143 remains valuable (pre-built CSS > dev-only CDN) but did not and could not fix the reported Safari bug. [Context](phases/143.1-http-response-header-replace-semantics/143.1-CONTEXT.md)
 - 📋 **v11.9 Notifications & Rich-Text Foundations** — Phases 149-150 (planned 2026-04-28). Source: gestiscilo-it v6.4 Documents & Notifications field test. Extends `ferro-notifications` with `Channel::WhatsApp` + `Channel::InApp` adapters and `MailMessage::attachment()` builder; ships `ferro-json-ui RichTextEditor` component (Quill 2.0.3 plugin pattern) so consumer apps can author rich-text bodies without bundling. Auto-publishes via GH Actions. Single load-bearing prerequisite for gestiscilo-it v6.4 Phase 120 (notification dispatcher) and Phase 125 (document template editor).
 - 📋 **v11.10 ferro-wallet — Digital Wallet Passes** — Phase 151 (planned 2026-05-11). Source: gestiscilo-it digital wallet booking pass field test. New project-agnostic crate `ferro-wallet` providing the `WalletSubject` trait, `ApplePassBuilder` (PKCS#7-signed `.pkpass`), `GoogleWalletBuilder` (RS256 save-link JWT), and image / QR primitives. Follows architecture principle 6 (project-agnostic, reads `APP_NAME` / `APP_URL` via `WalletConfig::from_env`). Single load-bearing prerequisite for gestiscilo-it wallet booking passes integration. [Context](phases/151-ferro-wallet-crate/151-CONTEXT.md) · [Spec](../docs/superpowers/specs/2026-05-11-ferro-wallet-crate.md)
+- 📋 **v11.11 Resource Reservation & Live Read-Model Primitives** — Phases 152-155 (planned 2026-05-13). Source: gestiscilo-it inventory monitoring field test. Four reusable horizontal primitives: `ferro-orm::GuardedUpdate` (atomic conditional updates), `ferro-audit` (structured before/after log), `ferro-reservation` (generic hold/commit/release with TTL), `ferro-projection` (live read-model from domain events with broadcast deltas). Unblocks gestiscilo-it v6.3 online checkout reservation TTL and v6.7 inventory monitoring. [Design](research/INVENTORY-PRIMITIVES.md)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -1395,6 +1396,59 @@ Plans:
 - [x] 150-03-PLAN.md — Component variant + render fn + asset injection: RichTextEditorProps + Component::RichTextEditor + serde arms + ComponentNode::rich_text_editor factory in component.rs; render_rich_text_editor + dispatch arm + collect_plugin_types_node enrollment in render.rs; new plugins/rich_text_editor.rs (RichTextEditorPlugin asset-only adapter) registered in global_plugin_registry — first-class component reuses the plugin asset pipeline (D-02) (Wave 3, depends on 01, 02)
 - [x] 150-04-PLAN.md — Runtime IIFE: new ferro-json-ui/src/runtime/rich_text_editor.rs with ES5 setupRichTextEditor / initRichTextEditor / formatsToToolbarConfig / sanitizeHtmlByFormats; submit interception writes {name}_delta + {name}_html; formats whitelist enforced at init (Quill option) and submit (DOM-walker post-process); wire module + SOURCE push + dispatcher call into runtime/mod.rs (Wave 4, depends on 01, 03)
 - [x] 150-05-PLAN.md — Public surface + docs + final CI: re-export RichTextEditorProps and RichTextEditorPlugin from lib.rs; ### RichTextEditor in COMPONENT_CATALOG; ferro-mcp CatalogComponent entry + count assertion 41→42; docs/src/json-ui/components.md ### RichTextEditor section; final fmt + clippy -D warnings + test --all-features gate (Wave 5, depends on 03, 04)
+
+### 📋 v11.11 Resource Reservation & Live Read-Model Primitives (Phases 152-155, planned 2026-05-13)
+
+**Source:** gestiscilo-it inventory monitoring field test (2026-05-13 audit). Two consumer milestones already need this stack — v6.3 Online Checkout (slot hold with TTL during Stripe payment) and v6.7 Inventory Monitoring (booking reservations + live Magazzino dashboard).
+
+**What ships:** four reusable horizontal primitives that any future capacity-constrained app can adopt. Domain-neutral — ferro stays out of inventory semantics. Full design in [research/INVENTORY-PRIMITIVES.md](research/INVENTORY-PRIMITIVES.md).
+
+**Build order:** 152 (guarded) and 153 (audit) are foundational and parallelizable. 154 (reservation) depends on both. 155 (projection) is independent of the others but typically deployed alongside.
+
+### Phase 152: ferro-orm GuardedUpdate — atomic conditional updates for race-free counter mutations
+
+**Goal:** Ship `ferro-orm` as a new top-level workspace crate exposing `GuardedUpdate<E>` — a chainable builder that compiles to a single `UPDATE … WHERE …` SQL statement, replacing the hand-rolled `read → check → write` pattern wherever a column's value is conditionally mutated. Race-free by construction at the database layer. Foundational kernel for v11.11 (reservation kernel + live read-models depend on this).
+**Requirements**: none — feature-driven phase, `phase_req_ids` is null; locked decisions D-01..D-25 in 152-CONTEXT.md are the must-haves
+**Depends on:** none
+**Plans:** 6 plans
+
+Plans:
+- [ ] 152-01-PLAN.md — scaffold ferro-orm crate (Cargo.toml, lib.rs, error.rs, README.md; guarded.rs stub)
+- [ ] 152-02-PLAN.md — register ferro-orm in workspace (root Cargo.toml + publish.yml Wave 1a + CLAUDE.md table row)
+- [ ] 152-03-PLAN.md — implement GuardedUpdate builder body + 7 unit tests (T-16-1..T-16-7)
+- [ ] 152-04-PLAN.md — concurrent_decrement integration test (T-17-1: 10 tokio tasks vs K=3, exactly 3 succeed)
+- [ ] 152-05-PLAN.md — docs/src/database/atomic-updates.md + SUMMARY.md nav entry
+- [ ] 152-06-PLAN.md — release: pre-release gate + CHANGELOG entry + first-publish bootstrap (manual checkpoint)
+
+### Phase 153: ferro-audit crate — structured before/after audit log with replay
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** none (parallel with Phase 152)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 153 to break down)
+
+### Phase 154: ferro-reservation crate — generic hold/commit/release with TTL and event broadcast
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 152 (guarded updates), Phase 153 (audit log)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 154 to break down)
+
+### Phase 155: ferro-projection crate — live read-model from domain events with delta broadcast
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** none (uses existing ferro-events + ferro-broadcast)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 155 to break down)
 
 ---
 
