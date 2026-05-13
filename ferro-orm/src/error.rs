@@ -17,7 +17,9 @@ pub enum GuardedError {
     /// The conditional UPDATE matched more than one row — every guarded
     /// update is morally a unique-key-equivalent operation; `>1`
     /// indicates an index/uniqueness bug.
-    #[error("guarded: predicate matched {affected} rows (expected 1) — likely an index/uniqueness bug")]
+    #[error(
+        "guarded: predicate matched {affected} rows (expected 1) — likely an index/uniqueness bug"
+    )]
     TooManyRows { affected: u64 },
 
     /// The builder was executed with no `set_*` calls — a programming
