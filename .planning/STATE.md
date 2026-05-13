@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: completed
-stopped_at: "154-07 Tasks 1-4 complete; checkpoint at Task 5 (human-action: cargo publish first-publish bootstrap)"
-last_updated: "2026-05-13T22:08:33.906Z"
+stopped_at: Phase 155 context gathered
+last_updated: "2026-05-13T22:28:39.723Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 157
@@ -234,7 +234,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-13T21:48:16.161Z
-Stopped at: 154-07 Tasks 1-4 complete; checkpoint at Task 5 (human-action: cargo publish first-publish bootstrap)
-Resume file: None
+Last session: 2026-05-13T22:28:39.681Z
+Stopped at: Phase 155 context gathered
+Resume file: .planning/phases/155-ferro-projection-crate-live-read-model-from-domain-events-wi/155-CONTEXT.md
 Next action: `git push origin master` to ship Phase 153's commits. Next phase: 154 (ferro-reservation) — depends on 152 (ferro-orm, ✓) and 153 (ferro-audit, ✓), both shipped. Run `/gsd-discuss-phase 154 --auto` (or `--chain` for interactive discuss) to proceed when ready.
