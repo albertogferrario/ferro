@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: verifying
+status: executing
 stopped_at: Phase 152 context gathered (--auto)
-last_updated: "2026-05-13T14:45:34.049Z"
-last_activity: 2026-05-11 — ferro-wallet 0.2.24 published, master pushed
+last_updated: "2026-05-13T15:18:32.900Z"
+last_activity: 2026-05-13 -- Phase 152 execution started
 progress:
-  total_phases: 155
+  total_phases: 156
   completed_phases: 137
-  total_plans: 363
+  total_plans: 369
   completed_plans: 342
-  percent: 94
+  percent: 93
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 151 — ferro-wallet-crate
+**Current focus:** Phase 152 — ferro-orm-guardedupdate-atomic-conditional-updates-for-race-
 
 ## Current Position
 
-Phase: 151 (ferro-wallet-crate) — COMPLETE
-Plan: 9 of 9
+Phase: 152 (ferro-orm-guardedupdate-atomic-conditional-updates-for-race-) — EXECUTING
+Plan: 1 of 6
 Plans: 9 of 9 — all summaries present; ferro-wallet 0.2.24 published to crates.io
 Workspace version: 0.2.24
-Status: Phase 151 complete — ready for /gsd-verify-work 151 (or advance to next phase)
-Last activity: 2026-05-11 — ferro-wallet 0.2.24 published, master pushed
+Status: Executing Phase 152
+Last activity: 2026-05-13 -- Phase 152 execution started
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
