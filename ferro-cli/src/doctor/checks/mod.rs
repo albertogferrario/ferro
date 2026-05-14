@@ -9,6 +9,7 @@ pub mod docker_template_drift;
 pub mod frontend_types_convention;
 pub mod generated_artifacts;
 pub mod local_env_parity;
+pub mod migrate_gate;
 pub mod migrations;
 pub mod toolchain;
 
@@ -21,6 +22,7 @@ pub use docker_template_drift::DockerTemplateDriftCheck;
 pub use frontend_types_convention::FrontendTypesConventionCheck;
 pub use generated_artifacts::GeneratedArtifactsCheck;
 pub use local_env_parity::LocalEnvParityCheck;
+pub use migrate_gate::MigrateGateCheck;
 pub use migrations::MigrationsCheck;
 pub use toolchain::ToolchainCheck;
 
