@@ -68,9 +68,7 @@ impl MigratorTrait for TestMigrator {
 }
 
 async fn fresh_db() -> DatabaseConnection {
-    let conn = Database::connect("sqlite::memory:")
-        .await
-        .expect("connect");
+    let conn = Database::connect("sqlite::memory:").await.expect("connect");
     TestMigrator::up(&conn, None).await.expect("migrate");
     conn
 }
@@ -88,13 +86,10 @@ async fn concurrent_apply_20_tasks_5_keys_serializes_per_key() {
     for key_idx in 0..5u8 {
         for _ in 0..4 {
             let rt = runtime.clone();
-            let h = tokio::spawn(async move {
-                rt.apply_event(&CounterEvent {
-                    key_idx,
-                    delta: 1,
-                })
-                .await
-            });
+            let h =
+                tokio::spawn(
+                    async move { rt.apply_event(&CounterEvent { key_idx, delta: 1 }).await },
+                );
             handles.push(h);
         }
     }

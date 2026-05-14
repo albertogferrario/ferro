@@ -98,9 +98,7 @@ impl MigratorTrait for TestMigrator {
 }
 
 async fn fresh_db() -> DatabaseConnection {
-    let conn = Database::connect("sqlite::memory:")
-        .await
-        .expect("connect");
+    let conn = Database::connect("sqlite::memory:").await.expect("connect");
     TestMigrator::up(&conn, None).await.expect("migrate");
     conn
 }

@@ -85,8 +85,7 @@ mod tests {
         let k = ProjectionKey::new("warehouse-a");
         let s = serde_json::to_string(&k).expect("serialize");
         assert_eq!(s, "\"warehouse-a\"");
-        let parsed: ProjectionKey =
-            serde_json::from_str(&s).expect("deserialize");
+        let parsed: ProjectionKey = serde_json::from_str(&s).expect("deserialize");
         assert_eq!(parsed, k);
     }
 }

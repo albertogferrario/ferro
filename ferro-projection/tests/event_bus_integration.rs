@@ -71,16 +71,12 @@ struct TestMigrator;
 #[async_trait::async_trait]
 impl MigratorTrait for TestMigrator {
     fn migrations() -> Vec<Box<dyn sea_orm_migration::MigrationTrait>> {
-        vec![Box::new(
-            ferro_projection::CreateProjectionSnapshotsTable,
-        )]
+        vec![Box::new(ferro_projection::CreateProjectionSnapshotsTable)]
     }
 }
 
 async fn fresh_db() -> DatabaseConnection {
-    let conn = Database::connect("sqlite::memory:")
-        .await
-        .expect("connect");
+    let conn = Database::connect("sqlite::memory:").await.expect("connect");
     TestMigrator::up(&conn, None).await.expect("migrate");
     conn
 }
@@ -105,10 +101,7 @@ async fn register_path_dispatches_through_runtime_and_broadcasts_5_frames() {
 
     // Dispatch 5 events through the global dispatcher
     for i in 1..=5 {
-        CountEvent { delta: i }
-            .dispatch()
-            .await
-            .expect("dispatch");
+        CountEvent { delta: i }.dispatch().await.expect("dispatch");
     }
 
     // Yield to let async listener tasks complete

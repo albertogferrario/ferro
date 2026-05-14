@@ -68,9 +68,7 @@ impl MigratorTrait for TestMigrator {
 }
 
 async fn fresh_runtime() -> ProjectionRuntime<P> {
-    let conn: DatabaseConnection = Database::connect("sqlite::memory:")
-        .await
-        .expect("connect");
+    let conn: DatabaseConnection = Database::connect("sqlite::memory:").await.expect("connect");
     TestMigrator::up(&conn, None).await.expect("migrate");
     let broadcaster = Arc::new(ferro_broadcast::Broadcaster::new());
     ProjectionRuntime::new(conn, broadcaster, P)

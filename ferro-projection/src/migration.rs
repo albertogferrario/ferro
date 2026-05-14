@@ -35,17 +35,9 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     // key VARCHAR NOT NULL — part of composite PK (D-24)
-                    .col(
-                        ColumnDef::new(ProjectionSnapshots::Key)
-                            .string()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(ProjectionSnapshots::Key).string().not_null())
                     // state JSON NOT NULL (D-26)
-                    .col(
-                        ColumnDef::new(ProjectionSnapshots::State)
-                            .json()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(ProjectionSnapshots::State).json().not_null())
                     // version BIGINT NOT NULL (D-25)
                     .col(
                         ColumnDef::new(ProjectionSnapshots::Version)
@@ -72,11 +64,7 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(
-                Table::drop()
-                    .table(ProjectionSnapshots::Table)
-                    .to_owned(),
-            )
+            .drop_table(Table::drop().table(ProjectionSnapshots::Table).to_owned())
             .await
     }
 }
@@ -107,9 +95,7 @@ mod tests {
 
     #[tokio::test]
     async fn migration_creates_projection_snapshots_table() {
-        let conn = Database::connect("sqlite::memory:")
-            .await
-            .expect("connect");
+        let conn = Database::connect("sqlite::memory:").await.expect("connect");
         TestMigrator::up(&conn, None).await.expect("migrate up");
 
         let row = conn

@@ -25,9 +25,7 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use dashmap::DashMap;
-use sea_orm::{
-    sea_query::OnConflict, ActiveValue, DatabaseConnection, EntityTrait,
-};
+use sea_orm::{sea_query::OnConflict, ActiveValue, DatabaseConnection, EntityTrait};
 
 use crate::entity::{ActiveModel, Column, Entity};
 use crate::error::ProjectionError;
@@ -63,10 +61,7 @@ impl<P: Projection> ProjectionRuntime<P> {
     /// Read the persisted snapshot for `key`. Returns `Ok(None)` if no
     /// row exists. Does NOT take the per-key Mutex (D-33) — readers
     /// see either the pre- or post-upsert state, no torn reads.
-    pub async fn read(
-        &self,
-        key: &ProjectionKey,
-    ) -> Result<Option<P::State>, ProjectionError> {
+    pub async fn read(&self, key: &ProjectionKey) -> Result<Option<P::State>, ProjectionError> {
         let row = Entity::find_by_id((P::NAME.to_string(), key.0.clone()))
             .one(&self.db)
             .await?;
@@ -82,23 +77,19 @@ impl<P: Projection> ProjectionRuntime<P> {
     /// Read with a hard error if the snapshot is absent (D-30). Wraps
     /// `read`; consumers wanting `Result<State, _>` use this instead
     /// of `Result<Option<State>, _>`.
-    pub async fn read_required(
-        &self,
-        key: &ProjectionKey,
-    ) -> Result<P::State, ProjectionError> {
-        self.read(key).await?.ok_or_else(|| ProjectionError::StateNotFound {
-            name: P::NAME,
-            key: key.0.clone(),
-        })
+    pub async fn read_required(&self, key: &ProjectionKey) -> Result<P::State, ProjectionError> {
+        self.read(key)
+            .await?
+            .ok_or_else(|| ProjectionError::StateNotFound {
+                name: P::NAME,
+                key: key.0.clone(),
+            })
     }
 
     /// Apply a single event. Implements the 7-step D-19 sequence
     /// inside a per-key `tokio::sync::Mutex`. Cross-key applies run
     /// in parallel; same-key applies serialize.
-    pub async fn apply_event(
-        &self,
-        event: &P::Event,
-    ) -> Result<(), ProjectionError> {
+    pub async fn apply_event(&self, event: &P::Event) -> Result<(), ProjectionError> {
         // Step 1: compute key
         let key = self.projection.key(event);
 
@@ -356,12 +347,8 @@ mod tests {
         }
     }
 
-    async fn fresh_runtime<P: Projection>(
-        projection: P,
-    ) -> ProjectionRuntime<P> {
-        let conn = Database::connect("sqlite::memory:")
-            .await
-            .expect("connect");
+    async fn fresh_runtime<P: Projection>(projection: P) -> ProjectionRuntime<P> {
+        let conn = Database::connect("sqlite::memory:").await.expect("connect");
         TestMigrator::up(&conn, None).await.expect("migrate");
         let broadcaster = Arc::new(ferro_broadcast::Broadcaster::new());
         ProjectionRuntime::new(conn, broadcaster, projection)
@@ -613,7 +600,10 @@ mod tests {
 
         // Rebuild empty
         let after = rt
-            .rebuild(&ProjectionKey::new("default-key"), Vec::<CounterEvent>::new())
+            .rebuild(
+                &ProjectionKey::new("default-key"),
+                Vec::<CounterEvent>::new(),
+            )
             .await
             .expect("rebuild empty");
         assert_eq!(after.total, 0);

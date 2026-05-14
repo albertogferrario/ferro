@@ -58,9 +58,7 @@ mod tests {
     }
 
     async fn fresh_db() -> sea_orm::DatabaseConnection {
-        let conn = Database::connect("sqlite::memory:")
-            .await
-            .expect("connect");
+        let conn = Database::connect("sqlite::memory:").await.expect("connect");
         TestMigrator::up(&conn, None).await.expect("migrate");
         conn
     }

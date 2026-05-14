@@ -18,10 +18,7 @@ pub(crate) struct ProjectionListener<P: Projection> {
 impl<P: Projection> ferro_events::Listener<P::Event> for ProjectionListener<P> {
     async fn handle(&self, event: &P::Event) -> Result<(), ferro_events::Error> {
         self.runtime.apply_event(event).await.map_err(|e| {
-            ferro_events::Error::listener_failed(
-                std::any::type_name::<Self>(),
-                e.to_string(),
-            )
+            ferro_events::Error::listener_failed(std::any::type_name::<Self>(), e.to_string())
         })
     }
 }
