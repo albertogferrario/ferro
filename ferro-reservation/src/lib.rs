@@ -140,7 +140,10 @@ pub use sweeper::SweepReport;
 
 // SeaORM entity re-exports for consumers who need native SeaORM query access.
 pub use entity::{
-    ActiveModel as ReservationActiveModel, Entity as ReservationEntity, Model as ReservationModel,
+    ActiveModel as ReservationActiveModel,
+    Column as ReservationColumn,
+    Entity as ReservationEntity,
+    Model as ReservationModel,
 };
 
 // Re-export `AuditActor` so consumers building `ReservationContext`
