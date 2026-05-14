@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 156 context gathered
-last_updated: "2026-05-14T01:14:04.988Z"
-last_activity: 2026-05-14 -- Phase 156 execution started
+stopped_at: "Phase 156 Plan 06 complete (Tasks 1+2); checkpoint:human-action for git push origin master"
+last_updated: "2026-05-14T02:07:58.199Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 157
-  completed_phases: 141
+  completed_phases: 142
   total_plans: 395
-  completed_plans: 368
-  percent: 93
+  completed_plans: 374
+  percent: 95
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 156 (frontend-types-directory-generator-owned-convention) — EXECUTING
-Plan: 1 of 6
+Plan: 2 of 6
 Plans: 7 of 7 complete; ferro-projection v0.2.33 live on crates.io
 Workspace version: 0.2.33 (bumped from 0.2.32 in Phase 155 plan 02)
-Status: Executing Phase 156
-Last activity: 2026-05-14 -- Phase 156 execution started
+Status: Ready to execute
+Last activity: 2026-05-14
 Next phase: 157 (migration-deploy-safety-backend-portable-backfill-helpers)
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
@@ -142,6 +142,7 @@ Progress: [██████████] 96%
 | Phase 154 P05 | 35 | 1 tasks | 2 files |
 | Phase 154 P06 | 11 | 4 tasks | 6 files |
 | Phase 154 P07 | 10 | 4 tasks | 3 files |
+| Phase 156 P06 | 286s | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -234,7 +235,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-14T00:42:08.729Z
-Stopped at: Phase 156 context gathered
-Resume file: .planning/phases/156-frontend-types-directory-generator-owned-convention/156-CONTEXT.md
+Last session: 2026-05-14T02:07:58.193Z
+Stopped at: Phase 156 Plan 06 complete (Tasks 1+2); checkpoint:human-action for git push origin master
+Resume file: None
 Next action: `/gsd-plan-phase 156` — frontend-types-directory-generator-owned-convention. Run `git push origin master` to ship pending commits first.

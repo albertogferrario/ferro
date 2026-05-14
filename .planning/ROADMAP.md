@@ -1467,7 +1467,7 @@ Plans:
 **Goal:** Reconcile the contradiction between the scaffold gitignore template (which marks `frontend/src/types/` as generator-owned) and Ferro's reference app (which tracks generated files). Untrack generated files in the reference app, add a `ferro doctor` check for hand-written files in `frontend/src/types/`, update the Dockerfile renderer to add a `types-gen` stage so Docker builds work without committed generated files, fix the generator header comment, and document the convention.
 **Requirements**: D-01..D-21 (decision IDs from 156-CONTEXT.md — no formal REQ-IDs assigned for this phase)
 **Depends on:** none
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 156-01-PLAN.md — trivial fixes: untrack reference app types, gitignore comment, generate_types.rs header path
@@ -1475,7 +1475,7 @@ Plans:
 - [x] 156-03-PLAN.md — Dockerfile renderer: DockerContext.ferro_version, types-gen stage, resolve_ferro_version helper
 - [x] 156-04-PLAN.md — wire docker_init.rs and docker_template_drift.rs to the real resolve_ferro_version (replaces Plan 03 placeholders)
 - [x] 156-05-PLAN.md — docs: frontend-types.md page, SUMMARY index, doctor.md count + table, reference/cli.md count, README.md.tpl troubleshooting bullet
-- [ ] 156-06-PLAN.md — workspace version bump + CHANGELOG entry + pre-release gate + human-authorized push
+- [x] 156-06-PLAN.md — workspace version bump + CHANGELOG entry + pre-release gate + human-authorized push
 
 ---
 
