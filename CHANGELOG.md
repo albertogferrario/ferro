@@ -287,6 +287,19 @@ Google Wallet save-link issuance). Milestone v11.10.
 
 ## ferro-rs
 
+### [0.2.34] — 2026-05-14
+
+**Phase 156 — frontend/src/types/ generator-owned convention cleanup.**
+
+- Reconciled the `frontend/src/types/` generator-owned convention end-to-end.
+- Untracked `app/frontend/src/types/{inertia-props,routes}.ts` in the reference app; gitignore template now carries a load-bearing comment.
+- Fixed the `generate_types.rs` emitted header comment that pointed to `frontend/src/types/` (should be `frontend/src/lib/types/` for hand-written types).
+- Added `ferro doctor` check `frontend_types_convention` (advisory; flags hand-written files under the generator-owned directory).
+- Dockerfile renderer now emits a `types-gen` Rust-toolchain stage before the frontend-builder stage so `frontend/src/types/` is regenerated inside the Docker build context. The frontend stage now `COPY --from=types-gen` the generated files in before `npm run build`.
+- `DockerContext` gained a `ferro_version: String` field; new `resolve_ferro_version` helper parses the project's `Cargo.lock` for the `ferro-rs` package version with `env!("CARGO_PKG_VERSION")` as a fallback.
+- New docs page `docs/src/cli/frontend-types.md` documents the convention end-to-end, including the `ferro docker:init --force` upgrade path for existing scaffolded projects.
+- `ferro doctor` check count: 10 -> 11.
+
 ### [0.2.13] — 2026-04-21
 
 Bug fix: `get!("/", ...)` registered inside `group!("/prefix", { ... })`
