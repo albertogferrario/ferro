@@ -3,6 +3,89 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## ferro-projection
+
+### [0.2.33] — 2026-05-14
+
+Initial release. Phase 155 — `ferro-projection` crate (live read-model
+runtime: subscribe to domain events, persist per-key snapshots,
+broadcast deltas).
+
+**Not the same as `ferro-projections` (plural).** That crate is the
+Service Projection abstraction (`ServiceDef → IntentGraph →
+JsonUiRenderer`). `ferro-projection` (singular) is the live read-model
+runtime described above. The two abstractions are orthogonal.
+
+#### Added
+
+- New crate `ferro-projection` exposing the `Projection` trait for
+  consumer-implemented live read-models. Associated types `Event`
+  (`ferro_events::Event + Serialize + DeserializeOwned`), `State`
+  (`Clone + Default + Serialize + DeserializeOwned + Send + Sync +
+  'static`), `Delta` (`Serialize + Clone + Send + Sync + 'static`).
+  Const `NAME: &'static str` for the projection's dotted-namespace
+  identifier. Sync `apply(&self, state: &mut State, event: &Event)
+  -> Delta` (pure fold; runs inside per-key Mutex). Defaulted
+  `snapshot_interval()` (returns 100) and `broadcast_event_name()`
+  (returns `"delta"`).
+- `ProjectionRuntime<P: Projection>` orchestrator owning the
+  database connection, the broadcaster handle, the projection impl,
+  and the per-key Mutex registry. Two entry points: `register(self:
+  Arc<Self>)` wires a `ProjectionListener<P>` into
+  `ferro_events::global_dispatcher` (one-line wiring), and
+  `apply_event(&self, event: &P::Event)` is the manual entry point
+  for tests, replay scripts, or custom dispatchers.
+- `read(&self, key) -> Result<Option<State>, ProjectionError>` and
+  `read_required(&self, key) -> Result<State, ProjectionError>`
+  (returns `StateNotFound` on miss). Read path does NOT acquire the
+  per-key Mutex.
+- `rebuild(&self, key, events: impl IntoIterator<Item = P::Event>)
+  -> Result<State, ProjectionError>` discards the persisted snapshot,
+  folds the supplied event sequence through `State::default()`,
+  persists the final state, and broadcasts ONE `"rebuild"` frame
+  carrying the full final state. Empty iterator wipes the row.
+- Per-key in-process serialization via
+  `DashMap<String, Arc<tokio::sync::Mutex<()>>>` — each key gets its
+  own Mutex; same-key applies serialize, different-key applies run
+  in parallel. The shard-lock-drop-before-await pattern is the
+  correctness mechanism.
+- Snapshot persistence via SeaORM `OnConflict::columns([projection_name,
+  key]).update_columns([state, version, updated_at])` upsert on the
+  composite primary key. Schema: `projection_snapshots` table with 5
+  columns + composite PK on `(projection_name, key)`.
+- Delta broadcast on `projection.{NAME}.{key}` channels via
+  `ferro_broadcast::Broadcast::new(...).channel(...).event(...).data(delta).send()`.
+  Event name defaults to `"delta"` (consumer can override). Broadcast
+  failure does NOT roll back the persisted state — log at
+  `tracing::warn!` and surface `ProjectionError::Broadcast`.
+- `ProjectionError` — `Db(#[from] sea_orm::DbErr) | Json(#[from]
+  serde_json::Error) | Broadcast(String) | Events(String) |
+  StateNotFound { name, key }`. Display prefix `"projection: …"`.
+  Hand-rolled `From<ferro_broadcast::Error>` and
+  `From<ferro_events::Error>` impls (Phase 149 precedent for
+  stringly-typed variants).
+- `ProjectionKey` opaque newtype around `String` with `new`, `as_str`,
+  `Display`, `From<String>`, `From<&str>`, serde Serialize +
+  Deserialize. Multi-tenancy lives inside the key string by convention.
+- `CreateProjectionSnapshotsTable` migration — consumers register it
+  in their `Migrator` alongside other ferro-* crates' migrations.
+- Public SeaORM re-exports: `ProjectionSnapshotEntity`,
+  `ProjectionSnapshotModel`, `ProjectionSnapshotActiveModel` —
+  consumer-side queries against `projection_snapshots` use these.
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1b
+  slot reserved in `.github/workflows/publish.yml`. First publish
+  bootstrapped from a local terminal (CI publish token has
+  `publish-update` scope only); subsequent versions auto-publish.
+- New documentation page `docs/src/features/live-read-models.md`
+  covering the disambiguation from `ferro-projections` plural, the
+  anti-pattern, the typed-runtime replacement, the trait surface, the
+  two entry points (register + apply_event), the read + rebuild
+  paths, the broadcast channel contract, operational footguns (3),
+  and a worked example folding `ferro_reservation::ReservationEvent`
+  into per-`resource_kind` counters.
+
+v11.11 Resource Reservation & Live Read-Model Primitives complete — ferro-orm GuardedUpdate (Phase 152), ferro-audit (Phase 153), ferro-reservation (Phase 154), ferro-projection (Phase 155) now all shipped.
+
 ## ferro-reservation
 
 ### [0.2.32] — 2026-05-13
