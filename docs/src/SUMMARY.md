@@ -63,6 +63,7 @@
   - [do:init](cli/do-init.md)
   - [ci:init](cli/ci-init.md)
   - [doctor](cli/doctor.md)
+  - [frontend-types](cli/frontend-types.md)
   - [routes:json-schema](cli/routes-json-schema.md)
 
 # Upgrading

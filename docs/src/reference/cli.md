@@ -1401,7 +1401,7 @@ Skills leverage ferro-mcp for intelligent code generation and project introspect
 | `db:query` | Execute raw SQL query |
 | `do:init` | Generate DigitalOcean App Platform spec (`.do/app.yaml`) |
 | `ci:init` | Generate GitHub Actions CI workflow (`.github/workflows/ci.yml`) |
-| `doctor` | Run project health diagnostics (nine checks) |
+| `doctor` | Run project health diagnostics (eleven checks) |
 | `docker:init` | Generate Dockerfile and .dockerignore |
 | `docker:compose` | Manage Docker Compose |
 | `schedule:run` | Run due scheduled tasks |
