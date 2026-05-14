@@ -29,8 +29,7 @@ impl DoctorCheck for MigrateGateCheck {
 }
 
 pub(crate) fn check_impl(root: &Path) -> CheckResult {
-    let has_migrations =
-        root.join("migrations").is_dir() || root.join("src/migrations").is_dir();
+    let has_migrations = root.join("migrations").is_dir() || root.join("src/migrations").is_dir();
     if !has_migrations {
         return CheckResult::ok(NAME, "no migrations directory — skipped");
     }
@@ -50,9 +49,8 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
     if has_predeploy_migrate_job(&yaml) {
         CheckResult::ok(NAME, "PRE_DEPLOY migrate job present")
     } else {
-        CheckResult::error(NAME, "no PRE_DEPLOY migrate job in .do/app.yaml").with_details(
-            "Run `ferro do:init --force` to scaffold a migrate job, then commit.",
-        )
+        CheckResult::error(NAME, "no PRE_DEPLOY migrate job in .do/app.yaml")
+            .with_details("Run `ferro do:init --force` to scaffold a migrate job, then commit.")
     }
 }
 
