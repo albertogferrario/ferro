@@ -11,7 +11,8 @@ frontend/dist
 # build
 /public/assets
 
-# generated_types
+# generated_types — load-bearing: frontend/src/types/ is owned by `ferro generate-types`.
+# Removing this rule breaks the generator-owned convention (see docs/src/cli/frontend-types.md).
 frontend/src/types/
 
 # ide
