@@ -349,10 +349,10 @@ where
         };
 
         // Create server with configuration from environment
-        Server::from_config(router)
-            .run()
-            .await
-            .expect("Failed to start server");
+        if let Err(e) = Server::from_config(router).run().await {
+            eprintln!("Failed to start server: {e}");
+            std::process::exit(1);
+        }
     }
 
     async fn get_database_connection() -> sea_orm::DatabaseConnection {
@@ -385,14 +385,10 @@ where
 
     /// Run migrations during server boot without success logging.
     ///
-    /// "Silent" refers only to the success path (no `println!("Running migrations…")`
-    /// progress logs that would interleave with server startup). On failure this
-    /// method writes the error to stderr and ABORTS the process via
-    /// `std::process::exit(1)`.
-    ///
-    /// Aborting on migration failure is intentional: it prevents the server from
-    /// accepting traffic with a stale schema, which is the failure mode that
-    /// motivated this guard (see Phase 157, gestiscilo-it 2026-05-13 incident).
+    /// "Silent" refers only to the success path (no progress logs that would
+    /// interleave with server startup). On failure this method writes to stderr
+    /// and aborts the process to prevent the server from accepting traffic with
+    /// a stale schema.
     async fn run_migrations_silent<Migrator: MigratorTrait>() {
         let db = Self::get_database_connection().await;
         if let Err(e) = Migrator::up(&db, None).await {

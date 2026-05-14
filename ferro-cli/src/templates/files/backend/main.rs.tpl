@@ -104,10 +104,10 @@ async fn main() {
 async fn run_server() {
     bootstrap::register().await;
     let router = routes::register();
-    Server::from_config(router)
-        .run()
-        .await
-        .expect("Failed to start server");
+    if let Err(e) = Server::from_config(router).run().await {
+        eprintln!("Failed to start server: {e}");
+        std::process::exit(1);
+    }
 }
 
 async fn get_database_connection() -> sea_orm::DatabaseConnection {
