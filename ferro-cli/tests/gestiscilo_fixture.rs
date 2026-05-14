@@ -17,7 +17,9 @@ use ferro_cli::project::{read_bins, read_deploy_metadata};
 use ferro_cli::templates::do_::{
     is_test_like_bin, render_app_yaml, sanitize_do_app_name, AppYamlContext,
 };
-use ferro_cli::templates::docker::{read_rust_channel, render_dockerfile, DockerContext};
+use ferro_cli::templates::docker::{
+    read_rust_channel, render_dockerfile, resolve_ferro_version, DockerContext,
+};
 
 fn fixture_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/gestiscilo")
@@ -44,8 +46,7 @@ fn build_docker_context() -> DockerContext {
         web_bin,
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt,
-        // Phase 156 Plan 04 will replace this with resolve_ferro_version(&root).
-        ferro_version: env!("CARGO_PKG_VERSION").to_string(),
+        ferro_version: resolve_ferro_version(&root),
     }
 }
 

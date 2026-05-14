@@ -182,13 +182,10 @@ pub fn read_rust_channel(project_root: &Path) -> String {
 /// (`env!("CARGO_PKG_VERSION")`) when the lockfile is absent or has no
 /// `ferro-rs` entry. Never returns an empty string.
 ///
-/// This function is shared with `crate::commands::docker_init` and
-/// `crate::doctor::checks::docker_template_drift` (Plan 04), which both
-/// construct `DockerContext` at the I/O boundary and pass the resolved
-/// version into the pure renderer.
-// Plan 04 wires the two call sites; suppress dead-code until that lands.
-#[allow(dead_code)]
-pub(crate) fn resolve_ferro_version(project_root: &Path) -> String {
+/// Used by `crate::commands::docker_init`, `crate::doctor::checks::docker_template_drift`,
+/// and the `gestiscilo_fixture` integration test to construct `DockerContext` at
+/// the I/O boundary before passing the resolved version into the pure renderer.
+pub fn resolve_ferro_version(project_root: &Path) -> String {
     if let Ok(lock) = fs::read_to_string(project_root.join("Cargo.lock")) {
         if let Ok(parsed) = lock.parse::<Value>() {
             if let Some(pkgs) = parsed.get("package").and_then(|v| v.as_array()) {
