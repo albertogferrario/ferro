@@ -3,15 +3,16 @@
 use super::check::DoctorCheck;
 use super::checks::{
     CopyDirsDockerignoreCollisionCheck, DatabaseUrlSqliteInProdCheck, DbConnectionCheck,
-    DeployEnvParityCheck, DirtyGitTreeCheck, DockerTemplateDriftCheck, GeneratedArtifactsCheck,
-    LocalEnvParityCheck, MigrationsCheck, ToolchainCheck,
+    DeployEnvParityCheck, DirtyGitTreeCheck, DockerTemplateDriftCheck,
+    FrontendTypesConventionCheck, GeneratedArtifactsCheck, LocalEnvParityCheck, MigrationsCheck,
+    ToolchainCheck,
 };
 
 /// Returns the canonical ordered list of checks:
 /// toolchain_match → db_connection → migrations_pending → local_env_parity →
 /// deploy_env_parity → copy_dirs_dockerignore_collision →
 /// docker_template_drift → generated_artifacts → database_url_sqlite_in_prod →
-/// git_clean_and_pushed.
+/// git_clean_and_pushed → frontend_types_convention.
 pub fn default_checks() -> Vec<Box<dyn DoctorCheck>> {
     vec![
         Box::new(ToolchainCheck),
@@ -24,6 +25,7 @@ pub fn default_checks() -> Vec<Box<dyn DoctorCheck>> {
         Box::new(GeneratedArtifactsCheck),
         Box::new(DatabaseUrlSqliteInProdCheck),
         Box::new(DirtyGitTreeCheck),
+        Box::new(FrontendTypesConventionCheck),
     ]
 }
 
@@ -32,9 +34,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_checks_returns_ten_in_declared_order() {
+    fn default_checks_returns_eleven_in_declared_order() {
         let checks = default_checks();
-        assert_eq!(checks.len(), 10);
+        assert_eq!(checks.len(), 11);
         let names: Vec<&'static str> = checks.iter().map(|c| c.name()).collect();
         assert_eq!(
             names,
@@ -49,6 +51,7 @@ mod tests {
                 "generated_artifacts",
                 "database_url_sqlite_in_prod",
                 "git_clean_and_pushed",
+                "frontend_types_convention",
             ]
         );
     }
