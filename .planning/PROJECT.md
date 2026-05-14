@@ -46,8 +46,8 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 - **Pre-1.0.** Breaking changes acceptable across all 0.x.
 - Published on crates.io as `ferro-rs`. Repo public.
-- v0.2.0 shipped.
-- 20 workspace crates.
+- v0.2.33 shipped.
+- 24 workspace crates.
 
 ---
 
@@ -286,12 +286,13 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 ## Context
 
 **Current State:**
-- ~90,000 lines of Rust across 20 crates
-- Phase 150 complete — RichTextEditor component in ferro-json-ui (Quill 2.0.3, SRI-pinned, dual-format Delta+HTML)
+- ~90,000 lines of Rust across 24 crates
+- Phase 155 complete — ferro-projection v0.2.33: live read-model runtime (subscribe to domain events, persist per-key snapshots, broadcast deltas)
+- v11.11 shipped: Resource Reservation & Live Read-Model Primitives — ferro-orm GuardedUpdate (Ph 152), ferro-audit (Ph 153), ferro-reservation (Ph 154), ferro-projection (Ph 155)
 - v11.7 shipped: Tailwind Static CSS Pipeline — Safari/WebKit production fix; static CSS with compile-time embedding
 - v11.6 shipped: ferro-stripe Capability Refactor — capability-axis module tree, SyncDispatcher, typed events
 - v11.5 shipped: Projection Architecture Prep — Renderer trait generalization, renderer relocation, ServiceDef derivation bridge
-- v0.2.0 published on crates.io as `ferro-rs`; workspace at 0.2.2+
+- v0.2.33 published on crates.io as `ferro-rs`
 - Pre-1.0; breaking changes acceptable
 - Sample application (app/) demonstrating Inertia integration
 - Comprehensive MCP introspection (35+ tools) — this is the v1.0 product surface
@@ -389,4 +390,4 @@ See also `.planning/VISION.md` for design philosophy.
 | amount_total_cents: i64 with zero-means-absent doc | Zero maps to absent Stripe field on free/setup sessions; callers must not use field alone to assert payment | ✓ Good |
 
 ---
-*Last updated: 2026-05-01 after Phase 150 (RichTextEditor component)*
+*Last updated: 2026-05-14 after Phase 155 (ferro-projection v0.2.33 — v11.11 complete)*

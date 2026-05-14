@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 155 — ferro-projection 0.2.33 PUBLISHED to crates.io (verified via cargo search). Wave 7 Task 5 done. Ready for /gsd-verify-work 155 --auto. Master is 146 commits ahead of origin — git push origin master before/after verify.
-last_updated: "2026-05-14T00:27:17.475Z"
-last_activity: 2026-05-13 -- Phase 155 execution started
+stopped_at: Phase 155 UAT complete — 12/12 tests passed. ferro-projection v0.2.33 shipped. v11.11 Resource Reservation & Live Read-Model Primitives milestone complete. Ready to plan Phase 156 (frontend-types-directory-generator-owned-convention).
+last_updated: "2026-05-14T00:33:44.854Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 157
   completed_phases: 141
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 155 — ferro-projection-crate-live-read-model-from-domain-events-wi
+**Current focus:** Phase 156 — frontend-types-directory-generator-owned-convention
 
 ## Current Position
 
-Phase: 155 (ferro-projection-crate-live-read-model-from-domain-events-wi) — EXECUTING
-Plan: 1 of 7
-Plans: 7 of 7 complete; ferro-reservation v0.2.32 live on crates.io
-Workspace version: 0.2.32 (bumped from 0.2.31 in Phase 154 plan 02)
-Status: Executing Phase 155
-Last activity: 2026-05-13 -- Phase 155 execution started
-Next phase: 155 (ferro-projection — live read-model from domain events with delta broadcast)
+Phase: 156
+Plan: Not started
+Plans: 7 of 7 complete; ferro-projection v0.2.33 live on crates.io
+Workspace version: 0.2.33 (bumped from 0.2.32 in Phase 155 plan 02)
+Status: Ready to plan Phase 156
+Last activity: 2026-05-14
+Next phase: 157 (migration-deploy-safety-backend-portable-backfill-helpers)
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
 Progress: [██████████] 96%
@@ -40,7 +40,7 @@ Progress: [██████████] 96%
 
 **Velocity:**
 
-- Total plans completed: 45
+- Total plans completed: 52
 - Average duration: —
 - Total execution time: —
 
@@ -57,6 +57,7 @@ Progress: [██████████] 96%
 | 148 | 3 | - | - |
 | 149 | 7 | - | - |
 | 150 | 5 | - | - |
+| 155 | 7 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
@@ -233,7 +234,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-14T00:27:17.467Z
-Stopped at: Phase 155 — ferro-projection 0.2.33 PUBLISHED to crates.io (verified via cargo search). Wave 7 Task 5 done. Ready for /gsd-verify-work 155 --auto. Master is 146 commits ahead of origin — git push origin master before/after verify.
-Resume file: .planning/phases/155-ferro-projection-crate-live-read-model-from-domain-events-wi/155-07-SUMMARY.md
-Next action: `git push origin master` to ship Phase 153's commits. Next phase: 154 (ferro-reservation) — depends on 152 (ferro-orm, ✓) and 153 (ferro-audit, ✓), both shipped. Run `/gsd-discuss-phase 154 --auto` (or `--chain` for interactive discuss) to proceed when ready.
+Last session: 2026-05-14
+Stopped at: Phase 155 complete — UAT 12/12 passed, ferro-projection v0.2.33 live on crates.io. v11.11 milestone (ferro-orm, ferro-audit, ferro-reservation, ferro-projection) fully shipped.
+Resume file: None
+Next action: `/gsd-plan-phase 156` — frontend-types-directory-generator-owned-convention. Run `git push origin master` to ship pending commits first.
