@@ -1,0 +1,20 @@
+[package]
+name = "ferro-migration"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Backend-portable migration helpers (backfill_random_hex, backfill_random_uuid, ...) for ferro applications using SeaORM."
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["migration", "sea-orm", "backfill", "postgres", "ferro"]
+categories = ["database"]
+readme = "README.md"
+homepage = "https://ferro-rs.dev"
+
+[dependencies]
+sea-orm-migration = "1.0"
+sea-orm = "1.0"
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
