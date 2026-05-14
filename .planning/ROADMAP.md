@@ -1487,13 +1487,16 @@ Plans:
 
 ### Phase 157: Migration deploy safety — backend-portable backfill helpers, ferro do:init PRE_DEPLOY migrate job, ferro doctor check for migrate gate
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Close three migration-deploy-safety gaps surfaced by the 2026-05-13 gestiscilo-it production breakage so the next consumer cannot rediscover them — a new `ferro-migration` crate exporting backend-portable backfill helpers (`backfill_random_hex`, `backfill_random_uuid`, `backfill_current_timestamp`, `backfill`), `ferro do:init` scaffolding a `PRE_DEPLOY` migrate job in `.do/app.yaml` by default, a `ferro doctor --deploy` `migrate_gate` check that errors when migrations exist without a PRE_DEPLOY gate, and fixing `run_migrations_silent` to `process::exit(1)` on failure across framework + sample app + new-project template.
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06
 **Depends on:** none (independent of v11.11 primitives; can land in parallel)
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 157 to break down)
+- [ ] 157-01-PLAN.md — ferro-migration crate: backend-portable backfill helpers + workspace + CI Wave 1a
+- [ ] 157-02-PLAN.md — ferro do:init {{JOBS_BLOCK}} PRE_DEPLOY migrate job
+- [ ] 157-03-PLAN.md — ferro doctor migrate_gate check (CheckCategory::Deploy)
+- [ ] 157-04-PLAN.md — Fix run_migrations_silent silent-failure anti-pattern (framework + app + template)
 
 ---
 
