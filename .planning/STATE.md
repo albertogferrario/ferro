@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 155 — Wave 7 Tasks 1-4 complete; checkpoint at Task 5 (manual cargo publish bootstrap for ferro-projection)
-last_updated: "2026-05-14T00:10:57.695Z"
+stopped_at: Phase 155 — ferro-projection 0.2.33 PUBLISHED to crates.io (verified via cargo search). Wave 7 Task 5 done. Ready for /gsd-verify-work 155 --auto. Master is 146 commits ahead of origin — git push origin master before/after verify.
+last_updated: "2026-05-14T00:27:17.475Z"
 last_activity: 2026-05-13 -- Phase 155 execution started
 progress:
   total_phases: 157
-  completed_phases: 140
+  completed_phases: 141
   total_plans: 389
-  completed_plans: 363
-  percent: 93
+  completed_plans: 368
+  percent: 95
 ---
 
 # Project State
@@ -233,7 +233,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-14T00:10:57.686Z
-Stopped at: Phase 155 — Wave 7 Tasks 1-4 complete; checkpoint at Task 5 (manual cargo publish bootstrap for ferro-projection)
+Last session: 2026-05-14T00:27:17.467Z
+Stopped at: Phase 155 — ferro-projection 0.2.33 PUBLISHED to crates.io (verified via cargo search). Wave 7 Task 5 done. Ready for /gsd-verify-work 155 --auto. Master is 146 commits ahead of origin — git push origin master before/after verify.
 Resume file: .planning/phases/155-ferro-projection-crate-live-read-model-from-domain-events-wi/155-07-SUMMARY.md
 Next action: `git push origin master` to ship Phase 153's commits. Next phase: 154 (ferro-reservation) — depends on 152 (ferro-orm, ✓) and 153 (ferro-audit, ✓), both shipped. Run `/gsd-discuss-phase 154 --auto` (or `--chain` for interactive discuss) to proceed when ready.
