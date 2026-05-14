@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: Phase 155 UAT complete — 12/12 tests passed. ferro-projection v0.2.33 shipped. v11.11 Resource Reservation & Live Read-Model Primitives milestone complete. Ready to plan Phase 156 (frontend-types-directory-generator-owned-convention).
-last_updated: "2026-05-14T00:33:44.854Z"
+status: planning
+stopped_at: Phase 156 context gathered
+last_updated: "2026-05-14T00:42:08.738Z"
 last_activity: 2026-05-14
 progress:
   total_phases: 157
@@ -234,7 +234,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-14
-Stopped at: Phase 155 complete — UAT 12/12 passed, ferro-projection v0.2.33 live on crates.io. v11.11 milestone (ferro-orm, ferro-audit, ferro-reservation, ferro-projection) fully shipped.
-Resume file: None
+Last session: 2026-05-14T00:42:08.729Z
+Stopped at: Phase 156 context gathered
+Resume file: .planning/phases/156-frontend-types-directory-generator-owned-convention/156-CONTEXT.md
 Next action: `/gsd-plan-phase 156` — frontend-types-directory-generator-owned-convention. Run `git push origin master` to ship pending commits first.
