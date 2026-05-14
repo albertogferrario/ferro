@@ -1457,10 +1457,27 @@ Plans:
 **Goal:** [To be planned]
 **Requirements**: TBD
 **Depends on:** none (uses existing ferro-events + ferro-broadcast)
-**Plans:** 0 plans
+**Plans:** 7/7 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 155 to break down)
+- [x] TBD (run /gsd-plan-phase 155 to break down) (completed 2026-05-14)
+
+### Phase 156: frontend/src/types/ — Generator-Owned Convention Cleanup
+
+**Goal:** Reconcile the contradiction between the scaffold gitignore template (which marks `frontend/src/types/` as generator-owned) and Ferro's reference app (which tracks generated files). Untrack generated files in the reference app, add a `ferro doctor` check for hand-written files in `frontend/src/types/`, update the Dockerfile renderer to add a `types-gen` stage so Docker builds work without committed generated files, fix the generator header comment, and document the convention.
+**Requirements**: D-01..D-21 (decision IDs from 156-CONTEXT.md — no formal REQ-IDs assigned for this phase)
+**Depends on:** none
+**Plans:** 3/6 plans executed
+
+Plans:
+- [x] 156-01-PLAN.md — trivial fixes: untrack reference app types, gitignore comment, generate_types.rs header path
+- [x] 156-02-PLAN.md — new doctor check `frontend_types_convention` + registry + tests
+- [x] 156-03-PLAN.md — Dockerfile renderer: DockerContext.ferro_version, types-gen stage, resolve_ferro_version helper
+- [ ] 156-04-PLAN.md — wire docker_init.rs and docker_template_drift.rs to the real resolve_ferro_version (replaces Plan 03 placeholders)
+- [ ] 156-05-PLAN.md — docs: frontend-types.md page, SUMMARY index, doctor.md count + table, reference/cli.md count, README.md.tpl troubleshooting bullet
+- [ ] 156-06-PLAN.md — workspace version bump + CHANGELOG entry + pre-release gate + human-authorized push
+
+---
 
 ### 📋 v11.12 Migration Deploy Safety (Phase 157, planned 2026-05-13, URGENT)
 

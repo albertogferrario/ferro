@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: planning
+status: executing
 stopped_at: Phase 156 context gathered
-last_updated: "2026-05-14T00:42:08.738Z"
-last_activity: 2026-05-14
+last_updated: "2026-05-14T01:14:04.988Z"
+last_activity: 2026-05-14 -- Phase 156 execution started
 progress:
   total_phases: 157
   completed_phases: 141
-  total_plans: 389
+  total_plans: 395
   completed_plans: 368
-  percent: 95
+  percent: 93
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 156
-Plan: Not started
+Phase: 156 (frontend-types-directory-generator-owned-convention) — EXECUTING
+Plan: 1 of 6
 Plans: 7 of 7 complete; ferro-projection v0.2.33 live on crates.io
 Workspace version: 0.2.33 (bumped from 0.2.32 in Phase 155 plan 02)
-Status: Ready to plan Phase 156
-Last activity: 2026-05-14
+Status: Executing Phase 156
+Last activity: 2026-05-14 -- Phase 156 execution started
 Next phase: 157 (migration-deploy-safety-backend-portable-backfill-helpers)
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
