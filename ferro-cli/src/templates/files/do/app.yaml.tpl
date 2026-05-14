@@ -17,5 +17,6 @@ services:
     instance_count: 1
 
 {{WORKERS_BLOCK}}
+{{JOBS_BLOCK}}
 envs:
 {{ENVS_BLOCK}}
