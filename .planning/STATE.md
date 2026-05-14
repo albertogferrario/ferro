@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: completed
-stopped_at: Phase 155 context gathered
-last_updated: "2026-05-13T22:28:39.723Z"
-last_activity: 2026-05-13
+status: executing
+stopped_at: Phase 155 — Wave 7 Tasks 1-4 complete; checkpoint at Task 5 (manual cargo publish bootstrap for ferro-projection)
+last_updated: "2026-05-14T00:10:57.695Z"
+last_activity: 2026-05-13 -- Phase 155 execution started
 progress:
   total_phases: 157
   completed_phases: 140
-  total_plans: 382
-  completed_plans: 361
-  percent: 95
+  total_plans: 389
+  completed_plans: 363
+  percent: 93
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 154 — ferro-reservation-crate-generic-hold-commit-release-with-ttl
+**Current focus:** Phase 155 — ferro-projection-crate-live-read-model-from-domain-events-wi
 
 ## Current Position
 
-Phase: 155
-Plan: Not started
+Phase: 155 (ferro-projection-crate-live-read-model-from-domain-events-wi) — EXECUTING
+Plan: 1 of 7
 Plans: 7 of 7 complete; ferro-reservation v0.2.32 live on crates.io
 Workspace version: 0.2.32 (bumped from 0.2.31 in Phase 154 plan 02)
-Status: Phase 154 complete; ready for next phase
-Last activity: 2026-05-13
+Status: Executing Phase 155
+Last activity: 2026-05-13 -- Phase 155 execution started
 Next phase: 155 (ferro-projection — live read-model from domain events with delta broadcast)
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
@@ -40,7 +40,7 @@ Progress: [██████████] 96%
 
 **Velocity:**
 
-- Total plans completed: 52
+- Total plans completed: 45
 - Average duration: —
 - Total execution time: —
 
@@ -57,7 +57,6 @@ Progress: [██████████] 96%
 | 148 | 3 | - | - |
 | 149 | 7 | - | - |
 | 150 | 5 | - | - |
-| 154 | 7 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
@@ -234,7 +233,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-13T22:28:39.681Z
-Stopped at: Phase 155 context gathered
-Resume file: .planning/phases/155-ferro-projection-crate-live-read-model-from-domain-events-wi/155-CONTEXT.md
+Last session: 2026-05-14T00:10:57.686Z
+Stopped at: Phase 155 — Wave 7 Tasks 1-4 complete; checkpoint at Task 5 (manual cargo publish bootstrap for ferro-projection)
+Resume file: .planning/phases/155-ferro-projection-crate-live-read-model-from-domain-events-wi/155-07-SUMMARY.md
 Next action: `git push origin master` to ship Phase 153's commits. Next phase: 154 (ferro-reservation) — depends on 152 (ferro-orm, ✓) and 153 (ferro-audit, ✓), both shipped. Run `/gsd-discuss-phase 154 --auto` (or `--chain` for interactive discuss) to proceed when ready.
