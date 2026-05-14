@@ -6,6 +6,9 @@ use sea_orm_migration::prelude::*;
 
 /// Backfill a column with random hex strings of `hex_len` characters.
 ///
+/// `hex_len` must be even (each random byte produces two hex digits). Odd
+/// values return an error.
+///
 /// SQLite uses `lower(hex(randomblob(N/2)))`; Postgres uses
 /// `encode(gen_random_bytes(N/2), 'hex')` (requires `pgcrypto`; see README).
 /// MySQL is not supported.
@@ -32,6 +35,11 @@ pub(crate) fn sql_for_random_hex(
     column: &str,
     hex_len: u32,
 ) -> Result<String, Error> {
+    if hex_len % 2 != 0 {
+        return Err(Error::UnsupportedBackend(format!(
+            "hex_len must be even, got {hex_len}"
+        )));
+    }
     let byte_len = hex_len / 2;
     match backend {
         DbBackend::Sqlite => Ok(format!(
@@ -176,6 +184,14 @@ mod tests {
     fn random_hex_mysql_returns_unsupported() {
         let err = sql_for_random_hex(DbBackend::MySql, "t", "c", 16).unwrap_err();
         assert!(matches!(err, Error::UnsupportedBackend(ref msg) if msg.contains("MySQL")));
+    }
+
+    #[test]
+    fn random_hex_odd_hex_len_returns_error() {
+        let err = sql_for_random_hex(DbBackend::Sqlite, "t", "c", 5).unwrap_err();
+        assert!(matches!(err, Error::UnsupportedBackend(ref msg) if msg.contains("even")));
+        let err = sql_for_random_hex(DbBackend::Postgres, "t", "c", 5).unwrap_err();
+        assert!(matches!(err, Error::UnsupportedBackend(ref msg) if msg.contains("even")));
     }
 
     #[test]
