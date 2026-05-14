@@ -57,6 +57,7 @@ The **core abstraction is projection / intent** (`ferro-projections`, shipped in
 | `ferro-whatsapp` | WhatsApp Business Cloud API integration | `src/lib.rs` |
 | `ferro-orm` | Atomic conditional updates and ORM primitives (`GuardedUpdate`) | `src/lib.rs` |
 | `ferro-audit` | Append-only structured before/after audit log with replay | `src/lib.rs` |
+| `ferro-migration` | Backend-portable migration helpers (SQLite + Postgres backfill helpers) | `src/backfill.rs` |
 | `ferro-reservation` | Generic hold/commit/release reservation kernel | `src/lib.rs` |
 | `ferro-projection` | Live read-model runtime: subscribe to domain events, persist per-key snapshots, broadcast deltas. **Not the same as `ferro-projections` (plural)** — see crate docs for the distinction. | `src/lib.rs` |
 | `app` | Sample application | Reference implementation |

@@ -167,8 +167,7 @@ mod tests {
 
     #[test]
     fn random_hex_postgres_emits_gen_random_bytes() {
-        let sql =
-            sql_for_random_hex(DbBackend::Postgres, "bookings", "checkin_token", 16).unwrap();
+        let sql = sql_for_random_hex(DbBackend::Postgres, "bookings", "checkin_token", 16).unwrap();
         assert!(sql.contains("encode(gen_random_bytes(8), 'hex')"));
         assert!(sql.contains("\"bookings\""));
     }
