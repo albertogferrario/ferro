@@ -231,6 +231,7 @@ mod tests {
             "generated_artifacts",
             "database_url_sqlite_in_prod",
             "git_clean_and_pushed",
+            "frontend_types_convention",
         ];
         let deploy_names = &["copy_dirs_dockerignore_collision", "docker_template_drift"];
         for check in default_checks() {
