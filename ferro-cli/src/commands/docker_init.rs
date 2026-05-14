@@ -77,6 +77,8 @@ pub fn execute(
         web_bin,
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt.clone(),
+        // Phase 156 Plan 04 will replace this with resolve_ferro_version(&root).
+        ferro_version: env!("CARGO_PKG_VERSION").to_string(),
     };
 
     // Render everything to memory first. Any render error is a hard error in

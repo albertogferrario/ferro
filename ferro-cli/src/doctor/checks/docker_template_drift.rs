@@ -68,6 +68,8 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
         web_bin,
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt,
+        // Phase 156 Plan 04 will replace this with resolve_ferro_version(root).
+        ferro_version: env!("CARGO_PKG_VERSION").to_string(),
     };
 
     let rendered = render_dockerfile(&ctx);
@@ -135,6 +137,7 @@ mod tests {
             web_bin: "sample".to_string(),
             copy_dirs_present: vec![],
             runtime_apt: vec![],
+            ferro_version: "0.0.0-test".to_string(),
         };
         let rendered = render_dockerfile(&ctx);
         write(&td.path().join("Dockerfile"), &rendered);
@@ -167,6 +170,7 @@ mod tests {
             web_bin: "sample".to_string(),
             copy_dirs_present: vec![],
             runtime_apt: vec![],
+            ferro_version: "0.0.0-test".to_string(),
         };
         let mut rendered = render_dockerfile(&ctx);
         rendered.push_str("# spurious comment added by hand\n");
