@@ -137,10 +137,15 @@ async fn get_database_connection() -> sea_orm::DatabaseConnection {
         .expect("Failed to connect to database")
 }
 
+/// Run migrations during server boot without success logging.
+///
+/// On failure this aborts the process via `std::process::exit(1)` to prevent
+/// serving traffic with a stale schema.
 async fn run_migrations_silent() {
     let db = get_database_connection().await;
     if let Err(e) = Migrator::up(&db, None).await {
-        eprintln!("Warning: Migration failed: {}", e);
+        eprintln!("Migration failed: {e}");
+        std::process::exit(1);
     }
 }
 

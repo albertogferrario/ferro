@@ -383,10 +383,21 @@ where
             .expect("Failed to connect to database")
     }
 
+    /// Run migrations during server boot without success logging.
+    ///
+    /// "Silent" refers only to the success path (no `println!("Running migrations…")`
+    /// progress logs that would interleave with server startup). On failure this
+    /// method writes the error to stderr and ABORTS the process via
+    /// `std::process::exit(1)`.
+    ///
+    /// Aborting on migration failure is intentional: it prevents the server from
+    /// accepting traffic with a stale schema, which is the failure mode that
+    /// motivated this guard (see Phase 157, gestiscilo-it 2026-05-13 incident).
     async fn run_migrations_silent<Migrator: MigratorTrait>() {
         let db = Self::get_database_connection().await;
         if let Err(e) = Migrator::up(&db, None).await {
-            eprintln!("Warning: Migration failed: {e}");
+            eprintln!("Migration failed: {e}");
+            std::process::exit(1);
         }
     }
 
