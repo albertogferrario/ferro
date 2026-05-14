@@ -82,6 +82,7 @@ All runtime configuration is in `.env`. See `.env.example` for every supported v
 - **`ferro: command not found`** — install with `cargo install ferro-cli`.
 - **Migrations fail** — delete `database.db` and run `ferro db:fresh`.
 - **Frontend assets missing** — run `npm install` inside `frontend/`, then restart `ferro serve`.
+- **TypeScript errors about `Cannot find module './types/inertia-props'`** — run `cargo run` once to generate types before running `npm run dev`. Types are regenerated automatically on each server start. See the framework docs page `cli/frontend-types.md` for the full convention.
 - **Port 8080 in use** — change `SERVER_PORT` in `.env`.
 
 For framework-level issues, see the [Ferro docs](https://github.com/albertogferrario/ferro).
