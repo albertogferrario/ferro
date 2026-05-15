@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 121 context gathered
-last_updated: "2026-05-15T17:28:46.037Z"
+stopped_at: Phase 159 context gathered
+last_updated: "2026-05-15T20:19:41.317Z"
 last_activity: 2026-05-15
 progress:
-  total_phases: 155
+  total_phases: 161
   completed_phases: 135
   total_plans: 365
   completed_plans: 335
@@ -136,6 +136,7 @@ Recent decisions affecting current work:
 
 ### Roadmap Evolution
 
+- Phases 159-161 added (2026-05-15): v12.0/json-ui-v2 merge closure. Phase 159: browser verification + docs build check (Chrome MCP test of /pagamenti, mdbook build). Phase 160: delete all v1 JSON-UI API from ferro-json-ui (view.rs, Component enum, ComponentNode, builder surface) — depends on gestiscilo Phases 138-143 completing first. Phase 161: merge v12.0/json-ui-v2 → master (full test pass, clippy clean, PR merge).
 - Phase 122 added: Deploy scaffold core rewrite (docker_init/do_init/templates rewrite, path→git ferro dep handling, multi-bin + worker support) — driven by gestiscilo deployment work
 - Phase 123 added: Deploy MCP tools (deploy_check, deploy_diff_env, runtime_requirements) — read-only deploy diagnostics surfaced via ferro-mcp
 - Phase 124 added: Doctor, introspection, CI scaffold (ferro doctor, routes --json, ci.yml generation, ignore_patterns sync)
@@ -148,7 +149,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-21T16:27:21.069Z
-Stopped at: Phase 121 context gathered
-Resume file: .planning/phases/121-documentation-and-field-test/121-CONTEXT.md
+Last session: 2026-05-15T20:19:41.269Z
+Stopped at: Phase 159 context gathered
+Resume file: .planning/phases/159-v12-0-end-to-end-browser-verification-and-docs-build-check/159-CONTEXT.md
 Next action: `/gsd-complete-milestone v11.7`
