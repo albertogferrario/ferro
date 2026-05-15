@@ -554,4 +554,32 @@ mod tests {
         assert!(msg.contains("13 bytes"));
         assert!(msg.contains("max 5"));
     }
+
+    // Killer-feature integration: UploadedFile::store() wires to ferro-storage
+
+    #[tokio::test]
+    async fn store_to_memory_disk() {
+        use ferro_storage::{DiskConfig, Storage};
+
+        let storage = Storage::with_config("mem", vec![("mem", DiskConfig::memory())]);
+        let disk = storage.disk("mem").expect("memory disk exists");
+
+        let file = UploadedFile {
+            field_name: "avatar".into(),
+            file_name: Some("photo.png".into()),
+            content_type: Some("image/png".into()),
+            bytes: Bytes::from_static(b"\x89PNG\r\n\x1a\n"),
+        };
+
+        file.store(&disk, "uploads/photo.png")
+            .await
+            .expect("store succeeds");
+
+        let stored = disk
+            .get("uploads/photo.png")
+            .await
+            .expect("file readable after store");
+        assert_eq!(stored.as_ref(), b"\x89PNG\r\n\x1a\n");
+        assert!(disk.exists("uploads/photo.png").await.unwrap());
+    }
 }
