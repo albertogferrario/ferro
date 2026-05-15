@@ -394,10 +394,10 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 | 118. Server-Side Expressions | 2/2 | Complete    | 2026-04-19 |
 | 119. Page Loader | 2/3 | In Progress|  |
 | 120. CLI & MCP Updates | 5/5 | Complete    | 2026-04-21 |
-| 121. Documentation & Field Test | 0/6 | Planned | - |
+| 121. Documentation & Field Test | 1/6 | In Progress|  |
 
 **Plans:**
-- [ ] 121-01-PLAN.md — Add JsonUi::render_file to framework (Wave 1, FIELD-01 blocker)
+- [x] 121-01-PLAN.md — Add JsonUi::render_file to framework (Wave 1, FIELD-01 blocker)
 - [ ] 121-02-PLAN.md — Rewrite getting-started.md, actions.md, features/json-ui.md (Wave 2, DOC-01)
 - [ ] 121-03-PLAN.md — Rewrite components.md and data-binding.md (Wave 2, DOC-01)
 - [ ] 121-04-PLAN.md — Rewrite layouts.md and plugins.md (Wave 2, DOC-01)
