@@ -1498,6 +1498,16 @@ Plans:
 - [x] 157-03-PLAN.md — ferro doctor migrate_gate check (CheckCategory::Deploy)
 - [x] 157-04-PLAN.md — Fix run_migrations_silent silent-failure anti-pattern (framework + app + template)
 
+### Phase 158: Request::file() multipart upload primitive
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 157
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 158 to break down)
+
 ---
 
 ## Progress Summary
