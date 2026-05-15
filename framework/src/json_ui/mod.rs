@@ -144,6 +144,32 @@ impl JsonUi {
             .header("Content-Type", "text/html; charset=utf-8"))
     }
 
+    /// Load a v2 spec file, merge handler data, and render to HTML.
+    ///
+    /// Uses the process-level spec cache (`ferro_json_ui::load_cached`).
+    /// In development, reloads on mtime change. In production, cached for the
+    /// process lifetime.
+    pub fn render_file(
+        path: impl AsRef<std::path::Path>,
+        handler_data: serde_json::Value,
+    ) -> Response {
+        Self::render_file_with_config(path, handler_data, &JsonUiConfig::new())
+    }
+
+    /// Load a v2 spec file and render with custom configuration.
+    pub fn render_file_with_config(
+        path: impl AsRef<std::path::Path>,
+        handler_data: serde_json::Value,
+        config: &JsonUiConfig,
+    ) -> Response {
+        let reload = !crate::Config::is_production();
+        let arc_spec = ferro_json_ui::load_cached(path.as_ref(), reload)
+            .map_err(|e| HttpResponse::text(format!("Failed to load spec: {e}")).status(500))?;
+        let spec = (*arc_spec).clone().merge_data(handler_data);
+        let data = spec.data.clone();
+        Self::build_response(&spec, &data, config)
+    }
+
     /// Return the spec as JSON (for API consumers or debugging).
     ///
     /// All action handler references are resolved to URLs before output.
@@ -664,6 +690,21 @@ mod tests {
 
         let result = JsonUi::render_json(&spec, &data);
         assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // render_file tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn render_file_returns_error_for_missing_file() {
+        let result = JsonUi::render_file(
+            std::path::Path::new("/nonexistent/path/test.json"),
+            serde_json::json!({}),
+        );
+        assert!(result.is_err(), "missing file should return Err response");
+        let err = result.unwrap_err();
+        assert_eq!(err.status_code(), 500);
     }
 
     // -----------------------------------------------------------------------
