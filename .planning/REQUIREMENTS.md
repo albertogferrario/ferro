@@ -60,16 +60,16 @@ These are real capabilities deferred beyond v12.1:
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| AISDK-01 | — | Pending |
-| AISDK-02 | — | Pending |
-| AISDK-03 | — | Pending |
-| AISDK-04 | — | Pending |
-| AISDK-05 | — | Pending |
-| AISDK-06 | — | Pending |
-| AISSE-01 | — | Pending |
-| AISSE-02 | — | Pending |
-| AICLI-01 | — | Pending |
-| AICLI-02 | — | Pending |
-| AICLI-03 | — | Pending |
-| AICLI-04 | — | Deferred (v12.0 gate) |
-| AICLI-05 | — | Pending |
+| AISDK-01 | Phase 159 | Pending |
+| AISDK-02 | Phase 160 | Pending |
+| AISDK-03 | Phase 160 | Pending |
+| AISDK-04 | Phase 161 | Pending |
+| AISDK-05 | Phase 161 | Pending |
+| AISDK-06 | Phase 164 | Pending |
+| AISSE-01 | Phase 162 | Pending |
+| AISSE-02 | Phase 163 | Pending |
+| AICLI-01 | Phase 165 | Pending |
+| AICLI-02 | Phase 165 | Pending |
+| AICLI-03 | Phase 165 | Pending |
+| AICLI-04 | Phase 167 | Deferred (v12.0 gate) |
+| AICLI-05 | Phase 166 | Pending |

@@ -1549,3 +1549,166 @@ Plans:
 
 **Total: 28 milestones shipped, 270 plans complete.**
 mplete.**
+
+
+---
+
+### 📋 v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding (Phases 159-167, planned 2026-05-15)
+
+**Milestone Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and build AI-assisted scaffolding on top of it. The killer feature: `ferro ai:make <description>` uses live `ferro-mcp` introspection (called in-process, not via subprocess) to generate code that fits the actual project rather than a generic template.
+
+**Requirements:** AISDK-01..06, AISSE-01..02, AICLI-01..05 (13 requirements, 1 deferred)
+
+**Relationship to v12.0:** v12.0 (Phases 115-121) runs first. AICLI-04 (`make:json-view` v2) is gated on v12.0 shipping; it is deferred to Phase 167 and blocked until then.
+
+**New dependencies:**
+- `reqwest-eventsource 0.6` — parse incoming SSE from Anthropic/OpenAI/Groq/Ollama (new to workspace)
+- `pgvector 0.4` — optional feature-gate on ferro-ai for vector storage (new to workspace)
+
+**Build order:**
+- Wave 1 (ferro-ai foundation): Phases 159, 160, 161 — ferro-ai leaf crate first; everything builds on `LlmClient` trait
+- Wave 1b (parallel): Phase 162 — SSE primitives in framework have no ferro-ai dependency
+- Wave 2: Phase 163 — StreamText depends on SSE URL convention from Phase 162
+- Wave 3: Phase 164 — ferro-cli migration, validates SDK against existing make:json-view command
+- Wave 4: Phase 165 — AI CLI commands, the killer feature; uses ferro-mcp in-process
+- Wave 5: Phase 166 — MCP tool wrappers, thin layer on top of CLI logic
+- Deferred: Phase 167 — gated on v12.0 shipping
+
+## Phases
+
+- [ ] **Phase 159: LlmClient Trait & Provider Implementations** — `LlmClient` trait + Anthropic/OpenAI/Ollama providers + `AiConfig::from_env()` + `ClassifierConfig` default-model fix
+- [ ] **Phase 160: Structured Outputs, Tool Calling & Schema Normalizer** — `ferro_ai::complete::<T>()` + schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ToolRegistry` with `max_iterations` hard cap
+- [ ] **Phase 161: Embeddings & pgvector** — `embed()` + `cosine_similarity()` pure Rust helpers + optional `pgvector` feature-gated module
+- [ ] **Phase 162: Framework SSE Primitives** — `SseEvent` + `SseStream` + `HttpResponse::sse()` in framework crate; SSE routes structurally excluded from CompressionLayer
+- [ ] **Phase 163: StreamText Component** — `StreamText` ferro-json-ui component rendering a token stream from an SSE endpoint URL
+- [ ] **Phase 164: ferro-cli Migration** — delete `ferro-cli/src/ai.rs` blocking client; wire all LLM calls through `ferro_ai::complete::<T>()`
+- [ ] **Phase 165: ferro ai:make & ferro ai:explain CLI Commands** — killer-feature commands using live ferro-mcp introspection in-process; `ScaffoldPlan` typed struct; selective context loading
+- [ ] **Phase 166: MCP Tool Wrappers** — `ai_scaffold` + `ai_explain` tools in ferro-mcp wrapping CLI command logic for in-process agent consumption
+- [ ] **Phase 167: make:json-view v2 (DEFERRED — gated on v12.0)** — `ferro make:json-view` upgraded to structured outputs + ServiceDef introspection; blocked until v12.0 JSON-UI v2 ships
+
+#### Phase Details
+
+### Phase 159: LlmClient Trait & Provider Implementations
+**Goal**: Establish the provider-agnostic `LlmClient` trait and ship four provider implementations (Anthropic, OpenAI, Ollama, plus Groq as an OpenAI config variant). Fix the `ClassifierConfig` hardcoded default model that breaks non-Anthropic providers.
+**Depends on**: Nothing (first phase of milestone; ferro-ai is a leaf crate)
+**Requirements**: AISDK-01
+**Success Criteria** (what must be TRUE):
+  1. `LlmClient` trait exists in `ferro-ai/src/client/mod.rs` with `async fn complete(...)`, `async fn complete_stream(...)`, `async fn embed(...)` methods; missing capabilities return `Err(Error::Unsupported)` rather than panic
+  2. `AnthropicClient`, `OpenAiClient` (doubles as Groq via `base_url` override), and `OllamaClient` implement `LlmClient`; `Box<dyn LlmClient>` is instantiable for each
+  3. `AiConfig::from_env()` reads `FERRO_AI_PROVIDER`, `FERRO_AI_MODEL`, `FERRO_AI_API_KEY`, `FERRO_AI_BASE_URL` and returns the correct provider; unknown provider names return a clear error at startup, not at the first LLM call
+  4. `ClassifierConfig` default model is resolved through `LlmClient::default_model()` per provider; the hardcoded `"claude-sonnet-4-6"` string is removed from `ClassifierConfig::default()`
+  5. `Classifier<T>` compiles and passes its existing tests with the new client plumbing underneath; `ClassificationProvider` and existing public API are preserved
+  6. `reqwest-eventsource 0.6` is declared as a `pub(crate)` dependency in provider modules only — not re-exported as a public ferro-ai surface
+**Plans**: TBD
+
+### Phase 160: Structured Outputs, Tool Calling & Schema Normalizer
+**Goal**: Ship `ferro_ai::complete::<T>()` for typed structured outputs, the schema normalizer that makes `schemars` output compatible with provider structured-output APIs, and `ToolRegistry` with a hard `max_iterations` guard.
+**Depends on**: Phase 159
+**Requirements**: AISDK-02, AISDK-03
+**Success Criteria** (what must be TRUE):
+  1. `ferro_ai::complete::<T>(client, prompt)` where `T: schemars::JsonSchema + serde::DeserializeOwned` returns `Result<T, Error>` — caller never calls schemars or JSON parsing directly
+  2. `ferro_ai::schema::for_structured_output(root_schema)` resolves all `$ref`/`$defs` inline, adds `additionalProperties: false` to every object schema, and strips constraints Anthropic structured-output rejects; a unit test verifies the output against Anthropic's documented constraints
+  3. `ToolDef` struct carries `name: String`, `description: String`, `parameters_schema: serde_json::Value` (normalized via `for_structured_output`), and a handler closure
+  4. `ToolRegistry::dispatch(messages, client)` runs the tool-calling loop; `max_iterations: u32` (default 10) is required at construction time and enforced with no override path to an unbounded loop; a warning is logged at 5 iterations and an error at the hard cap
+  5. Tool errors carry model-legible `ToolError { message: String }` descriptions — not raw Rust stack traces or DB constraint strings
+  6. `cargo test --all-features` passes; existing `Classifier<T>` tests are green
+**Plans**: TBD
+
+### Phase 161: Embeddings & pgvector
+**Goal**: Ship pure-Rust embedding helpers and cosine similarity, plus an optional pgvector integration for semantic search.
+**Depends on**: Phase 159
+**Requirements**: AISDK-04, AISDK-05
+**Success Criteria** (what must be TRUE):
+  1. `ferro_ai::embed(client, text)` calls the provider's embedding endpoint and returns `Vec<f32>`; Anthropic, OpenAI, and Ollama providers implement `LlmClient::embed()`
+  2. `ferro_ai::cosine_similarity(a: &[f32], b: &[f32]) -> f32` is a pure Rust function with no extra crates; returns a value in [-1.0, 1.0]; panics with a clear message on empty or dimension-mismatched inputs
+  3. `ferro_ai::pgvector` module exists behind the `pgvector` cargo feature; `PgVectorStore::store` and `PgVectorStore::nearest` accept raw sqlx connections and return typed results
+  4. Feature flag `pgvector` adds only `pgvector 0.4` to the dependency graph; non-flagged builds do not pull pgvector
+  5. Unit tests for `cosine_similarity`: orthogonal vectors return 0.0, identical vectors return 1.0, opposite vectors return -1.0
+**Plans**: TBD
+
+### Phase 162: Framework SSE Primitives
+**Goal**: Add SSE streaming support to the framework so handlers can push events to the browser. SSE routes are structurally excluded from CompressionLayer — this is a guarantee, not documentation.
+**Depends on**: Nothing (parallel-capable with Phases 159-161; framework crate has no ferro-ai dependency)
+**Requirements**: AISSE-01
+**Success Criteria** (what must be TRUE):
+  1. `SseEvent` exists in `framework/src/http/sse.rs` with `data`, `event`, `id`, and `retry` fields; serializes to the SSE wire format (`data: ...\n\n`) correctly
+  2. `SseStream` wraps a tokio mpsc channel and implements `IntoResponse` for axum; `HttpResponse::sse(sender, stream)` factory constructs an SSE response
+  3. SSE responses are excluded from `CompressionLayer` at the router level via a structural mechanism (not per-route annotation); the exclusion is tested, not only documented
+  4. A keep-alive `:ping\n\n` comment is emitted every 15 seconds on idle SSE connections to prevent reverse-proxy idle-timeout disconnects
+  5. An integration test verifies token-by-token delivery: a test SSE endpoint sends three events with delays; the test client receives each event before the next is sent
+**Plans**: TBD
+
+### Phase 163: StreamText Component
+**Goal**: Ship the `StreamText` ferro-json-ui component that connects to an SSE endpoint URL and renders token-by-token output in place. No external JS framework required.
+**Depends on**: Phase 162 (SSE URL convention established in framework)
+**Requirements**: AISSE-02
+**Success Criteria** (what must be TRUE):
+  1. `Component::StreamText(StreamTextProps)` exists with `sse_url: String`, `placeholder: Option<String>`, and `loading_text: Option<String>` props; round-trips via ferro-json-ui serde fixtures
+  2. Renderer emits `<div data-ferro-stream-url="{escaped_url}">` with a loading state and inline `EventSource` JS that appends tokens as they arrive
+  3. `COMPONENT_CATALOG` and ferro-mcp `CatalogComponent` include `StreamText` with accurate prop descriptions for AI generation
+  4. Documented under `### StreamText` in `docs/src/json-ui/components.md`
+  5. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green
+**Plans**: TBD
+
+### Phase 164: ferro-cli Migration
+**Goal**: Delete the blocking Anthropic-only `ferro-cli/src/ai.rs` client and route all LLM calls through the `ferro_ai` SDK. Validates the SDK against the existing `make:json-view` command before new AI commands are built on top.
+**Depends on**: Phase 160 (structured outputs and schema normalizer in place)
+**Requirements**: AISDK-06
+**Success Criteria** (what must be TRUE):
+  1. `ferro-cli/src/ai.rs` is deleted; no `reqwest::blocking::Client` or direct Anthropic API calls remain in ferro-cli
+  2. `ferro-cli` depends on `ferro-ai`; all LLM calls go through `ferro_ai::complete::<T>()` using `AiConfig::from_env()`
+  3. `ferro make:json-view` works end-to-end after the migration; existing behavior is preserved
+  4. `FERRO_AI_PROVIDER`, `FERRO_AI_MODEL`, `FERRO_AI_API_KEY` env vars control the provider for `make:json-view` (previously only Anthropic was supported)
+  5. `cargo test --all-features` passes; no new compilation warnings in ferro-cli
+**Plans**: TBD
+
+### Phase 165: ferro ai:make & ferro ai:explain CLI Commands
+**Goal**: Ship the killer-feature CLI commands. `ferro ai:make <description>` produces a complete feature scaffold using live ferro-mcp introspection loaded in-process (not subprocess). `ferro ai:explain <route|model>` explains an existing handler or model using actual source loaded through ferro-mcp.
+**Depends on**: Phase 164 (SDK migration complete), Phase 160 (structured outputs)
+**Requirements**: AICLI-01, AICLI-02, AICLI-03
+**Success Criteria** (what must be TRUE):
+  1. `ferro ai:make <description>` calls ferro-mcp library functions in-process to load `list_routes`, `list_models`, `db_schema`, and `generation_context`; context is filtered to items semantically relevant to the description before prompt construction (prevents context window overflow on large projects)
+  2. `ferro ai:make` generates a typed `ScaffoldPlan` struct via `ferro_ai::complete::<ScaffoldPlan>()` before writing any files; `--dry-run` prints the plan without writing
+  3. `ferro ai:make` delegates file generation to existing scaffold helpers (`generate_model`, `generate_migration`, `make:json-view`); no parallel file-writing path exists
+  4. `ferro ai:explain <route|model>` calls the `get_handler` (or equivalent) ferro-mcp tool in-process to load actual handler source, then returns a plain-English explanation including side effects (events dispatched, jobs queued, models touched)
+  5. Both commands respect `FERRO_AI_MAX_TOKENS_PER_COMMAND` env var as a cost guard; both support `--dry-run`
+  6. Neither command generates non-ferro code; all scaffolds are validated against project conventions as reported by ferro-mcp introspection
+**Plans**: TBD
+
+### Phase 166: MCP Tool Wrappers
+**Goal**: Expose `ai_scaffold` and `ai_explain` as ferro-mcp tools so agents can invoke scaffolding and explanation logic in-process without shelling out to the CLI.
+**Depends on**: Phase 165 (CLI command logic validated end-to-end)
+**Requirements**: AICLI-05
+**Success Criteria** (what must be TRUE):
+  1. `ai_scaffold` MCP tool accepts `description: String` and returns a `ScaffoldPlan` JSON object plus a list of files written (or would-be-written in dry-run mode)
+  2. `ai_explain` MCP tool accepts `target: String` (route path or model name) and returns the plain-English explanation as a string
+  3. Both tools share the same logic path as the CLI commands — no duplicate implementation
+  4. MCP tool descriptions are accurate and sufficient for an agent to use them without out-of-band guidance
+  5. `ferro-mcp` version bumped; `cargo test --all-features` passes
+**Plans**: TBD
+
+### Phase 167: make:json-view v2 (DEFERRED — gated on v12.0)
+**Goal**: Upgrade `ferro make:json-view` to use structured outputs with ServiceDef introspection and schema-driven component selection. This phase is blocked until v12.0 JSON-UI v2 ships and `catalog.prompt()` / `catalog.component_schema()` are available.
+**Depends on**: Phase 164; v12.0 Phase 117 (Catalog & JSON Schema) and Phase 120 (CLI & MCP Updates)
+**Requirements**: AICLI-04
+**Status**: DEFERRED — do not plan or execute until v12.0 Phase 117 and Phase 120 are complete
+**Success Criteria** (what must be TRUE):
+  1. `ferro make:json-view` uses `catalog.prompt()` for concise AI context and `catalog.component_schema()` for per-component structured output (not the flat string prompt from v1)
+  2. Generated views are v2 flat specs validated against `catalog.json_schema()` before being written to disk
+  3. ServiceDef introspection (via `ferro-mcp generate_projection`) is used to select components matching the model's field types
+  4. No v1 `JsonUiView` types appear in the generated output or the generation pipeline
+**Plans**: TBD
+
+#### Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 159. LlmClient Trait & Providers | 0/? | Not started | - |
+| 160. Structured Outputs & Tool Calling | 0/? | Not started | - |
+| 161. Embeddings & pgvector | 0/? | Not started | - |
+| 162. Framework SSE Primitives | 0/? | Not started | - |
+| 163. StreamText Component | 0/? | Not started | - |
+| 164. ferro-cli Migration | 0/? | Not started | - |
+| 165. ai:make & ai:explain CLI Commands | 0/? | Not started | - |
+| 166. MCP Tool Wrappers | 0/? | Not started | - |
+| 167. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |
