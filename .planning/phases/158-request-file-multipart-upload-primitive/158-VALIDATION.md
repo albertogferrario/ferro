@@ -19,7 +19,7 @@ created: 2026-05-15
 |----------|-------|
 | **Framework** | cargo test |
 | **Config file** | framework/Cargo.toml |
-| **Quick run command** | `cargo test -p framework --lib -- http::multipart` |
+| **Quick run command** | `cargo test -p ferro-rs --lib -- http::multipart` |
 | **Full suite command** | `cargo test --all-features` |
 | **Estimated runtime** | ~30 seconds |
 
@@ -27,7 +27,7 @@ created: 2026-05-15
 
 ## Sampling Rate
 
-- **After every task commit:** Run `cargo test -p framework --lib -- http::multipart`
+- **After every task commit:** Run `cargo test -p ferro-rs --lib -- http::multipart`
 - **After every plan wave:** Run `cargo clippy --all --all-targets -- -D warnings && cargo test --all-features`
 - **Before `/gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 30 seconds
@@ -38,14 +38,11 @@ created: 2026-05-15
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 158-01-01 | 01 | 1 | multer dep | — | N/A | build | `cargo build -p framework` | ✅ | ⬜ pending |
-| 158-01-02 | 01 | 1 | boundary extraction | — | Returns error on missing boundary | unit | `cargo test -p framework -- test_boundary_missing` | ❌ W0 | ⬜ pending |
-| 158-01-03 | 01 | 1 | MultipartForm parse | — | N/A | unit | `cargo test -p framework -- test_multipart_parse` | ❌ W0 | ⬜ pending |
-| 158-01-04 | 01 | 1 | size limit | — | Returns typed error, not panic, on oversized part | unit | `cargo test -p framework -- test_size_limit` | ❌ W0 | ⬜ pending |
-| 158-02-01 | 02 | 2 | UploadedFile store | — | N/A | unit | `cargo test -p framework -- test_uploaded_file_store` | ❌ W0 | ⬜ pending |
-| 158-02-02 | 02 | 2 | validate_mime | — | Returns error on disallowed MIME | unit | `cargo test -p framework -- test_validate_mime` | ❌ W0 | ⬜ pending |
-| 158-03-01 | 03 | 3 | req.file() | — | N/A | unit | `cargo test -p framework -- test_req_file` | ❌ W0 | ⬜ pending |
-| 158-03-02 | 03 | 3 | re-exports | — | N/A | build | `cargo build` | ✅ | ⬜ pending |
+| 158-01-01 | 01 | 1 | multer dep | — | N/A | build | `cargo build -p ferro-rs` | ✅ | ⬜ pending |
+| 158-01-02 | 01 | 1 | UploadedFile + MultipartForm types | — | N/A | build | `cargo build -p ferro-rs` | ❌ W0 | ⬜ pending |
+| 158-01-03 | 01 | 1 | wire mod.rs + lib.rs re-exports | — | N/A | build | `cargo build` | ❌ W0 | ⬜ pending |
+| 158-02-01 | 02 | 2 | parse_multipart_body + size/fields limits | — | Returns typed error on oversized/excess fields | unit | `cargo test -p ferro-rs --lib -- http::multipart::tests::multipart_size_limit_rejects_oversized_field` | ❌ W0 | ⬜ pending |
+| 158-02-02 | 02 | 2 | unit tests (13 tests) | — | multipart_missing_boundary returns D-18 error string | unit | `cargo test -p ferro-rs --lib -- http::multipart::tests` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -53,10 +50,9 @@ created: 2026-05-15
 
 ## Wave 0 Requirements
 
-- [ ] `framework/src/http/multipart.rs` — module file with test stubs
-- [ ] Test stubs: `test_boundary_missing`, `test_multipart_parse`, `test_size_limit`, `test_uploaded_file_store`, `test_validate_mime`, `test_req_file`
+- [ ] `framework/src/http/multipart.rs` — new module with all types and functions; test block created as part of Plan 01 Task 2
 
-*Wave 0 creates test stubs as part of the module scaffold.*
+*Test implementations ship in Plan 02 Task 2 (Wave 2). Wave 0 = the module scaffold in Plan 01.*
 
 ---
 
