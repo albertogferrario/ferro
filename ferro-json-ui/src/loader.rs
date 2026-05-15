@@ -159,6 +159,7 @@ pub fn load_cached(path: &Path, reload_if_changed: bool) -> Result<Arc<Spec>, Lo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::catalog::Catalog;
     use std::io::Write;
     use std::path::PathBuf;
 
@@ -180,6 +181,41 @@ mod tests {
         path
     }
 
+    /// Test variant of `load_cached` that validates against built-in components only.
+    ///
+    /// Uses `Catalog::build_builtins_only()` to avoid global plugin registry
+    /// pollution from `build_discovers_plugins_and_rejects_invalid_schema`
+    /// (which registers `BadPlugin_117`). Production code always uses
+    /// `global_catalog()`.
+    fn load_builtins(path: &Path, reload_if_changed: bool) -> Result<Arc<Spec>, LoadError> {
+        let canonical = fs::canonicalize(path)?;
+        {
+            let cache = global_spec_cache().read().expect("spec cache poisoned");
+            if let Some((arc_spec, cached_mtime)) = cache.get(&canonical) {
+                if !reload_if_changed {
+                    return Ok(Arc::clone(arc_spec));
+                }
+                let current = current_mtime(&canonical);
+                if current <= *cached_mtime {
+                    return Ok(Arc::clone(arc_spec));
+                }
+            }
+        }
+        let content = fs::read_to_string(&canonical)?;
+        let spec = Spec::from_json(&content).map_err(LoadError::Parse)?;
+        Catalog::build_builtins_only()
+            .map_err(|e| LoadError::Catalog(vec![e]))?
+            .validate(&spec)
+            .map_err(LoadError::Catalog)?;
+        let mtime = current_mtime(&canonical);
+        let arc_spec = Arc::new(spec);
+        global_spec_cache()
+            .write()
+            .expect("spec cache poisoned")
+            .insert(canonical, (Arc::clone(&arc_spec), mtime));
+        Ok(arc_spec)
+    }
+
     const VALID_SPEC: &str = r#"{
         "$schema": "ferro-json-ui/v2",
         "root": "r",
@@ -195,14 +231,14 @@ mod tests {
     #[test]
     fn load_spec_valid() {
         let path = write_temp("valid", VALID_SPEC);
-        let spec = load_cached(&path, false).expect("valid spec should load");
+        let spec = load_builtins(&path, false).expect("valid spec should load");
         assert_eq!(spec.root, "r");
     }
 
     #[test]
     fn load_spec_invalid_json() {
         let path = write_temp("invalid-json", "{ not valid json");
-        let err = load_cached(&path, false).expect_err("must fail");
+        let err = load_builtins(&path, false).expect_err("must fail");
         assert!(
             matches!(err, LoadError::Parse(_)),
             "expected Parse, got {err:?}"
@@ -218,7 +254,7 @@ mod tests {
             "elements": { "r": { "type": "NotARealComponent_119_loader" } }
         }"#;
         let path = write_temp("unknown-type", unknown);
-        let err = load_cached(&path, false).expect_err("must fail");
+        let err = load_builtins(&path, false).expect_err("must fail");
         match err {
             LoadError::Catalog(errs) => {
                 assert!(!errs.is_empty(), "catalog errors must be non-empty")
@@ -230,15 +266,15 @@ mod tests {
     #[test]
     fn load_spec_missing_file() {
         let path = PathBuf::from("/nonexistent/path-119-loader-test-does-not-exist.json");
-        let err = load_cached(&path, false).expect_err("must fail");
+        let err = load_builtins(&path, false).expect_err("must fail");
         assert!(matches!(err, LoadError::Io(_)), "expected Io, got {err:?}");
     }
 
     #[test]
     fn cache_hit() {
         let path = write_temp("cache-hit", VALID_SPEC);
-        let first = load_cached(&path, false).expect("first load");
-        let second = load_cached(&path, false).expect("second load");
+        let first = load_builtins(&path, false).expect("first load");
+        let second = load_builtins(&path, false).expect("second load");
         assert!(
             Arc::ptr_eq(&first, &second),
             "second load must return the same Arc — cache hit"
@@ -248,7 +284,7 @@ mod tests {
     #[test]
     fn dev_mode_invalidation() {
         let path = write_temp("dev-mode", VALID_SPEC);
-        let first = load_cached(&path, true).expect("first load");
+        let first = load_builtins(&path, true).expect("first load");
         assert_eq!(first.root, "r");
 
         // Sleep 1.1s to guarantee SystemTime advances past 1-second filesystem
@@ -258,7 +294,7 @@ mod tests {
         f.write_all(VALID_SPEC_ALT.as_bytes()).expect("write");
         f.sync_all().expect("sync");
 
-        let second = load_cached(&path, true).expect("second load after mtime advance");
+        let second = load_builtins(&path, true).expect("second load after mtime advance");
         assert!(
             !Arc::ptr_eq(&first, &second),
             "mtime advance must produce a fresh Arc"

@@ -29,10 +29,8 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 /// Pre-route middleware result: `Ok` continues with the (possibly rewritten) request,
 /// `Err` short-circuits and sends the response immediately.
-pub type PreRouteResult = Result<
-    hyper::Request<hyper::body::Incoming>,
-    hyper::Response<Full<Bytes>>,
->;
+pub type PreRouteResult =
+    Result<hyper::Request<hyper::body::Incoming>, hyper::Response<Full<Bytes>>>;
 
 /// Trait for middleware that runs before path extraction and route matching.
 ///
@@ -40,6 +38,8 @@ pub type PreRouteResult = Result<
 /// for example, custom domain → canonical path translation.
 #[async_trait]
 pub trait PreRouteMiddleware: Send + Sync {
+    /// Inspect or rewrite the request before route matching. Return `Ok(req)` to continue
+    /// (possibly with a rewritten URI) or `Err(response)` to short-circuit immediately.
     async fn handle(&self, req: hyper::Request<hyper::body::Incoming>) -> PreRouteResult;
 }
 

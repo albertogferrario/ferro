@@ -1,0 +1,1 @@
+/Users/alberto/repositories/albertogferrario/ferro/ferro-cli/tests/fixtures/minimal-serve/target/debug/minimal-serve: /Users/alberto/repositories/albertogferrario/ferro/ferro-cli/tests/fixtures/minimal-serve/src/main.rs
