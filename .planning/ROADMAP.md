@@ -1500,13 +1500,14 @@ Plans:
 
 ### Phase 158: Request::file() multipart upload primitive
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add multipart/form-data parsing to the framework so handlers can receive uploaded files via `req.multipart()` and `req.file("field")`. Include an `UploadedFile` type with a `store()` helper that bridges directly to `ferro-storage`. Killer feature: a handler can receive an uploaded file and persist it to local disk or S3 in three lines, using the same `ferro-storage` API already wired into the app.
+**Requirements**: MULTIPART-01..09
 **Depends on:** Phase 157
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 158 to break down)
+- [x] 158-01-PLAN.md — Add multer dep, create http/multipart.rs (UploadedFile, MultipartForm, parser, validators, env helpers), wire into http/mod.rs + lib.rs
+- [x] 158-02-PLAN.md — Add Request::multipart() / Request::file() methods + #[cfg(test)] mod tests covering D-03/04/07/08/12/13/14/18
 
 ---
 

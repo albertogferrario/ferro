@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 158 context gathered
-last_updated: "2026-05-15T05:17:28.679Z"
-last_activity: 2026-05-15 -- Phase 158 planning complete
+stopped_at: context exhaustion at 91% (2026-05-15)
+last_updated: "2026-05-15T14:04:24.656Z"
+last_activity: 2026-05-15
 progress:
   total_phases: 158
-  completed_phases: 143
+  completed_phases: 144
   total_plans: 401
-  completed_plans: 378
-  percent: 94
+  completed_plans: 380
+  percent: 95
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 157 — migration-deploy-safety-backend-portable-backfill-helpers-fe
+**Current focus:** Phase 158 — request-file-multipart-upload-primitive
 
 ## Current Position
 
-Phase: 157
+Phase: 158
 Plan: Not started
 Plans: 7 of 7 complete; ferro-projection v0.2.33 live on crates.io
 Workspace version: 0.2.33 (bumped from 0.2.32 in Phase 155 plan 02)
-Status: Ready to execute
-Last activity: 2026-05-15 -- Phase 158 planning complete
+Status: Executing Phase 158
+Last activity: 2026-05-15
 Next phase: 157 (migration-deploy-safety-backend-portable-backfill-helpers)
 Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
 
@@ -40,7 +40,7 @@ Progress: [██████████] 96%
 
 **Velocity:**
 
-- Total plans completed: 62
+- Total plans completed: 64
 - Average duration: —
 - Total execution time: —
 
@@ -60,6 +60,7 @@ Progress: [██████████] 96%
 | 155 | 7 | - | - |
 | 156 | 6 | - | - |
 | 157 | 4 | - | - |
+| 158 | 2 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
@@ -238,7 +239,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-15T04:44:22.031Z
-Stopped at: Phase 158 context gathered
-Resume file: .planning/phases/158-request-file-multipart-upload-primitive/158-CONTEXT.md
+Last session: 2026-05-15T05:17:52.074Z
+Stopped at: context exhaustion at 91% (2026-05-15)
+Resume file: None
 Next action: `/gsd-plan-phase 156` — frontend-types-directory-generator-owned-convention. Run `git push origin master` to ship pending commits first.
