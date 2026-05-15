@@ -1267,10 +1267,10 @@ Plans:
 **Goal:** Confirm the v12.0/json-ui-v2 branch delivers what it promises before touching the v1 API. Start the ferro sample app, hit `/pagamenti` via Chrome MCP and verify `JsonUi::render_file` produces a correctly rendered HTML page end-to-end. Then run `mdbook build docs/` and confirm the rewritten JSON-UI docs build with no broken links. Both checks must pass before v1 removal begins.
 **Requirements**: Chrome MCP browser test of /pagamenti passes; `mdbook build docs/` exits cleanly with no broken links.
 **Depends on:** Phase 121
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 159-01-PLAN.md — Run mdbook build docs/ and produce DOCS-CHECK.md verdict (docs half of the phase gate)
+- [x] 159-01-PLAN.md — Run mdbook build docs/ and produce DOCS-CHECK.md verdict (docs half of the phase gate)
 - [ ] 159-02-PLAN.md — Chrome MCP test of /pagamenti at http://localhost:8080, capture screenshot, produce BROWSER-CHECK.md verdict (browser half of the phase gate)
 
 ### Phase 160: Remove v1 JSON-UI API from ferro-json-ui — delete view.rs, Component enum, ComponentNode and all v1 builder surface
