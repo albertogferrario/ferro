@@ -2,95 +2,96 @@
 
 > **Experimental:** JSON-UI is functional and field-tested but the component schema and plugin interface may evolve. Pin your Ferro version in production.
 
-JSON-UI is a server-driven UI system that renders Tailwind-styled HTML from Rust data structures. No frontend build step, no React, no Node.js -- define your interface as a component tree and the framework renders it to HTML.
+JSON-UI is a server-driven UI system built into Ferro. You write JSON spec files that describe page structure; handlers supply data as `serde_json::Value`; the framework renders HTML. No frontend build step, no React, no Node.js required.
 
-## How It Works
+## Architecture Overview
 
-1. Define a `JsonUiView` containing a tree of `ComponentNode` values
-2. Attach data, actions, and visibility rules to components
-3. Call `JsonUi::render()` to produce a full HTML page with Tailwind classes
-4. The framework resolves route names to URLs and binds data automatically
-
-JSON-UI is an alternative to [Inertia.js](inertia.md). Both use the same handler pattern and return `Response`, but JSON-UI outputs server-rendered HTML while Inertia delegates rendering to a React frontend.
-
-## When to Use JSON-UI vs Inertia
-
-| Use Case | JSON-UI | Inertia |
-|----------|---------|---------|
-| Admin panels and dashboards | Ideal | Overkill |
-| CRUD applications | Ideal | Works, but heavier setup |
-| Rapid prototyping | Ideal | Slower iteration |
-| Server-rendered pages | Built for this | Not designed for this |
-| Rich interactive UIs | Limited | Ideal |
-| Complex client state | Not suited | Ideal |
-| SPA behavior | Not suited | Ideal |
-
-Both can coexist in the same application on different routes.
-
-## Quick Example
-
-```rust
-use ferro::{handler, JsonUi, JsonUiView, ComponentNode, Component, CardProps, TableProps,
-    Column, Action, Response};
-
-#[handler]
-pub async fn index() -> Response {
-    let view = JsonUiView::new()
-        .title("Users")
-        .layout("app")
-        .component(ComponentNode {
-            key: "header".to_string(),
-            component: Component::Card(CardProps {
-                title: "User Management".to_string(),
-                description: Some("View and manage users".to_string()),
-                children: vec![],
-                footer: vec![],
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "users-table".to_string(),
-            component: Component::Table(TableProps {
-                columns: vec![
-                    Column { key: "name".to_string(), label: "Name".to_string(), format: None },
-                    Column { key: "email".to_string(), label: "Email".to_string(), format: None },
-                ],
-                data_path: "/data/users".to_string(),
-                row_actions: None,
-                empty_message: Some("No users found".to_string()),
-                sortable: None,
-                sort_column: None,
-                sort_direction: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-
-    let data = serde_json::json!({
-        "users": [
-            {"name": "Alice", "email": "alice@example.com"},
-            {"name": "Bob", "email": "bob@example.com"},
-        ]
-    });
-
-    JsonUi::render(&view, &data)
-}
 ```
+src/views/dashboard.json   (spec file — structure and layout)
+          +
+handler   (data assembly only — returns serde_json::Value)
+          |
+          v
+JsonUi::render_file("views/dashboard.json", data)
+          |
+          v
+Full HTML page with Tailwind CSS
+```
+
+1. The spec file at `src/views/*.json` declares the element tree, layout, and expressions.
+2. The handler assembles data — no component building in Rust.
+3. `JsonUi::render_file` loads the spec, merges handler data, resolves expressions, and returns an HTML response.
 
 ## Key Concepts
 
-- **[Components](../json-ui/components.md)** -- 20 built-in component types: Card, Table, Form, Button, Input, Select, Alert, Badge, Modal, Text, Checkbox, Switch, Separator, DescriptionList, Tabs, Breadcrumb, Pagination, Progress, Avatar, and Skeleton.
+- **Spec file** — A JSON file with `"$schema": "ferro-json-ui/v2"`, a flat `"elements"` map, and a `"root"` key naming the entry element. See [Getting Started](../json-ui/getting-started.md).
 
-- **[Actions](../json-ui/actions.md)** -- Route-based navigation and form submission. Actions reference handler names (`"users.store"`) that resolve to URLs at render time.
+- **Elements map** — All elements are defined at the top level of `"elements"`. Children reference sibling elements by ID, not by nesting objects.
 
-- **[Data Binding & Visibility](../json-ui/data-binding.md)** -- Pre-fill form fields from handler data via `data_path`, and conditionally show/hide components with visibility rules.
+- **Expressions** — `{ "$data": "/key" }` reads from handler data at render time. `{ "$template": "Hello {name}" }` interpolates data into strings. See [Expressions](../json-ui/expressions.md).
 
-- **[Layouts](../json-ui/layouts.md)** -- Page structure with navigation. Built-in `"app"` layout includes sidebar and header; `"auth"` layout centers content. Custom layouts via the `Layout` trait.
+- **Layouts** — The `"layout"` field controls page chrome: `"dashboard"` (sidebar), `"app"` (top nav), `"auth"` (centered card), or omit for minimal. See [Layouts](../json-ui/layouts.md).
+
+- **Actions** — The `"action"` field on any element declares what happens on interaction: handler name, HTTP method, optional confirmation, and success/error outcomes. See [Actions](../json-ui/actions.md).
+
+## When to Use JSON-UI
+
+JSON-UI is well suited for:
+
+- Admin panels and back-office dashboards
+- CRUD applications (list, create, edit, delete flows)
+- Internal tools and management interfaces
+- Rapid prototyping without a frontend build step
+- Server-rendered pages where client-side state is not needed
+
+For rich interactive UIs or SPA behavior, the [Inertia.js](inertia.md) integration is the alternative. Both can coexist in the same application on different routes.
+
+## Quick Example
+
+Spec file (`src/views/users.json`):
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Users",
+  "layout": "app",
+  "root": "users_table",
+  "elements": {
+    "users_table": {
+      "type": "Table",
+      "props": {
+        "columns": [
+          { "key": "name", "label": "Name" },
+          { "key": "email", "label": "Email" }
+        ],
+        "data_path": "/users",
+        "empty_message": "No users found"
+      }
+    }
+  }
+}
+```
+
+Handler (`src/controllers/users.rs`):
+
+```rust
+use ferro::{handler, JsonUi, Response};
+
+#[handler]
+pub async fn index() -> Response {
+    let data = serde_json::json!({
+        "users": [
+            { "name": "Alice", "email": "alice@example.com" },
+            { "name": "Bob",   "email": "bob@example.com" }
+        ]
+    });
+    JsonUi::render_file("views/users.json", data)
+}
+```
 
 ## Plugin System
 
-JSON-UI supports plugin components that extend the built-in set with interactive widgets requiring client-side JS/CSS. Plugin components use the same `{"type": "Map", ...}` JSON syntax as built-in components.
+JSON-UI supports plugin components that extend the built-in catalog with interactive widgets requiring client-side JS/CSS. Plugin components use the same `{"type": "Map", ...}` JSON syntax as built-in components.
 
 ### JsonUiPlugin Trait
 
@@ -165,14 +166,14 @@ The Map component renders interactive maps using [Leaflet 1.9.4](https://leaflet
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `center` | `Option<[f64; 2]>` | No* | -- | Map center as `[latitude, longitude]` |
-| `zoom` | `u8` | No | `13` | Zoom level (0-18) |
-| `height` | `String` | No | `"400px"` | CSS height of the map container |
-| `fit_bounds` | `Option<bool>` | No | -- | Auto-zoom to fit all markers. When `true`, `center`/`zoom` are ignored if markers exist |
-| `markers` | `Vec<MapMarker>` | No | `[]` | Markers to display |
-| `tile_url` | `String` | No | OpenStreetMap | Custom tile layer URL template |
-| `attribution` | `String` | No | OSM attribution | Tile layer attribution text |
-| `max_zoom` | `u8` | No | `19` | Maximum zoom level |
+| `center` | `[f64, f64]` | No* | — | Map center as `[latitude, longitude]` |
+| `zoom` | number | No | `13` | Zoom level (0–18) |
+| `height` | string | No | `"400px"` | CSS height of the map container |
+| `fit_bounds` | boolean | No | — | Auto-zoom to fit all markers. When `true`, `center`/`zoom` are ignored if markers exist |
+| `markers` | array | No | `[]` | Markers to display |
+| `tile_url` | string | No | OpenStreetMap | Custom tile layer URL template |
+| `attribution` | string | No | OSM attribution | Tile layer attribution text |
+| `max_zoom` | number | No | `19` | Maximum zoom level |
 
 *`center` is optional when `fit_bounds` is `true` and markers are provided.
 
@@ -180,100 +181,64 @@ The Map component renders interactive maps using [Leaflet 1.9.4](https://leaflet
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `lat` | `f64` | Yes | Latitude |
-| `lng` | `f64` | Yes | Longitude |
-| `popup` | `Option<String>` | No | Plain text popup content |
-| `color` | `Option<String>` | No | Hex color for a colored CSS pin (e.g., `"#3B82F6"`). Renders as a DivIcon instead of the default marker |
-| `popup_html` | `Option<String>` | No | HTML content for the popup (alternative to plain text `popup`) |
-| `href` | `Option<String>` | No | URL to navigate to on marker click |
+| `lat` | number | Yes | Latitude |
+| `lng` | number | Yes | Longitude |
+| `popup` | string | No | Plain text popup content |
+| `color` | string | No | Hex color for a colored CSS pin (e.g., `"#3B82F6"`) |
+| `popup_html` | string | No | HTML popup content (alternative to `popup`) |
+| `href` | string | No | URL to navigate to on marker click |
 
 ### Basic Example
 
 ```json
 {
   "type": "Map",
-  "center": [51.505, -0.09],
-  "zoom": 13,
-  "markers": [
-    {"lat": 51.5, "lng": -0.09, "popup": "London"}
-  ]
-}
-```
-
-### Colored Markers with HTML Popups
-
-```json
-{
-  "type": "Map",
-  "fit_bounds": true,
-  "markers": [
-    {
-      "lat": 45.464,
-      "lng": 9.190,
-      "color": "#3B82F6",
-      "popup_html": "<strong>Milan</strong><br>Fashion capital",
-      "href": "/places/milan"
-    },
-    {
-      "lat": 41.902,
-      "lng": 12.496,
-      "color": "#EF4444",
-      "popup_html": "<strong>Rome</strong><br>Eternal city",
-      "href": "/places/rome"
-    }
-  ]
-}
-```
-
-When `fit_bounds` is `true`, the map auto-zooms to fit all markers. Colored markers render as CSS DivIcon pins. Clicking a marker with `href` navigates to that URL.
-
-### Custom Tiles and Height
-
-```json
-{
-  "type": "Map",
-  "center": [40.7128, -74.0060],
-  "zoom": 12,
-  "height": "600px",
-  "tile_url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-  "attribution": "Map data: OpenTopoMap",
-  "max_zoom": 17
+  "props": {
+    "center": [51.505, -0.09],
+    "zoom": 13,
+    "markers": [
+      { "lat": 51.5, "lng": -0.09, "popup": "London" }
+    ]
+  }
 }
 ```
 
 ### Notes
 
-- **Tabs and Modals:** Maps inside hidden containers (Tabs, Modals) are handled automatically. An `IntersectionObserver` calls `invalidateSize()` when the map becomes visible.
-- **Multiple maps:** Each map container gets a unique ID. Multiple maps on the same page work independently.
-- **CSP requirements:** If using Content Security Policy headers, allow `https://unpkg.com` for scripts and `https://*.tile.openstreetmap.org` for tile images.
+- **Tabs and Modals:** Maps inside hidden containers are handled automatically via `IntersectionObserver`.
+- **Multiple maps:** Each map container gets a unique ID; multiple maps on the same page work independently.
+- **CSP requirements:** Allow `https://unpkg.com` for scripts and `https://*.tile.openstreetmap.org` for tile images.
 
 ## CLI Support
 
-Scaffold views with the CLI:
+Scaffold spec files with the CLI:
 
 ```bash
 ferro make:json-view UserIndex
 ```
 
-The command uses AI-powered generation when an Anthropic API key is configured. It reads your models and routes to produce a complete view file. Without an API key, it falls back to a static template.
+The command uses AI-powered generation when an Anthropic API key is configured. It reads your models and routes to produce a complete spec file. Without an API key, it falls back to a static template.
 
-See [CLI Reference](../reference/cli.md) for details.
+Export the full JSON Schema for spec validation:
+
+```bash
+ferro json-ui:schema
+```
+
+See [JSON Schema](../json-ui/json-schema.md) for details.
 
 ## MCP Tools
 
-Three MCP tools support JSON-UI development: catalog browsing, component inspection, and view generation.
+Three MCP tools support JSON-UI development:
 
 ### `json_ui_catalog`
 
-- **Returns:** All available components (built-in + registered plugins) with their prop schemas, required vs optional fields, and example JSON
-- **When to use:** Discover what components exist before building a view; look up the exact prop names and types for a component you want to use
+Returns all available components (built-in + registered plugins) with their prop schemas, required vs optional fields, and example JSON. Use this to discover what components exist and look up exact prop names.
 
 ### `json_ui_inspect`
 
-- **Returns:** A parsed breakdown of an existing `JsonUiView` or JSON view definition: component tree, data paths referenced, actions and their resolved routes, and any visibility rules
-- **When to use:** Debug a view that isn't rendering as expected; audit data paths before changing handler output; verify that actions resolve to the correct route names
+Returns a parsed breakdown of an existing spec file: element tree, data paths referenced, actions and their resolved routes, and visibility rules. Use this to debug a spec that isn't rendering as expected.
 
 ### `json_ui_generate`
 
-- **Returns:** A complete `JsonUiView` Rust struct (or JSON definition) scaffolded from a model and intent description
-- **When to use:** Rapidly prototype a new view from a model; generate a starting point that you refine rather than starting from scratch. Requires the Anthropic API key to be set.
+Returns a complete spec file scaffolded from a model and intent description. Use this to rapidly prototype a new view from a model. Requires the Anthropic API key to be set.
