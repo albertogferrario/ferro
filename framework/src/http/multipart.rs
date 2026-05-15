@@ -124,7 +124,10 @@ pub(crate) async fn parse_multipart_body(
     max_fields: usize,
 ) -> Result<MultipartForm, FrameworkError> {
     let boundary = multer::parse_boundary(content_type).map_err(|_| {
-        FrameworkError::domain("Content-Type is not multipart/form-data or missing boundary", 400)
+        FrameworkError::domain(
+            "Content-Type is not multipart/form-data or missing boundary",
+            400,
+        )
     })?;
 
     let body_stream = BodyStream::new(body)
@@ -173,8 +176,9 @@ pub(crate) async fn parse_multipart_body(
                     bytes,
                 });
         } else {
-            let value = String::from_utf8(bytes.to_vec())
-                .map_err(|_| FrameworkError::internal("Multipart text field contains invalid UTF-8"))?;
+            let value = String::from_utf8(bytes.to_vec()).map_err(|_| {
+                FrameworkError::internal("Multipart text field contains invalid UTF-8")
+            })?;
             text_fields.insert(field_name, value);
         }
     }
@@ -338,8 +342,9 @@ mod tests {
                         bytes,
                     });
             } else {
-                let value = String::from_utf8(bytes.to_vec())
-                    .map_err(|_| FrameworkError::internal("Multipart text field contains invalid UTF-8"))?;
+                let value = String::from_utf8(bytes.to_vec()).map_err(|_| {
+                    FrameworkError::internal("Multipart text field contains invalid UTF-8")
+                })?;
                 text_fields.insert(field_name, value);
             }
         }

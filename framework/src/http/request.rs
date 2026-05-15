@@ -438,10 +438,13 @@ impl Request {
         field: &str,
     ) -> Result<Option<super::multipart::UploadedFile>, FrameworkError> {
         let mut form = self.multipart().await?;
-        Ok(form
-            .files_map
-            .remove(field)
-            .and_then(|mut v| if v.is_empty() { None } else { Some(v.swap_remove(0)) }))
+        Ok(form.files_map.remove(field).and_then(|mut v| {
+            if v.is_empty() {
+                None
+            } else {
+                Some(v.swap_remove(0))
+            }
+        }))
     }
 
     /// Parse the request body based on Content-Type header

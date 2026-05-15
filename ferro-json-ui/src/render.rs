@@ -1305,7 +1305,7 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
 
     // --- Desktop table (hidden on mobile) ---
     html.push_str(
-        "<div class=\"hidden md:block rounded-lg border border-border overflow-visible\">",
+        "<div class=\"hidden md:block rounded-lg border border-border overflow-hidden\">",
     );
 
     if items.is_empty() {
@@ -1453,7 +1453,7 @@ fn render_data_table(props: &DataTableProps, data: &Value) -> String {
             let use_outer_wrapper = mobile_href.is_some() && has_actions;
             if use_outer_wrapper {
                 html.push_str(
-                    "<div class=\"rounded-lg border border-border bg-card overflow-visible\">",
+                    "<div class=\"rounded-lg border border-border bg-card overflow-hidden\">",
                 );
                 html.push_str(&format!(
                     "<a href=\"{}\" class=\"block p-4 space-y-2 hover:bg-surface transition-colors\">",
