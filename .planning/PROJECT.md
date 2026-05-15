@@ -393,4 +393,4 @@ See also `.planning/VISION.md` for design philosophy.
 | Schema-driven projections replace field_map.rs | Projections and catalog stay consistent by construction | Planned |
 
 ---
-*Last updated: 2026-04-21 after v11.7 milestone + Phase 117.1*
+*Last updated: 2026-05-15
