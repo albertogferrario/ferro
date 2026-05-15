@@ -64,11 +64,7 @@ impl UploadedFile {
     /// `path` is passed verbatim to the storage driver. Callers MUST sanitize
     /// any user-supplied component (e.g. `self.file_name`) before constructing
     /// the path — this method does not perform path-traversal checks.
-    pub async fn store(
-        &self,
-        disk: &Disk,
-        path: &str,
-    ) -> Result<(), ferro_storage::Error> {
+    pub async fn store(&self, disk: &Disk, path: &str) -> Result<(), ferro_storage::Error> {
         let opts = PutOptions::new().content_type(
             self.content_type
                 .as_deref()
@@ -121,6 +117,8 @@ impl MultipartForm {
 /// Bridges `Incoming` (which does not implement `futures::Stream` in
 /// hyper 1.x) to the stream interface multer expects via
 /// `http_body_util::BodyStream` + `StreamExt::filter_map`.
+// Called by Request::multipart() added in plan 02.
+#[allow(dead_code)]
 pub(crate) async fn parse_multipart_body(
     body: Incoming,
     content_type: &str,
@@ -128,20 +126,16 @@ pub(crate) async fn parse_multipart_body(
     max_fields: usize,
 ) -> Result<MultipartForm, FrameworkError> {
     let boundary = multer::parse_boundary(content_type).map_err(|_| {
-        FrameworkError::internal(
-            "Content-Type is not multipart/form-data or missing boundary",
-        )
+        FrameworkError::internal("Content-Type is not multipart/form-data or missing boundary")
     })?;
 
-    let body_stream = BodyStream::new(body).filter_map(|result| async move {
-        result.map(|frame| frame.into_data().ok()).transpose()
-    });
+    let body_stream = BodyStream::new(body)
+        .filter_map(|result| async move { result.map(|frame| frame.into_data().ok()).transpose() });
 
-    let constraints = multer::Constraints::new()
-        .size_limit(multer::SizeLimit::new().per_field(max_file_bytes));
+    let constraints =
+        multer::Constraints::new().size_limit(multer::SizeLimit::new().per_field(max_file_bytes));
 
-    let mut multipart =
-        multer::Multipart::with_constraints(body_stream, boundary, constraints);
+    let mut multipart = multer::Multipart::with_constraints(body_stream, boundary, constraints);
 
     let mut files_map: HashMap<String, Vec<UploadedFile>> = HashMap::new();
     let mut text_fields: HashMap<String, String> = HashMap::new();
@@ -195,7 +189,7 @@ pub(crate) async fn parse_multipart_body(
 /// should treat content_type-less uploads as rejections.
 pub fn validate_mime(file: &UploadedFile, allowed: &[&str]) -> Result<(), FrameworkError> {
     let ct = file.content_type.as_deref().unwrap_or("");
-    if allowed.iter().any(|a| *a == ct) {
+    if allowed.contains(&ct) {
         Ok(())
     } else {
         Err(FrameworkError::internal(format!(
@@ -218,6 +212,8 @@ pub fn validate_size(file: &UploadedFile, max_bytes: usize) -> Result<(), Framew
 }
 
 /// Read the per-field byte limit from `UPLOAD_MAX_SIZE_MB` (default 10 MiB).
+// Called by Request::multipart() added in plan 02.
+#[allow(dead_code)]
 pub(crate) fn max_file_bytes() -> u64 {
     std::env::var("UPLOAD_MAX_SIZE_MB")
         .ok()
@@ -228,6 +224,8 @@ pub(crate) fn max_file_bytes() -> u64 {
 }
 
 /// Read the per-request field limit from `UPLOAD_MAX_FIELDS` (default 100).
+// Called by Request::multipart() added in plan 02.
+#[allow(dead_code)]
 pub(crate) fn max_fields() -> usize {
     std::env::var("UPLOAD_MAX_FIELDS")
         .ok()
