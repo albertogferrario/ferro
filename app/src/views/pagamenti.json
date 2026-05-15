@@ -13,7 +13,7 @@
       "type": "StatCard",
       "props": {
         "label": "Totale",
-        "value": "€ 1.245,00"
+        "value": { "$data": "/meta/totale_formattato" }
       }
     },
     "payments_table": {

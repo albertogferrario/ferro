@@ -672,8 +672,14 @@ impl Catalog {
                         continue;
                     }
                 };
+                // Strip $data/$template expression objects before schema validation.
+                // Expressions are resolved at render time against handler data — the
+                // static catalog validator cannot know the resolved type. We substitute
+                // expression objects with "" so string-typed fields pass; the runtime
+                // resolver (resolve_expressions) enforces the actual type via data binding.
+                let validation_props = strip_expr_objects(&el.props);
                 let mut per_elem_errs: Vec<String> = Vec::new();
-                for err in v.iter_errors(&el.props) {
+                for err in v.iter_errors(&validation_props) {
                     per_elem_errs.push(format!("{}: {}", err.instance_path(), err));
                 }
                 if !per_elem_errs.is_empty() {
@@ -694,8 +700,10 @@ impl Catalog {
                 return Err(errors);
             }
         };
+        // Strip expression objects in the serialized spec for the same reason as Stage 2.
+        let stripped_spec_value = strip_expr_objects(&spec_value);
         let mut envelope_errs: Vec<String> = Vec::new();
-        for err in self.validator.iter_errors(&spec_value) {
+        for err in self.validator.iter_errors(&stripped_spec_value) {
             envelope_errs.push(format!("{}: {}", err.instance_path(), err));
         }
         if !envelope_errs.is_empty() {
@@ -932,6 +940,32 @@ fn wrap_optional(inner: String, is_required: bool) -> String {
         inner
     } else {
         format!("Option<{inner}>")
+    }
+}
+
+/// Replace every `$data` / `$template` expression object in a value tree with `""`.
+///
+/// Used by [`Catalog::validate`] so that specs with runtime data-binding placeholders
+/// pass static schema validation. Expression objects have the shape
+/// `{"$data": "/path"}` or `{"$template": "literal {/path}"}` — single-key objects
+/// whose key is the expression marker. They are resolved at render time by
+/// [`crate::expression::resolve_expressions`]; the catalog validator must not reject
+/// them for failing type checks that only apply to the resolved value.
+fn strip_expr_objects(val: &Value) -> Value {
+    match val {
+        Value::Object(map) => {
+            if map.len() == 1 && (map.contains_key("$data") || map.contains_key("$template")) {
+                Value::String(String::new())
+            } else {
+                Value::Object(
+                    map.iter()
+                        .map(|(k, v)| (k.clone(), strip_expr_objects(v)))
+                        .collect(),
+                )
+            }
+        }
+        Value::Array(arr) => Value::Array(arr.iter().map(strip_expr_objects).collect()),
+        other => other.clone(),
     }
 }
 
