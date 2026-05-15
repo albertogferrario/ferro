@@ -1262,6 +1262,67 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 142 to break down)
 
+### Phase 159: v12.0 end-to-end browser verification and docs build check
+
+**Goal:** Confirm the v12.0/json-ui-v2 branch delivers what it promises before touching the v1 API. Start the ferro sample app, hit `/pagamenti` via Chrome MCP and verify `JsonUi::render_file` produces a correctly rendered HTML page end-to-end. Then run `mdbook build docs/` and confirm the rewritten JSON-UI docs build with no broken links. Both checks must pass before v1 removal begins.
+**Requirements**: Chrome MCP browser test of /pagamenti passes; `mdbook build docs/` exits cleanly with no broken links.
+**Depends on:** Phase 121
+**Plans:** 2 plans
+
+Plans:
+- [ ] 159-01-PLAN.md — Run mdbook build docs/ and produce DOCS-CHECK.md verdict (docs half of the phase gate)
+- [ ] 159-02-PLAN.md — Chrome MCP test of /pagamenti at http://localhost:8080, capture screenshot, produce BROWSER-CHECK.md verdict (browser half of the phase gate)
+
+### Phase 160: Remove v1 JSON-UI API from ferro-json-ui — delete view.rs, Component enum, ComponentNode and all v1 builder surface
+
+**Goal:** Permanently delete all v1 API surface from ferro-json-ui: `view.rs` (`JsonUiView`, `SCHEMA_VERSION = "ferro-json-ui/v1"`), `Component` enum and all typed `*Props` structs that are not reused by v2 (`ComponentNode`, builder convenience methods on `JsonUiView`). No `#[deprecated]` attributes, no feature flags, no compat shims. The crate public surface after this phase exposes only `Spec`, `Element`, `SpecBuilder`, `ElementBuilder` and the expression/render pipeline. Gate: all three repos (`ferro`, `ferro-code`, `gestiscilo`) compile and their test suites pass after deletion. **Depends on gestiscilo Phase 143 being complete** — do not start until gestiscilo no longer imports any v1 type.
+**Requirements**: `cargo build --all-features` green; `cargo test --all-features` green; `cargo clippy --all --all-targets -- -D warnings` clean; no reference to `JsonUiView`, `ComponentNode`, `Component::` remains in any crate.
+**Depends on:** Phase 159, Phase 164
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 160 to break down)
+
+### Phase 161: Merge v12.0/json-ui-v2 to master — full test pass, clippy clean, merge PR
+
+**Goal:** Final integration step closing the v12.0 milestone. Run `cargo fmt --all -- --check && cargo clippy --all --all-targets -- -D warnings && cargo test --all-features` on the v12.0/json-ui-v2 branch. Fix any remaining issues. Create the merge PR from v12.0/json-ui-v2 → master, confirm CI passes, merge.
+**Requirements**: All CI checks green; master HEAD contains Phase 115–121 and 159–160 commits; v12.0/json-ui-v2 branch archived.
+**Depends on:** Phase 160
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 161 to break down)
+
+### Phase 162: JSON-UI improvements batch 1 — components, expressions, and spec ergonomics discovered during gestiscilo auth/dashboard migration
+
+**Goal:** Read the FRICTION.md files produced by gestiscilo Phases 138 and 139 (auth/account/onboarding/pages and dashboard/statistiche/settings). Triage every friction point: missing component, awkward prop shape, expression gap, spec authoring pain, or render bug. Implement the highest-value fixes — new or improved components, expression enhancements, catalog accuracy fixes, or `render_file` ergonomics. Publish the results so gestiscilo Phases 140+ can benefit from them. Each shipped fix must have a test. Dropped items are documented with rationale in a DEFERRED.md.
+**Requirements**: All friction items triaged; shipped fixes have tests; ferro-json-ui builds clean; catalog and MCP tool descriptions updated to reflect new surface; gestiscilo can pick up the new ferro version for Phase 140.
+**Depends on:** gestiscilo Phase 139
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 162 to break down)
+
+### Phase 163: JSON-UI improvements batch 2 — cassa and calendario field-test findings: data-binding edge cases, action patterns, kanban spec
+
+**Goal:** Read the FRICTION.md files from gestiscilo Phases 140 (cassa) and 141 (calendario). Cassa surfaces list/detail/form patterns at scale; calendario surfaces the kanban board and real-time SSE interactions. Expected friction areas: action confirmation flows in specs, `$data` path edge cases on nested arrays, KanbanBoard column spec shape, and any rendering bugs from data-driven column counts. Implement the highest-value fixes. Same triage and test discipline as Phase 162.
+**Requirements**: All friction items triaged; shipped fixes have tests; ferro-json-ui builds clean; gestiscilo can pick up the updated ferro version for Phase 142.
+**Depends on:** Phase 162, gestiscilo Phase 141
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 163 to break down)
+
+### Phase 164: JSON-UI improvements batch 3 — documenti field-test findings: multi-step forms, visibility rules, spec authoring ergonomics
+
+**Goal:** Read the FRICTION.md files from gestiscilo Phases 142 (documenti) and 143 (final cleanup). Documenti is the most form-intensive module: multi-step flows, conditional field visibility, and PDF-preview routing. Expected friction: `visible` rule expressiveness, FormSection nesting at depth limit, multi-page form patterns, and any remaining edge cases from the full gestiscilo sweep. This is the last improvement batch before v1 deletion — address anything that would make the v2 spec surface obviously incomplete compared to what v1 could express. Produce a COMPLETED.md summarising all improvements shipped across Phases 162-164 and any intentional gaps retained for future milestones.
+**Requirements**: All friction items triaged; shipped fixes have tests; ferro-json-ui builds clean; COMPLETED.md written; gestiscilo Phase 143 can finish against this version; ferro Phase 160 (v1 deletion) is unblocked.
+**Depends on:** Phase 163, gestiscilo Phase 143
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 164 to break down)
+
 ---
 
 ## Progress Summary
