@@ -207,6 +207,8 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 <!-- Current scope. Building toward these. -->
 
 - [ ] v12.0 JSON-UI v2 spec-driven rendering
+- [ ] v12.1 AI — ferro-ai SDK expansion + AI-assisted scaffolding CLI
+- [ ] v13.0 Road to v1.0 — close the gap across all four beauty dimensions
 - [ ] Continuous conceptual coherence across all 20 crates
 - [ ] Case-study diversification across application domains
 - [ ] Synthetic canonical-app-class catalog
@@ -246,9 +248,34 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - Multimodal projection (audio/voice/physical) — v2.0+ direction
 - Bundled agent UX — `ferro-mcp` plus the user's existing agent is the supported workflow
 
-## Next Milestone: v13.0 Road to v1.0
+## Upcoming Milestone: v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding
 
-**Goal:** Close the gap between 0.2.0 and v1.0 by addressing known work across the four design dimensions — aesthetic, conceptual, operational, compressive — applied in substance-first investment priority order. v13.0 is a sustained investment program spanning multiple minor releases, not a single-feature milestone.
+**Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and build AI-assisted scaffolding on top of it, so an agent or developer can go from natural language to working code in one command.
+
+**Target features:**
+
+*SDK (ferro-ai expansion — foundation):*
+- Multi-provider LLM client: Anthropic, OpenAI, Groq, Ollama via a provider-agnostic trait; config from env vars
+- Structured outputs: `ferro_ai::complete::<T>()` returns typed Rust structs via JSON Schema
+- Tool calling: register Rust functions as AI tools; SDK dispatches tool-use calls automatically
+- Embeddings + cosine similarity helpers; optional pgvector integration for semantic search
+
+*Streaming:*
+- SSE streaming support so handlers can push LLM tokens to the browser as they arrive
+- ferro-json-ui streaming text component for token-by-token display
+
+*AI CLI commands (built on SDK):*
+- `ferro ai:make <description>` — natural language → scaffolded handler + model + routes + JSON-UI view, using ferro-mcp introspection as context
+- `ferro ai:explain <route|model>` — plain-English explanation of an existing handler or model
+- Improved `ferro make:json-view` using structured outputs and ServiceDef introspection
+
+**Phases:** 159+ (continuing from Phase 158)
+
+**Relationship to v12.0:** v12.0 (JSON-UI v2, phases 115-121) runs first. v12.1 begins after v12.0 ships. The `ferro-ai` SDK is the foundation; CLI commands land on top of it.
+
+## Upcoming Milestone: v13.0 Road to v1.0
+
+**Goal:** Close the gap between 0.2.x and v1.0 by addressing known work across the four design dimensions — aesthetic, conceptual, operational, compressive — applied in substance-first investment priority order. v13.0 is a sustained investment program spanning multiple minor releases, not a single-feature milestone.
 
 **Scope by priority:**
 
@@ -279,7 +306,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - GitHub repo social preview image
 - Simple logo / wordmark
 
-**Relationship to v12.0:** v12.0 (JSON-UI v2) runs first and refines the rendering target. v13.0 begins after v12.0 and may overlap with late v12.0 phases. Target date: none. Multiple minor releases (0.3.x, 0.4.x, 0.5.x) expected across v13.0's span.
+**Relationship to v12.1:** v12.1 (AI features) runs between v12.0 and v13.0. v13.0 begins after v12.1 and may overlap with late v12.1 phases. Target date: none. Multiple minor releases (0.3.x, 0.4.x, 0.5.x) expected across v13.0's span.
 
 
 
@@ -390,4 +417,4 @@ See also `.planning/VISION.md` for design philosophy.
 | amount_total_cents: i64 with zero-means-absent doc | Zero maps to absent Stripe field on free/setup sessions; callers must not use field alone to assert payment | ✓ Good |
 
 ---
-*Last updated: 2026-05-14 after Phase 155 (ferro-projection v0.2.33 — v11.11 complete)*
+*Last updated: 2026-05-15 — v13.0 AI milestone added (ferro-ai SDK + AI-assisted scaffolding)*
