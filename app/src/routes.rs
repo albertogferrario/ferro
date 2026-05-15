@@ -10,6 +10,7 @@ routes! {
     get!("/", controllers::home::index).name("home"),
     get!("/redirect-example", controllers::user::redirect_example),
     get!("/config", controllers::config_example::show).name("config.show"),
+    get!("/pagamenti", controllers::pagamenti::index).name("pagamenti.index"),
 
     // User routes - all 7 RESTful endpoints from a single line
     resource!("/users", controllers::user),
