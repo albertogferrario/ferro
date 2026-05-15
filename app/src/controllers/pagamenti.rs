@@ -31,5 +31,5 @@ pub async fn index() -> Response {
             }
         ]
     });
-    JsonUi::render_file("views/pagamenti.json", data)
+    JsonUi::render_file("src/views/pagamenti.json", data)
 }
