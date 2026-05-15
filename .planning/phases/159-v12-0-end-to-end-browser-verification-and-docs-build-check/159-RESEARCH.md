@@ -245,12 +245,13 @@ No Wave 0 gaps — no test infrastructure files need to be created.
 |---|-------|---------|---------------|
 | A1 | `evaluate_script` accepts a JS expression returning boolean and the return value is inspectable | Code Examples | Would need a different DOM assertion pattern |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Will the server be running when the Chrome MCP test executes?**
    - What we know: CLAUDE.md forbids the plan from starting the server.
    - What's unclear: Whether the user will have the server started before the agent proceeds.
    - Recommendation: The plan must include an explicit "pause here" step asking the user to start the server and confirm before proceeding with Chrome MCP.
+   - RESOLVED: Plan 02 Task 1 is a `checkpoint:human-action` that pauses execution, instructs the user to start the server with `cd app && cargo run` (from `app/` directory), and requires a `ready` resume signal before Chrome MCP proceeds. This satisfies D-01 (user starts server) and D-02 (correct command and port 8080).
 
 ## Sources
 

@@ -39,7 +39,9 @@ created: 2026-05-15
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 159-01-01 | 01 | 1 | REQ-DOCS | — | mdbook build exits 0 | integration | `mdbook build docs/; echo $?` | ✅ | ⬜ pending |
-| 159-01-02 | 01 | 2 | REQ-BROWSER | — | HTTP 200, StatCard visible | manual | Chrome MCP navigate + screenshot | ✅ | ⬜ pending |
+| 159-01-02 | 01 | 1 | REQ-DOCS | — | No internal broken links; DOCS-CHECK.md verdict captured | integration | `grep -q "PASS" DOCS-CHECK.md` | ✅ | ⬜ pending |
+| 159-02-01 | 02 | 2 | REQ-BROWSER | — | User starts server; agent waits for resume signal | manual | `echo "checkpoint:human-action"` | ✅ | ⬜ pending |
+| 159-02-02 | 02 | 2 | REQ-BROWSER | — | HTTP 200, StatCard + DataTable visible, no panic text, screenshot saved | manual/MCP | `test -s .planning/phases/159-*/pagamenti-screenshot.png && grep -q "PASS" .planning/phases/159-*/BROWSER-CHECK.md` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
