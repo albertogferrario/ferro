@@ -375,6 +375,75 @@ impl Request {
         parse_form(&bytes)
     }
 
+    /// Parse the request body as `multipart/form-data`.
+    ///
+    /// Consumes the request since the body can only be read once.
+    /// The per-field byte cap is read from `UPLOAD_MAX_SIZE_MB` (default 10 MiB),
+    /// and the per-request field cap from `UPLOAD_MAX_FIELDS` (default 100).
+    ///
+    /// # Errors
+    ///
+    /// Returns `FrameworkError::internal(...)` with the literal message
+    /// `"Content-Type is not multipart/form-data or missing boundary"` when
+    /// the request's `Content-Type` header is absent, malformed, or not a
+    /// multipart value.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// pub async fn upload(req: Request) -> Response {
+    ///     let form = req.multipart().await?;
+    ///     let title = form.field("title").unwrap_or_default();
+    ///     let file = form.file("attachment");
+    ///     // ...
+    /// }
+    /// ```
+    pub async fn multipart(self) -> Result<super::multipart::MultipartForm, FrameworkError> {
+        let content_type = self
+            .inner
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+        let body = self.inner.into_body();
+        super::multipart::parse_multipart_body(
+            body,
+            &content_type,
+            super::multipart::max_file_bytes(),
+            super::multipart::max_fields(),
+        )
+        .await
+    }
+
+    /// Parse the body as multipart/form-data and return the first file
+    /// uploaded under `field`.
+    ///
+    /// Consumes the request since the body can only be read once. Returns
+    /// `Ok(None)` when the multipart body parses successfully but contains
+    /// no file with that field name.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// pub async fn upload_avatar(req: Request) -> Response {
+    ///     let file = req.file("avatar").await?
+    ///         .ok_or_else(|| FrameworkError::internal("missing avatar"))?;
+    ///     // file.store(&disk, &path).await?;
+    ///     Ok(json!({"size": file.size()}))
+    /// }
+    /// ```
+    pub async fn file(
+        self,
+        field: &str,
+    ) -> Result<Option<super::multipart::UploadedFile>, FrameworkError> {
+        let mut form = self.multipart().await?;
+        Ok(form
+            .files_map
+            .remove(field)
+            .and_then(|mut v| if v.is_empty() { None } else { Some(v.swap_remove(0)) }))
+    }
+
     /// Parse the request body based on Content-Type header
     ///
     /// - `application/json` -> JSON parsing
