@@ -124,7 +124,7 @@ pub(crate) async fn parse_multipart_body(
     max_fields: usize,
 ) -> Result<MultipartForm, FrameworkError> {
     let boundary = multer::parse_boundary(content_type).map_err(|_| {
-        FrameworkError::internal("Content-Type is not multipart/form-data or missing boundary")
+        FrameworkError::domain("Content-Type is not multipart/form-data or missing boundary", 400)
     })?;
 
     let body_stream = BodyStream::new(body)
@@ -146,18 +146,21 @@ pub(crate) async fn parse_multipart_body(
     {
         field_count += 1;
         if field_count > max_fields {
-            return Err(FrameworkError::internal(
+            return Err(FrameworkError::domain(
                 "Too many fields in multipart request",
+                400,
             ));
         }
 
         let field_name = field.name().map(|s| s.to_string()).unwrap_or_default();
         let file_name = field.file_name().map(|s| s.to_string());
         let content_type = field.content_type().map(|m| m.to_string());
-        let bytes = field
-            .bytes()
-            .await
-            .map_err(|e| FrameworkError::internal(format!("Field read error: {e}")))?;
+        let bytes = field.bytes().await.map_err(|e| match e {
+            multer::Error::FieldSizeExceeded { .. } | multer::Error::StreamSizeExceeded { .. } => {
+                FrameworkError::domain("Upload field exceeds maximum size", 413)
+            }
+            _ => FrameworkError::internal(format!("Field read error: {e}")),
+        })?;
 
         if file_name.is_some() {
             files_map
@@ -170,7 +173,9 @@ pub(crate) async fn parse_multipart_body(
                     bytes,
                 });
         } else {
-            text_fields.insert(field_name, String::from_utf8_lossy(&bytes).into_owned());
+            let value = String::from_utf8(bytes.to_vec())
+                .map_err(|_| FrameworkError::internal("Multipart text field contains invalid UTF-8"))?;
+            text_fields.insert(field_name, value);
         }
     }
 
@@ -185,15 +190,23 @@ pub(crate) async fn parse_multipart_body(
 /// A file with no `content_type` is treated as the empty string and will
 /// only pass if `allowed` contains `""` — which is never useful, so callers
 /// should treat content_type-less uploads as rejections.
+///
+/// **Security note:** this check is based solely on the client-supplied
+/// `Content-Type` header inside the multipart part, which can be forged.
+/// For security-sensitive contexts, validate the actual file magic bytes
+/// (e.g. with the `infer` crate) in addition to this check.
 pub fn validate_mime(file: &UploadedFile, allowed: &[&str]) -> Result<(), FrameworkError> {
     let ct = file.content_type.as_deref().unwrap_or("");
     if allowed.contains(&ct) {
         Ok(())
     } else {
-        Err(FrameworkError::internal(format!(
-            "File type '{ct}' is not allowed; accepted: {}",
-            allowed.join(", ")
-        )))
+        Err(FrameworkError::domain(
+            format!(
+                "File type '{ct}' is not allowed; accepted: {}",
+                allowed.join(", ")
+            ),
+            422,
+        ))
     }
 }
 
@@ -202,21 +215,24 @@ pub fn validate_size(file: &UploadedFile, max_bytes: usize) -> Result<(), Framew
     if file.size() <= max_bytes {
         Ok(())
     } else {
-        Err(FrameworkError::internal(format!(
-            "File too large: {} bytes (max {max_bytes})",
-            file.size()
-        )))
+        Err(FrameworkError::domain(
+            format!("File too large: {} bytes (max {max_bytes})", file.size()),
+            422,
+        ))
     }
 }
 
 /// Read the per-field byte limit from `UPLOAD_MAX_SIZE_MB` (default 10 MiB).
+///
+/// The env var is interpreted in mebibytes (MiB). Values of 0 are clamped to
+/// 1 MiB so a misconfigured operator setting does not silently reject every
+/// upload without a clear error.
 pub(crate) fn max_file_bytes() -> u64 {
-    std::env::var("UPLOAD_MAX_SIZE_MB")
+    let mb = std::env::var("UPLOAD_MAX_SIZE_MB")
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
-        .unwrap_or(10)
-        * 1024
-        * 1024
+        .unwrap_or(10);
+    mb.max(1) * 1024 * 1024
 }
 
 /// Read the per-request field limit from `UPLOAD_MAX_FIELDS` (default 100).
@@ -322,7 +338,9 @@ mod tests {
                         bytes,
                     });
             } else {
-                text_fields.insert(field_name, String::from_utf8_lossy(&bytes).into_owned());
+                let value = String::from_utf8(bytes.to_vec())
+                    .map_err(|_| FrameworkError::internal("Multipart text field contains invalid UTF-8"))?;
+                text_fields.insert(field_name, value);
             }
         }
 
