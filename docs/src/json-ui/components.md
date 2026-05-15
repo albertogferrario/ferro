@@ -1,129 +1,72 @@
 # Components
 
-JSON-UI includes 26 built-in component types organized into six groups. Every component serializes to JSON with a `"type"` discriminant and is wrapped in a `ComponentNode` that adds a unique key, an optional action binding, and optional visibility rules.
+Every component in a v2 JSON-UI spec is referenced by its `"type"` string in a flat element map. For the full spec format and workflow, see [Getting Started](getting-started.md).
+
+Each element follows this shape:
+
+```json
+"element_id": {
+  "type": "ComponentTypeName",
+  "props": {
+    "prop_name": "prop_value"
+  },
+  "children": ["child_id"],
+  "action": { "handler": "route.name", "method": "POST" },
+  "visible": { "field": "/data/status", "op": "eq", "value": "active" }
+}
+```
+
+The sections below document every built-in component: its props table (with JSON types) and a complete element example.
+
+---
 
 ## Component Overview
 
 | Category | Components |
-|----------|-----------|
-| **Layout** | Card, Tabs, Separator, Modal, Skeleton |
-| **Data Display** | Table, DescriptionList, Badge, Avatar, Text, Progress, Breadcrumb, Pagination, StatCard |
-| **Forms** | Form, Input, Select, Checkbox, Switch, Button |
-| **Feedback** | Alert, Toast |
-| **Navigation** | Sidebar, Header, NotificationDropdown |
+|----------|------------|
+| **Layout** | Card, Grid, Tabs, Separator, Modal, Skeleton, Collapsible, FormSection |
+| **Data Display** | Text, DataTable, Table, DescriptionList, Badge, Avatar, Progress, Breadcrumb, Pagination, StatCard, Image |
+| **Forms** | Form, Input, Select, Checkbox, Switch, Button, ButtonGroup, DropdownMenu |
+| **Feedback** | Alert, Toast, EmptyState |
+| **Navigation** | Sidebar, Header, PageHeader, NotificationDropdown |
+| **Action** | ActionCard |
 | **Onboarding** | Checklist |
-| **Extensible** | Plugin |
+| **Commerce** | ProductTile |
+| **Extensible** | Plugin (see [Plugins](plugins.md)) |
 
-## ComponentNode
+---
 
-Every component is wrapped in a `ComponentNode`:
+## Shared Enum Values
 
-```rust
-use ferro::{ComponentNode, Component, CardProps};
+Several props accept fixed-string enum values. The valid strings are listed here; each component section references these by name.
 
-ComponentNode {
-    key: "my-card".to_string(),          // unique identifier on the page
-    component: Component::Card(CardProps { /* ... */ }),
-    action: None,                         // optional Action binding
-    visibility: None,                     // optional Visibility condition
-}
-```
+**size** — `"xs"` | `"sm"` | `"default"` | `"lg"`
 
-Convenience constructors are available for common components:
+**button_variant** — `"default"` | `"secondary"` | `"destructive"` | `"outline"` | `"ghost"` | `"link"`
 
-```rust
-// Equivalent to the struct literal above, but more concise
-let node = ComponentNode::card("my-card", CardProps {
-    title: "Hello".to_string(),
-    description: None,
-    children: vec![],
-    footer: vec![],
-});
-```
+**alert_variant** — `"info"` | `"success"` | `"warning"` | `"error"`
 
-## Shared Types
+**badge_variant** — `"default"` | `"secondary"` | `"destructive"` | `"outline"`
 
-### Size
+**column_format** — `"date"` | `"date_time"` | `"currency"` | `"boolean"`
 
-Controls sizing for Button, Avatar, and other components.
+**text_element** — `"p"` | `"h1"` | `"h2"` | `"h3"` | `"span"` | `"div"` | `"section"`
 
-| Value | Serialized |
-|-------|-----------|
-| `Size::Xs` | `"xs"` |
-| `Size::Sm` | `"sm"` |
-| `Size::Default` | `"default"` |
-| `Size::Lg` | `"lg"` |
+**toast_variant** — `"info"` | `"success"` | `"warning"` | `"error"`
 
-### ButtonVariant
+**input_type** — `"text"` | `"email"` | `"password"` | `"number"` | `"textarea"` | `"hidden"` | `"date"` | `"time"` | `"url"` | `"tel"` | `"search"`
 
-Visual styles for the Button component (aligned to shadcn/ui).
+**orientation** — `"horizontal"` | `"vertical"`
 
-| Value | Serialized | Use Case |
-|-------|-----------|----------|
-| `ButtonVariant::Default` | `"default"` | Primary actions |
-| `ButtonVariant::Secondary` | `"secondary"` | Secondary actions |
-| `ButtonVariant::Destructive` | `"destructive"` | Delete, remove |
-| `ButtonVariant::Outline` | `"outline"` | Bordered style |
-| `ButtonVariant::Ghost` | `"ghost"` | Minimal style |
-| `ButtonVariant::Link` | `"link"` | Link appearance |
+**icon_position** — `"left"` | `"right"`
 
-### AlertVariant
+**sort_direction** — `"asc"` | `"desc"`
 
-Visual styles for Alert and Toast components.
+**form_max_width** — `"sm"` | `"md"` | `"lg"` | `"xl"` | `"full"`
 
-| Value | Serialized |
-|-------|-----------|
-| `AlertVariant::Info` | `"info"` |
-| `AlertVariant::Success` | `"success"` |
-| `AlertVariant::Warning` | `"warning"` |
-| `AlertVariant::Error` | `"error"` |
+**gap_size** — `"none"` | `"xs"` | `"sm"` | `"md"` | `"lg"` | `"xl"`
 
-### BadgeVariant
-
-Visual styles for the Badge component (aligned to shadcn/ui).
-
-| Value | Serialized |
-|-------|-----------|
-| `BadgeVariant::Default` | `"default"` |
-| `BadgeVariant::Secondary` | `"secondary"` |
-| `BadgeVariant::Destructive` | `"destructive"` |
-| `BadgeVariant::Outline` | `"outline"` |
-
-### ColumnFormat
-
-Display format for Table columns and DescriptionList items.
-
-| Value | Serialized |
-|-------|-----------|
-| `ColumnFormat::Date` | `"date"` |
-| `ColumnFormat::DateTime` | `"date_time"` |
-| `ColumnFormat::Currency` | `"currency"` |
-| `ColumnFormat::Boolean` | `"boolean"` |
-
-### TextElement
-
-Semantic HTML element for the Text component.
-
-| Value | Serialized | HTML |
-|-------|-----------|------|
-| `TextElement::P` | `"p"` | `<p>` |
-| `TextElement::H1` | `"h1"` | `<h1>` |
-| `TextElement::H2` | `"h2"` | `<h2>` |
-| `TextElement::H3` | `"h3"` | `<h3>` |
-| `TextElement::Span` | `"span"` | `<span>` |
-| `TextElement::Div` | `"div"` | `<div>` |
-| `TextElement::Section` | `"section"` | `<section>` |
-
-### ToastVariant
-
-Visual styles for the Toast component. Mirrors AlertVariant.
-
-| Value | Serialized |
-|-------|-----------|
-| `ToastVariant::Info` | `"info"` |
-| `ToastVariant::Success` | `"success"` |
-| `ToastVariant::Warning` | `"warning"` |
-| `ToastVariant::Error` | `"error"` |
+**action_card_variant** — `"default"` | `"outline"` | `"ghost"`
 
 ---
 
@@ -133,100 +76,71 @@ Visual styles for the Toast component. Mirrors AlertVariant.
 
 Container with title, optional description, nested children, and footer.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `title` | `String` | Yes | - | Card title |
-| `description` | `Option<String>` | No | `None` | Description below the title |
-| `children` | `Vec<ComponentNode>` | No | `[]` | Nested components in the card body |
-| `footer` | `Vec<ComponentNode>` | No | `[]` | Components in the card footer |
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Card heading |
+| `description` | `string \| null` | Secondary text below the title |
 
-```rust
-use ferro::{ComponentNode, CardProps, ButtonProps, ButtonVariant, Size};
-
-let node = ComponentNode::card("user-card", CardProps {
-    title: "User Details".to_string(),
-    description: Some("Account information".to_string()),
-    children: vec![
-        ComponentNode::button("edit-btn", ButtonProps {
-            label: "Edit".to_string(),
-            variant: ButtonVariant::Outline,
-            size: Size::Default,
-            disabled: None,
-            icon: None,
-            icon_position: None,
-        }),
-    ],
-    footer: vec![],
-});
-```
-
-JSON output:
+Children are element IDs listed in the `"children"` array on the element, not in props.
 
 ```json
-{
-  "key": "user-card",
+"user_card": {
   "type": "Card",
-  "title": "User Details",
-  "description": "Account information",
-  "children": [
-    { "key": "edit-btn", "type": "Button", "label": "Edit", "variant": "outline", "size": "default" }
-  ]
+  "props": {
+    "title": "User Details",
+    "description": "Account information"
+  },
+  "children": ["name_text", "email_text"]
+}
+```
+
+### Grid
+
+Responsive grid layout for arranging child elements in columns.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `columns` | `number \| null` | Number of columns (default: 2) |
+| `gap` | `gap_size \| null` | Gap between items: `"none"`, `"xs"`, `"sm"`, `"md"`, `"lg"`, `"xl"` |
+
+```json
+"stats_grid": {
+  "type": "Grid",
+  "props": {
+    "columns": 3,
+    "gap": "md"
+  },
+  "children": ["revenue_stat", "orders_stat", "users_stat"]
 }
 ```
 
 ### Tabs
 
-Tabbed content with multiple panels. Each tab contains its own set of child components.
+Tabbed content with multiple panels.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `default_tab` | `String` | Yes | - | Value of the initially active tab |
-| `tabs` | `Vec<Tab>` | Yes | - | Tab definitions |
+| Prop | Type | Description |
+|------|------|-------------|
+| `default_tab` | `string` | Value of the initially active tab |
+| `tabs` | `array` | Tab definitions |
 
-**Tab** defines a tab panel:
+Each object in `tabs`:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `value` | `String` | Yes | Tab identifier (matches `default_tab`) |
-| `label` | `String` | Yes | Tab label text |
-| `children` | `Vec<ComponentNode>` | No | Components displayed when the tab is active |
-
-```rust
-use ferro::{ComponentNode, Component, TabsProps, Tab};
-
-ComponentNode {
-    key: "settings-tabs".to_string(),
-    component: Component::Tabs(TabsProps {
-        default_tab: "general".to_string(),
-        tabs: vec![
-            Tab {
-                value: "general".to_string(),
-                label: "General".to_string(),
-                children: vec![/* ... */],
-            },
-            Tab {
-                value: "security".to_string(),
-                label: "Security".to_string(),
-                children: vec![/* ... */],
-            },
-        ],
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Field | Type | Description |
+|-------|------|-------------|
+| `value` | `string` | Tab identifier (matches `default_tab`) |
+| `label` | `string` | Tab label text |
+| `children` | `array of strings` | Element IDs shown when the tab is active |
 
 ```json
-{
-  "key": "settings-tabs",
+"settings_tabs": {
   "type": "Tabs",
-  "default_tab": "general",
-  "tabs": [
-    { "value": "general", "label": "General", "children": [] },
-    { "value": "security", "label": "Security", "children": [] }
-  ]
+  "props": {
+    "default_tab": "general",
+    "tabs": [
+      { "value": "general", "label": "General", "children": ["general_form"] },
+      { "value": "security", "label": "Security", "children": ["security_form"] }
+    ]
+  }
 }
 ```
 
@@ -234,239 +148,233 @@ JSON output:
 
 Visual divider between content sections.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `orientation` | `Option<Orientation>` | No | `Horizontal` | Direction: `horizontal` or `vertical` |
-
-```rust
-use ferro::{ComponentNode, Component, SeparatorProps};
-
-ComponentNode {
-    key: "divider".to_string(),
-    component: Component::Separator(SeparatorProps {
-        orientation: None, // defaults to horizontal
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `orientation` | `orientation \| null` | `"horizontal"` (default) or `"vertical"` |
 
 ```json
-{ "key": "divider", "type": "Separator" }
+"divider": {
+  "type": "Separator",
+  "props": {}
+}
 ```
 
 ### Modal
 
-Dialog overlay with title, content, footer, and trigger button.
+Dialog overlay with title, body children, footer children, and a trigger button label.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `title` | `String` | Yes | - | Modal title |
-| `description` | `Option<String>` | No | `None` | Modal description |
-| `children` | `Vec<ComponentNode>` | No | `[]` | Content components inside the modal body |
-| `footer` | `Vec<ComponentNode>` | No | `[]` | Components in the modal footer |
-| `trigger_label` | `Option<String>` | No | `None` | Label for the trigger button |
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Modal heading |
+| `description` | `string \| null` | Modal description text |
+| `trigger_label` | `string \| null` | Label for the button that opens the modal |
 
-```rust
-use ferro::{ComponentNode, Component, ModalProps, ButtonProps, ButtonVariant, Size, Action};
-
-ComponentNode {
-    key: "delete-modal".to_string(),
-    component: Component::Modal(ModalProps {
-        title: "Delete Item".to_string(),
-        description: Some("This action cannot be undone.".to_string()),
-        children: vec![],
-        footer: vec![
-            ComponentNode {
-                key: "delete-btn".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Delete".to_string(),
-                    variant: ButtonVariant::Destructive,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                }),
-                action: Some(Action::delete("items.destroy").confirm_danger("Confirm deletion")),
-                visibility: None,
-            },
-        ],
-        trigger_label: Some("Delete".to_string()),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+Children of the modal body go in the element `"children"` array. Footer children use a `"footer_children"` prop listing element IDs.
 
 ```json
-{
-  "key": "delete-modal",
+"delete_modal": {
   "type": "Modal",
-  "title": "Delete Item",
-  "description": "This action cannot be undone.",
-  "trigger_label": "Delete",
-  "children": [],
-  "footer": [{ "key": "delete-btn", "type": "Button", "label": "Delete", "variant": "destructive", "size": "default" }]
+  "props": {
+    "title": "Delete Item",
+    "description": "This action cannot be undone.",
+    "trigger_label": "Delete"
+  },
+  "children": ["confirm_text"],
+  "action": { "handler": "items.destroy", "method": "DELETE" }
 }
 ```
 
 ### Skeleton
 
-Loading placeholder with configurable dimensions for content that is still loading.
+Loading placeholder with configurable dimensions.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `width` | `Option<String>` | No | `None` | CSS width (e.g., `"100%"`, `"200px"`) |
-| `height` | `Option<String>` | No | `None` | CSS height (e.g., `"40px"`) |
-| `rounded` | `Option<bool>` | No | `None` | Whether to use rounded corners |
+| Prop | Type | Description |
+|------|------|-------------|
+| `width` | `string \| null` | CSS width (e.g., `"100%"`, `"200px"`) |
+| `height` | `string \| null` | CSS height (e.g., `"40px"`) |
+| `rounded` | `boolean \| null` | Use rounded corners |
 
-```rust
-use ferro::{ComponentNode, Component, SkeletonProps};
-
-ComponentNode {
-    key: "loading-placeholder".to_string(),
-    component: Component::Skeleton(SkeletonProps {
-        width: Some("100%".to_string()),
-        height: Some("40px".to_string()),
-        rounded: Some(true),
-    }),
-    action: None,
-    visibility: None,
+```json
+"loading_placeholder": {
+  "type": "Skeleton",
+  "props": {
+    "width": "100%",
+    "height": "40px",
+    "rounded": true
+  }
 }
 ```
 
-JSON output:
+### Collapsible
+
+An expandable/collapsible section with a trigger label.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `trigger` | `string` | Label for the toggle |
+| `open` | `boolean \| null` | Initially open when `true` |
 
 ```json
-{ "key": "loading-placeholder", "type": "Skeleton", "width": "100%", "height": "40px", "rounded": true }
+"advanced_section": {
+  "type": "Collapsible",
+  "props": {
+    "trigger": "Advanced Options",
+    "open": false
+  },
+  "children": ["timeout_input", "retry_input"]
+}
+```
+
+### FormSection
+
+Groups form fields under a section heading with an optional description.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Section heading |
+| `description` | `string \| null` | Section description |
+
+```json
+"billing_section": {
+  "type": "FormSection",
+  "props": {
+    "title": "Billing Information",
+    "description": "Used for invoice generation."
+  },
+  "children": ["address_input", "city_input", "postal_input"]
+}
 ```
 
 ---
 
 ## Data Display Components
 
-### Table
+### Text
 
-Data table with column definitions, row actions, and sorting support. Rows are loaded from handler data via `data_path`.
+Renders text content with a semantic HTML element.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `columns` | `Vec<Column>` | Yes | - | Column definitions |
-| `data_path` | `String` | Yes | - | Path to the row data array (e.g., `"/data/users"`) |
-| `row_actions` | `Option<Vec<Action>>` | No | `None` | Actions available per row |
-| `empty_message` | `Option<String>` | No | `None` | Message when no data |
-| `sortable` | `Option<bool>` | No | `None` | Enable column sorting |
-| `sort_column` | `Option<String>` | No | `None` | Currently sorted column key |
-| `sort_direction` | `Option<SortDirection>` | No | `None` | Sort direction: `asc` or `desc` |
-
-**Column** defines a table column:
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `key` | `String` | Yes | Data field key matching the row object |
-| `label` | `String` | Yes | Column header text |
-| `format` | `Option<ColumnFormat>` | No | Display format (Date, DateTime, Currency, Boolean) |
-
-```rust
-use ferro::{ComponentNode, TableProps, Column, ColumnFormat, Action};
-
-let node = ComponentNode::table("users-table", TableProps {
-    columns: vec![
-        Column { key: "name".to_string(), label: "Name".to_string(), format: None },
-        Column { key: "email".to_string(), label: "Email".to_string(), format: None },
-        Column {
-            key: "created_at".to_string(),
-            label: "Created".to_string(),
-            format: Some(ColumnFormat::Date),
-        },
-    ],
-    data_path: "/data/users".to_string(),
-    row_actions: Some(vec![
-        Action::get("users.edit"),
-        Action::delete("users.destroy").confirm_danger("Delete this user?"),
-    ]),
-    empty_message: Some("No users found.".to_string()),
-    sortable: Some(true),
-    sort_column: None,
-    sort_direction: None,
-});
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `content` | `string` | Text content |
+| `element` | `text_element \| null` | HTML element: `"p"` (default), `"h1"`, `"h2"`, `"h3"`, `"span"`, `"div"`, `"section"` |
 
 ```json
-{
-  "key": "users-table",
+"page_heading": {
+  "type": "Text",
+  "props": {
+    "content": "Welcome to the dashboard",
+    "element": "h1"
+  }
+}
+```
+
+Content can use a `$template` expression to interpolate data:
+
+```json
+"greeting": {
+  "type": "Text",
+  "props": {
+    "content": { "$template": "Welcome, {/user/name}!" },
+    "element": "h2"
+  }
+}
+```
+
+### DataTable
+
+Data-bound table with column definitions, row actions, and sorting. Rows are loaded from the spec's data via `data_path`.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `columns` | `array` | Column definitions (see below) |
+| `data_path` | `string` | JSON Pointer to the row data array (e.g., `"/orders"`) |
+| `row_actions` | `array \| null` | Actions available per row |
+| `empty_message` | `string \| null` | Message when no data is present |
+| `sortable` | `boolean \| null` | Enable column sorting |
+| `sort_column` | `string \| null` | Currently sorted column key |
+| `sort_direction` | `sort_direction \| null` | `"asc"` or `"desc"` |
+
+Each column object:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | `string` | Data field key in the row object |
+| `label` | `string` | Column header text |
+| `format` | `column_format \| null` | Display format |
+
+```json
+"users_table": {
+  "type": "DataTable",
+  "props": {
+    "data_path": "/users",
+    "columns": [
+      { "key": "name", "label": "Name" },
+      { "key": "email", "label": "Email" },
+      { "key": "created_at", "label": "Created", "format": "date" }
+    ],
+    "row_actions": [
+      { "handler": "users.edit", "method": "GET" },
+      { "handler": "users.destroy", "method": "DELETE", "confirm": { "message": "Delete this user?" } }
+    ],
+    "empty_message": "No users found.",
+    "sortable": true
+  }
+}
+```
+
+### Table
+
+Simple table without a data binding path. Use `DataTable` for data-bound tables; use `Table` for static content.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `columns` | `array` | Column definitions (same structure as DataTable) |
+| `rows` | `array` | Static row objects (key-value maps) |
+
+```json
+"static_table": {
   "type": "Table",
-  "data_path": "/data/users",
-  "columns": [
-    { "key": "name", "label": "Name" },
-    { "key": "email", "label": "Email" },
-    { "key": "created_at", "label": "Created", "format": "date" }
-  ],
-  "sortable": true
+  "props": {
+    "columns": [
+      { "key": "plan", "label": "Plan" },
+      { "key": "price", "label": "Price", "format": "currency" }
+    ],
+    "rows": [
+      { "plan": "Starter", "price": "9.00" },
+      { "plan": "Pro", "price": "29.00" }
+    ]
+  }
 }
 ```
 
 ### DescriptionList
 
-Key-value pairs displayed as a description list. Reuses `ColumnFormat` for value formatting.
+Key-value pairs displayed as a description list.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `items` | `Vec<DescriptionItem>` | Yes | - | Key-value items |
-| `columns` | `Option<u8>` | No | `None` | Number of columns for layout |
+| Prop | Type | Description |
+|------|------|-------------|
+| `items` | `array` | Description items (see below) |
+| `columns` | `number \| null` | Number of columns for layout |
 
-**DescriptionItem** defines a key-value pair:
+Each item object:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | `String` | Yes | Item label |
-| `value` | `String` | Yes | Item value |
-| `format` | `Option<ColumnFormat>` | No | Display format |
-
-```rust
-use ferro::{ComponentNode, Component, DescriptionListProps, DescriptionItem, ColumnFormat};
-
-ComponentNode {
-    key: "user-info".to_string(),
-    component: Component::DescriptionList(DescriptionListProps {
-        items: vec![
-            DescriptionItem { label: "Name".to_string(), value: "Alice Johnson".to_string(), format: None },
-            DescriptionItem {
-                label: "Joined".to_string(),
-                value: "2026-01-15".to_string(),
-                format: Some(ColumnFormat::Date),
-            },
-            DescriptionItem {
-                label: "Active".to_string(),
-                value: "true".to_string(),
-                format: Some(ColumnFormat::Boolean),
-            },
-        ],
-        columns: Some(2),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | `string` | Item label |
+| `value` | `string` | Item value |
+| `format` | `column_format \| null` | Display format |
 
 ```json
-{
-  "key": "user-info",
+"user_info": {
   "type": "DescriptionList",
-  "columns": 2,
-  "items": [
-    { "label": "Name", "value": "Alice Johnson" },
-    { "label": "Joined", "value": "2026-01-15", "format": "date" },
-    { "label": "Active", "value": "true", "format": "boolean" }
-  ]
+  "props": {
+    "columns": 2,
+    "items": [
+      { "label": "Name", "value": { "$data": "/user/name" } },
+      { "label": "Joined", "value": { "$data": "/user/created_at" }, "format": "date" },
+      { "label": "Active", "value": { "$data": "/user/active" }, "format": "boolean" }
+    ]
+  }
 }
 ```
 
@@ -474,567 +382,401 @@ JSON output:
 
 Small label with variant-based styling.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `label` | `String` | Yes | - | Badge text |
-| `variant` | `BadgeVariant` | No | `Default` | Visual style |
-
-```rust
-use ferro::{ComponentNode, Component, BadgeProps, BadgeVariant};
-
-ComponentNode {
-    key: "status".to_string(),
-    component: Component::Badge(BadgeProps {
-        label: "Active".to_string(),
-        variant: BadgeVariant::Default,
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `label` | `string` | Badge text |
+| `variant` | `badge_variant \| null` | Visual style (default: `"default"`) |
 
 ```json
-{ "key": "status", "type": "Badge", "label": "Active", "variant": "default" }
+"status_badge": {
+  "type": "Badge",
+  "props": {
+    "label": "Active",
+    "variant": "default"
+  }
+}
 ```
 
 ### Avatar
 
-User avatar with image source, fallback text, and size variants.
+User avatar with image, fallback initials, and size.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `src` | `Option<String>` | No | `None` | Image URL |
-| `alt` | `String` | Yes | - | Alt text (required for accessibility) |
-| `fallback` | `Option<String>` | No | `None` | Fallback initials when no image |
-| `size` | `Option<Size>` | No | `Default` | Avatar size: `xs`, `sm`, `default`, `lg` |
-
-```rust
-use ferro::{ComponentNode, Component, AvatarProps, Size};
-
-ComponentNode {
-    key: "user-avatar".to_string(),
-    component: Component::Avatar(AvatarProps {
-        src: Some("/images/alice.jpg".to_string()),
-        alt: "Alice Johnson".to_string(),
-        fallback: Some("AJ".to_string()),
-        size: Some(Size::Lg),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `alt` | `string` | Alt text (required for accessibility) |
+| `src` | `string \| null` | Image URL |
+| `fallback` | `string \| null` | Fallback initials when no image |
+| `size` | `size \| null` | `"xs"`, `"sm"`, `"default"`, `"lg"` |
 
 ```json
-{ "key": "user-avatar", "type": "Avatar", "alt": "Alice Johnson", "src": "/images/alice.jpg", "fallback": "AJ", "size": "lg" }
-```
-
-### Text
-
-Renders text content with semantic HTML element selection.
-
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `content` | `String` | Yes | - | Text content |
-| `element` | `TextElement` | No | `P` | HTML element: `p`, `h1`, `h2`, `h3`, `span`, `div`, `section` |
-
-```rust
-use ferro::{ComponentNode, Component, TextProps, TextElement};
-
-ComponentNode {
-    key: "heading".to_string(),
-    component: Component::Text(TextProps {
-        content: "Welcome to the dashboard".to_string(),
-        element: TextElement::H1,
-    }),
-    action: None,
-    visibility: None,
+"user_avatar": {
+  "type": "Avatar",
+  "props": {
+    "alt": "Alice Johnson",
+    "src": { "$data": "/user/avatar_url" },
+    "fallback": "AJ",
+    "size": "lg"
+  }
 }
-```
-
-JSON output:
-
-```json
-{ "key": "heading", "type": "Text", "content": "Welcome to the dashboard", "element": "h1" }
 ```
 
 ### Progress
 
-Progress bar with percentage value.
+Progress bar with a percentage value.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `value` | `u8` | Yes | - | Percentage value (0-100) |
-| `max` | `Option<u8>` | No | `None` | Maximum value |
-| `label` | `Option<String>` | No | `None` | Label text above the bar |
-
-```rust
-use ferro::{ComponentNode, Component, ProgressProps};
-
-ComponentNode {
-    key: "upload-progress".to_string(),
-    component: Component::Progress(ProgressProps {
-        value: 75,
-        max: Some(100),
-        label: Some("Uploading...".to_string()),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `value` | `number` | Percentage value (0-100) |
+| `max` | `number \| null` | Maximum value |
+| `label` | `string \| null` | Label text above the bar |
 
 ```json
-{ "key": "upload-progress", "type": "Progress", "value": 75, "max": 100, "label": "Uploading..." }
+"upload_progress": {
+  "type": "Progress",
+  "props": {
+    "value": 75,
+    "max": 100,
+    "label": "Uploading..."
+  }
+}
 ```
 
 ### Breadcrumb
 
-Navigation breadcrumb trail. The last item typically has no URL (current page).
+Navigation breadcrumb trail.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `items` | `Vec<BreadcrumbItem>` | Yes | - | Breadcrumb items |
+| Prop | Type | Description |
+|------|------|-------------|
+| `items` | `array` | Breadcrumb items (see below) |
 
-**BreadcrumbItem** defines a breadcrumb entry:
+Each item object:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | `String` | Yes | Breadcrumb text |
-| `url` | `Option<String>` | No | Link URL (omit for the current page) |
-
-```rust
-use ferro::{ComponentNode, Component, BreadcrumbProps, BreadcrumbItem};
-
-ComponentNode {
-    key: "breadcrumbs".to_string(),
-    component: Component::Breadcrumb(BreadcrumbProps {
-        items: vec![
-            BreadcrumbItem { label: "Home".to_string(), url: Some("/".to_string()) },
-            BreadcrumbItem { label: "Users".to_string(), url: Some("/users".to_string()) },
-            BreadcrumbItem { label: "Edit User".to_string(), url: None },
-        ],
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | `string` | Breadcrumb text |
+| `url` | `string \| null` | Link URL (omit for the current page) |
 
 ```json
-{
-  "key": "breadcrumbs",
+"breadcrumbs": {
   "type": "Breadcrumb",
-  "items": [
-    { "label": "Home", "url": "/" },
-    { "label": "Users", "url": "/users" },
-    { "label": "Edit User" }
-  ]
+  "props": {
+    "items": [
+      { "label": "Home", "url": "/" },
+      { "label": "Users", "url": "/users" },
+      { "label": "Edit User" }
+    ]
+  }
 }
 ```
 
 ### Pagination
 
-Page navigation for paginated data. Computes page count from `total` and `per_page`.
+Page navigation for paginated data.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `current_page` | `u32` | Yes | - | Current page number |
-| `per_page` | `u32` | Yes | - | Items per page |
-| `total` | `u32` | Yes | - | Total number of items |
-| `base_url` | `Option<String>` | No | `None` | Base URL for page links |
-
-```rust
-use ferro::{ComponentNode, Component, PaginationProps};
-
-ComponentNode {
-    key: "users-pagination".to_string(),
-    component: Component::Pagination(PaginationProps {
-        current_page: 1,
-        per_page: 25,
-        total: 150,
-        base_url: Some("/users".to_string()),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `current_page` | `number` | Current page number |
+| `per_page` | `number` | Items per page |
+| `total` | `number` | Total item count |
+| `base_url` | `string \| null` | Base URL for page links |
 
 ```json
-{ "key": "users-pagination", "type": "Pagination", "current_page": 1, "per_page": 25, "total": 150, "base_url": "/users" }
+"users_pagination": {
+  "type": "Pagination",
+  "props": {
+    "current_page": { "$data": "/meta/page" },
+    "per_page": 25,
+    "total": { "$data": "/meta/total" },
+    "base_url": "/users"
+  }
+}
 ```
 
 ### StatCard
 
-Live-updatable metric card with an optional SSE target for real-time value updates. Used in dashboards to display KPIs, counts, and monetary totals.
+Metric card for dashboards. Displays a label and value, with an optional SSE target for live updates.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `label` | `String` | Yes | - | Metric label (e.g., "Total Revenue") |
-| `value` | `String` | Yes | - | Current metric value (e.g., "€12,345") |
-| `icon` | `Option<String>` | No | `None` | Icon name |
-| `subtitle` | `Option<String>` | No | `None` | Secondary text below the value |
-| `sse_target` | `Option<String>` | No | `None` | SSE event target key for live updates |
+| Prop | Type | Description |
+|------|------|-------------|
+| `label` | `string` | Metric label (e.g., `"Total Revenue"`) |
+| `value` | `string` | Current metric value (e.g., `"€12,345"`) |
+| `icon` | `string \| null` | Icon name |
+| `subtitle` | `string \| null` | Secondary text below the value |
+| `sse_target` | `string \| null` | SSE event key for live value updates |
 
-The `sse_target` field connects this card to the JS runtime's SSE listener. When the server emits a Server-Sent Event with a matching key, the runtime updates the displayed value without a page reload:
-
-```rust
-use ferro::{ComponentNode, StatCardProps};
-
-let node = ComponentNode::stat_card("revenue", StatCardProps {
-    label: "Total Revenue".to_string(),
-    value: "€12,345".to_string(),
-    icon: Some("currency-euro".to_string()),
-    subtitle: Some("This month".to_string()),
-    sse_target: Some("revenue_total".to_string()),
-});
+```json
+"revenue_stat": {
+  "type": "StatCard",
+  "props": {
+    "label": "Total Revenue",
+    "value": { "$data": "/stats/revenue_formatted" },
+    "icon": "currency-euro",
+    "subtitle": "This month",
+    "sse_target": "revenue_total"
+  }
+}
 ```
 
-The server sends updates via SSE as JSON:
+When `sse_target` is set and the server emits a Server-Sent Event with a matching key, the runtime updates the displayed value in place:
 
 ```
 event: live-value
 data: {"target": "revenue_total", "value": "€13,210"}
 ```
 
-JSON output:
+### Image
+
+Renders an `<img>` element.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `src` | `string` | Image URL |
+| `alt` | `string` | Alt text |
+| `width` | `number \| null` | CSS width in pixels |
+| `height` | `number \| null` | CSS height in pixels |
+| `class` | `string \| null` | Additional CSS classes |
 
 ```json
-{
-  "key": "revenue",
-  "type": "StatCard",
-  "label": "Total Revenue",
-  "value": "€12,345",
-  "icon": "currency-euro",
-  "subtitle": "This month",
-  "sse_target": "revenue_total"
+"hero_image": {
+  "type": "Image",
+  "props": {
+    "src": "/images/hero.jpg",
+    "alt": "Dashboard hero",
+    "width": 1200,
+    "height": 400
+  }
 }
 ```
 
 ---
 
-## Forms Components
+## Form Components
 
 ### Form
 
-Form container with action binding and field components. The `action` defines the submit endpoint.
+Form container with an action binding. Field components go in the element `"children"` array.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `action` | `Action` | Yes | - | Action to execute on form submit |
-| `fields` | `Vec<ComponentNode>` | Yes | - | Form field components (Input, Select, Checkbox, etc.) |
-| `method` | `Option<HttpMethod>` | No | `None` | HTTP method override (GET, POST, PUT, PATCH, DELETE) |
+| Prop | Type | Description |
+|------|------|-------------|
+| `method` | `string \| null` | HTTP method override (`"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, `"DELETE"`) |
+| `max_width` | `form_max_width \| null` | Max form width: `"sm"`, `"md"`, `"lg"`, `"xl"`, `"full"` |
 
-```rust
-use ferro::{ComponentNode, Component, FormProps, InputProps, InputType, Action};
-
-ComponentNode {
-    key: "create-form".to_string(),
-    component: Component::Form(FormProps {
-        action: Action::new("users.store"),
-        fields: vec![
-            ComponentNode {
-                key: "name-input".to_string(),
-                component: Component::Input(InputProps {
-                    field: "name".to_string(),
-                    label: "Name".to_string(),
-                    input_type: InputType::Text,
-                    placeholder: Some("Enter name".to_string()),
-                    required: Some(true),
-                    disabled: None,
-                    error: None,
-                    description: None,
-                    default_value: None,
-                    data_path: None,
-                    step: None,
-                }),
-                action: None,
-                visibility: None,
-            },
-        ],
-        method: None,
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+The submit action is set on the element's `"action"` field, not in props.
 
 ```json
-{
-  "key": "create-form",
+"create_form": {
   "type": "Form",
-  "action": { "handler": "users.store", "method": "POST" },
-  "fields": [
-    { "key": "name-input", "type": "Input", "field": "name", "label": "Name", "placeholder": "Enter name", "required": true }
-  ]
+  "props": {
+    "max_width": "md"
+  },
+  "children": ["name_input", "email_input", "submit_btn"],
+  "action": { "handler": "users.store", "method": "POST" }
 }
 ```
 
 ### Input
 
-Text input field with type variants, validation error display, and data binding.
+Text input field with type, label, validation error, and optional data binding.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `field` | `String` | Yes | - | Form field name for data binding |
-| `label` | `String` | Yes | - | Input label text |
-| `input_type` | `InputType` | No | `Text` | Input type |
-| `placeholder` | `Option<String>` | No | `None` | Placeholder text |
-| `required` | `Option<bool>` | No | `None` | Whether the field is required |
-| `disabled` | `Option<bool>` | No | `None` | Whether the field is disabled |
-| `error` | `Option<String>` | No | `None` | Validation error message |
-| `description` | `Option<String>` | No | `None` | Help text below the input |
-| `default_value` | `Option<String>` | No | `None` | Pre-filled value |
-| `data_path` | `Option<String>` | No | `None` | Data path for pre-filling from handler data (e.g., `"/data/user/name"`) |
-| `step` | `Option<String>` | No | `None` | HTML step attribute for number inputs (e.g., `"any"`, `"0.01"`) |
+| Prop | Type | Description |
+|------|------|-------------|
+| `field` | `string` | Form field name |
+| `label` | `string` | Input label |
+| `input_type` | `input_type \| null` | Input type (default: `"text"`) |
+| `placeholder` | `string \| null` | Placeholder text |
+| `required` | `boolean \| null` | Mark as required |
+| `disabled` | `boolean \| null` | Disable the field |
+| `error` | `string \| null` | Validation error message |
+| `description` | `string \| null` | Help text below the input |
+| `default_value` | `string \| null` | Pre-filled static value |
+| `data_path` | `string \| null` | JSON Pointer for pre-filling from handler data |
+| `step` | `string \| null` | HTML step attribute for number inputs (e.g., `"0.01"`) |
 
-**InputType** variants:
-
-| Value | Serialized |
-|-------|-----------|
-| `InputType::Text` | `"text"` |
-| `InputType::Email` | `"email"` |
-| `InputType::Password` | `"password"` |
-| `InputType::Number` | `"number"` |
-| `InputType::Textarea` | `"textarea"` |
-| `InputType::Hidden` | `"hidden"` |
-| `InputType::Date` | `"date"` |
-| `InputType::Time` | `"time"` |
-| `InputType::Url` | `"url"` |
-| `InputType::Tel` | `"tel"` |
-| `InputType::Search` | `"search"` |
-
-```rust
-use ferro::{ComponentNode, Component, InputProps, InputType};
-
-ComponentNode {
-    key: "email-input".to_string(),
-    component: Component::Input(InputProps {
-        field: "email".to_string(),
-        label: "Email Address".to_string(),
-        input_type: InputType::Email,
-        placeholder: Some("user@example.com".to_string()),
-        required: Some(true),
-        disabled: None,
-        error: None,
-        description: Some("Your work email".to_string()),
-        default_value: None,
-        data_path: Some("/data/user/email".to_string()),
-        step: None,
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+`data_path` is a plain string JSON Pointer (not a `$data` expression). The renderer reads the value from the spec data at that pointer and pre-fills the field.
 
 ```json
-{
-  "key": "email-input",
+"email_input": {
   "type": "Input",
-  "field": "email",
-  "label": "Email Address",
-  "input_type": "email",
-  "placeholder": "user@example.com",
-  "required": true,
-  "description": "Your work email",
-  "data_path": "/data/user/email"
+  "props": {
+    "field": "email",
+    "label": "Email Address",
+    "input_type": "email",
+    "placeholder": "user@example.com",
+    "required": true,
+    "description": "Your work email",
+    "data_path": "/user/email"
+  }
 }
 ```
 
 ### Select
 
-Dropdown select field with options, validation error, and data binding.
+Dropdown select field with options and optional data binding.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `field` | `String` | Yes | - | Form field name for data binding |
-| `label` | `String` | Yes | - | Select label text |
-| `options` | `Vec<SelectOption>` | Yes | - | Options list |
-| `placeholder` | `Option<String>` | No | `None` | Placeholder text |
-| `required` | `Option<bool>` | No | `None` | Whether the field is required |
-| `disabled` | `Option<bool>` | No | `None` | Whether the field is disabled |
-| `error` | `Option<String>` | No | `None` | Validation error message |
-| `description` | `Option<String>` | No | `None` | Help text below the select |
-| `default_value` | `Option<String>` | No | `None` | Pre-selected value |
-| `data_path` | `Option<String>` | No | `None` | Data path for pre-filling from handler data |
-
-**SelectOption** defines a value-label pair:
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `value` | `String` | Yes | Option value submitted with the form |
-| `label` | `String` | Yes | Display text shown to the user |
-
-```rust
-use ferro::{ComponentNode, Component, SelectProps, SelectOption};
-
-ComponentNode {
-    key: "role-select".to_string(),
-    component: Component::Select(SelectProps {
-        field: "role".to_string(),
-        label: "Role".to_string(),
-        options: vec![
-            SelectOption { value: "admin".to_string(), label: "Administrator".to_string() },
-            SelectOption { value: "editor".to_string(), label: "Editor".to_string() },
-            SelectOption { value: "viewer".to_string(), label: "Viewer".to_string() },
-        ],
-        placeholder: Some("Select a role".to_string()),
-        required: Some(true),
-        disabled: None,
-        error: None,
-        description: None,
-        default_value: None,
-        data_path: Some("/data/user/role".to_string()),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `field` | `string` | Form field name |
+| `label` | `string` | Select label |
+| `options` | `array` | Option objects: `{ "value": string, "label": string }` |
+| `placeholder` | `string \| null` | Placeholder text |
+| `required` | `boolean \| null` | Mark as required |
+| `disabled` | `boolean \| null` | Disable the field |
+| `error` | `string \| null` | Validation error message |
+| `description` | `string \| null` | Help text below the select |
+| `default_value` | `string \| null` | Pre-selected static value |
+| `data_path` | `string \| null` | JSON Pointer for pre-selecting from handler data |
 
 ```json
-{
-  "key": "role-select",
+"role_select": {
   "type": "Select",
-  "field": "role",
-  "label": "Role",
-  "placeholder": "Select a role",
-  "required": true,
-  "data_path": "/data/user/role",
-  "options": [
-    { "value": "admin", "label": "Administrator" },
-    { "value": "editor", "label": "Editor" },
-    { "value": "viewer", "label": "Viewer" }
-  ]
+  "props": {
+    "field": "role",
+    "label": "Role",
+    "placeholder": "Select a role",
+    "required": true,
+    "data_path": "/user/role",
+    "options": [
+      { "value": "admin", "label": "Administrator" },
+      { "value": "editor", "label": "Editor" },
+      { "value": "viewer", "label": "Viewer" }
+    ]
+  }
 }
 ```
 
 ### Checkbox
 
-Boolean checkbox field with label, description, and data binding.
+Boolean checkbox field.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `field` | `String` | Yes | - | Form field name for data binding |
-| `label` | `String` | Yes | - | Checkbox label text |
-| `description` | `Option<String>` | No | `None` | Help text below the checkbox |
-| `checked` | `Option<bool>` | No | `None` | Default checked state |
-| `data_path` | `Option<String>` | No | `None` | Data path for pre-filling from handler data |
-| `required` | `Option<bool>` | No | `None` | Whether the field is required |
-| `disabled` | `Option<bool>` | No | `None` | Whether the field is disabled |
-| `error` | `Option<String>` | No | `None` | Validation error message |
-
-```rust
-use ferro::{ComponentNode, Component, CheckboxProps};
-
-ComponentNode {
-    key: "terms-checkbox".to_string(),
-    component: Component::Checkbox(CheckboxProps {
-        field: "terms".to_string(),
-        label: "Accept Terms of Service".to_string(),
-        description: Some("You must accept to continue.".to_string()),
-        checked: None,
-        data_path: None,
-        required: Some(true),
-        disabled: None,
-        error: None,
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `field` | `string` | Form field name |
+| `label` | `string` | Checkbox label |
+| `description` | `string \| null` | Help text below the checkbox |
+| `checked` | `boolean \| null` | Default checked state |
+| `data_path` | `string \| null` | JSON Pointer for pre-filling from handler data |
+| `required` | `boolean \| null` | Mark as required |
+| `disabled` | `boolean \| null` | Disable the field |
+| `error` | `string \| null` | Validation error message |
 
 ```json
-{ "key": "terms-checkbox", "type": "Checkbox", "field": "terms", "label": "Accept Terms of Service", "description": "You must accept to continue.", "required": true }
+"terms_checkbox": {
+  "type": "Checkbox",
+  "props": {
+    "field": "terms",
+    "label": "Accept Terms of Service",
+    "description": "You must accept to continue.",
+    "required": true
+  }
+}
 ```
 
 ### Switch
 
-Toggle switch — a visual alternative to Checkbox with identical props. The frontend renderer handles the visual difference.
+Toggle switch — visually distinct from Checkbox but with identical props. The renderer handles the visual difference.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `field` | `String` | Yes | - | Form field name for data binding |
-| `label` | `String` | Yes | - | Switch label text |
-| `description` | `Option<String>` | No | `None` | Help text below the switch |
-| `checked` | `Option<bool>` | No | `None` | Default checked state |
-| `data_path` | `Option<String>` | No | `None` | Data path for pre-filling from handler data |
-| `required` | `Option<bool>` | No | `None` | Whether the field is required |
-| `disabled` | `Option<bool>` | No | `None` | Whether the field is disabled |
-| `error` | `Option<String>` | No | `None` | Validation error message |
-
-```rust
-use ferro::{ComponentNode, Component, SwitchProps};
-
-ComponentNode {
-    key: "notifications-switch".to_string(),
-    component: Component::Switch(SwitchProps {
-        field: "notifications".to_string(),
-        label: "Enable Notifications".to_string(),
-        description: Some("Receive email notifications".to_string()),
-        checked: Some(true),
-        data_path: Some("/data/user/notifications_enabled".to_string()),
-        required: None,
-        disabled: None,
-        error: None,
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `field` | `string` | Form field name |
+| `label` | `string` | Switch label |
+| `description` | `string \| null` | Help text below the switch |
+| `checked` | `boolean \| null` | Default checked state |
+| `data_path` | `string \| null` | JSON Pointer for pre-filling from handler data |
+| `required` | `boolean \| null` | Mark as required |
+| `disabled` | `boolean \| null` | Disable the field |
+| `error` | `string \| null` | Validation error message |
 
 ```json
-{ "key": "notifications-switch", "type": "Switch", "field": "notifications", "label": "Enable Notifications", "description": "Receive email notifications", "checked": true, "data_path": "/data/user/notifications_enabled" }
+"notifications_switch": {
+  "type": "Switch",
+  "props": {
+    "field": "notifications",
+    "label": "Enable Notifications",
+    "description": "Receive email notifications",
+    "checked": true,
+    "data_path": "/user/notifications_enabled"
+  }
+}
 ```
 
 ### Button
 
-Interactive button with visual variants, sizing, and optional icon.
+Interactive button. Attach the click action on the element's `"action"` field.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `label` | `String` | Yes | - | Button label text |
-| `variant` | `ButtonVariant` | No | `Default` | Visual style |
-| `size` | `Size` | No | `Default` | Button size |
-| `disabled` | `Option<bool>` | No | `None` | Whether the button is disabled |
-| `icon` | `Option<String>` | No | `None` | Icon name |
-| `icon_position` | `Option<IconPosition>` | No | `Left` | Icon placement: `left` or `right` |
-
-Buttons are typically combined with an `action` on the `ComponentNode` to bind click behavior:
-
-```rust
-use ferro::{ComponentNode, ButtonProps, ButtonVariant, Size, IconPosition};
-
-let node = ComponentNode::button("save-btn", ButtonProps {
-    label: "Save Changes".to_string(),
-    variant: ButtonVariant::Default,
-    size: Size::Default,
-    disabled: None,
-    icon: Some("save".to_string()),
-    icon_position: Some(IconPosition::Left),
-});
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `label` | `string` | Button label |
+| `variant` | `button_variant \| null` | Visual style (default: `"default"`) |
+| `size` | `size \| null` | Button size (default: `"default"`) |
+| `disabled` | `boolean \| null` | Disable the button |
+| `icon` | `string \| null` | Icon name |
+| `icon_position` | `icon_position \| null` | `"left"` (default) or `"right"` |
+| `button_type` | `string \| null` | HTML button type: `"button"`, `"submit"`, `"reset"` |
 
 ```json
-{ "key": "save-btn", "type": "Button", "label": "Save Changes", "variant": "default", "size": "default", "icon": "save", "icon_position": "left" }
+"save_btn": {
+  "type": "Button",
+  "props": {
+    "label": "Save Changes",
+    "variant": "default",
+    "size": "default",
+    "icon": "save",
+    "icon_position": "left"
+  },
+  "action": { "handler": "profile.update", "method": "PUT" }
+}
+```
+
+### ButtonGroup
+
+A horizontal group of buttons rendered together.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `buttons` | `array` | Button definitions (same props as Button, plus `"action"`) |
+
+```json
+"filter_group": {
+  "type": "ButtonGroup",
+  "props": {
+    "buttons": [
+      { "label": "All", "variant": "default" },
+      { "label": "Active", "variant": "outline" },
+      { "label": "Archived", "variant": "outline" }
+    ]
+  }
+}
+```
+
+### DropdownMenu
+
+A button that opens a dropdown with action items. Useful for per-row table actions.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `label` | `string` | Trigger button label |
+| `actions` | `array` | Action items (see below) |
+
+Each action object:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | `string` | Menu item text |
+| `handler` | `string` | Route handler name |
+| `method` | `string` | HTTP method |
+| `variant` | `string \| null` | `"destructive"` for danger actions |
+
+```json
+"row_actions": {
+  "type": "DropdownMenu",
+  "props": {
+    "label": "Actions",
+    "actions": [
+      { "label": "View Details", "handler": "orders.show", "method": "GET" },
+      { "label": "Delete", "handler": "orders.destroy", "method": "DELETE", "variant": "destructive" }
+    ]
+  }
+}
 ```
 
 ---
@@ -1045,64 +787,70 @@ JSON output:
 
 Alert message with variant-based styling and optional title.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `message` | `String` | Yes | - | Alert message content |
-| `variant` | `AlertVariant` | No | `Info` | Visual style |
-| `title` | `Option<String>` | No | `None` | Alert title |
-
-```rust
-use ferro::{ComponentNode, Component, AlertProps, AlertVariant};
-
-ComponentNode {
-    key: "warning".to_string(),
-    component: Component::Alert(AlertProps {
-        message: "Your trial expires in 3 days.".to_string(),
-        variant: AlertVariant::Warning,
-        title: Some("Trial Ending".to_string()),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Prop | Type | Description |
+|------|------|-------------|
+| `message` | `string` | Alert message content |
+| `variant` | `alert_variant \| null` | Visual style (default: `"info"`) |
+| `title` | `string \| null` | Alert title |
 
 ```json
-{ "key": "warning", "type": "Alert", "message": "Your trial expires in 3 days.", "variant": "warning", "title": "Trial Ending" }
+"trial_warning": {
+  "type": "Alert",
+  "props": {
+    "message": "Your trial expires in 3 days.",
+    "variant": "warning",
+    "title": "Trial Ending"
+  }
+}
 ```
 
 ### Toast
 
-Declarative notification intent rendered by the JS runtime. When a Toast component is included in a view, the runtime displays it as an overlay notification (top-right corner) and dismisses it after the configured timeout.
+Declarative notification rendered as an overlay by the JS runtime. When a Toast element is in the spec, the runtime displays it on page load and dismisses it after the timeout.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `message` | `String` | Yes | - | Toast message content |
-| `variant` | `ToastVariant` | No | `Info` | Visual style (info, success, warning, error) |
-| `timeout` | `Option<u32>` | No | `None` | Seconds before auto-dismiss (default: 5) |
-| `dismissible` | `bool` | No | `true` | Whether the user can dismiss the toast |
+| Prop | Type | Description |
+|------|------|-------------|
+| `message` | `string` | Toast message content |
+| `variant` | `toast_variant \| null` | Visual style (default: `"info"`) |
+| `timeout` | `number \| null` | Seconds before auto-dismiss (default: 5) |
+| `dismissible` | `boolean \| null` | Allow manual dismiss (default: `true`) |
 
-```rust
-use ferro::{ComponentNode, Component, ToastProps, ToastVariant};
-
-ComponentNode {
-    key: "save-toast".to_string(),
-    component: Component::Toast(ToastProps {
-        message: "Changes saved successfully.".to_string(),
-        variant: ToastVariant::Success,
-        timeout: Some(3),
-        dismissible: true,
-    }),
-    action: None,
-    visibility: None,
+```json
+"save_toast": {
+  "type": "Toast",
+  "props": {
+    "message": "Changes saved successfully.",
+    "variant": "success",
+    "timeout": 3,
+    "dismissible": true
+  }
 }
 ```
 
-JSON output:
+### EmptyState
+
+Displayed when a list or table has no data. Provides a call-to-action.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Empty state heading |
+| `description` | `string \| null` | Supporting text |
+| `action_label` | `string \| null` | CTA button label |
+| `icon` | `string \| null` | Icon name |
+
+Pair with an element `"action"` for the CTA navigation.
 
 ```json
-{ "key": "save-toast", "type": "Toast", "message": "Changes saved successfully.", "variant": "success", "timeout": 3, "dismissible": true }
+"no_orders": {
+  "type": "EmptyState",
+  "props": {
+    "title": "No orders yet",
+    "description": "Create your first order to get started.",
+    "action_label": "New Order",
+    "icon": "shopping-bag"
+  },
+  "action": { "handler": "orders.create", "method": "GET" }
+}
 ```
 
 ---
@@ -1111,181 +859,177 @@ JSON output:
 
 ### Sidebar
 
-Sidebar navigation shell with fixed top items, grouped items, and fixed bottom items. Typically used as a component inside a DashboardLayout. When used standalone it renders as a vertical navigation panel.
+Sidebar navigation shell with fixed top items, grouped items, and fixed bottom items. Typically used inside the `dashboard` layout.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `fixed_top` | `Vec<SidebarNavItem>` | No | `[]` | Items pinned at the top (e.g., logo/home link) |
-| `groups` | `Vec<SidebarGroup>` | No | `[]` | Collapsible navigation groups |
-| `fixed_bottom` | `Vec<SidebarNavItem>` | No | `[]` | Items pinned at the bottom (e.g., settings, logout) |
+| Prop | Type | Description |
+|------|------|-------------|
+| `fixed_top` | `array \| null` | Items pinned at the top (e.g., logo/home) |
+| `groups` | `array \| null` | Collapsible navigation groups |
+| `fixed_bottom` | `array \| null` | Items pinned at the bottom (e.g., settings, logout) |
 
-**SidebarNavItem** defines a navigation link:
+Navigation item object:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | `String` | Yes | Link text |
-| `href` | `String` | Yes | Link URL |
-| `icon` | `Option<String>` | No | Icon name |
-| `active` | `bool` | No (default: false) | Whether this is the current page |
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | `string` | Link text |
+| `href` | `string` | Link URL |
+| `icon` | `string \| null` | Icon name |
+| `active` | `boolean \| null` | Mark as current page |
 
-**SidebarGroup** defines a labeled, collapsible group:
+Navigation group object:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | `String` | Yes | Group heading text |
-| `collapsed` | `bool` | No (default: false) | Whether the group starts collapsed |
-| `items` | `Vec<SidebarNavItem>` | Yes | Navigation links in this group |
-
-```rust
-use ferro::{ComponentNode, Component, SidebarProps, SidebarNavItem, SidebarGroup};
-
-ComponentNode {
-    key: "sidebar".to_string(),
-    component: Component::Sidebar(SidebarProps {
-        fixed_top: vec![
-            SidebarNavItem { label: "Dashboard".to_string(), href: "/".to_string(), icon: Some("home".to_string()), active: true },
-        ],
-        groups: vec![
-            SidebarGroup {
-                label: "Management".to_string(),
-                collapsed: false,
-                items: vec![
-                    SidebarNavItem { label: "Users".to_string(), href: "/users".to_string(), icon: Some("users".to_string()), active: false },
-                    SidebarNavItem { label: "Orders".to_string(), href: "/orders".to_string(), icon: Some("shopping-bag".to_string()), active: false },
-                ],
-            },
-        ],
-        fixed_bottom: vec![
-            SidebarNavItem { label: "Settings".to_string(), href: "/settings".to_string(), icon: Some("cog".to_string()), active: false },
-        ],
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-JSON output:
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | `string` | Group heading |
+| `collapsed` | `boolean \| null` | Start collapsed |
+| `items` | `array` | Navigation items in this group |
 
 ```json
-{
-  "key": "sidebar",
+"sidebar": {
   "type": "Sidebar",
-  "fixed_top": [{ "label": "Dashboard", "href": "/", "icon": "home", "active": true }],
-  "groups": [
-    {
-      "label": "Management",
-      "collapsed": false,
-      "items": [
-        { "label": "Users", "href": "/users", "icon": "users", "active": false },
-        { "label": "Orders", "href": "/orders", "icon": "shopping-bag", "active": false }
-      ]
-    }
-  ],
-  "fixed_bottom": [{ "label": "Settings", "href": "/settings", "icon": "cog", "active": false }]
+  "props": {
+    "fixed_top": [
+      { "label": "Dashboard", "href": "/", "icon": "home", "active": true }
+    ],
+    "groups": [
+      {
+        "label": "Management",
+        "collapsed": false,
+        "items": [
+          { "label": "Users", "href": "/users", "icon": "users" },
+          { "label": "Orders", "href": "/orders", "icon": "shopping-bag" }
+        ]
+      }
+    ],
+    "fixed_bottom": [
+      { "label": "Settings", "href": "/settings", "icon": "cog" }
+    ]
+  }
 }
 ```
 
 ### Header
 
-Application header shell with business name, user info, notification count, and logout link. Typically used inside DashboardLayout.
+Application header with business name, user info, notification count, and logout link. Typically used inside the `dashboard` layout.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `business_name` | `String` | Yes | - | Application name shown in the header |
-| `notification_count` | `Option<u32>` | No | `None` | Unread notification count for badge display |
-| `user_name` | `Option<String>` | No | `None` | Current user's name |
-| `user_avatar` | `Option<String>` | No | `None` | Current user's avatar URL |
-| `logout_url` | `Option<String>` | No | `None` | URL for the logout link |
+| Prop | Type | Description |
+|------|------|-------------|
+| `business_name` | `string` | Application name |
+| `notification_count` | `number \| null` | Unread notification count |
+| `user_name` | `string \| null` | Current user's name |
+| `user_avatar` | `string \| null` | Current user's avatar URL |
+| `logout_url` | `string \| null` | Logout link URL |
 
-```rust
-use ferro::{ComponentNode, Component, HeaderProps};
-
-ComponentNode {
-    key: "header".to_string(),
-    component: Component::Header(HeaderProps {
-        business_name: "My App".to_string(),
-        notification_count: Some(3),
-        user_name: Some("Alice Johnson".to_string()),
-        user_avatar: None,
-        logout_url: Some("/logout".to_string()),
-    }),
-    action: None,
-    visibility: None,
+```json
+"app_header": {
+  "type": "Header",
+  "props": {
+    "business_name": "My App",
+    "notification_count": { "$data": "/notifications/unread" },
+    "user_name": { "$data": "/auth/user/name" },
+    "logout_url": "/logout"
+  }
 }
 ```
 
-JSON output:
+### PageHeader
+
+Page-level header with a title, optional subtitle, optional breadcrumb, and optional action button.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Page title |
+| `description` | `string \| null` | Page description / subtitle |
+| `breadcrumb` | `array \| null` | Breadcrumb items (same shape as Breadcrumb `items`) |
+| `action_label` | `string \| null` | Primary action button label |
+| `action_variant` | `button_variant \| null` | Action button variant |
+
+Pair with an element `"action"` for the primary action button navigation.
 
 ```json
-{
-  "key": "header",
-  "type": "Header",
-  "business_name": "My App",
-  "notification_count": 3,
-  "user_name": "Alice Johnson",
-  "logout_url": "/logout"
+"page_header": {
+  "type": "PageHeader",
+  "props": {
+    "title": "Orders",
+    "description": "Manage all customer orders.",
+    "breadcrumb": [
+      { "label": "Home", "url": "/" },
+      { "label": "Orders" }
+    ],
+    "action_label": "New Order",
+    "action_variant": "default"
+  },
+  "action": { "handler": "orders.create", "method": "GET" }
 }
 ```
 
 ### NotificationDropdown
 
-A dropdown list of notification items, typically rendered inside a Header. Displays a list of recent notifications with read/unread state, timestamps, and optional action URLs.
+A dropdown list of notification items, typically rendered inside a Header.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `notifications` | `Vec<NotificationItem>` | Yes | - | List of notifications |
-| `empty_text` | `Option<String>` | No | `None` | Text to show when the list is empty |
+| Prop | Type | Description |
+|------|------|-------------|
+| `notifications` | `array` | Notification items (see below) |
+| `empty_text` | `string \| null` | Text when list is empty |
 
-**NotificationItem** defines a single notification:
+Each notification object:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `text` | `String` | Yes | Notification message |
-| `icon` | `Option<String>` | No | Icon name |
-| `timestamp` | `Option<String>` | No | Time string (e.g., "2 minutes ago") |
-| `read` | `bool` | No (default: false) | Whether the notification has been read |
-| `action_url` | `Option<String>` | No | URL to navigate to on click |
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | `string` | Notification message |
+| `icon` | `string \| null` | Icon name |
+| `timestamp` | `string \| null` | Human-readable time string |
+| `read` | `boolean \| null` | Whether the notification has been read |
+| `action_url` | `string \| null` | URL to navigate to on click |
 
-```rust
-use ferro::{ComponentNode, Component, NotificationDropdownProps, NotificationItem};
-
-ComponentNode {
-    key: "notifications".to_string(),
-    component: Component::NotificationDropdown(NotificationDropdownProps {
-        notifications: vec![
-            NotificationItem {
-                icon: Some("bell".to_string()),
-                text: "New order received".to_string(),
-                timestamp: Some("5 minutes ago".to_string()),
-                read: false,
-                action_url: Some("/orders/123".to_string()),
-            },
-            NotificationItem {
-                icon: None,
-                text: "Payment processed".to_string(),
-                timestamp: Some("1 hour ago".to_string()),
-                read: true,
-                action_url: None,
-            },
-        ],
-        empty_text: Some("No new notifications".to_string()),
-    }),
-    action: None,
-    visibility: None,
+```json
+"notifications": {
+  "type": "NotificationDropdown",
+  "props": {
+    "empty_text": "No new notifications",
+    "notifications": [
+      {
+        "icon": "bell",
+        "text": "New order received",
+        "timestamp": "5 minutes ago",
+        "read": false,
+        "action_url": "/orders/123"
+      },
+      {
+        "text": "Payment processed",
+        "timestamp": "1 hour ago",
+        "read": true
+      }
+    ]
+  }
 }
 ```
 
-JSON output:
+---
+
+## Action Components
+
+### ActionCard
+
+A card that acts as a clickable action item.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Card heading |
+| `description` | `string \| null` | Supporting text |
+| `icon` | `string \| null` | Icon name |
+| `variant` | `action_card_variant \| null` | Visual style: `"default"`, `"outline"`, `"ghost"` |
 
 ```json
-{
-  "key": "notifications",
-  "type": "NotificationDropdown",
-  "empty_text": "No new notifications",
-  "notifications": [
-    { "icon": "bell", "text": "New order received", "timestamp": "5 minutes ago", "read": false, "action_url": "/orders/123" },
-    { "text": "Payment processed", "timestamp": "1 hour ago", "read": true }
-  ]
+"create_product": {
+  "type": "ActionCard",
+  "props": {
+    "title": "Add Product",
+    "description": "Create a new product listing.",
+    "icon": "plus",
+    "variant": "outline"
+  },
+  "action": { "handler": "products.create", "method": "GET" }
 }
 ```
 
@@ -1295,60 +1039,115 @@ JSON output:
 
 ### Checklist
 
-Step-by-step onboarding or task checklist with dismissal and optional server-side state persistence.
+Step-by-step onboarding checklist with optional server-side state persistence.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `title` | `String` | Yes | - | Checklist title |
-| `items` | `Vec<ChecklistItem>` | Yes | - | Checklist items |
-| `dismissible` | `bool` | No | `true` | Whether the checklist can be dismissed |
-| `dismiss_label` | `Option<String>` | No | `None` | Custom dismiss button label |
-| `data_key` | `Option<String>` | No | `None` | Server-side state persistence key |
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Checklist heading |
+| `items` | `array` | Checklist items (see below) |
+| `dismissible` | `boolean \| null` | Allow dismissal (default: `true`) |
+| `dismiss_label` | `string \| null` | Custom dismiss button label |
+| `data_key` | `string \| null` | Server-side state persistence key |
 
-**ChecklistItem** defines a checklist step:
+Each item object:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | `String` | Yes | Step description |
-| `checked` | `bool` | No (default: false) | Whether this step is complete |
-| `href` | `Option<String>` | No | Link to take the step |
+| Field | Type | Description |
+|-------|------|-------------|
+| `label` | `string` | Step description |
+| `checked` | `boolean \| null` | Whether this step is complete |
+| `href` | `string \| null` | Link to complete the step |
 
-```rust
-use ferro::{ComponentNode, Component, ChecklistProps, ChecklistItem};
-
-ComponentNode {
-    key: "setup-checklist".to_string(),
-    component: Component::Checklist(ChecklistProps {
-        title: "Get Started".to_string(),
-        items: vec![
-            ChecklistItem { label: "Create your account".to_string(), checked: true, href: None },
-            ChecklistItem { label: "Set up billing".to_string(), checked: false, href: Some("/billing".to_string()) },
-            ChecklistItem { label: "Invite your team".to_string(), checked: false, href: Some("/team/invite".to_string()) },
-        ],
-        dismissible: true,
-        dismiss_label: Some("Done".to_string()),
-        data_key: Some("onboarding_checklist".to_string()),
-    }),
-    action: None,
-    visibility: None,
+```json
+"setup_checklist": {
+  "type": "Checklist",
+  "props": {
+    "title": "Get Started",
+    "dismissible": true,
+    "dismiss_label": "Done",
+    "data_key": "onboarding_checklist",
+    "items": [
+      { "label": "Create your account", "checked": true },
+      { "label": "Set up billing", "checked": false, "href": "/billing" },
+      { "label": "Invite your team", "checked": false, "href": "/team/invite" }
+    ]
+  }
 }
 ```
 
-JSON output:
+---
+
+## Commerce Components
+
+### ProductTile
+
+Product display card with image, title, price, and optional action.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Product name |
+| `price` | `string` | Formatted price string (e.g., `"€29.00"`) |
+| `description` | `string \| null` | Product description |
+| `image_url` | `string \| null` | Product image URL |
+| `badge` | `string \| null` | Badge text (e.g., `"New"`, `"Sale"`) |
+| `action_label` | `string \| null` | Action button label |
 
 ```json
-{
-  "key": "setup-checklist",
-  "type": "Checklist",
-  "title": "Get Started",
-  "dismissible": true,
-  "dismiss_label": "Done",
-  "data_key": "onboarding_checklist",
-  "items": [
-    { "label": "Create your account", "checked": true },
-    { "label": "Set up billing", "checked": false, "href": "/billing" },
-    { "label": "Invite your team", "checked": false, "href": "/team/invite" }
-  ]
+"product_tile": {
+  "type": "ProductTile",
+  "props": {
+    "title": { "$data": "/product/name" },
+    "price": { "$data": "/product/price_formatted" },
+    "description": { "$data": "/product/description" },
+    "image_url": { "$data": "/product/image_url" },
+    "badge": "New",
+    "action_label": "Add to Cart"
+  },
+  "action": { "handler": "cart.add", "method": "POST" }
+}
+```
+
+---
+
+## Kanban Components
+
+### KanbanBoard
+
+Kanban board with multiple columns. On mobile, columns switch to tabs.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `columns` | `array` | Column element IDs (the columns must be `KanbanColumn` elements) |
+
+```json
+"order_board": {
+  "type": "KanbanBoard",
+  "props": {
+    "columns": ["pending_col", "processing_col", "completed_col"]
+  }
+}
+```
+
+### KanbanColumn
+
+A single column in a KanbanBoard.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | Column heading |
+| `data_path` | `string` | JSON Pointer to the card data array |
+| `count` | `number \| null` | Badge count shown in the column header |
+| `empty_message` | `string \| null` | Message when the column has no cards |
+
+```json
+"pending_col": {
+  "type": "KanbanColumn",
+  "props": {
+    "title": "Pending",
+    "data_path": "/orders/pending",
+    "count": { "$data": "/orders/pending_count" },
+    "empty_message": "No pending orders"
+  },
+  "children": ["pending_card_template"]
 }
 ```
 
@@ -1356,72 +1155,4 @@ JSON output:
 
 ## Extensible Components
 
-### Plugin
-
-Passes through to a registered plugin component. The `plugin_type` field selects the plugin from the global registry.
-
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `plugin_type` | `String` | Yes | Registered plugin type name (e.g., `"Map"`) |
-| `props` | `serde_json::Value` | Yes | Raw props passed to the plugin's render function |
-
-```rust
-use ferro::{ComponentNode, Component, PluginProps};
-
-ComponentNode {
-    key: "office-map".to_string(),
-    component: Component::Plugin(PluginProps {
-        plugin_type: "Map".to_string(),
-        props: serde_json::json!({
-            "center": [51.505, -0.09],
-            "zoom": 13,
-            "markers": [
-                { "lat": 51.505, "lng": -0.09, "popup": "Our office" }
-            ]
-        }),
-    }),
-    action: None,
-    visibility: None,
-}
-```
-
-See **[Plugins](plugins.md)** for the full plugin guide — how to build, register, and use custom plugin components.
-
-JSON output:
-
-```json
-{
-  "key": "office-map",
-  "type": "Map",
-  "center": [51.505, -0.09],
-  "zoom": 13,
-  "markers": [{ "lat": 51.505, "lng": -0.09, "popup": "Our office" }]
-}
-```
-
----
-
-## JSON Serialization
-
-Every component tree serializes to JSON via serde. The `Component` enum uses serde's tagged representation, producing a `"type"` field that identifies the component:
-
-```json
-{
-  "key": "welcome-card",
-  "type": "Card",
-  "title": "Welcome",
-  "description": "Your dashboard",
-  "children": [
-    {
-      "key": "greeting",
-      "type": "Text",
-      "content": "Hello, Alice!",
-      "element": "h2"
-    }
-  ]
-}
-```
-
-The `ComponentNode` fields (`key`, `action`, `visibility`) are flattened into the same JSON object alongside the component-specific props. This produces clean, predictable JSON that frontend renderers can consume directly.
-
-Optional fields with `None` values are omitted from serialization (`skip_serializing_if = "Option::is_none"`). Default values for enums (e.g., `ButtonVariant::Default`) are always included.
+For plugin components (third-party or custom types not in the built-in catalog), see **[Plugins](plugins.md)**.
