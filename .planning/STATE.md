@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: Phase 159 context gathered
-last_updated: "2026-05-15T21:31:13.369Z"
-last_activity: 2026-05-15 -- Phase 159 planning complete
+status: Waiting — merge master before proceeding
+stopped_at: context exhaustion at 90% (2026-05-16)
+last_updated: "2026-05-16T01:15:04.315Z"
+last_activity: 2026-05-16 -- Phase 159 complete; catalog $data/expression validation bug fixed; backup branch created
 progress:
   total_phases: 161
-  completed_phases: 135
+  completed_phases: 136
   total_plans: 368
-  completed_plans: 337
+  completed_plans: 338
   percent: 92
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md and .planning/VISION.md
 
 **Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** Phase 159 — v12-0-end-to-end-browser-verification-and-docs-build-check
+**Current focus:** Merge master → v12.0/json-ui-v2 branch, then gestiscilo local-path testing
 
 ## Current Position
 
-Phase: 159 (v12-0-end-to-end-browser-verification-and-docs-build-check) — EXECUTING
-Plan: 1 of 2
-Workspace version: 0.2.0
-Status: Ready to execute
-Last activity: 2026-05-15 -- Phase 159 planning complete
-Next milestone: v12.0 JSON-UI v2 (Phase 115 — Spec v2 Data Structures)
+Phase: 159 — COMPLETE (3/3 plans)
+Next: Merge master into this branch (backup created), then gestiscilo tests via local path link
+Blocking Phase 160+: gestiscilo friction phases 162–164 must complete first
+Workspace version: 0.2.11
+Status: Waiting — merge master before proceeding
+Last activity: 2026-05-16 -- Phase 159 complete; catalog $data/expression validation bug fixed; backup branch created
 
 Progress: [██████████] 96%
 
@@ -149,7 +149,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-15T20:19:41.269Z
-Stopped at: Phase 159 context gathered
-Resume file: .planning/phases/159-v12-0-end-to-end-browser-verification-and-docs-build-check/159-CONTEXT.md
+Last session: 2026-05-16T01:15:04.270Z
+Stopped at: context exhaustion at 90% (2026-05-16)
+Resume file: None
 Next action: `/gsd-complete-milestone v11.7`
