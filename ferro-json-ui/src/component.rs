@@ -344,6 +344,35 @@ pub struct CheckboxProps {
     pub error: Option<String>,
 }
 
+/// Props for CheckboxList component — multi-select checkbox group.
+///
+/// Each checked option submits as `field=value`. Options may be supplied
+/// statically via `options` or resolved at render time from `options_path`.
+/// Pre-selected values are read from `selected_path` (a `Vec<String>`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CheckboxListProps {
+    /// Shared form field name; each checkbox submits as `field=value`.
+    pub field: String,
+    /// Static options list. When empty and `options_path` is set, options are
+    /// resolved from the data at render time.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<SelectOption>,
+    /// Data path to an array of `{value, label}` objects for data-driven options.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options_path: Option<String>,
+    /// Data path to a `Vec<String>` of pre-selected values.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 /// Props for Switch component.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SwitchProps {
@@ -1111,5 +1140,27 @@ mod schema_smoke_tests {
             !json.contains("\"footer\""),
             "empty footer must be skipped, got: {json}"
         );
+    }
+
+    #[test]
+    fn schema_for_checkbox_list_props_generates() {
+        assert_schema_nonempty_object::<CheckboxListProps>("CheckboxListProps");
+    }
+
+    #[test]
+    fn checkbox_list_props_serde_roundtrip() {
+        let json = serde_json::json!({
+            "field": "services",
+            "options": [{"value": "a", "label": "Alpha"}, {"value": "b", "label": "Beta"}],
+            "selected_path": "/preselected"
+        });
+        let parsed: CheckboxListProps = serde_json::from_value(json.clone()).expect("decode");
+        assert_eq!(parsed.field, "services");
+        assert_eq!(parsed.options.len(), 2);
+        assert_eq!(parsed.selected_path.as_deref(), Some("/preselected"));
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        // None/empty fields are omitted by serde.
+        assert!(reserialized.get("label").is_none());
+        assert!(reserialized.get("disabled").is_none());
     }
 }
