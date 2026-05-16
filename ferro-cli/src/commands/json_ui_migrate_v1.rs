@@ -257,10 +257,7 @@ fn try_migrate_handler(
     if top_ids.len() != 1 {
         return HandlerResult::Unsupported;
     }
-    let root = top_ids
-        .into_iter()
-        .next()
-        .expect("len == 1 checked above");
+    let root = top_ids.into_iter().next().expect("len == 1 checked above");
 
     let mut spec = Map::new();
     spec.insert(

@@ -83,7 +83,8 @@ fn codemod_one_handler_emits_spec_and_rewrites_controller() {
     // Controller body retains the TODO marker above the handler.
     let rewritten = std::fs::read_to_string(&src_path).unwrap();
     assert!(
-        rewritten.contains("// TODO: ferro json-ui:migrate-v1 could not auto-translate this handler"),
+        rewritten
+            .contains("// TODO: ferro json-ui:migrate-v1 could not auto-translate this handler"),
         "TODO marker present on multi-root handler; got:\n{rewritten}"
     );
     // Controller body for the handler is left intact (no render_file rewrite).
@@ -99,8 +100,11 @@ fn codemod_single_root_emits_spec_and_rewrites_controller() {
     // successfully migrated — produces a JSON spec under src/views/ and
     // rewrites the controller to call JsonUi::render_file.
     let dir = TempDir::new().unwrap();
-    let src_path =
-        write_fixture(&dir, "in_single_root.rs", "src/controllers/in_single_root.rs");
+    let src_path = write_fixture(
+        &dir,
+        "in_single_root.rs",
+        "src/controllers/in_single_root.rs",
+    );
     let _cwd_guard = ChangeCwd::new(dir.path());
 
     json_ui_migrate_v1::run(src_path.to_string_lossy().to_string(), false).expect("codemod runs");
