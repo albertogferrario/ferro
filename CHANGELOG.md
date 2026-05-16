@@ -3,6 +3,40 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] — ferro-json-ui / ferro-mcp (Phase 162)
+
+Changes landed on `v12.0/json-ui-v2`. Accumulated through Phases 162–164; single publish at Phase 161 (merge to master).
+
+### Added
+
+- `CheckboxList` component for multi-select checkbox groups with static or data-driven options (162-01, D-01/D-02). Props: `field`, `options`, `options_path`, `selected_path`, `label`, `description`, `disabled`, `error`. Renders one `<input type="checkbox">` per option; all strings HTML-escaped.
+- `SwitchProps.compact: Option<bool>` for compact inline switch display via `scale-75 origin-left` CSS toggle (162-03, D-16).
+- `ImageProps.inline_svg: Option<String>` and `ImageProps::inline_svg(svg, alt)` factory for server-constructed inline SVG; emits an aria-labelled wrapper div in place of `<img>` (162-03, D-17).
+- `RichTextEditor` plugin backed by Quill 2.0.3, registered via the `JsonUiPlugin` surface (`ferro-json-ui/src/plugins/rich_text_editor.rs`). Two consumer sites in gestiscilo documenti templates unblocked (162-04, D-18). Note: Quill CDN SRI hashes are TODO — tracked in `162-DEFERRED.md`.
+- `SpecError::FooterMissing { element_id, footer_id }` variant; spec validator (`validate_footer_ids`) now rejects footer references to unknown element IDs at parse time via `SpecBuilder::build()` (162-07, D-07).
+- `json_ui_verify_action` MCP tool — accepts `{ handler, method? }`, returns `RouteInfo` on exact match or the closest Levenshtein candidate on miss. Reads route names from the existing registry; no second source of truth (162-09, D-09).
+- `strum::AsRefStr` derive on `AlertVariant`, `BadgeVariant`, `ButtonVariant`, `ToastVariant` (`component.rs`) and `DialogVariant`, `NotifyVariant` (`action.rs`) — typed enums round-trip to their snake_case wire string via `.as_ref()` without changing the JSON wire format (162-08, D-11).
+- `docs/src/json-ui/migration-v1-to-v2.md` — 493-line v1→v2 migration guide with 7 worked-example sections covering `render_file`, Card+Form+Alert depth-flattening, DataTable interpolation, read/edit detail pattern, CheckboxList, variant strum round-trip, and `json_ui_verify_action` (162-10, D-20).
+- `docs/src/json-ui/plugins.md` — JsonUiPlugin authoring guide extended with a RichTextEditor built-in plugin section and catalog discoverability notes (162-10, D-19).
+- 7 `migration_v1_to_v2` `code_templates` entries in `ferro-mcp/src/tools/code_templates.rs`, surfaced via the `code_templates` MCP tool — one template per migration guide section (162-10, D-22).
+
+### Changed
+
+- DataTable `row_actions[i].action.url` now interpolates any column key from the row at render time (`{label}`, `{slug_path}`, `{status}`, …) in addition to the legacy `{row_key}` and `{id}` (162-02, D-03/D-04). Missing-key placeholders pass through unchanged. Wire format unchanged.
+- Spec validator emits a stderr warning when an element ID appears in both `props.footer` and `children` of the same parent (162-07, D-08). Non-fatal; no new crate dependency.
+- `ferro-json-ui/src/catalog.rs` and `ferro-mcp/src/tools/json_ui_catalog.rs` updated to reflect the post-Wave-1 catalog shape: 40 built-in components (including CheckboxList) and 2 plugin components (Map + RichTextEditor) (162-01, 162-04, 162-05, D-21).
+- `docs/src/json-ui/components.md` gains a v1→v2 migration banner linking to the new guide, a worked `Card` + flat `children` example, and an "Inline view/edit" section (162-10, D-13, D-14, D-15).
+
+### Removed
+
+- Auth layout (`ferro-json-ui/src/layout.rs`) no longer wraps content in `bg-card rounded-lg shadow-md p-8`. Specs using `layout: "auth"` must declare their own `Card` root for card chrome (162-06, D-05). Breaking for any spec that relied on the implicit wrapper; gestiscilo audit confirmed all auth specs already declare Card roots.
+
+### Notes
+
+- D-06 (`Fragment`/`Group` borderless container): NOT added. D-05 resolves the double-card friction.
+- D-10 (`#[handler(name)]` attribute): NOT added. Route names are registered at `route!`/`get!`/`post!` macro call sites; the new MCP tool reads from that single source of truth.
+- D-23, D-24: Phase 162 does not publish to crates.io and does not bump the workspace version (still 0.2.35). The single publish for v12.0 happens at Phase 161 (merge `v12.0/json-ui-v2` → master).
+
 ## ferro-projection
 
 ### [0.2.33] — 2026-05-14

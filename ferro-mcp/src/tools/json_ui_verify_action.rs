@@ -117,7 +117,10 @@ mod tests {
     fn verify_action_found_filters_by_method() {
         let routes = vec![mk_route("dashboard.show", "GET")];
         let result = find_handler(&routes, "dashboard.show", Some("POST"));
-        assert!(!result.found, "GET-only route should not match a POST query");
+        assert!(
+            !result.found,
+            "GET-only route should not match a POST query"
+        );
     }
 
     #[test]
