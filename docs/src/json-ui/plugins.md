@@ -114,7 +114,7 @@ document.querySelectorAll('[data-ferro-chart]').forEach(function(canvas) {
 use ferro_json_ui::register_plugin;
 
 // In src/bootstrap.rs or main.rs, before the server starts:
-register_plugin("Chart", ChartPlugin);
+register_plugin(ChartPlugin);
 ```
 
 After registration, use the plugin in a spec file by setting `"type"` to the registered name:
@@ -218,3 +218,92 @@ Renders an interactive map using Leaflet 1.9.4. Requires internet access for the
 ```
 
 Assets loaded automatically: Leaflet CSS (`<head>`) and Leaflet JS (`</body>`), both from unpkg CDN with SRI hashes.
+
+### RichTextEditor (Quill-based)
+
+**Component type:** `"RichTextEditor"`
+
+Renders an interactive rich text editor backed by Quill 2.0.3. The editor container stores its content in a companion hidden input field; the hidden input is submitted with the form on POST.
+
+**Props:**
+
+| Prop | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `field` | `string` | Yes | — | Form field name for the hidden input |
+| `label` | `string` | Yes | — | Label text above the editor |
+| `default_value` | `string \| null` | No | `""` | Initial HTML content (static) |
+| `data_path` | `string \| null` | No | — | JSON Pointer to pre-fill the editor from handler data |
+| `error` | `string \| null` | No | — | Validation error message displayed below the editor |
+
+`data_path` takes precedence over `default_value` when both are set.
+
+**Security:** The editor produces user-controlled HTML. Content sanitization on form submit is the application's responsibility; the framework does not sanitize submitted values.
+
+**Spec example:**
+
+```json
+"description_editor": {
+  "type": "RichTextEditor",
+  "props": {
+    "field": "description",
+    "label": "Description",
+    "data_path": "/document/description"
+  }
+}
+```
+
+**In a form:**
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Edit Document",
+  "layout": "dashboard",
+  "root": "edit_card",
+  "elements": {
+    "edit_card": {
+      "type": "Card",
+      "props": { "title": "Edit Document" },
+      "children": ["doc_form"]
+    },
+    "doc_form": {
+      "type": "Form",
+      "props": { "max_width": "lg" },
+      "children": ["title_input", "description_editor", "submit_btn"],
+      "action": { "handler": "documents.update", "method": "POST" }
+    },
+    "title_input": {
+      "type": "Input",
+      "props": { "field": "title", "label": "Title", "data_path": "/document/title" }
+    },
+    "description_editor": {
+      "type": "RichTextEditor",
+      "props": {
+        "field": "description",
+        "label": "Description",
+        "data_path": "/document/description"
+      }
+    },
+    "submit_btn": {
+      "type": "Button",
+      "props": { "label": "Save", "button_type": "submit" }
+    }
+  }
+}
+```
+
+Assets loaded automatically: Quill Snow CSS (`<head>`) and Quill JS (`</body>`), both from jsDelivr CDN. SRI hashes are pending verification before production use — see `ferro-json-ui/src/plugins/rich_text_editor.rs` for the TODO marker.
+
+---
+
+## Catalog Discoverability
+
+Plugin components registered in the global registry are automatically surfaced by the `json_ui_catalog` MCP tool, which agents use to discover available components:
+
+```
+mcp__ferro__json_ui_catalog({})
+```
+
+The response includes a `plugin_components` section listing each registered plugin, its props schema, and a usage example. This means agents authoring specs do not need to read plugin source code — the catalog provides the same discovery surface as built-in components.
+
+The built-in plugins (`Map`, `RichTextEditor`) are pre-registered by `ferro_json_ui::global_plugin_registry()` at framework startup. Custom plugins registered via `register_plugin(MyPlugin)` at application startup are included in the same catalog response.

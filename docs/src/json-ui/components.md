@@ -1,5 +1,9 @@
 # Components
 
+> **Migrating from v1?** See the [Migration v1 → v2](./migration-v1-to-v2.md) guide for the
+> correct path. v1 types (`JsonUiView`, `Component`, `ComponentNode`) are removed in v2;
+> the migration pattern is `JsonUi::render_file("src/views/.../*.json", data)`.
+
 Every component in a v2 JSON-UI spec is referenced by its `"type"` string in a flat element map. For the full spec format and workflow, see [Getting Started](getting-started.md).
 
 Each element follows this shape:
@@ -93,6 +97,42 @@ Children are element IDs listed in the `"children"` array on the element, not in
   "children": ["name_text", "email_text"]
 }
 ```
+
+**v1→v2 children migration:** In v1, `CardProps` (and `FormProps`, `GridProps`, etc.) had a `children: Vec<Component>` field that accepted inline component trees. In v2, `children` is an array of element ID strings that reference entries in the spec's flat `elements` map. The elements themselves are siblings at the top level — not nested.
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "card_main",
+  "elements": {
+    "card_main": {
+      "type": "Card",
+      "props": { "title": "Welcome" },
+      "children": ["heading", "form_login"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "Sign in", "element": "h2" }
+    },
+    "form_login": {
+      "type": "Form",
+      "props": { "max_width": "sm" },
+      "children": ["email_input", "submit_btn"],
+      "action": { "handler": "auth.login", "method": "POST" }
+    },
+    "email_input": {
+      "type": "Input",
+      "props": { "field": "email", "label": "Email", "input_type": "email" }
+    },
+    "submit_btn": {
+      "type": "Button",
+      "props": { "label": "Sign in", "button_type": "submit" }
+    }
+  }
+}
+```
+
+All elements — `card_main`, `heading`, `form_login`, `email_input`, `submit_btn` — are siblings in the `elements` map. The tree structure is expressed purely through `children` ID references.
 
 ### Grid
 
@@ -1156,3 +1196,83 @@ A single column in a KanbanBoard.
 ## Extensible Components
 
 For plugin components (third-party or custom types not in the built-in catalog), see **[Plugins](plugins.md)**.
+
+---
+
+## Inline view/edit pattern
+
+The v1 `DetailFormProps` / `DetailField` / `EditMode` types are removed in v2. The replacement is a `Form` element whose children include both read-only display items and editable inputs, each toggled by a `visible` condition on a query parameter.
+
+This pattern requires no Rust code to distinguish view and edit modes — the spec handles it entirely through `visible` rules on `query.mode`.
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Profile",
+  "layout": "dashboard",
+  "root": "profile_card",
+  "elements": {
+    "profile_card": {
+      "type": "Card",
+      "props": { "title": "Profile" },
+      "children": ["edit_btn", "profile_form"]
+    },
+    "edit_btn": {
+      "type": "Button",
+      "props": { "label": "Edit", "variant": "outline" },
+      "action": { "url": "?mode=edit" },
+      "visible": { "ne": ["query.mode", "edit"] }
+    },
+    "profile_form": {
+      "type": "Form",
+      "props": { "max_width": "md" },
+      "children": [
+        "name_view", "name_edit",
+        "email_view", "email_edit",
+        "save_btn"
+      ],
+      "action": { "handler": "profile.update", "method": "POST" }
+    },
+    "name_view": {
+      "type": "DescriptionList",
+      "props": {
+        "items": [{ "label": "Name", "value": { "$data": "/user/name" } }]
+      },
+      "visible": { "ne": ["query.mode", "edit"] }
+    },
+    "name_edit": {
+      "type": "Input",
+      "props": {
+        "field": "name",
+        "label": "Name",
+        "data_path": "/user/name"
+      },
+      "visible": { "eq": ["query.mode", "edit"] }
+    },
+    "email_view": {
+      "type": "DescriptionList",
+      "props": {
+        "items": [{ "label": "Email", "value": { "$data": "/user/email" } }]
+      },
+      "visible": { "ne": ["query.mode", "edit"] }
+    },
+    "email_edit": {
+      "type": "Input",
+      "props": {
+        "field": "email",
+        "label": "Email Address",
+        "input_type": "email",
+        "data_path": "/user/email"
+      },
+      "visible": { "eq": ["query.mode", "edit"] }
+    },
+    "save_btn": {
+      "type": "Button",
+      "props": { "label": "Save", "button_type": "submit" },
+      "visible": { "eq": ["query.mode", "edit"] }
+    }
+  }
+}
+```
+
+The `visible` condition `{ "eq": ["query.mode", "edit"] }` shows the element only when `?mode=edit` is present in the URL. The inverse `{ "ne": ["query.mode", "edit"] }` shows the element in all other cases (view mode). See [Data Binding & Visibility](data-binding.md) for the full `visible` condition reference.
