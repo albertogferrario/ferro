@@ -122,7 +122,7 @@ impl JsonUiPlugin for RichTextEditorPlugin {
         });
     });
 })();"#
-            .to_string(),
+                .to_string(),
         )
     }
 }
@@ -165,8 +165,17 @@ mod tests {
     fn rich_text_editor_plugin_render_emits_container_and_hidden_input() {
         let p = RichTextEditorPlugin;
         let out = p.render(&json!({"field": "bio", "label": "Bio"}), &json!({}));
-        assert!(out.contains("data-ferro-quill"), "output must contain data-ferro-quill");
-        assert!(out.contains("name=\"bio\""), "output must contain hidden input name");
-        assert!(out.contains("id=\"bio-editor\""), "output must contain editor container id");
+        assert!(
+            out.contains("data-ferro-quill"),
+            "output must contain data-ferro-quill"
+        );
+        assert!(
+            out.contains("name=\"bio\""),
+            "output must contain hidden input name"
+        );
+        assert!(
+            out.contains("id=\"bio-editor\""),
+            "output must contain editor container id"
+        );
     }
 }
