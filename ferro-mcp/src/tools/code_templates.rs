@@ -1826,7 +1826,11 @@ mod tests {
         for t in &templates.templates {
             assert_eq!(t.category, "migration_v1_to_v2");
         }
-        let names: Vec<&str> = templates.templates.iter().map(|t| t.name.as_str()).collect();
+        let names: Vec<&str> = templates
+            .templates
+            .iter()
+            .map(|t| t.name.as_str())
+            .collect();
         for required in [
             "render_file_migration",
             "card_children_flat_map",
@@ -1836,7 +1840,10 @@ mod tests {
             "variant_strum_round_trip",
             "verify_action_mcp",
         ] {
-            assert!(names.contains(&required), "missing migration template: {required}");
+            assert!(
+                names.contains(&required),
+                "missing migration template: {required}"
+            );
         }
     }
 }
