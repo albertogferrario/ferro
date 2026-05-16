@@ -236,8 +236,8 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.components.len(),
-            39,
-            "Catalog should contain all 39 built-in components, got {}",
+            40,
+            "Catalog should contain all 40 built-in components (incl. CheckboxList), got {}",
             catalog.components.len()
         );
 
@@ -254,6 +254,7 @@ mod tests {
             "Badge",
             "Modal",
             "Checkbox",
+            "CheckboxList",
             "Switch",
             "Separator",
             "DescriptionList",
@@ -293,11 +294,23 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.plugin_components.len(),
-            1,
-            "Catalog should contain 1 plugin component (Map), got {}",
+            2,
+            "Catalog should contain 2 plugin components (Map + RichTextEditor), got {}",
             catalog.plugin_components.len()
         );
-        assert_eq!(catalog.plugin_components[0].name, "Map");
+        let plugin_names: Vec<&str> = catalog
+            .plugin_components
+            .iter()
+            .map(|c| c.name.as_str())
+            .collect();
+        assert!(
+            plugin_names.contains(&"Map"),
+            "Plugin components should include Map"
+        );
+        assert!(
+            plugin_names.contains(&"RichTextEditor"),
+            "Plugin components should include RichTextEditor"
+        );
     }
 
     #[test]
