@@ -137,6 +137,59 @@ These items came from compiling gestiscilo against the patched v2 ferro and are 
 
 </canonical_refs>
 
+<code_context>
+## Existing Code Insights
+
+### Reusable Assets
+- `ferro-json-ui/src/component.rs` already hosts `SwitchProps` (line 349), `DataTableProps` (line 741 with `row_actions` and `row_href` fields), `AlertVariant`, `BadgeVariant`, `ButtonVariant`, `ToastVariant` enums — D-11 (strum derive), D-16 (Switch.compact), D-17 (Image SVG), D-18 (RichTextEditor) re-add to existing structs/enums rather than scaffolding new files.
+- `ferro-json-ui/src/render/data.rs` already implements `row_href` substitution (`row_actions` rendering at lines 86, 199, 233). D-03/D-04 placeholder interpolation reuses the existing substitution path — no new render function.
+- `ferro-json-ui/src/spec.rs` `Spec::from_json` / validation path is the existing target for D-07 (missing footer ID error) and D-08 (duplicate footer/children warning). No new validator module.
+- `ferro-json-ui/src/plugin.rs` provides the v2 plugin authoring surface (`JsonUiPlugin` trait, `register_plugin`, `Asset` system). D-18 (RichTextEditor) is a plugin consumer, not a new framework primitive. D-19 documents this surface as-is.
+- `ferro-mcp/src/tools/json_ui_catalog.rs`, `json_ui_inspect.rs`, `code_templates.rs` are the existing MCP surfaces D-21 / D-22 extend; the exhaustive-list assertion in tests is the bump site for D-21.
+- `app/static/pagamenti.json` + `app/src/controllers/pagamenti.rs` (Phase 121) is the canonical v2 reference cited throughout D-20 migration docs.
+
+### Established Patterns
+- **Catalog + MCP dual update** — every catalog change touches `ferro-json-ui/src/catalog.rs` AND `ferro-mcp/src/tools/json_ui_catalog.rs`; the exhaustive-list assertion in ferro-mcp tests catches drift. D-21 codifies this for batch 1.
+- **Variant string round-trip case-insensitive on parse, lowercase on emit** — `AlertVariant`/`BadgeVariant`/`ButtonVariant`/`ToastVariant` already accept case-insensitive input (D-12); the strum derive in D-11 is purely call-site ergonomics on the consumer side.
+- **Render-time placeholder substitution** — `row_href` already substitutes `{row_key}` at render time; D-03/D-04 generalize to all column keys without changing the wire format.
+- **Plugin asset injection over framework component** — `RichTextEditor` (D-18) follows the existing plugin surface (`JsonUiPlugin` + `Asset` system), not a new `Component::RichTextEditor` variant. Keeps the catalog clean.
+- **Spec validation emits structured errors via `Spec::validate`** — D-07 and D-08 reuse the existing validator path. No parallel validation pipeline.
+
+### Integration Points
+- New `CheckboxList` (D-01/D-02) registers in `ferro-json-ui/src/catalog.rs` + ships a render function alongside existing `Checkbox` (single-item primitive) — the two are NOT unified.
+- New `json_ui_verify_action` MCP tool (D-09) lands as a new file in `ferro-mcp/src/tools/` and registers in the tool dispatcher. Reads route names from the existing route registry (no new source of truth — D-10 explicitly rejects `#[handler(name = "...")]`).
+- New `docs/src/json-ui/migration-v1-to-v2.md` (D-20) registers in `docs/src/SUMMARY.md`; consumer-facing docs only, no code.
+- Auth layout `templates/auth.{html,hbs}` (D-05) is the breaking-change site; remove the card wrapper, leaving structural centering + max-width only. All auth-using specs already declare `Card` roots.
+
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+- The four migrated controllers in gestiscilo Phase 138 — `auth.rs`, `account.rs`, `onboarding.rs`, `pages.rs` — are the canonical sites the decisions were calibrated against. Every D-XX in this CONTEXT traces to a concrete FRICTION.md entry from those four migrations.
+- The canonical "what a correct v2 page looks like" reference is `app/static/pagamenti.json` + `app/src/controllers/pagamenti.rs` (Phase 121 field test). The migration guide (D-20) cites this throughout as the worked example.
+- The Planning Note above (bidirectional adaptation) governs every decision: before adding ferro complexity to satisfy a friction entry, ask first whether the v1 UI pattern was already wrong and whether the v2-native pattern delivers the same user value via gestiscilo redesign. D-03/D-04 (DataTable per-row interpolation) is the canonical example — the planner must confirm with the gestiscilo author that per-row actions on list pages are not better solved by "navigate to detail page" before shipping the interpolation feature.
+- Single-consumer needs go in the consumer's `Spec::builder()` escape hatch. Cross-consumer patterns become first-class catalog components or directives. This heuristic kept `Fragment`/`Group` containers OUT of the catalog (D-06) and kept `$each`/`$if`/`$template` deferred to Phase 163 where heterogeneous-iteration patterns will provide the forcing function.
+
+</specifics>
+
+<deferred>
+## Deferred Ideas
+
+Phase 162 deliberately stays narrow — only items justified by the four Phase 138 controllers AND the blast-radius API decisions. Items observed but explicitly deferred:
+
+- `$each` / `$if` / `$template` spec-level iteration directives — deferred to Phase 163 (gestiscilo Phase 140 cassa, where heterogeneous iteration provides the forcing function).
+- `SpecBuilder` ergonomic nested DSL — deferred to Phase 163.
+- `ferro json-ui:migrate-v1` codemod — deferred to Phase 163.
+- Multi-step form patterns, `visible` rule expressiveness at depth, PDF preview routing — deferred to Phase 164 (gestiscilo Phase 142 documenti).
+- Host-based tenancy gap — out of JSON-UI scope; tracked in `.planning/backlog/host-based-tenancy.md` for a dedicated tenancy-layer phase. The `PreRouteMiddleware.rewrite` → `handle` rename surfaced in the blast radius is a one-line gestiscilo-side fix and does not bring the tenancy work forward.
+- `Fragment` / `Group` borderless container — D-06 explicitly rejects this for Phase 162. Revisit only if a future phase finds a use case that D-05 + existing containers (Grid 1-col, FormSection without title) cannot express.
+- `#[handler(name = "...")]` attribute — D-10 explicitly rejects this. Revisit only if a future use case justifies a second source of truth for route names.
+
+Detailed next-phase inputs are tracked in `<followups>` below.
+
+</deferred>
+
 <followups>
 ## Follow-ups (next-phase inputs)
 
