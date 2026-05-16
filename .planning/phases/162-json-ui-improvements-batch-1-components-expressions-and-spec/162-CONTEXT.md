@@ -1,0 +1,140 @@
+# Phase 162: JSON-UI improvements batch 1 — components, expressions, and spec ergonomics — Context
+
+**Gathered:** 2026-05-16
+**Status:** Ready for planning
+**Source:** `/Users/alberto/repositories/gestiscilo-it/app/.planning/phases/138-json-ui-v2-migration-auth-account-onboarding-pages/FRICTION.md`
+
+<domain>
+## Phase Boundary
+
+Phase 162 absorbs the friction surfaced by gestiscilo Phase 138 (v1→v2 migration of `auth.rs`, `account.rs`, `onboarding.rs`, `pages.rs`). It is the **first** of three batched improvement phases consuming gestiscilo field-test friction files. Items in this phase are the component, expression, validation, and API-surface changes whose justification comes from those four migrated controllers and from the blast-radius analysis activated when `[patch.crates-io]` started compiling the not-yet-migrated codebase against v2.
+
+Out of scope (deferred to later phases):
+
+- Phase 163 (gestiscilo Phase 140, cassa/calendario): `$each` / `$if` / `$template` spec-level iteration directives, `SpecBuilder` ergonomic nested DSL, and the `ferro json-ui:migrate-v1` codemod. Their justification comes from heterogeneous-iteration sites in `cassa/orders.rs` and `cassa/products.rs` and will arrive in Phase 140's friction file.
+- Phase 164 (gestiscilo Phase 142, documenti): multi-step form patterns, `visible` rule expressiveness at depth, PDF preview routing. Documenti's friction file is the canonical input.
+- Host-based tenancy proposal: `.planning/backlog/host-based-tenancy.md`. Not consumed by Phase 162 because it is a tenancy-layer concern, not a JSON-UI concern. The `PreRouteMiddleware.rewrite` → `handle` rename surfaced in the blast radius is one trivial line in `src/middleware/host.rs` on the gestiscilo side; the underlying tenancy gap is for a dedicated phase.
+
+In scope: every "Suggested ferro improvement" in FRICTION.md whose payload is in `ferro-json-ui`, `framework/src/json_ui/`, `ferro-mcp`, or the v2 documentation set, restricted to the four migrated controllers and the API-surface decisions needed to unblock the remaining migration phases. The exact ordering is locked in `<decisions>` below.
+
+</domain>
+
+<decisions>
+## Implementation Decisions
+
+### New components — homogeneous-options gap
+
+- **D-01:** Add a `CheckboxList` first-class component to `ferro-json-ui` with props: `field: String` (shared form field name; each selected checkbox submits as `field=value`), `options: Vec<SelectOption>` OR `options: { $data: "/path" }` (data-driven array), `selected_path: Option<String>` (data path to a `Vec<String>` of pre-selected values), `label: Option<String>`, `description: Option<String>`, `disabled: Option<bool>`, `error: Option<String>`. Renderer emits one `<input type="checkbox" name="{field}" value="{option.value}">` per option with the standard form-field chrome. This closes the data-driven multi-select gap (onboarding step 2 — services list).
+- **D-02:** `CheckboxList` lands as a new catalog entry. Existing `Checkbox` is unchanged (single-item primitive). The two are not unified — single-checkbox and multi-checkbox-from-data are semantically different.
+
+### DataTable per-row action interpolation
+
+- **D-03:** Extend `DataTableProps.row_actions[i].action.url` to support `{row_key}` placeholder interpolation, using the same substitution logic already applied to `row_href`. The substitution happens at render time, per row. Without this, `row_actions` is unusable for any per-row navigation (closing publish/delete/QR-download regression on `/dashboard/pagine`).
+- **D-04:** Generalize the placeholder grammar to support any column key bound at render time (`{label}`, `{slug_path}`, `{status}`, …), not only `{row_key}`. The renderer iterates over the row's columns and substitutes by name. Missing keys leave the placeholder text unsubstituted (no panic, no silent removal); the test suite asserts this.
+
+### Container chrome — borderless composition
+
+- **D-05:** The auth layout (`templates/auth.{html,hbs}` or equivalent) wraps its content in a card today. When a spec's root is also `Card`, the page renders a double-card. Phase 162 resolves this by **removing** the layout-level card wrapper. The auth layout becomes structural only (centering + max-width). Each spec is responsible for declaring its own `Card` root if it wants card chrome. This is a breaking change to the auth layout, but auth-using pages all use `Card` roots and will render identically after the change.
+- **D-06:** Do NOT introduce a new `Fragment` / `Group` borderless container. Reason: the underlying problem in FRICTION (double-card on auth layout) is solved by D-05; a new borderless container would be a parallel solution adding catalog surface without a forcing use case. If a future phase finds a use case that D-05 + existing containers (Grid 1-col, FormSection without title) cannot express, revisit then.
+
+### Spec validation — structural integrity
+
+- **D-07:** Spec validator (the existing `Spec::from_json` / `Spec::validate` path) MUST emit an error when a footer-referenced element ID is missing from the `elements` map. Today the spec silently renders without the missing footer element; the consumer has no signal.
+- **D-08:** Spec validator MUST emit a warning when the same element ID appears in both `props.footer` and `children` of the same parent. The element renders once (in `props.footer`); the duplicate listing is dead config and should be caught early.
+
+### Handler-name discoverability
+
+- **D-09:** Add a `json_ui_verify_action` MCP tool to `ferro-mcp` accepting `{ handler: String, method: Option<String> }` and returning `Ok(RouteInfo)` if a route is registered under that name + method, `Err(NotFound)` with the closest-by-Levenshtein candidate name otherwise. Closes the "I had to read routes.rs to verify the handler name" friction repeated in three FRICTION entries.
+- **D-10:** Do NOT add a `#[handler(name = "...")]` attribute. Reason: route names are already registered at `route!`/`get!`/`post!` macro call sites via `.name("…")`; adding a second site for the same string would invite drift. The MCP tool reads the existing single source of truth.
+
+### Variant type-safety
+
+- **D-11:** Add `#[derive(strum::AsRefStr)]` (or equivalent serde-compatible derive) to `AlertVariant`, `BadgeVariant`, `ButtonVariant`, `ToastVariant`, `DialogVariant`, `NotifyVariant`, so consumers can pass typed enum values into a `to_string()` site instead of hand-typing lowercase strings. The JSON wire format is unchanged — these are call-site ergonomics only.
+- **D-12:** Spec parsing on the v2 side already accepts the variant strings case-insensitively; this decision does not change the spec wire format.
+
+### Blast-radius API surface (decisions, not full implementations)
+
+These items came from compiling gestiscilo against the patched v2 ferro and are scoped to **resolving the API decision** — not necessarily shipping the full feature in Phase 162. Each gets a documented v2 path so consumers migrating in Phases 139–143 know what to write.
+
+- **D-13:** `JsonUiView`, `Component`, `ComponentNode`. **Decision:** These are removed in v2 (already done on the branch). The migration pattern is `JsonUi::render_file("src/views/.../*.json", data)` returning a `Response`. Documentation: add a top-of-page migration banner to `docs/src/json-ui/components.md` linking to the `pagamenti.json` reference. No code change.
+- **D-14:** `FormProps.fields`, `CardProps.children`, `GridProps.children`, `CollapsibleProps.children`, `FormSectionProps.children`, `ButtonGroupProps.buttons`. **Decision:** All removed in v2 (already done). The migration pattern is "container element's `children: Vec<String>` holds IDs into the flat `Spec.elements` map." Documentation: add a worked example to `docs/src/json-ui/components.md` showing `Card` with `children: ["heading", "form_login"]` and the corresponding `elements` entries. No code change.
+- **D-15:** `DetailFormProps`, `DetailField`, `EditMode`. **Decision:** Do NOT re-add as v2 component. The v2 equivalent is a standard `Form` element whose `children` include `DescriptionList`-style read-only items in view mode and `Input` elements in edit mode, with `visible` conditions branching on a `?mode=edit` query parameter. Add a worked example in `docs/src/json-ui/components.md` under a new "Inline view/edit" section. No new catalog component.
+- **D-16:** `SwitchProps.compact`. **Decision:** Re-add the `compact: Option<bool>` field to `SwitchProps` — it is a pure CSS-class toggle (`scale-75`), trivially re-implementable, used in 6 settings.rs sites. No spec-format break.
+- **D-17:** `ImageProps::inline_svg`. **Decision:** Re-add the `ImageSource::InlineSvg { svg: String }` enum variant. Phase 148 added it on master; the branch's v2 cleanup removed it. The use case (server-constructed bar charts) is legitimate and the safety story is unchanged (verbatim emission, alt text required, server-only). Restore the variant + the `ImageProps::inline_svg(svg, alt)` factory + the safety rustdoc.
+- **D-18:** `RichTextEditorProps`, `RichTextEditorPlugin`. **Decision:** Re-implement as a v2 element type, NOT as a top-level `Component` variant. Add `RichTextEditorProps` as a leaf element, the Quill 2.0.3 plugin registration (asset injection only), and the runtime IIFE. Use the existing v2 plugin surface, not v1's `Component::RichTextEditor`. Two consumer sites in documenti templates wait on this.
+- **D-19:** `PluginProps`. **Decision:** Document the v2 plugin authoring surface in `docs/src/json-ui/plugins.md`. The branch already has the `JsonUiPlugin` trait + `register_plugin` + `Asset` system; what's missing is the consumer-facing doc page that explains how a custom Stripe / WhatsApp widget defines itself, including how its props flow through `Element.props`. No new code in `ferro-json-ui` if the existing surface is sufficient; the gate is documentation, not implementation.
+
+### Migration documentation
+
+- **D-20:** Add `docs/src/json-ui/migration-v1-to-v2.md` — a focused migration guide for app authors moving controllers off the v1 builder API. Sections: (a) `JsonUi::render_file` vs `Spec::builder()`, (b) `Card + Form + Alert` depth-flattening pattern (the account.rs case), (c) per-row action interpolation in DataTable, (d) the read+edit detail pattern (D-15 worked example), (e) data-driven options with `CheckboxList` (D-01 worked example), (f) variant string round-trip with the new derives (D-11), (g) handler-name verification with the new MCP tool (D-09). Length target: 300–500 lines of focused worked examples, not exhaustive component reference.
+
+### Catalog and MCP surface
+
+- **D-21:** Every new or changed catalog entry (`CheckboxList`, `DataTable.row_actions` placeholder grammar, `Image` SVG variant, `Switch.compact`, `RichTextEditor`) MUST update both `ferro-json-ui/src/catalog.rs` (the in-process catalog) and `ferro-mcp/src/tools/json_ui_catalog.rs` (the MCP-exposed catalog). The exhaustive-list assertion in ferro-mcp tests is bumped to match the new component count.
+- **D-22:** The MCP `code_templates` tool MUST surface the v1→v2 migration patterns as code-snippet templates (one per D-20 section) so agents authoring migrations have direct introspection access.
+
+### Version and release
+
+- **D-23:** Phase 162 ships as workspace version bump 0.2.35 → 0.2.36. Publishing 0.2.36 unblocks gestiscilo Phase 138's compile gate (their `>= 0.2.36` semver requirement on `render_file`). Even though the merged workspace is already at 0.2.35 with `render_file` present, an explicit bump signals the v12.0 functionality is now stabilized for downstream consumption.
+- **D-24:** CHANGELOG.md entry for 0.2.36 names "gestiscilo Phase 138 friction loop" as the source so downstream users understand the upgrade motivation.
+
+### Claude's discretion
+
+- Exact prop names within `CheckboxListProps` (`options` vs `items`; `selected_path` vs `default_value_path`) — pick to match existing convention in catalog.
+- Whether `CheckboxList` shares the `<datalist>` / suggested-keys infrastructure with the future `RichTextEditor` plugin — implementation detail.
+- Whether to land D-15 (DetailForm replacement docs) before or after the consumer-side migration of documenti — the docs can ship independently; the consumer migration is on gestiscilo's side.
+- Whether D-23 (the 0.2.36 publish) requires a separate plan or rides on the final phase-completion gate — planner chooses.
+
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+
+### Friction source
+- `/Users/alberto/repositories/gestiscilo-it/app/.planning/phases/138-json-ui-v2-migration-auth-account-onboarding-pages/FRICTION.md` — every decision above traces to a specific entry in this file. Plans MUST cite the exact entry header when justifying a change.
+
+### v2 catalog and component surface (the place new components register)
+- `ferro-json-ui/src/catalog.rs` — built-in component registry. Adding `CheckboxList` adds an entry here.
+- `ferro-json-ui/src/component.rs` — all `*Props` structs and serde wire format. `SwitchProps`, `ImageProps`, new `CheckboxListProps` live here.
+- `ferro-json-ui/src/render.rs` — per-component render functions. `render_data_table` is the site for D-03/D-04 placeholder interpolation. `render_image` is the site for D-17 SVG branch.
+- `ferro-json-ui/src/spec.rs` — `Spec`, `Element`, validation logic. D-07 and D-08 land here.
+- `ferro-json-ui/src/plugin.rs` — `JsonUiPlugin` trait, `register_plugin`, asset system. D-18 (RichTextEditor) re-uses this. D-19 documents this.
+
+### ferro-mcp surface
+- `ferro-mcp/src/tools/json_ui_catalog.rs` — MCP-exposed catalog. Exhaustive-list assertion must be bumped on every component addition (D-21).
+- `ferro-mcp/src/tools/code_templates.rs` (or equivalent) — D-22 surfaces migration templates here.
+- `ferro-mcp/src/tools/` — D-09 lands a new `json_ui_verify_action.rs` here.
+
+### Documentation set
+- `docs/src/json-ui/components.md` — every component prop change updates this. D-14 worked example. D-15 inline view/edit section.
+- `docs/src/json-ui/migration-v1-to-v2.md` — D-20 new file.
+- `docs/src/json-ui/plugins.md` — D-19 plugin author guide.
+- `docs/src/SUMMARY.md` — nav entries for new pages.
+
+### Sample reference (the working v2 model)
+- `app/static/pagamenti.json` and `app/src/controllers/pagamenti.rs` — Phase 121 field test. The canonical "what a correct v2 page looks like" reference. The migration guide should cite this.
+
+### Workspace publishing pipeline
+- `.github/workflows/publish.yml` — Wave layout. New components in `ferro-json-ui` ride the existing wave; no new crates.
+- `CHANGELOG.md` — D-24 entry lands here.
+
+</canonical_refs>
+
+<followups>
+## Follow-ups (next-phase inputs)
+
+When gestiscilo Phase 140 (cassa/calendario) and Phase 142 (documenti) produce their FRICTION.md files, the following items are expected to land in Phase 163 / Phase 164:
+
+- `$each` directive — spec-level iteration over a data array for homogeneous element shapes (closes 3 of 4 cassa heterogeneous sites). FRICTION.md "Extended Iteration Gap" suggested improvement #1.
+- `$if` directive — conditional element emission (closes orders detail action case). FRICTION.md suggested improvement #2.
+- `$template` element with auto-suffixed IDs — closes products detail edit-mode case. FRICTION.md suggested improvement #3.
+- `SpecBuilder` ergonomic nested DSL — reduces Rust-side spec-construction friction where heterogeneous iteration cannot be expressed declaratively.
+- `ferro json-ui:migrate-v1` codemod — auto-rewrites `make_node(id, Component::X(props))` call trees into stub JSON spec entries.
+
+The Phase 162 planner is NOT responsible for these items. They are recorded here so the Phase 163/164 planners can connect their CONTEXT to the running thread.
+
+Host-based tenancy gap (separate concern, not JSON-UI): see `.planning/backlog/host-based-tenancy.md`.
+
+</followups>
