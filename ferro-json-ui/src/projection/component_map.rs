@@ -265,6 +265,7 @@ pub fn build_switch_props(field: &FieldDef) -> serde_json::Value {
         disabled: None,
         error: None,
         action: None,
+        compact: None,
     })
     .expect("SwitchProps serialization cannot fail")
 }

@@ -396,6 +396,10 @@ pub struct SwitchProps {
     /// form and submits on change.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<Action>,
+    /// When true, applies `scale-75 origin-left` CSS to the switch container
+    /// for compact inline display (e.g. per-row settings toggles).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compact: Option<bool>,
 }
 
 /// Props for Separator component.

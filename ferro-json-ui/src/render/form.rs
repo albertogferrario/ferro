@@ -573,6 +573,12 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
 
     let is_checked = resolve_checked(props.checked, props.data_path.as_deref(), data);
 
+    let compact_class = if props.compact == Some(true) {
+        " scale-75 origin-left"
+    } else {
+        ""
+    };
+
     let auto_submit = props.action.is_some();
     let onchange = if auto_submit {
         " onchange=\"this.closest('form').submit()\""
@@ -619,7 +625,7 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
         }
     }
 
-    html.push_str("<div class=\"space-y-1\">");
+    html.push_str(&format!("<div class=\"space-y-1{compact_class}\">"));
     html.push_str("<div class=\"flex items-center justify-between\">");
 
     // Left side: label + description.
@@ -1209,6 +1215,46 @@ mod tests {
         assert_eq!(
             disabled_count, 2,
             "every input must carry disabled; got: {html}"
+        );
+    }
+
+    // ── Switch.compact ───────────────────────────────────────────────────
+
+    #[test]
+    fn switch_compact_adds_scale_class() {
+        // compact=true must produce scale-75 and origin-left in the output
+        let el = mk_element(
+            "Switch",
+            json!({"field": "x", "label": "L", "compact": true}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_switch(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("scale-75"),
+            "compact=true must emit scale-75; got: {html}"
+        );
+        assert!(
+            html.contains("origin-left"),
+            "compact=true must emit origin-left; got: {html}"
+        );
+
+        // compact=false must NOT produce the compact classes
+        let el_false = mk_element(
+            "Switch",
+            json!({"field": "x", "label": "L", "compact": false}),
+        );
+        let html_false = render_switch(&el_false, &spec, &json!({}), 1);
+        assert!(
+            !html_false.contains("scale-75"),
+            "compact=false must not emit scale-75; got: {html_false}"
+        );
+
+        // compact absent must NOT produce the compact classes
+        let el_none = mk_element("Switch", json!({"field": "x", "label": "L"}));
+        let html_none = render_switch(&el_none, &spec, &json!({}), 1);
+        assert!(
+            !html_none.contains("scale-75"),
+            "compact=None must not emit scale-75; got: {html_none}"
         );
     }
 }
