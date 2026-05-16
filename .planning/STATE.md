@@ -1,18 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.0
-milestone_name: JSON-UI v2 — Spec-Driven Rendering
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
 status: master merged in; awaiting gestiscilo local-path testing
-stopped_at: master merged 2026-05-16
-last_updated: "2026-05-16T00:00:00.000Z"
-last_activity: 2026-05-16 -- master merged into v12.0/json-ui-v2; Phase 159 complete; v12.1 AI phases renumbered to 165-173
-next_planned_milestone: v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding (Phases 165-173)
+stopped_at: Phase 162 context gathered
+last_updated: "2026-05-16T15:24:51.085Z"
+last_activity: 2026-05-16 -- master merged into v12.0/json-ui-v2; v12.1 AI phases renumbered to 165-173
 progress:
-  total_phases: 173
-  completed_phases: 145
-  total_plans: 405
-  completed_plans: 381
-  percent: 84
+  total_phases: 11
+  completed_phases: 10
+  total_plans: 45
+  completed_plans: 47
+  percent: 100
 ---
 
 # Project State
@@ -216,7 +215,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-16T00:00:00.000Z
-Stopped at: master merged into v12.0/json-ui-v2; v12.1 AI phases renumbered to 165-173
-Resume file: None
+Last session: 2026-05-16T15:24:51.074Z
+Stopped at: Phase 162 context gathered
+Resume file: .planning/phases/162-json-ui-improvements-batch-1-components-expressions-and-spec/162-CONTEXT.md
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
