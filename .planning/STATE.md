@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 163-08-PLAN.md
-last_updated: "2026-05-16T21:32:40.434Z"
+stopped_at: Completed 163-10-PLAN.md (final plan — Phase 163 complete)
+last_updated: "2026-05-16T21:37:17.647Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 171
-  completed_phases: 152
+  completed_phases: 153
   total_plans: 449
-  completed_plans: 438
+  completed_plans: 439
   percent: 98
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 163 (json-ui-improvements-batch-2-cassa-and-calendario-field-test) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
@@ -160,6 +160,7 @@ Progress: [████████░░] 84%
 | Phase 163 P05 | 10min | 1 tasks | 1 files |
 | Phase 163 P06 | 8min | 1 tasks | 1 files |
 | Phase 163 P08 | 98s | 1 tasks | 1 files |
+| Phase 163 P10 | 3min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -230,7 +231,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-16T21:32:40.425Z
-Stopped at: Completed 163-08-PLAN.md
+Last session: 2026-05-16T21:37:17.640Z
+Stopped at: Completed 163-10-PLAN.md (final plan — Phase 163 complete)
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
