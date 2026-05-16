@@ -1609,7 +1609,7 @@ Plans:
 **Goal:** Ship the iteration-and-ergonomics slice of gestiscilo Phase 138 FRICTION.md. Adds two element-level directives (`$each` for homogeneous list iteration, `$if` for conditional emission), a validator gate for malformed directives, an ergonomic nested-tree `SpecBuilder` layer for truly heterogeneous Rust-side construction, an AST-based `ferro json-ui:migrate-v1` codemod, and MCP catalog reflection. Closes 3 of 4 cassa heterogeneous-iteration friction sites; the 4th (orders detail conditional actions) is covered by `$if`.
 **Requirements**: 13 locked CONTEXT decisions (D-01 through D-13) implemented with tests; ferro-json-ui builds clean; ferro-cli codemod has fixture-driven integration tests; docs/src/json-ui/spec-construction.md ships the four-quadrant decision rubric.
 **Depends on:** Phase 162, gestiscilo Phase 138
-**Plans:** 7/10 plans executed
+**Plans:** 8/10 plans executed
 
 Plans:
 - [x] 163-01-PLAN.md — Add `$each` (EachDirective struct + Element.each field + serde tests)
@@ -1617,7 +1617,7 @@ Plans:
 - [x] 163-03-PLAN.md — `expand_directives` resolve pass + JsonUi::resolve wiring + 12 unit tests
 - [x] 163-04-PLAN.md — Validator gates (5 SpecError variants + validate_directives + 11 unit tests)
 - [x] 163-05-PLAN.md — SpecBuilder ergonomic layer (NestedElement + element_nested + 7 tests)
-- [ ] 163-06-PLAN.md — MCP `json_ui_catalog` reflects directives (DirectiveInfo + 3 tests)
+- [x] 163-06-PLAN.md — MCP `json_ui_catalog` reflects directives (DirectiveInfo + 3 tests)
 - [x] 163-07-PLAN.md — `ferro json-ui:migrate-v1` AST codemod (subcommand + fixtures + 5 integration tests)
 - [ ] 163-08-PLAN.md — End-to-end directive integration tests (4 tests against full pipeline)
 - [x] 163-09-PLAN.md — Decision rubric docs (spec-construction.md + expressions.md $each/$if sections)
