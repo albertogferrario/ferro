@@ -1616,4 +1616,29 @@ mod tests {
             "Unknown category should return empty"
         );
     }
+
+    #[test]
+    fn code_templates_returns_migration_patterns() {
+        let templates = execute(Some("migration_v1_to_v2"));
+        assert!(
+            templates.templates.len() >= 7,
+            "expected at least 7 migration_v1_to_v2 templates, got {}",
+            templates.templates.len()
+        );
+        for t in &templates.templates {
+            assert_eq!(t.category, "migration_v1_to_v2");
+        }
+        let names: Vec<&str> = templates.templates.iter().map(|t| t.name.as_str()).collect();
+        for required in [
+            "render_file_migration",
+            "card_children_flat_map",
+            "datatable_row_actions_interpolation",
+            "inline_view_edit_pattern",
+            "checkbox_list_data_driven",
+            "variant_strum_round_trip",
+            "verify_action_mcp",
+        ] {
+            assert!(names.contains(&required), "missing migration template: {required}");
+        }
+    }
 }
