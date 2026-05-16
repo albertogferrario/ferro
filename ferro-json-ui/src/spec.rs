@@ -1038,4 +1038,68 @@ mod tests {
             "expected $each to be omitted when None; got: {json}"
         );
     }
+
+    #[test]
+    fn if_directive_flat_condition_round_trips() {
+        use crate::visibility::Visibility;
+        let json = serde_json::json!({"path": "/can_advance", "operator": "eq", "value": true});
+        let parsed: Visibility = serde_json::from_value(json.clone()).expect("decode");
+        match &parsed {
+            Visibility::Condition(c) => {
+                assert_eq!(c.path, "/can_advance");
+                assert_eq!(c.value, Some(serde_json::json!(true)));
+            }
+            _ => panic!("expected flat Condition variant, got: {parsed:?}"),
+        }
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        assert!(reserialized.get("path").is_some());
+        assert!(reserialized.get("operator").is_some());
+    }
+
+    #[test]
+    fn element_with_if_flat_round_trips() {
+        let json = serde_json::json!({
+            "type": "Button",
+            "$if": {"path": "/can_advance", "operator": "eq", "value": true},
+            "props": {"label": "x"}
+        });
+        let parsed: Element = serde_json::from_value(json.clone()).expect("decode");
+        assert!(parsed.if_.is_some());
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        assert!(reserialized.get("$if").is_some());
+    }
+
+    #[test]
+    fn element_with_if_compound_round_trips() {
+        use crate::visibility::Visibility;
+        let json = serde_json::json!({
+            "type": "Button",
+            "$if": {"and": [
+                {"path": "/a", "operator": "exists"},
+                {"path": "/b", "operator": "eq", "value": true}
+            ]},
+            "props": {"label": "x"}
+        });
+        let parsed: Element = serde_json::from_value(json.clone()).expect("decode");
+        match parsed.if_.as_ref() {
+            Some(Visibility::And { and }) => assert_eq!(and.len(), 2),
+            other => panic!("expected And variant, got: {other:?}"),
+        }
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        assert!(reserialized.get("$if").and_then(|v| v.get("and")).is_some());
+    }
+
+    #[test]
+    fn element_without_if_omits_field() {
+        let spec = Spec::builder()
+            .element("btn", Element::new("Button").prop("label", "ok"))
+            .build()
+            .expect("spec is valid");
+        let btn = spec.elements.get("btn").expect("btn present");
+        let json = serde_json::to_value(btn).expect("encode");
+        assert!(
+            json.get("$if").is_none(),
+            "expected $if to be omitted when None; got: {json}"
+        );
+    }
 }
