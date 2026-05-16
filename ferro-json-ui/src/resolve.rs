@@ -222,4 +222,316 @@ mod tests {
         let err_val = el.props.as_object().unwrap().get("errors").unwrap();
         assert_eq!(err_val["email"], serde_json::json!(["required"]));
     }
+
+    // -----------------------------------------------------------------------
+    // expand_directives tests (Phase 163 Plan 03) — $each / $if expansion
+    // -----------------------------------------------------------------------
+
+    fn parse_spec(json: serde_json::Value) -> Spec {
+        serde_json::from_value::<Spec>(json).expect("spec parses")
+    }
+
+    #[test]
+    fn expand_if_falsy_deletes_element() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "btn",
+            "elements": {
+                "btn": {
+                    "type": "Button",
+                    "$if": {"path": "/show", "operator": "eq", "value": true},
+                    "props": {"label": "Hi"}
+                }
+            },
+            "data": {"show": false}
+        }));
+        expand_directives(&mut spec);
+        assert!(!spec.elements.contains_key("btn"));
+    }
+
+    #[test]
+    fn expand_if_truthy_retains_element() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "btn",
+            "elements": {
+                "btn": {
+                    "type": "Button",
+                    "$if": {"path": "/show", "operator": "eq", "value": true},
+                    "props": {"label": "Hi"}
+                }
+            },
+            "data": {"show": true}
+        }));
+        expand_directives(&mut spec);
+        let el = spec.elements.get("btn").expect("btn retained");
+        assert!(el.if_.is_none(), "if_ stripped post-expansion for idempotency");
+    }
+
+    #[test]
+    fn expand_if_uses_visibility_evaluate() {
+        // Compound And — exercises Visibility::And evaluation path verbatim.
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "btn",
+            "elements": {
+                "btn": {
+                    "type": "Button",
+                    "$if": {"and": [
+                        {"path": "/a", "operator": "eq", "value": true},
+                        {"path": "/b", "operator": "eq", "value": true}
+                    ]},
+                    "props": {"label": "Hi"}
+                }
+            },
+            "data": {"a": true, "b": false}
+        }));
+        expand_directives(&mut spec);
+        // And of (true, false) is false → element removed.
+        assert!(!spec.elements.contains_key("btn"));
+    }
+
+    #[test]
+    fn expand_each_produces_n_elements() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "order_card",
+            "elements": {
+                "order_card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {"title": {"$data": "/order/order_number"}}
+                }
+            },
+            "data": {"orders": [
+                {"order_number": "ORD-1"},
+                {"order_number": "ORD-2"},
+                {"order_number": "ORD-3"}
+            ]}
+        }));
+        expand_directives(&mut spec);
+        assert!(spec.elements.contains_key("order_card-0"));
+        assert!(spec.elements.contains_key("order_card-1"));
+        assert!(spec.elements.contains_key("order_card-2"));
+        assert!(!spec.elements.contains_key("order_card"));
+        let c0 = spec.elements.get("order_card-0").unwrap();
+        assert_eq!(c0.props.get("title").unwrap(), &serde_json::json!("ORD-1"));
+    }
+
+    #[test]
+    fn expand_each_auto_suffixes_ids() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "order_card",
+            "elements": {
+                "order_card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"orders": [{"x":1},{"x":2}]}
+        }));
+        expand_directives(&mut spec);
+        for id in ["order_card-0", "order_card-1"] {
+            let el = spec.elements.get(id).unwrap();
+            assert!(el.each.is_none(), "{id} should have each stripped");
+            assert!(el.if_.is_none(), "{id} should have if_ stripped");
+        }
+    }
+
+    #[test]
+    fn expand_each_pre_resolves_row_paths() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "order_card",
+            "elements": {
+                "order_card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {"title": {"$data": "/order/order_number"}}
+                }
+            },
+            "data": {"orders": [{"order_number": "ORD-7"}]}
+        }));
+        expand_directives(&mut spec);
+        let c0 = spec.elements.get("order_card-0").unwrap();
+        assert_eq!(
+            c0.props.get("title").unwrap(),
+            &serde_json::json!("ORD-7"),
+            "/order/X must be pre-resolved to a literal value"
+        );
+    }
+
+    #[test]
+    fn expand_each_correlates_child_indexes() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["card"]
+                },
+                "card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {},
+                    "children": ["badge"]
+                },
+                "badge": {
+                    "type": "Badge",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {"label": {"$data": "/order/status"}}
+                }
+            },
+            "data": {"orders": [{"status": "A"}, {"status": "B"}]}
+        }));
+        expand_directives(&mut spec);
+        let card0 = spec.elements.get("card-0").unwrap();
+        assert_eq!(card0.children, vec!["badge-0".to_string()]);
+        let card1 = spec.elements.get("card-1").unwrap();
+        assert_eq!(card1.children, vec!["badge-1".to_string()]);
+        let root = spec.elements.get("root").unwrap();
+        assert_eq!(
+            root.children,
+            vec!["card-0".to_string(), "card-1".to_string()]
+        );
+    }
+
+    #[test]
+    fn expand_parent_children_rewritten_for_each() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["card"]
+                },
+                "card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"orders": [{"x":1},{"x":2},{"x":3}]}
+        }));
+        expand_directives(&mut spec);
+        let root = spec.elements.get("root").unwrap();
+        assert_eq!(
+            root.children,
+            vec![
+                "card-0".to_string(),
+                "card-1".to_string(),
+                "card-2".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn expand_parent_children_pruned_for_if() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["btn"]
+                },
+                "btn": {
+                    "type": "Button",
+                    "$if": {"path": "/flag", "operator": "eq", "value": true},
+                    "props": {"label": "Hi"}
+                }
+            },
+            "data": {"flag": false}
+        }));
+        expand_directives(&mut spec);
+        let root = spec.elements.get("root").unwrap();
+        assert!(root.children.is_empty(), "pruned $if-false child");
+        assert!(!spec.elements.contains_key("btn"));
+    }
+
+    #[test]
+    fn expand_if_first_then_each() {
+        // Element has BOTH $if (falsy) AND $each. $if removes the template before $each runs.
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "card",
+            "elements": {
+                "card": {
+                    "type": "Card",
+                    "$if": {"path": "/show", "operator": "eq", "value": true},
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"show": false, "orders": [{"x":1},{"x":2}]}
+        }));
+        expand_directives(&mut spec);
+        for id in ["card", "card-0", "card-1"] {
+            assert!(
+                !spec.elements.contains_key(id),
+                "{id} must not exist when $if removed the template"
+            );
+        }
+    }
+
+    #[test]
+    fn expand_each_empty_array_produces_zero_clones() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["card"]
+                },
+                "card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"orders": []}
+        }));
+        expand_directives(&mut spec);
+        assert!(!spec.elements.contains_key("card"));
+        let root = spec.elements.get("root").unwrap();
+        assert!(root.children.is_empty());
+    }
+
+    #[test]
+    fn expand_directives_idempotent() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["card"]
+                },
+                "card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {"title": {"$data": "/order/name"}}
+                }
+            },
+            "data": {"orders": [{"name": "A"}, {"name": "B"}]}
+        }));
+        expand_directives(&mut spec);
+        let snapshot_after_first = serde_json::to_value(&spec.elements).unwrap();
+        expand_directives(&mut spec);
+        let snapshot_after_second = serde_json::to_value(&spec.elements).unwrap();
+        assert_eq!(
+            snapshot_after_first, snapshot_after_second,
+            "expand_directives must be idempotent"
+        );
+    }
 }
