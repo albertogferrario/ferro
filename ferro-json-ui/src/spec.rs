@@ -182,6 +182,21 @@ pub enum SpecError {
         element_id: String,
         footer_id: String,
     },
+    #[error("element '{element_id}' has `$each.path = \"{path}\"` resolving to a non-array value in spec.data")]
+    EachPathNotArray { element_id: String, path: String },
+    #[error("element '{element_id}' has `$if.path = \"{path}\"` referencing a key absent from spec.data")]
+    IfPathMissing { element_id: String, path: String },
+    #[error("element '{element_id}' has `$each.as = \"{name}\"` which is a reserved name (one of: data, root, _root, _each, this, self)")]
+    EachAsReservedName { element_id: String, name: String },
+    #[error("nested `$each` is not supported in Phase 163: element '{outer}' templates element '{inner}' which is also `$each`-templated")]
+    NestedEach { outer: String, inner: String },
+    #[error("element '{parent}' (`$each` over '{parent_path}') references child '{child}' which is `$each` over a different path '{child_path}' — mismatched each siblings")]
+    MismatchedEach {
+        parent: String,
+        parent_path: String,
+        child: String,
+        child_path: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -489,6 +504,7 @@ fn validate_structure(spec: &Spec) -> Result<(), SpecError> {
         return Err(SpecError::RootMissing(spec.root.clone()));
     }
     validate_no_dangling(&spec.elements)?;
+    validate_directives(spec)?;
     validate_footer_ids(spec)?;
     detect_cycle(&spec.elements, &spec.root)?;
     check_depth(&spec.elements, &spec.root)?;
@@ -571,6 +587,130 @@ fn validate_footer_ids(spec: &Spec) -> Result<(), SpecError> {
                      props.footer and children — the element renders once (in footer); \
                      remove the duplicate from children"
                 );
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Reserved names for the `$each.as` loop variable.
+const RESERVED_EACH_AS: &[&str] = &["data", "root", "_root", "_each", "this", "self"];
+
+/// Validate `$each` and `$if` directives on every element.
+///
+/// Best-effort: path resolvability against `spec.data` is checked only when
+/// `spec.data` is non-null. Per-request data is not visible at this stage.
+fn validate_directives(spec: &Spec) -> Result<(), SpecError> {
+    // First pass: collect each-templated element IDs + their directives.
+    let templated: HashMap<&str, &EachDirective> = spec
+        .elements
+        .iter()
+        .filter_map(|(id, el)| el.each.as_ref().map(|e| (id.as_str(), e)))
+        .collect();
+
+    for (id, el) in &spec.elements {
+        // -- $each validation --
+        if let Some(each) = &el.each {
+            // (a) Reserved-name check.
+            if RESERVED_EACH_AS.contains(&each.as_.as_str()) {
+                return Err(SpecError::EachAsReservedName {
+                    element_id: id.clone(),
+                    name: each.as_.clone(),
+                });
+            }
+            // (b) Path-resolves-to-array check (only when spec.data is non-null).
+            if !spec.data.is_null() {
+                if let Some(value) = crate::data::resolve_path(&spec.data, &each.path) {
+                    if !value.is_array() {
+                        return Err(SpecError::EachPathNotArray {
+                            element_id: id.clone(),
+                            path: each.path.clone(),
+                        });
+                    }
+                }
+            }
+            // (c) Mismatched-each child check: scan direct children.
+            for child in &el.children {
+                if let Some(child_each) = templated.get(child.as_str()) {
+                    if child_each.path != each.path || child_each.as_ != each.as_ {
+                        return Err(SpecError::MismatchedEach {
+                            parent: id.clone(),
+                            parent_path: each.path.clone(),
+                            child: child.clone(),
+                            child_path: child_each.path.clone(),
+                        });
+                    }
+                }
+            }
+            // (d) Nested-each check: walk transitive descendants beyond direct
+            // children. Direct children with matching (path, as) are the
+            // correlated-sibling case (valid). Transitive descendants that are
+            // also $each-templated are nested — always rejected.
+            let direct: HashSet<&str> = el.children.iter().map(|s| s.as_str()).collect();
+            let mut visited: HashSet<&str> = HashSet::new();
+            let mut stack: Vec<&str> = Vec::new();
+            // Seed stack with grandchildren (skip direct children).
+            for child in &el.children {
+                if let Some(child_el) = spec.elements.get(child) {
+                    for gc in &child_el.children {
+                        stack.push(gc.as_str());
+                    }
+                }
+            }
+            while let Some(node) = stack.pop() {
+                if !visited.insert(node) {
+                    continue;
+                }
+                if templated.contains_key(node) && !direct.contains(node) {
+                    return Err(SpecError::NestedEach {
+                        outer: id.clone(),
+                        inner: node.to_string(),
+                    });
+                }
+                if let Some(node_el) = spec.elements.get(node) {
+                    for c in &node_el.children {
+                        stack.push(c.as_str());
+                    }
+                }
+            }
+        }
+        // -- $if validation --
+        // Walk all conditions inside the Visibility tree; for each, check path
+        // against spec.data (best-effort, only when spec.data is non-null).
+        if let Some(vis) = &el.if_ {
+            if !spec.data.is_null() {
+                check_visibility_paths(id, vis, &spec.data)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Recursively walk a Visibility tree, asserting every condition's path
+/// resolves to a present key in `data` (Some(_)). Missing → IfPathMissing.
+fn check_visibility_paths(
+    element_id: &str,
+    vis: &Visibility,
+    data: &Value,
+) -> Result<(), SpecError> {
+    match vis {
+        Visibility::And { and } => {
+            for v in and {
+                check_visibility_paths(element_id, v, data)?;
+            }
+        }
+        Visibility::Or { or } => {
+            for v in or {
+                check_visibility_paths(element_id, v, data)?;
+            }
+        }
+        Visibility::Not { not } => check_visibility_paths(element_id, not, data)?,
+        Visibility::Condition(c) => {
+            if crate::data::resolve_path(data, &c.path).is_none() {
+                return Err(SpecError::IfPathMissing {
+                    element_id: element_id.to_string(),
+                    path: c.path.clone(),
+                });
             }
         }
     }
@@ -1118,6 +1258,288 @@ mod tests {
         assert!(
             json.get("$if").is_none(),
             "expected $if to be omitted when None; got: {json}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Directive validator tests (Plan 04)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn validate_each_path_not_array_fires() {
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "list",
+            "elements": {
+                "list": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"orders": "not-an-array"}
+        }"#;
+        let err = Spec::from_json(json).expect_err("validator must reject non-array $each.path");
+        match err {
+            SpecError::EachPathNotArray { element_id, path } => {
+                assert_eq!(element_id, "list");
+                assert_eq!(path, "/orders");
+            }
+            other => panic!("expected EachPathNotArray, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_each_path_not_array_skipped_when_data_null() {
+        // Same spec but data is null (absent) — validator is best-effort and skips.
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "list",
+            "elements": {
+                "list": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            }
+        }"#;
+        // No data key → spec.data is Value::Null → no EachPathNotArray.
+        Spec::from_json(json).expect("no error when data is null");
+    }
+
+    #[test]
+    fn validate_each_as_reserved_data_rejected() {
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "list",
+            "elements": {
+                "list": {
+                    "type": "Card",
+                    "$each": {"path": "/items", "as": "data"},
+                    "props": {}
+                }
+            }
+        }"#;
+        let err = Spec::from_json(json).expect_err("'data' is a reserved name");
+        match err {
+            SpecError::EachAsReservedName { element_id, name } => {
+                assert_eq!(element_id, "list");
+                assert_eq!(name, "data");
+            }
+            other => panic!("expected EachAsReservedName, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_each_as_reserved_root_rejected() {
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "list",
+            "elements": {
+                "list": {
+                    "type": "Card",
+                    "$each": {"path": "/items", "as": "root"},
+                    "props": {}
+                }
+            }
+        }"#;
+        let err = Spec::from_json(json).expect_err("'root' is a reserved name");
+        match err {
+            SpecError::EachAsReservedName { element_id, name } => {
+                assert_eq!(element_id, "list");
+                assert_eq!(name, "root");
+            }
+            other => panic!("expected EachAsReservedName, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_each_as_non_reserved_accepted() {
+        // "order" and "row" are not reserved — spec must parse OK.
+        let json_order = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "list",
+            "elements": {
+                "list": {
+                    "type": "Card",
+                    "$each": {"path": "/items", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"items": []}
+        }"#;
+        Spec::from_json(json_order).expect("'order' is not reserved");
+
+        let json_row = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "list",
+            "elements": {
+                "list": {
+                    "type": "Card",
+                    "$each": {"path": "/items", "as": "row"},
+                    "props": {}
+                }
+            },
+            "data": {"items": []}
+        }"#;
+        Spec::from_json(json_row).expect("'row' is not reserved");
+    }
+
+    #[test]
+    fn validate_if_path_missing_fires() {
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "btn",
+            "elements": {
+                "btn": {
+                    "type": "Button",
+                    "$if": {"path": "/missing_key", "operator": "eq", "value": true},
+                    "props": {"label": "Go"}
+                }
+            },
+            "data": {"other": true}
+        }"#;
+        let err = Spec::from_json(json).expect_err("missing $if.path must error");
+        match err {
+            SpecError::IfPathMissing { element_id, path } => {
+                assert_eq!(element_id, "btn");
+                assert_eq!(path, "/missing_key");
+            }
+            other => panic!("expected IfPathMissing, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_if_path_missing_skipped_when_data_null() {
+        // Same spec but data is null — validator is best-effort and skips.
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "btn",
+            "elements": {
+                "btn": {
+                    "type": "Button",
+                    "$if": {"path": "/missing_key", "operator": "eq", "value": true},
+                    "props": {"label": "Go"}
+                }
+            }
+        }"#;
+        Spec::from_json(json).expect("no error when data is null");
+    }
+
+    #[test]
+    fn validate_nested_each_rejected() {
+        // Element A has $each; A's child B also has $each — nested, must fail.
+        // B is a grandchild of A (A -> mid -> B) to exercise the transitive walk.
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "A",
+            "elements": {
+                "A": {
+                    "type": "Card",
+                    "$each": {"path": "/items", "as": "item"},
+                    "children": ["mid"]
+                },
+                "mid": {
+                    "type": "Section",
+                    "children": ["B"]
+                },
+                "B": {
+                    "type": "Card",
+                    "$each": {"path": "/other_items", "as": "other"},
+                    "props": {}
+                }
+            }
+        }"#;
+        let err = Spec::from_json(json).expect_err("nested $each must be rejected");
+        match err {
+            SpecError::NestedEach { outer, inner } => {
+                assert_eq!(outer, "A");
+                assert_eq!(inner, "B");
+            }
+            other => panic!("expected NestedEach, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_mismatched_each_child_rejected() {
+        // A has $each over /items; direct child B has $each over /different — mismatch.
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "A",
+            "elements": {
+                "A": {
+                    "type": "Card",
+                    "$each": {"path": "/items", "as": "item"},
+                    "children": ["B"]
+                },
+                "B": {
+                    "type": "Text",
+                    "$each": {"path": "/different_items", "as": "item"}
+                }
+            }
+        }"#;
+        let err = Spec::from_json(json).expect_err("mismatched $each child must be rejected");
+        match err {
+            SpecError::MismatchedEach {
+                parent,
+                parent_path,
+                child,
+                child_path,
+            } => {
+                assert_eq!(parent, "A");
+                assert_eq!(parent_path, "/items");
+                assert_eq!(child, "B");
+                assert_eq!(child_path, "/different_items");
+            }
+            other => panic!("expected MismatchedEach, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_correlated_each_child_accepted() {
+        // A and its direct child B both have $each with SAME (path, as) — correlated siblings, valid.
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "A",
+            "elements": {
+                "A": {
+                    "type": "Card",
+                    "$each": {"path": "/items", "as": "item"},
+                    "children": ["B"]
+                },
+                "B": {
+                    "type": "Text",
+                    "$each": {"path": "/items", "as": "item"}
+                }
+            },
+            "data": {"items": []}
+        }"#;
+        Spec::from_json(json).expect("correlated $each children with same (path, as) are valid");
+    }
+
+    #[test]
+    fn validate_directives_called_between_no_dangling_and_cycle() {
+        // Assert by code structure: validate_structure contains the literal call sequence
+        // validate_no_dangling → validate_directives → detect_cycle.
+        let src = include_str!("spec.rs");
+        let validate_section = src
+            .split("fn validate_structure")
+            .nth(1)
+            .expect("validate_structure body present");
+        let body_end = validate_section
+            .find("\nfn ")
+            .unwrap_or(validate_section.len());
+        let body = &validate_section[..body_end];
+        let pos_no_dangling = body.find("validate_no_dangling").expect("no_dangling call");
+        let pos_directives = body.find("validate_directives").expect("directives call");
+        let pos_cycle = body.find("detect_cycle").expect("cycle call");
+        assert!(
+            pos_no_dangling < pos_directives,
+            "validate_directives must be called AFTER validate_no_dangling"
+        );
+        assert!(
+            pos_directives < pos_cycle,
+            "validate_directives must be called BEFORE detect_cycle"
         );
     }
 }
