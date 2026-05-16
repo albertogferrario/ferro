@@ -22,7 +22,8 @@ use serde_json::Value;
 
 use crate::action::HttpMethod;
 use crate::component::{
-    CheckboxProps, FormMaxWidth, FormProps, InputProps, InputType, SelectProps, SwitchProps,
+    CheckboxListProps, CheckboxProps, FormMaxWidth, FormProps, InputProps, InputType, SelectOption,
+    SelectProps, SwitchProps,
 };
 use crate::data::{resolve_path, resolve_path_string};
 use crate::spec::{Element, Spec};
@@ -453,6 +454,105 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
         ));
     }
     html.push_str("</div>");
+    html
+}
+
+/// Renders a multi-select checkbox group from static `options` or a data-driven
+/// `options_path`. Pre-checked options are resolved from `selected_path` as a
+/// `Vec<String>`. All string interpolations pass through `html_escape`.
+// Dispatch arm is added in Task 3 (render/mod.rs). Allow until then.
+#[allow(dead_code)]
+pub(crate) fn render_checkbox_list(
+    el: &Element,
+    _spec: &Spec,
+    data: &Value,
+    _depth: usize,
+) -> String {
+    let props: CheckboxListProps = match serde_json::from_value(el.props.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: failed to decode CheckboxList props: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    // Resolve options: data-driven path wins when static `options` is empty.
+    let options: Vec<SelectOption> = if props.options.is_empty() {
+        props
+            .options_path
+            .as_deref()
+            .and_then(|path| resolve_path(data, path))
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| serde_json::from_value::<SelectOption>(v.clone()).ok())
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        props.options.clone()
+    };
+
+    // Resolve pre-selected values.
+    let selected: Vec<String> = props
+        .selected_path
+        .as_deref()
+        .and_then(|path| resolve_path(data, path))
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let mut html = String::from("<fieldset class=\"space-y-2\">");
+    if let Some(ref label) = props.label {
+        html.push_str(&format!(
+            "<legend class=\"text-sm font-medium text-text\">{}</legend>",
+            html_escape(label)
+        ));
+    }
+    if let Some(ref desc) = props.description {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-muted-foreground mb-2\">{}</p>",
+            html_escape(desc)
+        ));
+    }
+    for option in &options {
+        let is_checked = selected.contains(&option.value);
+        let checkbox_id = format!("{}_{}", props.field, option.value);
+        html.push_str("<div class=\"flex items-center gap-2\">");
+        html.push_str(&format!(
+            "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" \
+             class=\"h-4 w-4 rounded-sm border-border text-primary\"",
+            html_escape(&checkbox_id),
+            html_escape(&props.field),
+            html_escape(&option.value)
+        ));
+        if is_checked {
+            html.push_str(" checked");
+        }
+        if props.disabled == Some(true) {
+            html.push_str(" disabled");
+        }
+        html.push('>');
+        html.push_str(&format!(
+            "<label class=\"text-sm font-medium text-text\" for=\"{}\">{}</label>",
+            html_escape(&checkbox_id),
+            html_escape(&option.label)
+        ));
+        html.push_str("</div>");
+    }
+    if let Some(ref err) = props.error {
+        html.push_str(&format!(
+            "<p class=\"text-sm text-destructive mt-1\">{}</p>",
+            html_escape(err)
+        ));
+    }
+    html.push_str("</fieldset>");
     html
 }
 
@@ -1003,6 +1103,114 @@ mod tests {
         assert!(
             html.contains("<!-- ferro-json-ui: failed to decode Form props"),
             "got: {html}"
+        );
+    }
+
+    // ── CheckboxList ─────────────────────────────────────────────────────
+
+    #[test]
+    fn checkbox_list_renders_one_checkbox_per_option() {
+        let el = mk_element(
+            "CheckboxList",
+            json!({
+                "field": "services",
+                "options": [{"value": "a", "label": "A"}, {"value": "b", "label": "B"}]
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_checkbox_list(&el, &spec, &json!({}), 1);
+        assert_eq!(
+            html.matches("<input type=\"checkbox\"").count(),
+            2,
+            "expected 2 checkboxes; got: {html}"
+        );
+        assert!(html.contains("name=\"services\""), "got: {html}");
+        assert!(html.contains("value=\"a\""), "got: {html}");
+        assert!(html.contains("value=\"b\""), "got: {html}");
+    }
+
+    #[test]
+    fn checkbox_list_selected_path_prechecks_matching_options() {
+        let el = mk_element(
+            "CheckboxList",
+            json!({
+                "field": "services",
+                "options": [{"value": "a", "label": "A"}, {"value": "b", "label": "B"}],
+                "selected_path": "/sel"
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"sel": ["a"]});
+        let html = render_checkbox_list(&el, &spec, &data, 1);
+        // Only option "a" should be checked
+        let checked_count = html.matches(" checked").count();
+        assert_eq!(checked_count, 1, "expected 1 checked; got: {html}");
+        // The checked input must be the one with value="a"
+        let a_pos = html.find("value=\"a\"").expect("value=a not found");
+        let checked_pos = html.find(" checked").expect("checked not found");
+        assert!(
+            checked_pos > a_pos,
+            "checked attribute should follow value=a; got: {html}"
+        );
+    }
+
+    #[test]
+    fn checkbox_list_options_path_resolves_dynamic_options() {
+        let el = mk_element(
+            "CheckboxList",
+            json!({
+                "field": "services",
+                "options_path": "/opts"
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"opts": [{"value": "x", "label": "X"}]});
+        let html = render_checkbox_list(&el, &spec, &data, 1);
+        assert!(html.contains("value=\"x\""), "got: {html}");
+        assert_eq!(
+            html.matches("<input type=\"checkbox\"").count(),
+            1,
+            "got: {html}"
+        );
+    }
+
+    #[test]
+    fn checkbox_list_escapes_html_in_option_label() {
+        let el = mk_element(
+            "CheckboxList",
+            json!({
+                "field": "services",
+                "options": [{"value": "a", "label": "<script>alert(1)</script>"}]
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_checkbox_list(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("&lt;script&gt;"),
+            "label must be HTML-escaped; got: {html}"
+        );
+        assert!(
+            !html.contains("<script>"),
+            "raw <script> must not appear; got: {html}"
+        );
+    }
+
+    #[test]
+    fn checkbox_list_disabled_propagates_to_each_input() {
+        let el = mk_element(
+            "CheckboxList",
+            json!({
+                "field": "services",
+                "options": [{"value": "a", "label": "A"}, {"value": "b", "label": "B"}],
+                "disabled": true
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_checkbox_list(&el, &spec, &json!({}), 1);
+        let disabled_count = html.matches(" disabled").count();
+        assert_eq!(
+            disabled_count, 2,
+            "every input must carry disabled; got: {html}"
         );
     }
 }
