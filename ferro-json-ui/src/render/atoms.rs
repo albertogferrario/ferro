@@ -367,6 +367,17 @@ pub(crate) fn render_image(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Image", e),
     };
+
+    // D-17: inline SVG branch — emit verbatim, no <img> tag.
+    // Server-only; content is NOT sanitized; alt is HTML-escaped for the aria-label.
+    if let Some(ref svg) = props.inline_svg {
+        return format!(
+            "<div aria-label=\"{}\">{}</div>",
+            html_escape(&props.alt),
+            svg // verbatim — intentionally not escaped (server-only trust)
+        );
+    }
+
     let container_style = match &props.aspect_ratio {
         Some(ratio) => format!(" style=\"aspect-ratio: {}\"", html_escape(ratio)),
         None => String::new(),
@@ -1518,6 +1529,57 @@ mod tests {
         assert!(
             html.contains("src=\"x&quot; onerror=&quot;alert(1)\""),
             "got: {html}"
+        );
+    }
+
+    // ── 8b. Image inline_svg ─────────────────────────────────────────────
+
+    #[test]
+    fn image_inline_svg_renders_without_img_tag() {
+        let spec = spec_with_root(
+            Element::new("Image")
+                .prop("src", "")
+                .prop("alt", "chart")
+                .prop("inline_svg", "<svg><rect/></svg>"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_image(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("<svg><rect/></svg>"),
+            "inline SVG must be emitted verbatim; got: {html}"
+        );
+        assert!(
+            html.contains("aria-label=\"chart\""),
+            "aria-label must contain alt text; got: {html}"
+        );
+        assert!(
+            !html.contains("<img"),
+            "inline_svg path must not emit <img; got: {html}"
+        );
+    }
+
+    #[test]
+    fn image_inline_svg_escapes_alt_text() {
+        let spec = spec_with_root(
+            Element::new("Image")
+                .prop("src", "")
+                .prop("alt", "<script>x</script>")
+                .prop("inline_svg", "<svg/>"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_image(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("aria-label=\"&lt;script&gt;x&lt;/script&gt;\""),
+            "alt must be HTML-escaped in aria-label; got: {html}"
+        );
+        assert!(
+            !html.contains("<script>"),
+            "raw <script> must not appear; got: {html}"
+        );
+        // The SVG body itself is intentionally unaffected.
+        assert!(
+            html.contains("<svg/>"),
+            "SVG body must still be verbatim; got: {html}"
         );
     }
 

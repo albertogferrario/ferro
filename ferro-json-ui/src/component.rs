@@ -491,6 +491,32 @@ pub struct ImageProps {
     /// visible, keeping the container at its aspect-ratio size.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder_label: Option<String>,
+    /// Server-rendered inline SVG string. When set, the SVG is emitted verbatim
+    /// inside a `<div aria-label="{alt}">` wrapper; no `<img>` tag is produced.
+    ///
+    /// # Safety
+    /// Content is NOT sanitized. The SVG string is emitted into the response
+    /// verbatim. Pass only server-constructed SVG (e.g. bar charts, QR codes).
+    /// Do NOT pass untrusted input. `alt` is required and is HTML-escaped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline_svg: Option<String>,
+}
+
+impl ImageProps {
+    /// Convenience constructor for inline-SVG images. `src` is set to the
+    /// empty string; the renderer takes the SVG path when `inline_svg` is `Some`.
+    ///
+    /// # Safety
+    /// `svg` is emitted verbatim. See [`ImageProps::inline_svg`] for the trust model.
+    pub fn inline_svg(svg: impl Into<String>, alt: impl Into<String>) -> Self {
+        Self {
+            src: String::new(),
+            alt: alt.into(),
+            aspect_ratio: None,
+            placeholder_label: None,
+            inline_svg: Some(svg.into()),
+        }
+    }
 }
 
 /// Props for Avatar component.
@@ -994,6 +1020,17 @@ mod schema_smoke_tests {
     #[test]
     fn schema_for_image_props_generates() {
         assert_schema_nonempty_object::<ImageProps>("ImageProps");
+    }
+
+    #[test]
+    fn image_inline_svg_factory_roundtrips_via_serde() {
+        let p = ImageProps::inline_svg("<svg/>", "alt");
+        let json = serde_json::to_value(&p).expect("serialization must not fail");
+        let parsed: ImageProps =
+            serde_json::from_value(json).expect("deserialization must not fail");
+        assert_eq!(parsed.inline_svg, Some("<svg/>".to_string()));
+        assert_eq!(parsed.alt, "alt");
+        assert_eq!(parsed.src, "");
     }
 
     #[test]
