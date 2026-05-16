@@ -89,6 +89,50 @@ pub struct Element {
     /// Optional visibility rule governing whether this element renders.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub visible: Option<Visibility>,
+    /// Optional iteration directive. When present, the element is treated as
+    /// a template — resolve-time expansion (Plan 03) produces N clones with
+    /// auto-suffixed IDs, one per row in the resolved data array.
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "$each")]
+    pub each: Option<EachDirective>,
+}
+
+/// Iteration directive on an [`Element`]: instantiate one element per row of
+/// a JSON array resolved from [`Spec::data`].
+///
+/// At resolve time, the templated element is replaced by N clones with
+/// auto-suffixed IDs (`{element_id}-0`, `{element_id}-1`, ...). The loop
+/// variable bound by `as` (default name `"row"`) scopes `$data` paths
+/// starting with `/{as}/...` to the current iteration row.
+///
+/// # Reserved names
+///
+/// The `as` field must NOT be one of `["data", "root", "_root", "_each",
+/// "this", "self"]` — see `SpecError::EachAsReservedName` (validated by
+/// `Spec::validate` in Plan 04).
+///
+/// # Wire format example
+///
+/// ```json
+/// {
+///   "type": "Card",
+///   "$each": { "path": "/orders", "as": "order" },
+///   "props": { "title": { "$data": "/order/order_number" } }
+/// }
+/// ```
+///
+/// # Resource bounds
+///
+/// At Plan 01, the directive is inert — no resolver runs yet. A hard cap on
+/// expansion size is a follow-up concern; Phase 163 does not impose a fixed
+/// limit. Spec authors are responsible for bounding the resolved array.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EachDirective {
+    /// JSONPath-style slash-separated path to a JSON array in [`Spec::data`].
+    pub path: String,
+    /// Loop-variable name bound during expansion. Paths starting with
+    /// `/{as}/...` in the templated element's props resolve to the current row.
+    #[serde(rename = "as")]
+    pub as_: String,
 }
 
 /// Errors returned by [`Spec::from_json`] and [`SpecBuilder::build`].
@@ -214,6 +258,7 @@ impl Element {
             children: Vec::new(),
             action: None,
             visible: None,
+            each: None,
         }
     }
 }
@@ -306,6 +351,7 @@ pub struct ElementBuilder {
     children: Vec<String>,
     action: Option<Action>,
     visible: Option<Visibility>,
+    each: Option<EachDirective>,
 }
 
 impl ElementBuilder {
@@ -345,6 +391,7 @@ impl ElementBuilder {
             children: self.children,
             action: self.action,
             visible: self.visible,
+            each: self.each,
         }
     }
 }

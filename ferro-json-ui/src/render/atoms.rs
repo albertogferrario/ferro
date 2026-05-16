@@ -1674,6 +1674,7 @@ mod tests {
             children: Vec::new(),
             action: None,
             visible: None,
+            each: None,
         };
         // minimal spec just so we can call the renderer
         let spec = Spec::builder()

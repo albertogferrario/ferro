@@ -1294,6 +1294,7 @@ mod tests {
                 children: Vec::new(),
                 action: None,
                 visible: None,
+                each: None,
             },
         );
         Spec {
@@ -1426,6 +1427,7 @@ mod tests {
                 children: Vec::new(),
                 action: None,
                 visible: None,
+                each: None,
             },
         );
         elements.insert(
@@ -1436,6 +1438,7 @@ mod tests {
                 children: Vec::new(),
                 action: None,
                 visible: None,
+                each: None,
             },
         );
         let spec = Spec {
