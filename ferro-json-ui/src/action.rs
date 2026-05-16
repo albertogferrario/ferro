@@ -363,4 +363,33 @@ mod tests {
         let action = Action::new("users.update").method(HttpMethod::Put);
         assert_eq!(action.method, HttpMethod::Put);
     }
+
+    /// Assert AsRef<str> matches serde JSON wire format for DialogVariant and NotifyVariant.
+    /// Threat T-162-08-01: strum and serde must agree on every snake_case string.
+    #[test]
+    fn dialog_notify_variant_strum_matches_serde() {
+        fn check<T: AsRef<str> + serde::Serialize>(variants: &[T], label: &str) {
+            for v in variants {
+                let json = serde_json::to_string(v).expect("serialize");
+                assert_eq!(
+                    v.as_ref(),
+                    json.trim_matches('"'),
+                    "{label} strum drift"
+                );
+            }
+        }
+        check(
+            &[DialogVariant::Default, DialogVariant::Danger],
+            "DialogVariant",
+        );
+        check(
+            &[
+                NotifyVariant::Success,
+                NotifyVariant::Warning,
+                NotifyVariant::Error,
+                NotifyVariant::Info,
+            ],
+            "NotifyVariant",
+        );
+    }
 }
