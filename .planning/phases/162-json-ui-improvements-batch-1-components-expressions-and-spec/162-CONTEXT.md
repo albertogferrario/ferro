@@ -4,6 +4,20 @@
 **Status:** Ready for planning
 **Source:** `/Users/alberto/repositories/gestiscilo-it/app/.planning/phases/138-json-ui-v2-migration-auth-account-onboarding-pages/FRICTION.md`
 
+## Planning Note — Bidirectional Adaptation
+
+The friction loop is **not** "make v2 capable of expressing every v1 UI verbatim." It is a two-way conversation: ferro evolves to express what gestiscilo needs, AND gestiscilo's UI is allowed to be redesigned to fit naturally into the v2 model.
+
+Before adding ferro complexity to satisfy a friction entry, the planner MUST ask:
+
+1. **Is the v1 UI pattern actually right for the user?** Sometimes the friction surfaces that v1's design was already wrong — depth-4 nesting, dropdown dumps, modal-in-modal, etc. v2's structural constraints (depth-3 limit, flat element map, declarative iteration) are not arbitrary — they encode opinions about what makes a clean UI. If a friction entry is "v2 can't express my depth-5 form," the answer is often "your form shouldn't be depth-5."
+
+2. **Is there a v2-native pattern that delivers the same user value?** Per-row action dropdowns on list pages are a common v1 pattern; v2's natural equivalent is often "navigate to detail page, take actions there" — which most users actually prefer. Before adding `{row_key}` interpolation in DataTable (D-03), the planner should explicitly ask whether the gestiscilo redesign is "move per-row actions to detail pages." If yes, the friction is solved by gestiscilo, not ferro.
+
+3. **Does adding the ferro feature serve more than one consumer's idiosyncrasy?** Single-consumer needs go in the consumer's `Spec::builder()` escape hatch. Cross-consumer patterns become first-class catalog components or directives.
+
+Phase 162 decisions below are biased toward the **smallest ferro change that lets gestiscilo express the right UI**, not the largest ferro change that lets gestiscilo port v1 verbatim. Where a decision could be solved by gestiscilo redesign, that is the preferred resolution.
+
 <domain>
 ## Phase Boundary
 

@@ -2,6 +2,10 @@
 
 **Status:** Awaiting friction file. Do not plan yet.
 
+## Planning Note — Bidirectional Adaptation
+
+See Phase 162 CONTEXT for the full statement. Summary: the friction loop is two-way — ferro evolves AND gestiscilo's UI is allowed to be redesigned to fit the v2 model. Before adding catalog complexity, ask whether v1's UI pattern was actually right or whether a v2-native redesign delivers the same user value. Per-card status-dependent badges, conditional header actions, dynamic ProductTile lists — these are the v1 *implementation* of cassa's user needs, not necessarily the *only* implementation. The Phase 163 planner should challenge each cassa/calendario friction entry the same way Phase 162's does, and prefer the smallest ferro change that lets gestiscilo express the right UI.
+
 ## Phase Boundary
 
 Phase 163 consumes the FRICTION.md files produced by gestiscilo Phases 140 (cassa) and 141 (calendario). Cassa surfaces list/detail/form patterns at scale; calendario surfaces the kanban board and real-time SSE interactions.

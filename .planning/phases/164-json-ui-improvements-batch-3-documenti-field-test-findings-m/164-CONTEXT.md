@@ -2,6 +2,10 @@
 
 **Status:** Awaiting friction file. Do not plan yet.
 
+## Planning Note — Bidirectional Adaptation
+
+See Phase 162 CONTEXT for the full statement. Summary: the friction loop is two-way — ferro evolves AND gestiscilo's UI is allowed to be redesigned to fit the v2 model. Documenti is the most form-intensive module; if multi-step wizard flows, conditional field visibility, or PDF-preview routing surface friction, the planner MUST evaluate whether the v1 flow itself was right before adding ferro complexity. Some "wizard" flows are better expressed as a single page with conditional sections; some "edit + preview" splits are better collapsed into one detail page. Phase 164 is the last improvement batch before v1 deletion — the bar for adding new catalog surface should be highest here.
+
 ## Phase Boundary
 
 Phase 164 consumes the FRICTION.md files produced by gestiscilo Phases 142 (documenti) and 143 (final cleanup). Documenti is the most form-intensive module: multi-step flows, conditional field visibility, and PDF-preview routing. This is the last improvement batch before v1 deletion (Phase 160).
