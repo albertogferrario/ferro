@@ -255,6 +255,30 @@ pub struct InputProps {
     pub list: Option<String>,
 }
 
+/// Props for RichTextEditor leaf element — rendered by the Quill 2.0.3 plugin.
+///
+/// The plugin emits a container div (`<div data-ferro-quill ...>`) and a hidden
+/// input that receives the editor's HTML on every text-change event. The form
+/// handler receives standard `field=<html>` POST data on submit.
+///
+/// # Security
+/// The editor produces user-controlled HTML. Sanitization on submit is the
+/// consumer's responsibility — handle this in the form handler before
+/// persisting (e.g. via `ammonia`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RichTextEditorProps {
+    pub field: String,
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_value: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 /// Props for Select component.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SelectProps {
@@ -1203,5 +1227,29 @@ mod schema_smoke_tests {
         // None/empty fields are omitted by serde.
         assert!(reserialized.get("label").is_none());
         assert!(reserialized.get("disabled").is_none());
+    }
+
+    #[test]
+    fn schema_for_rich_text_editor_props_generates() {
+        assert_schema_nonempty_object::<RichTextEditorProps>("RichTextEditorProps");
+    }
+
+    #[test]
+    fn rich_text_editor_props_serde_roundtrip() {
+        let json = serde_json::json!({
+            "field": "body",
+            "label": "Body"
+        });
+        let parsed: RichTextEditorProps = serde_json::from_value(json).expect("decode");
+        assert_eq!(parsed.field, "body");
+        assert_eq!(parsed.label, "Body");
+        assert!(parsed.placeholder.is_none());
+        assert!(parsed.default_value.is_none());
+        assert!(parsed.data_path.is_none());
+        assert!(parsed.error.is_none());
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        // Optional None fields are omitted.
+        assert!(reserialized.get("placeholder").is_none());
+        assert!(reserialized.get("error").is_none());
     }
 }
