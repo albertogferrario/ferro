@@ -1,13 +1,17 @@
 ---
 phase: 163-json-ui-improvements-batch-2-cassa-and-calendario-field-test
 verified: 2026-05-16T00:00:00Z
-status: human_needed
+updated: 2026-05-17T00:00:00Z
+status: passed_with_deferred_gap
 score: 13/14
-overrides_applied: 0
-human_verification:
-  - test: "Manually test 'ferro json-ui:migrate-v1 ferro-cli/tests/fixtures/migrate_v1/in_auth.rs --dry-run' and verify the proposed JSON spec places login-form and its children reachable from root."
-    expected: "Either (a) root wraps page-title and login-form in a Group/Fragment container, or (b) multi-root handlers are rejected as Unsupported with a TODO marker. Currently root is 'page-title' and login-form/email/password/submit are orphaned (unreachable)."
-    why_human: "WR-01 from code review: the codemod emits a structurally correct JSON file (it passes serde validation) but the output spec is semantically wrong — elements are unreachable from root. The integration test passes only because the fixture itself contains the bug. The correct fix (Option A or B from the review) requires a human decision about which repair to make."
+overrides_applied: 1
+override_reason: "WR-01 deferred to Phase 163.1 (gap-closure). Phase 163 scope was the 10 originally-planned items; all delivered and verified. WR-01 surfaced post-plan-close by code review and warrants a clean discuss/plan/execute cycle as 163.1 with Option B (reject multi-root as Unsupported, aligns with D-11)."
+deferred_gaps:
+  - id: G-163-01
+    target_phase: 163.1
+    file: ferro-cli/src/commands/json_ui_migrate_v1.rs
+    description: Codemod multi-root handler produces orphaned elements (WR-01 from 163-REVIEW.md)
+    chosen_repair: B
 ---
 
 # Phase 163: JSON-UI Improvements Batch 2 — Verification Report

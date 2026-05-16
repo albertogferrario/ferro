@@ -1,14 +1,22 @@
 ---
-status: partial
+status: resolved_deferred
 phase: 163-json-ui-improvements-batch-2-cassa-and-calendario-field-test
 source: [163-VERIFICATION.md, 163-REVIEW.md]
 started: 2026-05-16T00:00:00Z
-updated: 2026-05-16T00:00:00Z
+updated: 2026-05-17T00:00:00Z
+resolution: deferred_to_163.1
 ---
 
 ## Current Test
 
-[awaiting human decision on WR-01 codemod multi-root handler]
+[deferred to Phase 163.1 — see G-163-01 disposition below]
+
+## Decision Record
+
+**Date:** 2026-05-17
+**Decision:** Defer WR-01 fix to a dedicated decimal phase 163.1 (gap-closure).
+**Reason:** Phase 163 scope was the 10 originally-planned items, all delivered and verified. WR-01 was surfaced by code review AFTER the phase plans closed and is outside the original CONTEXT.md decisions (D-01 through D-13). Cleanest traceability is to run a fresh discuss/plan/execute cycle on a 163.1 phase rather than mix gap-closure into 163.
+**Next action:** Create Phase 163.1 with `/gsd-insert-phase 163.1` and target G-163-01 with Option B (reject multi-root handlers as Unsupported with TODO marker, aligned with D-11).
 
 ## Tests
 
@@ -32,8 +40,10 @@ blocked: 0
 ## Gaps
 
 ### G-163-01: Codemod multi-root handler produces orphaned elements
-status: failed
+status: deferred_to_163.1
 source: 163-REVIEW.md WR-01
+chosen_repair: B (reject as Unsupported with TODO marker, aligns with D-11)
+target_phase: 163.1 (to be created via /gsd-insert-phase)
 plan: 163-07
 file: ferro-cli/src/commands/json_ui_migrate_v1.rs
 lines: 253-286
