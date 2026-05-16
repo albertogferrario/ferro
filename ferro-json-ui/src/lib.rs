@@ -77,7 +77,9 @@ pub use plugin::{
 };
 pub use plugins::{register_built_in_plugins, MapPlugin, RichTextEditorPlugin};
 pub use render::{render_spec_to_html, render_spec_to_html_with_plugins, RenderResult};
-pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
+pub use resolve::{
+    expand_directives, resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all,
+};
 pub use spec::{
     Element, ElementBuilder, Spec, SpecBuilder, SpecError, MAX_NESTING_DEPTH, SCHEMA_VERSION,
 };

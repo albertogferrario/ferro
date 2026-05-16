@@ -24,8 +24,8 @@ use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
 use ferro_json_ui::{
-    render_layout, render_spec_to_html_with_plugins, resolve_actions, resolve_errors,
-    resolve_expressions, JsonUiConfig, LayoutContext, Spec,
+    expand_directives, render_layout, render_spec_to_html_with_plugins, resolve_actions,
+    resolve_errors, resolve_expressions, JsonUiConfig, LayoutContext, Spec,
 };
 
 /// Stateless JSON-UI renderer.
@@ -35,10 +35,19 @@ use ferro_json_ui::{
 pub struct JsonUi;
 
 impl JsonUi {
-    /// Clone the spec, resolve action handler names to URLs, and resolve
-    /// `$data` / `$template` expression nodes in element props.
+    /// Clone the spec, expand `$each` / `$if` directives, resolve action
+    /// handler names to URLs, and resolve `$data` / `$template` expression
+    /// nodes in element props.
+    ///
+    /// Pipeline (Phase 163 ordering, locked by 163-03-PLAN):
+    /// 1. `expand_directives` — materializes `$each` templates into N clones
+    ///    and removes `$if`-falsy elements. Must run FIRST so all downstream
+    ///    passes operate on the post-expansion element set.
+    /// 2. `resolve_actions` — handler names → URLs on the expanded set.
+    /// 3. `resolve_expressions` — `$data` / `$template` markers in props.
     fn resolve(spec: &Spec) -> Spec {
         let mut resolved = spec.clone();
+        expand_directives(&mut resolved);
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
         resolve_expressions(&mut resolved);
         resolved
@@ -186,10 +195,13 @@ impl JsonUi {
         Ok(HttpResponse::json(payload))
     }
 
-    /// Clone the spec, resolve actions, resolve `$data` / `$template`
-    /// expressions, then populate validation errors on form fields.
+    /// Clone the spec, expand `$each` / `$if` directives, resolve actions,
+    /// resolve `$data` / `$template` expressions, then populate validation
+    /// errors on form fields. Same Phase 163 pipeline ordering as
+    /// `JsonUi::resolve` — `expand_directives` runs FIRST.
     fn resolve_with_errors(spec: &Spec, errors: &HashMap<String, Vec<String>>) -> Spec {
         let mut resolved = spec.clone();
+        expand_directives(&mut resolved);
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
         resolve_expressions(&mut resolved);
         resolve_errors(&mut resolved, errors);

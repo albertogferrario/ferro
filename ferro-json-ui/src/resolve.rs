@@ -104,6 +104,290 @@ fn attach_errors(el: &mut Element, errors: &HashMap<String, Vec<String>>, all: b
     }
 }
 
+// ---------------------------------------------------------------------------
+// Section — Directive expansion (Phase 163: $each, $if)
+// ---------------------------------------------------------------------------
+
+/// Expand `$each` / `$if` directives in `spec` against `spec.data`.
+///
+/// Pass order:
+/// 1. `$if`-falsy elements are REMOVED from `spec.elements`.
+/// 2. `$each` templated elements are REPLACED by N clones with
+///    auto-suffixed IDs (`{tmpl_id}-0` .. `{tmpl_id}-(N-1)`).
+/// 3. Every parent's `children` list is rewritten to reference the new clone
+///    IDs (or pruned if the child was `$if`-deleted or `$each` with empty
+///    rows).
+///
+/// When `$if` AND `$each` co-occur on the same element, `$if` is evaluated
+/// first; if false, the element is removed before `$each` expansion (no
+/// clones produced). This is the planner-locked ordering (163-03-PLAN #5).
+///
+/// Correlated child indexes: when a templated element's child points to
+/// another templated element with the SAME `{path, as}` directive, the
+/// cloned parent at index `i` references the cloned child at index `i`.
+/// Mismatched-each child references are caught at validation time
+/// (`SpecError::MismatchedEach` — Plan 04).
+///
+/// This pass is IDEMPOTENT: after expansion, every clone has its directive
+/// fields cleared (`each = None`, `if_ = None`), so a second call is a no-op.
+///
+/// Pipeline position: must run BEFORE `resolve_actions` and
+/// `resolve_expressions` so those passes operate on the post-expansion
+/// element set.
+pub fn expand_directives(spec: &mut Spec) {
+    let data = spec.data.clone();
+    // Pass 1: remove $if-falsy elements (templates included — a falsy $if on
+    // a templated element prevents its $each expansion entirely).
+    let if_removed = remove_if_falsy(spec, &data);
+    // Pass 2: expand $each templated elements (those that survived $if).
+    let each_expanded = expand_each(spec, &data);
+    // Pass 3: rewrite parent children lists to reference new IDs / prune removed ones.
+    rewrite_parent_children(spec, &if_removed, &each_expanded);
+}
+
+/// Remove elements whose `$if` predicate evaluates false; return the set of
+/// removed IDs so `rewrite_parent_children` can prune dangling references.
+/// Surviving elements have `if_` cleared for idempotency.
+fn remove_if_falsy(spec: &mut Spec, data: &serde_json::Value) -> std::collections::HashSet<String> {
+    let mut to_delete: Vec<String> = Vec::new();
+    for (id, el) in spec.elements.iter() {
+        if let Some(predicate) = &el.if_ {
+            // SOLE predicate evaluator — D-04 reuse mandate.
+            if !predicate.evaluate(data) {
+                to_delete.push(id.clone());
+            }
+        }
+    }
+    let removed: std::collections::HashSet<String> = to_delete.iter().cloned().collect();
+    for id in &to_delete {
+        spec.elements.remove(id);
+    }
+    // Strip if_ on the survivors so a second pass is a no-op.
+    for el in spec.elements.values_mut() {
+        if el.if_.is_some() {
+            el.if_ = None;
+        }
+    }
+    removed
+}
+
+/// Expand every `$each`-templated element into N clones; return a map from
+/// each template ID to its ordered list of clone IDs (empty Vec if the
+/// data array was missing / empty / non-array).
+fn expand_each(
+    spec: &mut Spec,
+    data: &serde_json::Value,
+) -> std::collections::HashMap<String, Vec<String>> {
+    // Snapshot templates BEFORE mutation so iteration order is deterministic
+    // and we can read sibling directives during correlated-child rewriting.
+    let templates: Vec<(String, Element)> = spec
+        .elements
+        .iter()
+        .filter_map(|(id, el)| el.each.as_ref().map(|_| (id.clone(), el.clone())))
+        .collect();
+
+    let template_directives: std::collections::HashMap<String, crate::spec::EachDirective> =
+        templates
+            .iter()
+            .map(|(id, el)| (id.clone(), el.each.clone().unwrap()))
+            .collect();
+
+    let mut expanded: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
+
+    for (tmpl_id, tmpl_el) in &templates {
+        let each = tmpl_el.each.as_ref().unwrap();
+        let rows: Vec<serde_json::Value> = crate::data::resolve_path(data, &each.path)
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let mut clone_ids: Vec<String> = Vec::with_capacity(rows.len());
+        for (i, row) in rows.iter().enumerate() {
+            let clone_id = format!("{tmpl_id}-{i}");
+            let mut clone = tmpl_el.clone();
+            clone.each = None; // strip directive — idempotent
+            clone.if_ = None;
+            // Pre-resolve /{as}/... paths in props against the current row.
+            inline_resolve_row_paths(&mut clone.props, &each.as_, row);
+            // Rewrite this clone's children list for correlated-each siblings.
+            for child in clone.children.iter_mut() {
+                if let Some(child_each) = template_directives.get(child) {
+                    if child_each.path == each.path && child_each.as_ == each.as_ {
+                        *child = format!("{child}-{i}");
+                    }
+                    // Different {path, as} would be caught by the validator
+                    // (MismatchedEach, Plan 04). At runtime we leave the ID
+                    // literal; the render layer emits a missing-id comment
+                    // if it does not exist.
+                }
+            }
+            spec.elements.insert(clone_id.clone(), clone);
+            clone_ids.push(clone_id);
+        }
+        spec.elements.remove(tmpl_id);
+        expanded.insert(tmpl_id.clone(), clone_ids);
+    }
+
+    expanded
+}
+
+/// Walk `value` and replace every `{"$data": "/{as}/..."}` expression that
+/// references the loop variable with the literal value from `row`. Paths NOT
+/// starting with `/{as}/` are left untouched (they resolve against
+/// `spec.data` later via `resolve_expressions`).
+fn inline_resolve_row_paths(value: &mut serde_json::Value, as_name: &str, row: &serde_json::Value) {
+    let prefix = format!("/{as_name}/");
+    inline_walk(value, &prefix, row, as_name);
+}
+
+fn inline_walk(
+    value: &mut serde_json::Value,
+    prefix: &str,
+    row: &serde_json::Value,
+    as_name: &str,
+) {
+    match value {
+        serde_json::Value::Object(map) => {
+            if map.len() == 1 {
+                // Single-key {"$data": "/{as}/..."} → row-scoped literal.
+                if let Some(serde_json::Value::String(path)) = map.get("$data") {
+                    if let Some(rest) = path.strip_prefix(prefix) {
+                        let resolved = crate::data::resolve_path(row, &format!("/{rest}"))
+                            .cloned()
+                            .unwrap_or(serde_json::Value::Null);
+                        *value = resolved;
+                        return;
+                    } else if path == &format!("/{as_name}") {
+                        // `{"$data": "/order"}` — bind the whole row.
+                        *value = row.clone();
+                        return;
+                    }
+                }
+                // Single-key {"$template": "... {/{as}/field} ..."} → interpolate
+                // row-scoped placeholders inline; leave non-row markers for
+                // downstream resolve_expressions.
+                if let Some(serde_json::Value::String(tpl)) = map.get("$template") {
+                    let interpolated = interpolate_row_template(tpl, prefix, row, as_name);
+                    if !contains_template_marker(&interpolated) {
+                        *value = serde_json::Value::String(interpolated);
+                        return;
+                    } else {
+                        map.insert(
+                            "$template".to_string(),
+                            serde_json::Value::String(interpolated),
+                        );
+                        return;
+                    }
+                }
+            }
+            for v in map.values_mut() {
+                inline_walk(v, prefix, row, as_name);
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr.iter_mut() {
+                inline_walk(v, prefix, row, as_name);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn interpolate_row_template(
+    tpl: &str,
+    prefix: &str,
+    row: &serde_json::Value,
+    as_name: &str,
+) -> String {
+    let mut out = String::with_capacity(tpl.len());
+    let mut chars = tpl.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '{' {
+            let mut path = String::new();
+            let mut closed = false;
+            for nc in chars.by_ref() {
+                if nc == '}' {
+                    closed = true;
+                    break;
+                }
+                path.push(nc);
+            }
+            if closed {
+                if let Some(rest) = path.strip_prefix(prefix) {
+                    let resolved = crate::data::resolve_path(row, &format!("/{rest}"))
+                        .map(value_to_string)
+                        .unwrap_or_default();
+                    out.push_str(&resolved);
+                } else if path == format!("/{as_name}") {
+                    out.push_str(&value_to_string(row));
+                } else {
+                    // Non-row template marker — leave intact for the
+                    // downstream resolve_expressions pass.
+                    out.push('{');
+                    out.push_str(&path);
+                    out.push('}');
+                }
+            } else {
+                out.push('{');
+                out.push_str(&path);
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+fn contains_template_marker(s: &str) -> bool {
+    // Heuristic: any `{/...}` substring left in the string indicates a
+    // downstream-resolvable placeholder.
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '{' && matches!(chars.peek(), Some('/')) {
+            return true;
+        }
+    }
+    false
+}
+
+fn value_to_string(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Null => String::new(),
+        other => other.to_string(),
+    }
+}
+
+/// Rewrite every element's `children` list so:
+/// - IDs of `$if`-removed elements are pruned.
+/// - IDs of `$each`-templated elements are replaced by their ordered clone
+///   IDs (or dropped if the array was empty).
+/// - Other IDs pass through unchanged.
+///
+/// Skips children that were ALREADY rewritten to correlated-child suffixes
+/// by `expand_each` (those reference clones that exist in the map and are
+/// NOT keys in `each_expanded`).
+fn rewrite_parent_children(
+    spec: &mut Spec,
+    if_removed: &std::collections::HashSet<String>,
+    each_expanded: &std::collections::HashMap<String, Vec<String>>,
+) {
+    for el in spec.elements.values_mut() {
+        let mut new_children: Vec<String> = Vec::with_capacity(el.children.len());
+        for child in el.children.drain(..) {
+            if if_removed.contains(&child) {
+                continue; // pruned
+            }
+            if let Some(clones) = each_expanded.get(&child) {
+                new_children.extend(clones.iter().cloned());
+            } else {
+                new_children.push(child);
+            }
+        }
+        el.children = new_children;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -265,7 +549,10 @@ mod tests {
         }));
         expand_directives(&mut spec);
         let el = spec.elements.get("btn").expect("btn retained");
-        assert!(el.if_.is_none(), "if_ stripped post-expansion for idempotency");
+        assert!(
+            el.if_.is_none(),
+            "if_ stripped post-expansion for idempotency"
+        );
     }
 
     #[test]
