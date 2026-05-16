@@ -21,8 +21,9 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use serde_json::{Map, Value};
+use syn::parse::Parser;
 use syn::visit::{self, Visit};
-use syn::{ExprCall, File, ImplItemFn, ItemFn};
+use syn::{Expr, ExprCall, ExprLit, ExprMethodCall, File, ImplItemFn, ItemFn, Lit};
 
 /// Entry point invoked by the `json-ui:migrate-v1` subcommand.
 pub fn run(file: String, dry_run: bool) -> Result<()> {
@@ -34,10 +35,10 @@ pub fn run(file: String, dry_run: bool) -> Result<()> {
     let parsed: File =
         syn::parse_file(&src).map_err(|e| anyhow!("failed to parse {file} as Rust source: {e}"))?;
 
-    if file_already_migrated(&parsed) {
+    if file_already_migrated(&parsed, &src) {
         eprintln!(
-            "warning: {file} appears already migrated (uses JsonUi::render_file). \
-             No changes made."
+            "warning: {file} appears already migrated (uses JsonUi::render_file or \
+             contains a json-ui:migrate-v1 TODO marker). No changes made."
         );
         return Ok(());
     }
@@ -76,9 +77,19 @@ pub fn run(file: String, dry_run: bool) -> Result<()> {
     Ok(())
 }
 
-/// Detect "already migrated" by checking for any `JsonUi::render_file(...)`
-/// call inside any function body in the file.
-fn file_already_migrated(parsed: &File) -> bool {
+/// Detect "already migrated" via two signals:
+///   - any `JsonUi::render_file(...)` call (AST), or
+///   - any `// TODO: ferro json-ui:migrate-v1 could not auto-translate` marker
+///     in the source text (syn strips line comments from the AST, so we check
+///     the raw source string directly).
+///
+/// The marker check makes the codemod idempotent on files that contain ONLY
+/// un-translatable handlers — without it, every re-run would prepend another
+/// TODO marker line.
+fn file_already_migrated(parsed: &File, raw_src: &str) -> bool {
+    if raw_src.contains("// TODO: ferro json-ui:migrate-v1 could not auto-translate") {
+        return true;
+    }
     struct Detector(bool);
     impl<'ast> Visit<'ast> for Detector {
         fn visit_expr_call(&mut self, call: &'ast ExprCall) {
@@ -323,10 +334,279 @@ struct ExtractedNode {
     action: Option<Value>,
 }
 
-/// Plan 07 Task 2: full AST walk of a `JsonUiView::new(...).layout(...)` chain.
-///
-/// Filled in alongside the fixture-driven tests (Task 2).
-fn extract_view_call(_block: &syn::Block) -> Option<ExtractedView> {
+/// Walk the function block looking for a `JsonUiView::new(title, vec![...])`
+/// call (optionally followed by `.layout("name")` chained method calls).
+/// Returns `None` if the body does not contain such a chain or if any
+/// element of the chain is not a literal we can translate.
+fn extract_view_call(block: &syn::Block) -> Option<ExtractedView> {
+    let chain = find_view_chain(block)?;
+    extract_chain(&chain)
+}
+
+/// Find the outermost `Expr` in the block that is either `JsonUiView::new(...)`
+/// or a method-call chain on top of it. Returns the matched expression cloned
+/// into an owned `Expr` so the visitor's borrow lifetime is bounded.
+fn find_view_chain(block: &syn::Block) -> Option<Expr> {
+    struct Finder {
+        found: Option<Expr>,
+    }
+    impl<'ast> Visit<'ast> for Finder {
+        fn visit_expr(&mut self, expr: &'ast Expr) {
+            if self.found.is_some() {
+                return;
+            }
+            if is_jsonuiview_chain(expr) {
+                self.found = Some(expr.clone());
+                return;
+            }
+            visit::visit_expr(self, expr);
+        }
+    }
+    let mut f = Finder { found: None };
+    f.visit_block(block);
+    f.found
+}
+
+/// Returns true if `expr` is `JsonUiView::new(...)` or a method-call chain
+/// (`...layout(...)` etc.) whose innermost receiver is `JsonUiView::new(...)`.
+fn is_jsonuiview_chain(expr: &Expr) -> bool {
+    match expr {
+        Expr::Call(call) => {
+            path_starts_with(&call.func, "JsonUiView")
+                && path_ident_tail(&call.func).as_deref() == Some("new")
+        }
+        Expr::MethodCall(mc) => is_jsonuiview_chain(&mc.receiver),
+        _ => false,
+    }
+}
+
+fn path_starts_with(expr: &Expr, head: &str) -> bool {
+    if let Expr::Path(p) = expr {
+        if let Some(first) = p.path.segments.first() {
+            return first.ident == head;
+        }
+    }
+    false
+}
+
+fn path_ident_tail(expr: &Expr) -> Option<String> {
+    if let Expr::Path(p) = expr {
+        return p.path.segments.last().map(|s| s.ident.to_string());
+    }
+    None
+}
+
+/// Walk a `JsonUiView::new(...).layout(...)` chain and build an `ExtractedView`.
+fn extract_chain(expr: &Expr) -> Option<ExtractedView> {
+    let mut view = ExtractedView::default();
+    let mut cursor = expr;
+    loop {
+        match cursor {
+            Expr::MethodCall(mc) => {
+                let method = mc.method.to_string();
+                if method == "layout" {
+                    let arg = mc.args.first()?;
+                    view.layout = Some(lit_str(arg)?);
+                }
+                // Other method calls (e.g. `.attribute(...)`) are ignored for
+                // Plan 07 scope — only `.layout(...)` is recognized.
+                cursor = &mc.receiver;
+            }
+            Expr::Call(call) => {
+                if !is_jsonuiview_chain(cursor) {
+                    return None;
+                }
+                let mut args = call.args.iter();
+                let title_expr = args.next()?;
+                view.title = Some(lit_str(title_expr)?);
+                let nodes_expr = args.next()?;
+                view.nodes = parse_node_list(nodes_expr)?;
+                return Some(view);
+            }
+            _ => return None,
+        }
+    }
+}
+
+/// Parse a `vec![ make_node(...), make_node_with_action(...), ... ]` macro
+/// into a flat list of ExtractedNode. Each element must be a `make_node` or
+/// `make_node_with_action` call.
+fn parse_node_list(expr: &Expr) -> Option<Vec<ExtractedNode>> {
+    let Expr::Macro(m) = expr else {
+        return None;
+    };
+    if m.mac.path.segments.last().map(|s| s.ident.to_string()) != Some("vec".to_string()) {
+        return None;
+    }
+    let parser = syn::punctuated::Punctuated::<Expr, syn::Token![,]>::parse_terminated;
+    let exprs = parser.parse2(m.mac.tokens.clone()).ok()?;
+    exprs.iter().map(parse_make_node).collect()
+}
+
+fn parse_make_node(expr: &Expr) -> Option<ExtractedNode> {
+    let Expr::Call(call) = expr else { return None };
+    let fn_name = path_ident_tail(&call.func)?;
+    let with_action = match fn_name.as_str() {
+        "make_node" => false,
+        "make_node_with_action" => true,
+        _ => return None,
+    };
+    let mut args = call.args.iter();
+    let id_arg = args.next()?;
+    let id = lit_str(id_arg)?;
+    let component_expr = args.next()?;
+    let (component_type, props_map, nested_children) = parse_component_expr(component_expr)?;
+    let action = if with_action {
+        let action_expr = args.next()?;
+        Some(parse_action_expr(action_expr)?)
+    } else {
+        None
+    };
+    Some(ExtractedNode {
+        id,
+        component_type,
+        props: props_map,
+        children_nodes: nested_children,
+        action,
+    })
+}
+
+/// Parse `Component::Variant(StructLit { ..fields.. })`. Returns the variant
+/// name, a JSON Map of literal-field props, and a flattened list of child
+/// nodes derived from `fields: vec![...]`, `buttons: vec![...]`, or
+/// `children: vec![...]` props.
+fn parse_component_expr(expr: &Expr) -> Option<(String, Map<String, Value>, Vec<ExtractedNode>)> {
+    let Expr::Call(call) = expr else { return None };
+    let component_type = path_ident_tail(&call.func)?;
+    let arg = call.args.first()?;
+    let Expr::Struct(struct_expr) = arg else {
+        return None;
+    };
+    let mut props = Map::new();
+    let mut nested_children: Vec<ExtractedNode> = Vec::new();
+    for field in &struct_expr.fields {
+        let field_name = match &field.member {
+            syn::Member::Named(ident) => ident.to_string(),
+            syn::Member::Unnamed(_) => return None,
+        };
+        // Children-array fields: collect inner make_node calls.
+        if matches!(field_name.as_str(), "fields" | "buttons" | "children") {
+            if let Some(children) = parse_node_list(&field.expr) {
+                nested_children.extend(children);
+                continue;
+            }
+            return None;
+        }
+        if let Some(value) = expr_to_json(&field.expr) {
+            props.insert(field_name, value);
+        } else {
+            return None;
+        }
+    }
+    Some((component_type, props, nested_children))
+}
+
+/// Parse `Action::post("name")` / `Action::get("name")` etc. into
+/// `{"handler": "name", "method": "POST"}`.
+fn parse_action_expr(expr: &Expr) -> Option<Value> {
+    let Expr::Call(call) = expr else { return None };
+    if !path_starts_with(&call.func, "Action") {
+        return None;
+    }
+    let method_name = path_ident_tail(&call.func)?;
+    let http_method = match method_name.as_str() {
+        "post" => "POST",
+        "get" => "GET",
+        "put" => "PUT",
+        "patch" => "PATCH",
+        "delete" => "DELETE",
+        _ => return None,
+    };
+    let arg = call.args.first()?;
+    let handler_name = lit_str(arg)?;
+    let mut m = Map::new();
+    m.insert("handler".to_string(), Value::String(handler_name));
+    m.insert("method".to_string(), Value::String(http_method.to_string()));
+    Some(Value::Object(m))
+}
+
+/// Convert a syn Expr to a JSON value. Supports:
+///   - `"literal".to_string()` (MethodCall) → String
+///   - `"literal"` (str lit) → String
+///   - `Some("literal".to_string())` → unwraps to String
+///   - `None` → Null
+///   - Integer / bool / float literals → corresponding JSON values
+///   - `Enum::Variant` paths (e.g. `InputType::Email`) → snake_case string
+fn expr_to_json(expr: &Expr) -> Option<Value> {
+    if let Expr::MethodCall(mc) = expr {
+        if mc.method == "to_string" || mc.method == "into" {
+            return expr_to_json(&mc.receiver);
+        }
+    }
+    if let Expr::Lit(ExprLit { lit, .. }) = expr {
+        return match lit {
+            Lit::Str(s) => Some(Value::String(s.value())),
+            Lit::Bool(b) => Some(Value::Bool(b.value)),
+            Lit::Int(i) => i.base10_parse::<i64>().ok().map(Value::from),
+            Lit::Float(f) => f
+                .base10_parse::<f64>()
+                .ok()
+                .and_then(serde_json::Number::from_f64)
+                .map(Value::Number),
+            _ => None,
+        };
+    }
+    if let Expr::Call(call) = expr {
+        if path_ident_tail(&call.func).as_deref() == Some("Some") {
+            return expr_to_json(call.args.first()?);
+        }
+    }
+    if let Expr::Path(p) = expr {
+        if p.path.is_ident("None") {
+            return Some(Value::Null);
+        }
+        if p.path.segments.len() >= 2 {
+            let variant = p.path.segments.last().unwrap().ident.to_string();
+            return Some(Value::String(camel_to_snake(&variant)));
+        }
+    }
+    None
+}
+
+fn camel_to_snake(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    for (i, ch) in s.char_indices() {
+        if ch.is_uppercase() {
+            if i != 0 {
+                out.push('_');
+            }
+            for low in ch.to_lowercase() {
+                out.push(low);
+            }
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
+/// Extract a string literal from an Expr, handling `"x".to_string()` /
+/// `"x".into()`.
+fn lit_str(expr: &Expr) -> Option<String> {
+    if let Expr::MethodCall(ExprMethodCall {
+        method, receiver, ..
+    }) = expr
+    {
+        if method == "to_string" || method == "into" {
+            return lit_str(receiver);
+        }
+    }
+    if let Expr::Lit(ExprLit {
+        lit: Lit::Str(s), ..
+    }) = expr
+    {
+        return Some(s.value());
+    }
     None
 }
 

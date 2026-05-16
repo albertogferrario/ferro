@@ -1,6 +1,6 @@
-// Fixture: runtime-branch handler. The codemod MUST refuse to translate this
-// and emit a `// TODO: ferro json-ui:migrate-v1 could not auto-translate this
-// handler` marker above the signature.
+// Fixture: runtime-branch handler. The codemod must refuse to translate
+// this shape and emit a TODO marker above the signature; the body stays
+// intact.
 
 pub async fn dynamic_view(req: Request) -> Response {
     let view = if some_condition() {

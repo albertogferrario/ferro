@@ -22,8 +22,7 @@ fn fixture(name: &str) -> String {
         .join("fixtures")
         .join("migrate_v1")
         .join(name);
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|_| panic!("missing fixture: {}", path.display()))
+    std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("missing fixture: {}", path.display()))
 }
 
 fn write_fixture(dir: &TempDir, source_name: &str, dest_name: &str) -> PathBuf {
@@ -67,11 +66,14 @@ fn codemod_one_handler_emits_spec_and_rewrites_controller() {
     let src_path = write_fixture(&dir, "in_auth.rs", "src/controllers/in_auth.rs");
     let _cwd_guard = ChangeCwd::new(dir.path());
 
-    json_ui_migrate_v1::run(src_path.to_string_lossy().to_string(), false)
-        .expect("codemod runs");
+    json_ui_migrate_v1::run(src_path.to_string_lossy().to_string(), false).expect("codemod runs");
 
     let spec_path = dir.path().join("src/views/in_auth/login_form.json");
-    assert!(spec_path.exists(), "spec written to {}", spec_path.display());
+    assert!(
+        spec_path.exists(),
+        "spec written to {}",
+        spec_path.display()
+    );
 
     let actual_spec: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&spec_path).unwrap()).unwrap();
@@ -128,8 +130,7 @@ fn codemod_runtime_branch_emits_todo_marker() {
     );
     let _cwd_guard = ChangeCwd::new(dir.path());
 
-    json_ui_migrate_v1::run(src_path.to_string_lossy().to_string(), false)
-        .expect("codemod runs");
+    json_ui_migrate_v1::run(src_path.to_string_lossy().to_string(), false).expect("codemod runs");
 
     let after = std::fs::read_to_string(&src_path).unwrap();
     assert!(
@@ -158,8 +159,7 @@ fn codemod_writes_no_spec_for_unsupported_handler() {
                 let inner: Vec<_> = std::fs::read_dir(&p).unwrap().collect();
                 assert!(
                     inner.is_empty(),
-                    "no spec files emitted for unsupported handler; found: {:?}",
-                    inner
+                    "no spec files emitted for unsupported handler; found: {inner:?}"
                 );
             } else {
                 panic!("unexpected file under src/views: {}", p.display());
