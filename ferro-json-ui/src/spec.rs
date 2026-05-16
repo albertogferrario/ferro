@@ -822,4 +822,48 @@ mod tests {
         let merged = spec.merge_data(json!({}));
         assert_eq!(merged.data, json!({"a": 1}));
     }
+
+    #[test]
+    fn each_directive_round_trips() {
+        let json = serde_json::json!({"path": "/orders", "as": "order"});
+        let parsed: EachDirective = serde_json::from_value(json.clone()).expect("decode");
+        assert_eq!(parsed.path, "/orders");
+        assert_eq!(parsed.as_, "order");
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        assert_eq!(reserialized, json);
+        // Confirm the wire-format uses "as", not "as_".
+        assert!(reserialized.get("as").is_some());
+        assert!(reserialized.get("as_").is_none());
+    }
+
+    #[test]
+    fn element_with_each_round_trips() {
+        let json = serde_json::json!({
+            "type": "Card",
+            "$each": {"path": "/orders", "as": "order"},
+            "props": {"title": "x"}
+        });
+        let parsed: Element = serde_json::from_value(json.clone()).expect("decode");
+        assert!(parsed.each.is_some());
+        let each = parsed.each.as_ref().unwrap();
+        assert_eq!(each.path, "/orders");
+        assert_eq!(each.as_, "order");
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        assert!(reserialized.get("$each").is_some());
+    }
+
+    #[test]
+    fn element_without_each_omits_field() {
+        // Build via Spec::builder() to mirror the canonical no-directive case.
+        let spec = Spec::builder()
+            .element("card", Element::new("Card").prop("title", "hello"))
+            .build()
+            .expect("spec is valid");
+        let card = spec.elements.get("card").expect("card present");
+        let json = serde_json::to_value(card).expect("encode");
+        assert!(
+            json.get("$each").is_none(),
+            "expected $each to be omitted when None; got: {json}"
+        );
+    }
 }
