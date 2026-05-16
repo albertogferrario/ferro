@@ -1604,15 +1604,25 @@ Plans:
 - [ ] 162-11-PLAN.md — Phase verification gate: full suite + CHANGELOG + human audit (D-23-D-25)
 
 
-### Phase 163: JSON-UI improvements batch 2 — cassa and calendario field-test findings: data-binding edge cases, action patterns, kanban spec
+### Phase 163: JSON-UI improvements batch 2 — iteration directives and spec construction ergonomics
 
-**Goal:** Read the FRICTION.md files from gestiscilo Phases 140 (cassa) and 141 (calendario). Cassa surfaces list/detail/form patterns at scale; calendario surfaces the kanban board and real-time SSE interactions. Expected friction areas: action confirmation flows in specs, `$data` path edge cases on nested arrays, KanbanBoard column spec shape, and any rendering bugs from data-driven column counts. Implement the highest-value fixes. Same triage and test discipline as Phase 162.
-**Requirements**: All friction items triaged; shipped fixes have tests; ferro-json-ui builds clean; gestiscilo can pick up the updated ferro version for Phase 142.
-**Depends on:** Phase 162, gestiscilo Phase 141
-**Plans:** 0 plans
+**Goal:** Ship the iteration-and-ergonomics slice of gestiscilo Phase 138 FRICTION.md. Adds two element-level directives (`$each` for homogeneous list iteration, `$if` for conditional emission), a validator gate for malformed directives, an ergonomic nested-tree `SpecBuilder` layer for truly heterogeneous Rust-side construction, an AST-based `ferro json-ui:migrate-v1` codemod, and MCP catalog reflection. Closes 3 of 4 cassa heterogeneous-iteration friction sites; the 4th (orders detail conditional actions) is covered by `$if`.
+**Requirements**: 13 locked CONTEXT decisions (D-01 through D-13) implemented with tests; ferro-json-ui builds clean; ferro-cli codemod has fixture-driven integration tests; docs/src/json-ui/spec-construction.md ships the four-quadrant decision rubric.
+**Depends on:** Phase 162, gestiscilo Phase 138
+**Plans:** 10 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 163 to break down)
+- [ ] 163-01-PLAN.md — Add `$each` (EachDirective struct + Element.each field + serde tests)
+- [ ] 163-02-PLAN.md — Add `$if` (Element.if_ field reusing Visibility enum + serde tests)
+- [ ] 163-03-PLAN.md — `expand_directives` resolve pass + JsonUi::resolve wiring + 12 unit tests
+- [ ] 163-04-PLAN.md — Validator gates (5 SpecError variants + validate_directives + 11 unit tests)
+- [ ] 163-05-PLAN.md — SpecBuilder ergonomic layer (NestedElement + element_nested + 7 tests)
+- [ ] 163-06-PLAN.md — MCP `json_ui_catalog` reflects directives (DirectiveInfo + 3 tests)
+- [ ] 163-07-PLAN.md — `ferro json-ui:migrate-v1` AST codemod (subcommand + fixtures + 5 integration tests)
+- [ ] 163-08-PLAN.md — End-to-end directive integration tests (4 tests against full pipeline)
+- [ ] 163-09-PLAN.md — Decision rubric docs (spec-construction.md + expressions.md $each/$if sections)
+- [ ] 163-10-PLAN.md — CHANGELOG entry under Unreleased (no version bump per Phase 161 release cadence)
+
 
 ### Phase 164: JSON-UI improvements batch 3 — documenti field-test findings: multi-step forms, visibility rules, spec authoring ergonomics
 
