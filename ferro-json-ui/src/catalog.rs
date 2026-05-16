@@ -28,12 +28,12 @@ use serde_json::{to_value, Value};
 
 use crate::component::{
     ActionCardProps, AlertProps, AvatarProps, BadgeProps, BreadcrumbProps, ButtonGroupProps,
-    ButtonProps, CalendarCellProps, CardProps, CheckboxProps, ChecklistProps, CollapsibleProps,
-    DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps, FormProps,
-    FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps, KanbanBoardProps, ModalProps,
-    NotificationDropdownProps, PageHeaderProps, PaginationProps, ProductTileProps, ProgressProps,
-    SelectProps, SeparatorProps, SidebarProps, SkeletonProps, StatCardProps, SwitchProps,
-    TableProps, TabsProps, TextProps, ToastProps,
+    ButtonProps, CalendarCellProps, CardProps, CheckboxListProps, CheckboxProps, ChecklistProps,
+    CollapsibleProps, DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps,
+    FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps, KanbanBoardProps,
+    ModalProps, NotificationDropdownProps, PageHeaderProps, PaginationProps, ProductTileProps,
+    ProgressProps, SelectProps, SeparatorProps, SidebarProps, SkeletonProps, StatCardProps,
+    SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -344,6 +344,13 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "Switch",
         "Toggle switch (visual alternative to Checkbox); auto-submit when `action` set.",
         || to_value(schema_for!(SwitchProps)).unwrap(),
+        &[],
+    ),
+    (
+        "CheckboxList",
+        "Multi-select checkbox group from static options or data-driven array. \
+         Each checked option submits as field=value.",
+        || to_value(schema_for!(CheckboxListProps)).unwrap(),
         &[],
     ),
     // === Data displays (data.rs) ===
@@ -1035,13 +1042,14 @@ mod tests {
     fn builtin_types_count_is_39() {
         // Drift guard — if this fails, Phase 116's BUILTIN_TYPES changed
         // without a corresponding catalog update. See Plan 02.
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 39);
+        // Updated to 40 in Phase 162 Plan 01 (CheckboxList added).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 40);
     }
 
     #[test]
     fn builtin_specs_len_matches_dispatch() {
         assert_eq!(BUILTIN_SPECS.len(), crate::render::BUILTIN_TYPES.len());
-        assert_eq!(BUILTIN_SPECS.len(), 39);
+        assert_eq!(BUILTIN_SPECS.len(), 40);
     }
 
     #[test]
@@ -1641,9 +1649,10 @@ mod tests {
         let cat = Catalog::build_builtins_only().expect("build");
         let prompt = cat.prompt();
         let bytes = prompt.len();
+        // Budget bumped from 8 KB to 9 KB in Phase 162 Plan 01 (CheckboxList added, 40 components).
         assert!(
-            bytes <= 8 * 1024,
-            "prompt() is {bytes} bytes, exceeds 8 KB budget (CONTEXT D-17)"
+            bytes <= 9 * 1024,
+            "prompt() is {bytes} bytes, exceeds 9 KB budget (CONTEXT D-17)"
         );
     }
 

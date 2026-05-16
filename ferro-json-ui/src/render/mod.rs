@@ -79,6 +79,7 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "Select",
     "Checkbox",
     "Switch",
+    "CheckboxList",
     // Data displays (data.rs)
     "Table",
     "DataTable",
@@ -189,6 +190,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "Select" => form::render_select(el, spec, data, depth),
         "Checkbox" => form::render_checkbox(el, spec, data, depth),
         "Switch" => form::render_switch(el, spec, data, depth),
+        "CheckboxList" => form::render_checkbox_list(el, spec, data, depth),
         // Data displays
         "Table" => data::render_table(el, spec, data, depth),
         "DataTable" => data::render_data_table(el, spec, data, depth),
@@ -519,10 +521,10 @@ mod tests {
 
     #[test]
     fn builtin_types_count_matches_dispatch() {
-        // Defense-in-depth check: BUILTIN_TYPES must be 39 entries.
+        // Defense-in-depth check: BUILTIN_TYPES must be 40 entries.
         // The dispatch match in `render_element` has one arm per entry plus a
         // default arm. A compile-time mismatch would be caught by rustc; this
         // runtime check pins the invariant for future edits.
-        assert_eq!(BUILTIN_TYPES.len(), 39);
+        assert_eq!(BUILTIN_TYPES.len(), 40);
     }
 }

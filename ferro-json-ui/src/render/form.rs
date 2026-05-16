@@ -460,8 +460,6 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
 /// Renders a multi-select checkbox group from static `options` or a data-driven
 /// `options_path`. Pre-checked options are resolved from `selected_path` as a
 /// `Vec<String>`. All string interpolations pass through `html_escape`.
-// Dispatch arm is added in Task 3 (render/mod.rs). Allow until then.
-#[allow(dead_code)]
 pub(crate) fn render_checkbox_list(
     el: &Element,
     _spec: &Spec,
