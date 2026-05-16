@@ -832,22 +832,29 @@ mod tests {
     }
 
     #[test]
-    fn card_missing_footer_id_emits_diagnostic() {
-        // Per CONTEXT D-07: Phase 115's parser validates Element.children IDs
-        // but NOT slot-borne IDs (footer). The walker's D-10 missing-child
-        // comment is the render-time safety net.
-        let spec = build_spec(vec![(
-            "root",
-            Element::new("Card")
-                .prop("title", "T")
-                .prop("footer", json!(["ghost"])),
-        )]);
-        let el = spec.elements.get("root").unwrap();
-        let html = render_card(el, &spec, &json!({}), 1);
-        assert!(
-            html.contains("<!-- ferro-json-ui: element references missing id 'ghost' -->"),
-            "got: {html}"
-        );
+    fn card_missing_footer_id_rejected_at_parse_time() {
+        // D-07: dangling footer IDs are now caught at spec build/parse time,
+        // not silently at render time. SpecError::FooterMissing supersedes the
+        // old render-time HTML diagnostic.
+        let err = Spec::builder()
+            .element(
+                "root",
+                Element::new("Card")
+                    .prop("title", "T")
+                    .prop("footer", json!(["ghost"])),
+            )
+            .build()
+            .unwrap_err();
+        match err {
+            crate::spec::SpecError::FooterMissing {
+                element_id,
+                footer_id,
+            } => {
+                assert_eq!(element_id, "root");
+                assert_eq!(footer_id, "ghost");
+            }
+            other => panic!("expected FooterMissing, got {other:?}"),
+        }
     }
 
     #[test]

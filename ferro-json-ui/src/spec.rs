@@ -118,6 +118,8 @@ pub enum SpecError {
     },
     #[error("invalid element ID '{0}' — must match ^[A-Za-z_][A-Za-z0-9_-]{{0,127}}$")]
     InvalidId(String),
+    #[error("element '{element_id}' has footer reference '{footer_id}' not found in elements")]
+    FooterMissing { element_id: String, footer_id: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -419,6 +421,7 @@ fn validate_structure(spec: &Spec) -> Result<(), SpecError> {
         return Err(SpecError::RootMissing(spec.root.clone()));
     }
     validate_no_dangling(&spec.elements)?;
+    validate_footer_ids(spec)?;
     detect_cycle(&spec.elements, &spec.root)?;
     check_depth(&spec.elements, &spec.root)?;
     Ok(())
@@ -462,6 +465,44 @@ fn validate_no_dangling(elements: &HashMap<String, Element>) -> Result<(), SpecE
                     element: id.clone(),
                     child: child.clone(),
                 });
+            }
+        }
+    }
+    Ok(())
+}
+
+/// D-07: every footer-referenced ID must exist in `spec.elements`.
+/// D-08: when an ID appears in both `props.footer` and `children` of the same
+/// parent, emit an `eprintln!` warning — the element renders once (in footer)
+/// and the duplicate listing is dead config.
+fn validate_footer_ids(spec: &Spec) -> Result<(), SpecError> {
+    for (element_id, el) in &spec.elements {
+        // `props` is a generic Value; handle null/missing gracefully.
+        let footer_ids: Vec<String> = el
+            .props
+            .get("footer")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        for footer_id in &footer_ids {
+            if !spec.elements.contains_key(footer_id) {
+                return Err(SpecError::FooterMissing {
+                    element_id: element_id.clone(),
+                    footer_id: footer_id.clone(),
+                });
+            }
+            // D-08 warning — non-fatal, written to stderr.
+            if el.children.iter().any(|c| c == footer_id) {
+                eprintln!(
+                    "ferro-json-ui: element '{element_id}' has '{footer_id}' in both \
+                     props.footer and children — the element renders once (in footer); \
+                     remove the duplicate from children"
+                );
             }
         }
     }
@@ -821,5 +862,57 @@ mod tests {
             .unwrap();
         let merged = spec.merge_data(json!({}));
         assert_eq!(merged.data, json!({"a": 1}));
+    }
+
+    #[test]
+    fn from_json_rejects_missing_footer_id() {
+        let err = Spec::from_json(
+            r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "card",
+            "elements": {
+                "card": {
+                    "type": "Card",
+                    "props": {"title": "T", "footer": ["ghost"]}
+                }
+            }
+        }"#,
+        )
+        .unwrap_err();
+        match err {
+            SpecError::FooterMissing {
+                element_id,
+                footer_id,
+            } => {
+                assert_eq!(element_id, "card");
+                assert_eq!(footer_id, "ghost");
+            }
+            other => panic!("expected FooterMissing, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn spec_warns_duplicate_footer_child() {
+        // D-08: duplicate footer+children entry produces a stderr warning,
+        // but parsing must still succeed. We assert only the success path.
+        let spec = Spec::from_json(
+            r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "card",
+            "elements": {
+                "card": {
+                    "type": "Card",
+                    "props": {"title": "T", "footer": ["btn"]},
+                    "children": ["btn"]
+                },
+                "btn": {
+                    "type": "Button",
+                    "props": {"label": "Save"}
+                }
+            }
+        }"#,
+        )
+        .expect("D-08 warning is non-fatal; parse must succeed");
+        assert_eq!(spec.root, "card");
     }
 }
