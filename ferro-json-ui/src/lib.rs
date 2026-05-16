@@ -55,9 +55,9 @@ pub use component::{
     FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps, InputProps,
     InputType, KanbanBoardProps, KanbanColumnProps, ModalProps, NotificationDropdownProps,
     NotificationItem, Orientation, PageHeaderProps, PaginationProps, ProductTileProps,
-    ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem,
-    SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
-    TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    ProgressProps, RichTextEditorProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup,
+    SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps,
+    Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers
@@ -75,7 +75,7 @@ pub use plugin::{
     collect_plugin_assets, global_plugin_registry, register_plugin, registered_plugin_types,
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
 };
-pub use plugins::{register_built_in_plugins, MapPlugin};
+pub use plugins::{register_built_in_plugins, MapPlugin, RichTextEditorPlugin};
 pub use render::{render_spec_to_html, render_spec_to_html_with_plugins, RenderResult};
 pub use resolve::{resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all};
 pub use spec::{

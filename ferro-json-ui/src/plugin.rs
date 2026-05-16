@@ -153,6 +153,7 @@ pub fn global_plugin_registry() -> &'static RwLock<PluginRegistry> {
     GLOBAL_PLUGIN_REGISTRY.get_or_init(|| {
         let mut registry = PluginRegistry::new();
         registry.register(crate::plugins::MapPlugin);
+        registry.register(crate::plugins::RichTextEditorPlugin);
         RwLock::new(registry)
     })
 }
