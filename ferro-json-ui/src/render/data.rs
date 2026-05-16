@@ -278,10 +278,17 @@ fn resolve_row_key(row: &Value, row_key_prop: Option<&str>, index: usize) -> Str
     index.to_string()
 }
 
-/// Template row_action URLs for a single row. Substitutes both `{row_key}`
-/// (v1 verbatim) and `{id}` (plan 116-05 convenience placeholder, resolved
-/// against `row["id"]` when present). If the row has no `id` field the
-/// `{id}` placeholder is left unsubstituted.
+/// Template row_action URLs for a single row.
+///
+/// Substitution order (D-03/D-04):
+/// 1. All column keys present in the row object (`{label}`, `{slug_path}`, …).
+///    Only `String` and `Number` values are substituted; booleans, nulls,
+///    arrays, and objects are skipped.
+/// 2. Legacy `{row_key}` — resolved against `row_key_value` (v1 verbatim).
+/// 3. Legacy `{id}` — resolved against `row["id"]` when present.
+///
+/// Missing placeholders (no matching column, and not `{row_key}` / `{id}`)
+/// are left unsubstituted — no panic, no silent removal.
 fn template_actions(
     actions: &[DropdownMenuAction],
     row: &Value,
@@ -304,6 +311,19 @@ fn template_actions(
                 .clone()
                 .or_else(|| Some(cloned.action.handler.clone()));
             if let Some(mut url) = base_url {
+                // D-04: substitute all row column keys first.
+                if let Some(obj) = row.as_object() {
+                    for (col_key, col_val) in obj {
+                        let placeholder = format!("{{{col_key}}}");
+                        let val_str = match col_val {
+                            Value::String(s) => s.clone(),
+                            Value::Number(n) => n.to_string(),
+                            _ => continue,
+                        };
+                        url = url.replace(&placeholder, &val_str);
+                    }
+                }
+                // Legacy substitutions (D-03 compatibility).
                 url = url.replace("{row_key}", row_key_value);
                 if let Some(ref id) = id_value {
                     url = url.replace("{id}", id);
@@ -600,6 +620,110 @@ mod tests {
         assert!(
             html.contains("<!-- ferro-json-ui: failed to decode DataTable props"),
             "got: {html}"
+        );
+    }
+
+    // D-03/D-04: extended placeholder interpolation tests
+
+    #[test]
+    fn data_table_url_template_replaces_column_key() {
+        // Any column key bound at render time is substituted in action URLs.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/pages",
+                "columns": [{"key": "label", "label": "Label"}],
+                "row_actions": [
+                    {"label": "Edit", "action": {"handler": "edit", "url": "/p/{slug_path}/edit", "method": "GET"}}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"pages": [
+            {"id": "7", "label": "Home", "slug_path": "/home"},
+        ]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("/p//home/edit"),
+            "expected /p//home/edit in output; got: {html}"
+        );
+        assert!(
+            !html.contains("{slug_path}"),
+            "{{slug_path}} placeholder must be replaced; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_url_template_replaces_multiple_keys() {
+        // Multiple column keys in a single URL are all substituted.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/pages",
+                "columns": [{"key": "label", "label": "Label"}],
+                "row_actions": [
+                    {"label": "View", "action": {"handler": "view", "url": "/p/{slug_path}/{status}", "method": "GET"}}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"pages": [
+            {"id": "1", "label": "Home", "slug_path": "/home", "status": "draft"},
+        ]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("/p//home/draft"),
+            "expected /p//home/draft in output; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_url_template_missing_key_leaves_placeholder() {
+        // A placeholder with no matching column key is left as-is (no panic, no silent removal).
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/pages",
+                "columns": [{"key": "label", "label": "Label"}],
+                "row_actions": [
+                    {"label": "Edit", "action": {"handler": "edit", "url": "/p/{nonexistent}/edit", "method": "GET"}}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"pages": [
+            {"id": "1", "label": "Home"},
+        ]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        // {nonexistent} has no matching column — must remain literal in the URL.
+        assert!(
+            html.contains("{nonexistent}"),
+            "missing-key placeholder must be left unsubstituted; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_row_href_legacy_placeholders() {
+        // Regression guard: {row_key} and {id} still resolve after D-04 generalization.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/pages",
+                "row_key": "slug",
+                "columns": [{"key": "slug", "label": "Slug"}],
+                "row_actions": [
+                    {"label": "View", "action": {"handler": "view", "url": "/p/{row_key}/{id}", "method": "GET"}}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"pages": [
+            {"id": "7", "slug": "row-3"},
+        ]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("/p/row-3/7"),
+            "legacy {{row_key}} and {{id}} must still be substituted; got: {html}"
         );
     }
 }
