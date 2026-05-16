@@ -1624,6 +1624,16 @@ Plans:
 - [x] 163-10-PLAN.md — CHANGELOG entry under Unreleased (no version bump per Phase 161 release cadence)
 
 
+### Phase 163.1: Codemod multi-root handler fix (G-163-01) — reject as Unsupported with TODO marker (INSERTED)
+
+**Goal:** Close the WR-01 finding from 163-REVIEW.md: the `ferro json-ui:migrate-v1` codemod silently orphans elements when a v1 handler has multiple top-level nodes (root set to first node only, remaining elements unreachable from root). Apply Option B from the code review — reject multi-root handlers as Unsupported, emit the existing `// TODO: codemod could not auto-translate` marker on the controller, do not produce a JSON spec file. Aligns with D-11 from Phase 163 CONTEXT ("codemod is best-effort; cases it cannot translate get a TODO marker, not a silent skip").
+**Requirements**: Multi-root handler detection runs before `Spec::builder()` construction; affected handler gets the TODO marker; existing `out_auth_login_form.json` fixture deleted (or replaced with a single-root variant); integration test `codemod_one_handler_emits_spec_and_rewrites_controller` rewritten to assert TODO marker for multi-root input AND clean JSON for a single-root input; ferro-cli tests pass clean; clippy + fmt clean.
+**Depends on:** Phase 163
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 163.1 to break down)
+
 ### Phase 164: JSON-UI improvements batch 3 — documenti field-test findings: multi-step forms, visibility rules, spec authoring ergonomics
 
 **Goal:** Read the FRICTION.md files from gestiscilo Phases 142 (documenti) and 143 (final cleanup). Documenti is the most form-intensive module: multi-step flows, conditional field visibility, and PDF-preview routing. Expected friction: `visible` rule expressiveness, FormSection nesting at depth limit, multi-page form patterns, and any remaining edge cases from the full gestiscilo sweep. This is the last improvement batch before v1 deletion — address anything that would make the v2 spec surface obviously incomplete compared to what v1 could express. Produce a COMPLETED.md summarising all improvements shipped across Phases 162-164 and any intentional gaps retained for future milestones.

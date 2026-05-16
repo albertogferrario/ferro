@@ -210,6 +210,7 @@ Recent decisions affecting current work:
 
 ### Roadmap Evolution
 
+- Phase 163.1 inserted after Phase 163 (2026-05-17): Codemod multi-root handler fix (G-163-01) — reject as Unsupported with TODO marker. Source: 163-REVIEW.md WR-01 — `ferro json-ui:migrate-v1` silently orphans elements when a v1 handler has multiple top-level nodes. Repair: Option B from review (aligns with D-11). Manually scaffolded — `gsd-tools phase insert` rejected because no milestone heading in ROADMAP.md scopes to include Phase 163 (it sits in a gap between v11.12 and v12.1 milestone sections; STATE.md milestone drift is a separate cleanup). Context: pending — run /gsd-discuss-phase 163.1 or /gsd-plan-phase 163.1.
 - Phases 159-164 added (2026-05-15): v12.0/json-ui-v2 closure and gestiscilo friction loop. Phase 159: browser verification + docs build check (DONE). Phases 160-161: v1 API deletion + merge to master. Phases 162-164: JSON-UI improvements from gestiscilo field-test friction.
 - v12.1 AI milestone renumbered (2026-05-16) from Phases 159-167 to Phases 165-173 to resolve collision with v12.0 closure phases — applied during master merge into v12.0/json-ui-v2 branch.
 - Phase 147 added: DetailForm component for inline edit — ferro-json-ui
