@@ -62,13 +62,50 @@ impl Drop for ChangeCwd<'_> {
 
 #[test]
 fn codemod_one_handler_emits_spec_and_rewrites_controller() {
+    // Phase 163.1 (WR-01): multi-root v1 handlers are rejected as Unsupported.
+    // in_auth.rs has TWO top-level nodes (page-title + login-form), so the
+    // codemod must emit the TODO marker on the controller and produce NO
+    // JSON spec file.
     let dir = TempDir::new().unwrap();
     let src_path = write_fixture(&dir, "in_auth.rs", "src/controllers/in_auth.rs");
     let _cwd_guard = ChangeCwd::new(dir.path());
 
     json_ui_migrate_v1::run(src_path.to_string_lossy().to_string(), false).expect("codemod runs");
 
+    // No spec file emitted for the multi-root case.
     let spec_path = dir.path().join("src/views/in_auth/login_form.json");
+    assert!(
+        !spec_path.exists(),
+        "no spec written for multi-root handler; unexpected file at {}",
+        spec_path.display()
+    );
+
+    // Controller body retains the TODO marker above the handler.
+    let rewritten = std::fs::read_to_string(&src_path).unwrap();
+    assert!(
+        rewritten.contains("// TODO: ferro json-ui:migrate-v1 could not auto-translate this handler"),
+        "TODO marker present on multi-root handler; got:\n{rewritten}"
+    );
+    // Controller body for the handler is left intact (no render_file rewrite).
+    assert!(
+        !rewritten.contains("JsonUi::render_file"),
+        "multi-root handler must not be rewritten to render_file; got:\n{rewritten}"
+    );
+}
+
+#[test]
+fn codemod_single_root_emits_spec_and_rewrites_controller() {
+    // Phase 163.1: a v1 handler with exactly ONE top-level node is still
+    // successfully migrated — produces a JSON spec under src/views/ and
+    // rewrites the controller to call JsonUi::render_file.
+    let dir = TempDir::new().unwrap();
+    let src_path =
+        write_fixture(&dir, "in_single_root.rs", "src/controllers/in_single_root.rs");
+    let _cwd_guard = ChangeCwd::new(dir.path());
+
+    json_ui_migrate_v1::run(src_path.to_string_lossy().to_string(), false).expect("codemod runs");
+
+    let spec_path = dir.path().join("src/views/in_single_root/dashboard.json");
     assert!(
         spec_path.exists(),
         "spec written to {}",
@@ -78,11 +115,11 @@ fn codemod_one_handler_emits_spec_and_rewrites_controller() {
     let actual_spec: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&spec_path).unwrap()).unwrap();
     let expected_spec: serde_json::Value =
-        serde_json::from_str(&fixture("out_auth_login_form.json")).unwrap();
+        serde_json::from_str(&fixture("out_single_root_dashboard.json")).unwrap();
     assert_eq!(actual_spec, expected_spec, "spec content matches fixture");
 
     let actual_controller = std::fs::read_to_string(&src_path).unwrap();
-    let expected_controller = fixture("out_auth.rs");
+    let expected_controller = fixture("out_single_root.rs");
     assert_eq!(actual_controller.trim(), expected_controller.trim());
 }
 
