@@ -9,8 +9,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Variant for confirmation dialogs.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum DialogVariant {
     #[default]
     Default,
@@ -40,8 +43,11 @@ pub struct ConfirmDialog {
 }
 
 /// Notification variant for action outcomes.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum NotifyVariant {
     #[default]
     Success,
@@ -371,11 +377,7 @@ mod tests {
         fn check<T: AsRef<str> + serde::Serialize>(variants: &[T], label: &str) {
             for v in variants {
                 let json = serde_json::to_string(v).expect("serialize");
-                assert_eq!(
-                    v.as_ref(),
-                    json.trim_matches('"'),
-                    "{label} strum drift"
-                );
+                assert_eq!(v.as_ref(), json.trim_matches('"'), "{label} strum drift");
             }
         }
         check(
