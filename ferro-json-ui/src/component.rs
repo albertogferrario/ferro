@@ -1253,3 +1253,72 @@ mod schema_smoke_tests {
         assert!(reserialized.get("error").is_none());
     }
 }
+
+#[cfg(test)]
+mod strum_tests {
+    use super::*;
+
+    /// Assert AsRef<str> matches serde JSON wire format for every variant of
+    /// AlertVariant, BadgeVariant, ButtonVariant, and ToastVariant.
+    /// Threat T-162-08-01: strum and serde must agree on every snake_case string.
+    #[test]
+    fn variant_enums_strum_matches_serde_wire_format() {
+        fn check<T: AsRef<str> + serde::Serialize>(variants: &[T], label: &str) {
+            for v in variants {
+                let json = serde_json::to_string(v).expect("serialize");
+                let json_stripped = json.trim_matches('"');
+                assert_eq!(
+                    v.as_ref(),
+                    json_stripped,
+                    "strum AsRefStr drifted from serde for {label} variant"
+                );
+            }
+        }
+        check(
+            &[
+                AlertVariant::Info,
+                AlertVariant::Success,
+                AlertVariant::Warning,
+                AlertVariant::Error,
+            ],
+            "AlertVariant",
+        );
+        check(
+            &[
+                BadgeVariant::Default,
+                BadgeVariant::Secondary,
+                BadgeVariant::Destructive,
+                BadgeVariant::Outline,
+            ],
+            "BadgeVariant",
+        );
+        check(
+            &[
+                ButtonVariant::Default,
+                ButtonVariant::Secondary,
+                ButtonVariant::Destructive,
+                ButtonVariant::Outline,
+                ButtonVariant::Ghost,
+                ButtonVariant::Link,
+            ],
+            "ButtonVariant",
+        );
+        check(
+            &[
+                ToastVariant::Info,
+                ToastVariant::Success,
+                ToastVariant::Warning,
+                ToastVariant::Error,
+            ],
+            "ToastVariant",
+        );
+    }
+
+    #[test]
+    fn alert_variant_as_ref_str_matches_wire_format() {
+        assert_eq!(AlertVariant::Success.as_ref(), "success");
+        assert_eq!(AlertVariant::Warning.as_ref(), "warning");
+        assert_eq!(AlertVariant::Info.as_ref(), "info");
+        assert_eq!(AlertVariant::Error.as_ref(), "error");
+    }
+}
