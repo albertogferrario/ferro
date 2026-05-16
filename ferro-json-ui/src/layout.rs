@@ -3,8 +3,8 @@
 //! Provides a trait-based layout system where named layouts wrap rendered
 //! component HTML in full page shells. Three built-in layouts are provided:
 //! `DefaultLayout` (minimal), `AppLayout` (dashboard with nav + sidebar),
-//! and `AuthLayout` (centered card). `DashboardLayout` is an optional layout
-//! that users register themselves with per-app config.
+//! and `AuthLayout` (centered, no card chrome). `DashboardLayout` is an optional
+//! layout that users register themselves with per-app config.
 //!
 //! A global `LayoutRegistry` maps layout names to implementations. Specs
 //! specify a layout via `Spec.layout`, and the render pipeline looks it up
@@ -358,10 +358,11 @@ impl Layout for AppLayout {
 
 // ── AuthLayout ──────────────────────────────────────────────────────────
 
-/// Centered card layout for authentication pages (login, register).
+/// Centered layout for authentication pages (login, register).
 ///
 /// Centers the content vertically and horizontally within a max-width
-/// container. No navigation or sidebar.
+/// container. No navigation or sidebar. No card chrome — the spec's
+/// root component is responsible for its own card styling (D-05).
 pub struct AuthLayout;
 
 impl Layout for AuthLayout {
@@ -371,9 +372,7 @@ impl Layout for AuthLayout {
         let body = format!(
             r#"<div class="min-h-screen flex items-center justify-center">
         <div class="w-full max-w-md">
-            <div class="bg-card rounded-lg shadow-md p-8">
-                {wrapper}
-            </div>
+            {wrapper}
         </div>
     </div>"#,
         );
@@ -811,10 +810,21 @@ mod tests {
         let ctx = test_ctx();
         let html = AuthLayout.render(&ctx);
 
-        assert!(html.contains("flex items-center justify-center"));
-        assert!(html.contains("max-w-md"));
-        assert!(html.contains("rounded-lg shadow-md"));
+        // Structural centering and max-width are preserved.
+        assert!(
+            html.contains("min-h-screen flex items-center justify-center"),
+            "centering wrapper must remain"
+        );
+        assert!(
+            html.contains("w-full max-w-md"),
+            "max-width wrapper must remain"
+        );
         assert!(html.contains("<div id=\"ferro-json-ui\""));
+        // D-05: layout no longer applies card chrome; the spec's root declares its own Card.
+        assert!(
+            !html.contains("bg-card rounded-lg shadow-md p-8"),
+            "card chrome must be removed from AuthLayout; spec root must declare its own Card"
+        );
     }
 
     #[test]
