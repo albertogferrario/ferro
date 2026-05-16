@@ -942,6 +942,35 @@ mod tests {
     }
 
     #[test]
+    fn from_json_rejects_missing_modal_footer_id() {
+        // validate_footer_ids walks `props.footer` for every element, including Modal.
+        // This test pins Modal coverage explicitly even though the helper is generic.
+        let err = Spec::from_json(
+            r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "modal",
+            "elements": {
+                "modal": {
+                    "type": "Modal",
+                    "props": {"id": "m", "title": "T", "footer": ["ghost"]}
+                }
+            }
+        }"#,
+        )
+        .unwrap_err();
+        match err {
+            SpecError::FooterMissing {
+                element_id,
+                footer_id,
+            } => {
+                assert_eq!(element_id, "modal");
+                assert_eq!(footer_id, "ghost");
+            }
+            other => panic!("expected FooterMissing on Modal, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn spec_warns_duplicate_footer_child() {
         // D-08: duplicate footer+children entry produces a stderr warning,
         // but parsing must still succeed. We assert only the success path.

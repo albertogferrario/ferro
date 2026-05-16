@@ -4,7 +4,7 @@ Plugins extend the JSON-UI component catalog with custom or third-party componen
 
 ## What Plugins Are
 
-The 39 built-in components cover most server-driven UI patterns. Plugins fill the gap for components that require rich client-side behavior: interactive maps, chart libraries, rich text editors, video players, calendar widgets, and similar.
+The 40 built-in components cover most server-driven UI patterns. Plugins fill the gap for components that require rich client-side behavior: interactive maps, chart libraries, rich text editors, video players, calendar widgets, and similar.
 
 A plugin is a Rust struct implementing the `JsonUiPlugin` trait. It declares:
 
