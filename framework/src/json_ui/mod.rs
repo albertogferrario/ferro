@@ -167,7 +167,8 @@ impl JsonUi {
             .map_err(|e| HttpResponse::text(format!("Failed to load spec: {e}")).status(500))?;
         let spec = (*arc_spec).clone().merge_data(handler_data);
         let data = spec.data.clone();
-        Self::build_response(&spec, &data, config)
+        let resolved = Self::resolve(&spec);
+        Self::build_response(&resolved, &data, config)
     }
 
     /// Return the spec as JSON (for API consumers or debugging).
