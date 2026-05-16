@@ -18,6 +18,27 @@ pub struct JsonUiCatalog {
     pub json_schema: serde_json::Value,
     /// Per-component props JSON Schema, keyed by type name.
     pub component_schemas: std::collections::HashMap<String, serde_json::Value>,
+    /// Spec-level directives recognized by `ferro-json-ui` resolve pipeline
+    /// (Phase 163: `$each`, `$if`).
+    pub directives: Vec<DirectiveInfo>,
+}
+
+/// A spec-level directive (e.g., `$each`, `$if`) discoverable by agents.
+///
+/// Directives are JSON keys placed on an [`ferro_json_ui::Element`] object
+/// alongside `type`, `props`, etc. The resolve pipeline (Phase 163) expands
+/// directives at request time before render.
+#[derive(Debug, Serialize)]
+pub struct DirectiveInfo {
+    /// Wire-format directive name including the `$` prefix (e.g. `"$each"`).
+    pub name: String,
+    /// Short one-line description (agent-facing).
+    pub description: String,
+    /// JSON snippet showing the directive's wire-format usage.
+    pub syntax_example: String,
+    /// Names of `SpecError` variants that can fire when the directive is
+    /// malformed (cross-reference for diagnostic output).
+    pub validation_errors: Vec<String>,
 }
 
 /// A single component in the catalog.
@@ -90,6 +111,35 @@ pub fn execute(component: Option<&str>) -> JsonUiCatalog {
         })
         .collect();
 
+    let directives = vec![
+        DirectiveInfo {
+            name: "$each".to_string(),
+            description:
+                "Iterate over a JSON array in spec.data, producing one element per row \
+                 with auto-suffixed IDs `{id}-0`, `{id}-1`, ... Loop variable bound by \
+                 `as` scopes `$data` paths starting with `/{as}/...` to the current row."
+                    .to_string(),
+            syntax_example: r#"{"type":"Card","$each":{"path":"/orders","as":"order"},"props":{"title":{"$data":"/order/order_number"}}}"#.to_string(),
+            validation_errors: vec![
+                "EachPathNotArray".to_string(),
+                "EachAsReservedName".to_string(),
+                "NestedEach".to_string(),
+                "MismatchedEach".to_string(),
+            ],
+        },
+        DirectiveInfo {
+            name: "$if".to_string(),
+            description:
+                "Conditional element emission. Falsy predicates REMOVE the element from \
+                 the spec at resolve time (no hidden DOM, distinct from `visible` which \
+                 renders hidden). Predicate reuses the `Visibility` evaluator (And/Or/Not \
+                 supported)."
+                    .to_string(),
+            syntax_example: r#"{"type":"Button","$if":{"path":"/can_advance","operator":"eq","value":true},"props":{"label":"Advance"}}"#.to_string(),
+            validation_errors: vec!["IfPathMissing".to_string()],
+        },
+    ];
+
     JsonUiCatalog {
         components,
         plugin_components,
@@ -97,6 +147,7 @@ pub fn execute(component: Option<&str>) -> JsonUiCatalog {
         action_api: ACTION_API.to_string(),
         json_schema: cat.json_schema().clone(),
         component_schemas,
+        directives,
     }
 }
 
@@ -476,5 +527,49 @@ mod tests {
         // Builder and action API still present even when filtering
         assert!(!catalog.builder_api.is_empty());
         assert!(!catalog.action_api.is_empty());
+    }
+
+    #[test]
+    fn json_ui_catalog_includes_each_directive() {
+        let catalog = execute(None);
+        let each = catalog
+            .directives
+            .iter()
+            .find(|d| d.name == "$each")
+            .expect("$each directive present");
+        assert!(!each.description.is_empty());
+        assert!(each.syntax_example.contains("$each"));
+        assert!(each
+            .validation_errors
+            .contains(&"EachPathNotArray".to_string()));
+        assert!(each
+            .validation_errors
+            .contains(&"EachAsReservedName".to_string()));
+    }
+
+    #[test]
+    fn json_ui_catalog_includes_if_directive() {
+        let catalog = execute(None);
+        let if_dir = catalog
+            .directives
+            .iter()
+            .find(|d| d.name == "$if")
+            .expect("$if directive present");
+        assert!(!if_dir.description.is_empty());
+        assert!(if_dir.syntax_example.contains("$if"));
+        assert!(if_dir
+            .validation_errors
+            .contains(&"IfPathMissing".to_string()));
+    }
+
+    #[test]
+    fn json_ui_catalog_directives_serialize_to_json() {
+        let catalog = execute(None);
+        let json = serde_json::to_value(&catalog).expect("serialize");
+        let directives = json
+            .get("directives")
+            .and_then(|v| v.as_array())
+            .expect("directives is an array");
+        assert_eq!(directives.len(), 2);
     }
 }
