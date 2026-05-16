@@ -1629,10 +1629,11 @@ Plans:
 **Goal:** Close the WR-01 finding from 163-REVIEW.md: the `ferro json-ui:migrate-v1` codemod silently orphans elements when a v1 handler has multiple top-level nodes (root set to first node only, remaining elements unreachable from root). Apply Option B from the code review — reject multi-root handlers as Unsupported, emit the existing `// TODO: codemod could not auto-translate` marker on the controller, do not produce a JSON spec file. Aligns with D-11 from Phase 163 CONTEXT ("codemod is best-effort; cases it cannot translate get a TODO marker, not a silent skip").
 **Requirements**: Multi-root handler detection runs before `Spec::builder()` construction; affected handler gets the TODO marker; existing `out_auth_login_form.json` fixture deleted (or replaced with a single-root variant); integration test `codemod_one_handler_emits_spec_and_rewrites_controller` rewritten to assert TODO marker for multi-root input AND clean JSON for a single-root input; ferro-cli tests pass clean; clippy + fmt clean.
 **Depends on:** Phase 163
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 163.1 to break down)
+- [ ] 163.1-01-PLAN.md — Add multi-root guard in try_migrate_handler, delete invalid out_auth fixtures, create single-root fixture trio, rewrite integration test to cover both branches, fmt+clippy+ferro-cli tests clean
+
 
 ### Phase 164: JSON-UI improvements batch 3 — documenti field-test findings: multi-step forms, visibility rules, spec authoring ergonomics
 
