@@ -39,15 +39,15 @@ created: 2026-05-16
 | Task ID | Plan | Wave | Decision | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|----------|-----------|-------------------|-------------|--------|
 | 163-01-* | 01 | 1 | D-01 ($each struct + serde) | unit | `cargo test -p ferro-json-ui --lib spec::tests::each_directive` | ❌ W0 | ⬜ pending |
-| 163-02-* | 02 | 2 | D-03 ($if struct + serde) | unit | `cargo test -p ferro-json-ui --lib spec::tests::if_directive` | ❌ W0 | ⬜ pending |
-| 163-03-* | 03 | 2 | D-01/D-03 resolve-time expansion | unit | `cargo test -p ferro-json-ui --lib resolve::tests::expand_directives` | ❌ W0 | ⬜ pending |
-| 163-04-* | 04 | 2 | D-04 ($if reuses visibility evaluator) | unit | `cargo test -p ferro-json-ui --lib resolve::tests::if_uses_visibility` | ❌ W0 | ⬜ pending |
-| 163-05-* | 05 | 3 | D-12 (validator errors for malformed directives) | unit | `cargo test -p ferro-json-ui --lib spec::tests::validate_directives` | ❌ W0 | ⬜ pending |
-| 163-06-* | 06 | 3 | D-06/D-07 SpecBuilder ergonomic layer | unit | `cargo test -p ferro-json-ui --lib builder::tests::ergonomic` | ❌ W0 | ⬜ pending |
+| 163-02-* | 02 | 2 | D-03, D-04 ($if struct + accepts full Visibility) | unit | `cargo test -p ferro-json-ui --lib spec::tests::if_directive` | ❌ W0 | ⬜ pending |
+| 163-03-* | 03 | 2 | D-01/D-02/D-03/D-04 resolve-time expansion | unit | `cargo test -p ferro-json-ui --lib resolve::tests::expand_directives` | ❌ W0 | ⬜ pending |
+| 163-04-* | 04 | 2 | D-12 (validator gates for malformed directives) | unit | `cargo test -p ferro-json-ui --lib spec::tests::validate_directives` | ❌ W0 | ⬜ pending |
+| 163-05-* | 05 | 3 | D-06/D-07 SpecBuilder ergonomic layer | unit | `cargo test -p ferro-json-ui --lib builder::tests::ergonomic` | ❌ W0 | ⬜ pending |
+| 163-06-* | 06 | 3 | D-13 MCP catalog reflects directives | unit | `cargo test -p ferro-mcp --lib tools::json_ui_catalog::tests::reflects_directives` | ❌ W0 | ⬜ pending |
 | 163-07-* | 07 | 4 | D-09/D-10/D-11 ferro-cli codemod | integration | `cargo test -p ferro-cli --test json_ui_migrate_v1` | ❌ W0 | ⬜ pending |
-| 163-08-* | 08 | 4 | D-13 MCP catalog reflects directives | unit | `cargo test -p ferro-mcp --lib tools::json_ui_catalog::tests::reflects_directives` | ❌ W0 | ⬜ pending |
-| 163-09-* | 09 | 4 | D-08 docs/src/json-ui/spec-construction.md | docs | `cargo doc --no-deps -p ferro-json-ui && test -f docs/src/json-ui/spec-construction.md` | ❌ W0 | ⬜ pending |
-| 163-10-* | 10 | 5 | resolve-time expansion end-to-end | integration | `cargo test -p ferro-json-ui --test directives_e2e` | ❌ W0 | ⬜ pending |
+| 163-08-* | 08 | 4 | D-01/D-02/D-03/D-05 E2E directive integration tests | integration | `cargo test -p ferro-json-ui --test directives_e2e` | ❌ W0 | ⬜ pending |
+| 163-09-* | 09 | 4 | D-05/D-08 decision rubric docs | docs | `cargo doc --no-deps -p ferro-json-ui && test -f docs/src/json-ui/spec-construction.md` | ❌ W0 | ⬜ pending |
+| 163-10-* | 10 | 5 | CHANGELOG entry (no decision; release-prep) | presence | `grep -E '^- (Added\|Changed\|Fixed)' CHANGELOG.md` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -80,16 +80,16 @@ created: 2026-05-16
 
 | Decision | Coverage |
 |----------|----------|
-| D-01 `$each` directive | Plan 01 (struct) + Plan 03 (resolve expansion) + Plan 10 (e2e) — unit + integration |
-| D-02 (covers 3 cassa sites) | Plan 10 fixture mirrors orders kanban list — integration |
-| D-03 `$if` conditional emission | Plan 02 (struct) + Plan 03 (resolve deletion) + Plan 04 (visibility reuse) + Plan 10 (e2e) — unit + integration |
-| D-04 visibility evaluator reuse | Plan 04 — unit test asserts no parallel evaluator added |
-| D-05 no `$template` element | Plans contain no `$template` work — coverage is structural |
-| D-06 / D-07 SpecBuilder ergonomic layer | Plan 06 — unit |
+| D-01 `$each` directive | Plan 01 (struct) + Plan 03 (resolve expansion) + Plan 08 (e2e) — unit + integration |
+| D-02 (covers 3 cassa sites) | Plan 08 fixture mirrors orders kanban list — integration |
+| D-03 `$if` conditional emission | Plan 02 (struct) + Plan 03 (resolve deletion) + Plan 08 (e2e) — unit + integration |
+| D-04 visibility evaluator reuse | Plan 02 (`$if` accepts full Visibility enum) + Plan 03 (resolver invokes `Visibility::evaluate`, no parallel evaluator) — unit |
+| D-05 no `$template` element | Plans contain no `$template` work — coverage is structural; Plan 08 e2e fixtures exercise the post-expansion shape |
+| D-06 / D-07 SpecBuilder ergonomic layer | Plan 05 — unit |
 | D-08 docs rubric | Plan 09 — docs build + presence check |
 | D-09 / D-10 / D-11 codemod | Plan 07 — integration with fixture inputs/outputs |
-| D-12 validator errors | Plan 05 — unit per error variant |
-| D-13 MCP catalog reflects directives | Plan 08 — unit + manual MCP smoke |
+| D-12 validator errors | Plan 04 — unit per error variant |
+| D-13 MCP catalog reflects directives | Plan 06 — unit + manual MCP smoke |
 
 ---
 
