@@ -380,6 +380,7 @@ mod tests {
             children: Vec::new(),
             action: None,
             visible: None,
+            each: None,
         }
     }
 
