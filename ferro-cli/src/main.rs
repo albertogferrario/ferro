@@ -47,6 +47,10 @@ enum Commands {
         /// Skip TypeScript type generation
         #[arg(long)]
         skip_types: bool,
+
+        /// Enable file-watch auto-reload (500ms debounce)
+        #[arg(long)]
+        watch: bool,
     },
     /// Generate TypeScript types from Rust InertiaProps structs
     GenerateTypes {
@@ -470,6 +474,12 @@ enum Commands {
         #[arg(long)]
         deploy: bool,
     },
+    /// Generate a magic-link login URL for a given email (bypasses email delivery)
+    #[command(name = "auth:link")]
+    AuthLink {
+        /// Email address of the user to impersonate
+        email: String,
+    },
     /// Check local API readiness for MCP integration
     #[command(name = "api:check")]
     ApiCheck {
@@ -502,8 +512,16 @@ fn main() {
             backend_only,
             frontend_only,
             skip_types,
+            watch,
         } => {
-            commands::serve::run(port, frontend_port, backend_only, frontend_only, skip_types);
+            commands::serve::run(
+                port,
+                frontend_port,
+                backend_only,
+                frontend_only,
+                skip_types,
+                watch,
+            );
         }
         Commands::GenerateTypes { output, watch } => {
             commands::generate_types::run(output, watch);
@@ -717,6 +735,9 @@ fn main() {
         }
         Commands::Doctor { json, deploy } => {
             commands::doctor::run(json, deploy);
+        }
+        Commands::AuthLink { email } => {
+            commands::auth_link::run(email);
         }
         Commands::ApiCheck {
             url,

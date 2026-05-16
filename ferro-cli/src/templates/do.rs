@@ -59,6 +59,7 @@ pub fn render_app_yaml(ctx: &AppYamlContext) -> String {
         .as_deref()
         .unwrap_or(ctx.repo.as_str());
     let branch = ctx.preserved_github_branch.as_deref().unwrap_or("main");
+    let jobs_block = render_jobs_block(&ctx.web_bin, repo, branch);
 
     let rendered = TEMPLATE
         .replace("{{NAME}}", name)
@@ -66,6 +67,7 @@ pub fn render_app_yaml(ctx: &AppYamlContext) -> String {
         .replace("{{REPO}}", repo)
         .replace("{{GITHUB_BRANCH}}", branch)
         .replace("{{WORKERS_BLOCK}}", &workers_block)
+        .replace("{{JOBS_BLOCK}}", &jobs_block)
         .replace("{{ENVS_BLOCK}}", &envs_block);
     debug_assert!(
         !rendered.contains("{{"),
@@ -116,6 +118,23 @@ fn render_envs_block_from_lines(lines: &[EnvLine]) -> String {
         out.pop();
     }
     out
+}
+
+fn render_jobs_block(web_bin: &str, repo: &str, branch: &str) -> String {
+    format!(
+        "jobs:\n  \
+         - name: migrate\n    \
+           kind: PRE_DEPLOY\n    \
+           dockerfile_path: Dockerfile\n    \
+           source_dir: /\n    \
+           github:\n      \
+             repo: {repo}\n      \
+             branch: {branch}\n      \
+             deploy_on_push: false\n    \
+           run_command: /usr/local/bin/{web_bin} db:migrate\n    \
+           instance_size_slug: apps-s-1vcpu-0.5gb\n    \
+           instance_count: 1\n"
+    )
 }
 
 fn render_workers_block(workers: &[String]) -> String {
@@ -322,6 +341,39 @@ mod tests {
         for n in ["web", "worker", "screenshot-worker", "api"] {
             assert!(!is_test_like_bin(n));
         }
+    }
+
+    #[test]
+    fn render_app_yaml_emits_predeploy_migrate_job() {
+        let c = ctx("myapp", "owner/myrepo", vec![], vec![]);
+        let out = render_app_yaml(&c);
+        // Job present
+        assert!(out.contains("jobs:"), "missing jobs: block:\n{out}");
+        assert!(
+            out.contains("kind: PRE_DEPLOY"),
+            "missing kind: PRE_DEPLOY:\n{out}"
+        );
+        // Command uses resolved web_bin
+        assert!(
+            out.contains("run_command: /usr/local/bin/"),
+            "run_command path missing: \n{out}"
+        );
+        assert!(
+            out.contains("db:migrate"),
+            "db:migrate verb missing:\n{out}"
+        );
+        // Source repo/branch threaded through
+        assert!(
+            out.contains("repo: owner/myrepo"),
+            "repo not threaded:\n{out}"
+        );
+        // Don't auto-deploy from the job (it runs as part of the parent deploy)
+        assert!(
+            out.contains("deploy_on_push: false"),
+            "expected migrate job to set deploy_on_push: false:\n{out}"
+        );
+        // No unresolved tokens
+        assert!(!out.contains("{{"), "unresolved token in output:\n{out}");
     }
 
     #[test]

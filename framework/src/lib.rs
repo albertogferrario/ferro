@@ -103,9 +103,10 @@ pub use ferro_stripe::{
 pub use ferro_theme::{IntentModeTemplates, IntentSlotTemplate, Theme, ThemeError, ThemeTemplates};
 pub use hashing::{hash, needs_rehash, verify, DEFAULT_COST as HASH_DEFAULT_COST};
 pub use http::{
-    bytes, json, text, Cookie, CookieOptions, FormRequest, FromParam, FromRequest, HttpResponse,
-    InertiaRedirect, PaginationLinks, PaginationMeta, Redirect, Request, Resource,
-    ResourceCollection, ResourceMap, Response, ResponseExt, SameSite,
+    bytes, json, request_host, text, validate_mime, validate_size, Cookie, CookieOptions,
+    FormRequest, FromParam, FromRequest, HttpResponse, InertiaRedirect, MultipartForm,
+    PaginationLinks, PaginationMeta, Redirect, Request, Resource, ResourceCollection, ResourceMap,
+    Response, ResponseExt, SameSite, UploadedFile,
 };
 #[cfg(feature = "inertia")]
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
@@ -139,9 +140,9 @@ pub use inertia::InertiaContext;
 pub use metrics::{get_metrics, MetricsSnapshot, RouteMetrics, RouteMetricsView};
 pub use middleware::{
     get_pre_route_middleware, register_global_middleware, register_pre_route_middleware,
-    rewrite_request_path, Limit, LimiterResponse, MetricsMiddleware, Middleware, MiddlewareFuture,
-    MiddlewareRegistry, Next, PreRouteMiddleware, PreRouteResult, RateLimiter, SecurityHeaders,
-    Throttle,
+    rewrite_request_path, Cors, Limit, LimiterResponse, MetricsMiddleware, Middleware,
+    MiddlewareFuture, MiddlewareRegistry, Next, PreRouteMiddleware, PreRouteResult, RateLimiter,
+    SecurityHeaders, Throttle,
 };
 pub use routing::{
     // Internal functions used by macros (hidden from docs)
@@ -190,9 +191,10 @@ pub use ferro_queue::{
 // Re-export ferro-notifications for multi-channel notifications
 pub use ferro_notifications::{
     Channel as NotificationChannel, ChannelResult, DatabaseMessage, DatabaseNotificationStore,
-    Error as NotificationError, MailConfig, MailDriver, MailMessage, Notifiable, Notification,
-    NotificationConfig, NotificationDispatcher, ResendConfig, SlackAttachment, SlackField,
-    SlackMessage, SmtpConfig, StoredNotification,
+    Error as NotificationError, InAppConfig, InAppMessage, InAppSeverity, MailAttachment,
+    MailConfig, MailDriver, MailMessage, Notifiable, Notification, NotificationConfig,
+    NotificationDispatcher, PushMessage, ResendConfig, SlackAttachment, SlackField, SlackMessage,
+    SmsMessage, SmtpConfig, StoredNotification, WhatsAppMessage,
 };
 
 // Re-export ferro-broadcast for real-time WebSocket channels
@@ -232,7 +234,7 @@ pub use ferro_ai::{
 #[cfg(feature = "whatsapp")]
 pub use ferro_whatsapp::{
     verify_whatsapp_webhook, DeduplicationStore, DeliveryStatus, Error as WhatsAppError,
-    InMemoryDeduplicationStore, Message as WhatsAppMessage, ProcessWhatsAppWebhook,
+    InMemoryDeduplicationStore, Message as WhatsAppRawMessage, ProcessWhatsAppWebhook,
     SendResult as WhatsAppSendResult, SenderIdentity, WhatsApp, WhatsAppConfig,
     WhatsAppStatusUpdate, WhatsAppTextReceived,
 };
@@ -390,6 +392,11 @@ macro_rules! global_middleware {
 }
 
 /// Register a pre-route middleware that runs before path extraction and route matching.
+///
+/// Pre-route middleware operates on the raw hyper request and can rewrite the path
+/// (via `rewrite_request_path`) before the router selects a handler. Use this for
+/// host-based routing, path aliasing, or any rewrite that must influence which
+/// route is matched. Runs in registration order, before standard global middleware.
 ///
 /// # Example
 ///

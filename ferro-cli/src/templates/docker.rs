@@ -50,12 +50,21 @@ pub struct DockerContext {
     pub copy_dirs_present: Vec<String>,
     /// Verbatim `metadata.runtime_apt`.
     pub runtime_apt: Vec<String>,
+    /// Resolved ferro-cli version used by the `types-gen` Docker stage's
+    /// `cargo install ferro-cli --version ...` pin. Caller-resolved via
+    /// `resolve_ferro_version(root)`, which parses the project's Cargo.lock
+    /// for the `ferro-rs` package and falls back to `env!("CARGO_PKG_VERSION")`
+    /// when absent. Never empty.
+    ///
+    /// Phase 156 (D-16/D-21): closes the convention contradiction by ensuring
+    /// `frontend/src/types/` is regenerated inside the Docker build context.
+    pub ferro_version: String,
 }
 
 /// Render a Dockerfile from the supplied context. Pure string substitution.
 pub fn render_dockerfile(ctx: &DockerContext) -> String {
     let frontend_stage = if ctx.has_frontend {
-        FRONTEND_STAGE_BODY.to_string()
+        format!("{TYPES_GEN_STAGE_BODY}{FRONTEND_STAGE_WITH_TYPES_COPY_BODY}")
     } else {
         String::new()
     };
@@ -102,6 +111,7 @@ pub fn render_dockerfile(ctx: &DockerContext) -> String {
     let rendered = DOCKERFILE_TPL
         .replace("{{FRONTEND_STAGE}}", &frontend_stage)
         .replace("{{RUST_IMAGE_TAG}}", &rust_image_tag)
+        .replace("{{FERRO_VERSION}}", &ctx.ferro_version)
         .replace("{{ENTRYPOINT}}", &entrypoint_block)
         .replace("{{BIN_COPIES}}", &bin_copies)
         .replace("{{COPY_DIRS}}", &copy_dirs)
@@ -114,12 +124,35 @@ pub fn render_dockerfile(ctx: &DockerContext) -> String {
     rendered
 }
 
-const FRONTEND_STAGE_BODY: &str = r#"
+/// Phase 156 §6 (D-15): the new `types-gen` Rust stage. Emitted unconditionally
+/// when `has_frontend == true`. Uses the same `rust:{{RUST_IMAGE_TAG}}` base as
+/// the backend builder chain; the slim variant has the full Rust toolchain
+/// (verified — see RESEARCH Pitfall 5).
+///
+/// Pins `ferro-cli` to `{{FERRO_VERSION}}` (resolved from the project's
+/// Cargo.lock). The `--locked` flag uses ferro-cli's published Cargo.lock for
+/// reproducibility.
+const TYPES_GEN_STAGE_BODY: &str = r#"
+FROM rust:{{RUST_IMAGE_TAG}} AS types-gen
+WORKDIR /app
+RUN cargo install ferro-cli --version {{FERRO_VERSION}} --locked
+COPY . .
+RUN ferro generate-types
+"#;
+
+/// Phase 156 §6 (D-15): the frontend stage gains `COPY --from=types-gen` so
+/// the gitignored `frontend/src/types/` is materialized inside the build
+/// context before `npm run build` (which invokes `tsc`). Replaces
+/// `FRONTEND_STAGE_BODY` when `has_frontend == true`. The COPY line is
+/// positioned immediately BEFORE `RUN npm run build` — order matters: tsc
+/// resolves `./types/*` imports during `npm run build`.
+const FRONTEND_STAGE_WITH_TYPES_COPY_BODY: &str = r#"
 FROM node:20-bookworm-slim AS frontend-builder
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci || npm install
 COPY frontend/ ./
+COPY --from=types-gen /app/frontend/src/types ./src/types
 RUN npm run build
 "#;
 
@@ -141,6 +174,34 @@ pub fn read_rust_channel(project_root: &Path) -> String {
         .and_then(|c| c.as_str())
         .map(String::from)
         .unwrap_or_else(|| "stable".to_string())
+}
+
+/// Phase 156 §6 (D-16/D-21): resolve the ferro-cli version to pin in the
+/// `types-gen` Docker stage. Parses the project's `Cargo.lock` for the
+/// `ferro-rs` package; falls back to the current binary's own version
+/// (`env!("CARGO_PKG_VERSION")`) when the lockfile is absent or has no
+/// `ferro-rs` entry. Never returns an empty string.
+///
+/// Used by `crate::commands::docker_init`, `crate::doctor::checks::docker_template_drift`,
+/// and the `gestiscilo_fixture` integration test to construct `DockerContext` at
+/// the I/O boundary before passing the resolved version into the pure renderer.
+pub fn resolve_ferro_version(project_root: &Path) -> String {
+    if let Ok(lock) = fs::read_to_string(project_root.join("Cargo.lock")) {
+        if let Ok(parsed) = lock.parse::<Value>() {
+            if let Some(pkgs) = parsed.get("package").and_then(|v| v.as_array()) {
+                for pkg in pkgs {
+                    let name = pkg.get("name").and_then(|n| n.as_str());
+                    let ver = pkg.get("version").and_then(|v| v.as_str());
+                    if name == Some("ferro-rs") {
+                        if let Some(v) = ver {
+                            return v.to_string();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    env!("CARGO_PKG_VERSION").to_string()
 }
 
 // ============================================================================
@@ -190,6 +251,7 @@ mod tests {
             web_bin: "app".to_string(),
             copy_dirs_present: vec![],
             runtime_apt: vec![],
+            ferro_version: "0.0.0-test".to_string(),
         }
     }
 
@@ -200,6 +262,123 @@ mod tests {
         assert!(!render_dockerfile(&c).contains("frontend-builder"));
         c.has_frontend = true;
         assert!(render_dockerfile(&c).contains("frontend-builder"));
+    }
+
+    #[test]
+    fn types_gen_stage_present_when_has_frontend() {
+        let mut c = ctx();
+        c.has_frontend = true;
+        let out = render_dockerfile(&c);
+        assert!(
+            out.contains("AS types-gen"),
+            "expected types-gen stage; got:\n{out}"
+        );
+    }
+
+    #[test]
+    fn types_gen_stage_absent_when_no_frontend() {
+        let mut c = ctx();
+        c.has_frontend = false;
+        let out = render_dockerfile(&c);
+        assert!(!out.contains("AS types-gen"));
+        assert!(!out.contains("frontend-builder"));
+    }
+
+    #[test]
+    fn copy_from_types_gen_before_npm_build() {
+        let mut c = ctx();
+        c.has_frontend = true;
+        let out = render_dockerfile(&c);
+        let copy_pos = out
+            .find("COPY --from=types-gen /app/frontend/src/types ./src/types")
+            .expect("missing COPY --from=types-gen line");
+        let build_pos = out
+            .find("RUN npm run build")
+            .expect("missing npm run build");
+        assert!(
+            copy_pos < build_pos,
+            "COPY --from=types-gen must appear before RUN npm run build (copy={copy_pos}, build={build_pos})"
+        );
+    }
+
+    #[test]
+    fn ferro_version_token_resolved() {
+        let mut c = ctx();
+        c.has_frontend = true;
+        c.ferro_version = "9.9.9".to_string();
+        let out = render_dockerfile(&c);
+        assert!(
+            out.contains("--version 9.9.9"),
+            "expected --version 9.9.9; got:\n{out}"
+        );
+        assert!(!out.contains("{{FERRO_VERSION}}"));
+    }
+
+    #[test]
+    fn types_gen_stage_uses_same_rust_image_tag() {
+        let mut c = ctx();
+        c.has_frontend = true;
+        c.rust_channel = "stable".into();
+        let out = render_dockerfile(&c);
+        assert!(out.contains("FROM rust:slim-bookworm AS types-gen"));
+        c.rust_channel = "1.90.0".into();
+        let out = render_dockerfile(&c);
+        assert!(out.contains("FROM rust:1.90.0-slim-bookworm AS types-gen"));
+    }
+
+    #[test]
+    fn no_unresolved_tokens_with_frontend_stage() {
+        let mut c = ctx();
+        c.has_frontend = true;
+        let out = render_dockerfile(&c);
+        assert!(
+            !out.contains("{{"),
+            "unresolved template token in rendered Dockerfile:\n{out}"
+        );
+    }
+
+    #[test]
+    fn resolve_ferro_version_reads_cargo_lock() {
+        use std::fs;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("Cargo.lock"),
+            r#"
+[[package]]
+name = "other-crate"
+version = "0.5.0"
+
+[[package]]
+name = "ferro-rs"
+version = "1.2.3"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(resolve_ferro_version(tmp.path()), "1.2.3");
+    }
+
+    #[test]
+    fn resolve_ferro_version_falls_back_when_lockfile_absent() {
+        let tmp = TempDir::new().unwrap();
+        let v = resolve_ferro_version(tmp.path());
+        assert_eq!(v, env!("CARGO_PKG_VERSION"));
+        assert!(!v.is_empty());
+    }
+
+    #[test]
+    fn resolve_ferro_version_falls_back_when_ferro_rs_absent() {
+        use std::fs;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("Cargo.lock"),
+            r#"
+[[package]]
+name = "other-crate"
+version = "0.5.0"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(resolve_ferro_version(tmp.path()), env!("CARGO_PKG_VERSION"));
     }
 
     #[test]
@@ -331,6 +510,7 @@ mod entrypoint_tests {
             web_bin: bin.to_string(),
             copy_dirs_present: vec![],
             runtime_apt: vec![],
+            ferro_version: "0.0.0-test".to_string(),
         }
     }
 
@@ -342,6 +522,7 @@ mod entrypoint_tests {
             web_bin: web.to_string(),
             copy_dirs_present: vec![],
             runtime_apt: vec![],
+            ferro_version: "0.0.0-test".to_string(),
         }
     }
 

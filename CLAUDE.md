@@ -22,6 +22,8 @@ The **core abstraction is projection / intent** (`ferro-projections`, shipped in
 
 5. **Beauty is a design criterion, not decoration.** All four dimensions (aesthetic, conceptual, operational, compressive) are required for v1.0, applied in the priority order above.
 
+6. **Project-agnostic crates.** Crates under `ferro-*` are libraries shared across every ferro application; they must not hardcode any application identity (app name, brand strings, copy, URLs). When a crate needs app-level identity — e.g. an `organizationName` on a generated artifact, a "powered by" footer, a default sender name, a callback base URL — it reads framework conventions: `APP_NAME` and `APP_URL`, the same env vars `framework::config::AppConfig` consumes. The pattern: each `ferro-*` crate exposes its own config struct with `app_name` / `app_url` fields populated from those env vars in `from_env()`, mirroring `ferro-inertia::InertiaConfig::app_name`. Reviewers should reject hardcoded strings like `"gestiscilo"`, `"Ferro Application"`, `"https://example.com"`, or any specific tenant identifier inside a `ferro-*` crate. The sole exception is documentation examples explicitly framed as samples.
+
 ## Quick Start
 
 **Use ferro-mcp first.** The MCP tools provide instant introspection:
@@ -53,6 +55,11 @@ The **core abstraction is projection / intent** (`ferro-projections`, shipped in
 | `ferro-theme` | Semantic theme tokens and intent template schema | `src/lib.rs` |
 | `ferro-ai` | AI structured classification and confirmation primitives | `src/lib.rs` |
 | `ferro-whatsapp` | WhatsApp Business Cloud API integration | `src/lib.rs` |
+| `ferro-orm` | Atomic conditional updates and ORM primitives (`GuardedUpdate`) | `src/lib.rs` |
+| `ferro-audit` | Append-only structured before/after audit log with replay | `src/lib.rs` |
+| `ferro-migration` | Backend-portable migration helpers (SQLite + Postgres backfill helpers) | `src/backfill.rs` |
+| `ferro-reservation` | Generic hold/commit/release reservation kernel | `src/lib.rs` |
+| `ferro-projection` | Live read-model runtime: subscribe to domain events, persist per-key snapshots, broadcast deltas. **Not the same as `ferro-projections` (plural)** — see crate docs for the distinction. | `src/lib.rs` |
 | `app` | Sample application | Reference implementation |
 
 ## Key Patterns

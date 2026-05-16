@@ -1,6 +1,6 @@
 # `ferro doctor`
 
-Single-command project health diagnostics. Runs nine checks in declared
+Single-command project health diagnostics. Runs eleven checks in declared
 order, prints colored human output by default, or a stable JSON schema with
 `--json` for agent / CI consumption.
 
@@ -20,17 +20,19 @@ Use `ferro:info` for understanding, `ferro doctor` for validation.
 
 Checks run in this exact order (D-01):
 
-| # | Name                                 | Category | Purpose                                                                    |
-| - | ------------------------------------ | -------- | -------------------------------------------------------------------------- |
-| 1 | `toolchain_match`                    | General  | `rustc --version` vs `rust-toolchain.toml` channel                         |
-| 2 | `db_connection`                      | General  | `DATABASE_URL` reachable via `cargo run -- db:status`                      |
-| 3 | `migrations_pending`                 | General  | Pending vs applied migration count                                         |
-| 4 | `local_env_parity`                   | General  | Every key in `.env.example` is set in `.env`                               |
-| 5 | `deploy_env_parity`                  | General  | `.env.production` keys match the commented envs scaffold in `.do/app.yaml` |
-| 6 | `copy_dirs_dockerignore_collision`   | Deploy   | `copy_dirs` entries not silently excluded by `.dockerignore`               |
-| 7 | `generated_artifacts`                | General  | `Dockerfile`, `.dockerignore`, `.do/app.yaml` present                      |
-| 8 | `database_url_sqlite_in_prod`        | General  | Warns if `DATABASE_URL` in `.env.production` points at SQLite              |
-| 9 | `git_clean_and_pushed`               | General  | Working tree clean and `HEAD` pushed to the tracked remote                 |
+| #  | Name                                 | Category | Purpose                                                                    |
+| -- | ------------------------------------ | -------- | -------------------------------------------------------------------------- |
+| 1  | `toolchain_match`                    | General  | `rustc --version` vs `rust-toolchain.toml` channel                         |
+| 2  | `db_connection`                      | General  | `DATABASE_URL` reachable via `cargo run -- db:status`                      |
+| 3  | `migrations_pending`                 | General  | Pending vs applied migration count                                         |
+| 4  | `local_env_parity`                   | General  | Every key in `.env.example` is set in `.env`                               |
+| 5  | `deploy_env_parity`                  | General  | `.env.production` keys match the commented envs scaffold in `.do/app.yaml` |
+| 6  | `copy_dirs_dockerignore_collision`   | Deploy   | `copy_dirs` entries not silently excluded by `.dockerignore`               |
+| 7  | `docker_template_drift`              | Deploy   | Committed `Dockerfile` matches current scaffolder output                   |
+| 8  | `generated_artifacts`                | General  | `Dockerfile`, `.dockerignore`, `.do/app.yaml` present                      |
+| 9  | `database_url_sqlite_in_prod`        | General  | Warns if `DATABASE_URL` in `.env.production` points at SQLite              |
+| 10 | `git_clean_and_pushed`               | General  | Working tree clean and `HEAD` pushed to the tracked remote                 |
+| 11 | `frontend_types_convention`          | General  | No hand-written files in `frontend/src/types/` (see [frontend-types](frontend-types.md)) |
 
 Check #4 (`local_env_parity`) and #5 (`deploy_env_parity`) are powered by the
 `deploy::env_production::parse_env_production_keys` module, which parses
@@ -88,7 +90,7 @@ Field reference:
 
 - `summary.overall` — `ok` | `warn` | `error` — worst status across all checks.
 - `summary.ok` / `warn` / `error` — counts.
-- `checks[].name` — stable identifier (one of the nine names above).
+- `checks[].name` — stable identifier (one of the eleven names above).
 - `checks[].status` — `ok` | `warn` | `error`.
 - `checks[].message` — short human-readable summary.
 - `checks[].details` — optional, present only when extra context exists.

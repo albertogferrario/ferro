@@ -266,6 +266,75 @@ impl Router {
         register_route("DELETE", path);
     }
 
+    /// Insert a GET route alias pointing at the same handler as a previously
+    /// registered canonical route. Skips `register_route` so `RouteInfo` and
+    /// `get_registered_routes()` stay canonical (D-07). The stored matchit
+    /// value carries the CANONICAL pattern string so middleware lookup in
+    /// `server.rs` (keyed by `route_pattern`) resolves to the canonical
+    /// `add_middleware` key regardless of which variant matched.
+    pub(crate) fn insert_get_alias(
+        &mut self,
+        alias_path: &str,
+        handler: Arc<BoxedHandler>,
+        canonical_path: &str,
+    ) {
+        self.get_routes
+            .insert(alias_path, (handler, canonical_path.to_string()))
+            .ok();
+    }
+
+    /// Insert a POST route alias pointing at the same handler as a previously
+    /// registered canonical route. See `insert_get_alias` for the invariants.
+    pub(crate) fn insert_post_alias(
+        &mut self,
+        alias_path: &str,
+        handler: Arc<BoxedHandler>,
+        canonical_path: &str,
+    ) {
+        self.post_routes
+            .insert(alias_path, (handler, canonical_path.to_string()))
+            .ok();
+    }
+
+    /// Insert a PUT route alias pointing at the same handler as a previously
+    /// registered canonical route. See `insert_get_alias` for the invariants.
+    pub(crate) fn insert_put_alias(
+        &mut self,
+        alias_path: &str,
+        handler: Arc<BoxedHandler>,
+        canonical_path: &str,
+    ) {
+        self.put_routes
+            .insert(alias_path, (handler, canonical_path.to_string()))
+            .ok();
+    }
+
+    /// Insert a PATCH route alias pointing at the same handler as a previously
+    /// registered canonical route. See `insert_get_alias` for the invariants.
+    pub(crate) fn insert_patch_alias(
+        &mut self,
+        alias_path: &str,
+        handler: Arc<BoxedHandler>,
+        canonical_path: &str,
+    ) {
+        self.patch_routes
+            .insert(alias_path, (handler, canonical_path.to_string()))
+            .ok();
+    }
+
+    /// Insert a DELETE route alias pointing at the same handler as a previously
+    /// registered canonical route. See `insert_get_alias` for the invariants.
+    pub(crate) fn insert_delete_alias(
+        &mut self,
+        alias_path: &str,
+        handler: Arc<BoxedHandler>,
+        canonical_path: &str,
+    ) {
+        self.delete_routes
+            .insert(alias_path, (handler, canonical_path.to_string()))
+            .ok();
+    }
+
     /// Register a GET route
     pub fn get<H, Fut>(mut self, path: &str, handler: H) -> RouteBuilder
     where

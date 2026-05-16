@@ -75,6 +75,35 @@ impl Request {
         self.inner.uri().path()
     }
 
+    /// Rewrite the request path (server-side only — the browser URL is unchanged).
+    ///
+    /// Replaces the URI path component while preserving the scheme, authority, and
+    /// query string. Used by pre-route middleware (e.g. `HostMiddleware`) to map
+    /// custom-domain requests onto internal slug-based routes before routing occurs.
+    ///
+    /// `new_path` must begin with `/`. Panics in debug mode if it does not.
+    pub fn set_path(&mut self, new_path: &str) {
+        debug_assert!(
+            new_path.starts_with('/'),
+            "set_path: path must begin with '/', got {new_path:?}"
+        );
+        let old_uri = self.inner.uri();
+        // Preserve scheme, authority, and query string; replace path only.
+        let mut parts = old_uri.clone().into_parts();
+        let path_and_query = match old_uri.query() {
+            Some(q) => format!("{new_path}?{q}"),
+            None => new_path.to_string(),
+        };
+        parts.path_and_query = Some(
+            path_and_query
+                .parse()
+                .unwrap_or_else(|_| new_path.parse().expect("invalid path")),
+        );
+        if let Ok(new_uri) = http::Uri::from_parts(parts) {
+            *self.inner.uri_mut() = new_uri;
+        }
+    }
+
     /// Get a route parameter by name (e.g., /users/{id})
     /// Returns Err(ParamError) if the parameter is missing, enabling use of `?` operator
     pub fn param(&self, name: &str) -> Result<&str, ParamError> {
@@ -344,6 +373,78 @@ impl Request {
     pub async fn form<T: DeserializeOwned>(self) -> Result<T, FrameworkError> {
         let (_, bytes) = self.body_bytes().await?;
         parse_form(&bytes)
+    }
+
+    /// Parse the request body as `multipart/form-data`.
+    ///
+    /// Consumes the request since the body can only be read once.
+    /// The per-field byte cap is read from `UPLOAD_MAX_SIZE_MB` (default 10 MiB),
+    /// and the per-request field cap from `UPLOAD_MAX_FIELDS` (default 100).
+    ///
+    /// # Errors
+    ///
+    /// Returns `FrameworkError::internal(...)` with the literal message
+    /// `"Content-Type is not multipart/form-data or missing boundary"` when
+    /// the request's `Content-Type` header is absent, malformed, or not a
+    /// multipart value.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// pub async fn upload(req: Request) -> Response {
+    ///     let form = req.multipart().await?;
+    ///     let title = form.field("title").unwrap_or_default();
+    ///     let file = form.file("attachment");
+    ///     // ...
+    /// }
+    /// ```
+    pub async fn multipart(self) -> Result<super::multipart::MultipartForm, FrameworkError> {
+        let content_type = self
+            .inner
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+        let body = self.inner.into_body();
+        super::multipart::parse_multipart_body(
+            body,
+            &content_type,
+            super::multipart::max_file_bytes(),
+            super::multipart::max_fields(),
+        )
+        .await
+    }
+
+    /// Parse the body as multipart/form-data and return the first file
+    /// uploaded under `field`.
+    ///
+    /// Consumes the request since the body can only be read once. Returns
+    /// `Ok(None)` when the multipart body parses successfully but contains
+    /// no file with that field name.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// pub async fn upload_avatar(req: Request) -> Response {
+    ///     let file = req.file("avatar").await?
+    ///         .ok_or_else(|| FrameworkError::internal("missing avatar"))?;
+    ///     // file.store(&disk, &path).await?;
+    ///     Ok(json!({"size": file.size()}))
+    /// }
+    /// ```
+    pub async fn file(
+        self,
+        field: &str,
+    ) -> Result<Option<super::multipart::UploadedFile>, FrameworkError> {
+        let mut form = self.multipart().await?;
+        Ok(form.files_map.remove(field).and_then(|mut v| {
+            if v.is_empty() {
+                None
+            } else {
+                Some(v.swap_remove(0))
+            }
+        }))
     }
 
     /// Parse the request body based on Content-Type header

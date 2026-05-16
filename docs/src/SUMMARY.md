@@ -31,6 +31,9 @@
 - [MCP Bridge](features/api-mcp.md)
 - [Rate Limiting](features/rate-limiting.md)
 - [Database](features/database.md)
+- [Atomic Updates](database/atomic-updates.md)
+- [Audit Log](database/audit-log.md)
+- [Reservations](database/reservations.md)
 - [Derive Macros](features/derive-macros.md)
 - [Validation](features/validation.md)
 - [Localization](features/localization.md)
@@ -42,6 +45,7 @@
 - [WhatsApp](features/whatsapp.md)
 - [Themes](features/themes.md)
 - [Service Projections](features/projections.md)
+- [Live Read-Models](features/live-read-models.md)
 - [AI & Confirmation](features/ai.md)
 
 # JSON-UI
@@ -61,6 +65,7 @@
   - [do:init](cli/do-init.md)
   - [ci:init](cli/ci-init.md)
   - [doctor](cli/doctor.md)
+  - [frontend-types](cli/frontend-types.md)
   - [routes:json-schema](cli/routes-json-schema.md)
 
 # Upgrading

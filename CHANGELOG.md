@@ -3,6 +3,335 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## ferro-projection
+
+### [0.2.33] — 2026-05-14
+
+Initial release. Phase 155 — `ferro-projection` crate (live read-model
+runtime: subscribe to domain events, persist per-key snapshots,
+broadcast deltas).
+
+**Not the same as `ferro-projections` (plural).** That crate is the
+Service Projection abstraction (`ServiceDef → IntentGraph →
+JsonUiRenderer`). `ferro-projection` (singular) is the live read-model
+runtime described above. The two abstractions are orthogonal.
+
+#### Added
+
+- New crate `ferro-projection` exposing the `Projection` trait for
+  consumer-implemented live read-models. Associated types `Event`
+  (`ferro_events::Event + Serialize + DeserializeOwned`), `State`
+  (`Clone + Default + Serialize + DeserializeOwned + Send + Sync +
+  'static`), `Delta` (`Serialize + Clone + Send + Sync + 'static`).
+  Const `NAME: &'static str` for the projection's dotted-namespace
+  identifier. Sync `apply(&self, state: &mut State, event: &Event)
+  -> Delta` (pure fold; runs inside per-key Mutex). Defaulted
+  `snapshot_interval()` (returns 100) and `broadcast_event_name()`
+  (returns `"delta"`).
+- `ProjectionRuntime<P: Projection>` orchestrator owning the
+  database connection, the broadcaster handle, the projection impl,
+  and the per-key Mutex registry. Two entry points: `register(self:
+  Arc<Self>)` wires a `ProjectionListener<P>` into
+  `ferro_events::global_dispatcher` (one-line wiring), and
+  `apply_event(&self, event: &P::Event)` is the manual entry point
+  for tests, replay scripts, or custom dispatchers.
+- `read(&self, key) -> Result<Option<State>, ProjectionError>` and
+  `read_required(&self, key) -> Result<State, ProjectionError>`
+  (returns `StateNotFound` on miss). Read path does NOT acquire the
+  per-key Mutex.
+- `rebuild(&self, key, events: impl IntoIterator<Item = P::Event>)
+  -> Result<State, ProjectionError>` discards the persisted snapshot,
+  folds the supplied event sequence through `State::default()`,
+  persists the final state, and broadcasts ONE `"rebuild"` frame
+  carrying the full final state. Empty iterator wipes the row.
+- Per-key in-process serialization via
+  `DashMap<String, Arc<tokio::sync::Mutex<()>>>` — each key gets its
+  own Mutex; same-key applies serialize, different-key applies run
+  in parallel. The shard-lock-drop-before-await pattern is the
+  correctness mechanism.
+- Snapshot persistence via SeaORM `OnConflict::columns([projection_name,
+  key]).update_columns([state, version, updated_at])` upsert on the
+  composite primary key. Schema: `projection_snapshots` table with 5
+  columns + composite PK on `(projection_name, key)`.
+- Delta broadcast on `projection.{NAME}.{key}` channels via
+  `ferro_broadcast::Broadcast::new(...).channel(...).event(...).data(delta).send()`.
+  Event name defaults to `"delta"` (consumer can override). Broadcast
+  failure does NOT roll back the persisted state — log at
+  `tracing::warn!` and surface `ProjectionError::Broadcast`.
+- `ProjectionError` — `Db(#[from] sea_orm::DbErr) | Json(#[from]
+  serde_json::Error) | Broadcast(String) | Events(String) |
+  StateNotFound { name, key }`. Display prefix `"projection: …"`.
+  Hand-rolled `From<ferro_broadcast::Error>` and
+  `From<ferro_events::Error>` impls (Phase 149 precedent for
+  stringly-typed variants).
+- `ProjectionKey` opaque newtype around `String` with `new`, `as_str`,
+  `Display`, `From<String>`, `From<&str>`, serde Serialize +
+  Deserialize. Multi-tenancy lives inside the key string by convention.
+- `CreateProjectionSnapshotsTable` migration — consumers register it
+  in their `Migrator` alongside other ferro-* crates' migrations.
+- Public SeaORM re-exports: `ProjectionSnapshotEntity`,
+  `ProjectionSnapshotModel`, `ProjectionSnapshotActiveModel` —
+  consumer-side queries against `projection_snapshots` use these.
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1b
+  slot reserved in `.github/workflows/publish.yml`. First publish
+  bootstrapped from a local terminal (CI publish token has
+  `publish-update` scope only); subsequent versions auto-publish.
+- New documentation page `docs/src/features/live-read-models.md`
+  covering the disambiguation from `ferro-projections` plural, the
+  anti-pattern, the typed-runtime replacement, the trait surface, the
+  two entry points (register + apply_event), the read + rebuild
+  paths, the broadcast channel contract, operational footguns (3),
+  and a worked example folding `ferro_reservation::ReservationEvent`
+  into per-`resource_kind` counters.
+
+v11.11 Resource Reservation & Live Read-Model Primitives complete — ferro-orm GuardedUpdate (Phase 152), ferro-audit (Phase 153), ferro-reservation (Phase 154), ferro-projection (Phase 155) now all shipped.
+
+## ferro-reservation
+
+### [0.2.32] — 2026-05-13
+
+Initial release. Phase 154 — `ferro-reservation` crate (generic
+hold/commit/release resource reservation kernel with TTL and event
+broadcast).
+
+#### Added
+
+- New crate `ferro-reservation` exposing `ReservationKernel<R: Resource>`
+  with `hold` / `commit` / `release` / `extend` / `run_sweep_once` — a
+  typed, race-free state-transition pipeline for any capacity-constrained
+  resource. Consumers implement the `Resource` trait against their own
+  domain model.
+- `Resource` trait: consumer-implemented capacity model. Associated
+  types `Key` (Hash + Eq + Clone + Send + Sync + Serialize + DeserializeOwned)
+  and `Window` (PartialEq + Clone + Send + Sync + Serialize +
+  DeserializeOwned; use `()` for non-windowed resources). Const
+  `KIND: &'static str` for dotted-namespace identification
+  (`"inventory.unit"`, `"checkout.slot"`, `"api.quota"`). Two async
+  methods `capacity` and `held` generic over `<C: ConnectionTrait>`.
+- `ReservationKernel<R>` with `new(db, resource)` constructor and four
+  state-transition methods. State machine: `held → committed | released
+  | expired`. Terminal states have no outgoing transitions; any attempt
+  surfaces as `ReservationError::ConflictingState`.
+- `ReservationContext` per-call audit metadata bundle: `actor`,
+  `correlation_id`, `tenant_id`, `reason`. Four constructors
+  (`system`, `user`, `job`, `anonymous`) and three consuming
+  builder methods (`with_correlation`, `with_tenant`, `with_reason`).
+- `ReservationHandle` opaque token — full snapshot of hold-time fields
+  with `Serialize + Deserialize` for embedding in Stripe payment intent
+  metadata, queued-job payloads, or other side channels.
+- `ReservationEvent` enum (`Held | Committed | Released | Expired`)
+  implementing `ferro_events::Event` — dispatched via
+  `ferro_events::dispatch` AFTER every successful state transition.
+  Event dispatch is best-effort; failure logs at `tracing::warn!` and
+  does NOT roll back the DB state.
+- `ReleaseReason` enum (`UserCancelled | PaymentFailed | AdminOverride
+  | Other(String)`) — typed reason recorded on the audit log and emitted
+  with `ReservationEvent::Released`.
+- `SweepReport` returned from `run_sweep_once` (`expired_count`,
+  `scanned_at`) for sweep observability.
+- `ReservationError` — `Insufficient { requested, available, capacity }
+  | ConflictingState { id, expected } | NotFound { id } | Db(#[from] DbErr)
+  | Guarded(#[from] GuardedError) | Audit(#[from] AuditError) | Json(#[from]
+  serde_json::Error)`. Display prefix `"reservation: …"`.
+- Unconditional audit emission via `ferro-audit`: every successful
+  state transition writes one `AuditEntry` with
+  `action = "reservation.{held|committed|released|expired|extended}"`.
+  Audit failure surfaces as `ReservationError::Audit` but does NOT
+  roll back the DB state.
+- Race-free state transitions via `ferro-orm::GuardedUpdate`. Every
+  transition predicate includes `Status.eq("held")`; concurrent
+  callers surface as `ConflictingState`. The sweeper uses
+  `exec_at_most_one` so concurrent sweepers tolerate 0-rows-affected
+  as a normal outcome.
+- `run_sweep_once()` — sweeper primitive. Scans for held rows with
+  `expires_at < now`, transitions to expired (LIMIT 500 per call), emits
+  one `ReservationEvent::Expired` + one `AuditEntry` per row with
+  `AuditActor::System`. Consumers schedule sweeps themselves (no
+  `ferro-queue` runtime dependency); three idiomatic patterns
+  documented (`ferro-queue` Job, `tokio::time::interval`, cron CLI).
+- `CreateReservationsTable` migration — consumers register it in their
+  `Migrator` alongside `ferro_audit::CreateAuditLogTable`. Schema: 12
+  columns + 2 composite indexes (`idx_reservations_kind_key_window_status`,
+  `idx_reservations_status_expires`).
+- Targeted re-exports of the SeaORM symbols required by the public API
+  (no blanket `pub use sea_orm::*`). The `ReservationEntity` /
+  `ReservationModel` / `ReservationActiveModel` re-exports enable
+  consumer-side sea-orm-native queries. The `AuditActor` re-export
+  from `ferro-audit` lets consumers build `ReservationContext` without
+  a direct ferro-audit dependency for the common case.
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1b
+  slot reserved in `.github/workflows/publish.yml`. First publish
+  bootstrapped from a local terminal (CI publish token has
+  `publish-update` scope only); subsequent versions auto-publish.
+- New documentation page `docs/src/database/reservations.md` covering
+  the resource/window abstraction, defining a `Resource` impl, kernel
+  construction, the four lifecycle methods, TTL + sweeper (three
+  scheduling idioms), event subscription pattern, audit log inspection,
+  common patterns (slot hold during checkout, ticket reservations, API
+  rate-limit buckets), consistency model (per-statement atomicity,
+  SQLite-validated; Postgres correctness for hold() deferred), and
+  operational footguns.
+
+## ferro-audit
+
+### [0.2.31] — 2026-05-13
+
+Initial release. Phase 153 — `ferro-audit` crate (append-only structured
+before/after audit log with replay-ready query helpers). Milestone v11.11.
+
+#### Added
+
+- New crate `ferro-audit` exposing the `AuditEntry::record(action).…write(&conn)`
+  chainable builder — persists one row per state-changing operation to an
+  `audit_log` table with typed actor, target, before/after JSON, reason,
+  correlation id, and tenant scoping. The DB-stamped `created_at`
+  (`DEFAULT CURRENT_TIMESTAMP`) is the single source of truth for ordering.
+- `AuditActor` typed enum: `User(String) | System | Job(String) | ApiClient(String) | Anonymous`
+  — stringly-keyed so the crate stays project-agnostic. `System` and `Anonymous`
+  persist `actor_id = NULL`.
+- `AuditTarget` struct: `kind: String, id: String` with `From<(K, I)>` tuple impl.
+  Dotted-namespace convention (`"inventory.unit"`, `"checkout.session"`).
+- `AuditError` — `MissingAction | Db(#[from] DbErr) | Json(#[from] serde_json::Error)`.
+  Display prefix `"audit: …"`.
+- Query helpers `history_for_target` (ASC, indexed), `recent_by_actor` (DESC, limited,
+  indexed), `recent` (DESC, limited, global).
+- `reconstruct_state(&[AuditEntry])` — pure shallow-merge fold of `after` payloads into
+  the final state. The "replay" primitive in the phase title.
+- `prune_older_than(cutoff, &conn)` — caller-driven retention helper returning the deleted
+  row count. Strict less-than (`created_at < cutoff`); preserves rows at the cutoff.
+- `CreateAuditLogTable` migration — consumers register it in their `Migrator`. Schema:
+  12 columns + 2 composite indexes (`idx_audit_target`, `idx_audit_actor`).
+- Targeted re-exports of the SeaORM symbols required by the public API; no blanket
+  `pub use sea_orm::*`. The `AuditLogEntity` re-export enables consumer-side sea-orm-native
+  queries (pagination, custom filters).
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1a slot reserved in
+  `.github/workflows/publish.yml`. First publish bootstrapped from a local terminal
+  (CI publish token has `publish-update` scope only); subsequent versions auto-publish.
+- New documentation page `docs/src/database/audit-log.md` covering the anti-pattern,
+  the API, AuditActor / AuditTarget shape, schema + indexes, replay semantics (shallow
+  merge), retention and GDPR considerations, and the error variants.
+
+## ferro-orm
+
+### [0.2.30] — 2026-05-13
+
+Initial release. Phase 152 — `ferro-orm` crate (atomic conditional UPDATE
+primitive for race-free counter mutations and state transitions).
+Milestone v11.11.
+
+#### Added
+
+- New crate `ferro-orm` exposing the `GuardedUpdate<E>` builder — compiles
+  to a single `UPDATE … WHERE …` SQL statement, replacing the hand-rolled
+  `read → check → write` pattern wherever a column's value is conditionally
+  mutated. The database engine's per-statement atomicity (SQLite serial
+  writer, Postgres `READ COMMITTED`) is the correctness mechanism;
+  `GuardedUpdate` adds the chainable surface and the rows-affected →
+  `GuardedError` mapping on top.
+- `GuardedUpdate::filter(impl IntoCondition)` — AND-combines multiple
+  filter calls onto an internal `Condition`. Matches `sea_orm::QueryFilter`
+  ergonomics.
+- `GuardedUpdate::set_expr(col, SimpleExpr)` and `set_value(col, Value)` —
+  chainable per-column set, supports value-derived (`Expr::col(…).sub(…)`)
+  and literal (`Value::String(…)`) assignments in the same statement.
+- `GuardedUpdate::exec_one(&conn)` — succeeds iff exactly one row matched;
+  `0 → Err(NoRowsAffected)`, `>1 → Err(TooManyRows { affected })`. Default
+  for race-free counter mutations.
+- `GuardedUpdate::exec_at_most_one(&conn)` — `Ok(true)` on 1 row,
+  `Ok(false)` on 0 rows (predicate failure is a normal outcome),
+  `Err(TooManyRows)` on >1 rows. For optimistic updates.
+- `GuardedError` — `NoRowsAffected | TooManyRows { affected } |
+  EmptyUpdate | Db(#[from] DbErr)`. Display prefix `"guarded: …"`.
+- Targeted re-exports of the SeaORM symbols required by the public API
+  (`EntityTrait`, `ColumnTrait`, `ConnectionTrait`, `IntoCondition`,
+  `SimpleExpr`, `Value`, `DbErr`, `Expr`); no blanket `pub use sea_orm::*`.
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1a slot
+  reserved in `.github/workflows/publish.yml`. First publish is
+  bootstrapped from a local terminal (CI publish token has
+  `publish-update` scope only); subsequent versions auto-publish.
+- New documentation page `docs/src/database/atomic-updates.md` covering
+  the anti-pattern, the API, common patterns (counter decrement, status
+  transition, optimistic concurrency), and the per-statement atomicity
+  contract.
+
+## ferro-wallet
+
+### [0.2.24] — 2026-05-11
+
+Initial release. Phase 151 — `ferro-wallet` crate (Apple `.pkpass` +
+Google Wallet save-link issuance). Milestone v11.10.
+
+#### Added
+
+- New crate `ferro-wallet` exposing the `WalletSubject` trait,
+  `ApplePassBuilder` (PKCS#7-signed `.pkpass` ZIP via `openssl` + `zip` +
+  `sha1`), and `GoogleWalletBuilder` (RS256-signed save JWT via
+  `jsonwebtoken`, returning a `pay.google.com/gp/v/save/{jwt}` URL).
+- `WalletConfig::from_env` reads `APP_NAME` / `APP_URL` and optional
+  Apple / Google clusters; missing wallet env vars never error (D-02).
+  Mirrors `ferro-inertia::InertiaConfig::app_name` and
+  `ferro-stripe::StripeConfig::from_env` (architecture principle #6 —
+  project-agnostic crates).
+- `images` module — `fit_to` (resize-preserve-aspect + centre-pad onto
+  transparent canvas), `apple_logo_set` (160×50 / 320×100 / 480×150),
+  `apple_icon_set` (29×29 / 58×58 / 87×87, derivable from logo when icon
+  absent), `google_hero` (1032×336).
+- `qr` module — PNG bytes + `data:image/png;base64,…` data-URI helpers
+  via `qrcode-generator`.
+- End-to-end integration tests mint crypto material at runtime — no real
+  Apple WWDR or Google service-account credentials in CI (D-09).
+- Workspace member registered in `Cargo.toml`; auto-publish Wave 1a slot
+  reserved in `.github/workflows/publish.yml`. First publish is
+  bootstrapped from a local terminal (CI publish token has
+  `publish-update` scope only); subsequent versions auto-publish.
+
+## ferro-rs
+
+### [0.2.34] — 2026-05-14
+
+**Phase 156 — frontend/src/types/ generator-owned convention cleanup.**
+
+- Reconciled the `frontend/src/types/` generator-owned convention end-to-end.
+- Untracked `app/frontend/src/types/{inertia-props,routes}.ts` in the reference app; gitignore template now carries a load-bearing comment.
+- Fixed the `generate_types.rs` emitted header comment that pointed to `frontend/src/types/` (should be `frontend/src/lib/types/` for hand-written types).
+- Added `ferro doctor` check `frontend_types_convention` (advisory; flags hand-written files under the generator-owned directory).
+- Dockerfile renderer now emits a `types-gen` Rust-toolchain stage before the frontend-builder stage so `frontend/src/types/` is regenerated inside the Docker build context. The frontend stage now `COPY --from=types-gen` the generated files in before `npm run build`.
+- `DockerContext` gained a `ferro_version: String` field; new `resolve_ferro_version` helper parses the project's `Cargo.lock` for the `ferro-rs` package version with `env!("CARGO_PKG_VERSION")` as a fallback.
+- New docs page `docs/src/cli/frontend-types.md` documents the convention end-to-end, including the `ferro docker:init --force` upgrade path for existing scaffolded projects.
+- `ferro doctor` check count: 10 -> 11.
+
+### [0.2.13] — 2026-04-21
+
+Bug fix: `get!("/", ...)` registered inside `group!("/prefix", { ... })`
+is now reachable at both `/prefix` and `/prefix/`. Previously only
+non-root paths matched; the trailing-slash variant of the root-in-group
+case returned 404. Discovered via a production field application that
+routes under `/s/{slug}/`.
+
+#### Fixed
+
+- Group path combination in both `GroupDef::register_with_inherited`
+  (the macro-based `group!`) and `GroupBuilder::finalize` (the
+  builder-based `Router::group`) now registers a leaf `get!("/", ...)`
+  under both `/prefix` and `/prefix/`. A trailing slash on the group
+  prefix is also correctly stripped, so `group!("/api/", { get!("/x", ...) })`
+  produces `/api/x`, not `/api//x`.
+- Nested-group prefix accumulation strips a trailing slash on the
+  parent prefix before concatenating the child prefix, so
+  `group!("/a/", { group!("/b", { get!("/", h) }) })` accumulates to
+  `/a/b` rather than `/a//b`.
+
+#### Unchanged
+
+- Top-level (non-grouped) `get!("/", ...)` behavior.
+- Route introspection: `get_registered_routes()` and
+  `ferro-mcp list_routes` still show one entry per logical handler —
+  the canonical path without trailing slash.
+- Named-route resolution: `route("foo", &[])` returns the canonical
+  path.
+- Middleware attached to grouped routes fires for both trailing-slash
+  variants.
+
 ## ferro-stripe
 
 ### [0.4.0] — 2026-04-20

@@ -220,7 +220,16 @@ async fn handle_request(
             "/_ferro/metrics" => crate::debug::handle_metrics(),
             "/_ferro/queue/jobs" => crate::debug::handle_queue_jobs().await,
             "/_ferro/queue/stats" => crate::debug::handle_queue_stats().await,
-            "/_ferro/ferro-base.css" => serve_ferro_base_css(),
+            "/_ferro/ferro-base.css" => {
+                #[cfg(feature = "json-ui")]
+                {
+                    serve_ferro_base_css()
+                }
+                #[cfg(not(feature = "json-ui"))]
+                {
+                    HttpResponse::text("404 Not Found").status(404).into_hyper()
+                }
+            }
             _ => HttpResponse::text("404 Not Found").status(404).into_hyper(),
         };
     }
@@ -237,9 +246,21 @@ async fn handle_request(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
 
-    let response = match router.match_route(&method, &path) {
+    let ferro_request = Request::new(req);
+    let routing_path = path.clone();
+
+    // Extract host before request is consumed by routing.
+    let request_host = ferro_request
+        .header("host")
+        .unwrap_or_default()
+        .split(':')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
+    let response = match router.match_route(&method, &routing_path) {
         Some((handler, params, route_pattern)) => {
-            let request = Request::new(req)
+            let request = ferro_request
                 .with_params(params)
                 .with_route_pattern(route_pattern.clone());
 
@@ -253,8 +274,10 @@ async fn handle_request(
             let route_middleware = router.get_route_middleware(&route_pattern);
             chain.extend(route_middleware);
 
-            // 3. Execute chain with handler
-            let response = chain.execute(request, handler).await;
+            // 3. Execute chain with handler inside request host context
+            let response = crate::http::request_context::REQUEST_HOST
+                .scope(request_host, chain.execute(request, handler))
+                .await;
 
             // Unwrap the Result - both Ok and Err contain HttpResponse
             let http_response = response.unwrap_or_else(|e| e);
@@ -263,14 +286,16 @@ async fn handle_request(
         None => {
             // Try static file serving before fallback (only GET/HEAD)
             if method == hyper::Method::GET || method == hyper::Method::HEAD {
-                if let Some(response) = crate::static_files::try_serve_static_file(&path).await {
+                if let Some(response) =
+                    crate::static_files::try_serve_static_file(&routing_path).await
+                {
                     return response;
                 }
             }
 
             // Check for fallback handler
             if let Some((fallback_handler, fallback_middleware)) = router.get_fallback() {
-                let request = Request::new(req).with_params(std::collections::HashMap::new());
+                let request = ferro_request.with_params(std::collections::HashMap::new());
 
                 // Build middleware chain for fallback
                 let mut chain = MiddlewareChain::new();
@@ -340,13 +365,14 @@ async fn health_response(query: &str) -> hyper::Response<Full<Bytes>> {
 /// The bytes are embedded at compile time via ferro_json_ui::FERRO_BASE_CSS.
 /// Response: 200, text/css, 24h cache. No user input reaches this handler —
 /// the match arm is an exact string, and the body is static framework content.
+#[cfg(feature = "json-ui")]
 fn serve_ferro_base_css() -> hyper::Response<Full<Bytes>> {
     let css = ferro_json_ui::FERRO_BASE_CSS;
     hyper::Response::builder()
         .status(200)
         .header("Content-Type", "text/css; charset=utf-8")
         .header("Content-Length", css.len().to_string())
-        .header("Cache-Control", "public, max-age=86400")
+        .header("Cache-Control", "public, max-age=31536000, immutable")
         .body(Full::new(Bytes::from_static(css.as_bytes())))
         .unwrap()
 }
@@ -371,7 +397,7 @@ async fn check_database_health() -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "json-ui"))]
 mod ferro_base_css_route_tests {
     use super::*;
     use http_body_util::BodyExt;
@@ -396,7 +422,7 @@ mod ferro_base_css_route_tests {
             .expect("Cache-Control header missing")
             .to_str()
             .unwrap();
-        assert_eq!(cc, "public, max-age=86400");
+        assert_eq!(cc, "public, max-age=31536000, immutable");
 
         let cl = response
             .headers()

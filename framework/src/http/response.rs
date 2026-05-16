@@ -114,10 +114,33 @@ impl HttpResponse {
         &self.body
     }
 
-    /// Add a header to the response
+    /// Set a response header, replacing any existing header with the same name.
+    ///
+    /// The name match is case-insensitive (ASCII). Use [`append_header`](Self::append_header)
+    /// for legitimately multi-value headers such as `Set-Cookie`, `Vary`, or `Link`.
     pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        let name = name.into();
+        self.headers.retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
+        self.headers.push((name, value.into()));
+        self
+    }
+
+    /// Append a response header without removing any existing entry with the same name.
+    ///
+    /// Intended for headers that legitimately carry multiple values on separate lines,
+    /// such as `Set-Cookie` (RFC 6265 §4.1), `Vary`, and `Link`. For single-value
+    /// headers like `Content-Type` or `Location`, use [`header`](Self::header) instead.
+    pub fn append_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.push((name.into(), value.into()));
         self
+    }
+
+    /// Get the response headers as a borrowed slice.
+    ///
+    /// Returns all header entries in insertion order. Multi-value headers
+    /// (e.g. `Set-Cookie`) appear as multiple entries with the same name.
+    pub fn headers(&self) -> &[(String, String)] {
+        &self.headers
     }
 
     /// Add a Set-Cookie header to the response
@@ -133,7 +156,7 @@ impl HttpResponse {
     /// ```
     pub fn cookie(self, cookie: Cookie) -> Self {
         let header_value = cookie.to_header_value();
-        self.header("Set-Cookie", header_value)
+        self.append_header("Set-Cookie", header_value)
     }
 
     /// Wrap this response in Ok() for use as Response type
@@ -163,7 +186,7 @@ impl Default for HttpResponse {
 pub trait ResponseExt {
     /// Set the HTTP status code.
     fn status(self, code: u16) -> Self;
-    /// Append a response header.
+    /// Set a response header, replacing any existing header with the same name (case-insensitive).
     fn header(self, name: impl Into<String>, value: impl Into<String>) -> Self;
 }
 
@@ -559,5 +582,66 @@ mod tests {
         let collected =
             rt.block_on(async { hyper_resp.into_body().collect().await.unwrap().to_bytes() });
         assert_eq!(collected.as_ref(), &data);
+    }
+
+    #[test]
+    fn test_header_replaces_existing() {
+        let resp = HttpResponse::text("x").header("Content-Type", "text/html");
+        let ct: Vec<_> = resp
+            .headers()
+            .iter()
+            .filter(|(k, _)| k.eq_ignore_ascii_case("Content-Type"))
+            .collect();
+        assert_eq!(ct.len(), 1, "expected exactly one Content-Type entry");
+        assert_eq!(ct[0].1, "text/html");
+    }
+
+    #[test]
+    fn test_multi_cookie_preserved() {
+        let resp = HttpResponse::new()
+            .cookie(Cookie::new("a", "1"))
+            .cookie(Cookie::new("b", "2"));
+        let cookies: Vec<_> = resp
+            .headers()
+            .iter()
+            .filter(|(k, _)| k == "Set-Cookie")
+            .collect();
+        assert_eq!(
+            cookies.len(),
+            2,
+            "both Set-Cookie entries must be preserved"
+        );
+    }
+
+    #[test]
+    fn test_header_case_insensitive_replace() {
+        let resp = HttpResponse::new()
+            .append_header("content-type", "text/plain")
+            .header("Content-Type", "text/html");
+        let ct: Vec<_> = resp
+            .headers()
+            .iter()
+            .filter(|(k, _)| k.eq_ignore_ascii_case("Content-Type"))
+            .collect();
+        assert_eq!(ct.len(), 1, "lowercase prior entry must be replaced");
+        assert_eq!(ct[0].1, "text/html");
+    }
+
+    #[test]
+    fn test_append_header_does_not_replace() {
+        let resp = HttpResponse::new()
+            .append_header("X-Tag", "a")
+            .append_header("X-Tag", "b");
+        let count = resp.headers().iter().filter(|(k, _)| k == "X-Tag").count();
+        assert_eq!(count, 2, "append_header must not strip existing entries");
+    }
+
+    #[test]
+    fn test_headers_accessor() {
+        let resp = HttpResponse::text("x");
+        assert!(
+            !resp.headers().is_empty(),
+            "headers() accessor should return the prepopulated Content-Type"
+        );
     }
 }

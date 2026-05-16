@@ -40,12 +40,14 @@
 //! ```
 
 mod chain;
+mod cors;
 mod metrics;
 mod pre_route;
 mod rate_limit;
 mod registry;
 mod security_headers;
 
+pub use cors::Cors;
 pub use metrics::MetricsMiddleware;
 pub use security_headers::SecurityHeaders;
 

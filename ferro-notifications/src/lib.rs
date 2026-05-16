@@ -60,9 +60,13 @@ mod notifiable;
 mod notification;
 
 pub use channel::Channel;
-pub use channels::{DatabaseMessage, MailMessage, SlackAttachment, SlackField, SlackMessage};
+pub use channels::{
+    DatabaseMessage, InAppMessage, InAppSeverity, MailAttachment, MailMessage, PushMessage,
+    SlackAttachment, SlackField, SlackMessage, SmsMessage, WhatsAppMessage,
+};
 pub use dispatcher::{
-    MailConfig, MailDriver, NotificationConfig, NotificationDispatcher, ResendConfig, SmtpConfig,
+    InAppConfig, MailConfig, MailDriver, NotificationConfig, NotificationDispatcher, ResendConfig,
+    SmtpConfig,
 };
 pub use error::Error;
 pub use notifiable::{ChannelResult, DatabaseNotificationStore, Notifiable, StoredNotification};

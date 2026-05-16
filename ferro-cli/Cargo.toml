@@ -22,6 +22,7 @@ path = "src/main.rs"
 clap = { version = "4", features = ["derive"] }
 dialoguer = "0.11"
 console = "0.15"
+crossterm = "0.29"
 ctrlc = "3.5"
 syn = { version = "2", features = ["full", "parsing", "visit"] }
 quote = "1"
@@ -32,8 +33,9 @@ dirs = "5"
 dotenvy = "0.15"
 tokio = { version = "1", features = ["full"] }
 sea-orm-migration = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls"] }
-sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls", "with-uuid", "with-chrono"] }
 chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }
 toml = "0.8"
 toml_edit = "0.22"
 regex = "1"
@@ -53,3 +55,6 @@ projections = ["dep:ferro-projections"]
 
 [dev-dependencies]
 tempfile = "3.24.0"
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"

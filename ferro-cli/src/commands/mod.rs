@@ -1,4 +1,5 @@
 pub mod api_check;
+pub mod auth_link;
 pub mod boost_install;
 pub mod ci_init;
 pub mod claude_install;

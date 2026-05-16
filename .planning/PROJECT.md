@@ -46,8 +46,8 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 - **Pre-1.0.** Breaking changes acceptable across all 0.x.
 - Published on crates.io as `ferro-rs`. Repo public.
-- v0.2.0 shipped.
-- 20 workspace crates.
+- v0.2.33 shipped.
+- 24 workspace crates.
 
 ---
 
@@ -207,6 +207,8 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 <!-- Current scope. Building toward these. -->
 
 - [ ] v12.0 JSON-UI v2 spec-driven rendering
+- [ ] v12.1 AI — ferro-ai SDK expansion + AI-assisted scaffolding CLI
+- [ ] v13.0 Road to v1.0 — close the gap across all four beauty dimensions
 - [ ] Continuous conceptual coherence across all 20 crates
 - [ ] Case-study diversification across application domains
 - [ ] Synthetic canonical-app-class catalog
@@ -246,9 +248,34 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - Multimodal projection (audio/voice/physical) — v2.0+ direction
 - Bundled agent UX — `ferro-mcp` plus the user's existing agent is the supported workflow
 
-## Next Milestone: v13.0 Road to v1.0
+## Upcoming Milestone: v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding
 
-**Goal:** Close the gap between 0.2.0 and v1.0 by addressing known work across the four design dimensions — aesthetic, conceptual, operational, compressive — applied in substance-first investment priority order. v13.0 is a sustained investment program spanning multiple minor releases, not a single-feature milestone.
+**Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and build AI-assisted scaffolding on top of it, so an agent or developer can go from natural language to working code in one command.
+
+**Target features:**
+
+*SDK (ferro-ai expansion — foundation):*
+- Multi-provider LLM client: Anthropic, OpenAI, Groq, Ollama via a provider-agnostic trait; config from env vars
+- Structured outputs: `ferro_ai::complete::<T>()` returns typed Rust structs via JSON Schema
+- Tool calling: register Rust functions as AI tools; SDK dispatches tool-use calls automatically
+- Embeddings + cosine similarity helpers; optional pgvector integration for semantic search
+
+*Streaming:*
+- SSE streaming support so handlers can push LLM tokens to the browser as they arrive
+- ferro-json-ui streaming text component for token-by-token display
+
+*AI CLI commands (built on SDK):*
+- `ferro ai:make <description>` — natural language → scaffolded handler + model + routes + JSON-UI view, using ferro-mcp introspection as context
+- `ferro ai:explain <route|model>` — plain-English explanation of an existing handler or model
+- Improved `ferro make:json-view` using structured outputs and ServiceDef introspection
+
+**Phases:** 159+ (continuing from Phase 158)
+
+**Relationship to v12.0:** v12.0 (JSON-UI v2, phases 115-121) runs first. v12.1 begins after v12.0 ships. The `ferro-ai` SDK is the foundation; CLI commands land on top of it.
+
+## Upcoming Milestone: v13.0 Road to v1.0
+
+**Goal:** Close the gap between 0.2.x and v1.0 by addressing known work across the four design dimensions — aesthetic, conceptual, operational, compressive — applied in substance-first investment priority order. v13.0 is a sustained investment program spanning multiple minor releases, not a single-feature milestone.
 
 **Scope by priority:**
 
@@ -279,14 +306,16 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - GitHub repo social preview image
 - Simple logo / wordmark
 
-**Relationship to v12.0:** v12.0 (JSON-UI v2) runs first and refines the rendering target. v13.0 begins after v12.0 and may overlap with late v12.0 phases. Target date: none. Multiple minor releases (0.3.x, 0.4.x, 0.5.x) expected across v13.0's span.
+**Relationship to v12.1:** v12.1 (AI features) runs between v12.0 and v13.0. v13.0 begins after v12.1 and may overlap with late v12.1 phases. Target date: none. Multiple minor releases (0.3.x, 0.4.x, 0.5.x) expected across v13.0's span.
 
 
 
 ## Context
 
 **Current State:**
-- ~90,000 lines of Rust across 20 crates
+- ~90,000 lines of Rust across 24 crates
+- Phase 155 complete — ferro-projection v0.2.33: live read-model runtime (subscribe to domain events, persist per-key snapshots, broadcast deltas)
+- v11.11 shipped: Resource Reservation & Live Read-Model Primitives — ferro-orm GuardedUpdate (Ph 152), ferro-audit (Ph 153), ferro-reservation (Ph 154), ferro-projection (Ph 155)
 - v11.7 shipped: Tailwind Static CSS Pipeline — Safari/WebKit production fix; static CSS with compile-time embedding
 - v11.6 shipped: ferro-stripe Capability Refactor — capability-axis module tree, SyncDispatcher, typed events
 - v11.5 shipped: Projection Architecture Prep — Renderer trait generalization, renderer relocation, ServiceDef derivation bridge
@@ -294,7 +323,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - v9.0 shipped: Service Projections — projection / intent substrate
 - Phase 117 shipped: Catalog & JSON Schema — machine-readable `Catalog` with 39 built-in components, compiled jsonschema validator, per-component schema accessor, concise `prompt()` output (≤ 8 KB), full spec schema export via `ferro json-ui:schema` CLI, `COMPONENT_CATALOG` const retired
 - Phase 117.1 shipped: Schema-Driven Projections — `Spec::from_service_def()` bridges ferro-projections and ferro-json-ui v2 via catalog-verified meaning→component dispatch, intent→layout template resolution, and two-pass generate-then-validate; legacy `field_map.rs` and `relationship_map.rs` deleted
-- v0.2.0 published on crates.io as `ferro-rs`; workspace at 0.2.2+
+- v0.2.35 published on crates.io as `ferro-rs`
 - Pre-1.0; breaking changes acceptable
 - Sample application (app/) demonstrating Inertia integration
 - Comprehensive MCP introspection (35+ tools) — this is the v1.0 product surface
@@ -393,4 +422,4 @@ See also `.planning/VISION.md` for design philosophy.
 | Schema-driven projections replace field_map.rs | Projections and catalog stay consistent by construction | Planned |
 
 ---
-*Last updated: 2026-05-15
+*Last updated: 2026-05-16 — master merged into v12.0/json-ui-v2; v12.1 AI phases renumbered to 165-173 to avoid collision with v12.0 closure phases 159-164*

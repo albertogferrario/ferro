@@ -25,6 +25,19 @@ workers:
     instance_size_slug: apps-s-1vcpu-0.5gb
     instance_count: 1
 
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      repo: gestiscilo-it/app
+      branch: main
+      deploy_on_push: false
+    run_command: /usr/local/bin/gestiscilo db:migrate
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+
 envs:
   - key: APP_NAME
     value: ""

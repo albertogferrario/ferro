@@ -11,9 +11,9 @@
 /// ```rust
 /// use ferro_json_ui::JsonUiConfig;
 ///
-/// // Default: framework-served base CSS, no Tailwind CDN.
+/// // Default: framework-served base CSS with cache-busting version, no Tailwind CDN.
 /// let default_config = JsonUiConfig::new();
-/// assert_eq!(default_config.stylesheet_urls, vec!["/_ferro/ferro-base.css"]);
+/// assert!(default_config.stylesheet_urls[0].starts_with("/_ferro/ferro-base.css"));
 /// assert!(!default_config.tailwind_cdn);
 ///
 /// // Opt into CDN for dev, and override stylesheet list:
@@ -49,9 +49,12 @@ impl Default for JsonUiConfig {
     fn default() -> Self {
         Self {
             tailwind_cdn: false,
-            stylesheet_urls: vec!["/_ferro/ferro-base.css".to_string()],
+            stylesheet_urls: vec![format!(
+                "/_ferro/ferro-base.css?v={}",
+                env!("CARGO_PKG_VERSION")
+            )],
             custom_head: None,
-            body_class: "dark bg-background text-text font-sans".to_string(),
+            body_class: "bg-background text-text font-sans".to_string(),
         }
     }
 }
@@ -100,10 +103,11 @@ mod tests {
     fn default_has_tailwind_cdn_false_and_default_stylesheet_urls() {
         let c = JsonUiConfig::default();
         assert!(!c.tailwind_cdn, "tailwind_cdn default must be false");
-        assert_eq!(
-            c.stylesheet_urls,
-            vec!["/_ferro/ferro-base.css".to_string()],
-            "default stylesheet_urls must be exactly [\"/_ferro/ferro-base.css\"]"
+        assert_eq!(c.stylesheet_urls.len(), 1);
+        assert!(
+            c.stylesheet_urls[0].starts_with("/_ferro/ferro-base.css?v="),
+            "default stylesheet_urls must be versioned /_ferro/ferro-base.css?v=...; got {:?}",
+            c.stylesheet_urls
         );
     }
 

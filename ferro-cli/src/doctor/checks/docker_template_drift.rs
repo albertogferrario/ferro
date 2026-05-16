@@ -8,7 +8,9 @@
 use crate::deploy::bin_detect::detect_web_bin;
 use crate::doctor::check::{CheckCategory, CheckResult, DoctorCheck};
 use crate::project::{read_bins, read_deploy_metadata};
-use crate::templates::docker::{read_rust_channel, render_dockerfile, DockerContext};
+use crate::templates::docker::{
+    read_rust_channel, render_dockerfile, resolve_ferro_version, DockerContext,
+};
 use std::fs;
 use std::path::Path;
 
@@ -68,6 +70,7 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
         web_bin,
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt,
+        ferro_version: resolve_ferro_version(root),
     };
 
     let rendered = render_dockerfile(&ctx);
@@ -135,6 +138,7 @@ mod tests {
             web_bin: "sample".to_string(),
             copy_dirs_present: vec![],
             runtime_apt: vec![],
+            ferro_version: "0.0.0-test".to_string(),
         };
         let rendered = render_dockerfile(&ctx);
         write(&td.path().join("Dockerfile"), &rendered);
@@ -167,6 +171,7 @@ mod tests {
             web_bin: "sample".to_string(),
             copy_dirs_present: vec![],
             runtime_apt: vec![],
+            ferro_version: "0.0.0-test".to_string(),
         };
         let mut rendered = render_dockerfile(&ctx);
         rendered.push_str("# spurious comment added by hand\n");

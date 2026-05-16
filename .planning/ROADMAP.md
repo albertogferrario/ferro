@@ -35,6 +35,11 @@
 - ✅ **v11.5 Projection Architecture Prep** — Phases 133-135 (shipped 2026-04-17). Generalize Renderer trait, relocate renderers to output crates, ServiceDef derivation bridge.
 - ✅ **v11.6 ferro-stripe Capability Refactor** — Phases 140-142. Reshape `ferro-stripe` from Stripe-product axis (`connect/`, `subscription/`) to capability axis (`checkout`, `refund`, `account`, `webhook`); land `CheckoutBuilder` / `CheckoutIntent`, `ProcessedEventLog` trait, fully-typed events (no `event_json` smuggling), `SyncDispatcher` as the sole handler registry for both sync and queue dispatch paths (Stripe events do not implement `ferro_events::Event`), queue path opt-in for eventual-consistency events. Source: gestiscilo-it v6.3 field test. [Design](research/v11.6-FERRO-STRIPE-REFACTOR.md)
 - ✅ **v11.7 Tailwind Static CSS Pipeline** — Phase 143 (shipped 2026-04-21). Pre-built `ferro-base.css` embedded at compile time, served from `/_ferro/ferro-base.css`; `tailwind_cdn` default flipped to `false`; `stylesheet_urls` added; theme injection migrated to plain `<style>`. Full details archived in [milestones/v11.7-ROADMAP.md](milestones/v11.7-ROADMAP.md).
+- ✅ **v11.8 HttpResponse Header Semantics Fix** — Phase 143.1 (shipped 2026-04-21). `HttpResponse::header()` currently pushes instead of replacing, producing comma-joined Content-Type headers like `text/plain,text/html; charset=utf-8` for every `JsonUi::render` response. Safari reads the first value and renders raw text — the actual cause of the gestiscilo.it field report that drove phase 143. Fix is replace-semantics (case-insensitive) plus an `append_header()` escape hatch for `Set-Cookie`. Phase 143 remains valuable (pre-built CSS > dev-only CDN) but did not and could not fix the reported Safari bug. [Context](phases/143.1-http-response-header-replace-semantics/143.1-CONTEXT.md)
+- 📋 **v11.9 Notifications & Rich-Text Foundations** — Phases 149-150 (planned 2026-04-28). Source: gestiscilo-it v6.4 Documents & Notifications field test. Extends `ferro-notifications` with `Channel::WhatsApp` + `Channel::InApp` adapters and `MailMessage::attachment()` builder; ships `ferro-json-ui RichTextEditor` component (Quill 2.0.3 plugin pattern) so consumer apps can author rich-text bodies without bundling. Auto-publishes via GH Actions. Single load-bearing prerequisite for gestiscilo-it v6.4 Phase 120 (notification dispatcher) and Phase 125 (document template editor).
+- 📋 **v11.10 ferro-wallet — Digital Wallet Passes** — Phase 151 (planned 2026-05-11). Source: gestiscilo-it digital wallet booking pass field test. New project-agnostic crate `ferro-wallet` providing the `WalletSubject` trait, `ApplePassBuilder` (PKCS#7-signed `.pkpass`), `GoogleWalletBuilder` (RS256 save-link JWT), and image / QR primitives. Follows architecture principle 6 (project-agnostic, reads `APP_NAME` / `APP_URL` via `WalletConfig::from_env`). Single load-bearing prerequisite for gestiscilo-it wallet booking passes integration. [Context](phases/151-ferro-wallet-crate/151-CONTEXT.md) · [Spec](../docs/superpowers/specs/2026-05-11-ferro-wallet-crate.md)
+- 📋 **v11.11 Resource Reservation & Live Read-Model Primitives** — Phases 152-155 (planned 2026-05-13). Source: gestiscilo-it inventory monitoring field test. Four reusable horizontal primitives: `ferro-orm::GuardedUpdate` (atomic conditional updates), `ferro-audit` (structured before/after log), `ferro-reservation` (generic hold/commit/release with TTL), `ferro-projection` (live read-model from domain events with broadcast deltas). Unblocks gestiscilo-it v6.3 online checkout reservation TTL and v6.7 inventory monitoring. [Design](research/INVENTORY-PRIMITIVES.md)
+- 📋 **v11.12 Migration Deploy Safety** — Phase 157 (planned 2026-05-13, URGENT). Source: gestiscilo-it 2026-05-13 production breakage — SQLite-hardcoded backfill SQL failed on Postgres, runtime runner swallowed the error, no PRE_DEPLOY gate, server served a stale schema. Three framework gaps closed at once: backend-portable migration helpers (`ferro_migration::backfill_random_hex`, etc.), `ferro do:init` emits a `PRE_DEPLOY` migrate job by default, `ferro doctor --deploy` adds a `migrate_gate` check that fails when migrations exist but no PRE_DEPLOY job is configured. [Context](phases/157-migration-deploy-safety-backend-portable-backfill-helpers-fe/157-CONTEXT.md)
 - 📋 **v12.0 JSON-UI v2 — Spec-Driven Rendering** — Phases 115-121 (planned, enriched with JSON Schema contract). Depends on v11.5.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -180,6 +185,41 @@ Phases 133–135:
 ### ✅ v11.7 Tailwind Static CSS Pipeline (Phase 143 — Shipped 2026-04-21)
 
 Phase 143 — full details archived in [milestones/v11.7-ROADMAP.md](milestones/v11.7-ROADMAP.md).
+
+---
+
+### ✅ v11.8 HttpResponse Header Semantics Fix (Phase 143.1 — Shipped 2026-04-21)
+
+**Milestone Goal:** Fix the actual Safari "raw text" bug that phase 143 tried to solve. `HttpResponse::header(name, value)` pushes rather than replaces, so every `JsonUi::render` response emits a double `Content-Type` header (`text/plain` from `HttpResponse::text()` plus the intended `text/html; charset=utf-8` from the follow-up `.header()` call). Cloudflare comma-joins them; Safari reads the first value and renders the HTML source as plain text.
+
+**Source:** Live Chrome DevTools MCP capture of gestiscilo.it/accedi, 2026-04-21, confirming `content-type: text/plain,text/html; charset=utf-8` on the wire after phase 143 shipped.
+
+**Relationship to phase 143:** The gestiscilo Safari field report that drove phase 143 was misdiagnosed as a `@tailwindcss/browser@4` failure. The runtime never executed because Safari interpreted the whole response as plain text. Phase 143's static CSS pipeline is still a net architectural improvement (dev-only CDN out of prod, no WASM download, no third-party dependency), but it did not and could not fix the reported bug. Do not roll back 143; do capture the misdiagnosis in its retrospective.
+
+**What changes:**
+- `framework/src/http/response.rs::header()` — replace semantics, case-insensitive name match.
+- `framework/src/http/response.rs::append_header()` — new method preserving current push behaviour, used only by `cookie()`.
+- `framework/src/http/response.rs::cookie()` — routed through `append_header` to preserve multi-cookie support.
+- No API removal. No behaviour change for any other method.
+
+**What stays:**
+- `Vec<(String, String)>` header storage — fine once replace-semantics lands.
+- All existing constructors (`text`, `json`, `bytes`, `file_download`, etc.) — their prepopulated Content-Types now behave correctly when overridden.
+
+**Success criteria:**
+1. `HttpResponse::text("x").header("Content-Type", "text/html").headers()` returns exactly one Content-Type entry equal to `text/html`.
+2. Multi-cookie responses still emit multiple `Set-Cookie` headers on the wire.
+3. Case-insensitive replace: `.header("Content-Type", ...)` replaces a prior `"content-type"`.
+4. gestiscilo.it `/accedi` wire response shows `content-type: text/html; charset=utf-8` — no comma, no `text/plain`.
+5. Safari desktop + iOS render gestiscilo.it pages as styled HTML.
+
+**Release:** ferro 0.2.5 patch (workspace version verified as 0.2.4 at plan-time — one-patch-step bump). Downstream: gestiscilo bumps `ferro_version` to 0.2.5 and `cargo update`.
+
+#### Phases
+
+**Plans:** 1 plan
+
+- [x] 143.1-01-PLAN.md — Apply replace-semantics to `HttpResponse::header()`, add `append_header()` escape hatch, reroute `cookie()`, expose `headers()` accessor, update docstrings and stale json_ui comment, add 5 unit tests, bump workspace version 0.2.4 → 0.2.5.
 
 ---
 
@@ -369,6 +409,15 @@ Plans:
   6. No references to v1 types remain in CLI or MCP code
   7. Generated specs are validated against `catalog.json_schema()` before being returned to the user
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 120-01-PLAN.md — MCP json_ui_catalog: add json_schema + component_schemas fields; generation_context.json_ui_view rewritten to v2 JSON (Wave 1)
+- [ ] 120-02-PLAN.md — MCP json_ui_generate VIEW_EXAMPLE / ViewConventions / list_existing_views + code_templates json_view_templates rewritten to v2 (+ json_view_handler) (Wave 1)
+- [ ] 120-03-PLAN.md — MCP json_ui_inspect rewritten to walk src/views/*.json; BUILTIN_TYPES removed; inspect_component uses global_catalog (Wave 1)
+- [ ] 120-04-PLAN.md — ferro-cli ai.rs: call_anthropic_plain / call_anthropic_structured / build_json_view_pass1 / build_json_view_pass2; build_view_context deleted (Wave 1)
+- [ ] 120-05-PLAN.md — ferro-cli make_json_view + templates/make.rs: .json output, two-pass orchestration, Spec::from_json + catalog.validate with static fallback (Wave 2, depends on 04)
+
 ### Phase 121: Documentation & Field Test
 **Goal**: Complete docs rewrite for v2 and validate with a real gestiscilo page conversion
 **Depends on**: Phase 120
@@ -398,6 +447,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 
 **Plans:**
 6/6 plans complete
+- [x] 121-01-PLAN.md — Add JsonUi::render_file to framework (Wave 1, FIELD-01 blocker)
 - [x] 121-02-PLAN.md — Rewrite getting-started.md, actions.md, features/json-ui.md (Wave 2, DOC-01)
 - [x] 121-03-PLAN.md — Rewrite components.md and data-binding.md (Wave 2, DOC-01)
 - [x] 121-04-PLAN.md — Rewrite layouts.md and plugins.md (Wave 2, DOC-01)
@@ -1262,6 +1312,245 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 142 to break down)
 
+### Phase 144: Fix root path routing in group routes
+
+**Goal:** `get!("/", handler)` registered inside a non-root `group!("/prefix", { ... })` is reachable at both `/prefix` and `/prefix/`. Trailing-slash prefix normalization applied in both the macro-based (`GroupDef::register_with_inherited`) and builder-based (`GroupBuilder::finalize`) group implementations. Route introspection (`get_registered_routes()`, `ferro-mcp list_routes`) continues to report one canonical entry per logical handler. Ships as patch release 0.2.13.
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-13 (from 144-CONTEXT.md)
+**Depends on:** Phase 143
+**Plans:** 5/5 plans complete
+
+Plans:
+- [x] 144-01-PLAN.md — combine_group_path helper + 8-row matrix test (Wave 0, new framework/src/routing/path.rs)
+- [x] 144-02-PLAN.md — apply helper in GroupDef::register_with_inherited + add insert_*_alias methods on Router; inline tests for D-01..D-04, D-06, D-08 (Wave 1)
+- [x] 144-03-PLAN.md — apply helper in GroupBuilder::finalize; mirrored test module for D-05, D-11 lockstep (Wave 1, parallel with Plan 02)
+- [x] 144-04-PLAN.md — integration tests for D-07, D-10, middleware-on-both-variants, gestiscilo reproducer (Wave 2)
+- [x] 144-05-PLAN.md — docs (routing.md, middleware.md, rustdoc), CHANGELOG 0.2.13 entry (neutral voice), workspace version bump, final full gate (Wave 3)
+### Phase 145: ferro serve manual reload key and watch supervisor
+
+**Goal:** Replace the external `cargo-watch` dependency in `ferro serve` with an in-process supervisor. Make auto-watch opt-in via `--watch` (off by default). Add a runtime `r` key that triggers a backend rebuild and types regeneration, cancelling any in-flight build. Use `notify-debouncer-mini` for trailing-edge debounce (500 ms fixed) so a burst of file-saves produces one rebuild rather than many.
+**Requirements**: Design spec at `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`. Targets `ferro-cli/src/commands/serve.rs`. Deletes `ensure_cargo_watch()` and `start_type_watcher()`. Adds `notify-debouncer-mini` and `crossterm` deps; drops external `cargo-watch` install step.
+**Depends on:** Phase 144
+**Plans:** 5/5 plans complete
+
+Plans:
+- [x] 145-01-PLAN.md — Wave 0 test infrastructure: minimal-serve fixture + integration-test scaffold + pure-function contracts (render_banner, classify_key, KbAction, ReloadTrigger, format_trigger_source, should_spawn_keyboard) + 5 inline #[ignore]-gated unit-test stubs (Wave 0)
+- [x] 145-02a-PLAN.md — Deps, clap surface, deletions, pure helpers: add --watch clap flag, delete ensure_cargo_watch() + start_type_watcher() + cargo-watch spawn path, extract spawn_child_with_prefix, fill render_banner/classify_key/format_trigger_source/should_spawn_keyboard bodies, un-ignore 4 pure-helper tests (Wave 1, depends on 01)
+- [x] 145-02b-PLAN.md — BackendSupervisor + producers + run() rewire: BackendSupervisor struct + RawModeGuard + spawn_keyboard_thread + spawn_file_watcher[_at] + drain_triggers, rewire run() with shutdown ordering per D-29, un-ignore remaining 3 supervisor-dependent tests (Wave 1, depends on 02a)
+- [x] 145-03-PLAN.md — Integration tests: 4 un-ignored tests in serve_supervisor.rs against minimal-serve fixture covering SIGINT shutdown budget, `r`-key trigger, `--watch` burst coalescing, non-TTY banner; adds Unix libc dev-dep + env-var test hook (Wave 2, depends on 01+02b)
+- [x] 145-04-PLAN.md — Docs refresh: update docs/src/reference/cli.md serve section (options table, key legend, What-it-does), rewrite ferro-cli/src/commands/skills/serve.md, phase-wide cargo-watch grep gate (Wave 2, depends on 02b, parallel with 03)
+
+### Phase 146: Add KeyValueEditor component to ferro-json-ui — dynamic key-value pair editor with suggested keys, custom rows, JSON serialization to hidden field, and runtime behavior in ferro-json-ui IIFE
+
+**Goal:** Ship a `KeyValueEditor` JSON-UI component that renders a dynamic list of key/value rows backed by a hidden JSON field, supports seeded rows from `data_path`, suggested keys via `<datalist>` or restricted `<select>`, error-state propagation, and event-delegated add/delete/input serialization via a new `setupKeyValueEditor()` runtime module.
+**Requirements**: R1 (html_escape on all dynamic HTML), R2 (data_path pre-fill), R3 (error state classes), R4 (select variant), R5 (datalist variant), R6 (empty hidden field defaults to `{}`), R7 (bundle contains setupKeyValueEditor), R8 (dispatcher invokes setupKeyValueEditor), R9 (serde round-trip)
+**Depends on:** Phase 145
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 146-01-PLAN.md — Wave 0 RED tests: 7 render_key_value_editor unit tests in render.rs, 2 serde round-trip tests in component.rs, update both runtime/mod.rs test arrays to require setupKeyValueEditor (Wave 1, no deps)
+- [x] 146-02-PLAN.md — Rust implementation: KeyValueEditorProps struct + Component::KeyValueEditor variant + serde match arms in component.rs, render_key_value_editor() + dispatch arm in render.rs, public re-export + COMPONENT_CATALOG entry in lib.rs (Wave 2, depends on 01)
+- [x] 146-03-PLAN.md — Runtime JS: new ferro-json-ui/src/runtime/key_value_editor.rs with ES5 setupKeyValueEditor/initKeyValueEditor/syncHiddenField, wire module decl + SOURCE push + dispatcher call into runtime/mod.rs (Wave 3, depends on 01)
+
+### Phase 147: DetailForm component for inline edit — ferro-json-ui
+
+**Goal:** Ship a `DetailForm` JSON-UI component that renders the same structural container in View and Edit modes, driven by a server-side URL query param (`?mode=edit`); View renders a `<dl>` + "Modifica" link, Edit wraps the same `<dl>` in a `<form>` with "Salva"/"Annulla" actions and method spoofing for PUT/PATCH/DELETE. Adds `EditMode` enum with `from_query()`, `DetailField`, `DetailFormProps`, `Component::DetailForm` variant with serde + resolver arms, `ComponentNode::detail_form` factory, and ferro-mcp catalog entry (also backfills KeyValueEditor catalog gap from Phase 146). No runtime JS.
+**Requirements**: D-01..D-20 (per 147-CONTEXT.md) — EditMode enum + from_query; DetailField/DetailFormProps structs; structural coherence contract (§5 of 147-UI-SPEC); method-spoofing integrity (T-147-01); html_escape XSS mitigation (T-147-02); resolver participation in all three passes; Option-A label authoring rule documented in catalog + docs
+**Depends on:** Phase 146
+**Plans:** 5/5 plans complete
+
+Plans:
+- [x] 147-01-PLAN.md — Wave 0 RED tests: EditMode + DetailFormProps serde tests in component.rs (13 tests); render_detail_form_* tests in render.rs (12+ tests covering View/Edit/spoofing/buttons/escapes/invariance); resolver tests in resolve.rs (3 tests); ferro-mcp exhaustive-list assertion bumped to 41 + DetailForm/KeyValueEditor added to expected names (Wave 0, no deps)
+- [x] 147-02-PLAN.md — Rust types: EditMode enum + DetailField struct + DetailFormProps struct + Component::DetailForm variant + serde match arms + ComponentNode::detail_form factory in component.rs; public re-exports + ### DetailForm COMPONENT_CATALOG entry in lib.rs (Wave 1, depends on 01)
+- [x] 147-03-PLAN.md — Renderer: fn render_detail_form in render.rs + dispatch arm in render_component + container arm in collect_plugin_types_node; emits identical <dl> scaffold across modes with html_escape discipline and method-spoofing copied verbatim from render_form (Wave 1, depends on 01)
+- [x] 147-04-PLAN.md — Resolver: three Component::DetailForm arms in resolve.rs (resolve_component_node, collect_unresolved_node, resolve_errors_node) — mirrors Component::Form, preserves D-16 (edit_url/cancel_url never resolved) (Wave 1, depends on 01)
+- [x] 147-05-PLAN.md — MCP catalog + docs + CI gate: DetailForm CatalogComponent entry + KeyValueEditor backfill in ferro-mcp/src/tools/json_ui_catalog.rs; ### DetailForm section in docs/src/json-ui/components.md with Option-A rule; full CI gate (cargo fmt + clippy --all --all-targets -- -D warnings + test --all-features) (Wave 1, depends on 01)
+
+### Phase 148: ImageProps inline-SVG source — extend Image, don't add HtmlEmbed
+
+**Goal:** Extend `ferro-json-ui`'s `ImageProps` with an `ImageSource` serde-untagged enum so `Component::Image` can carry either an external URL (current `src`) or a server-constructed inline SVG string. Renderer gains one branch; `alt: String` stays required (compile-enforced a11y); URL wire format stays fully backward-compatible. No new component variant, no new resolver arm, no MCP exhaustive-list bump — the existing `Image` slot absorbs the capability. Unblocks gestiscilo.it v6.1 Statistiche revenue-trend bar chart without introducing a generic HTML escape hatch.
+**Requirements**: IMG-SRC-01..IMG-SRC-05 — ImageSource enum (`Url {src}` / `InlineSvg {svg}`) with untagged serde; ImageProps flattens source + alt stays required; render_image branches on source (URL path unchanged, InlineSvg emits `<div role="img" aria-label="{escaped alt}">{svg verbatim}</div>`); COMPONENT_CATALOG + MCP catalog + docs all reflect both variants with SVG-branch safety callout; CI gate green
+**Depends on:** Phase 147
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 148-01-PLAN.md — Wave 0 RED tests: extend image_round_trips + all_known_types_round_trip fixture with InlineSvg cases; add image_source_tests module (5 tests) in component.rs; rewrite existing ImageProps struct literals at component.rs:2173 and render.rs:3758/3780/3798 to target API shape; add three RED InlineSvg render tests in render.rs (div-role-img, load-bearing script-passthrough bypass documentation, alt-xss-escaped) (Wave 0, no deps)
+- [x] 148-02-PLAN.md — Wave 1 implementation: introduce ImageSource untagged enum + refactor ImageProps with #[serde(flatten)] source field + add ImageProps::url / ImageProps::inline_svg constructors (with D-12 safety rustdoc on both); branch render_image on props.source with inline // SAFETY comment on InlineSvg arm (Wave 1, depends on 01)
+- [x] 148-03-PLAN.md — Wave 2 surface updates + final CI gate: ### Image section added to COMPONENT_CATALOG in ferro-json-ui/src/lib.rs (pre-existing gap closed); ferro-mcp CatalogComponent for Image widened (dual-source description, src + svg props, count stays 41); ### Image section added to docs/src/json-ui/components.md with props table + safety callout + Rust + JSON examples + "no generic HTML escape hatch" pointer; full CI gate (cargo fmt + clippy --all --all-targets -- -D warnings + test --all-features) (Wave 2, depends on 02)
+
+Prior planning artifacts for the rejected `Component::HtmlEmbed` scope are archived at `.planning/phases/148-image-inline-svg-source/archive-htmlembed/` for decision-trail traceability (see `148-DISCUSSION-LOG.md`).
+
+---
+
+### 📋 v11.9 Notifications & Rich-Text Foundations (Phases 149-150, planned 2026-04-28)
+
+Source: gestiscilo-it v6.4 Documents & Notifications field test. Two upstream additions consumed by gestiscilo Phases 120 and 125 respectively. Auto-publishes via GH Actions on push to master; consumer apps (gestiscilo) bump `Cargo.toml` after publish.
+
+**Phase number reconciliation:** v11.9 inserts itself at the next available ferro phase number (149-150). v12.0 JSON-UI v2 still owns Phases 115-121 in its own scope; v11.9 does not collide.
+
+### Phase 149: ferro-notifications WhatsApp + InApp channels + MailMessage attachment
+
+**Goal:** Extend `ferro-notifications` with two new channel adapters and a Mail attachment builder so consumer apps can dispatch transactional notifications across WhatsApp + in-app SSE banners and attach binary files (PDFs) to email. Additive, non-breaking to existing `Notification` impls. `Channel::Push` remains an enum-only stub (no APNs/FCM adapter) — consumer matrix UIs render the column as "coming soon".
+
+**Source:** gestiscilo-it v6.4 milestone — see `gestiscilo-it/app/.planning/REQUIREMENTS.md` FERRO-01, FERRO-02, FERRO-03, and `.planning/research/v6.4-DOCUMENTS-NOTIFICATIONS-STACK.md` for the full integration design.
+
+**Depends on:** ferro-whatsapp (existing crate); lettre 0.11 (already a transitive dep via ferro-notifications Mail driver).
+
+**Success Criteria** (what must be TRUE):
+  1. `ferro_notifications::Channel::WhatsApp` and `Channel::InApp` enum variants exist; existing `Channel::Mail`/`Database`/`Slack`/`Sms`/`Push` variants unchanged; the `Push` variant carries no adapter and the dispatcher emits a structured "channel not configured" no-op for it
+  2. `Notification::to_whatsapp(&self) -> Option<WhatsAppMessage>` and `Notification::to_in_app(&self) -> Option<InAppMessage>` are added as default-`None` trait methods so all existing `Notification` impls compile unchanged
+  3. `WhatsAppChannel` adapter dispatches via the static `ferro_whatsapp::WhatsApp::send` facade (no client injection — `ferro-whatsapp` owns global state via `WhatsApp::init` at app startup); gated by `NotificationConfig::whatsapp_enabled` (default `false`, opt-in via `WHATSAPP_ENABLED` env or builder)
+  4. `InAppChannel` adapter accepts an SSE broker handle plus a `DatabaseNotificationStore` trait object and writes both legs on dispatch
+  5. `MailMessage::attachment(filename, content_type, bytes)` builder exists; lettre wiring delivers a multi-part email with the attached file; max-size guard returns a typed error at 25 MB; round-trip integration test verifies attachment arrives intact at a Mailpit fixture
+  6. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green across the workspace; GH Actions publishes the new ferro-notifications version to crates.io
+  7. Consumer-side smoke test in gestiscilo-it: `use ferro_notifications::{Channel, WhatsAppChannel, InAppChannel};` resolves; `MailMessage::new().attachment(...)` compiles and sends
+
+**Plans:** 7/7 plans complete
+
+Plans:
+- [x] 149-01-PLAN.md — Wave 0: skeleton message types and channels module wiring
+- [x] 149-02-PLAN.md — Wave 1: Channel + Notification + Error surface (D-01, D-02, D-05, ARCH-FINDING-03)
+- [x] 149-03-PLAN.md — Wave 1: MailAttachment + 25MB-capped attachment() builder (D-09, D-10, D-11)
+- [x] 149-04-PLAN.md — Wave 2: SMTP multipart + Resend base64 attachment payload (D-12)
+- [x] 149-05-PLAN.md — Wave 3: WhatsApp adapter (D-04, D-14, ARCH-FINDING-01)
+- [x] 149-06-PLAN.md — Wave 4: InApp adapter + DB-store wire (D-06, D-07, D-08, D-13, ARCH-FINDING-02)
+- [x] 149-07-PLAN.md — Wave 5: Re-exports, publish.yml move, docs, Mailpit integration test, final CI (D-15, D-16, ARCH-FINDING-05)
+
+### Phase 150: ferro-json-ui RichTextEditor component
+
+**Goal:** Ship a `RichTextEditor` component in `ferro-json-ui` that wraps Quill 2.0.3 (Snow theme, jsDelivr CDN, SRI-pinned, vanilla — no bundler) so consumer apps can author rich-text bodies in dashboard forms without a JS build step. Pattern mirrors the v6.1 `Chart` plugin and the existing `KeyValueEditor` component (Phase 146). Output is dual-format: Delta JSON (canonical, lossless) + sanitized HTML cache (rendering input). Toolbar `formats` whitelist constrained at the component-prop level so consumer apps cannot accidentally enable image/video/HTML-paste paths.
+
+**Source:** gestiscilo-it v6.4 milestone — used by Phase 125 (document template editor). See `gestiscilo-it/app/.planning/REQUIREMENTS.md` DOC-02, DOC-04 for consumer requirements.
+
+**Depends on:** Phase 149 (not strictly — independent — but bundling them in v11.9 keeps the upstream-publish cadence aligned).
+
+**Success Criteria** (what must be TRUE):
+  1. `Component::RichTextEditor(RichTextEditorProps)` exists in the ferro-json-ui component catalog with `name: String` (form field name), `value: Option<String>` (initial Delta JSON or HTML), `formats: Vec<String>` (toolbar whitelist; defaults to bold/italic/underline/lists/headings/links), `placeholder: Option<String>`, `theme: String` (defaults to "snow"); compile-enforced via the existing component derive
+  2. Renderer emits a `<div data-rich-text-editor>` host element plus the Quill IIFE bootstrap in the page footer; Quill is loaded from `cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js` with SRI hash; CSS from `dist/quill.snow.css` with SRI hash
+  3. On form submit, the runtime IIFE serializes the editor state to two hidden inputs: `{name}_delta` (Delta JSON) and `{name}_html` (sanitized HTML); consumer controllers read both
+  4. The `formats` whitelist is enforced both at editor initialization (passed as Quill toolbar config) and at HTML serialization (post-process strips disallowed tags); consumer cannot bypass by mutating the DOM
+  5. Component round-trips via the standard ferro-json-ui JSON-UI serde fixtures; documented under `### RichTextEditor` in `docs/src/json-ui/components.md` with props table + Rust + JSON example
+  6. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green; ferro-json-ui MCP catalog component count incremented and the new component documented in MCP catalog
+  7. ferro-mcp `CatalogComponent` for `RichTextEditor` exposes the schema so AI tooling can generate forms with rich-text fields
+
+**Plans:** 5/5 plans complete
+
+Plans:
+- [x] 150-01-PLAN.md — Wave 1 RED tests: render_rich_text_editor_* unit tests in render.rs, serde round-trip + theme-default tests in component.rs, runtime/mod.rs test arrays extended to require setupRichTextEditor (Wave 1, no deps)
+- [x] 150-02-PLAN.md — Quill 2.0.3 SHA-384 SRI bootstrap: compute hashes from live jsDelivr bytes via curl + openssl, create ferro-json-ui/src/assets/quill.rs with four pinned pub(crate) consts (URLs + SRI), promote assets.rs to assets/ directory and wire submodule (Wave 2, depends on 01)
+- [x] 150-03-PLAN.md — Component variant + render fn + asset injection: RichTextEditorProps + Component::RichTextEditor + serde arms + ComponentNode::rich_text_editor factory in component.rs; render_rich_text_editor + dispatch arm + collect_plugin_types_node enrollment in render.rs; new plugins/rich_text_editor.rs (RichTextEditorPlugin asset-only adapter) registered in global_plugin_registry — first-class component reuses the plugin asset pipeline (D-02) (Wave 3, depends on 01, 02)
+- [x] 150-04-PLAN.md — Runtime IIFE: new ferro-json-ui/src/runtime/rich_text_editor.rs with ES5 setupRichTextEditor / initRichTextEditor / formatsToToolbarConfig / sanitizeHtmlByFormats; submit interception writes {name}_delta + {name}_html; formats whitelist enforced at init (Quill option) and submit (DOM-walker post-process); wire module + SOURCE push + dispatcher call into runtime/mod.rs (Wave 4, depends on 01, 03)
+- [x] 150-05-PLAN.md — Public surface + docs + final CI: re-export RichTextEditorProps and RichTextEditorPlugin from lib.rs; ### RichTextEditor in COMPONENT_CATALOG; ferro-mcp CatalogComponent entry + count assertion 41→42; docs/src/json-ui/components.md ### RichTextEditor section; final fmt + clippy -D warnings + test --all-features gate (Wave 5, depends on 03, 04)
+
+### 📋 v11.11 Resource Reservation & Live Read-Model Primitives (Phases 152-155, planned 2026-05-13)
+
+**Source:** gestiscilo-it inventory monitoring field test (2026-05-13 audit). Two consumer milestones already need this stack — v6.3 Online Checkout (slot hold with TTL during Stripe payment) and v6.7 Inventory Monitoring (booking reservations + live Magazzino dashboard).
+
+**What ships:** four reusable horizontal primitives that any future capacity-constrained app can adopt. Domain-neutral — ferro stays out of inventory semantics. Full design in [research/INVENTORY-PRIMITIVES.md](research/INVENTORY-PRIMITIVES.md).
+
+**Build order:** 152 (guarded) and 153 (audit) are foundational and parallelizable. 154 (reservation) depends on both. 155 (projection) is independent of the others but typically deployed alongside.
+
+### Phase 152: ferro-orm GuardedUpdate — atomic conditional updates for race-free counter mutations
+
+**Goal:** Ship `ferro-orm` as a new top-level workspace crate exposing `GuardedUpdate<E>` — a chainable builder that compiles to a single `UPDATE … WHERE …` SQL statement, replacing the hand-rolled `read → check → write` pattern wherever a column's value is conditionally mutated. Race-free by construction at the database layer. Foundational kernel for v11.11 (reservation kernel + live read-models depend on this).
+**Requirements**: none — feature-driven phase, `phase_req_ids` is null; locked decisions D-01..D-25 in 152-CONTEXT.md are the must-haves
+**Depends on:** none
+**Plans:** 6/6 plans complete
+
+Plans:
+- [x] 152-01-PLAN.md — scaffold ferro-orm crate (Cargo.toml, lib.rs, error.rs, README.md; guarded.rs stub)
+- [x] 152-02-PLAN.md — register ferro-orm in workspace (root Cargo.toml + publish.yml Wave 1a + CLAUDE.md table row)
+- [x] 152-03-PLAN.md — implement GuardedUpdate builder body + 7 unit tests (T-16-1..T-16-7)
+- [x] 152-04-PLAN.md — concurrent_decrement integration test (T-17-1: 10 tokio tasks vs K=3, exactly 3 succeed)
+- [x] 152-05-PLAN.md — docs/src/database/atomic-updates.md + SUMMARY.md nav entry
+- [x] 152-06-PLAN.md — release: pre-release gate + CHANGELOG entry + first-publish bootstrap (manual checkpoint)
+
+### Phase 153: ferro-audit crate — structured before/after audit log with replay
+
+**Goal:** Ship the `ferro-audit` Wave 1a leaf crate — append-only structured before/after audit log with replay-ready query helpers, a SeaORM migration consumers register in their own `Migrator`, and the `AuditEntry::record(action).…write(&conn)` builder API. Includes `AuditActor` typed enum, `AuditTarget` struct, three query helpers (`history_for_target`, `recent_by_actor`, `recent`), pure `reconstruct_state` shallow-merge fold, and `prune_older_than` retention helper. Bumps workspace version 0.2.30 → 0.2.31 and bootstraps first publish to crates.io.
+**Requirements**: D-01..D-40 (feature-driven phase; decision IDs from 153-CONTEXT.md)
+**Depends on:** none (parallel with Phase 152)
+**Plans:** 6/6 plans complete
+
+Plans:
+- [x] 153-01-PLAN.md — scaffold ferro-audit crate (Cargo.toml, lib.rs, error.rs, actor.rs, target.rs, README.md, stub modules)
+- [x] 153-02-PLAN.md — register ferro-audit in workspace (Cargo.toml members + version bump 0.2.30 → 0.2.31, publish.yml Wave 1a, CLAUDE.md, README.md)
+- [x] 153-03-PLAN.md — SeaORM entity + migration (audit_log table + 2 indexes) + migration unit test
+- [x] 153-04-PLAN.md — AuditEntry builder + write() with post-INSERT re-fetch + 5 happy-path unit tests
+- [x] 153-05-PLAN.md — query helpers (history_for_target/recent_by_actor/recent) + reconstruct_state + prune_older_than + 4 unit tests
+- [x] 153-06-PLAN.md — integration test + docs/src/database/audit-log.md + SUMMARY.md nav + CHANGELOG + pre-release gate + first-publish bootstrap (manual checkpoint)
+
+### Phase 154: ferro-reservation crate — generic hold/commit/release with TTL and event broadcast
+
+**Goal:** Ship a domain-neutral resource reservation kernel as a new top-level Wave 1b workspace crate (`ferro-reservation`). The crate exposes `ReservationKernel<R: Resource>` with `hold` / `commit` / `release` / `extend` / `run_sweep_once` — a typed, race-free state-transition pipeline composing `ferro-orm::GuardedUpdate` (atomic state transitions), `ferro-audit::AuditEntry` (unconditional audit emission), and `ferro-events::dispatch` (best-effort domain events). Consumers implement the `Resource` trait against their own domain model; the kernel knows nothing about inventory, products, slots, or seats. Anchored by D-48 (concurrent_hold integration test: N=20 vs capacity=5 → exactly 5 succeed), D-49 (proptest properties: capacity invariant + state-machine validity via audit replay), and D-50 (cross-crate showcase: 2 events + 2 audit entries + reconstruct_state).
+**Requirements**: D-01..D-58 (feature-driven phase — every locked decision from 154-CONTEXT.md is a must-have)
+**Depends on:** Phase 152 (ferro-orm GuardedUpdate, shipped 0.2.30), Phase 153 (ferro-audit, shipped 0.2.31)
+**Plans:** 7/7 plans complete
+
+Plans:
+- [x] 154-01-PLAN.md — Scaffold ferro-reservation crate (Cargo.toml, lib.rs with rustdoc + state diagram, full ReservationError body, 8 stub modules)
+- [x] 154-02-PLAN.md — Register crate in workspace (Cargo.toml members + version bump 0.2.31→0.2.32, publish.yml WAVE1B_CRATES, CLAUDE.md, README.md)
+- [x] 154-03-PLAN.md — SeaORM migration CreateReservationsTable + entity Model (12 columns + 2 composite indexes) + lib.rs entity re-exports
+- [x] 154-04-PLAN.md — Leaf-type bodies: Resource trait, ReservationContext builder, ReservationEvent + ReleaseReason (serde + Event impl), ReservationHandle serde tests
+- [x] 154-05-PLAN.md — ReservationKernel<R> with hold/commit/release/extend (GuardedUpdate + AuditEntry + dispatch ordering) + 7 unit tests covering D-47-1..7
+- [x] 154-06-PLAN.md — run_sweep_once + concurrent_hold integration (D-48) + proptest property tests (D-49) + cross-crate integration (D-50)
+- [x] 154-07-PLAN.md — Release: user doc page reservations.md, CHANGELOG entry, pre-release gate (fmt+clippy+test+doc), manual first-publish bootstrap to crates.io
+
+### Phase 155: ferro-projection crate — live read-model from domain events with delta broadcast
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** none (uses existing ferro-events + ferro-broadcast)
+**Plans:** 7/7 plans complete
+
+Plans:
+- [x] TBD (run /gsd-plan-phase 155 to break down) (completed 2026-05-14)
+
+### Phase 156: frontend/src/types/ — Generator-Owned Convention Cleanup
+
+**Goal:** Reconcile the contradiction between the scaffold gitignore template (which marks `frontend/src/types/` as generator-owned) and Ferro's reference app (which tracks generated files). Untrack generated files in the reference app, add a `ferro doctor` check for hand-written files in `frontend/src/types/`, update the Dockerfile renderer to add a `types-gen` stage so Docker builds work without committed generated files, fix the generator header comment, and document the convention.
+**Requirements**: D-01..D-21 (decision IDs from 156-CONTEXT.md — no formal REQ-IDs assigned for this phase)
+**Depends on:** none
+**Plans:** 6/6 plans complete
+
+Plans:
+- [x] 156-01-PLAN.md — trivial fixes: untrack reference app types, gitignore comment, generate_types.rs header path
+- [x] 156-02-PLAN.md — new doctor check `frontend_types_convention` + registry + tests
+- [x] 156-03-PLAN.md — Dockerfile renderer: DockerContext.ferro_version, types-gen stage, resolve_ferro_version helper
+- [x] 156-04-PLAN.md — wire docker_init.rs and docker_template_drift.rs to the real resolve_ferro_version (replaces Plan 03 placeholders)
+- [x] 156-05-PLAN.md — docs: frontend-types.md page, SUMMARY index, doctor.md count + table, reference/cli.md count, README.md.tpl troubleshooting bullet
+- [x] 156-06-PLAN.md — workspace version bump + CHANGELOG entry + pre-release gate + human-authorized push
+
+---
+
+### 📋 v11.12 Migration Deploy Safety (Phase 157, planned 2026-05-13, URGENT)
+
+**Source:** gestiscilo-it 2026-05-13 production breakage. Field-test detail in [phases/157-.../157-CONTEXT.md](phases/157-migration-deploy-safety-backend-portable-backfill-helpers-fe/157-CONTEXT.md).
+
+**What ships:** three framework gaps closed in one phase — backend-portable backfill helpers, scaffolder-emitted PRE_DEPLOY migrate job, doctor `migrate_gate` check.
+
+### Phase 157: Migration deploy safety — backend-portable backfill helpers, ferro do:init PRE_DEPLOY migrate job, ferro doctor check for migrate gate
+
+**Goal:** Close three migration-deploy-safety gaps surfaced by the 2026-05-13 gestiscilo-it production breakage so the next consumer cannot rediscover them — a new `ferro-migration` crate exporting backend-portable backfill helpers (`backfill_random_hex`, `backfill_random_uuid`, `backfill_current_timestamp`, `backfill`), `ferro do:init` scaffolding a `PRE_DEPLOY` migrate job in `.do/app.yaml` by default, a `ferro doctor --deploy` `migrate_gate` check that errors when migrations exist without a PRE_DEPLOY gate, and fixing `run_migrations_silent` to `process::exit(1)` on failure across framework + sample app + new-project template.
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06
+**Depends on:** none (independent of v11.11 primitives; can land in parallel)
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 157-01-PLAN.md — ferro-migration crate: backend-portable backfill helpers + workspace + CI Wave 1a
+- [x] 157-02-PLAN.md — ferro do:init {{JOBS_BLOCK}} PRE_DEPLOY migrate job
+- [x] 157-03-PLAN.md — ferro doctor migrate_gate check (CheckCategory::Deploy)
+- [x] 157-04-PLAN.md — Fix run_migrations_silent silent-failure anti-pattern (framework + app + template)
+
+### Phase 158: Request::file() multipart upload primitive
+
+**Goal:** Add multipart/form-data parsing to the framework so handlers can receive uploaded files via `req.multipart()` and `req.file("field")`. Include an `UploadedFile` type with a `store()` helper that bridges directly to `ferro-storage`. Killer feature: a handler can receive an uploaded file and persist it to local disk or S3 in three lines, using the same `ferro-storage` API already wired into the app.
+**Requirements**: MULTIPART-01..09
+**Depends on:** Phase 157
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 158-01-PLAN.md — Add multer dep, create http/multipart.rs (UploadedFile, MultipartForm, parser, validators, env helpers), wire into http/mod.rs + lib.rs
+- [x] 158-02-PLAN.md — Add Request::multipart() / Request::file() methods + #[cfg(test)] mod tests covering D-03/04/07/08/12/13/14/18
 ### Phase 159: v12.0 end-to-end browser verification and docs build check
 
 **Goal:** Confirm the v12.0/json-ui-v2 branch delivers what it promises before touching the v1 API. Start the ferro sample app, hit `/pagamenti` via Chrome MCP and verify `JsonUi::render_file` produces a correctly rendered HTML page end-to-end. Then run `mdbook build docs/` and confirm the rewritten JSON-UI docs build with no broken links. Both checks must pass before v1 removal begins.
@@ -1363,3 +1652,167 @@ Plans:
 | v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121 | ? | 📋 Planned | - |
 
 **Total: 28 milestones shipped, 270 plans complete.**
+mplete.**
+
+
+---
+
+### 📋 v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding (Phases 165-173, planned 2026-05-15)
+
+**Milestone Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and build AI-assisted scaffolding on top of it. The killer feature: `ferro ai:make <description>` uses live `ferro-mcp` introspection (called in-process, not via subprocess) to generate code that fits the actual project rather than a generic template.
+
+**Requirements:** AISDK-01..06, AISSE-01..02, AICLI-01..05 (13 requirements, 1 deferred)
+
+**Relationship to v12.0:** v12.0 (Phases 115-121) runs first. AICLI-04 (`make:json-view` v2) is gated on v12.0 shipping; it is deferred to Phase 173 and blocked until then.
+
+**New dependencies:**
+- `reqwest-eventsource 0.6` — parse incoming SSE from Anthropic/OpenAI/Groq/Ollama (new to workspace)
+- `pgvector 0.4` — optional feature-gate on ferro-ai for vector storage (new to workspace)
+
+**Build order:**
+- Wave 1 (ferro-ai foundation): Phases 165, 166, 167 — ferro-ai leaf crate first; everything builds on `LlmClient` trait
+- Wave 1b (parallel): Phase 168 — SSE primitives in framework have no ferro-ai dependency
+- Wave 2: Phase 169 — StreamText depends on SSE URL convention from Phase 168
+- Wave 3: Phase 170 — ferro-cli migration, validates SDK against existing make:json-view command
+- Wave 4: Phase 171 — AI CLI commands, the killer feature; uses ferro-mcp in-process
+- Wave 5: Phase 172 — MCP tool wrappers, thin layer on top of CLI logic
+- Deferred: Phase 173 — gated on v12.0 shipping
+
+## Phases
+
+- [ ] **Phase 165: LlmClient Trait & Provider Implementations** — `LlmClient` trait + Anthropic/OpenAI/Ollama providers + `AiConfig::from_env()` + `ClassifierConfig` default-model fix
+- [ ] **Phase 166: Structured Outputs, Tool Calling & Schema Normalizer** — `ferro_ai::complete::<T>()` + schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ToolRegistry` with `max_iterations` hard cap
+- [ ] **Phase 167: Embeddings & pgvector** — `embed()` + `cosine_similarity()` pure Rust helpers + optional `pgvector` feature-gated module
+- [ ] **Phase 168: Framework SSE Primitives** — `SseEvent` + `SseStream` + `HttpResponse::sse()` in framework crate; SSE routes structurally excluded from CompressionLayer
+- [ ] **Phase 169: StreamText Component** — `StreamText` ferro-json-ui component rendering a token stream from an SSE endpoint URL
+- [ ] **Phase 170: ferro-cli Migration** — delete `ferro-cli/src/ai.rs` blocking client; wire all LLM calls through `ferro_ai::complete::<T>()`
+- [ ] **Phase 171: ferro ai:make & ferro ai:explain CLI Commands** — killer-feature commands using live ferro-mcp introspection in-process; `ScaffoldPlan` typed struct; selective context loading
+- [ ] **Phase 172: MCP Tool Wrappers** — `ai_scaffold` + `ai_explain` tools in ferro-mcp wrapping CLI command logic for in-process agent consumption
+- [ ] **Phase 173: make:json-view v2 (DEFERRED — gated on v12.0)** — `ferro make:json-view` upgraded to structured outputs + ServiceDef introspection; blocked until v12.0 JSON-UI v2 ships
+
+#### Phase Details
+
+### Phase 165: LlmClient Trait & Provider Implementations
+**Goal**: Establish the provider-agnostic `LlmClient` trait and ship four provider implementations (Anthropic, OpenAI, Ollama, plus Groq as an OpenAI config variant). Fix the `ClassifierConfig` hardcoded default model that breaks non-Anthropic providers.
+**Depends on**: Nothing (first phase of milestone; ferro-ai is a leaf crate)
+**Requirements**: AISDK-01
+**Success Criteria** (what must be TRUE):
+  1. `LlmClient` trait exists in `ferro-ai/src/client/mod.rs` with `async fn complete(...)`, `async fn complete_stream(...)`, `async fn embed(...)` methods; missing capabilities return `Err(Error::Unsupported)` rather than panic
+  2. `AnthropicClient`, `OpenAiClient` (doubles as Groq via `base_url` override), and `OllamaClient` implement `LlmClient`; `Box<dyn LlmClient>` is instantiable for each
+  3. `AiConfig::from_env()` reads `FERRO_AI_PROVIDER`, `FERRO_AI_MODEL`, `FERRO_AI_API_KEY`, `FERRO_AI_BASE_URL` and returns the correct provider; unknown provider names return a clear error at startup, not at the first LLM call
+  4. `ClassifierConfig` default model is resolved through `LlmClient::default_model()` per provider; the hardcoded `"claude-sonnet-4-6"` string is removed from `ClassifierConfig::default()`
+  5. `Classifier<T>` compiles and passes its existing tests with the new client plumbing underneath; `ClassificationProvider` and existing public API are preserved
+  6. `reqwest-eventsource 0.6` is declared as a `pub(crate)` dependency in provider modules only — not re-exported as a public ferro-ai surface
+**Plans**: TBD
+
+### Phase 166: Structured Outputs, Tool Calling & Schema Normalizer
+**Goal**: Ship `ferro_ai::complete::<T>()` for typed structured outputs, the schema normalizer that makes `schemars` output compatible with provider structured-output APIs, and `ToolRegistry` with a hard `max_iterations` guard.
+**Depends on**: Phase 165
+**Requirements**: AISDK-02, AISDK-03
+**Success Criteria** (what must be TRUE):
+  1. `ferro_ai::complete::<T>(client, prompt)` where `T: schemars::JsonSchema + serde::DeserializeOwned` returns `Result<T, Error>` — caller never calls schemars or JSON parsing directly
+  2. `ferro_ai::schema::for_structured_output(root_schema)` resolves all `$ref`/`$defs` inline, adds `additionalProperties: false` to every object schema, and strips constraints Anthropic structured-output rejects; a unit test verifies the output against Anthropic's documented constraints
+  3. `ToolDef` struct carries `name: String`, `description: String`, `parameters_schema: serde_json::Value` (normalized via `for_structured_output`), and a handler closure
+  4. `ToolRegistry::dispatch(messages, client)` runs the tool-calling loop; `max_iterations: u32` (default 10) is required at construction time and enforced with no override path to an unbounded loop; a warning is logged at 5 iterations and an error at the hard cap
+  5. Tool errors carry model-legible `ToolError { message: String }` descriptions — not raw Rust stack traces or DB constraint strings
+  6. `cargo test --all-features` passes; existing `Classifier<T>` tests are green
+**Plans**: TBD
+
+### Phase 167: Embeddings & pgvector
+**Goal**: Ship pure-Rust embedding helpers and cosine similarity, plus an optional pgvector integration for semantic search.
+**Depends on**: Phase 165
+**Requirements**: AISDK-04, AISDK-05
+**Success Criteria** (what must be TRUE):
+  1. `ferro_ai::embed(client, text)` calls the provider's embedding endpoint and returns `Vec<f32>`; Anthropic, OpenAI, and Ollama providers implement `LlmClient::embed()`
+  2. `ferro_ai::cosine_similarity(a: &[f32], b: &[f32]) -> f32` is a pure Rust function with no extra crates; returns a value in [-1.0, 1.0]; panics with a clear message on empty or dimension-mismatched inputs
+  3. `ferro_ai::pgvector` module exists behind the `pgvector` cargo feature; `PgVectorStore::store` and `PgVectorStore::nearest` accept raw sqlx connections and return typed results
+  4. Feature flag `pgvector` adds only `pgvector 0.4` to the dependency graph; non-flagged builds do not pull pgvector
+  5. Unit tests for `cosine_similarity`: orthogonal vectors return 0.0, identical vectors return 1.0, opposite vectors return -1.0
+**Plans**: TBD
+
+### Phase 168: Framework SSE Primitives
+**Goal**: Add SSE streaming support to the framework so handlers can push events to the browser. SSE routes are structurally excluded from CompressionLayer — this is a guarantee, not documentation.
+**Depends on**: Nothing (parallel-capable with Phases 165-167; framework crate has no ferro-ai dependency)
+**Requirements**: AISSE-01
+**Success Criteria** (what must be TRUE):
+  1. `SseEvent` exists in `framework/src/http/sse.rs` with `data`, `event`, `id`, and `retry` fields; serializes to the SSE wire format (`data: ...\n\n`) correctly
+  2. `SseStream` wraps a tokio mpsc channel and implements `IntoResponse` for axum; `HttpResponse::sse(sender, stream)` factory constructs an SSE response
+  3. SSE responses are excluded from `CompressionLayer` at the router level via a structural mechanism (not per-route annotation); the exclusion is tested, not only documented
+  4. A keep-alive `:ping\n\n` comment is emitted every 15 seconds on idle SSE connections to prevent reverse-proxy idle-timeout disconnects
+  5. An integration test verifies token-by-token delivery: a test SSE endpoint sends three events with delays; the test client receives each event before the next is sent
+**Plans**: TBD
+
+### Phase 169: StreamText Component
+**Goal**: Ship the `StreamText` ferro-json-ui component that connects to an SSE endpoint URL and renders token-by-token output in place. No external JS framework required.
+**Depends on**: Phase 168 (SSE URL convention established in framework)
+**Requirements**: AISSE-02
+**Success Criteria** (what must be TRUE):
+  1. `Component::StreamText(StreamTextProps)` exists with `sse_url: String`, `placeholder: Option<String>`, and `loading_text: Option<String>` props; round-trips via ferro-json-ui serde fixtures
+  2. Renderer emits `<div data-ferro-stream-url="{escaped_url}">` with a loading state and inline `EventSource` JS that appends tokens as they arrive
+  3. `COMPONENT_CATALOG` and ferro-mcp `CatalogComponent` include `StreamText` with accurate prop descriptions for AI generation
+  4. Documented under `### StreamText` in `docs/src/json-ui/components.md`
+  5. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green
+**Plans**: TBD
+
+### Phase 170: ferro-cli Migration
+**Goal**: Delete the blocking Anthropic-only `ferro-cli/src/ai.rs` client and route all LLM calls through the `ferro_ai` SDK. Validates the SDK against the existing `make:json-view` command before new AI commands are built on top.
+**Depends on**: Phase 166 (structured outputs and schema normalizer in place)
+**Requirements**: AISDK-06
+**Success Criteria** (what must be TRUE):
+  1. `ferro-cli/src/ai.rs` is deleted; no `reqwest::blocking::Client` or direct Anthropic API calls remain in ferro-cli
+  2. `ferro-cli` depends on `ferro-ai`; all LLM calls go through `ferro_ai::complete::<T>()` using `AiConfig::from_env()`
+  3. `ferro make:json-view` works end-to-end after the migration; existing behavior is preserved
+  4. `FERRO_AI_PROVIDER`, `FERRO_AI_MODEL`, `FERRO_AI_API_KEY` env vars control the provider for `make:json-view` (previously only Anthropic was supported)
+  5. `cargo test --all-features` passes; no new compilation warnings in ferro-cli
+**Plans**: TBD
+
+### Phase 171: ferro ai:make & ferro ai:explain CLI Commands
+**Goal**: Ship the killer-feature CLI commands. `ferro ai:make <description>` produces a complete feature scaffold using live ferro-mcp introspection loaded in-process (not subprocess). `ferro ai:explain <route|model>` explains an existing handler or model using actual source loaded through ferro-mcp.
+**Depends on**: Phase 170 (SDK migration complete), Phase 166 (structured outputs)
+**Requirements**: AICLI-01, AICLI-02, AICLI-03
+**Success Criteria** (what must be TRUE):
+  1. `ferro ai:make <description>` calls ferro-mcp library functions in-process to load `list_routes`, `list_models`, `db_schema`, and `generation_context`; context is filtered to items semantically relevant to the description before prompt construction (prevents context window overflow on large projects)
+  2. `ferro ai:make` generates a typed `ScaffoldPlan` struct via `ferro_ai::complete::<ScaffoldPlan>()` before writing any files; `--dry-run` prints the plan without writing
+  3. `ferro ai:make` delegates file generation to existing scaffold helpers (`generate_model`, `generate_migration`, `make:json-view`); no parallel file-writing path exists
+  4. `ferro ai:explain <route|model>` calls the `get_handler` (or equivalent) ferro-mcp tool in-process to load actual handler source, then returns a plain-English explanation including side effects (events dispatched, jobs queued, models touched)
+  5. Both commands respect `FERRO_AI_MAX_TOKENS_PER_COMMAND` env var as a cost guard; both support `--dry-run`
+  6. Neither command generates non-ferro code; all scaffolds are validated against project conventions as reported by ferro-mcp introspection
+**Plans**: TBD
+
+### Phase 172: MCP Tool Wrappers
+**Goal**: Expose `ai_scaffold` and `ai_explain` as ferro-mcp tools so agents can invoke scaffolding and explanation logic in-process without shelling out to the CLI.
+**Depends on**: Phase 171 (CLI command logic validated end-to-end)
+**Requirements**: AICLI-05
+**Success Criteria** (what must be TRUE):
+  1. `ai_scaffold` MCP tool accepts `description: String` and returns a `ScaffoldPlan` JSON object plus a list of files written (or would-be-written in dry-run mode)
+  2. `ai_explain` MCP tool accepts `target: String` (route path or model name) and returns the plain-English explanation as a string
+  3. Both tools share the same logic path as the CLI commands — no duplicate implementation
+  4. MCP tool descriptions are accurate and sufficient for an agent to use them without out-of-band guidance
+  5. `ferro-mcp` version bumped; `cargo test --all-features` passes
+**Plans**: TBD
+
+### Phase 173: make:json-view v2 (DEFERRED — gated on v12.0)
+**Goal**: Upgrade `ferro make:json-view` to use structured outputs with ServiceDef introspection and schema-driven component selection. This phase is blocked until v12.0 JSON-UI v2 ships and `catalog.prompt()` / `catalog.component_schema()` are available.
+**Depends on**: Phase 170; v12.0 Phase 117 (Catalog & JSON Schema) and Phase 120 (CLI & MCP Updates)
+**Requirements**: AICLI-04
+**Status**: DEFERRED — do not plan or execute until v12.0 Phase 117 and Phase 120 are complete
+**Success Criteria** (what must be TRUE):
+  1. `ferro make:json-view` uses `catalog.prompt()` for concise AI context and `catalog.component_schema()` for per-component structured output (not the flat string prompt from v1)
+  2. Generated views are v2 flat specs validated against `catalog.json_schema()` before being written to disk
+  3. ServiceDef introspection (via `ferro-mcp generate_projection`) is used to select components matching the model's field types
+  4. No v1 `JsonUiView` types appear in the generated output or the generation pipeline
+**Plans**: TBD
+
+#### Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 165. LlmClient Trait & Providers | 0/? | Not started | - |
+| 166. Structured Outputs & Tool Calling | 0/? | Not started | - |
+| 167. Embeddings & pgvector | 0/? | Not started | - |
+| 168. Framework SSE Primitives | 0/? | Not started | - |
+| 169. StreamText Component | 0/? | Not started | - |
+| 170. ferro-cli Migration | 0/? | Not started | - |
+| 171. ai:make & ai:explain CLI Commands | 0/? | Not started | - |
+| 172. MCP Tool Wrappers | 0/? | Not started | - |
+| 173. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |

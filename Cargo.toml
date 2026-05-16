@@ -21,10 +21,16 @@ members = [
     "ferro-theme",
     "ferro-ai",
     "ferro-whatsapp",
+    "ferro-wallet",
+    "ferro-orm",
+    "ferro-audit",
+    "ferro-migration",
+    "ferro-reservation",
+    "ferro-projection",
 ]
 
 [workspace.package]
-version = "0.2.11"
+version = "0.2.35"
 edition = "2021"
 rust-version = "1.88.0"
 license = "MIT"

@@ -1,0 +1,24 @@
+[package]
+name = "ferro-wallet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Digital wallet pass issuance (Apple .pkpass + Google Wallet) for the Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["wallet", "pkpass", "google-wallet", "apple-wallet", "ferro"]
+categories = ["web-programming"]
+readme = "README.md"
+homepage = "https://ferro-rs.dev"
+
+[dependencies]
+openssl = "0.10"
+zip = "2"
+jsonwebtoken = "9"
+image = "0.25"
+qrcode-generator = "5"
+sha1 = "0.10"
+base64 = "0.22"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }

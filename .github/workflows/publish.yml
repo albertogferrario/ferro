@@ -25,12 +25,13 @@ jobs:
       # Library-change gate (Phase 129, REPORT §8).
       #
       # A push only triggers a patch bump + crates.io release if at least one file
-      # under a library crate path changed since the last v* tag. Paths under
-      # ferro-cli/, app/, docs/, .github/, .planning/, scripts/, top-level *.md,
+      # under a publishable crate path changed since the last v* tag. Paths under
+      # app/, docs/, .github/, .planning/, scripts/, top-level *.md,
       # LICENSE, Cargo.lock, and top-level config files (.gitignore, .editorconfig,
       # rustfmt.toml, bacon.toml, deny.toml, dev.sh, llms.txt, rust-toolchain.toml)
-      # are NOT library changes. Workspace-root Cargo.toml IS a library change
-      # (workspace version / dep updates).
+      # are NOT publishable changes. ferro-cli/* IS a publishable change (ferro-cli
+      # is published to crates.io in Wave 3). Workspace-root Cargo.toml IS a
+      # publishable change (workspace version / dep updates).
       #
       # First-run edge case: no v* tag yet → treat as library change (publish).
       - name: Check for library crate changes
@@ -48,7 +49,7 @@ jobs:
             LIB_CHANGED=0
             while IFS= read -r path; do
               case "$path" in
-                ferro-cli/*|app/*) continue ;;
+                app/*) continue ;;
                 docs/*|.github/*|.planning/*|scripts/*) continue ;;
                 *.md|LICENSE|.gitignore|.editorconfig|rustfmt.toml) continue ;;
                 bacon.toml|deny.toml|dev.sh|llms.txt|rust-toolchain.toml) continue ;;
@@ -197,7 +198,7 @@ jobs:
           echo "Publishing Wave 1a crates..."
 
           # Wave 1a: Crates with ZERO internal ferro-* dependencies
-          WAVE1A_CRATES="ferro-macros ferro-events ferro-queue ferro-notifications ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-theme ferro-json-ui ferro-inertia ferro-api-mcp"
+          WAVE1A_CRATES="ferro-macros ferro-events ferro-queue ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-theme ferro-json-ui ferro-inertia ferro-api-mcp ferro-wallet ferro-orm ferro-audit ferro-migration"
 
           for crate in $WAVE1A_CRATES; do
             echo "Publishing $crate..."
@@ -227,11 +228,12 @@ jobs:
           echo "Publishing Wave 1b crates..."
 
           # Wave 1b: Crates that depend on Wave 1a crates
-          # ferro-ai         -> ferro-events
-          # ferro-projections-> ferro-theme
-          # ferro-stripe     -> ferro-events, ferro-queue
-          # ferro-whatsapp   -> ferro-events, ferro-queue
-          WAVE1B_CRATES="ferro-ai ferro-projections ferro-stripe ferro-whatsapp"
+          # ferro-ai            -> ferro-events
+          # ferro-projections   -> ferro-theme
+          # ferro-stripe        -> ferro-events, ferro-queue
+          # ferro-whatsapp      -> ferro-events, ferro-queue
+          # ferro-notifications -> ferro-whatsapp, ferro-broadcast (Phase 149 / ARCH-FINDING-05)
+          WAVE1B_CRATES="ferro-ai ferro-projections ferro-stripe ferro-whatsapp ferro-notifications ferro-reservation ferro-projection"
 
           for crate in $WAVE1B_CRATES; do
             echo "Publishing $crate..."

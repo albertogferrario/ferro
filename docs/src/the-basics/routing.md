@@ -65,6 +65,25 @@ pub fn routes() -> Router {
 }
 ```
 
+### Root routes inside a group
+
+A `"/"` route inside a non-root group matches both the bare prefix and the
+prefix with a trailing slash. Other paths concatenate normally.
+
+```rust
+Router::new()
+    .group("/s/{slug}", |r| {
+        r.get("/", show_item)        // matches /s/foo AND /s/foo/
+         .get("/edit", edit_item)    // matches /s/foo/edit
+    })
+```
+
+A trailing slash on the group prefix is stripped before concatenation, so
+`group("/api/", ...)` with a child `/x` route produces `/api/x`, not
+`/api//x` (double-slash). Route introspection via `get_registered_routes()` and
+`ferro-mcp list_routes` reports one entry per logical handler — the
+canonical path without trailing slash.
+
 ## Named Routes
 
 ```rust

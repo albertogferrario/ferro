@@ -17,7 +17,9 @@ use ferro_cli::project::{read_bins, read_deploy_metadata};
 use ferro_cli::templates::do_::{
     is_test_like_bin, render_app_yaml, sanitize_do_app_name, AppYamlContext,
 };
-use ferro_cli::templates::docker::{read_rust_channel, render_dockerfile, DockerContext};
+use ferro_cli::templates::docker::{
+    read_rust_channel, render_dockerfile, resolve_ferro_version, DockerContext,
+};
 
 fn fixture_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/gestiscilo")
@@ -44,6 +46,7 @@ fn build_docker_context() -> DockerContext {
         web_bin,
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt,
+        ferro_version: resolve_ferro_version(&root),
     }
 }
 
@@ -380,10 +383,13 @@ fn render_app_yaml_uses_preserved_identity_over_defaults() {
         out.contains("branch: production"),
         "preserved branch must be used\ngot:\n{out}"
     );
-    // Derived values must NOT appear.
+    // Derived app name must NOT appear as the DO app `name:` field.
+    // Note: the jobs block legitimately uses `web_bin` (derived-name) in
+    // run_command — that is expected. Only the top-level `name:` must use
+    // the preserved value.
     assert!(
-        !out.contains("derived-name"),
-        "derived name must be suppressed\ngot:\n{out}"
+        !out.contains("name: derived-name"),
+        "derived app name must be suppressed in favor of preserved name\ngot:\n{out}"
     );
     assert!(
         !out.contains("fra1"),
