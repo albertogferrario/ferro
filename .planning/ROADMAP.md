@@ -1588,7 +1588,7 @@ Plans:
 **Goal:** Read the FRICTION.md files produced by gestiscilo Phases 138 and 139 (auth/account/onboarding/pages and dashboard/statistiche/settings). Triage every friction point: missing component, awkward prop shape, expression gap, spec authoring pain, or render bug. Implement the highest-value fixes — new or improved components, expression enhancements, catalog accuracy fixes, or `render_file` ergonomics. Publish the results so gestiscilo Phases 140+ can benefit from them. Each shipped fix must have a test. Dropped items are documented with rationale in a DEFERRED.md.
 **Requirements**: All friction items triaged; shipped fixes have tests; ferro-json-ui builds clean; catalog and MCP tool descriptions updated to reflect new surface; gestiscilo can pick up the new ferro version for Phase 140.
 **Depends on:** gestiscilo Phase 139
-**Plans:** 10/11 plans executed
+**Plans:** 10/11 plans complete
 
 Plans:
 - [x] 162-01-PLAN.md — Add CheckboxList first-class component (D-01/D-02)
