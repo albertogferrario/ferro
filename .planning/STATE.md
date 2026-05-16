@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: verifying
-stopped_at: Completed 163.1-01-PLAN.md (Phase 163.1 complete)
-last_updated: "2026-05-16T22:43:03.595Z"
-last_activity: 2026-05-16
+status: ready
+stopped_at: Phase 163.1 complete and verified (WR-01 closed)
+last_updated: "2026-05-17T00:00:00.000Z"
+last_activity: 2026-05-17
 progress:
   total_phases: 172
   completed_phases: 154
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 163.1 (Codemod multi-root handler fix (G-163-01)) — EXECUTING
+Phase: 163.1 (Codemod multi-root handler fix (G-163-01)) — COMPLETE
 Plan: 1 of 1
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
-Status: Phase complete — ready for verification
-Last activity: 2026-05-16
+Status: Phase 163.1 complete — WR-01 closed; verification 12/12; review clean
+Last activity: 2026-05-17
 
 Progress: [████████░░] 84%
 
