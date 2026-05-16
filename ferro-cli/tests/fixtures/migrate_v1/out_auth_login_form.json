@@ -1,0 +1,29 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Login",
+  "layout": "auth",
+  "root": "page-title",
+  "elements": {
+    "page-title": {
+      "type": "PageHeader",
+      "props": { "title": "Login" }
+    },
+    "login-form": {
+      "type": "Form",
+      "children": ["email", "password", "submit"],
+      "action": { "handler": "auth.login", "method": "POST" }
+    },
+    "email": {
+      "type": "Input",
+      "props": { "field": "email", "label": "Email", "input_type": "email" }
+    },
+    "password": {
+      "type": "Input",
+      "props": { "field": "password", "label": "Password", "input_type": "password" }
+    },
+    "submit": {
+      "type": "Button",
+      "props": { "label": "Sign in", "button_type": "submit" }
+    }
+  }
+}
