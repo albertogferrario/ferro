@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 162-01-PLAN.md (CheckboxList component)
-last_updated: "2026-05-16T16:52:06.525Z"
+stopped_at: Completed 162-02-PLAN.md (DataTable row_actions URL placeholder generalization)
+last_updated: "2026-05-16T16:56:07.843Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 171
   completed_phases: 152
-  total_plans: 443
-  completed_plans: 420
+  total_plans: 445
+  completed_plans: 421
   percent: 95
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 162 (json-ui-improvements-batch-1-components-expressions-and-spec) — EXECUTING
-Plan: 2 of 11
+Plan: 3 of 11
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
@@ -147,6 +147,7 @@ Progress: [████████░░] 84%
 | Phase 154 P07 | 10 | 4 tasks | 3 files |
 | Phase 156 P06 | 286s | 2 tasks | 2 files |
 | Phase 162-json-ui-improvements-batch-1-components-expressions-and-spec P01 | 595 | 3 tasks | 5 files |
+| Phase 162 P02 | 138s | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -217,7 +218,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-16T16:52:06.517Z
-Stopped at: Completed 162-01-PLAN.md (CheckboxList component)
+Last session: 2026-05-16T16:56:07.835Z
+Stopped at: Completed 162-02-PLAN.md (DataTable row_actions URL placeholder generalization)
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
