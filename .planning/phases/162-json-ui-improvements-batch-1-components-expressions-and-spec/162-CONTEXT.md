@@ -89,15 +89,16 @@ These items came from compiling gestiscilo against the patched v2 ferro and are 
 
 ### Version and release
 
-- **D-23:** Phase 162 ships as workspace version bump 0.2.35 → 0.2.36. Publishing 0.2.36 unblocks gestiscilo Phase 138's compile gate (their `>= 0.2.36` semver requirement on `render_file`). Even though the merged workspace is already at 0.2.35 with `render_file` present, an explicit bump signals the v12.0 functionality is now stabilized for downstream consumption.
-- **D-24:** CHANGELOG.md entry for 0.2.36 names "gestiscilo Phase 138 friction loop" as the source so downstream users understand the upgrade motivation.
+- **D-23:** Phase 162 does NOT publish to crates.io and does NOT bump the workspace version. Gestiscilo consumes ferro via local-path patch (`ferro = { path = "../ferro" }`) for the entire Phases 138–143 migration sequence. Publishing prematurely would freeze the v2 API surface before the friction loop has validated it — every API decision in this CONTEXT may be revised by Phase 163 or Phase 164 friction findings. The single publish for v12.0 happens AFTER gestiscilo's full migration is complete, AFTER Phase 160 (v1 deletion), and AS PART OF Phase 161 (merge v12.0/json-ui-v2 → master and publish the resulting crate set). Until then, the workspace version remains 0.2.35.
+- **D-24:** The FRICTION.md "Suggested ferro improvement: publish 0.2.36" is **wrong** about the publish cadence and MUST NOT drive a Phase 162 action. The friction file's authors assumed the unblock path was "ferro publishes a version with `render_file`," but the correct path is "gestiscilo uses local-path patch." If gestiscilo's `Cargo.toml` has `ferro = ">=0.2.36"` it should be relaxed to `>=0.2.35` (or the path-based patch in `[patch.crates-io]`, which ignores the version constraint, used as-is). This is a one-line consumer-side fix, not a ferro publish.
+- **D-25:** CHANGELOG.md entries for every Phase 162 decision land at the time of implementation, not at the time of publish. The CHANGELOG accumulates Phase 162→163→164 entries; the publish at Phase 161 emits the combined entry.
 
 ### Claude's discretion
 
 - Exact prop names within `CheckboxListProps` (`options` vs `items`; `selected_path` vs `default_value_path`) — pick to match existing convention in catalog.
 - Whether `CheckboxList` shares the `<datalist>` / suggested-keys infrastructure with the future `RichTextEditor` plugin — implementation detail.
 - Whether to land D-15 (DetailForm replacement docs) before or after the consumer-side migration of documenti — the docs can ship independently; the consumer migration is on gestiscilo's side.
-- Whether D-23 (the 0.2.36 publish) requires a separate plan or rides on the final phase-completion gate — planner chooses.
+- Phase 162 does not own the publish gate — that is Phase 161's responsibility. The planner does not need to allocate a release plan within Phase 162.
 
 </decisions>
 
