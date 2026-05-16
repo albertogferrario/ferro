@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: master merged in; awaiting gestiscilo local-path testing
+status: executing
 stopped_at: Phase 162 context gathered
-last_updated: "2026-05-16T15:24:51.085Z"
-last_activity: 2026-05-16 -- master merged into v12.0/json-ui-v2; v12.1 AI phases renumbered to 165-173
+last_updated: "2026-05-16T16:29:31.344Z"
+last_activity: 2026-05-16 -- Phase 162 planning complete
 progress:
-  total_phases: 11
-  completed_phases: 10
-  total_plans: 45
-  completed_plans: 47
-  percent: 100
+  total_phases: 171
+  completed_phases: 152
+  total_plans: 439
+  completed_plans: 419
+  percent: 95
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Phase: 159 — COMPLETE (3/3 plans, browser verification + docs build)
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
-Status: master merged in; awaiting gestiscilo local-path testing
-Last activity: 2026-05-16 -- master merged into v12.0/json-ui-v2; v12.1 AI phases renumbered to 165-173
+Status: Ready to execute
+Last activity: 2026-05-16 -- Phase 162 planning complete
 
 Progress: [████████░░] 84%
 
