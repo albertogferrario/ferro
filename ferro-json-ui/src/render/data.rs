@@ -381,6 +381,7 @@ mod tests {
             action: None,
             visible: None,
             each: None,
+            if_: None,
         }
     }
 

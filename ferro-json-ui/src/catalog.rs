@@ -1295,6 +1295,7 @@ mod tests {
                 action: None,
                 visible: None,
                 each: None,
+                if_: None,
             },
         );
         Spec {
@@ -1428,6 +1429,7 @@ mod tests {
                 action: None,
                 visible: None,
                 each: None,
+                if_: None,
             },
         );
         elements.insert(
@@ -1439,6 +1441,7 @@ mod tests {
                 action: None,
                 visible: None,
                 each: None,
+                if_: None,
             },
         );
         let spec = Spec {

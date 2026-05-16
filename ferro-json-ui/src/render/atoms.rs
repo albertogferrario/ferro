@@ -1675,6 +1675,7 @@ mod tests {
             action: None,
             visible: None,
             each: None,
+            if_: None,
         };
         // minimal spec just so we can call the renderer
         let spec = Spec::builder()

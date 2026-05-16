@@ -94,6 +94,21 @@ pub struct Element {
     /// auto-suffixed IDs, one per row in the resolved data array.
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "$each")]
     pub each: Option<EachDirective>,
+    /// Optional conditional-emission directive. When the predicate evaluates
+    /// false against [`Spec::data`] at resolve time (Plan 03), the element is
+    /// REMOVED from the element map (no hidden DOM, no JS). Distinct from
+    /// `visible` which renders the element with `hidden` semantics.
+    ///
+    /// Reuses the [`Visibility`] enum (D-04) — accepts flat conditions AND
+    /// And/Or/Not composition because `Visibility` is `#[serde(untagged)]`.
+    ///
+    /// # Interaction with `$each`
+    ///
+    /// When both `$if` and `$each` are present on the same element, `$if` is
+    /// evaluated FIRST. If false, the element is removed before `$each`
+    /// expansion runs (no clones produced).
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "$if")]
+    pub if_: Option<Visibility>,
 }
 
 /// Iteration directive on an [`Element`]: instantiate one element per row of
@@ -264,6 +279,7 @@ impl Element {
             action: None,
             visible: None,
             each: None,
+            if_: None,
         }
     }
 }
@@ -357,6 +373,7 @@ pub struct ElementBuilder {
     action: Option<Action>,
     visible: Option<Visibility>,
     each: Option<EachDirective>,
+    if_: Option<Visibility>,
 }
 
 impl ElementBuilder {
@@ -397,6 +414,7 @@ impl ElementBuilder {
             action: self.action,
             visible: self.visible,
             each: self.each,
+            if_: self.if_,
         }
     }
 }
