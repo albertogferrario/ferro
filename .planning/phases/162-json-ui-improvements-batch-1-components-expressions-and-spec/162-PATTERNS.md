@@ -441,30 +441,20 @@ fn template_actions(
 ```rust
 "CheckboxList",   // D-01
 ```
-And add after all existing entries (in whatever group fits — form controls or a new "plugins" section):
-```rust
-"RichTextEditor", // D-18
-```
+
+**RichTextEditor:** NOT added to BUILTIN_TYPES. Plugin-only — registered via `global_plugin_registry` per Plan 04. Plugin dispatch happens in `render_element` after the built-in match falls through. See Plans 04 and 05 for the canonical design.
 
 **Dispatch arm** (in `render_element` match, copy the `"Checkbox"` arm pattern):
 ```rust
 "CheckboxList" => form::render_checkbox_list(el, spec, data, depth),
-"RichTextEditor" => {
-    // Plugins handle their own rendering via the registry.
-    // This arm ensures the type is recognized as built-in for catalog purposes.
-    // Actual rendering: render_element falls through to plugin dispatch after built-in check.
-    // NOTE: verify with RESEARCH.md D-18 — may be plugin-only (not in BUILTIN_TYPES).
-    // Confirm approach before implementing.
-    String::new()
-}
 ```
 
 **Count assertion** (line 526 — update both the comment and the number):
 ```rust
 // BEFORE:
 assert_eq!(BUILTIN_TYPES.len(), 39);
-// AFTER (CheckboxList + RichTextEditor = +2):
-assert_eq!(BUILTIN_TYPES.len(), 41);
+// AFTER (CheckboxList added; RichTextEditor stays plugin-only):
+assert_eq!(BUILTIN_TYPES.len(), 40);
 ```
 
 ---
@@ -845,7 +835,7 @@ templates.extend(migration_v1_to_v2_templates());
 
 **Analog:** `test_all_components_present` (lines 235–300) — update two things:
 
-**Count assertion** (line 237–241):
+**Count assertion** (line 237–241; partition: built-in components + plugin_components):
 ```rust
 // BEFORE:
 assert_eq!(
@@ -855,11 +845,11 @@ assert_eq!(
     catalog.components.len()
 );
 
-// AFTER (+CheckboxList +RichTextEditor = 41):
+// AFTER (+CheckboxList in built-ins = 40; RichTextEditor lives in plugin_components):
 assert_eq!(
     catalog.components.len(),
-    41,
-    "Catalog should contain all 41 built-in components, got {}",
+    40,
+    "Catalog should contain all 40 built-in components, got {}",
     catalog.components.len()
 );
 ```
@@ -878,13 +868,13 @@ Three files must stay in exact sync when adding catalog components. Violation ca
 
 | File | Line | What changes | Current value | After Phase 162 |
 |------|------|-------------|---------------|-----------------|
-| `ferro-json-ui/src/render/mod.rs` | 526 | Count assertion | `assert_eq!(BUILTIN_TYPES.len(), 39)` | `assert_eq!(BUILTIN_TYPES.len(), 41)` |
-| `ferro-json-ui/src/catalog.rs` | ~123 | BUILTIN_SPECS array length | 39 entries | 41 entries (+CheckboxList, +RichTextEditor) |
-| `ferro-mcp/src/tools/json_ui_catalog.rs` | 237–241 | Count assertion in test | `39` | `41` |
+| `ferro-json-ui/src/render/mod.rs` | 526 | Count assertion | `assert_eq!(BUILTIN_TYPES.len(), 39)` | `assert_eq!(BUILTIN_TYPES.len(), 40)` |
+| `ferro-json-ui/src/catalog.rs` | ~123 | BUILTIN_SPECS array length | 39 entries | 40 entries (+CheckboxList) |
+| `ferro-mcp/src/tools/json_ui_catalog.rs` | 237–241 | Count assertion in test | `39` | `40` (built-ins); `plugin_components` is a separate map containing Map + RichTextEditor (=2) |
 
 Both additions (`CheckboxList` and `RichTextEditor`) MUST be applied atomically in Wave 1 — do not add one without the other, or the count assertions diverge.
 
-Also: `BUILTIN_TYPES` array (render/mod.rs lines 41–85) and the dispatch match in `render_element` must both get arms for both new types.
+Also: `BUILTIN_TYPES` array (render/mod.rs lines 41–85) and the dispatch match in `render_element` get a `"CheckboxList"` arm. RichTextEditor is plugin-only — no BUILTIN_TYPES entry, no built-in dispatch arm; dispatched via plugin registry after built-in match falls through.
 
 ---
 

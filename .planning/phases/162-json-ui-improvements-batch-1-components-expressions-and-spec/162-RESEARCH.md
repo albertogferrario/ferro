@@ -322,7 +322,7 @@ Option 2 preserves backward compat. CONTEXT.md D-17 says "restore the `ImageSour
 
 **Existing plugin example:** `ferro-json-ui/src/plugins/` directory (check `MapPlugin` which is pre-registered in `plugin.rs` line 155).
 
-**Catalog registration:** Same dual-update pattern as CheckboxList. Catalog count: 40 → 41 (after CheckboxList). BUILTIN_TYPES count: 40 → 41.
+**Catalog registration:** RichTextEditor is plugin-only — registered via `global_plugin_registry` (see Plan 04). It does NOT enter BUILTIN_TYPES or BUILTIN_SPECS. Built-in catalog count after Phase 162: 40 (CheckboxList added; RichTextEditor lives in `plugin_components` alongside Map).
 
 **2 consumer sites** in gestiscilo documenti (blast-radius: `RichTextEditorProps not found` — 2 occurrences).
 
@@ -363,7 +363,7 @@ The existing `plugin.rs` is fully documented with docstrings. The missing piece 
 | `ferro-json-ui/src/render/mod.rs` | Add to `BUILTIN_TYPES` array + dispatch arm + update count assertion |
 | `ferro-mcp/src/tools/json_ui_catalog.rs` | Bump `assert_eq!(catalog.components.len(), 39, ...)` and add name to `expected` list |
 
-After Phase 162: `CheckboxList` (+1) + `RichTextEditor` (+1) = count goes 39 → 41. The existing `test_all_components_present` test must reflect 41 components.
+After Phase 162: `CheckboxList` (+1) goes into BUILTIN_TYPES = count 40. `RichTextEditor` is plugin-only and lives in `plugin_components` (alongside Map). The existing `test_all_components_present` test reflects 40 built-in components; the plugin_components count assertion is owned by Plan 05.
 
 **D-22: code_templates migration snippets.** Add a new category `"migration_v1_to_v2"` to `code_templates.rs`. The `execute(category)` function already filters by category (line 34). Add a `migration_v1_to_v2_templates()` function parallel to `handler_templates()`, `json_view_templates()`, etc. Each section in D-20 gets a `CodeTemplate` entry.
 
@@ -530,7 +530,7 @@ Per the phase requirement "each shipped fix must have a test," here is the per-d
 | D-11 strum as_ref | `ferro-json-ui/src/component.rs` (inline) | `alert_variant_as_ref_str_matches_wire_format` |
 | D-16 Switch compact | `ferro-json-ui/src/render/form.rs` (inline) | `switch_compact_adds_scale_class` |
 | D-17 InlineSvg render | `ferro-json-ui/src/render/atoms.rs` (inline) | `image_inline_svg_renders_without_img_tag` |
-| D-18 RichTextEditor catalog | `ferro-mcp/src/tools/json_ui_catalog.rs` | `test_all_components_present` (count 41) |
+| D-18 RichTextEditor catalog | `ferro-mcp/src/tools/json_ui_catalog.rs` | `test_all_components_present` (built-ins == 40); separate `plugin_components_present` assertion for Map + RichTextEditor |
 | D-09 verify_action found | `ferro-mcp/src/tools/json_ui_verify_action.rs` | `verify_action_found_returns_route_info` |
 | D-09 verify_action not found | same | `verify_action_not_found_returns_candidate` |
 
