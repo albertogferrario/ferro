@@ -162,6 +162,15 @@ enum Commands {
         #[arg(long, short = 'l')]
         layout: Option<String>,
     },
+    /// Migrate a v1 JSON-UI controller file to v2 (flat JSON spec + render_file).
+    #[command(name = "json-ui:migrate-v1")]
+    JsonUiMigrateV1 {
+        /// Path to the controller .rs file to migrate.
+        file: String,
+        /// Print proposed changes to stdout without writing.
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Generate a new domain event
     #[command(name = "make:event")]
     MakeEvent {
@@ -578,6 +587,12 @@ fn main() {
             layout,
         } => {
             commands::make_json_view::run(name, description, no_ai, layout);
+        }
+        Commands::JsonUiMigrateV1 { file, dry_run } => {
+            if let Err(e) = commands::json_ui_migrate_v1::run(file, dry_run) {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
         }
         Commands::MakeEvent { name } => {
             commands::make_event::run(name);
