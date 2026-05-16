@@ -247,13 +247,20 @@ fn try_migrate_handler(
         return HandlerResult::Unsupported;
     };
 
-    // Build the flat element map. Root is the first top-level node.
+    // Build the flat element map. v2 requires exactly one root; reject both
+    // empty (top_ids.is_empty()) and multi-root (top_ids.len() > 1) handlers
+    // as Unsupported so they pass through the TODO-marker path. WR-01 fix
+    // (Phase 163.1) — see 163-REVIEW.md Option B.
     let mut elements = Map::<String, Value>::new();
 
     let top_ids = flatten_nodes(view.nodes, &mut elements);
-    let Some(root) = top_ids.first().cloned() else {
+    if top_ids.len() != 1 {
         return HandlerResult::Unsupported;
-    };
+    }
+    let root = top_ids
+        .into_iter()
+        .next()
+        .expect("len == 1 checked above");
 
     let mut spec = Map::new();
     spec.insert(
