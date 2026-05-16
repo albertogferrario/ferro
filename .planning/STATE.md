@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 162 context gathered
-last_updated: "2026-05-16T16:29:31.344Z"
-last_activity: 2026-05-16 -- Phase 162 planning complete
+stopped_at: Completed 162-01-PLAN.md (CheckboxList component)
+last_updated: "2026-05-16T16:52:06.525Z"
+last_activity: 2026-05-16
 progress:
   total_phases: 171
   completed_phases: 152
-  total_plans: 439
-  completed_plans: 419
+  total_plans: 443
+  completed_plans: 420
   percent: 95
 ---
 
@@ -20,15 +20,16 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** master merged into v12.0/json-ui-v2; awaiting gestiscilo local-path testing through Phases 162-164
+**Current focus:** Phase 162 — json-ui-improvements-batch-1-components-expressions-and-spec
 
 ## Current Position
 
-Phase: 159 — COMPLETE (3/3 plans, browser verification + docs build)
+Phase: 162 (json-ui-improvements-batch-1-components-expressions-and-spec) — EXECUTING
+Plan: 2 of 11
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
-Last activity: 2026-05-16 -- Phase 162 planning complete
+Last activity: 2026-05-16
 
 Progress: [████████░░] 84%
 
@@ -145,6 +146,7 @@ Progress: [████████░░] 84%
 | Phase 154 P06 | 11 | 4 tasks | 6 files |
 | Phase 154 P07 | 10 | 4 tasks | 3 files |
 | Phase 156 P06 | 286s | 2 tasks | 2 files |
+| Phase 162-json-ui-improvements-batch-1-components-expressions-and-spec P01 | 595 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -215,7 +217,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-16T15:24:51.074Z
-Stopped at: Phase 162 context gathered
-Resume file: .planning/phases/162-json-ui-improvements-batch-1-components-expressions-and-spec/162-CONTEXT.md
+Last session: 2026-05-16T16:52:06.517Z
+Stopped at: Completed 162-01-PLAN.md (CheckboxList component)
+Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
