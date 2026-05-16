@@ -13,21 +13,14 @@ Phase 162 deliberately stays narrow — only items justified by the four gestisc
 - `Fragment` / `Group` borderless container (D-06) — explicitly rejected for Phase 162. Revisit only if a future phase finds a use case that D-05 + existing containers (Grid 1-col, FormSection without title) cannot express.
 - `#[handler(name = "...")]` attribute (D-10) — explicitly rejected for Phase 162. Revisit only if a future use case justifies a second source of truth for route names.
 
-## SRI Hash TODO (from Plan 162-04)
+## SRI Hash TODO (from Plan 162-04) — RESOLVED in Phase 162
 
-`ferro-json-ui/src/plugins/rich_text_editor.rs` lines 96-105 — Quill CSS and JS `Asset::new()` calls lack `.integrity()` SRI hashes. Marked `TODO(162-04)` with compute instructions in the source file. Must be verified and added before production deployment (T-162-04-02).
+`ferro-json-ui/src/plugins/rich_text_editor.rs` Quill 2.0.3 CDN assets now carry sha384 SRI integrity hashes pinned to the jsdelivr-served bytes:
 
-Compute commands (from the source file comment):
+- `quill.snow.css`: `sha384-ecIckRi4QlKYya/FQUbBUjS4qp65jF/J87Guw5uzTbO1C1Jfa/6kYmd6dXUF6D7i`
+- `quill.js`: `sha384-utBUCeG4SYaCm4m7GQZYr8Hy8Fpy3V4KGjBZaf4WTKOcwhCYpt/0PfeEe3HNlwx8`
 
-```sh
-curl -s https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css \
-  | openssl dgst -sha384 -binary | openssl base64 -A
-
-curl -s https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js \
-  | openssl dgst -sha384 -binary | openssl base64 -A
-```
-
-Once computed, add `.integrity("sha384-<hash>").crossorigin("")` to each `Asset::new(...)` call in `rich_text_editor.rs`.
+Pinned via `rich_text_editor_plugin_assets_carry_sri_hashes` unit test. T-162-04-02 closed.
 
 ## Detailed next-phase inputs
 

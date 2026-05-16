@@ -13,16 +13,16 @@ use crate::data::resolve_path;
 use crate::plugin::{Asset, JsonUiPlugin};
 use crate::render::html_escape;
 
-/// Quill 2.0.3 CDN asset URLs.
+/// Quill 2.0.3 CDN asset URLs and SRI integrity hashes.
+///
+/// Hashes computed from the jsdelivr-served files via:
+///   curl -s <URL> | openssl dgst -sha384 -binary | openssl base64 -A
 const QUILL_CSS_URL: &str = "https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css";
+const QUILL_CSS_SRI: &str =
+    "sha384-ecIckRi4QlKYya/FQUbBUjS4qp65jF/J87Guw5uzTbO1C1Jfa/6kYmd6dXUF6D7i";
 const QUILL_JS_URL: &str = "https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js";
-
-// TODO(162-04): Verify SRI hashes from jsdelivr before shipping to production.
-// Compute with:
-//   curl -s https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css \
-//     | openssl dgst -sha384 -binary | openssl base64 -A
-//   curl -s https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js \
-//     | openssl dgst -sha384 -binary | openssl base64 -A
+const QUILL_JS_SRI: &str =
+    "sha384-utBUCeG4SYaCm4m7GQZYr8Hy8Fpy3V4KGjBZaf4WTKOcwhCYpt/0PfeEe3HNlwx8";
 
 /// Rich text editor plugin backed by Quill 2.0.3.
 ///
@@ -33,8 +33,8 @@ const QUILL_JS_URL: &str = "https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.
 /// # Security
 /// - `field` and `label` values are HTML-escaped when emitted as attributes or
 ///   label text (T-162-04-03).
-/// - CDN assets reference Quill 2.0.3 via jsdelivr. SRI hashes are marked TODO
-///   and must be verified before production deployment (T-162-04-02).
+/// - CDN assets reference Quill 2.0.3 via jsdelivr and carry SRI sha384
+///   integrity hashes pinned to the bytes served at phase landing (T-162-04-02).
 /// - The editor produces user-controlled HTML. Sanitization on submit is the
 ///   consumer's responsibility (T-162-04-01).
 pub struct RichTextEditorPlugin;
@@ -93,17 +93,11 @@ impl JsonUiPlugin for RichTextEditorPlugin {
     }
 
     fn css_assets(&self) -> Vec<Asset> {
-        vec![
-            // TODO(162-04): add SRI integrity hash once verified (T-162-04-02).
-            Asset::new(QUILL_CSS_URL),
-        ]
+        vec![Asset::new(QUILL_CSS_URL).integrity(QUILL_CSS_SRI)]
     }
 
     fn js_assets(&self) -> Vec<Asset> {
-        vec![
-            // TODO(162-04): add SRI integrity hash once verified (T-162-04-02).
-            Asset::new(QUILL_JS_URL),
-        ]
+        vec![Asset::new(QUILL_JS_URL).integrity(QUILL_JS_SRI)]
     }
 
     fn init_script(&self) -> Option<String> {
@@ -159,6 +153,27 @@ mod tests {
         let script = p.init_script().expect("init_script returns Some");
         assert!(script.contains("data-ferro-quill"));
         assert!(script.contains("text-change"));
+    }
+
+    #[test]
+    fn rich_text_editor_plugin_assets_carry_sri_hashes() {
+        let p = RichTextEditorPlugin;
+        let js = p.js_assets();
+        let css = p.css_assets();
+        let js_asset = js.first().expect("js asset present");
+        let css_asset = css.first().expect("css asset present");
+        assert_eq!(
+            js_asset.integrity.as_deref(),
+            Some(QUILL_JS_SRI),
+            "js asset must pin sha384 SRI hash"
+        );
+        assert_eq!(
+            css_asset.integrity.as_deref(),
+            Some(QUILL_CSS_SRI),
+            "css asset must pin sha384 SRI hash"
+        );
+        assert!(QUILL_JS_SRI.starts_with("sha384-"));
+        assert!(QUILL_CSS_SRI.starts_with("sha384-"));
     }
 
     #[test]
