@@ -12,7 +12,7 @@ Choose a first-class `JsonUiPlugin` (the rest of this guide) when:
 - The widget needs asset injection (CSS/JS bundles)
 - The widget is reused across multiple pages and benefits from explicit registration with a type name
 
-The generic v1 `Component::Plugin { plugin_type, props }` dispatch was removed in Phase 115 D-01. Every plugin in v2 has its own type name (e.g. `"StripeConnectStatus"`, `"Map"`); see the type-name registration section below.
+Every plugin has its own type name (e.g. `"StripeConnectStatus"`, `"Map"`) that the spec references directly under `"type"`. There is no generic plugin-dispatch indirection — register the plugin with its name, then specs reference that name; see the type-name registration section below.
 
 ## What Plugins Are
 

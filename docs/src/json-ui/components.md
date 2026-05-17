@@ -1,10 +1,6 @@
 # Components
 
-> **Migrating from v1?** See the [Migration v1 → v2](./migration-v1-to-v2.md) guide for the
-> correct path. v1 types (`JsonUiView`, `Component`, `ComponentNode`) are removed in v2;
-> the migration pattern is `JsonUi::render_file("src/views/.../*.json", data)`.
-
-Every component in a v2 JSON-UI spec is referenced by its `"type"` string in a flat element map. For the full spec format and workflow, see [Getting Started](getting-started.md).
+Every component in a JSON-UI spec is referenced by its `"type"` string in a flat element map. For the full spec format and workflow, see [Getting Started](getting-started.md).
 
 Each element follows this shape:
 
@@ -99,7 +95,7 @@ Children are element IDs listed in the `"children"` array on the element, not in
 }
 ```
 
-**v1→v2 children migration:** In v1, `CardProps` (and `FormProps`, `GridProps`, etc.) had a `children: Vec<Component>` field that accepted inline component trees. In v2, `children` is an array of element ID strings that reference entries in the spec's flat `elements` map. The elements themselves are siblings at the top level — not nested.
+**Children semantics:** On container components (`Card`, `Form`, `Grid`, etc.) `children` is an array of element ID strings that reference entries in the spec's flat `elements` map. The elements themselves are siblings at the top level — not nested.
 
 ```json
 {
@@ -1368,7 +1364,7 @@ For plugin components (third-party or custom types not in the built-in catalog),
 
 ## Inline view/edit pattern
 
-The v1 `DetailFormProps` / `DetailField` / `EditMode` types are removed in v2. The replacement is a `Form` element whose children include both read-only display items and editable inputs, each toggled by a `visible` condition on a query parameter.
+An inline view/edit page is built from a `Form` element whose children include both read-only display items and editable inputs, each toggled by a `visible` condition on a query parameter.
 
 This pattern requires no Rust code to distinguish view and edit modes — the spec handles it entirely through `visible` rules on `query.mode`.
 

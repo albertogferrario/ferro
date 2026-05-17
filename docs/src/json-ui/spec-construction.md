@@ -192,12 +192,6 @@ With handler data `{ "page_title": "Order #1042" }`, the rendered `<title>` is `
 
 Note: `title` is the only top-level spec field that accepts a binding expression. `layout`, `root`, and `$schema` are always literal strings.
 
-## Migration from v1
-
-Controllers using the v1 `make_node` / `make_node_with_action` helpers can migrate to v2 specs incrementally. The `ferro json-ui:migrate-v1` CLI subcommand emits a stub JSON spec under `src/views/{module}/{controller}.json` and a rewritten controller calling `JsonUi::render_file`. Cases the codemod cannot auto-translate are marked with a `// TODO: codemod could not auto-translate` comment rather than silently skipped.
-
-Run with `--dry-run` first to preview the proposed JSON spec and controller rewrite without writing any files.
-
 ## Decision examples
 
 The following concrete cases illustrate how the rubric maps to real controllers.

@@ -1,6 +1,6 @@
 # Data Binding
 
-In v2 JSON-UI, data flows from the handler into spec elements through two expression shapes placed as prop values. The handler provides a plain JSON object; expressions read from it at render time.
+In JSON-UI, data flows from the handler into spec elements through two expression shapes placed as prop values. The handler provides a plain JSON object; expressions read from it at render time.
 
 ## Handler Data Shape
 

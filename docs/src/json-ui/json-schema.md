@@ -1,6 +1,6 @@
 # JSON Schema Export
 
-Ferro can export a JSON Schema document describing the full v2 spec format, including all built-in components and any registered custom plugins. Use it to enable IDE validation and autocompletion for spec files.
+Ferro can export a JSON Schema document describing the full JSON-UI spec format, including all built-in components and any registered custom plugins. Use it to enable IDE validation and autocompletion for spec files.
 
 ## Generate the Schema
 

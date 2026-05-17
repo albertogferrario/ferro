@@ -1,6 +1,6 @@
 # Getting Started with JSON-UI
 
-JSON-UI v2 is a server-driven UI system where you write JSON spec files instead of Rust view builders. Handlers supply data as `serde_json::Value`; the framework loads the spec, resolves expressions against that data, and renders an HTML page. No frontend toolchain is required.
+JSON-UI is a server-driven UI system where you write JSON spec files. Handlers supply data as `serde_json::Value`; the framework loads the spec, resolves expressions against that data, and renders an HTML page. No frontend toolchain is required.
 
 ## Prerequisites
 

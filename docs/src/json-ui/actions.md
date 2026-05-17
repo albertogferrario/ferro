@@ -1,8 +1,8 @@
 # Actions
 
-Actions connect UI elements to Ferro handlers for navigation, form submission, and destructive operations. In v2 JSON specs, actions are declared as an `"action"` field on any element in the `"elements"` map.
+Actions connect UI elements to Ferro handlers for navigation, form submission, and destructive operations. Actions are declared as an `"action"` field on any element in the `"elements"` map.
 
-## How Actions Work in v2
+## How Actions Work
 
 Every interactive element can carry an `"action"` field alongside its `"type"` and `"props"`. Actions reference handler names (e.g., `"users.store"`) instead of raw URLs. The framework resolves handler names to URLs at render time using the route registry.
 
