@@ -851,7 +851,11 @@ pub struct PageHeaderProps {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub breadcrumb: Vec<BreadcrumbItem>,
     /// IDs of action button elements rendered to the right of the title.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_actions_lax",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub actions: Vec<String>,
 }
 
@@ -984,6 +988,33 @@ pub struct ProductTileProps {
     pub field: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_quantity: Option<u32>,
+}
+
+/// Lax deserializer for PageHeader.actions. Per D-19/F6:
+/// Accepts: missing field (via #[serde(default)]), null, [], empty string "",
+/// and array of strings. Rejects: non-empty strings, arrays of non-strings.
+/// This loosens the wire-format contract for actions only — other Vec<String>
+/// ID-slot fields (e.g. CardProps.footer) remain strict.
+fn deserialize_actions_lax<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<Vec<String>, D::Error> {
+    use serde::de::Error;
+    let v = serde_json::Value::deserialize(d)?;
+    match v {
+        serde_json::Value::Null => Ok(Vec::new()),
+        serde_json::Value::String(s) if s.is_empty() => Ok(Vec::new()),
+        serde_json::Value::Array(arr) => arr
+            .into_iter()
+            .map(|item| {
+                item.as_str()
+                    .map(String::from)
+                    .ok_or_else(|| D::Error::custom("PageHeader.actions: expected string in array"))
+            })
+            .collect(),
+        other => Err(D::Error::custom(format!(
+            "PageHeader.actions: expected null, empty string, or array of strings; got {other:?}"
+        ))),
+    }
 }
 
 #[cfg(test)]
@@ -1502,5 +1533,59 @@ mod kanban_board_props_tests {
             "empty columns must be skipped, got: {j}"
         );
         assert_eq!(j.get("data_path").and_then(|v| v.as_str()), Some("/x"));
+    }
+}
+
+#[cfg(test)]
+mod page_header_actions_tests {
+    use super::*;
+
+    #[test]
+    fn page_header_actions_missing_field() {
+        let v = serde_json::json!({"title": "X"});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert!(p.actions.is_empty());
+    }
+
+    #[test]
+    fn page_header_actions_null() {
+        let v = serde_json::json!({"title": "X", "actions": null});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert!(p.actions.is_empty());
+    }
+
+    #[test]
+    fn page_header_actions_empty_string() {
+        let v = serde_json::json!({"title": "X", "actions": ""});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert!(p.actions.is_empty());
+    }
+
+    #[test]
+    fn page_header_actions_empty_array() {
+        let v = serde_json::json!({"title": "X", "actions": []});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert!(p.actions.is_empty());
+    }
+
+    #[test]
+    fn page_header_actions_non_empty_array() {
+        let v = serde_json::json!({"title": "X", "actions": ["a", "b"]});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.actions, vec!["a".to_string(), "b".to_string()]);
+    }
+
+    #[test]
+    fn page_header_actions_non_empty_string_rejected() {
+        let v = serde_json::json!({"title": "X", "actions": "not-empty"});
+        let result: Result<PageHeaderProps, _> = serde_json::from_value(v);
+        assert!(result.is_err(), "non-empty string must be rejected");
+    }
+
+    #[test]
+    fn page_header_actions_non_string_array_rejected() {
+        let v = serde_json::json!({"title": "X", "actions": [1, 2, 3]});
+        let result: Result<PageHeaderProps, _> = serde_json::from_value(v);
+        assert!(result.is_err(), "array of non-strings must be rejected");
     }
 }
