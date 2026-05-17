@@ -4,14 +4,14 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
 stopped_at: Phase 160 context gathered
-last_updated: "2026-05-17T03:52:54.266Z"
-last_activity: 2026-05-17
+last_updated: "2026-05-17T04:31:07.010Z"
+last_activity: 2026-05-17 -- Phase 160 planning complete
 progress:
   total_phases: 173
   completed_phases: 155
-  total_plans: 462
+  total_plans: 472
   completed_plans: 452
-  percent: 98
+  percent: 96
 ---
 
 # Project State
@@ -28,8 +28,8 @@ Phase: 174
 Plan: Not started
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
-Status: Executing Phase 164
-Last activity: 2026-05-17
+Status: Ready to execute
+Last activity: 2026-05-17 -- Phase 160 planning complete
 
 Progress: [████████░░] 84%
 
