@@ -23,7 +23,7 @@ Minimal example: a product service deriving its intent and rendering to JSON-UI.
 ```rust
 use ferro::{
     DataType, FieldMeaning, ServiceDef,
-    derive_intents, JsonUiRenderer, Renderer, RenderContext,
+    derive_intents, JsonUiRenderer, Renderer, VisualContext,
 };
 
 let product = ServiceDef::new("product")
@@ -36,11 +36,10 @@ let intents = derive_intents(&product);
 // intents[0] is the highest-confidence intent (Browse for a simple list-like service)
 
 let renderer = JsonUiRenderer;
-let json = renderer
-    .render(&product, &intents, &RenderContext::default())
-    .expect("rendering a valid service definition should not fail");
-// json["$schema"] == "ferro-json-ui/v1"
-// json["components"] contains the generated component tree
+let result = renderer.render(&product, &intents, &VisualContext::default());
+let spec = result.expect("rendering a valid service definition should not fail");
+// spec.schema == "ferro-json-ui/v2"
+// spec.elements is a flat ID-keyed map; spec.root names the root element
 ```
 
 ## Core Concepts
