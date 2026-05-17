@@ -1,13 +1,13 @@
-//! Phase 116 container renderers ported from v1 render.rs.
+//! Container renderers.
 //!
-//! Per CONTEXT D-21 v1 HTML emission is the canonical contract; this module
-//! changes only the function signature (now `(el, spec, data, depth)`) and
-//! routes child rendering through `super::render_element` for ID-keyed lookup.
+//! Each function takes `(el, spec, data, depth)` and emits the container's
+//! HTML wrapper plus the concatenated rendering of each child ID. Child
+//! rendering is routed through [`super::render_element`] for ID-keyed lookup.
 //!
-//! Per CONTEXT D-05 single-slot containers (Grid, Collapsible, FormSection,
-//! ButtonGroup) read their children from `Element.children`. Multi-slot
-//! containers (Card, Modal, Tabs, KanbanBoard, PageHeader) read slot IDs
-//! from typed Props fields per D-06.
+//! Single-slot containers (`Grid`, `Collapsible`, `FormSection`,
+//! `ButtonGroup`) read their children from `Element.children`. Multi-slot
+//! containers (`Card`, `Modal`, `Tabs`, `KanbanBoard`, `PageHeader`) read
+//! slot IDs from typed Props fields.
 
 use serde_json::Value;
 
@@ -23,9 +23,11 @@ use super::{html_escape, render_element};
 
 // ── Multi-slot containers ────────────────────────────────────────────────
 
-/// Port of v1 `render_card` (render.rs L769-813). Body = `Element.children`
-/// (D-05); footer = `CardProps.footer` IDs (D-06). Preserves v1's `max_width`
-/// outer wrapper for Narrow/Wide variants.
+/// Renders a `Card`. Reads `CardProps` (title, description, footer,
+/// max_width, variant) and wraps the rendering of each ID in `el.children`
+/// in a bordered or elevated container per `variant`. Footer IDs come from
+/// `CardProps.footer`. `Narrow` and `Wide` variants of `max_width` apply an
+/// outer `mx-auto` width wrapper.
 pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: CardProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -37,15 +39,15 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
         }
     };
 
-    // Body: Element.children (D-05).
+    // Body: rendered from `Element.children`.
     let body: String = el
         .children
         .iter()
         .map(|cid| render_element(cid, spec, data, depth + 1))
         .collect();
 
-    // Footer: props.footer (D-06). Slot-borne IDs are NOT graph-validated at
-    // parse time (D-07); missing IDs surface via render_element's D-10 comment.
+    // Footer: rendered from `CardProps.footer`. Missing IDs surface via the
+    // walker's missing-id diagnostic comment.
     let footer: String = props
         .footer
         .iter()
@@ -71,10 +73,10 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
             html_escape(desc)
         ));
     }
-    // v1 gated the body wrapper on `!props.children.is_empty()`; v2 gates on
-    // Element.children having at least one ID (child rendering may itself
-    // emit "" when the atom is stubbed or an element is invisible, so we key
-    // the wrapper off the slot list — not the rendered string).
+    // Body wrapper is omitted when there are no children to render. Keyed
+    // on the slot list, not the rendered string — invisible children render
+    // to "" but the wrapper is still emitted so the empty space is
+    // structurally consistent.
     if !el.children.is_empty() {
         html.push_str(
             "<div class=\"mt-3 flex flex-wrap gap-3 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto overflow-visible\">",
@@ -105,8 +107,10 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
     html
 }
 
-/// Port of v1 `render_modal` (render.rs L815-863). Native `<dialog>` element;
-/// body = `Element.children` (D-05); footer = `ModalProps.footer` IDs (D-06).
+/// Renders a `Modal` as a native `<dialog>` element with an external trigger
+/// button. Body is rendered from `Element.children`; footer is rendered from
+/// `ModalProps.footer`. The trigger uses `data-modal-open="{id}"`; the close
+/// button uses `data-modal-close`.
 pub(crate) fn render_modal(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: ModalProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -174,19 +178,17 @@ pub(crate) fn render_modal(el: &Element, spec: &Spec, data: &Value, depth: usize
     html
 }
 
-/// Port of v1 `render_tabs` (render.rs L865-959).
+/// Renders a `Tabs` container. Per-tab children come from
+/// `Tab.children: Vec<String>`.
 ///
-/// Two preserved non-obvious behaviors from v1 (CONTEXT "Non-obvious v1
-/// behaviors to preserve"):
+/// Two behaviors worth flagging for plugin authors:
 /// 1. **Single-tab auto-hide:** when `props.tabs.len() == 1` the tab bar is
 ///    elided entirely and the single panel renders directly.
 /// 2. **Server-driven fallback:** when no tab in the spec carries children
-///    (`has_any_content == false`) or a specific tab has empty children while
-///    another has content, that tab's trigger renders as `<a href="?tab=X">`
-///    instead of `<button data-tab="X">` — supporting full-page reloads for
-///    SSR-only specs.
-///
-/// Per-tab children come from `Tab.children: Vec<String>` (D-06).
+///    (`has_any_content == false`), or when a specific tab has empty children
+///    while another has content, that tab's trigger renders as
+///    `<a href="?tab=X">` instead of `<button data-tab="X">` — supporting
+///    full-page reloads for SSR-only specs.
 pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: TabsProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -198,7 +200,7 @@ pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize)
         }
     };
 
-    // Single-tab auto-hide (v1 L867-877).
+    // Single-tab specs render body-only (no tab strip).
     if props.tabs.len() == 1 {
         let tab = &props.tabs[0];
         let mut html = String::from(
@@ -290,13 +292,15 @@ pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize)
     html
 }
 
-/// Port of v1 `render_kanban_board` (render.rs L499-587).
+/// Renders a `KanbanBoard`. Reads `KanbanBoardProps.columns` (static) or
+/// `data_path` (dynamic) and emits one column per entry.
 ///
-/// Responsive: horizontally-scrollable columns on desktop (`hidden md:block`),
-/// tab-based column switching on mobile (`block md:hidden`). Per-column
-/// children come from `KanbanColumnProps.children: Vec<String>` (D-06). Mobile
-/// default column honors `props.mobile_default_column` when set, otherwise
-/// falls back to the first column's id.
+/// Responsive: horizontally-scrollable columns on desktop
+/// (`hidden md:block`), tab-based column switching on mobile
+/// (`block md:hidden`). Per-column children come from
+/// `KanbanColumnProps.children: Vec<String>`. Mobile default column honors
+/// `props.mobile_default_column` when set; otherwise falls back to the first
+/// column's id.
 pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: KanbanBoardProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -308,7 +312,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         }
     };
 
-    // D-13a: data_path takes precedence over static columns.
+    // When present, `data_path` takes precedence over static `columns`.
     let columns: Vec<KanbanColumnProps> = if let Some(path) = props.data_path.as_deref() {
         resolve_path(data, path)
             .and_then(|v| v.as_array().cloned())
@@ -411,9 +415,10 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     html
 }
 
-/// Port of v1 `render_page_header` (render.rs L708-756). Title + breadcrumb
-/// inline, with chevron separators. Actions are `PageHeaderProps.actions: Vec<String>`
-/// IDs per D-06 — typically Button elements rendered to the right.
+/// Renders a `PageHeader`. Emits the title, optional breadcrumb trail with
+/// chevron separators, and right-aligned action buttons.
+/// `PageHeaderProps.actions: Vec<String>` lists IDs of elements (typically
+/// `Button` atoms) rendered into the actions slot.
 pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: PageHeaderProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -425,7 +430,7 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
         }
     };
 
-    // Actions: props.actions (D-06) — typically Button elements.
+    // Actions: IDs from `props.actions` — typically Button elements.
     let actions_html: String = props
         .actions
         .iter()
@@ -481,8 +486,11 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
 
 // ── Single-slot containers ────────────────────────────────────────────────
 
-/// Port of v1 `render_grid` (render.rs L2123-2155). Renders a CSS-grid wrapper;
-/// children come from `Element.children` per D-05.
+/// Renders a `Grid` container. Emits a CSS-grid `<div>` whose column count
+/// comes from `GridProps.columns` (clamped to `1..=12`), with optional
+/// `md_columns` / `lg_columns` breakpoint overrides. When `scrollable` is
+/// set, emits a horizontally-scrollable `grid-flow-col` layout instead.
+/// Children are rendered from `Element.children`.
 pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: GridProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -502,7 +510,7 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
         GapSize::Xl => "gap-8",
     };
 
-    // Children body via render_element (D-05).
+    // Children body via `render_element`.
     let body: String = el
         .children
         .iter()
@@ -526,15 +534,16 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
     format!("<div class=\"grid w-full {col_classes} {gap}\">{body}</div>")
 }
 
-// ── Collapsible SVG chevron (v1 render.rs L2159-2163) ────────────────────
+// SVG chevron used to indicate the collapsed/expanded state.
 const CHEVRON_DOWN: &str = concat!(
     "<svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
     "<path fill-rule=\"evenodd\" d=\"M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z\" clip-rule=\"evenodd\"/>",
     "</svg>"
 );
 
-/// Port of v1 `render_collapsible` (render.rs L2165-2184). `<details>`/`<summary>`
-/// pair with the body coming from `Element.children` per D-05.
+/// Renders a `Collapsible` section as a `<details>`/`<summary>` pair. The
+/// title sits in `<summary>`; the body is rendered from `Element.children`.
+/// `expanded = true` adds the HTML `open` attribute.
 pub(crate) fn render_collapsible(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: CollapsibleProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -569,8 +578,11 @@ pub(crate) fn render_collapsible(el: &Element, spec: &Spec, data: &Value, depth:
     html
 }
 
-/// Port of v1 `render_form_section` (render.rs L2214-2259). Two layout variants
-/// (stacked, two-column); body comes from `Element.children` per D-05.
+/// Renders a `FormSection` as a `<fieldset>` with an optional legend and
+/// description. Two layout variants are supported: stacked (single column)
+/// and `TwoColumn` (5-column grid with the title/description in the first 2
+/// and the body in the remaining 3). The body is rendered from
+/// `Element.children`.
 pub(crate) fn render_form_section(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: FormSectionProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -628,15 +640,12 @@ pub(crate) fn render_form_section(el: &Element, spec: &Spec, data: &Value, depth
     }
 }
 
-/// Port of v1 `render_button_group` (render.rs L758-765). Horizontal button row;
-/// children come from `Element.children` per D-05.
-///
-/// Note: v1 iterated `props.buttons: Vec<ComponentNode>`; v2 takes children from
-/// `Element.children` (generic `ButtonGroupProps` retains only the `gap` field).
+/// Horizontal button row. Renders each child ID in `el.children` and wraps
+/// the resulting HTML in a `<div class="flex items-center gap-2 flex-wrap">`
+/// container. `ButtonGroupProps.gap` is decoded for prop-shape diagnostics
+/// but does not influence the emitted CSS (the gap is fixed at `gap-2`).
 pub(crate) fn render_button_group(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
-    // Decode-check for D-12 diagnostic discipline; `gap` value isn't consumed
-    // in v1's emission (v1 hard-codes `gap-2`), but a malformed props payload
-    // still surfaces via HTML comment per D-10.
+    // Decode-check: malformed props surface via HTML comment rather than crash.
     if !el.props.is_null() {
         if let Err(e) = serde_json::from_value::<ButtonGroupProps>(el.props.clone()) {
             return format!(
@@ -780,12 +789,10 @@ mod tests {
         );
     }
 
-    // ── Multi-slot container tests (Task 2) ─────────────────────────────
+    // ── Multi-slot container tests ──────────────────────────────────────
     //
-    // Atom renderers (Text, Button) are stubs in this worktree until Plan
-    // 116-03 lands in the sibling worktree; tests therefore check the
-    // container's wrapper markup, slot recursion sites, and diagnostic
-    // behavior rather than atom child content.
+    // These tests check the container's wrapper markup, slot recursion
+    // sites, and diagnostic behavior rather than the atom child content.
 
     #[test]
     fn card_emits_wrapper_and_title_escaped() {
@@ -811,9 +818,8 @@ mod tests {
 
     #[test]
     fn card_renders_body_wrapper_when_children_present() {
-        // With child IDs in Element.children, Card emits the body wrapper div
-        // even though the atom stub returns "". Verifies Element.children is
-        // the body slot per D-05.
+        // With child IDs in Element.children, Card emits the body wrapper div.
+        // Verifies Element.children is the body slot.
         let spec = build_spec(vec![
             (
                 "root",
@@ -831,9 +837,9 @@ mod tests {
 
     #[test]
     fn card_renders_footer_wrapper_from_props() {
-        // Footer slot lives in CardProps.footer per D-06. Footer wrapper is
-        // emitted whenever props.footer is non-empty, regardless of whether
-        // the referenced atoms resolve.
+        // Footer slot lives in CardProps.footer. Footer wrapper is emitted
+        // whenever props.footer is non-empty, regardless of whether the
+        // referenced atoms resolve.
         let spec = build_spec(vec![
             (
                 "root",
@@ -853,9 +859,9 @@ mod tests {
 
     #[test]
     fn card_missing_footer_id_rejected_at_parse_time() {
-        // D-07: dangling footer IDs are now caught at spec build/parse time,
-        // not silently at render time. SpecError::FooterMissing supersedes the
-        // old render-time HTML diagnostic.
+        // Dangling footer IDs are caught at spec build/parse time rather
+        // than at render time; `SpecError::FooterMissing` is the parse-time
+        // rejection variant.
         let err = Spec::builder()
             .element(
                 "root",
@@ -979,8 +985,8 @@ mod tests {
 
     #[test]
     fn tabs_renders_per_tab_panels() {
-        // Both tabs carry children → both tabpanels render. Uses Tab.children
-        // per D-06. Atom stub returns "" but tabpanel wrappers still emit.
+        // Both tabs carry children → both tabpanels render. Children come
+        // from Tab.children.
         let spec = build_spec(vec![
             (
                 "root",
@@ -1220,7 +1226,8 @@ mod tests {
     #[test]
     fn page_header_missing_action_id_emits_diagnostic() {
         // Parallel to Card.footer: PageHeader.actions IDs are not
-        // graph-validated at parse time (D-07). Walker's D-10 catches them.
+        // graph-validated at parse time. The walker's missing-id diagnostic
+        // catches them at render time.
         let spec = build_spec(vec![(
             "root",
             Element::new("PageHeader")
@@ -1235,7 +1242,7 @@ mod tests {
         );
     }
 
-    // ── KanbanBoard data_path tests (D-13a) ─────────────────────────────
+    // ── KanbanBoard data_path tests ─────────────────────────────────────
 
     #[test]
     fn render_kanban_board_data_path_resolves_columns() {

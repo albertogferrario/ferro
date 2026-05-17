@@ -1,22 +1,21 @@
-//! Phase 116: form-control renderers ported from v1 `render.rs`.
+//! Form-control renderers.
 //!
-//! Per CONTEXT D-21 v1 HTML emission is the canonical contract. This module
-//! changes the per-function signature to `(el, spec, data, depth) -> String`,
-//! replaces `props.fields` (removed in Phase 115-02) with `Element.children`
-//! for Form (D-05), and applies D-15/D-16 action URL handling.
+//! Each function emits a single typed form control or the surrounding
+//! `<form>` element with signature `(el, spec, data, depth) -> String`.
+//! Decode failures surface as HTML diagnostic comments via the shared
+//! `decode_diagnostic` helper.
 //!
-//! Non-obvious v1 behaviors preserved verbatim (per CONTEXT §"Non-obvious v1
-//! behaviors to preserve"):
+//! Behaviors worth flagging for spec authors:
 //! - **Switch auto-form wrap** — when `SwitchProps.action` is `Some`, the
 //!   switch is wrapped inside a `<form>` that submits on change via
-//!   `onchange="this.closest('form').submit()"` (v1 render.rs:1603–1711).
+//!   `onchange="this.closest('form').submit()"`.
 //! - **Input / Select / Checkbox / Switch `data_path` pre-fill** — resolves
 //!   the path against the render-time `data` via
 //!   [`crate::data::resolve_path`] / [`crate::data::resolve_path_string`] to
-//!   populate `value=""` or `checked` attributes. Per v1 precedence,
-//!   `default_value` wins over `data_path` for Input and Select.
-//! - **Form method spoofing** — PUT/PATCH/DELETE rewrite to POST + hidden
-//!   `_method` input (v1 render.rs:961–1015).
+//!   populate `value=""` or `checked` attributes. `default_value` wins over
+//!   `data_path` for `Input` and `Select`.
+//! - **Form method spoofing** — `PUT` / `PATCH` / `DELETE` rewrite to
+//!   `POST` + a hidden `_method` input.
 
 use serde_json::Value;
 
@@ -30,13 +29,11 @@ use crate::spec::{Element, Spec};
 
 use super::{html_escape, render_element};
 
-/// Port of v1 `render_form` (render.rs:961–1015).
-///
-/// Differences from v1:
-/// - Child fields come from `el.children` (list of IDs) instead of the
-///   removed `FormProps.fields: Vec<ComponentNode>` per D-05.
-/// - `action.url = None` falls back to `action="#"` AND emits the D-16
-///   diagnostic comment (v1 silently used `"#"`).
+/// Renders a `<form>` element. Child IDs in `el.children` become the form
+/// body; `FormProps.action` controls submission target and method (with
+/// HTTP-method spoofing for PUT/PATCH/DELETE → POST + hidden `_method`
+/// input). When `action.url` is `None`, the form falls back to `action="#"`
+/// and emits a diagnostic HTML comment.
 pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: FormProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -61,7 +58,7 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
         HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => ("post", true),
     };
 
-    // D-15/D-16 action URL handling. Emit diagnostic comment when None.
+    // Resolve action URL; emit diagnostic comment when None.
     let (action_url, diagnostic) = match props.action.url.as_deref() {
         Some(u) => (u.to_string(), String::new()),
         None => (
@@ -99,7 +96,7 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
         ));
     }
 
-    // Fields come from el.children (D-05). Each child ID is looked up and
+    // Form fields come from `el.children`. Each child ID is looked up and
     // rendered via the walker, which applies visibility and depth guards.
     for child_id in &el.children {
         html.push_str(&render_element(child_id, spec, data, depth + 1));
@@ -107,7 +104,7 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
 
     html.push_str("</form>");
 
-    // v1 FIX-02: max-width wrapper when specified.
+    // Max-width wrapper when specified.
     let html = match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
         FormMaxWidth::Default => html,
         FormMaxWidth::Narrow => format!("<div class=\"max-w-2xl mx-auto\">{html}</div>"),
@@ -117,11 +114,12 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
     format!("{diagnostic}{html}")
 }
 
-/// Port of v1 `render_input` (render.rs:1289–1436).
+/// Renders an `<input>` (or `<textarea>` for `InputType::Textarea`).
 ///
-/// `default_value` wins over `data_path` per v1 precedence — if an explicit
-/// default is provided in the spec it overrides the resolved data path.
-/// Hidden inputs skip the label/wrapper per A11Y-07.
+/// Value-resolution precedence: explicit `default_value` wins over a
+/// `data_path`-resolved string. Hidden inputs skip the label and wrapper
+/// `<div>`; all other input types render inside a `space-y-1` wrapper with
+/// a `<label>` above and optional description / error `<p>` below.
 pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: InputProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -142,7 +140,7 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
         None
     };
 
-    // A11Y-07: Hidden inputs emit no label or wrapper div.
+    // Hidden inputs emit no label or wrapper div.
     if matches!(props.input_type, InputType::Hidden) {
         let val = resolved_value.as_deref().unwrap_or("");
         return format!(
@@ -247,8 +245,9 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
             }
             html.push('>');
 
-            // Optional datalist companion. v1 looks up a flat `list_id` key on
-            // the root data object; we preserve that lookup semantics.
+            // Optional `<datalist>` companion: looks up `list_id` as a flat
+            // key on the root data object and emits one `<option>` per
+            // string entry.
             if let Some(ref list_id) = props.list {
                 if let Some(arr) = data.get(list_id).and_then(|v| v.as_array()) {
                     html.push_str(&format!("<datalist id=\"{}\">", html_escape(list_id)));
@@ -281,11 +280,10 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     html
 }
 
-/// Port of v1 `render_select` (render.rs:1438–1534).
-///
-/// Same `default_value` > `data_path` precedence as `render_input`. The
-/// resolved value marks the matching `<option>` with the `selected`
-/// attribute.
+/// Renders a `<select>` element. Same `default_value` > `data_path`
+/// precedence as [`render_input`]. The resolved value marks the matching
+/// `<option>` with the `selected` attribute. Optional `placeholder` is
+/// emitted as a first `<option value="">` entry.
 pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: SelectProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -391,7 +389,7 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
     html
 }
 
-/// Port of v1 `render_checkbox` (render.rs:1536–1601).
+/// Renders a `<input type="checkbox">`.
 ///
 /// `checked` prop wins over `data_path` truthy resolution. When `props.value`
 /// is set, the checkbox id is scoped as `"{field}_{value}"` so multiple
@@ -554,12 +552,12 @@ pub(crate) fn render_checkbox_list(
     html
 }
 
-/// Port of v1 `render_switch` (render.rs:1603–1711).
+/// Renders a switch (styled checkbox with `role="switch"`).
 ///
-/// Preserves v1's auto-form wrap when `props.action` is `Some`: the switch
-/// renders inside a minimal `<form>` and fires an `onchange` submit. When
-/// `action.url = None` the form falls back to `action="#"` with the D-16
-/// diagnostic comment preceding the rendered markup.
+/// Auto-form wrap: when `props.action` is `Some`, the switch renders inside
+/// a minimal `<form>` and fires an `onchange` submit. When `action.url` is
+/// `None`, the form falls back to `action="#"` with a diagnostic HTML
+/// comment preceding the rendered markup.
 pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: SwitchProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -683,10 +681,10 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
 }
 
 /// Shared truthiness rule for `Checkbox.data_path` and `Switch.data_path`.
-/// Matches v1's explicit match on JSON `Value` variants (render.rs:1538–1552,
-/// 1605–1619): `Bool` is its own value; `Number` is truthy iff nonzero;
-/// `String` is truthy iff non-empty AND not the literal `"false"` / `"0"`;
-/// `Null` is always falsy; arrays/objects are always truthy.
+/// Per-JSON-variant semantics: `Bool` is its own value; `Number` is truthy
+/// iff nonzero; `String` is truthy iff non-empty AND not the literal
+/// `"false"` / `"0"`; `Null` is always falsy; arrays and objects are always
+/// truthy.
 fn resolve_checked(explicit: Option<bool>, data_path: Option<&str>, data: &Value) -> bool {
     if let Some(c) = explicit {
         return c;
@@ -751,7 +749,7 @@ mod tests {
 
     #[test]
     fn input_default_value_wins_over_data_path() {
-        // v1 precedence: default_value > data_path.
+        // Precedence: explicit default_value wins over data_path.
         let el = mk_element(
             "Input",
             json!({
