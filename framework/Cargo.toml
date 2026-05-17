@@ -73,6 +73,7 @@ subtle = "2.5"
 utoipa = { version = "5", default-features = false }
 utoipa-redoc = { version = "6", default-features = false }
 moka = { version = "0.12", features = ["sync"] }
+tracing = "0.1"
 
 [dev-dependencies]
 serial_test = "3"
