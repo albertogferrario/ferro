@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 160-01-PLAN.md
-last_updated: "2026-05-17T04:56:01.973Z"
+stopped_at: Completed 160-02-PLAN.md
+last_updated: "2026-05-17T05:00:50.264Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
   completed_phases: 155
   total_plans: 472
-  completed_plans: 453
+  completed_plans: 454
   percent: 96
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
@@ -165,6 +165,7 @@ Progress: [████████░░] 84%
 | Phase 163 P10 | 3min | 1 tasks | 1 files |
 | Phase 163.1 P01 | 183s | 5 tasks | 7 files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P01 | 42min | 3 tasks | 7 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P02 | 3min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -198,6 +199,7 @@ Recent decisions affecting current work:
 - [v12.1] ferro ai:make context loaded from ferro-mcp library functions in-process (not subprocess) — prevents context window overflow via selective filtering
 - [v12.1] ScaffoldPlan type design deferred to Phase 171 planning — must be designed before implementation begins
 - [v12.1] Phase 173 (make:json-view v2) gated on v12.0 Phase 117 + 120 shipping — do not plan until confirmed
+- [160-02] MCP code_templates category deletion pattern: drop registration+comment, producer fn, and integration test in one diff — no orphaned comment, no green-test artifact
 
 ### Pending Todos
 
@@ -236,7 +238,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T04:56:01.966Z
-Stopped at: Completed 160-01-PLAN.md
+Last session: 2026-05-17T05:00:50.256Z
+Stopped at: Completed 160-02-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
