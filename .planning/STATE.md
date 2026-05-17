@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 160-07-PLAN.md
-last_updated: "2026-05-17T05:20:31.083Z"
+stopped_at: Completed 160-08-PLAN.md
+last_updated: "2026-05-17T05:23:59.784Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
   completed_phases: 155
   total_plans: 472
-  completed_plans: 459
+  completed_plans: 460
   percent: 97
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EXECUTING
-Plan: 8 of 10
+Plan: 9 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
@@ -171,6 +171,7 @@ Progress: [████████░░] 84%
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp PP05 | 4min | 1 tasks tasks | 1 files files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P160-06 | 5min | 3 tasks | 3 files |
 | Phase 160 P07 | 53s | 1 tasks | 1 files |
+| Phase 160 P08 | 1m 2s | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -249,7 +250,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T05:20:31.074Z
-Stopped at: Completed 160-07-PLAN.md
+Last session: 2026-05-17T05:23:59.777Z
+Stopped at: Completed 160-08-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
