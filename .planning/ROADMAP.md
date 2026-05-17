@@ -1568,7 +1568,7 @@ Plans:
 **Goal:** Permanently delete all v1 API surface from ferro-json-ui: `view.rs` (`JsonUiView`, `SCHEMA_VERSION = "ferro-json-ui/v1"`), `Component` enum and all typed `*Props` structs that are not reused by v2 (`ComponentNode`, builder convenience methods on `JsonUiView`). No `#[deprecated]` attributes, no feature flags, no compat shims. The crate public surface after this phase exposes only `Spec`, `Element`, `SpecBuilder`, `ElementBuilder` and the expression/render pipeline. Gate: all three repos (`ferro`, `ferro-code`, `gestiscilo`) compile and their test suites pass after deletion. **Depends on gestiscilo Phase 143 being complete** — do not start until gestiscilo no longer imports any v1 type.
 **Requirements**: `cargo build --all-features` green; `cargo test --all-features` green; `cargo clippy --all --all-targets -- -D warnings` clean; no reference to `JsonUiView`, `ComponentNode`, `Component::` remains in any crate.
 **Depends on:** Phase 159, Phase 164
-**Plans:** 8/10 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 - [x] 160-01-PLAN.md — Rewrite v1-framing doc comments in ferro-json-ui/src/render/* + projection/builder.rs + layout.rs (D-01, D-02, D-03, Pattern-1, Pattern-8)
@@ -1579,7 +1579,7 @@ Plans:
 - [x] 160-06-PLAN.md — Rewrite docs/protocol/src/{terminology,architecture,rendering}.md JsonUiRenderer paragraphs to v2 Spec shape (D-07, Pattern-5)
 - [x] 160-07-PLAN.md — Sync docs/src/features/projections.md minimal example to ferro-json-ui/src/projection/mod.rs:79-97 rustdoc (D-07, Pattern-5)
 - [x] 160-08-PLAN.md — Rewrite docs/src/reference/cli.md make:json-view example to current CLI output (JSON spec + handler) (D-08, Pattern-7)
-- [ ] 160-09-PLAN.md — D-08 broad narrative-framing sweep + AUDIT-D08.md classification report (D-08)
+- [x] 160-09-PLAN.md — D-08 broad narrative-framing sweep + AUDIT-D08.md classification report (D-08)
 - [ ] 160-10-PLAN.md — Final verification gate: D-10 grep gates + ferro fmt/clippy/test + gestiscilo cross-repo + ferro-code descope (D-09, D-10, D-11)
 
 ### Phase 161: Merge v12.0/json-ui-v2 to master — full test pass, clippy clean, merge PR

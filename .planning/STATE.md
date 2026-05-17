@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 160-08-PLAN.md
-last_updated: "2026-05-17T05:23:59.784Z"
+stopped_at: Completed 160-09-PLAN.md
+last_updated: "2026-05-17T05:33:55.266Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
   completed_phases: 155
   total_plans: 472
-  completed_plans: 460
-  percent: 97
+  completed_plans: 461
+  percent: 98
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EXECUTING
-Plan: 9 of 10
+Plan: 10 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
@@ -172,6 +172,7 @@ Progress: [████████░░] 84%
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P160-06 | 5min | 3 tasks | 3 files |
 | Phase 160 P07 | 53s | 1 tasks | 1 files |
 | Phase 160 P08 | 1m 2s | 1 tasks | 1 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P09 | 8min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,8 @@ Recent decisions affecting current work:
 - [160-06] Correct, do not append: rendering.md Output Format reframe also fixed two pre-existing factual errors (no `version` field, no `body` field on Spec) — corrective parentheticals would have left the wrong text in place
 - [160-07] Triple-stale docs fix pattern: when a single code block carries multiple drift markers (wrong type, wrong schema, wrong field name), replace the whole block in one edit rather than chaining three substitutions
 - [160-07] Docs-rustdoc shape parity: hand-written feature docs mirror the source rustdoc structure exactly (e.g., the `let result = ...; let spec = result.expect(...)` two-line split) so future API drift is mechanically visible in diff review
+- [160-09] D-08 sweep clean — 152 hits across 5 in-scope trees, all whitelistable (125 api-versioning-example, 11 arbitrary-fixture, 16 legitimate-historical), zero FAIL; Plans 01-08 caught the v1 JSON-UI narrative framing cleanly
+- [160-09] Audit-only plan pattern: classify-without-modify gate produces a stable artifact the next plan's verifier reads instead of re-running classification — preserves the per-row rationale chain across plan boundaries
 
 ### Pending Todos
 
@@ -250,7 +253,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T05:23:59.777Z
-Stopped at: Completed 160-08-PLAN.md
+Last session: 2026-05-17T05:33:55.259Z
+Stopped at: Completed 160-09-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
