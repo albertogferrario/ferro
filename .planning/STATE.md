@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: Completed 160-09-PLAN.md
-last_updated: "2026-05-17T05:33:55.266Z"
+status: verifying
+stopped_at: Completed 160-10-PLAN.md — Phase 160 fully closed; Phase 161 cleared
+last_updated: "2026-05-17T05:45:33.066Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
-  completed_phases: 155
+  completed_phases: 156
   total_plans: 472
-  completed_plans: 461
+  completed_plans: 462
   percent: 98
 ---
 
@@ -28,7 +28,7 @@ Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EX
 Plan: 10 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-17
 
 Progress: [████████░░] 84%
@@ -173,6 +173,7 @@ Progress: [████████░░] 84%
 | Phase 160 P07 | 53s | 1 tasks | 1 files |
 | Phase 160 P08 | 1m 2s | 1 tasks | 1 files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P09 | 8min | 1 tasks | 1 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P10 | 7min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,8 @@ Recent decisions affecting current work:
 - [160-07] Docs-rustdoc shape parity: hand-written feature docs mirror the source rustdoc structure exactly (e.g., the `let result = ...; let spec = result.expect(...)` two-line split) so future API drift is mechanically visible in diff review
 - [160-09] D-08 sweep clean — 152 hits across 5 in-scope trees, all whitelistable (125 api-versioning-example, 11 arbitrary-fixture, 16 legitimate-historical), zero FAIL; Plans 01-08 caught the v1 JSON-UI narrative framing cleanly
 - [160-09] Audit-only plan pattern: classify-without-modify gate produces a stable artifact the next plan's verifier reads instead of re-running classification — preserves the per-row rationale chain across plan boundaries
+- [160-10] Cross-repo failure triage by attribution: a test that `include_str!`s its own crate source and asserts on a literal string in that source cannot be caused by an upstream dependency change — classify as out-of-scope before flagging as a verification gap (8 gestiscilo test failures all classified this way; ferro Phase 160 verdict PASS)
+- [160-10] Descope-with-record pattern (OQ-2 ferro-code): when a cross-repo verification target is genuinely unavailable (empty repo, no Cargo.toml), record the descope in BOTH the plan VERIFICATION.md AND the plan SUMMARY so future audits read the rationale instead of re-opening the gap
 
 ### Pending Todos
 
@@ -253,7 +256,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T05:33:55.259Z
-Stopped at: Completed 160-09-PLAN.md
+Last session: 2026-05-17T05:45:33.059Z
+Stopped at: Completed 160-10-PLAN.md — Phase 160 fully closed; Phase 161 cleared
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
