@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 160-06-PLAN.md
-last_updated: "2026-05-17T05:17:08.091Z"
+stopped_at: Completed 160-07-PLAN.md
+last_updated: "2026-05-17T05:20:31.083Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
   completed_phases: 155
   total_plans: 472
-  completed_plans: 458
+  completed_plans: 459
   percent: 97
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
@@ -170,6 +170,7 @@ Progress: [████████░░] 84%
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P04 | 75s | 1 tasks | 1 files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp PP05 | 4min | 1 tasks tasks | 1 files files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P160-06 | 5min | 3 tasks | 3 files |
+| Phase 160 P07 | 53s | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -208,6 +209,8 @@ Recent decisions affecting current work:
 - [160-05] Pre-publish README audit: any crate ferro publishes must have its README usage block compile against the current public API — drift on the crates.io front page is a first-impression bug, not a docs nit
 - [160-06] Pattern 5 verbatim drop-in: rewriting v1-framed prose with the exact RESEARCH replacement avoids leaving the surrounding "but/however" contrast intact (a string-substitution would have)
 - [160-06] Correct, do not append: rendering.md Output Format reframe also fixed two pre-existing factual errors (no `version` field, no `body` field on Spec) — corrective parentheticals would have left the wrong text in place
+- [160-07] Triple-stale docs fix pattern: when a single code block carries multiple drift markers (wrong type, wrong schema, wrong field name), replace the whole block in one edit rather than chaining three substitutions
+- [160-07] Docs-rustdoc shape parity: hand-written feature docs mirror the source rustdoc structure exactly (e.g., the `let result = ...; let spec = result.expect(...)` two-line split) so future API drift is mechanically visible in diff review
 
 ### Pending Todos
 
@@ -246,7 +249,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T05:17:08.078Z
-Stopped at: Completed 160-06-PLAN.md
+Last session: 2026-05-17T05:20:31.074Z
+Stopped at: Completed 160-07-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
