@@ -1273,12 +1273,7 @@ pub(crate) fn render_product_tile(
 
 // ── RawHtml — server-injected HTML island (D-17a) ────────────────────────
 
-pub(crate) fn render_raw_html(
-    el: &Element,
-    _spec: &Spec,
-    _data: &Value,
-    _depth: usize,
-) -> String {
+pub(crate) fn render_raw_html(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: RawHtmlProps = match decode_props(&el.props) {
         Ok(p) => p,
         Err(e) => return decode_diagnostic("RawHtml", e),
@@ -1963,8 +1958,14 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let data = json!({"avatar": "real.png"});
         let html = render_image(el, &spec, &data, 1);
-        assert!(html.contains(r#"src="real.png""#), "data_path override; got: {html}");
-        assert!(!html.contains("fallback.png"), "static src must be overridden; got: {html}");
+        assert!(
+            html.contains(r#"src="real.png""#),
+            "data_path override; got: {html}"
+        );
+        assert!(
+            !html.contains("fallback.png"),
+            "static src must be overridden; got: {html}"
+        );
     }
 
     #[test]
@@ -1976,7 +1977,10 @@ mod tests {
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_image(el, &spec, &json!({}), 1);
-        assert!(html.contains(r#"src="static.png""#), "static src when no data_path; got: {html}");
+        assert!(
+            html.contains(r#"src="static.png""#),
+            "static src when no data_path; got: {html}"
+        );
     }
 
     #[test]
@@ -1990,7 +1994,10 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let data = json!({"other": "something"});
         let html = render_image(el, &spec, &data, 1);
-        assert!(html.contains(r#"src="fallback.png""#), "must fall back to static src; got: {html}");
+        assert!(
+            html.contains(r#"src="fallback.png""#),
+            "must fall back to static src; got: {html}"
+        );
     }
 
     // ── 12b. DescriptionList data_path (D-15) ───────────────────────────
@@ -2006,7 +2013,10 @@ mod tests {
         let data = json!({"items": [{"label": "Dynamic", "value": "Y"}]});
         let html = render_description_list(el, &spec, &data, 1);
         assert!(html.contains("Dynamic"), "data_path items; got: {html}");
-        assert!(!html.contains("Static"), "static items must be overridden; got: {html}");
+        assert!(
+            !html.contains("Static"),
+            "static items must be overridden; got: {html}"
+        );
     }
 
     #[test]
@@ -2027,7 +2037,9 @@ mod tests {
     #[test]
     fn raw_html_props_serde_roundtrip() {
         use crate::component::RawHtmlProps;
-        let p = RawHtmlProps { html: "<span>x</span>".into() };
+        let p = RawHtmlProps {
+            html: "<span>x</span>".into(),
+        };
         let j = serde_json::to_value(&p).unwrap();
         let back: RawHtmlProps = serde_json::from_value(j).unwrap();
         assert_eq!(p, back);
@@ -2035,9 +2047,7 @@ mod tests {
 
     #[test]
     fn render_raw_html_emits_verbatim() {
-        let spec = spec_with_root(
-            Element::new("RawHtml").prop("html", "<b>hi</b>"),
-        );
+        let spec = spec_with_root(Element::new("RawHtml").prop("html", "<b>hi</b>"));
         let el = spec.elements.get("root").unwrap();
         let html = render_raw_html(el, &spec, &json!(null), 1);
         assert_eq!(html, "<div data-ferro-raw-html><b>hi</b></div>");
@@ -2060,7 +2070,10 @@ mod tests {
             if_: None,
         };
         let html = render_raw_html(&el, &spec, &json!(null), 1);
-        assert!(html.contains("<!-- ferro-json-ui: failed to decode RawHtml props"), "got: {html}");
+        assert!(
+            html.contains("<!-- ferro-json-ui: failed to decode RawHtml props"),
+            "got: {html}"
+        );
     }
 
     #[test]
