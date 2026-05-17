@@ -241,8 +241,10 @@ fn get_installed_crates(project_root: &Path) -> Result<Vec<CrateInfo>> {
     Ok(crates)
 }
 
-/// Scans for legacy v1 patterns. TODO(Phase 120): add a parallel v2 scanner
-/// that looks for `-> Spec` and counts flat-spec usages alongside v1 counts.
+/// Counts JSON-UI spec files under `src/views/`. Each `.json` file corresponds
+/// to a spec loaded at runtime by `JsonUi::render_file("views/{name}.json", ..)`.
+/// The status surfaced here lets agents discover how many spec files a project
+/// ships without enumerating individual filenames.
 fn scan_json_ui_specs(project_root: &Path) -> JsonUiSpecsStatus {
     let views_dir = project_root.join("src").join("views");
     let views_dir_display = "src/views/".to_string();
@@ -253,22 +255,19 @@ fn scan_json_ui_specs(project_root: &Path) -> JsonUiSpecsStatus {
             view_count: 0,
             views_dir: views_dir_display,
             hint: Some(
-                "No src/views/ directory found. Create views with JSON-UI tools: json_ui_generate, json_ui_catalog"
+                "No src/views/ directory found. Create JSON-UI spec files there \
+                 and serve them with JsonUi::render_file(\"views/{name}.json\", data). \
+                 Use the json_ui_generate MCP tool to scaffold a new spec."
                     .to_string(),
             ),
         };
     }
 
-    // Count .rs files in src/views/ (excluding mod.rs)
     let view_count = std::fs::read_dir(&views_dir)
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| {
-                    let path = e.path();
-                    path.extension().map(|ext| ext == "rs").unwrap_or(false)
-                        && path.file_name().map(|f| f != "mod.rs").unwrap_or(false)
-                })
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
                 .count()
         })
         .unwrap_or(0);
@@ -279,7 +278,8 @@ fn scan_json_ui_specs(project_root: &Path) -> JsonUiSpecsStatus {
         views_dir: views_dir_display,
         hint: if view_count == 0 {
             Some(
-                "Views directory exists but no views found. Use json_ui_generate to create one."
+                "Views directory exists but no JSON spec files found. \
+                 Use json_ui_generate to create one."
                     .to_string(),
             )
         } else {
