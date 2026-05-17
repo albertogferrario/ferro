@@ -33,6 +33,10 @@ use thiserror::Error;
 use crate::catalog::{global_catalog, CatalogError};
 use crate::spec::{Spec, SpecError};
 
+// D-16: tracing for load-time catalog warnings.
+// Catalog (enum-shape) validation is downgraded to tracing::warn at load time;
+// hard enforcement moves to per-request JsonUi::resolve after expand_directives.
+
 // ── Errors ────────────────────────────────────────────────────────────────────
 
 /// Errors returned by [`load_cached`] and related loader entry points.
@@ -138,9 +142,24 @@ pub fn load_cached(path: &Path, reload_if_changed: bool) -> Result<Arc<Spec>, Lo
     // Miss or stale: parse + validate outside any lock.
     let content = fs::read_to_string(&canonical)?;
     let spec = Spec::from_json(&content).map_err(LoadError::Parse)?;
-    global_catalog()
-        .validate(&spec)
-        .map_err(LoadError::Catalog)?;
+
+    // D-16: Catalog (enum-shape) validation at load time becomes a WARNING.
+    // Hard enforcement moves to per-request `JsonUi::resolve`, AFTER
+    // `expand_directives`, so $if-gated elements with shape-invalid props
+    // (e.g. Alert.variant="" gated by visible) don't fail at startup.
+    //
+    // Structural errors (footer IDs, element references, depth) are still
+    // caught hard by `Spec::from_json` above.
+    if let Err(errs) = global_catalog().validate(&spec) {
+        for e in &errs {
+            tracing::warn!(
+                target: "ferro_json_ui::catalog",
+                spec = %canonical.display(),
+                error = %e,
+                "load-time catalog warning (deferred to render-time enforcement)"
+            );
+        }
+    }
 
     let mtime = current_mtime(&canonical);
     let arc_spec = Arc::new(spec);
@@ -278,6 +297,38 @@ mod tests {
         assert!(
             Arc::ptr_eq(&first, &second),
             "second load must return the same Arc — cache hit"
+        );
+    }
+
+    /// D-16: `load_cached` (production path) warns on catalog errors but does NOT fail.
+    ///
+    /// A spec with `Alert.variant=""` (invalid enum — not in ["info","success","warning","error"])
+    /// gated by `visible: {path: "/flash", operator: "exists"}` must load successfully.
+    /// The catalog error is logged as a warning; hard enforcement moves to per-request
+    /// `JsonUi::resolve` AFTER `expand_directives` removes the gated element.
+    #[test]
+    fn load_cached_warns_on_catalog_error_does_not_fail() {
+        // Alert.variant="" is a catalog error (not in the AlertVariant enum).
+        // The element is gated by visible, but the load path sees the raw spec —
+        // with D-16 the catalog error is now a warning only.
+        let bad_spec = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "screen",
+            "elements": {
+                "screen": { "type": "Screen", "children": ["maybe_alert"] },
+                "maybe_alert": {
+                    "type": "Alert",
+                    "props": { "variant": "", "message": "flash message" },
+                    "visible": { "path": "/flash", "operator": "exists" }
+                }
+            }
+        }"#;
+        let path = write_temp("d16-catalog-warn", bad_spec);
+        let result = load_cached(&path, false);
+        assert!(
+            result.is_ok(),
+            "D-16: load_cached must succeed (warn only) for gated bad-variant spec; got: {:?}",
+            result.err()
         );
     }
 
