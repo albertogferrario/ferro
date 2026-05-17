@@ -304,8 +304,8 @@ mod tests {
         let views_dir = tmp.path().join("src/views");
         fs::create_dir_all(&views_dir).unwrap();
 
-        write_file(&views_dir, "old_view.rs", "// old v1 file");
-        write_file(&views_dir, "mod.rs", "pub mod old;");
+        write_file(&views_dir, "stale_artifact.rs", "// non-JSON artifact");
+        write_file(&views_dir, "mod.rs", "pub mod stale_artifact;");
 
         let result = execute(tmp.path(), None);
         assert_eq!(result.total, 0);
