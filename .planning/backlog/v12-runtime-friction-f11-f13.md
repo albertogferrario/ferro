@@ -60,6 +60,36 @@ When `has_items: false`, both gates evaluate falsy: table hides correctly, but t
 - **Docs:** surface the boolean carve-out in `docs/src/json-ui/visibility.md` as a callout, not just a source comment. The two-line note: *"`empty`/`not_empty` evaluate booleans and numbers as non-empty. For `has_X: bool` paths use `eq, value: false` instead."*
 - **Optional ergonomics:** add `is_true` / `is_false` operators that match Rust `bool` directly. Lowest priority — `eq, value: false` already works.
 
+## F14 — `Action.handler` is `String` literal-only; `$data` / `$template` bindings rejected at parse time
+
+**Severity.** Medium. Blocks two important v2 patterns surfaced when comparing gestiscilo prod (v1) vs local (v2): per-row navigation in `$each` templates, and data-driven `KanbanColumn.children` rendering via `JsonUi::render_file`.
+
+**Symptom A — `$each` + per-cell action URL.** Gestiscilo migrated `calendar_month.json` from `DataTable` to a `Grid(7)` of `CalendarCell` elements via `$each` over `/calendar_days`. Each cell needs its own day URL:
+
+```json
+"day_cell": {
+  "type": "CalendarCell",
+  "$each": { "path": "/calendar_days", "as": "cell" },
+  "props": { "day": { "$data": "/cell/day" }, ... },
+  "action": {
+    "handler": { "$data": "/cell/action_url" },
+    "method": "GET"
+  }
+}
+```
+
+Result: `Failed to load spec: invalid type: map, expected a string at line 57 column 19`. The parser hits `handler: {map}` and rejects because `Action.handler` is declared `pub handler: String` (`ferro-json-ui/src/action.rs:78`).
+
+**Symptom B — `KanbanBoard.data_path` with per-card navigation.** Wired `kanban_orders.props.data_path` to `/kanban_columns` (Phase 164 D-13a). Column headers render with correct counts ("Confermati (8)"), but column bodies are empty. `KanbanColumnProps.children: Vec<String>` expects pre-registered element IDs; with `JsonUi::render_file` (not `Spec::builder`), the only way to populate cards is `$each` per column — which loops back to Symptom A for the per-card click action.
+
+**Cause.** `Action.handler: String` is parsed eagerly during `Spec::from_json`, before `$each` expansion and `resolve_actions`. The migration guide implies per-row `$data` on action URLs works ("controller pre-resolves URLs into spec.data and the templated element references them via `{ "$data": "/order/advance_url" }`"), but the wire-format parser doesn't accept maps where strings are required.
+
+**Gestiscilo workaround (applied).** Reverted both pages to `DataTable` (per-row navigation via `row_href` interpolation is the one mechanism that works with `data_path` today). `dashboard/index.json` kanban placeholder restored. F14 documented in `gestiscilo/.planning/V7-RUNTIME-FRICTION-RESOLVED.md`.
+
+**Recommended ferro action.** Make `Action.handler` accept either a literal `String` or a `{$data|$template: ...}` binding, resolved during `resolve_actions`. The renderer already runs `resolve_actions` for URL synthesis — extending it to walk a handler-side binding parallels the existing per-prop resolution. Alternative: document explicitly that per-row navigation in `$each` requires `Spec::builder` (not `JsonUi::render_file`) and remove the misleading migration-guide example.
+
+This is a real blocker for two v2-native consumer patterns. Without it, any spec authored as a JSON file is restricted to literal action URLs, forcing consumers into `Spec::builder` for any list/table/grid with per-row navigation.
+
 ## Non-blocking
 
-Neither F11 nor F13 blocks Phase 160 (v1 deletion) or Phase 161 (merge + publish). They are inputs for the next round of v12.x polish if the friction loop gets a follow-on phase.
+None of F11, F13, F14 blocks Phase 160 (v1 deletion) or Phase 161 (merge + publish). They are inputs for the next round of v12.x polish if the friction loop gets a follow-on phase.
