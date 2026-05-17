@@ -13,8 +13,10 @@ use serde_json::Value;
 
 use crate::component::{
     ButtonGroupProps, CardProps, CardVariant, CollapsibleProps, FormMaxWidth, FormSectionLayout,
-    FormSectionProps, GapSize, GridProps, KanbanBoardProps, ModalProps, PageHeaderProps, TabsProps,
+    FormSectionProps, GapSize, GridProps, KanbanBoardProps, KanbanColumnProps, ModalProps,
+    PageHeaderProps, TabsProps,
 };
+use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
 use super::{html_escape, render_element};
@@ -306,14 +308,26 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         }
     };
 
-    if props.columns.is_empty() {
+    // D-13a: data_path takes precedence over static columns.
+    let columns: Vec<KanbanColumnProps> = if let Some(path) = props.data_path.as_deref() {
+        resolve_path(data, path)
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|v| serde_json::from_value::<KanbanColumnProps>(v).ok())
+            .collect()
+    } else {
+        props.columns.clone()
+    };
+
+    if columns.is_empty() {
         return String::new();
     }
 
     let default_id = props
         .mobile_default_column
         .as_deref()
-        .unwrap_or_else(|| &props.columns[0].id);
+        .unwrap_or_else(|| &columns[0].id);
 
     let mut html = String::new();
 
@@ -321,7 +335,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     html.push_str("<div class=\"hidden md:block overflow-x-auto\">");
     html.push_str("<div class=\"flex gap-4\" style=\"min-width: min-content;\">");
 
-    for col in &props.columns {
+    for col in &columns {
         html.push_str(
             "<div class=\"min-w-[260px] flex-1 flex-shrink-0 rounded-lg border border-border bg-card/50 p-3\">",
         );
@@ -357,7 +371,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     html.push_str("<div class=\"block md:hidden\" data-tabs>");
     html.push_str("<div class=\"flex border-b border-border mb-4\">");
 
-    for col in &props.columns {
+    for col in &columns {
         let is_default = col.id == default_id;
         let (border, text) = if is_default {
             ("border-primary", "text-primary font-semibold")
@@ -377,7 +391,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
 
     html.push_str("</div>");
 
-    for col in &props.columns {
+    for col in &columns {
         let is_default = col.id == default_id;
         let hidden = if is_default { "" } else { " hidden" };
         html.push_str(&format!(
@@ -1218,6 +1232,71 @@ mod tests {
         assert!(
             html.contains("<!-- ferro-json-ui: element references missing id 'ghost' -->"),
             "got: {html}"
+        );
+    }
+
+    // ── KanbanBoard data_path tests (D-13a) ─────────────────────────────
+
+    #[test]
+    fn render_kanban_board_data_path_resolves_columns() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("KanbanBoard").prop("data_path", "/cols"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({"cols": [
+            {"title": "A", "id": "a", "count": 0},
+            {"title": "B", "id": "b", "count": 0}
+        ]});
+        let html = render_kanban_board(el, &spec, &data, 0);
+        assert!(html.contains(">A<"), "expected column A, got: {html}");
+        assert!(html.contains(">B<"), "expected column B, got: {html}");
+    }
+
+    #[test]
+    fn render_kanban_board_static_columns_fallback() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("KanbanBoard")
+                .prop("columns", json!([{"title": "Static", "id": "s", "count": 0}])),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_kanban_board(el, &spec, &serde_json::Value::Null, 0);
+        assert!(
+            html.contains(">Static<"),
+            "static columns should render, got: {html}"
+        );
+    }
+
+    #[test]
+    fn render_kanban_board_data_path_missing_renders_empty() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("KanbanBoard").prop("data_path", "/absent"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_kanban_board(el, &spec, &serde_json::Value::Null, 0);
+        assert_eq!(html, "");
+    }
+
+    #[test]
+    fn render_kanban_board_data_path_wins_over_static() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("KanbanBoard")
+                .prop("data_path", "/cols")
+                .prop("columns", json!([{"title": "Static", "id": "s", "count": 0}])),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({"cols": [{"title": "FromData", "id": "d", "count": 0}]});
+        let html = render_kanban_board(el, &spec, &data, 0);
+        assert!(
+            html.contains(">FromData<"),
+            "data_path must win, got: {html}"
+        );
+        assert!(
+            !html.contains(">Static<"),
+            "static must lose, got: {html}"
         );
     }
 }
