@@ -81,7 +81,8 @@ pub use resolve::{
     expand_directives, resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all,
 };
 pub use spec::{
-    Element, ElementBuilder, Spec, SpecBuilder, SpecError, MAX_NESTING_DEPTH, SCHEMA_VERSION,
+    DataRef, Element, ElementBuilder, Spec, SpecBuilder, SpecError, TitleBinding,
+    MAX_NESTING_DEPTH, SCHEMA_VERSION,
 };
 pub use visibility::{Visibility, VisibilityCondition, VisibilityOperator};
 

@@ -14,6 +14,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use schemars::JsonSchema;
 use serde::de::{Deserialize as DeserializeTrait, Deserializer, MapAccess, Visitor};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -39,6 +40,27 @@ pub const MAX_NESTING_DEPTH: usize = 5;
 // Section B — Types (Spec, Element, SpecError)
 // ---------------------------------------------------------------------------
 
+/// Bindable string value — either a literal or a runtime `$data` reference.
+///
+/// Used by `Spec.title` to permit either a static document title or a
+/// runtime-resolved value from handler data. The renderer resolves
+/// `Binding(DataRef)` against `spec.data` at response-build time.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum TitleBinding {
+    Literal(String),
+    Binding(DataRef),
+}
+
+/// `{"$data": "/path"}` shape — references a JSON pointer in `spec.data`.
+/// Mirrors the `$data` key recognised by expression resolution
+/// (see `expression.rs:EXPR_DATA_KEY`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DataRef {
+    #[serde(rename = "$data")]
+    pub data: String,
+}
+
 /// Top-level v2 JSON-UI document.
 ///
 /// A `Spec` is a flat element map keyed by ID with a single `root` pointer.
@@ -55,8 +77,9 @@ pub struct Spec {
     /// `^[A-Za-z_][A-Za-z0-9_-]{0,127}$`.
     pub elements: HashMap<String, Element>,
     /// Optional document title (used by layouts to populate `<title>`).
+    /// Accepts a literal string or `{"$data": "/path"}` binding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
+    pub title: Option<TitleBinding>,
     /// Optional layout name (e.g. `"dashboard"`, `"app"`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout: Option<String>,
@@ -301,7 +324,7 @@ impl Element {
 /// Fluent builder for [`Spec`].
 #[derive(Debug, Default)]
 pub struct SpecBuilder {
-    title: Option<String>,
+    title: Option<TitleBinding>,
     layout: Option<String>,
     data: Value,
     root: Option<String>,
@@ -319,9 +342,15 @@ impl SpecBuilder {
         }
     }
 
-    /// Set the document title.
+    /// Set the document title (literal string).
     pub fn title(mut self, t: impl Into<String>) -> Self {
-        self.title = Some(t.into());
+        self.title = Some(TitleBinding::Literal(t.into()));
+        self
+    }
+
+    /// Set the document title to a `{"$data": "/path"}` binding.
+    pub fn title_binding(mut self, path: impl Into<String>) -> Self {
+        self.title = Some(TitleBinding::Binding(DataRef { data: path.into() }));
         self
     }
 
@@ -598,7 +627,7 @@ struct SpecWire {
     root: String,
     elements: ElementsMap,
     #[serde(default)]
-    title: Option<String>,
+    title: Option<TitleBinding>,
     #[serde(default)]
     layout: Option<String>,
     #[serde(default)]
@@ -1890,6 +1919,52 @@ mod tests {
         assert!(
             pos_directives < pos_cycle,
             "validate_directives must be called BEFORE detect_cycle"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // TitleBinding round-trip tests (D-12)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn spec_title_literal_roundtrip() {
+        let json = r#"{"$schema":"ferro-json-ui/v2","root":"x","elements":{"x":{"type":"Text","props":{"content":"a"}}},"title":"Hello"}"#;
+        let spec: Spec = serde_json::from_str(json).expect("parses");
+        match spec.title.as_ref().unwrap() {
+            TitleBinding::Literal(s) => assert_eq!(s, "Hello"),
+            other => panic!("expected Literal, got {other:?}"),
+        }
+        let back = serde_json::to_string(&spec).unwrap();
+        assert!(back.contains(r#""title":"Hello""#), "got: {back}");
+    }
+
+    #[test]
+    fn spec_title_binding_roundtrip() {
+        let json = r#"{"$schema":"ferro-json-ui/v2","root":"x","elements":{"x":{"type":"Text","props":{"content":"a"}}},"title":{"$data":"/page_title"}}"#;
+        let spec: Spec = serde_json::from_str(json).expect("parses");
+        match spec.title.as_ref().unwrap() {
+            TitleBinding::Binding(DataRef { data }) => assert_eq!(data, "/page_title"),
+            other => panic!("expected Binding, got {other:?}"),
+        }
+        let back = serde_json::to_string(&spec).unwrap();
+        assert!(back.contains(r#""$data":"/page_title""#), "got: {back}");
+    }
+
+    #[test]
+    fn spec_title_absent() {
+        let json = r#"{"$schema":"ferro-json-ui/v2","root":"x","elements":{"x":{"type":"Text","props":{"content":"a"}}}}"#;
+        let spec: Spec = serde_json::from_str(json).expect("parses");
+        assert!(spec.title.is_none());
+    }
+
+    #[test]
+    fn spec_title_invalid_shape_rejected() {
+        // Neither a string literal nor a {$data:...} object — must fail to parse.
+        let json = r#"{"$schema":"ferro-json-ui/v2","root":"x","elements":{"x":{"type":"Text","props":{"content":"a"}}},"title":{"foo":"bar"}}"#;
+        let result: Result<Spec, _> = serde_json::from_str(json);
+        assert!(
+            result.is_err(),
+            "expected parse failure for {{foo:bar}} title shape"
         );
     }
 }
