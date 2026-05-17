@@ -55,10 +55,7 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
             "rounded-lg border border-border bg-card shadow-sm overflow-visible",
             "p-4",
         ),
-        CardVariant::Elevated => (
-            "rounded-lg bg-card shadow-md overflow-visible",
-            "p-8",
-        ),
+        CardVariant::Elevated => ("rounded-lg bg-card shadow-md overflow-visible", "p-8"),
     };
 
     let mut html = format!("<div class=\"{outer_class}\"><div class=\"{inner_pad}\">");
@@ -868,17 +865,17 @@ mod tests {
 
     #[test]
     fn render_card_bordered_default() {
-        let spec = build_spec(vec![(
-            "root",
-            Element::new("Card").prop("title", "X"),
-        )]);
+        let spec = build_spec(vec![("root", Element::new("Card").prop("title", "X"))]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);
         assert!(
             html.contains("border border-border"),
             "expected Bordered class, got: {html}"
         );
-        assert!(html.contains("shadow-sm"), "expected shadow-sm, got: {html}");
+        assert!(
+            html.contains("shadow-sm"),
+            "expected shadow-sm, got: {html}"
+        );
         assert!(html.contains("p-4"), "expected p-4, got: {html}");
     }
 
@@ -892,7 +889,10 @@ mod tests {
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);
-        assert!(html.contains("shadow-md"), "expected shadow-md, got: {html}");
+        assert!(
+            html.contains("shadow-md"),
+            "expected shadow-md, got: {html}"
+        );
         assert!(html.contains("p-8"), "expected p-8, got: {html}");
         assert!(
             !html.contains("border-border"),
@@ -902,10 +902,7 @@ mod tests {
 
     #[test]
     fn render_card_omitted_variant_is_bordered() {
-        let spec = build_spec(vec![(
-            "root",
-            Element::new("Card").prop("title", "X"),
-        )]);
+        let spec = build_spec(vec![("root", Element::new("Card").prop("title", "X"))]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);
         assert!(
