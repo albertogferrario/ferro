@@ -152,6 +152,14 @@ There is no `$template` element. Element-level templating is covered by `$each`;
 - Nested `$each` deeper than direct-children siblings is rejected as `NestedEach` at validation time. If a nested-iteration case appears, file an issue with the data shape.
 - Reserved `as` names: `data`, `root`, `_root`, `_each`, `this`, `self`. Using any of these as the loop variable is rejected as `EachAsReservedName`.
 
+## Nesting depth limit
+
+The maximum allowed nesting depth from the root element is controlled by `MAX_NESTING_DEPTH`, currently set to **5**. Specs that exceed depth 5 fail validation with `SpecError::DepthExceeded`.
+
+The limit accommodates dashboard layouts at depth 4 (root → grid → card → badge) with one level of headroom. A typical deep layout — root → grid → card → row → atom — sits exactly at depth 5.
+
+If a layout exceeds depth 5, flatten with `Element.children` ID references instead of physical nesting. Most layouts that appear to require deep nesting can be restructured by promoting inner containers to named top-level elements and wiring them via explicit `children` IDs.
+
 ## Migration from v1
 
 Controllers using the v1 `make_node` / `make_node_with_action` helpers can migrate to v2 specs incrementally. The `ferro json-ui:migrate-v1` CLI subcommand emits a stub JSON spec under `src/views/{module}/{controller}.json` and a rewritten controller calling `JsonUi::render_file`. Cases the codemod cannot auto-translate are marked with a `// TODO: codemod could not auto-translate` comment rather than silently skipped.
