@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 160 context gathered
-last_updated: "2026-05-17T04:31:07.010Z"
-last_activity: 2026-05-17 -- Phase 160 planning complete
+stopped_at: Completed 160-01-PLAN.md
+last_updated: "2026-05-17T04:56:01.973Z"
+last_activity: 2026-05-17
 progress:
   total_phases: 173
   completed_phases: 155
   total_plans: 472
-  completed_plans: 452
+  completed_plans: 453
   percent: 96
 ---
 
@@ -20,16 +20,16 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 164 — json-ui-improvements-batch-3-documenti-field-test-findings-m
+**Current focus:** Phase 160 — remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp
 
 ## Current Position
 
-Phase: 174
-Plan: Not started
+Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EXECUTING
+Plan: 2 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
-Last activity: 2026-05-17 -- Phase 160 planning complete
+Last activity: 2026-05-17
 
 Progress: [████████░░] 84%
 
@@ -164,6 +164,7 @@ Progress: [████████░░] 84%
 | Phase 163 P08 | 98s | 1 tasks | 1 files |
 | Phase 163 P10 | 3min | 1 tasks | 1 files |
 | Phase 163.1 P01 | 183s | 5 tasks | 7 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P01 | 42min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -235,7 +236,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T03:52:54.212Z
-Stopped at: Phase 160 context gathered
-Resume file: .planning/phases/160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp/160-CONTEXT.md
+Last session: 2026-05-17T04:56:01.966Z
+Stopped at: Completed 160-01-PLAN.md
+Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
