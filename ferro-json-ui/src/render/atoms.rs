@@ -16,8 +16,8 @@ use crate::component::{
     BadgeVariant, BreadcrumbProps, ButtonProps, ButtonType, ButtonVariant, CalendarCellProps,
     ChecklistProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps, HeaderProps,
     IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
-    ProductTileProps, ProgressProps, SeparatorProps, SidebarNavItem, SidebarProps, Size,
-    SkeletonProps, StatCardProps, TextElement, TextProps, ToastProps, ToastVariant,
+    ProductTileProps, ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps,
+    Size, SkeletonProps, StatCardProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 use crate::spec::{Element, Spec};
 
@@ -1271,6 +1271,23 @@ pub(crate) fn render_product_tile(
     )
 }
 
+// ── RawHtml — server-injected HTML island (D-17a) ────────────────────────
+
+pub(crate) fn render_raw_html(
+    el: &Element,
+    _spec: &Spec,
+    _data: &Value,
+    _depth: usize,
+) -> String {
+    let props: RawHtmlProps = match decode_props(&el.props) {
+        Ok(p) => p,
+        Err(e) => return decode_diagnostic("RawHtml", e),
+    };
+    // Verbatim emission — intentionally NOT escaped (server-only trust).
+    // See RawHtmlProps rustdoc for the trust boundary.
+    format!("<div data-ferro-raw-html>{}</div>", props.html)
+}
+
 // ────────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -2003,5 +2020,52 @@ mod tests {
         let j = serde_json::to_value(&p).unwrap();
         let back: DescriptionListProps = serde_json::from_value(j).unwrap();
         assert_eq!(p, back);
+    }
+
+    // ── RawHtml (D-17a) ─────────────────────────────────────────────────
+
+    #[test]
+    fn raw_html_props_serde_roundtrip() {
+        use crate::component::RawHtmlProps;
+        let p = RawHtmlProps { html: "<span>x</span>".into() };
+        let j = serde_json::to_value(&p).unwrap();
+        let back: RawHtmlProps = serde_json::from_value(j).unwrap();
+        assert_eq!(p, back);
+    }
+
+    #[test]
+    fn render_raw_html_emits_verbatim() {
+        let spec = spec_with_root(
+            Element::new("RawHtml").prop("html", "<b>hi</b>"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_raw_html(el, &spec, &json!(null), 1);
+        assert_eq!(html, "<div data-ferro-raw-html><b>hi</b></div>");
+    }
+
+    #[test]
+    fn render_raw_html_null_props_emits_diagnostic() {
+        let spec = Spec::builder()
+            .element("root", Element::new("RawHtml"))
+            .build()
+            .unwrap();
+        // Build element with non-object props to force decode failure
+        let el = crate::spec::Element {
+            type_name: "RawHtml".into(),
+            props: json!(42),
+            children: vec![],
+            action: None,
+            visible: None,
+            each: None,
+            if_: None,
+        };
+        let html = render_raw_html(&el, &spec, &json!(null), 1);
+        assert!(html.contains("<!-- ferro-json-ui: failed to decode RawHtml props"), "got: {html}");
+    }
+
+    #[test]
+    fn builtin_types_includes_raw_html() {
+        assert!(crate::render::BUILTIN_TYPES.contains(&"RawHtml"));
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 41);
     }
 }

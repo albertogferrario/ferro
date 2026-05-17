@@ -588,6 +588,29 @@ pub struct SkeletonProps {
     pub rounded: Option<bool>,
 }
 
+/// Props for the `RawHtml` component — server-injected HTML island.
+///
+/// # Safety
+/// `html` is emitted into the response VERBATIM with NO sanitization. The
+/// component exists to bridge server-rendered HTML fragments (e.g. a status
+/// pill, a link badge) into a v2 spec where a first-class component would
+/// be over-engineering.
+///
+/// Sanitization is the CONSUMER's responsibility — pass only server-
+/// constructed HTML, or run untrusted input through a sanitiser (e.g.
+/// `ammonia`) in the handler before embedding. This mirrors
+/// `RichTextEditorProps` discipline (see component.rs).
+///
+/// For richer widgets (interactive forms, charts, OAuth flows), use the
+/// first-class plugin system (`JsonUiPlugin`) instead — see
+/// `docs/src/json-ui/plugins.md`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RawHtmlProps {
+    /// Server-constructed HTML emitted verbatim. NOT sanitized.
+    #[serde(default)]
+    pub html: String,
+}
+
 /// Toast visual variants.
 #[derive(
     Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,

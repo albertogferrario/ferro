@@ -63,6 +63,7 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "CalendarCell",
     "ActionCard",
     "ProductTile",
+    "RawHtml",
     // Containers (containers.rs)
     "Card",
     "Modal",
@@ -174,6 +175,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "CalendarCell" => atoms::render_calendar_cell(el, spec, data, depth),
         "ActionCard" => atoms::render_action_card(el, spec, data, depth),
         "ProductTile" => atoms::render_product_tile(el, spec, data, depth),
+        "RawHtml" => atoms::render_raw_html(el, spec, data, depth),
         // Containers
         "Card" => containers::render_card(el, spec, data, depth),
         "Modal" => containers::render_modal(el, spec, data, depth),
@@ -527,6 +529,6 @@ mod tests {
         // The dispatch match in `render_element` has one arm per entry plus a
         // default arm. A compile-time mismatch would be caught by rustc; this
         // runtime check pins the invariant for future edits.
-        assert_eq!(BUILTIN_TYPES.len(), 40);
+        assert_eq!(BUILTIN_TYPES.len(), 41);
     }
 }

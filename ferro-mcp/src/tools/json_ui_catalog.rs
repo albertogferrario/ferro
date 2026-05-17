@@ -287,8 +287,8 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.components.len(),
-            40,
-            "Catalog should contain all 40 built-in components (incl. CheckboxList), got {}",
+            41,
+            "Catalog should contain all 41 built-in components (incl. CheckboxList, RawHtml), got {}",
             catalog.components.len()
         );
 
@@ -333,6 +333,7 @@ mod tests {
             "CalendarCell",
             "ActionCard",
             "ProductTile",
+            "RawHtml",
             "Image",
         ];
         for name in &expected {
@@ -498,6 +499,10 @@ mod tests {
                 "Collapsible",
                 "Toast",
                 "Checklist",
+                // D-15: items is now #[serde(default)] so data_path can be the sole source.
+                "DescriptionList",
+                // D-17a: html is #[serde(default)] — empty HTML is a valid no-op.
+                "RawHtml",
             ];
             if !no_required.contains(&component.name.as_str()) {
                 assert!(
