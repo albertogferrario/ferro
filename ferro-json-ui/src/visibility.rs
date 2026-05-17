@@ -8,6 +8,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Comparison operators for visibility conditions.
+///
+/// Phase 165 F13: `IsTrue` / `IsFalse` operate directly on booleans without
+/// requiring `{"operator": "eq", "value": false}`. They also handle missing
+/// paths cleanly (treated as `false`). For consumer patterns that pair a
+/// `has_X: bool` controller field with a visibility gate, prefer these over
+/// `Empty` (which returns `false` for booleans by design — see resolver).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum VisibilityOperator {
@@ -22,6 +28,12 @@ pub enum VisibilityOperator {
     Contains,
     NotEmpty,
     Empty,
+    /// Match when the resolved value is the boolean `true`.
+    /// Missing path and non-boolean values are treated as `false`.
+    IsTrue,
+    /// Match when the resolved value is the boolean `false`, or when the
+    /// path is missing / resolves to `null`. Mirror of `IsTrue`.
+    IsFalse,
 }
 
 /// A single visibility condition comparing a data path against a value.
@@ -169,6 +181,16 @@ fn evaluate_condition(c: &VisibilityCondition, data: &serde_json::Value) -> bool
             Some(serde_json::Value::Number(_)) | Some(serde_json::Value::Bool(_)) => false,
             None | Some(serde_json::Value::Null) => true,
         },
+        // F13: boolean-typed paths — match the booleans directly.
+        VisibilityOperator::IsTrue => matches!(resolved, Some(serde_json::Value::Bool(true))),
+        VisibilityOperator::IsFalse => match resolved {
+            Some(serde_json::Value::Bool(false)) => true,
+            // Treat missing / null as "not true" → matches IsFalse,
+            // mirroring the typical controller pattern where an absent
+            // bool field is the same as `false`.
+            None | Some(serde_json::Value::Null) => true,
+            _ => false,
+        },
     }
 }
 
@@ -274,6 +296,48 @@ mod tests {
         }
     }
 
+    // ── F13 boolean-operator tests ──────────────────────────────────────
+
+    fn eval(op: VisibilityOperator, data: serde_json::Value, path: &str) -> bool {
+        let v = Visibility::Condition(VisibilityCondition {
+            path: path.to_string(),
+            operator: op,
+            value: None,
+        });
+        v.evaluate(&data)
+    }
+
+    #[test]
+    fn is_true_matches_only_bool_true() {
+        assert!(eval(VisibilityOperator::IsTrue, serde_json::json!({"x": true}), "/x"));
+        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({"x": false}), "/x"));
+        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({}), "/x"));
+        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({"x": null}), "/x"));
+        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({"x": "true"}), "/x"));
+        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({"x": 1}), "/x"));
+    }
+
+    #[test]
+    fn is_false_matches_bool_false_or_missing_or_null() {
+        assert!(eval(VisibilityOperator::IsFalse, serde_json::json!({"x": false}), "/x"));
+        assert!(eval(VisibilityOperator::IsFalse, serde_json::json!({}), "/x"));
+        assert!(eval(VisibilityOperator::IsFalse, serde_json::json!({"x": null}), "/x"));
+        assert!(!eval(VisibilityOperator::IsFalse, serde_json::json!({"x": true}), "/x"));
+        assert!(!eval(VisibilityOperator::IsFalse, serde_json::json!({"x": "false"}), "/x"));
+    }
+
+    #[test]
+    fn is_true_is_false_round_trip() {
+        let t: VisibilityOperator =
+            serde_json::from_str(r#""is_true""#).unwrap();
+        assert_eq!(t, VisibilityOperator::IsTrue);
+        let f: VisibilityOperator =
+            serde_json::from_str(r#""is_false""#).unwrap();
+        assert_eq!(f, VisibilityOperator::IsFalse);
+        assert_eq!(serde_json::to_string(&t).unwrap(), r#""is_true""#);
+        assert_eq!(serde_json::to_string(&f).unwrap(), r#""is_false""#);
+    }
+
     #[test]
     fn all_operators_serialize() {
         let operators = vec![
@@ -288,6 +352,8 @@ mod tests {
             (VisibilityOperator::Contains, "contains"),
             (VisibilityOperator::NotEmpty, "not_empty"),
             (VisibilityOperator::Empty, "empty"),
+            (VisibilityOperator::IsTrue, "is_true"),
+            (VisibilityOperator::IsFalse, "is_false"),
         ];
         for (op, expected) in operators {
             let json = serde_json::to_value(&op).unwrap();

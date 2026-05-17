@@ -419,6 +419,11 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
 /// chevron separators, and right-aligned action buttons.
 /// `PageHeaderProps.actions: Vec<String>` lists IDs of elements (typically
 /// `Button` atoms) rendered into the actions slot.
+///
+/// Phase 165 F11: any `Element.children` are rendered as page body below
+/// the header chrome. This closes the silent-drop pathology that bit
+/// JsonUi::render_file consumers using `root: PageHeader` with children —
+/// previously the chrome rendered fine but the body never appeared in DOM.
 pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: PageHeaderProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -481,6 +486,21 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
     }
 
     html.push_str("</div>");
+
+    // F11: render Element.children as page body sections below the chrome.
+    // The chrome's `pb-4` provides visual separation; children stack as
+    // block-level siblings. Empty children list is a no-op (back-compat).
+    if !el.children.is_empty() {
+        let body_html: String = el
+            .children
+            .iter()
+            .map(|cid| render_element(cid, spec, data, depth + 1))
+            .collect();
+        html.push_str("<div class=\"flex flex-col gap-4\">");
+        html.push_str(&body_html);
+        html.push_str("</div>");
+    }
+
     html
 }
 
@@ -1220,6 +1240,58 @@ mod tests {
         assert!(
             html.contains("flex flex-wrap items-center gap-2"),
             "actions wrapper missing; got: {html}"
+        );
+    }
+
+    #[test]
+    fn page_header_renders_children_as_body_below_chrome() {
+        // Phase 165 F11: previously PageHeader silently dropped
+        // Element.children. The body block now renders below the chrome.
+        let spec = build_spec(vec![
+            (
+                "root",
+                Element::new("PageHeader")
+                    .prop("title", "Customers")
+                    .child("body_card"),
+            ),
+            (
+                "body_card",
+                Element::new("Card").prop("title", "Customer list"),
+            ),
+        ]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_page_header(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("Customers"),
+            "header title missing; got: {html}"
+        );
+        assert!(
+            html.contains("Customer list"),
+            "child Card body missing — F11 regression; got: {html}"
+        );
+        // Chrome closes before body container opens.
+        let chrome_close = html
+            .find("</div><div class=\"flex flex-col gap-4\">")
+            .or_else(|| html.find("</div>\n<div class=\"flex flex-col gap-4\">"));
+        assert!(
+            chrome_close.is_some(),
+            "body wrapper must follow the chrome div; got: {html}"
+        );
+    }
+
+    #[test]
+    fn page_header_with_empty_children_is_unchanged() {
+        // Back-compat: no children → no body wrapper, same HTML shape as before.
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("PageHeader").prop("title", "Static"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_page_header(el, &spec, &json!({}), 1);
+        assert!(html.contains("Static"));
+        assert!(
+            !html.contains("flex flex-col gap-4"),
+            "body wrapper must not appear when children list is empty; got: {html}"
         );
     }
 
