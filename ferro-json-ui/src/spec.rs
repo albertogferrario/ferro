@@ -1701,8 +1701,8 @@ mod tests {
     }
 
     #[test]
-    fn nested_builder_flattens_two_levels() {
-        // root > section > text — three-deep, exactly at MAX_NESTING_DEPTH=3.
+    fn nested_builder_accepts_depth_three() {
+        // root > section > text — three-deep, well within MAX_NESTING_DEPTH=5.
         let spec = Spec::builder()
             .element_nested(
                 "root",
@@ -1722,6 +1722,53 @@ mod tests {
         let leaf = spec.elements.get("root-0-0").expect("leaf");
         assert_eq!(leaf.type_name, "Text");
         assert!(leaf.children.is_empty());
+    }
+
+    #[test]
+    fn nested_builder_accepts_depth_five() {
+        // root > grid > card > row > text — five levels, exactly at MAX_NESTING_DEPTH=5.
+        let spec = Spec::builder()
+            .element_nested(
+                "root",
+                NestedElement::new("Screen").child(
+                    NestedElement::new("Grid").child(
+                        NestedElement::new("Card").child(
+                            NestedElement::new("Row").child(
+                                NestedElement::new("Text").prop("content", "leaf"),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+            .build()
+            .expect("five levels at depth limit must be valid");
+        assert!(spec.elements.contains_key("root"));
+    }
+
+    #[test]
+    fn nested_builder_rejects_depth_six() {
+        // root > grid > card > row > col > text — six levels, one past MAX_NESTING_DEPTH=5.
+        let err = Spec::builder()
+            .element_nested(
+                "root",
+                NestedElement::new("Screen").child(
+                    NestedElement::new("Grid").child(
+                        NestedElement::new("Card").child(
+                            NestedElement::new("Row").child(
+                                NestedElement::new("Column").child(
+                                    NestedElement::new("Text").prop("content", "too deep"),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+            .build()
+            .expect_err("six levels must exceed the depth limit");
+        assert!(
+            matches!(err, SpecError::DepthExceeded { .. }),
+            "expected DepthExceeded, got {err:?}"
+        );
     }
 
     #[test]
