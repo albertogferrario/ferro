@@ -70,7 +70,7 @@ Missing placeholders substitute as `""` (empty string). To emit a literal `{` or
 
 Expressions are resolved in `element.props` values only. They are **not** resolved in:
 
-- `spec.title` — literal string
+- `spec.title` — accepts a literal string OR a `{"$data": "/path"}` binding (resolved at render time; see [Spec Construction — title binding](spec-construction.md#spectitle-binding))
 - `spec.layout` — literal string
 - `spec.data` — the data source itself
 - `element.children` — always a list of element ID strings
@@ -175,6 +175,67 @@ With three orders, expansion produces `order_card-0` through `order_card-2`, eac
 
 - Per-row `action.url` values are not synthesized from row data inside `$each`. The controller pre-resolves URLs into `spec.data` and the templated element references them via `{ "$data": "/order/advance_url" }`.
 - Nested `$each` is rejected. If a use case appears, file an issue with the data shape.
+
+### Example: kanban cards from a data array
+
+`$each` can template the card elements inside a fixed `KanbanColumn`. This is distinct from `KanbanBoard.data_path` (documented in [components.md](components.md#dynamic-columns-via-data_path)), which varies the column set itself.
+
+| Pattern | Use when |
+|---------|----------|
+| `KanbanBoard.data_path` | The column set varies per request (one column per status); each column has the same `KanbanColumnProps` shape |
+| `$each` inside `KanbanColumn` | The column set is fixed, but card content varies per item in a data array |
+
+**Spec with `$each` inside a fixed column:**
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Orders",
+  "layout": "dashboard",
+  "root": "board",
+  "elements": {
+    "board": {
+      "type": "KanbanBoard",
+      "props": {
+        "columns": [
+          { "id": "pending", "title": "Pending", "count": 3, "children": ["pending_card"] }
+        ]
+      }
+    },
+    "pending_card": {
+      "type": "Card",
+      "$each": { "path": "/orders/pending", "as": "order" },
+      "props": {
+        "title": { "$template": "#{/order/number} — {/order/total}" },
+        "description": { "$data": "/order/customer_name" }
+      },
+      "children": ["pending_card_badge"]
+    },
+    "pending_card_badge": {
+      "type": "Badge",
+      "$each": { "path": "/orders/pending", "as": "order" },
+      "props": { "label": { "$data": "/order/status_label" } }
+    }
+  }
+}
+```
+
+Handler data:
+
+```json
+{
+  "orders": {
+    "pending": [
+      { "number": "1042", "total": "€ 99,00", "customer_name": "Alice", "status_label": "New" },
+      { "number": "1043", "total": "€ 45,00", "customer_name": "Bob",   "status_label": "New" }
+    ]
+  }
+}
+```
+
+At resolve time, `pending_card` expands to `pending_card-0` and `pending_card-1`; `pending_card_badge` expands to correlated clones. The `KanbanBoard.columns[0].children` list is rewritten to reference the clone IDs.
+
+Use this pattern when the column structure is determined at design time (fixed set of statuses) and only the card content comes from runtime data. When the column set itself varies per request, use [`KanbanBoard.data_path`](components.md#dynamic-columns-via-data_path) instead.
 
 ## $if
 
