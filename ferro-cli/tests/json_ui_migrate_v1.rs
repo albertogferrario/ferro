@@ -181,6 +181,45 @@ fn codemod_runtime_branch_emits_todo_marker() {
 }
 
 #[test]
+fn codemod_emits_uppercase_http_methods() {
+    // Regression test for V7-RUNTIME-FRICTION F2 / Phase 164 D-19.
+    // The mapping at ferro-cli/src/commands/json_ui_migrate_v1.rs:521-528
+    // must continue emitting uppercase HTTP method names. The 2026-05-17
+    // field test exposed 26 gestiscilo specs with lowercase methods that
+    // required a sed workaround. This test locks in the uppercase contract.
+    let dir = TempDir::new().unwrap();
+    let src_path = write_fixture(&dir, "in_all_verbs.rs", "src/controllers/in_all_verbs.rs");
+    let _cwd_guard = ChangeCwd::new(dir.path());
+
+    json_ui_migrate_v1::run(src_path.to_string_lossy().to_string(), false).expect("codemod runs");
+
+    let spec_path = dir.path().join("src/views/in_all_verbs/show.json");
+    assert!(
+        spec_path.exists(),
+        "spec emitted at {}",
+        spec_path.display()
+    );
+    let content = std::fs::read_to_string(&spec_path).expect("emitted JSON readable");
+
+    // Every uppercase verb must appear in the emitted spec.
+    for verb in &["POST", "GET", "PUT", "PATCH", "DELETE"] {
+        assert!(
+            content.contains(&format!(r#""method": "{verb}""#))
+                || content.contains(&format!(r#""method":"{verb}""#)),
+            "expected uppercase {verb} in emitted JSON, got:\n{content}"
+        );
+    }
+    // No lowercase verbs must leak through.
+    for verb in &["post", "get", "put", "patch", "delete"] {
+        assert!(
+            !content.contains(&format!(r#""method": "{verb}""#))
+                && !content.contains(&format!(r#""method":"{verb}""#)),
+            "lowercase HTTP method {verb} leaked into emitted JSON:\n{content}"
+        );
+    }
+}
+
+#[test]
 fn codemod_writes_no_spec_for_unsupported_handler() {
     let dir = TempDir::new().unwrap();
     let src_path = write_fixture(
