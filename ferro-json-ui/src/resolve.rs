@@ -10,21 +10,42 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use crate::action::Action;
+use crate::action::{Action, ActionHandler};
 use crate::spec::{Element, Spec};
 
 /// Resolve a single action using the callback. Literal paths (starting
 /// with '/') are passed through as-is so callers can use
 /// `Action::get("/dashboard/...")` without registering a named route.
-fn resolve_action(action: &mut Action, resolver: &impl Fn(&str) -> Option<String>) {
-    if action.url.is_none() {
-        if action.handler.starts_with('/') {
-            action.url = Some(action.handler.clone());
-            return;
-        }
-        if let Some(url) = resolver(&action.handler) {
-            action.url = Some(url);
-        }
+///
+/// `data` is the `spec.data` payload — used to resolve `ActionHandler::Binding`
+/// references (F14, Phase 165). Binding-shape handlers resolve against the
+/// JSON pointer in `spec.data`; the resolved string is then treated as a
+/// literal handler (resolver lookup or `/path` pass-through).
+fn resolve_action(
+    action: &mut Action,
+    data: &serde_json::Value,
+    resolver: &impl Fn(&str) -> Option<String>,
+) {
+    if action.url.is_some() {
+        return;
+    }
+    // Materialise the handler to a literal string. Binding-shape handlers
+    // resolve against spec.data; missing bindings degrade to no-op so the
+    // diagnostic comment surfaces in render.
+    let literal: Option<String> = match &action.handler {
+        ActionHandler::Literal(s) => Some(s.clone()),
+        ActionHandler::Binding(d) => crate::data::resolve_path(data, &d.data)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+    };
+    let Some(s) = literal else { return };
+
+    if s.starts_with('/') {
+        action.url = Some(s);
+        return;
+    }
+    if let Some(url) = resolver(&s) {
+        action.url = Some(url);
     }
 }
 
@@ -33,9 +54,10 @@ fn resolve_action(action: &mut Action, resolver: &impl Fn(&str) -> Option<String
 /// Mutates in place. Silent on missing handlers — use
 /// `resolve_actions_strict` if you want to collect missing names.
 pub fn resolve_actions(spec: &mut Spec, resolver: impl Fn(&str) -> Option<String>) {
+    let data = spec.data.clone();
     for el in spec.elements.values_mut() {
         if let Some(action) = el.action.as_mut() {
-            resolve_action(action, &resolver);
+            resolve_action(action, &data, &resolver);
         }
     }
 }
@@ -47,12 +69,13 @@ pub fn resolve_actions_strict(
     spec: &mut Spec,
     resolver: impl Fn(&str) -> Option<String>,
 ) -> Result<(), Vec<String>> {
+    let data = spec.data.clone();
     let mut missing: Vec<String> = Vec::new();
     for el in spec.elements.values_mut() {
         if let Some(action) = el.action.as_mut() {
-            resolve_action(action, &resolver);
+            resolve_action(action, &data, &resolver);
             if action.url.is_none() {
-                missing.push(action.handler.clone());
+                missing.push(action.handler.as_str().to_string());
             }
         }
     }
@@ -209,6 +232,12 @@ fn expand_each(
             clone.if_ = None;
             // Pre-resolve /{as}/... paths in props against the current row.
             inline_resolve_row_paths(&mut clone.props, &each.as_, row);
+            // Phase 165 F14: pre-resolve /{as}/... action.handler bindings to
+            // a literal string so per-row navigation works (handler accepts
+            // {"$data": "/{as}/action_url"} → ActionHandler::Literal("/dashboard/.../...")).
+            if let Some(action) = clone.action.as_mut() {
+                inline_resolve_row_action(action, &each.as_, row);
+            }
             // Rewrite this clone's children list for correlated-each siblings.
             for child in clone.children.iter_mut() {
                 if let Some(child_each) = template_directives.get(child) {
@@ -238,6 +267,38 @@ fn expand_each(
 fn inline_resolve_row_paths(value: &mut serde_json::Value, as_name: &str, row: &serde_json::Value) {
     let prefix = format!("/{as_name}/");
     inline_walk(value, &prefix, row, as_name);
+}
+
+/// Phase 165 F14: pre-resolve `ActionHandler::Binding` references that point
+/// into the current `$each` row.
+///
+/// `{"$data": "/{as}/field"}` becomes `ActionHandler::Literal(row.field)`.
+/// `{"$data": "/global_field"}` is left untouched — `resolve_actions` will
+/// resolve it against `spec.data` later.
+fn inline_resolve_row_action(
+    action: &mut crate::action::Action,
+    as_name: &str,
+    row: &serde_json::Value,
+) {
+    use crate::action::ActionHandler;
+    let prefix = format!("/{as_name}/");
+    if let ActionHandler::Binding(d) = &action.handler {
+        if let Some(rest) = d.data.strip_prefix(&prefix) {
+            let resolved = crate::data::resolve_path(row, &format!("/{rest}"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            if let Some(s) = resolved {
+                action.handler = ActionHandler::Literal(s);
+            }
+            // Missing field: leave binding; resolve_actions will degrade to None.
+        } else if d.data == format!("/{as_name}") {
+            // `{"$data": "/cell"}` — whole row as string when row is a string.
+            if let Some(s) = row.as_str() {
+                action.handler = ActionHandler::Literal(s.to_string());
+            }
+        }
+        // Non-row paths stay as Binding; resolve_actions handles them later.
+    }
 }
 
 fn inline_walk(
@@ -396,7 +457,7 @@ mod tests {
 
     fn action(handler: &str) -> Action {
         Action {
-            handler: handler.to_string(),
+            handler: ActionHandler::Literal(handler.to_string()),
             url: None,
             method: HttpMethod::Post,
             confirm: None,
@@ -423,6 +484,191 @@ mod tests {
 
         let el = spec.elements.get("btn").unwrap();
         assert_eq!(el.action.as_ref().unwrap().url.as_deref(), Some("/users"));
+    }
+
+    // ── F14: ActionHandler binding resolution ───────────────────────────
+
+    fn action_with_binding(path: &str) -> Action {
+        Action {
+            handler: ActionHandler::Binding(crate::spec::DataRef {
+                data: path.to_string(),
+            }),
+            url: None,
+            method: HttpMethod::Get,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+            target: None,
+        }
+    }
+
+    #[test]
+    fn resolve_actions_resolves_binding_to_literal_path_via_spec_data() {
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({ "row": { "url": "/dashboard/orders/42" } }))
+            .element(
+                "btn",
+                Element::new("Button").action(action_with_binding("/row/url")),
+            )
+            .build()
+            .unwrap();
+
+        resolve_actions(&mut spec, |_| None);
+
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(
+            el.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/orders/42"),
+            "binding pointing to a `/path` string in spec.data resolves to action.url"
+        );
+    }
+
+    #[test]
+    fn resolve_actions_resolves_binding_to_named_handler_via_resolver() {
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({ "row": { "handler": "users.show" } }))
+            .element(
+                "btn",
+                Element::new("Button").action(action_with_binding("/row/handler")),
+            )
+            .build()
+            .unwrap();
+
+        resolve_actions(&mut spec, |name| {
+            (name == "users.show").then(|| "/users/show".to_string())
+        });
+
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(
+            el.action.as_ref().unwrap().url.as_deref(),
+            Some("/users/show"),
+            "binding resolved to handler name flows through the resolver"
+        );
+    }
+
+    #[test]
+    fn resolve_actions_binding_missing_data_leaves_url_unset() {
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({}))
+            .element(
+                "btn",
+                Element::new("Button").action(action_with_binding("/missing")),
+            )
+            .build()
+            .unwrap();
+
+        resolve_actions(&mut spec, |_| Some("UNEXPECTED".to_string()));
+
+        let el = spec.elements.get("btn").unwrap();
+        assert!(
+            el.action.as_ref().unwrap().url.is_none(),
+            "missing binding data leaves url unset (renderer emits diagnostic)"
+        );
+    }
+
+    #[test]
+    fn resolve_actions_skips_when_url_already_resolved() {
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({ "row": { "url": "/from-data" } }))
+            .element("btn", {
+                let mut a = action_with_binding("/row/url");
+                a.url = Some("/preset".to_string());
+                Element::new("Button").action(a)
+            })
+            .build()
+            .unwrap();
+
+        resolve_actions(&mut spec, |_| None);
+
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(el.action.as_ref().unwrap().url.as_deref(), Some("/preset"));
+    }
+
+    #[test]
+    fn each_inlines_row_action_url_to_literal() {
+        // $each over /cells; each row has action_url; per-row CalendarCell-style
+        // action.handler binding points at /{as}/action_url. expand_each must
+        // pre-resolve it to ActionHandler::Literal(row.action_url) so
+        // resolve_actions can then set action.url.
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "grid",
+            "elements": {
+                "grid": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["cell"]
+                },
+                "cell": {
+                    "type": "CalendarCell",
+                    "$each": {"path": "/cells", "as": "c"},
+                    "props": {"day": {"$data": "/c/day"}},
+                    "action": {
+                        "handler": {"$data": "/c/action_url"},
+                        "method": "GET"
+                    }
+                }
+            },
+            "data": {
+                "cells": [
+                    {"day": 17, "action_url": "/dashboard/calendario?date=2026-05-17"},
+                    {"day": 18, "action_url": "/dashboard/calendario?date=2026-05-18"}
+                ]
+            }
+        }));
+
+        expand_directives(&mut spec);
+        resolve_actions(&mut spec, |_| None);
+
+        let cell0 = spec.elements.get("cell-0").expect("expanded cell-0");
+        let cell1 = spec.elements.get("cell-1").expect("expanded cell-1");
+        assert_eq!(
+            cell0.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/calendario?date=2026-05-17"),
+            "$each inlines /c/action_url to a literal; resolve_actions promotes literal to url"
+        );
+        assert_eq!(
+            cell1.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/calendario?date=2026-05-18")
+        );
+    }
+
+    #[test]
+    fn each_leaves_non_row_action_bindings_for_resolve_actions() {
+        // Binding to /global_field (not /{as}/...) survives $each unchanged,
+        // then resolve_actions resolves it against spec.data.
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "grid",
+            "elements": {
+                "grid": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["item"]
+                },
+                "item": {
+                    "type": "Button",
+                    "$each": {"path": "/items", "as": "i"},
+                    "props": {"label": {"$data": "/i/label"}},
+                    "action": {
+                        "handler": {"$data": "/global_link"},
+                        "method": "GET"
+                    }
+                }
+            },
+            "data": {
+                "items": [{"label": "a"}, {"label": "b"}],
+                "global_link": "/dashboard/shared"
+            }
+        }));
+
+        expand_directives(&mut spec);
+        resolve_actions(&mut spec, |_| None);
+
+        let i0 = spec.elements.get("item-0").unwrap();
+        let i1 = spec.elements.get("item-1").unwrap();
+        assert_eq!(i0.action.as_ref().unwrap().url.as_deref(), Some("/dashboard/shared"));
+        assert_eq!(i1.action.as_ref().unwrap().url.as_deref(), Some("/dashboard/shared"));
     }
 
     #[test]

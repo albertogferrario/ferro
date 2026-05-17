@@ -65,7 +65,7 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
             "#".to_string(),
             format!(
                 "<!-- ferro-json-ui: action '{}' has no resolved url -->",
-                html_escape(&props.action.handler)
+                html_escape(props.action.handler.as_str())
             ),
         ),
     };
@@ -594,7 +594,7 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
                 "#".to_string(),
                 format!(
                     "<!-- ferro-json-ui: action '{}' has no resolved url -->",
-                    html_escape(&action.handler)
+                    html_escape(action.handler.as_str())
                 ),
             ),
         };

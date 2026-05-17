@@ -87,11 +87,11 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                     html.push_str("<td class=\"px-6 py-4 text-right text-sm space-x-2\">");
                     for action in actions {
                         let url = action.url.as_deref().unwrap_or("#");
-                        let label = action
-                            .handler
+                        let handler_str = action.handler.as_str();
+                        let label = handler_str
                             .split('.')
                             .next_back()
-                            .unwrap_or(&action.handler);
+                            .unwrap_or(handler_str);
                         html.push_str(&format!(
                             "<a href=\"{}\" class=\"text-primary hover:text-primary/80\">{}</a>",
                             html_escape(url),
@@ -307,7 +307,7 @@ fn template_actions(
                 .action
                 .url
                 .clone()
-                .or_else(|| Some(cloned.action.handler.clone()));
+                .or_else(|| Some(cloned.action.handler.as_str().to_string()));
             if let Some(mut url) = base_url {
                 // Substitute all row column keys first.
                 if let Some(obj) = row.as_object() {

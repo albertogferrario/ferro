@@ -215,7 +215,7 @@ pub(crate) fn render_button(el: &Element, _spec: &Spec, _data: &Value, _depth: u
                     "#".to_string(),
                     format!(
                         "<!-- ferro-json-ui: action '{}' has no resolved url -->",
-                        html_escape(&action.handler)
+                        html_escape(action.handler.as_str())
                     ),
                 ),
             };
