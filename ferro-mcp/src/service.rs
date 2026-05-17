@@ -244,6 +244,12 @@ pub struct JsonUiVerifyActionParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct JsonUiValidateSpecParams {
+    /// The full JSON-UI v2 spec JSON string to validate.
+    pub spec_json: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CrudCreateParams {
     /// Model name (e.g., "User", "Post"). Case-insensitive, matches against project models.
     pub model: String,
@@ -1363,6 +1369,29 @@ impl FerroMcpService {
             }
             Err(e) => format!("{{\"error\": \"{e}\"}}"),
         }
+    }
+
+    /// Validate a JSON-UI v2 spec against the structural validator and component catalog
+    #[tool(
+        name = "json_ui_validate_spec",
+        description = "Validate a JSON-UI v2 spec JSON string against the structural validator \
+            and the component catalog. Returns structural errors and catalog errors separately \
+            so the caller can distinguish parse-time failures from component-prop failures.\n\n\
+            **When to use:** Before saving or wiring a spec, confirm it will load without errors \
+            at server startup. Structural errors (missing root, dangling refs, depth violations, \
+            directive problems) and catalog errors (wrong enum variant, missing required prop) are \
+            reported in distinct vecs.\n\n\
+            **Returns:** `{ valid, structural_errors, catalog_errors, warnings }` — `valid` is \
+            true iff both error vecs are empty.\n\n\
+            **Combine with:** `json_ui_catalog` for component prop reference, \
+            `json_ui_inspect` to list existing views."
+    )]
+    pub async fn json_ui_validate_spec(
+        &self,
+        params: Parameters<JsonUiValidateSpecParams>,
+    ) -> String {
+        let result = tools::json_ui_validate_spec::execute(&params.0.spec_json);
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
     }
 
     /// Create a new record for a model
