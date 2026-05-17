@@ -4,14 +4,14 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
 stopped_at: Completed 163.1-01-PLAN.md (Phase 163.1 complete)
-last_updated: "2026-05-17T00:58:21.863Z"
-last_activity: 2026-05-17 -- Phase 164 execution started
+last_updated: "2026-05-17T03:43:49.342Z"
+last_activity: 2026-05-17
 progress:
-  total_phases: 172
-  completed_phases: 154
+  total_phases: 173
+  completed_phases: 155
   total_plans: 462
-  completed_plans: 440
-  percent: 95
+  completed_plans: 452
+  percent: 98
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 164 (json-ui-improvements-batch-3-documenti-field-test-findings-m) — EXECUTING
-Plan: 1 of 12
+Phase: 174
+Plan: Not started
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Executing Phase 164
-Last activity: 2026-05-17 -- Phase 164 execution started
+Last activity: 2026-05-17
 
 Progress: [████████░░] 84%
 
@@ -37,7 +37,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 84
+- Total plans completed: 96
 - Average duration: —
 - Total execution time: —
 
@@ -63,6 +63,7 @@ Progress: [████████░░] 84%
 | 159 | 3 | - | - |
 | 162 | 10 | - | - |
 | 163 | 10 | - | - |
+| 164 | 12 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
