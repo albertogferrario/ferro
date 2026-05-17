@@ -724,7 +724,7 @@ mod tests {
             content: "<p>Hello</p>",
             head: "<link rel=\"stylesheet\" href=\"/style.css\">",
             body_class: "bg-background",
-            view_json: "{\"schema\":\"v1\"}",
+            view_json: "{\"schema\":\"ferro-json-ui/v2\"}",
             data_json: "{\"key\":\"value\"}",
             scripts: "",
         }

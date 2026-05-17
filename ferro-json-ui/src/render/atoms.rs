@@ -1,12 +1,10 @@
-//! Phase 116: leaf renderers ported verbatim from v1 render.rs.
+//! Leaf-element renderers.
 //!
-//! Per CONTEXT D-21 the v1 HTML emission is the canonical contract; this module
-//! changes only the function signature (now `(el, spec, data, depth)`) and adds
-//! the D-12 props-decode diagnostic. Children-recursion is not used here —
-//! atoms are leaves per RESEARCH §"Atoms".
-//!
-//! v1 reference: `git show 40385f32^:ferro-json-ui/src/render.rs`. Line ranges
-//! for each ported function are recorded in the per-function doc comments.
+//! Each public function in this module takes `(el, spec, data, depth)` and
+//! returns an HTML fragment. Atoms have no recursive children — they decode
+//! their typed `*Props`, escape and substitute text, and emit a self-contained
+//! HTML element. Decode failures surface via [`decode_diagnostic`] as an HTML
+//! comment rather than a panic.
 
 use serde_json::Value;
 
@@ -23,7 +21,7 @@ use crate::spec::{Element, Spec};
 
 use super::html_escape;
 
-// ── Prop-decode diagnostic helper (D-12) ─────────────────────────────────
+// ── Prop-decode diagnostic helper ────────────────────────────────────────
 
 /// Emits a `<!-- ferro-json-ui: failed to decode TYPE props: MSG -->` comment.
 /// Used as the fallback on serde_json::from_value decode errors across every
@@ -54,7 +52,7 @@ fn decode_props<TProps: serde::de::DeserializeOwned>(
     }
 }
 
-// ── SVG icon constants (ported verbatim from v1 render.rs) ──────────────
+// ── SVG icon constants ───────────────────────────────────────────────────
 
 const ICON_INFO: &str = concat!(
     "<span aria-hidden=\"true\" class=\"shrink-0\">",
@@ -109,7 +107,7 @@ const BELL_SVG: &str = concat!(
     "</svg>"
 );
 
-// ── 1. Text (v1 render.rs lines 1715-1733) ──────────────────────────────
+// ── 1. Text ──────────────────────────────────────────────────────────────
 
 pub(crate) fn render_text(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: TextProps = match decode_props(&el.props) {
@@ -128,9 +126,12 @@ pub(crate) fn render_text(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
     }
 }
 
-// ── 2. Button (v1 render.rs lines 1734-1798 + render_node wrap 251-286) ──
+// ── 2. Button ────────────────────────────────────────────────────────────
 
-/// Inner <button> markup — ported verbatim from v1 render_button (lines 1734-1798).
+/// Emits the inner `<button>` markup for a `Button` element. Reads
+/// `ButtonProps` (variant, size, icon, label, disabled) and produces the
+/// styled button without any wrapping anchor — the anchor wrap is applied by
+/// [`render_button`] when the element carries a GET action.
 fn render_button_inner(props: &ButtonProps) -> String {
     let base = "inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
@@ -199,8 +200,9 @@ pub(crate) fn render_button(el: &Element, _spec: &Spec, _data: &Value, _depth: u
 
     let inner_html = render_button_inner(&props);
 
-    // Wrap in <a> if action exists and method is GET (v1 render_node lines 251-286).
-    // Per CONTEXT D-15/D-16: url = None emits diagnostic + falls back to href="#".
+    // GET actions wrap the inner button in an `<a>` for href-driven navigation.
+    // When the action has no resolved url, fall back to `href="#"` and emit a
+    // diagnostic HTML comment.
     if let Some(action) = &el.action {
         if matches!(action.method, HttpMethod::Get) {
             let target_attr = match action.target.as_deref() {
@@ -221,13 +223,14 @@ pub(crate) fn render_button(el: &Element, _spec: &Spec, _data: &Value, _depth: u
                 "{diagnostic}<a href=\"{href}\" class=\"block\"{target_attr}>{inner_html}</a>"
             );
         }
-        // Non-GET actions: v1 render_node returns the inner button as-is. Client
-        // runtime reads `data-*` attrs the form/button wrapper adds elsewhere.
+        // Non-GET actions: the inner button is returned as-is. The client
+        // runtime reads `data-*` attributes added by the form/button wrapper
+        // elsewhere.
     }
     inner_html
 }
 
-// ── 3. Badge (v1 render.rs lines 1799-1844) ──────────────────────────────
+// ── 3. Badge ─────────────────────────────────────────────────────────────
 
 pub(crate) fn render_badge(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: BadgeProps = match decode_props(&el.props) {
@@ -249,7 +252,7 @@ pub(crate) fn render_badge(el: &Element, _spec: &Spec, _data: &Value, _depth: us
     )
 }
 
-// ── 4. Alert (v1 render.rs lines 1845-1874) ──────────────────────────────
+// ── 4. Alert ─────────────────────────────────────────────────────────────
 
 pub(crate) fn render_alert(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: AlertProps = match decode_props(&el.props) {
@@ -285,7 +288,7 @@ pub(crate) fn render_alert(el: &Element, _spec: &Spec, _data: &Value, _depth: us
     html
 }
 
-// ── 5. Separator (v1 render.rs lines 1875-1882) ──────────────────────────
+// ── 5. Separator ─────────────────────────────────────────────────────────
 
 pub(crate) fn render_separator(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: SeparatorProps = match decode_props(&el.props) {
@@ -299,7 +302,7 @@ pub(crate) fn render_separator(el: &Element, _spec: &Spec, _data: &Value, _depth
     }
 }
 
-// ── 6. Progress (v1 render.rs lines 1883-1904) ───────────────────────────
+// ── 6. Progress ──────────────────────────────────────────────────────────
 
 pub(crate) fn render_progress(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: ProgressProps = match decode_props(&el.props) {
@@ -327,7 +330,7 @@ pub(crate) fn render_progress(el: &Element, _spec: &Spec, _data: &Value, _depth:
     html
 }
 
-// ── 7. Avatar (v1 render.rs lines 1905-1935) ─────────────────────────────
+// ── 7. Avatar ────────────────────────────────────────────────────────────
 
 pub(crate) fn render_avatar(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: AvatarProps = match decode_props(&el.props) {
@@ -360,7 +363,7 @@ pub(crate) fn render_avatar(el: &Element, _spec: &Spec, _data: &Value, _depth: u
     }
 }
 
-// ── 8. Image (v1 render.rs lines 1936-1977) ──────────────────────────────
+// ── 8. Image ─────────────────────────────────────────────────────────────
 
 pub(crate) fn render_image(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: ImageProps = match decode_props(&el.props) {
@@ -412,7 +415,7 @@ pub(crate) fn render_image(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     )
 }
 
-// ── 9. Skeleton (v1 render.rs lines 1978-1997) ───────────────────────────
+// ── 9. Skeleton ──────────────────────────────────────────────────────────
 
 pub(crate) fn render_skeleton(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: SkeletonProps = match decode_props(&el.props) {
@@ -426,8 +429,9 @@ pub(crate) fn render_skeleton(el: &Element, _spec: &Spec, _data: &Value, _depth:
     } else {
         "rounded-md"
     };
-    // v1 emits width/height unescaped into a `style` attribute. Escape them to
-    // preserve the XSS discipline of html_escape on every interpolated string.
+    // Width and height are passed through `html_escape` before interpolation
+    // into the `style` attribute to preserve the XSS discipline that every
+    // interpolated string is escaped.
     format!(
         "{SHIMMER_CSS}<div class=\"ferro-shimmer {rounded}\" style=\"width: {}; height: {}\"></div>",
         html_escape(width),
@@ -435,7 +439,7 @@ pub(crate) fn render_skeleton(el: &Element, _spec: &Spec, _data: &Value, _depth:
     )
 }
 
-// ── 10. Breadcrumb (v1 render.rs lines 1998-2025) ────────────────────────
+// ── 10. Breadcrumb ───────────────────────────────────────────────────────
 
 pub(crate) fn render_breadcrumb(
     el: &Element,
@@ -474,7 +478,7 @@ pub(crate) fn render_breadcrumb(
     html
 }
 
-// ── 11. Pagination (v1 render.rs lines 2026-2106) ────────────────────────
+// ── 11. Pagination ───────────────────────────────────────────────────────
 
 pub(crate) fn render_pagination(
     el: &Element,
@@ -543,8 +547,9 @@ pub(crate) fn render_pagination(
     html
 }
 
-/// Compute which page numbers to display (up to 7 entries). Ported verbatim
-/// from v1 render.rs helper.
+/// Computes the sequence of page numbers to display (up to 7 entries) given
+/// the current page and the total page count. Always includes page 1 and the
+/// last page, plus a window around the current page.
 fn compute_page_range(current: u32, total: u32) -> Vec<u32> {
     if total <= 7 {
         return (1..=total).collect();
@@ -566,7 +571,7 @@ fn compute_page_range(current: u32, total: u32) -> Vec<u32> {
     pages
 }
 
-// ── 12. DescriptionList (v1 render.rs lines 2107-2122) ──────────────────
+// ── 12. DescriptionList ──────────────────────────────────────────────────
 
 pub(crate) fn render_description_list(
     el: &Element,
@@ -579,7 +584,7 @@ pub(crate) fn render_description_list(
         Err(e) => return decode_diagnostic("DescriptionList", e),
     };
 
-    // D-15: data_path takes precedence over static items.
+    // `data_path` takes precedence over static `items` when present.
     let items: Vec<crate::component::DescriptionItem> = props
         .data_path
         .as_deref()
@@ -605,7 +610,7 @@ pub(crate) fn render_description_list(
     html
 }
 
-// ── 13. EmptyState (v1 render.rs lines 2185-2213) ────────────────────────
+// ── 13. EmptyState ───────────────────────────────────────────────────────
 
 pub(crate) fn render_empty_state(
     el: &Element,
@@ -645,7 +650,7 @@ pub(crate) fn render_empty_state(
     html
 }
 
-// ── 14. StatCard (v1 render.rs lines 2263-2297) ─────────────────────────
+// ── 14. StatCard ─────────────────────────────────────────────────────────
 
 pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: StatCardProps = match decode_props(&el.props) {
@@ -655,7 +660,8 @@ pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, _data: &Value, _depth
     let mut html =
         String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
     if let Some(ref icon) = props.icon {
-        // v1 note: icon is raw (trusted SVG from server authoring).
+        // Icon string is emitted raw — trusted SVG supplied by server-side
+        // authoring; not user input.
         html.push_str(&format!(
             "<span class=\"inline-block mb-2 w-6 h-6\">{icon}</span>"
         ));
@@ -686,7 +692,7 @@ pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, _data: &Value, _depth
     html
 }
 
-// ── 15. Checklist (v1 render.rs lines 2298-2360) ────────────────────────
+// ── 15. Checklist ────────────────────────────────────────────────────────
 
 pub(crate) fn render_checklist(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: ChecklistProps = match decode_props(&el.props) {
@@ -755,7 +761,7 @@ pub(crate) fn render_checklist(el: &Element, _spec: &Spec, _data: &Value, _depth
     html
 }
 
-// ── 16. Toast (v1 render.rs lines 2361-2404) ────────────────────────────
+// ── 16. Toast ────────────────────────────────────────────────────────────
 
 pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: ToastProps = match decode_props(&el.props) {
@@ -796,7 +802,7 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
     html
 }
 
-// ── 17. NotificationDropdown (v1 render.rs lines 2405-2471) ─────────────
+// ── 17. NotificationDropdown ─────────────────────────────────────────────
 
 pub(crate) fn render_notification_dropdown(
     el: &Element,
@@ -872,7 +878,7 @@ pub(crate) fn render_notification_dropdown(
     html
 }
 
-// ── 18. Sidebar (v1 render.rs lines 2472-2535) ─────────────────────────
+// ── 18. Sidebar ──────────────────────────────────────────────────────────
 
 pub(crate) fn render_sidebar(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: SidebarProps = match decode_props(&el.props) {
@@ -919,8 +925,9 @@ pub(crate) fn render_sidebar(el: &Element, _spec: &Spec, _data: &Value, _depth: 
     html
 }
 
-/// Render a single sidebar nav item. Ported verbatim from v1 render.rs lines
-/// 2516-2535. `item.icon` is emitted raw (trusted SVG from server authoring).
+/// Renders a single sidebar nav item as an `<a>` element. `item.icon` is
+/// emitted raw — trusted SVG supplied by server-side authoring; not user
+/// input.
 fn render_sidebar_nav_item(item: &SidebarNavItem) -> String {
     let classes = if item.active {
         "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
@@ -941,7 +948,7 @@ fn render_sidebar_nav_item(item: &SidebarNavItem) -> String {
     html
 }
 
-// ── 19. Header (v1 render.rs lines 2536-2590) ───────────────────────────
+// ── 19. Header ───────────────────────────────────────────────────────────
 
 pub(crate) fn render_header(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: HeaderProps = match decode_props(&el.props) {
@@ -999,7 +1006,7 @@ pub(crate) fn render_header(el: &Element, _spec: &Spec, _data: &Value, _depth: u
     html
 }
 
-// ── 20. DropdownMenu (v1 render.rs lines 591-693) ───────────────────────
+// ── 20. DropdownMenu ─────────────────────────────────────────────────────
 
 pub(crate) fn render_dropdown_menu(
     el: &Element,
@@ -1108,7 +1115,7 @@ pub(crate) fn render_dropdown_menu(
     html
 }
 
-// ── 21. CalendarCell (v1 render.rs lines 355-418) ───────────────────────
+// ── 21. CalendarCell ─────────────────────────────────────────────────────
 
 pub(crate) fn render_calendar_cell(
     el: &Element,
@@ -1177,7 +1184,7 @@ pub(crate) fn render_calendar_cell(
     html
 }
 
-// ── 22. ActionCard (v1 render.rs lines 419-470) ─────────────────────────
+// ── 22. ActionCard ───────────────────────────────────────────────────────
 
 pub(crate) fn render_action_card(
     el: &Element,
@@ -1234,7 +1241,7 @@ pub(crate) fn render_action_card(
     html
 }
 
-// ── 23. ProductTile (v1 render.rs lines 471-497) ────────────────────────
+// ── 23. ProductTile ──────────────────────────────────────────────────────
 
 pub(crate) fn render_product_tile(
     el: &Element,
@@ -1271,7 +1278,7 @@ pub(crate) fn render_product_tile(
     )
 }
 
-// ── RawHtml — server-injected HTML island (D-17a) ────────────────────────
+// ── RawHtml — server-injected HTML island ────────────────────────────────
 
 pub(crate) fn render_raw_html(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
     let props: RawHtmlProps = match decode_props(&el.props) {
@@ -1552,7 +1559,8 @@ mod tests {
 
     #[test]
     fn image_xss_quote_break_out_escaped() {
-        // Classic attribute-breakout attempt from v1's test suite.
+        // Classic attribute-breakout attempt: `src` must be escaped before
+        // interpolation into the `src=""` attribute.
         let spec = spec_with_root(
             Element::new("Image")
                 .prop("src", "x\" onerror=\"alert(1)")

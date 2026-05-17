@@ -39,10 +39,6 @@ use super::error::ProjectionError;
 use super::intent_layout::{default_template, pick_intent_template};
 use super::{RenderMode, VisualContext};
 
-// Silence unused-import warnings until Plan 03 rewires the legacy renderer.
-#[allow(dead_code)]
-fn _plan_02_reserved(_: &Element) {}
-
 impl Spec {
     /// Generate a v2 `Spec` from a `ServiceDef` and its ranked intents.
     ///

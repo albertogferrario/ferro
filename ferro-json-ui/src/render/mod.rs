@@ -1,16 +1,19 @@
-//! Phase 116 walker: flat-element renderer for v2 Specs.
+//! Renders a `Spec` to HTML.
 //!
-//! Replaces the Phase 115 placeholder. Walks `spec.elements` by ID starting at
-//! `spec.root`, dispatches per-element by `type_name`, and lets each container
-//! recurse via `render_element` for child IDs. Per CONTEXT D-09 the renderer is
-//! infallible — every failure path emits an HTML comment per D-10 and returns
-//! an empty string for the offending element.
+//! Walks `spec.elements` by ID starting at `spec.root`, dispatches per-element
+//! by `type_name` against [`BUILTIN_TYPES`] (or the plugin registry for any
+//! type name not in that list), and lets each container recurse via
+//! `render_element` for its child IDs. The renderer is infallible — every
+//! failure path (missing ID, decode error, depth overflow) emits an HTML
+//! comment and returns an empty string for the offending element rather than
+//! panicking.
 //!
 //! Per-component bodies live in:
-//! - `render/atoms.rs` — leaf renderers (Plan 116-03)
-//! - `render/containers.rs` — multi-child layout components (Plan 116-04)
-//! - `render/form.rs` — Form/Input/Select/Checkbox/Switch (Plan 116-05)
-//! - `render/data.rs` — Table/DataTable (Plan 116-05)
+//! - `render/atoms.rs` — leaf renderers
+//! - `render/containers.rs` — multi-child layout components
+//! - `render/form.rs` — `Form`, `Input`, `Select`, `Checkbox`, `Switch`,
+//!   `CheckboxList`
+//! - `render/data.rs` — `Table`, `DataTable`
 
 use serde_json::Value;
 use std::collections::HashSet;
@@ -30,11 +33,10 @@ pub struct RenderResult {
     pub scripts: String,
 }
 
-/// Canonical list of built-in component type names. Single source of truth for
-/// distinguishing built-ins (handled by the dispatch match below) from plugins
-/// (handled by the default arm via `with_plugin`). Per CONTEXT D-19 plugins
-/// cannot shadow built-ins — if `type_name` matches an entry here, the dispatch
-/// arm wins regardless of plugin registry contents.
+/// Single source of truth for the 41 built-in element type names recognized
+/// by the renderer. Plugins cannot register a type name that shadows an entry
+/// here — if `type_name` matches an entry, the dispatch match arm wins
+/// regardless of plugin registry contents.
 ///
 /// Order matches the dispatch match below for reviewability. Adding a new
 /// built-in requires updating BOTH this list AND the dispatch arm.
@@ -86,9 +88,12 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "DataTable",
 ];
 
-/// Top-level entry point. Walks the spec from `spec.root`, returns the rendered
-/// HTML wrapped in v1's flex-wrap container. Per CONTEXT D-09 always returns a
-/// String — never panics, never returns `Result`.
+/// Renders an entire `Spec` to a complete HTML response body. Walks from
+/// `spec.root` outward, escaping text content and substituting data bindings
+/// via JSON Pointer. Top-level output is wrapped in a `flex-wrap` container;
+/// the renderer does not emit `<html>` / `<head>` / `<body>` tags — the
+/// layout system supplies those. Always returns a `String`; never panics and
+/// never returns `Result`.
 pub fn render_spec_to_html(spec: &Spec, data: &Value) -> String {
     let body = render_element(&spec.root, spec, data, 1);
     let body_or_root_hidden = if body.is_empty() && spec_root_was_hidden(spec, data) {
@@ -123,18 +128,18 @@ pub fn render_spec_to_html_with_plugins(spec: &Spec, data: &Value) -> RenderResu
 }
 
 /// The one recursive function. All dispatch, visibility, depth-guard, and
-/// diagnostic logic lives here. Per CONTEXT D-04 the per-element pipeline is:
+/// diagnostic logic lives here. The per-element pipeline is:
 /// (1) depth guard, (2) ID lookup, (3) visibility check, (4) dispatch.
 pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) -> String {
-    // (1) Depth tripwire (D-11). Phase 115 caps parse-time depth at MAX_NESTING_DEPTH = 3;
-    // this fires only for hand-mutated Specs that bypassed `from_json`.
+    // (1) Depth tripwire. Parse-time depth is capped at `MAX_NESTING_DEPTH = 3`;
+    // this fires only for hand-mutated Specs that bypassed `Spec::from_json`.
     if depth > MAX_NESTING_DEPTH + 1 {
         return format!(
             "<!-- ferro-json-ui: cycle guard tripped at depth {depth} — spec should have been rejected at parse time -->"
         );
     }
 
-    // (2) ID lookup (D-10 missing-child diagnostic).
+    // (2) ID lookup: missing IDs surface as an HTML comment.
     let Some(el) = spec.elements.get(id) else {
         return format!(
             "<!-- ferro-json-ui: element references missing id '{}' -->",
@@ -142,7 +147,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         );
     };
 
-    // (3) Visibility check (D-13/D-14). Invisible → no output, no children walked.
+    // (3) Visibility check. Invisible → no output, no children walked.
     if let Some(vis) = &el.visible {
         if !vis.evaluate(data) {
             return String::new();
@@ -196,7 +201,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         // Data displays
         "Table" => data::render_table(el, spec, data, depth),
         "DataTable" => data::render_data_table(el, spec, data, depth),
-        // Plugin or unknown (D-03, D-17)
+        // Plugin or unknown type name.
         other => render_plugin_or_unknown(other, el, data),
     }
 }
@@ -222,8 +227,9 @@ fn spec_root_was_hidden(spec: &Spec, data: &Value) -> bool {
         .unwrap_or(false)
 }
 
-/// Flat pass over `spec.elements` collecting plugin type names. Replaces v1's
-/// recursive `collect_plugin_types_node` per CONTEXT D-18.
+/// Walks `spec.elements` and collects every plugin type name encountered
+/// (every `Element.type_name` not present in [`BUILTIN_TYPES`]). Used by the
+/// asset-collection pipeline to determine which plugin CSS/JS to inject.
 pub(crate) fn collect_plugin_types(spec: &Spec) -> HashSet<String> {
     let mut types = HashSet::new();
     for el in spec.elements.values() {
@@ -235,7 +241,9 @@ pub(crate) fn collect_plugin_types(spec: &Spec) -> HashSet<String> {
 }
 
 /// HTML-escapes interpolated identifiers in diagnostic comments and any prop
-/// content per V5 (input validation) of the Phase 116 security domain.
+/// content interpolated into emitted markup. Every string that crosses from
+/// a `Spec` or `data` into the HTML output is required to pass through this
+/// function.
 pub(crate) fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -244,9 +252,10 @@ pub(crate) fn html_escape(s: &str) -> String {
         .replace('\'', "&#x27;")
 }
 
-/// Emits `<link rel="stylesheet" href="..." [integrity] [crossorigin]>` per CSS
-/// Asset. Ported from v1 render.rs lines 200–221. `Asset.crossorigin` is an
-/// `Option<String>` (e.g., `Some("anonymous")`) — emitted verbatim when present.
+/// Emits one `<link rel="stylesheet" href="..." [integrity] [crossorigin]>`
+/// tag per CSS [`Asset`]. URLs and attribute values pass through
+/// [`html_escape`]; `Asset.crossorigin` is an `Option<String>` (e.g.
+/// `Some("anonymous")`) — emitted when present.
 pub(crate) fn render_css_tags(assets: &[Asset]) -> String {
     let mut out = String::new();
     for asset in assets {
@@ -268,9 +277,10 @@ pub(crate) fn render_css_tags(assets: &[Asset]) -> String {
     out
 }
 
-/// Emits `<script src="..." [integrity] [crossorigin]></script>` per JS Asset,
-/// then `<script>{init}</script>` per init script. Ported from v1 render.rs
-/// lines 222–249.
+/// Emits one `<script src="..." [integrity] [crossorigin]></script>` tag per
+/// JS [`Asset`], followed by one `<script>{init}</script>` tag per registered
+/// plugin init script (in registration order). URLs and attribute values
+/// pass through [`html_escape`].
 pub(crate) fn render_js_tags(assets: &[Asset], init_scripts: &[String]) -> String {
     let mut out = String::new();
     for asset in assets {
@@ -300,7 +310,7 @@ pub(crate) fn render_js_tags(assets: &[Asset], init_scripts: &[String]) -> Strin
 #[cfg(test)]
 mod tests {
     // Walker-level tests live in this module. Per-component HTML emission tests
-    // live in atoms/containers/form/data submodules (Plans 03/04/05).
+    // live in atoms/containers/form/data submodules.
     use super::*;
     use crate::plugin::{register_plugin, Asset, JsonUiPlugin};
     use crate::spec::{Element, Spec};
@@ -308,7 +318,7 @@ mod tests {
     use serde_json::json;
 
     /// Construct an `Element` directly from its public fields. Used when tests
-    /// need to bypass Phase 115's parse-time structural validator (e.g. for
+    /// need to bypass the parse-time structural validator (e.g. for
     /// dangling-child or cycle scenarios).
     fn mk_element(type_name: &str) -> Element {
         Element {
@@ -323,8 +333,8 @@ mod tests {
     }
 
     /// Build a `Spec` whose elements map is overwritten post-build to bypass
-    /// Phase 115's structural validator. This is ONLY for testing the walker's
-    /// defense-in-depth guards on hand-mutated specs.
+    /// the parse-time structural validator. This is ONLY for testing the
+    /// walker's defense-in-depth guards on hand-mutated specs.
     fn build_spec_unchecked(root: &str, elements: Vec<(&str, Element)>) -> Spec {
         // Build a minimal valid spec through the normal builder so we get a
         // correctly-initialized Spec shell; then overwrite root + elements.
@@ -353,8 +363,8 @@ mod tests {
     #[test]
     fn walker_missing_child_emits_diagnostic() {
         // The simplest way to force the missing-child diagnostic without needing
-        // a real container renderer (still stubbed in Plan 02) is to point the
-        // spec's root at an ID that isn't in the elements map.
+        // a real container renderer is to point the spec's root at an ID that
+        // isn't in the elements map.
         let mut spec = Spec::builder()
             .element("real", Element::new("Text"))
             .build()
@@ -388,8 +398,8 @@ mod tests {
 
     #[test]
     fn walker_cycle_tripwire_fires_at_depth_4() {
-        // Phase 115 would reject a self-cycle at parse time, so call the walker
-        // directly with a depth exceeding MAX_NESTING_DEPTH + 1 to exercise the
+        // A self-cycle is rejected at parse time, so call the walker directly
+        // with a depth exceeding MAX_NESTING_DEPTH + 1 to exercise the
         // defense-in-depth tripwire.
         let spec = build_spec_unchecked("A", vec![("A", mk_element("Text"))]);
         let html = render_element("A", &spec, &json!({}), MAX_NESTING_DEPTH + 2);
@@ -472,8 +482,8 @@ mod tests {
     #[test]
     fn walker_plugins_cannot_shadow_builtins() {
         // Register a plugin that claims the built-in type name "Card".
-        // Per D-19 the dispatch match must still route to the built-in renderer
-        // (which is a stub returning "" in Plan 02), not to the plugin.
+        // The dispatch match must still route to the built-in renderer, not
+        // to the plugin.
         struct CardShadow;
         impl JsonUiPlugin for CardShadow {
             fn component_type(&self) -> &str {
