@@ -40,13 +40,66 @@ pub struct VisibilityCondition {
 /// - Simple: `{"path": "/data/users", "operator": "not_empty"}`
 /// - Compound: `{"and": [...]}`
 /// - Nested: `{"not": {"path": ..., "operator": ...}}`
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+///
+/// Deserialize is hand-rolled (not derived) to produce a shape-listing error
+/// message when an unknown JSON object is encountered. The derive-based
+/// untagged impl emits "data did not match any variant of untagged enum
+/// Visibility" — useless for debugging. See D-19/F5.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
 #[serde(untagged)]
 pub enum Visibility {
     And { and: Vec<Visibility> },
     Or { or: Vec<Visibility> },
     Not { not: Box<Visibility> },
     Condition(VisibilityCondition),
+}
+
+impl<'de> serde::Deserialize<'de> for Visibility {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        use serde::de::Error;
+        let v = serde_json::Value::deserialize(d)?;
+        if let Some(obj) = v.as_object() {
+            if obj.contains_key("and") {
+                #[derive(serde::Deserialize)]
+                struct AndShape {
+                    and: Vec<Visibility>,
+                }
+                let shape: AndShape =
+                    serde_json::from_value(v.clone()).map_err(D::Error::custom)?;
+                return Ok(Visibility::And { and: shape.and });
+            }
+            if obj.contains_key("or") {
+                #[derive(serde::Deserialize)]
+                struct OrShape {
+                    or: Vec<Visibility>,
+                }
+                let shape: OrShape =
+                    serde_json::from_value(v.clone()).map_err(D::Error::custom)?;
+                return Ok(Visibility::Or { or: shape.or });
+            }
+            if obj.contains_key("not") {
+                #[derive(serde::Deserialize)]
+                struct NotShape {
+                    not: Box<Visibility>,
+                }
+                let shape: NotShape =
+                    serde_json::from_value(v.clone()).map_err(D::Error::custom)?;
+                return Ok(Visibility::Not { not: shape.not });
+            }
+            if obj.contains_key("path") && obj.contains_key("operator") {
+                let cond: VisibilityCondition =
+                    serde_json::from_value(v).map_err(D::Error::custom)?;
+                return Ok(Visibility::Condition(cond));
+            }
+        }
+        Err(D::Error::custom(format!(
+            "invalid Visibility shape: {v}. Accepted shapes: \
+            {{\"and\": [...]}}, \
+            {{\"or\": [...]}}, \
+            {{\"not\": {{...}}}}, \
+            {{\"path\": \"/p\", \"operator\": \"...\", \"value\": ...}}"
+        )))
+    }
 }
 
 impl Visibility {
@@ -383,6 +436,82 @@ mod tests {
         assert!(!make(VisibilityOperator::NotEmpty).evaluate(&json!({"v": ""})));
         assert!(!make(VisibilityOperator::NotEmpty).evaluate(&json!({"v": []})));
         assert!(!make(VisibilityOperator::NotEmpty).evaluate(&json!({})));
+    }
+
+    #[test]
+    fn deserialize_condition_shape() {
+        let v: Visibility = serde_json::from_value(serde_json::json!({
+            "path": "/x", "operator": "exists"
+        }))
+        .expect("parses");
+        match v {
+            Visibility::Condition(_) => {}
+            other => panic!("expected Condition, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn deserialize_and_shape() {
+        let v: Visibility = serde_json::from_value(serde_json::json!({
+            "and": [{"path": "/a", "operator": "exists"}, {"path": "/b", "operator": "exists"}]
+        }))
+        .expect("parses");
+        match v {
+            Visibility::And { and } => assert_eq!(and.len(), 2),
+            other => panic!("expected And, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn deserialize_or_shape() {
+        let v: Visibility = serde_json::from_value(serde_json::json!({
+            "or": [{"path": "/a", "operator": "exists"}]
+        }))
+        .expect("parses");
+        assert!(matches!(v, Visibility::Or { .. }));
+    }
+
+    #[test]
+    fn deserialize_not_shape() {
+        let v: Visibility = serde_json::from_value(serde_json::json!({
+            "not": {"path": "/x", "operator": "exists"}
+        }))
+        .expect("parses");
+        assert!(matches!(v, Visibility::Not { .. }));
+    }
+
+    #[test]
+    fn visibility_roundtrip_all_shapes() {
+        let cases = vec![
+            serde_json::json!({"path": "/x", "operator": "exists"}),
+            serde_json::json!({"and": [{"path": "/a", "operator": "exists"}]}),
+            serde_json::json!({"or": [{"path": "/a", "operator": "exists"}]}),
+            serde_json::json!({"not": {"path": "/x", "operator": "exists"}}),
+        ];
+        for orig in cases {
+            let parsed: Visibility = serde_json::from_value(orig.clone()).expect("parses");
+            let back = serde_json::to_value(&parsed).expect("serializes");
+            assert_eq!(orig, back, "round-trip failed for {orig}");
+        }
+    }
+
+    #[test]
+    fn deserialize_unknown_shape_error_lists_accepted_forms() {
+        let bad = serde_json::json!({"expr": "foo"});
+        let err: serde_json::Error = serde_json::from_value::<Visibility>(bad).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("and"), "error must mention 'and', got: {msg}");
+        assert!(msg.contains("or"), "error must mention 'or', got: {msg}");
+        assert!(msg.contains("not"), "error must mention 'not', got: {msg}");
+        assert!(msg.contains("path"), "error must mention 'path', got: {msg}");
+        assert!(
+            msg.contains("operator"),
+            "error must mention 'operator', got: {msg}"
+        );
+        assert!(
+            msg.contains("expr"),
+            "error must include the offending JSON, got: {msg}"
+        );
     }
 
     #[test]
