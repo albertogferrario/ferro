@@ -12,7 +12,7 @@ Each element follows this shape:
   },
   "children": ["child_id"],
   "action": { "handler": "route.name", "method": "POST" },
-  "visible": { "field": "/data/status", "op": "eq", "value": "active" }
+  "visible": { "path": "/data/status", "operator": "eq", "value": "active" }
 }
 ```
 
@@ -63,11 +63,11 @@ Several props accept fixed-string enum values. The valid strings are listed here
 
 **sort_direction** — `"asc"` | `"desc"`
 
-**form_max_width** — `"sm"` | `"md"` | `"lg"` | `"xl"` | `"full"`
+**form_max_width** — `"default"` | `"narrow"` | `"wide"`
 
-**gap_size** — `"none"` | `"xs"` | `"sm"` | `"md"` | `"lg"` | `"xl"`
+**gap_size** — `"none"` | `"sm"` | `"md"` (default) | `"lg"` | `"xl"`
 
-**action_card_variant** — `"default"` | `"outline"` | `"ghost"`
+**action_card_variant** — `"default"` | `"setup"` | `"danger"`
 
 ---
 
