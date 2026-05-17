@@ -2,9 +2,21 @@
 
 Plugins extend the JSON-UI component catalog with custom or third-party components that ship their own JavaScript and CSS assets.
 
+## When to use RawHtml instead
+
+For a one-off HTML fragment (status pill, badge, link decoration), the `RawHtml` component is the lowest-friction option — see [components.md](components.md#rawhtml). `RawHtml` is a single-field primitive (`html: String`) emitted verbatim into the response.
+
+Choose a first-class `JsonUiPlugin` (the rest of this guide) when:
+
+- The widget is interactive (forms, OAuth flows, dynamic state)
+- The widget needs asset injection (CSS/JS bundles)
+- The widget is reused across multiple pages and benefits from explicit registration with a type name
+
+The generic v1 `Component::Plugin { plugin_type, props }` dispatch was removed in Phase 115 D-01. Every plugin in v2 has its own type name (e.g. `"StripeConnectStatus"`, `"Map"`); see the type-name registration section below.
+
 ## What Plugins Are
 
-The 40 built-in components cover most server-driven UI patterns. Plugins fill the gap for components that require rich client-side behavior: interactive maps, chart libraries, rich text editors, video players, calendar widgets, and similar.
+The 41 built-in components cover most server-driven UI patterns. Plugins fill the gap for components that require rich client-side behavior: interactive maps, chart libraries, rich text editors, video players, calendar widgets, and similar.
 
 A plugin is a Rust struct implementing the `JsonUiPlugin` trait. It declares:
 
@@ -83,6 +95,9 @@ impl JsonUiPlugin for ChartPlugin {
     }
 
     fn render(&self, props: &serde_json::Value, _data: &serde_json::Value) -> String {
+        // `props` — the element's props object from the spec (already expression-resolved).
+        // `data`  — the full spec data payload from the handler (`spec.data`).
+        //           Use this to read per-request values not passed explicitly in props.
         let config = serde_json::to_string(props).unwrap_or_default();
         format!(r#"<canvas data-ferro-chart='{}'></canvas>"#, config)
     }
@@ -106,6 +121,11 @@ document.querySelectorAll('[data-ferro-chart]').forEach(function(canvas) {
 "#.to_string())
     }
 }
+
+// `init_script()` is emitted once per page regardless of how many instances of the
+// plugin appear in the spec. Use a `querySelectorAll` loop (as above) so the script
+// initializes every instance. The script is injected inline before `</body>`,
+// after all `js_assets()` `<script>` tags have been emitted.
 ```
 
 ### Registering in app bootstrap
