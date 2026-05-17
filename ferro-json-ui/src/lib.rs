@@ -49,7 +49,8 @@ pub use assets::FERRO_BASE_CSS;
 pub use component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType,
-    ButtonVariant, CardProps, CheckboxListProps, CheckboxProps, ChecklistItem, ChecklistProps,
+    ButtonVariant, CardProps, CardVariant, CheckboxListProps, CheckboxProps, ChecklistItem,
+    ChecklistProps,
     CollapsibleProps, Column, ColumnFormat, DataTableProps, DescriptionItem, DescriptionListProps,
     DropdownMenuAction, DropdownMenuProps, EmptyStateProps, FormMaxWidth, FormProps,
     FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps, InputProps,

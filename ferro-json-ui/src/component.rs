@@ -148,6 +148,20 @@ pub struct SelectOption {
     pub label: String,
 }
 
+/// Visual variant for Card chrome.
+///
+/// - `Bordered` (default): `border + bg-card + shadow-sm` with `p-4`.
+///   Dashboard cards in dense layouts.
+/// - `Elevated`: `bg-card + shadow-md` (no border) with `p-8`.
+///   Auth pages, error pages, standalone marketing cards.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CardVariant {
+    #[default]
+    Bordered,
+    Elevated,
+}
+
 /// Props for Card component.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CardProps {
@@ -159,6 +173,8 @@ pub struct CardProps {
     /// IDs of footer elements (resolved against `Spec.elements`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub footer: Vec<String>,
+    #[serde(default)]
+    pub variant: CardVariant,
 }
 
 /// Props for Table component.
@@ -1222,6 +1238,7 @@ mod schema_smoke_tests {
             description: None,
             max_width: None,
             footer: vec!["btn1".to_string(), "btn2".to_string()],
+            variant: CardVariant::Bordered,
         };
         let json = serde_json::to_string(&original).unwrap();
         let parsed: CardProps = serde_json::from_str(&json).unwrap();
@@ -1247,6 +1264,7 @@ mod schema_smoke_tests {
             description: None,
             max_width: None,
             footer: Vec::new(),
+            variant: CardVariant::Bordered,
         };
         let json = serde_json::to_string(&card).unwrap();
         assert!(
@@ -1368,5 +1386,67 @@ mod strum_tests {
         assert_eq!(AlertVariant::Warning.as_ref(), "warning");
         assert_eq!(AlertVariant::Info.as_ref(), "info");
         assert_eq!(AlertVariant::Error.as_ref(), "error");
+    }
+}
+
+#[cfg(test)]
+mod card_variant_tests {
+    use super::*;
+
+    #[test]
+    fn card_variant_default_is_bordered() {
+        assert_eq!(CardVariant::default(), CardVariant::Bordered);
+    }
+
+    #[test]
+    fn card_variant_serializes_snake_case() {
+        assert_eq!(
+            serde_json::to_value(CardVariant::Bordered).unwrap(),
+            serde_json::json!("bordered")
+        );
+        assert_eq!(
+            serde_json::to_value(CardVariant::Elevated).unwrap(),
+            serde_json::json!("elevated")
+        );
+    }
+
+    #[test]
+    fn card_variant_deserializes_snake_case() {
+        assert_eq!(
+            serde_json::from_value::<CardVariant>(serde_json::json!("bordered")).unwrap(),
+            CardVariant::Bordered
+        );
+        assert_eq!(
+            serde_json::from_value::<CardVariant>(serde_json::json!("elevated")).unwrap(),
+            CardVariant::Elevated
+        );
+    }
+
+    #[test]
+    fn card_props_without_variant_defaults_to_bordered() {
+        let v = serde_json::json!({"title": "x"});
+        let p: CardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.variant, CardVariant::Bordered);
+    }
+
+    #[test]
+    fn card_props_with_elevated_variant() {
+        let v = serde_json::json!({"title": "x", "variant": "elevated"});
+        let p: CardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.variant, CardVariant::Elevated);
+    }
+
+    #[test]
+    fn card_props_roundtrip_preserves_variant() {
+        let p = CardProps {
+            title: "x".into(),
+            description: None,
+            max_width: None,
+            footer: vec![],
+            variant: CardVariant::Elevated,
+        };
+        let j = serde_json::to_value(&p).unwrap();
+        let back: CardProps = serde_json::from_value(j).unwrap();
+        assert_eq!(back.variant, CardVariant::Elevated);
     }
 }
