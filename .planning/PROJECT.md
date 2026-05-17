@@ -314,6 +314,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 **Current State:**
 - ~90,000 lines of Rust across 24 crates
+- Phase 160 complete — v1 JSON-UI API deletion: all `JsonUiView` / `Component` / `ComponentNode` / `PluginProps` surface removed from ferro-json-ui, framework, and ferro-mcp; `migration_v1_to_v2_templates` MCP category deleted; `application_info::scan_json_ui_specs` rewritten to count v2 JSON spec files; protocol docs reframed; ferro workspace + gestiscilo cross-repo green. Phase 161 (v12.0 merge + single end-of-loop publish) cleared to start.
 - Phase 155 complete — ferro-projection v0.2.33: live read-model runtime (subscribe to domain events, persist per-key snapshots, broadcast deltas)
 - v11.11 shipped: Resource Reservation & Live Read-Model Primitives — ferro-orm GuardedUpdate (Ph 152), ferro-audit (Ph 153), ferro-reservation (Ph 154), ferro-projection (Ph 155)
 - v11.7 shipped: Tailwind Static CSS Pipeline — Safari/WebKit production fix; static CSS with compile-time embedding
@@ -422,4 +423,4 @@ See also `.planning/VISION.md` for design philosophy.
 | Schema-driven projections replace field_map.rs | Projections and catalog stay consistent by construction | Planned |
 
 ---
-*Last updated: 2026-05-17 — Phase 164 complete (JSON-UI improvements batch 3): V7-RUNTIME frictions F1–F10 absorbed, v1-deletion-readiness audit cleared (0 BLOCKER across 25 surface elements), COMPLETED.md written. Phase 160 (v1 API deletion) is now unblocked; next-up is Phase 160 → Phase 161 (v12.0 merge to master + single publish). Phase 174 added to roadmap as a forward-looking v13.0 seed: research-only evaluation of Hyperview/HXML as a candidate next-generation UI spec format, including the Appo native-mobile angle.*
+*Last updated: 2026-05-17 — Phase 160 complete (v1 JSON-UI API deletion): all v1 type surface removed across ferro-json-ui / framework / ferro-mcp; `migration_v1_to_v2_templates` MCP category deleted; `application_info::scan_json_ui_specs` rewritten for v2; protocol/docs reframed in neutral voice; ferro workspace (2697 tests) + gestiscilo cross-repo verification both green; ferro-code descoped per OQ-2 (empty repo). Phase 161 (v12.0 merge to master + single end-of-loop publish) is cleared to start. Phase 174 remains queued as a forward-looking v13.0 seed for Hyperview/HXML evaluation.*
