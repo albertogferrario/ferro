@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 163.1-01-PLAN.md (Phase 163.1 complete)
-last_updated: "2026-05-17T03:43:49.342Z"
+stopped_at: Phase 160 context gathered
+last_updated: "2026-05-17T03:52:54.266Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
@@ -235,7 +235,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-16T22:43:03.588Z
-Stopped at: Completed 163.1-01-PLAN.md (Phase 163.1 complete)
-Resume file: None
+Last session: 2026-05-17T03:52:54.212Z
+Stopped at: Phase 160 context gathered
+Resume file: .planning/phases/160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp/160-CONTEXT.md
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
