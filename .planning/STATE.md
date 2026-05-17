@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 160-05-PLAN.md
-last_updated: "2026-05-17T05:12:44.508Z"
+stopped_at: Completed 160-06-PLAN.md
+last_updated: "2026-05-17T05:17:08.091Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
   completed_phases: 155
   total_plans: 472
-  completed_plans: 457
+  completed_plans: 458
   percent: 97
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
@@ -169,6 +169,7 @@ Progress: [████████░░] 84%
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P03 | 4min | 1 tasks | 1 files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P04 | 75s | 1 tasks | 1 files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp PP05 | 4min | 1 tasks tasks | 1 files files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P160-06 | 5min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -205,6 +206,8 @@ Recent decisions affecting current work:
 - [160-02] MCP code_templates category deletion pattern: drop registration+comment, producer fn, and integration test in one diff — no orphaned comment, no green-test artifact
 - [160-04] Test-fixture rename pattern: when v1-coded fixture identifiers carry no behavioral weight, rename them in-place to neutral equivalents — keeps regression coverage equivalent while satisfying user-naming constraint (CONTEXT D-06)
 - [160-05] Pre-publish README audit: any crate ferro publishes must have its README usage block compile against the current public API — drift on the crates.io front page is a first-impression bug, not a docs nit
+- [160-06] Pattern 5 verbatim drop-in: rewriting v1-framed prose with the exact RESEARCH replacement avoids leaving the surrounding "but/however" contrast intact (a string-substitution would have)
+- [160-06] Correct, do not append: rendering.md Output Format reframe also fixed two pre-existing factual errors (no `version` field, no `body` field on Spec) — corrective parentheticals would have left the wrong text in place
 
 ### Pending Todos
 
@@ -243,7 +246,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T05:12:44.499Z
-Stopped at: Completed 160-05-PLAN.md
+Last session: 2026-05-17T05:17:08.078Z
+Stopped at: Completed 160-06-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
