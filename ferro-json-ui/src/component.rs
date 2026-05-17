@@ -1501,9 +1501,6 @@ mod kanban_board_props_tests {
             j.get("columns").is_none(),
             "empty columns must be skipped, got: {j}"
         );
-        assert_eq!(
-            j.get("data_path").and_then(|v| v.as_str()),
-            Some("/x")
-        );
+        assert_eq!(j.get("data_path").and_then(|v| v.as_str()), Some("/x"));
     }
 }

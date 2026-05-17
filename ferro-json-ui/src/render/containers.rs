@@ -1257,8 +1257,10 @@ mod tests {
     fn render_kanban_board_static_columns_fallback() {
         let spec = build_spec(vec![(
             "root",
-            Element::new("KanbanBoard")
-                .prop("columns", json!([{"title": "Static", "id": "s", "count": 0}])),
+            Element::new("KanbanBoard").prop(
+                "columns",
+                json!([{"title": "Static", "id": "s", "count": 0}]),
+            ),
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_kanban_board(el, &spec, &serde_json::Value::Null, 0);
@@ -1283,9 +1285,10 @@ mod tests {
     fn render_kanban_board_data_path_wins_over_static() {
         let spec = build_spec(vec![(
             "root",
-            Element::new("KanbanBoard")
-                .prop("data_path", "/cols")
-                .prop("columns", json!([{"title": "Static", "id": "s", "count": 0}])),
+            Element::new("KanbanBoard").prop("data_path", "/cols").prop(
+                "columns",
+                json!([{"title": "Static", "id": "s", "count": 0}]),
+            ),
         )]);
         let el = spec.elements.get("root").unwrap();
         let data = json!({"cols": [{"title": "FromData", "id": "d", "count": 0}]});
@@ -1294,9 +1297,6 @@ mod tests {
             html.contains(">FromData<"),
             "data_path must win, got: {html}"
         );
-        assert!(
-            !html.contains(">Static<"),
-            "static must lose, got: {html}"
-        );
+        assert!(!html.contains(">Static<"), "static must lose, got: {html}");
     }
 }

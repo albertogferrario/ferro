@@ -503,6 +503,8 @@ mod tests {
                 "DescriptionList",
                 // D-17a: html is #[serde(default)] — empty HTML is a valid no-op.
                 "RawHtml",
+                // D-13a: columns is now #[serde(default)] — data_path can be the sole source.
+                "KanbanBoard",
             ];
             if !no_required.contains(&component.name.as_str()) {
                 assert!(

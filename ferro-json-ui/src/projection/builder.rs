@@ -367,6 +367,7 @@ fn emit_kanban_root(service: &ServiceDef) -> ElementBuilder {
     };
     let props = serde_json::to_value(KanbanBoardProps {
         columns: vec![placeholder],
+        data_path: None,
         mobile_default_column: None,
     })
     .expect("KanbanBoardProps serialization cannot fail");
