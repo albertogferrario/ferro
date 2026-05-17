@@ -454,9 +454,15 @@ pub struct DescriptionItem {
 /// Props for DescriptionList component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct DescriptionListProps {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub items: Vec<DescriptionItem>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub columns: Option<u8>,
+    /// Optional data-path override of `items`. When set, the renderer
+    /// resolves the array at this path and decodes each entry as a
+    /// `DescriptionItem`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
 }
 
 /// A single tab within a Tabs component.
@@ -514,6 +520,7 @@ pub struct ProgressProps {
 /// Props for Image component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ImageProps {
+    #[serde(default)]
     pub src: String,
     pub alt: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -533,6 +540,11 @@ pub struct ImageProps {
     /// Do NOT pass untrusted input. `alt` is required and is HTML-escaped.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inline_svg: Option<String>,
+    /// Optional data-path override of `src`. When set, the renderer resolves
+    /// the value at this path against handler data and uses it as the
+    /// `<img src>`. Falls back to `src` when missing or non-string.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
 }
 
 impl ImageProps {
@@ -548,6 +560,7 @@ impl ImageProps {
             aspect_ratio: None,
             placeholder_label: None,
             inline_svg: Some(svg.into()),
+            data_path: None,
         }
     }
 }
