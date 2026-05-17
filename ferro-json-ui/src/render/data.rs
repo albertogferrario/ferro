@@ -1,17 +1,18 @@
-//! Phase 116: data-display renderers ported from v1 `render.rs`.
+//! Data-display renderers: `Table` and `DataTable`.
 //!
-//! Per CONTEXT D-21 v1 HTML emission is the canonical contract. This module
-//! changes the per-function signature to `(el, spec, data, depth) -> String`
-//! and routes data resolution through [`crate::data::resolve_path`].
+//! Each function reads typed props, escapes and substitutes cell values, and
+//! emits HTML. Per-row actions resolve URL placeholders against the row's
+//! data at render time. Data resolution is routed through
+//! [`crate::data::resolve_path`].
 //!
-//! Non-obvious v1 behaviors preserved verbatim (per CONTEXT §"Non-obvious v1
-//! behaviors to preserve"):
-//! - **DataTable `row_key` / `id` URL templating** — row_action URLs have the
-//!   placeholders `{row_key}` (v1 default) and `{id}` (plan 116-05 addition
-//!   for spec-author convenience) replaced against each row's data before
-//!   emission. When `row_key` prop is unset the fallback is the row index.
-//! - **Table empty-state** — when `data_path` resolves to an array but it's
-//!   empty, `props.empty_message` is emitted as a single spanning `<td>`.
+//! Behaviors worth flagging for spec authors:
+//! - **DataTable `row_key` / `id` URL templating** — row-action URLs have
+//!   the placeholders `{row_key}` and `{id}` substituted against the row's
+//!   data before emission. When the `row_key` prop is unset, the fallback
+//!   is the row index.
+//! - **Table empty-state** — when `data_path` resolves to an array but it
+//!   is empty, `props.empty_message` is emitted as a single spanning
+//!   `<td>`.
 
 use serde_json::Value;
 
@@ -21,11 +22,10 @@ use crate::spec::{Element, Spec};
 
 use super::html_escape;
 
-/// Port of v1 `render_table` (render.rs:1017–1102).
-///
-/// Simple server-side table with an optional action column on the right.
-/// Row actions are emitted as plain anchor links (no dropdown) — the
-/// `Azioni` header label is preserved from v1 verbatim.
+/// Renders a simple `Table` element. Reads `TableProps.columns` and
+/// resolves rows from `TableProps.data_path`. When `row_actions` is set,
+/// an `Azioni` header column is appended and each row receives one
+/// `<a href="...">` per action.
 pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: TableProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -116,20 +116,16 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     html
 }
 
-/// Port of v1 `render_data_table` (render.rs:1104–1285).
+/// Renders a `DataTable`. Supports declarative columns with formatters,
+/// per-row actions wrapped in a `<details>`-based dropdown, optional search
+/// bar, and per-row visibility filters. Emits a stripe-style desktop table
+/// with alternating rows plus a mobile card fallback.
 ///
-/// Stripe-style desktop table with alternating rows plus a mobile card
-/// fallback. Each row emits a self-contained action block holding the
-/// templated row actions. v1 wraps row actions in a `DropdownMenu`; this
-/// plan emits an inline `<details>` dropdown so data.rs can stand alone
-/// from Plan 116-03's `render_dropdown_menu` (cross-wave isolation). Plan
-/// 116-06 integration can swap the inline dropdown for the shared one
-/// once both waves merge.
-///
-/// URL templating: row_action URLs containing `{row_key}` (v1 semantics)
-/// OR `{id}` (plan 116-05 convenience shortcut) are substituted against
-/// the row's value for `props.row_key` (default row index) and the row's
-/// `id` field respectively.
+/// URL templating: row-action URLs containing `{row_key}` or `{id}` are
+/// substituted against the row's value for `props.row_key` (default: row
+/// index) and the row's `id` field respectively. Any other `{column_key}`
+/// placeholder is substituted against the matching column value on each
+/// row before emission.
 pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: DataTableProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -248,8 +244,9 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
     html
 }
 
-/// Render a single cell's value as a plain string. Matches v1 semantics
-/// (render.rs:1057–1065, 1156–1164, 1225–1233).
+/// Renders a single cell's value as a plain string. Handles strings,
+/// numbers, booleans, and nulls directly; arrays and objects round-trip
+/// through `serde_json::to_string`.
 fn cell_string(v: Option<&Value>) -> String {
     match v {
         Some(Value::String(s)) => s.clone(),
@@ -262,9 +259,9 @@ fn cell_string(v: Option<&Value>) -> String {
     }
 }
 
-/// Resolve the row key for a single row. Matches v1 (render.rs:1171–1181,
-/// 1242–1252): `props.row_key` field value when present and stringifiable,
-/// otherwise the row index.
+/// Resolves the row key for a single row. Reads the value at
+/// `props.row_key` from the row when present and stringifiable, otherwise
+/// falls back to the row index.
 fn resolve_row_key(row: &Value, row_key_prop: Option<&str>, index: usize) -> String {
     if let Some(rk) = row_key_prop {
         if let Some(v) = row.get(rk) {
@@ -278,14 +275,14 @@ fn resolve_row_key(row: &Value, row_key_prop: Option<&str>, index: usize) -> Str
     index.to_string()
 }
 
-/// Template row_action URLs for a single row.
+/// Templates row-action URLs for a single row.
 ///
-/// Substitution order (D-03/D-04):
-/// 1. All column keys present in the row object (`{label}`, `{slug_path}`, …).
-///    Only `String` and `Number` values are substituted; booleans, nulls,
-///    arrays, and objects are skipped.
-/// 2. Legacy `{row_key}` — resolved against `row_key_value` (v1 verbatim).
-/// 3. Legacy `{id}` — resolved against `row["id"]` when present.
+/// Substitution order:
+/// 1. All column keys present in the row object (`{label}`, `{slug_path}`,
+///    …). Only `String` and `Number` values are substituted; booleans,
+///    nulls, arrays, and objects are skipped.
+/// 2. `{row_key}` — resolved against `row_key_value`.
+/// 3. `{id}` — resolved against `row["id"]` when present.
 ///
 /// Missing placeholders (no matching column, and not `{row_key}` / `{id}`)
 /// are left unsubstituted — no panic, no silent removal.
@@ -304,14 +301,15 @@ fn template_actions(
         .iter()
         .map(|a| {
             let mut cloned = a.clone();
-            // Resolve URL from handler when url is None (v1 fallback).
+            // URL fallback: when the action has no explicit `url`, use the
+            // handler name as the base.
             let base_url = cloned
                 .action
                 .url
                 .clone()
                 .or_else(|| Some(cloned.action.handler.clone()));
             if let Some(mut url) = base_url {
-                // D-04: substitute all row column keys first.
+                // Substitute all row column keys first.
                 if let Some(obj) = row.as_object() {
                     for (col_key, col_val) in obj {
                         let placeholder = format!("{{{col_key}}}");
@@ -323,7 +321,7 @@ fn template_actions(
                         url = url.replace(&placeholder, &val_str);
                     }
                 }
-                // Legacy substitutions (D-03 compatibility).
+                // `{row_key}` substitutes against the value at `props.row_key`.
                 url = url.replace("{row_key}", row_key_value);
                 if let Some(ref id) = id_value {
                     url = url.replace("{id}", id);
@@ -513,8 +511,8 @@ mod tests {
 
     #[test]
     fn data_table_url_template_replaces_row_key() {
-        // v1 semantics: {row_key} substitutes against props.row_key's value
-        // on each row (falls back to row index).
+        // `{row_key}` substitutes against the value at `props.row_key` on
+        // each row (falls back to the row index).
         let el = mk_element(
             "DataTable",
             json!({
@@ -564,7 +562,7 @@ mod tests {
         let spec = mk_spec("root", el.clone());
         let data = json!({"users": []});
         let html = render_data_table(&el, &spec, &data, 1);
-        // v1 default (Italian) is the fallback.
+        // The default empty message is "Nessun elemento trovato".
         assert!(html.contains("Nessun elemento trovato"), "got: {html}");
     }
 
@@ -625,7 +623,7 @@ mod tests {
         );
     }
 
-    // D-03/D-04: extended placeholder interpolation tests
+    // Extended placeholder interpolation tests.
 
     #[test]
     fn data_table_url_template_replaces_column_key() {
@@ -706,7 +704,8 @@ mod tests {
 
     #[test]
     fn data_table_row_href_legacy_placeholders() {
-        // Regression guard: {row_key} and {id} still resolve after D-04 generalization.
+        // Regression guard: `{row_key}` and `{id}` still resolve alongside
+        // the general column-key substitution.
         let el = mk_element(
             "DataTable",
             json!({
