@@ -32,8 +32,8 @@ use crate::component::{
     CollapsibleProps, DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps,
     FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps, KanbanBoardProps,
     ModalProps, NotificationDropdownProps, PageHeaderProps, PaginationProps, ProductTileProps,
-    ProgressProps, SelectProps, SeparatorProps, SidebarProps, SkeletonProps, StatCardProps,
-    SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
+    ProgressProps, RawHtmlProps, SelectProps, SeparatorProps, SidebarProps, SkeletonProps,
+    StatCardProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -258,6 +258,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "ProductTile",
         "Touch-friendly POS tile with name, price, and +/- quantity controls.",
         || to_value(schema_for!(ProductTileProps)).unwrap(),
+        &[],
+    ),
+    (
+        "RawHtml",
+        "Server-injected HTML island. CONSUMER is responsible for sanitization — see docs/src/json-ui/plugins.md.",
+        || to_value(schema_for!(RawHtmlProps)).unwrap(),
         &[],
     ),
     // === Containers (containers.rs) ===
@@ -1043,13 +1049,13 @@ mod tests {
         // Drift guard — if this fails, Phase 116's BUILTIN_TYPES changed
         // without a corresponding catalog update. See Plan 02.
         // Updated to 40 in Phase 162 Plan 01 (CheckboxList added).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 40);
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 41);
     }
 
     #[test]
     fn builtin_specs_len_matches_dispatch() {
         assert_eq!(BUILTIN_SPECS.len(), crate::render::BUILTIN_TYPES.len());
-        assert_eq!(BUILTIN_SPECS.len(), 40);
+        assert_eq!(BUILTIN_SPECS.len(), 41);
     }
 
     #[test]

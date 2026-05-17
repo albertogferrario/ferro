@@ -16,8 +16,8 @@ use crate::component::{
     BadgeVariant, BreadcrumbProps, ButtonProps, ButtonType, ButtonVariant, CalendarCellProps,
     ChecklistProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps, HeaderProps,
     IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
-    ProductTileProps, ProgressProps, SeparatorProps, SidebarNavItem, SidebarProps, Size,
-    SkeletonProps, StatCardProps, TextElement, TextProps, ToastProps, ToastVariant,
+    ProductTileProps, ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps,
+    Size, SkeletonProps, StatCardProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 use crate::spec::{Element, Spec};
 
@@ -362,7 +362,7 @@ pub(crate) fn render_avatar(el: &Element, _spec: &Spec, _data: &Value, _depth: u
 
 // ── 8. Image (v1 render.rs lines 1936-1977) ──────────────────────────────
 
-pub(crate) fn render_image(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
+pub(crate) fn render_image(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: ImageProps = match decode_props(&el.props) {
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Image", e),
@@ -377,6 +377,14 @@ pub(crate) fn render_image(el: &Element, _spec: &Spec, _data: &Value, _depth: us
             svg // verbatim — intentionally not escaped (server-only trust)
         );
     }
+
+    // D-15: data_path takes precedence over static src.
+    let resolved_src = props
+        .data_path
+        .as_deref()
+        .and_then(|p| crate::data::resolve_path(data, p))
+        .and_then(|v| v.as_str().map(String::from))
+        .unwrap_or_else(|| props.src.clone());
 
     let container_style = match &props.aspect_ratio {
         Some(ratio) => format!(" style=\"aspect-ratio: {}\"", html_escape(ratio)),
@@ -399,7 +407,7 @@ pub(crate) fn render_image(el: &Element, _spec: &Spec, _data: &Value, _depth: us
                  class=\"relative w-full h-full rounded-md object-cover object-top\" \
                  loading=\"lazy\" onerror=\"this.style.display='none'\">\
          </div>",
-        src = html_escape(&props.src),
+        src = html_escape(&resolved_src),
         alt = html_escape(&props.alt),
     )
 }
@@ -563,16 +571,30 @@ fn compute_page_range(current: u32, total: u32) -> Vec<u32> {
 pub(crate) fn render_description_list(
     el: &Element,
     _spec: &Spec,
-    _data: &Value,
+    data: &Value,
     _depth: usize,
 ) -> String {
     let props: DescriptionListProps = match decode_props(&el.props) {
         Ok(p) => p,
         Err(e) => return decode_diagnostic("DescriptionList", e),
     };
+
+    // D-15: data_path takes precedence over static items.
+    let items: Vec<crate::component::DescriptionItem> = props
+        .data_path
+        .as_deref()
+        .and_then(|p| crate::data::resolve_path(data, p))
+        .and_then(|v| v.as_array().cloned())
+        .map(|arr| {
+            arr.into_iter()
+                .filter_map(|v| serde_json::from_value(v).ok())
+                .collect()
+        })
+        .unwrap_or_else(|| props.items.clone());
+
     let columns = props.columns.unwrap_or(1);
     let mut html = format!("<dl class=\"grid grid-cols-{columns} gap-4\">");
-    for item in &props.items {
+    for item in &items {
         html.push_str(&format!(
             "<div><dt class=\"text-sm font-medium text-text-muted\">{}</dt><dd class=\"mt-1 text-sm text-text\">{}</dd></div>",
             html_escape(&item.label),
@@ -1249,6 +1271,18 @@ pub(crate) fn render_product_tile(
     )
 }
 
+// ── RawHtml — server-injected HTML island (D-17a) ────────────────────────
+
+pub(crate) fn render_raw_html(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
+    let props: RawHtmlProps = match decode_props(&el.props) {
+        Ok(p) => p,
+        Err(e) => return decode_diagnostic("RawHtml", e),
+    };
+    // Verbatim emission — intentionally NOT escaped (server-only trust).
+    // See RawHtmlProps rustdoc for the trust boundary.
+    format!("<div data-ferro-raw-html>{}</div>", props.html)
+}
+
 // ────────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1909,5 +1943,142 @@ mod tests {
         assert!(html.contains("Widget"));
         assert!(html.contains("9.99"));
         assert!(html.contains("data-qty-inc=\"qty_p1\""), "got: {html}");
+    }
+
+    // ── 8c. Image data_path (D-15) ──────────────────────────────────────
+
+    #[test]
+    fn image_data_path_resolves_src_from_data() {
+        let spec = spec_with_root(
+            Element::new("Image")
+                .prop("src", "fallback.png")
+                .prop("alt", "x")
+                .prop("data_path", "/avatar"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({"avatar": "real.png"});
+        let html = render_image(el, &spec, &data, 1);
+        assert!(
+            html.contains(r#"src="real.png""#),
+            "data_path override; got: {html}"
+        );
+        assert!(
+            !html.contains("fallback.png"),
+            "static src must be overridden; got: {html}"
+        );
+    }
+
+    #[test]
+    fn image_data_path_none_uses_static_src() {
+        let spec = spec_with_root(
+            Element::new("Image")
+                .prop("src", "static.png")
+                .prop("alt", "x"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_image(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains(r#"src="static.png""#),
+            "static src when no data_path; got: {html}"
+        );
+    }
+
+    #[test]
+    fn image_data_path_missing_in_data_falls_back_to_src() {
+        let spec = spec_with_root(
+            Element::new("Image")
+                .prop("src", "fallback.png")
+                .prop("alt", "x")
+                .prop("data_path", "/missing"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({"other": "something"});
+        let html = render_image(el, &spec, &data, 1);
+        assert!(
+            html.contains(r#"src="fallback.png""#),
+            "must fall back to static src; got: {html}"
+        );
+    }
+
+    // ── 12b. DescriptionList data_path (D-15) ───────────────────────────
+
+    #[test]
+    fn description_list_data_path_overrides_static_items() {
+        let spec = spec_with_root(
+            Element::new("DescriptionList")
+                .prop("items", json!([{"label": "Static", "value": "X"}]))
+                .prop("data_path", "/items"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({"items": [{"label": "Dynamic", "value": "Y"}]});
+        let html = render_description_list(el, &spec, &data, 1);
+        assert!(html.contains("Dynamic"), "data_path items; got: {html}");
+        assert!(
+            !html.contains("Static"),
+            "static items must be overridden; got: {html}"
+        );
+    }
+
+    #[test]
+    fn description_list_data_path_serde_roundtrip() {
+        use crate::component::DescriptionListProps;
+        let p = DescriptionListProps {
+            items: vec![],
+            columns: None,
+            data_path: Some("/items".to_string()),
+        };
+        let j = serde_json::to_value(&p).unwrap();
+        let back: DescriptionListProps = serde_json::from_value(j).unwrap();
+        assert_eq!(p, back);
+    }
+
+    // ── RawHtml (D-17a) ─────────────────────────────────────────────────
+
+    #[test]
+    fn raw_html_props_serde_roundtrip() {
+        use crate::component::RawHtmlProps;
+        let p = RawHtmlProps {
+            html: "<span>x</span>".into(),
+        };
+        let j = serde_json::to_value(&p).unwrap();
+        let back: RawHtmlProps = serde_json::from_value(j).unwrap();
+        assert_eq!(p, back);
+    }
+
+    #[test]
+    fn render_raw_html_emits_verbatim() {
+        let spec = spec_with_root(Element::new("RawHtml").prop("html", "<b>hi</b>"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_raw_html(el, &spec, &json!(null), 1);
+        assert_eq!(html, "<div data-ferro-raw-html><b>hi</b></div>");
+    }
+
+    #[test]
+    fn render_raw_html_null_props_emits_diagnostic() {
+        let spec = Spec::builder()
+            .element("root", Element::new("RawHtml"))
+            .build()
+            .unwrap();
+        // Build element with non-object props to force decode failure
+        let el = crate::spec::Element {
+            type_name: "RawHtml".into(),
+            props: json!(42),
+            children: vec![],
+            action: None,
+            visible: None,
+            each: None,
+            if_: None,
+        };
+        let html = render_raw_html(&el, &spec, &json!(null), 1);
+        assert!(
+            html.contains("<!-- ferro-json-ui: failed to decode RawHtml props"),
+            "got: {html}"
+        );
+    }
+
+    #[test]
+    fn builtin_types_includes_raw_html() {
+        assert!(crate::render::BUILTIN_TYPES.contains(&"RawHtml"));
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 41);
     }
 }

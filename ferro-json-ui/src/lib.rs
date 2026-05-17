@@ -55,9 +55,9 @@ pub use component::{
     FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps, InputProps,
     InputType, KanbanBoardProps, KanbanColumnProps, ModalProps, NotificationDropdownProps,
     NotificationItem, Orientation, PageHeaderProps, PaginationProps, ProductTileProps,
-    ProgressProps, RichTextEditorProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup,
-    SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps,
-    Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
+    ProgressProps, RawHtmlProps, RichTextEditorProps, SelectOption, SelectProps, SeparatorProps,
+    SidebarGroup, SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps,
+    SwitchProps, Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
 pub use config::JsonUiConfig;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers

@@ -441,6 +441,7 @@ fn emit_fields_as_description_list(
     let props = serde_json::to_value(DescriptionListProps {
         items,
         columns: None,
+        data_path: None,
     })
     .expect("DescriptionListProps serialization cannot fail");
     let id = "fields_list".to_string();
@@ -549,6 +550,7 @@ fn emit_metadata(
     let props = serde_json::to_value(DescriptionListProps {
         items,
         columns: None,
+        data_path: None,
     })
     .expect("DescriptionListProps serialization cannot fail");
     let id = "metadata_list".to_string();
