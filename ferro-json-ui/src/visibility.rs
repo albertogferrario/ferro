@@ -73,8 +73,7 @@ impl<'de> serde::Deserialize<'de> for Visibility {
                 struct OrShape {
                     or: Vec<Visibility>,
                 }
-                let shape: OrShape =
-                    serde_json::from_value(v.clone()).map_err(D::Error::custom)?;
+                let shape: OrShape = serde_json::from_value(v.clone()).map_err(D::Error::custom)?;
                 return Ok(Visibility::Or { or: shape.or });
             }
             if obj.contains_key("not") {
@@ -503,7 +502,10 @@ mod tests {
         assert!(msg.contains("and"), "error must mention 'and', got: {msg}");
         assert!(msg.contains("or"), "error must mention 'or', got: {msg}");
         assert!(msg.contains("not"), "error must mention 'not', got: {msg}");
-        assert!(msg.contains("path"), "error must mention 'path', got: {msg}");
+        assert!(
+            msg.contains("path"),
+            "error must mention 'path', got: {msg}"
+        );
         assert!(
             msg.contains("operator"),
             "error must mention 'operator', got: {msg}"
