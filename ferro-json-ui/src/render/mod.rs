@@ -525,7 +525,7 @@ mod tests {
 
     #[test]
     fn builtin_types_count_matches_dispatch() {
-        // Defense-in-depth check: BUILTIN_TYPES must be 40 entries.
+        // Defense-in-depth check: BUILTIN_TYPES must be 41 entries.
         // The dispatch match in `render_element` has one arm per entry plus a
         // default arm. A compile-time mismatch would be caught by rustc; this
         // runtime check pins the invariant for future edits.
