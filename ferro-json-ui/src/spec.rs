@@ -1043,6 +1043,41 @@ mod tests {
         }
     }
 
+    /// Phase 164 D-05 case 4 regression test.
+    ///
+    /// A `children` reference to an element that has a `$if` directive must NOT
+    /// be rejected as a dangling child. The referenced element IS present in the
+    /// elements map; `$if` only removes it at resolve time — the structural
+    /// validator cannot observe per-request data, so it must accept such refs.
+    #[test]
+    fn validate_allows_children_ref_to_if_gated_element() {
+        // parent references child; child has $if (Visibility condition).
+        // validate_no_dangling must pass because "child" exists in elements.
+        let json = r#"{
+            "$schema": "ferro-json-ui/v2",
+            "root": "parent",
+            "elements": {
+                "parent": {
+                    "type": "Card",
+                    "props": {"title": "parent"},
+                    "children": ["child"]
+                },
+                "child": {
+                    "type": "Text",
+                    "props": {"content": "conditional"},
+                    "$if": {"path": "/data/show", "operator": "eq", "value": true}
+                }
+            }
+        }"#;
+        // Must parse successfully — $if-gated child must not be rejected as dangling.
+        let spec = Spec::from_json(json);
+        assert!(
+            spec.is_ok(),
+            "$if-gated child must not be rejected as dangling: {:?}",
+            spec.err()
+        );
+    }
+
     #[test]
     fn from_json_rejects_self_cycle() {
         let err = Spec::from_json(
