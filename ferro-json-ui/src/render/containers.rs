@@ -12,7 +12,7 @@
 use serde_json::Value;
 
 use crate::component::{
-    ButtonGroupProps, CardProps, CollapsibleProps, FormMaxWidth, FormSectionLayout,
+    ButtonGroupProps, CardProps, CardVariant, CollapsibleProps, FormMaxWidth, FormSectionLayout,
     FormSectionProps, GapSize, GridProps, KanbanBoardProps, ModalProps, PageHeaderProps, TabsProps,
 };
 use crate::spec::{Element, Spec};
@@ -50,9 +50,18 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
         .map(|cid| render_element(cid, spec, data, depth + 1))
         .collect();
 
-    let mut html = String::from(
-        "<div class=\"rounded-lg border border-border bg-card shadow-sm overflow-visible\"><div class=\"p-4\">",
-    );
+    let (outer_class, inner_pad) = match props.variant {
+        CardVariant::Bordered => (
+            "rounded-lg border border-border bg-card shadow-sm overflow-visible",
+            "p-4",
+        ),
+        CardVariant::Elevated => (
+            "rounded-lg bg-card shadow-md overflow-visible",
+            "p-8",
+        ),
+    };
+
+    let mut html = format!("<div class=\"{outer_class}\"><div class=\"{inner_pad}\">");
     html.push_str(&format!(
         "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
         html_escape(&props.title)
@@ -855,6 +864,54 @@ mod tests {
             }
             other => panic!("expected FooterMissing, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn render_card_bordered_default() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Card").prop("title", "X"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        assert!(
+            html.contains("border border-border"),
+            "expected Bordered class, got: {html}"
+        );
+        assert!(html.contains("shadow-sm"), "expected shadow-sm, got: {html}");
+        assert!(html.contains("p-4"), "expected p-4, got: {html}");
+    }
+
+    #[test]
+    fn render_card_elevated_no_border() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Card")
+                .prop("title", "X")
+                .prop("variant", "elevated"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        assert!(html.contains("shadow-md"), "expected shadow-md, got: {html}");
+        assert!(html.contains("p-8"), "expected p-8, got: {html}");
+        assert!(
+            !html.contains("border-border"),
+            "Elevated must NOT contain border-border, got: {html}"
+        );
+    }
+
+    #[test]
+    fn render_card_omitted_variant_is_bordered() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Card").prop("title", "X"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        assert!(
+            html.contains("border border-border"),
+            "missing variant defaults to Bordered, got: {html}"
+        );
     }
 
     #[test]
