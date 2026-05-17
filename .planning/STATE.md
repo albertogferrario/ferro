@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 160-04-PLAN.md
-last_updated: "2026-05-17T05:09:26.724Z"
+stopped_at: Completed 160-05-PLAN.md
+last_updated: "2026-05-17T05:12:44.508Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
   completed_phases: 155
   total_plans: 472
-  completed_plans: 456
+  completed_plans: 457
   percent: 97
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Ready to execute
@@ -168,6 +168,7 @@ Progress: [████████░░] 84%
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P02 | 3min | 1 tasks | 1 files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P03 | 4min | 1 tasks | 1 files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P04 | 75s | 1 tasks | 1 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp PP05 | 4min | 1 tasks tasks | 1 files files |
 
 ## Accumulated Context
 
@@ -203,6 +204,7 @@ Recent decisions affecting current work:
 - [v12.1] Phase 173 (make:json-view v2) gated on v12.0 Phase 117 + 120 shipping — do not plan until confirmed
 - [160-02] MCP code_templates category deletion pattern: drop registration+comment, producer fn, and integration test in one diff — no orphaned comment, no green-test artifact
 - [160-04] Test-fixture rename pattern: when v1-coded fixture identifiers carry no behavioral weight, rename them in-place to neutral equivalents — keeps regression coverage equivalent while satisfying user-naming constraint (CONTEXT D-06)
+- [160-05] Pre-publish README audit: any crate ferro publishes must have its README usage block compile against the current public API — drift on the crates.io front page is a first-impression bug, not a docs nit
 
 ### Pending Todos
 
@@ -241,7 +243,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T05:09:26.716Z
-Stopped at: Completed 160-04-PLAN.md
+Last session: 2026-05-17T05:12:44.499Z
+Stopped at: Completed 160-05-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
