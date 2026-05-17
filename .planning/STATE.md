@@ -4,7 +4,7 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
 stopped_at: Completed 160-10-PLAN.md — Phase 160 fully closed; Phase 161 cleared
-last_updated: "2026-05-17T05:45:33.066Z"
+last_updated: "2026-05-17T05:59:41.247Z"
 last_activity: 2026-05-17
 progress:
   total_phases: 173
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 160 (remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp) — EXECUTING
-Plan: 10 of 10
+Phase: 161
+Plan: Not started
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
 Status: Phase complete — ready for verification
@@ -37,7 +37,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 96
+- Total plans completed: 106
 - Average duration: —
 - Total execution time: —
 
@@ -64,6 +64,7 @@ Progress: [████████░░] 84%
 | 162 | 10 | - | - |
 | 163 | 10 | - | - |
 | 164 | 12 | - | - |
+| 160 | 10 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
