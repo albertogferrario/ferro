@@ -4,8 +4,8 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
 stopped_at: Completed 163.1-01-PLAN.md (Phase 163.1 complete)
-last_updated: "2026-05-17T00:56:07.902Z"
-last_activity: 2026-05-17 -- Phase 164 planning complete
+last_updated: "2026-05-17T00:58:21.863Z"
+last_activity: 2026-05-17 -- Phase 164 execution started
 progress:
   total_phases: 172
   completed_phases: 154
@@ -20,16 +20,16 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 163.1 — Codemod multi-root handler fix (G-163-01)
+**Current focus:** Phase 164 — json-ui-improvements-batch-3-documenti-field-test-findings-m
 
 ## Current Position
 
-Phase: 163.1 (Codemod multi-root handler fix (G-163-01)) — COMPLETE
-Plan: 1 of 1
+Phase: 164 (json-ui-improvements-batch-3-documenti-field-test-findings-m) — EXECUTING
+Plan: 1 of 12
 Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
 Workspace version: 0.2.35 (inherited from master)
-Status: Ready to execute
-Last activity: 2026-05-17 -- Phase 164 planning complete
+Status: Executing Phase 164
+Last activity: 2026-05-17 -- Phase 164 execution started
 
 Progress: [████████░░] 84%
 
