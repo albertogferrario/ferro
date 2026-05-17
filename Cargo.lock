@@ -2048,6 +2048,7 @@ dependencies = [
  "serde_json",
  "strum",
  "thiserror 1.0.69",
+ "tracing",
 ]
 
 [[package]]
@@ -2264,6 +2265,7 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
+ "tracing",
  "utoipa",
  "utoipa-redoc",
  "uuid",

@@ -24,8 +24,8 @@ use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
 use ferro_json_ui::{
-    expand_directives, render_layout, render_spec_to_html_with_plugins, resolve_actions,
-    resolve_errors, resolve_expressions, JsonUiConfig, LayoutContext, Spec,
+    expand_directives, global_catalog, render_layout, render_spec_to_html_with_plugins,
+    resolve_actions, resolve_errors, resolve_expressions, JsonUiConfig, LayoutContext, Spec,
 };
 
 /// Stateless JSON-UI renderer.
@@ -48,6 +48,18 @@ impl JsonUi {
     fn resolve(spec: &Spec) -> Spec {
         let mut resolved = spec.clone();
         expand_directives(&mut resolved);
+        // D-16: validate AFTER expand_directives so $if-removed elements skip
+        // enum validation. Errors are logged at error level; render continues
+        // (hard surface available via resolve_with_errors on error paths).
+        if let Err(errs) = global_catalog().validate(&resolved) {
+            for e in &errs {
+                tracing::error!(
+                    target: "ferro_json_ui::catalog",
+                    error = %e,
+                    "render-time catalog validation failed (resolve clean-path)"
+                );
+            }
+        }
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
         resolve_expressions(&mut resolved);
         resolved
@@ -215,6 +227,18 @@ impl JsonUi {
     fn resolve_with_errors(spec: &Spec, errors: &HashMap<String, Vec<String>>) -> Spec {
         let mut resolved = spec.clone();
         expand_directives(&mut resolved);
+        // D-16: validate AFTER expand_directives so $if-removed elements skip
+        // enum validation. Catalog errors are logged at error level; this path
+        // is used for form re-renders where shape errors surface as diagnostics.
+        if let Err(errs) = global_catalog().validate(&resolved) {
+            for e in &errs {
+                tracing::error!(
+                    target: "ferro_json_ui::catalog",
+                    error = %e,
+                    "render-time catalog validation failed (resolve_with_errors)"
+                );
+            }
+        }
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
         resolve_expressions(&mut resolved);
         resolve_errors(&mut resolved, errors);
