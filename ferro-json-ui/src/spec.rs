@@ -31,10 +31,9 @@ pub const SCHEMA_VERSION: &str = "ferro-json-ui/v2";
 
 /// Maximum allowed nesting depth from the root element.
 ///
-/// Matches the Screen > Section > Component hierarchy documented by the
-/// SDUI research in `115-CONTEXT.md` (D-09). Paths exceeding this depth
-/// surface as [`SpecError::DepthExceeded`].
-pub const MAX_NESTING_DEPTH: usize = 3;
+/// Set to 5 to accommodate real-world dashboard nesting (root → grid → card →
+/// row → atom). Paths exceeding this depth surface as [`SpecError::DepthExceeded`].
+pub const MAX_NESTING_DEPTH: usize = 5;
 
 // ---------------------------------------------------------------------------
 // Section B — Types (Spec, Element, SpecError)
@@ -1045,21 +1044,23 @@ mod tests {
     }
 
     #[test]
-    fn from_json_rejects_four_level_nesting() {
+    fn from_json_rejects_six_level_nesting() {
+        // Six levels (root + 5 children chain): one past MAX_NESTING_DEPTH=5.
         let err = Spec::from_json(
             r#"{"$schema":"ferro-json-ui/v2","root":"root","elements":{
                 "root":{"type":"Card","children":["A"]},
                 "A":{"type":"Card","children":["B"]},
                 "B":{"type":"Card","children":["C"]},
                 "C":{"type":"Card","children":["D"]},
-                "D":{"type":"Text"}
+                "D":{"type":"Card","children":["E"]},
+                "E":{"type":"Text"}
             }}"#,
         )
         .unwrap_err();
         match err {
             SpecError::DepthExceeded { max, found, path } => {
-                assert_eq!(max, 3);
-                assert!(found > 3, "found {found} must exceed 3");
+                assert_eq!(max, 5);
+                assert!(found > 5, "found {found} must exceed 5");
                 assert!(!path.is_empty());
             }
             other => panic!("expected DepthExceeded, got {other:?}"),
@@ -1733,9 +1734,8 @@ mod tests {
                 NestedElement::new("Screen").child(
                     NestedElement::new("Grid").child(
                         NestedElement::new("Card").child(
-                            NestedElement::new("Row").child(
-                                NestedElement::new("Text").prop("content", "leaf"),
-                            ),
+                            NestedElement::new("Row")
+                                .child(NestedElement::new("Text").prop("content", "leaf")),
                         ),
                     ),
                 ),
@@ -1755,9 +1755,8 @@ mod tests {
                     NestedElement::new("Grid").child(
                         NestedElement::new("Card").child(
                             NestedElement::new("Row").child(
-                                NestedElement::new("Column").child(
-                                    NestedElement::new("Text").prop("content", "too deep"),
-                                ),
+                                NestedElement::new("Column")
+                                    .child(NestedElement::new("Text").prop("content", "too deep")),
                             ),
                         ),
                     ),
