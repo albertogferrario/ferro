@@ -131,7 +131,7 @@ pub fn render_spec_to_html_with_plugins(spec: &Spec, data: &Value) -> RenderResu
 /// diagnostic logic lives here. The per-element pipeline is:
 /// (1) depth guard, (2) ID lookup, (3) visibility check, (4) dispatch.
 pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) -> String {
-    // (1) Depth tripwire. Parse-time depth is capped at `MAX_NESTING_DEPTH = 3`;
+    // (1) Depth tripwire. Parse-time depth is capped at `MAX_NESTING_DEPTH = 5`;
     // this fires only for hand-mutated Specs that bypassed `Spec::from_json`.
     if depth > MAX_NESTING_DEPTH + 1 {
         return format!(
