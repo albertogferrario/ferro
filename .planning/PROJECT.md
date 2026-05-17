@@ -422,4 +422,4 @@ See also `.planning/VISION.md` for design philosophy.
 | Schema-driven projections replace field_map.rs | Projections and catalog stay consistent by construction | Planned |
 
 ---
-*Last updated: 2026-05-16 — master merged into v12.0/json-ui-v2; v12.1 AI phases renumbered to 165-173 to avoid collision with v12.0 closure phases 159-164*
+*Last updated: 2026-05-17 — Phase 164 complete (JSON-UI improvements batch 3): V7-RUNTIME frictions F1–F10 absorbed, v1-deletion-readiness audit cleared (0 BLOCKER across 25 surface elements), COMPLETED.md written. Phase 160 (v1 API deletion) is now unblocked; next-up is Phase 160 → Phase 161 (v12.0 merge to master + single publish). Phase 174 added to roadmap as a forward-looking v13.0 seed: research-only evaluation of Hyperview/HXML as a candidate next-generation UI spec format, including the Appo native-mobile angle.*
