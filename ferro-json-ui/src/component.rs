@@ -913,7 +913,15 @@ pub struct KanbanColumnProps {
 /// Props for KanbanBoard component — horizontal scrollable columns on desktop, tab-based on mobile.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct KanbanBoardProps {
+    /// Static columns. Used when `data_path` is None.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub columns: Vec<KanbanColumnProps>,
+    /// Optional data-path override of `columns`. When set, the renderer
+    /// resolves the array at this path against handler data and decodes
+    /// each entry as a `KanbanColumnProps`. Takes precedence over
+    /// `columns` when both are set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mobile_default_column: Option<String>,
 }
@@ -1448,5 +1456,54 @@ mod card_variant_tests {
         let j = serde_json::to_value(&p).unwrap();
         let back: CardProps = serde_json::from_value(j).unwrap();
         assert_eq!(back.variant, CardVariant::Elevated);
+    }
+}
+
+#[cfg(test)]
+mod kanban_board_props_tests {
+    use super::*;
+
+    #[test]
+    fn kanban_board_props_serde_static_columns() {
+        let v = serde_json::json!({
+            "columns": [{"title": "To Do", "items": [], "id": "todo", "count": 0}]
+        });
+        let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.columns.len(), 1);
+        assert!(p.data_path.is_none());
+    }
+
+    #[test]
+    fn kanban_board_props_serde_data_path() {
+        let v = serde_json::json!({"data_path": "/columns"});
+        let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
+        assert!(p.columns.is_empty());
+        assert_eq!(p.data_path.as_deref(), Some("/columns"));
+    }
+
+    #[test]
+    fn kanban_board_props_serde_neither() {
+        let v = serde_json::json!({});
+        let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
+        assert!(p.columns.is_empty());
+        assert!(p.data_path.is_none());
+    }
+
+    #[test]
+    fn kanban_board_props_empty_columns_skipped_on_serialize() {
+        let p = KanbanBoardProps {
+            columns: vec![],
+            data_path: Some("/x".into()),
+            mobile_default_column: None,
+        };
+        let j = serde_json::to_value(&p).unwrap();
+        assert!(
+            j.get("columns").is_none(),
+            "empty columns must be skipped, got: {j}"
+        );
+        assert_eq!(
+            j.get("data_path").and_then(|v| v.as_str()),
+            Some("/x")
+        );
     }
 }
