@@ -6,6 +6,25 @@ The canonical reference throughout this guide is `app/src/views/pagamenti.json` 
 
 ---
 
+## Cheat sheet
+
+Quick reference for the most common v1-to-v2 rewrites, drawn from production migration work.
+
+| v1 pattern | v2 equivalent | Notes |
+|-----------|--------------|-------|
+| `JsonUiView::new("name").card(...)` | `JsonUi::render_file("src/views/…/name.json", data)` | UI structure moves to a `.json` file; handler provides data only |
+| `Component::Card { children: vec![Component::Text(...)] }` | Flat `elements` map: `Card` with `"children": ["text_id"]` + sibling `Text` element | v2 is flat; nesting expressed through ID references, not inline objects |
+| `Component::Plugin { plugin_type: "Stripe", props: {...} }` | Register a `JsonUiPlugin` with a named type (e.g. `"StripeConnectStatus"`); for one-off HTML islands use `"type": "RawHtml"` | Generic `Plugin` dispatch removed (Phase 115 D-01); every plugin has its own type name |
+| `Button::new("Submit").action(Action::post("users.store"))` | `"action": { "method": "POST", "handler": "users.store" }` on the element | HTTP method MUST be uppercase (`"POST"`, `"GET"`, etc.) |
+| `DetailForm { fields, mode: EditMode::Edit }` | `Form` with `Input` children pre-populated via `data_path`; read/edit modes toggled by `visible` on `query.mode` | See section 4 for the full pattern |
+| `view.with_validation_errors(errs)` | Errors in handler data, referenced by `data_path` or `"error"` prop on form inputs | No special view method; shape the data in the handler |
+| `make_node_with_action(...)` helper | Hand-author JSON spec or use `Spec::builder()`; run `ferro json-ui:migrate-v1` for simple cases | Codemod handles the common subset; emit uppercase HTTP methods |
+| Auth layout implicit `Card` wrapper | Each auth spec declares its own `Card` root with `"variant": "elevated"` | Layout no longer injects a Card; specs own their chrome |
+| Conditional rendering via Rust `if/else` in controller | `"visible": { ... }` condition or `"$if": { ... }` directive | `$if` removes the element entirely; `visible` keeps DOM present but hidden |
+| `KanbanBoard` with hand-coded columns | `"type": "KanbanBoard", "props": { "data_path": "/order_columns" }` driven by handler data | `data_path` decodes each array entry as `KanbanColumnProps` |
+
+---
+
 ## 1. `JsonUi::render_file` vs `Spec::builder()`
 
 **v1 approach:** Controllers called builder methods such as `JsonUiView::new()`, `Component::Card(...)`, and assembled component trees directly in Rust code.
@@ -159,7 +178,7 @@ Component::Card(CardProps {
 **Rules for the flat map:**
 - `children` is an ordered array of element IDs — the renderer resolves each ID from the `elements` map.
 - Element IDs must be unique within the spec.
-- Depth is limited to 3 levels (container → section → leaf). If you need deeper nesting, the UI design is likely over-structured.
+- Depth is limited to 5 levels (`MAX_NESTING_DEPTH`). Specs exceeding depth 5 fail validation. Most layouts fit comfortably within this limit; if a design requires deeper nesting, promote inner containers to named top-level elements.
 - `FormProps.fields`, `CardProps.children` (as `Vec<Component>`), `GridProps.children`, `CollapsibleProps.children`, `FormSectionProps.children`, and `ButtonGroupProps.buttons` from v1 are all removed. Use `"children": ["id1", "id2"]` on the element instead.
 
 ---
