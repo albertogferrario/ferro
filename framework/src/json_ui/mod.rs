@@ -86,7 +86,20 @@ impl JsonUi {
             HttpResponse::text(format!("JSON-UI data serialization error: {e}")).status(500)
         })?;
 
-        let title = spec.title.as_deref().unwrap_or("Ferro");
+        let title_owned: String = match &spec.title {
+            None => "Ferro".to_string(),
+            Some(ferro_json_ui::TitleBinding::Literal(s)) => s.clone(),
+            Some(ferro_json_ui::TitleBinding::Binding(r)) => {
+                // Resolve at render time against spec.data using JSON Pointer syntax.
+                // Missing path or non-string value falls back to the default.
+                spec.data
+                    .pointer(&r.data)
+                    .and_then(|v| v.as_str())
+                    .map(String::from)
+                    .unwrap_or_else(|| "Ferro".to_string())
+            }
+        };
+        let title: &str = &title_owned;
 
         let mut head = String::new();
         // Inter Variable via Bunny Fonts — loaded unconditionally so font renders
@@ -1378,6 +1391,59 @@ mod tests {
         assert_eq!(
             css_link_count, 1,
             "expected exactly 1 leaflet.css occurrence, found {css_link_count}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Title binding resolution tests (D-12)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn render_title_literal() {
+        let spec = Spec::builder()
+            .title("Hello")
+            .element("root", Element::new("Text").prop("content", "body"))
+            .build()
+            .expect("spec is valid");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&spec, &data);
+        let body = html_body(ok_response(result));
+        assert!(
+            body.contains("<title>Hello</title>"),
+            "literal title must appear verbatim; got: {body}"
+        );
+    }
+
+    #[test]
+    fn render_title_binding_resolves() {
+        let spec = Spec::builder()
+            .title_binding("/page_title")
+            .data(serde_json::json!({"page_title": "Dynamic"}))
+            .element("root", Element::new("Text").prop("content", "body"))
+            .build()
+            .expect("spec is valid");
+        let data = serde_json::json!({"page_title": "Dynamic"});
+        let result = JsonUi::render(&spec, &data);
+        let body = html_body(ok_response(result));
+        assert!(
+            body.contains("<title>Dynamic</title>"),
+            "binding title must resolve to data value; got: {body}"
+        );
+    }
+
+    #[test]
+    fn render_title_binding_missing_path_falls_back() {
+        let spec = Spec::builder()
+            .title_binding("/missing")
+            .element("root", Element::new("Text").prop("content", "body"))
+            .build()
+            .expect("spec is valid");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&spec, &data);
+        let body = html_body(ok_response(result));
+        assert!(
+            body.contains("<title>Ferro</title>"),
+            "missing binding path must fall back to 'Ferro'; got: {body}"
         );
     }
 }
