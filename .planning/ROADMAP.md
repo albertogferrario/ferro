@@ -1640,7 +1640,7 @@ Plans:
 **Goal:** Absorb two friction sources into the closing batch of the v12.0 loop. (a) **V7-RUNTIME-FRICTION.md** (gestiscilo, 2026-05-17) — ten runtime frictions discovered after the patched ferro at 162/163.1 went active; F1/F2 already fixed gestiscilo-side, F3/F4/F7/F8/F9/F10 require ferro changes (decisions D-12..D-18 in 164-CONTEXT), F5/F6 are gestiscilo-side fixes with optional ferro pre-empt (D-19). (b) **Residual Phase 138 FRICTION.md items** not absorbed by Phase 162 or 163, plus the v1-deletion-readiness audit gating Phase 160. Produce COMPLETED.md summarising all improvements shipped across Phases 162-164 and any intentional gaps retained for future milestones.
 **Requirements**: V7-RUNTIME F3/F4/F7/F8/F9/F10 land as ferro fixes with tests; F5 error message improved; F2 codemod uppercase-methods fix shipped; v1 deletion audit produces zero `BLOCKER` rows; all friction items triaged; ferro-json-ui builds clean; COMPLETED.md written; ferro Phase 160 (v1 deletion) is unblocked.
 **Depends on:** Phase 163.1, gestiscilo V7-RUNTIME-FRICTION.md (consumed)
-**Plans:** 7/12 plans executed
+**Plans:** 9/12 plans executed
 
 Plans:
 - [x] 164-01-PLAN.md — D-14: Raise MAX_NESTING_DEPTH 3→5 + tests + doc (spec.rs)
@@ -1650,8 +1650,8 @@ Plans:
 - [x] 164-05-PLAN.md — D-18: CardVariant enum (Bordered/Elevated) + render_card branch
 - [x] 164-06-PLAN.md — D-13a: KanbanBoard.data_path + render_kanban_board branch
 - [x] 164-07-PLAN.md — D-16: Two-stage validation pipeline (structural at load, catalog at render after expand_directives)
-- [ ] 164-08-PLAN.md — D-19/F5 + D-19/F6: Visibility custom Deserialize (shape-naming error) + PageHeader.actions lax deserialize_with
-- [ ] 164-09-PLAN.md — D-04 + D-05: MCP json_ui_validate_spec tool + directive validator audit
+- [x] 164-08-PLAN.md — D-19/F5 + D-19/F6: Visibility custom Deserialize (shape-naming error) + PageHeader.actions lax deserialize_with
+- [x] 164-09-PLAN.md — D-04 + D-05: MCP json_ui_validate_spec tool + directive validator audit
 - [ ] 164-10-PLAN.md — D-08 + D-09 + D-13b: Documentation pass + v1→v2 cheat sheet + $each-for-kanban example
 - [ ] 164-11-PLAN.md — D-01..D-03 + D-06..D-07: V1-DELETION-AUDIT.md + Plugin paper audit (CHECKPOINT)
 - [ ] 164-12-PLAN.md — D-10..D-11: COMPLETED.md (5 required sections; unblocks Phase 160)
