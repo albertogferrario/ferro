@@ -160,6 +160,38 @@ The limit accommodates dashboard layouts at depth 4 (root → grid → card → 
 
 If a layout exceeds depth 5, flatten with `Element.children` ID references instead of physical nesting. Most layouts that appear to require deep nesting can be restructured by promoting inner containers to named top-level elements and wiring them via explicit `children` IDs.
 
+## Spec.title binding
+
+The `title` field accepts either a literal string or a `{"$data": "/path"}` binding. Bindings are resolved against `spec.data` at render time via JSON Pointer. When the path is missing or the resolved value is not a string, the title falls back to `"Ferro"`.
+
+**Literal title:**
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Orders",
+  "layout": "dashboard",
+  "root": "page_header",
+  "elements": { ... }
+}
+```
+
+**Binding title** (resolved from handler data):
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": { "$data": "/page_title" },
+  "layout": "dashboard",
+  "root": "page_header",
+  "elements": { ... }
+}
+```
+
+With handler data `{ "page_title": "Order #1042" }`, the rendered `<title>` is `Order #1042`. The `$data` path follows JSON Pointer syntax (`/key/nested`).
+
+Note: `title` is the only top-level spec field that accepts a binding expression. `layout`, `root`, and `$schema` are always literal strings.
+
 ## Migration from v1
 
 Controllers using the v1 `make_node` / `make_node_with_action` helpers can migrate to v2 specs incrementally. The `ferro json-ui:migrate-v1` CLI subcommand emits a stub JSON spec under `src/views/{module}/{controller}.json` and a rewritten controller calling `JsonUi::render_file`. Cases the codemod cannot auto-translate are marked with a `// TODO: codemod could not auto-translate` comment rather than silently skipped.

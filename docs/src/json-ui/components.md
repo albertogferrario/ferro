@@ -29,14 +29,15 @@ The sections below document every built-in component: its props table (with JSON
 | Category | Components |
 |----------|------------|
 | **Layout** | Card, Grid, Tabs, Separator, Modal, Skeleton, Collapsible, FormSection |
-| **Data Display** | Text, DataTable, Table, DescriptionList, Badge, Avatar, Progress, Breadcrumb, Pagination, StatCard, Image |
-| **Forms** | Form, Input, Select, Checkbox, Switch, Button, ButtonGroup, DropdownMenu |
+| **Data Display** | Text, DataTable, Table, DescriptionList, Badge, Avatar, Progress, Breadcrumb, Pagination, StatCard, Image, CalendarCell |
+| **Forms** | Form, Input, Select, Checkbox, CheckboxList, Switch, Button, ButtonGroup, DropdownMenu |
 | **Feedback** | Alert, Toast, EmptyState |
 | **Navigation** | Sidebar, Header, PageHeader, NotificationDropdown |
 | **Action** | ActionCard |
 | **Onboarding** | Checklist |
 | **Commerce** | ProductTile |
-| **Extensible** | Plugin (see [Plugins](plugins.md)) |
+| **Kanban** | KanbanBoard, KanbanColumn |
+| **Extensible** | RawHtml, Plugin (see [Plugins](plugins.md)) |
 
 ---
 
@@ -133,6 +134,30 @@ Children are element IDs listed in the `"children"` array on the element, not in
 ```
 
 All elements — `card_main`, `heading`, `form_login`, `email_input`, `submit_btn` — are siblings in the `elements` map. The tree structure is expressed purely through `children` ID references.
+
+#### Variant
+
+`Card` accepts an optional `variant` prop controlling chrome and padding.
+
+**card_variant** — `"bordered"` (default) | `"elevated"`
+
+| Value | Classes applied | Padding | Typical use |
+|-------|-----------------|---------|-------------|
+| `"bordered"` | `border border-border bg-card shadow-sm overflow-visible` | `p-4` | Dashboard cards in dense layouts |
+| `"elevated"` | `bg-card shadow-md overflow-visible` (no border) | `p-8` | Auth pages, error pages, standalone marketing cards |
+
+`variant` defaults to `"bordered"` when omitted.
+
+```json
+"auth_card": {
+  "type": "Card",
+  "props": {
+    "title": "Sign in",
+    "variant": "elevated"
+  },
+  "children": ["login_form"]
+}
+```
 
 ### Grid
 
@@ -418,6 +443,22 @@ Each item object:
 }
 ```
 
+#### Dynamic items via data_path
+
+`data_path` (optional) takes precedence over `items` when set. It resolves to a JSON array decoded as `Vec<DescriptionItem>` (`{ "label": string, "value": string, "format"?: string }`). Falls back to `items` when the path is missing.
+
+```json
+"document_details": {
+  "type": "DescriptionList",
+  "props": {
+    "columns": 2,
+    "data_path": "/document/fields"
+  }
+}
+```
+
+Handler data: `{ "document": { "fields": [{ "label": "Author", "value": "Alice" }, { "label": "Created", "value": "2026-05-17", "format": "date" }] } }`.
+
 ### Badge
 
 Small label with variant-based styling.
@@ -588,6 +629,48 @@ Renders an `<img>` element.
 }
 ```
 
+#### Dynamic source via data_path
+
+`data_path` (optional) takes precedence over `src` when set. It is a JSON Pointer resolved against handler data at render time; the resolved value is used as the `<img src>` attribute. Falls back to the static `src` value when the path is missing or resolves to a non-string.
+
+```json
+"product_image": {
+  "type": "Image",
+  "props": {
+    "src": "/images/placeholder.jpg",
+    "alt": "Product image",
+    "data_path": "/product/image_url"
+  }
+}
+```
+
+Handler data: `{ "product": { "image_url": "/uploads/product-42.jpg" } }` → rendered `src` is `/uploads/product-42.jpg`.
+
+### CalendarCell
+
+Renders a single day cell in a month grid. Intended for use inside a custom calendar layout; not a standalone page component.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `day` | `number` | Day of month (1–31) |
+| `is_today` | `boolean \| null` | Highlights the cell as today (default: `false`) |
+| `is_current_month` | `boolean \| null` | Dims the cell when outside the current month (default: `false`) |
+| `event_count` | `number \| null` | Event indicator dot count (default: `0`) |
+| `dot_colors` | `array \| null` | Per-event Tailwind color classes (e.g. `"bg-blue-500"`). When non-empty, colored dots replace plain primary dots. |
+
+```json
+"day_14": {
+  "type": "CalendarCell",
+  "props": {
+    "day": 14,
+    "is_today": true,
+    "is_current_month": true,
+    "event_count": 3,
+    "dot_colors": ["bg-blue-500", "bg-green-500", "bg-red-500"]
+  }
+}
+```
+
 ---
 
 ## Form Components
@@ -735,6 +818,35 @@ Toggle switch — visually distinct from Checkbox but with identical props. The 
     "description": "Receive email notifications",
     "checked": true,
     "data_path": "/user/notifications_enabled"
+  }
+}
+```
+
+### CheckboxList
+
+A group of checkboxes sharing a single form field name. Each checked option submits as `field=value`. Supports both static option lists and data-driven options resolved from handler data.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `field` | `string` | Form field name; each selected checkbox submits as `field=value` |
+| `options` | `array \| null` | Static option list: `[{ "value": string, "label": string }]` |
+| `options_path` | `string \| null` | JSON Pointer to a data array of `{ "value", "label" }` objects (used when `options` is empty) |
+| `selected_path` | `string \| null` | JSON Pointer to a `string[]` of pre-selected values |
+| `label` | `string \| null` | Group label |
+| `description` | `string \| null` | Help text below the group |
+| `disabled` | `boolean \| null` | Disable all checkboxes |
+| `error` | `string \| null` | Validation error message |
+
+`options_path` and `selected_path` are plain JSON Pointer strings, not `$data` expressions.
+
+```json
+"services_list": {
+  "type": "CheckboxList",
+  "props": {
+    "field": "services",
+    "label": "Choose Services",
+    "options_path": "/available_services",
+    "selected_path": "/user/selected_services"
   }
 }
 ```
@@ -974,34 +1086,40 @@ Application header with business name, user info, notification count, and logout
 
 ### PageHeader
 
-Page-level header with a title, optional subtitle, optional breadcrumb, and optional action button.
+Page-level header with a title, optional subtitle, optional breadcrumb, and optional action buttons.
 
 | Prop | Type | Description |
 |------|------|-------------|
 | `title` | `string` | Page title |
-| `description` | `string \| null` | Page description / subtitle |
 | `breadcrumb` | `array \| null` | Breadcrumb items (same shape as Breadcrumb `items`) |
-| `action_label` | `string \| null` | Primary action button label |
-| `action_variant` | `button_variant \| null` | Action button variant |
-
-Pair with an element `"action"` for the primary action button navigation.
+| `actions` | `array \| null` | Element IDs of action button elements rendered to the right of the title |
 
 ```json
 "page_header": {
   "type": "PageHeader",
   "props": {
     "title": "Orders",
-    "description": "Manage all customer orders.",
     "breadcrumb": [
       { "label": "Home", "url": "/" },
       { "label": "Orders" }
     ],
-    "action_label": "New Order",
-    "action_variant": "default"
-  },
-  "action": { "handler": "orders.create", "method": "GET" }
+    "actions": ["new_order_btn"]
+  }
 }
 ```
+
+#### actions — lax acceptance
+
+`actions` accepts any of the following forms, all of which deserialize to an empty or populated list:
+
+| Wire value | Result |
+|------------|--------|
+| omitted | empty list |
+| `null` | empty list |
+| `""` (empty string) | empty list |
+| `["btn_id", ...]` | list of element IDs |
+
+Controllers that pass `""` or omit the field when there are no actions do not need a special-case branch — all lax forms produce an empty list.
 
 ### NotificationDropdown
 
@@ -1156,7 +1274,9 @@ Kanban board with multiple columns. On mobile, columns switch to tabs.
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `columns` | `array` | Column element IDs (the columns must be `KanbanColumn` elements) |
+| `columns` | `array \| null` | Static `KanbanColumnProps` objects. Used when `data_path` is absent. |
+| `data_path` | `string \| null` | JSON Pointer to an array of `KanbanColumnProps` objects in handler data. Takes precedence over `columns` when set. |
+| `mobile_default_column` | `string \| null` | Column `id` selected by default on mobile tab view |
 
 ```json
 "order_board": {
@@ -1166,6 +1286,32 @@ Kanban board with multiple columns. On mobile, columns switch to tabs.
   }
 }
 ```
+
+#### Dynamic columns via data_path
+
+When `data_path` is set, the renderer resolves the array at that path against handler data and decodes each entry as a `KanbanColumnProps` object (`{ "id", "title", "count", "children"? }`). The static `columns` value is ignored.
+
+```json
+"order_board": {
+  "type": "KanbanBoard",
+  "props": {
+    "data_path": "/order_columns"
+  }
+}
+```
+
+Handler data:
+```json
+{
+  "order_columns": [
+    { "id": "pending",    "title": "Pending",    "count": 4, "children": [] },
+    { "id": "processing", "title": "Processing", "count": 2, "children": [] },
+    { "id": "done",       "title": "Done",       "count": 9, "children": [] }
+  ]
+}
+```
+
+Use `data_path` when the column set varies per request (e.g., one column per order status fetched from the database). For finer-grained templating — one element type per card row inside a fixed column — see the [$each directive for kanban cards](expressions.md#example-kanban-cards-from-a-data-array) in expressions.md.
 
 ### KanbanColumn
 
@@ -1194,6 +1340,27 @@ A single column in a KanbanBoard.
 ---
 
 ## Extensible Components
+
+### RawHtml
+
+Server-injected HTML island for narrow HTML-fragment use cases: status pills, badge decorations, link wrappers, and similar one-off markup that does not warrant a first-class plugin.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `html` | `string` | Server-constructed HTML emitted verbatim into the response |
+
+```json
+"status_pill": {
+  "type": "RawHtml",
+  "props": {
+    "html": "<span class=\"pill pill-green\">Active</span>"
+  }
+}
+```
+
+**Trust boundary.** `html` is emitted verbatim with no sanitization. The consumer is responsible for ensuring the value is safe before embedding it in the spec. For untrusted input (e.g., user-supplied content), run it through a sanitizer such as [`ammonia`](https://crates.io/crates/ammonia) in the handler before assigning it to `html`. This mirrors the discipline required by `RichTextEditor`.
+
+For richer widgets that are interactive, need asset injection (CSS/JS bundles), or are reused across multiple pages, use the first-class plugin system instead — see [plugins.md](plugins.md).
 
 For plugin components (third-party or custom types not in the built-in catalog), see **[Plugins](plugins.md)**.
 
