@@ -169,8 +169,9 @@ A RenderContext controls the rendering call:
 The Renderer trait is the protocol's extension point for output formats. Any
 target format MAY implement the trait:
 
-- **JsonUiRenderer** — The reference implementation. Produces ferro-json-ui/v1
-  component trees (Table, Card, Form, Badge, Progress, etc.).
+- **JsonUiRenderer** — The reference implementation. Produces a `Spec`
+  conforming to the `ferro-json-ui/v2` schema: a flat ID-keyed element map
+  with components such as Table, Card, Form, Badge, and Progress.
 - **A2UI** — A potential implementation targeting A2UI component catalogs.
 - **HTML** — A potential implementation producing static or server-rendered
   HTML.
