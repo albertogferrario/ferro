@@ -451,3 +451,72 @@ fn check_claude_code_skills() -> ClaudeCodeSkillsStatus {
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn scan_json_ui_specs_counts_json_files() {
+        let tmp = TempDir::new().unwrap();
+        let views = tmp.path().join("src/views");
+        fs::create_dir_all(&views).unwrap();
+        fs::write(
+            views.join("foo.json"),
+            r#"{"$schema":"ferro-json-ui/v2","root":"r","elements":{"r":{"type":"Text"}}}"#,
+        )
+        .unwrap();
+        fs::write(
+            views.join("bar.json"),
+            r#"{"$schema":"ferro-json-ui/v2","root":"r","elements":{"r":{"type":"Text"}}}"#,
+        )
+        .unwrap();
+
+        let status = scan_json_ui_specs(tmp.path());
+        assert!(status.available);
+        assert_eq!(status.view_count, 2);
+        assert_eq!(status.views_dir, "src/views/");
+        assert!(status.hint.is_none());
+    }
+
+    #[test]
+    fn scan_json_ui_specs_no_views_dir() {
+        let tmp = TempDir::new().unwrap();
+        let status = scan_json_ui_specs(tmp.path());
+        assert!(!status.available);
+        assert_eq!(status.view_count, 0);
+        assert_eq!(status.views_dir, "src/views/");
+        assert!(status.hint.is_some());
+    }
+
+    #[test]
+    fn scan_json_ui_specs_empty_views_dir() {
+        let tmp = TempDir::new().unwrap();
+        let views = tmp.path().join("src/views");
+        fs::create_dir_all(&views).unwrap();
+        let status = scan_json_ui_specs(tmp.path());
+        assert!(status.available);
+        assert_eq!(status.view_count, 0);
+        assert_eq!(status.views_dir, "src/views/");
+        assert!(status.hint.is_some());
+    }
+
+    #[test]
+    fn scan_json_ui_specs_ignores_non_json_files() {
+        let tmp = TempDir::new().unwrap();
+        let views = tmp.path().join("src/views");
+        fs::create_dir_all(&views).unwrap();
+        fs::write(views.join("mod.rs"), "// stale").unwrap();
+        fs::write(views.join("legacy.rs"), "// stale").unwrap();
+        fs::write(
+            views.join("real.json"),
+            r#"{"$schema":"ferro-json-ui/v2","root":"r","elements":{"r":{"type":"Text"}}}"#,
+        )
+        .unwrap();
+
+        let status = scan_json_ui_specs(tmp.path());
+        assert_eq!(status.view_count, 1);
+    }
+}
