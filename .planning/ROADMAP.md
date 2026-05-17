@@ -1868,3 +1868,30 @@ mplete.**
 | 171. ai:make & ai:explain CLI Commands | 0/? | Not started | - |
 | 172. MCP Tool Wrappers | 0/? | Not started | - |
 | 173. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |
+
+---
+
+### 🔭 v13.0 Future UI Spec Evaluation (Phase 174, planned 2026-05-17)
+
+Forward-looking exploration of alternative server-driven UI protocols. May seed a downstream prototype milestone, or terminate as a documented decision to stay on the JSON spec.
+
+#### Phases
+
+- [ ] **Phase 174: Explore Hyperview / HXML as a candidate next-generation UI spec format** — Research-only. Evaluate the [Hyperview](https://hyperview.org/) HXML protocol against the current JSON spec across protocol shape, component model, expression/visibility primitives, plugin and extension story, projection/intent composition, JSON-Schema introspection equivalents for agent authoring, and server-side rendering pipeline reuse. Includes an explicit Appo angle: today Appo wraps the Ferro web frontend in a native shell; an HXML-style protocol would let the same Ferro server drive a fully native iOS/Android UI without the WebView layer. Output is a decision-quality `HXML-RESEARCH.md` covering protocol comparison, what HXML does better, what's worse or unclear, the Appo angle, and a recommendation (stay on the JSON spec / migrate / build HXML as a parallel renderer). Ends with a go/no-go gate for any downstream prototype phase. No code changes.
+
+### Phase 174: Explore Hyperview / HXML as a candidate next-generation UI spec format
+
+**Goal**: Produce a research-only evaluation of the Hyperview HXML protocol as a candidate next-generation UI spec format for ferro, including the strategic angle for Appo (native mobile UI without a WebView). Decision-quality output document; no code changes.
+
+**Depends on**: Phase 161 (v12.0 merge to master — finalizes the current JSON spec surface to compare against)
+
+**Requirements**: TBD (research phase — requirements may be derived from the output document)
+
+**Success Criteria** (what must be TRUE):
+  1. `HXML-RESEARCH.md` exists in the phase directory with the following sections populated: Protocol comparison (HXML vs current JSON spec), What HXML does better, What's worse or unclear, Appo angle (capabilities gained, capabilities lost, integration shape), Recommendation (stay / migrate / parallel renderer)
+  2. The recommendation is justified against ferro's design principles (projection/intent as core abstraction, beauty dimensions, agent-readable surface)
+  3. The Appo angle explicitly inventories what changes for the WebView → native transition: which `usePush` / `useCamera` / `useBiometrics` / etc. hooks still apply, which become redundant, and which new primitives ferro would need to emit
+  4. The go/no-go gate either schedules a downstream prototype phase (with explicit scope) or records a decision to stay on the JSON spec (with rationale)
+  5. Plugin model parity is addressed — can HXML host arbitrary native widgets the way ferro-json-ui hosts Plugin components? If not, what's the equivalent?
+
+**Plans**: TBD (run /gsd-plan-phase 174 to break down)
