@@ -26,6 +26,7 @@ pub mod job_history;
 pub mod json_ui_catalog;
 pub mod json_ui_generate;
 pub mod json_ui_inspect;
+pub mod json_ui_validate_spec;
 pub mod json_ui_verify_action;
 pub mod last_error;
 pub mod list_broadcast_channels;
