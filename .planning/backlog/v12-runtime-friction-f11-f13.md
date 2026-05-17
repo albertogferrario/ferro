@@ -1,6 +1,15 @@
-# v12.0 runtime friction — F11–F13 (from gestiscilo, 2026-05-17)
+# v12.0 runtime friction — F11–F14 (from gestiscilo, 2026-05-17)
 
-Surfaced during a full dashboard re-walk of gestiscilo against patched ferro `v12.0/json-ui-v2` HEAD `ced0e714` (Phase 164 COMPLETED). The F1–F10 frictions from `gestiscilo/.planning/V7-RUNTIME-FRICTION.md` are all confirmed resolved by Phases 162–164. Three new frictions emerged once the previous blockers were out of the way; all three are fixable on the consumer side and have been (gestiscilo commit `47ff336`). Two carry low-cost ferro recommendations.
+Surfaced during a full dashboard re-walk of gestiscilo against patched ferro `v12.0/json-ui-v2` HEAD `ced0e714` (Phase 164 COMPLETED). The F1–F10 frictions from `gestiscilo/.planning/V7-RUNTIME-FRICTION.md` are all confirmed resolved by Phases 162–164. Four new frictions emerged once the previous blockers were out of the way.
+
+**Status (2026-05-17 — Phase 165):** F11 and F13 RESOLVED in commit `b9d702db`; F14 RESOLVED in commit `54787e5c`. F12 was a consumer-side authoring bug — no ferro action needed.
+
+| F# | Status | Resolution |
+|----|--------|------------|
+| F11 | ✅ shipped | `render_page_header` walks `Element.children`, wraps in body container |
+| F12 | n/a | consumer authoring bug (operator `equals` → `eq`); D-19/F5 deserializer made it trivial |
+| F13 | ✅ shipped | `VisibilityOperator::IsTrue` / `IsFalse` (Empty operator unchanged for back-compat) |
+| F14 | ✅ shipped | `Action.handler: ActionHandler` enum (Literal/Binding); resolved in resolve_actions + pre-resolved per-row in expand_each |
 
 Full consumer-side analysis: `gestiscilo/.planning/V7-RUNTIME-FRICTION-RESOLVED.md`.
 
