@@ -1635,11 +1635,11 @@ Plans:
 - [x] 163.1-01-PLAN.md — Add multi-root guard in try_migrate_handler, delete invalid out_auth fixtures, create single-root fixture trio, rewrite integration test to cover both branches, fmt+clippy+ferro-cli tests clean
 
 
-### Phase 164: JSON-UI improvements batch 3 — documenti field-test findings: multi-step forms, visibility rules, spec authoring ergonomics
+### Phase 164: JSON-UI improvements batch 3 — V7-RUNTIME frictions (F1–F10), v1-deletion-readiness audit, COMPLETED.md
 
-**Goal:** Read the FRICTION.md files from gestiscilo Phases 142 (documenti) and 143 (final cleanup). Documenti is the most form-intensive module: multi-step flows, conditional field visibility, and PDF-preview routing. Expected friction: `visible` rule expressiveness, FormSection nesting at depth limit, multi-page form patterns, and any remaining edge cases from the full gestiscilo sweep. This is the last improvement batch before v1 deletion — address anything that would make the v2 spec surface obviously incomplete compared to what v1 could express. Produce a COMPLETED.md summarising all improvements shipped across Phases 162-164 and any intentional gaps retained for future milestones.
-**Requirements**: All friction items triaged; shipped fixes have tests; ferro-json-ui builds clean; COMPLETED.md written; gestiscilo Phase 143 can finish against this version; ferro Phase 160 (v1 deletion) is unblocked.
-**Depends on:** Phase 163, gestiscilo Phase 143
+**Goal:** Absorb two friction sources into the closing batch of the v12.0 loop. (a) **V7-RUNTIME-FRICTION.md** (gestiscilo, 2026-05-17) — ten runtime frictions discovered after the patched ferro at 162/163.1 went active; F1/F2 already fixed gestiscilo-side, F3/F4/F7/F8/F9/F10 require ferro changes (decisions D-12..D-18 in 164-CONTEXT), F5/F6 are gestiscilo-side fixes with optional ferro pre-empt (D-19). (b) **Residual Phase 138 FRICTION.md items** not absorbed by Phase 162 or 163, plus the v1-deletion-readiness audit gating Phase 160. Produce COMPLETED.md summarising all improvements shipped across Phases 162-164 and any intentional gaps retained for future milestones.
+**Requirements**: V7-RUNTIME F3/F4/F7/F8/F9/F10 land as ferro fixes with tests; F5 error message improved; F2 codemod uppercase-methods fix shipped; v1 deletion audit produces zero `BLOCKER` rows; all friction items triaged; ferro-json-ui builds clean; COMPLETED.md written; ferro Phase 160 (v1 deletion) is unblocked.
+**Depends on:** Phase 163.1, gestiscilo V7-RUNTIME-FRICTION.md (consumed)
 **Plans:** 0 plans
 
 Plans:
