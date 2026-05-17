@@ -969,7 +969,7 @@ cargo test --all-features
 
 **Two assumptions (A1, A2) are load-bearing for plan scope.** The planner should resolve both with the user before locking the plan structure.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Keep or delete the `ferro json-ui:migrate-v1` codemod?**
    - What we know: the codemod is real shipped behavior (CHANGELOG entry under Unreleased, lines 53-54). Its source legitimately contains `JsonUiView` literals — required for the tool to function. The codemod was the migration path for consumers; gestiscilo and any other v1 codebase have already migrated. The user-naming constraint says "no migration story belongs in agent-readable surface".
