@@ -8,6 +8,20 @@ pub(super) const SOURCE: &str = r#"
         }
     }
 
+    // Find this form's submit button. Looks inside the form first; if absent,
+    // falls back to a button linked via the HTML5 `form="<id>"` attribute so
+    // headers and other external bars can drive the guard.
+    function findGuardedSubmit(form) {
+        var inside = form.querySelector('button[type="submit"]');
+        if (inside) return inside;
+        if (form.id) {
+            return document.querySelector(
+                'button[type="submit"][form="' + form.id + '"]'
+            );
+        }
+        return null;
+    }
+
     function initFormGuard(form) {
         var guardType = form.getAttribute('data-form-guard');
         if (guardType === 'number-gt-0') {
@@ -20,7 +34,7 @@ pub(super) const SOURCE: &str = r#"
 
     function initTextEqualsGuard(form, expected) {
         var input = form.querySelector('input[type="text"]');
-        var submitBtn = form.querySelector('button[type="submit"]');
+        var submitBtn = findGuardedSubmit(form);
         if (!input || !submitBtn) return;
 
         function check() {
@@ -44,8 +58,10 @@ pub(super) const SOURCE: &str = r#"
         var inputs = [];
         for (var n = 0; n < numberInputs.length; n++) inputs.push(numberInputs[n]);
         for (var q = 0; q < qtyInputs.length; q++) inputs.push(qtyInputs[q]);
-        // Find the submit button — skip ProductTile +/- controls (they have data-qty-* attrs)
-        var submitBtn = form.querySelector('button[type="submit"]');
+        // Find the submit button — inside the form, or linked via the
+        // `form="<id>"` attribute from an external chrome (e.g. PageHeader).
+        // Skip ProductTile +/- controls (they have data-qty-* attrs).
+        var submitBtn = findGuardedSubmit(form);
         if (!submitBtn) {
             var allBtns = form.querySelectorAll('button:not([data-qty-inc]):not([data-qty-dec])');
             submitBtn = allBtns.length > 0 ? allBtns[allBtns.length - 1] : null;
