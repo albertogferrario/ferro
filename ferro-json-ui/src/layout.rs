@@ -142,22 +142,37 @@ fn base_document_ext(
 
 /// Render a sidebar nav item for the layout shell.
 fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
-    let classes = if item.active {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    let disabled = item.disabled.unwrap_or(false);
+    let (tag, classes) = if disabled {
+        (
+            "span",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 cursor-not-allowed select-none",
+        )
+    } else if item.active {
+        (
+            "a",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )
     } else {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        (
+            "a",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )
     };
-    let mut html = format!(
-        "<a href=\"{}\" class=\"{}\">",
-        html_escape(&item.href),
-        classes
-    );
+    let mut html = if disabled {
+        format!("<{tag} aria-disabled=\"true\" class=\"{classes}\">")
+    } else {
+        format!(
+            "<{tag} href=\"{}\" class=\"{classes}\">",
+            html_escape(&item.href),
+        )
+    };
     if let Some(ref icon) = item.icon {
         html.push_str(&format!(
             "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{icon}</span>" // raw SVG
         ));
     }
-    html.push_str(&format!("{}</a>", html_escape(&item.label)));
+    html.push_str(&format!("{}</{tag}>", html_escape(&item.label)));
     html
 }
 
@@ -1224,6 +1239,7 @@ mod tests {
             href: "/dashboard".to_string(),
             icon: Some("<svg class=\"h-5 w-5\"><path d=\"M3 12l2-2\"/></svg>".to_string()),
             active: false,
+            disabled: None,
         };
         let html = layout_sidebar_nav_item(&item);
         assert!(
@@ -1267,6 +1283,7 @@ mod tests {
             href: "/dashboard".to_string(),
             icon: None,
             active: false,
+            disabled: None,
         };
         let html = layout_sidebar_nav_item(&item);
         assert!(

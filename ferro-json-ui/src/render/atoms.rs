@@ -947,22 +947,39 @@ pub(crate) fn render_sidebar(el: &Element, _spec: &Spec, _data: &Value, _depth: 
 /// emitted raw — trusted SVG supplied by server-side authoring; not user
 /// input.
 fn render_sidebar_nav_item(item: &SidebarNavItem) -> String {
-    let classes = if item.active {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    let disabled = item.disabled.unwrap_or(false);
+    let (tag, classes) = if disabled {
+        (
+            "span",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 cursor-not-allowed select-none",
+        )
+    } else if item.active {
+        (
+            "a",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )
     } else {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        (
+            "a",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )
     };
-    let mut html = format!(
-        "<a href=\"{}\" class=\"{}\">",
-        html_escape(&item.href),
-        classes
-    );
+    let mut html = if disabled {
+        format!(
+            "<{tag} aria-disabled=\"true\" class=\"{classes}\">",
+        )
+    } else {
+        format!(
+            "<{tag} href=\"{}\" class=\"{classes}\">",
+            html_escape(&item.href),
+        )
+    };
     if let Some(ref icon) = item.icon {
         html.push_str(&format!(
             "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{icon}</span>"
         ));
     }
-    html.push_str(&format!("{}</a>", html_escape(&item.label)));
+    html.push_str(&format!("{}</{tag}>", html_escape(&item.label)));
     html
 }
 
@@ -1043,7 +1060,22 @@ pub(crate) fn render_menu_item(
     destructive_class: &str,
     role_attr: &str,
 ) -> String {
-    let url = item.action.url.as_deref().unwrap_or("#");
+    // `action.url` is populated by the spec-tree resolver for actions wired
+    // into static elements. When items arrive via a `$data` binding (e.g.
+    // `DropdownMenu.items: {"$data": "/orders/0/actions"}` inside `$each`),
+    // they bypass that resolver — fall back to the handler literal so the
+    // emitted `<a href>` / `<form action>` still points somewhere real.
+    let url = match item.action.url.as_deref().filter(|s| !s.is_empty()) {
+        Some(u) => u,
+        None => {
+            let h = item.action.handler.as_str();
+            if h.is_empty() {
+                "#"
+            } else {
+                h
+            }
+        }
+    };
     let class_attr = if item.destructive {
         destructive_class
     } else {

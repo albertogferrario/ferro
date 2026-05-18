@@ -8,10 +8,23 @@ pub(super) const SOURCE: &str = r#"
     // tracking the card on scroll.
 
     function setupKanban() {
+        injectKanbanScrollbarStyle();
         var cards = document.querySelectorAll('[data-kanban-card]');
         for (var i = 0; i < cards.length; i++) {
             initKanbanCard(cards[i]);
         }
+    }
+
+    // Hide scrollbars on kanban column scrollers. Inline `scrollbar-width`
+    // covers Firefox; `::-webkit-scrollbar` covers Chrome/Safari/Edge and
+    // must live in a stylesheet, so inject one — idempotent via the id check.
+    function injectKanbanScrollbarStyle() {
+        if (document.getElementById('ferro-kanban-scrollbar-style')) return;
+        var s = document.createElement('style');
+        s.id = 'ferro-kanban-scrollbar-style';
+        s.textContent =
+            '.ferro-kanban-scroll::-webkit-scrollbar{display:none;width:0;height:0}';
+        document.head.appendChild(s);
     }
 
     function initKanbanCard(wrapper) {

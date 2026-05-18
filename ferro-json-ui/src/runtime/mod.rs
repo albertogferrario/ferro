@@ -12,6 +12,7 @@ mod kanban;
 mod modals;
 mod notifications;
 mod product_tiles;
+mod scroll_preserve;
 mod sidebar;
 mod sse;
 mod tabs;
@@ -36,8 +37,10 @@ pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(form_guards::SOURCE);
     s.push_str(product_tiles::SOURCE);
     s.push_str(kanban::SOURCE);
+    s.push_str(scroll_preserve::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
+         \x20       setupScrollPreserve();\n\
          \x20       setupSSE();\n\
          \x20       setupTabs();\n\
          \x20       setupDismissibles();\n\
@@ -137,6 +140,7 @@ mod tests {
             "setupFormGuards",
             "setupProductTiles",
             "setupKanban",
+            "setupScrollPreserve",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
@@ -168,6 +172,7 @@ mod tests {
             "setupFormGuards();",
             "setupProductTiles();",
             "setupKanban();",
+            "setupScrollPreserve();",
         ] {
             assert!(dispatcher.contains(call), "dispatcher missing {call}");
         }

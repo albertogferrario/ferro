@@ -349,10 +349,20 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     html.push_str("<div class=\"flex gap-4\" style=\"min-width: min-content;\">");
 
     for col in &columns {
+        // Column is a flex-column capped at viewport height. Padding lives on
+        // the inner sections (header + scroll viewport) instead of the outer
+        // wrapper, so the scroll clip rectangle reaches the column's rounded
+        // border — card hover shadows and focus rings extend cleanly into the
+        // padding zone instead of being clipped at an inner box. Scrollbars
+        // are hidden via `ferro-kanban-scroll` (CSS injected by the runtime)
+        // plus inline `scrollbar-width: none` for Firefox.
+        // The 12rem subtraction reserves room for dashboard header + page
+        // header + main padding — adjust if chrome height changes.
         html.push_str(
-            "<div class=\"min-w-[260px] flex-1 flex-shrink-0 rounded-lg border border-border bg-card/50 p-3\">",
+            "<div class=\"min-w-[260px] flex-1 flex-shrink-0 rounded-lg border border-border bg-card/50 flex flex-col\" \
+             style=\"max-height: calc(100vh - 12rem);\">",
         );
-        html.push_str("<div class=\"flex items-center justify-between mb-3\">");
+        html.push_str("<div class=\"flex items-center justify-between p-3 shrink-0\">");
         html.push_str(&format!(
             "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
             html_escape(&col.title),
@@ -367,7 +377,10 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
             badge_class, col.count,
         ));
         html.push_str("</div>");
-        html.push_str("<div class=\"space-y-2\">");
+        html.push_str(
+            "<div class=\"ferro-kanban-scroll space-y-2 flex-1 overflow-y-auto px-3 pb-3\" \
+             style=\"scrollbar-width: none;\">",
+        );
         for cid in &col.children {
             html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
             html.push_str(&render_element(cid, spec, data, depth + 1));
@@ -407,8 +420,12 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     for col in &columns {
         let is_default = col.id == default_id;
         let hidden = if is_default { "" } else { " hidden" };
+        // Same viewport cap as desktop columns — single column scrolls
+        // vertically rather than growing the page. Scrollbars hidden via
+        // `ferro-kanban-scroll` + inline scrollbar-width: none.
         html.push_str(&format!(
-            "<div data-tab-panel=\"{}\" class=\"space-y-3{hidden}\">",
+            "<div data-tab-panel=\"{}\" class=\"ferro-kanban-scroll space-y-3 overflow-y-auto{hidden}\" \
+             style=\"max-height: calc(100vh - 14rem); scrollbar-width: none;\">",
             html_escape(&col.id),
         ));
         for cid in &col.children {
@@ -1180,13 +1197,18 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_kanban_board(el, &spec, &json!({}), 1);
         // The "done" mobile panel is the visible one (no " hidden" suffix);
-        // "todo" is hidden on mobile.
+        // "todo" is hidden on mobile. Panels are scrollable so the kanban
+        // never grows the page past the viewport.
         assert!(
-            html.contains("data-tab-panel=\"done\" class=\"space-y-3\">"),
+            html.contains(
+                "data-tab-panel=\"done\" class=\"ferro-kanban-scroll space-y-3 overflow-y-auto\""
+            ),
             "done should be the visible mobile panel; got: {html}"
         );
         assert!(
-            html.contains("data-tab-panel=\"todo\" class=\"space-y-3 hidden\">"),
+            html.contains(
+                "data-tab-panel=\"todo\" class=\"ferro-kanban-scroll space-y-3 overflow-y-auto hidden\""
+            ),
             "todo should be hidden on mobile; got: {html}"
         );
     }

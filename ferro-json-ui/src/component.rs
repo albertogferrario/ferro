@@ -684,6 +684,10 @@ pub struct SidebarNavItem {
     pub icon: Option<String>,
     #[serde(default)]
     pub active: bool,
+    /// When true, the item renders as a muted, non-clickable `<span>`
+    /// instead of an `<a>` — useful for "coming soon" placeholders.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
 }
 
 /// A collapsible group in the sidebar.
