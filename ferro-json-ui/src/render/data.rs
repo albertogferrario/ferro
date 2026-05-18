@@ -20,6 +20,7 @@ use crate::component::{DataTableProps, DropdownMenuAction, TableProps};
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
+use super::atoms::render_menu_item;
 use super::html_escape;
 
 /// Renders a simple `Table` element. Reads `TableProps.columns` and
@@ -415,17 +416,11 @@ fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]) -> String
         "<div popover id=\"{id}\" data-popover-menu class=\"min-w-[10rem] rounded-md border border-border bg-card shadow-md text-left p-0\" role=\"menu\">"
     ));
     for item in items {
-        let url = item.action.url.as_deref().unwrap_or("#");
-        let destructive_class = if item.destructive {
-            " text-destructive"
-        } else {
-            ""
-        };
-        html.push_str(&format!(
-            "<a href=\"{}\" role=\"menuitem\" class=\"block px-3 py-2 text-sm hover:bg-surface{}\">{}</a>",
-            html_escape(url),
-            destructive_class,
-            html_escape(&item.label)
+        html.push_str(&render_menu_item(
+            item,
+            "block px-3 py-2 text-sm hover:bg-surface",
+            "block px-3 py-2 text-sm hover:bg-surface text-destructive",
+            " role=\"menuitem\"",
         ));
     }
     html.push_str("</div>");
@@ -740,6 +735,97 @@ mod tests {
         assert!(
             html.contains("/p//home/draft"),
             "expected /p//home/draft in output; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_post_row_action_emits_form_not_anchor() {
+        // A row_action declaring `method: POST` must render as a real
+        // `<form method="post">` with a submit `<button>`, not as an
+        // `<a href>` that issues a GET request. Regression for the
+        // dropped-method bug in `render_inline_dropdown`.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_actions": [{
+                    "label": "Delete",
+                    "action": {"handler": "destroy", "url": "/items/{id}", "method": "POST"},
+                    "destructive": true,
+                }],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"id": "9", "name": "x"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("<form action=\"/items/9\" method=\"post\">"),
+            "POST row_action must render a form; got: {html}"
+        );
+        assert!(
+            html.contains("<button type=\"submit\""),
+            "POST row_action must include a submit button; got: {html}"
+        );
+        assert!(
+            !html.contains("<a href=\"/items/9\""),
+            "POST row_action must not render an anchor (which would GET); got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_delete_row_action_spoofs_method() {
+        // PUT/PATCH/DELETE row_actions use POST + a `_method` hidden input
+        // for HTTP method spoofing through the form submission.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_actions": [{
+                    "label": "Delete",
+                    "action": {"handler": "destroy", "url": "/items/{id}", "method": "DELETE"},
+                }],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"id": "9", "name": "x"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("<form action=\"/items/9\" method=\"post\">"),
+            "DELETE row_action must render a POST form; got: {html}"
+        );
+        assert!(
+            html.contains("name=\"_method\" value=\"DELETE\""),
+            "DELETE row_action must spoof method via hidden input; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_get_row_action_still_emits_anchor() {
+        // GET row_actions (the most common case — edit links) continue
+        // to render as plain `<a href>` for navigation.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_actions": [{
+                    "label": "Edit",
+                    "action": {"handler": "edit", "url": "/items/{id}/edit", "method": "GET"},
+                }],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"id": "9", "name": "x"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("<a href=\"/items/9/edit\""),
+            "GET row_action must render an anchor; got: {html}"
+        );
+        assert!(
+            !html.contains("<form action=\"/items/9/edit\""),
+            "GET row_action must not render a form; got: {html}"
         );
     }
 

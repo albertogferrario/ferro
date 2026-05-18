@@ -12,8 +12,8 @@ use crate::action::HttpMethod;
 use crate::component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbProps, ButtonProps, ButtonType, ButtonVariant, CalendarCellProps,
-    ChecklistProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps, HeaderProps,
-    IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
+    ChecklistProps, DescriptionListProps, DropdownMenuAction, DropdownMenuProps, EmptyStateProps,
+    HeaderProps, IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
     ProductTileProps, ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps,
     Size, SkeletonProps, StatCardProps, TextElement, TextProps, ToastProps, ToastVariant,
 };
@@ -1026,6 +1026,83 @@ pub(crate) fn render_header(el: &Element, _spec: &Spec, _data: &Value, _depth: u
 
 // ── 20. DropdownMenu ─────────────────────────────────────────────────────
 
+/// Render a single menu item shared by `DropdownMenu` and the inline
+/// dropdown used by `DataTable.row_actions`. A `GET` action emits an
+/// `<a href>`. `POST`/`PUT`/`PATCH`/`DELETE` emit a `<form method="post">`
+/// with a `<button type="submit">`; `PUT`/`PATCH`/`DELETE` add a
+/// `<input type="hidden" name="_method">` for HTTP-method spoofing.
+/// `action.confirm` adds `data-confirm-*` attributes plus an
+/// `onclick="return confirm(...)"` guard.
+///
+/// `role_attr` is inserted as a raw attribute fragment (e.g. ` role="menuitem"`)
+/// or empty. Callers pass full Tailwind class strings — no additive
+/// composition — so each surface keeps its own visual treatment.
+pub(crate) fn render_menu_item(
+    item: &DropdownMenuAction,
+    normal_class: &str,
+    destructive_class: &str,
+    role_attr: &str,
+) -> String {
+    let url = item.action.url.as_deref().unwrap_or("#");
+    let class_attr = if item.destructive {
+        destructive_class
+    } else {
+        normal_class
+    };
+
+    let (confirm_attrs, onclick) = if let Some(ref confirm) = item.action.confirm {
+        let mut attrs = format!(" data-confirm-title=\"{}\"", html_escape(&confirm.title));
+        if let Some(ref message) = confirm.message {
+            attrs.push_str(&format!(
+                " data-confirm-message=\"{}\"",
+                html_escape(message)
+            ));
+        }
+        (
+            attrs,
+            " onclick=\"return confirm(this.dataset.confirmTitle || this.dataset.confirmMessage)\"",
+        )
+    } else {
+        (String::new(), "")
+    };
+
+    match item.action.method {
+        HttpMethod::Get => format!(
+            "<a href=\"{}\"{} class=\"{}\"{}{}>{}</a>",
+            html_escape(url),
+            role_attr,
+            class_attr,
+            confirm_attrs,
+            onclick,
+            html_escape(&item.label),
+        ),
+        HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => {
+            let method_spoof = match item.action.method {
+                HttpMethod::Put => Some("PUT"),
+                HttpMethod::Patch => Some("PATCH"),
+                HttpMethod::Delete => Some("DELETE"),
+                _ => None,
+            };
+            let mut html = format!("<form action=\"{}\" method=\"post\">", html_escape(url));
+            if let Some(m) = method_spoof {
+                html.push_str(&format!(
+                    "<input type=\"hidden\" name=\"_method\" value=\"{m}\">"
+                ));
+            }
+            html.push_str(&format!(
+                "<button type=\"submit\"{} class=\"w-full text-left {}\"{}{}>{}</button>",
+                role_attr,
+                class_attr,
+                confirm_attrs,
+                onclick,
+                html_escape(&item.label),
+            ));
+            html.push_str("</form>");
+            html
+        }
+    }
+}
+
 pub(crate) fn render_dropdown_menu(
     el: &Element,
     _spec: &Spec,
@@ -1057,75 +1134,12 @@ pub(crate) fn render_dropdown_menu(
     ));
 
     for item in &props.items {
-        let url = item.action.url.as_deref().unwrap_or("#");
-        let base_class = if item.destructive {
-            "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-150"
-        } else {
-            "block px-4 py-2 text-sm text-text hover:bg-surface transition-colors duration-150"
-        };
-
-        let confirm_attrs = if let Some(ref confirm) = item.action.confirm {
-            let mut attrs = format!(" data-confirm-title=\"{}\"", html_escape(&confirm.title));
-            if let Some(ref message) = confirm.message {
-                attrs.push_str(&format!(
-                    " data-confirm-message=\"{}\"",
-                    html_escape(message)
-                ));
-            }
-            attrs
-        } else {
-            String::new()
-        };
-
-        let onclick = if item.action.confirm.is_some() {
-            " onclick=\"return confirm(this.dataset.confirmTitle || this.dataset.confirmMessage)\""
-        } else {
-            ""
-        };
-
-        match item.action.method {
-            HttpMethod::Get => {
-                html.push_str(&format!(
-                    "<a href=\"{}\" class=\"{}\"{}{}>{}</a>",
-                    html_escape(url),
-                    base_class,
-                    confirm_attrs,
-                    onclick,
-                    html_escape(&item.label),
-                ));
-            }
-            HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => {
-                let (form_method, needs_spoofing) = match item.action.method {
-                    HttpMethod::Post => ("post", false),
-                    HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => ("post", true),
-                    _ => unreachable!(),
-                };
-                html.push_str(&format!(
-                    "<form action=\"{}\" method=\"{}\">",
-                    html_escape(url),
-                    form_method,
-                ));
-                if needs_spoofing {
-                    let method_value = match item.action.method {
-                        HttpMethod::Put => "PUT",
-                        HttpMethod::Patch => "PATCH",
-                        HttpMethod::Delete => "DELETE",
-                        _ => unreachable!(),
-                    };
-                    html.push_str(&format!(
-                        "<input type=\"hidden\" name=\"_method\" value=\"{method_value}\">"
-                    ));
-                }
-                html.push_str(&format!(
-                    "<button type=\"submit\" class=\"w-full text-left {}\"{}{}>{}</button>",
-                    base_class,
-                    confirm_attrs,
-                    onclick,
-                    html_escape(&item.label),
-                ));
-                html.push_str("</form>");
-            }
-        }
+        html.push_str(&render_menu_item(
+            item,
+            "block px-4 py-2 text-sm text-text hover:bg-surface transition-colors duration-150",
+            "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-150",
+            "",
+        ));
     }
 
     html.push_str("</div>"); // close popover panel
