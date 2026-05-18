@@ -117,7 +117,8 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
 }
 
 /// Renders a `DataTable`. Supports declarative columns with formatters,
-/// per-row actions wrapped in a `<details>`-based dropdown, optional search
+/// per-row actions wrapped in a portal-mode dropdown (positioned with
+/// `position: fixed` so it escapes the table wrapper's overflow), optional search
 /// bar, and per-row visibility filters. Emits a stripe-style desktop table
 /// with alternating rows plus a mobile card fallback.
 ///
@@ -182,9 +183,23 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
         // Body.
         html.push_str("<tbody>");
         for (index, row) in items.iter().enumerate() {
-            html.push_str(
-                "<tr class=\"even:bg-surface hover:bg-surface/80 transition-colors duration-150 border-t border-border\">"
-            );
+            let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
+            let row_href = props
+                .row_href
+                .as_deref()
+                .map(|tmpl| template_url(tmpl, row, &row_key_value));
+            let (extra_class, click_attrs) = if let Some(ref href) = row_href {
+                let onclick = format!(
+                    " onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\"",
+                    html_escape(href)
+                );
+                (" cursor-pointer", onclick)
+            } else {
+                ("", String::new())
+            };
+            html.push_str(&format!(
+                "<tr class=\"even:bg-surface hover:bg-surface/80 transition-colors duration-150 border-t border-border{extra_class}\"{click_attrs}>"
+            ));
             for col in &props.columns {
                 let cell_text = cell_string(row.get(&col.key));
                 html.push_str(&format!(
@@ -193,7 +208,6 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 ));
             }
             if let Some(ref actions) = props.row_actions {
-                let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
                 let templated = template_actions(actions, row, &row_key_value);
                 html.push_str("<td class=\"px-6 py-4 text-right\">");
                 html.push_str(&render_inline_dropdown(
@@ -217,7 +231,26 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
         ));
     } else {
         for (index, row) in items.iter().enumerate() {
-            html.push_str("<div class=\"rounded-lg border border-border bg-card p-4 space-y-2\">");
+            let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
+            let row_href = props
+                .row_href
+                .as_deref()
+                .map(|tmpl| template_url(tmpl, row, &row_key_value));
+            let (open_tag, close_tag) = if let Some(ref href) = row_href {
+                (
+                    format!(
+                        "<a href=\"{}\" class=\"block rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer\">",
+                        html_escape(href)
+                    ),
+                    "</a>".to_string(),
+                )
+            } else {
+                (
+                    "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2\">".to_string(),
+                    "</div>".to_string(),
+                )
+            };
+            html.push_str(&open_tag);
             for col in &props.columns {
                 let cell_text = cell_string(row.get(&col.key));
                 html.push_str(&format!(
@@ -227,7 +260,6 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 ));
             }
             if let Some(ref actions) = props.row_actions {
-                let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
                 let templated = template_actions(actions, row, &row_key_value);
                 html.push_str("<div class=\"pt-2 border-t border-border flex justify-end\">");
                 html.push_str(&render_inline_dropdown(
@@ -236,7 +268,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 ));
                 html.push_str("</div>");
             }
-            html.push_str("</div>");
+            html.push_str(&close_tag);
         }
     }
     html.push_str("</div>");
@@ -257,6 +289,41 @@ fn cell_string(v: Option<&Value>) -> String {
             serde_json::to_string(v).unwrap_or_default()
         }
     }
+}
+
+/// Substitute placeholders in a URL template against a row.
+///
+/// Mirrors the placeholder resolution of `template_actions` so the row-level
+/// `props.row_href` URL is computed with the same rules as
+/// `row_actions[].action.url`:
+///
+/// 1. `{col_key}` — every key in the row object substitutes its value.
+/// 2. `{row_key}` — resolved against `row_key_value`.
+/// 3. `{id}` — resolved against `row["id"]` when present.
+///
+/// Missing placeholders are left unsubstituted.
+fn template_url(template: &str, row: &Value, row_key_value: &str) -> String {
+    let mut url = template.to_string();
+    if let Some(obj) = row.as_object() {
+        for (col_key, col_val) in obj {
+            let placeholder = format!("{{{col_key}}}");
+            let val_str = match col_val {
+                Value::String(s) => s.clone(),
+                Value::Number(n) => n.to_string(),
+                _ => continue,
+            };
+            url = url.replace(&placeholder, &val_str);
+        }
+    }
+    url = url.replace("{row_key}", row_key_value);
+    if let Some(id) = row.get("id").and_then(|v| match v {
+        Value::String(s) => Some(s.clone()),
+        Value::Number(n) => Some(n.to_string()),
+        _ => None,
+    }) {
+        url = url.replace("{id}", &id);
+    }
+    url
 }
 
 /// Resolves the row key for a single row. Reads the value at
@@ -333,21 +400,20 @@ fn template_actions(
         .collect()
 }
 
-/// Minimal self-contained dropdown used for row actions. Uses `<details>` +
-/// `<summary>` so it works without JS and does not depend on Plan 116-03's
-/// `render_dropdown_menu`. Each item emits an `<a href>` or a POST form
-/// depending on the action method — this keeps the emitted URLs visible in
-/// `href="..."` so the URL-template assertions in tests can match.
+/// Minimal self-contained dropdown used for row actions. Emits HTML popover
+/// markup (`popovertarget` + `popover`); `runtime/dropdowns.rs` anchors the
+/// panel under its trigger on open. The browser handles dismiss and lifts
+/// the panel into the top layer, so the surrounding DataTable overflow
+/// context cannot clip it.
 fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]) -> String {
+    let id = html_escape(menu_id);
     let mut html = String::new();
     html.push_str(&format!(
-        "<details class=\"relative inline-block\" id=\"{}\">",
-        html_escape(menu_id)
+        "<button type=\"button\" popovertarget=\"{id}\" aria-haspopup=\"menu\" aria-label=\"Azioni\" class=\"cursor-pointer select-none px-2 py-1 text-text-muted hover:text-text\">\u{22EE}</button>"
     ));
-    html.push_str(
-        "<summary class=\"cursor-pointer select-none px-2 py-1 text-text-muted\">\u{22EE}</summary>",
-    );
-    html.push_str("<div class=\"absolute right-0 mt-1 min-w-[10rem] rounded-md border border-border bg-background shadow-sm z-10\">");
+    html.push_str(&format!(
+        "<div popover id=\"{id}\" data-popover-menu class=\"min-w-[10rem] rounded-md border border-border bg-card shadow-md text-left p-0\" role=\"menu\">"
+    ));
     for item in items {
         let url = item.action.url.as_deref().unwrap_or("#");
         let destructive_class = if item.destructive {
@@ -356,13 +422,13 @@ fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]) -> String
             ""
         };
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"block px-3 py-2 text-sm hover:bg-surface{}\">{}</a>",
+            "<a href=\"{}\" role=\"menuitem\" class=\"block px-3 py-2 text-sm hover:bg-surface{}\">{}</a>",
             html_escape(url),
             destructive_class,
             html_escape(&item.label)
         ));
     }
-    html.push_str("</div></details>");
+    html.push_str("</div>");
     html
 }
 

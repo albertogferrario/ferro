@@ -187,8 +187,15 @@ fn render_button_inner(props: &ButtonProps) -> String {
         None => "",
     };
 
+    // HTML5 `form="<id>"` so a submit button outside its target form (e.g.
+    // when rendered in a PageHeader actions slot) still submits that form.
+    let form_attr = match props.form.as_deref() {
+        Some(f) => format!(" form=\"{}\"", html_escape(f)),
+        None => String::new(),
+    };
+
     format!(
-        "<button{type_attr} class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
+        "<button{type_attr}{form_attr} class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
     )
 }
 
@@ -198,13 +205,20 @@ pub(crate) fn render_button(el: &Element, _spec: &Spec, _data: &Value, _depth: u
         Err(e) => return decode_diagnostic("Button", e),
     };
 
-    let inner_html = render_button_inner(&props);
-
     // GET actions wrap the inner button in an `<a>` for href-driven navigation.
     // When the action has no resolved url, fall back to `href="#"` and emit a
     // diagnostic HTML comment.
     if let Some(action) = &el.action {
         if matches!(action.method, HttpMethod::Get) {
+            // Force the inner button to `type="button"` for the anchor-wrapped
+            // path. Without it, a `<button>` nested inside any ambient `<form>`
+            // (e.g. an edit-form cancel button) defaults to `type="submit"`
+            // per HTML spec and submits the form instead of letting the
+            // anchor's href fire — yielding a 404 on the form's POST target.
+            let mut anchored_props = props.clone();
+            anchored_props.button_type = Some(ButtonType::Button);
+            let inner_html = render_button_inner(&anchored_props);
+
             let target_attr = match action.target.as_deref() {
                 Some(t) => format!(" target=\"{}\" rel=\"noopener noreferrer\"", html_escape(t)),
                 None => String::new(),
@@ -227,7 +241,7 @@ pub(crate) fn render_button(el: &Element, _spec: &Spec, _data: &Value, _depth: u
         // runtime reads `data-*` attributes added by the form/button wrapper
         // elsewhere.
     }
-    inner_html
+    render_button_inner(&props)
 }
 
 // ── 3. Badge ─────────────────────────────────────────────────────────────
@@ -244,8 +258,12 @@ pub(crate) fn render_badge(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         BadgeVariant::Destructive => "bg-destructive/10 text-destructive",
         BadgeVariant::Outline => "border border-border text-text",
     };
+    // Inline `justify-self: start` keeps the pill at its natural width when
+    // it lands inside a Grid cell — default `place-self: stretch` otherwise
+    // stretches it to the column width. Inline because consumer Tailwind
+    // builds don't always emit the `justify-self-start` utility.
     format!(
-        "<span class=\"{} {}\">{}</span>",
+        "<span class=\"{} {}\" style=\"justify-self: start;\">{}</span>",
         base,
         variant_classes,
         html_escape(&props.label)
@@ -1018,11 +1036,11 @@ pub(crate) fn render_dropdown_menu(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("DropdownMenu", e),
     };
-    let mut html = String::from("<div class=\"relative\">");
+    let mut html = String::new();
 
     let trigger_icon = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"5\" r=\"1\"/><circle cx=\"12\" cy=\"12\" r=\"1\"/><circle cx=\"12\" cy=\"19\" r=\"1\"/></svg>";
     html.push_str(&format!(
-        "<button type=\"button\" data-dropdown-toggle=\"{}\" aria-label=\"{}\" \
+        "<button type=\"button\" popovertarget=\"{}\" aria-label=\"{}\" \
          class=\"inline-flex items-center justify-center rounded-md p-1.5 \
          text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 \
          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary \
@@ -1033,8 +1051,8 @@ pub(crate) fn render_dropdown_menu(
     ));
 
     html.push_str(&format!(
-        "<div data-dropdown=\"{}\" \
-         class=\"absolute right-0 z-50 mt-1 w-48 rounded-md border border-border bg-card shadow-md hidden\">",
+        "<div popover id=\"{}\" data-popover-menu \
+         class=\"w-48 rounded-md border border-border bg-card shadow-md text-left p-0\">",
         html_escape(&props.menu_id),
     ));
 
@@ -1110,8 +1128,7 @@ pub(crate) fn render_dropdown_menu(
         }
     }
 
-    html.push_str("</div>"); // close panel
-    html.push_str("</div>"); // close wrapper
+    html.push_str("</div>"); // close popover panel
     html
 }
 
@@ -1181,6 +1198,26 @@ pub(crate) fn render_calendar_cell(
     }
 
     html.push_str("</div>");
+
+    // GET actions wrap the cell in an `<a>` so the click navigates. Mirrors
+    // the Button render path; ignored for POST/PUT/PATCH/DELETE (CalendarCell
+    // is a navigation-only surface, so non-GET actions are not exposed here).
+    if let Some(action) = &el.action {
+        if matches!(action.method, HttpMethod::Get) {
+            let (href, diagnostic) = match &action.url {
+                Some(u) => (html_escape(u), String::new()),
+                None => (
+                    "#".to_string(),
+                    format!(
+                        "<!-- ferro-json-ui: CalendarCell action '{}' has no resolved url -->",
+                        html_escape(action.handler.as_str())
+                    ),
+                ),
+            };
+            return format!("{diagnostic}<a href=\"{href}\" class=\"block\">{html}</a>");
+        }
+    }
+
     html
 }
 
@@ -1378,6 +1415,32 @@ mod tests {
         assert!(
             html.contains("<button"),
             "inner button still emitted; got: {html}"
+        );
+    }
+
+    /// Regression — a GET-action button must force `type="button"` on the
+    /// inner `<button>`. Without it, if the rendered anchor lands inside
+    /// any ambient `<form>` (e.g. an edit form's Cancel button), the inner
+    /// button defaults to `type="submit"` per HTML spec and submits the
+    /// form instead of letting the anchor's href fire.
+    #[test]
+    fn button_get_action_inner_button_has_type_button() {
+        let el_builder = Element::new("Button").prop("label", "Annulla").action(Action {
+            handler: "products.show".into(),
+            url: Some("/dashboard/cassa/prodotti/1".into()),
+            method: HttpMethod::Get,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+            target: None,
+        });
+        let spec = spec_with_root(el_builder);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_button(el, &spec, &json!({}), 1);
+        assert!(html.contains("<a href=\"/dashboard/cassa/prodotti/1\""));
+        assert!(
+            html.contains("<button type=\"button\""),
+            "GET-action inner button must carry type=\"button\"; got: {html}"
         );
     }
 
@@ -1873,7 +1936,11 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_dropdown_menu(el, &spec, &json!({}), 1);
         assert!(html.contains("Edit"), "got: {html}");
-        assert!(html.contains("data-dropdown-toggle=\"m1\""), "got: {html}");
+        assert!(html.contains("popovertarget=\"m1\""), "got: {html}");
+        assert!(
+            html.contains("popover id=\"m1\" data-popover-menu"),
+            "got: {html}"
+        );
     }
 
     #[test]

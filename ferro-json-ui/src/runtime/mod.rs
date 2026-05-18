@@ -88,6 +88,19 @@ mod tests {
         assert!(!FERRO_RUNTIME_JS.contains("text-white"));
     }
 
+    /// Popover-based dropdown wiring: the panel uses the HTML `popover`
+    /// attribute so the browser lifts it into the top layer (escaping any
+    /// `overflow:hidden` ancestor and the surrounding z-index stack). We
+    /// supply only the anchor positioning and the close-on-scroll behavior.
+    #[test]
+    fn test_runtime_contains_popover_dropdown_wiring() {
+        assert!(FERRO_RUNTIME_JS.contains("data-popover-menu"));
+        assert!(FERRO_RUNTIME_JS.contains(":popover-open"));
+        assert!(FERRO_RUNTIME_JS.contains("hidePopover"));
+        assert!(FERRO_RUNTIME_JS.contains("positionUnderTrigger"));
+        assert!(FERRO_RUNTIME_JS.contains("getBoundingClientRect"));
+    }
+
     #[test]
     fn test_runtime_contains_modal_wiring() {
         assert!(FERRO_RUNTIME_JS.contains("setupModals"));

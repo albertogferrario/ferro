@@ -335,8 +335,17 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
 
     let mut html = String::new();
 
-    // Desktop view: horizontal scrollable columns.
-    html.push_str("<div class=\"hidden md:block overflow-x-auto\">");
+    // Desktop view: horizontal scrollable columns. The negative
+    // horizontal margin cancels the parent main's `md:p-6` padding so the
+    // scroller spans full content width; the matching padding restores the
+    // inset for the first/last column so cards don't touch the page edge.
+    // Inline styles are used because consumer Tailwind builds typically
+    // only generate the literal utilities ferro renders elsewhere (no `mx-*`
+    // or `md:` variants for margin/padding).
+    html.push_str(
+        "<div class=\"hidden md:block overflow-x-auto\" \
+         style=\"margin-left: -1.5rem; margin-right: -1.5rem; padding-left: 1.5rem; padding-right: 1.5rem;\">",
+    );
     html.push_str("<div class=\"flex gap-4\" style=\"min-width: min-content;\">");
 
     for col in &columns {

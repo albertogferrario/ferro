@@ -70,15 +70,19 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
         ),
     };
 
+    let id_attr = match props.id.as_deref() {
+        Some(i) => format!(" id=\"{}\"", html_escape(i)),
+        None => String::new(),
+    };
     let mut html = match &props.guard {
         Some(g) => format!(
-            "<form action=\"{}\" method=\"{}\" data-form-guard=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            "<form{id_attr} action=\"{}\" method=\"{}\" data-form-guard=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
             html_escape(&action_url),
             form_method,
             html_escape(g)
         ),
         None => format!(
-            "<form action=\"{}\" method=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            "<form{id_attr} action=\"{}\" method=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
             html_escape(&action_url),
             form_method
         ),

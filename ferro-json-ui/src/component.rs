@@ -218,6 +218,11 @@ pub struct FormProps {
     /// Optional max-width constraint for the form container.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_width: Option<FormMaxWidth>,
+    /// Optional HTML `id` attribute for the rendered `<form>`. Pair with a
+    /// Button's `form` prop to submit this form from a button placed outside
+    /// it (e.g. in a PageHeader actions slot).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
 }
 
 /// HTML button type attribute.
@@ -245,6 +250,11 @@ pub struct ButtonProps {
     pub icon_position: Option<IconPosition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub button_type: Option<ButtonType>,
+    /// HTML5 `form` attribute. Lets a submit button rendered outside its
+    /// target `<form>` (e.g. in a PageHeader actions slot) still submit
+    /// that form, by matching the form's `id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
 }
 
 /// Props for Input component.
