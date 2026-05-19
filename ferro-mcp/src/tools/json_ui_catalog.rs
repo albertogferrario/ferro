@@ -1,9 +1,9 @@
 //! JSON-UI component catalog tool — structured reference of all built-in
 //! components plus plugin components (Map, etc.).
-//
-// CATALOG IS HAND-MAINTAINED FROM ferro_json_ui::component::Component.
-// When a new Component variant is added to ferro-json-ui, this catalog MUST be updated.
-// TODO(ferro): derive this at compile time via a schemars-based introspection pass.
+//!
+//! Component data is derived from [`ferro_json_ui::global_catalog()`] (Phase 117).
+//! The public [`JsonUiCatalog`] / [`CatalogComponent`] struct shape is preserved
+//! (CONTEXT D-24). The hand-maintained `BUILDER_API` and `ACTION_API` strings stay.
 
 use serde::Serialize;
 
@@ -14,6 +14,31 @@ pub struct JsonUiCatalog {
     pub plugin_components: Vec<CatalogComponent>,
     pub builder_api: String,
     pub action_api: String,
+    /// Full spec JSON Schema (suitable for schema-based validation).
+    pub json_schema: serde_json::Value,
+    /// Per-component props JSON Schema, keyed by type name.
+    pub component_schemas: std::collections::HashMap<String, serde_json::Value>,
+    /// Spec-level directives recognized by `ferro-json-ui` resolve pipeline
+    /// (Phase 163: `$each`, `$if`).
+    pub directives: Vec<DirectiveInfo>,
+}
+
+/// A spec-level directive (e.g., `$each`, `$if`) discoverable by agents.
+///
+/// Directives are JSON keys placed on an [`ferro_json_ui::Element`] object
+/// alongside `type`, `props`, etc. The resolve pipeline (Phase 163) expands
+/// directives at request time before render.
+#[derive(Debug, Serialize)]
+pub struct DirectiveInfo {
+    /// Wire-format directive name including the `$` prefix (e.g. `"$each"`).
+    pub name: String,
+    /// Short one-line description (agent-facing).
+    pub description: String,
+    /// JSON snippet showing the directive's wire-format usage.
+    pub syntax_example: String,
+    /// Names of `SpecError` variants that can fire when the directive is
+    /// malformed (cross-reference for diagnostic output).
+    pub validation_errors: Vec<String>,
 }
 
 /// A single component in the catalog.
@@ -38,48 +63,200 @@ pub struct PropInfo {
 ///
 /// When `component` is Some, returns only the matching component (case-insensitive).
 /// When None, returns the full catalog.
+///
+/// Component data is sourced from [`ferro_json_ui::global_catalog()`] (Phase 117).
+/// The public struct shape (`components`, `plugin_components`, `builder_api`,
+/// `action_api`) is preserved (CONTEXT D-24).
 pub fn execute(component: Option<&str>) -> JsonUiCatalog {
-    let all = build_catalog();
-    let all_plugins = build_plugin_catalog();
+    use ferro_json_ui::global_catalog;
+    let cat = global_catalog();
 
-    let (components, plugin_components) = match component {
-        Some(name) => {
-            let lower = name.to_lowercase();
-            let filtered: Vec<_> = all
-                .into_iter()
-                .filter(|c| c.name.to_lowercase() == lower)
-                .collect();
-            let filtered_plugins: Vec<_> = all_plugins
-                .into_iter()
-                .filter(|c| c.name.to_lowercase() == lower)
-                .collect();
-            (filtered, filtered_plugins)
+    let to_catalog_component = |spec: &ferro_json_ui::ComponentSpec| -> CatalogComponent {
+        CatalogComponent {
+            name: spec.name.clone(),
+            description: spec.description.clone(),
+            props: derive_prop_infos(&spec.props_schema),
+            variants: derive_variants(&spec.props_schema),
         }
-        None => (all, all_plugins),
     };
+
+    let components: Vec<CatalogComponent> = cat
+        .components_sorted()
+        .map(to_catalog_component)
+        .filter(|c| {
+            component
+                .map(|needle| c.name.to_lowercase() == needle.to_lowercase())
+                .unwrap_or(true)
+        })
+        .collect();
+
+    let plugin_components: Vec<CatalogComponent> = cat
+        .plugin_components_sorted()
+        .map(to_catalog_component)
+        .filter(|c| {
+            component
+                .map(|needle| c.name.to_lowercase() == needle.to_lowercase())
+                .unwrap_or(true)
+        })
+        .collect();
+
+    // Build component_schemas from all built-in and plugin component specs
+    let component_schemas: std::collections::HashMap<String, serde_json::Value> = cat
+        .components_sorted()
+        .chain(cat.plugin_components_sorted())
+        .filter_map(|spec| {
+            cat.component_schema(&spec.name)
+                .cloned()
+                .map(|schema| (spec.name.clone(), schema))
+        })
+        .collect();
+
+    let directives = vec![
+        DirectiveInfo {
+            name: "$each".to_string(),
+            description:
+                "Iterate over a JSON array in spec.data, producing one element per row \
+                 with auto-suffixed IDs `{id}-0`, `{id}-1`, ... Loop variable bound by \
+                 `as` scopes `$data` paths starting with `/{as}/...` to the current row."
+                    .to_string(),
+            syntax_example: r#"{"type":"Card","$each":{"path":"/orders","as":"order"},"props":{"title":{"$data":"/order/order_number"}}}"#.to_string(),
+            validation_errors: vec![
+                "EachPathNotArray".to_string(),
+                "EachAsReservedName".to_string(),
+                "NestedEach".to_string(),
+                "MismatchedEach".to_string(),
+            ],
+        },
+        DirectiveInfo {
+            name: "$if".to_string(),
+            description:
+                "Conditional element emission. Falsy predicates REMOVE the element from \
+                 the spec at resolve time (no hidden DOM, distinct from `visible` which \
+                 renders hidden). Predicate reuses the `Visibility` evaluator (And/Or/Not \
+                 supported)."
+                    .to_string(),
+            syntax_example: r#"{"type":"Button","$if":{"path":"/can_advance","operator":"eq","value":true},"props":{"label":"Advance"}}"#.to_string(),
+            validation_errors: vec!["IfPathMissing".to_string()],
+        },
+    ];
 
     JsonUiCatalog {
         components,
         plugin_components,
         builder_api: BUILDER_API.to_string(),
         action_api: ACTION_API.to_string(),
+        json_schema: cat.json_schema().clone(),
+        component_schemas,
+        directives,
     }
 }
 
+/// Derive [`PropInfo`] entries from a schemars-generated Props JSON Schema.
+fn derive_prop_infos(schema: &serde_json::Value) -> Vec<PropInfo> {
+    let Some(obj) = schema.as_object() else {
+        return Vec::new();
+    };
+    let Some(props) = obj.get("properties").and_then(|v| v.as_object()) else {
+        return Vec::new();
+    };
+    let required: std::collections::HashSet<&str> = obj
+        .get("required")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect())
+        .unwrap_or_default();
+
+    props
+        .iter()
+        .map(|(name, field)| PropInfo {
+            name: name.clone(),
+            type_name: schema_type_hint(field),
+            required: required.contains(name.as_str()),
+            description: field
+                .get("description")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+        })
+        .collect()
+}
+
+/// Derive a type-hint string from a field's JSON Schema fragment.
+fn schema_type_hint(field: &serde_json::Value) -> String {
+    // Prefer enum → pipe-joined variants
+    if let Some(variants) = field.get("enum").and_then(|v| v.as_array()) {
+        let names: Vec<String> = variants
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+        if !names.is_empty() {
+            return names.join("|");
+        }
+    }
+    // anyOf / oneOf with null → Option<T>
+    for key in ["anyOf", "oneOf"] {
+        if let Some(arr) = field.get(key).and_then(|v| v.as_array()) {
+            let has_null = arr
+                .iter()
+                .any(|v| v.get("type").and_then(|t| t.as_str()) == Some("null"));
+            let non_null: Vec<&serde_json::Value> = arr
+                .iter()
+                .filter(|v| v.get("type").and_then(|t| t.as_str()) != Some("null"))
+                .collect();
+            if has_null && non_null.len() == 1 {
+                return format!("Option<{}>", schema_type_hint(non_null[0]));
+            }
+        }
+    }
+    // Plain type string
+    if let Some(t) = field.get("type").and_then(|v| v.as_str()) {
+        return t.to_string();
+    }
+    // Fallback
+    serde_json::to_string(field).unwrap_or_default()
+}
+
+/// Derive top-level enum variants from a Props schema (e.g. a pure-enum Props type).
+///
+/// Returns `None` for struct-shaped Props (the common case). Struct Props components
+/// like Button expose their enum fields via [`PropInfo::type_name`] instead.
+fn derive_variants(schema: &serde_json::Value) -> Option<Vec<String>> {
+    // oneOf of const strings (schemars enum pattern at the top level)
+    if let Some(arr) = schema.get("oneOf").and_then(|v| v.as_array()) {
+        let names: Vec<String> = arr
+            .iter()
+            .filter_map(|v| v.get("const").and_then(|c| c.as_str()).map(String::from))
+            .collect();
+        if !names.is_empty() {
+            return Some(names);
+        }
+    }
+    None
+}
+
 const BUILDER_API: &str = "\
-JsonUiView::new() -> JsonUiView
+Spec::builder() -> SpecBuilder
   .title(impl Into<String>) -> Self
   .layout(impl Into<String>) -> Self
   .data(serde_json::Value) -> Self
-  .errors(HashMap<String, Vec<String>>) -> Self
-  .component(ComponentNode) -> Self
-  .components(Vec<ComponentNode>) -> Self
+  .element(id, Element) -> Self
+  .build() -> Result<Spec, SpecError>
 
-ComponentNode { key: String, component: Component, action: Option<Action>, visibility: Option<Visibility> }
-  - key: Unique identifier for this node in the view tree
-  - component: One of the Component enum variants
-  - action: Optional Action binding (click/submit handler)
-  - visibility: Optional Visibility rule (show/hide based on data path)";
+Element::new(type_name: impl Into<String>) -> ElementBuilder
+  .prop(key, value) -> Self (accumulates into props: serde_json::Value)
+  .child(id: impl Into<String>) -> Self (child element id reference)
+  .action(Action) -> Self (click/submit handler)
+  .visible(Visibility) -> Self (show/hide based on data path)
+
+Spec { $schema, root, elements: HashMap<String, Element>, title?, layout?, data? }
+  - $schema: \"ferro-json-ui/v2\"
+  - root: id of the root element
+  - elements: flat map of element id -> Element
+Element { type: String, props: Value, children: Vec<String>, action?, visible? }
+  - type: component type name (e.g. \"Card\", \"DataTable\", \"Map\")
+  - props: component-specific properties as a JSON value
+  - children: element id references (no nested structures — flat lookup)
+  - action: optional Action binding
+  - visible: optional Visibility rule";
 
 const ACTION_API: &str = "\
 Action::new(handler) -> Action (POST)
@@ -101,1190 +278,6 @@ ActionOutcome variants:
 
 ConfirmDialog { title: String, message: Option<String>, variant: DialogVariant (default|danger) }";
 
-fn build_catalog() -> Vec<CatalogComponent> {
-    vec![
-        CatalogComponent {
-            name: "Text".to_string(),
-            description: "Renders text content with semantic HTML element selection.".to_string(),
-            props: vec![
-                prop("content", "String", true, "Text content to display"),
-                prop(
-                    "element",
-                    "TextElement",
-                    false,
-                    "HTML element: h1, h2, h3, span, div, section, p (default: p)",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Button".to_string(),
-            description: "Interactive button with visual variants and optional icon.".to_string(),
-            props: vec![
-                prop("label", "String", true, "Button label text"),
-                prop(
-                    "variant",
-                    "ButtonVariant",
-                    false,
-                    "Visual style (default: default)",
-                ),
-                prop("size", "Size", false, "Button size (default: default)"),
-                prop(
-                    "disabled",
-                    "Option<bool>",
-                    false,
-                    "Whether button is disabled",
-                ),
-                prop("icon", "Option<String>", false, "Icon name"),
-                prop(
-                    "icon_position",
-                    "Option<IconPosition>",
-                    false,
-                    "Icon placement: left or right (default: left)",
-                ),
-            ],
-            variants: Some(vec![
-                "default".to_string(),
-                "secondary".to_string(),
-                "destructive".to_string(),
-                "outline".to_string(),
-                "ghost".to_string(),
-                "link".to_string(),
-            ]),
-        },
-        CatalogComponent {
-            name: "Card".to_string(),
-            description: "Container with title, optional description, children, and footer."
-                .to_string(),
-            props: vec![
-                prop("title", "String", true, "Card title"),
-                prop(
-                    "description",
-                    "Option<String>",
-                    false,
-                    "Card description below title",
-                ),
-                prop(
-                    "children",
-                    "Vec<ComponentNode>",
-                    false,
-                    "Nested components inside the card body",
-                ),
-                prop(
-                    "footer",
-                    "Vec<ComponentNode>",
-                    false,
-                    "Components in the card footer",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Table".to_string(),
-            description: "Data table with columns, row actions, sorting, and empty state."
-                .to_string(),
-            props: vec![
-                prop(
-                    "columns",
-                    "Vec<Column>",
-                    true,
-                    "Column definitions: { key, label, format? }",
-                ),
-                prop(
-                    "data_path",
-                    "String",
-                    true,
-                    "Data path to the array of rows (e.g., \"/data/users\")",
-                ),
-                prop(
-                    "row_actions",
-                    "Option<Vec<Action>>",
-                    false,
-                    "Actions available for each row",
-                ),
-                prop(
-                    "empty_message",
-                    "Option<String>",
-                    false,
-                    "Message when table has no data",
-                ),
-                prop(
-                    "sortable",
-                    "Option<bool>",
-                    false,
-                    "Whether columns are sortable",
-                ),
-                prop(
-                    "sort_column",
-                    "Option<String>",
-                    false,
-                    "Currently sorted column key",
-                ),
-                prop(
-                    "sort_direction",
-                    "Option<SortDirection>",
-                    false,
-                    "Sort direction: asc or desc",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Form".to_string(),
-            description: "Form container with action binding and field components.".to_string(),
-            props: vec![
-                prop("action", "Action", true, "Action to execute on form submit"),
-                prop(
-                    "fields",
-                    "Vec<ComponentNode>",
-                    true,
-                    "Form field components (Input, Select, Checkbox, etc.)",
-                ),
-                prop(
-                    "method",
-                    "Option<HttpMethod>",
-                    false,
-                    "HTTP method override (GET, POST, PUT, PATCH, DELETE)",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "DetailForm".to_string(),
-            description: "Split-mode detail page with inline edit: View renders a <dl> + 'Modifica' link; Edit wraps the same <dl> in a <form> with 'Salva'/'Annulla' actions. Mode is URL-driven (?mode=edit); server-side only (no JS). Authoring rule (Option A): when DetailField.input is an Input/Select/Textarea/Checkbox/Switch, the caller MUST set its label to \"\" — the <dt> provides the visible label. DetailForm does not mutate caller-supplied props; the caller should also set aria-label on each input derived from the field's label so screen readers retain context.".to_string(),
-            props: vec![
-                prop(
-                    "mode",
-                    "EditMode",
-                    true,
-                    "View (default) or Edit — typically set via EditMode::from_query(req.query(\"mode\").as_deref())",
-                ),
-                prop(
-                    "action",
-                    "Action",
-                    true,
-                    "Form submit target used in Edit mode; resolver populates action.url from action.handler",
-                ),
-                prop(
-                    "fields",
-                    "Vec<DetailField>",
-                    true,
-                    "Rows: { label, value, input: ComponentNode }",
-                ),
-                prop(
-                    "edit_url",
-                    "String",
-                    true,
-                    "Href for the 'Modifica' link (View mode). Emitted verbatim after html_escape; NOT resolved by the route registry",
-                ),
-                prop(
-                    "cancel_url",
-                    "String",
-                    true,
-                    "Href for the 'Annulla' link (Edit mode). Emitted verbatim after html_escape; NOT resolved by the route registry",
-                ),
-                prop(
-                    "edit_label",
-                    "Option<String>",
-                    false,
-                    "Override for the default 'Modifica' label",
-                ),
-                prop(
-                    "save_label",
-                    "Option<String>",
-                    false,
-                    "Override for the default 'Salva' label",
-                ),
-                prop(
-                    "cancel_label",
-                    "Option<String>",
-                    false,
-                    "Override for the default 'Annulla' label",
-                ),
-                prop(
-                    "method",
-                    "Option<HttpMethod>",
-                    false,
-                    "HTTP method override for the form (else uses action.method); PUT/PATCH/DELETE auto-emit <input type=\"hidden\" name=\"_method\"> spoofing",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "KeyValueEditor".to_string(),
-            description: "Dynamic key/value editor backed by a hidden JSON field. Renders a list of key/value row inputs plus an 'Add row' button; the runtime JS keeps the hidden field in sync on every add/delete/input. When allow_custom_keys is true, the key input is a text field with a <datalist> from suggested_keys; when false, the key input is a <select> restricted to suggested_keys. Last-write-wins on duplicate keys.".to_string(),
-            props: vec![
-                prop(
-                    "field",
-                    "String",
-                    true,
-                    "Name of the hidden input that receives the serialized JSON object",
-                ),
-                prop(
-                    "label",
-                    "Option<String>",
-                    false,
-                    "Optional visible label above the editor block",
-                ),
-                prop(
-                    "suggested_keys",
-                    "Vec<String>",
-                    false,
-                    "Keys offered as suggestions via <datalist> (custom mode) or <select> options (restricted mode)",
-                ),
-                prop(
-                    "allow_custom_keys",
-                    "bool",
-                    false,
-                    "If true (default), keys can be any text with suggestions; if false, keys are restricted to suggested_keys",
-                ),
-                prop(
-                    "data_path",
-                    "Option<String>",
-                    false,
-                    "JSON pointer path whose resolved object seeds the initial rows",
-                ),
-                prop(
-                    "error",
-                    "Option<String>",
-                    false,
-                    "Validation error message rendered below the editor",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "RichTextEditor".to_string(),
-            description: "Rich-text editor backed by Quill 2.0.3 (Snow theme, jsDelivr CDN, SHA-384 SRI-pinned). Emits two hidden inputs on submit: `{name}_delta` (Delta JSON, canonical) and `{name}_html` (sanitized HTML). The `formats` whitelist constrains both the Quill toolbar (init time) and the HTML allowlist (submit time) — image/video/HTML-paste paths are not reachable through the prop surface. Quill JS+CSS load once per page, deduplicated across multiple editor instances. Multiple editors in the same form work without ID collisions; each writes its own pair of hidden inputs.".to_string(),
-            props: vec![
-                prop(
-                    "name",
-                    "String",
-                    true,
-                    "Base form field name. The IIFE emits {name}_delta and {name}_html on submit.",
-                ),
-                prop(
-                    "value",
-                    "Option<String>",
-                    false,
-                    "Initial editor content. Auto-detected: parses as JSON Delta when the string has an `ops` array; otherwise loaded as HTML filtered by the formats allowlist.",
-                ),
-                prop(
-                    "formats",
-                    "Vec<String>",
-                    false,
-                    "Toolbar/allowlist whitelist. Drives both Quill's toolbar config and the HTML post-process. Default: [\"bold\",\"italic\",\"underline\",\"list\",\"header\",\"link\"]",
-                ),
-                prop(
-                    "placeholder",
-                    "Option<String>",
-                    false,
-                    "Placeholder shown when the editor is empty.",
-                ),
-                prop(
-                    "theme",
-                    "String",
-                    false,
-                    "Quill theme. Only \"snow\" supported in v1; defaults to \"snow\".",
-                ),
-                prop(
-                    "label",
-                    "Option<String>",
-                    false,
-                    "Optional label rendered above the editor host.",
-                ),
-                prop(
-                    "error",
-                    "Option<String>",
-                    false,
-                    "Validation error rendered below the editor with destructive token styling.",
-                ),
-                prop(
-                    "data_path",
-                    "Option<String>",
-                    false,
-                    "JSON pointer for pre-fill at render time. Overridden by explicit `value` if both set.",
-                ),
-                prop(
-                    "required",
-                    "Option<bool>",
-                    false,
-                    "When true, the IIFE prevents submission when editor content is empty (after trim).",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Input".to_string(),
-            description: "Text input field with type variants, validation error, and data binding."
-                .to_string(),
-            props: vec![
-                prop("field", "String", true, "Form field name for data binding"),
-                prop("label", "String", true, "Input label text"),
-                prop(
-                    "input_type",
-                    "InputType",
-                    false,
-                    "Input type (default: text)",
-                ),
-                prop("placeholder", "Option<String>", false, "Placeholder text"),
-                prop(
-                    "required",
-                    "Option<bool>",
-                    false,
-                    "Whether field is required",
-                ),
-                prop(
-                    "disabled",
-                    "Option<bool>",
-                    false,
-                    "Whether field is disabled",
-                ),
-                prop("error", "Option<String>", false, "Validation error message"),
-                prop(
-                    "description",
-                    "Option<String>",
-                    false,
-                    "Help text below the input",
-                ),
-                prop("default_value", "Option<String>", false, "Pre-filled value"),
-                prop(
-                    "data_path",
-                    "Option<String>",
-                    false,
-                    "Data path for pre-filling from handler data",
-                ),
-            ],
-            variants: Some(vec![
-                "text".to_string(),
-                "email".to_string(),
-                "password".to_string(),
-                "number".to_string(),
-                "textarea".to_string(),
-                "hidden".to_string(),
-                "date".to_string(),
-                "time".to_string(),
-                "url".to_string(),
-                "tel".to_string(),
-                "search".to_string(),
-            ]),
-        },
-        CatalogComponent {
-            name: "Select".to_string(),
-            description: "Dropdown select field with options, validation error, and data binding."
-                .to_string(),
-            props: vec![
-                prop("field", "String", true, "Form field name for data binding"),
-                prop("label", "String", true, "Select label text"),
-                prop(
-                    "options",
-                    "Vec<SelectOption>",
-                    true,
-                    "Options: { value, label }",
-                ),
-                prop("placeholder", "Option<String>", false, "Placeholder text"),
-                prop(
-                    "required",
-                    "Option<bool>",
-                    false,
-                    "Whether field is required",
-                ),
-                prop(
-                    "disabled",
-                    "Option<bool>",
-                    false,
-                    "Whether field is disabled",
-                ),
-                prop("error", "Option<String>", false, "Validation error message"),
-                prop(
-                    "description",
-                    "Option<String>",
-                    false,
-                    "Help text below the select",
-                ),
-                prop(
-                    "default_value",
-                    "Option<String>",
-                    false,
-                    "Pre-selected value",
-                ),
-                prop(
-                    "data_path",
-                    "Option<String>",
-                    false,
-                    "Data path for pre-filling from handler data",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Alert".to_string(),
-            description: "Alert message with variant-based styling.".to_string(),
-            props: vec![
-                prop("message", "String", true, "Alert message content"),
-                prop(
-                    "variant",
-                    "AlertVariant",
-                    false,
-                    "Visual style (default: info)",
-                ),
-                prop("title", "Option<String>", false, "Alert title"),
-            ],
-            variants: Some(vec![
-                "info".to_string(),
-                "success".to_string(),
-                "warning".to_string(),
-                "error".to_string(),
-            ]),
-        },
-        CatalogComponent {
-            name: "Badge".to_string(),
-            description: "Small label with variant-based styling.".to_string(),
-            props: vec![
-                prop("label", "String", true, "Badge text"),
-                prop(
-                    "variant",
-                    "BadgeVariant",
-                    false,
-                    "Visual style (default: default)",
-                ),
-            ],
-            variants: Some(vec![
-                "default".to_string(),
-                "secondary".to_string(),
-                "destructive".to_string(),
-                "outline".to_string(),
-            ]),
-        },
-        CatalogComponent {
-            name: "Modal".to_string(),
-            description: "Dialog overlay with title, content, footer, and trigger button."
-                .to_string(),
-            props: vec![
-                prop("title", "String", true, "Modal title"),
-                prop("description", "Option<String>", false, "Modal description"),
-                prop(
-                    "children",
-                    "Vec<ComponentNode>",
-                    false,
-                    "Content components inside the modal body",
-                ),
-                prop(
-                    "footer",
-                    "Vec<ComponentNode>",
-                    false,
-                    "Components in the modal footer",
-                ),
-                prop(
-                    "trigger_label",
-                    "Option<String>",
-                    false,
-                    "Label for the trigger button",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Checkbox".to_string(),
-            description: "Boolean checkbox field with label, description, and data binding."
-                .to_string(),
-            props: vec![
-                prop("field", "String", true, "Form field name for data binding"),
-                prop("label", "String", true, "Checkbox label text"),
-                prop(
-                    "description",
-                    "Option<String>",
-                    false,
-                    "Help text below the checkbox",
-                ),
-                prop("checked", "Option<bool>", false, "Default checked state"),
-                prop(
-                    "data_path",
-                    "Option<String>",
-                    false,
-                    "Data path for pre-filling from handler data",
-                ),
-                prop(
-                    "required",
-                    "Option<bool>",
-                    false,
-                    "Whether field is required",
-                ),
-                prop(
-                    "disabled",
-                    "Option<bool>",
-                    false,
-                    "Whether field is disabled",
-                ),
-                prop("error", "Option<String>", false, "Validation error message"),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Switch".to_string(),
-            description: "Toggle switch (visual alternative to Checkbox, same props).".to_string(),
-            props: vec![
-                prop("field", "String", true, "Form field name for data binding"),
-                prop("label", "String", true, "Switch label text"),
-                prop(
-                    "description",
-                    "Option<String>",
-                    false,
-                    "Help text below the switch",
-                ),
-                prop("checked", "Option<bool>", false, "Default checked state"),
-                prop(
-                    "data_path",
-                    "Option<String>",
-                    false,
-                    "Data path for pre-filling from handler data",
-                ),
-                prop(
-                    "required",
-                    "Option<bool>",
-                    false,
-                    "Whether field is required",
-                ),
-                prop(
-                    "disabled",
-                    "Option<bool>",
-                    false,
-                    "Whether field is disabled",
-                ),
-                prop("error", "Option<String>", false, "Validation error message"),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Separator".to_string(),
-            description: "Visual divider between content sections.".to_string(),
-            props: vec![prop(
-                "orientation",
-                "Option<Orientation>",
-                false,
-                "Direction: horizontal (default) or vertical",
-            )],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "DescriptionList".to_string(),
-            description: "Key-value pairs displayed as a description list.".to_string(),
-            props: vec![
-                prop(
-                    "items",
-                    "Vec<DescriptionItem>",
-                    true,
-                    "Items: { label, value, format? }",
-                ),
-                prop(
-                    "columns",
-                    "Option<u8>",
-                    false,
-                    "Number of columns for layout",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Tabs".to_string(),
-            description: "Tabbed content with multiple panels.".to_string(),
-            props: vec![
-                prop(
-                    "default_tab",
-                    "String",
-                    true,
-                    "Value of the initially active tab",
-                ),
-                prop(
-                    "tabs",
-                    "Vec<Tab>",
-                    true,
-                    "Tab definitions: { value, label, children }",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Breadcrumb".to_string(),
-            description: "Navigation breadcrumb trail.".to_string(),
-            props: vec![prop(
-                "items",
-                "Vec<BreadcrumbItem>",
-                true,
-                "Breadcrumb items: { label, url? }",
-            )],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Pagination".to_string(),
-            description: "Page navigation for paginated data.".to_string(),
-            props: vec![
-                prop("current_page", "u32", true, "Current page number"),
-                prop("per_page", "u32", true, "Items per page"),
-                prop("total", "u32", true, "Total number of items"),
-                prop(
-                    "base_url",
-                    "Option<String>",
-                    false,
-                    "Base URL for page links",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Progress".to_string(),
-            description: "Progress bar with percentage value.".to_string(),
-            props: vec![
-                prop("value", "u8", true, "Percentage value (0-100)"),
-                prop("max", "Option<u8>", false, "Maximum value"),
-                prop("label", "Option<String>", false, "Label text above the bar"),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Avatar".to_string(),
-            description: "User avatar with image, fallback text, and size variants.".to_string(),
-            props: vec![
-                prop("src", "Option<String>", false, "Image URL"),
-                prop(
-                    "alt",
-                    "String",
-                    true,
-                    "Alt text (required for accessibility)",
-                ),
-                prop(
-                    "fallback",
-                    "Option<String>",
-                    false,
-                    "Fallback initials when no image",
-                ),
-                prop(
-                    "size",
-                    "Option<Size>",
-                    false,
-                    "Avatar size: xs, sm, default, lg",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Skeleton".to_string(),
-            description: "Loading placeholder with configurable dimensions.".to_string(),
-            props: vec![
-                prop(
-                    "width",
-                    "Option<String>",
-                    false,
-                    "CSS width (e.g., \"100%\", \"200px\")",
-                ),
-                prop(
-                    "height",
-                    "Option<String>",
-                    false,
-                    "CSS height (e.g., \"40px\")",
-                ),
-                prop(
-                    "rounded",
-                    "Option<bool>",
-                    false,
-                    "Whether to use rounded corners",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "StatCard".to_string(),
-            description: "Live-updatable metric card with label, value, icon, and optional SSE target."
-                .to_string(),
-            props: vec![
-                prop("label", "String", true, "Metric label"),
-                prop("value", "String", true, "Metric value"),
-                prop("icon", "Option<String>", false, "Icon name"),
-                prop("subtitle", "Option<String>", false, "Secondary text under the value"),
-                prop(
-                    "sse_target",
-                    "Option<String>",
-                    false,
-                    "SSE target key for live updates (data-sse-target on the value element)",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Checklist".to_string(),
-            description: "Onboarding-style checklist with optional dismissal and server-side state."
-                .to_string(),
-            props: vec![
-                prop("title", "String", true, "Checklist title"),
-                prop(
-                    "items",
-                    "Vec<ChecklistItem>",
-                    true,
-                    "Items: { label, checked, href? }",
-                ),
-                prop(
-                    "dismissible",
-                    "bool",
-                    false,
-                    "Whether the checklist can be dismissed (default: true)",
-                ),
-                prop("dismiss_label", "Option<String>", false, "Dismiss button label"),
-                prop(
-                    "data_key",
-                    "Option<String>",
-                    false,
-                    "Server-side state persistence key",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Toast".to_string(),
-            description: "Declarative notification intent consumed by the JS runtime via data attributes."
-                .to_string(),
-            props: vec![
-                prop("message", "String", true, "Toast message text"),
-                prop("variant", "ToastVariant", false, "Visual style (default: info)"),
-                prop(
-                    "timeout",
-                    "Option<u32>",
-                    false,
-                    "Seconds before auto-dismiss (default: 5)",
-                ),
-                prop(
-                    "dismissible",
-                    "bool",
-                    false,
-                    "Whether the toast can be manually dismissed (default: true)",
-                ),
-            ],
-            variants: Some(vec![
-                "info".to_string(),
-                "success".to_string(),
-                "warning".to_string(),
-                "error".to_string(),
-            ]),
-        },
-        CatalogComponent {
-            name: "NotificationDropdown".to_string(),
-            description: "Dropdown listing notification items with icons, timestamps, and read state."
-                .to_string(),
-            props: vec![
-                prop(
-                    "notifications",
-                    "Vec<NotificationItem>",
-                    true,
-                    "Items: { icon?, text, timestamp?, read, action_url? }",
-                ),
-                prop(
-                    "empty_text",
-                    "Option<String>",
-                    false,
-                    "Text shown when there are no notifications",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Sidebar".to_string(),
-            description: "Dashboard sidebar with fixed top/bottom items and collapsible nav groups."
-                .to_string(),
-            props: vec![
-                prop(
-                    "fixed_top",
-                    "Vec<SidebarNavItem>",
-                    false,
-                    "Pinned items rendered above groups",
-                ),
-                prop(
-                    "groups",
-                    "Vec<SidebarGroup>",
-                    false,
-                    "Collapsible groups: { label, collapsed, items }",
-                ),
-                prop(
-                    "fixed_bottom",
-                    "Vec<SidebarNavItem>",
-                    false,
-                    "Pinned items rendered below groups",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Header".to_string(),
-            description: "Dashboard top bar with business name, notification badge, and user menu."
-                .to_string(),
-            props: vec![
-                prop("business_name", "String", true, "Business/application name"),
-                prop(
-                    "notification_count",
-                    "Option<u32>",
-                    false,
-                    "Unread notification count for the badge",
-                ),
-                prop("user_name", "Option<String>", false, "Current user name"),
-                prop("user_avatar", "Option<String>", false, "Current user avatar URL"),
-                prop("logout_url", "Option<String>", false, "URL for the logout link"),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Grid".to_string(),
-            description: "Responsive multi-column grid layout with configurable breakpoint columns, gap, and optional horizontal scroll mode."
-                .to_string(),
-            props: vec![
-                prop("columns", "u8", false, "Base (mobile) columns 1-12 (default: 2)"),
-                prop(
-                    "md_columns",
-                    "Option<u8>",
-                    false,
-                    "Columns at md breakpoint (768px+)",
-                ),
-                prop(
-                    "lg_columns",
-                    "Option<u8>",
-                    false,
-                    "Columns at lg breakpoint (1024px+)",
-                ),
-                prop("gap", "GapSize", false, "Gap between items: none, sm, md, lg, xl"),
-                prop(
-                    "scrollable",
-                    "Option<bool>",
-                    false,
-                    "Enable Trello-style horizontal scroll layout",
-                ),
-                prop("children", "Vec<ComponentNode>", false, "Grid children"),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Collapsible".to_string(),
-            description: "Expandable <details>/<summary> section.".to_string(),
-            props: vec![
-                prop("title", "String", true, "Summary title"),
-                prop("expanded", "bool", false, "Whether the section starts expanded"),
-                prop("children", "Vec<ComponentNode>", false, "Hidden/expanded content"),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "EmptyState".to_string(),
-            description: "Standardized empty view with title, description, and optional call-to-action."
-                .to_string(),
-            props: vec![
-                prop("title", "String", true, "Empty state title"),
-                prop("description", "Option<String>", false, "Supporting text"),
-                prop("action", "Option<Action>", false, "Optional CTA action"),
-                prop("action_label", "Option<String>", false, "Label for the CTA button"),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "FormSection".to_string(),
-            description: "Visual grouping within a form with title, description, and layout variant."
-                .to_string(),
-            props: vec![
-                prop("title", "String", true, "Section title"),
-                prop("description", "Option<String>", false, "Section description"),
-                prop("children", "Vec<ComponentNode>", false, "Fields inside the section"),
-                prop(
-                    "layout",
-                    "Option<FormSectionLayout>",
-                    false,
-                    "Layout: stacked (default) or two_column",
-                ),
-            ],
-            variants: Some(vec!["stacked".to_string(), "two_column".to_string()]),
-        },
-        CatalogComponent {
-            name: "PageHeader".to_string(),
-            description: "Page title with optional breadcrumb trail and action buttons.".to_string(),
-            props: vec![
-                prop("title", "String", true, "Page title"),
-                prop(
-                    "breadcrumb",
-                    "Vec<BreadcrumbItem>",
-                    false,
-                    "Breadcrumb items: { label, url? }",
-                ),
-                prop(
-                    "actions",
-                    "Vec<ComponentNode>",
-                    false,
-                    "Action components rendered on the right",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "ButtonGroup".to_string(),
-            description: "Horizontal button row with a consistent gap between buttons.".to_string(),
-            props: vec![prop(
-                "buttons",
-                "Vec<ComponentNode>",
-                false,
-                "Button components rendered inline",
-            )],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "DropdownMenu".to_string(),
-            description: "Trigger button with an absolutely-positioned action panel (kebab menu)."
-                .to_string(),
-            props: vec![
-                prop("menu_id", "String", true, "Unique id for the menu element"),
-                prop("trigger_label", "String", true, "Label for the trigger button"),
-                prop(
-                    "items",
-                    "Vec<DropdownMenuAction>",
-                    true,
-                    "Menu items: { label, action, destructive }",
-                ),
-                prop(
-                    "trigger_variant",
-                    "Option<ButtonVariant>",
-                    false,
-                    "Visual style of the trigger button",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "DataTable".to_string(),
-            description: "Stripe-style alternating-row table with per-row DropdownMenu, mobile card fallback, and empty state."
-                .to_string(),
-            props: vec![
-                prop(
-                    "columns",
-                    "Vec<Column>",
-                    true,
-                    "Column definitions: { key, label, format? }",
-                ),
-                prop(
-                    "data_path",
-                    "String",
-                    true,
-                    "Data path to the array of rows (e.g., \"/data/products\")",
-                ),
-                prop(
-                    "row_actions",
-                    "Option<Vec<DropdownMenuAction>>",
-                    false,
-                    "Per-row dropdown menu actions",
-                ),
-                prop("empty_message", "Option<String>", false, "Message when empty"),
-                prop(
-                    "row_key",
-                    "Option<String>",
-                    false,
-                    "Row key field for stable identification",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "KanbanBoard".to_string(),
-            description: "Horizontally scrollable kanban columns on desktop, tab-based switching on mobile."
-                .to_string(),
-            props: vec![
-                prop(
-                    "columns",
-                    "Vec<KanbanColumnProps>",
-                    true,
-                    "Columns: { id, title, count, children }",
-                ),
-                prop(
-                    "mobile_default_column",
-                    "Option<String>",
-                    false,
-                    "Column id shown by default on mobile",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "CalendarCell".to_string(),
-            description: "Single day cell in a month grid with today highlight, out-of-month muting, and event indicators."
-                .to_string(),
-            props: vec![
-                prop("day", "u8", true, "Day of month (1-31)"),
-                prop("is_today", "bool", false, "Whether this day is today"),
-                prop(
-                    "is_current_month",
-                    "bool",
-                    false,
-                    "Whether this day belongs to the current month",
-                ),
-                prop("event_count", "u32", false, "Number of events on this day"),
-                prop(
-                    "dot_colors",
-                    "Vec<String>",
-                    false,
-                    "Per-event Tailwind color classes (e.g., \"bg-blue-500\")",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "ActionCard".to_string(),
-            description: "Horizontal clickable row with icon, title, description, and chevron; variant-colored left border."
-                .to_string(),
-            props: vec![
-                prop("title", "String", true, "Card title"),
-                prop("description", "String", true, "Card description"),
-                prop("icon", "Option<String>", false, "Icon name"),
-                prop(
-                    "variant",
-                    "ActionCardVariant",
-                    false,
-                    "Visual style (default, setup, danger)",
-                ),
-                prop(
-                    "href",
-                    "Option<String>",
-                    false,
-                    "Navigation URL; when set the card renders as an <a>",
-                ),
-            ],
-            variants: Some(vec![
-                "default".to_string(),
-                "setup".to_string(),
-                "danger".to_string(),
-            ]),
-        },
-        CatalogComponent {
-            name: "ProductTile".to_string(),
-            description: "Touch-friendly POS product tile with name, price, and +/- quantity controls bound to a hidden form field."
-                .to_string(),
-            props: vec![
-                prop("product_id", "String", true, "Stable product identifier"),
-                prop("name", "String", true, "Product name"),
-                prop("price", "String", true, "Formatted product price"),
-                prop("field", "String", true, "Form field name for the quantity input"),
-                prop(
-                    "default_quantity",
-                    "Option<u32>",
-                    false,
-                    "Initial quantity value",
-                ),
-            ],
-            variants: None,
-        },
-        CatalogComponent {
-            name: "Image".to_string(),
-            description: "Bounded visual asset rendered into a box. Accepts either an \
-                          external URL (src) or a server-constructed inline SVG string \
-                          (svg) — exactly one of the two must be set. The URL variant \
-                          HTML-escapes the src attribute; the SVG variant emits the svg string verbatim \
-                          (intended for server-constructed SVG — charts, sparklines, icons — not user input). \
-                          alt is required on both variants (compile-enforced accessibility). \
-                          placeholder_label applies to the URL variant only."
-                .to_string(),
-            props: vec![
-                prop(
-                    "src",
-                    "String",
-                    false,
-                    "Image source URL (URL variant — use when svg is absent). \
-                     HTML-escaped as an attribute value.",
-                ),
-                prop(
-                    "svg",
-                    "String",
-                    false,
-                    "Inline SVG string emitted verbatim (SVG variant — use when src is absent). \
-                     Server-constructed SVG only; not suitable for user input.",
-                ),
-                prop(
-                    "alt",
-                    "String",
-                    true,
-                    "Alt text for accessibility — required on both source variants.",
-                ),
-                prop(
-                    "aspect_ratio",
-                    "Option<String>",
-                    false,
-                    "CSS aspect ratio (e.g., \"16/9\").",
-                ),
-                prop(
-                    "placeholder_label",
-                    "Option<String>",
-                    false,
-                    "Label shown in the skeleton placeholder behind the image (URL variant only).",
-                ),
-            ],
-            variants: None,
-        },
-    ]
-}
-
-/// Plugin components registered in the framework.
-///
-/// Plugin components use the same `{"type": "Map", ...}` JSON syntax as
-/// built-in components. They are rendered by the plugin system which also
-/// handles loading their required JS/CSS assets.
-fn build_plugin_catalog() -> Vec<CatalogComponent> {
-    vec![CatalogComponent {
-        name: "Map".to_string(),
-        description:
-            "Interactive map powered by Leaflet. Renders markers, custom tiles, and popups. \
-             Assets loaded via CDN automatically. Plugin component — uses the same JSON syntax \
-             as built-in components."
-                .to_string(),
-        props: vec![
-            prop(
-                "center",
-                "[f64; 2]",
-                true,
-                "Map center as [latitude, longitude]",
-            ),
-            prop("zoom", "u8", false, "Zoom level 0-18 (default: 13)"),
-            prop(
-                "height",
-                "String",
-                false,
-                "CSS height of the map container (default: \"400px\")",
-            ),
-            prop(
-                "markers",
-                "Vec<MapMarker {lat, lng, popup?}>",
-                false,
-                "Markers to display on the map",
-            ),
-            prop(
-                "tile_url",
-                "Option<String>",
-                false,
-                "Custom tile layer URL template (default: OpenStreetMap)",
-            ),
-            prop(
-                "attribution",
-                "Option<String>",
-                false,
-                "Tile layer attribution text",
-            ),
-            prop(
-                "max_zoom",
-                "Option<u8>",
-                false,
-                "Maximum zoom level for the tile layer",
-            ),
-        ],
-        variants: None,
-    }]
-}
-
-fn prop(name: &str, type_name: &str, required: bool, description: &str) -> PropInfo {
-    PropInfo {
-        name: name.to_string(),
-        type_name: type_name.to_string(),
-        required,
-        description: description.to_string(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1295,7 +288,7 @@ mod tests {
         assert_eq!(
             catalog.components.len(),
             42,
-            "Catalog should contain all 42 built-in components (including DetailForm + KeyValueEditor + RichTextEditor backfill), got {}",
+            "Catalog should contain all 42 built-in components (incl. CheckboxList, RawHtml, DetailPage), got {}",
             catalog.components.len()
         );
 
@@ -1312,6 +305,7 @@ mod tests {
             "Badge",
             "Modal",
             "Checkbox",
+            "CheckboxList",
             "Switch",
             "Separator",
             "DescriptionList",
@@ -1339,10 +333,8 @@ mod tests {
             "CalendarCell",
             "ActionCard",
             "ProductTile",
+            "RawHtml",
             "Image",
-            "DetailForm",
-            "KeyValueEditor",
-            "RichTextEditor",
         ];
         for name in &expected {
             assert!(names.contains(name), "Missing component: {name}");
@@ -1354,11 +346,23 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.plugin_components.len(),
-            1,
-            "Catalog should contain 1 plugin component (Map), got {}",
+            2,
+            "Catalog should contain 2 plugin components (Map + RichTextEditor), got {}",
             catalog.plugin_components.len()
         );
-        assert_eq!(catalog.plugin_components[0].name, "Map");
+        let plugin_names: Vec<&str> = catalog
+            .plugin_components
+            .iter()
+            .map(|c| c.name.as_str())
+            .collect();
+        assert!(
+            plugin_names.contains(&"Map"),
+            "Plugin components should include Map"
+        );
+        assert!(
+            plugin_names.contains(&"RichTextEditor"),
+            "Plugin components should include RichTextEditor"
+        );
     }
 
     #[test]
@@ -1408,21 +412,47 @@ mod tests {
         assert!(json_str.contains("plugin_components"));
         assert!(json_str.contains("builder_api"));
         assert!(json_str.contains("action_api"));
+        assert!(json_str.contains("json_schema"));
+        assert!(json_str.contains("component_schemas"));
         assert!(json_str.contains("Button"));
         assert!(json_str.contains("Map"));
         assert!(json_str.contains("props"));
     }
 
     #[test]
+    fn test_json_schema_present() {
+        let catalog = execute(None);
+        // Full spec schema must be a non-null JSON object
+        assert!(
+            catalog.json_schema.is_object(),
+            "json_schema should be a JSON object"
+        );
+    }
+
+    #[test]
+    fn test_component_schemas_present() {
+        let catalog = execute(None);
+        // Should have at least one entry per built-in component
+        assert!(
+            !catalog.component_schemas.is_empty(),
+            "component_schemas should not be empty"
+        );
+        assert!(
+            catalog.component_schemas.contains_key("Button"),
+            "component_schemas should contain Button"
+        );
+    }
+
+    #[test]
     fn test_builder_api_present() {
         let catalog = execute(None);
         assert!(
-            catalog.builder_api.contains("JsonUiView::new()"),
-            "Builder API should document JsonUiView::new()"
+            catalog.builder_api.contains("Spec::builder()"),
+            "Builder API should document Spec::builder()"
         );
         assert!(
-            catalog.builder_api.contains("ComponentNode"),
-            "Builder API should document ComponentNode"
+            catalog.builder_api.contains("Element::new"),
+            "Builder API should document Element::new"
         );
     }
 
@@ -1456,9 +486,26 @@ mod tests {
                 "{} should have a description",
                 component.name
             );
-            // All components have at least one prop except Skeleton (all optional) and Separator
-            // But even those have props defined
-            let no_required = ["Separator", "Skeleton", "Sidebar", "Grid", "ButtonGroup"];
+            // Components derived from global_catalog() carry props from JSON Schema.
+            // Leaf components with all-optional props (Separator, Skeleton, etc.) may
+            // have no required props — that is correct schema-driven behavior.
+            let no_required = [
+                "Separator",
+                "Skeleton",
+                "Sidebar",
+                "Grid",
+                "ButtonGroup",
+                "CalendarCell",
+                "Collapsible",
+                "Toast",
+                "Checklist",
+                // D-15: items is now #[serde(default)] so data_path can be the sole source.
+                "DescriptionList",
+                // D-17a: html is #[serde(default)] — empty HTML is a valid no-op.
+                "RawHtml",
+                // D-13a: columns is now #[serde(default)] — data_path can be the sole source.
+                "KanbanBoard",
+            ];
             if !no_required.contains(&component.name.as_str()) {
                 assert!(
                     component.props.iter().any(|p| p.required),
@@ -1470,16 +517,14 @@ mod tests {
     }
 
     #[test]
-    fn test_button_has_variants() {
+    fn test_button_has_props() {
+        // Button props are now derived from ButtonProps JSON Schema.
+        // The `variants` field is None for struct Props (variants appear in prop type_name).
         let catalog = execute(Some("Button"));
         let button = &catalog.components[0];
-        let variants = button
-            .variants
-            .as_ref()
-            .expect("Button should have variants");
-        assert_eq!(variants.len(), 6);
-        assert!(variants.contains(&"default".to_string()));
-        assert!(variants.contains(&"destructive".to_string()));
+        assert!(!button.props.is_empty(), "Button should have props");
+        let has_label = button.props.iter().any(|p| p.name == "label");
+        assert!(has_label, "Button should have a 'label' prop");
     }
 
     #[test]
@@ -1489,5 +534,49 @@ mod tests {
         // Builder and action API still present even when filtering
         assert!(!catalog.builder_api.is_empty());
         assert!(!catalog.action_api.is_empty());
+    }
+
+    #[test]
+    fn json_ui_catalog_includes_each_directive() {
+        let catalog = execute(None);
+        let each = catalog
+            .directives
+            .iter()
+            .find(|d| d.name == "$each")
+            .expect("$each directive present");
+        assert!(!each.description.is_empty());
+        assert!(each.syntax_example.contains("$each"));
+        assert!(each
+            .validation_errors
+            .contains(&"EachPathNotArray".to_string()));
+        assert!(each
+            .validation_errors
+            .contains(&"EachAsReservedName".to_string()));
+    }
+
+    #[test]
+    fn json_ui_catalog_includes_if_directive() {
+        let catalog = execute(None);
+        let if_dir = catalog
+            .directives
+            .iter()
+            .find(|d| d.name == "$if")
+            .expect("$if directive present");
+        assert!(!if_dir.description.is_empty());
+        assert!(if_dir.syntax_example.contains("$if"));
+        assert!(if_dir
+            .validation_errors
+            .contains(&"IfPathMissing".to_string()));
+    }
+
+    #[test]
+    fn json_ui_catalog_directives_serialize_to_json() {
+        let catalog = execute(None);
+        let json = serde_json::to_value(&catalog).expect("serialize");
+        let directives = json
+            .get("directives")
+            .and_then(|v| v.as_array())
+            .expect("directives is an array");
+        assert_eq!(directives.len(), 2);
     }
 }

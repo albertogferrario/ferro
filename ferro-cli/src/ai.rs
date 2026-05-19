@@ -1,10 +1,14 @@
 //! AI-powered view generation via the Anthropic API.
 //!
-//! Provides two main functions:
-//! - `call_anthropic`: Makes a blocking request to the Anthropic Messages API.
-//! - `build_view_context`: Assembles a prompt with component catalog, project models, and routes.
+//! Provides:
+//! - `call_anthropic_plain`: Makes a blocking request to the Anthropic Messages API, returns plain text.
+//! - `call_anthropic_structured`: Structured output via Anthropic tool_use, returns JSON string.
+//! - `build_json_view_pass1`: Builds system + user prompts for Pass 1 (plain-text plan).
+//! - `build_json_view_pass2`: Builds system + user prompts for Pass 2 (structured spec).
+//! - `generate_json_view`: Two-pass JSON-UI v2 spec generation (higher-level orchestration).
 
-use ferro_json_ui::COMPONENT_CATALOG;
+use console::style;
+use ferro_json_ui::{global_catalog, Spec};
 use regex::Regex;
 use std::fs;
 use std::path::Path;
@@ -16,8 +20,14 @@ use crate::commands::generate_routes;
 /// Reads `ANTHROPIC_API_KEY` from environment. Model defaults to `claude-sonnet-4-5`
 /// but can be overridden via `FERRO_AI_MODEL`.
 ///
-/// Uses Anthropic best practices: system prompt with cache_control, assistant prefill,
-/// temperature 0.2 for deterministic output, and 60-second HTTP timeout.
+/// Uses Anthropic best practices: system prompt with cache_control, temperature 0.2
+/// for deterministic output, and 60-second HTTP timeout.
+///
+/// Alias: also exported as `call_anthropic_plain` (the canonical name in Plan 05 interfaces).
+pub fn call_anthropic_plain(system: &str, user_prompt: &str) -> Result<String, String> {
+    call_anthropic(system, user_prompt)
+}
+
 pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String> {
     let api_key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| {
         "ANTHROPIC_API_KEY not set. Export it with:\n  \
@@ -30,7 +40,7 @@ pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String>
 
     let body = serde_json::json!({
         "model": model,
-        "max_tokens": 8192,
+        "max_tokens": 1024,
         "temperature": 0.2,
         "system": [
             {
@@ -40,8 +50,7 @@ pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String>
             }
         ],
         "messages": [
-            {"role": "user", "content": user_prompt},
-            {"role": "assistant", "content": "//!"}
+            {"role": "user", "content": user_prompt}
         ]
     });
 
@@ -77,100 +86,216 @@ pub fn call_anthropic(system: &str, user_prompt: &str) -> Result<String, String>
         .and_then(|item| item["text"].as_str())
         .ok_or_else(|| format!("Unexpected response structure: {text}"))?;
 
-    // Prepend the assistant prefill that is not included in the response
-    Ok(format!("//!{response_text}"))
+    Ok(response_text.to_string())
 }
 
-/// Assemble system and user prompts for AI view generation.
+/// Call the Anthropic Messages API with structured output via tool_use.
 ///
-/// Returns `(system_prompt, user_prompt)` where:
-/// - System prompt: role, rules, component catalog, few-shot example (static, cacheable)
-/// - User prompt: project models, routes, view name and description (dynamic, per-request)
-pub fn build_view_context(name: &str, description: &str) -> (String, String) {
-    // System prompt: static content that benefits from prompt caching
+/// Constrains the model output to a JSON Schema by using Anthropic's tool_use
+/// mechanism: `tools: [{ name: "emit_spec", input_schema: schema }]` with
+/// `tool_choice: { type: "tool", name: "emit_spec" }`.
+///
+/// Returns the tool input serialized as a JSON string on success.
+pub fn call_anthropic_structured(
+    system: &str,
+    user_prompt: &str,
+    schema: serde_json::Value,
+) -> Result<String, String> {
+    let api_key =
+        std::env::var("ANTHROPIC_API_KEY").map_err(|_| "ANTHROPIC_API_KEY not set.".to_string())?;
+
+    let model = std::env::var("FERRO_AI_MODEL").unwrap_or_else(|_| "claude-sonnet-4-5".to_string());
+
+    let body = serde_json::json!({
+        "model": model,
+        "max_tokens": 4096,
+        "temperature": 0.2,
+        "system": [
+            {
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"}
+            }
+        ],
+        "tools": [
+            {
+                "name": "emit_spec",
+                "description": "Emit the complete JSON-UI v2 spec for the requested view.",
+                "input_schema": schema
+            }
+        ],
+        "tool_choice": { "type": "tool", "name": "emit_spec" },
+        "messages": [
+            {"role": "user", "content": user_prompt}
+        ]
+    });
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(90))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {e}"))?;
+
+    let response = client
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", &api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| format!("API request failed: {e}"))?;
+
+    let status = response.status();
+    let text = response
+        .text()
+        .map_err(|e| format!("Failed to read response body: {e}"))?;
+
+    if !status.is_success() {
+        return Err(format!("Anthropic API error ({status}): {text}"));
+    }
+
+    let json: serde_json::Value =
+        serde_json::from_str(&text).map_err(|e| format!("Failed to parse response JSON: {e}"))?;
+
+    // Extract tool_use block input
+    let tool_input = json["content"]
+        .as_array()
+        .and_then(|arr| arr.iter().find(|item| item["type"] == "tool_use"))
+        .and_then(|item| item.get("input"))
+        .cloned()
+        .ok_or_else(|| format!("No tool_use block in response: {text}"))?;
+
+    serde_json::to_string_pretty(&tool_input)
+        .map_err(|e| format!("Failed to serialize tool input: {e}"))
+}
+
+/// Build Pass 1 prompts for JSON-UI v2 view generation (plain-text component plan).
+///
+/// Returns `(system_prompt, user_prompt)` ready for `call_anthropic_plain`.
+pub fn build_json_view_pass1(name: &str, description: &str) -> (String, String) {
+    let catalog = global_catalog();
+    let catalog_prompt = catalog.prompt();
+
     let system = format!(
-        "You are a Ferro framework JSON-UI view code generator. Generate only valid Rust source \
-         code for src/views/ files.\n\n\
-         Rules:\n\
-         - Import only types actually used from `use ferro::{{...}};`\n\
-         - Use the builder pattern: `JsonUiView::new().title().layout().component()`\n\
-         - Use .layout(\"app\") unless the view is for auth (use \"auth\")\n\
-         - Use real route handler names for actions when matching routes exist\n\
-         - Use data_path bindings for form fields when matching model fields exist\n\
-         - Return ONLY Rust source code, no explanation\n\n\
-         {COMPONENT_CATALOG}\n\n\
-         <example>\n\
-         Input: user_list view showing all users in a table with edit and delete actions\n\
-         Output:\n\
-         //! User List JSON-UI view\n\n\
-         use ferro::{{\n\
-             Action, Component, ComponentNode, JsonUiView, TableColumn, TableProps, TextElement, \
-         TextProps,\n\
-         }};\n\n\
-         pub fn view() -> JsonUiView {{\n\
-             JsonUiView::new()\n\
-                 .title(\"User List\")\n\
-                 .layout(\"app\")\n\
-                 .component(ComponentNode {{\n\
-                     key: \"heading\".to_string(),\n\
-                     component: Component::Text(TextProps {{\n\
-                         content: \"User List\".to_string(),\n\
-                         element: TextElement::H1,\n\
-                     }}),\n\
-                     action: None,\n\
-                     visibility: None,\n\
-                 }})\n\
-                 .component(ComponentNode {{\n\
-                     key: \"users_table\".to_string(),\n\
-                     component: Component::Table(TableProps {{\n\
-                         columns: vec![\n\
-                             TableColumn {{ key: \"name\".to_string(), label: \"Name\".to_string(), \
-         format: None }},\n\
-                             TableColumn {{ key: \"email\".to_string(), label: \
-         \"Email\".to_string(), format: None }},\n\
-                         ],\n\
-                         data_path: \"users\".to_string(),\n\
-                         row_actions: Some(vec![\n\
-                             Action::get(\"user_controller.edit\"),\n\
-                             Action::delete(\"user_controller.destroy\").confirm_danger(\"Delete \
-         user\"),\n\
-                         ]),\n\
-                         empty_message: Some(\"No users found.\".to_string()),\n\
-                         sortable: None,\n\
-                         sort_column: None,\n\
-                         sort_direction: None,\n\
-                     }}),\n\
-                     action: None,\n\
-                     visibility: None,\n\
-                 }})\n\
-         }}\n\
-         </example>",
+        "You are a JSON-UI v2 view planner for the Ferro framework.\n\n\
+         {catalog_prompt}\n\n\
+         Given a view name and description, produce a concise plain-text component plan: \
+         which components to use, what data each displays, what actions are present. \
+         Do not emit any JSON or code — only a human-readable plan."
     );
 
-    // User prompt: dynamic content that changes per request
-    let mut user_prompt = String::new();
+    let user = format!(
+        "View name: {name}\n\
+         Description: {description}\n\n\
+         Describe the component plan for this view."
+    );
 
+    (system, user)
+}
+
+/// Build Pass 2 prompts for JSON-UI v2 view generation (structured spec).
+///
+/// Returns `(system_prompt, user_prompt)` ready for `call_anthropic_structured`.
+/// Pass 2 receives the plain-text plan from Pass 1 and produces a structured JSON spec.
+pub fn build_json_view_pass2(pass1_result: &str) -> (String, String) {
+    let system = format!(
+        "You are a JSON-UI v2 spec generator for the Ferro framework.\n\n\
+         Component plan from previous step:\n{pass1_result}\n\n\
+         Generate the complete v2 JSON spec matching this plan. \
+         Root element id must be \"root\". \
+         All element ids are unique strings. Use flat elements map — no nesting."
+    );
+
+    let user =
+        "Generate the complete JSON-UI v2 spec for the view described in the component plan."
+            .to_string();
+
+    (system, user)
+}
+
+/// Two-pass AI generation of a JSON-UI v2 spec file.
+///
+/// Pass 1 (describe): asks the model for a plain-text component plan.
+/// Pass 2 (structure): constrains output to the full spec JSON Schema via tool_use.
+///
+/// On validation failure, prints a yellow warning and returns an error so the
+/// caller can fall back to the static template.
+pub fn generate_json_view(name: &str, description: &str, layout: &str) -> Result<String, String> {
+    let catalog = global_catalog();
+    let catalog_prompt = catalog.prompt();
+
+    // Collect project context for user prompt
     let models = scan_models();
-    if !models.is_empty() {
-        user_prompt.push_str("## Project Models\n");
-        user_prompt.push_str(&models);
-        user_prompt.push('\n');
-    }
-
     let routes = scan_routes();
+
+    let mut project_context = String::new();
+    if !models.is_empty() {
+        project_context.push_str("## Project Models\n");
+        project_context.push_str(&models);
+        project_context.push('\n');
+    }
     if !routes.is_empty() {
-        user_prompt.push_str("## Project Routes\n");
-        user_prompt.push_str(&routes);
-        user_prompt.push('\n');
+        project_context.push_str("## Project Routes\n");
+        project_context.push_str(&routes);
+        project_context.push('\n');
     }
 
-    user_prompt.push_str(&format!(
-        "Generate `src/views/{name}.rs`:\n\
-         View name: {name}\n\
-         Description: {description}",
-    ));
+    // --- Pass 1: describe ---
+    let pass1_system = format!(
+        "You are a JSON-UI v2 view planner for the Ferro framework.\n\n\
+         {catalog_prompt}\n\n\
+         Given a view name, description, and project context, produce a concise plain-text \
+         component plan: which components to use, what data each displays, what actions are \
+         present. Do not emit any JSON or code — only a human-readable plan."
+    );
 
-    (system, user_prompt)
+    let pass1_user = format!(
+        "{project_context}\
+         View name: {name}\n\
+         Layout: {layout}\n\
+         Description: {description}\n\n\
+         Describe the component plan for this view."
+    );
+
+    let pass1_result = call_anthropic_plain(&pass1_system, &pass1_user)?;
+
+    // --- Pass 2: structure ---
+    let schema = catalog.json_schema().clone();
+
+    let pass2_system = format!(
+        "You are a JSON-UI v2 spec generator for the Ferro framework.\n\n\
+         Component plan from previous step:\n{pass1_result}\n\n\
+         Generate the complete v2 JSON spec matching this plan. \
+         Use layout \"{layout}\". Root element id must be \"root\". \
+         All element ids are unique strings. Use flat elements map — no nesting."
+    );
+
+    let pass2_user = format!("Generate the complete JSON-UI v2 spec for the \"{name}\" view.");
+
+    let spec_json = call_anthropic_structured(&pass2_system, &pass2_user, schema)?;
+
+    // Validate against catalog
+    match Spec::from_json(&spec_json) {
+        Ok(spec) => {
+            if let Err(errors) = catalog.validate(&spec) {
+                let msgs: Vec<String> = errors.iter().map(|e| format!("  - {e}")).collect();
+                eprintln!(
+                    "{} Generated spec has validation errors:\n{}",
+                    style("Warning:").yellow().bold(),
+                    msgs.join("\n")
+                );
+                return Err("Spec validation failed — using static template.".to_string());
+            }
+        }
+        Err(e) => {
+            eprintln!(
+                "{} Generated spec failed structural parse: {e}",
+                style("Warning:").yellow().bold(),
+            );
+            return Err("Spec parse failed — using static template.".to_string());
+        }
+    }
+
+    Ok(spec_json)
 }
 
 /// Scan `src/models/*.rs` and extract struct fields using regex.
@@ -213,13 +338,13 @@ fn scan_models() -> String {
             let rest = &content[struct_start..];
             let mut depth = 1;
             let mut struct_end = rest.len();
-            for (i, ch) in rest.chars().enumerate() {
+            for (byte_idx, ch) in rest.char_indices() {
                 match ch {
                     '{' => depth += 1,
                     '}' => {
                         depth -= 1;
                         if depth == 0 {
-                            struct_end = i;
+                            struct_end = byte_idx;
                             break;
                         }
                     }

@@ -3,12 +3,12 @@
 //! Provides a trait-based layout system where named layouts wrap rendered
 //! component HTML in full page shells. Three built-in layouts are provided:
 //! `DefaultLayout` (minimal), `AppLayout` (dashboard with nav + sidebar),
-//! and `AuthLayout` (centered card). `DashboardLayout` is an optional layout
-//! that users register themselves with per-app config.
+//! and `AuthLayout` (centered, no card chrome). `DashboardLayout` is an optional
+//! layout that users register themselves with per-app config.
 //!
-//! A global `LayoutRegistry` maps layout names to implementations. Views
-//! specify a layout via `JsonUiView.layout`, and the render pipeline looks
-//! it up in the registry.
+//! A global `LayoutRegistry` maps layout names to implementations. Specs
+//! specify a layout via `Spec.layout`, and the render pipeline looks it up
+//! in the registry.
 
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
@@ -26,7 +26,7 @@ use crate::render::html_escape;
 pub struct LayoutContext<'a> {
     /// Page title for the `<title>` element.
     pub title: &'a str,
-    /// Rendered component HTML fragment (output of `render_to_html`).
+    /// Rendered component HTML fragment (output of `render_spec_to_html`).
     pub content: &'a str,
     /// Additional `<head>` content (Tailwind CDN link, custom styles).
     pub head: &'a str,
@@ -142,22 +142,37 @@ fn base_document_ext(
 
 /// Render a sidebar nav item for the layout shell.
 fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
-    let classes = if item.active {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    let disabled = item.disabled.unwrap_or(false);
+    let (tag, classes) = if disabled {
+        (
+            "span",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 cursor-not-allowed select-none",
+        )
+    } else if item.active {
+        (
+            "a",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )
     } else {
-        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        (
+            "a",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        )
     };
-    let mut html = format!(
-        "<a href=\"{}\" class=\"{}\">",
-        html_escape(&item.href),
-        classes
-    );
+    let mut html = if disabled {
+        format!("<{tag} aria-disabled=\"true\" class=\"{classes}\">")
+    } else {
+        format!(
+            "<{tag} href=\"{}\" class=\"{classes}\">",
+            html_escape(&item.href),
+        )
+    };
     if let Some(ref icon) = item.icon {
         html.push_str(&format!(
             "<span class=\"inline-flex items-center justify-center w-5 h-5 shrink-0\">{icon}</span>" // raw SVG
         ));
     }
-    html.push_str(&format!("{}</a>", html_escape(&item.label)));
+    html.push_str(&format!("{}</{tag}>", html_escape(&item.label)));
     html
 }
 
@@ -358,10 +373,11 @@ impl Layout for AppLayout {
 
 // ── AuthLayout ──────────────────────────────────────────────────────────
 
-/// Centered card layout for authentication pages (login, register).
+/// Centered layout for authentication pages (login, register).
 ///
 /// Centers the content vertically and horizontally within a max-width
-/// container. No navigation or sidebar.
+/// container. No navigation or sidebar. No card chrome — the spec's
+/// root component is responsible for its own card styling (D-05).
 pub struct AuthLayout;
 
 impl Layout for AuthLayout {
@@ -371,9 +387,7 @@ impl Layout for AuthLayout {
         let body = format!(
             r#"<div class="min-h-screen flex items-center justify-center">
         <div class="w-full max-w-md">
-            <div class="bg-card rounded-lg shadow-md p-8">
-                {wrapper}
-            </div>
+            {wrapper}
         </div>
     </div>"#,
         );
@@ -725,7 +739,7 @@ mod tests {
             content: "<p>Hello</p>",
             head: "<link rel=\"stylesheet\" href=\"/style.css\">",
             body_class: "bg-background",
-            view_json: "{\"schema\":\"v1\"}",
+            view_json: "{\"schema\":\"ferro-json-ui/v2\"}",
             data_json: "{\"key\":\"value\"}",
             scripts: "",
         }
@@ -811,10 +825,21 @@ mod tests {
         let ctx = test_ctx();
         let html = AuthLayout.render(&ctx);
 
-        assert!(html.contains("flex items-center justify-center"));
-        assert!(html.contains("max-w-md"));
-        assert!(html.contains("rounded-lg shadow-md"));
+        // Structural centering and max-width are preserved.
+        assert!(
+            html.contains("min-h-screen flex items-center justify-center"),
+            "centering wrapper must remain"
+        );
+        assert!(
+            html.contains("w-full max-w-md"),
+            "max-width wrapper must remain"
+        );
         assert!(html.contains("<div id=\"ferro-json-ui\""));
+        // D-05: layout no longer applies card chrome; the spec's root declares its own Card.
+        assert!(
+            !html.contains("bg-card rounded-lg shadow-md p-8"),
+            "card chrome must be removed from AuthLayout; spec root must declare its own Card"
+        );
     }
 
     #[test]
@@ -1214,6 +1239,7 @@ mod tests {
             href: "/dashboard".to_string(),
             icon: Some("<svg class=\"h-5 w-5\"><path d=\"M3 12l2-2\"/></svg>".to_string()),
             active: false,
+            disabled: None,
         };
         let html = layout_sidebar_nav_item(&item);
         assert!(
@@ -1257,6 +1283,7 @@ mod tests {
             href: "/dashboard".to_string(),
             icon: None,
             active: false,
+            disabled: None,
         };
         let html = layout_sidebar_nav_item(&item);
         assert!(

@@ -56,6 +56,9 @@
 - [Data Binding & Visibility](json-ui/data-binding.md)
 - [Layouts](json-ui/layouts.md)
 - [Plugins](json-ui/plugins.md)
+- [Spec construction](./json-ui/spec-construction.md)
+- [Expressions](json-ui/expressions.md)
+- [JSON Schema](json-ui/json-schema.md)
 
 # Reference
 

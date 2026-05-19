@@ -95,9 +95,9 @@ terms in the specification carry the precise meanings defined here.
 : A component that transforms a Service Definition, its derived Intent
   Scores, and a Render Context into a UI component tree. Defined by the
   `Renderer` trait. The output format is implementation-specific:
-  `JsonUiRenderer` produces ferro-json-ui/v1 component trees, but
-  implementations MAY target A2UI, HTML, native components, or any other
-  format.
+  `JsonUiRenderer` produces a `Spec` conforming to the
+  `ferro-json-ui/v2` schema; implementations MAY target A2UI, HTML,
+  native components, or any other format.
 
 **Service Definition**
 : The protocol's core input type, described by `ServiceDef`. A complete,

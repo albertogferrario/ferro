@@ -4,181 +4,137 @@ Layouts wrap JSON-UI pages with consistent navigation, headers, and page structu
 
 ## How Layouts Work
 
-Each JSON-UI view can specify a layout name. At render time, the framework looks up the layout in a `LayoutRegistry` and wraps the rendered component HTML in a full HTML page shell.
+The `"layout"` field in a spec file selects the HTML shell used to wrap the rendered elements. At render time the framework looks up the layout by name and wraps the component output in a full HTML page — nav chrome, sidebars, header, or a bare container, depending on the layout chosen.
 
-1. View specifies a layout: `JsonUiView::new().layout("dashboard")`
-2. Components are rendered to HTML
-3. The layout wraps the HTML in a complete page with `<head>`, navigation, and `<body>` structure
-4. The view JSON and data are embedded as `data-view` and `data-props` attributes for potential frontend hydration
+Omitting the field (or leaving it empty) uses the minimal default shell with no navigation.
 
-## Using a Layout
+## Selecting a Layout in a Spec File
 
-Set the layout name on the view builder:
+Set `"layout"` at the top level of the spec:
 
-```rust
-use ferro::JsonUiView;
-
-let view = JsonUiView::new()
-    .title("Dashboard")
-    .layout("dashboard");
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Dashboard",
+  "layout": "dashboard",
+  "root": "main_card",
+  "elements": {
+    "main_card": {
+      "type": "Card",
+      "props": { "title": "Welcome" }
+    }
+  }
+}
 ```
 
-If no layout is set, the `"default"` layout is used. If a named layout is not found in the registry, rendering falls back to the default layout.
+## Built-in Layouts
 
-## Default Layout
+| Layout name | Description |
+|-------------|-------------|
+| `"dashboard"` | Sidebar navigation, sticky header, main content area. For admin panels. |
+| `"app"` | Top navigation bar, full-width main area. For app pages. |
+| `"auth"` | Centered card, no navigation chrome. For login and register forms. |
+| (omit) | Minimal default shell. No navigation chrome. |
 
-The built-in `"default"` layout produces a minimal HTML page with no navigation or sidebar. Use it for simple pages, reports, or content that does not require persistent navigation.
+### `"dashboard"` layout
 
-```rust
-// No .layout() call — uses "default" automatically:
-let view = JsonUiView::new()
-    .title("Report");
-
-// Or explicitly:
-let view = JsonUiView::new()
-    .title("Simple Page")
-    .layout("default");
-```
-
-## DashboardLayout
-
-`DashboardLayout` is the primary layout for application dashboards. It renders a persistent sidebar on the left (collapsible on mobile), a sticky header at the top, and a content area in the main panel.
-
-Unlike the default layout, `DashboardLayout` requires per-application configuration (sidebar navigation and header data) and must be registered at startup. The layout also injects the ferro JS runtime automatically, enabling SSE live-value updates, toast notifications, and sidebar toggle behavior.
-
-### DashboardLayoutConfig
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `sidebar` | `SidebarProps` | Yes | Sidebar navigation data |
-| `header` | `HeaderProps` | Yes | Header data (business name, user info, notifications) |
-| `sse_url` | `Option<String>` | No | SSE endpoint URL for live updates |
-
-**SidebarProps** fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `fixed_top` | `Vec<SidebarNavItem>` | Items pinned at the top (logo, home link) |
-| `groups` | `Vec<SidebarGroup>` | Collapsible navigation groups |
-| `fixed_bottom` | `Vec<SidebarNavItem>` | Items pinned at the bottom (settings, logout) |
-
-**HeaderProps** fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `business_name` | `String` | Application name displayed in the header |
-| `notification_count` | `Option<u32>` | Unread notification count for badge display |
-| `user_name` | `Option<String>` | Current user's name |
-| `user_avatar` | `Option<String>` | Current user's avatar URL |
-| `logout_url` | `Option<String>` | URL for the logout link |
-
-### Registering the Dashboard Layout
-
-Register `DashboardLayout` at application startup, before the server handles requests:
-
-```rust
-use ferro::{
-    DashboardLayout, DashboardLayoutConfig, HeaderProps, SidebarProps,
-    SidebarGroup, SidebarNavItem, register_layout,
-};
-
-register_layout("dashboard", DashboardLayout::new(DashboardLayoutConfig {
-    sidebar: SidebarProps {
-        fixed_top: vec![
-            SidebarNavItem {
-                label: "Dashboard".to_string(),
-                href: "/".to_string(),
-                icon: Some("home".to_string()),
-                active: false, // set per-request in handler
-            },
-        ],
-        groups: vec![
-            SidebarGroup {
-                label: "Management".to_string(),
-                collapsed: false,
-                items: vec![
-                    SidebarNavItem { label: "Users".to_string(), href: "/users".to_string(), icon: Some("users".to_string()), active: false },
-                    SidebarNavItem { label: "Orders".to_string(), href: "/orders".to_string(), icon: Some("shopping-bag".to_string()), active: false },
-                ],
-            },
-        ],
-        fixed_bottom: vec![
-            SidebarNavItem { label: "Settings".to_string(), href: "/settings".to_string(), icon: Some("cog".to_string()), active: false },
-        ],
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Orders",
+  "layout": "dashboard",
+  "root": "orders_card",
+  "elements": {
+    "orders_card": {
+      "type": "Card",
+      "props": { "title": "Orders" },
+      "children": ["orders_table"]
     },
-    header: HeaderProps {
-        business_name: "My App".to_string(),
-        notification_count: None,
-        user_name: Some("Alice".to_string()),
-        user_avatar: None,
-        logout_url: Some("/logout".to_string()),
-    },
-    sse_url: Some("/dashboard/events".into()),
-}));
+    "orders_table": {
+      "type": "DataTable",
+      "props": {
+        "columns": [
+          { "key": "id", "label": "#" },
+          { "key": "customer", "label": "Customer" },
+          { "key": "total", "label": "Total" }
+        ],
+        "data_path": "/orders"
+      }
+    }
+  }
+}
 ```
 
-### Using It in a View
+### `"app"` layout
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Profile",
+  "layout": "app",
+  "root": "profile_card",
+  "elements": {
+    "profile_card": {
+      "type": "Card",
+      "props": { "title": "Your Profile" }
+    }
+  }
+}
+```
+
+### `"auth"` layout
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Sign In",
+  "layout": "auth",
+  "root": "login_form",
+  "elements": {
+    "login_form": {
+      "type": "Form",
+      "props": {
+        "action": "/login",
+        "method": "POST",
+        "fields": [
+          { "name": "email", "type": "email", "label": "Email" },
+          { "name": "password", "type": "password", "label": "Password" }
+        ],
+        "submit_label": "Sign In"
+      }
+    }
+  }
+}
+```
+
+### Default (no layout field)
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Report",
+  "root": "report_card",
+  "elements": {
+    "report_card": {
+      "type": "Card",
+      "props": { "title": "Monthly Report" }
+    }
+  }
+}
+```
+
+## Custom Layouts
+
+Implement the `Layout` trait and register the layout at application startup. After registration, the layout name is available in any spec file.
+
+### Implementing the trait
 
 ```rust
-use ferro::{JsonUiView, ComponentNode, ComponentNode::stat_card, StatCardProps};
+use ferro_json_ui::{Layout, LayoutContext};
 
-let view = JsonUiView::new()
-    .title("Dashboard")
-    .layout("dashboard")
-    .component(ComponentNode::stat_card("revenue", StatCardProps {
-        label: "Total Revenue".to_string(),
-        value: "€12,345".to_string(),
-        icon: Some("currency-euro".to_string()),
-        subtitle: Some("This month".to_string()),
-        sse_target: Some("revenue_total".to_string()),
-    }));
-```
+pub struct MyLayout;
 
-### Mobile Behavior
-
-On screens narrower than the `md` breakpoint (768px):
-
-- The sidebar is hidden by default (`hidden md:flex` Tailwind class)
-- A hamburger button appears in the header (`data-sidebar-toggle`)
-- Clicking the hamburger toggles the `data-sidebar-open` attribute on the `<body>` element
-- The JS runtime toggles sidebar visibility in response
-
-No additional JavaScript configuration is needed. The runtime handles this automatically.
-
-### JS Runtime
-
-The `DashboardLayout` injects the ferro JS runtime as a `<script>` tag before `</body>`. The runtime is a small self-contained IIFE that activates on `DOMContentLoaded` and handles three behaviors:
-
-**Sidebar toggle** — The hamburger button toggles mobile sidebar visibility.
-
-**SSE live-value updates** — If `sse_url` is set on `DashboardLayoutConfig`, the runtime opens an `EventSource` connection. Incoming `live-value` events update elements with matching `data-sse-target` attributes. Use this with `StatCard.sse_target` to update metric values without page reloads.
-
-Server-sent event format:
-```
-event: live-value
-data: {"target": "revenue_total", "value": "€13,210"}
-```
-
-**Toast notifications** — Incoming `toast` events display overlay notifications. A `data-toast-container` div is injected by the layout for mounting toasts.
-
-Server-sent event format:
-```
-event: toast
-data: {"message": "New order received", "variant": "success"}
-```
-
-You can also display toasts declaratively by including a `Toast` component in any view rendered by `DashboardLayout`.
-
-## Creating Custom Layouts
-
-Implement the `Layout` trait to create a custom layout:
-
-```rust
-use ferro::{Layout, LayoutContext};
-
-pub struct CustomLayout;
-
-impl Layout for CustomLayout {
+impl Layout for MyLayout {
     fn render(&self, ctx: &LayoutContext) -> String {
         format!(
             r#"<!DOCTYPE html>
@@ -187,15 +143,15 @@ impl Layout for CustomLayout {
     <title>{title}</title>
     {head}
 </head>
-<body>
+<body class="{body_class}">
     <header>My App</header>
     <main>{content}</main>
-    <footer>Copyright 2026</footer>
     {scripts}
 </body>
 </html>"#,
             title = ctx.title,
             head = ctx.head,
+            body_class = ctx.body_class,
             content = ctx.content,
             scripts = ctx.scripts,
         )
@@ -203,114 +159,44 @@ impl Layout for CustomLayout {
 }
 ```
 
-The `Layout` trait requires `Send + Sync` for thread-safe access from the global registry.
-
-### Registering Custom Layouts
-
-Register layouts at application startup:
+### Registering in app bootstrap
 
 ```rust
-use ferro::register_layout;
+use ferro_json_ui::register_layout;
 
-register_layout("custom", CustomLayout);
+// In src/bootstrap.rs or main.rs, before the server starts:
+register_layout("my-layout", MyLayout);
 ```
 
-Or register directly on a `LayoutRegistry`:
+After registration, use the name in any spec file:
 
-```rust
-use ferro::LayoutRegistry;
-
-let mut registry = LayoutRegistry::new();
-registry.register("custom", CustomLayout);
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Custom Page",
+  "layout": "my-layout",
+  "root": "root_element",
+  "elements": {
+    "root_element": {
+      "type": "Card",
+      "props": { "title": "Custom layout example" }
+    }
+  }
+}
 ```
 
-Registering with an existing name replaces the previous layout.
+Registering a name that already exists replaces the previous layout. Registration order does not matter as long as registration completes before the first request is served.
 
-## Layout Context
+## LayoutContext Fields
 
-The `LayoutContext` struct provides all data a layout needs to produce a complete HTML page:
+Custom layout implementations receive a `LayoutContext` with all data needed to produce a complete HTML page:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `title` | `&str` | Page title from the view (defaults to `"Ferro"`) |
-| `content` | `&str` | Rendered component HTML fragment |
-| `head` | `&str` | Additional `<head>` content (Tailwind CDN, custom styles) |
+| `title` | `&str` | Page title from the spec `"title"` field |
+| `content` | `&str` | Rendered element HTML fragment |
+| `head` | `&str` | Additional `<head>` content (CSS links, meta tags) |
 | `body_class` | `&str` | CSS classes for the `<body>` element |
-| `view_json` | `&str` | Serialized view JSON for the `data-view` attribute |
-| `data_json` | `&str` | Serialized data JSON for the `data-props` attribute |
-| `scripts` | `&str` | JS assets and init scripts for plugins, injected before closing body tag |
+| `scripts` | `&str` | JS assets and init scripts for plugins, placed before `</body>` |
 
-The `view_json` and `data_json` fields enable frontend JavaScript to hydrate the page from the server-rendered HTML. All built-in layouts embed these in a `<div id="ferro-json-ui">` wrapper.
-
-Always include `ctx.scripts` in custom layouts — it contains plugin JS assets and the ferro runtime when `render_to_html_with_plugins` is used.
-
-## Navigation Helpers
-
-The layout module provides partial rendering functions for building navigation:
-
-### NavItem
-
-```rust
-use ferro::NavItem;
-
-let items = vec![
-    NavItem::new("Home", "/").active(),
-    NavItem::new("Users", "/users"),
-    NavItem::new("Settings", "/settings"),
-];
-```
-
-Active items are highlighted with distinct styling. The `active()` builder method marks an item as the current page.
-
-### SidebarSection
-
-```rust
-use ferro::{SidebarSection, NavItem};
-
-let sections = vec![
-    SidebarSection::new("Main Menu", vec![
-        NavItem::new("Dashboard", "/"),
-        NavItem::new("Users", "/users"),
-    ]),
-    SidebarSection::new("Settings", vec![
-        NavItem::new("Profile", "/settings/profile"),
-        NavItem::new("Security", "/settings/security"),
-    ]),
-];
-```
-
-The built-in `navigation()` and `sidebar()` functions render these into HTML with Tailwind classes. Use them in fully custom layout implementations to build consistent navigation.
-
-## Render Configuration
-
-`JsonUiConfig` controls rendering behavior:
-
-```rust
-use ferro::JsonUiConfig;
-
-let config = JsonUiConfig::new()
-    .tailwind_cdn(false)          // Disable Tailwind CDN (default: true)
-    .body_class("dark bg-black")  // Custom body CSS classes
-    .custom_head(r#"<link rel="stylesheet" href="/custom.css">"#);
-```
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `tailwind_cdn` | `true` | Include Tailwind CDN `<script>` in `<head>` |
-| `custom_head` | `None` | Custom HTML to inject into `<head>` |
-| `body_class` | `"bg-white text-gray-900"` | CSS classes for `<body>` |
-
-Pass the config to the render call:
-
-```rust
-use ferro::{JsonUi, JsonUiView, JsonUiConfig};
-
-let view = JsonUiView::new()
-    .title("Dashboard")
-    .layout("dashboard");
-
-let config = JsonUiConfig::new().tailwind_cdn(false);
-JsonUi::render_with_config(&view, &serde_json::json!({}), &config)
-```
-
-For production, disable the Tailwind CDN and serve your own compiled CSS via `custom_head`.
+Always include `ctx.scripts` in custom layouts — it carries plugin JS assets injected automatically by the render pipeline.

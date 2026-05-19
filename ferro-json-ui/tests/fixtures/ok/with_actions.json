@@ -1,0 +1,7 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "btn",
+  "elements": {
+    "btn": {"type": "Button", "props": {"label": "Save"}, "action": {"handler": "users.create", "method": "POST"}}
+  }
+}

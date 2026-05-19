@@ -162,6 +162,15 @@ enum Commands {
         #[arg(long, short = 'l')]
         layout: Option<String>,
     },
+    /// Migrate a v1 JSON-UI controller file to v2 (flat JSON spec + render_file).
+    #[command(name = "json-ui:migrate-v1")]
+    JsonUiMigrateV1 {
+        /// Path to the controller .rs file to migrate.
+        file: String,
+        /// Print proposed changes to stdout without writing.
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Generate a new domain event
     #[command(name = "make:event")]
     MakeEvent {
@@ -318,6 +327,21 @@ enum Commands {
     /// Show the status of all migrations
     #[command(name = "db:status")]
     DbStatus,
+    /// Export the JSON-UI v2 spec schema (full spec or a single component's Props)
+    #[command(name = "json-ui:schema")]
+    JsonUiSchema {
+        /// Write to file instead of stdout
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+
+        /// Pretty-print JSON output (default behavior — flag accepted for explicitness)
+        #[arg(long)]
+        pretty: bool,
+
+        /// Export only the Props schema for a single component (e.g., "Card")
+        #[arg(long)]
+        component: Option<String>,
+    },
     /// Drop all tables and re-run all migrations
     #[command(name = "db:fresh")]
     DbFresh,
@@ -564,6 +588,12 @@ fn main() {
         } => {
             commands::make_json_view::run(name, description, no_ai, layout);
         }
+        Commands::JsonUiMigrateV1 { file, dry_run } => {
+            if let Err(e) = commands::json_ui_migrate_v1::run(file, dry_run) {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        }
         Commands::MakeEvent { name } => {
             commands::make_event::run(name);
         }
@@ -646,6 +676,13 @@ fn main() {
         }
         Commands::DbStatus => {
             commands::db_status::run();
+        }
+        Commands::JsonUiSchema {
+            output,
+            pretty,
+            component,
+        } => {
+            commands::json_ui_schema::run(output, pretty, component);
         }
         Commands::DbFresh => {
             commands::db_fresh::run();

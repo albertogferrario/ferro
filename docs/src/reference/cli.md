@@ -513,28 +513,38 @@ ferro make:json-view Dashboard --no-ai
 - Without the key, a static template with common components is generated
 - Model override via `FERRO_AI_MODEL` environment variable
 
-**Generated file:** `src/views/user_index.rs`
+**Generated file:** `src/views/user_index.json`
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "User Index",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": {
+        "title": "User Index",
+        "description": "Edit src/views/user_index.json to customize this view."
+      },
+      "children": ["heading"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "User Index", "element": "h1" }
+    }
+  }
+}
+```
+
+**Generated handler usage:**
 
 ```rust
-use ferro::{
-    Action, Component, ComponentNode, JsonUiView, TableColumn, TableProps,
-    TextElement, TextProps,
-};
-
-pub fn view() -> JsonUiView {
-    JsonUiView::new()
-        .title("User Index")
-        .layout("app")
-        .component(ComponentNode {
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {
-                content: "User Index".to_string(),
-                element: TextElement::H1,
-            }),
-            action: None,
-            visibility: None,
-        })
-        // ... additional components based on AI context or static template
+#[handler]
+pub async fn user_index(req: Request) -> Response {
+    let data = serde_json::json!({});
+    JsonUi::render_file("views/user_index.json", data)
 }
 ```
 

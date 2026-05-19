@@ -314,12 +314,17 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 **Current State:**
 - ~90,000 lines of Rust across 24 crates
+- Phase 160 complete — v1 JSON-UI API deletion: all `JsonUiView` / `Component` / `ComponentNode` / `PluginProps` surface removed from ferro-json-ui, framework, and ferro-mcp; `migration_v1_to_v2_templates` MCP category deleted; `application_info::scan_json_ui_specs` rewritten to count v2 JSON spec files; protocol docs reframed; ferro workspace + gestiscilo cross-repo green. Phase 161 (v12.0 merge + single end-of-loop publish) cleared to start.
 - Phase 155 complete — ferro-projection v0.2.33: live read-model runtime (subscribe to domain events, persist per-key snapshots, broadcast deltas)
 - v11.11 shipped: Resource Reservation & Live Read-Model Primitives — ferro-orm GuardedUpdate (Ph 152), ferro-audit (Ph 153), ferro-reservation (Ph 154), ferro-projection (Ph 155)
 - v11.7 shipped: Tailwind Static CSS Pipeline — Safari/WebKit production fix; static CSS with compile-time embedding
 - v11.6 shipped: ferro-stripe Capability Refactor — capability-axis module tree, SyncDispatcher, typed events
 - v11.5 shipped: Projection Architecture Prep — Renderer trait generalization, renderer relocation, ServiceDef derivation bridge
-- v0.2.33 published on crates.io as `ferro-rs`
+- v10.0 shipped: JSON-UI Visual Overhaul
+- v9.0 shipped: Service Projections — projection / intent substrate
+- Phase 117 shipped: Catalog & JSON Schema — machine-readable `Catalog` with 39 built-in components, compiled jsonschema validator, per-component schema accessor, concise `prompt()` output (≤ 8 KB), full spec schema export via `ferro json-ui:schema` CLI, `COMPONENT_CATALOG` const retired
+- Phase 117.1 shipped: Schema-Driven Projections — `Spec::from_service_def()` bridges ferro-projections and ferro-json-ui v2 via catalog-verified meaning→component dispatch, intent→layout template resolution, and two-pass generate-then-validate; legacy `field_map.rs` and `relationship_map.rs` deleted
+- v0.2.35 published on crates.io as `ferro-rs`
 - Pre-1.0; breaking changes acceptable
 - Sample application (app/) demonstrating Inertia integration
 - Comprehensive MCP introspection (35+ tools) — this is the v1.0 product surface
@@ -415,6 +420,7 @@ See also `.planning/VISION.md` for design philosophy.
 | BoxedHandler returns (bool, Result) tuple | `bool` flag distinguishes "no handler matched" from handler returning Ok(()); enables unknown-event logging | ✓ Good |
 | Missing SyncDispatcher → Err(JobFailed) not panic | Queue workers survive misconfiguration; recoverable error lets queue mark job failed and continue | ✓ Good |
 | amount_total_cents: i64 with zero-means-absent doc | Zero maps to absent Stripe field on free/setup sessions; callers must not use field alone to assert payment | ✓ Good |
+| Schema-driven projections replace field_map.rs | Projections and catalog stay consistent by construction | Planned |
 
 ---
-*Last updated: 2026-05-15 — v13.0 AI milestone added (ferro-ai SDK + AI-assisted scaffolding)*
+*Last updated: 2026-05-17 — Phase 160 complete (v1 JSON-UI API deletion): all v1 type surface removed across ferro-json-ui / framework / ferro-mcp; `migration_v1_to_v2_templates` MCP category deleted; `application_info::scan_json_ui_specs` rewritten for v2; protocol/docs reframed in neutral voice; ferro workspace (2697 tests) + gestiscilo cross-repo verification both green; ferro-code descoped per OQ-2 (empty repo). Phase 161 (v12.0 merge to master + single end-of-loop publish) is cleared to start. Phase 174 remains queued as a forward-looking v13.0 seed for Hyperview/HXML evaluation.*

@@ -4,13 +4,26 @@
 //! backend Ferro handlers. Each action references a handler in
 //! `"controller.method"` format and can include confirmation dialogs
 //! and outcome behaviors.
+//!
+//! Handler resolution accepts two shapes (Phase 165 — F14):
+//!
+//! - **Literal:** a plain string — `"users.store"` or `"/users"`.
+//! - **Binding:** a `{"$data": "/path"}` map resolving to a string in
+//!   `spec.data` at render time. Inside `$each` templates, paths that
+//!   start with the loop variable (`/{as}/...`) are inlined to the row
+//!   value during expansion — see `resolve.rs::expand_each`.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::spec::DataRef;
+
 /// Variant for confirmation dialogs.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum DialogVariant {
     #[default]
     Default,
@@ -40,8 +53,11 @@ pub struct ConfirmDialog {
 }
 
 /// Notification variant for action outcomes.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum NotifyVariant {
     #[default]
     Success,
@@ -65,11 +81,80 @@ pub enum ActionOutcome {
     },
 }
 
+/// Handler reference for an [`Action`].
+///
+/// Accepts a literal string (handler name like `"users.store"` or absolute
+/// path like `"/users"`) or a `{"$data": "/path"}` binding resolved against
+/// `spec.data` at render time. The untagged enum keeps the wire format
+/// backward-compatible — existing literal handlers parse via `Literal`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum ActionHandler {
+    /// Handler name or literal URL. `"users.store"` is looked up via the
+    /// resolver; `"/users"` is passed through as the resolved URL.
+    Literal(String),
+    /// `{"$data": "/path"}` binding. Resolved against `spec.data` in
+    /// `resolve_actions`. The resolved string is then treated as a literal
+    /// handler (resolver lookup or pass-through for `/path` URLs).
+    Binding(DataRef),
+}
+
+impl ActionHandler {
+    /// Return the literal string when this handler is unbound.
+    ///
+    /// Returns `None` for `Binding` — callers that need the literal must
+    /// either run [`crate::resolve::resolve_actions`] first or branch on
+    /// the variant explicitly.
+    pub fn as_literal(&self) -> Option<&str> {
+        match self {
+            ActionHandler::Literal(s) => Some(s.as_str()),
+            ActionHandler::Binding(_) => None,
+        }
+    }
+
+    /// Return the underlying string regardless of variant.
+    ///
+    /// For `Literal`, this is the handler name or URL. For `Binding`, this
+    /// is the binding's `$data` JSON-pointer path — useful for diagnostic
+    /// rendering when the action has not been resolved.
+    pub fn as_str(&self) -> &str {
+        match self {
+            ActionHandler::Literal(s) => s.as_str(),
+            ActionHandler::Binding(d) => d.data.as_str(),
+        }
+    }
+}
+
+impl std::fmt::Display for ActionHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Default for ActionHandler {
+    fn default() -> Self {
+        ActionHandler::Literal(String::new())
+    }
+}
+
+impl From<String> for ActionHandler {
+    fn from(s: String) -> Self {
+        ActionHandler::Literal(s)
+    }
+}
+
+impl From<&str> for ActionHandler {
+    fn from(s: &str) -> Self {
+        ActionHandler::Literal(s.to_string())
+    }
+}
+
 /// An action declaration mapping a user interaction to a backend handler.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Action {
-    /// Handler reference in "controller.method" format.
-    pub handler: String,
+    /// Handler reference — literal `"controller.method"` / absolute `/path`,
+    /// or a `{"$data": "/path"}` binding resolved at render time.
+    pub handler: ActionHandler,
     /// Resolved URL for this action. Populated by the resolver at render time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
@@ -89,7 +174,7 @@ pub struct Action {
 
 impl Action {
     /// Create an action with Post method (the default for form submissions).
-    pub fn new(handler: impl Into<String>) -> Self {
+    pub fn new(handler: impl Into<ActionHandler>) -> Self {
         Self {
             handler: handler.into(),
             url: None,
@@ -102,7 +187,7 @@ impl Action {
     }
 
     /// Create a navigation action with Get method.
-    pub fn get(handler: impl Into<String>) -> Self {
+    pub fn get(handler: impl Into<ActionHandler>) -> Self {
         Self {
             method: HttpMethod::Get,
             ..Self::new(handler)
@@ -110,7 +195,7 @@ impl Action {
     }
 
     /// Create a deletion action with Delete method.
-    pub fn delete(handler: impl Into<String>) -> Self {
+    pub fn delete(handler: impl Into<ActionHandler>) -> Self {
         Self {
             method: HttpMethod::Delete,
             ..Self::new(handler)
@@ -163,7 +248,7 @@ mod tests {
     #[test]
     fn minimal_action_serializes() {
         let action = Action {
-            handler: "users.store".to_string(),
+            handler: ActionHandler::Literal("users.store".to_string()),
             url: None,
             method: HttpMethod::Post,
             confirm: None,
@@ -181,7 +266,7 @@ mod tests {
     #[test]
     fn action_with_confirm_dialog() {
         let action = Action {
-            handler: "users.destroy".to_string(),
+            handler: ActionHandler::Literal("users.destroy".to_string()),
             url: None,
             method: HttpMethod::Delete,
             confirm: Some(ConfirmDialog {
@@ -244,7 +329,7 @@ mod tests {
     #[test]
     fn action_without_url_omits_url_field() {
         let action = Action {
-            handler: "users.index".to_string(),
+            handler: ActionHandler::Literal("users.index".to_string()),
             url: None,
             method: HttpMethod::Get,
             confirm: None,
@@ -259,7 +344,7 @@ mod tests {
     #[test]
     fn action_with_url_includes_url_field() {
         let action = Action {
-            handler: "users.store".to_string(),
+            handler: ActionHandler::Literal("users.store".to_string()),
             url: Some("/users".to_string()),
             method: HttpMethod::Post,
             confirm: None,
@@ -274,7 +359,7 @@ mod tests {
     #[test]
     fn action_url_round_trips() {
         let action = Action {
-            handler: "users.show".to_string(),
+            handler: ActionHandler::Literal("users.show".to_string()),
             url: Some("/users/42".to_string()),
             method: HttpMethod::Get,
             confirm: None,
@@ -293,7 +378,7 @@ mod tests {
     #[test]
     fn builder_new_creates_post_action() {
         let action = Action::new("users.store");
-        assert_eq!(action.handler, "users.store");
+        assert_eq!(action.handler.as_str(), "users.store");
         assert_eq!(action.method, HttpMethod::Post);
         assert_eq!(action.url, None);
         assert_eq!(action.confirm, None);
@@ -304,15 +389,61 @@ mod tests {
     #[test]
     fn builder_get_creates_get_action() {
         let action = Action::get("users.index");
-        assert_eq!(action.handler, "users.index");
+        assert_eq!(action.handler.as_str(), "users.index");
         assert_eq!(action.method, HttpMethod::Get);
     }
 
     #[test]
     fn builder_delete_creates_delete_action() {
         let action = Action::delete("users.destroy");
-        assert_eq!(action.handler, "users.destroy");
+        assert_eq!(action.handler.as_str(), "users.destroy");
         assert_eq!(action.method, HttpMethod::Delete);
+    }
+
+    // ── F14: ActionHandler binding tests ───────────────────────────────
+
+    #[test]
+    fn action_handler_literal_round_trips_as_string() {
+        let json = r#"{"handler":"users.store"}"#;
+        let action: Action = serde_json::from_str(json).unwrap();
+        assert!(matches!(action.handler, ActionHandler::Literal(ref s) if s == "users.store"));
+        let back = serde_json::to_string(&action).unwrap();
+        assert!(back.contains(r#""handler":"users.store""#));
+    }
+
+    #[test]
+    fn action_handler_binding_parses_data_ref() {
+        let json = r#"{"handler":{"$data":"/cell/action_url"}}"#;
+        let action: Action = serde_json::from_str(json).unwrap();
+        assert!(matches!(
+            action.handler,
+            ActionHandler::Binding(ref d) if d.data == "/cell/action_url"
+        ));
+    }
+
+    #[test]
+    fn action_handler_binding_round_trips_via_serde() {
+        let json = r#"{"handler":{"$data":"/path"},"method":"GET"}"#;
+        let parsed: Action = serde_json::from_str(json).unwrap();
+        let back = serde_json::to_string(&parsed).unwrap();
+        assert!(back.contains(r#""handler":{"$data":"/path"}"#));
+    }
+
+    #[test]
+    fn action_handler_as_str_returns_binding_path() {
+        let action: Action = serde_json::from_str(r#"{"handler":{"$data":"/foo"}}"#).unwrap();
+        assert_eq!(action.handler.as_str(), "/foo");
+        assert!(action.handler.as_literal().is_none());
+    }
+
+    #[test]
+    fn action_handler_display_uses_underlying_string() {
+        let lit = ActionHandler::Literal("users.show".to_string());
+        let bind = ActionHandler::Binding(DataRef {
+            data: "/x".to_string(),
+        });
+        assert_eq!(format!("{lit}"), "users.show");
+        assert_eq!(format!("{bind}"), "/x");
     }
 
     #[test]
@@ -362,5 +493,30 @@ mod tests {
     fn builder_method_overrides() {
         let action = Action::new("users.update").method(HttpMethod::Put);
         assert_eq!(action.method, HttpMethod::Put);
+    }
+
+    /// Assert AsRef<str> matches serde JSON wire format for DialogVariant and NotifyVariant.
+    /// Threat T-162-08-01: strum and serde must agree on every snake_case string.
+    #[test]
+    fn dialog_notify_variant_strum_matches_serde() {
+        fn check<T: AsRef<str> + serde::Serialize>(variants: &[T], label: &str) {
+            for v in variants {
+                let json = serde_json::to_string(v).expect("serialize");
+                assert_eq!(v.as_ref(), json.trim_matches('"'), "{label} strum drift");
+            }
+        }
+        check(
+            &[DialogVariant::Default, DialogVariant::Danger],
+            "DialogVariant",
+        );
+        check(
+            &[
+                NotifyVariant::Success,
+                NotifyVariant::Warning,
+                NotifyVariant::Error,
+                NotifyVariant::Info,
+            ],
+            "NotifyVariant",
+        );
     }
 }

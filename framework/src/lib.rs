@@ -80,15 +80,15 @@ pub use ferro_json_ui::{
     ActionCardProps, ActionCardVariant, ActionOutcome, AlertProps, AlertVariant, AvatarProps,
     BadgeProps, BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonProps, ButtonType,
     ButtonVariant, CardProps, CheckboxProps, ChecklistItem, ChecklistProps, Column, ColumnFormat,
-    Component, ComponentNode, ConfirmDialog, DashboardLayout, DashboardLayoutConfig,
-    DescriptionItem, DescriptionListProps, DialogVariant, FormProps, HeaderProps, HttpMethod,
-    IconPosition, ImageProps, InputProps, InputType, JsonUiConfig, JsonUiView, KeyValueEditorProps,
-    Layout, LayoutContext, LayoutRegistry, ModalProps, NavItem, NotificationDropdownProps,
-    NotificationItem, NotifyVariant, Orientation, PaginationProps, ProgressProps, SelectOption,
-    SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem, SidebarProps, SidebarSection, Size,
-    SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps, TabsProps,
-    TextElement, TextProps, ToastProps, ToastVariant, Visibility as JsonUiVisibility,
-    VisibilityCondition, VisibilityOperator, SCHEMA_VERSION,
+    ConfirmDialog, DashboardLayout, DashboardLayoutConfig, DescriptionItem, DescriptionListProps,
+    DialogVariant, Element, ElementBuilder, FormProps, HeaderProps, HttpMethod, IconPosition,
+    ImageProps, InputProps, InputType, JsonUiConfig, Layout, LayoutContext, LayoutRegistry,
+    ModalProps, NavItem, NotificationDropdownProps, NotificationItem, NotifyVariant, Orientation,
+    PaginationProps, ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup,
+    SidebarNavItem, SidebarProps, SidebarSection, Size, SkeletonProps, SortDirection, Spec,
+    SpecBuilder, SpecError, StatCardProps, SwitchProps, Tab, TableProps, TabsProps, TextElement,
+    TextProps, ToastProps, ToastVariant, Visibility as JsonUiVisibility, VisibilityCondition,
+    VisibilityOperator, MAX_NESTING_DEPTH, SCHEMA_VERSION,
 };
 #[cfg(feature = "stripe")]
 pub use ferro_stripe::{
@@ -139,9 +139,10 @@ pub use theme::{
 pub use inertia::InertiaContext;
 pub use metrics::{get_metrics, MetricsSnapshot, RouteMetrics, RouteMetricsView};
 pub use middleware::{
-    register_global_middleware, register_pre_route_middleware, Cors, Limit, LimiterResponse,
-    MetricsMiddleware, Middleware, MiddlewareFuture, MiddlewareRegistry, Next, PreRouteMiddleware,
-    RateLimiter, SecurityHeaders, Throttle,
+    get_pre_route_middleware, register_global_middleware, register_pre_route_middleware,
+    rewrite_request_path, Cors, Limit, LimiterResponse, MetricsMiddleware, Middleware,
+    MiddlewareFuture, MiddlewareRegistry, Next, PreRouteMiddleware, PreRouteResult, RateLimiter,
+    SecurityHeaders, Throttle,
 };
 pub use routing::{
     // Internal functions used by macros (hidden from docs)
@@ -390,23 +391,18 @@ macro_rules! global_middleware {
     };
 }
 
-/// Register a pre-route middleware that runs before route matching on every request.
+/// Register a pre-route middleware that runs before path extraction and route matching.
 ///
-/// Pre-route middleware can call `request.set_path(new_path)` to rewrite the path
-/// before the router selects a handler. Use this for host-based routing, path
-/// aliasing, or any rewrite that must influence which route is matched.
-///
-/// Pre-route middleware runs in registration order, before standard global middleware.
+/// Pre-route middleware operates on the raw hyper request and can rewrite the path
+/// (via `rewrite_request_path`) before the router selects a handler. Use this for
+/// host-based routing, path aliasing, or any rewrite that must influence which
+/// route is matched. Runs in registration order, before standard global middleware.
 ///
 /// # Example
 ///
 /// ```rust,ignore
 /// // In bootstrap.rs
-/// use ferro_rs::pre_route_middleware;
-///
-/// pub fn register() {
-///     pre_route_middleware!(HostMiddleware::new());
-/// }
+/// pre_route_middleware!(middleware::host::HostMiddleware::new());
 /// ```
 #[macro_export]
 macro_rules! pre_route_middleware {

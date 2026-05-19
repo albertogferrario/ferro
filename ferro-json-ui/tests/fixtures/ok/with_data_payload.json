@@ -1,0 +1,8 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "hello",
+  "elements": {
+    "hello": {"type": "Text", "props": {"content": "Greetings"}}
+  },
+  "data": {"user": {"name": "Alice"}}
+}

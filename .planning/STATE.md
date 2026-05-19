@@ -1,18 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.1
-milestone_name: AI — ferro-ai SDK & AI-Assisted Scaffolding
-status: planned
-stopped_at: roadmap created 2026-05-15
-last_updated: "2026-05-15T00:00:00.000Z"
-last_activity: 2026-05-15
-next_planned_milestone: v13.0 Road to v1.0
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
+status: verifying
+stopped_at: Completed 160-10-PLAN.md — Phase 160 fully closed; Phase 161 cleared
+last_updated: "2026-05-17T05:59:41.247Z"
+last_activity: 2026-05-17
 progress:
-  total_phases: 167
-  completed_phases: 144
-  total_plans: 401
-  completed_plans: 380
-  percent: 86
+  total_phases: 173
+  completed_phases: 156
+  total_plans: 472
+  completed_plans: 462
+  percent: 98
 ---
 
 # Project State
@@ -21,27 +20,24 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Core value:** Ferro is a Rust web framework optimized for AI-assisted authoring, with projection / intent (`ferro-projections`) as its core abstraction.
-**Current focus:** v12.1 roadmap created — Phase 159 is next
+**Current focus:** Phase 160 — remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp
 
 ## Current Position
 
-Phase: 158 (last completed)
-Plan: All plans complete
-Plans: 2 of 2 complete
-Workspace version: 0.2.33 (bumped from 0.2.32 in Phase 155 plan 02)
-Status: Roadmap created — ready to begin Phase 159
-Last activity: 2026-05-15
-Next phase: 159 (LlmClient Trait & Provider Implementations)
-Next milestone: v12.0 JSON-UI v2 (Phase 115) must ship before Phase 167; Phases 159-166 are independent
+Phase: 161
+Plan: Not started
+Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
+Workspace version: 0.2.35 (inherited from master)
+Status: Phase complete — ready for verification
+Last activity: 2026-05-17
 
-Progress: [████████░░] 86%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 64
+- Total plans completed: 106
 - Average duration: —
 - Total execution time: —
 
@@ -53,8 +49,8 @@ Progress: [████████░░] 86%
 | 141 | 4 | - | - |
 | 143 | 4 | - | - |
 | 144 | 5 | - | - |
-| 146 | 3 | - | - |
 | 145 | 5 | - | - |
+| 146 | 3 | - | - |
 | 148 | 3 | - | - |
 | 149 | 7 | - | - |
 | 150 | 5 | - | - |
@@ -62,6 +58,13 @@ Progress: [████████░░] 86%
 | 156 | 6 | - | - |
 | 157 | 4 | - | - |
 | 158 | 2 | - | - |
+| 120 | 5 | - | - |
+| 121 | 6 | - | - |
+| 159 | 3 | - | - |
+| 162 | 10 | - | - |
+| 163 | 10 | - | - |
+| 164 | 12 | - | - |
+| 160 | 10 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
@@ -147,6 +150,31 @@ Progress: [████████░░] 86%
 | Phase 154 P06 | 11 | 4 tasks | 6 files |
 | Phase 154 P07 | 10 | 4 tasks | 3 files |
 | Phase 156 P06 | 286s | 2 tasks | 2 files |
+| Phase 162-json-ui-improvements-batch-1-components-expressions-and-spec P01 | 595 | 3 tasks | 5 files |
+| Phase 162 P02 | 138s | 1 tasks | 1 files |
+| Phase 162 P03 | 15 | 2 tasks | 4 files |
+| Phase 162 P04 | 25 | 3 tasks | 5 files |
+| Phase 162 P05 | 7 | 2 tasks | 1 files |
+| Phase 162-json-ui-improvements-batch-1-components-expressions-and-spec P08 | 10 | 3 tasks | 3 files |
+| Phase 162-json-ui-improvements-batch-1-components-expressions-and-spec P09 | 2 | 3 tasks | 5 files |
+| Phase 162-json-ui-improvements-batch-1-components-expressions-and-spec P10 | 7 | 4 tasks | 6 files |
+| Phase 163 P03 | pre-committed | 1 tasks | 3 files |
+| Phase 163 P04 | 158 | 1 tasks | 1 files |
+| Phase 163 P05 | 10min | 1 tasks | 1 files |
+| Phase 163 P06 | 8min | 1 tasks | 1 files |
+| Phase 163 P08 | 98s | 1 tasks | 1 files |
+| Phase 163 P10 | 3min | 1 tasks | 1 files |
+| Phase 163.1 P01 | 183s | 5 tasks | 7 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P01 | 42min | 3 tasks | 7 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P02 | 3min | 1 tasks | 1 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P03 | 4min | 1 tasks | 1 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P04 | 75s | 1 tasks | 1 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp PP05 | 4min | 1 tasks tasks | 1 files files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P160-06 | 5min | 3 tasks | 3 files |
+| Phase 160 P07 | 53s | 1 tasks | 1 files |
+| Phase 160 P08 | 1m 2s | 1 tasks | 1 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P09 | 8min | 1 tasks | 1 files |
+| Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P10 | 7min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -178,8 +206,19 @@ Recent decisions affecting current work:
 - [v12.1] ClassificationProvider coexists alongside LlmClient — existing callers unchanged; Classifier<T> delegates HTTP to AnthropicClient internally
 - [v12.1] SseStream has no dependency on ferro-ai — wiring of TokenStream → SseStream happens in application handler code
 - [v12.1] ferro ai:make context loaded from ferro-mcp library functions in-process (not subprocess) — prevents context window overflow via selective filtering
-- [v12.1] ScaffoldPlan type design deferred to Phase 165 planning — must be designed before implementation begins
-- [v12.1] Phase 167 (make:json-view v2) gated on v12.0 Phase 117 + 120 shipping — do not plan until confirmed
+- [v12.1] ScaffoldPlan type design deferred to Phase 171 planning — must be designed before implementation begins
+- [v12.1] Phase 173 (make:json-view v2) gated on v12.0 Phase 117 + 120 shipping — do not plan until confirmed
+- [160-02] MCP code_templates category deletion pattern: drop registration+comment, producer fn, and integration test in one diff — no orphaned comment, no green-test artifact
+- [160-04] Test-fixture rename pattern: when v1-coded fixture identifiers carry no behavioral weight, rename them in-place to neutral equivalents — keeps regression coverage equivalent while satisfying user-naming constraint (CONTEXT D-06)
+- [160-05] Pre-publish README audit: any crate ferro publishes must have its README usage block compile against the current public API — drift on the crates.io front page is a first-impression bug, not a docs nit
+- [160-06] Pattern 5 verbatim drop-in: rewriting v1-framed prose with the exact RESEARCH replacement avoids leaving the surrounding "but/however" contrast intact (a string-substitution would have)
+- [160-06] Correct, do not append: rendering.md Output Format reframe also fixed two pre-existing factual errors (no `version` field, no `body` field on Spec) — corrective parentheticals would have left the wrong text in place
+- [160-07] Triple-stale docs fix pattern: when a single code block carries multiple drift markers (wrong type, wrong schema, wrong field name), replace the whole block in one edit rather than chaining three substitutions
+- [160-07] Docs-rustdoc shape parity: hand-written feature docs mirror the source rustdoc structure exactly (e.g., the `let result = ...; let spec = result.expect(...)` two-line split) so future API drift is mechanically visible in diff review
+- [160-09] D-08 sweep clean — 152 hits across 5 in-scope trees, all whitelistable (125 api-versioning-example, 11 arbitrary-fixture, 16 legitimate-historical), zero FAIL; Plans 01-08 caught the v1 JSON-UI narrative framing cleanly
+- [160-09] Audit-only plan pattern: classify-without-modify gate produces a stable artifact the next plan's verifier reads instead of re-running classification — preserves the per-row rationale chain across plan boundaries
+- [160-10] Cross-repo failure triage by attribution: a test that `include_str!`s its own crate source and asserts on a literal string in that source cannot be caused by an upstream dependency change — classify as out-of-scope before flagging as a verification gap (8 gestiscilo test failures all classified this way; ferro Phase 160 verdict PASS)
+- [160-10] Descope-with-record pattern (OQ-2 ferro-code): when a cross-repo verification target is genuinely unavailable (empty repo, no Cargo.toml), record the descope in BOTH the plan VERIFICATION.md AND the plan SUMMARY so future audits read the rationale instead of re-opening the gap
 
 ### Pending Todos
 
@@ -191,10 +230,13 @@ Recent decisions affecting current work:
 - [Research flag] Phase 113: COMPONENT_CATALOG resolution needs design decision evaluation (shared data file vs build script vs new crate) — evaluate options before scoping
 - [Harness] `isolation="worktree"` agent harness branches from a stale base (~37 commits behind HEAD) — surfaced during Phase 153 plan 01. Cherry-picked the source commit manually and switched plans 02-06 to no-worktree execution. Six locked worktree branches remain in `.claude/worktrees/`; harmless but investigate before parallel-wave phases.
 - [Planner] Phase 153 planner placed 153-01 + 153-02 both in Wave 1 with `depends_on: []` despite Phase 152's proven 1→2 sequential pattern (152-01's verify `cargo build -p ferro-orm` needs workspace membership from 152-02). Executor for 153-01 applied the same deviation Phase 152-01 used (added crate to `[workspace.members]` in plan 01). Future phases scaffolding new workspace crates should default to sequential Wave 1→2.
-- [v12.1] Phase 167 blocked on v12.0 shipping — do not plan until v12.0 Phase 117 and Phase 120 are complete.
+- [v12.1] Phase 173 blocked on v12.0 shipping — do not plan until v12.0 Phase 117 and Phase 120 are complete.
 
 ### Roadmap Evolution
 
+- Phase 163.1 inserted after Phase 163 (2026-05-17): Codemod multi-root handler fix (G-163-01) — reject as Unsupported with TODO marker. Source: 163-REVIEW.md WR-01 — `ferro json-ui:migrate-v1` silently orphans elements when a v1 handler has multiple top-level nodes. Repair: Option B from review (aligns with D-11). Manually scaffolded — `gsd-tools phase insert` rejected because no milestone heading in ROADMAP.md scopes to include Phase 163 (it sits in a gap between v11.12 and v12.1 milestone sections; STATE.md milestone drift is a separate cleanup). Context: pending — run /gsd-discuss-phase 163.1 or /gsd-plan-phase 163.1.
+- Phases 159-164 added (2026-05-15): v12.0/json-ui-v2 closure and gestiscilo friction loop. Phase 159: browser verification + docs build check (DONE). Phases 160-161: v1 API deletion + merge to master. Phases 162-164: JSON-UI improvements from gestiscilo field-test friction.
+- v12.1 AI milestone renumbered (2026-05-16) from Phases 159-167 to Phases 165-173 to resolve collision with v12.0 closure phases — applied during master merge into v12.0/json-ui-v2 branch.
 - Phase 147 added: DetailForm component for inline edit — ferro-json-ui
 - Phase 146 added: Add KeyValueEditor component to ferro-json-ui
 - Phase 122 added: Deploy scaffold core rewrite (docker_init/do_init/templates rewrite, path→git ferro dep handling, multi-bin + worker support) — driven by gestiscilo deployment work
@@ -211,11 +253,11 @@ Recent decisions affecting current work:
 - Phases 152-155 added (2026-05-13): v11.11 Resource Reservation & Live Read-Model Primitives milestone created. Source: gestiscilo-it inventory monitoring field test. Four domain-neutral horizontal primitives — 152 `ferro-orm::GuardedUpdate` (atomic conditional updates), 153 `ferro-audit` (structured before/after log), 154 `ferro-reservation` (generic hold/commit/release with TTL, depends on 152+153), 155 `ferro-projection` (live read-model from domain events with broadcast deltas, uses existing ferro-events + ferro-broadcast). Unblocks gestiscilo-it v6.3 Online Checkout (slot hold during Stripe payment) and v6.7 Inventory Monitoring. Design: `research/INVENTORY-PRIMITIVES.md`.
 - Phase 157 added (2026-05-13, URGENT): v11.12 Migration Deploy Safety milestone created. Source: gestiscilo-it 2026-05-13 production breakage — SQLite-hardcoded backfill SQL failed on Postgres, runtime runner swallowed the error via `eprintln!` + continue, no PRE_DEPLOY gate in scaffolded `.do/app.yaml`, server served a stale schema for hours before discovery. Three framework gaps closed at once: backend-portable migration helpers (`ferro_migration::backfill_random_hex` and friends), `ferro do:init` emits a `PRE_DEPLOY` migrate job by default, `ferro doctor --deploy` adds a `migrate_gate` check. Context: `.planning/phases/157-.../157-CONTEXT.md`.
 - Phase 158 added (2026-05-15): `Request::file()` multipart upload primitive. Source: gestiscilo-it v6.8 Personal Documents field test — `upload_firmato.rs` does 80 lines of inline `multer` parsing that belongs in the framework. Adds `req.file("field")` → `FileUpload { bytes, filename, mime_type }` to the `Request` API; lifts `sanitize_filename` as a public utility. Load-bearing prerequisite for gestiscilo-it Phase 137 (personal documents upload flow).
-- Phases 159-167 added (2026-05-15): v12.1 AI milestone roadmap created. Nine phases covering ferro-ai SDK expansion (LlmClient trait + providers, structured outputs + tool calling + schema normalizer, embeddings + pgvector), framework SSE primitives, StreamText component, ferro-cli migration, ai:make + ai:explain CLI commands, MCP tool wrappers. Phase 167 (make:json-view v2) deferred until v12.0 ships.
+- Phases 165-173 added (2026-05-15, renumbered from 159-167 on 2026-05-16): v12.1 AI milestone roadmap created. Nine phases covering ferro-ai SDK expansion (LlmClient trait + providers, structured outputs + tool calling + schema normalizer, embeddings + pgvector), framework SSE primitives, StreamText component, ferro-cli migration, ai:make + ai:explain CLI commands, MCP tool wrappers. Phase 173 (make:json-view v2) deferred until v12.0 ships.
 
 ## Session Continuity
 
-Last session: 2026-05-15T00:00:00.000Z
-Stopped at: v12.1 roadmap created
+Last session: 2026-05-17T05:45:33.059Z
+Stopped at: Completed 160-10-PLAN.md — Phase 160 fully closed; Phase 161 cleared
 Resume file: None
-Next action: `/gsd-plan-phase 159` — LlmClient Trait & Provider Implementations
+Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations

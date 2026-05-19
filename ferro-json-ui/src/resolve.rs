@@ -1,512 +1,536 @@
-//! Resolvers for JSON-UI component trees.
+//! Resolvers for v2 JSON-UI Spec element maps.
 //!
-//! Walks a `JsonUiView`'s component tree and resolves action handler
-//! references to URLs and validation errors to form field error messages.
-//! Both resolvers keep ferro-json-ui decoupled from the framework.
+//! Walks a `Spec`'s flat element map and resolves action handler names to
+//! URLs, or populates per-field validation errors on form-like elements.
+//!
+//! Phase 115: flat iteration only. No tree descent — children are ID
+//! strings, not nested structs. Action resolution is per-element.
 
 use std::collections::HashMap;
 
-use crate::action::Action;
-use crate::component::{Component, ComponentNode};
-use crate::view::JsonUiView;
+use serde_json::Value;
 
-/// Resolve a single action using the callback.
-fn resolve_action(action: &mut Action, resolver: &impl Fn(&str) -> Option<String>) {
-    if action.url.is_none() {
-        // Literal paths (starting with "/") are passed through as-is so
-        // callers can use Action::get("/dashboard/...") without registering
-        // a named route.
-        if action.handler.starts_with('/') {
-            action.url = Some(action.handler.clone());
-            return;
-        }
-        if let Some(url) = resolver(&action.handler) {
-            action.url = Some(url);
-        }
-    }
-}
+use crate::action::{Action, ActionHandler};
+use crate::spec::{Element, Spec};
 
-/// Recursively resolve all actions within a component node.
-fn resolve_component_node(node: &mut ComponentNode, resolver: &impl Fn(&str) -> Option<String>) {
-    // Resolve the node-level action (any component can have one).
-    if let Some(ref mut action) = node.action {
-        resolve_action(action, resolver);
-    }
-
-    // Recurse into component-specific children.
-    match &mut node.component {
-        Component::Card(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-            for child in &mut props.footer {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::Form(props) => {
-            resolve_action(&mut props.action, resolver);
-            for field in &mut props.fields {
-                resolve_component_node(field, resolver);
-            }
-        }
-        Component::DetailForm(props) => {
-            resolve_action(&mut props.action, resolver);
-            for field in &mut props.fields {
-                resolve_component_node(&mut field.input, resolver);
-            }
-        }
-        Component::Modal(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-            for child in &mut props.footer {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::Tabs(props) => {
-            for tab in &mut props.tabs {
-                for child in &mut tab.children {
-                    resolve_component_node(child, resolver);
-                }
-            }
-        }
-        Component::Table(props) => {
-            if let Some(ref mut row_actions) = props.row_actions {
-                for action in row_actions {
-                    resolve_action(action, resolver);
-                }
-            }
-        }
-        Component::Grid(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::Collapsible(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::FormSection(props) => {
-            for child in &mut props.children {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::PageHeader(props) => {
-            for child in &mut props.actions {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::ButtonGroup(props) => {
-            for child in &mut props.buttons {
-                resolve_component_node(child, resolver);
-            }
-        }
-        Component::DropdownMenu(props) => {
-            for item in &mut props.items {
-                resolve_action(&mut item.action, resolver);
-            }
-        }
-        Component::KanbanBoard(props) => {
-            for col in &mut props.columns {
-                for child in &mut col.children {
-                    resolve_component_node(child, resolver);
-                }
-            }
-        }
-        Component::EmptyState(props) => {
-            if let Some(ref mut action) = props.action {
-                resolve_action(action, resolver);
-            }
-        }
-        Component::Switch(props) => {
-            if let Some(ref mut action) = props.action {
-                resolve_action(action, resolver);
-            }
-        }
-        Component::DataTable(props) => {
-            if let Some(ref mut actions) = props.row_actions {
-                for item in actions {
-                    resolve_action(&mut item.action, resolver);
-                }
-            }
-        }
-        // Leaf components with no children or actions to resolve.
-        Component::Button(_)
-        | Component::Input(_)
-        | Component::Select(_)
-        | Component::Alert(_)
-        | Component::Badge(_)
-        | Component::Text(_)
-        | Component::Checkbox(_)
-        | Component::Separator(_)
-        | Component::DescriptionList(_)
-        | Component::Breadcrumb(_)
-        | Component::Pagination(_)
-        | Component::Progress(_)
-        | Component::Avatar(_)
-        | Component::Skeleton(_)
-        | Component::StatCard(_)
-        | Component::Checklist(_)
-        | Component::Toast(_)
-        | Component::NotificationDropdown(_)
-        | Component::Sidebar(_)
-        | Component::Header(_)
-        | Component::CalendarCell(_)
-        | Component::ActionCard(_)
-        | Component::ProductTile(_)
-        | Component::Image(_)
-        | Component::KeyValueEditor(_)
-        | Component::RichTextEditor(_)
-        | Component::Plugin(_) => {}
-    }
-}
-
-/// Walk the entire component tree and resolve all action handler names to URLs.
+/// Resolve a single action using the callback. Literal paths (starting
+/// with '/') are passed through as-is so callers can use
+/// `Action::get("/dashboard/...")` without registering a named route.
 ///
-/// The resolver callback maps a handler name (e.g. `"users.store"`) to an
-/// optional URL (e.g. `Some("/users")`). Actions whose handler cannot be
-/// resolved are left with `url: None`.
-pub fn resolve_actions(view: &mut JsonUiView, resolver: impl Fn(&str) -> Option<String>) {
-    for node in &mut view.components {
-        resolve_component_node(node, &resolver);
+/// `data` is the `spec.data` payload — used to resolve `ActionHandler::Binding`
+/// references (F14, Phase 165). Binding-shape handlers resolve against the
+/// JSON pointer in `spec.data`; the resolved string is then treated as a
+/// literal handler (resolver lookup or `/path` pass-through).
+fn resolve_action(
+    action: &mut Action,
+    data: &serde_json::Value,
+    resolver: &impl Fn(&str) -> Option<String>,
+) {
+    if action.url.is_some() {
+        return;
+    }
+    // Materialise the handler to a literal string. Binding-shape handlers
+    // resolve against spec.data; missing bindings degrade to no-op so the
+    // diagnostic comment surfaces in render.
+    let literal: Option<String> = match &action.handler {
+        ActionHandler::Literal(s) => Some(s.clone()),
+        ActionHandler::Binding(d) => crate::data::resolve_path(data, &d.data)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+    };
+    let Some(s) = literal else { return };
+
+    if s.starts_with('/') {
+        action.url = Some(s);
+        return;
+    }
+    if let Some(url) = resolver(&s) {
+        action.url = Some(url);
     }
 }
 
-/// Walk the entire component tree and resolve all actions, returning an error
-/// for any handler that cannot be resolved.
+/// Resolve every `Element.action` AND every Action-shaped object nested
+/// inside `Element.props` via the provided resolver closure.
 ///
-/// Returns `Ok(())` if all handlers resolve successfully, or `Err(Vec<String>)`
-/// containing the names of all unresolvable handlers.
+/// The props walk handles fields such as `FormProps.action`,
+/// `EmptyStateProps.action`, `DataTableProps.row_actions[].action`,
+/// `SwitchProps.action`, and any future props that carry an Action
+/// payload — without each renderer having to re-implement URL resolution.
+///
+/// Mutates in place. Silent on missing handlers — use
+/// `resolve_actions_strict` if you want to collect missing names.
+pub fn resolve_actions(spec: &mut Spec, resolver: impl Fn(&str) -> Option<String>) {
+    let data = spec.data.clone();
+    for el in spec.elements.values_mut() {
+        if let Some(action) = el.action.as_mut() {
+            resolve_action(action, &data, &resolver);
+        }
+        resolve_actions_in_value(&mut el.props, &data, &resolver);
+    }
+}
+
+/// Walk a `serde_json::Value` recursively. Every object that looks like a
+/// raw Action (carries a `handler` field but no resolved `url`) gets a
+/// `url` populated using the same rules as `resolve_action`:
+///
+/// - Literal `"/path"` handler → url is the same path.
+/// - Literal route-name handler → url comes from the resolver.
+/// - `{"$data": "/spec/path"}` binding → resolved against `spec.data`,
+///   then the literal rule applies.
+///
+/// Recursion descends through every nested object and array so deeply
+/// nested action shapes (e.g. `row_actions[].action`) are reached without
+/// per-component plumbing.
+fn resolve_actions_in_value(
+    value: &mut Value,
+    data: &Value,
+    resolver: &impl Fn(&str) -> Option<String>,
+) {
+    match value {
+        Value::Object(map) => {
+            let has_handler = map.contains_key("handler");
+            let already_resolved = matches!(map.get("url"), Some(Value::String(_)));
+            if has_handler && !already_resolved {
+                if let Some(url) = resolve_props_handler_to_url(map.get("handler"), data, resolver)
+                {
+                    map.insert("url".to_string(), Value::String(url));
+                }
+            }
+            for v in map.values_mut() {
+                resolve_actions_in_value(v, data, resolver);
+            }
+        }
+        Value::Array(arr) => {
+            for v in arr.iter_mut() {
+                resolve_actions_in_value(v, data, resolver);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Materialise a JSON `handler` value to a URL string. Mirrors
+/// [`resolve_action`] but operates on raw JSON shapes (used in props,
+/// before per-type deserialization).
+fn resolve_props_handler_to_url(
+    handler: Option<&Value>,
+    data: &Value,
+    resolver: &impl Fn(&str) -> Option<String>,
+) -> Option<String> {
+    let literal: String = match handler? {
+        Value::String(s) => s.clone(),
+        Value::Object(map) if map.len() == 1 => {
+            let path = map.get("$data").and_then(|v| v.as_str())?;
+            crate::data::resolve_path(data, path)
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())?
+        }
+        _ => return None,
+    };
+    if literal.starts_with('/') {
+        Some(literal)
+    } else {
+        resolver(&literal)
+    }
+}
+
+/// Strict variant: returns `Err(missing_handlers)` if any handler did not
+/// resolve to a URL. Literal `/path` handlers are always considered
+/// resolved.
 pub fn resolve_actions_strict(
-    view: &mut JsonUiView,
+    spec: &mut Spec,
     resolver: impl Fn(&str) -> Option<String>,
 ) -> Result<(), Vec<String>> {
-    let mut unresolved: Vec<String> = Vec::new();
-
-    let collecting_resolver = |handler: &str| -> Option<String> { resolver(handler) };
-
-    // First resolve everything.
-    resolve_actions(view, collecting_resolver);
-
-    // Then collect unresolved handlers by walking the tree again.
-    for node in &view.components {
-        collect_unresolved_node(node, &mut unresolved);
+    let data = spec.data.clone();
+    let mut missing: Vec<String> = Vec::new();
+    for el in spec.elements.values_mut() {
+        if let Some(action) = el.action.as_mut() {
+            resolve_action(action, &data, &resolver);
+            if action.url.is_none() {
+                missing.push(action.handler.as_str().to_string());
+            }
+        }
+        resolve_actions_in_value(&mut el.props, &data, &resolver);
     }
-
-    if unresolved.is_empty() {
+    if missing.is_empty() {
         Ok(())
     } else {
-        Err(unresolved)
+        Err(missing)
     }
 }
 
-/// Collect handler names from actions that have no resolved URL.
-fn collect_unresolved_action(action: &Action, unresolved: &mut Vec<String>) {
-    if action.url.is_none() {
-        unresolved.push(action.handler.clone());
+/// Populate validation errors onto any element whose props contain a
+/// `"name"` field (or `"field"` field) matching an error key.
+pub fn resolve_errors(spec: &mut Spec, errors: &HashMap<String, Vec<String>>) {
+    for el in spec.elements.values_mut() {
+        attach_errors(el, errors, false);
     }
 }
 
-/// Recursively collect unresolved actions from a component node.
-fn collect_unresolved_node(node: &ComponentNode, unresolved: &mut Vec<String>) {
-    if let Some(ref action) = node.action {
-        collect_unresolved_action(action, unresolved);
+/// Variant that writes the full error bag onto every element (regardless
+/// of name match).
+pub fn resolve_errors_all(spec: &mut Spec, errors: &HashMap<String, Vec<String>>) {
+    for el in spec.elements.values_mut() {
+        attach_errors(el, errors, true);
     }
+}
 
-    match &node.component {
-        Component::Card(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-            for child in &props.footer {
-                collect_unresolved_node(child, unresolved);
-            }
+fn attach_errors(el: &mut Element, errors: &HashMap<String, Vec<String>>, all: bool) {
+    let Some(props_obj) = el.props.as_object_mut() else {
+        return;
+    };
+    // Match by either `name` or `field` prop (inputs use `field`, other
+    // elements commonly use `name`).
+    let key = props_obj
+        .get("name")
+        .or_else(|| props_obj.get("field"))
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    if let Some(k) = key {
+        if let Some(msgs) = errors.get(&k) {
+            props_obj.insert(
+                "errors".to_string(),
+                Value::Array(msgs.iter().cloned().map(Value::String).collect()),
+            );
         }
-        Component::Form(props) => {
-            collect_unresolved_action(&props.action, unresolved);
-            for field in &props.fields {
-                collect_unresolved_node(field, unresolved);
-            }
+    } else if all {
+        if let Ok(errors_value) = serde_json::to_value(errors) {
+            props_obj.insert("errors".to_string(), errors_value);
         }
-        Component::DetailForm(props) => {
-            collect_unresolved_action(&props.action, unresolved);
-            for field in &props.fields {
-                collect_unresolved_node(&field.input, unresolved);
-            }
-        }
-        Component::Modal(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-            for child in &props.footer {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::Tabs(props) => {
-            for tab in &props.tabs {
-                for child in &tab.children {
-                    collect_unresolved_node(child, unresolved);
-                }
-            }
-        }
-        Component::Table(props) => {
-            if let Some(ref row_actions) = props.row_actions {
-                for action in row_actions {
-                    collect_unresolved_action(action, unresolved);
-                }
-            }
-        }
-        Component::Grid(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::Collapsible(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::FormSection(props) => {
-            for child in &props.children {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::PageHeader(props) => {
-            for child in &props.actions {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::ButtonGroup(props) => {
-            for child in &props.buttons {
-                collect_unresolved_node(child, unresolved);
-            }
-        }
-        Component::DropdownMenu(props) => {
-            for item in &props.items {
-                collect_unresolved_action(&item.action, unresolved);
-            }
-        }
-        Component::KanbanBoard(props) => {
-            for col in &props.columns {
-                for child in &col.children {
-                    collect_unresolved_node(child, unresolved);
-                }
-            }
-        }
-        Component::EmptyState(props) => {
-            if let Some(ref action) = props.action {
-                collect_unresolved_action(action, unresolved);
-            }
-        }
-        Component::Switch(props) => {
-            if let Some(ref action) = props.action {
-                collect_unresolved_action(action, unresolved);
-            }
-        }
-        Component::DataTable(props) => {
-            if let Some(ref actions) = props.row_actions {
-                for item in actions {
-                    collect_unresolved_action(&item.action, unresolved);
-                }
-            }
-        }
-        Component::Button(_)
-        | Component::Input(_)
-        | Component::Select(_)
-        | Component::Alert(_)
-        | Component::Badge(_)
-        | Component::Text(_)
-        | Component::Checkbox(_)
-        | Component::Separator(_)
-        | Component::DescriptionList(_)
-        | Component::Breadcrumb(_)
-        | Component::Pagination(_)
-        | Component::Progress(_)
-        | Component::Avatar(_)
-        | Component::Skeleton(_)
-        | Component::StatCard(_)
-        | Component::Checklist(_)
-        | Component::Toast(_)
-        | Component::NotificationDropdown(_)
-        | Component::Sidebar(_)
-        | Component::Header(_)
-        | Component::CalendarCell(_)
-        | Component::ActionCard(_)
-        | Component::ProductTile(_)
-        | Component::Image(_)
-        | Component::KeyValueEditor(_)
-        | Component::RichTextEditor(_)
-        | Component::Plugin(_) => {}
     }
 }
 
 // ---------------------------------------------------------------------------
-// Validation error resolution
+// Section — Directive expansion (Phase 163: $each, $if)
 // ---------------------------------------------------------------------------
 
-/// Walk the component tree and set the first validation error message on each
-/// matching form field component (Input, Select, Checkbox, Switch).
+/// Expand `$each` / `$if` directives in `spec` against `spec.data`.
 ///
-/// Only fields whose `error` is currently `None` are updated; explicit errors
-/// set by the caller take priority.
-pub fn resolve_errors(view: &mut JsonUiView, errors: &HashMap<String, Vec<String>>) {
-    for node in &mut view.components {
-        resolve_errors_node(node, errors, false);
-    }
+/// Pass order:
+/// 1. `$if`-falsy elements are REMOVED from `spec.elements`.
+/// 2. `$each` templated elements are REPLACED by N clones with
+///    auto-suffixed IDs (`{tmpl_id}-0` .. `{tmpl_id}-(N-1)`).
+/// 3. Every parent's `children` list is rewritten to reference the new clone
+///    IDs (or pruned if the child was `$if`-deleted or `$each` with empty
+///    rows).
+///
+/// When `$if` AND `$each` co-occur on the same element, `$if` is evaluated
+/// first; if false, the element is removed before `$each` expansion (no
+/// clones produced). This is the planner-locked ordering (163-03-PLAN #5).
+///
+/// Correlated child indexes: when a templated element's child points to
+/// another templated element with the SAME `{path, as}` directive, the
+/// cloned parent at index `i` references the cloned child at index `i`.
+/// Mismatched-each child references are caught at validation time
+/// (`SpecError::MismatchedEach` — Plan 04).
+///
+/// This pass is IDEMPOTENT: after expansion, every clone has its directive
+/// fields cleared (`each = None`, `if_ = None`), so a second call is a no-op.
+///
+/// Pipeline position: must run BEFORE `resolve_actions` and
+/// `resolve_expressions` so those passes operate on the post-expansion
+/// element set.
+pub fn expand_directives(spec: &mut Spec) {
+    let data = spec.data.clone();
+    // Pass 1: remove $if-falsy elements (templates included — a falsy $if on
+    // a templated element prevents its $each expansion entirely).
+    let if_removed = remove_if_falsy(spec, &data);
+    // Pass 2: expand $each templated elements (those that survived $if).
+    let each_expanded = expand_each(spec, &data);
+    // Pass 3: rewrite parent children lists to reference new IDs / prune removed ones.
+    rewrite_parent_children(spec, &if_removed, &each_expanded);
 }
 
-/// Walk the component tree and set all validation error messages (joined with
-/// `". "`) on each matching form field component.
-///
-/// Same precedence rule: existing errors are not overwritten.
-pub fn resolve_errors_all(view: &mut JsonUiView, errors: &HashMap<String, Vec<String>>) {
-    for node in &mut view.components {
-        resolve_errors_node(node, errors, true);
+/// Remove elements whose `$if` predicate evaluates false; return the set of
+/// removed IDs so `rewrite_parent_children` can prune dangling references.
+/// Surviving elements have `if_` cleared for idempotency.
+fn remove_if_falsy(spec: &mut Spec, data: &serde_json::Value) -> std::collections::HashSet<String> {
+    let mut to_delete: Vec<String> = Vec::new();
+    for (id, el) in spec.elements.iter() {
+        if let Some(predicate) = &el.if_ {
+            // SOLE predicate evaluator — D-04 reuse mandate.
+            if !predicate.evaluate(data) {
+                to_delete.push(id.clone());
+            }
+        }
     }
+    let removed: std::collections::HashSet<String> = to_delete.iter().cloned().collect();
+    for id in &to_delete {
+        spec.elements.remove(id);
+    }
+    // Strip if_ on the survivors so a second pass is a no-op.
+    for el in spec.elements.values_mut() {
+        if el.if_.is_some() {
+            el.if_ = None;
+        }
+    }
+    removed
 }
 
-/// Set the error string on a form field if the errors map contains its field name.
-fn set_field_error(
-    error_slot: &mut Option<String>,
-    field: &str,
-    errors: &HashMap<String, Vec<String>>,
-    all: bool,
+/// Expand every `$each`-templated element into N clones; return a map from
+/// each template ID to its ordered list of clone IDs (empty Vec if the
+/// data array was missing / empty / non-array).
+fn expand_each(
+    spec: &mut Spec,
+    data: &serde_json::Value,
+) -> std::collections::HashMap<String, Vec<String>> {
+    // Snapshot templates BEFORE mutation so iteration order is deterministic
+    // and we can read sibling directives during correlated-child rewriting.
+    let templates: Vec<(String, Element)> = spec
+        .elements
+        .iter()
+        .filter_map(|(id, el)| el.each.as_ref().map(|_| (id.clone(), el.clone())))
+        .collect();
+
+    let template_directives: std::collections::HashMap<String, crate::spec::EachDirective> =
+        templates
+            .iter()
+            .map(|(id, el)| (id.clone(), el.each.clone().unwrap()))
+            .collect();
+
+    let mut expanded: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
+
+    for (tmpl_id, tmpl_el) in &templates {
+        let each = tmpl_el.each.as_ref().unwrap();
+        let rows: Vec<serde_json::Value> = crate::data::resolve_path(data, &each.path)
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let mut clone_ids: Vec<String> = Vec::with_capacity(rows.len());
+        for (i, row) in rows.iter().enumerate() {
+            let clone_id = format!("{tmpl_id}-{i}");
+            let mut clone = tmpl_el.clone();
+            clone.each = None; // strip directive — idempotent
+            clone.if_ = None;
+            // Pre-resolve /{as}/... paths in props against the current row.
+            inline_resolve_row_paths(&mut clone.props, &each.as_, row);
+            // Phase 165 F14: pre-resolve /{as}/... action.handler bindings to
+            // a literal string so per-row navigation works (handler accepts
+            // {"$data": "/{as}/action_url"} → ActionHandler::Literal("/dashboard/.../...")).
+            if let Some(action) = clone.action.as_mut() {
+                inline_resolve_row_action(action, &each.as_, row);
+            }
+            // Rewrite this clone's children list for correlated-each siblings.
+            for child in clone.children.iter_mut() {
+                if let Some(child_each) = template_directives.get(child) {
+                    if child_each.path == each.path && child_each.as_ == each.as_ {
+                        *child = format!("{child}-{i}");
+                    }
+                    // Different {path, as} would be caught by the validator
+                    // (MismatchedEach, Plan 04). At runtime we leave the ID
+                    // literal; the render layer emits a missing-id comment
+                    // if it does not exist.
+                }
+            }
+            spec.elements.insert(clone_id.clone(), clone);
+            clone_ids.push(clone_id);
+        }
+        spec.elements.remove(tmpl_id);
+        expanded.insert(tmpl_id.clone(), clone_ids);
+    }
+
+    expanded
+}
+
+/// Walk `value` and replace every `{"$data": "/{as}/..."}` expression that
+/// references the loop variable with the literal value from `row`. Paths NOT
+/// starting with `/{as}/` are left untouched (they resolve against
+/// `spec.data` later via `resolve_expressions`).
+fn inline_resolve_row_paths(value: &mut serde_json::Value, as_name: &str, row: &serde_json::Value) {
+    let prefix = format!("/{as_name}/");
+    inline_walk(value, &prefix, row, as_name);
+}
+
+/// Phase 165 F14: pre-resolve `ActionHandler::Binding` references that point
+/// into the current `$each` row.
+///
+/// `{"$data": "/{as}/field"}` becomes `ActionHandler::Literal(row.field)`.
+/// `{"$data": "/global_field"}` is left untouched — `resolve_actions` will
+/// resolve it against `spec.data` later.
+fn inline_resolve_row_action(
+    action: &mut crate::action::Action,
+    as_name: &str,
+    row: &serde_json::Value,
 ) {
-    if error_slot.is_some() {
-        return; // explicit error takes priority
-    }
-    if let Some(messages) = errors.get(field) {
-        if !messages.is_empty() {
-            if all {
-                *error_slot = Some(messages.join(". "));
-            } else {
-                *error_slot = Some(messages[0].clone());
+    use crate::action::ActionHandler;
+    let prefix = format!("/{as_name}/");
+    if let ActionHandler::Binding(d) = &action.handler {
+        if let Some(rest) = d.data.strip_prefix(&prefix) {
+            let resolved = crate::data::resolve_path(row, &format!("/{rest}"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            if let Some(s) = resolved {
+                action.handler = ActionHandler::Literal(s);
+            }
+            // Missing field: leave binding; resolve_actions will degrade to None.
+        } else if d.data == format!("/{as_name}") {
+            // `{"$data": "/cell"}` — whole row as string when row is a string.
+            if let Some(s) = row.as_str() {
+                action.handler = ActionHandler::Literal(s.to_string());
             }
         }
+        // Non-row paths stay as Binding; resolve_actions handles them later.
     }
 }
 
-/// Recursively resolve validation errors within a component node.
-fn resolve_errors_node(node: &mut ComponentNode, errors: &HashMap<String, Vec<String>>, all: bool) {
-    match &mut node.component {
-        Component::Input(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
-        }
-        Component::Select(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
-        }
-        Component::Checkbox(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
-        }
-        Component::Switch(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
-        }
-        Component::Card(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
-            }
-            for child in &mut props.footer {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::Form(props) => {
-            for field in &mut props.fields {
-                resolve_errors_node(field, errors, all);
-            }
-        }
-        Component::DetailForm(props) => {
-            for field in &mut props.fields {
-                resolve_errors_node(&mut field.input, errors, all);
-            }
-        }
-        Component::Modal(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
-            }
-            for child in &mut props.footer {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::Tabs(props) => {
-            for tab in &mut props.tabs {
-                for child in &mut tab.children {
-                    resolve_errors_node(child, errors, all);
+fn inline_walk(
+    value: &mut serde_json::Value,
+    prefix: &str,
+    row: &serde_json::Value,
+    as_name: &str,
+) {
+    match value {
+        serde_json::Value::Object(map) => {
+            if map.len() == 1 {
+                // Single-key {"$data": "/{as}/..."} → row-scoped literal.
+                if let Some(serde_json::Value::String(path)) = map.get("$data") {
+                    if let Some(rest) = path.strip_prefix(prefix) {
+                        let resolved = crate::data::resolve_path(row, &format!("/{rest}"))
+                            .cloned()
+                            .unwrap_or(serde_json::Value::Null);
+                        *value = resolved;
+                        return;
+                    } else if path == &format!("/{as_name}") {
+                        // `{"$data": "/order"}` — bind the whole row.
+                        *value = row.clone();
+                        return;
+                    }
+                }
+                // Single-key {"$template": "... {/{as}/field} ..."} → interpolate
+                // row-scoped placeholders inline; leave non-row markers for
+                // downstream resolve_expressions.
+                if let Some(serde_json::Value::String(tpl)) = map.get("$template") {
+                    let interpolated = interpolate_row_template(tpl, prefix, row, as_name);
+                    if !contains_template_marker(&interpolated) {
+                        *value = serde_json::Value::String(interpolated);
+                        return;
+                    } else {
+                        map.insert(
+                            "$template".to_string(),
+                            serde_json::Value::String(interpolated),
+                        );
+                        return;
+                    }
                 }
             }
-        }
-        Component::Grid(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
+            for v in map.values_mut() {
+                inline_walk(v, prefix, row, as_name);
             }
         }
-        Component::Collapsible(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
+        serde_json::Value::Array(arr) => {
+            for v in arr.iter_mut() {
+                inline_walk(v, prefix, row, as_name);
             }
         }
-        Component::FormSection(props) => {
-            for child in &mut props.children {
-                resolve_errors_node(child, errors, all);
+        _ => {}
+    }
+}
+
+fn interpolate_row_template(
+    tpl: &str,
+    prefix: &str,
+    row: &serde_json::Value,
+    as_name: &str,
+) -> String {
+    let mut out = String::with_capacity(tpl.len());
+    let mut chars = tpl.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '{' {
+            let mut path = String::new();
+            let mut closed = false;
+            for nc in chars.by_ref() {
+                if nc == '}' {
+                    closed = true;
+                    break;
+                }
+                path.push(nc);
+            }
+            if closed {
+                if let Some(rest) = path.strip_prefix(prefix) {
+                    let resolved = crate::data::resolve_path(row, &format!("/{rest}"))
+                        .map(value_to_string)
+                        .unwrap_or_default();
+                    out.push_str(&resolved);
+                } else if path == format!("/{as_name}") {
+                    out.push_str(&value_to_string(row));
+                } else {
+                    // Non-row template marker — leave intact for the
+                    // downstream resolve_expressions pass.
+                    out.push('{');
+                    out.push_str(&path);
+                    out.push('}');
+                }
+            } else {
+                out.push('{');
+                out.push_str(&path);
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+fn contains_template_marker(s: &str) -> bool {
+    // Heuristic: any `{/...}` substring left in the string indicates a
+    // downstream-resolvable placeholder.
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '{' && matches!(chars.peek(), Some('/')) {
+            return true;
+        }
+    }
+    false
+}
+
+fn value_to_string(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Null => String::new(),
+        other => other.to_string(),
+    }
+}
+
+/// Rewrite every element's `children` list so:
+/// - IDs of `$if`-removed elements are pruned.
+/// - IDs of `$each`-templated elements are replaced by their ordered clone
+///   IDs (or dropped if the array was empty).
+/// - Other IDs pass through unchanged.
+///
+/// Skips children that were ALREADY rewritten to correlated-child suffixes
+/// by `expand_each` (those reference clones that exist in the map and are
+/// NOT keys in `each_expanded`).
+fn rewrite_parent_children(
+    spec: &mut Spec,
+    if_removed: &std::collections::HashSet<String>,
+    each_expanded: &std::collections::HashMap<String, Vec<String>>,
+) {
+    for el in spec.elements.values_mut() {
+        let mut new_children: Vec<String> = Vec::with_capacity(el.children.len());
+        for child in el.children.drain(..) {
+            if if_removed.contains(&child) {
+                continue; // pruned
+            }
+            if let Some(clones) = each_expanded.get(&child) {
+                new_children.extend(clones.iter().cloned());
+            } else {
+                new_children.push(child);
             }
         }
-        Component::PageHeader(props) => {
-            for child in &mut props.actions {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        Component::ButtonGroup(props) => {
-            for child in &mut props.buttons {
-                resolve_errors_node(child, errors, all);
-            }
-        }
-        // Leaf components with no form field semantics.
-        Component::Table(_)
-        | Component::Button(_)
-        | Component::Alert(_)
-        | Component::Badge(_)
-        | Component::Text(_)
-        | Component::Separator(_)
-        | Component::DescriptionList(_)
-        | Component::Breadcrumb(_)
-        | Component::Pagination(_)
-        | Component::Progress(_)
-        | Component::Avatar(_)
-        | Component::Skeleton(_)
-        | Component::StatCard(_)
-        | Component::Checklist(_)
-        | Component::Toast(_)
-        | Component::NotificationDropdown(_)
-        | Component::Sidebar(_)
-        | Component::Header(_)
-        | Component::EmptyState(_)
-        | Component::DropdownMenu(_)
-        | Component::KanbanBoard(_)
-        | Component::CalendarCell(_)
-        | Component::ActionCard(_)
-        | Component::ProductTile(_)
-        | Component::DataTable(_)
-        | Component::Image(_)
-        | Component::Plugin(_) => {}
-        Component::KeyValueEditor(props) => {
-            set_field_error(&mut props.error, &props.field, errors, all);
-        }
-        Component::RichTextEditor(props) => {
-            set_field_error(&mut props.error, &props.name, errors, all);
-        }
+        el.children = new_children;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::action::HttpMethod;
-    use crate::component::*;
+    use crate::action::{Action, HttpMethod};
+    use crate::spec::{Element, Spec};
 
-    /// Helper to build a simple action.
-    fn make_action(handler: &str) -> Action {
+    fn action(handler: &str) -> Action {
         Action {
-            handler: handler.to_string(),
+            handler: ActionHandler::Literal(handler.to_string()),
             url: None,
             method: HttpMethod::Post,
             confirm: None,
@@ -516,800 +540,610 @@ mod tests {
         }
     }
 
-    /// Helper resolver that maps known handlers to URLs.
-    fn test_resolver(handler: &str) -> Option<String> {
-        match handler {
-            "users.store" => Some("/users".to_string()),
-            "users.show" => Some("/users/{id}".to_string()),
-            "users.destroy" => Some("/users/{id}".to_string()),
-            "users.create" => Some("/users/create".to_string()),
-            "posts.index" => Some("/posts".to_string()),
-            _ => None,
+    #[test]
+    fn resolve_actions_populates_url_from_resolver() {
+        let mut spec = Spec::builder()
+            .element("btn", Element::new("Button").action(action("users.create")))
+            .build()
+            .unwrap();
+
+        resolve_actions(&mut spec, |h| {
+            if h == "users.create" {
+                Some("/users".to_string())
+            } else {
+                None
+            }
+        });
+
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(el.action.as_ref().unwrap().url.as_deref(), Some("/users"));
+    }
+
+    // ── F14: ActionHandler binding resolution ───────────────────────────
+
+    fn action_with_binding(path: &str) -> Action {
+        Action {
+            handler: ActionHandler::Binding(crate::spec::DataRef {
+                data: path.to_string(),
+            }),
+            url: None,
+            method: HttpMethod::Get,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+            target: None,
         }
     }
 
     #[test]
-    fn resolve_button_with_action() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "btn".to_string(),
-            component: Component::Button(ButtonProps {
-                label: "Create".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            action: Some(make_action("users.store")),
-            visibility: None,
-        });
+    fn resolve_actions_resolves_binding_to_literal_path_via_spec_data() {
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({ "row": { "url": "/dashboard/orders/42" } }))
+            .element(
+                "btn",
+                Element::new("Button").action(action_with_binding("/row/url")),
+            )
+            .build()
+            .unwrap();
 
-        resolve_actions(&mut view, test_resolver);
+        resolve_actions(&mut spec, |_| None);
 
+        let el = spec.elements.get("btn").unwrap();
         assert_eq!(
-            view.components[0].action.as_ref().unwrap().url,
-            Some("/users".to_string())
+            el.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/orders/42"),
+            "binding pointing to a `/path` string in spec.data resolves to action.url"
         );
     }
 
     #[test]
-    fn resolve_nested_card_children() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "card".to_string(),
-            component: Component::Card(CardProps {
-                title: "Users".to_string(),
-                description: None,
-                max_width: None,
-                children: vec![ComponentNode {
-                    key: "btn".to_string(),
-                    component: Component::Button(ButtonProps {
-                        label: "Create".to_string(),
-                        variant: ButtonVariant::Default,
-                        size: Size::Default,
-                        disabled: None,
-                        icon: None,
-                        icon_position: None,
-                        button_type: None,
-                    }),
-                    action: Some(make_action("users.create")),
-                    visibility: None,
-                }],
-                footer: vec![ComponentNode {
-                    key: "footer-btn".to_string(),
-                    component: Component::Button(ButtonProps {
-                        label: "Save".to_string(),
-                        variant: ButtonVariant::Default,
-                        size: Size::Default,
-                        disabled: None,
-                        icon: None,
-                        icon_position: None,
-                        button_type: None,
-                    }),
-                    action: Some(make_action("users.store")),
-                    visibility: None,
-                }],
-            }),
-            action: None,
-            visibility: None,
+    fn resolve_actions_resolves_binding_to_named_handler_via_resolver() {
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({ "row": { "handler": "users.show" } }))
+            .element(
+                "btn",
+                Element::new("Button").action(action_with_binding("/row/handler")),
+            )
+            .build()
+            .unwrap();
+
+        resolve_actions(&mut spec, |name| {
+            (name == "users.show").then(|| "/users/show".to_string())
         });
 
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Card(props) => {
-                assert_eq!(
-                    props.children[0].action.as_ref().unwrap().url,
-                    Some("/users/create".to_string())
-                );
-                assert_eq!(
-                    props.footer[0].action.as_ref().unwrap().url,
-                    Some("/users".to_string())
-                );
-            }
-            _ => panic!("expected Card"),
-        }
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(
+            el.action.as_ref().unwrap().url.as_deref(),
+            Some("/users/show"),
+            "binding resolved to handler name flows through the resolver"
+        );
     }
 
     #[test]
-    fn resolve_form_action() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "form".to_string(),
-            component: Component::Form(FormProps {
-                action: make_action("users.store"),
-                fields: vec![ComponentNode {
-                    key: "name".to_string(),
-                    component: Component::Input(InputProps {
-                        field: "name".to_string(),
-                        label: "Name".to_string(),
-                        input_type: InputType::Text,
-                        placeholder: None,
-                        required: None,
-                        disabled: None,
-                        error: None,
-                        description: None,
-                        default_value: None,
-                        data_path: None,
-                        step: None,
-                        list: None,
-                    }),
-                    action: None,
-                    visibility: None,
-                }],
-                method: None,
-                guard: None,
-                max_width: None,
-            }),
-            action: None,
-            visibility: None,
-        });
+    fn resolve_actions_binding_missing_data_leaves_url_unset() {
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({}))
+            .element(
+                "btn",
+                Element::new("Button").action(action_with_binding("/missing")),
+            )
+            .build()
+            .unwrap();
 
-        resolve_actions(&mut view, test_resolver);
+        resolve_actions(&mut spec, |_| Some("UNEXPECTED".to_string()));
 
-        match &view.components[0].component {
-            Component::Form(props) => {
-                assert_eq!(props.action.url, Some("/users".to_string()));
-            }
-            _ => panic!("expected Form"),
-        }
+        let el = spec.elements.get("btn").unwrap();
+        assert!(
+            el.action.as_ref().unwrap().url.is_none(),
+            "missing binding data leaves url unset (renderer emits diagnostic)"
+        );
     }
 
     #[test]
-    fn resolve_table_row_actions() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "table".to_string(),
-            component: Component::Table(TableProps {
-                columns: vec![Column {
-                    key: "name".to_string(),
-                    label: "Name".to_string(),
-                    format: None,
-                }],
-                data_path: "/data/users".to_string(),
-                row_actions: Some(vec![
-                    make_action("users.show"),
-                    make_action("users.destroy"),
-                ]),
-                empty_message: None,
-                sortable: None,
-                sort_column: None,
-                sort_direction: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Table(props) => {
-                let row_actions = props.row_actions.as_ref().unwrap();
-                assert_eq!(row_actions[0].url, Some("/users/{id}".to_string()));
-                assert_eq!(row_actions[1].url, Some("/users/{id}".to_string()));
-            }
-            _ => panic!("expected Table"),
-        }
-    }
-
-    #[test]
-    fn resolve_tabs_children() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "tabs".to_string(),
-            component: Component::Tabs(TabsProps {
-                default_tab: "general".to_string(),
-                tabs: vec![
-                    Tab {
-                        value: "general".to_string(),
-                        label: "General".to_string(),
-                        children: vec![ComponentNode {
-                            key: "btn1".to_string(),
-                            component: Component::Button(ButtonProps {
-                                label: "Save".to_string(),
-                                variant: ButtonVariant::Default,
-                                size: Size::Default,
-                                disabled: None,
-                                icon: None,
-                                icon_position: None,
-                                button_type: None,
-                            }),
-                            action: Some(make_action("users.store")),
-                            visibility: None,
-                        }],
-                    },
-                    Tab {
-                        value: "posts".to_string(),
-                        label: "Posts".to_string(),
-                        children: vec![ComponentNode {
-                            key: "btn2".to_string(),
-                            component: Component::Button(ButtonProps {
-                                label: "View Posts".to_string(),
-                                variant: ButtonVariant::Default,
-                                size: Size::Default,
-                                disabled: None,
-                                icon: None,
-                                icon_position: None,
-                                button_type: None,
-                            }),
-                            action: Some(make_action("posts.index")),
-                            visibility: None,
-                        }],
-                    },
-                ],
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Tabs(props) => {
-                assert_eq!(
-                    props.tabs[0].children[0].action.as_ref().unwrap().url,
-                    Some("/users".to_string())
-                );
-                assert_eq!(
-                    props.tabs[1].children[0].action.as_ref().unwrap().url,
-                    Some("/posts".to_string())
-                );
-            }
-            _ => panic!("expected Tabs"),
-        }
-    }
-
-    #[test]
-    fn resolve_modal_children_and_footer() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "modal".to_string(),
-            component: Component::Modal(ModalProps {
-                id: "modal-confirm".to_string(),
-                title: "Confirm".to_string(),
-                description: None,
-                children: vec![ComponentNode {
-                    key: "info".to_string(),
-                    component: Component::Text(TextProps {
-                        content: "Are you sure?".to_string(),
-                        element: TextElement::P,
-                    }),
-                    action: None,
-                    visibility: None,
-                }],
-                footer: vec![ComponentNode {
-                    key: "confirm-btn".to_string(),
-                    component: Component::Button(ButtonProps {
-                        label: "Delete".to_string(),
-                        variant: ButtonVariant::Destructive,
-                        size: Size::Default,
-                        disabled: None,
-                        icon: None,
-                        icon_position: None,
-                        button_type: None,
-                    }),
-                    action: Some(make_action("users.destroy")),
-                    visibility: None,
-                }],
-                trigger_label: Some("Open".to_string()),
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::Modal(props) => {
-                assert_eq!(
-                    props.footer[0].action.as_ref().unwrap().url,
-                    Some("/users/{id}".to_string())
-                );
-            }
-            _ => panic!("expected Modal"),
-        }
-    }
-
-    #[test]
-    fn unresolvable_handler_leaves_url_none() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "btn".to_string(),
-            component: Component::Button(ButtonProps {
-                label: "Unknown".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            action: Some(make_action("nonexistent.handler")),
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        assert_eq!(view.components[0].action.as_ref().unwrap().url, None);
-    }
-
-    #[test]
-    fn strict_with_missing_handler_returns_error() {
-        let mut view = JsonUiView::new()
-            .component(ComponentNode {
-                key: "btn1".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "OK".to_string(),
-                    variant: ButtonVariant::Default,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                    button_type: None,
-                }),
-                action: Some(make_action("users.store")),
-                visibility: None,
+    fn resolve_actions_skips_when_url_already_resolved() {
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({ "row": { "url": "/from-data" } }))
+            .element("btn", {
+                let mut a = action_with_binding("/row/url");
+                a.url = Some("/preset".to_string());
+                Element::new("Button").action(a)
             })
-            .component(ComponentNode {
-                key: "btn2".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Bad".to_string(),
-                    variant: ButtonVariant::Default,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                    button_type: None,
-                }),
-                action: Some(make_action("unknown.handler")),
-                visibility: None,
-            });
+            .build()
+            .unwrap();
 
-        let result = resolve_actions_strict(&mut view, test_resolver);
-        assert!(result.is_err());
-        let errors = result.unwrap_err();
-        assert_eq!(errors, vec!["unknown.handler"]);
+        resolve_actions(&mut spec, |_| None);
 
-        // The known handler should still be resolved.
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(el.action.as_ref().unwrap().url.as_deref(), Some("/preset"));
+    }
+
+    #[test]
+    fn each_inlines_row_action_url_to_literal() {
+        // $each over /cells; each row has action_url; per-row CalendarCell-style
+        // action.handler binding points at /{as}/action_url. expand_each must
+        // pre-resolve it to ActionHandler::Literal(row.action_url) so
+        // resolve_actions can then set action.url.
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "grid",
+            "elements": {
+                "grid": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["cell"]
+                },
+                "cell": {
+                    "type": "CalendarCell",
+                    "$each": {"path": "/cells", "as": "c"},
+                    "props": {"day": {"$data": "/c/day"}},
+                    "action": {
+                        "handler": {"$data": "/c/action_url"},
+                        "method": "GET"
+                    }
+                }
+            },
+            "data": {
+                "cells": [
+                    {"day": 17, "action_url": "/dashboard/calendario?date=2026-05-17"},
+                    {"day": 18, "action_url": "/dashboard/calendario?date=2026-05-18"}
+                ]
+            }
+        }));
+
+        expand_directives(&mut spec);
+        resolve_actions(&mut spec, |_| None);
+
+        let cell0 = spec.elements.get("cell-0").expect("expanded cell-0");
+        let cell1 = spec.elements.get("cell-1").expect("expanded cell-1");
         assert_eq!(
-            view.components[0].action.as_ref().unwrap().url,
-            Some("/users".to_string())
+            cell0.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/calendario?date=2026-05-17"),
+            "$each inlines /c/action_url to a literal; resolve_actions promotes literal to url"
+        );
+        assert_eq!(
+            cell1.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/calendario?date=2026-05-18")
         );
     }
 
     #[test]
-    fn strict_with_all_resolved_returns_ok() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "btn".to_string(),
-            component: Component::Button(ButtonProps {
-                label: "Create".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            action: Some(make_action("users.store")),
-            visibility: None,
-        });
+    fn each_leaves_non_row_action_bindings_for_resolve_actions() {
+        // Binding to /global_field (not /{as}/...) survives $each unchanged,
+        // then resolve_actions resolves it against spec.data.
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "grid",
+            "elements": {
+                "grid": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["item"]
+                },
+                "item": {
+                    "type": "Button",
+                    "$each": {"path": "/items", "as": "i"},
+                    "props": {"label": {"$data": "/i/label"}},
+                    "action": {
+                        "handler": {"$data": "/global_link"},
+                        "method": "GET"
+                    }
+                }
+            },
+            "data": {
+                "items": [{"label": "a"}, {"label": "b"}],
+                "global_link": "/dashboard/shared"
+            }
+        }));
 
-        let result = resolve_actions_strict(&mut view, test_resolver);
-        assert!(result.is_ok());
+        expand_directives(&mut spec);
+        resolve_actions(&mut spec, |_| None);
+
+        let i0 = spec.elements.get("item-0").unwrap();
+        let i1 = spec.elements.get("item-1").unwrap();
+        assert_eq!(
+            i0.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/shared")
+        );
+        assert_eq!(
+            i1.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/shared")
+        );
+    }
+
+    #[test]
+    fn resolve_actions_passes_through_literal_paths() {
+        let mut spec = Spec::builder()
+            .element("btn", Element::new("Button").action(action("/dashboard")))
+            .build()
+            .unwrap();
+
+        resolve_actions(&mut spec, |_| None);
+
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(
+            el.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard")
+        );
+    }
+
+    #[test]
+    fn resolve_actions_strict_reports_missing() {
+        let mut spec = Spec::builder()
+            .element(
+                "btn",
+                Element::new("Button").action(action("missing.handler")),
+            )
+            .build()
+            .unwrap();
+
+        let result = resolve_actions_strict(&mut spec, |_| None);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), vec!["missing.handler".to_string()]);
+    }
+
+    #[test]
+    fn resolve_errors_matches_by_name_prop() {
+        let mut spec = Spec::builder()
+            .element("email", Element::new("Input").prop("name", "email"))
+            .build()
+            .unwrap();
+
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["required".to_string()]);
+
+        resolve_errors(&mut spec, &errors);
+
+        let el = spec.elements.get("email").unwrap();
+        let err_val = el.props.as_object().unwrap().get("errors").unwrap();
+        assert_eq!(err_val, &serde_json::json!(["required"]));
+    }
+
+    #[test]
+    fn resolve_errors_matches_by_field_prop() {
+        let mut spec = Spec::builder()
+            .element("email", Element::new("Input").prop("field", "email"))
+            .build()
+            .unwrap();
+
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["required".to_string()]);
+
+        resolve_errors(&mut spec, &errors);
+
+        let el = spec.elements.get("email").unwrap();
+        let err_val = el.props.as_object().unwrap().get("errors").unwrap();
+        assert_eq!(err_val, &serde_json::json!(["required"]));
+    }
+
+    #[test]
+    fn resolve_errors_all_writes_full_bag_when_no_match() {
+        let mut spec = Spec::builder()
+            .element("card", Element::new("Card").prop("title", "t"))
+            .build()
+            .unwrap();
+
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["required".to_string()]);
+
+        resolve_errors_all(&mut spec, &errors);
+
+        let el = spec.elements.get("card").unwrap();
+        let err_val = el.props.as_object().unwrap().get("errors").unwrap();
+        assert_eq!(err_val["email"], serde_json::json!(["required"]));
     }
 
     // -----------------------------------------------------------------------
-    // resolve_errors tests
+    // expand_directives tests (Phase 163 Plan 03) — $each / $if expansion
     // -----------------------------------------------------------------------
 
-    fn make_errors(pairs: &[(&str, &[&str])]) -> HashMap<String, Vec<String>> {
-        pairs
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.iter().map(|s| s.to_string()).collect()))
-            .collect()
-    }
-
-    fn make_input_node(key: &str, field: &str) -> ComponentNode {
-        ComponentNode {
-            key: key.to_string(),
-            component: Component::Input(InputProps {
-                field: field.to_string(),
-                label: field.to_string(),
-                input_type: InputType::Text,
-                placeholder: None,
-                required: None,
-                disabled: None,
-                error: None,
-                description: None,
-                default_value: None,
-                data_path: None,
-                step: None,
-                list: None,
-            }),
-            action: None,
-            visibility: None,
-        }
+    fn parse_spec(json: serde_json::Value) -> Spec {
+        serde_json::from_value::<Spec>(json).expect("spec parses")
     }
 
     #[test]
-    fn resolve_errors_populates_input_error() {
-        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
-        let errors = make_errors(&[("email", &["Email is required"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(props.error, Some("Email is required".to_string()));
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_populates_select_error() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "role-select".to_string(),
-            component: Component::Select(SelectProps {
-                field: "role".to_string(),
-                label: "Role".to_string(),
-                options: vec![SelectOption {
-                    value: "admin".to_string(),
-                    label: "Admin".to_string(),
-                }],
-                placeholder: None,
-                required: None,
-                disabled: None,
-                error: None,
-                description: None,
-                default_value: None,
-                data_path: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("role", &["Role is required"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Select(props) => {
-                assert_eq!(props.error, Some("Role is required".to_string()));
-            }
-            _ => panic!("expected Select"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_populates_checkbox_error() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "terms-checkbox".to_string(),
-            component: Component::Checkbox(CheckboxProps {
-                field: "terms".to_string(),
-                value: None,
-                label: "Accept Terms".to_string(),
-                description: None,
-                checked: None,
-                data_path: None,
-                required: None,
-                disabled: None,
-                error: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("terms", &["You must accept the terms"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Checkbox(props) => {
-                assert_eq!(props.error, Some("You must accept the terms".to_string()));
-            }
-            _ => panic!("expected Checkbox"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_populates_switch_error() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "notif-switch".to_string(),
-            component: Component::Switch(SwitchProps {
-                field: "notifications".to_string(),
-                label: "Notifications".to_string(),
-                description: None,
-                checked: None,
-                data_path: None,
-                required: None,
-                disabled: None,
-                error: None,
-                action: None,
-                compact: false,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("notifications", &["Must enable notifications"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Switch(props) => {
-                assert_eq!(props.error, Some("Must enable notifications".to_string()));
-            }
-            _ => panic!("expected Switch"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_does_not_overwrite_existing() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "email-input".to_string(),
-            component: Component::Input(InputProps {
-                field: "email".to_string(),
-                label: "Email".to_string(),
-                input_type: InputType::Email,
-                placeholder: None,
-                required: None,
-                disabled: None,
-                error: Some("Custom error".to_string()),
-                description: None,
-                default_value: None,
-                data_path: None,
-                step: None,
-                list: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("email", &["Validation error"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(props.error, Some("Custom error".to_string()));
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_nested_in_form() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "form".to_string(),
-            component: Component::Form(FormProps {
-                action: make_action("users.store"),
-                fields: vec![
-                    make_input_node("name-input", "name"),
-                    make_input_node("email-input", "email"),
-                ],
-                method: None,
-                guard: None,
-                max_width: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[
-            ("name", &["Name is required"]),
-            ("email", &["Email is invalid"]),
-        ]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Form(props) => {
-                match &props.fields[0].component {
-                    Component::Input(p) => {
-                        assert_eq!(p.error, Some("Name is required".to_string()));
-                    }
-                    _ => panic!("expected Input"),
+    fn expand_if_falsy_deletes_element() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "btn",
+            "elements": {
+                "btn": {
+                    "type": "Button",
+                    "$if": {"path": "/show", "operator": "eq", "value": true},
+                    "props": {"label": "Hi"}
                 }
-                match &props.fields[1].component {
-                    Component::Input(p) => {
-                        assert_eq!(p.error, Some("Email is invalid".to_string()));
-                    }
-                    _ => panic!("expected Input"),
-                }
-            }
-            _ => panic!("expected Form"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_nested_in_card() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "card".to_string(),
-            component: Component::Card(CardProps {
-                title: "User".to_string(),
-                description: None,
-                children: vec![make_input_node("name-input", "name")],
-                footer: vec![],
-                max_width: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-        let errors = make_errors(&[("name", &["Name is required"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Card(props) => match &props.children[0].component {
-                Component::Input(p) => {
-                    assert_eq!(p.error, Some("Name is required".to_string()));
-                }
-                _ => panic!("expected Input"),
             },
-            _ => panic!("expected Card"),
-        }
+            "data": {"show": false}
+        }));
+        expand_directives(&mut spec);
+        assert!(!spec.elements.contains_key("btn"));
     }
 
     #[test]
-    fn resolve_errors_no_matching_field() {
-        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
-        let errors = make_errors(&[("unknown_field", &["Some error"])]);
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(props.error, None);
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_all_concatenates_messages() {
-        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
-        let errors = make_errors(&[("email", &["Too short", "Invalid format", "Already taken"])]);
-        resolve_errors_all(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(
-                    props.error,
-                    Some("Too short. Invalid format. Already taken".to_string())
-                );
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_empty_errors_map() {
-        let mut view = JsonUiView::new().component(make_input_node("email-input", "email"));
-        let errors: HashMap<String, Vec<String>> = HashMap::new();
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::Input(props) => {
-                assert_eq!(props.error, None);
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    // ── DetailForm resolver tests (Phase 147, Wave 0 RED) ─────────────────
-
-    #[test]
-    fn resolve_detail_form_action() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "df".to_string(),
-            component: Component::DetailForm(DetailFormProps {
-                mode: EditMode::Edit,
-                action: make_action("users.update"),
-                fields: vec![],
-                edit_url: "/users/1?mode=edit".to_string(),
-                cancel_url: "/users/1".to_string(),
-                edit_label: None,
-                save_label: None,
-                cancel_label: None,
-                method: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        // Resolver knows "users.update" → "/users/1" (add arm if missing in test_resolver).
-        resolve_actions(&mut view, |h: &str| match h {
-            "users.update" => Some("/users/1".to_string()),
-            _ => test_resolver(h),
-        });
-
-        match &view.components[0].component {
-            Component::DetailForm(props) => {
-                assert_eq!(
-                    props.action.url.as_deref(),
-                    Some("/users/1"),
-                    "resolver must populate DetailForm action.url from handler"
-                );
-            }
-            _ => panic!("expected Component::DetailForm"),
-        }
-    }
-
-    #[test]
-    fn resolve_does_not_touch_edit_or_cancel_url() {
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "df".to_string(),
-            component: Component::DetailForm(DetailFormProps {
-                mode: EditMode::View,
-                action: make_action("users.update"),
-                fields: vec![],
-                edit_url: "RAW_EDIT".to_string(),
-                cancel_url: "RAW_CANCEL".to_string(),
-                edit_label: None,
-                save_label: None,
-                cancel_label: None,
-                method: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        resolve_actions(&mut view, test_resolver);
-
-        match &view.components[0].component {
-            Component::DetailForm(props) => {
-                assert_eq!(
-                    props.edit_url, "RAW_EDIT",
-                    "edit_url must not be resolved (D-16)"
-                );
-                assert_eq!(
-                    props.cancel_url, "RAW_CANCEL",
-                    "cancel_url must not be resolved (D-16)"
-                );
-            }
-            _ => panic!("expected Component::DetailForm"),
-        }
-    }
-
-    #[test]
-    fn resolve_errors_propagates_into_detail_form_fields() {
-        // DetailField.input holds an Input; validation error against field name "name"
-        // should attach to the nested InputProps.error after resolve_errors runs.
-        let mut view = JsonUiView::new().component(ComponentNode {
-            key: "df".to_string(),
-            component: Component::DetailForm(DetailFormProps {
-                mode: EditMode::Edit,
-                action: make_action("users.update"),
-                fields: vec![DetailField {
-                    label: "Name".to_string(),
-                    value: "Ada".to_string(),
-                    input: ComponentNode::input(
-                        "name",
-                        InputProps {
-                            field: "name".to_string(),
-                            label: "".to_string(),
-                            input_type: InputType::Text,
-                            placeholder: None,
-                            required: None,
-                            disabled: None,
-                            error: None,
-                            description: None,
-                            default_value: None,
-                            data_path: None,
-                            step: None,
-                            list: None,
-                        },
-                    ),
-                }],
-                edit_url: "/users/1?mode=edit".to_string(),
-                cancel_url: "/users/1".to_string(),
-                edit_label: None,
-                save_label: None,
-                cancel_label: None,
-                method: None,
-            }),
-            action: None,
-            visibility: None,
-        });
-
-        let mut errors = HashMap::new();
-        errors.insert("name".to_string(), vec!["required".to_string()]);
-
-        resolve_errors(&mut view, &errors);
-
-        match &view.components[0].component {
-            Component::DetailForm(props) => match &props.fields[0].input.component {
-                Component::Input(ip) => assert_eq!(
-                    ip.error.as_deref(),
-                    Some("required"),
-                    "validation error must propagate into nested Input inside DetailForm"
-                ),
-                other => panic!("expected Input inside DetailField, got {other:?}"),
+    fn expand_if_truthy_retains_element() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "btn",
+            "elements": {
+                "btn": {
+                    "type": "Button",
+                    "$if": {"path": "/show", "operator": "eq", "value": true},
+                    "props": {"label": "Hi"}
+                }
             },
-            _ => panic!("expected Component::DetailForm"),
+            "data": {"show": true}
+        }));
+        expand_directives(&mut spec);
+        let el = spec.elements.get("btn").expect("btn retained");
+        assert!(
+            el.if_.is_none(),
+            "if_ stripped post-expansion for idempotency"
+        );
+    }
+
+    #[test]
+    fn expand_if_uses_visibility_evaluate() {
+        // Compound And — exercises Visibility::And evaluation path verbatim.
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "btn",
+            "elements": {
+                "btn": {
+                    "type": "Button",
+                    "$if": {"and": [
+                        {"path": "/a", "operator": "eq", "value": true},
+                        {"path": "/b", "operator": "eq", "value": true}
+                    ]},
+                    "props": {"label": "Hi"}
+                }
+            },
+            "data": {"a": true, "b": false}
+        }));
+        expand_directives(&mut spec);
+        // And of (true, false) is false → element removed.
+        assert!(!spec.elements.contains_key("btn"));
+    }
+
+    #[test]
+    fn expand_each_produces_n_elements() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "order_card",
+            "elements": {
+                "order_card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {"title": {"$data": "/order/order_number"}}
+                }
+            },
+            "data": {"orders": [
+                {"order_number": "ORD-1"},
+                {"order_number": "ORD-2"},
+                {"order_number": "ORD-3"}
+            ]}
+        }));
+        expand_directives(&mut spec);
+        assert!(spec.elements.contains_key("order_card-0"));
+        assert!(spec.elements.contains_key("order_card-1"));
+        assert!(spec.elements.contains_key("order_card-2"));
+        assert!(!spec.elements.contains_key("order_card"));
+        let c0 = spec.elements.get("order_card-0").unwrap();
+        assert_eq!(c0.props.get("title").unwrap(), &serde_json::json!("ORD-1"));
+    }
+
+    #[test]
+    fn expand_each_auto_suffixes_ids() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "order_card",
+            "elements": {
+                "order_card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"orders": [{"x":1},{"x":2}]}
+        }));
+        expand_directives(&mut spec);
+        for id in ["order_card-0", "order_card-1"] {
+            let el = spec.elements.get(id).unwrap();
+            assert!(el.each.is_none(), "{id} should have each stripped");
+            assert!(el.if_.is_none(), "{id} should have if_ stripped");
         }
+    }
+
+    #[test]
+    fn expand_each_pre_resolves_row_paths() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "order_card",
+            "elements": {
+                "order_card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {"title": {"$data": "/order/order_number"}}
+                }
+            },
+            "data": {"orders": [{"order_number": "ORD-7"}]}
+        }));
+        expand_directives(&mut spec);
+        let c0 = spec.elements.get("order_card-0").unwrap();
+        assert_eq!(
+            c0.props.get("title").unwrap(),
+            &serde_json::json!("ORD-7"),
+            "/order/X must be pre-resolved to a literal value"
+        );
+    }
+
+    #[test]
+    fn expand_each_correlates_child_indexes() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["card"]
+                },
+                "card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {},
+                    "children": ["badge"]
+                },
+                "badge": {
+                    "type": "Badge",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {"label": {"$data": "/order/status"}}
+                }
+            },
+            "data": {"orders": [{"status": "A"}, {"status": "B"}]}
+        }));
+        expand_directives(&mut spec);
+        let card0 = spec.elements.get("card-0").unwrap();
+        assert_eq!(card0.children, vec!["badge-0".to_string()]);
+        let card1 = spec.elements.get("card-1").unwrap();
+        assert_eq!(card1.children, vec!["badge-1".to_string()]);
+        let root = spec.elements.get("root").unwrap();
+        assert_eq!(
+            root.children,
+            vec!["card-0".to_string(), "card-1".to_string()]
+        );
+    }
+
+    #[test]
+    fn expand_parent_children_rewritten_for_each() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["card"]
+                },
+                "card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"orders": [{"x":1},{"x":2},{"x":3}]}
+        }));
+        expand_directives(&mut spec);
+        let root = spec.elements.get("root").unwrap();
+        assert_eq!(
+            root.children,
+            vec![
+                "card-0".to_string(),
+                "card-1".to_string(),
+                "card-2".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn expand_parent_children_pruned_for_if() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["btn"]
+                },
+                "btn": {
+                    "type": "Button",
+                    "$if": {"path": "/flag", "operator": "eq", "value": true},
+                    "props": {"label": "Hi"}
+                }
+            },
+            "data": {"flag": false}
+        }));
+        expand_directives(&mut spec);
+        let root = spec.elements.get("root").unwrap();
+        assert!(root.children.is_empty(), "pruned $if-false child");
+        assert!(!spec.elements.contains_key("btn"));
+    }
+
+    #[test]
+    fn expand_if_first_then_each() {
+        // Element has BOTH $if (falsy) AND $each. $if removes the template before $each runs.
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "card",
+            "elements": {
+                "card": {
+                    "type": "Card",
+                    "$if": {"path": "/show", "operator": "eq", "value": true},
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"show": false, "orders": [{"x":1},{"x":2}]}
+        }));
+        expand_directives(&mut spec);
+        for id in ["card", "card-0", "card-1"] {
+            assert!(
+                !spec.elements.contains_key(id),
+                "{id} must not exist when $if removed the template"
+            );
+        }
+    }
+
+    #[test]
+    fn expand_each_empty_array_produces_zero_clones() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["card"]
+                },
+                "card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {}
+                }
+            },
+            "data": {"orders": []}
+        }));
+        expand_directives(&mut spec);
+        assert!(!spec.elements.contains_key("card"));
+        let root = spec.elements.get("root").unwrap();
+        assert!(root.children.is_empty());
+    }
+
+    #[test]
+    fn expand_directives_idempotent() {
+        let mut spec = parse_spec(serde_json::json!({
+            "$schema": "ferro-json-ui/v2",
+            "root": "root",
+            "elements": {
+                "root": {
+                    "type": "Grid",
+                    "props": {},
+                    "children": ["card"]
+                },
+                "card": {
+                    "type": "Card",
+                    "$each": {"path": "/orders", "as": "order"},
+                    "props": {"title": {"$data": "/order/name"}}
+                }
+            },
+            "data": {"orders": [{"name": "A"}, {"name": "B"}]}
+        }));
+        expand_directives(&mut spec);
+        let snapshot_after_first = serde_json::to_value(&spec.elements).unwrap();
+        expand_directives(&mut spec);
+        let snapshot_after_second = serde_json::to_value(&spec.elements).unwrap();
+        assert_eq!(
+            snapshot_after_first, snapshot_after_second,
+            "expand_directives must be idempotent"
+        );
     }
 }

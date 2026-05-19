@@ -16,7 +16,7 @@ pub struct ApplicationInfo {
     pub environment: String,
     pub installed_crates: Vec<CrateInfo>,
     pub models: Vec<ModelInfo>,
-    pub json_ui_views: JsonUiViewsStatus,
+    pub json_ui_views: JsonUiSpecsStatus,
     pub features: FeatureSummary,
     pub broadcasting: BroadcastingStatus,
     pub claude_code_skills: ClaudeCodeSkillsStatus,
@@ -54,7 +54,7 @@ pub struct ClaudeCodeSkillsStatus {
 }
 
 #[derive(Debug, Serialize)]
-pub struct JsonUiViewsStatus {
+pub struct JsonUiSpecsStatus {
     pub available: bool,
     pub view_count: usize,
     pub views_dir: String,
@@ -94,7 +94,7 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
     let models = introspection::models::scan_models(project_root);
 
     // Scan for JSON-UI views
-    let json_ui_views = scan_json_ui_views(project_root);
+    let json_ui_views = scan_json_ui_specs(project_root);
 
     // Scan v4.0 feature counts
     let features = scan_feature_counts(project_root);
@@ -241,43 +241,45 @@ fn get_installed_crates(project_root: &Path) -> Result<Vec<CrateInfo>> {
     Ok(crates)
 }
 
-fn scan_json_ui_views(project_root: &Path) -> JsonUiViewsStatus {
+/// Counts JSON-UI spec files under `src/views/`. Each `.json` file corresponds
+/// to a spec loaded at runtime by `JsonUi::render_file("views/{name}.json", ..)`.
+/// The status surfaced here lets agents discover how many spec files a project
+/// ships without enumerating individual filenames.
+fn scan_json_ui_specs(project_root: &Path) -> JsonUiSpecsStatus {
     let views_dir = project_root.join("src").join("views");
     let views_dir_display = "src/views/".to_string();
 
     if !views_dir.exists() {
-        return JsonUiViewsStatus {
+        return JsonUiSpecsStatus {
             available: false,
             view_count: 0,
             views_dir: views_dir_display,
             hint: Some(
-                "No src/views/ directory found. Create views with JSON-UI tools: json_ui_generate, json_ui_catalog"
+                "No src/views/ directory found. Create JSON-UI spec files there \
+                 and serve them with JsonUi::render_file(\"views/{name}.json\", data). \
+                 Use the json_ui_generate MCP tool to scaffold a new spec."
                     .to_string(),
             ),
         };
     }
 
-    // Count .rs files in src/views/ (excluding mod.rs)
     let view_count = std::fs::read_dir(&views_dir)
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| {
-                    let path = e.path();
-                    path.extension().map(|ext| ext == "rs").unwrap_or(false)
-                        && path.file_name().map(|f| f != "mod.rs").unwrap_or(false)
-                })
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
                 .count()
         })
         .unwrap_or(0);
 
-    JsonUiViewsStatus {
+    JsonUiSpecsStatus {
         available: true,
         view_count,
         views_dir: views_dir_display,
         hint: if view_count == 0 {
             Some(
-                "Views directory exists but no views found. Use json_ui_generate to create one."
+                "Views directory exists but no JSON spec files found. \
+                 Use json_ui_generate to create one."
                     .to_string(),
             )
         } else {
@@ -447,5 +449,74 @@ fn check_claude_code_skills() -> ClaudeCodeSkillsStatus {
                     .to_string(),
             ),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn scan_json_ui_specs_counts_json_files() {
+        let tmp = TempDir::new().unwrap();
+        let views = tmp.path().join("src/views");
+        fs::create_dir_all(&views).unwrap();
+        fs::write(
+            views.join("foo.json"),
+            r#"{"$schema":"ferro-json-ui/v2","root":"r","elements":{"r":{"type":"Text"}}}"#,
+        )
+        .unwrap();
+        fs::write(
+            views.join("bar.json"),
+            r#"{"$schema":"ferro-json-ui/v2","root":"r","elements":{"r":{"type":"Text"}}}"#,
+        )
+        .unwrap();
+
+        let status = scan_json_ui_specs(tmp.path());
+        assert!(status.available);
+        assert_eq!(status.view_count, 2);
+        assert_eq!(status.views_dir, "src/views/");
+        assert!(status.hint.is_none());
+    }
+
+    #[test]
+    fn scan_json_ui_specs_no_views_dir() {
+        let tmp = TempDir::new().unwrap();
+        let status = scan_json_ui_specs(tmp.path());
+        assert!(!status.available);
+        assert_eq!(status.view_count, 0);
+        assert_eq!(status.views_dir, "src/views/");
+        assert!(status.hint.is_some());
+    }
+
+    #[test]
+    fn scan_json_ui_specs_empty_views_dir() {
+        let tmp = TempDir::new().unwrap();
+        let views = tmp.path().join("src/views");
+        fs::create_dir_all(&views).unwrap();
+        let status = scan_json_ui_specs(tmp.path());
+        assert!(status.available);
+        assert_eq!(status.view_count, 0);
+        assert_eq!(status.views_dir, "src/views/");
+        assert!(status.hint.is_some());
+    }
+
+    #[test]
+    fn scan_json_ui_specs_ignores_non_json_files() {
+        let tmp = TempDir::new().unwrap();
+        let views = tmp.path().join("src/views");
+        fs::create_dir_all(&views).unwrap();
+        fs::write(views.join("mod.rs"), "// stale").unwrap();
+        fs::write(views.join("legacy.rs"), "// stale").unwrap();
+        fs::write(
+            views.join("real.json"),
+            r#"{"$schema":"ferro-json-ui/v2","root":"r","elements":{"r":{"type":"Text"}}}"#,
+        )
+        .unwrap();
+
+        let status = scan_json_ui_specs(tmp.path());
+        assert_eq!(status.view_count, 1);
     }
 }

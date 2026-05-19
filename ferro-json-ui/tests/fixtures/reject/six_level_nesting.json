@@ -1,0 +1,12 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "root",
+  "elements": {
+    "root": {"type": "Card", "children": ["A"]},
+    "A": {"type": "Card", "children": ["B"]},
+    "B": {"type": "Card", "children": ["C"]},
+    "C": {"type": "Card", "children": ["D"]},
+    "D": {"type": "Card", "children": ["E"]},
+    "E": {"type": "Text"}
+  }
+}

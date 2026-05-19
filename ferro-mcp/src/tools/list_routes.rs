@@ -30,7 +30,7 @@ pub enum RouteSource {
     StaticAnalysis,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RouteInfo {
     pub method: String,
     pub path: String,

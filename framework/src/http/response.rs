@@ -217,6 +217,26 @@ impl Redirect {
         }
     }
 
+    /// Create a redirect that returns the user to the page that triggered
+    /// the current request, derived from the `Referer` header.
+    ///
+    /// Preserves query string and fragment from the source page so tab
+    /// selection (`?tab=note`), pagination cursors, and scroll-restoration
+    /// keys (`scroll_preserve.rs`) survive form POSTs.
+    ///
+    /// Falls back to `fallback` when the Referer is absent or points
+    /// off-origin. Same-origin is enforced by requiring the Referer's host
+    /// to match the request's `Host` header (or the Referer to be already
+    /// a relative path) — protects against open-redirect via spoofed Referer.
+    pub fn back(req: &crate::http::Request, fallback: impl Into<String>) -> Self {
+        let location = same_origin_path_from_referer(req).unwrap_or_else(|| fallback.into());
+        Self {
+            location,
+            query_params: Vec::new(),
+            status: 302,
+        }
+    }
+
     /// Create a redirect to a named route
     pub fn route(name: &str) -> RedirectRouteBuilder {
         RedirectRouteBuilder {
@@ -260,6 +280,40 @@ impl From<Redirect> for Response {
         Ok(HttpResponse::new()
             .status(redirect.status)
             .header("Location", redirect.build_url()))
+    }
+}
+
+/// Extracts a same-origin `/path?query#fragment` string from the request's
+/// `Referer` header, returning `None` when the header is absent, malformed,
+/// or points off-origin.
+///
+/// Same-origin rule: when the Referer is an absolute URL (`scheme://host/...`)
+/// the host must equal the request's `Host` header. When the Referer is
+/// already a relative path it is accepted as-is. Scheme-relative URLs
+/// (`//evil.com/x`) are rejected.
+fn same_origin_path_from_referer(req: &crate::http::Request) -> Option<String> {
+    let referer = req.header("referer")?;
+    // Scheme-relative URLs (//host/...) — reject; they bypass scheme check.
+    if referer.starts_with("//") {
+        return None;
+    }
+    // Already-relative path — accept as-is.
+    if referer.starts_with('/') {
+        return Some(referer.to_string());
+    }
+    // Absolute URL — strip `scheme://host` prefix and verify host matches.
+    let rest = referer
+        .strip_prefix("http://")
+        .or_else(|| referer.strip_prefix("https://"))?;
+    let (referer_host, path) = match rest.find('/') {
+        Some(i) => (&rest[..i], &rest[i..]),
+        None => (rest, "/"),
+    };
+    let request_host = req.header("host")?;
+    if referer_host == request_host {
+        Some(path.to_string())
+    } else {
+        None
     }
 }
 

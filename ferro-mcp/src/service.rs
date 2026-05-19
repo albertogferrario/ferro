@@ -236,6 +236,20 @@ pub struct JsonUiGenerateParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct JsonUiVerifyActionParams {
+    /// Handler name to look up (e.g. "dashboard.show").
+    pub handler: String,
+    /// Optional HTTP method filter (case-insensitive). When omitted, all methods match.
+    pub method: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct JsonUiValidateSpecParams {
+    /// The full JSON-UI v2 spec JSON string to validate.
+    pub spec_json: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CrudCreateParams {
     /// Model name (e.g., "User", "Post"). Case-insensitive, matches against project models.
     pub model: String,
@@ -1267,7 +1281,7 @@ impl FerroMcpService {
             and action API. Use component=\"Map\" to inspect the Map plugin.\n\n\
             **Returns:** Built-in component definitions, plugin component definitions, \
             props (name, type, required, description), available variants, \
-            JsonUiView builder API, and Action builder API.\n\n\
+            Spec builder API, and Action builder API.\n\n\
             **Combine with:** `json_ui_inspect` to see existing views or inspect a specific component schema, \
             `code_templates` with category=json_view for copy-paste view boilerplate."
     )]
@@ -1323,6 +1337,60 @@ impl FerroMcpService {
             params.0.model.as_deref(),
             params.0.description.as_deref(),
         );
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Verify a handler name is registered as a route
+    #[tool(
+        name = "json_ui_verify_action",
+        description = "Verify a handler name is registered as a route. Returns the route info on \
+            hit, or the closest Levenshtein candidate on miss. Reads from the existing route \
+            registry — no second source of truth.\n\n\
+            **When to use:** Before wiring a JSON-UI action URL to a handler, confirm the handler \
+            name is actually registered. Catches typos in route names at authoring time.\n\n\
+            **Returns:** `{ found, route, candidate, message }` — `route` is populated on hit; \
+            `candidate` is the closest named route on miss.\n\n\
+            **Combine with:** `list_routes` to browse all routes, \
+            `json_ui_catalog` for action prop reference."
+    )]
+    pub async fn json_ui_verify_action(
+        &self,
+        params: Parameters<JsonUiVerifyActionParams>,
+    ) -> String {
+        match tools::json_ui_verify_action::execute(
+            &self.project_root,
+            &params.0.handler,
+            params.0.method.as_deref(),
+        )
+        .await
+        {
+            Ok(result) => {
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{e}\"}}"),
+        }
+    }
+
+    /// Validate a JSON-UI v2 spec against the structural validator and component catalog
+    #[tool(
+        name = "json_ui_validate_spec",
+        description = "Validate a JSON-UI v2 spec JSON string against the structural validator \
+            and the component catalog. Returns structural errors and catalog errors separately \
+            so the caller can distinguish parse-time failures from component-prop failures.\n\n\
+            **When to use:** Before saving or wiring a spec, confirm it will load without errors \
+            at server startup. Structural errors (missing root, dangling refs, depth violations, \
+            directive problems) and catalog errors (wrong enum variant, missing required prop) are \
+            reported in distinct vecs.\n\n\
+            **Returns:** `{ valid, structural_errors, catalog_errors, warnings }` — `valid` is \
+            true iff both error vecs are empty.\n\n\
+            **Combine with:** `json_ui_catalog` for component prop reference, \
+            `json_ui_inspect` to list existing views."
+    )]
+    pub async fn json_ui_validate_spec(
+        &self,
+        params: Parameters<JsonUiValidateSpecParams>,
+    ) -> String {
+        let result = tools::json_ui_validate_spec::execute(&params.0.spec_json);
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
     }
 

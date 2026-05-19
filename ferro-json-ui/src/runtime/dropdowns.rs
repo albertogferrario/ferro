@@ -1,59 +1,80 @@
 pub(super) const SOURCE: &str = r#"
-    // ── Dropdown menus ──────────────────────────────────────────────────
+    // ── Dropdown menus (HTML popover API) ───────────────────────────────
+    //
+    // Markup:
+    //   <button popovertarget="m1" ...>⋮</button>
+    //   <div popover id="m1" data-popover-menu ...>…items…</div>
+    //
+    // The browser handles open/close, click-outside dismiss, Escape, and
+    // promotes the panel to the top layer (escapes any overflow:hidden /
+    // overflow:auto ancestor and any z-index stacking context for free).
+    //
+    // We supply only:
+    //   - anchor positioning under the trigger on open
+    //   - reposition on scroll/resize so the panel tracks its anchor
+    //   - close when the trigger leaves the viewport
+    //
+    // Kanban cards override this in runtime/kanban.rs: there the whole
+    // card is the trigger, not the kebab.
 
     function setupDropdowns() {
-        var toggles = document.querySelectorAll('[data-dropdown-toggle]');
-        for (var i = 0; i < toggles.length; i++) {
-            initDropdownToggle(toggles[i]);
+        var menus = document.querySelectorAll('[data-popover-menu]');
+        for (var i = 0; i < menus.length; i++) {
+            initPopoverMenu(menus[i]);
         }
-        // Global click-outside: close all open dropdowns (both regular and kanban fixed)
-        document.addEventListener('click', function(e) {
-            var openMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
-            for (var j = 0; j < openMenus.length; j++) {
-                var menu = openMenus[j];
-                if (menu._kanbanFixed) continue; // kanban menus handled by their own click handler
-                var toggleId = menu.getAttribute('data-dropdown');
-                var toggle = document.querySelector('[data-dropdown-toggle="' + toggleId + '"]');
-                if (!menu.contains(e.target) && e.target !== toggle) {
-                    menu.classList.add('hidden');
-                }
-            }
-            // Close kanban fixed menus when clicking outside any kanban card
-            var kanbanCard = e.target.closest('[data-kanban-card]');
-            if (!kanbanCard) {
-                var kanbanPanels = document.querySelectorAll('[data-kanban-card] [data-dropdown]');
-                for (var k = 0; k < kanbanPanels.length; k++) {
-                    kanbanPanels[k].style.display = 'none';
-                }
-            }
-        });
-        // Escape key closes all (including kanban fixed)
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                var openMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
-                for (var k = 0; k < openMenus.length; k++) {
-                    openMenus[k].classList.add('hidden');
-                }
-                var kanbanPanels = document.querySelectorAll('[data-kanban-card] [data-dropdown]');
-                for (var m = 0; m < kanbanPanels.length; m++) {
-                    kanbanPanels[m].style.display = 'none';
-                }
-            }
-        });
     }
 
-    function initDropdownToggle(btn) {
-        var targetId = btn.getAttribute('data-dropdown-toggle');
-        var panel = document.querySelector('[data-dropdown="' + targetId + '"]');
-        if (!panel) return;
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            // Close all other dropdowns first
-            var allMenus = document.querySelectorAll('[data-dropdown]:not(.hidden)');
-            for (var m = 0; m < allMenus.length; m++) {
-                if (allMenus[m] !== panel) allMenus[m].classList.add('hidden');
+    function initPopoverMenu(panel) {
+        var trigger = document.querySelector('[popovertarget="' + panel.id + '"]');
+        if (!trigger) return;
+
+        function track() {
+            if (!panel.matches(':popover-open') || panel._kanbanFixed) return;
+            var rect = trigger.getBoundingClientRect();
+            // Close if the trigger has scrolled fully out of view.
+            if (rect.bottom < 0 || rect.top > window.innerHeight) {
+                panel.hidePopover();
+                return;
             }
-            panel.classList.toggle('hidden');
+            positionUnderTrigger(panel, trigger);
+        }
+
+        panel.addEventListener('toggle', function(e) {
+            if (e.newState === 'open' && !panel._kanbanFixed) {
+                positionUnderTrigger(panel, trigger);
+            }
         });
+        // Capture=true so scrolls inside overflow:auto ancestors also fire.
+        window.addEventListener('scroll', track, true);
+        window.addEventListener('resize', track);
+    }
+
+    function positionUnderTrigger(panel, trigger) {
+        // The popover opens with UA `inset: 0` which stretches the panel
+        // to the viewport. The UA's `width: fit-content !important` is the
+        // same value as what we want, but the layout doesn't re-evaluate
+        // when we later clear `inset` to auto — so set it inline ourselves
+        // to force a fresh sizing pass against the new (unconstrained) box.
+        panel.style.setProperty('width', 'fit-content', 'important');
+        panel.style.setProperty('min-width', '12rem', 'important');
+        panel.style.inset = 'auto';
+        panel.style.margin = '0';
+        panel.style.position = 'fixed';
+        void panel.offsetHeight; // flush layout so offsetWidth is accurate
+
+        var rect = trigger.getBoundingClientRect();
+        var pw = panel.offsetWidth || 192;
+        var ph = panel.offsetHeight || 100;
+        // Right-edge align with trigger, drop below by default.
+        var left = rect.right - pw;
+        var top = rect.bottom + 4;
+        if (left < 8) left = 8;
+        if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+        if (top + ph > window.innerHeight - 8) {
+            var flipped = rect.top - ph - 4;
+            if (flipped >= 8) top = flipped;
+        }
+        panel.style.left = left + 'px';
+        panel.style.top = top + 'px';
     }
 "#;

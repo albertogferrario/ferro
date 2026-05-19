@@ -904,44 +904,30 @@ fn json_view_templates() -> Vec<CodeTemplate> {
         CodeTemplate {
             name: "basic_view".to_string(),
             category: "json_view".to_string(),
-            description: "A minimal JSON-UI view with title, heading text, and one card component"
-                .to_string(),
-            code: r#"use ferro::{Component, ComponentNode, JsonUiView, CardProps, TextElement, TextProps};
-
-pub fn view() -> JsonUiView {
-    JsonUiView::new()
-        .title("{{title}}")
-        .layout("app")
-        .component(ComponentNode {
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {
-                content: "{{title}}".to_string(),
-                element: TextElement::H1,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "main-card".to_string(),
-            component: Component::Card(CardProps {
-                title: "{{title}}".to_string(),
-                description: None,
-                children: vec![],
-                footer: vec![],
-            }),
-            action: None,
-            visibility: None,
-        })
+            description: "A minimal JSON-UI v2 spec file with title, heading text, and one card component. Save as src/views/{{view_name}}.json.".to_string(),
+            code: r#"{
+  "$schema": "ferro-json-ui/v2",
+  "title": "{{title}}",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": { "title": "{{title}}" },
+      "children": ["heading"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "{{title}}", "element": "h1" }
+    }
+  }
 }"#
             .to_string(),
-            imports: vec![
-                "use ferro::{Component, ComponentNode, JsonUiView, CardProps, TextElement, TextProps};"
-                    .to_string(),
-            ],
+            imports: vec![],
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View module name (snake_case, used for file name)".to_string(),
+                    description: "View file name (snake_case, without .json extension)".to_string(),
                     example: "dashboard".to_string(),
                 },
                 Placeholder {
@@ -954,75 +940,50 @@ pub fn view() -> JsonUiView {
         CodeTemplate {
             name: "list_view".to_string(),
             category: "json_view".to_string(),
-            description:
-                "A view with a table, pagination, and create action button for listing resources"
-                    .to_string(),
-            code: r#"use ferro::{Action, Component, ComponentNode, JsonUiView, PaginationProps, TableColumn, TableProps, TextElement, TextProps};
-
-pub fn view() -> JsonUiView {
-    JsonUiView::new()
-        .title("{{title}}")
-        .layout("app")
-        .component(ComponentNode {
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {
-                content: "{{title}}".to_string(),
-                element: TextElement::H1,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "create-btn".to_string(),
-            component: Component::Button(ferro::ButtonProps {
-                label: "Create {{Entity}}".to_string(),
-                variant: ferro::ButtonVariant::Default,
-                size: ferro::Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-            }),
-            action: Some(Action::get("{{entity}}.create")),
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "{{entity}}-table".to_string(),
-            component: Component::Table(TableProps {
-                columns: vec![
-                    TableColumn { key: "id".to_string(), label: "ID".to_string(), format: None },
-                    TableColumn { key: "name".to_string(), label: "Name".to_string(), format: None },
-                ],
-                data_path: "/data/{{entity}}s".to_string(),
-                row_actions: Some(vec![Action::get("{{entity}}.show")]),
-                empty_message: Some("No {{entity}}s found".to_string()),
-                sortable: None,
-                sort_column: None,
-                sort_direction: None,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "pagination".to_string(),
-            component: Component::Pagination(PaginationProps {
-                current_page: 1,
-                total_pages: 1,
-                per_page: Some(20),
-                total_items: Some(0),
-            }),
-            action: None,
-            visibility: None,
-        })
+            description: "A JSON-UI v2 spec for listing resources with a data table, pagination, and create action button. Save as src/views/{{view_name}}.json.".to_string(),
+            code: r#"{
+  "$schema": "ferro-json-ui/v2",
+  "title": "{{title}}",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": { "title": "{{title}}" },
+      "children": ["heading", "create-btn", "{{entity}}-table", "pagination"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "{{title}}", "element": "h1" }
+    },
+    "create-btn": {
+      "type": "Button",
+      "props": { "label": "Create {{Entity}}", "variant": "default" },
+      "action": { "handler": "{{entity}}.create", "method": "GET" }
+    },
+    "{{entity}}-table": {
+      "type": "DataTable",
+      "props": {
+        "columns": [
+          { "key": "id", "label": "ID" },
+          { "key": "name", "label": "Name" }
+        ],
+        "data_path": "/data/{{entity}}s",
+        "empty_message": "No {{entity}}s found"
+      }
+    },
+    "pagination": {
+      "type": "Pagination",
+      "props": { "current_page": 1, "per_page": 20, "total": 0 }
+    }
+  }
 }"#
             .to_string(),
-            imports: vec![
-                "use ferro::{Action, Component, ComponentNode, JsonUiView, PaginationProps, TableColumn, TableProps, TextElement, TextProps};"
-                    .to_string(),
-            ],
+            imports: vec![],
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View module name (snake_case, used for file name)".to_string(),
+                    description: "View file name (snake_case, without .json extension)".to_string(),
                     example: "users_index".to_string(),
                 },
                 Placeholder {
@@ -1045,74 +1006,56 @@ pub fn view() -> JsonUiView {
         CodeTemplate {
             name: "form_view".to_string(),
             category: "json_view".to_string(),
-            description: "A view with a form containing input fields and a submit button".to_string(),
-            code: r#"use ferro::{Action, Component, ComponentNode, FormProps, InputProps, InputType, JsonUiView, TextElement, TextProps};
-
-pub fn view() -> JsonUiView {
-    JsonUiView::new()
-        .title("{{title}}")
-        .layout("app")
-        .component(ComponentNode {
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {
-                content: "{{title}}".to_string(),
-                element: TextElement::H1,
-            }),
-            action: None,
-            visibility: None,
-        })
-        .component(ComponentNode {
-            key: "{{entity}}-form".to_string(),
-            component: Component::Form(FormProps {
-                action: "{{action_handler}}".to_string(),
-                method: "POST".to_string(),
-                fields: vec![
-                    ComponentNode {
-                        key: "name-field".to_string(),
-                        component: Component::Input(InputProps {
-                            name: "name".to_string(),
-                            label: Some("Name".to_string()),
-                            input_type: InputType::Text,
-                            placeholder: Some("Enter name".to_string()),
-                            required: Some(true),
-                            disabled: None,
-                            value: None,
-                            error: None,
-                        }),
-                        action: None,
-                        visibility: None,
-                    },
-                    ComponentNode {
-                        key: "email-field".to_string(),
-                        component: Component::Input(InputProps {
-                            name: "email".to_string(),
-                            label: Some("Email".to_string()),
-                            input_type: InputType::Email,
-                            placeholder: Some("Enter email".to_string()),
-                            required: Some(true),
-                            disabled: None,
-                            value: None,
-                            error: None,
-                        }),
-                        action: None,
-                        visibility: None,
-                    },
-                ],
-                submit_label: Some("Save {{Entity}}".to_string()),
-            }),
-            action: Some(Action::new("{{action_handler}}")),
-            visibility: None,
-        })
+            description: "A JSON-UI v2 spec for a form with input fields and a submit button. Save as src/views/{{view_name}}.json.".to_string(),
+            code: r#"{
+  "$schema": "ferro-json-ui/v2",
+  "title": "{{title}}",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": { "title": "{{title}}" },
+      "children": ["heading", "{{entity}}-form"]
+    },
+    "heading": {
+      "type": "Text",
+      "props": { "content": "{{title}}", "element": "h1" }
+    },
+    "{{entity}}-form": {
+      "type": "Form",
+      "props": {},
+      "children": ["name-field", "email-field"],
+      "action": { "handler": "{{action_handler}}", "method": "POST" }
+    },
+    "name-field": {
+      "type": "Input",
+      "props": {
+        "field": "name",
+        "label": "Name",
+        "input_type": "text",
+        "placeholder": "Enter name",
+        "required": true
+      }
+    },
+    "email-field": {
+      "type": "Input",
+      "props": {
+        "field": "email",
+        "label": "Email",
+        "input_type": "email",
+        "placeholder": "Enter email",
+        "required": true
+      }
+    }
+  }
 }"#
             .to_string(),
-            imports: vec![
-                "use ferro::{Action, Component, ComponentNode, FormProps, InputProps, InputType, JsonUiView, TextElement, TextProps};"
-                    .to_string(),
-            ],
+            imports: vec![],
             placeholders: vec![
                 Placeholder {
                     name: "{{view_name}}".to_string(),
-                    description: "View module name (snake_case, used for file name)".to_string(),
+                    description: "View file name (snake_case, without .json extension)".to_string(),
                     example: "users_create".to_string(),
                 },
                 Placeholder {
@@ -1132,8 +1075,29 @@ pub fn view() -> JsonUiView {
                 },
                 Placeholder {
                     name: "{{action_handler}}".to_string(),
-                    description: "Route handler name for form submission".to_string(),
+                    description: "Route handler name for form submission (controller.method)".to_string(),
                     example: "users.store".to_string(),
+                },
+            ],
+        },
+        CodeTemplate {
+            name: "json_view_handler".to_string(),
+            category: "json_view".to_string(),
+            description: "Rust handler that loads and renders a JSON-UI v2 spec file via JsonUi::render_file.".to_string(),
+            code: r#"#[handler]
+pub async fn {{view_name}}(req: Request) -> Response {
+    let data = serde_json::json!({});
+    JsonUi::render_file("views/{{view_name}}.json", data)
+}"#
+            .to_string(),
+            imports: vec![
+                "use ferro::{JsonUi, Response};".to_string(),
+            ],
+            placeholders: vec![
+                Placeholder {
+                    name: "{{view_name}}".to_string(),
+                    description: "Handler and view file name (snake_case)".to_string(),
+                    example: "dashboard".to_string(),
                 },
             ],
         },

@@ -1,38 +1,42 @@
-//! Asset adapter for the first-class `RichTextEditor` component.
+//! Rich text editor plugin for JSON-UI using Quill 2.0.3.
 //!
-//! `Component::RichTextEditor` is dispatched directly by `render_component`
-//! (it is NOT a plugin component in the routing sense). However, it requires
-//! Quill 2.0.3 JS and CSS loaded from jsDelivr, SRI-pinned, exactly once per
-//! page across multiple editor instances. The cleanest way to deliver that
-//! contract without inventing a parallel asset pipeline is to expose Quill's
-//! CDN/SRI declarations through the existing `JsonUiPlugin` interface and
-//! register them in `global_plugin_registry()` like any other plugin. The
-//! plugin's `render()` is unreachable (first-class variant is dispatched
-//! first); only `css_assets()` / `js_assets()` are consumed, via
-//! `collect_plugin_assets`, when `collect_plugin_types_node` enrolls
-//! `"RichTextEditor"` into the per-page plugin-types set (see
-//! `render::collect_plugin_types_node`).
-//!
-//! Conceptual coherence (D-02): first-class components reuse the plugin asset
-//! pipeline rather than introducing a parallel CDN path. The surface evolves
-//! to absorb the requirement.
-//!
-//! Bumping Quill is a deliberate phase: update the constants in
-//! `crate::assets::quill` (and re-run the SRI computation). This module is
-//! mechanical glue and does not need to change on a version bump.
+//! Renders an interactive rich text editor backed by Quill. Each editor
+//! container stores its field name in `data-ferro-field`; a single init
+//! script discovers all `[data-ferro-quill]` elements, attaches Quill,
+//! and mirrors HTML to the companion hidden input on every text-change.
 
+use schemars::schema_for;
 use serde_json::Value;
 
-use crate::assets::quill::{QUILL_CSS_SRI, QUILL_CSS_URL, QUILL_JS_SRI, QUILL_JS_URL};
 use crate::component::RichTextEditorProps;
+use crate::data::resolve_path;
 use crate::plugin::{Asset, JsonUiPlugin};
+use crate::render::html_escape;
 
-/// Asset-only plugin adapter for `Component::RichTextEditor`.
+/// Quill 2.0.3 CDN asset URLs and SRI integrity hashes.
 ///
-/// `render()` is unreachable in normal operation — it returns an explicit
-/// server-side error sentinel string for the unreachable path so any future
-/// regression that routes a `Plugin{plugin_type:"RichTextEditor"}` through
-/// here produces a debuggable signal rather than silent success.
+/// Hashes computed from the jsdelivr-served files via:
+///   curl -s <URL> | openssl dgst -sha384 -binary | openssl base64 -A
+const QUILL_CSS_URL: &str = "https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css";
+const QUILL_CSS_SRI: &str =
+    "sha384-ecIckRi4QlKYya/FQUbBUjS4qp65jF/J87Guw5uzTbO1C1Jfa/6kYmd6dXUF6D7i";
+const QUILL_JS_URL: &str = "https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js";
+const QUILL_JS_SRI: &str =
+    "sha384-utBUCeG4SYaCm4m7GQZYr8Hy8Fpy3V4KGjBZaf4WTKOcwhCYpt/0PfeEe3HNlwx8";
+
+/// Rich text editor plugin backed by Quill 2.0.3.
+///
+/// Renders a container div (`<div data-ferro-quill ...>`) and a hidden input
+/// that receives the editor HTML on every text-change event. The form handler
+/// receives standard `field=<html>` POST data on submit.
+///
+/// # Security
+/// - `field` and `label` values are HTML-escaped when emitted as attributes or
+///   label text (T-162-04-03).
+/// - CDN assets reference Quill 2.0.3 via jsdelivr and carry SRI sha384
+///   integrity hashes pinned to the bytes served at phase landing (T-162-04-02).
+/// - The editor produces user-controlled HTML. Sanitization on submit is the
+///   consumer's responsibility (T-162-04-01).
 pub struct RichTextEditorPlugin;
 
 impl JsonUiPlugin for RichTextEditorPlugin {
@@ -41,109 +45,152 @@ impl JsonUiPlugin for RichTextEditorPlugin {
     }
 
     fn props_schema(&self) -> Value {
-        // Generated from the props derive — keeps the schema in lock-step
-        // with the Rust struct without manual maintenance.
-        serde_json::to_value(schemars::schema_for!(RichTextEditorProps)).unwrap_or_else(|_| {
-            serde_json::json!({
-                "type": "object",
-                "description": "RichTextEditor props (schema derivation failed at runtime)",
-            })
-        })
+        serde_json::to_value(schema_for!(RichTextEditorProps)).unwrap_or(Value::Null)
     }
 
-    fn render(&self, _props: &Value, _data: &Value) -> String {
-        // Unreachable in normal operation: Component::RichTextEditor is
-        // dispatched directly by render_component. If this fires, a future
-        // regression routed a Plugin{plugin_type:"RichTextEditor"} through
-        // the plugin pipeline — surface it loudly.
-        String::from(
-            "<div class=\"p-4 bg-red-50 text-red-600 rounded\">\
-             RichTextEditorPlugin.render unreachable: Component::RichTextEditor \
-             is dispatched directly by render_component. \
-             Did a regression route a generic Plugin variant here?\
-             </div>",
-        )
+    fn render(&self, props: &Value, data: &Value) -> String {
+        let parsed: RichTextEditorProps = match serde_json::from_value(props.clone()) {
+            Ok(p) => p,
+            Err(e) => {
+                return format!(
+                    "<!-- ferro-json-ui: failed to decode RichTextEditor props: {e} -->"
+                )
+            }
+        };
+
+        // Resolve initial value: data_path > default_value > empty.
+        let initial = parsed
+            .data_path
+            .as_deref()
+            .and_then(|p| resolve_path(data, p))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| parsed.default_value.clone())
+            .unwrap_or_default();
+
+        // T-162-04-03: escape field, label, and initial value to prevent XSS via attributes.
+        let field_esc = html_escape(&parsed.field);
+        let label_esc = html_escape(&parsed.label);
+        let initial_esc = html_escape(&initial);
+
+        let mut html = String::new();
+        html.push_str(&format!(
+            "<label for=\"{field_esc}-editor\" class=\"text-sm font-medium text-text\">{label_esc}</label>"
+        ));
+        html.push_str(&format!(
+            "<div id=\"{field_esc}-editor\" data-ferro-quill data-ferro-field=\"{field_esc}\">{initial_esc}</div>"
+        ));
+        html.push_str(&format!(
+            "<input type=\"hidden\" name=\"{field_esc}\" id=\"{field_esc}-value\" value=\"{initial_esc}\">"
+        ));
+        if let Some(ref err) = parsed.error {
+            html.push_str(&format!(
+                "<p class=\"text-sm text-destructive mt-1\">{}</p>",
+                html_escape(err)
+            ));
+        }
+        html
     }
 
     fn css_assets(&self) -> Vec<Asset> {
-        vec![Asset::new(QUILL_CSS_URL)
-            .integrity(QUILL_CSS_SRI)
-            .crossorigin("anonymous")]
+        vec![Asset::new(QUILL_CSS_URL).integrity(QUILL_CSS_SRI)]
     }
 
     fn js_assets(&self) -> Vec<Asset> {
-        vec![Asset::new(QUILL_JS_URL)
-            .integrity(QUILL_JS_SRI)
-            .crossorigin("anonymous")]
+        vec![Asset::new(QUILL_JS_URL).integrity(QUILL_JS_SRI)]
     }
 
     fn init_script(&self) -> Option<String> {
-        // The runtime IIFE for RichTextEditor lives in FERRO_RUNTIME_JS
-        // (runtime/rich_text_editor.rs, Plan 04) — emitted as part of the
-        // single page-wide bundle, not a per-plugin init.
-        None
+        Some(
+            r#"(function(){
+    if (typeof Quill === 'undefined') return;
+    document.querySelectorAll('[data-ferro-quill]').forEach(function(el){
+        var field = el.dataset.ferroField;
+        var quill = new Quill(el, { theme: 'snow' });
+        var input = document.getElementById(field + '-value');
+        if (input && input.value) {
+            quill.root.innerHTML = input.value;
+        }
+        quill.on('text-change', function(){
+            if (input) input.value = quill.root.innerHTML;
+        });
+    });
+})();"#
+                .to_string(),
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
-    fn component_type_is_rich_text_editor() {
+    fn rich_text_editor_plugin_component_type_is_rich_text_editor() {
         let p = RichTextEditorPlugin;
         assert_eq!(p.component_type(), "RichTextEditor");
     }
 
     #[test]
-    fn css_assets_have_sha384_sri_and_anonymous_crossorigin() {
-        let p = RichTextEditorPlugin;
-        let css = p.css_assets();
-        assert_eq!(css.len(), 1, "exactly one CSS asset");
-        assert_eq!(css[0].url, QUILL_CSS_URL);
-        let integrity = css[0].integrity.as_deref().expect("integrity required");
-        assert!(
-            integrity.starts_with("sha384-"),
-            "integrity must use sha384"
-        );
-        assert_eq!(css[0].crossorigin.as_deref(), Some("anonymous"));
-    }
-
-    #[test]
-    fn js_assets_have_sha384_sri_and_anonymous_crossorigin() {
+    fn rich_text_editor_plugin_assets_include_quill_2_0_3() {
         let p = RichTextEditorPlugin;
         let js = p.js_assets();
-        assert_eq!(js.len(), 1, "exactly one JS asset");
-        assert_eq!(js[0].url, QUILL_JS_URL);
-        let integrity = js[0].integrity.as_deref().expect("integrity required");
+        let css = p.css_assets();
         assert!(
-            integrity.starts_with("sha384-"),
-            "integrity must use sha384"
+            js.iter().any(|a| a.url.contains("quill@2.0.3")),
+            "js asset must reference quill@2.0.3"
         );
-        assert_eq!(js[0].crossorigin.as_deref(), Some("anonymous"));
+        assert!(
+            css.iter().any(|a| a.url.contains("quill@2.0.3")),
+            "css asset must reference quill@2.0.3"
+        );
     }
 
     #[test]
-    fn init_script_is_none() {
+    fn rich_text_editor_plugin_init_script_binds_data_ferro_quill() {
         let p = RichTextEditorPlugin;
-        assert!(p.init_script().is_none());
+        let script = p.init_script().expect("init_script returns Some");
+        assert!(script.contains("data-ferro-quill"));
+        assert!(script.contains("text-change"));
     }
 
     #[test]
-    fn props_schema_describes_rich_text_editor() {
+    fn rich_text_editor_plugin_assets_carry_sri_hashes() {
         let p = RichTextEditorPlugin;
-        let schema = p.props_schema();
-        // schema must reference the RichTextEditorProps shape (specifically
-        // the `name` and `formats` fields). Assert on substrings of the
-        // serialized form since the exact schemars output structure varies.
-        let s = serde_json::to_string(&schema).expect("schema must serialize");
+        let js = p.js_assets();
+        let css = p.css_assets();
+        let js_asset = js.first().expect("js asset present");
+        let css_asset = css.first().expect("css asset present");
+        assert_eq!(
+            js_asset.integrity.as_deref(),
+            Some(QUILL_JS_SRI),
+            "js asset must pin sha384 SRI hash"
+        );
+        assert_eq!(
+            css_asset.integrity.as_deref(),
+            Some(QUILL_CSS_SRI),
+            "css asset must pin sha384 SRI hash"
+        );
+        assert!(QUILL_JS_SRI.starts_with("sha384-"));
+        assert!(QUILL_CSS_SRI.starts_with("sha384-"));
+    }
+
+    #[test]
+    fn rich_text_editor_plugin_render_emits_container_and_hidden_input() {
+        let p = RichTextEditorPlugin;
+        let out = p.render(&json!({"field": "bio", "label": "Bio"}), &json!({}));
         assert!(
-            s.contains("name"),
-            "schema must reference the name field: {s}"
+            out.contains("data-ferro-quill"),
+            "output must contain data-ferro-quill"
         );
         assert!(
-            s.contains("formats"),
-            "schema must reference the formats field: {s}"
+            out.contains("name=\"bio\""),
+            "output must contain hidden input name"
+        );
+        assert!(
+            out.contains("id=\"bio-editor\""),
+            "output must contain editor container id"
         );
     }
 }

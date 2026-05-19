@@ -99,40 +99,44 @@ pub fn inertia_page_template(component_name: &str) -> String {
     )
 }
 
-/// Template for generating a JSON-UI view file (--no-ai fallback).
+/// Template for generating a JSON-UI v2 view file (--no-ai fallback).
+///
+/// Returns a standalone JSON spec string — not Rust source. The output is intended
+/// to be written directly to `src/views/{name}.json` and served by a handler that
+/// calls `JsonUi::render_file("views/{name}.json", data)`.
 pub fn json_view_template(name: &str, title: &str, layout: &str) -> String {
     format!(
-        r#"//! {title} JSON-UI view
+        r#"{{
+  "$schema": "ferro-json-ui/v2",
+  "title": "{title}",
+  "layout": "{layout}",
+  "root": "root",
+  "elements": {{
+    "root": {{
+      "type": "Card",
+      "props": {{
+        "title": "{title}",
+        "description": "Edit src/views/{name}.json to customize this view."
+      }},
+      "children": ["heading"]
+    }},
+    "heading": {{
+      "type": "Text",
+      "props": {{ "content": "{title}", "element": "h1" }}
+    }}
+  }}
+}}
+"#,
+    )
+}
 
-use ferro::{{
-    ComponentNode, Component, CardProps, JsonUiView, TextElement, TextProps,
-}};
-
-/// Build the {title} view.
-pub fn view() -> JsonUiView {{
-    JsonUiView::new()
-        .title("{title}")
-        .layout("{layout}")
-        .component(ComponentNode {{
-            key: "heading".to_string(),
-            component: Component::Text(TextProps {{
-                content: "{title}".to_string(),
-                element: TextElement::H1,
-            }}),
-            action: None,
-            visibility: None,
-        }})
-        .component(ComponentNode {{
-            key: "card".to_string(),
-            component: Component::Card(CardProps {{
-                title: "{title}".to_string(),
-                description: Some("Edit src/views/{name}.rs to customize this view.".to_string()),
-                children: vec![],
-                footer: vec![],
-            }}),
-            action: None,
-            visibility: None,
-        }})
+/// Handler template paired with a JSON-UI v2 spec file.
+pub fn json_view_handler_template(name: &str) -> String {
+    format!(
+        r#"#[handler]
+pub async fn {name}(req: Request) -> Response {{
+    let data = serde_json::json!({{}});
+    JsonUi::render_file("views/{name}.json", data)
 }}
 "#,
     )
@@ -777,4 +781,49 @@ pub fn policies_mod() -> &'static str {
 //! ```
 
 "#
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn json_view_template_is_valid_v2_json() {
+        let out = json_view_template("dashboard", "Dashboard", "dashboard");
+        let v: serde_json::Value = serde_json::from_str(&out).expect("template must be valid JSON");
+        assert_eq!(v["$schema"], "ferro-json-ui/v2");
+        assert_eq!(v["title"], "Dashboard");
+        assert_eq!(v["layout"], "dashboard");
+        assert_eq!(v["root"], "root");
+        assert!(v["elements"]["root"]["type"].as_str() == Some("Card"));
+        assert!(v["elements"]["heading"]["type"].as_str() == Some("Text"));
+    }
+
+    #[test]
+    fn json_view_template_references_name_in_description() {
+        let out = json_view_template("my_page", "My Page", "dashboard");
+        assert!(out.contains("src/views/my_page.json"));
+        assert!(!out.contains("my_page.rs"));
+    }
+
+    #[test]
+    fn json_view_template_has_no_v1_markers() {
+        let out = json_view_template("x", "Y", "dashboard");
+        for marker in ["Spec::builder", "Element::new", "JsonUiView", "use ferro::"] {
+            assert!(
+                !out.contains(marker),
+                "template must not contain v1 marker '{marker}'"
+            );
+        }
+    }
+
+    #[test]
+    fn json_view_template_parses_as_spec() {
+        let out = json_view_template("dashboard", "Dashboard", "dashboard");
+        let spec = ferro_json_ui::Spec::from_json(&out);
+        assert!(
+            spec.is_ok(),
+            "template must parse as a valid Spec: {spec:?}"
+        );
+    }
 }

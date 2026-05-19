@@ -7,23 +7,16 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use ferro_rs::{JsonUi, JsonUiView, ComponentNode, Component, CardProps, Response};
+//! use ferro_rs::{JsonUi, Spec, Element, Response};
 //!
 //! pub async fn index() -> Response {
-//!     let view = JsonUiView::new()
+//!     let spec = Spec::builder()
 //!         .title("Dashboard")
-//!         .component(ComponentNode {
-//!             key: "welcome".to_string(),
-//!             component: Component::Card(CardProps {
-//!                 title: "Welcome".to_string(),
-//!                 description: None,
-//!                 children: vec![],
-//!             }),
-//!             action: None,
-//!             visibility: None,
-//!         });
+//!         .element("welcome", Element::new("Card").prop("title", "Welcome"))
+//!         .build()
+//!         .expect("spec is valid");
 //!
-//!     JsonUi::render(&view, &serde_json::json!({}))
+//!     JsonUi::render(&spec, &serde_json::json!({}))
 //! }
 //! ```
 
@@ -31,62 +24,94 @@ use std::collections::HashMap;
 
 use crate::http::{HttpResponse, Response};
 use ferro_json_ui::{
-    render_layout, render_to_html_with_plugins, resolve_actions, resolve_errors, JsonUiConfig,
-    JsonUiView, LayoutContext,
+    expand_directives, global_catalog, render_layout, render_spec_to_html_with_plugins,
+    resolve_actions, resolve_errors, resolve_expressions, JsonUiConfig, LayoutContext, Spec,
 };
 
 /// Stateless JSON-UI renderer.
 ///
-/// Provides methods for rendering JSON-UI views as HTML or JSON responses.
+/// Provides methods for rendering JSON-UI specs as HTML or JSON responses.
 /// Follows the same pattern as `Inertia` -- a unit struct with static methods.
 pub struct JsonUi;
 
 impl JsonUi {
-    /// Clone the view and resolve all action handler names to URLs.
-    fn resolve(view: &JsonUiView) -> JsonUiView {
-        let mut resolved = view.clone();
+    /// Clone the spec, expand `$each` / `$if` directives, resolve action
+    /// handler names to URLs, and resolve `$data` / `$template` expression
+    /// nodes in element props.
+    ///
+    /// Pipeline (Phase 163 ordering, locked by 163-03-PLAN):
+    /// 1. `expand_directives` — materializes `$each` templates into N clones
+    ///    and removes `$if`-falsy elements. Must run FIRST so all downstream
+    ///    passes operate on the post-expansion element set.
+    /// 2. `resolve_actions` — handler names → URLs on the expanded set.
+    /// 3. `resolve_expressions` — `$data` / `$template` markers in props.
+    fn resolve(spec: &Spec) -> Spec {
+        let mut resolved = spec.clone();
+        expand_directives(&mut resolved);
+        // D-16: validate AFTER expand_directives so $if-removed elements skip
+        // enum validation. Errors are logged at error level; render continues
+        // (hard surface available via resolve_with_errors on error paths).
+        if let Err(errs) = global_catalog().validate(&resolved) {
+            for e in &errs {
+                tracing::error!(
+                    target: "ferro_json_ui::catalog",
+                    error = %e,
+                    "render-time catalog validation failed (resolve clean-path)"
+                );
+            }
+        }
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
+        resolve_expressions(&mut resolved);
         resolved
     }
 
-    /// Render a JSON-UI view as an HTML response.
+    /// Render a JSON-UI spec as an HTML response.
     ///
-    /// Returns the view as a full HTML page with rendered component HTML and Tailwind classes.
+    /// Returns the spec as a full HTML page with rendered element HTML and Tailwind classes.
     /// All action handler references are resolved to URLs before rendering.
-    /// The view JSON and data are embedded as `data-view` and `data-props` attributes
+    /// The spec JSON and data are embedded as `data-view` and `data-props` attributes
     /// on the wrapper div for potential JS hydration.
-    pub fn render(view: &JsonUiView, data: &serde_json::Value) -> Response {
-        Self::render_with_config(view, data, &JsonUiConfig::new())
+    pub fn render(spec: &Spec, data: &serde_json::Value) -> Response {
+        Self::render_with_config(spec, data, &JsonUiConfig::new())
     }
 
     /// Render with custom configuration.
     pub fn render_with_config(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         config: &JsonUiConfig,
     ) -> Response {
-        let resolved = Self::resolve(view);
+        let resolved = Self::resolve(spec);
         Self::build_response(&resolved, data, config)
     }
 
-    /// Build an HTML response from a resolved view using the layout system.
+    /// Build an HTML response from a resolved spec using the layout system.
     ///
     /// Shared implementation for both `render_with_config` and `render_with_errors_config`.
-    /// Serializes view/data, builds head content, renders components, then dispatches
+    /// Serializes spec/data, builds head content, renders elements, then dispatches
     /// to the layout registry for the final HTML shell.
-    fn build_response(
-        view: &JsonUiView,
-        data: &serde_json::Value,
-        config: &JsonUiConfig,
-    ) -> Response {
-        let view_json = serde_json::to_string(view).map_err(|e| {
+    fn build_response(spec: &Spec, data: &serde_json::Value, config: &JsonUiConfig) -> Response {
+        let spec_json = serde_json::to_string(spec).map_err(|e| {
             HttpResponse::text(format!("JSON-UI serialization error: {e}")).status(500)
         })?;
         let data_json = serde_json::to_string(data).map_err(|e| {
             HttpResponse::text(format!("JSON-UI data serialization error: {e}")).status(500)
         })?;
 
-        let title = view.title.as_deref().unwrap_or("Ferro");
+        let title_owned: String = match &spec.title {
+            None => "Ferro".to_string(),
+            Some(ferro_json_ui::TitleBinding::Literal(s)) => s.clone(),
+            Some(ferro_json_ui::TitleBinding::Binding(r)) => {
+                // Resolve at render time against spec.data using JSON Pointer syntax.
+                // Missing path or non-string value falls back to the default.
+                spec.data
+                    .pointer(&r.data)
+                    .and_then(|v| v.as_str())
+                    .map(String::from)
+                    .unwrap_or_else(|| "Ferro".to_string())
+            }
+        };
+        let title: &str = &title_owned;
 
         let mut head = String::new();
         // Inter Variable via Bunny Fonts — loaded unconditionally so font renders
@@ -126,7 +151,7 @@ impl JsonUi {
             }
         }
 
-        let result = render_to_html_with_plugins(view, data);
+        let result = render_spec_to_html_with_plugins(spec, data);
 
         // Append plugin CSS assets to the head string.
         let full_head = if result.css_head.is_empty() {
@@ -140,12 +165,12 @@ impl JsonUi {
             content: &result.html,
             head: &full_head,
             body_class: &config.body_class,
-            view_json: &view_json,
+            view_json: &spec_json,
             data_json: &data_json,
             scripts: &result.scripts,
         };
 
-        let layout_name = view.layout.as_deref();
+        let layout_name = spec.layout.as_deref();
         let html = render_layout(layout_name, &ctx);
 
         Ok(HttpResponse::text(html)
@@ -153,92 +178,135 @@ impl JsonUi {
             .header("Content-Type", "text/html; charset=utf-8"))
     }
 
-    /// Return the view as JSON (for API consumers or debugging).
+    /// Load a v2 spec file, merge handler data, and render to HTML.
+    ///
+    /// Uses the process-level spec cache (`ferro_json_ui::load_cached`).
+    /// In development, reloads on mtime change. In production, cached for the
+    /// process lifetime.
+    pub fn render_file(
+        path: impl AsRef<std::path::Path>,
+        handler_data: serde_json::Value,
+    ) -> Response {
+        Self::render_file_with_config(path, handler_data, &JsonUiConfig::new())
+    }
+
+    /// Load a v2 spec file and render with custom configuration.
+    pub fn render_file_with_config(
+        path: impl AsRef<std::path::Path>,
+        handler_data: serde_json::Value,
+        config: &JsonUiConfig,
+    ) -> Response {
+        let reload = !crate::Config::is_production();
+        let arc_spec = ferro_json_ui::load_cached(path.as_ref(), reload)
+            .map_err(|e| HttpResponse::text(format!("Failed to load spec: {e}")).status(500))?;
+        let spec = (*arc_spec).clone().merge_data(handler_data);
+        let data = spec.data.clone();
+        let resolved = Self::resolve(&spec);
+        Self::build_response(&resolved, &data, config)
+    }
+
+    /// Return the spec as JSON (for API consumers or debugging).
     ///
     /// All action handler references are resolved to URLs before output.
-    /// If `data` is non-null, it takes precedence over the view's embedded data.
-    /// If `data` is null, falls back to the view's `.data` field.
-    pub fn render_json(view: &JsonUiView, data: &serde_json::Value) -> Response {
-        let view = Self::resolve(view);
-        let effective_data = if data.is_null() { &view.data } else { data };
+    /// If `data` is non-null, it takes precedence over the spec's embedded data.
+    /// If `data` is null, falls back to the spec's `.data` field.
+    pub fn render_json(spec: &Spec, data: &serde_json::Value) -> Response {
+        let spec = Self::resolve(spec);
+        let effective_data = if data.is_null() { &spec.data } else { data };
         let payload = serde_json::json!({
-            "view": view,
+            "spec": spec,
             "data": effective_data,
         });
         Ok(HttpResponse::json(payload))
     }
 
-    /// Clone the view, resolve actions, and populate validation errors on form fields.
-    fn resolve_with_errors(view: &JsonUiView, errors: &HashMap<String, Vec<String>>) -> JsonUiView {
-        let mut resolved = view.clone();
+    /// Clone the spec, expand `$each` / `$if` directives, resolve actions,
+    /// resolve `$data` / `$template` expressions, then populate validation
+    /// errors on form fields. Same Phase 163 pipeline ordering as
+    /// `JsonUi::resolve` — `expand_directives` runs FIRST.
+    fn resolve_with_errors(spec: &Spec, errors: &HashMap<String, Vec<String>>) -> Spec {
+        let mut resolved = spec.clone();
+        expand_directives(&mut resolved);
+        // D-16: validate AFTER expand_directives so $if-removed elements skip
+        // enum validation. Catalog errors are logged at error level; this path
+        // is used for form re-renders where shape errors surface as diagnostics.
+        if let Err(errs) = global_catalog().validate(&resolved) {
+            for e in &errs {
+                tracing::error!(
+                    target: "ferro_json_ui::catalog",
+                    error = %e,
+                    "render-time catalog validation failed (resolve_with_errors)"
+                );
+            }
+        }
         resolve_actions(&mut resolved, |handler| crate::routing::route(handler, &[]));
+        resolve_expressions(&mut resolved);
         resolve_errors(&mut resolved, errors);
-        resolved.errors = Some(errors.clone());
         resolved
     }
 
-    /// Render a JSON-UI view as HTML with validation errors populated on form fields.
+    /// Render a JSON-UI spec as HTML with validation errors populated on form fields.
     ///
     /// Same as `render()` but also populates error messages on matching form field
-    /// components (Input, Select, Checkbox, Switch) and sets `view.errors`.
+    /// elements (Input, Select, Checkbox, Switch) via their `field` or `name` prop.
     pub fn render_with_errors(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         errors: &HashMap<String, Vec<String>>,
     ) -> Response {
-        Self::render_with_errors_config(view, data, errors, &JsonUiConfig::new())
+        Self::render_with_errors_config(spec, data, errors, &JsonUiConfig::new())
     }
 
     /// Render with errors and custom configuration.
     fn render_with_errors_config(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         errors: &HashMap<String, Vec<String>>,
         config: &JsonUiConfig,
     ) -> Response {
-        let resolved = Self::resolve_with_errors(view, errors);
+        let resolved = Self::resolve_with_errors(spec, errors);
         Self::build_response(&resolved, data, config)
     }
 
-    /// Return the view as JSON with validation errors populated on form fields.
+    /// Return the spec as JSON with validation errors populated on form fields.
     ///
     /// Same as `render_json()` but also populates error messages on matching
-    /// form field components and sets `view.errors`.
+    /// form field elements.
     pub fn render_json_with_errors(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         errors: &HashMap<String, Vec<String>>,
     ) -> Response {
-        let view = Self::resolve_with_errors(view, errors);
-        let effective_data = if data.is_null() { &view.data } else { data };
+        let spec = Self::resolve_with_errors(spec, errors);
+        let effective_data = if data.is_null() { &spec.data } else { data };
         let payload = serde_json::json!({
-            "view": view,
+            "spec": spec,
             "data": effective_data,
         });
         Ok(HttpResponse::json(payload))
     }
 
-    /// Render a JSON-UI view as HTML, accepting a framework `ValidationError` directly.
+    /// Render a JSON-UI spec as HTML, accepting a framework `ValidationError` directly.
     ///
     /// Extracts the error map via `.all()` and delegates to `render_with_errors()`.
     /// This is the primary convenience method for handlers.
     pub fn render_validation_error(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         validation_error: &crate::validation::ValidationError,
     ) -> Response {
-        Self::render_with_errors(view, data, validation_error.all())
+        Self::render_with_errors(spec, data, validation_error.all())
     }
 
     /// Return JSON with validation errors from a framework `ValidationError`.
     ///
     /// JSON variant of `render_validation_error()`.
     pub fn render_json_validation_error(
-        view: &JsonUiView,
+        spec: &Spec,
         data: &serde_json::Value,
         validation_error: &crate::validation::ValidationError,
     ) -> Response {
-        Self::render_json_with_errors(view, data, validation_error.all())
+        Self::render_json_with_errors(spec, data, validation_error.all())
     }
 }
 
@@ -259,9 +327,7 @@ fn html_escape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ferro_json_ui::{
-        Action, ButtonProps, ButtonVariant, CardProps, Component, ComponentNode, HttpMethod, Size,
-    };
+    use ferro_json_ui::{Action, Element, HttpMethod, Spec};
 
     /// Extract the Ok variant from a Response without requiring Debug on HttpResponse.
     fn ok_response(result: Response) -> HttpResponse {
@@ -285,21 +351,19 @@ mod tests {
         response.body().to_string()
     }
 
-    fn sample_view() -> JsonUiView {
-        JsonUiView::new()
+    /// A two-element spec: a root Card with a single Text child. Enough
+    /// surface to exercise title/layout plumbing without any plugin assets.
+    fn sample_spec() -> Spec {
+        Spec::builder()
             .title("Test Page")
-            .component(ComponentNode {
-                key: "card".to_string(),
-                component: Component::Card(CardProps {
-                    title: "Hello".to_string(),
-                    description: Some("A test card".to_string()),
-                    children: vec![],
-                    max_width: None,
-                    footer: vec![],
-                }),
-                action: None,
-                visibility: None,
-            })
+            .element(
+                "card",
+                Element::new("Card")
+                    .prop("title", "Hello")
+                    .prop("description", "A test card"),
+            )
+            .build()
+            .expect("sample_spec is valid")
     }
 
     /// Check that a hyper response contains a Content-Type header with the given value.
@@ -318,9 +382,9 @@ mod tests {
 
     #[test]
     fn render_produces_valid_html() {
-        let view = sample_view();
+        let spec = sample_spec();
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         assert!(result.is_ok());
         let response = ok_response(result);
@@ -338,9 +402,9 @@ mod tests {
 
     #[test]
     fn render_json_returns_json() {
-        let view = sample_view();
+        let spec = sample_spec();
         let data = serde_json::json!({"users": [1, 2, 3]});
-        let result = JsonUi::render_json(&view, &data);
+        let result = JsonUi::render_json(&spec, &data);
 
         assert!(result.is_ok());
         let response = ok_response(result);
@@ -350,16 +414,16 @@ mod tests {
         assert!(has_content_type(&hyper, "application/json"));
 
         let body = format!("{:?}", hyper.into_body());
-        assert!(body.contains("view"));
+        assert!(body.contains("spec"));
         assert!(body.contains("data"));
     }
 
     #[test]
     fn config_tailwind_disabled() {
-        let view = sample_view();
+        let spec = sample_spec();
         let data = serde_json::json!({});
         let config = JsonUiConfig::new().tailwind_cdn(false);
-        let result = JsonUi::render_with_config(&view, &data, &config);
+        let result = JsonUi::render_with_config(&spec, &data, &config);
 
         let body = response_body(ok_response(result));
         assert!(!body.contains("@tailwindcss/browser"));
@@ -367,11 +431,11 @@ mod tests {
 
     #[test]
     fn config_custom_head() {
-        let view = sample_view();
+        let spec = sample_spec();
         let data = serde_json::json!({});
         let config =
             JsonUiConfig::new().custom_head(r#"<link rel="stylesheet" href="/custom.css">"#);
-        let result = JsonUi::render_with_config(&view, &data, &config);
+        let result = JsonUi::render_with_config(&spec, &data, &config);
 
         let body = response_body(ok_response(result));
         assert!(body.contains("/custom.css"));
@@ -379,10 +443,10 @@ mod tests {
 
     #[test]
     fn config_body_class() {
-        let view = sample_view();
+        let spec = sample_spec();
         let data = serde_json::json!({});
         let config = JsonUiConfig::new().body_class("dark bg-black");
-        let result = JsonUi::render_with_config(&view, &data, &config);
+        let result = JsonUi::render_with_config(&spec, &data, &config);
 
         let body = response_body(ok_response(result));
         assert!(body.contains("dark bg-black"));
@@ -390,7 +454,7 @@ mod tests {
 
     #[test]
     fn default_config_emits_ferro_base_css_link_and_no_cdn_script() {
-        let view = sample_view();
+        let view = sample_spec();
         let data = serde_json::json!({});
         let result = JsonUi::render(&view, &data);
         let body = html_body(ok_response(result));
@@ -408,7 +472,7 @@ mod tests {
     #[test]
     fn tailwind_cdn_opt_in_coexists_with_default_stylesheet_urls() {
         // D-14: both <link> and <script> appear; no mutual-exclusion logic.
-        let view = sample_view();
+        let view = sample_spec();
         let data = serde_json::json!({});
         let config = JsonUiConfig::new().tailwind_cdn(true);
         let result = JsonUi::render_with_config(&view, &data, &config);
@@ -436,7 +500,7 @@ mod tests {
 
     #[test]
     fn stylesheet_urls_emitted_in_order_and_replaces_default() {
-        let view = sample_view();
+        let view = sample_spec();
         let data = serde_json::json!({});
         let config =
             JsonUiConfig::new().stylesheet_urls(vec!["/a.css".to_string(), "/b.css".to_string()]);
@@ -456,7 +520,7 @@ mod tests {
 
     #[test]
     fn empty_stylesheet_urls_emits_no_ferro_base_link() {
-        let view = sample_view();
+        let view = sample_spec();
         let data = serde_json::json!({});
         let config = JsonUiConfig::new().stylesheet_urls(vec![]);
         let result = JsonUi::render_with_config(&view, &data, &config);
@@ -475,7 +539,7 @@ mod tests {
         // URL with the five characters html_escape handles: &, <, >, ", '.
         // Locks in defense-in-depth against attribute-context injection if an
         // app forwards untrusted values into .stylesheet_urls(...).
-        let view = sample_view();
+        let view = sample_spec();
         let data = serde_json::json!({});
         let config =
             JsonUiConfig::new().stylesheet_urls(vec![r#"/s.css?a=1&b=2&q=<x>""#.to_string()]);
@@ -496,9 +560,9 @@ mod tests {
 
     #[test]
     fn bunny_fonts_link_in_head() {
-        let view = sample_view();
+        let spec = sample_spec();
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         let body = response_body(ok_response(result));
         assert!(
@@ -513,9 +577,13 @@ mod tests {
 
     #[test]
     fn html_escaping_prevents_xss_in_title() {
-        let view = JsonUiView::new().title(r#"<script>alert("xss")</script>"#);
+        let spec = Spec::builder()
+            .title(r#"<script>alert("xss")</script>"#)
+            .element("card", Element::new("Text").prop("content", "ignored"))
+            .build()
+            .expect("spec is valid");
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         let body = response_body(ok_response(result));
         // The raw script tag must not appear unescaped
@@ -525,9 +593,9 @@ mod tests {
 
     #[test]
     fn html_escaping_in_data_attributes() {
-        let view = sample_view();
+        let spec = sample_spec();
         let data = serde_json::json!({"key": "<img src=x onerror=alert(1)>"});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         let body = response_body(ok_response(result));
         // Angle brackets must be escaped in attribute values
@@ -536,10 +604,16 @@ mod tests {
     }
 
     #[test]
-    fn empty_view_renders_valid_html() {
-        let view = JsonUiView::new();
+    fn empty_spec_renders_valid_html() {
+        // A "minimal" spec is one element with no title — Spec::builder() requires
+        // at least one element (there's no such thing as a zero-element spec under
+        // v2's structural validation).
+        let spec = Spec::builder()
+            .element("root", Element::new("Text"))
+            .build()
+            .expect("minimal spec is valid");
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         assert!(result.is_ok());
         let response = ok_response(result);
@@ -563,9 +637,19 @@ mod tests {
 
     #[test]
     fn render_json_uses_explicit_data_over_embedded() {
-        let view = sample_view().data(serde_json::json!({"embedded": true}));
+        let spec = Spec::builder()
+            .title("Test Page")
+            .element(
+                "card",
+                Element::new("Card")
+                    .prop("title", "Hello")
+                    .prop("description", "A test card"),
+            )
+            .data(serde_json::json!({"embedded": true}))
+            .build()
+            .expect("spec is valid");
         let explicit_data = serde_json::json!({"explicit": true});
-        let result = JsonUi::render_json(&view, &explicit_data);
+        let result = JsonUi::render_json(&spec, &explicit_data);
 
         let response = ok_response(result);
         let hyper = response.into_hyper();
@@ -573,21 +657,26 @@ mod tests {
 
         // Explicit data should be used, not the embedded one
         assert!(body.contains("explicit"));
-        // The view's embedded data is in the "view" key (part of the serialized view)
+        // The spec's embedded data is serialized under the "spec" key as spec.data
         assert!(body.contains("embedded"));
     }
 
     #[test]
     fn render_json_falls_back_to_embedded_data() {
-        let view = sample_view().data(serde_json::json!({"embedded": true}));
+        let spec = Spec::builder()
+            .title("Test Page")
+            .element("card", Element::new("Card").prop("title", "Hello"))
+            .data(serde_json::json!({"embedded": true}))
+            .build()
+            .expect("spec is valid");
         let null_data = serde_json::Value::Null;
-        let result = JsonUi::render_json(&view, &null_data);
+        let result = JsonUi::render_json(&spec, &null_data);
 
         let response = ok_response(result);
         let hyper = response.into_hyper();
         let body = format!("{:?}", hyper.into_body());
 
-        // Should use the view's embedded data
+        // Should use the spec's embedded data
         assert!(body.contains("embedded"));
     }
 
@@ -596,31 +685,28 @@ mod tests {
         // Register a test route name -> path mapping.
         crate::routing::register_route_name("users.index", "/users");
 
-        let view = JsonUiView::new().title("Users").component(ComponentNode {
-            key: "btn".to_string(),
-            component: Component::Button(ButtonProps {
-                label: "List Users".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            action: Some(Action {
-                handler: "users.index".to_string(),
-                url: None,
-                method: HttpMethod::Get,
-                confirm: None,
-                on_success: None,
-                on_error: None,
-                target: None,
-            }),
-            visibility: None,
-        });
+        let action = Action {
+            handler: ferro_json_ui::action::ActionHandler::Literal("users.index".to_string()),
+            url: None,
+            method: HttpMethod::Get,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+            target: None,
+        };
+        let spec = Spec::builder()
+            .title("Users")
+            .element(
+                "btn",
+                Element::new("Button")
+                    .prop("label", "List Users")
+                    .action(action),
+            )
+            .build()
+            .expect("spec is valid");
 
         // render_json should resolve action URLs.
-        let result = JsonUi::render_json(&view, &serde_json::json!({}));
+        let result = JsonUi::render_json(&spec, &serde_json::json!({}));
         let body = response_body(ok_response(result));
         assert!(
             body.contains("/users"),
@@ -628,103 +714,95 @@ mod tests {
         );
 
         // render (HTML) should also resolve action URLs.
-        let result = JsonUi::render(&view, &serde_json::json!({}));
+        let result = JsonUi::render(&spec, &serde_json::json!({}));
         let body = response_body(ok_response(result));
         assert!(
             body.contains("/users"),
             "render output should contain the resolved URL"
         );
 
-        // Original view must not be mutated (clone semantics).
+        // Original spec must not be mutated (clone semantics).
+        let original_action = spec.elements.get("btn").unwrap().action.as_ref().unwrap();
         assert_eq!(
-            view.components[0].action.as_ref().unwrap().url,
-            None,
-            "original view should not be mutated"
+            original_action.url, None,
+            "original spec should not be mutated"
         );
     }
 
     #[test]
     fn render_without_actions_still_works() {
-        // Verify views with no actions render without issues (no regression).
-        let view = sample_view();
+        // Verify specs with no actions render without issues (no regression).
+        let spec = sample_spec();
         let data = serde_json::json!({"items": [1, 2]});
 
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
         assert!(result.is_ok());
 
-        let result = JsonUi::render_json(&view, &data);
+        let result = JsonUi::render_json(&spec, &data);
         assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // render_file tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn render_file_returns_error_for_missing_file() {
+        let result = JsonUi::render_file(
+            std::path::Path::new("/nonexistent/path/test.json"),
+            serde_json::json!({}),
+        );
+        assert!(result.is_err(), "missing file should return Err response");
+        let err = result.unwrap_err();
+        assert_eq!(err.status_code(), 500);
     }
 
     // -----------------------------------------------------------------------
     // render_with_errors tests
     // -----------------------------------------------------------------------
 
-    use ferro_json_ui::{FormProps, InputProps, InputType};
     use std::collections::HashMap;
 
-    fn form_view_with_inputs() -> JsonUiView {
-        JsonUiView::new()
+    /// A form spec with two Input children identified by field name. The
+    /// v2 walker renders each Input with its `props.errors` array, which
+    /// `resolve_errors` populates per-field before render. Error strings
+    /// surface both in the rendered Input markup and (for JSON handlers)
+    /// in the serialized spec under `data-view`.
+    fn form_spec_with_inputs() -> Spec {
+        let action = Action {
+            handler: ferro_json_ui::action::ActionHandler::Literal("users.store".to_string()),
+            url: None,
+            method: HttpMethod::Post,
+            confirm: None,
+            on_success: None,
+            on_error: None,
+            target: None,
+        };
+        Spec::builder()
             .title("Create User")
-            .component(ComponentNode {
-                key: "form".to_string(),
-                component: Component::Form(FormProps {
-                    action: Action {
-                        handler: "users.store".to_string(),
-                        url: None,
-                        method: HttpMethod::Post,
-                        confirm: None,
-                        on_success: None,
-                        on_error: None,
-                        target: None,
-                    },
-                    guard: None,
-                    max_width: None,
-                    fields: vec![
-                        ComponentNode {
-                            key: "name-input".to_string(),
-                            component: Component::Input(InputProps {
-                                field: "name".to_string(),
-                                label: "Name".to_string(),
-                                input_type: InputType::Text,
-                                placeholder: None,
-                                required: None,
-                                disabled: None,
-                                error: None,
-                                description: None,
-                                default_value: None,
-                                data_path: None,
-                                step: None,
-                                list: None,
-                            }),
-                            action: None,
-                            visibility: None,
-                        },
-                        ComponentNode {
-                            key: "email-input".to_string(),
-                            component: Component::Input(InputProps {
-                                field: "email".to_string(),
-                                label: "Email".to_string(),
-                                input_type: InputType::Email,
-                                placeholder: None,
-                                required: None,
-                                disabled: None,
-                                error: None,
-                                description: None,
-                                default_value: None,
-                                data_path: None,
-                                step: None,
-                                list: None,
-                            }),
-                            action: None,
-                            visibility: None,
-                        },
-                    ],
-                    method: None,
-                }),
-                action: None,
-                visibility: None,
-            })
+            .element(
+                "form",
+                Element::new("Form")
+                    .action(action)
+                    .child("name-input")
+                    .child("email-input"),
+            )
+            .element(
+                "name-input",
+                Element::new("Input")
+                    .prop("field", "name")
+                    .prop("label", "Name")
+                    .prop("input_type", "text"),
+            )
+            .element(
+                "email-input",
+                Element::new("Input")
+                    .prop("field", "email")
+                    .prop("label", "Email")
+                    .prop("input_type", "email"),
+            )
+            .build()
+            .expect("form spec is valid")
     }
 
     fn make_errors(pairs: &[(&str, &[&str])]) -> HashMap<String, Vec<String>> {
@@ -736,18 +814,21 @@ mod tests {
 
     #[test]
     fn render_with_errors_populates_form_fields() {
-        let view = form_view_with_inputs();
+        let spec = form_spec_with_inputs();
         let errors = make_errors(&[
             ("name", &["Name is required"]),
             ("email", &["Email is invalid"]),
         ]);
         let data = serde_json::json!({});
-        let result = JsonUi::render_with_errors(&view, &data, &errors);
+        let result = JsonUi::render_with_errors(&spec, &data, &errors);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
 
-        // The HTML data-view attribute should contain the error messages.
+        // resolve_errors populates each Input's props.errors array; the v2
+        // walker renders each Input body so the error strings appear in the
+        // HTML directly, and the data-view serialized spec embedded in the
+        // page also carries them.
         assert!(
             body.contains("Name is required"),
             "body should contain 'Name is required'"
@@ -760,10 +841,10 @@ mod tests {
 
     #[test]
     fn render_json_with_errors_includes_errors_in_response() {
-        let view = form_view_with_inputs();
+        let spec = form_spec_with_inputs();
         let errors = make_errors(&[("name", &["Name is required"])]);
         let data = serde_json::json!({});
-        let result = JsonUi::render_json_with_errors(&view, &data, &errors);
+        let result = JsonUi::render_json_with_errors(&spec, &data, &errors);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
@@ -773,7 +854,7 @@ mod tests {
             body.contains("Name is required"),
             "body should contain field-level error"
         );
-        // view.errors map should be present with field entries.
+        // The "name" field key appears in the serialized spec.
         assert!(
             body.contains("name"),
             "body should contain the error field name"
@@ -782,19 +863,18 @@ mod tests {
 
     #[test]
     fn render_with_errors_empty_map_produces_no_errors() {
-        let view = form_view_with_inputs();
+        let spec = form_spec_with_inputs();
         let errors: HashMap<String, Vec<String>> = HashMap::new();
         let data = serde_json::json!({});
 
-        let with_errors = JsonUi::render_with_errors(&view, &data, &errors);
-        let without_errors = JsonUi::render(&view, &data);
+        let with_errors = JsonUi::render_with_errors(&spec, &data, &errors);
+        let without_errors = JsonUi::render(&spec, &data);
 
         assert!(with_errors.is_ok());
         assert!(without_errors.is_ok());
 
         let body_with = response_body(ok_response(with_errors));
-        // With empty errors, form field errors should remain null.
-        // The view.errors field will be Some({}) but field errors are None.
+        // With empty errors, no field error messages are populated.
         assert!(
             !body_with.contains("Name is required"),
             "empty errors should not produce field-level messages"
@@ -803,13 +883,13 @@ mod tests {
 
     #[test]
     fn render_validation_error_accepts_framework_type() {
-        let view = form_view_with_inputs();
+        let spec = form_spec_with_inputs();
         let mut ve = crate::validation::ValidationError::new();
         ve.add("name", "Name is required");
         ve.add("email", "Email must be valid");
 
         let data = serde_json::json!({});
-        let result = JsonUi::render_validation_error(&view, &data, &ve);
+        let result = JsonUi::render_validation_error(&spec, &data, &ve);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
@@ -827,12 +907,12 @@ mod tests {
     fn render_with_errors_preserves_action_resolution() {
         crate::routing::register_route_name("users.store", "/users");
 
-        let view = form_view_with_inputs();
+        let spec = form_spec_with_inputs();
         let errors = make_errors(&[("name", &["Name is required"])]);
         let data = serde_json::json!({});
 
         // render_json_with_errors should have both action URL resolved and errors populated.
-        let result = JsonUi::render_json_with_errors(&view, &data, &errors);
+        let result = JsonUi::render_json_with_errors(&spec, &data, &errors);
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
 
@@ -843,17 +923,181 @@ mod tests {
         );
     }
 
+    // ------------------------------------------------------------------------
+    // Expression resolution tests
+    // ------------------------------------------------------------------------
+
+    fn expression_spec_with_data_marker() -> Spec {
+        Spec::builder()
+            .data(serde_json::json!({"greeting": "Hello"}))
+            .element(
+                "root",
+                Element::new("Text").prop("content", serde_json::json!({"$data": "/greeting"})),
+            )
+            .build()
+            .expect("spec builder should succeed")
+    }
+
+    #[test]
+    fn render_resolves_data_expression_before_html_emission() {
+        let spec = expression_spec_with_data_marker();
+        let result = JsonUi::render(&spec, &serde_json::json!({}));
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Hello"),
+            "rendered HTML must contain resolved value, got: {body}"
+        );
+        assert!(
+            !body.contains("$data"),
+            "rendered HTML must NOT contain '$data' marker, got: {body}"
+        );
+    }
+
+    #[test]
+    fn render_json_returns_spec_with_no_expression_markers() {
+        let spec = expression_spec_with_data_marker();
+        let result = JsonUi::render_json(&spec, &serde_json::Value::Null);
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Hello"),
+            "render_json must contain resolved string value, got: {body}"
+        );
+        assert!(
+            !body.contains("$data"),
+            "render_json must NOT contain '$data' marker, got: {body}"
+        );
+    }
+
+    #[test]
+    fn render_with_config_honors_expression_resolution() {
+        let spec = Spec::builder()
+            .data(serde_json::json!({"count": 42}))
+            .element(
+                "root",
+                Element::new("Text").prop("content", serde_json::json!({"$data": "/count"})),
+            )
+            .build()
+            .expect("spec builder should succeed");
+        let result =
+            JsonUi::render_with_config(&spec, &serde_json::json!({}), &JsonUiConfig::new());
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("42"),
+            "render_with_config must render resolved numeric value, got: {body}"
+        );
+        assert!(
+            !body.contains("$data"),
+            "render_with_config output must NOT contain '$data' marker"
+        );
+    }
+
+    #[test]
+    fn render_with_errors_resolves_expressions_then_applies_errors() {
+        let spec = Spec::builder()
+            .data(serde_json::json!({"field_label": "Email"}))
+            .element(
+                "form_field",
+                Element::new("Input").prop("field", "email").prop(
+                    "label",
+                    serde_json::json!({"$template": "Errors for {/field_label}"}),
+                ),
+            )
+            .build()
+            .expect("spec builder should succeed");
+
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["is required".to_string()]);
+
+        let result = JsonUi::render_with_errors(&spec, &serde_json::json!({}), &errors);
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Errors for Email"),
+            "render_with_errors must render template against resolved spec.data, got: {body}"
+        );
+        assert!(
+            body.contains("is required"),
+            "render_with_errors must attach error message after template resolution, got: {body}"
+        );
+        assert!(
+            !body.contains("{/field_label}"),
+            "render_with_errors output must NOT contain unresolved template placeholder"
+        );
+        assert!(
+            !body.contains("$template"),
+            "render_with_errors output must NOT contain '$template' marker"
+        );
+    }
+
+    #[test]
+    fn render_json_with_errors_returns_resolved_spec_with_errors() {
+        // Pins must_haves truth #5: render_json_with_errors inherits expression
+        // resolution via resolve_with_errors. Returns JSON payload
+        // {"spec": resolved_spec, "data": effective_data}.
+        let spec = Spec::builder()
+            .data(serde_json::json!({"user_name": "Alice"}))
+            .element(
+                "form_field",
+                Element::new("Input").prop("field", "email").prop(
+                    "label",
+                    serde_json::json!({"$template": "Hello, {/user_name}"}),
+                ),
+            )
+            .build()
+            .expect("spec builder should succeed");
+
+        let mut errors: HashMap<String, Vec<String>> = HashMap::new();
+        errors.insert("email".to_string(), vec!["is invalid".to_string()]);
+
+        let result = JsonUi::render_json_with_errors(&spec, &serde_json::Value::Null, &errors);
+        assert!(result.is_ok());
+        let body = response_body(ok_response(result));
+        assert!(
+            body.contains("Hello, Alice"),
+            "render_json_with_errors must return resolved template output, got: {body}"
+        );
+        assert!(
+            body.contains("is invalid"),
+            "render_json_with_errors must attach error message to the email field, got: {body}"
+        );
+        assert!(
+            !body.contains("$template"),
+            "render_json_with_errors output must NOT contain '$template' marker, got: {body}"
+        );
+        assert!(
+            !body.contains("{/user_name}"),
+            "render_json_with_errors output must NOT contain unresolved template placeholder, got: {body}"
+        );
+    }
+
     // -----------------------------------------------------------------------
     // Layout integration tests
     // -----------------------------------------------------------------------
 
     use ferro_json_ui::{register_layout, Layout, LayoutContext};
 
+    fn sample_spec_with_layout(layout: &str) -> Spec {
+        Spec::builder()
+            .title("Test Page")
+            .layout(layout)
+            .element(
+                "card",
+                Element::new("Card")
+                    .prop("title", "Hello")
+                    .prop("description", "A test card"),
+            )
+            .build()
+            .expect("sample_spec_with_layout is valid")
+    }
+
     #[test]
     fn render_uses_default_layout_when_none_set() {
-        let view = sample_view(); // no .layout() call
+        let spec = sample_spec(); // no .layout() call
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
@@ -870,9 +1114,9 @@ mod tests {
 
     #[test]
     fn render_uses_named_layout() {
-        let view = sample_view().layout("app");
+        let spec = sample_spec_with_layout("app");
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
@@ -886,9 +1130,9 @@ mod tests {
 
     #[test]
     fn render_uses_auth_layout() {
-        let view = sample_view().layout("auth");
+        let spec = sample_spec_with_layout("auth");
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
@@ -904,10 +1148,11 @@ mod tests {
 
     #[test]
     fn render_with_errors_uses_layout() {
-        let view = form_view_with_inputs().layout("auth");
+        let mut spec = form_spec_with_inputs();
+        spec.layout = Some("auth".to_string());
         let errors = make_errors(&[("name", &["Name is required"])]);
         let data = serde_json::json!({});
-        let result = JsonUi::render_with_errors(&view, &data, &errors);
+        let result = JsonUi::render_with_errors(&spec, &data, &errors);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
@@ -929,9 +1174,9 @@ mod tests {
 
         register_layout("test-custom", TestLayout);
 
-        let view = sample_view().layout("test-custom");
+        let spec = sample_spec_with_layout("test-custom");
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
@@ -941,9 +1186,9 @@ mod tests {
 
     #[test]
     fn render_unknown_layout_falls_back_to_default() {
-        let view = sample_view().layout("nonexistent-layout-xyz");
+        let spec = sample_spec_with_layout("nonexistent-layout-xyz");
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         assert!(result.is_ok());
         let body = response_body(ok_response(result));
@@ -954,12 +1199,6 @@ mod tests {
         assert!(!body.contains("<nav"));
         assert!(!body.contains("<aside"));
     }
-
-    // -----------------------------------------------------------------------
-    // Plugin integration tests
-    // -----------------------------------------------------------------------
-
-    use ferro_json_ui::PluginProps;
 
     // -----------------------------------------------------------------------
     // Theme CSS injection tests (only compiled with theme feature)
@@ -980,22 +1219,12 @@ mod tests {
             response.body().to_string()
         }
 
-        fn sample_view() -> JsonUiView {
-            use ferro_json_ui::{CardProps, Component, ComponentNode};
-            JsonUiView::new()
+        fn sample_spec() -> Spec {
+            Spec::builder()
                 .title("Theme Test")
-                .component(ComponentNode {
-                    key: "card".to_string(),
-                    component: Component::Card(CardProps {
-                        title: "Hello".to_string(),
-                        description: None,
-                        children: vec![],
-                        max_width: None,
-                        footer: vec![],
-                    }),
-                    action: None,
-                    visibility: None,
-                })
+                .element("card", Element::new("Card").prop("title", "Hello"))
+                .build()
+                .expect("theme sample_spec is valid")
         }
 
         // Test: When current_theme() returns Some, theme CSS is included in rendered HTML head as a style tag
@@ -1009,10 +1238,10 @@ mod tests {
                 *guard = Some(Arc::new(custom_theme));
             }
 
-            let view = sample_view();
+            let spec = sample_spec();
             let data = serde_json::json!({});
             let body = with_theme_scope(scope, async {
-                ok_response_body(JsonUi::render(&view, &data))
+                ok_response_body(JsonUi::render(&spec, &data))
             })
             .await;
 
@@ -1030,9 +1259,9 @@ mod tests {
         #[test]
         fn no_theme_css_injected_when_no_middleware() {
             // No theme scope — current_theme() returns None
-            let view = sample_view();
+            let spec = sample_spec();
             let data = serde_json::json!({});
-            let result = JsonUi::render(&view, &data);
+            let result = JsonUi::render(&spec, &data);
             let body = ok_response_body(result);
 
             // Should still render valid HTML
@@ -1052,11 +1281,11 @@ mod tests {
                 *guard = Some(Arc::new(custom_theme));
             }
 
-            let view = sample_view();
+            let spec = sample_spec();
             let data = serde_json::json!({});
             let config = JsonUiConfig::new().tailwind_cdn(true);
             let body = with_theme_scope(scope, async {
-                ok_response_body(JsonUi::render_with_config(&view, &data, &config))
+                ok_response_body(JsonUi::render_with_config(&spec, &data, &config))
             })
             .await;
 
@@ -1080,12 +1309,12 @@ mod tests {
                 *guard = Some(Arc::new(custom_theme));
             }
 
-            let view = sample_view();
+            let spec = sample_spec();
             let data = serde_json::json!({});
             let config =
                 JsonUiConfig::new().custom_head(r#"<link rel="stylesheet" href="/my.css">"#);
             let body = with_theme_scope(scope, async {
-                ok_response_body(JsonUi::render_with_config(&view, &data, &config))
+                ok_response_body(JsonUi::render_with_config(&spec, &data, &config))
             })
             .await;
 
@@ -1101,26 +1330,34 @@ mod tests {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Plugin integration tests
+    // -----------------------------------------------------------------------
+
+    // Plugin integration: MapPlugin is auto-registered in the global plugin
+    // registry. The v2 walker dispatches unknown type_names ("Map") through
+    // the plugin registry and collects CSS/JS assets for head/body injection.
     #[test]
     fn test_plugin_component_renders_in_full_page() {
         // MapPlugin is auto-registered via the global registry OnceLock init.
-        let view = JsonUiView::new()
+        let spec = Spec::builder()
             .title("Map Page")
-            .component(ComponentNode {
-                key: "map".to_string(),
-                component: Component::Plugin(PluginProps {
-                    plugin_type: "Map".to_string(),
-                    props: serde_json::json!({
-                        "center": [51.505, -0.09],
-                        "zoom": 13,
-                        "markers": [{"lat": 51.5, "lng": -0.09, "popup": "London"}]
-                    }),
-                }),
-                action: None,
-                visibility: None,
-            });
+            .element(
+                "map",
+                Element::new("Map")
+                    .prop("center", serde_json::json!([51.505, -0.09]))
+                    .prop("zoom", 13)
+                    .prop(
+                        "markers",
+                        serde_json::json!([
+                            {"lat": 51.5, "lng": -0.09, "popup": "London"}
+                        ]),
+                    ),
+            )
+            .build()
+            .expect("map spec is valid");
         let data = serde_json::json!({});
-        let result = JsonUi::render(&view, &data);
+        let result = JsonUi::render(&spec, &data);
 
         assert!(result.is_ok(), "render should succeed");
         let body = response_body(ok_response(result));
@@ -1144,6 +1381,93 @@ mod tests {
         assert!(
             body.contains("DOMContentLoaded"),
             "should contain init script"
+        );
+    }
+
+    /// Assets deduplicated — one `leaflet.css` link even when the spec
+    /// references the Map plugin from multiple elements (CONTEXT D-18).
+    #[test]
+    fn test_plugin_assets_deduplicated_across_elements() {
+        let spec = Spec::builder()
+            .title("Two Maps")
+            .element("root", Element::new("Grid").child("map-a").child("map-b"))
+            .element(
+                "map-a",
+                Element::new("Map")
+                    .prop("center", serde_json::json!([51.505, -0.09]))
+                    .prop("zoom", 13),
+            )
+            .element(
+                "map-b",
+                Element::new("Map")
+                    .prop("center", serde_json::json!([40.7128, -74.006]))
+                    .prop("zoom", 12),
+            )
+            .build()
+            .expect("two-map spec is valid");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&spec, &data);
+
+        assert!(result.is_ok(), "render should succeed");
+        let body = response_body(ok_response(result));
+
+        let css_link_count = body.matches("leaflet.css").count();
+        assert_eq!(
+            css_link_count, 1,
+            "expected exactly 1 leaflet.css occurrence, found {css_link_count}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Title binding resolution tests (D-12)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn render_title_literal() {
+        let spec = Spec::builder()
+            .title("Hello")
+            .element("root", Element::new("Text").prop("content", "body"))
+            .build()
+            .expect("spec is valid");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&spec, &data);
+        let body = html_body(ok_response(result));
+        assert!(
+            body.contains("<title>Hello</title>"),
+            "literal title must appear verbatim; got: {body}"
+        );
+    }
+
+    #[test]
+    fn render_title_binding_resolves() {
+        let spec = Spec::builder()
+            .title_binding("/page_title")
+            .data(serde_json::json!({"page_title": "Dynamic"}))
+            .element("root", Element::new("Text").prop("content", "body"))
+            .build()
+            .expect("spec is valid");
+        let data = serde_json::json!({"page_title": "Dynamic"});
+        let result = JsonUi::render(&spec, &data);
+        let body = html_body(ok_response(result));
+        assert!(
+            body.contains("<title>Dynamic</title>"),
+            "binding title must resolve to data value; got: {body}"
+        );
+    }
+
+    #[test]
+    fn render_title_binding_missing_path_falls_back() {
+        let spec = Spec::builder()
+            .title_binding("/missing")
+            .element("root", Element::new("Text").prop("content", "body"))
+            .build()
+            .expect("spec is valid");
+        let data = serde_json::json!({});
+        let result = JsonUi::render(&spec, &data);
+        let body = html_body(ok_response(result));
+        assert!(
+            body.contains("<title>Ferro</title>"),
+            "missing binding path must fall back to 'Ferro'; got: {body}"
         );
     }
 }

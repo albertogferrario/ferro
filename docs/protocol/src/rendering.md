@@ -133,4 +133,4 @@ Fields rendered as table columns MAY include a `format` hint:
 
 The protocol does not prescribe a specific JSON output schema for renderers. Each renderer implementation defines its own component vocabulary and envelope structure.
 
-The reference `JsonUiRenderer` produces output conforming to the `ferro-json-ui/v1` schema, with a top-level envelope containing `schema`, `version`, `title`, and `body` fields. Other renderers (e.g., A2UI, HTML) MAY produce entirely different output structures while remaining conformant, provided they implement the `Renderer` trait.
+The reference `JsonUiRenderer` produces output conforming to the `ferro-json-ui/v2` schema: a top-level `Spec` with a `$schema` tag, a `root` element ID, a flat `elements` map keyed by ID, and optional `title`, `layout`, and `data` fields. Children inside `elements` are referenced by ID rather than by nesting. Other renderers (e.g., A2UI, HTML) MAY produce entirely different output structures while remaining conformant, provided they implement the `Renderer` trait.

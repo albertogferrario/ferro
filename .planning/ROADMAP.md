@@ -265,13 +265,13 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 ## Phases
 
 - [ ] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, clean break from v1
-- [ ] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
-- [ ] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export
-- [ ] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings
-- [ ] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time
+- [x] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
+- [x] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export (completed 2026-04-18)
+- [x] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings (completed 2026-04-18)
+- [x] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time (completed 2026-04-19)
 - [ ] **Phase 119: Page Loader** — Framework loads JSON spec files, merges handler data, integrates with layouts
-- [ ] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format with JSON Schema as structured output constraint
-- [ ] **Phase 121: Documentation & Field Test** — Update all JSON-UI docs, convert one gestiscilo page as proof of concept
+- [x] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format with JSON Schema as structured output constraint (completed 2026-04-21)
+- [x] **Phase 121: Documentation & Field Test** — Update all JSON-UI docs, convert one gestiscilo page as proof of concept (completed 2026-05-15)
 
 #### Phase Details
 
@@ -292,6 +292,16 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
   6. All Component variants and Props structs implement `JsonSchema` (manual impls where derive is blocked by custom ser/de or recursion)
   7. Spec nesting depth is validated: reject specs deeper than 3 levels
 
+**Plans:** 5 plans
+
+Plans:
+- [x] 115-01-PLAN.md — Create spec.rs (Spec, Element, builders, SpecError, from_json, validation) + tests/fixtures + round_trip.rs + reject.rs — additive re-exports
+- [x] 115-02-PLAN.md — Delete v1 types (JsonUiView, Component, ComponentNode, PluginProps, view.rs) and rewrite render.rs / resolve.rs / projection/mod.rs / lib.rs for v2
+- [x] 115-03-PLAN.md — Migrate framework/src/json_ui/mod.rs (JsonUi::render(&Spec, ...)) + framework/src/lib.rs re-exports + port ~30 inline tests
+- [x] 115-04-PLAN.md — Migrate ferro-mcp (8 files) + ferro-cli templates (3 files) to v2 syntax — workspace-wide build green
+- [x] 115-05-PLAN.md — Full workspace verification: fmt + clippy + test all green; 7 ROADMAP success criteria confirmed
+
+
 ### Phase 116: Flat Element Renderer
 **Goal**: New render pipeline that walks the flat element map by ID lookups, replacing the recursive tree walker
 **Depends on**: Phase 115
@@ -306,6 +316,7 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 
 ### Phase 117: Catalog & JSON Schema
 **Goal**: Replace `COMPONENT_CATALOG` const string with a machine-readable `Catalog` backed by JSON Schema. Each component's props schema is derived from `schemars::JsonSchema` impls (Phase 115). The catalog validates specs, generates LLM prompts, and exports standalone schema files.
+**Progress**: Plan 02/07 complete — BUILTIN_SPECS 39 entries, Catalog::build() discovery impl, sanitize_schema(), 12 unit tests passing
 **Depends on**: Phase 116
 **Requirements**: CAT-01, CAT-02, CAT-03, CAT-04, SCHEMA-01, SCHEMA-02, SCHEMA-03
 **Caveats** (from domain research):
@@ -334,6 +345,13 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
   4. Output validates against `catalog.json_schema()` — projections and catalog are consistent by construction (two-pass: generate then validate)
   5. `render/json_ui.rs` (v1 JsonUiRenderer) and `render/field_map.rs` are replaced by the new schema-driven pipeline
 
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 117.1-01-PLAN.md — Foundational types: ProjectionError enum + MEANING_COMPONENT_TABLE (lookup_meaning + typed Props helpers + drift guard) + intent_layout (default_template + pick_intent_template)
+- [x] 117.1-02-PLAN.md — Spec::from_service_def orchestrator in builder.rs: slot-based display pipeline, Input-mode Form collapse (D-11), system-field filter (D-10), template override (D-05), Catalog::validate two-pass (D-06)
+- [x] 117.1-03-PLAN.md — Clean break: delete field_map.rs + relationship_map.rs, slim projection/mod.rs, rewire JsonUiRenderer::render as one-line delegate, add ProjectionError to lib.rs re-exports, full workspace quality gate
+
 ### Phase 118: Server-Side Expressions
 **Goal**: Add `$data` and `$template` expression types that resolve against handler data at render time. Hard cap: ONLY these two expression types. No `$if`, `$for`, `$state`, `$bind`.
 **Depends on**: Phase 116
@@ -349,6 +367,12 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
   5. Expressions are evaluated before component rendering, so renderers receive resolved concrete values
   6. No other expression types exist — only `$data` and `$template`. This is a hard architectural constraint, not a backlog item.
 
+**Plans:** 2/2 plans complete
+
+Plans:
+- [x] 118-01-PLAN.md — Create expression.rs resolver module (resolve_expressions, $data / $template helpers, 28 unit tests) + register in ferro-json-ui/src/lib.rs
+- [x] 118-02-PLAN.md — Wire resolve_expressions into framework JsonUi::resolve + JsonUi::resolve_with_errors + 4 end-to-end integration tests covering every public render path
+
 ### Phase 119: Page Loader
 **Goal**: Framework-level support for loading JSON spec files and merging with handler-provided data
 **Depends on**: Phase 118
@@ -360,6 +384,13 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
   4. Layout data (sidebar, header, sse_url) injects automatically for dashboard-layout specs
   5. Loaded specs are cached (compiled once, reused across requests)
   6. Dev mode: file watcher reloads specs on change (hot reload without recompilation)
+
+**Plans:** 0/3 plans
+
+Plans:
+- [x] 119-01-PLAN.md — Add Spec::merge_data consuming-builder method (shallow top-level merge, Null→Object init, non-Object ignored)
+- [x] 119-02-PLAN.md — Create ferro-json-ui/src/loader.rs (LoadError enum, global spec cache, load_cached with dev-mode mtime invalidation) + lib.rs re-exports
+- [ ] 119-03-PLAN.md — Add JsonUi::render_file to framework (load_cached + merge_data + delegate to render_with_config; dev/prod-gated 500 bodies)
 
 ### Phase 120: CLI & MCP Updates
 **Goal**: Update all AI-facing tools to generate v2 specs using two-tier AI strategy (concise prompt + per-component structured output)
@@ -405,22 +436,23 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 115. Spec v2 Data Structures | 0/? | Not started | - |
-| 116. Flat Element Renderer | 0/? | Not started | - |
-| 117. Catalog & JSON Schema | 0/? | Not started | - |
-| 117.1. Schema-Driven Projections | 0/? | Not started | - |
-| 118. Server-Side Expressions | 0/? | Not started | - |
-| 119. Page Loader | 0/? | Not started | - |
-| 120. CLI & MCP Updates | 0/5 | Planned | - |
-| 121. Documentation & Field Test | 0/6 | Planned | - |
+| 115. Spec v2 Data Structures | 5/5 | Complete   | 2026-04-18 |
+| 116. Flat Element Renderer | 6/6 | Complete   | 2026-04-18 |
+| 117. Catalog & JSON Schema | 7/7 | Complete    | 2026-04-18 |
+| 117.1. Schema-Driven Projections | 3/3 | Complete    | 2026-04-18 |
+| 118. Server-Side Expressions | 2/2 | Complete    | 2026-04-19 |
+| 119. Page Loader | 2/3 | In Progress|  |
+| 120. CLI & MCP Updates | 5/5 | Complete    | 2026-04-21 |
+| 121. Documentation & Field Test | 6/6 | Complete    | 2026-05-15 |
 
 **Plans:**
-- [ ] 121-01-PLAN.md — Add JsonUi::render_file to framework (Wave 1, FIELD-01 blocker)
-- [ ] 121-02-PLAN.md — Rewrite getting-started.md, actions.md, features/json-ui.md (Wave 2, DOC-01)
-- [ ] 121-03-PLAN.md — Rewrite components.md and data-binding.md (Wave 2, DOC-01)
-- [ ] 121-04-PLAN.md — Rewrite layouts.md and plugins.md (Wave 2, DOC-01)
-- [ ] 121-05-PLAN.md — Create expressions.md, json-schema.md, update SUMMARY.md (Wave 3, DOC-02)
-- [ ] 121-06-PLAN.md — Field test: pagamenti.json + handler + route (Wave 4, FIELD-01)
+6/6 plans complete
+- [x] 121-01-PLAN.md — Add JsonUi::render_file to framework (Wave 1, FIELD-01 blocker)
+- [x] 121-02-PLAN.md — Rewrite getting-started.md, actions.md, features/json-ui.md (Wave 2, DOC-01)
+- [x] 121-03-PLAN.md — Rewrite components.md and data-binding.md (Wave 2, DOC-01)
+- [x] 121-04-PLAN.md — Rewrite layouts.md and plugins.md (Wave 2, DOC-01)
+- [x] 121-05-PLAN.md — Create expressions.md, json-schema.md, update SUMMARY.md (Wave 3, DOC-02)
+- [x] 121-06-PLAN.md — Field test: pagamenti.json + handler + route (Wave 4, FIELD-01)
 
 **v12.0 scope is held firm.** No expansion beyond the 8 phases above. The projection / intent abstraction already exists in v9.0 ferro-projections; v12.0 refines the rendering target.
 
@@ -1015,7 +1047,7 @@ Operating principles applied across every phase. See [`.planning/VISION.md`](VIS
 **Goal:** Rewrite ferro-cli `docker_init`/`do_init` and templates so generated `Dockerfile` + `.do/app.yaml` work for real Ferro apps with zero hand-patching. Conditional frontend stage, multi-binary support, runtime extras hook, themes/lang/public/migrations detection, GITHUB_TOKEN ARG, rust-toolchain.toml pickup, workspace-aware cargo-chef recipe. Path→git ferro dep rewrite via generated `scripts/rewrite-ferro-deps.sh` invoked from Dockerfile + CLI pre-flight verifying ferro git ref is pushed/reachable. `app.yaml` gains `--region`, envs block from `.env.example` with auto SECRET classification, optional `databases:` block, `workers:` for non-server bins. CLI commands gain `--force`, walk-up Cargo.toml lookup, owner/repo validation, shared `project::package_name()` helper. `.dockerignore` adds `database.db`, `*.sqlite*`, `.planning/`, `storage/`, `data/`. Validation: regenerating in gestiscilo and mkmenu produces working builds with zero hand edits. See `phases/122-deploy-scaffold-core-rewrite/SCOPE.md`.
 **Requirements**: TBD
 **Depends on:** Phase 121
-**Plans:** 4/4 plans complete
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] TBD (run /gsd:plan-phase 122 to break down) (completed 2026-04-07)
@@ -1245,6 +1277,17 @@ This is the time-to-working-projection bottleneck. An agent should be able to go
 Plans:
 - [x] 135-01-PLAN.md — ModelMetadata, DataType::from_column_type(), ServiceDef::from_model() in ferro-projections
 - [x] 135-02-PLAN.md — generate_projection MCP tool in ferro-mcp
+
+### Phase 136: implement workflow for executing a full roadmap in auto with gsd
+
+**Goal:** GitHub Actions workflow that drives an entire milestone through the GSD pipeline — one fresh claude CLI invocation per phase, with failure handling via GitHub issues.
+**Status:** Workflow committed, awaiting live test before marking complete.
+**Requirements**: TBD
+**Depends on:** Phase 135
+**Plans:** 1 plan
+
+Plans:
+- [x] 136-01-PLAN.md — Create gsd-roadmap.yml workflow: phase loop, claude CLI per phase, failure issues
 
 ### Phase 141: protocol-uplift
 
@@ -1508,6 +1551,128 @@ Plans:
 Plans:
 - [x] 158-01-PLAN.md — Add multer dep, create http/multipart.rs (UploadedFile, MultipartForm, parser, validators, env helpers), wire into http/mod.rs + lib.rs
 - [x] 158-02-PLAN.md — Add Request::multipart() / Request::file() methods + #[cfg(test)] mod tests covering D-03/04/07/08/12/13/14/18
+### Phase 159: v12.0 end-to-end browser verification and docs build check
+
+**Goal:** Confirm the v12.0/json-ui-v2 branch delivers what it promises before touching the v1 API. Start the ferro sample app, hit `/pagamenti` via Chrome MCP and verify `JsonUi::render_file` produces a correctly rendered HTML page end-to-end. Then run `mdbook build docs/` and confirm the rewritten JSON-UI docs build with no broken links. Both checks must pass before v1 removal begins.
+**Requirements**: Chrome MCP browser test of /pagamenti passes; `mdbook build docs/` exits cleanly with no broken links.
+**Depends on:** Phase 121
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 159-01-PLAN.md — Run mdbook build docs/ and produce DOCS-CHECK.md verdict (docs half of the phase gate)
+- [x] 159-02-PLAN.md — Chrome MCP test of /pagamenti at http://localhost:8080, capture screenshot, produce BROWSER-CHECK.md verdict (browser half of the phase gate)
+- [x] 159-03-PLAN.md — Gap closure: fix render_file path bug in app/src/controllers/pagamenti.rs (line 34), re-run Chrome MCP test, overwrite BROWSER-CHECK.md with PASS verdict (closes Phase 159 gate D-11) (completed 2026-05-15)
+
+### Phase 160: Remove v1 JSON-UI API from ferro-json-ui — delete view.rs, Component enum, ComponentNode and all v1 builder surface
+
+**Goal:** Permanently delete all v1 API surface from ferro-json-ui: `view.rs` (`JsonUiView`, `SCHEMA_VERSION = "ferro-json-ui/v1"`), `Component` enum and all typed `*Props` structs that are not reused by v2 (`ComponentNode`, builder convenience methods on `JsonUiView`). No `#[deprecated]` attributes, no feature flags, no compat shims. The crate public surface after this phase exposes only `Spec`, `Element`, `SpecBuilder`, `ElementBuilder` and the expression/render pipeline. Gate: all three repos (`ferro`, `ferro-code`, `gestiscilo`) compile and their test suites pass after deletion. **Depends on gestiscilo Phase 143 being complete** — do not start until gestiscilo no longer imports any v1 type.
+**Requirements**: `cargo build --all-features` green; `cargo test --all-features` green; `cargo clippy --all --all-targets -- -D warnings` clean; no reference to `JsonUiView`, `ComponentNode`, `Component::` remains in any crate.
+**Depends on:** Phase 159, Phase 164
+**Plans:** 10/10 plans complete
+
+Plans:
+- [x] 160-01-PLAN.md — Rewrite v1-framing doc comments in ferro-json-ui/src/render/* + projection/builder.rs + layout.rs (D-01, D-02, D-03, Pattern-1, Pattern-8)
+- [x] 160-02-PLAN.md — Delete migration_v1_to_v2_templates fn, registration, and integration test in ferro-mcp/src/tools/code_templates.rs (D-04, Pattern-3)
+- [x] 160-03-PLAN.md — Rewrite scan_json_ui_specs to count v2 JSON spec files + add unit tests (D-05, Pattern-2)
+- [x] 160-04-PLAN.md — Rename json_ui_inspect test fixture to neutral names (D-06, Pattern-4)
+- [x] 160-05-PLAN.md — Rewrite ferro-json-ui/README.md Usage block to current v2 API — Phase 161 publish blocker (D-08, Pattern-6)
+- [x] 160-06-PLAN.md — Rewrite docs/protocol/src/{terminology,architecture,rendering}.md JsonUiRenderer paragraphs to v2 Spec shape (D-07, Pattern-5)
+- [x] 160-07-PLAN.md — Sync docs/src/features/projections.md minimal example to ferro-json-ui/src/projection/mod.rs:79-97 rustdoc (D-07, Pattern-5)
+- [x] 160-08-PLAN.md — Rewrite docs/src/reference/cli.md make:json-view example to current CLI output (JSON spec + handler) (D-08, Pattern-7)
+- [x] 160-09-PLAN.md — D-08 broad narrative-framing sweep + AUDIT-D08.md classification report (D-08)
+- [x] 160-10-PLAN.md — Final verification gate: D-10 grep gates + ferro fmt/clippy/test + gestiscilo cross-repo + ferro-code descope (D-09, D-10, D-11)
+
+### Phase 161: Merge v12.0/json-ui-v2 to master — full test pass, clippy clean, merge PR
+
+**Goal:** Final integration step closing the v12.0 milestone. Run `cargo fmt --all -- --check && cargo clippy --all --all-targets -- -D warnings && cargo test --all-features` on the v12.0/json-ui-v2 branch. Fix any remaining issues. Create the merge PR from v12.0/json-ui-v2 → master, confirm CI passes, merge.
+**Requirements**: All CI checks green; master HEAD contains Phase 115–121 and 159–160 commits; v12.0/json-ui-v2 branch archived.
+**Depends on:** Phase 160
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 161 to break down)
+
+### Phase 162: JSON-UI improvements batch 1 — components, expressions, and spec ergonomics discovered during gestiscilo auth/dashboard migration
+
+**Goal:** Read the FRICTION.md files produced by gestiscilo Phases 138 and 139 (auth/account/onboarding/pages and dashboard/statistiche/settings). Triage every friction point: missing component, awkward prop shape, expression gap, spec authoring pain, or render bug. Implement the highest-value fixes — new or improved components, expression enhancements, catalog accuracy fixes, or `render_file` ergonomics. Publish the results so gestiscilo Phases 140+ can benefit from them. Each shipped fix must have a test. Dropped items are documented with rationale in a DEFERRED.md.
+**Requirements**: All friction items triaged; shipped fixes have tests; ferro-json-ui builds clean; catalog and MCP tool descriptions updated to reflect new surface; gestiscilo can pick up the new ferro version for Phase 140.
+**Depends on:** gestiscilo Phase 139
+**Plans:** 10/11 plans complete
+
+Plans:
+- [x] 162-01-PLAN.md — Add CheckboxList first-class component (D-01/D-02)
+- [x] 162-02-PLAN.md — Generalize DataTable row_actions URL placeholder interpolation (D-03/D-04)
+- [x] 162-03-PLAN.md — Re-add SwitchProps.compact and ImageProps.inline_svg (D-16/D-17)
+- [x] 162-04-PLAN.md — Re-implement RichTextEditor as v2 plugin (D-18)
+- [x] 162-05-PLAN.md — Triple-lockstep catalog count reconciliation (D-21)
+- [x] 162-06-PLAN.md — Remove AuthLayout card wrapper (D-05/D-06)
+- [x] 162-07-PLAN.md — Spec footer-ID validation: error + duplicate warning (D-07/D-08)
+- [x] 162-08-PLAN.md — strum::AsRefStr derive on six variant enums (D-11/D-12)
+- [x] 162-09-PLAN.md — json_ui_verify_action MCP tool (D-09/D-10)
+- [x] 162-10-PLAN.md — migration-v1-to-v2 docs + plugins guide + code_templates (D-13-D-15, D-19, D-20, D-22)
+- [ ] 162-11-PLAN.md — Phase verification gate: full suite + CHANGELOG + human audit (D-23-D-25)
+
+
+### Phase 163: JSON-UI improvements batch 2 — iteration directives and spec construction ergonomics
+
+**Goal:** Ship the iteration-and-ergonomics slice of gestiscilo Phase 138 FRICTION.md. Adds two element-level directives (`$each` for homogeneous list iteration, `$if` for conditional emission), a validator gate for malformed directives, an ergonomic nested-tree `SpecBuilder` layer for truly heterogeneous Rust-side construction, an AST-based `ferro json-ui:migrate-v1` codemod, and MCP catalog reflection. Closes 3 of 4 cassa heterogeneous-iteration friction sites; the 4th (orders detail conditional actions) is covered by `$if`.
+**Requirements**: 13 locked CONTEXT decisions (D-01 through D-13) implemented with tests; ferro-json-ui builds clean; ferro-cli codemod has fixture-driven integration tests; docs/src/json-ui/spec-construction.md ships the four-quadrant decision rubric.
+**Depends on:** Phase 162, gestiscilo Phase 138
+**Plans:** 10/10 plans complete
+
+Plans:
+- [x] 163-01-PLAN.md — Add `$each` (EachDirective struct + Element.each field + serde tests)
+- [x] 163-02-PLAN.md — Add `$if` (Element.if_ field reusing Visibility enum + serde tests)
+- [x] 163-03-PLAN.md — `expand_directives` resolve pass + JsonUi::resolve wiring + 12 unit tests
+- [x] 163-04-PLAN.md — Validator gates (5 SpecError variants + validate_directives + 11 unit tests)
+- [x] 163-05-PLAN.md — SpecBuilder ergonomic layer (NestedElement + element_nested + 7 tests)
+- [x] 163-06-PLAN.md — MCP `json_ui_catalog` reflects directives (DirectiveInfo + 3 tests)
+- [x] 163-07-PLAN.md — `ferro json-ui:migrate-v1` AST codemod (subcommand + fixtures + 5 integration tests)
+- [x] 163-08-PLAN.md — End-to-end directive integration tests (4 tests against full pipeline)
+- [x] 163-09-PLAN.md — Decision rubric docs (spec-construction.md + expressions.md $each/$if sections)
+- [x] 163-10-PLAN.md — CHANGELOG entry under Unreleased (no version bump per Phase 161 release cadence)
+
+
+### Phase 163.1: Codemod multi-root handler fix (G-163-01) — reject as Unsupported with TODO marker (INSERTED)
+
+**Goal:** Close the WR-01 finding from 163-REVIEW.md: the `ferro json-ui:migrate-v1` codemod silently orphans elements when a v1 handler has multiple top-level nodes (root set to first node only, remaining elements unreachable from root). Apply Option B from the code review — reject multi-root handlers as Unsupported, emit the existing `// TODO: codemod could not auto-translate` marker on the controller, do not produce a JSON spec file. Aligns with D-11 from Phase 163 CONTEXT ("codemod is best-effort; cases it cannot translate get a TODO marker, not a silent skip").
+**Requirements**: Multi-root handler detection runs before `Spec::builder()` construction; affected handler gets the TODO marker; existing `out_auth_login_form.json` fixture deleted (or replaced with a single-root variant); integration test `codemod_one_handler_emits_spec_and_rewrites_controller` rewritten to assert TODO marker for multi-root input AND clean JSON for a single-root input; ferro-cli tests pass clean; clippy + fmt clean.
+**Depends on:** Phase 163
+**Plans:** 1/1 plans complete
+
+Plans:
+- [x] 163.1-01-PLAN.md — Add multi-root guard in try_migrate_handler, delete invalid out_auth fixtures, create single-root fixture trio, rewrite integration test to cover both branches, fmt+clippy+ferro-cli tests clean
+
+
+### Phase 164: JSON-UI improvements batch 3 — V7-RUNTIME frictions (F1–F10), v1-deletion-readiness audit, COMPLETED.md
+
+**Goal:** Absorb two friction sources into the closing batch of the v12.0 loop. (a) **V7-RUNTIME-FRICTION.md** (gestiscilo, 2026-05-17) — ten runtime frictions discovered after the patched ferro at 162/163.1 went active; F1/F2 already fixed gestiscilo-side, F3/F4/F7/F8/F9/F10 require ferro changes (decisions D-12..D-18 in 164-CONTEXT), F5/F6 are gestiscilo-side fixes with optional ferro pre-empt (D-19). (b) **Residual Phase 138 FRICTION.md items** not absorbed by Phase 162 or 163, plus the v1-deletion-readiness audit gating Phase 160. Produce COMPLETED.md summarising all improvements shipped across Phases 162-164 and any intentional gaps retained for future milestones.
+**Requirements**: V7-RUNTIME F3/F4/F7/F8/F9/F10 land as ferro fixes with tests; F5 error message improved; F2 codemod uppercase-methods fix shipped; v1 deletion audit produces zero `BLOCKER` rows; all friction items triaged; ferro-json-ui builds clean; COMPLETED.md written; ferro Phase 160 (v1 deletion) is unblocked.
+**Depends on:** Phase 163.1, gestiscilo V7-RUNTIME-FRICTION.md (consumed)
+**Plans:** 12/12 plans complete
+
+Plans:
+- [x] 164-01-PLAN.md — D-14: Raise MAX_NESTING_DEPTH 3→5 + tests + doc (spec.rs)
+- [x] 164-02-PLAN.md — D-19/F2: Codemod uppercase HTTP methods regression test (ferro-cli)
+- [x] 164-03-PLAN.md — D-15 + D-17a: Image/DescList data_path + RawHtml component + catalog count bumps (component.rs, render/atoms, catalog, ferro-mcp)
+- [x] 164-04-PLAN.md — D-12: Spec.title binding (TitleBinding/DataRef enums + framework title resolution)
+- [x] 164-05-PLAN.md — D-18: CardVariant enum (Bordered/Elevated) + render_card branch
+- [x] 164-06-PLAN.md — D-13a: KanbanBoard.data_path + render_kanban_board branch
+- [x] 164-07-PLAN.md — D-16: Two-stage validation pipeline (structural at load, catalog at render after expand_directives)
+- [x] 164-08-PLAN.md — D-19/F5 + D-19/F6: Visibility custom Deserialize (shape-naming error) + PageHeader.actions lax deserialize_with
+- [x] 164-09-PLAN.md — D-04 + D-05: MCP json_ui_validate_spec tool + directive validator audit
+- [x] 164-10-PLAN.md — D-08 + D-09 + D-13b: Documentation pass + v1→v2 cheat sheet + $each-for-kanban example
+- [x] 164-11-PLAN.md — D-01..D-03 + D-06..D-07: V1-DELETION-AUDIT.md + Plugin paper audit (CHECKPOINT)
+- [x] 164-12-PLAN.md — D-10..D-11: COMPLETED.md (5 required sections; unblocks Phase 160)
+
+**Wave structure (7 waves):**
+- Wave 1: 01, 02, 03 (independent — no file conflicts)
+- Wave 2: 04 (spec.rs + framework/json_ui/mod.rs + lib.rs; sequential after 01+03), 05 (component.rs + containers.rs + lib.rs; sequential after 03)
+- Wave 3: 06 (containers.rs sequential after 05), 07 (framework/json_ui/mod.rs sequential after 04)
+- Wave 4: 08 (component.rs sequential after 05+06), 09 (depends on 07 for two-stage output)
+- Wave 5: 10 (docs — depends on all code waves 01-09)
+- Wave 6: 11 (audit — depends on all prior including docs; ends with user checkpoint)
+- Wave 7: 12 (COMPLETED.md — depends on 11's audit output)
 
 ---
 
@@ -1553,42 +1718,42 @@ mplete.**
 
 ---
 
-### 📋 v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding (Phases 159-167, planned 2026-05-15)
+### 📋 v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding (Phases 165-173, planned 2026-05-15)
 
 **Milestone Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and build AI-assisted scaffolding on top of it. The killer feature: `ferro ai:make <description>` uses live `ferro-mcp` introspection (called in-process, not via subprocess) to generate code that fits the actual project rather than a generic template.
 
 **Requirements:** AISDK-01..06, AISSE-01..02, AICLI-01..05 (13 requirements, 1 deferred)
 
-**Relationship to v12.0:** v12.0 (Phases 115-121) runs first. AICLI-04 (`make:json-view` v2) is gated on v12.0 shipping; it is deferred to Phase 167 and blocked until then.
+**Relationship to v12.0:** v12.0 (Phases 115-121) runs first. AICLI-04 (`make:json-view` v2) is gated on v12.0 shipping; it is deferred to Phase 173 and blocked until then.
 
 **New dependencies:**
 - `reqwest-eventsource 0.6` — parse incoming SSE from Anthropic/OpenAI/Groq/Ollama (new to workspace)
 - `pgvector 0.4` — optional feature-gate on ferro-ai for vector storage (new to workspace)
 
 **Build order:**
-- Wave 1 (ferro-ai foundation): Phases 159, 160, 161 — ferro-ai leaf crate first; everything builds on `LlmClient` trait
-- Wave 1b (parallel): Phase 162 — SSE primitives in framework have no ferro-ai dependency
-- Wave 2: Phase 163 — StreamText depends on SSE URL convention from Phase 162
-- Wave 3: Phase 164 — ferro-cli migration, validates SDK against existing make:json-view command
-- Wave 4: Phase 165 — AI CLI commands, the killer feature; uses ferro-mcp in-process
-- Wave 5: Phase 166 — MCP tool wrappers, thin layer on top of CLI logic
-- Deferred: Phase 167 — gated on v12.0 shipping
+- Wave 1 (ferro-ai foundation): Phases 165, 166, 167 — ferro-ai leaf crate first; everything builds on `LlmClient` trait
+- Wave 1b (parallel): Phase 168 — SSE primitives in framework have no ferro-ai dependency
+- Wave 2: Phase 169 — StreamText depends on SSE URL convention from Phase 168
+- Wave 3: Phase 170 — ferro-cli migration, validates SDK against existing make:json-view command
+- Wave 4: Phase 171 — AI CLI commands, the killer feature; uses ferro-mcp in-process
+- Wave 5: Phase 172 — MCP tool wrappers, thin layer on top of CLI logic
+- Deferred: Phase 173 — gated on v12.0 shipping
 
 ## Phases
 
-- [ ] **Phase 159: LlmClient Trait & Provider Implementations** — `LlmClient` trait + Anthropic/OpenAI/Ollama providers + `AiConfig::from_env()` + `ClassifierConfig` default-model fix
-- [ ] **Phase 160: Structured Outputs, Tool Calling & Schema Normalizer** — `ferro_ai::complete::<T>()` + schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ToolRegistry` with `max_iterations` hard cap
-- [ ] **Phase 161: Embeddings & pgvector** — `embed()` + `cosine_similarity()` pure Rust helpers + optional `pgvector` feature-gated module
-- [ ] **Phase 162: Framework SSE Primitives** — `SseEvent` + `SseStream` + `HttpResponse::sse()` in framework crate; SSE routes structurally excluded from CompressionLayer
-- [ ] **Phase 163: StreamText Component** — `StreamText` ferro-json-ui component rendering a token stream from an SSE endpoint URL
-- [ ] **Phase 164: ferro-cli Migration** — delete `ferro-cli/src/ai.rs` blocking client; wire all LLM calls through `ferro_ai::complete::<T>()`
-- [ ] **Phase 165: ferro ai:make & ferro ai:explain CLI Commands** — killer-feature commands using live ferro-mcp introspection in-process; `ScaffoldPlan` typed struct; selective context loading
-- [ ] **Phase 166: MCP Tool Wrappers** — `ai_scaffold` + `ai_explain` tools in ferro-mcp wrapping CLI command logic for in-process agent consumption
-- [ ] **Phase 167: make:json-view v2 (DEFERRED — gated on v12.0)** — `ferro make:json-view` upgraded to structured outputs + ServiceDef introspection; blocked until v12.0 JSON-UI v2 ships
+- [ ] **Phase 165: LlmClient Trait & Provider Implementations** — `LlmClient` trait + Anthropic/OpenAI/Ollama providers + `AiConfig::from_env()` + `ClassifierConfig` default-model fix
+- [ ] **Phase 166: Structured Outputs, Tool Calling & Schema Normalizer** — `ferro_ai::complete::<T>()` + schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ToolRegistry` with `max_iterations` hard cap
+- [ ] **Phase 167: Embeddings & pgvector** — `embed()` + `cosine_similarity()` pure Rust helpers + optional `pgvector` feature-gated module
+- [ ] **Phase 168: Framework SSE Primitives** — `SseEvent` + `SseStream` + `HttpResponse::sse()` in framework crate; SSE routes structurally excluded from CompressionLayer
+- [ ] **Phase 169: StreamText Component** — `StreamText` ferro-json-ui component rendering a token stream from an SSE endpoint URL
+- [ ] **Phase 170: ferro-cli Migration** — delete `ferro-cli/src/ai.rs` blocking client; wire all LLM calls through `ferro_ai::complete::<T>()`
+- [ ] **Phase 171: ferro ai:make & ferro ai:explain CLI Commands** — killer-feature commands using live ferro-mcp introspection in-process; `ScaffoldPlan` typed struct; selective context loading
+- [ ] **Phase 172: MCP Tool Wrappers** — `ai_scaffold` + `ai_explain` tools in ferro-mcp wrapping CLI command logic for in-process agent consumption
+- [ ] **Phase 173: make:json-view v2 (DEFERRED — gated on v12.0)** — `ferro make:json-view` upgraded to structured outputs + ServiceDef introspection; blocked until v12.0 JSON-UI v2 ships
 
 #### Phase Details
 
-### Phase 159: LlmClient Trait & Provider Implementations
+### Phase 165: LlmClient Trait & Provider Implementations
 **Goal**: Establish the provider-agnostic `LlmClient` trait and ship four provider implementations (Anthropic, OpenAI, Ollama, plus Groq as an OpenAI config variant). Fix the `ClassifierConfig` hardcoded default model that breaks non-Anthropic providers.
 **Depends on**: Nothing (first phase of milestone; ferro-ai is a leaf crate)
 **Requirements**: AISDK-01
@@ -1601,9 +1766,9 @@ mplete.**
   6. `reqwest-eventsource 0.6` is declared as a `pub(crate)` dependency in provider modules only — not re-exported as a public ferro-ai surface
 **Plans**: TBD
 
-### Phase 160: Structured Outputs, Tool Calling & Schema Normalizer
+### Phase 166: Structured Outputs, Tool Calling & Schema Normalizer
 **Goal**: Ship `ferro_ai::complete::<T>()` for typed structured outputs, the schema normalizer that makes `schemars` output compatible with provider structured-output APIs, and `ToolRegistry` with a hard `max_iterations` guard.
-**Depends on**: Phase 159
+**Depends on**: Phase 165
 **Requirements**: AISDK-02, AISDK-03
 **Success Criteria** (what must be TRUE):
   1. `ferro_ai::complete::<T>(client, prompt)` where `T: schemars::JsonSchema + serde::DeserializeOwned` returns `Result<T, Error>` — caller never calls schemars or JSON parsing directly
@@ -1614,9 +1779,9 @@ mplete.**
   6. `cargo test --all-features` passes; existing `Classifier<T>` tests are green
 **Plans**: TBD
 
-### Phase 161: Embeddings & pgvector
+### Phase 167: Embeddings & pgvector
 **Goal**: Ship pure-Rust embedding helpers and cosine similarity, plus an optional pgvector integration for semantic search.
-**Depends on**: Phase 159
+**Depends on**: Phase 165
 **Requirements**: AISDK-04, AISDK-05
 **Success Criteria** (what must be TRUE):
   1. `ferro_ai::embed(client, text)` calls the provider's embedding endpoint and returns `Vec<f32>`; Anthropic, OpenAI, and Ollama providers implement `LlmClient::embed()`
@@ -1626,9 +1791,9 @@ mplete.**
   5. Unit tests for `cosine_similarity`: orthogonal vectors return 0.0, identical vectors return 1.0, opposite vectors return -1.0
 **Plans**: TBD
 
-### Phase 162: Framework SSE Primitives
+### Phase 168: Framework SSE Primitives
 **Goal**: Add SSE streaming support to the framework so handlers can push events to the browser. SSE routes are structurally excluded from CompressionLayer — this is a guarantee, not documentation.
-**Depends on**: Nothing (parallel-capable with Phases 159-161; framework crate has no ferro-ai dependency)
+**Depends on**: Nothing (parallel-capable with Phases 165-167; framework crate has no ferro-ai dependency)
 **Requirements**: AISSE-01
 **Success Criteria** (what must be TRUE):
   1. `SseEvent` exists in `framework/src/http/sse.rs` with `data`, `event`, `id`, and `retry` fields; serializes to the SSE wire format (`data: ...\n\n`) correctly
@@ -1638,9 +1803,9 @@ mplete.**
   5. An integration test verifies token-by-token delivery: a test SSE endpoint sends three events with delays; the test client receives each event before the next is sent
 **Plans**: TBD
 
-### Phase 163: StreamText Component
+### Phase 169: StreamText Component
 **Goal**: Ship the `StreamText` ferro-json-ui component that connects to an SSE endpoint URL and renders token-by-token output in place. No external JS framework required.
-**Depends on**: Phase 162 (SSE URL convention established in framework)
+**Depends on**: Phase 168 (SSE URL convention established in framework)
 **Requirements**: AISSE-02
 **Success Criteria** (what must be TRUE):
   1. `Component::StreamText(StreamTextProps)` exists with `sse_url: String`, `placeholder: Option<String>`, and `loading_text: Option<String>` props; round-trips via ferro-json-ui serde fixtures
@@ -1650,9 +1815,9 @@ mplete.**
   5. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green
 **Plans**: TBD
 
-### Phase 164: ferro-cli Migration
+### Phase 170: ferro-cli Migration
 **Goal**: Delete the blocking Anthropic-only `ferro-cli/src/ai.rs` client and route all LLM calls through the `ferro_ai` SDK. Validates the SDK against the existing `make:json-view` command before new AI commands are built on top.
-**Depends on**: Phase 160 (structured outputs and schema normalizer in place)
+**Depends on**: Phase 166 (structured outputs and schema normalizer in place)
 **Requirements**: AISDK-06
 **Success Criteria** (what must be TRUE):
   1. `ferro-cli/src/ai.rs` is deleted; no `reqwest::blocking::Client` or direct Anthropic API calls remain in ferro-cli
@@ -1662,9 +1827,9 @@ mplete.**
   5. `cargo test --all-features` passes; no new compilation warnings in ferro-cli
 **Plans**: TBD
 
-### Phase 165: ferro ai:make & ferro ai:explain CLI Commands
+### Phase 171: ferro ai:make & ferro ai:explain CLI Commands
 **Goal**: Ship the killer-feature CLI commands. `ferro ai:make <description>` produces a complete feature scaffold using live ferro-mcp introspection loaded in-process (not subprocess). `ferro ai:explain <route|model>` explains an existing handler or model using actual source loaded through ferro-mcp.
-**Depends on**: Phase 164 (SDK migration complete), Phase 160 (structured outputs)
+**Depends on**: Phase 170 (SDK migration complete), Phase 166 (structured outputs)
 **Requirements**: AICLI-01, AICLI-02, AICLI-03
 **Success Criteria** (what must be TRUE):
   1. `ferro ai:make <description>` calls ferro-mcp library functions in-process to load `list_routes`, `list_models`, `db_schema`, and `generation_context`; context is filtered to items semantically relevant to the description before prompt construction (prevents context window overflow on large projects)
@@ -1675,9 +1840,9 @@ mplete.**
   6. Neither command generates non-ferro code; all scaffolds are validated against project conventions as reported by ferro-mcp introspection
 **Plans**: TBD
 
-### Phase 166: MCP Tool Wrappers
+### Phase 172: MCP Tool Wrappers
 **Goal**: Expose `ai_scaffold` and `ai_explain` as ferro-mcp tools so agents can invoke scaffolding and explanation logic in-process without shelling out to the CLI.
-**Depends on**: Phase 165 (CLI command logic validated end-to-end)
+**Depends on**: Phase 171 (CLI command logic validated end-to-end)
 **Requirements**: AICLI-05
 **Success Criteria** (what must be TRUE):
   1. `ai_scaffold` MCP tool accepts `description: String` and returns a `ScaffoldPlan` JSON object plus a list of files written (or would-be-written in dry-run mode)
@@ -1687,9 +1852,9 @@ mplete.**
   5. `ferro-mcp` version bumped; `cargo test --all-features` passes
 **Plans**: TBD
 
-### Phase 167: make:json-view v2 (DEFERRED — gated on v12.0)
+### Phase 173: make:json-view v2 (DEFERRED — gated on v12.0)
 **Goal**: Upgrade `ferro make:json-view` to use structured outputs with ServiceDef introspection and schema-driven component selection. This phase is blocked until v12.0 JSON-UI v2 ships and `catalog.prompt()` / `catalog.component_schema()` are available.
-**Depends on**: Phase 164; v12.0 Phase 117 (Catalog & JSON Schema) and Phase 120 (CLI & MCP Updates)
+**Depends on**: Phase 170; v12.0 Phase 117 (Catalog & JSON Schema) and Phase 120 (CLI & MCP Updates)
 **Requirements**: AICLI-04
 **Status**: DEFERRED — do not plan or execute until v12.0 Phase 117 and Phase 120 are complete
 **Success Criteria** (what must be TRUE):
@@ -1703,12 +1868,39 @@ mplete.**
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 159. LlmClient Trait & Providers | 0/? | Not started | - |
-| 160. Structured Outputs & Tool Calling | 0/? | Not started | - |
-| 161. Embeddings & pgvector | 0/? | Not started | - |
-| 162. Framework SSE Primitives | 0/? | Not started | - |
-| 163. StreamText Component | 0/? | Not started | - |
-| 164. ferro-cli Migration | 0/? | Not started | - |
-| 165. ai:make & ai:explain CLI Commands | 0/? | Not started | - |
-| 166. MCP Tool Wrappers | 0/? | Not started | - |
-| 167. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |
+| 165. LlmClient Trait & Providers | 0/? | Not started | - |
+| 166. Structured Outputs & Tool Calling | 0/? | Not started | - |
+| 167. Embeddings & pgvector | 0/? | Not started | - |
+| 168. Framework SSE Primitives | 0/? | Not started | - |
+| 169. StreamText Component | 0/? | Not started | - |
+| 170. ferro-cli Migration | 0/? | Not started | - |
+| 171. ai:make & ai:explain CLI Commands | 0/? | Not started | - |
+| 172. MCP Tool Wrappers | 0/? | Not started | - |
+| 173. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |
+
+---
+
+### 🔭 v13.0 Future UI Spec Evaluation (Phase 174, planned 2026-05-17)
+
+Forward-looking exploration of alternative server-driven UI protocols. May seed a downstream prototype milestone, or terminate as a documented decision to stay on the JSON spec.
+
+#### Phases
+
+- [ ] **Phase 174: Explore Hyperview / HXML as a candidate next-generation UI spec format** — Research-only. Evaluate the [Hyperview](https://hyperview.org/) HXML protocol against the current JSON spec across protocol shape, component model, expression/visibility primitives, plugin and extension story, projection/intent composition, JSON-Schema introspection equivalents for agent authoring, and server-side rendering pipeline reuse. Includes an explicit Appo angle: today Appo wraps the Ferro web frontend in a native shell; an HXML-style protocol would let the same Ferro server drive a fully native iOS/Android UI without the WebView layer. Output is a decision-quality `HXML-RESEARCH.md` covering protocol comparison, what HXML does better, what's worse or unclear, the Appo angle, and a recommendation (stay on the JSON spec / migrate / build HXML as a parallel renderer). Ends with a go/no-go gate for any downstream prototype phase. No code changes.
+
+### Phase 174: Explore Hyperview / HXML as a candidate next-generation UI spec format
+
+**Goal**: Produce a research-only evaluation of the Hyperview HXML protocol as a candidate next-generation UI spec format for ferro, including the strategic angle for Appo (native mobile UI without a WebView). Decision-quality output document; no code changes.
+
+**Depends on**: Phase 161 (v12.0 merge to master — finalizes the current JSON spec surface to compare against)
+
+**Requirements**: TBD (research phase — requirements may be derived from the output document)
+
+**Success Criteria** (what must be TRUE):
+  1. `HXML-RESEARCH.md` exists in the phase directory with the following sections populated: Protocol comparison (HXML vs current JSON spec), What HXML does better, What's worse or unclear, Appo angle (capabilities gained, capabilities lost, integration shape), Recommendation (stay / migrate / parallel renderer)
+  2. The recommendation is justified against ferro's design principles (projection/intent as core abstraction, beauty dimensions, agent-readable surface)
+  3. The Appo angle explicitly inventories what changes for the WebView → native transition: which `usePush` / `useCamera` / `useBiometrics` / etc. hooks still apply, which become redundant, and which new primitives ferro would need to emit
+  4. The go/no-go gate either schedules a downstream prototype phase (with explicit scope) or records a decision to stay on the JSON spec (with rationale)
+  5. Plugin model parity is addressed — can HXML host arbitrary native widgets the way ferro-json-ui hosts Plugin components? If not, what's the equivalent?
+
+**Plans**: TBD (run /gsd-plan-phase 174 to break down)

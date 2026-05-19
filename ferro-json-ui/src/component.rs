@@ -4,12 +4,9 @@
 //! uses serde's tagged enum representation so JSON includes `"type": "Card"`.
 
 use schemars::JsonSchema;
-use serde::de::{self, Deserializer};
-use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::action::Action;
-use crate::visibility::Visibility;
 
 /// Shared size enum for components (Button, Badge, Avatar, Input).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -50,8 +47,11 @@ pub enum Orientation {
 }
 
 /// Button visual variants (aligned to shadcn/ui).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum ButtonVariant {
     #[default]
     Default,
@@ -81,8 +81,11 @@ pub enum InputType {
 }
 
 /// Alert visual variants.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum AlertVariant {
     #[default]
     Info,
@@ -92,8 +95,11 @@ pub enum AlertVariant {
 }
 
 /// Badge visual variants (aligned to shadcn/ui).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum BadgeVariant {
     #[default]
     Default,
@@ -142,19 +148,33 @@ pub struct SelectOption {
     pub label: String,
 }
 
+/// Visual variant for Card chrome.
+///
+/// - `Bordered` (default): `border + bg-card + shadow-sm` with `p-4`.
+///   Dashboard cards in dense layouts.
+/// - `Elevated`: `bg-card + shadow-md` (no border) with `p-8`.
+///   Auth pages, error pages, standalone marketing cards.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CardVariant {
+    #[default]
+    Bordered,
+    Elevated,
+}
+
 /// Props for Card component.
-// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CardProps {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<ComponentNode>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub footer: Vec<ComponentNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_width: Option<FormMaxWidth>,
+    /// IDs of footer elements (resolved against `Spec.elements`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub footer: Vec<String>,
+    #[serde(default)]
+    pub variant: CardVariant,
 }
 
 /// Props for Table component.
@@ -185,11 +205,9 @@ pub enum FormMaxWidth {
 }
 
 /// Props for Form component.
-// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct FormProps {
     pub action: Action,
-    pub fields: Vec<ComponentNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub method: Option<crate::action::HttpMethod>,
     /// Form guard type. When set, the runtime JS disables the submit button
@@ -200,112 +218,11 @@ pub struct FormProps {
     /// Optional max-width constraint for the form container.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_width: Option<FormMaxWidth>,
-}
-
-/// Which display mode the component uses.
-///
-/// Set from a URL query parameter — typically `?mode=edit` — by
-/// [`EditMode::from_query`]. Defaults to [`EditMode::View`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum EditMode {
-    /// Read-only display with a "Modifica" action.
-    #[default]
-    View,
-    /// Inline-edit form with "Salva" / "Annulla" actions.
-    Edit,
-}
-
-impl EditMode {
-    /// Parse a URL query-parameter value into an `EditMode`.
-    ///
-    /// Returns [`EditMode::Edit`] when `raw` equals `"edit"` (ASCII
-    /// case-insensitive); [`EditMode::View`] otherwise, including when
-    /// `raw` is `None` or any other string.
-    ///
-    /// Handlers typically call this with `req.query("mode").as_deref()`.
-    pub fn from_query(raw: Option<&str>) -> Self {
-        match raw {
-            Some(s) if s.eq_ignore_ascii_case("edit") => EditMode::Edit,
-            _ => EditMode::View,
-        }
-    }
-}
-
-/// A single field row within a [`DetailFormProps`].
-///
-/// Rendered as `<div><dt>{label}</dt><dd>…</dd></div>` in both modes.
-/// In View mode, `<dd>` shows the escaped `value` as plain text.
-/// In Edit mode, `<dd>` renders the `input` [`ComponentNode`] via the
-/// normal component dispatch — making any form-field component (Input,
-/// Select, Textarea, Switch, Checkbox, plugin) usable inside.
-///
-/// **Authoring rule (Option A).** When `input` is an `Input` / `Select` /
-/// `Textarea` / `Checkbox` / `Switch` component, the caller MUST set its
-/// `label` prop to an empty string. The `<dt>` already provides the
-/// visible label; a non-empty input label produces duplicate UI text.
-/// DetailForm does not mutate caller-supplied props.
-// JsonSchema skipped: contains ComponentNode — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DetailField {
-    /// Description term shown in both modes as the field label.
-    pub label: String,
-    /// Display string shown in View mode (plain text, html_escape'd at render).
-    pub value: String,
-    /// Component rendered in Edit mode in place of `value`.
-    pub input: ComponentNode,
-}
-
-impl DetailField {
-    /// Convenience constructor mirroring [`ComponentNode::input`] ergonomics.
-    pub fn new(label: impl Into<String>, value: impl Into<String>, input: ComponentNode) -> Self {
-        Self {
-            label: label.into(),
-            value: value.into(),
-            input,
-        }
-    }
-}
-
-/// Props for [`crate::Component::DetailForm`].
-///
-/// Renders a description-list-style block in two modes — View and Edit —
-/// driven by the `mode` field. The outer scaffold (`<dl>` + rows) is
-/// byte-for-byte identical across modes per the structural coherence
-/// contract (147-UI-SPEC §5); only the inner `<dd>` content and the
-/// action bar differ. Edit mode additionally wraps the scaffold in a
-/// `<form>` with method spoofing for PUT/PATCH/DELETE.
-///
-/// Mode is URL-driven (server-side only) — no JavaScript. Callers
-/// typically derive `mode` via [`EditMode::from_query`] on
-/// `req.query("mode").as_deref()`.
-// JsonSchema skipped: contains Vec<DetailField> which contains ComponentNode
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DetailFormProps {
-    /// Which mode to render. Defaults to [`EditMode::View`].
-    #[serde(default)]
-    pub mode: EditMode,
-    /// Form submit target (used only in Edit mode; resolver populates `action.url`).
-    pub action: crate::action::Action,
-    /// The rows.
-    pub fields: Vec<DetailField>,
-    /// Href for the "Modifica" button (View mode only). Emitted verbatim after html_escape.
-    pub edit_url: String,
-    /// Href for the "Annulla" button (Edit mode only). Emitted verbatim after html_escape.
-    pub cancel_url: String,
-    /// Override for the default "Modifica" label.
+    /// Optional HTML `id` attribute for the rendered `<form>`. Pair with a
+    /// Button's `form` prop to submit this form from a button placed outside
+    /// it (e.g. in a PageHeader actions slot).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub edit_label: Option<String>,
-    /// Override for the default "Salva" label.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub save_label: Option<String>,
-    /// Override for the default "Annulla" label.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cancel_label: Option<String>,
-    /// Override for the form tag's HTTP method (mirrors [`FormProps::method`]).
-    /// Unset means use `action.method`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub method: Option<crate::action::HttpMethod>,
+    pub id: Option<String>,
 }
 
 /// HTML button type attribute.
@@ -333,6 +250,11 @@ pub struct ButtonProps {
     pub icon_position: Option<IconPosition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub button_type: Option<ButtonType>,
+    /// HTML5 `form` attribute. Lets a submit button rendered outside its
+    /// target `<form>` (e.g. in a PageHeader actions slot) still submit
+    /// that form, by matching the form's `id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub form: Option<String>,
 }
 
 /// Props for Input component.
@@ -366,6 +288,30 @@ pub struct InputProps {
     /// whose options come from a view data key matching this id.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub list: Option<String>,
+}
+
+/// Props for RichTextEditor leaf element — rendered by the Quill 2.0.3 plugin.
+///
+/// The plugin emits a container div (`<div data-ferro-quill ...>`) and a hidden
+/// input that receives the editor's HTML on every text-change event. The form
+/// handler receives standard `field=<html>` POST data on submit.
+///
+/// # Security
+/// The editor produces user-controlled HTML. Sanitization on submit is the
+/// consumer's responsibility — handle this in the form handler before
+/// persisting (e.g. via `ammonia`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct RichTextEditorProps {
+    pub field: String,
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_value: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 /// Props for Select component.
@@ -411,19 +357,17 @@ pub struct BadgeProps {
 }
 
 /// Props for Modal component.
-// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ModalProps {
     pub id: String,
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<ComponentNode>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub footer: Vec<ComponentNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger_label: Option<String>,
+    /// IDs of footer elements (resolved against `Spec.elements`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub footer: Vec<String>,
 }
 
 /// Props for Text component.
@@ -459,9 +403,37 @@ pub struct CheckboxProps {
     pub error: Option<String>,
 }
 
+/// Props for CheckboxList component — multi-select checkbox group.
+///
+/// Each checked option submits as `field=value`. Options may be supplied
+/// statically via `options` or resolved at render time from `options_path`.
+/// Pre-selected values are read from `selected_path` (a `Vec<String>`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CheckboxListProps {
+    /// Shared form field name; each checkbox submits as `field=value`.
+    pub field: String,
+    /// Static options list. When empty and `options_path` is set, options are
+    /// resolved from the data at render time.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<SelectOption>,
+    /// Data path to an array of `{value, label}` objects for data-driven options.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options_path: Option<String>,
+    /// Data path to a `Vec<String>` of pre-selected values.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 /// Props for Switch component.
-// JsonSchema skipped: contains Option<Action> — Action has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SwitchProps {
     /// Form field name for data binding.
     pub field: String,
@@ -483,102 +455,10 @@ pub struct SwitchProps {
     /// form and submits on change.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<Action>,
-    /// Compact mode: label hugs the toggle (gap-3) instead of justify-between.
-    /// Use when the switch is inside a narrow grid column.
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub compact: bool,
-}
-
-/// Props for `KeyValueEditor` component.
-///
-/// Renders a dynamic list of key/value rows backed by a hidden `<input>`
-/// that holds the current pairs serialized as a JSON object. The runtime
-/// module `key_value_editor` wires add/remove/input events and keeps the
-/// hidden field in sync on every mutation.
-///
-/// When `data_path` resolves to a JSON object, each entry seeds one row.
-/// `suggested_keys` drives a `<datalist>` (when `allow_custom_keys`) or a
-/// `<select>` (when `!allow_custom_keys`).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct KeyValueEditorProps {
-    /// Name of the hidden input that receives the serialized JSON.
-    pub field: String,
-    /// Optional visible label above the editor block.
+    /// When true, applies `scale-75 origin-left` CSS to the switch container
+    /// for compact inline display (e.g. per-row settings toggles).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
-    /// Keys offered as suggestions (via `<datalist>` or `<select>`).
-    #[serde(default)]
-    pub suggested_keys: Vec<String>,
-    /// If true (default), the key input accepts any text with suggestions;
-    /// if false, the key input is a `<select>` restricted to `suggested_keys`.
-    #[serde(default = "default_true")]
-    pub allow_custom_keys: bool,
-    /// JSON pointer path whose resolved object seeds the initial rows.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data_path: Option<String>,
-    /// Validation error message rendered below the editor.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
-
-/// Props for [`Component::RichTextEditor`].
-///
-/// Renders a `<div data-rich-text-editor>` host whose runtime IIFE attaches a
-/// Quill 2.0.3 (Snow theme) editor. On form submit the IIFE writes two hidden
-/// inputs — `{name}_delta` (canonical Delta JSON, lossless) and `{name}_html`
-/// (sanitized HTML, rendering input). The `formats` allowlist is the single
-/// source of truth: it constrains both the Quill toolbar (init time) and the
-/// HTML post-process (submit time). Image / video / HTML-paste paths are not
-/// reachable through the prop surface.
-///
-/// Quill JS+CSS are loaded once per page from jsDelivr, SHA-384 SRI-pinned via
-/// the `RichTextEditorPlugin` asset adapter. Multiple editor instances on the
-/// same page deduplicate the asset to a single load.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct RichTextEditorProps {
-    /// Base form field name. The IIFE emits two hidden inputs on submit:
-    /// `{name}_delta` (Delta JSON) and `{name}_html` (sanitized HTML).
-    ///
-    /// Must be unique within the **page** (not just within the form). The
-    /// renderer uses `name` as the DOM `id` of the editor host and the error
-    /// element (`err-{name}`). Two editors with the same `name` on one page
-    /// produce duplicate DOM ids, which breaks label association and the
-    /// error-element selector.
-    pub name: String,
-    /// Initial editor content. Auto-detected at runtime: parses as JSON
-    /// (Delta) when the string has an `ops` array; otherwise loaded as HTML
-    /// via `clipboard.dangerouslyPasteHTML` filtered by the `formats`
-    /// allowlist.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-    /// Toolbar/allowlist whitelist. Drives both Quill's toolbar config and
-    /// the HTML post-process. Default: `["bold", "italic", "underline",
-    /// "list", "header", "link"]` (D-18).
-    #[serde(default = "default_rte_formats")]
-    pub formats: Vec<String>,
-    /// Optional placeholder shown by Quill when the editor is empty.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub placeholder: Option<String>,
-    /// Quill theme — only `"snow"` is supported in v1. Defaults to `"snow"`.
-    #[serde(default = "default_rte_theme")]
-    pub theme: String,
-    /// Optional visible label rendered above the editor host.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
-    /// Validation error message rendered below the editor with destructive
-    /// token styling.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-    /// JSON pointer for pre-fill at render time. Resolved value is passed as
-    /// the initial editor body (after html_escape). When both `value` and
-    /// `data_path` are set, `value` wins.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data_path: Option<String>,
-    /// When true, the IIFE installs a guard that calls `event.preventDefault`
-    /// on form submit if `quill.getText().trim().length === 0`, surfacing the
-    /// destructive-token error region with a "Required" message.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub required: Option<bool>,
+    pub compact: Option<bool>,
 }
 
 /// Props for Separator component.
@@ -600,24 +480,29 @@ pub struct DescriptionItem {
 /// Props for DescriptionList component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct DescriptionListProps {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub items: Vec<DescriptionItem>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub columns: Option<u8>,
+    /// Optional data-path override of `items`. When set, the renderer
+    /// resolves the array at this path and decodes each entry as a
+    /// `DescriptionItem`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
 }
 
 /// A single tab within a Tabs component.
-// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Tab {
     pub value: String,
     pub label: String,
+    /// IDs of elements rendered inside this tab's panel.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<ComponentNode>,
+    pub children: Vec<String>,
 }
 
 /// Props for Tabs component.
-// JsonSchema skipped: contains Vec<Tab> which contains Vec<ComponentNode>
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TabsProps {
     pub default_tab: String,
     pub tabs: Vec<Tab>,
@@ -658,99 +543,50 @@ pub struct ProgressProps {
     pub label: Option<String>,
 }
 
-/// Source for an [`ImageProps`] component — exactly one of `src` or `svg`.
-///
-/// Wire-format discrimination is by field presence via `#[serde(untagged)]`:
-/// - `{"src": "/logo.png"}` deserializes to `ImageSource::Url`.
-/// - `{"svg": "<svg>…</svg>"}` deserializes to `ImageSource::InlineSvg`.
-///
-/// The `Url` variant is backward-compatible with pre-phase-148 JSON:
-/// existing callers sending `{"type":"Image","src":"…","alt":"…"}` continue
-/// to deserialize unchanged.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(untagged)]
-pub enum ImageSource {
-    /// External image URL. The `src` attribute is HTML-escaped before emission.
-    Url {
-        /// Image source URL. Rendered as `<img src="{escaped}">`.
-        src: String,
-    },
-    /// Server-constructed inline SVG string.
-    ///
-    /// # Safety
-    ///
-    /// The `svg` value is emitted **verbatim, without HTML escaping**. This is
-    /// the single deliberate `html_escape` bypass in `ferro-json-ui`. It is
-    /// intended for server-constructed SVG — charts, sparklines, icons —
-    /// **not** for user-supplied strings.
-    ///
-    /// Callers that incorporate user data into SVG output are responsible for
-    /// sanitization **before** constructing this variant. Contrast with
-    /// [`ImageSource::Url`]: `src` is always HTML-escaped as an attribute
-    /// value, so `Url` is safe with caller-controlled URL strings.
-    InlineSvg {
-        /// Inline SVG emitted verbatim. See variant-level `# Safety`.
-        svg: String,
-    },
-}
-
-/// Props for an [`Component::Image`] component.
-///
-/// `source` is a flattened [`ImageSource`] — the wire format carries
-/// either `"src"` (URL variant) or `"svg"` (inline-SVG variant) directly
-/// at the top level, with no wrapping `"source"` key. `alt` is required
-/// on both variants (compile-enforced accessibility for the SVG branch).
+/// Props for Image component.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ImageProps {
-    /// Image source — URL or server-constructed inline SVG.
-    ///
-    /// Flattened into the parent JSON object: the `src` or `svg` field
-    /// appears directly on `ImageProps` in the wire format.
-    #[serde(flatten)]
-    pub source: ImageSource,
-    /// Required alt text for accessibility. HTML-escaped on both source variants.
+    #[serde(default)]
+    pub src: String,
     pub alt: String,
-    /// Optional CSS aspect ratio (e.g. `"16/9"`). Applied to both variants.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aspect_ratio: Option<String>,
     /// Optional label shown in a skeleton placeholder that sits behind the
-    /// image in the URL variant. When the `<img>` fails to load (or is still
-    /// being generated), the element is hidden via `onerror` and the
-    /// placeholder remains visible. Not rendered for the `InlineSvg` variant.
+    /// image. When the image fails to load (or is still being generated),
+    /// the `<img>` is hidden via `onerror` and the placeholder remains
+    /// visible, keeping the container at its aspect-ratio size.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder_label: Option<String>,
+    /// Server-rendered inline SVG string. When set, the SVG is emitted verbatim
+    /// inside a `<div aria-label="{alt}">` wrapper; no `<img>` tag is produced.
+    ///
+    /// # Safety
+    /// Content is NOT sanitized. The SVG string is emitted into the response
+    /// verbatim. Pass only server-constructed SVG (e.g. bar charts, QR codes).
+    /// Do NOT pass untrusted input. `alt` is required and is HTML-escaped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline_svg: Option<String>,
+    /// Optional data-path override of `src`. When set, the renderer resolves
+    /// the value at this path against handler data and uses it as the
+    /// `<img src>`. Falls back to `src` when missing or non-string.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
 }
 
 impl ImageProps {
-    /// Construct an [`ImageProps`] backed by an external URL.
-    ///
-    /// Both `src` and `alt` accept `impl Into<String>` for ergonomic call
-    /// sites. `aspect_ratio` and `placeholder_label` default to `None` — set
-    /// them explicitly on the returned struct if needed.
-    pub fn url(src: impl Into<String>, alt: impl Into<String>) -> Self {
-        Self {
-            source: ImageSource::Url { src: src.into() },
-            alt: alt.into(),
-            aspect_ratio: None,
-            placeholder_label: None,
-        }
-    }
-
-    /// Construct an [`ImageProps`] backed by a server-constructed inline SVG.
+    /// Convenience constructor for inline-SVG images. `src` is set to the
+    /// empty string; the renderer takes the SVG path when `inline_svg` is `Some`.
     ///
     /// # Safety
-    ///
-    /// `svg` is emitted verbatim without HTML escaping. Intended for
-    /// server-constructed SVG (charts, sparklines, icons). **Not suitable
-    /// for user-supplied strings.** Callers that incorporate user data into
-    /// `svg` are responsible for sanitization before calling this
-    /// constructor. See [`ImageSource::InlineSvg`] for the full contract.
+    /// `svg` is emitted verbatim. See [`ImageProps::inline_svg`] for the trust model.
     pub fn inline_svg(svg: impl Into<String>, alt: impl Into<String>) -> Self {
         Self {
-            source: ImageSource::InlineSvg { svg: svg.into() },
+            src: String::new(),
             alt: alt.into(),
             aspect_ratio: None,
             placeholder_label: None,
+            inline_svg: Some(svg.into()),
+            data_path: None,
         }
     }
 }
@@ -778,9 +614,35 @@ pub struct SkeletonProps {
     pub rounded: Option<bool>,
 }
 
+/// Props for the `RawHtml` component — server-injected HTML island.
+///
+/// # Safety
+/// `html` is emitted into the response VERBATIM with NO sanitization. The
+/// component exists to bridge server-rendered HTML fragments (e.g. a status
+/// pill, a link badge) into a v2 spec where a first-class component would
+/// be over-engineering.
+///
+/// Sanitization is the CONSUMER's responsibility — pass only server-
+/// constructed HTML, or run untrusted input through a sanitiser (e.g.
+/// `ammonia`) in the handler before embedding. This mirrors
+/// `RichTextEditorProps` discipline (see component.rs).
+///
+/// For richer widgets (interactive forms, charts, OAuth flows), use the
+/// first-class plugin system (`JsonUiPlugin`) instead — see
+/// `docs/src/json-ui/plugins.md`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RawHtmlProps {
+    /// Server-constructed HTML emitted verbatim. NOT sanitized.
+    #[serde(default)]
+    pub html: String,
+}
+
 /// Toast visual variants.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum ToastVariant {
     #[default]
     Info,
@@ -822,6 +684,10 @@ pub struct SidebarNavItem {
     pub icon: Option<String>,
     #[serde(default)]
     pub active: bool,
+    /// When true, the item renders as a muted, non-clickable `<span>`
+    /// instead of an `<a>` — useful for "coming soon" placeholders.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
 }
 
 /// A collapsible group in the sidebar.
@@ -863,32 +729,6 @@ pub struct ChecklistProps {
 
 fn default_true() -> bool {
     true
-}
-
-/// Default `formats` allowlist for `RichTextEditorProps` (D-18).
-///
-/// Six entries mapping to Quill's actual format names: `list` covers both bullet
-/// and ordered (Quill represents lists as one format with an `ordered` attribute);
-/// `header` covers H1..H3 (Quill represents headings as one format with a level
-/// attribute). The IIFE expands these to the toolbar config at runtime via the
-/// deterministic mapping in D-19.
-fn default_rte_formats() -> Vec<String> {
-    vec![
-        "bold".to_string(),
-        "italic".to_string(),
-        "underline".to_string(),
-        "list".to_string(),
-        "header".to_string(),
-        "link".to_string(),
-    ]
-}
-
-/// Default Quill theme for `RichTextEditorProps` (D-07 / SC-1).
-///
-/// Only `"snow"` is supported in v1 — bubble/custom themes are a deferred phase.
-/// The IIFE treats any non-`"snow"` value as `"snow"` (no error).
-fn default_rte_theme() -> String {
-    "snow".to_string()
 }
 
 /// Props for Toast component (declarative notification intent).
@@ -954,8 +794,7 @@ pub enum GapSize {
 }
 
 /// Props for Grid component — multi-column layout.
-// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct GridProps {
     /// Number of columns (1-12) at base (mobile) viewport.
     #[serde(default = "default_grid_columns")]
@@ -973,8 +812,6 @@ pub struct GridProps {
     /// uses `grid-flow-col` auto-cols layout for Trello-like horizontal scrolling.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scrollable: Option<bool>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<ComponentNode>,
 }
 
 fn default_grid_columns() -> u8 {
@@ -982,14 +819,11 @@ fn default_grid_columns() -> u8 {
 }
 
 /// Props for Collapsible section — expandable `<details>`/`<summary>`.
-// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CollapsibleProps {
     pub title: String,
     #[serde(default)]
     pub expanded: bool,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<ComponentNode>,
 }
 
 /// Props for EmptyState component — standardized empty view.
@@ -1014,40 +848,67 @@ pub enum FormSectionLayout {
 }
 
 /// Props for FormSection component — visual grouping within forms.
-// JsonSchema skipped: contains Vec<ComponentNode> — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct FormSectionProps {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<ComponentNode>,
     /// Optional layout variant. Defaults to stacked (single column).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout: Option<FormSectionLayout>,
 }
 
 /// Props for PageHeader component -- page title with optional breadcrumb and action buttons.
-// JsonSchema skipped: contains Vec<ComponentNode>
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct PageHeaderProps {
     pub title: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub breadcrumb: Vec<BreadcrumbItem>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub actions: Vec<ComponentNode>,
+    /// IDs of action button elements rendered to the right of the title.
+    #[serde(
+        default,
+        deserialize_with = "deserialize_actions_lax",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub actions: Vec<String>,
 }
 
 /// Props for ButtonGroup component -- horizontal button row with consistent gap.
-// JsonSchema skipped: contains Vec<ComponentNode>
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Default)]
 pub struct ButtonGroupProps {
+    /// Gap between buttons. Defaults to small spacing.
+    #[serde(default)]
+    pub gap: GapSize,
+}
+
+/// Props for DetailPage component -- opinionated resource-detail skeleton.
+///
+/// Renders a PageHeader (title + breadcrumb + actions), an info Card
+/// wrapping the `info` slot IDs (typically a Badge plus a DescriptionList),
+/// and `Element.children` as stacked sections below the card (tabs,
+/// related-resource lists, action panels). Centralizes the visual contract
+/// every dashboard detail page follows so per-page rebuilds cannot drift
+/// from the canonical shape.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DetailPageProps {
+    pub title: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub buttons: Vec<ComponentNode>,
+    pub breadcrumb: Vec<BreadcrumbItem>,
+    /// IDs of action button elements rendered to the right of the title.
+    #[serde(
+        default,
+        deserialize_with = "deserialize_actions_lax",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub actions: Vec<String>,
+    /// IDs of elements rendered inside the info Card
+    /// (typically a Badge and a DescriptionList). Omit to skip the card.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub info: Vec<String>,
 }
 
 /// A single action item in a dropdown menu.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct DropdownMenuAction {
     pub label: String,
     pub action: Action,
@@ -1056,7 +917,7 @@ pub struct DropdownMenuAction {
 }
 
 /// Props for DropdownMenu component — trigger button with absolutely-positioned action panel.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct DropdownMenuProps {
     pub menu_id: String,
     pub trigger_label: String,
@@ -1067,7 +928,7 @@ pub struct DropdownMenuProps {
 
 /// Props for the DataTable component — Stripe-style alternating rows with DropdownMenu per row,
 /// mobile card fallback, and empty state.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct DataTableProps {
     pub columns: Vec<Column>,
     pub data_path: String,
@@ -1083,23 +944,35 @@ pub struct DataTableProps {
 }
 
 /// Props for a single column in a KanbanBoard.
-// JsonSchema skipped: contains Vec<ComponentNode>
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct KanbanColumnProps {
     pub id: String,
     pub title: String,
     pub count: u32,
+    /// IDs of elements rendered inside this column.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub children: Vec<ComponentNode>,
+    pub children: Vec<String>,
 }
 
 /// Props for KanbanBoard component — horizontal scrollable columns on desktop, tab-based on mobile.
-// JsonSchema skipped: contains Vec<ComponentNode> (via KanbanColumnProps)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct KanbanBoardProps {
+    /// Static columns. Used when `data_path` is None.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub columns: Vec<KanbanColumnProps>,
+    /// Optional data-path override of `columns`. When set, the renderer
+    /// resolves the array at this path against handler data and decodes
+    /// each entry as a `KanbanColumnProps`. Takes precedence over
+    /// `columns` when both are set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mobile_default_column: Option<String>,
+    /// Placeholder text shown inside columns whose `children` list is empty.
+    /// When `None`, columns with no children render no placeholder (back-compat).
+    /// Provide a short, neutral message — e.g. "Nessun ordine", "Nothing here".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_label: Option<String>,
 }
 
 /// Props for a calendar day cell.
@@ -1162,3283 +1035,603 @@ pub struct ProductTileProps {
     pub default_quantity: Option<u32>,
 }
 
-/// Props for a plugin component.
-///
-/// The `plugin_type` field holds the original `"type"` value from JSON,
-/// and `props` holds the remaining fields. Used for custom interactive
-/// components registered via the plugin system.
-// JsonSchema skipped: custom Serialize/Deserialize impl
-#[derive(Debug, Clone, PartialEq)]
-pub struct PluginProps {
-    /// The plugin component type name (e.g., "Map").
-    pub plugin_type: String,
-    /// Raw props passed to the plugin's render function.
-    pub props: serde_json::Value,
-}
-
-impl Serialize for PluginProps {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // Flatten plugin_type back as "type" and merge in the props object.
-        let obj = self.props.as_object();
-        let extra_len = obj.map_or(0, |m| m.len());
-        let mut map = serializer.serialize_map(Some(1 + extra_len))?;
-        map.serialize_entry("type", &self.plugin_type)?;
-        if let Some(obj) = obj {
-            for (k, v) in obj {
-                if k != "type" {
-                    map.serialize_entry(k, v)?;
-                }
-            }
-        }
-        map.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for PluginProps {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let mut value = serde_json::Value::deserialize(deserializer)?;
-        let plugin_type = value
-            .get("type")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| de::Error::missing_field("type"))?;
-        // Remove "type" from the props to avoid redundancy.
-        if let Some(obj) = value.as_object_mut() {
-            obj.remove("type");
-        }
-        Ok(PluginProps {
-            plugin_type,
-            props: value,
-        })
-    }
-}
-
-/// Component catalog enum. Built-in types are deserialized by name,
-/// unknown types fall through to the `Plugin` variant.
-///
-/// Serializes built-in variants with `"type": "Card"` etc. The Plugin
-/// variant serializes with the plugin's own type name.
-// JsonSchema skipped: custom Serialize/Deserialize impl
-#[derive(Debug, Clone, PartialEq)]
-pub enum Component {
-    Card(CardProps),
-    Table(TableProps),
-    Form(FormProps),
-    Button(ButtonProps),
-    Input(InputProps),
-    Select(SelectProps),
-    Alert(AlertProps),
-    Badge(BadgeProps),
-    Modal(ModalProps),
-    Text(TextProps),
-    Checkbox(CheckboxProps),
-    Switch(SwitchProps),
-    Separator(SeparatorProps),
-    DescriptionList(DescriptionListProps),
-    Tabs(TabsProps),
-    Breadcrumb(BreadcrumbProps),
-    Pagination(PaginationProps),
-    Progress(ProgressProps),
-    Avatar(AvatarProps),
-    Skeleton(SkeletonProps),
-    StatCard(StatCardProps),
-    Checklist(ChecklistProps),
-    Toast(ToastProps),
-    NotificationDropdown(NotificationDropdownProps),
-    Sidebar(SidebarProps),
-    Header(HeaderProps),
-    Grid(GridProps),
-    Collapsible(CollapsibleProps),
-    EmptyState(EmptyStateProps),
-    FormSection(FormSectionProps),
-    PageHeader(PageHeaderProps),
-    ButtonGroup(ButtonGroupProps),
-    DropdownMenu(DropdownMenuProps),
-    KanbanBoard(KanbanBoardProps),
-    CalendarCell(CalendarCellProps),
-    ActionCard(ActionCardProps),
-    ProductTile(ProductTileProps),
-    DataTable(DataTableProps),
-    Image(ImageProps),
-    KeyValueEditor(KeyValueEditorProps),
-    RichTextEditor(RichTextEditorProps),
-    DetailForm(DetailFormProps),
-    Plugin(PluginProps),
-}
-
-// ── Custom Serialize for Component ───────────────────────────────────────
-
-/// Helper: serialize a built-in variant by serializing its props, then
-/// injecting `"type": "<name>"` into the resulting JSON object.
-fn serialize_tagged<S: Serializer, T: Serialize>(
-    serializer: S,
-    type_name: &str,
-    props: &T,
-) -> Result<S::Ok, S::Error> {
-    let mut value = serde_json::to_value(props).map_err(serde::ser::Error::custom)?;
-    if let Some(obj) = value.as_object_mut() {
-        obj.insert(
-            "type".to_string(),
-            serde_json::Value::String(type_name.to_string()),
-        );
-    }
-    value.serialize(serializer)
-}
-
-impl Serialize for Component {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Component::Card(p) => serialize_tagged(serializer, "Card", p),
-            Component::Table(p) => serialize_tagged(serializer, "Table", p),
-            Component::Form(p) => serialize_tagged(serializer, "Form", p),
-            Component::Button(p) => serialize_tagged(serializer, "Button", p),
-            Component::Input(p) => serialize_tagged(serializer, "Input", p),
-            Component::Select(p) => serialize_tagged(serializer, "Select", p),
-            Component::Alert(p) => serialize_tagged(serializer, "Alert", p),
-            Component::Badge(p) => serialize_tagged(serializer, "Badge", p),
-            Component::Modal(p) => serialize_tagged(serializer, "Modal", p),
-            Component::Text(p) => serialize_tagged(serializer, "Text", p),
-            Component::Checkbox(p) => serialize_tagged(serializer, "Checkbox", p),
-            Component::Switch(p) => serialize_tagged(serializer, "Switch", p),
-            Component::Separator(p) => serialize_tagged(serializer, "Separator", p),
-            Component::DescriptionList(p) => serialize_tagged(serializer, "DescriptionList", p),
-            Component::Tabs(p) => serialize_tagged(serializer, "Tabs", p),
-            Component::Breadcrumb(p) => serialize_tagged(serializer, "Breadcrumb", p),
-            Component::Pagination(p) => serialize_tagged(serializer, "Pagination", p),
-            Component::Progress(p) => serialize_tagged(serializer, "Progress", p),
-            Component::Avatar(p) => serialize_tagged(serializer, "Avatar", p),
-            Component::Skeleton(p) => serialize_tagged(serializer, "Skeleton", p),
-            Component::StatCard(p) => serialize_tagged(serializer, "StatCard", p),
-            Component::Checklist(p) => serialize_tagged(serializer, "Checklist", p),
-            Component::Toast(p) => serialize_tagged(serializer, "Toast", p),
-            Component::NotificationDropdown(p) => {
-                serialize_tagged(serializer, "NotificationDropdown", p)
-            }
-            Component::Sidebar(p) => serialize_tagged(serializer, "Sidebar", p),
-            Component::Header(p) => serialize_tagged(serializer, "Header", p),
-            Component::Grid(p) => serialize_tagged(serializer, "Grid", p),
-            Component::Collapsible(p) => serialize_tagged(serializer, "Collapsible", p),
-            Component::EmptyState(p) => serialize_tagged(serializer, "EmptyState", p),
-            Component::FormSection(p) => serialize_tagged(serializer, "FormSection", p),
-            Component::PageHeader(p) => serialize_tagged(serializer, "PageHeader", p),
-            Component::ButtonGroup(p) => serialize_tagged(serializer, "ButtonGroup", p),
-            Component::DropdownMenu(p) => serialize_tagged(serializer, "DropdownMenu", p),
-            Component::KanbanBoard(p) => serialize_tagged(serializer, "KanbanBoard", p),
-            Component::CalendarCell(p) => serialize_tagged(serializer, "CalendarCell", p),
-            Component::ActionCard(p) => serialize_tagged(serializer, "ActionCard", p),
-            Component::ProductTile(p) => serialize_tagged(serializer, "ProductTile", p),
-            Component::DataTable(p) => serialize_tagged(serializer, "DataTable", p),
-            Component::Image(p) => serialize_tagged(serializer, "Image", p),
-            Component::KeyValueEditor(p) => serialize_tagged(serializer, "KeyValueEditor", p),
-            Component::RichTextEditor(p) => serialize_tagged(serializer, "RichTextEditor", p),
-            Component::DetailForm(p) => serialize_tagged(serializer, "DetailForm", p),
-            Component::Plugin(p) => p.serialize(serializer),
-        }
-    }
-}
-
-// ── Custom Deserialize for Component ─────────────────────────────────────
-
-impl<'de> Deserialize<'de> for Component {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = serde_json::Value::deserialize(deserializer)?;
-        let type_str = value
-            .get("type")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| de::Error::missing_field("type"))?;
-
-        match type_str {
-            "Card" => serde_json::from_value::<CardProps>(value)
-                .map(Component::Card)
-                .map_err(de::Error::custom),
-            "Table" => serde_json::from_value::<TableProps>(value)
-                .map(Component::Table)
-                .map_err(de::Error::custom),
-            "Form" => serde_json::from_value::<FormProps>(value)
-                .map(Component::Form)
-                .map_err(de::Error::custom),
-            "Button" => serde_json::from_value::<ButtonProps>(value)
-                .map(Component::Button)
-                .map_err(de::Error::custom),
-            "Input" => serde_json::from_value::<InputProps>(value)
-                .map(Component::Input)
-                .map_err(de::Error::custom),
-            "Select" => serde_json::from_value::<SelectProps>(value)
-                .map(Component::Select)
-                .map_err(de::Error::custom),
-            "Alert" => serde_json::from_value::<AlertProps>(value)
-                .map(Component::Alert)
-                .map_err(de::Error::custom),
-            "Badge" => serde_json::from_value::<BadgeProps>(value)
-                .map(Component::Badge)
-                .map_err(de::Error::custom),
-            "Modal" => serde_json::from_value::<ModalProps>(value)
-                .map(Component::Modal)
-                .map_err(de::Error::custom),
-            "Text" => serde_json::from_value::<TextProps>(value)
-                .map(Component::Text)
-                .map_err(de::Error::custom),
-            "Checkbox" => serde_json::from_value::<CheckboxProps>(value)
-                .map(Component::Checkbox)
-                .map_err(de::Error::custom),
-            "Switch" => serde_json::from_value::<SwitchProps>(value)
-                .map(Component::Switch)
-                .map_err(de::Error::custom),
-            "Separator" => serde_json::from_value::<SeparatorProps>(value)
-                .map(Component::Separator)
-                .map_err(de::Error::custom),
-            "DescriptionList" => serde_json::from_value::<DescriptionListProps>(value)
-                .map(Component::DescriptionList)
-                .map_err(de::Error::custom),
-            "Tabs" => serde_json::from_value::<TabsProps>(value)
-                .map(Component::Tabs)
-                .map_err(de::Error::custom),
-            "Breadcrumb" => serde_json::from_value::<BreadcrumbProps>(value)
-                .map(Component::Breadcrumb)
-                .map_err(de::Error::custom),
-            "Pagination" => serde_json::from_value::<PaginationProps>(value)
-                .map(Component::Pagination)
-                .map_err(de::Error::custom),
-            "Progress" => serde_json::from_value::<ProgressProps>(value)
-                .map(Component::Progress)
-                .map_err(de::Error::custom),
-            "Avatar" => serde_json::from_value::<AvatarProps>(value)
-                .map(Component::Avatar)
-                .map_err(de::Error::custom),
-            "Skeleton" => serde_json::from_value::<SkeletonProps>(value)
-                .map(Component::Skeleton)
-                .map_err(de::Error::custom),
-            "StatCard" => serde_json::from_value::<StatCardProps>(value)
-                .map(Component::StatCard)
-                .map_err(de::Error::custom),
-            "Checklist" => serde_json::from_value::<ChecklistProps>(value)
-                .map(Component::Checklist)
-                .map_err(de::Error::custom),
-            "Toast" => serde_json::from_value::<ToastProps>(value)
-                .map(Component::Toast)
-                .map_err(de::Error::custom),
-            "NotificationDropdown" => serde_json::from_value::<NotificationDropdownProps>(value)
-                .map(Component::NotificationDropdown)
-                .map_err(de::Error::custom),
-            "Sidebar" => serde_json::from_value::<SidebarProps>(value)
-                .map(Component::Sidebar)
-                .map_err(de::Error::custom),
-            "Header" => serde_json::from_value::<HeaderProps>(value)
-                .map(Component::Header)
-                .map_err(de::Error::custom),
-            "Grid" => serde_json::from_value::<GridProps>(value)
-                .map(Component::Grid)
-                .map_err(de::Error::custom),
-            "Collapsible" => serde_json::from_value::<CollapsibleProps>(value)
-                .map(Component::Collapsible)
-                .map_err(de::Error::custom),
-            "EmptyState" => serde_json::from_value::<EmptyStateProps>(value)
-                .map(Component::EmptyState)
-                .map_err(de::Error::custom),
-            "FormSection" => serde_json::from_value::<FormSectionProps>(value)
-                .map(Component::FormSection)
-                .map_err(de::Error::custom),
-            "PageHeader" => serde_json::from_value::<PageHeaderProps>(value)
-                .map(Component::PageHeader)
-                .map_err(de::Error::custom),
-            "ButtonGroup" => serde_json::from_value::<ButtonGroupProps>(value)
-                .map(Component::ButtonGroup)
-                .map_err(de::Error::custom),
-            "DropdownMenu" => serde_json::from_value::<DropdownMenuProps>(value)
-                .map(Component::DropdownMenu)
-                .map_err(de::Error::custom),
-            "KanbanBoard" => serde_json::from_value::<KanbanBoardProps>(value)
-                .map(Component::KanbanBoard)
-                .map_err(de::Error::custom),
-            "CalendarCell" => serde_json::from_value::<CalendarCellProps>(value)
-                .map(Component::CalendarCell)
-                .map_err(de::Error::custom),
-            "ActionCard" => serde_json::from_value::<ActionCardProps>(value)
-                .map(Component::ActionCard)
-                .map_err(de::Error::custom),
-            "ProductTile" => serde_json::from_value::<ProductTileProps>(value)
-                .map(Component::ProductTile)
-                .map_err(de::Error::custom),
-            "DataTable" => serde_json::from_value::<DataTableProps>(value)
-                .map(Component::DataTable)
-                .map_err(de::Error::custom),
-            "Image" => serde_json::from_value::<ImageProps>(value)
-                .map(Component::Image)
-                .map_err(de::Error::custom),
-            "KeyValueEditor" => serde_json::from_value::<KeyValueEditorProps>(value)
-                .map(Component::KeyValueEditor)
-                .map_err(de::Error::custom),
-            "RichTextEditor" => serde_json::from_value::<RichTextEditorProps>(value)
-                .map(Component::RichTextEditor)
-                .map_err(de::Error::custom),
-            "DetailForm" => serde_json::from_value::<DetailFormProps>(value)
-                .map(Component::DetailForm)
-                .map_err(de::Error::custom),
-            _ => {
-                // Unknown type: treat as a plugin component.
-                let plugin_type = type_str.to_string();
-                let mut props = value;
-                if let Some(obj) = props.as_object_mut() {
-                    obj.remove("type");
-                }
-                Ok(Component::Plugin(PluginProps { plugin_type, props }))
-            }
-        }
-    }
-}
-
-/// A component node wrapping a component with shared fields.
-///
-/// Every component in a view tree is wrapped in a `ComponentNode` that
-/// provides a unique key, optional action binding, and optional visibility
-/// rules. The component itself is flattened into the node's JSON.
-// JsonSchema skipped: contains Component via flatten — Component has custom Serialize/Deserialize
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ComponentNode {
-    pub key: String,
-    #[serde(flatten)]
-    pub component: Component,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub action: Option<Action>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub visibility: Option<Visibility>,
-}
-
-impl ComponentNode {
-    /// Create a Card component node.
-    pub fn card(key: impl Into<String>, props: CardProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Card(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Table component node.
-    pub fn table(key: impl Into<String>, props: TableProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Table(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Form component node.
-    pub fn form(key: impl Into<String>, props: FormProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Form(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a DetailForm component node.
-    ///
-    /// Renders the same outer scaffold in both [`EditMode::View`] and
-    /// [`EditMode::Edit`] modes per the structural coherence contract
-    /// (147-UI-SPEC §5). In Edit mode the scaffold is additionally
-    /// wrapped in a `<form>` with method-spoofing for PUT/PATCH/DELETE.
-    ///
-    /// **Authoring rule (Option A, 147-UI-SPEC §9).** When a
-    /// [`DetailField::input`] is an `Input` / `Select` / `Textarea` /
-    /// `Checkbox` / `Switch` component, the caller MUST set the input's
-    /// `label` prop to an empty string. The `<dt>` already provides the
-    /// visible label; DetailForm does not mutate caller-supplied props.
-    /// When Option A is applied, the renderer also emits `aria-label`
-    /// derived from the field's `label` so screen readers retain context.
-    pub fn detail_form(key: impl Into<String>, props: DetailFormProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::DetailForm(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a [`Component::RichTextEditor`] node.
-    ///
-    /// If `props.name` is empty, the `name` argument is used to populate it.
-    /// Otherwise `props.name` wins — callers that already set the field on
-    /// `props` keep their value (D-26).
-    pub fn rich_text_editor(name: impl Into<String>, props: RichTextEditorProps) -> Self {
-        let name_arg: String = name.into();
-        let final_props = if props.name.is_empty() {
-            let mut p = props;
-            p.name = name_arg.clone();
-            p
-        } else {
-            props
-        };
-        Self {
-            key: name_arg,
-            component: Component::RichTextEditor(final_props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Button component node.
-    pub fn button(key: impl Into<String>, props: ButtonProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Button(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create an Input component node.
-    pub fn input(key: impl Into<String>, props: InputProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Input(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Select component node.
-    pub fn select(key: impl Into<String>, props: SelectProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Select(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create an Alert component node.
-    pub fn alert(key: impl Into<String>, props: AlertProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Alert(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Badge component node.
-    pub fn badge(key: impl Into<String>, props: BadgeProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Badge(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Modal component node.
-    pub fn modal(key: impl Into<String>, props: ModalProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Modal(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Text component node.
-    pub fn text(key: impl Into<String>, props: TextProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Text(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Checkbox component node.
-    pub fn checkbox(key: impl Into<String>, props: CheckboxProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Checkbox(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Switch component node.
-    pub fn switch(key: impl Into<String>, props: SwitchProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Switch(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Separator component node.
-    pub fn separator(key: impl Into<String>, props: SeparatorProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Separator(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a DescriptionList component node.
-    pub fn description_list(key: impl Into<String>, props: DescriptionListProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::DescriptionList(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Tabs component node.
-    pub fn tabs(key: impl Into<String>, props: TabsProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Tabs(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Breadcrumb component node.
-    pub fn breadcrumb(key: impl Into<String>, props: BreadcrumbProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Breadcrumb(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Pagination component node.
-    pub fn pagination(key: impl Into<String>, props: PaginationProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Pagination(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Progress component node.
-    pub fn progress(key: impl Into<String>, props: ProgressProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Progress(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create an Avatar component node.
-    pub fn avatar(key: impl Into<String>, props: AvatarProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Avatar(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Skeleton component node.
-    pub fn skeleton(key: impl Into<String>, props: SkeletonProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Skeleton(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a StatCard component node.
-    pub fn stat_card(key: impl Into<String>, props: StatCardProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::StatCard(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Checklist component node.
-    pub fn checklist(key: impl Into<String>, props: ChecklistProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Checklist(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Toast component node.
-    pub fn toast(key: impl Into<String>, props: ToastProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Toast(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a NotificationDropdown component node.
-    pub fn notification_dropdown(key: impl Into<String>, props: NotificationDropdownProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::NotificationDropdown(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Sidebar component node.
-    pub fn sidebar(key: impl Into<String>, props: SidebarProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Sidebar(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Header component node.
-    pub fn header(key: impl Into<String>, props: HeaderProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Header(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Grid component node.
-    pub fn grid(key: impl Into<String>, props: GridProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Grid(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Collapsible component node.
-    pub fn collapsible(key: impl Into<String>, props: CollapsibleProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Collapsible(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create an EmptyState component node.
-    pub fn empty_state(key: impl Into<String>, props: EmptyStateProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::EmptyState(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a FormSection component node.
-    pub fn form_section(key: impl Into<String>, props: FormSectionProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::FormSection(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a DropdownMenu component node.
-    pub fn dropdown_menu(key: impl Into<String>, props: DropdownMenuProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::DropdownMenu(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a KanbanBoard component node.
-    pub fn kanban_board(key: impl Into<String>, props: KanbanBoardProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::KanbanBoard(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a CalendarCell component node.
-    pub fn calendar_cell(key: impl Into<String>, props: CalendarCellProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::CalendarCell(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create an ActionCard component node.
-    pub fn action_card(key: impl Into<String>, props: ActionCardProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::ActionCard(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a ProductTile component node.
-    pub fn product_tile(key: impl Into<String>, props: ProductTileProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::ProductTile(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a DataTable component node.
-    pub fn data_table(key: impl Into<String>, props: DataTableProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::DataTable(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create an Image component node.
-    pub fn image(key: impl Into<String>, props: ImageProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Image(props),
-            action: None,
-            visibility: None,
-        }
-    }
-
-    /// Create a Plugin component node.
-    ///
-    /// Use `plugin_component` to avoid ambiguity with any `plugin` module.
-    pub fn plugin_component(key: impl Into<String>, props: PluginProps) -> Self {
-        Self {
-            key: key.into(),
-            component: Component::Plugin(props),
-            action: None,
-            visibility: None,
-        }
+/// Lax deserializer for PageHeader.actions. Per D-19/F6:
+/// Accepts: missing field (via #[serde(default)]), null, [], empty string "",
+/// and array of strings. Rejects: non-empty strings, arrays of non-strings.
+/// This loosens the wire-format contract for actions only — other Vec<String>
+/// ID-slot fields (e.g. CardProps.footer) remain strict.
+fn deserialize_actions_lax<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<Vec<String>, D::Error> {
+    use serde::de::Error;
+    let v = serde_json::Value::deserialize(d)?;
+    match v {
+        serde_json::Value::Null => Ok(Vec::new()),
+        serde_json::Value::String(s) if s.is_empty() => Ok(Vec::new()),
+        serde_json::Value::Array(arr) => arr
+            .into_iter()
+            .map(|item| {
+                item.as_str()
+                    .map(String::from)
+                    .ok_or_else(|| D::Error::custom("PageHeader.actions: expected string in array"))
+            })
+            .collect(),
+        other => Err(D::Error::custom(format!(
+            "PageHeader.actions: expected null, empty string, or array of strings; got {other:?}"
+        ))),
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod schema_smoke_tests {
+    //! Runtime `schema_for!` smoke tests per D-32.
+    //!
+    //! Each test asserts that the generated JSON Schema for the given Props
+    //! struct is a non-empty JSON object with a populated `properties` field.
+    //! This proves the `JsonSchema` derive executes without panic on every
+    //! surviving Props struct — a compile-time `#[derive(JsonSchema)]` alone
+    //! does not prove the generated code runs.
+    //!
+    //! One `#[test]` per type for clear failure localization.
+
     use super::*;
-    use crate::action::HttpMethod;
-    use crate::visibility::{VisibilityCondition, VisibilityOperator};
+
+    fn assert_schema_nonempty_object<T: schemars::JsonSchema>(type_label: &str) {
+        let schema = schemars::schema_for!(T);
+        let value = serde_json::to_value(&schema).expect("schema serializes to JSON");
+        assert!(
+            value.is_object(),
+            "{type_label}: schema must be a JSON object"
+        );
+        let props = value
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .map(|o| !o.is_empty())
+            .unwrap_or(false);
+        assert!(
+            props,
+            "{type_label}: schema must have a non-empty `properties` field"
+        );
+    }
 
     #[test]
-    fn card_component_tagged_serialization() {
-        let card = Component::Card(CardProps {
-            title: "Test Card".to_string(),
-            description: Some("A description".to_string()),
-            children: vec![],
-            footer: vec![],
+    fn schema_for_card_props_generates() {
+        assert_schema_nonempty_object::<CardProps>("CardProps");
+    }
+
+    #[test]
+    fn schema_for_table_props_generates() {
+        assert_schema_nonempty_object::<TableProps>("TableProps");
+    }
+
+    #[test]
+    fn schema_for_form_props_generates() {
+        assert_schema_nonempty_object::<FormProps>("FormProps");
+    }
+
+    #[test]
+    fn schema_for_button_props_generates() {
+        assert_schema_nonempty_object::<ButtonProps>("ButtonProps");
+    }
+
+    #[test]
+    fn schema_for_input_props_generates() {
+        assert_schema_nonempty_object::<InputProps>("InputProps");
+    }
+
+    #[test]
+    fn schema_for_select_props_generates() {
+        assert_schema_nonempty_object::<SelectProps>("SelectProps");
+    }
+
+    #[test]
+    fn schema_for_alert_props_generates() {
+        assert_schema_nonempty_object::<AlertProps>("AlertProps");
+    }
+
+    #[test]
+    fn schema_for_badge_props_generates() {
+        assert_schema_nonempty_object::<BadgeProps>("BadgeProps");
+    }
+
+    #[test]
+    fn schema_for_modal_props_generates() {
+        assert_schema_nonempty_object::<ModalProps>("ModalProps");
+    }
+
+    #[test]
+    fn schema_for_text_props_generates() {
+        assert_schema_nonempty_object::<TextProps>("TextProps");
+    }
+
+    #[test]
+    fn schema_for_checkbox_props_generates() {
+        assert_schema_nonempty_object::<CheckboxProps>("CheckboxProps");
+    }
+
+    #[test]
+    fn schema_for_switch_props_generates() {
+        assert_schema_nonempty_object::<SwitchProps>("SwitchProps");
+    }
+
+    #[test]
+    fn schema_for_separator_props_generates() {
+        assert_schema_nonempty_object::<SeparatorProps>("SeparatorProps");
+    }
+
+    #[test]
+    fn schema_for_description_list_props_generates() {
+        assert_schema_nonempty_object::<DescriptionListProps>("DescriptionListProps");
+    }
+
+    #[test]
+    fn schema_for_tab_generates() {
+        assert_schema_nonempty_object::<Tab>("Tab");
+    }
+
+    #[test]
+    fn schema_for_tabs_props_generates() {
+        assert_schema_nonempty_object::<TabsProps>("TabsProps");
+    }
+
+    #[test]
+    fn schema_for_breadcrumb_props_generates() {
+        assert_schema_nonempty_object::<BreadcrumbProps>("BreadcrumbProps");
+    }
+
+    #[test]
+    fn schema_for_pagination_props_generates() {
+        assert_schema_nonempty_object::<PaginationProps>("PaginationProps");
+    }
+
+    #[test]
+    fn schema_for_progress_props_generates() {
+        assert_schema_nonempty_object::<ProgressProps>("ProgressProps");
+    }
+
+    #[test]
+    fn schema_for_image_props_generates() {
+        assert_schema_nonempty_object::<ImageProps>("ImageProps");
+    }
+
+    #[test]
+    fn image_inline_svg_factory_roundtrips_via_serde() {
+        let p = ImageProps::inline_svg("<svg/>", "alt");
+        let json = serde_json::to_value(&p).expect("serialization must not fail");
+        let parsed: ImageProps =
+            serde_json::from_value(json).expect("deserialization must not fail");
+        assert_eq!(parsed.inline_svg, Some("<svg/>".to_string()));
+        assert_eq!(parsed.alt, "alt");
+        assert_eq!(parsed.src, "");
+    }
+
+    #[test]
+    fn schema_for_avatar_props_generates() {
+        assert_schema_nonempty_object::<AvatarProps>("AvatarProps");
+    }
+
+    #[test]
+    fn schema_for_skeleton_props_generates() {
+        assert_schema_nonempty_object::<SkeletonProps>("SkeletonProps");
+    }
+
+    #[test]
+    fn schema_for_stat_card_props_generates() {
+        assert_schema_nonempty_object::<StatCardProps>("StatCardProps");
+    }
+
+    #[test]
+    fn schema_for_checklist_props_generates() {
+        assert_schema_nonempty_object::<ChecklistProps>("ChecklistProps");
+    }
+
+    #[test]
+    fn schema_for_toast_props_generates() {
+        assert_schema_nonempty_object::<ToastProps>("ToastProps");
+    }
+
+    #[test]
+    fn schema_for_notification_dropdown_props_generates() {
+        assert_schema_nonempty_object::<NotificationDropdownProps>("NotificationDropdownProps");
+    }
+
+    #[test]
+    fn schema_for_sidebar_props_generates() {
+        assert_schema_nonempty_object::<SidebarProps>("SidebarProps");
+    }
+
+    #[test]
+    fn schema_for_header_props_generates() {
+        assert_schema_nonempty_object::<HeaderProps>("HeaderProps");
+    }
+
+    #[test]
+    fn schema_for_grid_props_generates() {
+        assert_schema_nonempty_object::<GridProps>("GridProps");
+    }
+
+    #[test]
+    fn schema_for_collapsible_props_generates() {
+        assert_schema_nonempty_object::<CollapsibleProps>("CollapsibleProps");
+    }
+
+    #[test]
+    fn schema_for_empty_state_props_generates() {
+        assert_schema_nonempty_object::<EmptyStateProps>("EmptyStateProps");
+    }
+
+    #[test]
+    fn schema_for_form_section_props_generates() {
+        assert_schema_nonempty_object::<FormSectionProps>("FormSectionProps");
+    }
+
+    #[test]
+    fn schema_for_page_header_props_generates() {
+        assert_schema_nonempty_object::<PageHeaderProps>("PageHeaderProps");
+    }
+
+    #[test]
+    fn schema_for_button_group_props_generates() {
+        assert_schema_nonempty_object::<ButtonGroupProps>("ButtonGroupProps");
+    }
+
+    #[test]
+    fn schema_for_dropdown_menu_action_generates() {
+        assert_schema_nonempty_object::<DropdownMenuAction>("DropdownMenuAction");
+    }
+
+    #[test]
+    fn schema_for_dropdown_menu_props_generates() {
+        assert_schema_nonempty_object::<DropdownMenuProps>("DropdownMenuProps");
+    }
+
+    #[test]
+    fn schema_for_data_table_props_generates() {
+        assert_schema_nonempty_object::<DataTableProps>("DataTableProps");
+    }
+
+    #[test]
+    fn schema_for_kanban_column_props_generates() {
+        assert_schema_nonempty_object::<KanbanColumnProps>("KanbanColumnProps");
+    }
+
+    #[test]
+    fn schema_for_kanban_board_props_generates() {
+        assert_schema_nonempty_object::<KanbanBoardProps>("KanbanBoardProps");
+    }
+
+    #[test]
+    fn schema_for_calendar_cell_props_generates() {
+        assert_schema_nonempty_object::<CalendarCellProps>("CalendarCellProps");
+    }
+
+    #[test]
+    fn schema_for_action_card_props_generates() {
+        assert_schema_nonempty_object::<ActionCardProps>("ActionCardProps");
+    }
+
+    #[test]
+    fn schema_for_product_tile_props_generates() {
+        assert_schema_nonempty_object::<ProductTileProps>("ProductTileProps");
+    }
+
+    #[test]
+    fn card_props_round_trips_footer() {
+        let original = CardProps {
+            title: "Hero".to_string(),
+            description: None,
             max_width: None,
-        });
-        let json = serde_json::to_value(&card).unwrap();
-        assert_eq!(json["type"], "Card");
-        assert_eq!(json["title"], "Test Card");
-        assert_eq!(json["description"], "A description");
+            footer: vec!["btn1".to_string(), "btn2".to_string()],
+            variant: CardVariant::Bordered,
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: CardProps = serde_json::from_str(&json).unwrap();
+        assert_eq!(original.footer, parsed.footer);
     }
 
     #[test]
-    fn button_variant_defaults_to_default() {
-        let json = r#"{"type": "Button", "label": "Click me"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Button(props) => {
-                assert_eq!(props.variant, ButtonVariant::Default);
-                assert_eq!(props.label, "Click me");
-            }
-            _ => panic!("expected Button"),
-        }
+    fn tab_round_trips_children() {
+        let original = Tab {
+            value: "overview".to_string(),
+            label: "Overview".to_string(),
+            children: vec!["panel1".to_string()],
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: Tab = serde_json::from_str(&json).unwrap();
+        assert_eq!(original.children, parsed.children);
     }
 
     #[test]
-    fn input_type_defaults_to_text() {
-        let json = r#"{"type": "Input", "field": "email", "label": "Email"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Input(props) => {
-                assert_eq!(props.input_type, InputType::Text);
-                assert_eq!(props.field, "email");
-            }
-            _ => panic!("expected Input"),
-        }
-    }
-
-    #[test]
-    fn alert_variant_defaults_to_info() {
-        let json = r#"{"type": "Alert", "message": "Hello"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Alert(props) => assert_eq!(props.variant, AlertVariant::Info),
-            _ => panic!("expected Alert"),
-        }
-    }
-
-    #[test]
-    fn badge_variant_defaults_to_default() {
-        let json = r#"{"type": "Badge", "label": "New"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Badge(props) => assert_eq!(props.variant, BadgeVariant::Default),
-            _ => panic!("expected Badge"),
-        }
-    }
-
-    #[test]
-    fn text_element_defaults_to_p() {
-        let json = r#"{"type": "Text", "content": "Hello world"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Text(props) => {
-                assert_eq!(props.element, TextElement::P);
-                assert_eq!(props.content, "Hello world");
-            }
-            _ => panic!("expected Text"),
-        }
-    }
-
-    #[test]
-    fn table_component_round_trips() {
-        let table = Component::Table(TableProps {
-            columns: vec![
-                Column {
-                    key: "name".to_string(),
-                    label: "Name".to_string(),
-                    format: None,
-                },
-                Column {
-                    key: "created_at".to_string(),
-                    label: "Created".to_string(),
-                    format: Some(ColumnFormat::Date),
-                },
-            ],
-            data_path: "/data/users".to_string(),
-            row_actions: None,
-            empty_message: Some("No users found".to_string()),
-            sortable: None,
-            sort_column: None,
-            sort_direction: None,
-        });
-        let json = serde_json::to_string(&table).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, table);
-    }
-
-    #[test]
-    fn select_component_round_trips() {
-        let select = Component::Select(SelectProps {
-            field: "role".to_string(),
-            label: "Role".to_string(),
-            options: vec![
-                SelectOption {
-                    value: "admin".to_string(),
-                    label: "Administrator".to_string(),
-                },
-                SelectOption {
-                    value: "user".to_string(),
-                    label: "User".to_string(),
-                },
-            ],
-            placeholder: Some("Select a role".to_string()),
-            required: Some(true),
-            disabled: None,
-            error: None,
+    fn card_props_omits_empty_footer_in_json() {
+        let card = CardProps {
+            title: "Card".to_string(),
             description: None,
-            default_value: None,
-            data_path: None,
-        });
-        let json = serde_json::to_string(&select).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, select);
-    }
-
-    #[test]
-    fn modal_component_round_trips() {
-        let modal = Component::Modal(ModalProps {
-            id: "modal-confirm".to_string(),
-            title: "Confirm".to_string(),
-            description: None,
-            children: vec![ComponentNode {
-                key: "msg".to_string(),
-                component: Component::Text(TextProps {
-                    content: "Are you sure?".to_string(),
-                    element: TextElement::P,
-                }),
-                action: None,
-                visibility: None,
-            }],
-            footer: vec![],
-            trigger_label: Some("Open".to_string()),
-        });
-        let json = serde_json::to_string(&modal).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, modal);
-    }
-
-    #[test]
-    fn form_component_round_trips() {
-        let form = Component::Form(FormProps {
-            action: Action {
-                handler: "users.store".to_string(),
-                url: None,
-                method: HttpMethod::Post,
-                confirm: None,
-                on_success: None,
-                on_error: None,
-                target: None,
-            },
-            fields: vec![ComponentNode {
-                key: "email-input".to_string(),
-                component: Component::Input(InputProps {
-                    field: "email".to_string(),
-                    label: "Email".to_string(),
-                    input_type: InputType::Email,
-                    placeholder: Some("user@example.com".to_string()),
-                    required: Some(true),
-                    disabled: None,
-                    error: None,
-                    description: None,
-                    default_value: None,
-                    data_path: None,
-                    step: None,
-                    list: None,
-                }),
-                action: None,
-                visibility: None,
-            }],
-            method: None,
-            guard: None,
             max_width: None,
-        });
-        let json = serde_json::to_string(&form).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, form);
-    }
-
-    #[test]
-    fn component_node_with_action_and_visibility() {
-        let node = ComponentNode {
-            key: "create-btn".to_string(),
-            component: Component::Button(ButtonProps {
-                label: "Create User".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            action: Some(Action {
-                handler: "users.create".to_string(),
-                url: None,
-                method: HttpMethod::Post,
-                confirm: None,
-                on_success: None,
-                on_error: None,
-                target: None,
-            }),
-            visibility: Some(Visibility::Condition(VisibilityCondition {
-                path: "/auth/user/role".to_string(),
-                operator: VisibilityOperator::Eq,
-                value: Some(serde_json::Value::String("admin".to_string())),
-            })),
+            footer: Vec::new(),
+            variant: CardVariant::Bordered,
         };
-        let json = serde_json::to_string(&node).unwrap();
-        let parsed: ComponentNode = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, node);
-
-        // Verify flattened structure includes type
-        let value = serde_json::to_value(&node).unwrap();
-        assert_eq!(value["type"], "Button");
-        assert_eq!(value["key"], "create-btn");
-        assert!(value.get("action").is_some());
-        assert!(value.get("visibility").is_some());
-    }
-
-    #[test]
-    fn all_component_variants_serialize() {
-        let components: Vec<Component> = vec![
-            Component::Card(CardProps {
-                title: "t".to_string(),
-                description: None,
-                children: vec![],
-                footer: vec![],
-                max_width: None,
-            }),
-            Component::Table(TableProps {
-                columns: vec![],
-                data_path: "/d".to_string(),
-                row_actions: None,
-                empty_message: None,
-                sortable: None,
-                sort_column: None,
-                sort_direction: None,
-            }),
-            Component::Form(FormProps {
-                action: Action {
-                    handler: "h.m".to_string(),
-                    url: None,
-                    method: HttpMethod::Post,
-                    confirm: None,
-                    on_success: None,
-                    on_error: None,
-                    target: None,
-                },
-                fields: vec![],
-                method: None,
-                guard: None,
-                max_width: None,
-            }),
-            Component::Button(ButtonProps {
-                label: "b".to_string(),
-                variant: ButtonVariant::Default,
-                size: Size::Default,
-                disabled: None,
-                icon: None,
-                icon_position: None,
-                button_type: None,
-            }),
-            Component::Input(InputProps {
-                field: "f".to_string(),
-                label: "l".to_string(),
-                input_type: InputType::Text,
-                placeholder: None,
-                required: None,
-                disabled: None,
-                error: None,
-                description: None,
-                default_value: None,
-                data_path: None,
-                step: None,
-                list: None,
-            }),
-            Component::Select(SelectProps {
-                field: "f".to_string(),
-                label: "l".to_string(),
-                options: vec![],
-                placeholder: None,
-                required: None,
-                disabled: None,
-                error: None,
-                description: None,
-                default_value: None,
-                data_path: None,
-            }),
-            Component::Alert(AlertProps {
-                message: "m".to_string(),
-                variant: AlertVariant::Info,
-                title: None,
-            }),
-            Component::Badge(BadgeProps {
-                label: "b".to_string(),
-                variant: BadgeVariant::Default,
-            }),
-            Component::Modal(ModalProps {
-                id: "modal-t".to_string(),
-                title: "t".to_string(),
-                description: None,
-                children: vec![],
-                footer: vec![],
-                trigger_label: None,
-            }),
-            Component::Text(TextProps {
-                content: "c".to_string(),
-                element: TextElement::P,
-            }),
-            Component::Checkbox(CheckboxProps {
-                field: "f".to_string(),
-                value: None,
-                label: "l".to_string(),
-                description: None,
-                checked: None,
-                data_path: None,
-                required: None,
-                disabled: None,
-                error: None,
-            }),
-            Component::Switch(SwitchProps {
-                field: "f".to_string(),
-                label: "l".to_string(),
-                description: None,
-                checked: None,
-                data_path: None,
-                required: None,
-                disabled: None,
-                error: None,
-                action: None,
-                compact: false,
-            }),
-            Component::Separator(SeparatorProps { orientation: None }),
-            Component::DescriptionList(DescriptionListProps {
-                items: vec![DescriptionItem {
-                    label: "k".to_string(),
-                    value: "v".to_string(),
-                    format: None,
-                }],
-                columns: None,
-            }),
-            Component::Tabs(TabsProps {
-                default_tab: "t1".to_string(),
-                tabs: vec![Tab {
-                    value: "t1".to_string(),
-                    label: "Tab 1".to_string(),
-                    children: vec![],
-                }],
-            }),
-            Component::Breadcrumb(BreadcrumbProps {
-                items: vec![BreadcrumbItem {
-                    label: "Home".to_string(),
-                    url: Some("/".to_string()),
-                }],
-            }),
-            Component::Pagination(PaginationProps {
-                current_page: 1,
-                per_page: 10,
-                total: 100,
-                base_url: None,
-            }),
-            Component::Progress(ProgressProps {
-                value: 50,
-                max: None,
-                label: None,
-            }),
-            Component::Avatar(AvatarProps {
-                src: None,
-                alt: "User".to_string(),
-                fallback: Some("U".to_string()),
-                size: None,
-            }),
-            Component::Skeleton(SkeletonProps {
-                width: None,
-                height: None,
-                rounded: None,
-            }),
-            Component::StatCard(StatCardProps {
-                label: "Revenue".to_string(),
-                value: "$1,234".to_string(),
-                icon: None,
-                subtitle: None,
-                sse_target: None,
-            }),
-            Component::Checklist(ChecklistProps {
-                title: "Tasks".to_string(),
-                items: vec![],
-                dismissible: true,
-                dismiss_label: None,
-                data_key: None,
-            }),
-            Component::Toast(ToastProps {
-                message: "Saved!".to_string(),
-                variant: ToastVariant::Success,
-                timeout: None,
-                dismissible: true,
-            }),
-            Component::NotificationDropdown(NotificationDropdownProps {
-                notifications: vec![],
-                empty_text: None,
-            }),
-            Component::Sidebar(SidebarProps {
-                fixed_top: vec![],
-                groups: vec![],
-                fixed_bottom: vec![],
-            }),
-            Component::Header(HeaderProps {
-                business_name: "Acme".to_string(),
-                notification_count: None,
-                user_name: None,
-                user_avatar: None,
-                logout_url: None,
-            }),
-            Component::Image(ImageProps::url("/img/screenshot.png", "Page screenshot")),
-        ];
-        assert_eq!(components.len(), 27, "should have 27 component variants");
-        let expected_types = [
-            "Card",
-            "Table",
-            "Form",
-            "Button",
-            "Input",
-            "Select",
-            "Alert",
-            "Badge",
-            "Modal",
-            "Text",
-            "Checkbox",
-            "Switch",
-            "Separator",
-            "DescriptionList",
-            "Tabs",
-            "Breadcrumb",
-            "Pagination",
-            "Progress",
-            "Avatar",
-            "Skeleton",
-            "StatCard",
-            "Checklist",
-            "Toast",
-            "NotificationDropdown",
-            "Sidebar",
-            "Header",
-            "Image",
-        ];
-        for (component, expected_type) in components.iter().zip(expected_types.iter()) {
-            let json = serde_json::to_value(component).unwrap();
-            assert_eq!(
-                json["type"], *expected_type,
-                "component should serialize with type={expected_type}"
-            );
-            let roundtripped: Component = serde_json::from_value(json).unwrap();
-            assert_eq!(&roundtripped, component);
-        }
-    }
-
-    #[test]
-    fn size_enum_serialization() {
-        let cases = [
-            (Size::Xs, "xs"),
-            (Size::Sm, "sm"),
-            (Size::Default, "default"),
-            (Size::Lg, "lg"),
-        ];
-        for (size, expected) in &cases {
-            let json = serde_json::to_value(size).unwrap();
-            assert_eq!(json, *expected);
-            let parsed: Size = serde_json::from_value(json).unwrap();
-            assert_eq!(&parsed, size);
-        }
-    }
-
-    #[test]
-    fn icon_position_serialization() {
-        let cases = [(IconPosition::Left, "left"), (IconPosition::Right, "right")];
-        for (pos, expected) in &cases {
-            let json = serde_json::to_value(pos).unwrap();
-            assert_eq!(json, *expected);
-            let parsed: IconPosition = serde_json::from_value(json).unwrap();
-            assert_eq!(&parsed, pos);
-        }
-    }
-
-    #[test]
-    fn sort_direction_serialization() {
-        let cases = [(SortDirection::Asc, "asc"), (SortDirection::Desc, "desc")];
-        for (dir, expected) in &cases {
-            let json = serde_json::to_value(dir).unwrap();
-            assert_eq!(json, *expected);
-            let parsed: SortDirection = serde_json::from_value(json).unwrap();
-            assert_eq!(&parsed, dir);
-        }
-    }
-
-    #[test]
-    fn button_with_size_and_icon() {
-        let button = Component::Button(ButtonProps {
-            label: "Save".to_string(),
-            variant: ButtonVariant::Default,
-            size: Size::Lg,
-            disabled: None,
-            icon: Some("save".to_string()),
-            icon_position: Some(IconPosition::Left),
-            button_type: None,
-        });
-        let json = serde_json::to_value(&button).unwrap();
-        assert_eq!(json["size"], "lg");
-        assert_eq!(json["icon"], "save");
-        assert_eq!(json["icon_position"], "left");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, button);
-    }
-
-    #[test]
-    fn card_with_footer() {
-        let card = Component::Card(CardProps {
-            title: "Actions".to_string(),
-            description: None,
-            children: vec![],
-            max_width: None,
-            footer: vec![ComponentNode {
-                key: "cancel".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Cancel".to_string(),
-                    variant: ButtonVariant::Outline,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                    button_type: None,
-                }),
-                action: None,
-                visibility: None,
-            }],
-        });
-        let json = serde_json::to_value(&card).unwrap();
-        assert!(json["footer"].is_array());
-        assert_eq!(json["footer"][0]["label"], "Cancel");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, card);
-    }
-
-    #[test]
-    fn input_with_error_and_description() {
-        let input = Component::Input(InputProps {
-            field: "email".to_string(),
-            label: "Email".to_string(),
-            input_type: InputType::Email,
-            placeholder: None,
-            required: Some(true),
-            disabled: Some(false),
-            error: Some("Invalid email".to_string()),
-            description: Some("Your work email".to_string()),
-            default_value: Some("user@example.com".to_string()),
-            data_path: None,
-            step: None,
-            list: None,
-        });
-        let json = serde_json::to_value(&input).unwrap();
-        assert_eq!(json["error"], "Invalid email");
-        assert_eq!(json["description"], "Your work email");
-        assert_eq!(json["default_value"], "user@example.com");
-        assert_eq!(json["disabled"], false);
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, input);
-    }
-
-    #[test]
-    fn select_with_default_value() {
-        let select = Component::Select(SelectProps {
-            field: "role".to_string(),
-            label: "Role".to_string(),
-            options: vec![SelectOption {
-                value: "admin".to_string(),
-                label: "Admin".to_string(),
-            }],
-            placeholder: None,
-            required: None,
-            disabled: Some(true),
-            error: Some("Required field".to_string()),
-            description: Some("User role".to_string()),
-            default_value: Some("admin".to_string()),
-            data_path: None,
-        });
-        let json = serde_json::to_value(&select).unwrap();
-        assert_eq!(json["default_value"], "admin");
-        assert_eq!(json["error"], "Required field");
-        assert_eq!(json["description"], "User role");
-        assert_eq!(json["disabled"], true);
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, select);
-    }
-
-    #[test]
-    fn alert_with_title() {
-        let alert = Component::Alert(AlertProps {
-            message: "Something happened".to_string(),
-            variant: AlertVariant::Warning,
-            title: Some("Warning".to_string()),
-        });
-        let json = serde_json::to_value(&alert).unwrap();
-        assert_eq!(json["title"], "Warning");
-        assert_eq!(json["message"], "Something happened");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, alert);
-    }
-
-    #[test]
-    fn modal_with_footer_and_description() {
-        let modal = Component::Modal(ModalProps {
-            id: "modal-delete-item".to_string(),
-            title: "Delete Item".to_string(),
-            description: Some("This action cannot be undone.".to_string()),
-            children: vec![],
-            footer: vec![ComponentNode {
-                key: "confirm".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Delete".to_string(),
-                    variant: ButtonVariant::Destructive,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                    button_type: None,
-                }),
-                action: None,
-                visibility: None,
-            }],
-            trigger_label: Some("Delete".to_string()),
-        });
-        let json = serde_json::to_value(&modal).unwrap();
-        assert_eq!(json["description"], "This action cannot be undone.");
-        assert!(json["footer"].is_array());
-        assert_eq!(json["footer"][0]["label"], "Delete");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, modal);
-    }
-
-    #[test]
-    fn table_with_sort_props() {
-        let table = Component::Table(TableProps {
-            columns: vec![Column {
-                key: "name".to_string(),
-                label: "Name".to_string(),
-                format: None,
-            }],
-            data_path: "/data/users".to_string(),
-            row_actions: None,
-            empty_message: None,
-            sortable: Some(true),
-            sort_column: Some("name".to_string()),
-            sort_direction: Some(SortDirection::Desc),
-        });
-        let json = serde_json::to_value(&table).unwrap();
-        assert_eq!(json["sortable"], true);
-        assert_eq!(json["sort_column"], "name");
-        assert_eq!(json["sort_direction"], "desc");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, table);
-    }
-
-    #[test]
-    fn aligned_button_variants_serialize() {
-        let cases = [
-            (ButtonVariant::Default, "default"),
-            (ButtonVariant::Secondary, "secondary"),
-            (ButtonVariant::Destructive, "destructive"),
-            (ButtonVariant::Outline, "outline"),
-            (ButtonVariant::Ghost, "ghost"),
-            (ButtonVariant::Link, "link"),
-        ];
-        for (variant, expected) in &cases {
-            let json = serde_json::to_value(variant).unwrap();
-            assert_eq!(
-                json, *expected,
-                "ButtonVariant::{variant:?} should serialize as {expected}"
-            );
-            let parsed: ButtonVariant = serde_json::from_value(json).unwrap();
-            assert_eq!(&parsed, variant);
-        }
-    }
-
-    #[test]
-    fn aligned_badge_variants_serialize() {
-        let cases = [
-            (BadgeVariant::Default, "default"),
-            (BadgeVariant::Secondary, "secondary"),
-            (BadgeVariant::Destructive, "destructive"),
-            (BadgeVariant::Outline, "outline"),
-        ];
-        for (variant, expected) in &cases {
-            let json = serde_json::to_value(variant).unwrap();
-            assert_eq!(
-                json, *expected,
-                "BadgeVariant::{variant:?} should serialize as {expected}"
-            );
-            let parsed: BadgeVariant = serde_json::from_value(json).unwrap();
-            assert_eq!(&parsed, variant);
-        }
-    }
-
-    #[test]
-    fn checkbox_round_trips() {
-        let checkbox = Component::Checkbox(CheckboxProps {
-            field: "terms".to_string(),
-            value: None,
-            label: "Accept Terms".to_string(),
-            description: Some("You must accept the terms".to_string()),
-            checked: Some(true),
-            data_path: None,
-            required: Some(true),
-            disabled: Some(false),
-            error: None,
-        });
-        let json = serde_json::to_value(&checkbox).unwrap();
-        assert_eq!(json["type"], "Checkbox");
-        assert_eq!(json["field"], "terms");
-        assert_eq!(json["checked"], true);
-        assert_eq!(json["description"], "You must accept the terms");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, checkbox);
-    }
-
-    #[test]
-    fn switch_round_trips() {
-        let switch = Component::Switch(SwitchProps {
-            field: "notifications".to_string(),
-            label: "Enable Notifications".to_string(),
-            description: Some("Receive email notifications".to_string()),
-            checked: Some(false),
-            data_path: None,
-            required: None,
-            disabled: Some(false),
-            error: None,
-            action: None,
-            compact: false,
-        });
-        let json = serde_json::to_value(&switch).unwrap();
-        assert_eq!(json["type"], "Switch");
-        assert_eq!(json["field"], "notifications");
-        assert_eq!(json["checked"], false);
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, switch);
-    }
-
-    #[test]
-    fn separator_defaults_to_horizontal() {
-        let json = r#"{"type": "Separator"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Separator(props) => {
-                assert_eq!(props.orientation, None);
-                // When orientation is None, frontend defaults to horizontal.
-                // Explicit horizontal also round-trips correctly:
-                let explicit = Component::Separator(SeparatorProps {
-                    orientation: Some(Orientation::Horizontal),
-                });
-                let v = serde_json::to_value(&explicit).unwrap();
-                assert_eq!(v["orientation"], "horizontal");
-                let parsed: Component = serde_json::from_value(v).unwrap();
-                assert_eq!(parsed, explicit);
-            }
-            _ => panic!("expected Separator"),
-        }
-    }
-
-    #[test]
-    fn description_list_with_format() {
-        let dl = Component::DescriptionList(DescriptionListProps {
-            items: vec![
-                DescriptionItem {
-                    label: "Created".to_string(),
-                    value: "2026-01-15".to_string(),
-                    format: Some(ColumnFormat::Date),
-                },
-                DescriptionItem {
-                    label: "Name".to_string(),
-                    value: "Alice".to_string(),
-                    format: None,
-                },
-            ],
-            columns: Some(2),
-        });
-        let json = serde_json::to_value(&dl).unwrap();
-        assert_eq!(json["type"], "DescriptionList");
-        assert_eq!(json["columns"], 2);
-        assert_eq!(json["items"][0]["format"], "date");
-        assert!(json["items"][1].get("format").is_none());
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, dl);
-    }
-
-    #[test]
-    fn checkbox_with_error() {
-        let checkbox = Component::Checkbox(CheckboxProps {
-            field: "agree".to_string(),
-            value: None,
-            label: "I agree".to_string(),
-            description: None,
-            checked: None,
-            data_path: None,
-            required: Some(true),
-            disabled: None,
-            error: Some("You must agree".to_string()),
-        });
-        let json = serde_json::to_value(&checkbox).unwrap();
-        assert_eq!(json["error"], "You must agree");
-        assert!(json.get("description").is_none());
-        assert!(json.get("checked").is_none());
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, checkbox);
-    }
-
-    #[test]
-    fn tabs_round_trips() {
-        let tabs = Component::Tabs(TabsProps {
-            default_tab: "general".to_string(),
-            tabs: vec![
-                Tab {
-                    value: "general".to_string(),
-                    label: "General".to_string(),
-                    children: vec![ComponentNode {
-                        key: "name-input".to_string(),
-                        component: Component::Input(InputProps {
-                            field: "name".to_string(),
-                            label: "Name".to_string(),
-                            input_type: InputType::Text,
-                            placeholder: None,
-                            required: None,
-                            disabled: None,
-                            error: None,
-                            description: None,
-                            default_value: None,
-                            data_path: None,
-                            step: None,
-                            list: None,
-                        }),
-                        action: None,
-                        visibility: None,
-                    }],
-                },
-                Tab {
-                    value: "security".to_string(),
-                    label: "Security".to_string(),
-                    children: vec![ComponentNode {
-                        key: "password-input".to_string(),
-                        component: Component::Input(InputProps {
-                            field: "password".to_string(),
-                            label: "Password".to_string(),
-                            input_type: InputType::Password,
-                            placeholder: None,
-                            required: None,
-                            disabled: None,
-                            error: None,
-                            description: None,
-                            default_value: None,
-                            data_path: None,
-                            step: None,
-                            list: None,
-                        }),
-                        action: None,
-                        visibility: None,
-                    }],
-                },
-            ],
-        });
-        let json = serde_json::to_string(&tabs).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, tabs);
-    }
-
-    #[test]
-    fn breadcrumb_round_trips() {
-        let breadcrumb = Component::Breadcrumb(BreadcrumbProps {
-            items: vec![
-                BreadcrumbItem {
-                    label: "Home".to_string(),
-                    url: Some("/".to_string()),
-                },
-                BreadcrumbItem {
-                    label: "Users".to_string(),
-                    url: Some("/users".to_string()),
-                },
-                BreadcrumbItem {
-                    label: "Edit User".to_string(),
-                    url: None,
-                },
-            ],
-        });
-        let json = serde_json::to_string(&breadcrumb).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, breadcrumb);
-
-        // Verify last item has no URL serialized
-        let value = serde_json::to_value(&breadcrumb).unwrap();
-        assert!(value["items"][2].get("url").is_none());
-    }
-
-    #[test]
-    fn pagination_round_trips() {
-        let pagination = Component::Pagination(PaginationProps {
-            current_page: 3,
-            per_page: 25,
-            total: 150,
-            base_url: None,
-        });
-        let json = serde_json::to_string(&pagination).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, pagination);
-    }
-
-    #[test]
-    fn progress_round_trips() {
-        let progress = Component::Progress(ProgressProps {
-            value: 75,
-            max: Some(100),
-            label: Some("Uploading...".to_string()),
-        });
-        let json = serde_json::to_string(&progress).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, progress);
-
-        let value = serde_json::to_value(&progress).unwrap();
-        assert_eq!(value["value"], 75);
-        assert_eq!(value["max"], 100);
-        assert_eq!(value["label"], "Uploading...");
-    }
-
-    #[test]
-    fn avatar_with_fallback() {
-        let avatar = Component::Avatar(AvatarProps {
-            src: None,
-            alt: "John Doe".to_string(),
-            fallback: Some("JD".to_string()),
-            size: Some(Size::Lg),
-        });
-        let json = serde_json::to_string(&avatar).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, avatar);
-
-        let value = serde_json::to_value(&avatar).unwrap();
-        assert!(value.get("src").is_none());
-        assert_eq!(value["fallback"], "JD");
-        assert_eq!(value["size"], "lg");
-    }
-
-    #[test]
-    fn skeleton_round_trips() {
-        let skeleton = Component::Skeleton(SkeletonProps {
-            width: Some("100%".to_string()),
-            height: Some("40px".to_string()),
-            rounded: Some(true),
-        });
-        let json = serde_json::to_string(&skeleton).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, skeleton);
-
-        let value = serde_json::to_value(&skeleton).unwrap();
-        assert_eq!(value["width"], "100%");
-        assert_eq!(value["height"], "40px");
-        assert_eq!(value["rounded"], true);
-    }
-
-    #[test]
-    fn tabs_deserializes_from_json() {
-        let json = r#"{
-            "type": "Tabs",
-            "default_tab": "general",
-            "tabs": [
-                {
-                    "value": "general",
-                    "label": "General",
-                    "children": [
-                        {
-                            "key": "name-input",
-                            "type": "Input",
-                            "field": "name",
-                            "label": "Name"
-                        }
-                    ]
-                },
-                {
-                    "value": "security",
-                    "label": "Security"
-                }
-            ]
-        }"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Tabs(props) => {
-                assert_eq!(props.default_tab, "general");
-                assert_eq!(props.tabs.len(), 2);
-                assert_eq!(props.tabs[0].value, "general");
-                assert_eq!(props.tabs[0].children.len(), 1);
-                assert_eq!(props.tabs[1].value, "security");
-                assert!(props.tabs[1].children.is_empty());
-            }
-            _ => panic!("expected Tabs"),
-        }
-    }
-
-    #[test]
-    fn input_data_path_round_trips() {
-        let input = Component::Input(InputProps {
-            field: "name".to_string(),
-            label: "Name".to_string(),
-            input_type: InputType::Text,
-            placeholder: None,
-            required: None,
-            disabled: None,
-            error: None,
-            description: None,
-            default_value: None,
-            data_path: Some("/data/user/name".to_string()),
-            step: None,
-            list: None,
-        });
-        let json = serde_json::to_value(&input).unwrap();
-        assert_eq!(json["data_path"], "/data/user/name");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, input);
-    }
-
-    #[test]
-    fn select_data_path_round_trips() {
-        let select = Component::Select(SelectProps {
-            field: "role".to_string(),
-            label: "Role".to_string(),
-            options: vec![SelectOption {
-                value: "admin".to_string(),
-                label: "Admin".to_string(),
-            }],
-            placeholder: None,
-            required: None,
-            disabled: None,
-            error: None,
-            description: None,
-            default_value: None,
-            data_path: Some("/data/user/role".to_string()),
-        });
-        let json = serde_json::to_value(&select).unwrap();
-        assert_eq!(json["data_path"], "/data/user/role");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, select);
-    }
-
-    #[test]
-    fn checkbox_data_path_round_trips() {
-        let checkbox = Component::Checkbox(CheckboxProps {
-            field: "terms".to_string(),
-            value: None,
-            label: "Accept Terms".to_string(),
-            description: None,
-            checked: None,
-            data_path: Some("/data/user/accepted_terms".to_string()),
-            required: None,
-            disabled: None,
-            error: None,
-        });
-        let json = serde_json::to_value(&checkbox).unwrap();
-        assert_eq!(json["data_path"], "/data/user/accepted_terms");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, checkbox);
-    }
-
-    #[test]
-    fn switch_data_path_round_trips() {
-        let switch = Component::Switch(SwitchProps {
-            field: "notifications".to_string(),
-            label: "Enable Notifications".to_string(),
-            description: None,
-            checked: None,
-            data_path: Some("/data/user/notifications_enabled".to_string()),
-            required: None,
-            disabled: None,
-            error: None,
-            action: None,
-            compact: false,
-        });
-        let json = serde_json::to_value(&switch).unwrap();
-        assert_eq!(json["data_path"], "/data/user/notifications_enabled");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, switch);
-    }
-
-    // ─── Plugin variant tests ────────────────────────────────────────
-
-    #[test]
-    fn unknown_type_deserializes_as_plugin() {
-        let json = r#"{"type": "Map", "center": [40.7, -74.0], "zoom": 12}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Plugin(props) => {
-                assert_eq!(props.plugin_type, "Map");
-                assert_eq!(props.props["center"][0], 40.7);
-                assert_eq!(props.props["center"][1], -74.0);
-                assert_eq!(props.props["zoom"], 12);
-                // "type" should be removed from props
-                assert!(props.props.get("type").is_none());
-            }
-            _ => panic!("expected Plugin"),
-        }
-    }
-
-    #[test]
-    fn plugin_round_trips() {
-        let plugin = Component::Plugin(PluginProps {
-            plugin_type: "Chart".to_string(),
-            props: serde_json::json!({"data": [1, 2, 3], "style": "bar"}),
-        });
-        let json = serde_json::to_value(&plugin).unwrap();
-        assert_eq!(json["type"], "Chart");
-        assert_eq!(json["data"], serde_json::json!([1, 2, 3]));
-        assert_eq!(json["style"], "bar");
-
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, plugin);
-    }
-
-    #[test]
-    fn plugin_serializes_with_type_field() {
-        let plugin = Component::Plugin(PluginProps {
-            plugin_type: "Map".to_string(),
-            props: serde_json::json!({"lat": 51.5, "lng": -0.1}),
-        });
-        let json = serde_json::to_value(&plugin).unwrap();
-        assert_eq!(json["type"], "Map");
-        assert_eq!(json["lat"], 51.5);
-        assert_eq!(json["lng"], -0.1);
-    }
-
-    #[test]
-    fn plugin_with_empty_props() {
-        let json = r#"{"type": "CustomWidget"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::Plugin(props) => {
-                assert_eq!(props.plugin_type, "CustomWidget");
-                assert!(props.props.as_object().unwrap().is_empty());
-            }
-            _ => panic!("expected Plugin"),
-        }
-    }
-
-    #[test]
-    fn plugin_in_component_node() {
-        let node = ComponentNode {
-            key: "map-1".to_string(),
-            component: Component::Plugin(PluginProps {
-                plugin_type: "Map".to_string(),
-                props: serde_json::json!({"center": [0.0, 0.0]}),
-            }),
-            action: None,
-            visibility: None,
-        };
-        let json = serde_json::to_string(&node).unwrap();
-        let parsed: ComponentNode = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, node);
-
-        let value = serde_json::to_value(&node).unwrap();
-        assert_eq!(value["type"], "Map");
-        assert_eq!(value["key"], "map-1");
-    }
-
-    #[test]
-    fn known_types_not_treated_as_plugin() {
-        // All known type names must still deserialize to their specific variants.
-        let known_types = [
-            "Card",
-            "Table",
-            "Form",
-            "Button",
-            "Input",
-            "Select",
-            "Alert",
-            "Badge",
-            "Modal",
-            "Text",
-            "Checkbox",
-            "Switch",
-            "Separator",
-            "DescriptionList",
-            "Tabs",
-            "Breadcrumb",
-            "Pagination",
-            "Progress",
-            "Avatar",
-            "Skeleton",
-        ];
-        for type_name in &known_types {
-            // Construct minimal valid JSON for each type (using the
-            // all_component_variants_serialize test data format).
-            let json_str = match *type_name {
-                "Card" => r#"{"type":"Card","title":"t"}"#,
-                "Table" => r#"{"type":"Table","columns":[],"data_path":"/d"}"#,
-                "Form" => r#"{"type":"Form","action":{"handler":"h","method":"POST"},"fields":[]}"#,
-                "Button" => r#"{"type":"Button","label":"b"}"#,
-                "Input" => r#"{"type":"Input","field":"f","label":"l"}"#,
-                "Select" => r#"{"type":"Select","field":"f","label":"l","options":[]}"#,
-                "Alert" => r#"{"type":"Alert","message":"m"}"#,
-                "Badge" => r#"{"type":"Badge","label":"b"}"#,
-                "Modal" => r#"{"type":"Modal","id":"modal-t","title":"t"}"#,
-                "Text" => r#"{"type":"Text","content":"c"}"#,
-                "Checkbox" => r#"{"type":"Checkbox","field":"f","label":"l"}"#,
-                "Switch" => r#"{"type":"Switch","field":"f","label":"l"}"#,
-                "Separator" => r#"{"type":"Separator"}"#,
-                "DescriptionList" => r#"{"type":"DescriptionList","items":[]}"#,
-                "Tabs" => r#"{"type":"Tabs","default_tab":"t","tabs":[]}"#,
-                "Breadcrumb" => r#"{"type":"Breadcrumb","items":[]}"#,
-                "Pagination" => r#"{"type":"Pagination","current_page":1,"per_page":10,"total":0}"#,
-                "Progress" => r#"{"type":"Progress","value":0}"#,
-                "Avatar" => r#"{"type":"Avatar","alt":"a"}"#,
-                "Skeleton" => r#"{"type":"Skeleton"}"#,
-                _ => unreachable!(),
-            };
-            let component: Component = serde_json::from_str(json_str).unwrap();
-            assert!(
-                !matches!(component, Component::Plugin(_)),
-                "type {type_name} should not deserialize as Plugin"
-            );
-        }
-    }
-
-    // ── Serde round-trip tests for 6 new components ──────────────────────
-
-    #[test]
-    fn test_stat_card_serde_round_trip() {
-        let component = Component::StatCard(StatCardProps {
-            label: "Orders".into(),
-            value: "42".into(),
-            icon: Some("package".into()),
-            subtitle: Some("today".into()),
-            sse_target: Some("orders_today".into()),
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"StatCard\""));
-        assert!(json.contains("\"sse_target\":\"orders_today\""));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    #[test]
-    fn test_checklist_serde_round_trip() {
-        let component = Component::Checklist(ChecklistProps {
-            title: "Getting Started".into(),
-            items: vec![
-                ChecklistItem {
-                    label: "Install dependencies".into(),
-                    checked: true,
-                    href: None,
-                },
-                ChecklistItem {
-                    label: "Read the docs".into(),
-                    checked: false,
-                    href: Some("/docs".into()),
-                },
-            ],
-            dismissible: true,
-            dismiss_label: Some("Dismiss".into()),
-            data_key: Some("onboarding".into()),
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"Checklist\""));
-        assert!(json.contains("\"data_key\":\"onboarding\""));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    #[test]
-    fn test_toast_serde_round_trip() {
-        let component = Component::Toast(ToastProps {
-            message: "Operation completed".into(),
-            variant: ToastVariant::Success,
-            timeout: Some(10),
-            dismissible: true,
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"Toast\""));
-        assert!(json.contains("\"timeout\":10"));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    #[test]
-    fn test_notification_dropdown_serde_round_trip() {
-        let component = Component::NotificationDropdown(NotificationDropdownProps {
-            notifications: vec![
-                NotificationItem {
-                    icon: Some("bell".into()),
-                    text: "New message".into(),
-                    timestamp: Some("2m ago".into()),
-                    read: false,
-                    action_url: Some("/messages/1".into()),
-                },
-                NotificationItem {
-                    icon: None,
-                    text: "Old notification".into(),
-                    timestamp: None,
-                    read: true,
-                    action_url: None,
-                },
-            ],
-            empty_text: Some("No notifications".into()),
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"NotificationDropdown\""));
-        assert!(json.contains("\"empty_text\":\"No notifications\""));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    #[test]
-    fn test_sidebar_serde_round_trip() {
-        let component = Component::Sidebar(SidebarProps {
-            fixed_top: vec![SidebarNavItem {
-                label: "Dashboard".into(),
-                href: "/dashboard".into(),
-                icon: Some("home".into()),
-                active: true,
-            }],
-            groups: vec![SidebarGroup {
-                label: "Management".into(),
-                collapsed: false,
-                items: vec![SidebarNavItem {
-                    label: "Users".into(),
-                    href: "/users".into(),
-                    icon: None,
-                    active: false,
-                }],
-            }],
-            fixed_bottom: vec![SidebarNavItem {
-                label: "Settings".into(),
-                href: "/settings".into(),
-                icon: Some("gear".into()),
-                active: false,
-            }],
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"Sidebar\""));
-        assert!(json.contains("\"fixed_top\""));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    #[test]
-    fn test_header_serde_round_trip() {
-        let component = Component::Header(HeaderProps {
-            business_name: "Acme Corp".into(),
-            notification_count: Some(5),
-            user_name: Some("Jane Doe".into()),
-            user_avatar: Some("/avatar.jpg".into()),
-            logout_url: Some("/logout".into()),
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"Header\""));
-        assert!(json.contains("\"business_name\":\"Acme Corp\""));
-        assert!(json.contains("\"notification_count\":5"));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    // ── Convenience constructor tests ─────────────────────────────────────
-
-    #[test]
-    fn test_stat_card_constructor() {
-        let props = StatCardProps {
-            label: "Revenue".into(),
-            value: "$1,000".into(),
-            icon: None,
-            subtitle: None,
-            sse_target: None,
-        };
-        let node = ComponentNode::stat_card("revenue-card", props.clone());
-        assert_eq!(node.key, "revenue-card");
-        assert!(node.action.is_none());
-        assert!(node.visibility.is_none());
-        assert_eq!(node.component, Component::StatCard(props));
-    }
-
-    #[test]
-    fn test_checklist_constructor() {
-        let props = ChecklistProps {
-            title: "Tasks".into(),
-            items: vec![],
-            dismissible: true,
-            dismiss_label: None,
-            data_key: None,
-        };
-        let node = ComponentNode::checklist("task-list", props.clone());
-        assert_eq!(node.key, "task-list");
-        assert!(node.action.is_none());
-        assert!(node.visibility.is_none());
-        assert_eq!(node.component, Component::Checklist(props));
-    }
-
-    #[test]
-    fn test_toast_constructor() {
-        let props = ToastProps {
-            message: "Done!".into(),
-            variant: ToastVariant::Success,
-            timeout: None,
-            dismissible: true,
-        };
-        let node = ComponentNode::toast("success-toast", props.clone());
-        assert_eq!(node.key, "success-toast");
-        assert!(node.action.is_none());
-        assert!(node.visibility.is_none());
-        assert_eq!(node.component, Component::Toast(props));
-    }
-
-    #[test]
-    fn test_notification_dropdown_constructor() {
-        let props = NotificationDropdownProps {
-            notifications: vec![],
-            empty_text: Some("All caught up!".into()),
-        };
-        let node = ComponentNode::notification_dropdown("notifs", props.clone());
-        assert_eq!(node.key, "notifs");
-        assert!(node.action.is_none());
-        assert!(node.visibility.is_none());
-        assert_eq!(node.component, Component::NotificationDropdown(props));
-    }
-
-    #[test]
-    fn test_sidebar_constructor() {
-        let props = SidebarProps {
-            fixed_top: vec![],
-            groups: vec![],
-            fixed_bottom: vec![],
-        };
-        let node = ComponentNode::sidebar("main-nav", props.clone());
-        assert_eq!(node.key, "main-nav");
-        assert!(node.action.is_none());
-        assert!(node.visibility.is_none());
-        assert_eq!(node.component, Component::Sidebar(props));
-    }
-
-    #[test]
-    fn test_header_constructor() {
-        let props = HeaderProps {
-            business_name: "MyApp".into(),
-            notification_count: None,
-            user_name: None,
-            user_avatar: None,
-            logout_url: None,
-        };
-        let node = ComponentNode::header("page-header", props.clone());
-        assert_eq!(node.key, "page-header");
-        assert!(node.action.is_none());
-        assert!(node.visibility.is_none());
-        assert_eq!(node.component, Component::Header(props));
-    }
-
-    // ── Sub-type serde tests ─────────────────────────────────────────────
-
-    #[test]
-    fn test_checklist_item_round_trip() {
-        let checked_item = ChecklistItem {
-            label: "Completed task".into(),
-            checked: true,
-            href: Some("/task/1".into()),
-        };
-        let json = serde_json::to_string(&checked_item).unwrap();
-        let parsed: ChecklistItem = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, checked_item);
-
-        let unchecked_item = ChecklistItem {
-            label: "Pending task".into(),
-            checked: false,
-            href: None,
-        };
-        let json = serde_json::to_string(&unchecked_item).unwrap();
-        let parsed: ChecklistItem = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, unchecked_item);
-        // href is None — should be omitted
-        assert!(!json.contains("href"));
-    }
-
-    #[test]
-    fn test_sidebar_group_round_trip() {
-        let expanded = SidebarGroup {
-            label: "Main".into(),
-            collapsed: false,
-            items: vec![
-                SidebarNavItem {
-                    label: "Home".into(),
-                    href: "/".into(),
-                    icon: Some("home".into()),
-                    active: true,
-                },
-                SidebarNavItem {
-                    label: "About".into(),
-                    href: "/about".into(),
-                    icon: None,
-                    active: false,
-                },
-            ],
-        };
-        let json = serde_json::to_string(&expanded).unwrap();
-        let parsed: SidebarGroup = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, expanded);
-        assert_eq!(parsed.items.len(), 2);
-
-        let collapsed = SidebarGroup {
-            label: "Advanced".into(),
-            collapsed: true,
-            items: vec![],
-        };
-        let json = serde_json::to_string(&collapsed).unwrap();
-        let parsed: SidebarGroup = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, collapsed);
-        assert!(parsed.collapsed);
-    }
-
-    #[test]
-    fn test_notification_item_round_trip() {
-        let unread = NotificationItem {
-            icon: Some("mail".into()),
-            text: "You have a new message".into(),
-            timestamp: Some("5m ago".into()),
-            read: false,
-            action_url: Some("/messages/42".into()),
-        };
-        let json = serde_json::to_string(&unread).unwrap();
-        let parsed: NotificationItem = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, unread);
-        assert!(!parsed.read);
-
-        let read_notif = NotificationItem {
-            icon: None,
-            text: "Welcome to the platform".into(),
-            timestamp: None,
-            read: true,
-            action_url: None,
-        };
-        let json = serde_json::to_string(&read_notif).unwrap();
-        let parsed: NotificationItem = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, read_notif);
-        assert!(parsed.read);
-        // Optional fields with None should be omitted
-        assert!(!json.contains("\"icon\""));
-        assert!(!json.contains("\"action_url\""));
-    }
-
-    // ── Edge case tests ──────────────────────────────────────────────────
-
-    #[test]
-    fn test_stat_card_all_optionals_none() {
-        let component = Component::StatCard(StatCardProps {
-            label: "Count".into(),
-            value: "0".into(),
-            icon: None,
-            subtitle: None,
-            sse_target: None,
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"StatCard\""));
-        assert!(!json.contains("\"icon\""));
-        assert!(!json.contains("\"subtitle\""));
-        assert!(!json.contains("\"sse_target\""));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    #[test]
-    fn test_checklist_empty_items() {
-        let component = Component::Checklist(ChecklistProps {
-            title: "Empty List".into(),
-            items: vec![],
-            dismissible: true,
-            dismiss_label: None,
-            data_key: None,
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"Checklist\""));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-        match &deserialized {
-            Component::Checklist(props) => assert!(props.items.is_empty()),
-            _ => panic!("expected Checklist"),
-        }
-    }
-
-    #[test]
-    fn test_sidebar_empty_groups_and_fixed() {
-        let component = Component::Sidebar(SidebarProps {
-            fixed_top: vec![],
-            groups: vec![],
-            fixed_bottom: vec![],
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"Sidebar\""));
-        // Empty vecs should be omitted (skip_serializing_if = "Vec::is_empty")
-        assert!(!json.contains("\"fixed_top\""));
-        assert!(!json.contains("\"groups\""));
-        assert!(!json.contains("\"fixed_bottom\""));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    #[test]
-    fn test_notification_dropdown_empty_uses_empty_text() {
-        let component = Component::NotificationDropdown(NotificationDropdownProps {
-            notifications: vec![],
-            empty_text: Some("Nothing here!".into()),
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(json.contains("\"type\":\"NotificationDropdown\""));
-        assert!(json.contains("\"empty_text\":\"Nothing here!\""));
-        let deserialized: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(component, deserialized);
-    }
-
-    // ── Optional field skip_serializing tests ────────────────────────────
-
-    #[test]
-    fn test_stat_card_omits_sse_target_when_none() {
-        let component = Component::StatCard(StatCardProps {
-            label: "Revenue".into(),
-            value: "$500".into(),
-            icon: None,
-            subtitle: None,
-            sse_target: None,
-        });
-        let json = serde_json::to_string(&component).unwrap();
+        let json = serde_json::to_string(&card).unwrap();
         assert!(
-            !json.contains("sse_target"),
-            "sse_target must be omitted when None"
-        );
-    }
-
-    // ── Grid tests ────────────────────────────────────────────────────
-
-    #[test]
-    fn grid_round_trips() {
-        let grid = Component::Grid(GridProps {
-            columns: 3,
-            md_columns: None,
-            lg_columns: None,
-            gap: GapSize::Lg,
-            scrollable: None,
-            children: vec![ComponentNode::text(
-                "t",
-                TextProps {
-                    content: "cell".into(),
-                    element: TextElement::P,
-                },
-            )],
-        });
-        let json = serde_json::to_value(&grid).unwrap();
-        assert_eq!(json["type"], "Grid");
-        assert_eq!(json["columns"], 3);
-        assert_eq!(json["gap"], "lg");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, grid);
-    }
-
-    #[test]
-    fn grid_defaults() {
-        let json = serde_json::json!({"type": "Grid"});
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        match parsed {
-            Component::Grid(props) => {
-                assert_eq!(props.columns, 2);
-                assert_eq!(props.gap, GapSize::Md);
-                assert!(props.children.is_empty());
-            }
-            _ => panic!("expected Grid"),
-        }
-    }
-
-    // ── Collapsible tests ────────────────────────────────────────────
-
-    #[test]
-    fn collapsible_round_trips() {
-        let c = Component::Collapsible(CollapsibleProps {
-            title: "Details".into(),
-            expanded: true,
-            children: vec![],
-        });
-        let json = serde_json::to_value(&c).unwrap();
-        assert_eq!(json["type"], "Collapsible");
-        assert_eq!(json["title"], "Details");
-        assert_eq!(json["expanded"], true);
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, c);
-    }
-
-    // ── EmptyState tests ─────────────────────────────────────────────
-
-    #[test]
-    fn empty_state_round_trips() {
-        let es = Component::EmptyState(EmptyStateProps {
-            title: "No items".into(),
-            description: Some("Create one".into()),
-            action: Some(Action::get("items.create")),
-            action_label: Some("New item".into()),
-        });
-        let json = serde_json::to_value(&es).unwrap();
-        assert_eq!(json["type"], "EmptyState");
-        assert_eq!(json["title"], "No items");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, es);
-    }
-
-    #[test]
-    fn empty_state_minimal() {
-        let json = serde_json::json!({"type": "EmptyState", "title": "Nothing"});
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        match parsed {
-            Component::EmptyState(props) => {
-                assert_eq!(props.title, "Nothing");
-                assert!(props.description.is_none());
-                assert!(props.action.is_none());
-                assert!(props.action_label.is_none());
-            }
-            _ => panic!("expected EmptyState"),
-        }
-    }
-
-    // ── FormSection tests ────────────────────────────────────────────
-
-    #[test]
-    fn form_section_round_trips() {
-        let fs = Component::FormSection(FormSectionProps {
-            title: "Contact".into(),
-            description: Some("Your details".into()),
-            children: vec![],
-            layout: None,
-        });
-        let json = serde_json::to_value(&fs).unwrap();
-        assert_eq!(json["type"], "FormSection");
-        assert_eq!(json["title"], "Contact");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, fs);
-    }
-
-    // ── Switch action tests ──────────────────────────────────────────
-
-    #[test]
-    fn switch_with_action_round_trips() {
-        let sw = Component::Switch(SwitchProps {
-            field: "active".into(),
-            label: "Active".into(),
-            description: None,
-            checked: Some(true),
-            data_path: None,
-            required: None,
-            disabled: None,
-            error: None,
-            action: Some(Action::new("settings.toggle")),
-            compact: false,
-        });
-        let json = serde_json::to_value(&sw).unwrap();
-        assert!(json["action"].is_object());
-        assert_eq!(json["action"]["handler"], "settings.toggle");
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, sw);
-    }
-
-    #[test]
-    fn switch_without_action_omits_field() {
-        let sw = Component::Switch(SwitchProps {
-            field: "f".into(),
-            label: "l".into(),
-            description: None,
-            checked: None,
-            data_path: None,
-            required: None,
-            disabled: None,
-            error: None,
-            action: None,
-            compact: false,
-        });
-        let json = serde_json::to_string(&sw).unwrap();
-        assert!(!json.contains("\"action\""));
-    }
-
-    #[test]
-    fn test_toast_omits_timeout_when_none() {
-        let component = Component::Toast(ToastProps {
-            message: "Hello".into(),
-            variant: ToastVariant::Info,
-            timeout: None,
-            dismissible: false,
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        assert!(
-            !json.contains("\"timeout\""),
-            "timeout must be omitted when None"
+            !json.contains("\"footer\""),
+            "empty footer must be skipped, got: {json}"
         );
     }
 
     #[test]
-    fn page_header_round_trip_title_only() {
-        let component = Component::PageHeader(PageHeaderProps {
-            title: "Test Title".to_string(),
-            breadcrumb: vec![],
-            actions: vec![],
+    fn schema_for_checkbox_list_props_generates() {
+        assert_schema_nonempty_object::<CheckboxListProps>("CheckboxListProps");
+    }
+
+    #[test]
+    fn checkbox_list_props_serde_roundtrip() {
+        let json = serde_json::json!({
+            "field": "services",
+            "options": [{"value": "a", "label": "Alpha"}, {"value": "b", "label": "Beta"}],
+            "selected_path": "/preselected"
         });
-        let json = serde_json::to_value(&component).unwrap();
-        assert_eq!(json["type"], "PageHeader");
-        assert_eq!(json["title"], "Test Title");
-        // Empty vecs are omitted.
-        assert!(json.get("breadcrumb").is_none());
-        assert!(json.get("actions").is_none());
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, component);
+        let parsed: CheckboxListProps = serde_json::from_value(json.clone()).expect("decode");
+        assert_eq!(parsed.field, "services");
+        assert_eq!(parsed.options.len(), 2);
+        assert_eq!(parsed.selected_path.as_deref(), Some("/preselected"));
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        // None/empty fields are omitted by serde.
+        assert!(reserialized.get("label").is_none());
+        assert!(reserialized.get("disabled").is_none());
     }
 
     #[test]
-    fn page_header_round_trip_with_breadcrumb_and_actions() {
-        let component = Component::PageHeader(PageHeaderProps {
-            title: "Users".to_string(),
-            breadcrumb: vec![
-                BreadcrumbItem {
-                    label: "Home".to_string(),
-                    url: Some("/".to_string()),
-                },
-                BreadcrumbItem {
-                    label: "Users".to_string(),
-                    url: None,
-                },
-            ],
-            actions: vec![ComponentNode {
-                key: "add-btn".to_string(),
-                component: Component::Button(ButtonProps {
-                    label: "Add User".to_string(),
-                    variant: ButtonVariant::Default,
-                    size: Size::Default,
-                    disabled: None,
-                    icon: None,
-                    icon_position: None,
-                    button_type: None,
-                }),
-                action: None,
-                visibility: None,
-            }],
+    fn schema_for_rich_text_editor_props_generates() {
+        assert_schema_nonempty_object::<RichTextEditorProps>("RichTextEditorProps");
+    }
+
+    #[test]
+    fn rich_text_editor_props_serde_roundtrip() {
+        let json = serde_json::json!({
+            "field": "body",
+            "label": "Body"
         });
-        let json = serde_json::to_string(&component).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, component);
-        // Verify type field present.
-        let value = serde_json::to_value(&component).unwrap();
-        assert_eq!(value["type"], "PageHeader");
-        assert_eq!(value["title"], "Users");
-        assert!(value["breadcrumb"].is_array());
-        assert!(value["actions"].is_array());
-    }
-
-    #[test]
-    fn page_header_deserialize_from_json() {
-        let json = r#"{"type":"PageHeader","title":"Test"}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::PageHeader(props) => {
-                assert_eq!(props.title, "Test");
-                assert!(props.breadcrumb.is_empty());
-                assert!(props.actions.is_empty());
-            }
-            _ => panic!("expected PageHeader"),
-        }
-    }
-
-    #[test]
-    fn button_group_round_trip_empty() {
-        let component = Component::ButtonGroup(ButtonGroupProps { buttons: vec![] });
-        let json = serde_json::to_value(&component).unwrap();
-        assert_eq!(json["type"], "ButtonGroup");
-        // Empty vec omitted.
-        assert!(json.get("buttons").is_none());
-        let parsed: Component = serde_json::from_value(json).unwrap();
-        assert_eq!(parsed, component);
-    }
-
-    #[test]
-    fn button_group_round_trip_with_buttons() {
-        let component = Component::ButtonGroup(ButtonGroupProps {
-            buttons: vec![
-                ComponentNode {
-                    key: "save".to_string(),
-                    component: Component::Button(ButtonProps {
-                        label: "Save".to_string(),
-                        variant: ButtonVariant::Default,
-                        size: Size::Default,
-                        disabled: None,
-                        icon: None,
-                        icon_position: None,
-                        button_type: None,
-                    }),
-                    action: None,
-                    visibility: None,
-                },
-                ComponentNode {
-                    key: "cancel".to_string(),
-                    component: Component::Button(ButtonProps {
-                        label: "Cancel".to_string(),
-                        variant: ButtonVariant::Outline,
-                        size: Size::Default,
-                        disabled: None,
-                        icon: None,
-                        icon_position: None,
-                        button_type: None,
-                    }),
-                    action: None,
-                    visibility: None,
-                },
-            ],
-        });
-        let json = serde_json::to_string(&component).unwrap();
-        let parsed: Component = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, component);
-        let value = serde_json::to_value(&component).unwrap();
-        assert_eq!(value["type"], "ButtonGroup");
-        assert!(value["buttons"].is_array());
-        assert_eq!(value["buttons"].as_array().unwrap().len(), 2);
-    }
-
-    #[test]
-    fn button_group_deserialize_from_json() {
-        let json = r#"{"type":"ButtonGroup","buttons":[]}"#;
-        let component: Component = serde_json::from_str(json).unwrap();
-        match component {
-            Component::ButtonGroup(props) => {
-                assert!(props.buttons.is_empty());
-            }
-            _ => panic!("expected ButtonGroup"),
-        }
-    }
-
-    #[test]
-    fn image_round_trips() {
-        // URL variant (existing — stays green after refactor)
-        let json = r#"{"type": "Image", "src": "/img/s.png", "alt": "Screenshot"}"#;
-        let component: Component = serde_json::from_str(json).expect("URL variant");
-        match component {
-            Component::Image(props) => {
-                assert!(
-                    matches!(props.source, ImageSource::Url { .. }),
-                    "URL JSON must deserialize to ImageSource::Url"
-                );
-                assert_eq!(props.alt, "Screenshot");
-                assert!(props.aspect_ratio.is_none());
-            }
-            _ => panic!("expected Component::Image"),
-        }
-
-        // InlineSvg variant (new — the phase-148 extension)
-        let json_svg = r#"{"type": "Image", "svg": "<svg></svg>", "alt": "Chart"}"#;
-        let component_svg: Component = serde_json::from_str(json_svg).expect("InlineSvg variant");
-        match component_svg {
-            Component::Image(props) => {
-                assert!(
-                    matches!(props.source, ImageSource::InlineSvg { .. }),
-                    "SVG JSON must deserialize to ImageSource::InlineSvg"
-                );
-                assert_eq!(props.alt, "Chart");
-            }
-            _ => panic!("expected Component::Image"),
-        }
-
-        // Neither src nor svg — must fail (guards D-10 no-source rejection)
-        let json_neither = r#"{"type": "Image", "alt": "Bad"}"#;
-        serde_json::from_str::<Component>(json_neither)
-            .expect_err("input without src or svg must be rejected");
-    }
-
-    #[test]
-    fn all_known_types_round_trip() {
-        let known_types: &[(&str, &str)] = &[
-            ("Alert", r#"{"type":"Alert","message":"m"}"#),
-            ("Avatar", r#"{"type":"Avatar","alt":"a"}"#),
-            ("Badge", r#"{"type":"Badge","label":"b"}"#),
-            ("Breadcrumb", r#"{"type":"Breadcrumb","items":[]}"#),
-            ("Button", r#"{"type":"Button","label":"b"}"#),
-            ("CalendarCell", r#"{"type":"CalendarCell","day":1}"#),
-            ("Checkbox", r#"{"type":"Checkbox","field":"f","label":"l"}"#),
-            ("Image", r#"{"type":"Image","src":"/img/s.png","alt":"a"}"#),
-            ("Input", r#"{"type":"Input","field":"f","label":"l"}"#),
-            (
-                "Pagination",
-                r#"{"type":"Pagination","current_page":1,"per_page":10,"total":0}"#,
-            ),
-            ("Progress", r#"{"type":"Progress","value":50}"#),
-            (
-                "Select",
-                r#"{"type":"Select","field":"f","label":"l","options":[]}"#,
-            ),
-            ("Separator", r#"{"type":"Separator"}"#),
-            ("Skeleton", r#"{"type":"Skeleton"}"#),
-            ("Text", r#"{"type":"Text","content":"c"}"#),
-        ];
-        for (type_name, json_str) in known_types {
-            let component: Component = serde_json::from_str(json_str)
-                .unwrap_or_else(|e| panic!("failed to parse {type_name}: {e}"));
-            let serialized = serde_json::to_value(&component).unwrap();
-            assert_eq!(
-                serialized["type"], *type_name,
-                "type mismatch for {type_name}"
-            );
-            let reparsed: Component = serde_json::from_value(serialized)
-                .unwrap_or_else(|e| panic!("failed to reparse {type_name}: {e}"));
-            assert_eq!(
-                serde_json::to_value(&reparsed).unwrap()["type"],
-                *type_name,
-                "round-trip type mismatch for {type_name}"
-            );
-        }
-
-        // Phase 148: InlineSvg variant round-trip (sibling to the URL fixture row).
-        // Wire-format discrimination: same "type":"Image", "svg" instead of "src".
-        // Option (b): independent block inside the same test, because the fixture
-        // iteration asserts serialized["type"] == tuple name ("Image" != "ImageInlineSvg").
-        let svg_json = r#"{"type":"Image","svg":"<svg/>","alt":"chart"}"#;
-        let parsed: Component =
-            serde_json::from_str(svg_json).expect("InlineSvg JSON must deserialize");
-        let serialized = serde_json::to_value(&parsed).expect("InlineSvg component must serialize");
-        assert_eq!(
-            serialized.get("type").and_then(|v| v.as_str()),
-            Some("Image"),
-            "InlineSvg variant must serialize with type=Image"
-        );
-        assert!(
-            serialized.get("svg").is_some(),
-            "InlineSvg serialization must carry the svg field"
-        );
-        assert!(
-            serialized.get("src").is_none(),
-            "InlineSvg serialization must NOT carry a src field"
-        );
-        let reparsed: Component = serde_json::from_value(serialized).expect("round-trip reparse");
-        assert_eq!(parsed, reparsed, "round-trip must preserve equality");
+        let parsed: RichTextEditorProps = serde_json::from_value(json).expect("decode");
+        assert_eq!(parsed.field, "body");
+        assert_eq!(parsed.label, "Body");
+        assert!(parsed.placeholder.is_none());
+        assert!(parsed.default_value.is_none());
+        assert!(parsed.data_path.is_none());
+        assert!(parsed.error.is_none());
+        let reserialized = serde_json::to_value(&parsed).expect("encode");
+        // Optional None fields are omitted.
+        assert!(reserialized.get("placeholder").is_none());
+        assert!(reserialized.get("error").is_none());
     }
 }
 
 #[cfg(test)]
-mod key_value_editor_tests {
+mod strum_tests {
     use super::*;
-    use serde_json::json;
 
+    /// Assert AsRef<str> matches serde JSON wire format for every variant of
+    /// AlertVariant, BadgeVariant, ButtonVariant, and ToastVariant.
+    /// Threat T-162-08-01: strum and serde must agree on every snake_case string.
     #[test]
-    fn key_value_editor_serde_roundtrip() {
-        let original = Component::KeyValueEditor(KeyValueEditorProps {
-            field: "metadata".to_string(),
-            label: Some("Metadata".to_string()),
-            suggested_keys: vec!["env".to_string(), "region".to_string()],
-            allow_custom_keys: false,
-            data_path: Some("/meta".to_string()),
-            error: Some("required".to_string()),
-        });
-
-        let serialized =
-            serde_json::to_value(&original).expect("serialize KeyValueEditor component");
-
-        // Tagged serialization must inject "type": "KeyValueEditor".
-        assert_eq!(
-            serialized.get("type").and_then(|v| v.as_str()),
-            Some("KeyValueEditor"),
-            "serialized form must have type=KeyValueEditor: {serialized}"
-        );
-        assert_eq!(
-            serialized.get("field").and_then(|v| v.as_str()),
-            Some("metadata")
-        );
-        assert_eq!(
-            serialized
-                .get("allow_custom_keys")
-                .and_then(|v| v.as_bool()),
-            Some(false)
-        );
-
-        // Round-trip: deserialize back into Component, assert structural equality.
-        let deserialized: Component =
-            serde_json::from_value(serialized).expect("deserialize KeyValueEditor component");
-        match deserialized {
-            Component::KeyValueEditor(ref p) => {
-                assert_eq!(p.field, "metadata");
-                assert_eq!(p.label.as_deref(), Some("Metadata"));
+    fn variant_enums_strum_matches_serde_wire_format() {
+        fn check<T: AsRef<str> + serde::Serialize>(variants: &[T], label: &str) {
+            for v in variants {
+                let json = serde_json::to_string(v).expect("serialize");
+                let json_stripped = json.trim_matches('"');
                 assert_eq!(
-                    p.suggested_keys,
-                    vec!["env".to_string(), "region".to_string()]
+                    v.as_ref(),
+                    json_stripped,
+                    "strum AsRefStr drifted from serde for {label} variant"
                 );
-                assert!(!p.allow_custom_keys);
-                assert_eq!(p.data_path.as_deref(), Some("/meta"));
-                assert_eq!(p.error.as_deref(), Some("required"));
             }
-            other => panic!("expected KeyValueEditor, got {other:?}"),
         }
-        assert_eq!(original, deserialized, "PartialEq round-trip failed");
-    }
-
-    #[test]
-    fn key_value_editor_allow_custom_keys_defaults_to_true() {
-        // Serde default: when allow_custom_keys is absent from JSON input, it must be true.
-        let json_input = json!({
-            "type": "KeyValueEditor",
-            "field": "meta",
-        });
-        let parsed: Component =
-            serde_json::from_value(json_input).expect("deserialize minimal KeyValueEditor");
-        match parsed {
-            Component::KeyValueEditor(p) => {
-                assert!(
-                    p.allow_custom_keys,
-                    "allow_custom_keys default must be true"
-                );
-                assert!(
-                    p.suggested_keys.is_empty(),
-                    "suggested_keys default must be empty"
-                );
-                assert!(p.label.is_none());
-                assert!(p.data_path.is_none());
-                assert!(p.error.is_none());
-            }
-            other => panic!("expected KeyValueEditor, got {other:?}"),
-        }
-    }
-}
-
-#[cfg(test)]
-mod detail_form_tests {
-    use super::*;
-    use crate::action::{Action, HttpMethod};
-    use serde_json::json;
-
-    // ── EditMode (D-01, D-02) ─────────────────────────────────────────────
-
-    #[test]
-    fn edit_mode_default_is_view() {
-        assert_eq!(EditMode::default(), EditMode::View);
-    }
-
-    #[test]
-    fn edit_mode_from_query_exact_edit() {
-        assert_eq!(EditMode::from_query(Some("edit")), EditMode::Edit);
-    }
-
-    #[test]
-    fn edit_mode_from_query_case_insensitive_upper() {
-        assert_eq!(EditMode::from_query(Some("EDIT")), EditMode::Edit);
-    }
-
-    #[test]
-    fn edit_mode_from_query_case_insensitive_mixed() {
-        assert_eq!(EditMode::from_query(Some("eDiT")), EditMode::Edit);
-    }
-
-    #[test]
-    fn edit_mode_from_query_title_case() {
-        assert_eq!(EditMode::from_query(Some("Edit")), EditMode::Edit);
-    }
-
-    #[test]
-    fn edit_mode_from_query_none_is_view() {
-        assert_eq!(EditMode::from_query(None), EditMode::View);
-    }
-
-    #[test]
-    fn edit_mode_from_query_empty_is_view() {
-        assert_eq!(EditMode::from_query(Some("")), EditMode::View);
-    }
-
-    #[test]
-    fn edit_mode_from_query_view_literal_is_view() {
-        assert_eq!(EditMode::from_query(Some("view")), EditMode::View);
-    }
-
-    #[test]
-    fn edit_mode_from_query_unknown_is_view() {
-        assert_eq!(EditMode::from_query(Some("anything-else")), EditMode::View);
-    }
-
-    #[test]
-    fn edit_mode_serializes_as_snake_case() {
-        assert_eq!(
-            serde_json::to_value(EditMode::Edit).expect("serialize Edit"),
-            json!("edit")
-        );
-        assert_eq!(
-            serde_json::to_value(EditMode::View).expect("serialize View"),
-            json!("view")
-        );
-        let parsed_edit: EditMode =
-            serde_json::from_value(json!("edit")).expect("deserialize 'edit'");
-        assert_eq!(parsed_edit, EditMode::Edit);
-        let parsed_view: EditMode =
-            serde_json::from_value(json!("view")).expect("deserialize 'view'");
-        assert_eq!(parsed_view, EditMode::View);
-    }
-
-    // ── DetailFormProps serde (D-03, D-04, D-17, D-19) ────────────────────
-
-    fn sample_detail_form_props() -> DetailFormProps {
-        DetailFormProps {
-            mode: EditMode::Edit,
-            action: Action {
-                handler: "users.update".to_string(),
-                url: Some("/users/1".to_string()),
-                method: HttpMethod::Put,
-                confirm: None,
-                on_success: None,
-                on_error: None,
-                target: None,
-            },
-            fields: vec![
-                DetailField {
-                    label: "Name".to_string(),
-                    value: "Ada".to_string(),
-                    input: ComponentNode::input(
-                        "name",
-                        InputProps {
-                            field: "name".to_string(),
-                            label: "".to_string(),
-                            input_type: InputType::Text,
-                            placeholder: None,
-                            required: None,
-                            disabled: None,
-                            error: None,
-                            description: None,
-                            default_value: None,
-                            data_path: None,
-                            step: None,
-                            list: None,
-                        },
-                    ),
-                },
-                DetailField {
-                    label: "Email".to_string(),
-                    value: "ada@example.com".to_string(),
-                    input: ComponentNode::input(
-                        "email",
-                        InputProps {
-                            field: "email".to_string(),
-                            label: "".to_string(),
-                            input_type: InputType::Email,
-                            placeholder: None,
-                            required: None,
-                            disabled: None,
-                            error: None,
-                            description: None,
-                            default_value: None,
-                            data_path: None,
-                            step: None,
-                            list: None,
-                        },
-                    ),
-                },
+        check(
+            &[
+                AlertVariant::Info,
+                AlertVariant::Success,
+                AlertVariant::Warning,
+                AlertVariant::Error,
             ],
-            edit_url: "/users/1?mode=edit".to_string(),
-            cancel_url: "/users/1".to_string(),
-            edit_label: Some("Modifica".to_string()),
-            save_label: Some("Salva".to_string()),
-            cancel_label: Some("Annulla".to_string()),
-            method: Some(HttpMethod::Put),
-        }
-    }
-
-    #[test]
-    fn detail_form_props_serde_roundtrip() {
-        let original = Component::DetailForm(sample_detail_form_props());
-        let serialized = serde_json::to_value(&original).expect("serialize DetailForm component");
-        assert_eq!(
-            serialized.get("type").and_then(|v| v.as_str()),
-            Some("DetailForm"),
-            "serialized form must have type=DetailForm: {serialized}"
+            "AlertVariant",
         );
-        let deserialized: Component =
-            serde_json::from_value(serialized).expect("deserialize DetailForm component");
-        assert_eq!(original, deserialized, "PartialEq round-trip failed");
+        check(
+            &[
+                BadgeVariant::Default,
+                BadgeVariant::Secondary,
+                BadgeVariant::Destructive,
+                BadgeVariant::Outline,
+            ],
+            "BadgeVariant",
+        );
+        check(
+            &[
+                ButtonVariant::Default,
+                ButtonVariant::Secondary,
+                ButtonVariant::Destructive,
+                ButtonVariant::Outline,
+                ButtonVariant::Ghost,
+                ButtonVariant::Link,
+            ],
+            "ButtonVariant",
+        );
+        check(
+            &[
+                ToastVariant::Info,
+                ToastVariant::Success,
+                ToastVariant::Warning,
+                ToastVariant::Error,
+            ],
+            "ToastVariant",
+        );
     }
 
     #[test]
-    fn detail_form_props_omits_optional_nones() {
-        let props = DetailFormProps {
-            mode: EditMode::View,
-            action: Action {
-                handler: "x".to_string(),
-                url: None,
-                method: HttpMethod::Post,
-                confirm: None,
-                on_success: None,
-                on_error: None,
-                target: None,
-            },
-            fields: Vec::new(),
-            edit_url: "/x?mode=edit".to_string(),
-            cancel_url: "/x".to_string(),
-            edit_label: None,
-            save_label: None,
-            cancel_label: None,
-            method: None,
+    fn alert_variant_as_ref_str_matches_wire_format() {
+        assert_eq!(AlertVariant::Success.as_ref(), "success");
+        assert_eq!(AlertVariant::Warning.as_ref(), "warning");
+        assert_eq!(AlertVariant::Info.as_ref(), "info");
+        assert_eq!(AlertVariant::Error.as_ref(), "error");
+    }
+}
+
+#[cfg(test)]
+mod card_variant_tests {
+    use super::*;
+
+    #[test]
+    fn card_variant_default_is_bordered() {
+        assert_eq!(CardVariant::default(), CardVariant::Bordered);
+    }
+
+    #[test]
+    fn card_variant_serializes_snake_case() {
+        assert_eq!(
+            serde_json::to_value(CardVariant::Bordered).unwrap(),
+            serde_json::json!("bordered")
+        );
+        assert_eq!(
+            serde_json::to_value(CardVariant::Elevated).unwrap(),
+            serde_json::json!("elevated")
+        );
+    }
+
+    #[test]
+    fn card_variant_deserializes_snake_case() {
+        assert_eq!(
+            serde_json::from_value::<CardVariant>(serde_json::json!("bordered")).unwrap(),
+            CardVariant::Bordered
+        );
+        assert_eq!(
+            serde_json::from_value::<CardVariant>(serde_json::json!("elevated")).unwrap(),
+            CardVariant::Elevated
+        );
+    }
+
+    #[test]
+    fn card_props_without_variant_defaults_to_bordered() {
+        let v = serde_json::json!({"title": "x"});
+        let p: CardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.variant, CardVariant::Bordered);
+    }
+
+    #[test]
+    fn card_props_with_elevated_variant() {
+        let v = serde_json::json!({"title": "x", "variant": "elevated"});
+        let p: CardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.variant, CardVariant::Elevated);
+    }
+
+    #[test]
+    fn card_props_roundtrip_preserves_variant() {
+        let p = CardProps {
+            title: "x".into(),
+            description: None,
+            max_width: None,
+            footer: vec![],
+            variant: CardVariant::Elevated,
         };
-        let v = serde_json::to_value(&props).expect("serialize");
-        assert!(
-            v.get("edit_label").is_none(),
-            "edit_label=None must be skipped, got: {v}"
-        );
-        assert!(
-            v.get("save_label").is_none(),
-            "save_label=None must be skipped"
-        );
-        assert!(
-            v.get("cancel_label").is_none(),
-            "cancel_label=None must be skipped"
-        );
-        assert!(v.get("method").is_none(), "method=None must be skipped");
-    }
-
-    #[test]
-    fn detail_form_props_defaults_mode_to_view() {
-        let v = json!({
-            "action": {"handler": "x", "method": "POST"},
-            "fields": [],
-            "edit_url": "/x?mode=edit",
-            "cancel_url": "/x"
-        });
-        let props: DetailFormProps =
-            serde_json::from_value(v).expect("deserialize DetailFormProps without mode");
-        assert_eq!(
-            props.mode,
-            EditMode::View,
-            "missing 'mode' must default to View"
-        );
-    }
-
-    // ── ComponentNode::detail_form factory (D-18) ─────────────────────────
-
-    #[test]
-    fn component_node_detail_form_factory_shape() {
-        let node = ComponentNode::detail_form("details", sample_detail_form_props());
-        assert_eq!(node.key, "details");
-        assert!(node.action.is_none());
-        assert!(node.visibility.is_none());
-        assert!(
-            matches!(node.component, Component::DetailForm(_)),
-            "expected Component::DetailForm variant"
-        );
+        let j = serde_json::to_value(&p).unwrap();
+        let back: CardProps = serde_json::from_value(j).unwrap();
+        assert_eq!(back.variant, CardVariant::Elevated);
     }
 }
 
 #[cfg(test)]
-mod image_source_tests {
+mod kanban_board_props_tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
-    fn image_source_url_roundtrip() {
-        let parsed: ImageSource =
-            serde_json::from_value(json!({"src": "/a.png"})).expect("Url variant");
-        match parsed {
-            ImageSource::Url { src } => assert_eq!(src, "/a.png"),
-            _ => panic!("expected ImageSource::Url"),
-        }
+    fn kanban_board_props_serde_static_columns() {
+        let v = serde_json::json!({
+            "columns": [{"title": "To Do", "items": [], "id": "todo", "count": 0}]
+        });
+        let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.columns.len(), 1);
+        assert!(p.data_path.is_none());
     }
 
     #[test]
-    fn image_source_inline_svg_roundtrip() {
-        let parsed: ImageSource =
-            serde_json::from_value(json!({"svg": "<svg/>"})).expect("InlineSvg variant");
-        match parsed {
-            ImageSource::InlineSvg { svg } => assert_eq!(svg, "<svg/>"),
-            _ => panic!("expected ImageSource::InlineSvg"),
-        }
+    fn kanban_board_props_serde_data_path() {
+        let v = serde_json::json!({"data_path": "/columns"});
+        let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
+        assert!(p.columns.is_empty());
+        assert_eq!(p.data_path.as_deref(), Some("/columns"));
     }
 
     #[test]
-    fn image_source_neither_rejected() {
-        serde_json::from_value::<ImageSource>(json!({}))
-            .expect_err("empty object (no src, no svg) must fail to deserialize");
+    fn kanban_board_props_serde_neither() {
+        let v = serde_json::json!({});
+        let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
+        assert!(p.columns.is_empty());
+        assert!(p.data_path.is_none());
     }
 
     #[test]
-    fn image_props_url_constructor() {
-        let p = ImageProps::url("/a.png", "alt");
-        assert!(matches!(p.source, ImageSource::Url { .. }));
-        match &p.source {
-            ImageSource::Url { src } => assert_eq!(src, "/a.png"),
-            _ => unreachable!(),
-        }
-        assert_eq!(p.alt, "alt");
-        assert!(p.aspect_ratio.is_none());
-        assert!(p.placeholder_label.is_none());
-    }
-
-    #[test]
-    fn image_props_inline_svg_constructor() {
-        let p = ImageProps::inline_svg("<svg/>", "chart");
-        assert!(matches!(p.source, ImageSource::InlineSvg { .. }));
-        match &p.source {
-            ImageSource::InlineSvg { svg } => assert_eq!(svg, "<svg/>"),
-            _ => unreachable!(),
-        }
-        assert_eq!(p.alt, "chart");
-        assert!(p.aspect_ratio.is_none());
-        assert!(p.placeholder_label.is_none());
+    fn kanban_board_props_empty_columns_skipped_on_serialize() {
+        let p = KanbanBoardProps {
+            columns: vec![],
+            data_path: Some("/x".into()),
+            mobile_default_column: None,
+            empty_label: None,
+        };
+        let j = serde_json::to_value(&p).unwrap();
+        assert!(
+            j.get("columns").is_none(),
+            "empty columns must be skipped, got: {j}"
+        );
+        assert_eq!(j.get("data_path").and_then(|v| v.as_str()), Some("/x"));
     }
 }
 
 #[cfg(test)]
-mod rich_text_editor_tests {
+mod page_header_actions_tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
-    fn rich_text_editor_serde_roundtrip() {
-        let original = Component::RichTextEditor(RichTextEditorProps {
-            name: "body".to_string(),
-            value: Some(r#"{"ops":[{"insert":"hello\n"}]}"#.to_string()),
-            formats: vec!["bold".to_string(), "italic".to_string(), "link".to_string()],
-            placeholder: Some("Type here...".to_string()),
-            theme: "snow".to_string(),
-            label: Some("Body".to_string()),
-            error: Some("Required".to_string()),
-            data_path: Some("/article/body".to_string()),
-            required: Some(true),
-        });
-
-        let serialized =
-            serde_json::to_value(&original).expect("serialize RichTextEditor component");
-
-        assert_eq!(
-            serialized.get("type").and_then(|v| v.as_str()),
-            Some("RichTextEditor"),
-            "tagged form must have type=RichTextEditor: {serialized}"
-        );
-        assert_eq!(
-            serialized.get("name").and_then(|v| v.as_str()),
-            Some("body")
-        );
-        assert_eq!(
-            serialized.get("theme").and_then(|v| v.as_str()),
-            Some("snow")
-        );
-
-        let deserialized: Component =
-            serde_json::from_value(serialized).expect("deserialize RichTextEditor component");
-
-        match deserialized {
-            Component::RichTextEditor(ref p) => {
-                assert_eq!(p.name, "body");
-                assert_eq!(p.theme, "snow");
-                assert_eq!(p.formats.len(), 3);
-                assert_eq!(p.label.as_deref(), Some("Body"));
-                assert_eq!(p.error.as_deref(), Some("Required"));
-                assert_eq!(p.placeholder.as_deref(), Some("Type here..."));
-                assert_eq!(p.data_path.as_deref(), Some("/article/body"));
-                assert_eq!(p.required, Some(true));
-            }
-            other => panic!("expected RichTextEditor, got {other:?}"),
-        }
-        assert_eq!(original, deserialized, "PartialEq round-trip failed");
+    fn page_header_actions_missing_field() {
+        let v = serde_json::json!({"title": "X"});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert!(p.actions.is_empty());
     }
 
     #[test]
-    fn rich_text_editor_theme_defaults_to_snow() {
-        // Minimal JSON: only type and name; everything else falls back to defaults.
-        let json_input = json!({
-            "type": "RichTextEditor",
-            "name": "body",
-        });
-        let parsed: Component =
-            serde_json::from_value(json_input).expect("deserialize minimal RichTextEditor");
-        match parsed {
-            Component::RichTextEditor(p) => {
-                assert_eq!(p.theme, "snow", "theme default must be \"snow\"");
-                // Default formats per D-18: bold, italic, underline, list, header, link
-                assert_eq!(
-                    p.formats.len(),
-                    6,
-                    "default formats must have 6 entries: {:?}",
-                    p.formats
-                );
-                for fmt in ["bold", "italic", "underline", "list", "header", "link"] {
-                    assert!(
-                        p.formats.iter().any(|f| f == fmt),
-                        "default formats missing {fmt}: {:?}",
-                        p.formats
-                    );
-                }
-                assert!(p.value.is_none());
-                assert!(p.placeholder.is_none());
-                assert!(p.label.is_none());
-                assert!(p.error.is_none());
-                assert!(p.data_path.is_none());
-                assert!(p.required.is_none());
-            }
-            other => panic!("expected RichTextEditor, got {other:?}"),
-        }
+    fn page_header_actions_null() {
+        let v = serde_json::json!({"title": "X", "actions": null});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert!(p.actions.is_empty());
+    }
+
+    #[test]
+    fn page_header_actions_empty_string() {
+        let v = serde_json::json!({"title": "X", "actions": ""});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert!(p.actions.is_empty());
+    }
+
+    #[test]
+    fn page_header_actions_empty_array() {
+        let v = serde_json::json!({"title": "X", "actions": []});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert!(p.actions.is_empty());
+    }
+
+    #[test]
+    fn page_header_actions_non_empty_array() {
+        let v = serde_json::json!({"title": "X", "actions": ["a", "b"]});
+        let p: PageHeaderProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.actions, vec!["a".to_string(), "b".to_string()]);
+    }
+
+    #[test]
+    fn page_header_actions_non_empty_string_rejected() {
+        let v = serde_json::json!({"title": "X", "actions": "not-empty"});
+        let result: Result<PageHeaderProps, _> = serde_json::from_value(v);
+        assert!(result.is_err(), "non-empty string must be rejected");
+    }
+
+    #[test]
+    fn page_header_actions_non_string_array_rejected() {
+        let v = serde_json::json!({"title": "X", "actions": [1, 2, 3]});
+        let result: Result<PageHeaderProps, _> = serde_json::from_value(v);
+        assert!(result.is_err(), "array of non-strings must be rejected");
     }
 }

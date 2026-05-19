@@ -80,6 +80,22 @@ enum Commands {
         #[arg(long)]
         class: Option<String>,
     },
+    /// Export the JSON-UI v2 spec schema (full spec or a single component's Props)
+    #[cfg(feature = "json-ui")]
+    #[command(name = "json-ui:schema")]
+    JsonUiSchema {
+        /// Write to file instead of stdout
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+
+        /// Pretty-print JSON output (default behavior — flag accepted for explicitness)
+        #[arg(long)]
+        pretty: bool,
+
+        /// Export only the Props schema for a single component (e.g., "Card")
+        #[arg(long)]
+        component: Option<String>,
+    },
 }
 
 /// Application builder for Ferro framework
@@ -290,6 +306,54 @@ where
             Some(Commands::DbSeed { class }) => {
                 Self::run_seeders(seeders_fn, class).await;
             }
+            #[cfg(feature = "json-ui")]
+            Some(Commands::JsonUiSchema {
+                output,
+                pretty,
+                component,
+            }) => {
+                Self::run_json_ui_schema(output, pretty, component).await;
+            }
+        }
+    }
+
+    #[cfg(feature = "json-ui")]
+    async fn run_json_ui_schema(output: Option<String>, pretty: bool, component: Option<String>) {
+        // Build a local Catalog so BuildFailed surfaces as non-zero exit
+        // (NOT a panic via global_catalog's `expect`). RESEARCH §8 L-1 pattern.
+        let catalog = match ferro_json_ui::Catalog::build() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("error building catalog: {e}");
+                std::process::exit(1);
+            }
+        };
+
+        let value: &serde_json::Value = match &component {
+            Some(name) => match catalog.component_schema(name) {
+                Some(v) => v,
+                None => {
+                    eprintln!("error: unknown component '{name}'");
+                    std::process::exit(1);
+                }
+            },
+            None => catalog.json_schema(),
+        };
+
+        // CONTEXT D-21: default output is pretty-printed. The --pretty flag
+        // stays as an explicit opt-in for back-compat with tooling that passes
+        // it; compact is NOT reachable via any flag in Phase 117.
+        let _ = pretty;
+        let serialized = serde_json::to_string_pretty(value).expect("schema serializes");
+
+        match output {
+            Some(path) => {
+                if let Err(e) = std::fs::write(&path, serialized) {
+                    eprintln!("error writing to {path}: {e}");
+                    std::process::exit(1);
+                }
+            }
+            None => println!("{serialized}"),
         }
     }
 

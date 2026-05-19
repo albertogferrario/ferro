@@ -234,24 +234,20 @@ async fn handle_request(
         };
     }
 
-    // Note: Inertia context is now read directly from Request headers
-    // via req.is_inertia(), req.inertia_version(), etc.
-    // No thread-local storage needed - this is async-safe.
-
-    // Run pre-route middleware (path rewrites that affect route matching).
-    // PreRouteMiddleware runs before match_route so set_path() calls influence routing.
-    let mut ferro_request = Request::new(req);
-    for mw in &crate::middleware::get_pre_route_middleware() {
-        ferro_request = match mw.rewrite(ferro_request).await {
-            Ok(r) => r,
-            Err(response) => {
-                // Short-circuit: middleware rejected the request (e.g. unknown domain → 404).
-                return response.into_hyper();
-            }
-        };
+    // Run pre-route middleware (e.g. custom domain path rewriting) before routing.
+    let pre_route = crate::middleware::get_pre_route_middleware();
+    for hook in &pre_route {
+        match hook.handle(req).await {
+            Ok(rewritten) => req = rewritten,
+            Err(response) => return response,
+        }
     }
-    // Use the (possibly rewritten) path for route matching and static file serving.
-    let routing_path = ferro_request.path().to_string();
+
+    let method = req.method().clone();
+    let path = req.uri().path().to_string();
+
+    let ferro_request = Request::new(req);
+    let routing_path = path.clone();
 
     // Extract host before request is consumed by routing.
     let request_host = ferro_request

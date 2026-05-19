@@ -23,7 +23,7 @@ Minimal example: a product service deriving its intent and rendering to JSON-UI.
 ```rust
 use ferro::{
     DataType, FieldMeaning, ServiceDef,
-    derive_intents, JsonUiRenderer, Renderer, RenderContext,
+    derive_intents, JsonUiRenderer, Renderer, VisualContext,
 };
 
 let product = ServiceDef::new("product")
@@ -36,11 +36,10 @@ let intents = derive_intents(&product);
 // intents[0] is the highest-confidence intent (Browse for a simple list-like service)
 
 let renderer = JsonUiRenderer;
-let json = renderer
-    .render(&product, &intents, &RenderContext::default())
-    .expect("rendering a valid service definition should not fail");
-// json["$schema"] == "ferro-json-ui/v1"
-// json["components"] contains the generated component tree
+let result = renderer.render(&product, &intents, &VisualContext::default());
+let spec = result.expect("rendering a valid service definition should not fail");
+// spec.schema == "ferro-json-ui/v2"
+// spec.elements is a flat ID-keyed map; spec.root names the root element
 ```
 
 ## Core Concepts
@@ -98,11 +97,13 @@ Every field needs a `DataType` and a `FieldMeaning`. The data type describes the
 |---------|-------------|
 | `DataType::Integer` | Whole numbers: IDs, counts, quantities |
 | `DataType::Float` | Decimal numbers: prices, measurements, scores |
-| `DataType::String` | Short text: names, titles, codes |
+| `DataType::String` | Text values: names, titles, codes, descriptions |
 | `DataType::Boolean` | True/false flags |
 | `DataType::Date` | Calendar date (no time) |
 | `DataType::DateTime` | Date plus time |
-| `DataType::Text` | Long-form prose: descriptions, body content |
+| `DataType::Json` | Structured payloads stored as JSON |
+| `DataType::Binary` | Opaque byte sequences |
+| `DataType::Uuid` | UUID identifiers |
 | `DataType::Enum` | Fixed set of values: status, category |
 
 **FieldMeaning:**
@@ -110,18 +111,22 @@ Every field needs a `DataType` and a `FieldMeaning`. The data type describes the
 | Variant | When to use |
 |---------|-------------|
 | `FieldMeaning::Identifier` | Primary key or unique ID |
+| `FieldMeaning::ForeignKey` | Reference to another record's identifier |
 | `FieldMeaning::EntityName` | Display name of the record |
-| `FieldMeaning::Money` | Monetary amount |
-| `FieldMeaning::Description` | Long descriptive text |
-| `FieldMeaning::Status` | Current state or lifecycle value |
 | `FieldMeaning::Email` | Email address |
 | `FieldMeaning::Phone` | Phone number |
 | `FieldMeaning::Url` | Web URL |
-| `FieldMeaning::Image` | Image URL or path |
-| `FieldMeaning::Timestamp` | Created/updated timestamps |
-| `FieldMeaning::Count` | Aggregate count |
-| `FieldMeaning::Location` | Geographic location |
-| `FieldMeaning::Generic` | No specific semantic meaning |
+| `FieldMeaning::ImageUrl` | Image URL or path |
+| `FieldMeaning::Money` | Monetary amount |
+| `FieldMeaning::Percentage` | Percentage value |
+| `FieldMeaning::Quantity` | Aggregate count or numeric quantity |
+| `FieldMeaning::Status` | Current state or lifecycle value |
+| `FieldMeaning::Category` | Categorical tag or grouping |
+| `FieldMeaning::Boolean` | Yes/no flag |
+| `FieldMeaning::FreeText` | Long descriptive text |
+| `FieldMeaning::CreatedAt` / `FieldMeaning::UpdatedAt` / `FieldMeaning::DateTime` | Timestamp fields |
+| `FieldMeaning::Sensitive` | Sensitive value treated as a password input |
+| `FieldMeaning::Custom(String)` | Domain-specific meaning not covered above |
 
 ### Intent Derivation
 
@@ -130,7 +135,7 @@ Every field needs a `DataType` and a `FieldMeaning`. The data type describes the
 **Signal analyzers:**
 
 1. **Field count** — many fields suggest a form (Collect); few fields suggest a list (Browse).
-2. **Field meanings** — presence of `Money`, `Status`, `Count` meanings shifts scores toward specific intents.
+2. **Field meanings** — presence of `Money`, `Status`, `Quantity` meanings shifts scores toward specific intents.
 3. **State machines** — a state machine with transitions strongly scores Process.
 4. **Guards and actions** — approval workflows score Track; rich action sets score Process.
 5. **Naming patterns** — service name patterns like "report", "summary", "dashboard" shift scores toward Summarize or Analyze.
@@ -177,13 +182,13 @@ Use `IntentHint::Primary` to promote a specific intent to the top. Use `IntentHi
 
 ### Rendering
 
-`JsonUiRenderer` implements the `Renderer` trait. Use it with a `RenderContext` to control how the output is shaped.
+`JsonUiRenderer` implements the `Renderer` trait. Use it with a `VisualContext` to control how the output is shaped.
 
 ```rust
-use ferro::{JsonUiRenderer, RenderContext, RenderMode, Renderer};
+use ferro::{JsonUiRenderer, VisualContext, RenderMode, Renderer};
 
 // Display mode: read-only view of data
-let display_ctx = RenderContext {
+let display_ctx = VisualContext {
     intent_index: 0,              // use primary intent
     current_state: None,          // no workflow state active
     mode: RenderMode::Display,    // read-only layout
@@ -191,7 +196,7 @@ let display_ctx = RenderContext {
 };
 
 // Input mode: editable form
-let input_ctx = RenderContext {
+let input_ctx = VisualContext {
     intent_index: 0,
     current_state: Some("draft".to_string()), // current workflow state
     mode: RenderMode::Input,                  // form layout
@@ -199,17 +204,17 @@ let input_ctx = RenderContext {
 };
 
 let renderer = JsonUiRenderer;
-let json = renderer.render(&service_def, &intents, &input_ctx).expect("rendering a valid service definition should not fail");
+let spec = renderer.render(&service_def, &intents, &input_ctx).expect("rendering a valid service definition should not fail");
 ```
 
-**RenderContext fields:**
+**VisualContext fields:**
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `intent_index` | `usize` | Index into the `IntentScore` list; `0` for primary intent |
 | `current_state` | `Option<String>` | Active state name from the state machine, if applicable |
 | `mode` | `RenderMode` | `RenderMode::Display` for read-only; `RenderMode::Input` for forms |
-| `templates` | `Option<...>` | Custom layout overrides (from `theme.json`); `None` uses defaults |
+| `templates` | `Option<ThemeTemplates>` | Custom layout overrides; `None` uses defaults |
 
 **RenderMode:**
 
@@ -225,7 +230,7 @@ An order management service with a workflow, a guard, and an action, rendered in
 ```rust
 use ferro::{
     ActionDef, DataType, FieldMeaning, GuardDef,
-    JsonUiRenderer, RenderContext, RenderMode, Renderer,
+    JsonUiRenderer, VisualContext, RenderMode, Renderer,
     ServiceDef, StateDef, StateMachine, Transition,
     derive_intents,
 };
@@ -236,7 +241,7 @@ let order = ServiceDef::new("order")
     .field("customer", DataType::String, FieldMeaning::EntityName)
     .field("total", DataType::Float, FieldMeaning::Money)
     .field("status", DataType::Enum, FieldMeaning::Status)
-    .field("created_at", DataType::DateTime, FieldMeaning::Timestamp)
+    .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
     .state_machine(
         StateMachine::new("lifecycle")
             .initial("draft")
@@ -254,14 +259,14 @@ let order = ServiceDef::new("order")
 let intents = derive_intents(&order);
 // Process intent scores highest due to state machine + actions
 
-let ctx = RenderContext {
+let ctx = VisualContext {
     intent_index: 0,
     current_state: Some("draft".to_string()),
     mode: RenderMode::Input,
     templates: None,
 };
 
-let json = JsonUiRenderer.render(&order, &intents, &ctx).expect("rendering a valid service definition should not fail");
+let spec = JsonUiRenderer.render(&order, &intents, &ctx).expect("rendering a valid service definition should not fail");
 // Produces a ferro-json-ui component tree with:
 // - Fields rendered as form inputs
 // - Available transitions ("approve") rendered as action buttons
@@ -286,7 +291,7 @@ let json = JsonUiRenderer.render(&order, &intents, &ctx).expect("rendering a val
 | `derive_intents` | Analyzes a `ServiceDef` and returns a confidence-ranked `Vec<IntentScore>` |
 | `JsonUiRenderer` | Implements `Renderer`; converts `ServiceDef` + intents + context to JSON-UI |
 | `Renderer` | Trait implemented by renderers; one method: `render(def, intents, ctx)` |
-| `RenderContext` | Render parameters: intent index, current state, mode, template overrides |
+| `VisualContext` | Render parameters: intent index, current state, mode, template overrides |
 | `RenderMode` | `Display` for read-only output; `Input` for editable form output |
 
 ## MCP Tools

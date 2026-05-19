@@ -9,11 +9,10 @@ mod dismissibles;
 mod dropdowns;
 mod form_guards;
 mod kanban;
-mod key_value_editor;
 mod modals;
 mod notifications;
 mod product_tiles;
-mod rich_text_editor;
+mod scroll_preserve;
 mod sidebar;
 mod sse;
 mod tabs;
@@ -38,18 +37,16 @@ pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(form_guards::SOURCE);
     s.push_str(product_tiles::SOURCE);
     s.push_str(kanban::SOURCE);
-    s.push_str(key_value_editor::SOURCE);
-    s.push_str(rich_text_editor::SOURCE);
+    s.push_str(scroll_preserve::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
+         \x20       setupScrollPreserve();\n\
          \x20       setupSSE();\n\
          \x20       setupTabs();\n\
          \x20       setupDismissibles();\n\
          \x20       setupNotifications();\n\
          \x20       setupDropdowns();\n\
          \x20       setupKanban();\n\
-         \x20       setupKeyValueEditor();\n\
-         \x20       setupRichTextEditor();\n\
          \x20       setupSidebar();\n\
          \x20       setupFormGuards();\n\
          \x20       setupProductTiles();\n\
@@ -94,6 +91,19 @@ mod tests {
         assert!(!FERRO_RUNTIME_JS.contains("text-white"));
     }
 
+    /// Popover-based dropdown wiring: the panel uses the HTML `popover`
+    /// attribute so the browser lifts it into the top layer (escaping any
+    /// `overflow:hidden` ancestor and the surrounding z-index stack). We
+    /// supply only the anchor positioning and the close-on-scroll behavior.
+    #[test]
+    fn test_runtime_contains_popover_dropdown_wiring() {
+        assert!(FERRO_RUNTIME_JS.contains("data-popover-menu"));
+        assert!(FERRO_RUNTIME_JS.contains(":popover-open"));
+        assert!(FERRO_RUNTIME_JS.contains("hidePopover"));
+        assert!(FERRO_RUNTIME_JS.contains("positionUnderTrigger"));
+        assert!(FERRO_RUNTIME_JS.contains("getBoundingClientRect"));
+    }
+
     #[test]
     fn test_runtime_contains_modal_wiring() {
         assert!(FERRO_RUNTIME_JS.contains("setupModals"));
@@ -130,8 +140,7 @@ mod tests {
             "setupFormGuards",
             "setupProductTiles",
             "setupKanban",
-            "setupKeyValueEditor",
-            "setupRichTextEditor",
+            "setupScrollPreserve",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
@@ -163,8 +172,7 @@ mod tests {
             "setupFormGuards();",
             "setupProductTiles();",
             "setupKanban();",
-            "setupKeyValueEditor();",
-            "setupRichTextEditor();",
+            "setupScrollPreserve();",
         ] {
             assert!(dispatcher.contains(call), "dispatcher missing {call}");
         }

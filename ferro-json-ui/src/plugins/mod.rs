@@ -1,7 +1,7 @@
 //! Built-in plugin components for JSON-UI.
 //!
-//! Provides the Map plugin and a registration function that adds all
-//! built-in plugins to the global `PluginRegistry`.
+//! Provides the Map and RichTextEditor plugins and a registration function
+//! that adds all built-in plugins to the global `PluginRegistry`.
 
 pub mod map;
 pub mod rich_text_editor;

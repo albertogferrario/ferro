@@ -12,6 +12,10 @@ use serde_json::Value;
 /// or array index (numeric string). Leading slash is required for non-empty
 /// paths. Empty path or `"/"` returns the root value. Returns `None` if any
 /// segment fails to resolve.
+///
+/// Consumed by the Phase 116 form-control renderers (data_path → checked
+/// attribute for Checkbox and Switch) and by the data-display renderers
+/// (data_path → row array for Table and DataTable).
 pub(crate) fn resolve_path<'a>(data: &'a Value, path: &str) -> Option<&'a Value> {
     if path.is_empty() || path == "/" {
         return Some(data);
@@ -45,6 +49,9 @@ pub(crate) fn resolve_path<'a>(data: &'a Value, path: &str) -> Option<&'a Value>
 /// For `String` values, returns the string directly. For numbers and booleans,
 /// uses `to_string()`. For `null`, returns `None`. For objects and arrays,
 /// returns their JSON serialization.
+///
+/// Consumed by the Phase 116 Input and Select renderers to resolve
+/// `data_path` into a `value=""` / `selected` attribute.
 pub(crate) fn resolve_path_string(data: &Value, path: &str) -> Option<String> {
     let value = resolve_path(data, path)?;
     match value {
