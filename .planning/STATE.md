@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
-status: verifying
-stopped_at: Completed 160-10-PLAN.md — Phase 160 fully closed; Phase 161 cleared
-last_updated: "2026-05-17T05:59:41.247Z"
-last_activity: 2026-05-17
+milestone: v12.0
+milestone_name: JSON-UI v2 — Spec-Driven Rendering
+status: shipped
+stopped_at: v12.0 merged to master 2026-05-19 (merge commit e6f24c69); awaiting push + publish
+last_updated: "2026-05-19T00:00:00.000Z"
+last_activity: 2026-05-19
 progress:
   total_phases: 173
-  completed_phases: 156
+  completed_phases: 161
   total_plans: 472
-  completed_plans: 462
-  percent: 98
+  completed_plans: 472
+  percent: 100
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 160 — remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp
+**Current focus:** v12.0 closed — JSON-UI v2 spec-driven rendering shipped to master
 
 ## Current Position
 
-Phase: 161
-Plan: Not started
-Next: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; then Phase 160 (delete v1 JSON-UI API) → Phase 161 (merge v12.0/json-ui-v2 → master)
-Workspace version: 0.2.35 (inherited from master)
+Phase: v12.0 closed (Phases 115-121, 159-164 complete)
+Plan: —
+Next: Push master + publish v12.0 release; then begin v12.1 Form Validation DX (Phases 137-139)
+Workspace version: 0.2.35 (publish bump pending)
 Status: Phase complete — ready for verification
 Last activity: 2026-05-17
 

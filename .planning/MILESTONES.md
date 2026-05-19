@@ -1,5 +1,24 @@
 # Project Milestones: Ferro Framework
 
+## v12.0 JSON-UI v2 — Spec-Driven Rendering (Shipped: 2026-05-19)
+
+**Phases completed:** 115-121, 159-164 (incl. friction loop with gestiscilo)
+
+**Key accomplishments:**
+
+- Spec-driven rendering pipeline: `Spec` JSON is now the public wire contract; the renderer walks the spec, resolves expressions, applies visibility rules, and emits HTML deterministically
+- Component catalog grew to 42 built-in components including DataTable, KanbanBoard, DetailPage, PageHeader, EmptyState, RichTextEditor, Calendar, NotificationDropdown, CheckboxList, RawHtml — each with structured props, JSON Schema, and catalog entries surfaced via `mcp__ferro__json_ui_catalog`
+- JSON Schema contract for `Spec` with `json_ui_validate_spec` and `json_ui_verify_action` MCP tools; round-trip and reject test fixtures enforce the schema
+- Expression engine: `{$data: "/path"}` bindings, `{$template: "..."}` interpolation, `$each` iteration, `IsTrue`/`IsFalse` visibility operators, `Action.handler` accepting `{$data}` bindings for per-row navigation
+- Renderer ergonomics: `JsonUi::render_file`, back-aware redirects via `Redirect::back(&req, fallback)`, `Request::back_or(fallback)` with same-origin host enforcement, `scroll_preserve` runtime capturing `<main>.scrollTop`
+- Visual polish: translucent backdrop-blur toasts with auto-dismiss, popover dropdowns, anchored Buttons, kanban with column caps and full-bleed cards, DataTable density (`px-4 py-2`), DetailPage shape
+- v1 view/component materialization API fully removed (Phase 160)
+- Production-validated via gestiscilo v7.0 integration loop — friction Phases 138-143 absorbed by ferro Phases 162-164
+
+**Stats:** 491 commits, 13 phases (115-121, 159-164), single-publish cadence at merge
+
+---
+
 ## v11.7 Tailwind Static CSS Pipeline (Shipped: 2026-04-20)
 
 **Phases completed:** 1 phase (143), 4 plans
