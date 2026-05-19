@@ -29,11 +29,11 @@ use serde_json::{to_value, Value};
 use crate::component::{
     ActionCardProps, AlertProps, AvatarProps, BadgeProps, BreadcrumbProps, ButtonGroupProps,
     ButtonProps, CalendarCellProps, CardProps, CheckboxListProps, CheckboxProps, ChecklistProps,
-    CollapsibleProps, DataTableProps, DescriptionListProps, DropdownMenuProps, EmptyStateProps,
-    FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps, KanbanBoardProps,
-    ModalProps, NotificationDropdownProps, PageHeaderProps, PaginationProps, ProductTileProps,
-    ProgressProps, RawHtmlProps, SelectProps, SeparatorProps, SidebarProps, SkeletonProps,
-    StatCardProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
+    CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps, DropdownMenuProps,
+    EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
+    KanbanBoardProps, ModalProps, NotificationDropdownProps, PageHeaderProps, PaginationProps,
+    ProductTileProps, ProgressProps, RawHtmlProps, SelectProps, SeparatorProps, SidebarProps,
+    SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -296,6 +296,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "Page title with optional breadcrumb and action button slot.",
         || to_value(schema_for!(PageHeaderProps)).unwrap(),
         &["actions"],
+    ),
+    (
+        "DetailPage",
+        "Canonical resource-detail skeleton: PageHeader chrome, optional info Card slot, and stacked body sections from Element.children.",
+        || to_value(schema_for!(DetailPageProps)).unwrap(),
+        &["actions", "info"],
     ),
     (
         "Grid",
@@ -1049,13 +1055,14 @@ mod tests {
         // Drift guard — if this fails, Phase 116's BUILTIN_TYPES changed
         // without a corresponding catalog update. See Plan 02.
         // Updated to 40 in Phase 162 Plan 01 (CheckboxList added).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 41);
+        // Updated to 42 when DetailPage was added.
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 42);
     }
 
     #[test]
     fn builtin_specs_len_matches_dispatch() {
         assert_eq!(BUILTIN_SPECS.len(), crate::render::BUILTIN_TYPES.len());
-        assert_eq!(BUILTIN_SPECS.len(), 41);
+        assert_eq!(BUILTIN_SPECS.len(), 42);
     }
 
     #[test]

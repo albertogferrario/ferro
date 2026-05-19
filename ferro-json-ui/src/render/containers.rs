@@ -12,9 +12,9 @@
 use serde_json::Value;
 
 use crate::component::{
-    ButtonGroupProps, CardProps, CardVariant, CollapsibleProps, FormMaxWidth, FormSectionLayout,
-    FormSectionProps, GapSize, GridProps, KanbanBoardProps, KanbanColumnProps, ModalProps,
-    PageHeaderProps, TabsProps,
+    ButtonGroupProps, CardProps, CardVariant, CollapsibleProps, DetailPageProps, FormMaxWidth,
+    FormSectionLayout, FormSectionProps, GapSize, GridProps, KanbanBoardProps, KanbanColumnProps,
+    ModalProps, PageHeaderProps, TabsProps,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
@@ -524,6 +524,115 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
             .collect();
         html.push_str("<div class=\"flex flex-col gap-4\">");
         html.push_str(&body_html);
+        html.push_str("</div>");
+    }
+
+    html
+}
+
+/// Renders a `DetailPage`. Emits the canonical resource-detail layout:
+/// PageHeader chrome (title + breadcrumb + actions), then an info Card
+/// (rendered only when `info` is non-empty) wrapping the listed slot IDs,
+/// then `Element.children` stacked below the card as page sections
+/// (Tabs, related-resource Cards, etc.). The HTML matches what a
+/// hand-composed `PageHeader + Card + Tabs` triple would emit, so the
+/// component centralizes the contract without changing the visual output
+/// downstream pages were already producing.
+pub(crate) fn render_detail_page(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
+    let props: DetailPageProps = match serde_json::from_value(el.props.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: failed to decode DetailPage props: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    let mut html = String::new();
+
+    // Header chrome — mirrors render_page_header's structure verbatim so the
+    // DetailPage skeleton stays visually identical to manually-composed pages.
+    html.push_str("<div class=\"flex flex-wrap items-center justify-between gap-3 pb-4\">");
+    html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
+    if !props.breadcrumb.is_empty() {
+        for item in &props.breadcrumb {
+            if let Some(ref url) = item.url {
+                html.push_str(&format!(
+                    "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap\">{}</a>",
+                    html_escape(url),
+                    html_escape(&item.label)
+                ));
+            } else {
+                html.push_str(&format!(
+                    "<span class=\"text-sm text-text-muted whitespace-nowrap\">{}</span>",
+                    html_escape(&item.label)
+                ));
+            }
+            html.push_str(
+                "<span aria-hidden=\"true\" class=\"text-text-muted flex-shrink-0\">\
+                 <svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">\
+                 <path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"/>\
+                 </svg></span>"
+            );
+        }
+    }
+    html.push_str(&format!(
+        "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text truncate\">{}</h2>",
+        html_escape(&props.title)
+    ));
+    html.push_str("</div>");
+
+    if !props.actions.is_empty() {
+        let actions_html: String = props
+            .actions
+            .iter()
+            .map(|cid| render_element(cid, spec, data, depth + 1))
+            .collect();
+        html.push_str("<div class=\"flex flex-wrap items-center gap-2\">");
+        html.push_str(&actions_html);
+        html.push_str("</div>");
+    }
+    html.push_str("</div>");
+
+    // Body: info Card + children sections, stacked vertically with gap-4.
+    let has_body = !props.info.is_empty() || !el.children.is_empty();
+    if has_body {
+        html.push_str("<div class=\"flex flex-col gap-4\">");
+
+        // Info Card — mirrors render_card's Bordered+Default output with an
+        // empty title (suppressed via the same path as Card uses for empty
+        // titles in practice). The wrapper is omitted entirely when `info`
+        // is empty so pages without a primary info block get just the
+        // header + children.
+        if !props.info.is_empty() {
+            let info_body: String = props
+                .info
+                .iter()
+                .map(|cid| render_element(cid, spec, data, depth + 1))
+                .collect();
+            html.push_str(
+                "<div class=\"rounded-lg border border-border bg-card shadow-sm overflow-visible\">\
+                 <div class=\"p-4\">",
+            );
+            html.push_str(
+                "<div class=\"flex flex-wrap gap-3 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto overflow-visible\">",
+            );
+            html.push_str(&info_body);
+            html.push_str("</div></div></div>");
+        }
+
+        // Element.children render as below-the-fold sections (Tabs,
+        // related-resource Cards, action panels).
+        if !el.children.is_empty() {
+            let body_html: String = el
+                .children
+                .iter()
+                .map(|cid| render_element(cid, spec, data, depth + 1))
+                .collect();
+            html.push_str(&body_html);
+        }
+
         html.push_str("</div>");
     }
 

@@ -49,7 +49,13 @@ fn resolve_action(
     }
 }
 
-/// Resolve every `Element.action` via the provided resolver closure.
+/// Resolve every `Element.action` AND every Action-shaped object nested
+/// inside `Element.props` via the provided resolver closure.
+///
+/// The props walk handles fields such as `FormProps.action`,
+/// `EmptyStateProps.action`, `DataTableProps.row_actions[].action`,
+/// `SwitchProps.action`, and any future props that carry an Action
+/// payload — without each renderer having to re-implement URL resolution.
 ///
 /// Mutates in place. Silent on missing handlers — use
 /// `resolve_actions_strict` if you want to collect missing names.
@@ -59,6 +65,71 @@ pub fn resolve_actions(spec: &mut Spec, resolver: impl Fn(&str) -> Option<String
         if let Some(action) = el.action.as_mut() {
             resolve_action(action, &data, &resolver);
         }
+        resolve_actions_in_value(&mut el.props, &data, &resolver);
+    }
+}
+
+/// Walk a `serde_json::Value` recursively. Every object that looks like a
+/// raw Action (carries a `handler` field but no resolved `url`) gets a
+/// `url` populated using the same rules as `resolve_action`:
+///
+/// - Literal `"/path"` handler → url is the same path.
+/// - Literal route-name handler → url comes from the resolver.
+/// - `{"$data": "/spec/path"}` binding → resolved against `spec.data`,
+///   then the literal rule applies.
+///
+/// Recursion descends through every nested object and array so deeply
+/// nested action shapes (e.g. `row_actions[].action`) are reached without
+/// per-component plumbing.
+fn resolve_actions_in_value(
+    value: &mut Value,
+    data: &Value,
+    resolver: &impl Fn(&str) -> Option<String>,
+) {
+    match value {
+        Value::Object(map) => {
+            let has_handler = map.contains_key("handler");
+            let already_resolved = matches!(map.get("url"), Some(Value::String(_)));
+            if has_handler && !already_resolved {
+                if let Some(url) = resolve_props_handler_to_url(map.get("handler"), data, resolver) {
+                    map.insert("url".to_string(), Value::String(url));
+                }
+            }
+            for v in map.values_mut() {
+                resolve_actions_in_value(v, data, resolver);
+            }
+        }
+        Value::Array(arr) => {
+            for v in arr.iter_mut() {
+                resolve_actions_in_value(v, data, resolver);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Materialise a JSON `handler` value to a URL string. Mirrors
+/// [`resolve_action`] but operates on raw JSON shapes (used in props,
+/// before per-type deserialization).
+fn resolve_props_handler_to_url(
+    handler: Option<&Value>,
+    data: &Value,
+    resolver: &impl Fn(&str) -> Option<String>,
+) -> Option<String> {
+    let literal: String = match handler? {
+        Value::String(s) => s.clone(),
+        Value::Object(map) if map.len() == 1 => {
+            let path = map.get("$data").and_then(|v| v.as_str())?;
+            crate::data::resolve_path(data, path)
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())?
+        }
+        _ => return None,
+    };
+    if literal.starts_with('/') {
+        Some(literal)
+    } else {
+        resolver(&literal)
     }
 }
 
@@ -78,6 +149,7 @@ pub fn resolve_actions_strict(
                 missing.push(action.handler.as_str().to_string());
             }
         }
+        resolve_actions_in_value(&mut el.props, &data, &resolver);
     }
     if missing.is_empty() {
         Ok(())

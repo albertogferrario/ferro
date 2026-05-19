@@ -262,6 +262,49 @@ impl Request {
         self.header("content-type")
     }
 
+    /// Resolve the URL the current request was triggered from, falling
+    /// back to `fallback` when the `Referer` is absent, malformed, or
+    /// points off-origin.
+    ///
+    /// Use to capture a "back" target at handler entry before the request
+    /// body is consumed (e.g. before [`body_bytes`](Self::body_bytes)). The
+    /// returned `String` then feeds [`crate::http::Redirect::to`] to send
+    /// the user back to where they came from, preserving query strings
+    /// (e.g. `?tab=note`) and any other URL state.
+    ///
+    /// Same-origin rule mirrors [`crate::http::Redirect::back`]: absolute
+    /// URLs must share the request's `Host`; scheme-relative URLs are
+    /// rejected.
+    pub fn back_or(&self, fallback: impl Into<String>) -> String {
+        let referer = match self.header("referer") {
+            Some(r) => r,
+            None => return fallback.into(),
+        };
+        if referer.starts_with("//") {
+            return fallback.into();
+        }
+        if referer.starts_with('/') {
+            return referer.to_string();
+        }
+        let rest = match referer.strip_prefix("http://").or_else(|| referer.strip_prefix("https://")) {
+            Some(r) => r,
+            None => return fallback.into(),
+        };
+        let (referer_host, path) = match rest.find('/') {
+            Some(i) => (&rest[..i], &rest[i..]),
+            None => (rest, "/"),
+        };
+        let request_host = match self.header("host") {
+            Some(h) => h,
+            None => return fallback.into(),
+        };
+        if referer_host == request_host {
+            path.to_string()
+        } else {
+            fallback.into()
+        }
+    }
+
     /// Check if this is an Inertia XHR request
     pub fn is_inertia(&self) -> bool {
         self.header("X-Inertia")

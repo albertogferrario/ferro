@@ -150,20 +150,26 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
 
     let mut html = String::new();
 
+    // Empty short-circuit: emit a single centered card with the description
+    // text. Replaces the prior empty-table-row + mobile-empty-div split with
+    // one shared, table-less visual so the empty state reads as a deliberate
+    // placeholder rather than a degenerate table.
+    if items.is_empty() {
+        let _ = col_count; // silence unused — column count irrelevant when empty
+        return format!(
+            "<div class=\"rounded-lg border border-border bg-card min-h-40 py-8 px-6 flex items-center justify-center\">\
+             <p class=\"text-sm text-text-muted text-center max-w-md\">{}</p>\
+             </div>",
+            html_escape(empty_msg)
+        );
+    }
+
     // Desktop table (hidden on mobile).
     html.push_str(
         "<div class=\"hidden md:block rounded-lg border border-border overflow-hidden\">",
     );
 
-    if items.is_empty() {
-        html.push_str("<table class=\"w-full\"><tbody>");
-        html.push_str(&format!(
-            "<tr><td colspan=\"{}\" class=\"px-6 py-8 text-center text-sm text-text-muted\">{}</td></tr>",
-            col_count,
-            html_escape(empty_msg)
-        ));
-        html.push_str("</tbody></table>");
-    } else {
+    {
         html.push_str("<table class=\"w-full\">");
 
         // Header.
@@ -223,14 +229,10 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
     }
     html.push_str("</div>");
 
-    // Mobile cards (visible on mobile).
+    // Mobile cards (visible on mobile). Empty is handled by the early
+    // short-circuit above; reaching here implies at least one row.
     html.push_str("<div class=\"block md:hidden space-y-3\">");
-    if items.is_empty() {
-        html.push_str(&format!(
-            "<div class=\"text-center text-sm text-text-muted py-8\">{}</div>",
-            html_escape(empty_msg)
-        ));
-    } else {
+    {
         for (index, row) in items.iter().enumerate() {
             let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
             let row_href = props

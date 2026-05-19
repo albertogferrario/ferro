@@ -640,16 +640,23 @@ pub(crate) fn render_empty_state(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("EmptyState", e),
     };
+    // Centered placeholder card. Same outer shell as the DataTable empty
+    // state so a tab without rows and a tab with no resource-shaped form
+    // (e.g. owner notes) read as the same visual surface. Title and action
+    // are optional; description is the primary message.
     let mut html = String::from(
-        "<div class=\"flex flex-col items-center justify-center py-16 px-6 text-center\">",
+        "<div class=\"rounded-lg border border-border bg-card min-h-40 py-8 px-6 flex items-center justify-center\">\
+         <div class=\"text-center max-w-md\">",
     );
-    html.push_str(&format!(
-        "<h3 class=\"text-xl font-semibold text-text\">{}</h3>",
-        html_escape(&props.title)
-    ));
+    if !props.title.is_empty() {
+        html.push_str(&format!(
+            "<h3 class=\"text-base font-semibold text-text mb-2\">{}</h3>",
+            html_escape(&props.title)
+        ));
+    }
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
-            "<p class=\"mt-2 text-sm text-text-muted max-w-sm\">{}</p>",
+            "<p class=\"text-sm text-text-muted\">{}</p>",
             html_escape(desc)
         ));
     }
@@ -657,14 +664,14 @@ pub(crate) fn render_empty_state(
         let label = props.action_label.as_deref().unwrap_or("Action");
         let url = action.url.as_deref().unwrap_or("#");
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"mt-6 inline-flex items-center justify-center rounded-md \
+            "<a href=\"{}\" class=\"mt-4 inline-flex items-center justify-center rounded-md \
              border border-border bg-card text-text px-4 py-2 text-sm font-medium \
              hover:bg-surface transition-colors\">{}</a>",
             html_escape(url),
             html_escape(label)
         ));
     }
-    html.push_str("</div>");
+    html.push_str("</div></div>");
     html
 }
 
@@ -2200,6 +2207,6 @@ mod tests {
     #[test]
     fn builtin_types_includes_raw_html() {
         assert!(crate::render::BUILTIN_TYPES.contains(&"RawHtml"));
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 41);
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 42);
     }
 }

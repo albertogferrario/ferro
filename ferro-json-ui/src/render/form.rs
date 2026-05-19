@@ -58,16 +58,28 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
         HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => ("post", true),
     };
 
-    // Resolve action URL; emit diagnostic comment when None.
-    let (action_url, diagnostic) = match props.action.url.as_deref() {
-        Some(u) => (u.to_string(), String::new()),
-        None => (
+    // Resolve action URL. Priority:
+    //   1. `props.action.url` — populated by `resolve_actions` for the
+    //      enclosing element. Not populated for FormProps.action because
+    //      `resolve_actions` only walks `el.action`, not `el.props.action`.
+    //   2. `props.action.handler` literal path — when the handler is a
+    //      `/path` string, use it directly. Covers the FormProps case where
+    //      authoring code passes either a literal URL or a `{$data}` binding
+    //      that `resolve_expressions` materialised into a literal URL.
+    //   3. Fall through to "#" with a diagnostic comment.
+    let handler_str = props.action.handler.as_str();
+    let (action_url, diagnostic) = if let Some(u) = props.action.url.as_deref() {
+        (u.to_string(), String::new())
+    } else if handler_str.starts_with('/') {
+        (handler_str.to_string(), String::new())
+    } else {
+        (
             "#".to_string(),
             format!(
                 "<!-- ferro-json-ui: action '{}' has no resolved url -->",
-                html_escape(props.action.handler.as_str())
+                html_escape(handler_str)
             ),
-        ),
+        )
     };
 
     let id_attr = match props.id.as_deref() {

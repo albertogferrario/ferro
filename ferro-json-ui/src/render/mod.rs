@@ -33,7 +33,7 @@ pub struct RenderResult {
     pub scripts: String,
 }
 
-/// Single source of truth for the 41 built-in element type names recognized
+/// Single source of truth for the 42 built-in element type names recognized
 /// by the renderer. Plugins cannot register a type name that shadows an entry
 /// here — if `type_name` matches an entry, the dispatch match arm wins
 /// regardless of plugin registry contents.
@@ -72,6 +72,7 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "Tabs",
     "KanbanBoard",
     "PageHeader",
+    "DetailPage",
     "Grid",
     "Collapsible",
     "FormSection",
@@ -187,6 +188,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "Tabs" => containers::render_tabs(el, spec, data, depth),
         "KanbanBoard" => containers::render_kanban_board(el, spec, data, depth),
         "PageHeader" => containers::render_page_header(el, spec, data, depth),
+        "DetailPage" => containers::render_detail_page(el, spec, data, depth),
         "Grid" => containers::render_grid(el, spec, data, depth),
         "Collapsible" => containers::render_collapsible(el, spec, data, depth),
         "FormSection" => containers::render_form_section(el, spec, data, depth),
@@ -535,10 +537,10 @@ mod tests {
 
     #[test]
     fn builtin_types_count_matches_dispatch() {
-        // Defense-in-depth check: BUILTIN_TYPES must be 41 entries.
+        // Defense-in-depth check: BUILTIN_TYPES must be 42 entries.
         // The dispatch match in `render_element` has one arm per entry plus a
         // default arm. A compile-time mismatch would be caught by rustc; this
         // runtime check pins the invariant for future edits.
-        assert_eq!(BUILTIN_TYPES.len(), 41);
+        assert_eq!(BUILTIN_TYPES.len(), 42);
     }
 }

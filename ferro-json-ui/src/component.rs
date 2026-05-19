@@ -881,6 +881,32 @@ pub struct ButtonGroupProps {
     pub gap: GapSize,
 }
 
+/// Props for DetailPage component -- opinionated resource-detail skeleton.
+///
+/// Renders a PageHeader (title + breadcrumb + actions), an info Card
+/// wrapping the `info` slot IDs (typically a Badge plus a DescriptionList),
+/// and `Element.children` as stacked sections below the card (tabs,
+/// related-resource lists, action panels). Centralizes the visual contract
+/// every dashboard detail page follows so per-page rebuilds cannot drift
+/// from the canonical shape.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DetailPageProps {
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub breadcrumb: Vec<BreadcrumbItem>,
+    /// IDs of action button elements rendered to the right of the title.
+    #[serde(
+        default,
+        deserialize_with = "deserialize_actions_lax",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub actions: Vec<String>,
+    /// IDs of elements rendered inside the info Card
+    /// (typically a Badge and a DescriptionList). Omit to skip the card.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub info: Vec<String>,
+}
+
 /// A single action item in a dropdown menu.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct DropdownMenuAction {
