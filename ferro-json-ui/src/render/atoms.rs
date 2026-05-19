@@ -793,11 +793,17 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Toast", e),
     };
+    // Solid, opaque variant backgrounds with contrast text. Matches the JS
+    // showToast() palette so server-rendered and JS-created toasts look
+    // identical.
+    // Translucent variant tint over a backdrop blur — content underneath
+    // shows through but the toast stays clearly readable. 70% alpha gives
+    // visible translucency even on plain backgrounds.
     let variant_classes = match props.variant {
-        ToastVariant::Info => "bg-primary/10 border-primary text-primary",
-        ToastVariant::Success => "bg-success/10 border-success text-success",
-        ToastVariant::Warning => "bg-warning/10 border-warning text-warning",
-        ToastVariant::Error => "bg-destructive/10 border-destructive text-destructive",
+        ToastVariant::Info => "bg-primary/70 text-primary-foreground",
+        ToastVariant::Success => "bg-success/70 text-primary-foreground",
+        ToastVariant::Warning => "bg-warning/70 text-primary-foreground",
+        ToastVariant::Error => "bg-destructive/70 text-primary-foreground",
     };
     let variant_str = match props.variant {
         ToastVariant::Info => "info",
@@ -806,25 +812,15 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         ToastVariant::Error => "error",
     };
     let timeout = props.timeout.unwrap_or(5);
-    let mut html = format!(
-        "<div class=\"fixed top-4 right-4 z-50 rounded-md border p-4 shadow-lg {variant_classes}\" data-toast-variant=\"{variant_str}\" data-toast-timeout=\"{timeout}\"",
-    );
-    if props.dismissible {
-        html.push_str(" data-toast-dismissible");
-    }
-    html.push('>');
-    html.push_str("<div class=\"flex items-start gap-3\">");
-    html.push_str(&format!(
-        "<p class=\"text-sm\">{}</p>",
+    // No close button — toast auto-dismisses via the runtime's
+    // setupServerToasts() handler reading data-toast-timeout.
+    format!(
+        "<div class=\"fixed top-4 right-4 z-50 rounded-lg px-4 py-3 shadow-lg max-w-sm transition-opacity duration-300 backdrop-blur-md {variant_classes}\" \
+         data-toast-variant=\"{variant_str}\" data-toast-timeout=\"{timeout}\">\
+         <p class=\"text-sm\">{}</p>\
+         </div>",
         html_escape(&props.message)
-    ));
-    if props.dismissible {
-        html.push_str(
-            "<button type=\"button\" class=\"ml-auto text-current opacity-70 hover:opacity-100\">&times;</button>",
-        );
-    }
-    html.push_str("</div></div>");
-    html
+    )
 }
 
 // ── 17. NotificationDropdown ─────────────────────────────────────────────
@@ -972,9 +968,7 @@ fn render_sidebar_nav_item(item: &SidebarNavItem) -> String {
         )
     };
     let mut html = if disabled {
-        format!(
-            "<{tag} aria-disabled=\"true\" class=\"{classes}\">",
-        )
+        format!("<{tag} aria-disabled=\"true\" class=\"{classes}\">",)
     } else {
         format!(
             "<{tag} href=\"{}\" class=\"{classes}\">",
@@ -1478,15 +1472,17 @@ mod tests {
     /// form instead of letting the anchor's href fire.
     #[test]
     fn button_get_action_inner_button_has_type_button() {
-        let el_builder = Element::new("Button").prop("label", "Annulla").action(Action {
-            handler: "products.show".into(),
-            url: Some("/dashboard/cassa/prodotti/1".into()),
-            method: HttpMethod::Get,
-            confirm: None,
-            on_success: None,
-            on_error: None,
-            target: None,
-        });
+        let el_builder = Element::new("Button")
+            .prop("label", "Annulla")
+            .action(Action {
+                handler: "products.show".into(),
+                url: Some("/dashboard/cassa/prodotti/1".into()),
+                method: HttpMethod::Get,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+                target: None,
+            });
         let spec = spec_with_root(el_builder);
         let el = spec.elements.get("root").unwrap();
         let html = render_button(el, &spec, &json!({}), 1);

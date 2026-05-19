@@ -381,10 +381,19 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
             "<div class=\"ferro-kanban-scroll space-y-2 flex-1 overflow-y-auto px-3 pb-3\" \
              style=\"scrollbar-width: none;\">",
         );
-        for cid in &col.children {
-            html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
-            html.push_str(&render_element(cid, spec, data, depth + 1));
-            html.push_str("</div>");
+        if col.children.is_empty() {
+            if let Some(ref label) = props.empty_label {
+                html.push_str(&format!(
+                    "<div class=\"flex items-center justify-center h-full min-h-40 text-sm text-text-muted text-center px-3\">{}</div>",
+                    html_escape(label)
+                ));
+            }
+        } else {
+            for cid in &col.children {
+                html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
+                html.push_str(&render_element(cid, spec, data, depth + 1));
+                html.push_str("</div>");
+            }
         }
         html.push_str("</div>");
         html.push_str("</div>");
@@ -428,10 +437,19 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
              style=\"max-height: calc(100vh - 14rem); scrollbar-width: none;\">",
             html_escape(&col.id),
         ));
-        for cid in &col.children {
-            html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
-            html.push_str(&render_element(cid, spec, data, depth + 1));
-            html.push_str("</div>");
+        if col.children.is_empty() {
+            if let Some(ref label) = props.empty_label {
+                html.push_str(&format!(
+                    "<div class=\"flex items-center justify-center min-h-40 text-sm text-text-muted text-center px-3\">{}</div>",
+                    html_escape(label)
+                ));
+            }
+        } else {
+            for cid in &col.children {
+                html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
+                html.push_str(&render_element(cid, spec, data, depth + 1));
+                html.push_str("</div>");
+            }
         }
         html.push_str("</div>");
     }

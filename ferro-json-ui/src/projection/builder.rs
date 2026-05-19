@@ -366,6 +366,7 @@ fn emit_kanban_root(service: &ServiceDef) -> ElementBuilder {
         columns: vec![placeholder],
         data_path: None,
         mobile_default_column: None,
+        empty_label: None,
     })
     .expect("KanbanBoardProps serialization cannot fail");
     element_with_props("KanbanBoard", props)

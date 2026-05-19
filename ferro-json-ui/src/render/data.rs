@@ -46,13 +46,13 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     html.push_str("<thead class=\"bg-surface\"><tr>");
     for col in &props.columns {
         html.push_str(&format!(
-            "<th class=\"px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-text-muted\">{}</th>",
+            "<th class=\"px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-text-muted\">{}</th>",
             html_escape(&col.label)
         ));
     }
     if props.row_actions.is_some() {
         html.push_str(
-            "<th class=\"px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-text-muted\">Azioni</th>"
+            "<th class=\"px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-text-muted\">Azioni</th>"
         );
     }
     html.push_str("</tr></thead>");
@@ -69,7 +69,7 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                 let col_count =
                     props.columns.len() + if props.row_actions.is_some() { 1 } else { 0 };
                 html.push_str(&format!(
-                    "<tr><td colspan=\"{}\" class=\"px-6 py-8 text-center text-sm text-text-muted\">{}</td></tr>",
+                    "<tr><td colspan=\"{}\" class=\"px-4 py-4 text-center text-sm text-text-muted\">{}</td></tr>",
                     col_count,
                     html_escape(msg)
                 ));
@@ -80,19 +80,16 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                 for col in &props.columns {
                     let cell_text = cell_string(row.get(&col.key));
                     html.push_str(&format!(
-                        "<td class=\"px-6 py-4 text-sm text-text whitespace-nowrap\">{}</td>",
+                        "<td class=\"px-4 py-2 text-sm text-text whitespace-nowrap\">{}</td>",
                         html_escape(&cell_text)
                     ));
                 }
                 if let Some(ref actions) = props.row_actions {
-                    html.push_str("<td class=\"px-6 py-4 text-right text-sm space-x-2\">");
+                    html.push_str("<td class=\"px-4 py-2 text-right text-sm space-x-2\">");
                     for action in actions {
                         let url = action.url.as_deref().unwrap_or("#");
                         let handler_str = action.handler.as_str();
-                        let label = handler_str
-                            .split('.')
-                            .next_back()
-                            .unwrap_or(handler_str);
+                        let label = handler_str.split('.').next_back().unwrap_or(handler_str);
                         html.push_str(&format!(
                             "<a href=\"{}\" class=\"text-primary hover:text-primary/80\">{}</a>",
                             html_escape(url),
@@ -107,7 +104,7 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     } else if let Some(ref msg) = props.empty_message {
         let col_count = props.columns.len() + if props.row_actions.is_some() { 1 } else { 0 };
         html.push_str(&format!(
-            "<tr><td colspan=\"{}\" class=\"px-6 py-8 text-center text-sm text-text-muted\">{}</td></tr>",
+            "<tr><td colspan=\"{}\" class=\"px-4 py-4 text-center text-sm text-text-muted\">{}</td></tr>",
             col_count,
             html_escape(msg)
         ));
@@ -176,13 +173,13 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
         html.push_str("<thead><tr class=\"bg-surface\">");
         for col in &props.columns {
             html.push_str(&format!(
-                "<th class=\"px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-text-muted\">{}</th>",
+                "<th class=\"px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-text-muted\">{}</th>",
                 html_escape(&col.label)
             ));
         }
         if has_actions {
             html.push_str(
-                "<th class=\"px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-text-muted\">Azioni</th>"
+                "<th class=\"px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-text-muted\">Azioni</th>"
             );
         }
         html.push_str("</tr></thead>");
@@ -210,13 +207,13 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             for col in &props.columns {
                 let cell_text = cell_string(row.get(&col.key));
                 html.push_str(&format!(
-                    "<td class=\"px-6 py-4 text-sm text-text\">{}</td>",
+                    "<td class=\"px-4 py-2 text-sm text-text\">{}</td>",
                     html_escape(&cell_text)
                 ));
             }
             if let Some(ref actions) = props.row_actions {
                 let templated = template_actions(actions, row, &row_key_value);
-                html.push_str("<td class=\"px-6 py-4 text-right\">");
+                html.push_str("<td class=\"px-4 py-2 text-right\">");
                 html.push_str(&render_inline_dropdown(
                     &format!("dt-{row_key_value}"),
                     &templated,
@@ -249,7 +246,8 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 )
             } else {
                 (
-                    "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2\">".to_string(),
+                    "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2\">"
+                        .to_string(),
                     "</div>".to_string(),
                 )
             };

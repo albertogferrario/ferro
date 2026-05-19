@@ -968,6 +968,11 @@ pub struct KanbanBoardProps {
     pub data_path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mobile_default_column: Option<String>,
+    /// Placeholder text shown inside columns whose `children` list is empty.
+    /// When `None`, columns with no children render no placeholder (back-compat).
+    /// Provide a short, neutral message — e.g. "Nessun ordine", "Nothing here".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_label: Option<String>,
 }
 
 /// Props for a calendar day cell.
@@ -1566,6 +1571,7 @@ mod kanban_board_props_tests {
             columns: vec![],
             data_path: Some("/x".into()),
             mobile_default_column: None,
+            empty_label: None,
         };
         let j = serde_json::to_value(&p).unwrap();
         assert!(
