@@ -309,30 +309,72 @@ mod tests {
 
     #[test]
     fn is_true_matches_only_bool_true() {
-        assert!(eval(VisibilityOperator::IsTrue, serde_json::json!({"x": true}), "/x"));
-        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({"x": false}), "/x"));
-        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({}), "/x"));
-        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({"x": null}), "/x"));
-        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({"x": "true"}), "/x"));
-        assert!(!eval(VisibilityOperator::IsTrue, serde_json::json!({"x": 1}), "/x"));
+        assert!(eval(
+            VisibilityOperator::IsTrue,
+            serde_json::json!({"x": true}),
+            "/x"
+        ));
+        assert!(!eval(
+            VisibilityOperator::IsTrue,
+            serde_json::json!({"x": false}),
+            "/x"
+        ));
+        assert!(!eval(
+            VisibilityOperator::IsTrue,
+            serde_json::json!({}),
+            "/x"
+        ));
+        assert!(!eval(
+            VisibilityOperator::IsTrue,
+            serde_json::json!({"x": null}),
+            "/x"
+        ));
+        assert!(!eval(
+            VisibilityOperator::IsTrue,
+            serde_json::json!({"x": "true"}),
+            "/x"
+        ));
+        assert!(!eval(
+            VisibilityOperator::IsTrue,
+            serde_json::json!({"x": 1}),
+            "/x"
+        ));
     }
 
     #[test]
     fn is_false_matches_bool_false_or_missing_or_null() {
-        assert!(eval(VisibilityOperator::IsFalse, serde_json::json!({"x": false}), "/x"));
-        assert!(eval(VisibilityOperator::IsFalse, serde_json::json!({}), "/x"));
-        assert!(eval(VisibilityOperator::IsFalse, serde_json::json!({"x": null}), "/x"));
-        assert!(!eval(VisibilityOperator::IsFalse, serde_json::json!({"x": true}), "/x"));
-        assert!(!eval(VisibilityOperator::IsFalse, serde_json::json!({"x": "false"}), "/x"));
+        assert!(eval(
+            VisibilityOperator::IsFalse,
+            serde_json::json!({"x": false}),
+            "/x"
+        ));
+        assert!(eval(
+            VisibilityOperator::IsFalse,
+            serde_json::json!({}),
+            "/x"
+        ));
+        assert!(eval(
+            VisibilityOperator::IsFalse,
+            serde_json::json!({"x": null}),
+            "/x"
+        ));
+        assert!(!eval(
+            VisibilityOperator::IsFalse,
+            serde_json::json!({"x": true}),
+            "/x"
+        ));
+        assert!(!eval(
+            VisibilityOperator::IsFalse,
+            serde_json::json!({"x": "false"}),
+            "/x"
+        ));
     }
 
     #[test]
     fn is_true_is_false_round_trip() {
-        let t: VisibilityOperator =
-            serde_json::from_str(r#""is_true""#).unwrap();
+        let t: VisibilityOperator = serde_json::from_str(r#""is_true""#).unwrap();
         assert_eq!(t, VisibilityOperator::IsTrue);
-        let f: VisibilityOperator =
-            serde_json::from_str(r#""is_false""#).unwrap();
+        let f: VisibilityOperator = serde_json::from_str(r#""is_false""#).unwrap();
         assert_eq!(f, VisibilityOperator::IsFalse);
         assert_eq!(serde_json::to_string(&t).unwrap(), r#""is_true""#);
         assert_eq!(serde_json::to_string(&f).unwrap(), r#""is_false""#);

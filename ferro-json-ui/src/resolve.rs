@@ -91,7 +91,8 @@ fn resolve_actions_in_value(
             let has_handler = map.contains_key("handler");
             let already_resolved = matches!(map.get("url"), Some(Value::String(_)));
             if has_handler && !already_resolved {
-                if let Some(url) = resolve_props_handler_to_url(map.get("handler"), data, resolver) {
+                if let Some(url) = resolve_props_handler_to_url(map.get("handler"), data, resolver)
+                {
                     map.insert("url".to_string(), Value::String(url));
                 }
             }
@@ -739,8 +740,14 @@ mod tests {
 
         let i0 = spec.elements.get("item-0").unwrap();
         let i1 = spec.elements.get("item-1").unwrap();
-        assert_eq!(i0.action.as_ref().unwrap().url.as_deref(), Some("/dashboard/shared"));
-        assert_eq!(i1.action.as_ref().unwrap().url.as_deref(), Some("/dashboard/shared"));
+        assert_eq!(
+            i0.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/shared")
+        );
+        assert_eq!(
+            i1.action.as_ref().unwrap().url.as_deref(),
+            Some("/dashboard/shared")
+        );
     }
 
     #[test]

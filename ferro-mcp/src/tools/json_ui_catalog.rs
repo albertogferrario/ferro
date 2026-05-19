@@ -287,8 +287,8 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.components.len(),
-            41,
-            "Catalog should contain all 41 built-in components (incl. CheckboxList, RawHtml), got {}",
+            42,
+            "Catalog should contain all 42 built-in components (incl. CheckboxList, RawHtml, DetailPage), got {}",
             catalog.components.len()
         );
 

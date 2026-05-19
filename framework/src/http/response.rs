@@ -302,7 +302,9 @@ fn same_origin_path_from_referer(req: &crate::http::Request) -> Option<String> {
         return Some(referer.to_string());
     }
     // Absolute URL — strip `scheme://host` prefix and verify host matches.
-    let rest = referer.strip_prefix("http://").or_else(|| referer.strip_prefix("https://"))?;
+    let rest = referer
+        .strip_prefix("http://")
+        .or_else(|| referer.strip_prefix("https://"))?;
     let (referer_host, path) = match rest.find('/') {
         Some(i) => (&rest[..i], &rest[i..]),
         None => (rest, "/"),

@@ -431,8 +431,7 @@ mod tests {
 
     #[test]
     fn action_handler_as_str_returns_binding_path() {
-        let action: Action =
-            serde_json::from_str(r#"{"handler":{"$data":"/foo"}}"#).unwrap();
+        let action: Action = serde_json::from_str(r#"{"handler":{"$data":"/foo"}}"#).unwrap();
         assert_eq!(action.handler.as_str(), "/foo");
         assert!(action.handler.as_literal().is_none());
     }
@@ -440,7 +439,9 @@ mod tests {
     #[test]
     fn action_handler_display_uses_underlying_string() {
         let lit = ActionHandler::Literal("users.show".to_string());
-        let bind = ActionHandler::Binding(DataRef { data: "/x".to_string() });
+        let bind = ActionHandler::Binding(DataRef {
+            data: "/x".to_string(),
+        });
         assert_eq!(format!("{lit}"), "users.show");
         assert_eq!(format!("{bind}"), "/x");
     }

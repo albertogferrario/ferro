@@ -286,7 +286,10 @@ impl Request {
         if referer.starts_with('/') {
             return referer.to_string();
         }
-        let rest = match referer.strip_prefix("http://").or_else(|| referer.strip_prefix("https://")) {
+        let rest = match referer
+            .strip_prefix("http://")
+            .or_else(|| referer.strip_prefix("https://"))
+        {
             Some(r) => r,
             None => return fallback.into(),
         };

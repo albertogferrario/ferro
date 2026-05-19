@@ -686,7 +686,7 @@ mod tests {
         crate::routing::register_route_name("users.index", "/users");
 
         let action = Action {
-            handler: "users.index".to_string(),
+            handler: ferro_json_ui::action::ActionHandler::Literal("users.index".to_string()),
             url: None,
             method: HttpMethod::Get,
             confirm: None,
@@ -770,7 +770,7 @@ mod tests {
     /// in the serialized spec under `data-view`.
     fn form_spec_with_inputs() -> Spec {
         let action = Action {
-            handler: "users.store".to_string(),
+            handler: ferro_json_ui::action::ActionHandler::Literal("users.store".to_string()),
             url: None,
             method: HttpMethod::Post,
             confirm: None,
