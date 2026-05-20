@@ -314,6 +314,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 **Current State:**
 - ~90,000 lines of Rust across 24 crates
+- Phase 176 complete (2026-05-21) — v12.0.2 JSON-UI runtime patches from gestiscilo β booking↔staff binding field test: Card gained optional `badge` and `subtitle` render slots with schema-includes / serde / render coverage; Grid visibility regression tests pinned both branches (true / false / consumer chip-strip mirror) and confirmed the element-level evaluator is correct (F9 closed as could-not-reproduce, no production code change). Docs gained Card slot table rows and a `#### Visibility` subsection clarifying universality.
 - Phase 160 complete — v1 JSON-UI API deletion: all `JsonUiView` / `Component` / `ComponentNode` / `PluginProps` surface removed from ferro-json-ui, framework, and ferro-mcp; `migration_v1_to_v2_templates` MCP category deleted; `application_info::scan_json_ui_specs` rewritten to count v2 JSON spec files; protocol docs reframed; ferro workspace + gestiscilo cross-repo green. Phase 161 (v12.0 merge + single end-of-loop publish) cleared to start.
 - Phase 155 complete — ferro-projection v0.2.33: live read-model runtime (subscribe to domain events, persist per-key snapshots, broadcast deltas)
 - v11.11 shipped: Resource Reservation & Live Read-Model Primitives — ferro-orm GuardedUpdate (Ph 152), ferro-audit (Ph 153), ferro-reservation (Ph 154), ferro-projection (Ph 155)
