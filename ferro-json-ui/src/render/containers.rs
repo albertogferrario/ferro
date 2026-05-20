@@ -902,6 +902,93 @@ mod tests {
     }
 
     #[test]
+    fn grid_renders_when_visible_true() {
+        use crate::visibility::{Visibility, VisibilityCondition, VisibilityOperator};
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Grid")
+                .prop("columns", 1)
+                .visible(Visibility::Condition(VisibilityCondition {
+                    path: "/flag".into(),
+                    operator: VisibilityOperator::Eq,
+                    value: Some(json!(true)),
+                })),
+        )]);
+        let html = crate::render::render_spec_to_html(&spec, &json!({"flag": true}));
+        assert!(
+            html.contains("<div class=\"grid"),
+            "Grid must render when visible-true; got: {html}"
+        );
+    }
+
+    #[test]
+    fn grid_hidden_when_visible_false() {
+        use crate::visibility::{Visibility, VisibilityCondition, VisibilityOperator};
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Grid")
+                .prop("columns", 1)
+                .visible(Visibility::Condition(VisibilityCondition {
+                    path: "/flag".into(),
+                    operator: VisibilityOperator::Eq,
+                    value: Some(json!(true)),
+                })),
+        )]);
+        let html = crate::render::render_spec_to_html(&spec, &json!({"flag": false}));
+        assert!(
+            !html.contains("<div class=\"grid"),
+            "Grid must be absent when visible-false; got: {html}"
+        );
+    }
+
+    #[test]
+    fn grid_visible_consumer_reproduction() {
+        // Mirrors the consumer's chip-strip spec from
+        // gestiscilo-it/app/src/views/calendario/calendar_day.json:73-85.
+        // The chip-strip Grid is nested inside a root Grid, with visibility gated
+        // on `/has_staff`. The consumer reports the inner Grid does not render
+        // when has_staff=true; RESEARCH predicts this fails to reproduce against
+        // current ferro master (the visibility evaluator architecture is correct).
+        //
+        // Outcome A (predicted): both branches pass — F9 closes as no-repro.
+        // Outcome B (alternate): one or both branches fail — Task 3 investigates.
+        use crate::visibility::{Visibility, VisibilityCondition, VisibilityOperator};
+        let chip_strip_visible = Visibility::Condition(VisibilityCondition {
+            path: "/has_staff".into(),
+            operator: VisibilityOperator::Eq,
+            value: Some(json!(true)),
+        });
+        let spec = build_spec(vec![
+            (
+                "root",
+                Element::new("Grid").prop("columns", 1).child("staff_chips_row"),
+            ),
+            (
+                "staff_chips_row",
+                Element::new("Grid")
+                    .prop("columns", 1)
+                    .prop("gap", "sm")
+                    .visible(chip_strip_visible.clone()),
+            ),
+        ]);
+
+        let html_visible =
+            crate::render::render_spec_to_html(&spec, &json!({"has_staff": true}));
+        assert!(
+            html_visible.matches("<div class=\"grid").count() >= 2,
+            "inner Grid must render when has_staff=true (outer + inner = at least 2 grid divs); got: {html_visible}"
+        );
+
+        let html_hidden =
+            crate::render::render_spec_to_html(&spec, &json!({"has_staff": false}));
+        assert_eq!(
+            html_hidden.matches("<div class=\"grid").count(),
+            1,
+            "only outer Grid renders when has_staff=false (inner Grid hidden, leaving exactly 1 grid div); got: {html_hidden}"
+        );
+    }
+
+    #[test]
     fn collapsible_emits_details_summary() {
         let spec = build_spec(vec![(
             "root",
