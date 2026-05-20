@@ -307,13 +307,13 @@ fn template_url(template: &str, row: &Value, row_key_value: &str) -> String {
     let mut url = template.to_string();
     if let Some(obj) = row.as_object() {
         for (col_key, col_val) in obj {
-            let placeholder = format!("{{{col_key}}}");
             let val_str = match col_val {
                 Value::String(s) => s.clone(),
                 Value::Number(n) => n.to_string(),
                 _ => continue,
             };
-            url = url.replace(&placeholder, &val_str);
+            url = url.replace(&format!("{{{col_key}}}"), &val_str);
+            url = url.replace(&format!("{{row.{col_key}}}"), &val_str);
         }
     }
     url = url.replace("{row_key}", row_key_value);
@@ -380,13 +380,13 @@ fn template_actions(
                 // Substitute all row column keys first.
                 if let Some(obj) = row.as_object() {
                     for (col_key, col_val) in obj {
-                        let placeholder = format!("{{{col_key}}}");
                         let val_str = match col_val {
                             Value::String(s) => s.clone(),
                             Value::Number(n) => n.to_string(),
                             _ => continue,
                         };
-                        url = url.replace(&placeholder, &val_str);
+                        url = url.replace(&format!("{{{col_key}}}"), &val_str);
+                        url = url.replace(&format!("{{row.{col_key}}}"), &val_str);
                     }
                 }
                 // `{row_key}` substitutes against the value at `props.row_key`.
