@@ -142,10 +142,11 @@ error.
 6. Emit `ReservationEvent::Held` via `ferro-events`.
 7. Return `ReservationHandle`.
 
-Note: the capacity check and the INSERT are two separate statements, not a
-single atomic SQL operation. Under SQLite's serial-writer semantics concurrent
-tasks should serialize `hold` calls at the application layer (e.g., a
-`tokio::Mutex` per resource key). See the Consistency Model section.
+The capacity check, the INSERT, and the audit write all execute inside a
+single `SERIALIZABLE` transaction. The kernel atomically arbitrates concurrent
+holds at the database level — no application-layer mutex is required. The
+conflict-losing task receives `ReservationError::Insufficient`. See the
+Consistency Model section.
 
 ## ReservationContext
 
@@ -367,19 +368,20 @@ statement executed via [`ferro-orm::GuardedUpdate`]. Per-statement atomicity
 ensures concurrent callers cannot both succeed on the same row; one wins and the
 other gets `ConflictingState`.
 
-**`hold` on SQLite:** SQLite WAL mode serializes writers at the file level, but
-the three-step hold sequence (capacity SELECT + held SELECT + INSERT) is not a
-single statement. Under concurrent tokio tasks connecting to the same SQLite
-database, the capacity check and the INSERT can interleave. Consumers running
-concurrent holds against SQLite should serialize `hold` calls at the application
-layer — a `tokio::sync::Mutex` per resource key is the idiomatic pattern.
+**`hold`:** The capacity check, INSERT, and audit write execute inside a
+`SERIALIZABLE` transaction (`sea_orm::IsolationLevel::Serializable`). On SQLite
+the transaction aligns with the WAL single-writer model; on Postgres it prevents
+phantom reads between the SELECT and INSERT. If two concurrent tasks race on the
+same `(key, window)`, the database serializes them — exactly one succeeds and the
+other receives `ReservationError::Insufficient`. No application-layer mutex is
+needed.
 
-**`hold` on Postgres:** Under Postgres `READ COMMITTED`, the capacity check has
-a theoretical race window between the SELECT and the INSERT. The current crate is
-SQLite-validated; Postgres correctness for the capacity check is on the roadmap
-as a follow-up addition (`SELECT FOR UPDATE` or a counter column approach).
+A conflict-losing task on Postgres may receive SQLSTATE `40001` (serialization
+failure); the kernel translates this to `ReservationError::Insufficient` before
+returning to the caller. The error contract is uniform across backends.
+
 `commit`, `release`, and `extend` via `GuardedUpdate` are race-free on both
-dialects.
+dialects (single `UPDATE … WHERE` statement).
 
 ## Operational Footguns
 
