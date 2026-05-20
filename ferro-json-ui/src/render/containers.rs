@@ -63,10 +63,29 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
     };
 
     let mut html = format!("<div class=\"{outer_class}\"><div class=\"{inner_pad}\">");
-    html.push_str(&format!(
-        "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
-        html_escape(&props.title)
-    ));
+    if let Some(ref badge) = props.badge {
+        html.push_str("<div class=\"flex items-start justify-between gap-2\">");
+        html.push_str(&format!(
+            "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
+            html_escape(&props.title)
+        ));
+        html.push_str(&format!(
+            "<span class=\"inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-secondary/10 text-secondary-foreground shrink-0\">{}</span>",
+            html_escape(badge)
+        ));
+        html.push_str("</div>");
+    } else {
+        html.push_str(&format!(
+            "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
+            html_escape(&props.title)
+        ));
+    }
+    if let Some(ref subtitle) = props.subtitle {
+        html.push_str(&format!(
+            "<p class=\"mt-0.5 text-sm text-text-muted\">{}</p>",
+            html_escape(subtitle)
+        ));
+    }
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
             "<p class=\"mt-1 text-sm text-text-muted\">{}</p>",
@@ -1118,6 +1137,103 @@ mod tests {
             html.starts_with("<div class=\"max-w-2xl mx-auto\">"),
             "narrow wrapper missing; got: {html}"
         );
+    }
+
+    #[test]
+    fn render_card_emits_badge_when_present() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Card")
+                .prop("title", "Booking")
+                .prop("badge", "Scade tra 9m"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        assert!(
+            html.contains("Scade tra 9m"),
+            "badge label must appear in DOM; got: {html}"
+        );
+        assert!(
+            html.contains("bg-secondary/10"),
+            "badge must use Secondary chrome; got: {html}"
+        );
+        assert!(
+            html.contains("flex items-start justify-between"),
+            "title-row wrapper must be emitted when badge present; got: {html}"
+        );
+    }
+
+    #[test]
+    fn render_card_omits_badge_when_absent() {
+        let spec = build_spec(vec![("root", Element::new("Card").prop("title", "X"))]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        assert!(
+            !html.contains("bg-secondary/10"),
+            "no badge chrome when badge absent; got: {html}"
+        );
+        assert!(
+            !html.contains("flex items-start justify-between"),
+            "no title-row wrapper when badge absent; got: {html}"
+        );
+    }
+
+    #[test]
+    fn render_card_emits_subtitle_when_present() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Card")
+                .prop("title", "Booking")
+                .prop("subtitle", "Marco Rossi"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        assert!(
+            html.contains("Marco Rossi"),
+            "subtitle text must appear in DOM; got: {html}"
+        );
+        assert!(
+            html.contains("mt-0.5 text-sm text-text-muted"),
+            "subtitle must use muted styling with mt-0.5 spacing; got: {html}"
+        );
+    }
+
+    #[test]
+    fn render_card_omits_subtitle_when_absent() {
+        let spec = build_spec(vec![("root", Element::new("Card").prop("title", "X"))]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        // The description block uses `mt-1 text-sm text-text-muted`; the subtitle
+        // would use `mt-0.5 text-sm text-text-muted`. With neither subtitle nor
+        // description, no muted-text paragraph should emit at all.
+        assert!(
+            !html.contains("text-sm text-text-muted"),
+            "no muted text when both subtitle and description absent; got: {html}"
+        );
+    }
+
+    #[test]
+    fn render_card_emits_title_subtitle_description_badge_together() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Card")
+                .prop("title", "Booking #1")
+                .prop("subtitle", "Marco Rossi")
+                .prop("description", "Customer detail")
+                .prop("badge", "Scade tra 9m"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        assert!(html.contains("Booking #1"), "title; got: {html}");
+        assert!(html.contains("Marco Rossi"), "subtitle; got: {html}");
+        assert!(html.contains("Customer detail"), "description; got: {html}");
+        assert!(html.contains("Scade tra 9m"), "badge; got: {html}");
+        // Slot order: title-row (with badge) → subtitle → description.
+        let title_pos = html.find("Booking #1").expect("title present");
+        let subtitle_pos = html.find("Marco Rossi").expect("subtitle present");
+        let desc_pos = html.find("Customer detail").expect("description present");
+        assert!(title_pos < subtitle_pos, "title must precede subtitle; got: {html}");
+        assert!(subtitle_pos < desc_pos, "subtitle must precede description; got: {html}");
     }
 
     #[test]
