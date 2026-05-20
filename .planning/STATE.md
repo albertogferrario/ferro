@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.0
-milestone_name: JSON-UI v2 — Spec-Driven Rendering
-status: shipped
-stopped_at: v12.0 merged to master 2026-05-19 (merge commit e6f24c69); awaiting push + publish
-last_updated: "2026-05-19T00:00:00.000Z"
-last_activity: 2026-05-19
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
+status: verifying
+stopped_at: Phase 175 context auto-locked (F1–F6 decisions resolved)
+last_updated: "2026-05-20T17:30:42.627Z"
+last_activity: 2026-05-17
 progress:
-  total_phases: 173
-  completed_phases: 161
-  total_plans: 472
-  completed_plans: 472
+  total_phases: 11
+  completed_phases: 10
+  total_plans: 45
+  completed_plans: 47
   percent: 100
 ---
 
@@ -257,7 +257,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-17T05:45:33.059Z
-Stopped at: Completed 160-10-PLAN.md — Phase 160 fully closed; Phase 161 cleared
-Resume file: None
+Last session: 2026-05-20T17:30:42.616Z
+Stopped at: Phase 175 context auto-locked (F1–F6 decisions resolved)
+Resume file: .planning/phases/175-json-ui-v2-runtime-patches-staff-domain-field-test/175-CONTEXT.md
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
