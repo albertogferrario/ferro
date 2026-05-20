@@ -429,6 +429,12 @@ impl Router {
     ///
     /// Returns (handler, params, route_pattern) where route_pattern is the original
     /// pattern like "/users/{id}" for metrics grouping.
+    ///
+    /// OPTIONS requests are dispatched through [`match_preflight`](Self::match_preflight):
+    /// any path registered under any other verb returns a synthetic 204 handler so
+    /// route-level middleware (CORS in particular) still runs. The CORS middleware
+    /// then short-circuits the preflight with the configured ACAO / ACAH / ACAM
+    /// headers. Without this, OPTIONS would 404 before the middleware chain ran.
     pub fn match_route(
         &self,
         method: &hyper::Method,
@@ -440,6 +446,7 @@ impl Router {
             hyper::Method::PUT => &self.put_routes,
             hyper::Method::PATCH => &self.patch_routes,
             hyper::Method::DELETE => &self.delete_routes,
+            hyper::Method::OPTIONS => return self.match_preflight(path),
             _ => return None,
         };
 
@@ -452,6 +459,44 @@ impl Router {
             let (handler, pattern) = matched.value.clone();
             (handler, params, pattern)
         })
+    }
+
+    /// Synthesize a 204 handler for an OPTIONS preflight when any verb matches the path.
+    ///
+    /// Scans every method table for the path; the first match wins. The returned
+    /// pattern is the canonical pattern that match_route would have returned for the
+    /// matching verb, so server.rs resolves the same route-level middleware (CORS,
+    /// auth, etc.) as the live verb would. The synthetic handler returns 204 No
+    /// Content with an empty body — when CORS middleware sits in the chain it
+    /// short-circuits before the handler runs and applies its preflight headers.
+    fn match_preflight(
+        &self,
+        path: &str,
+    ) -> Option<(Arc<BoxedHandler>, HashMap<String, String>, String)> {
+        let tables = [
+            &self.get_routes,
+            &self.post_routes,
+            &self.put_routes,
+            &self.patch_routes,
+            &self.delete_routes,
+        ];
+        for table in tables {
+            if let Ok(matched) = table.at(path) {
+                let params: HashMap<String, String> = matched
+                    .params
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect();
+                let (_, pattern) = matched.value.clone();
+                let handler: BoxedHandler = Box::new(|_req| {
+                    Box::pin(async move {
+                        Ok(crate::http::HttpResponse::new().status(204))
+                    })
+                });
+                return Some((Arc::new(handler), params, pattern));
+            }
+        }
+        None
     }
 }
 
