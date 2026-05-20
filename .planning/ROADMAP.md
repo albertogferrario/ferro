@@ -1971,4 +1971,7 @@ Both tokio tasks read `held = 0`, both pass `available = capacity - 0 ≥ quanti
   5. Audit log entry semantics unchanged — `reservation.held` audit row still written exactly once per successful hold, never written for the conflict-losing task.
   6. PITFALLS T-69-1.2 documentation in consumer field tests is now factually correct (kernel arbitrates concurrent holds).
 
-**Plans**: TBD (run /gsd-plan-phase 177 to break down)
+**Plans:** 3 plans
+- [ ] 177-01-PLAN.md — Kernel atomicity fix + SQLite primary tests (SC-1, SC-2, SC-3, SC-4, SC-5)
+- [ ] 177-02-PLAN.md — Postgres feature scaffolding + cfg-gated mirror test (SC-1 Postgres facet)
+- [ ] 177-03-PLAN.md — Documentation correction sweep in docs/src/database/reservations.md (SC-6)
