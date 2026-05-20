@@ -365,6 +365,14 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         || to_value(schema_for!(CheckboxListProps)).unwrap(),
         &[],
     ),
+    (
+        "CheckboxGroup",
+        "Multi-select checkbox group (alias for CheckboxList). Each checked option \
+         submits as field=value with array-submit semantics. Identical props to \
+         CheckboxList; see that entry for full schema.",
+        || to_value(schema_for!(CheckboxListProps)).unwrap(),
+        &[],
+    ),
     // === Data displays (data.rs) ===
     (
         "Table",
@@ -1056,13 +1064,14 @@ mod tests {
         // without a corresponding catalog update. See Plan 02.
         // Updated to 40 in Phase 162 Plan 01 (CheckboxList added).
         // Updated to 42 when DetailPage was added.
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 42);
+        // Updated to 43 in Phase 175 Plan 04 (CheckboxGroup alias added).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 43);
     }
 
     #[test]
     fn builtin_specs_len_matches_dispatch() {
         assert_eq!(BUILTIN_SPECS.len(), crate::render::BUILTIN_TYPES.len());
-        assert_eq!(BUILTIN_SPECS.len(), 42);
+        assert_eq!(BUILTIN_SPECS.len(), 43);
     }
 
     #[test]
@@ -1669,9 +1678,10 @@ mod tests {
         let prompt = cat.prompt();
         let bytes = prompt.len();
         // Budget bumped from 8 KB to 9 KB in Phase 162 Plan 01 (CheckboxList added, 40 components).
+        // Budget bumped from 9 KB to 10 KB in Phase 175 Plan 04 (CheckboxGroup alias added, 43 components).
         assert!(
-            bytes <= 9 * 1024,
-            "prompt() is {bytes} bytes, exceeds 9 KB budget (CONTEXT D-17)"
+            bytes <= 10 * 1024,
+            "prompt() is {bytes} bytes, exceeds 10 KB budget (CONTEXT D-17)"
         );
     }
 

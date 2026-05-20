@@ -2203,6 +2203,6 @@ mod tests {
     #[test]
     fn builtin_types_includes_raw_html() {
         assert!(crate::render::BUILTIN_TYPES.contains(&"RawHtml"));
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 42);
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 43);
     }
 }
