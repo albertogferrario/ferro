@@ -4,7 +4,7 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
 stopped_at: Completed 175-05-PLAN.md
-last_updated: "2026-05-20T19:34:05.320Z"
+last_updated: "2026-05-20T19:47:26.338Z"
 last_activity: 2026-05-20
 progress:
   total_phases: 174
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 175 (json-ui-v2-runtime-patches-staff-domain-field-test) — EXECUTING
-Plan: 6 of 6
+Phase: 175
+Plan: Not started
 Next: Push master + publish v12.0 release; then begin v12.1 Form Validation DX (Phases 137-139)
 Workspace version: 0.2.35 (publish bump pending)
 Status: Phase complete — ready for verification
@@ -37,7 +37,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 106
+- Total plans completed: 112
 - Average duration: —
 - Total execution time: —
 
@@ -65,6 +65,7 @@ Progress: [████████░░] 84%
 | 163 | 10 | - | - |
 | 164 | 12 | - | - |
 | 160 | 10 | - | - |
+| 175 | 6 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
