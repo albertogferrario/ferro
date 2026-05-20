@@ -269,7 +269,7 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
     // === Containers (containers.rs) ===
     (
         "Card",
-        "Content container with title, description, body children, and optional footer slot.",
+        "Content container with title, description, optional badge and subtitle, body children, and optional footer slot.",
         || to_value(schema_for!(CardProps)).unwrap(),
         &["footer"],
     ),
