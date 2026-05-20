@@ -854,6 +854,115 @@ mod tests {
         );
     }
 
+    // F6 — {row.X} prefix alias tests.
+
+    #[test]
+    fn data_table_row_prefix_placeholder_resolved() {
+        // {row.delete_url} must resolve to the row's `delete_url` field value.
+        // No literal curly braces or URL-encoded form must survive into the
+        // rendered HTML.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_actions": [{
+                    "label": "Delete",
+                    "action": {
+                        "handler": "destroy",
+                        "url": "{row.delete_url}",
+                        "method": "POST"
+                    },
+                    "destructive": true,
+                }],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [
+            {"name": "Absence", "delete_url": "/dashboard/staff/1/assenze/3/elimina"},
+        ]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("/dashboard/staff/1/assenze/3/elimina"),
+            "resolved URL must appear in rendered HTML; got: {html}"
+        );
+        assert!(
+            !html.contains("{row.delete_url}"),
+            "literal {{row.delete_url}} must not appear in rendered HTML; got: {html}"
+        );
+        assert!(
+            !html.contains("%7Brow.delete_url%7D"),
+            "URL-encoded form must not appear in rendered HTML; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_bare_placeholder_resolved() {
+        // Back-compat regression guard: the bare {delete_url} form (no row.
+        // prefix) must continue to resolve after the F6 alias is added.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_actions": [{
+                    "label": "Delete",
+                    "action": {
+                        "handler": "destroy",
+                        "url": "{delete_url}",
+                        "method": "POST"
+                    },
+                    "destructive": true,
+                }],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [
+            {"name": "Absence", "delete_url": "/dashboard/staff/1/assenze/3/elimina"},
+        ]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("/dashboard/staff/1/assenze/3/elimina"),
+            "bare {{delete_url}} must still resolve; got: {html}"
+        );
+        assert!(
+            !html.contains("{delete_url}"),
+            "literal {{delete_url}} must not appear in rendered HTML; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_row_prefix_missing_key_leaves_placeholder() {
+        // Pitfall 4 guard: when the row has no `nonexistent` field,
+        // {row.nonexistent} must be left literal — not silently stripped.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_actions": [{
+                    "label": "Action",
+                    "action": {
+                        "handler": "act",
+                        "url": "/items/{row.nonexistent}",
+                        "method": "GET"
+                    },
+                }],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [
+            {"name": "Item", "delete_url": "/items/1/delete"},
+        ]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        // The {row.nonexistent} placeholder has no matching key in the row;
+        // it must survive unsubstituted (or HTML-escaped, which is also acceptable).
+        assert!(
+            html.contains("{row.nonexistent}") || html.contains("&#123;row.nonexistent&#125;"),
+            "missing-key {{row.nonexistent}} must be left unsubstituted; got: {html}"
+        );
+    }
+
     #[test]
     fn data_table_row_href_legacy_placeholders() {
         // Regression guard: `{row_key}` and `{id}` still resolve alongside
