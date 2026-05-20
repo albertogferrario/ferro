@@ -792,7 +792,7 @@ Boolean checkbox field.
 
 ### Switch
 
-Toggle switch — visually distinct from Checkbox but with identical props. The renderer handles the visual difference.
+State-flip toggle. Use Switch when the semantic is "flip this state" (on/off, open/closed, enabled/disabled) — distinct from Checkbox, which expresses a binary choice within a set of options. The renderer emits `role="switch"` and `aria-checked` so browsers and assistive technology recognize the toggle affordance.
 
 | Prop | Type | Description |
 |------|------|-------------|
@@ -803,20 +803,28 @@ Toggle switch — visually distinct from Checkbox but with identical props. The 
 | `data_path` | `string \| null` | JSON Pointer for pre-filling from handler data |
 | `required` | `boolean \| null` | Mark as required |
 | `disabled` | `boolean \| null` | Disable the field |
+| `compact` | `boolean \| null` | Scale the toggle down (scale-75) for use in dense grid layouts |
 | `error` | `string \| null` | Validation error message |
+| `action` | `Action \| null` | When present, wraps the switch in a `<form>` and auto-submits on change |
 
 ```json
-"notifications_switch": {
+"day_open_switch": {
   "type": "Switch",
   "props": {
-    "field": "notifications",
-    "label": "Enable Notifications",
-    "description": "Receive email notifications",
-    "checked": true,
-    "data_path": "/user/notifications_enabled"
+    "field": "day_1_is_open",
+    "label": "Aperto",
+    "data_path": "/schedule/day_1_is_open",
+    "compact": true,
+    "action": { "handler": "schedule.toggle_day", "method": "POST", "url": "/schedule/toggle" }
   }
 }
 ```
+
+#### Substitution: Checkbox styled as switch
+
+For consumers who do not need state-flip semantics and prefer to compose from Checkbox primitives, render a `Checkbox` and apply the Tailwind utility classes that yield a switch appearance (rounded-full track, translated indicator, etc.). Switch remains the recommended path when the semantic is "flip this state" — its dedicated rendering emits the `role="switch"` ARIA marker and the visual affordance browsers and assistive technology recognize.
+
+There is no `variant: "switch"` prop on `Checkbox` today. The substitution is purely visual via custom class hooks, not an API-level feature.
 
 ### CheckboxList
 
