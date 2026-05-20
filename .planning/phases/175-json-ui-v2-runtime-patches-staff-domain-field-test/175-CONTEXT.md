@@ -100,15 +100,25 @@ The consumer phase is mechanically complete. The operator-perceived UI experienc
 3. **Land in master, do not push.** Per the consumer-repo convention. Once each plan lands, the user opens a PR (or the GH Actions auto-publish handles it).
 4. **No version bump in the patch itself.** ferro-rs version bump happens after merge as part of the publish workflow.
 
-## Decisions Required at Planning Time
+## Decisions Locked (auto-discuss 2026-05-20)
 
-For each of F2, F4: register the component vs document a substitution vs both. Default to "both" unless the substitution is obviously the cleaner v2 idiom.
+Defaults from the original "Decisions Required at Planning Time" section, resolved with recommended choices so plans can be written without re-asking. Each entry restates the choice space and the locked default.
 
-For F3: server-side conditional render vs client-side toggle. Default to client-side IIFE unless a consumer needs instant tab switching without round-tripping.
+- **D-F1-depth — `MAX_NESTING_DEPTH = 16`.** Consumer evidence requires at least 8. Phase 164's "5 is enough" underestimated; pick a deliberately generous ceiling so the next field-test doesn't re-trip. 16 leaves room for nested cards inside nested tabs inside a layout shell with margin past today's worst-case spec. Reject any plan that proposes a value below 12 without new consumer evidence.
 
-For F1: pick a new `MAX_NESTING_DEPTH` value. The consumer evidence calls for at least 8; headroom past 8 is a planning judgment. Phase 164's "5 is enough headroom for current usage" rationale clearly underestimated; a more durable choice is 12 or 16 (room for nested cards within nested tabs within a layout shell).
+- **D-F1-diagnostic — split depth-limit from cycle detection.** Two separate diagnostics: `depth limit exceeded at depth N (max=M)` for the depth-limit trip, and `cycle detected: <path>` for actual cycles. The current "cycle guard tripped at depth N" comment is removed. Cycle detection remains in the validator and emits the cycle diagnostic only when it observes a real revisit.
 
-For F1 (secondary): rename the diagnostic from "cycle guard tripped at depth N" to a depth-limit diagnostic, and make the cycle detector report cycles when they actually exist.
+- **D-F2-CheckboxGroup — option (c) both.** Register `CheckboxGroup` as a first-class v2 component with the same semantics as v1 AND document the v2-native substitution path (`Form` with N repeated `Checkbox` children whose `field` ends in `[]`, sharing `name="copy_to[]"` for array submission). Reintroduction unblocks the immediate consumer; the documented substitution preserves compositional simplicity for ad-hoc use.
+
+- **D-F3-tabs — client-side IIFE.** A small IIFE in the runtime (paired with the existing tab-strip click handler that toggles the URL query) sets `hidden=true` on inactive panels at boot and toggles them on tab change without a server roundtrip. Preserves the multi-panel DOM for SPA-style instant tab switching. Server-side conditional render is rejected as the default because consumer ergonomics (no flash, instant switching) outweigh the simpler-cut argument.
+
+- **D-F4-Switch — option (c) both.** Register `Switch` natively as a first-class v2 component with toggle semantics distinct from `Checkbox` (state-flip, not multi-choice) AND document `Checkbox` with `variant: "switch"` as the substitution path. The semantic distinction justifies the dedicated component; the documented alternative covers consumers who do not need the toggle semantic.
+
+- **D-F5 — file input + `enctype` ship together.** `Input[input_type=file]` rendering and `Form.enctype` propagation land in the same plan. Shipping either alone unblocks nothing: a `<form>` without `enctype=multipart/form-data` can't carry a file, and a file input without the enctype on its surrounding form is encoded as `application/x-www-form-urlencoded`. Single plan, two emitter changes, one self-check that submits a multipart body end-to-end.
+
+- **D-F6 — extend interpolation pass to action-URL templates.** The `{row.X}` substitution path is already wired for column-cell rendering inside `DataTable`. Extend the same interpolation pass to per-row action URL templates so `action: "{row.delete_url}"` resolves to the row's `delete_url` field value. Keep the existing column-cell behavior identical; this is an additive pass-extension, not a rewrite.
+
+These locks bind the planner to a single concrete choice per finding. If a plan-time investigation surfaces a reason to deviate, the plan must say so explicitly in its `<decisions>` block and re-validate against the consumer evidence in `.planning/phases/151-staff-domain/UI-FRAMEWORK-FINDINGS.md`.
 
 ## Dependencies
 
