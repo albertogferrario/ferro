@@ -132,11 +132,14 @@ pub fn render_spec_to_html_with_plugins(spec: &Spec, data: &Value) -> RenderResu
 /// diagnostic logic lives here. The per-element pipeline is:
 /// (1) depth guard, (2) ID lookup, (3) visibility check, (4) dispatch.
 pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) -> String {
-    // (1) Depth tripwire. Parse-time depth is capped at `MAX_NESTING_DEPTH = 5`;
+    // (1) Depth tripwire. Parse-time depth is capped at `MAX_NESTING_DEPTH = 16`;
     // this fires only for hand-mutated Specs that bypassed `Spec::from_json`.
+    // Diagnostic names the limit so future failures are legible; this is a
+    // distinct condition from cycle detection (which lives in the parse-time
+    // validator and emits `SpecError::Cycle`).
     if depth > MAX_NESTING_DEPTH + 1 {
         return format!(
-            "<!-- ferro-json-ui: cycle guard tripped at depth {depth} — spec should have been rejected at parse time -->"
+            "<!-- ferro-json-ui: depth limit exceeded at depth {depth} (max={MAX_NESTING_DEPTH}) — spec should have been rejected at parse time -->"
         );
     }
 
@@ -406,10 +409,7 @@ mod tests {
         // output must say "depth limit exceeded", not "cycle guard tripped".
         let spec = build_spec_unchecked("A", vec![("A", mk_element("Text"))]);
         let html = render_element("A", &spec, &json!({}), MAX_NESTING_DEPTH + 2);
-        assert!(
-            html.contains("depth limit exceeded"),
-            "got: {html}"
-        );
+        assert!(html.contains("depth limit exceeded"), "got: {html}");
     }
 
     #[test]
@@ -425,10 +425,7 @@ mod tests {
             html.contains("depth limit exceeded"),
             "expected 'depth limit exceeded' in: {html}"
         );
-        assert!(
-            html.contains("max=16"),
-            "expected 'max=16' in: {html}"
-        );
+        assert!(html.contains("max=16"), "expected 'max=16' in: {html}");
         assert!(
             !html.contains("cycle"),
             "depth tripwire must not mention 'cycle'; got: {html}"

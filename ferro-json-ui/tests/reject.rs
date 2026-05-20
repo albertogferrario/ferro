@@ -62,12 +62,13 @@ fn reject_self_cycle() {
 
 #[test]
 fn reject_six_level_nesting() {
-    // Six levels (root + 5 children chain): one past MAX_NESTING_DEPTH=5.
+    // Seventeen levels (root + 16 children chain): one past MAX_NESTING_DEPTH=16.
+    // Fixture file kept under its original name for test-runner stability.
     let json = fixture("reject/six_level_nesting.json");
     match Spec::from_json(&json) {
         Err(SpecError::DepthExceeded { max, found, path }) => {
-            assert_eq!(max, 5);
-            assert!(found > 5, "found {found} must exceed 5");
+            assert_eq!(max, 16, "max must equal MAX_NESTING_DEPTH=16");
+            assert_eq!(found, 17, "found must be 17 (one past the limit)");
             assert!(!path.is_empty());
         }
         other => panic!("expected DepthExceeded, got {other:?}"),

@@ -2,11 +2,22 @@
   "$schema": "ferro-json-ui/v2",
   "root": "root",
   "elements": {
-    "root": {"type": "Card", "children": ["A"]},
-    "A": {"type": "Card", "children": ["B"]},
-    "B": {"type": "Card", "children": ["C"]},
-    "C": {"type": "Card", "children": ["D"]},
-    "D": {"type": "Card", "children": ["E"]},
-    "E": {"type": "Text"}
+    "root": {"type": "Container", "children": ["e1"]},
+    "e1": {"type": "Container", "children": ["e2"]},
+    "e2": {"type": "Container", "children": ["e3"]},
+    "e3": {"type": "Container", "children": ["e4"]},
+    "e4": {"type": "Container", "children": ["e5"]},
+    "e5": {"type": "Container", "children": ["e6"]},
+    "e6": {"type": "Container", "children": ["e7"]},
+    "e7": {"type": "Container", "children": ["e8"]},
+    "e8": {"type": "Container", "children": ["e9"]},
+    "e9": {"type": "Container", "children": ["e10"]},
+    "e10": {"type": "Container", "children": ["e11"]},
+    "e11": {"type": "Container", "children": ["e12"]},
+    "e12": {"type": "Container", "children": ["e13"]},
+    "e13": {"type": "Container", "children": ["e14"]},
+    "e14": {"type": "Container", "children": ["e15"]},
+    "e15": {"type": "Container", "children": ["e16"]},
+    "e16": {"type": "Text"}
   }
 }

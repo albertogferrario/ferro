@@ -32,9 +32,13 @@ pub const SCHEMA_VERSION: &str = "ferro-json-ui/v2";
 
 /// Maximum allowed nesting depth from the root element.
 ///
-/// Set to 5 to accommodate real-world dashboard nesting (root → grid → card →
-/// row → atom). Paths exceeding this depth surface as [`SpecError::DepthExceeded`].
-pub const MAX_NESTING_DEPTH: usize = 5;
+/// Set to 16 to accommodate deeply nested layouts: dashboard shells with
+/// nested tabs, cards, forms, grids, and atomic controls. Real consumer
+/// evidence (gestiscilo-it staff-detail surface, Phase 175) reaches depth
+/// 8; the limit provides headroom for tighter nesting without re-tripping
+/// the field test on the next surface. Paths exceeding this depth surface
+/// as [`SpecError::DepthExceeded`].
+pub const MAX_NESTING_DEPTH: usize = 16;
 
 // ---------------------------------------------------------------------------
 // Section B — Types (Spec, Element, SpecError)
