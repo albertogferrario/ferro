@@ -81,6 +81,8 @@ Container with title, optional description, nested children, and footer.
 |------|------|-------------|
 | `title` | `string` | Card heading |
 | `description` | `string \| null` | Secondary text below the title |
+| `subtitle` | `string \| null` | Muted secondary identifier rendered between title and description (e.g. staff name beneath customer name) |
+| `badge` | `string \| null` | Small Badge-styled pill rendered to the right of the title (Secondary variant chrome) for status indicators, counters, or countdown labels |
 
 Children are element IDs listed in the `"children"` array on the element, not in props.
 
@@ -92,6 +94,21 @@ Children are element IDs listed in the `"children"` array on the element, not in
     "description": "Account information"
   },
   "children": ["name_text", "email_text"]
+}
+```
+
+Optional `subtitle` and `badge` slots add a muted secondary identifier and a Badge-styled pill respectively. Vertical stacking: title → subtitle → description.
+
+```json
+"booking_card": {
+  "type": "Card",
+  "props": {
+    "title": "Booking #1",
+    "subtitle": "Marco Rossi",
+    "description": "Pending email confirmation",
+    "badge": "Scade tra 9m"
+  },
+  "children": []
 }
 ```
 

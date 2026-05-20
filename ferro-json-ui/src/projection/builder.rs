@@ -340,6 +340,8 @@ fn emit_card_root(
     let props = serde_json::to_value(CardProps {
         title: resolve_title(service),
         description: None,
+        subtitle: None,
+        badge: None,
         max_width: None,
         footer: Vec::new(),
         variant: CardVariant::Bordered,

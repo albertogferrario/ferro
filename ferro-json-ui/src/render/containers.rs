@@ -1232,8 +1232,14 @@ mod tests {
         let title_pos = html.find("Booking #1").expect("title present");
         let subtitle_pos = html.find("Marco Rossi").expect("subtitle present");
         let desc_pos = html.find("Customer detail").expect("description present");
-        assert!(title_pos < subtitle_pos, "title must precede subtitle; got: {html}");
-        assert!(subtitle_pos < desc_pos, "subtitle must precede description; got: {html}");
+        assert!(
+            title_pos < subtitle_pos,
+            "title must precede subtitle; got: {html}"
+        );
+        assert!(
+            subtitle_pos < desc_pos,
+            "subtitle must precede description; got: {html}"
+        );
     }
 
     #[test]
