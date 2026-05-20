@@ -24,6 +24,15 @@ ferro-orm    = { path = "../ferro-orm",    version = "0.2" }
 ferro-events = { path = "../ferro-events", version = "0.2" }
 ferro-audit  = { path = "../ferro-audit",  version = "0.2" }
 
+[features]
+# Enable Postgres SQLSTATE 40001 detection in the kernel's is_serialization_failure helper.
+# Required when consumers use a Postgres backend. Plan 02 wires the full postgres dep chain.
+sqlx-postgres = ["sea-orm/sqlx-postgres"]
+
+# Gate Postgres integration tests behind this feature.
+# Enable with: cargo test -p ferro-reservation --features postgres-tests
+postgres-tests = []
+
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
 sea-orm = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }

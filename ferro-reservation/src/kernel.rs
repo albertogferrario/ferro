@@ -12,7 +12,10 @@
 use chrono::{Duration as ChronoDuration, Utc};
 use ferro_audit::{AuditEntry, AuditTarget};
 use ferro_orm::{GuardedError, GuardedUpdate, Value};
-use sea_orm::{ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait, DatabaseConnection};
+use sea_orm::{
+    AccessMode, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait, DatabaseConnection,
+    IsolationLevel, TransactionTrait,
+};
 use serde_json::json;
 use std::time::Duration;
 use uuid::Uuid;
@@ -51,7 +54,7 @@ impl<R: Resource> ReservationKernel<R> {
     /// capacity` (with `capacity` and `available` populated for telemetry).
     /// Returns [`ReservationError::Db`] / [`ReservationError::Json`] /
     /// [`ReservationError::Audit`] on the corresponding subsystem failure.
-    pub async fn hold<C: ConnectionTrait>(
+    pub async fn hold<C: ConnectionTrait + TransactionTrait>(
         &self,
         conn: &C,
         key: R::Key,
@@ -60,15 +63,27 @@ impl<R: Resource> ReservationKernel<R> {
         ttl: Duration,
         ctx: &ReservationContext,
     ) -> Result<ReservationHandle, ReservationError> {
-        // Step 1: generate id
+        // Step 1: generate id (pure — before the txn begins)
         let id = Uuid::new_v4();
 
-        // Steps 2–3: capacity check (consumer-defined)
-        let capacity = self.resource.capacity(conn, &key, &window).await?;
-        let held = self.resource.held(conn, &key, &window).await?;
+        // Begin a SERIALIZABLE transaction. On SQLite the isolation level is
+        // silently accepted (WAL single-writer model already serializes writes).
+        // On Postgres this issues BEGIN ISOLATION LEVEL SERIALIZABLE READ WRITE,
+        // preventing phantom reads between the SELECT and INSERT (D-06).
+        let txn = conn
+            .begin_with_config(
+                Some(IsolationLevel::Serializable),
+                Some(AccessMode::ReadWrite),
+            )
+            .await
+            .map_err(ReservationError::Db)?;
+
+        // Steps 2–3: capacity check inside the txn snapshot
+        let capacity = self.resource.capacity(&txn, &key, &window).await?;
+        let held = self.resource.held(&txn, &key, &window).await?;
         let available = capacity.saturating_sub(held);
 
-        // Step 4: enforce invariant
+        // Step 4: enforce invariant — txn dropped here on early return → auto-rollback
         if quantity == 0 {
             return Err(ReservationError::Db(sea_orm::DbErr::Custom(
                 "reservation: quantity must be >= 1".to_string(),
@@ -82,7 +97,7 @@ impl<R: Resource> ReservationKernel<R> {
             });
         }
 
-        // Step 5: INSERT reservations row
+        // Step 5: INSERT reservations row (inside txn)
         let key_json = serde_json::to_value(&key)?;
         let window_json_raw = serde_json::to_value(&window)?;
         let window_json: Option<serde_json::Value> = if window_json_raw.is_null() {
@@ -119,9 +134,10 @@ impl<R: Resource> ReservationKernel<R> {
             release_reason: ActiveValue::Set(None),
             tenant_id: ActiveValue::Set(ctx.tenant_id.clone()),
         };
-        am.insert(conn).await.map_err(ReservationError::Db)?;
+        am.insert(&txn).await.map_err(ReservationError::Db)?;
 
-        // Step 6: AuditEntry::record("reservation.held").write(conn)
+        // Step 6: AuditEntry::record("reservation.held").write(&txn) — D-04: inside
+        // the transaction so a conflict-losing task's audit row rolls back with it.
         let mut audit = AuditEntry::record("reservation.held")
             .actor(ctx.actor.clone())
             .target(AuditTarget::new("reservation", id.to_string()))
@@ -140,9 +156,24 @@ impl<R: Resource> ReservationKernel<R> {
         if let Some(reason) = ctx.reason.as_deref() {
             audit = audit.reason(reason);
         }
-        audit.write(conn).await.map_err(ReservationError::Audit)?;
+        audit.write(&txn).await.map_err(ReservationError::Audit)?;
 
-        // Build handle
+        // Commit — detect Postgres SQLSTATE 40001 (serialization failure) and
+        // translate to ReservationError::Insufficient per D-07. On SQLite this
+        // path is never taken (no 40001 from SQLite); the stub returns false.
+        txn.commit().await.map_err(|e| {
+            if is_serialization_failure(&e) {
+                ReservationError::Insufficient {
+                    requested: quantity,
+                    available: 0,
+                    capacity,
+                }
+            } else {
+                ReservationError::Db(e)
+            }
+        })?;
+
+        // Build handle — only constructed after a committed transaction
         let handle = ReservationHandle {
             id,
             resource_kind: R::KIND.to_string(),
@@ -154,7 +185,7 @@ impl<R: Resource> ReservationKernel<R> {
             tenant_id: ctx.tenant_id.clone(),
         };
 
-        // Step 7: dispatch event (best-effort, D-26)
+        // Step 7: dispatch event AFTER commit (best-effort, D-26)
         if let Err(e) = ferro_events::dispatch(ReservationEvent::Held {
             id,
             resource_kind: R::KIND.to_string(),
@@ -406,6 +437,26 @@ impl<R: Resource + Clone> Clone for ReservationKernel<R> {
             resource: self.resource.clone(),
         }
     }
+}
+
+/// Returns `true` if `err` is a Postgres SQLSTATE 40001 (serialization failure)
+/// surfaced through SeaORM. Cfg-gated: returns `false` on builds without the
+/// `sqlx-postgres` feature in the compilation graph.
+#[cfg(feature = "sqlx-postgres")]
+fn is_serialization_failure(err: &sea_orm::DbErr) -> bool {
+    use sea_orm::RuntimeErr;
+    match err {
+        sea_orm::DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))
+        | sea_orm::DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(e))) => {
+            e.code().as_deref() == Some("40001")
+        }
+        _ => false,
+    }
+}
+
+#[cfg(not(feature = "sqlx-postgres"))]
+fn is_serialization_failure(_: &sea_orm::DbErr) -> bool {
+    false
 }
 
 #[cfg(test)]
