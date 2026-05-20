@@ -1,6 +1,6 @@
 # Phase 177: ferro-reservation Kernel Atomicity Hardening — `hold` race fix — Context
 
-**Gathered:** 2026-05-20
+**Gathered:** 2026-05-20 (initial scope); 2026-05-21 (auto-mode lock-in of open plan-time decisions)
 **Status:** Ready for planning
 **Severity:** URGENT — this is a load-bearing invariant of the entire reservation primitive. Every consumer of `ReservationKernel::hold` relies on `held ≤ capacity`. The current implementation cannot guarantee that under concurrent invocations.
 **Source:** Consumer field test 2026-05-20 — gestiscilo-it v6.9 β killer-feature acceptance test `concurrent_double_book_same_staff` fails 5/5 deterministically (~0.07s each). Documented at `.planning/phases/152-booking-staff-binding/152-UI-FINDINGS.md` (Bug R5) in the gestiscilo-it repo.
@@ -66,31 +66,39 @@ There is no transaction wrapping these steps. There is no unique index that woul
 - **D-03 — Backend portability.** Fix MUST work on SQLite (consumer dev) AND Postgres (consumer prod). Neither backend can be deprioritized.
 - **D-04 — Audit log semantics unchanged.** `reservation.held` audit row still written exactly once per successful hold. Conflict-losing task does NOT write an audit row. (Implementation note: the audit write happens INSIDE the atomicity scope if Path (a) is chosen, ensuring rollback consistency.)
 - **D-05 — No new external crates.** `sea_orm::TransactionTrait` is already in the workspace; `ferro_orm::GuardedUpdate` is already in scope. Nothing new to vendor.
+- **D-06 — Fix path: (a) `conn.begin()` transaction with serializable isolation.** Locked 2026-05-21 (auto-mode recommended default). Smallest delta, matches existing GuardedUpdate discipline, no schema migration, works with `capacity > 1`. Plan-time research may still surface a blocker — if so, that surfaces as a checkpoint, not a silent path switch. See "Rejected paths" below for (b)/(c) rationale.
+- **D-07 — Postgres isolation strategy: `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE` inside the txn.** Locked 2026-05-21 (simpler option per Specifics note). The conflict-losing task may receive Postgres SQLSTATE `40001` (serialization failure). Plan-time decides whether to (i) translate `40001` → `ReservationError::Insufficient` at the kernel boundary (preferred — preserves the documented error contract) or (ii) surface `40001` raw as `ReservationError::Db` and require caller-retry. Default for plans 01+02: (i) translate, since the consumer field test expects `Err(Insufficient)` not a db-error variant.
+- **D-08 — Concurrency test scope: SQLite primary, Postgres cfg-gated.** Locked 2026-05-21. SQLite tests are unconditional (in-memory, fast, deterministic). Postgres tests are gated on a `cfg` flag (`test_postgres` or feature `postgres-tests`) so CI can run them when a docker-compose Postgres is available, without forcing every contributor to run Postgres locally.
 
-## Open Plan-Time Decisions
+### Claude's Discretion
 
-### Fix path (planner picks one)
+Plan-time judgment calls left to the planner — no upstream user preference applies:
 
-**(a) Wrap `hold` body in `conn.begin()` transaction with serializable isolation.** Minimum-blast-radius. Mirrors existing `commit/release` GuardedUpdate discipline by giving `hold` the same atomic-block semantics.
-- Pros: Backend-portable via `sea_orm::TransactionTrait`. SQLite serializes write transactions natively (one writer at a time). Postgres needs `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE` or rely on row-level locking via `SELECT ... FOR UPDATE` inside the held()/capacity() calls.
-- Cons: Postgres SERIALIZABLE can produce `40001` serialization failures on contention — caller must retry. Acceptable for the conflict-losing task (it gets a retry-then-Err shape); needs documentation.
-- Subtle: `Resource::held` and `Resource::capacity` are consumer-defined — they take `&C: ConnectionTrait`, and a `&DatabaseTransaction` satisfies that bound. So passing the txn through is transparent to existing consumers.
+- **Exact Postgres cfg name** — `feature = "postgres-tests"` vs `cfg(test_postgres)` vs gated on `DATABASE_URL` env var presence. Pick whichever matches existing ferro-reservation test conventions (verify in plan-phase research).
+- **Iteration count for race-to-capacity test** — Success Criterion 1 calls for "50/50 runs in CI". Planner picks the loop count (≥50) and whether to use `proptest`/`quickcheck` or a plain `for` loop. Plain loop is preferred unless ferro-reservation already uses proptest.
+- **`40001` translation site** — D-07 default is translate at the kernel boundary; if the planner finds the translation cleanly fits inside the txn-retry helper instead, that's equivalent.
+- **Whether to extract a `hold_inner(&txn, ...)` helper** — pure refactor judgment. If the txn body is short enough to inline, inline it. If extracting improves readability or unlocks the test seam (e.g., for boundary-case unit tests against an injected txn), extract.
+- **Doc updates** — kernel.rs module doc, PITFALLS T-69-1.2 doc fix, and any consumer-facing docs that mention "the kernel arbitrates concurrent holds" — planner sweeps for stale claims and corrects them; no need to enumerate every doc file in advance.
 
-**(b) Add a unique partial index on `reservations (resource_kind, resource_key, window_hash) WHERE status='held'`.** Schema-level enforcement; second INSERT fails with a unique-constraint violation.
-- Pros: No transaction needed; the DB enforces atomicity at the storage layer.
-- Cons: Requires deterministic JSON canonicalization for `window_hash` (JSON object key ordering, number precision). Cross-backend canonicalization is non-trivial. Also: `capacity > 1` resources legitimately have multiple `held` rows for the same `(key, window)` — the unique constraint would BREAK capacity > 1 use cases. So this path needs a per-resource composite that includes a discriminator (`held_position`?) and gets ugly fast.
+## Rejected Paths (kept for plan-time blocker recovery)
 
-**(c) `INSERT … SELECT … WHERE NOT EXISTS` atomic check-and-insert.** One SQL statement; atomic at the DB layer.
-- Pros: Backend-portable; no transaction needed; works with `capacity > 1`.
-- Cons: The `WHERE NOT EXISTS` predicate would need to encode the full capacity check inline (or a subquery counting `held` rows + comparing to capacity). Sea-ORM doesn't have a first-class API for this — likely requires raw SQL with backend-branched escaping. Loses the `Resource::capacity()` extension point (or duplicates its logic in SQL).
+Documented so the planner does not re-litigate, but available if research surfaces a blocker against Path (a).
 
-**Recommendation: Path (a).** Smallest delta, matches existing GuardedUpdate discipline, no schema migration, works with `capacity > 1`, the SERIALIZABLE retry concern is documented and acceptable. Plans 01+02 in this phase ship Path (a) unless plan-time research surfaces a blocker.
+**(b) Unique partial index on `reservations (resource_kind, resource_key, window_hash) WHERE status='held'`.** REJECTED: breaks `capacity > 1` resources legitimately holding multiple `held` rows for the same `(key, window)`. Would require a per-resource discriminator (`held_position`) — gets ugly fast. Also requires deterministic JSON canonicalization for `window_hash` which is cross-backend non-trivial.
 
-### Concurrency test infrastructure
+**(c) `INSERT … SELECT … WHERE NOT EXISTS` atomic check-and-insert.** REJECTED: Sea-ORM has no first-class API for this — requires raw SQL with backend-branched escaping, and the `WHERE NOT EXISTS` predicate would need to encode the full capacity check inline. Loses the `Resource::capacity()` extension point or duplicates its logic in SQL.
 
-Test lives in `ferro-reservation/tests/concurrency.rs` (NEW). Pattern: spawn two tokio tasks racing `kernel.hold` against an in-memory SQLite (and ideally one against a docker-compose Postgres too, gated on `cfg(feature = "postgres")` or `cfg(test_postgres)`). Assert `Ok` count + `Err` count match `capacity` + `(N - capacity)` where N is the number of racing tasks.
+## Concurrency Test Infrastructure (locked shape)
 
-A second test asserts boundary semantics are preserved — two non-overlapping windows on the same key both succeed (no false positives from the atomicity fix).
+Test file: `ferro-reservation/tests/concurrency.rs` (NEW).
+
+Required cases:
+1. **Race-to-capacity (capacity=1):** spawn 2 tokio tasks racing `kernel.hold` on identical `(key, window)` with `quantity=1`. Assert exactly 1 Ok + 1 `Err(Insufficient)`. Run loop ≥50 iterations (Success Criterion 1 calls for 50/50).
+2. **Race-to-capacity (capacity=N, N≥2):** spawn N+1 tokio tasks racing `kernel.hold` with `quantity=1` on the same `(key, window)`. Assert exactly N Ok + 1 `Err(Insufficient)`. Confirms the fix correctly handles `capacity > 1` without false rejections.
+3. **Non-overlapping windows (boundary preservation):** two `hold(...)` on same `(key)` with non-overlapping windows BOTH succeed (Success Criterion 2). Single-task sequential test — no race — but lives in concurrency.rs as a regression boundary check.
+4. **Audit-log atomicity:** after a race resolves, assert exactly N `audit_entries` rows with action `reservation.held` exist for the `(key, window)` — the conflict-losing task's audit row was rolled back with its transaction (D-04 invariant).
+
+Postgres mirror tests gated on `#[cfg(feature = "postgres-tests")]` (or equivalent — planner picks the exact cfg name); identical cases against a docker-compose Postgres.
 
 ## Specifics
 
