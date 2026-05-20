@@ -26,7 +26,7 @@ The sections below document every built-in component: its props table (with JSON
 |----------|------------|
 | **Layout** | Card, Grid, Tabs, Separator, Modal, Skeleton, Collapsible, FormSection |
 | **Data Display** | Text, DataTable, Table, DescriptionList, Badge, Avatar, Progress, Breadcrumb, Pagination, StatCard, Image, CalendarCell |
-| **Forms** | Form, Input, Select, Checkbox, CheckboxList, Switch, Button, ButtonGroup, DropdownMenu |
+| **Forms** | Form, Input, Select, Checkbox, CheckboxList, CheckboxGroup, Switch, Button, ButtonGroup, DropdownMenu |
 | **Feedback** | Alert, Toast, EmptyState |
 | **Navigation** | Sidebar, Header, PageHeader, NotificationDropdown |
 | **Action** | ActionCard |
@@ -846,6 +846,52 @@ A group of checkboxes sharing a single form field name. Each checked option subm
   }
 }
 ```
+
+### CheckboxGroup
+
+An alias for [`CheckboxList`](#checkboxlist). Accepts identical props and produces identical HTML output — a `<fieldset>` with one `<input type="checkbox">` per option, each with `name="field"` for form submission. Use whichever name reads more clearly in a given spec; there is no behavioral difference.
+
+```json
+"copy_targets": {
+  "type": "CheckboxGroup",
+  "props": {
+    "field": "copy_to",
+    "label": "Copia su",
+    "options": [
+      { "value": "tue", "label": "Martedì" },
+      { "value": "wed", "label": "Mercoledì" },
+      { "value": "thu", "label": "Giovedì" }
+    ]
+  }
+}
+```
+
+Each checked option submits as `copy_to=<value>`. When multiple options are checked, the browser sends repeated `copy_to` parameters (standard HTML multi-value form semantics).
+
+#### Substitution: composing from Checkbox primitives
+
+As an alternative, the same array-submit semantics can be composed directly from individual `Checkbox` elements whose `field` ends in `[]`. The `[]` suffix causes the browser to collect all checked values under a single array key:
+
+```json
+"copy_tue": {
+  "type": "Checkbox",
+  "props": { "field": "copy_to[]", "label": "Martedì", "value": "tue" }
+},
+"copy_wed": {
+  "type": "Checkbox",
+  "props": { "field": "copy_to[]", "label": "Mercoledì", "value": "wed" }
+},
+"copy_thu": {
+  "type": "Checkbox",
+  "props": { "field": "copy_to[]", "label": "Giovedì", "value": "thu" }
+}
+```
+
+Each checked input submits as `copy_to[]=<value>`, which most server frameworks decode as an array under the key `copy_to`.
+
+**When to use `CheckboxGroup`:** data-driven multi-select where the option list comes from handler data (`options_path`) or is defined once statically. Compact and concise.
+
+**When to compose from `Checkbox`:** per-option conditional visibility (`"visible"` rules), per-option custom layout inside a `Grid` or `FormSection`, or per-option `data_path` binding. The explicit form is more verbose but gives full control over each item's placement and visibility.
 
 ### Button
 
