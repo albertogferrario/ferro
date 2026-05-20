@@ -192,6 +192,21 @@ Responsive grid layout for arranging child elements in columns.
 }
 ```
 
+#### Visibility
+
+`visible` is an element-level field that lives on every JSON-UI element. It is not a `GridProps` prop. When the visibility condition evaluates `false` against the spec's `data` payload, the Grid and all of its children are absent from the rendered DOM — the entire subtree is omitted (no `hidden` attribute, no empty wrapper).
+
+```json
+"staff_chips_row": {
+  "type": "Grid",
+  "props": { "columns": 1, "gap": "sm" },
+  "children": ["staff_chip"],
+  "visible": { "path": "/has_staff", "operator": "eq", "value": true }
+}
+```
+
+Identical semantics apply to every other v2 component — `Card`, `Form`, `Button`, `Badge`, and all plugin components. The visibility check runs once per element in the walker before component dispatch (`ferro-json-ui/src/render/mod.rs` element-level visibility check), so there is no per-component scope shifting and no component-specific visibility behavior.
+
 ### Tabs
 
 Tabbed content with multiple panels.

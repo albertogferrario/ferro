@@ -961,7 +961,9 @@ mod tests {
         let spec = build_spec(vec![
             (
                 "root",
-                Element::new("Grid").prop("columns", 1).child("staff_chips_row"),
+                Element::new("Grid")
+                    .prop("columns", 1)
+                    .child("staff_chips_row"),
             ),
             (
                 "staff_chips_row",
@@ -972,15 +974,13 @@ mod tests {
             ),
         ]);
 
-        let html_visible =
-            crate::render::render_spec_to_html(&spec, &json!({"has_staff": true}));
+        let html_visible = crate::render::render_spec_to_html(&spec, &json!({"has_staff": true}));
         assert!(
             html_visible.matches("<div class=\"grid").count() >= 2,
             "inner Grid must render when has_staff=true (outer + inner = at least 2 grid divs); got: {html_visible}"
         );
 
-        let html_hidden =
-            crate::render::render_spec_to_html(&spec, &json!({"has_staff": false}));
+        let html_hidden = crate::render::render_spec_to_html(&spec, &json!({"has_staff": false}));
         assert_eq!(
             html_hidden.matches("<div class=\"grid").count(),
             1,
