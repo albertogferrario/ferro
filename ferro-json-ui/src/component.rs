@@ -169,6 +169,16 @@ pub struct CardProps {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Optional muted secondary line rendered immediately below the title and
+    /// above the description. Pattern: name → role, customer → staff,
+    /// title → category. Visually `text-sm text-text-muted`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subtitle: Option<String>,
+    /// Optional small badge text rendered alongside the title. Visually a
+    /// Badge-styled pill inside the Card chrome — for status indicators,
+    /// counters, countdown labels, etc. Independent of the title hierarchy.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub badge: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_width: Option<FormMaxWidth>,
     /// IDs of footer elements (resolved against `Spec.elements`).
@@ -1333,6 +1343,8 @@ mod schema_smoke_tests {
         let original = CardProps {
             title: "Hero".to_string(),
             description: None,
+            subtitle: None,
+            badge: None,
             max_width: None,
             footer: vec!["btn1".to_string(), "btn2".to_string()],
             variant: CardVariant::Bordered,
@@ -1359,6 +1371,8 @@ mod schema_smoke_tests {
         let card = CardProps {
             title: "Card".to_string(),
             description: None,
+            subtitle: None,
+            badge: None,
             max_width: None,
             footer: Vec::new(),
             variant: CardVariant::Bordered,
@@ -1367,6 +1381,124 @@ mod schema_smoke_tests {
         assert!(
             !json.contains("\"footer\""),
             "empty footer must be skipped, got: {json}"
+        );
+    }
+
+    #[test]
+    fn card_props_round_trips_badge() {
+        let original = CardProps {
+            title: "Hero".to_string(),
+            description: None,
+            subtitle: None,
+            badge: Some("Scade tra 9m".to_string()),
+            max_width: None,
+            footer: Vec::new(),
+            variant: CardVariant::Bordered,
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: CardProps = serde_json::from_str(&json).unwrap();
+        assert_eq!(original.badge, parsed.badge);
+    }
+
+    #[test]
+    fn card_props_omits_empty_badge_in_json() {
+        let card = CardProps {
+            title: "Card".to_string(),
+            description: None,
+            subtitle: None,
+            badge: None,
+            max_width: None,
+            footer: Vec::new(),
+            variant: CardVariant::Bordered,
+        };
+        let json = serde_json::to_string(&card).unwrap();
+        assert!(
+            !json.contains("\"badge\""),
+            "empty badge must be skipped, got: {json}"
+        );
+    }
+
+    #[test]
+    fn card_props_round_trips_subtitle() {
+        let original = CardProps {
+            title: "Hero".to_string(),
+            description: None,
+            subtitle: Some("Marco Rossi".to_string()),
+            badge: None,
+            max_width: None,
+            footer: Vec::new(),
+            variant: CardVariant::Bordered,
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: CardProps = serde_json::from_str(&json).unwrap();
+        assert_eq!(original.subtitle, parsed.subtitle);
+    }
+
+    #[test]
+    fn card_props_omits_empty_subtitle_in_json() {
+        let card = CardProps {
+            title: "Card".to_string(),
+            description: None,
+            subtitle: None,
+            badge: None,
+            max_width: None,
+            footer: Vec::new(),
+            variant: CardVariant::Bordered,
+        };
+        let json = serde_json::to_string(&card).unwrap();
+        assert!(
+            !json.contains("\"subtitle\""),
+            "empty subtitle must be skipped, got: {json}"
+        );
+    }
+
+    #[test]
+    fn card_props_schema_includes_badge() {
+        let schema = schemars::schema_for!(CardProps);
+        let value = serde_json::to_value(&schema).expect("schema serializes to JSON");
+        let props = value
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .expect("schema has a properties object");
+        assert!(
+            props.contains_key("badge"),
+            "CardProps schema must expose a `badge` property; got keys: {:?}",
+            props.keys().collect::<Vec<_>>()
+        );
+        // `badge: Option<String>` — schemars 1.x emits either {"type": ["string","null"]}
+        // or a {"type":"string"} entry inside a oneOf/anyOf branch. We only assert
+        // presence + that the rendered schema mentions a string somewhere under
+        // the badge entry, which is robust to either encoding.
+        let badge_schema = props.get("badge").expect("badge entry");
+        let badge_json = badge_schema.to_string();
+        assert!(
+            badge_json.contains("\"string\""),
+            "badge schema entry must mention string type; got: {badge_json}"
+        );
+    }
+
+    #[test]
+    fn card_props_schema_includes_subtitle() {
+        let schema = schemars::schema_for!(CardProps);
+        let value = serde_json::to_value(&schema).expect("schema serializes to JSON");
+        let props = value
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .expect("schema has a properties object");
+        assert!(
+            props.contains_key("subtitle"),
+            "CardProps schema must expose a `subtitle` property; got keys: {:?}",
+            props.keys().collect::<Vec<_>>()
+        );
+        // Same robustness note as `card_props_schema_includes_badge` —
+        // `subtitle: Option<String>` may surface as type-union or oneOf depending
+        // on the schemars version. Assert string is mentioned in the rendered
+        // entry rather than locking down the exact null encoding.
+        let subtitle_schema = props.get("subtitle").expect("subtitle entry");
+        let subtitle_json = subtitle_schema.to_string();
+        assert!(
+            subtitle_json.contains("\"string\""),
+            "subtitle schema entry must mention string type; got: {subtitle_json}"
         );
     }
 
@@ -1538,6 +1670,8 @@ mod card_variant_tests {
         let p = CardProps {
             title: "x".into(),
             description: None,
+            subtitle: None,
+            badge: None,
             max_width: None,
             footer: vec![],
             variant: CardVariant::Elevated,
