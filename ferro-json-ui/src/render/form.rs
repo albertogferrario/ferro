@@ -1448,6 +1448,67 @@ mod tests {
         );
     }
 
+    // ── Switch depth-8 regression (F1 + F4 closure) ──────────────────────
+
+    #[test]
+    fn switch_at_depth_8_renders_role_switch() {
+        // Consumer's staff-detail nesting:
+        // dashboard (depth 1) → root layout (2) → DetailPage (3) → Tabs (4)
+        // → Card (5) → Form (6) → Grid (7, "row") → Switch (8)
+        //
+        // Before Phase 175-01 (F1): MAX_NESTING_DEPTH = 5 → the walker tripwire
+        // fired at depth 7+, emitting a "depth limit exceeded" comment instead of
+        // dispatching to render_switch. The consumer's Switch was invisibly stripped.
+        //
+        // After Phase 175-01: MAX_NESTING_DEPTH = 16 → depth 8 is well within
+        // the limit, dispatch reaches render_switch, and the role="switch" markup
+        // emerges.
+        //
+        // This test pins the F1+F4 closure: if a future regression lowers the
+        // depth limit below 8 or breaks Switch dispatch, this test fires.
+        // Spec::builder() validates structure at build() time — a DepthExceeded
+        // error here means MAX_NESTING_DEPTH was reverted below 8.
+        let spec = Spec::builder()
+            // depth 1: g1 → g2
+            .element("g1", Element::new("Grid").prop("columns", json!(1)).child("g2"))
+            // depth 2: g2 → g3
+            .element("g2", Element::new("Grid").prop("columns", json!(1)).child("g3"))
+            // depth 3: g3 → g4
+            .element("g3", Element::new("Grid").prop("columns", json!(1)).child("g4"))
+            // depth 4: g4 → g5
+            .element("g4", Element::new("Grid").prop("columns", json!(1)).child("g5"))
+            // depth 5: g5 → g6
+            .element("g5", Element::new("Grid").prop("columns", json!(1)).child("g6"))
+            // depth 6: g6 → g7
+            .element("g6", Element::new("Grid").prop("columns", json!(1)).child("g7"))
+            // depth 7: g7 → leaf
+            .element("g7", Element::new("Grid").prop("columns", json!(1)).child("leaf"))
+            // depth 8: Switch leaf (the consumer's per-day open/closed toggle)
+            .element(
+                "leaf",
+                Element::new("Switch")
+                    .prop("field", json!("day_1_is_open"))
+                    .prop("label", json!("Aperto")),
+            )
+            .build()
+            .expect("depth-8 spec must build after Phase 175-01 raises MAX_NESTING_DEPTH to 16");
+
+        let html = crate::render::render_spec_to_html(&spec, &serde_json::Value::Null);
+
+        assert!(
+            html.contains("role=\"switch\""),
+            "Switch at depth 8 must render role=\"switch\"; got: {html}"
+        );
+        assert!(
+            !html.contains("depth limit exceeded"),
+            "Switch at depth 8 must not be stripped by the walker tripwire; got: {html}"
+        );
+        assert!(
+            !html.contains("cycle guard tripped"),
+            "Walker tripwire must not emit the deprecated cycle-guard diagnostic; got: {html}"
+        );
+    }
+
     // ── CheckboxGroup (alias for CheckboxList) ────────────────────────────
 
     #[test]
