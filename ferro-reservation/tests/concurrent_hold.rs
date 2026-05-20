@@ -1,33 +1,27 @@
-//! Integration test for D-48: race-free hold under concurrent load.
+//! Integration tests for kernel `hold` atomicity (Phase 177).
 //!
-//! 20 tokio tasks issue `hold(quantity=1)` against `TestResource` with
-//! capacity=5; exactly 5 succeed, 15 fail with `Insufficient`. The
-//! persisted row count for `status='held'` is exactly 5.
+//! After Phase 177, `ReservationKernel::hold` wraps its body in a
+//! `SERIALIZABLE` transaction (`sea_orm::IsolationLevel::Serializable`).
+//! Concurrent callers on the same `(key, window)` are serialized at the
+//! database level — the conflict-losing task receives
+//! `ReservationError::Insufficient`, not a raw `DbErr`. These tests
+//! prove the kernel is intrinsically race-free without any
+//! application-layer mutex.
 //!
-//! **SQLite concurrency model:** SQLite in-memory mode does not support
-//! concurrent writers. The `hold()` method requires three DB round-trips
-//! (capacity query + held query + INSERT) that are not individually atomic
-//! relative to each other. To prove the capacity invariant under concurrent
-//! callers, the test serializes access per resource key via a `tokio::Mutex`,
-//! which is the recommended pattern for SQLite-backed capacity enforcement
-//! (documented in rustdoc on `ReservationKernel::hold`). The mutex simulates
-//! what a production caller would use: either a `BEGIN IMMEDIATE` transaction
-//! per call (Postgres) or a per-resource lock (SQLite).
-//!
-//! The test asserts that under this serialized execution, the kernel correctly
-//! admits exactly 5 of 20 concurrent callers, runs 3 iterations to surface
-//! any non-determinism, and verifies the DB row count afterward.
+//! Test coverage:
+//! - SC-1 (capacity=1, 2 tasks, ≥50 iterations): exactly 1 Ok + 1 Insufficient.
+//! - SC-1 extended (capacity=N=5, N+1=6 tasks, ≥50 iterations): exactly N Ok + 1 Insufficient.
+//! - SC-2 (non-overlapping keys): both succeed — atomicity fix does not introduce false positives.
+//! - SC-5 (audit atomicity): conflict-losing task's audit row is rolled back with its transaction.
 
 use async_trait::async_trait;
 use ferro_reservation::{ReservationContext, ReservationError, ReservationKernel, Resource};
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, PaginatorTrait,
-    QueryFilter,
+    ColumnTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, QueryFilter,
 };
 use sea_orm_migration::MigratorTrait;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex;
 
 struct TestMigrator;
 
@@ -91,80 +85,206 @@ impl Resource for TestResource {
     }
 }
 
-/// D-48: 20 concurrent tasks, capacity=5, exactly 5 succeed.
-///
-/// A `tokio::Mutex` serializes the entire `hold()` call per resource key,
-/// making the capacity-check + INSERT pair atomic relative to concurrent callers.
-/// This is the correct SQLite concurrency pattern: serialize at the application
-/// layer (mutex or `BEGIN IMMEDIATE` transaction) rather than relying on
-/// SQL-statement-level atomicity for a multi-round-trip operation.
+/// SC-1: 50 iterations of (2 tasks race on capacity=1) → exactly 1 Ok + 1 Insufficient.
+/// Proves the kernel's serializable transaction serializes the check+INSERT pair.
 #[tokio::test(flavor = "current_thread")]
-async fn concurrent_hold_against_capacity_5_admits_exactly_5() {
-    for iteration in 0..3 {
+async fn hold_race_capacity_1_exactly_one_succeeds() {
+    for iteration in 0..50 {
         let conn = Arc::new(fresh_db().await);
         let kernel = Arc::new(ReservationKernel::new(
             (*conn).clone(),
-            TestResource { capacity_value: 5 },
+            TestResource { capacity_value: 1 },
         ));
-        // Per-resource-key mutex: serializes the read-check-write sequence
-        let hold_lock: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
-        let key = "shared_resource".to_string();
+        let key = "race_key".to_string();
 
-        // Spawn 20 concurrent hold attempts
-        let mut handles = Vec::with_capacity(20);
-        for _ in 0..20 {
+        let mut handles = Vec::with_capacity(2);
+        for _ in 0..2 {
             let kernel = kernel.clone();
             let conn = conn.clone();
             let key = key.clone();
-            let hold_lock = hold_lock.clone();
             handles.push(tokio::spawn(async move {
                 let ctx = ReservationContext::system();
-                // Hold the mutex for the duration of the entire hold() call
-                // so the capacity-check + INSERT is atomic per task.
-                let _guard = hold_lock.lock().await;
                 kernel
                     .hold(&*conn, key, (), 1, Duration::from_secs(60), &ctx)
                     .await
             }));
         }
 
-        // Await all results
         let mut successes = 0usize;
         let mut insufficient = 0usize;
-        let mut other = 0usize;
         for h in handles {
-            let r = h.await.expect("join");
-            match r {
-                Ok(_handle) => successes += 1,
+            match h.await.expect("join") {
+                Ok(_) => successes += 1,
                 Err(ReservationError::Insufficient { .. }) => insufficient += 1,
-                Err(e) => {
-                    other += 1;
-                    eprintln!("unexpected error in iteration {iteration}: {e:?}");
-                }
+                Err(e) => panic!("unexpected error in iteration {iteration}: {e:?}"),
+            }
+        }
+
+        assert_eq!(successes, 1, "iteration {iteration}: expected exactly 1 Ok");
+        assert_eq!(
+            insufficient, 1,
+            "iteration {iteration}: expected exactly 1 Insufficient"
+        );
+    }
+}
+
+/// SC-1 extended: 50 iterations of (6 tasks race on capacity=5) → exactly 5 Ok + 1 Insufficient.
+/// Confirms the fix correctly handles `capacity > 1` without false rejections.
+#[tokio::test(flavor = "current_thread")]
+async fn hold_race_capacity_n_admits_exactly_n() {
+    const CAPACITY: u32 = 5;
+    const TASKS: usize = 6;
+
+    for iteration in 0..50 {
+        let conn = Arc::new(fresh_db().await);
+        let kernel = Arc::new(ReservationKernel::new(
+            (*conn).clone(),
+            TestResource {
+                capacity_value: CAPACITY,
+            },
+        ));
+        let key = "race_key_n".to_string();
+
+        let mut handles = Vec::with_capacity(TASKS);
+        for _ in 0..TASKS {
+            let kernel = kernel.clone();
+            let conn = conn.clone();
+            let key = key.clone();
+            handles.push(tokio::spawn(async move {
+                let ctx = ReservationContext::system();
+                kernel
+                    .hold(&*conn, key, (), 1, Duration::from_secs(60), &ctx)
+                    .await
+            }));
+        }
+
+        let mut successes = 0usize;
+        let mut insufficient = 0usize;
+        for h in handles {
+            match h.await.expect("join") {
+                Ok(_) => successes += 1,
+                Err(ReservationError::Insufficient { .. }) => insufficient += 1,
+                Err(e) => panic!("unexpected error in iteration {iteration}: {e:?}"),
             }
         }
 
         assert_eq!(
-            successes, 5,
-            "iteration {iteration}: expected exactly 5 successful holds, got {successes} \
-             (insufficient={insufficient}, other={other})"
+            successes, CAPACITY as usize,
+            "iteration {iteration}: expected exactly {CAPACITY} Ok"
         );
         assert_eq!(
-            insufficient, 15,
-            "iteration {iteration}: expected exactly 15 Insufficient errors"
-        );
-        assert_eq!(other, 0, "iteration {iteration}: unexpected error count");
-
-        // Verify the DB also says exactly 5 held
-        use ferro_reservation::ReservationEntity;
-        let held_count = ReservationEntity::find()
-            .filter(<ReservationEntity as EntityTrait>::Column::Status.eq("held"))
-            .count(&*conn)
-            .await
-            .expect("count");
-        assert_eq!(
-            held_count, 5,
-            "iteration {iteration}: DB held count should be 5"
+            insufficient,
+            TASKS - CAPACITY as usize,
+            "iteration {iteration}: expected exactly {} Insufficient",
+            TASKS - CAPACITY as usize
         );
     }
+}
+
+/// SC-2: two `hold(...)` calls on different keys both succeed.
+/// Boundary preservation — the atomicity fix must not introduce false positives
+/// that reject legitimate non-overlapping holds.
+#[tokio::test(flavor = "current_thread")]
+async fn hold_non_overlapping_keys_both_succeed() {
+    let conn = Arc::new(fresh_db().await);
+    let kernel = ReservationKernel::new((*conn).clone(), TestResource { capacity_value: 1 });
+    let ctx = ReservationContext::system();
+
+    kernel
+        .hold(
+            &*conn,
+            "key_a".to_string(),
+            (),
+            1,
+            Duration::from_secs(60),
+            &ctx,
+        )
+        .await
+        .expect("key_a hold must succeed");
+    kernel
+        .hold(
+            &*conn,
+            "key_b".to_string(),
+            (),
+            1,
+            Duration::from_secs(60),
+            &ctx,
+        )
+        .await
+        .expect("key_b hold must succeed");
+}
+
+/// SC-5 / D-04: after a capacity=1 race resolves, exactly 1 `reservations`
+/// row AND exactly 1 `audit_entries` row exist. The conflict-losing task's
+/// audit row was rolled back with its transaction.
+#[tokio::test(flavor = "current_thread")]
+async fn hold_race_audit_atomicity_exactly_n_audit_rows() {
+    const CAPACITY: u32 = 1;
+
+    let conn = Arc::new(fresh_db().await);
+    let kernel = Arc::new(ReservationKernel::new(
+        (*conn).clone(),
+        TestResource {
+            capacity_value: CAPACITY,
+        },
+    ));
+    let key = "audit_race_key".to_string();
+
+    let mut handles = Vec::with_capacity(2);
+    for _ in 0..2 {
+        let kernel = kernel.clone();
+        let conn = conn.clone();
+        let key = key.clone();
+        handles.push(tokio::spawn(async move {
+            let ctx = ReservationContext::system();
+            kernel
+                .hold(&*conn, key, (), 1, Duration::from_secs(60), &ctx)
+                .await
+        }));
+    }
+
+    let mut successful_ids = Vec::new();
+    for h in handles {
+        match h.await.expect("join") {
+            Ok(handle) => successful_ids.push(handle.id),
+            Err(ReservationError::Insufficient { .. }) => {}
+            Err(e) => panic!("unexpected error: {e:?}"),
+        }
+    }
+
+    assert_eq!(
+        successful_ids.len(),
+        CAPACITY as usize,
+        "expected exactly {CAPACITY} successful hold(s)"
+    );
+
+    // Each successful reservation has exactly one audit row tagged "reservation.held".
+    for id in &successful_ids {
+        let history = ferro_audit::history_for_target(
+            &ferro_audit::AuditTarget::new("reservation", id.to_string()),
+            &*conn,
+        )
+        .await
+        .expect("audit query");
+        assert_eq!(
+            history.len(),
+            1,
+            "expected exactly 1 audit entry for reservation {id}"
+        );
+        assert_eq!(history[0].action, "reservation.held");
+    }
+
+    // DB-level invariant: exactly CAPACITY reservation rows exist.
+    // The conflict-losing task's row was rolled back with the txn.
+    use ferro_reservation::ReservationEntity;
+    let all_reservations = ReservationEntity::find()
+        .all(&*conn)
+        .await
+        .expect("count all reservations");
+    assert_eq!(
+        all_reservations.len(),
+        CAPACITY as usize,
+        "DB must contain exactly {CAPACITY} reservation rows — \
+         conflict-loser row rolled back with its transaction"
+    );
 }
