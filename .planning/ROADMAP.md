@@ -44,7 +44,7 @@
 - 📋 **v12.0.1 JSON-UI v2 Runtime Patches — Staff-Domain Field Test** — Phase 175 (planned 2026-05-20). Source: gestiscilo-it v6.9 staff-domain UAT (consumer phase 151 α). Six runtime gaps surfaced by a per-staff weekly hours editor with copy-source-to-N-targets shortcut: F1 spec-depth limit too low (depth-8 trees stripped, diagnostic conflated with cycle detection), F2 `CheckboxGroup` not registered in v2 catalog, F3 tabbed pages render every panel concurrently, F4 `Switch` component does not render, F5 `Input[type=file]` not rendered + `Form.enctype` not propagated, F6 DataTable `{row.X}` placeholders not interpolated in per-row form actions. One plan per finding; default to bidirectional adaptation for F2/F4 (re-introduce + document substitution). [Context](phases/175-json-ui-v2-runtime-patches-staff-domain-field-test/175-CONTEXT.md)
   - **Plans:** 6 plans
     - [x] 175-01-PLAN.md — F1: bump `MAX_NESTING_DEPTH` 5→16 and split depth-limit/cycle diagnostics (Wave 1)
-    - [ ] 175-02-PLAN.md — F3: extend tabs runtime IIFE with `initTabFromUrl` (URL `?tab=` honored at boot) (Wave 2)
+    - [x] 175-02-PLAN.md — F3: extend tabs runtime IIFE with `initTabFromUrl` (URL `?tab=` honored at boot) (Wave 2)
     - [ ] 175-03-PLAN.md — F6: extend DataTable `template_actions`/`template_url` to interpolate `{row.X}` alias (Wave 2)
     - [ ] 175-04-PLAN.md — F2: register `CheckboxGroup` as v2 alias for `CheckboxList` (catalog + dispatch + docs) (Wave 3)
     - [ ] 175-06-PLAN.md — F5: add `InputType::File` + `InputProps.accept` + `FormProps.enctype` end-to-end (Wave 4)

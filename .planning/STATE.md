@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 175-01-PLAN.md
-last_updated: "2026-05-20T18:29:44.222Z"
+stopped_at: Completed 175-02-PLAN.md
+last_updated: "2026-05-20T18:38:26.265Z"
 last_activity: 2026-05-20
 progress:
   total_phases: 174
   completed_phases: 156
   total_plans: 478
-  completed_plans: 463
+  completed_plans: 464
   percent: 97
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 175 (json-ui-v2-runtime-patches-staff-domain-field-test) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Next: Push master + publish v12.0 release; then begin v12.1 Form Validation DX (Phases 137-139)
 Workspace version: 0.2.35 (publish bump pending)
 Status: Ready to execute
@@ -176,6 +176,7 @@ Progress: [████████░░] 84%
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P09 | 8min | 1 tasks | 1 files |
 | Phase 160-remove-v1-json-ui-api-from-ferro-json-ui-delete-view-rs-comp P10 | 7min | 1 tasks | 2 files |
 | Phase 175 P01 | 13min | 2 tasks | 4 files |
+| Phase 175 P02 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -258,7 +259,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-20T18:29:44.214Z
-Stopped at: Completed 175-01-PLAN.md
+Last session: 2026-05-20T18:38:26.258Z
+Stopped at: Completed 175-02-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
