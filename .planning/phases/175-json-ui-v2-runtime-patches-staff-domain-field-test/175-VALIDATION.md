@@ -49,8 +49,8 @@ created: 2026-05-20
 | 175-04-01 | 04 | 3 | F2 catalog | `global_catalog().lookup("CheckboxGroup")` returns `Some` | unit | `cargo test -p ferro-json-ui catalog_contains_checkbox_group` | ❌ W0 | ⬜ pending |
 | 175-04-02 | 04 | 3 | F2 render | `CheckboxGroup` renders fieldset with N checkboxes sharing `name=field[]` | unit | `cargo test -p ferro-json-ui checkbox_group_renders_fieldset` | ❌ W0 | ⬜ pending |
 | 175-04-03 | 04 | 3 | F2 types | `BUILTIN_TYPES.len()` assertion bumped 42 → 43 | unit | `cargo test -p ferro-json-ui builtin_types_count` | ✅ | ⬜ pending |
-| 175-05-01 | 05 | 3 | F4 verify | Depth-8 spec with `Switch` renders `role="switch"` after F1 | unit | `cargo test -p ferro-json-ui switch_at_depth_8_renders_role_switch` | ❌ W0 | ⬜ pending |
-| 175-05-02 | 05 | 3 | F4 docs | `docs/src/json-ui/components.md` contains "Switch" + substitution note | grep | `grep -q 'variant.*switch' docs/src/json-ui/components.md` | ❌ W0 | ⬜ pending |
+| 175-05-01 | 05 | 5 | F4 verify | Depth-8 spec with `Switch` renders `role="switch"` after F1 | unit | `cargo test -p ferro-json-ui switch_at_depth_8_renders_role_switch` | ❌ W0 | ⬜ pending |
+| 175-05-02 | 05 | 5 | F4 docs | `docs/src/json-ui/components.md` contains "Switch" + substitution note | grep | `grep -q 'variant.*switch' docs/src/json-ui/components.md` | ❌ W0 | ⬜ pending |
 | 175-06-01 | 06 | 4 | F5 file input | `Input[input_type=file]` emits `<input type="file" accept="...">` | unit | `cargo test -p ferro-json-ui input_file_renders_file_type_and_accept` | ❌ W0 | ⬜ pending |
 | 175-06-02 | 06 | 4 | F5 enctype | `Form` with `enctype="multipart/form-data"` emits the attribute | unit | `cargo test -p ferro-json-ui form_enctype_emitted_when_set` | ❌ W0 | ⬜ pending |
 | 175-06-03 | 06 | 4 | F5 e2e | End-to-end spec → DOM round-trip for an avatar-upload form | unit | `cargo test -p ferro-json-ui multipart_form_roundtrip` | ❌ W0 | ⬜ pending |
