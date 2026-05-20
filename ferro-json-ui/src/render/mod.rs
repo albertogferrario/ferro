@@ -399,13 +399,40 @@ mod tests {
     }
 
     #[test]
-    fn walker_cycle_tripwire_fires_at_depth_4() {
+    fn walker_depth_tripwire_relative() {
         // A self-cycle is rejected at parse time, so call the walker directly
         // with a depth exceeding MAX_NESTING_DEPTH + 1 to exercise the
-        // defense-in-depth tripwire.
+        // defense-in-depth tripwire. After the diagnostic split (Task 2), the
+        // output must say "depth limit exceeded", not "cycle guard tripped".
         let spec = build_spec_unchecked("A", vec![("A", mk_element("Text"))]);
         let html = render_element("A", &spec, &json!({}), MAX_NESTING_DEPTH + 2);
-        assert!(html.contains("cycle guard tripped at depth"), "got: {html}");
+        assert!(
+            html.contains("depth limit exceeded"),
+            "got: {html}"
+        );
+    }
+
+    #[test]
+    fn walker_depth_tripwire() {
+        // Direct invocation of render_element at depth MAX_NESTING_DEPTH + 2
+        // fires the walker tripwire. The output must:
+        //   - contain "depth limit exceeded"
+        //   - contain "max=16"
+        //   - NOT contain "cycle"
+        let spec = build_spec_unchecked("A", vec![("A", mk_element("Text"))]);
+        let html = render_element("A", &spec, &json!({}), MAX_NESTING_DEPTH + 2);
+        assert!(
+            html.contains("depth limit exceeded"),
+            "expected 'depth limit exceeded' in: {html}"
+        );
+        assert!(
+            html.contains("max=16"),
+            "expected 'max=16' in: {html}"
+        );
+        assert!(
+            !html.contains("cycle"),
+            "depth tripwire must not mention 'cycle'; got: {html}"
+        );
     }
 
     #[test]

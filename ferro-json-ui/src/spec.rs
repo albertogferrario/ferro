@@ -1108,27 +1108,87 @@ mod tests {
     }
 
     #[test]
-    fn from_json_rejects_six_level_nesting() {
-        // Six levels (root + 5 children chain): one past MAX_NESTING_DEPTH=5.
+    fn cycle_detector_only_on_revisit() {
+        // A → B → A: a real two-node cycle. The cycle detector must fire and
+        // return SpecError::Cycle whose path contains both "A" and "B".
+        // After the diagnostic split (Task 2), the depth tripwire must NOT
+        // fire for a real cycle — the parse-time validator catches it first.
+        let err = Spec::from_json(
+            r#"{"$schema":"ferro-json-ui/v2","root":"A","elements":{
+                "A":{"type":"Card","children":["B"]},
+                "B":{"type":"Card","children":["A"]}
+            }}"#,
+        )
+        .unwrap_err();
+        match err {
+            SpecError::Cycle { path } => {
+                assert!(
+                    path.iter().any(|p| p == "A"),
+                    "cycle path must contain A; got {path:?}"
+                );
+                assert!(
+                    path.iter().any(|p| p == "B"),
+                    "cycle path must contain B; got {path:?}"
+                );
+            }
+            other => panic!("expected Cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn from_json_rejects_depth_17() {
+        // Seventeen levels (root + 16 children chain): one past MAX_NESTING_DEPTH=16.
         let err = Spec::from_json(
             r#"{"$schema":"ferro-json-ui/v2","root":"root","elements":{
-                "root":{"type":"Card","children":["A"]},
-                "A":{"type":"Card","children":["B"]},
-                "B":{"type":"Card","children":["C"]},
-                "C":{"type":"Card","children":["D"]},
-                "D":{"type":"Card","children":["E"]},
-                "E":{"type":"Text"}
+                "root":{"type":"Container","children":["e1"]},
+                "e1":{"type":"Container","children":["e2"]},
+                "e2":{"type":"Container","children":["e3"]},
+                "e3":{"type":"Container","children":["e4"]},
+                "e4":{"type":"Container","children":["e5"]},
+                "e5":{"type":"Container","children":["e6"]},
+                "e6":{"type":"Container","children":["e7"]},
+                "e7":{"type":"Container","children":["e8"]},
+                "e8":{"type":"Container","children":["e9"]},
+                "e9":{"type":"Container","children":["e10"]},
+                "e10":{"type":"Container","children":["e11"]},
+                "e11":{"type":"Container","children":["e12"]},
+                "e12":{"type":"Container","children":["e13"]},
+                "e13":{"type":"Container","children":["e14"]},
+                "e14":{"type":"Container","children":["e15"]},
+                "e15":{"type":"Container","children":["e16"]},
+                "e16":{"type":"Text"}
             }}"#,
         )
         .unwrap_err();
         match err {
             SpecError::DepthExceeded { max, found, path } => {
-                assert_eq!(max, 5);
-                assert!(found > 5, "found {found} must exceed 5");
+                assert_eq!(max, 16, "max must equal MAX_NESTING_DEPTH=16");
+                assert_eq!(found, 17, "found must be 17 (one past the limit)");
                 assert!(!path.is_empty());
             }
             other => panic!("expected DepthExceeded, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn from_json_accepts_depth_8() {
+        // Consumer evidence fixture: staff-detail tree reaches depth 8.
+        // dashboard → root → DetailPage → tab → card → form → row → switch
+        // Verifies that depth-8 specs parse without DepthExceeded.
+        let spec = Spec::from_json(
+            r#"{"$schema":"ferro-json-ui/v2","root":"dashboard","elements":{
+                "dashboard":{"type":"Screen","children":["root"]},
+                "root":{"type":"Container","children":["detail_page"]},
+                "detail_page":{"type":"DetailPage","children":["tab"]},
+                "tab":{"type":"Card","children":["card"]},
+                "card":{"type":"Card","children":["form"]},
+                "form":{"type":"Form","children":["row"]},
+                "row":{"type":"Grid","children":["switch_day"]},
+                "switch_day":{"type":"Switch"}
+            }}"#,
+        )
+        .expect("depth-8 staff-detail spec must parse without DepthExceeded");
+        assert_eq!(spec.elements.len(), 8);
     }
 
     #[test]
@@ -1790,28 +1850,52 @@ mod tests {
     }
 
     #[test]
-    fn nested_builder_accepts_depth_five() {
-        // root > grid > card > row > text — five levels, exactly at MAX_NESTING_DEPTH=5.
+    fn nested_builder_accepts_depth_sixteen() {
+        // root > 15 nested containers > leaf — sixteen levels, exactly at MAX_NESTING_DEPTH=16.
         let spec = Spec::builder()
             .element_nested(
                 "root",
                 NestedElement::new("Screen").child(
                     NestedElement::new("Grid").child(
                         NestedElement::new("Card").child(
-                            NestedElement::new("Row")
-                                .child(NestedElement::new("Text").prop("content", "leaf")),
+                            NestedElement::new("Row").child(
+                                NestedElement::new("Column").child(
+                                    NestedElement::new("Section").child(
+                                        NestedElement::new("Container").child(
+                                            NestedElement::new("Container").child(
+                                                NestedElement::new("Container").child(
+                                                    NestedElement::new("Container").child(
+                                                        NestedElement::new("Container").child(
+                                                            NestedElement::new("Container").child(
+                                                                NestedElement::new("Container").child(
+                                                                    NestedElement::new("Container").child(
+                                                                        NestedElement::new("Container").child(
+                                                                            NestedElement::new("Text")
+                                                                                .prop("content", "leaf"),
+                                                                        ),
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        ),
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
                         ),
                     ),
                 ),
             )
             .build()
-            .expect("five levels at depth limit must be valid");
+            .expect("sixteen levels at depth limit must be valid");
         assert!(spec.elements.contains_key("root"));
     }
 
     #[test]
-    fn nested_builder_rejects_depth_six() {
-        // root > grid > card > row > col > text — six levels, one past MAX_NESTING_DEPTH=5.
+    fn nested_builder_rejects_depth_seventeen() {
+        // root > 16 nested containers > leaf — seventeen levels, one past MAX_NESTING_DEPTH=16.
         let err = Spec::builder()
             .element_nested(
                 "root",
@@ -1819,15 +1903,39 @@ mod tests {
                     NestedElement::new("Grid").child(
                         NestedElement::new("Card").child(
                             NestedElement::new("Row").child(
-                                NestedElement::new("Column")
-                                    .child(NestedElement::new("Text").prop("content", "too deep")),
+                                NestedElement::new("Column").child(
+                                    NestedElement::new("Section").child(
+                                        NestedElement::new("Container").child(
+                                            NestedElement::new("Container").child(
+                                                NestedElement::new("Container").child(
+                                                    NestedElement::new("Container").child(
+                                                        NestedElement::new("Container").child(
+                                                            NestedElement::new("Container").child(
+                                                                NestedElement::new("Container").child(
+                                                                    NestedElement::new("Container").child(
+                                                                        NestedElement::new("Container").child(
+                                                                            NestedElement::new("Column").child(
+                                                                                NestedElement::new("Text")
+                                                                                    .prop("content", "too deep"),
+                                                                            ),
+                                                                        ),
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        ),
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                ),
                             ),
                         ),
                     ),
                 ),
             )
             .build()
-            .expect_err("six levels must exceed the depth limit");
+            .expect_err("seventeen levels must exceed the depth limit");
         assert!(
             matches!(err, SpecError::DepthExceeded { .. }),
             "expected DepthExceeded, got {err:?}"
