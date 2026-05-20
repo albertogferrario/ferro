@@ -120,6 +120,18 @@ mod tests {
     }
 
     #[test]
+    fn runtime_contains_init_tab_from_url() {
+        assert!(
+            FERRO_RUNTIME_JS.contains("initTabFromUrl"),
+            "FERRO_RUNTIME_JS must include initTabFromUrl for F3 — URL-driven tab init"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("URLSearchParams"),
+            "FERRO_RUNTIME_JS must use URLSearchParams to parse ?tab= for initTabFromUrl"
+        );
+    }
+
+    #[test]
     fn bundle_contains_dispatcher() {
         assert!(FERRO_RUNTIME_JS.contains("function ferroRuntime()"));
         assert!(FERRO_RUNTIME_JS.contains("DOMContentLoaded"));
