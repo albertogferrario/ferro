@@ -49,6 +49,8 @@
     - [x] 175-04-PLAN.md — F2: register `CheckboxGroup` as v2 alias for `CheckboxList` (catalog + dispatch + docs) (Wave 3)
     - [x] 175-06-PLAN.md — F5: add `InputType::File` + `InputProps.accept` + `FormProps.enctype` end-to-end (Wave 4)
     - [x] 175-05-PLAN.md — F4: pin Switch-at-depth-8 regression after F1; document Checkbox-styled-as-switch substitution (Wave 5 — runs after 175-04 to avoid `components.md` overlap and after 175-06 to avoid `render/form.rs` overlap)
+- 📋 **v12.0.2 JSON-UI v2 Runtime Patches — Booking↔Staff Binding Field Test** — Phase 176 (planned 2026-05-20). Source: gestiscilo-it v6.9 booking↔staff binding UAT (consumer phase 152 β). Three runtime gaps surfaced by a kanban dashboard with countdown badges + per-staff filter chip strip + staff-member detail widget: F7 `Card.badge` prop silently dropped (server emits, renderer ignores), F8 `Card.subtitle` prop silently dropped (server emits, renderer ignores), F9 `Grid.visible` conditional drops the entire subtree even when the path evaluates to true. Each finding ships server spec correctly; renderer template has no slot for `badge`/`subtitle`, and Grid's visibility evaluator either doesn't parse `visible` or evaluates against the wrong scope. One plan per finding; F7+F8 both extend the Card component slot template and can share a plan if the planner judges them coupled. [Context](phases/176-json-ui-v2-runtime-patches-booking-staff-field-test/176-CONTEXT.md)
+- 📋 **v11.11.1 ferro-reservation Kernel Atomicity Hardening** — Phase 177 (planned 2026-05-20, URGENT). Source: gestiscilo-it v6.9 β killer-feature acceptance failure (consumer phase 152 STBOOK-15). `ReservationKernel::hold` at `ferro-reservation/src/kernel.rs:54-122` does check-then-act (read `held()`, compute `available`, INSERT) without a transaction or unique constraint. Two concurrent `tokio::spawn` tasks racing `kernel.hold` on identical `(resource_kind, resource_key, window)` both pass the `held=0 → available=1 ≥ quantity=1` check and both INSERT a `status='held'` row — violating the load-bearing invariant `held ≤ capacity`. `GuardedUpdate` is used in `commit/release/sweeper` (UPDATEs) but never in `hold` (the INSERT path). PITFALLS T-69-1.2 expectation that the kernel arbitrates concurrent holds is WRONG against current implementation. Three candidate fix paths, planner picks: (a) wrap `hold` body in `conn.begin()` transaction with serializable isolation, (b) add a unique partial index on `reservations (resource_kind, resource_key, window_hash) WHERE status='held'`, (c) `INSERT … SELECT … WHERE NOT EXISTS` atomic check-and-insert. Path (a) is the minimum-blast-radius choice and matches existing GuardedUpdate discipline. [Context](phases/177-reservation-kernel-hold-atomicity/177-CONTEXT.md)
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
@@ -1912,3 +1914,61 @@ Forward-looking exploration of alternative server-driven UI protocols. May seed 
   5. Plugin model parity is addressed — can HXML host arbitrary native widgets the way ferro-json-ui hosts Plugin components? If not, what's the equivalent?
 
 **Plans**: TBD (run /gsd-plan-phase 174 to break down)
+
+### Phase 176: v12.0.2 JSON-UI v2 Runtime Patches — Booking↔Staff Binding Field Test (F7–F9)
+
+**Goal**: Close three runtime gaps in ferro-json-ui v2 surfaced by the gestiscilo-it β booking↔staff binding UAT (consumer phase 152). All three findings have server specs that emit correctly today — the renderer silently drops props/conditionals it should respect.
+
+- **F7 — `Card.badge` prop silently dropped.** Server emits `Card { props: { title, description, badge: "Scade tra Nm" } }`; the rendered DOM has `<h3>title</h3><p>description</p>` only — no `badge` slot. Consumer use case: countdown badges on kanban cards.
+- **F8 — `Card.subtitle` prop silently dropped.** Server emits `Card { props: { title, description, subtitle: "Marco Rossi" } }`; the rendered DOM has no `subtitle` slot. Consumer use case: secondary identifier (staff name snapshot) beneath the customer name on booking cards.
+- **F9 — `Grid.visible` conditional drops entire subtree.** Server emits `Grid { children: [...], visible: { path: "/has_staff", operator: "eq", value: true } }` with `data.has_staff: true`. Rendered DOM has no Grid element at all. Either Grid's renderer does not parse `visible`, or it evaluates the predicate against the wrong scope. Consumer use case: per-staff filter chip strip hidden when the tenant has no staff configured.
+
+**Source:** Consumer chrome-mcp field test 2026-05-20, documented at `.planning/phases/152-booking-staff-binding/152-UI-FINDINGS.md` in the gestiscilo-it repo (Bugs R2/R3/R4).
+
+**Decision boundary (matches Phase 175):** F7+F8 both extend the `Card` component template — planner judges whether to ship as one combined plan or split. F9 is a Grid-renderer change and ships independently.
+
+**Depends on**: Phase 175 shipped (v12.0.1 batch 4) — F7/F8/F9 are layered on the same Card/Grid templates Phase 175 touched.
+
+**Requirements**: TBD (derive from per-finding plans)
+
+**Success Criteria** (what must be TRUE):
+  1. A v2 spec declaring `Card { props: { title: "T", badge: "B" } }` renders DOM containing both the title text "T" and a badge element with text "B"; the badge is visually distinguished (Badge component-styled, right-aligned or per Card layout convention).
+  2. A v2 spec declaring `Card { props: { title: "T", subtitle: "S" } }` renders DOM containing both the title text "T" and a subtitle element with text "S" beneath the title (muted-text class).
+  3. A v2 spec declaring `Grid { children: [...], visible: { path: "/has_staff", operator: "eq", value: true } }` with `data.has_staff = true` renders the Grid + all children. The same spec with `data.has_staff = false` renders no Grid element. Same predicate semantics as other components' `visible` clause (audit which v2 components currently support `visible` and document the union — Grid joining if absent, or fixing the evaluator scope if Grid is supposed to support it).
+  4. Catalog JSON schema is updated for F7+F8: `Card.props` accepts optional `badge: String` and `subtitle: String`. Doctests + component tests added.
+  5. v2 component docs updated to reflect the new Card slots and to clarify `Grid.visible` behavior.
+  6. `cargo test --all-features` passes; gestiscilo-it consumer re-runs its β UAT against the patched runtime and confirms F7/F8/F9 closed (chrome-mcp snapshot showing `badge`/`subtitle` rendered and chip strip visible).
+
+**Plans**: TBD (run /gsd-plan-phase 176 to break down)
+
+### Phase 177: ferro-reservation Kernel Atomicity Hardening — `hold` race fix
+
+**Goal**: Close the `ReservationKernel::hold` check-then-act race condition that allows two concurrent `tokio::spawn` tasks racing identical `(resource_kind, resource_key, window)` to both succeed when at most `capacity` should. Fix the kernel so the `held ≤ capacity` invariant holds under concurrent INSERTs.
+
+**Source:** Consumer field test 2026-05-20 — gestiscilo-it v6.9 β killer-feature acceptance test `concurrent_double_book_same_staff` fails 5/5 deterministically (~0.07s each, not a timing artifact). Two tokio tasks racing `StaffBookingService::reserve_for_booking` on the same `(tenant_id, staff_id, window)` both produce Ok handles when exactly one should produce `Err(Insufficient)`. Documented at `.planning/phases/152-booking-staff-binding/152-UI-FINDINGS.md` (Bug R5) in the gestiscilo-it repo.
+
+**Root cause (verified by reading ferro-reservation/src/kernel.rs:54-122):** the `hold` method does a check-then-act sequence with no transaction and no unique constraint:
+```rust
+// Steps 2–3: capacity check (consumer-defined)
+let capacity = self.resource.capacity(conn, &key, &window).await?;
+let held = self.resource.held(conn, &key, &window).await?;
+let available = capacity.saturating_sub(held);
+// Step 4: enforce invariant
+if quantity > available { return Err(Insufficient {...}); }
+// Step 5: INSERT reservations row  <-- nothing prevents two concurrent INSERTs
+```
+Both tokio tasks read `held = 0`, both pass `available = capacity - 0 ≥ quantity`, both INSERT a `status='held'` row. `GuardedUpdate` is used in `commit/release/sweeper` (UPDATEs) but never in `hold` (the INSERT path).
+
+**Depends on**: None (independent kernel-internal fix). `ferro-orm::GuardedUpdate` already in workspace; `sea_orm::TransactionTrait` already a dependency. No new external deps.
+
+**Requirements**: TBD (derive from plan-time fix-path selection)
+
+**Success Criteria** (what must be TRUE):
+  1. A new integration test in ferro-reservation/tests/ races two `tokio::spawn` tasks calling `kernel.hold(...)` on identical `(key, window)` with `quantity = capacity`; exactly one returns `Ok(ReservationHandle)` and exactly one returns `Err(ReservationError::Insufficient)`. Test passes 50/50 runs in CI (zero flakiness).
+  2. Boundary-touch behavior preserved: two `hold(...)` calls on the same `(key, ...)` with non-overlapping windows BOTH succeed. The atomicity fix MUST NOT introduce false positives that reject legitimate non-overlapping holds.
+  3. The existing inventory test suite at gestiscilo-it (Phase 130/131/132) passes unchanged against the patched ferro-reservation. Behaviour byte-identical for the single-writer case.
+  4. The fix path is one of: (a) wrap `hold` body in `conn.begin()` + commit with serializable isolation (SQLite native, Postgres `SERIALIZABLE`); (b) add a unique partial index on `reservations (resource_kind, resource_key, window_hash) WHERE status='held'` with deterministic JSON-canonical window hashing; (c) `INSERT … SELECT … WHERE NOT EXISTS` portable atomic check-and-insert. Planner picks at plan time; default is (a) for minimum blast radius.
+  5. Audit log entry semantics unchanged — `reservation.held` audit row still written exactly once per successful hold, never written for the conflict-losing task.
+  6. PITFALLS T-69-1.2 documentation in consumer field tests is now factually correct (kernel arbitrates concurrent holds).
+
+**Plans**: TBD (run /gsd-plan-phase 177 to break down)
