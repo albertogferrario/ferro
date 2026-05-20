@@ -48,7 +48,7 @@
     - [x] 175-03-PLAN.md — F6: extend DataTable `template_actions`/`template_url` to interpolate `{row.X}` alias (Wave 2)
     - [x] 175-04-PLAN.md — F2: register `CheckboxGroup` as v2 alias for `CheckboxList` (catalog + dispatch + docs) (Wave 3)
     - [x] 175-06-PLAN.md — F5: add `InputType::File` + `InputProps.accept` + `FormProps.enctype` end-to-end (Wave 4)
-    - [ ] 175-05-PLAN.md — F4: pin Switch-at-depth-8 regression after F1; document Checkbox-styled-as-switch substitution (Wave 5 — runs after 175-04 to avoid `components.md` overlap and after 175-06 to avoid `render/form.rs` overlap)
+    - [x] 175-05-PLAN.md — F4: pin Switch-at-depth-8 regression after F1; document Checkbox-styled-as-switch substitution (Wave 5 — runs after 175-04 to avoid `components.md` overlap and after 175-06 to avoid `render/form.rs` overlap)
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
