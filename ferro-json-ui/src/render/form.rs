@@ -86,15 +86,19 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
         Some(i) => format!(" id=\"{}\"", html_escape(i)),
         None => String::new(),
     };
+    let enctype_attr = match props.enctype.as_deref() {
+        Some(e) => format!(" enctype=\"{}\"", html_escape(e)),
+        None => String::new(),
+    };
     let mut html = match &props.guard {
         Some(g) => format!(
-            "<form{id_attr} action=\"{}\" method=\"{}\" data-form-guard=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            "<form{id_attr} action=\"{}\" method=\"{}\"{enctype_attr} data-form-guard=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
             html_escape(&action_url),
             form_method,
             html_escape(g)
         ),
         None => format!(
-            "<form{id_attr} action=\"{}\" method=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            "<form{id_attr} action=\"{}\" method=\"{}\"{enctype_attr} class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
             html_escape(&action_url),
             form_method
         ),
@@ -214,6 +218,23 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
             }
             html.push_str(&format!(">{}</textarea>", html_escape(val)));
         }
+        InputType::File => {
+            html.push_str(&format!(
+                "<input type=\"file\" id=\"{}\" name=\"{}\" class=\"block w-full text-sm text-text file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-surface file:text-text hover:file:bg-surface/80\"",
+                html_escape(&props.field),
+                html_escape(&props.field),
+            ));
+            if let Some(ref accept) = props.accept {
+                html.push_str(&format!(" accept=\"{}\"", html_escape(accept)));
+            }
+            if props.required == Some(true) {
+                html.push_str(" required");
+            }
+            if props.disabled == Some(true) {
+                html.push_str(" disabled");
+            }
+            html.push('>');
+        }
         _ => {
             let input_type = match props.input_type {
                 InputType::Text => "text",
@@ -225,7 +246,7 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                 InputType::Url => "url",
                 InputType::Tel => "tel",
                 InputType::Search => "search",
-                InputType::Textarea | InputType::Hidden => unreachable!(),
+                InputType::Textarea | InputType::Hidden | InputType::File => unreachable!(),
             };
             html.push_str(&format!(
                 "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
@@ -1291,10 +1312,11 @@ mod tests {
             )
             .element(
                 "avatar_input",
-                Element::new("Input").prop(
-                    "field",
-                    json!("avatar"),
-                ).prop("label", json!("Avatar")).prop("input_type", json!("file")).prop("accept", json!("image/jpeg,image/png,image/webp")),
+                Element::new("Input")
+                    .prop("field", json!("avatar"))
+                    .prop("label", json!("Avatar"))
+                    .prop("input_type", json!("file"))
+                    .prop("accept", json!("image/jpeg,image/png,image/webp")),
             )
             .build()
             .expect("spec builds");
@@ -1341,7 +1363,9 @@ mod tests {
         );
         // enctype attribute must appear on the opening <form> tag (between <form and first >)
         let form_start = html.find("<form").expect("<form not found");
-        let tag_end = html[form_start..].find('>').expect("> not found after <form");
+        let tag_end = html[form_start..]
+            .find('>')
+            .expect("> not found after <form");
         let opening_tag = &html[form_start..form_start + tag_end];
         assert!(
             opening_tag.contains("enctype=\"multipart/form-data\""),

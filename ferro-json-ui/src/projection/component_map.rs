@@ -232,6 +232,7 @@ pub fn build_input_props(field: &FieldDef) -> serde_json::Value {
         data_path,
         step: None,
         list: None,
+        accept: None,
     })
     .expect("InputProps serialization cannot fail")
 }

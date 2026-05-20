@@ -78,6 +78,7 @@ pub enum InputType {
     Url,
     Tel,
     Search,
+    File,
 }
 
 /// Alert visual variants.
@@ -223,6 +224,12 @@ pub struct FormProps {
     /// it (e.g. in a PageHeader actions slot).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
+    /// HTML form `enctype` attribute. Set to `"multipart/form-data"` for forms
+    /// carrying a file input. Without this, the browser default encoding
+    /// (`application/x-www-form-urlencoded`) is used and file inputs are sent
+    /// as plain text rather than a multipart body.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enctype: Option<String>,
 }
 
 /// HTML button type attribute.
@@ -288,6 +295,12 @@ pub struct InputProps {
     /// whose options come from a view data key matching this id.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub list: Option<String>,
+    /// HTML `accept` attribute for `input_type = "file"`. Comma-separated MIME
+    /// types or extensions (e.g. `"image/jpeg,image/png,image/webp"`). Browser-
+    /// side filter hint only — server-side MIME validation is the consumer's
+    /// responsibility (the spec layer does not enforce file content type).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accept: Option<String>,
 }
 
 /// Props for RichTextEditor leaf element — rendered by the Quill 2.0.3 plugin.
