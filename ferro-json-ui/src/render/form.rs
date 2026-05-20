@@ -1470,19 +1470,40 @@ mod tests {
         // error here means MAX_NESTING_DEPTH was reverted below 8.
         let spec = Spec::builder()
             // depth 1: g1 → g2
-            .element("g1", Element::new("Grid").prop("columns", json!(1)).child("g2"))
+            .element(
+                "g1",
+                Element::new("Grid").prop("columns", json!(1)).child("g2"),
+            )
             // depth 2: g2 → g3
-            .element("g2", Element::new("Grid").prop("columns", json!(1)).child("g3"))
+            .element(
+                "g2",
+                Element::new("Grid").prop("columns", json!(1)).child("g3"),
+            )
             // depth 3: g3 → g4
-            .element("g3", Element::new("Grid").prop("columns", json!(1)).child("g4"))
+            .element(
+                "g3",
+                Element::new("Grid").prop("columns", json!(1)).child("g4"),
+            )
             // depth 4: g4 → g5
-            .element("g4", Element::new("Grid").prop("columns", json!(1)).child("g5"))
+            .element(
+                "g4",
+                Element::new("Grid").prop("columns", json!(1)).child("g5"),
+            )
             // depth 5: g5 → g6
-            .element("g5", Element::new("Grid").prop("columns", json!(1)).child("g6"))
+            .element(
+                "g5",
+                Element::new("Grid").prop("columns", json!(1)).child("g6"),
+            )
             // depth 6: g6 → g7
-            .element("g6", Element::new("Grid").prop("columns", json!(1)).child("g7"))
+            .element(
+                "g6",
+                Element::new("Grid").prop("columns", json!(1)).child("g7"),
+            )
             // depth 7: g7 → leaf
-            .element("g7", Element::new("Grid").prop("columns", json!(1)).child("leaf"))
+            .element(
+                "g7",
+                Element::new("Grid").prop("columns", json!(1)).child("leaf"),
+            )
             // depth 8: Switch leaf (the consumer's per-day open/closed toggle)
             .element(
                 "leaf",
