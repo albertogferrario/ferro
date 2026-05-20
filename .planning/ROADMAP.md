@@ -46,7 +46,7 @@
     - [x] 175-01-PLAN.md — F1: bump `MAX_NESTING_DEPTH` 5→16 and split depth-limit/cycle diagnostics (Wave 1)
     - [x] 175-02-PLAN.md — F3: extend tabs runtime IIFE with `initTabFromUrl` (URL `?tab=` honored at boot) (Wave 2)
     - [x] 175-03-PLAN.md — F6: extend DataTable `template_actions`/`template_url` to interpolate `{row.X}` alias (Wave 2)
-    - [ ] 175-04-PLAN.md — F2: register `CheckboxGroup` as v2 alias for `CheckboxList` (catalog + dispatch + docs) (Wave 3)
+    - [x] 175-04-PLAN.md — F2: register `CheckboxGroup` as v2 alias for `CheckboxList` (catalog + dispatch + docs) (Wave 3)
     - [ ] 175-06-PLAN.md — F5: add `InputType::File` + `InputProps.accept` + `FormProps.enctype` end-to-end (Wave 4)
     - [ ] 175-05-PLAN.md — F4: pin Switch-at-depth-8 regression after F1; document Checkbox-styled-as-switch substitution (Wave 5 — runs after 175-04 to avoid `components.md` overlap and after 175-06 to avoid `render/form.rs` overlap)
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
