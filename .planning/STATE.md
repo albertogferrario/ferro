@@ -4,8 +4,8 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
 stopped_at: Phase 175 context auto-locked (F1–F6 decisions resolved)
-last_updated: "2026-05-20T18:06:48.906Z"
-last_activity: 2026-05-20 -- Phase 175 planning complete
+last_updated: "2026-05-20T18:08:17.018Z"
+last_activity: 2026-05-20 -- Phase 175 execution started
 progress:
   total_phases: 174
   completed_phases: 156
@@ -20,16 +20,16 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v12.0 closed — JSON-UI v2 spec-driven rendering shipped to master
+**Current focus:** Phase 175 — json-ui-v2-runtime-patches-staff-domain-field-test
 
 ## Current Position
 
-Phase: v12.0 closed (Phases 115-121, 159-164 complete)
-Plan: —
+Phase: 175 (json-ui-v2-runtime-patches-staff-domain-field-test) — EXECUTING
+Plan: 1 of 6
 Next: Push master + publish v12.0 release; then begin v12.1 Form Validation DX (Phases 137-139)
 Workspace version: 0.2.35 (publish bump pending)
-Status: Ready to execute
-Last activity: 2026-05-20 -- Phase 175 planning complete
+Status: Executing Phase 175
+Last activity: 2026-05-20 -- Phase 175 execution started
 
 Progress: [████████░░] 84%
 
