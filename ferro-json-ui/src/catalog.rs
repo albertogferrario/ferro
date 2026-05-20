@@ -1732,4 +1732,13 @@ mod tests {
             "prompt() must not embed raw JSON Schema (ROADMAP caveat)"
         );
     }
+
+    #[test]
+    fn catalog_contains_checkbox_group() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        assert!(
+            cat.component_schema("CheckboxGroup").is_some(),
+            "CheckboxGroup must be registered in BUILTIN_SPECS as an alias for CheckboxList"
+        );
+    }
 }

@@ -1273,4 +1273,43 @@ mod tests {
             "compact=None must not emit scale-75; got: {html_none}"
         );
     }
+
+    // ── CheckboxGroup (alias for CheckboxList) ────────────────────────────
+
+    #[test]
+    fn checkbox_group_renders_fieldset() {
+        // CheckboxGroup dispatches to render_checkbox_list — same props, same renderer.
+        // A spec with type "CheckboxGroup" must produce a <fieldset> with N
+        // <input type="checkbox"> children whose name attributes carry the field name.
+        let el = mk_element(
+            "CheckboxGroup",
+            json!({
+                "field": "copy_to",
+                "label": "Copia su",
+                "options": [
+                    {"value": "tue", "label": "Martedì"},
+                    {"value": "wed", "label": "Mercoledì"}
+                ]
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = crate::render::render_spec_to_html(&spec, &serde_json::Value::Null);
+        assert!(
+            html.contains("<fieldset"),
+            "CheckboxGroup must render a <fieldset>; got: {html}"
+        );
+        assert!(
+            html.contains("type=\"checkbox\""),
+            "CheckboxGroup must render <input type=\"checkbox\"> children; got: {html}"
+        );
+        assert!(
+            html.contains("name=\"copy_to\""),
+            "CheckboxGroup must emit a name attribute on its children; got: {html}"
+        );
+        assert_eq!(
+            html.matches("<input type=\"checkbox\"").count(),
+            2,
+            "expected 2 checkboxes for 2 options; got: {html}"
+        );
+    }
 }
