@@ -1274,6 +1274,156 @@ mod tests {
         );
     }
 
+    // ── File input + enctype (F5) ─────────────────────────────────────────
+
+    #[test]
+    fn input_file_renders_file_type_and_accept() {
+        // Build a spec with a Form root and one file Input child.
+        let spec = Spec::builder()
+            .element(
+                "root",
+                Element::new("Form")
+                    .prop(
+                        "action",
+                        json!({"handler": "upload", "method": "POST", "url": "/upload"}),
+                    )
+                    .child("avatar_input"),
+            )
+            .element(
+                "avatar_input",
+                Element::new("Input").prop(
+                    "field",
+                    json!("avatar"),
+                ).prop("label", json!("Avatar")).prop("input_type", json!("file")).prop("accept", json!("image/jpeg,image/png,image/webp")),
+            )
+            .build()
+            .expect("spec builds");
+
+        let html = crate::render::render_spec_to_html(&spec, &serde_json::Value::Null);
+        assert!(
+            html.contains("type=\"file\""),
+            "file input must emit type=\"file\"; got: {html}"
+        );
+        assert!(
+            html.contains("accept=\"image/jpeg,image/png,image/webp\""),
+            "file input must emit accept attribute; got: {html}"
+        );
+        // File inputs MUST NOT emit value="" — browser security restriction.
+        assert!(
+            !html.contains("value=\"\""),
+            "file input must not emit value attribute; got: {html}"
+        );
+        assert!(
+            html.contains("<label"),
+            "file input must still render a label; got: {html}"
+        );
+        assert!(
+            html.contains("Avatar"),
+            "label must contain the label text; got: {html}"
+        );
+    }
+
+    #[test]
+    fn form_enctype_emitted_when_set() {
+        // Form with enctype set must emit the attribute on the opening <form> tag.
+        let el_with_enctype = mk_element(
+            "Form",
+            json!({
+                "action": {"handler": "upload", "method": "POST", "url": "/upload"},
+                "enctype": "multipart/form-data"
+            }),
+        );
+        let spec = mk_spec("root", el_with_enctype.clone());
+        let html = render_form(&el_with_enctype, &spec, &json!({}), 1);
+        assert!(
+            html.contains("enctype=\"multipart/form-data\""),
+            "enctype must appear in HTML; got: {html}"
+        );
+        // enctype attribute must appear on the opening <form> tag (between <form and first >)
+        let form_start = html.find("<form").expect("<form not found");
+        let tag_end = html[form_start..].find('>').expect("> not found after <form");
+        let opening_tag = &html[form_start..form_start + tag_end];
+        assert!(
+            opening_tag.contains("enctype=\"multipart/form-data\""),
+            "enctype must be on the opening <form> tag, not a child; got opening tag: {opening_tag}"
+        );
+
+        // Form without enctype must NOT emit the attribute.
+        let el_no_enctype = mk_element(
+            "Form",
+            json!({"action": {"handler": "save", "method": "POST", "url": "/save"}}),
+        );
+        let spec2 = mk_spec("root", el_no_enctype.clone());
+        let html2 = render_form(&el_no_enctype, &spec2, &json!({}), 1);
+        assert!(
+            !html2.contains("enctype=\""),
+            "form without enctype must not emit enctype attribute; got: {html2}"
+        );
+    }
+
+    #[test]
+    fn multipart_form_roundtrip() {
+        // End-to-end: staff create form with enctype + file input + text input + submit button.
+        let spec = Spec::builder()
+            .element(
+                "root",
+                Element::new("Form")
+                    .prop(
+                        "action",
+                        json!({"handler": "staff.create", "method": "POST", "url": "/staff"}),
+                    )
+                    .prop("enctype", json!("multipart/form-data"))
+                    .child("name_input")
+                    .child("avatar_input")
+                    .child("submit_btn"),
+            )
+            .element(
+                "name_input",
+                Element::new("Input")
+                    .prop("field", json!("name"))
+                    .prop("label", json!("Nome"))
+                    .prop("input_type", json!("text")),
+            )
+            .element(
+                "avatar_input",
+                Element::new("Input")
+                    .prop("field", json!("avatar"))
+                    .prop("label", json!("Avatar"))
+                    .prop("input_type", json!("file"))
+                    .prop("accept", json!("image/jpeg,image/png,image/webp")),
+            )
+            .element(
+                "submit_btn",
+                Element::new("Button")
+                    .prop("label", json!("Salva"))
+                    .prop("button_type", json!("submit")),
+            )
+            .build()
+            .expect("spec builds");
+
+        let html = crate::render::render_spec_to_html(&spec, &serde_json::Value::Null);
+        assert!(
+            html.contains("enctype=\"multipart/form-data\""),
+            "form must emit enctype; got: {html}"
+        );
+        assert!(
+            html.contains("type=\"file\""),
+            "avatar input must emit type=file; got: {html}"
+        );
+        assert!(
+            html.contains("accept=\"image/jpeg,image/png,image/webp\""),
+            "avatar input must emit accept; got: {html}"
+        );
+        assert!(
+            html.contains("type=\"text\""),
+            "name input must emit type=text; got: {html}"
+        );
+        assert!(
+            html.contains("type=\"submit\""),
+            "submit button must emit type=submit; got: {html}"
+        );
+    }
+
     // ── CheckboxGroup (alias for CheckboxList) ────────────────────────────
 
     #[test]
