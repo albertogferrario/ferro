@@ -192,7 +192,14 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 .row_href
                 .as_deref()
                 .map(|tmpl| template_url(tmpl, row, &row_key_value));
-            let (extra_class, click_attrs) = if let Some(ref href) = row_href {
+            let (extra_class, click_attrs) = if has_actions {
+                let menu_id = format!("dt-{row_key_value}");
+                let onclick = format!(
+                    " onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))document.getElementById('{}').showPopover()\"",
+                    html_escape(&menu_id)
+                );
+                (" cursor-pointer", onclick)
+            } else if let Some(ref href) = row_href {
                 let onclick = format!(
                     " onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\"",
                     html_escape(href)
@@ -236,7 +243,16 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 .row_href
                 .as_deref()
                 .map(|tmpl| template_url(tmpl, row, &row_key_value));
-            let (open_tag, close_tag) = if let Some(ref href) = row_href {
+            let (open_tag, close_tag) = if has_actions {
+                let menu_id = format!("dt-m-{row_key_value}");
+                (
+                    format!(
+                        "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2 cursor-pointer hover:bg-surface/60\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))document.getElementById('{}').showPopover()\">",
+                        html_escape(&menu_id)
+                    ),
+                    "</div>".to_string(),
+                )
+            } else if let Some(ref href) = row_href {
                 (
                     format!(
                         "<a href=\"{}\" class=\"block rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer\">",
@@ -986,6 +1002,67 @@ mod tests {
         assert!(
             html.contains("/p/row-3/7"),
             "legacy {{row_key}} and {{id}} must still be substituted; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_row_with_actions_emits_show_popover_onclick() {
+        // When row_actions is set, clicking the row (desktop <tr> and mobile card)
+        // must open the dropdown via showPopover(), not navigate.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "row_key": "id",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_actions": [
+                    {"label": "Edit", "action": {"handler": "edit", "url": "/items/{id}/edit", "method": "GET"}}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"id": "42", "name": "Foo"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("showPopover()"),
+            "rows with actions must open dropdown on click; got: {html}"
+        );
+        assert!(
+            html.contains("dt-42"),
+            "popover id must include row key; got: {html}"
+        );
+        assert!(
+            html.contains("dt-m-42"),
+            "mobile popover id must include row key; got: {html}"
+        );
+        assert!(
+            !html.contains("window.location.assign"),
+            "row with actions must not navigate on click; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_row_href_only_still_navigates() {
+        // When only row_href is set (no row_actions), clicking the row navigates.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "row_key": "id",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_href": "/items/{id}",
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"id": "5", "name": "Bar"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("window.location.assign"),
+            "href-only row must still navigate on click; got: {html}"
+        );
+        assert!(
+            !html.contains("showPopover()"),
+            "href-only row must not emit showPopover; got: {html}"
         );
     }
 }
