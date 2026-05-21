@@ -53,6 +53,12 @@ pub(super) const SOURCE: &str = r#"
         return function(e) {
             var value = e.currentTarget.getAttribute('data-tab');
 
+            if (window.history && window.history.replaceState) {
+                var params = new URLSearchParams(window.location.search);
+                params.set('tab', value);
+                window.history.replaceState(null, '', '?' + params.toString());
+            }
+
             for (var i = 0; i < triggers.length; i++) {
                 var t = triggers[i];
                 if (t.getAttribute('data-tab') === value) {
