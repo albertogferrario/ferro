@@ -46,10 +46,21 @@ impl MigrationTrait for Migration {
                             .string()
                             .not_null(),
                     )
-                    // resource_key JSON NOT NULL — serialized Resource::Key
-                    .col(ColumnDef::new(Reservations::ResourceKey).json().not_null())
-                    // window JSON NULL — serialized Resource::Window; NULL when Window = ()
-                    .col(ColumnDef::new(Reservations::Window).json().null())
+                    // resource_key JSONB NOT NULL on Postgres / JSON on SQLite —
+                    // serialized Resource::Key. `json_binary()` maps to Postgres `jsonb`
+                    // (btree-indexable) and to SQLite TEXT affinity (permissive). The
+                    // plain `json()` type does NOT support btree indexes on Postgres
+                    // (SQLSTATE 42704 at index creation), so `json_binary` is required
+                    // for the composite index below to apply cross-backend.
+                    .col(
+                        ColumnDef::new(Reservations::ResourceKey)
+                            .json_binary()
+                            .not_null(),
+                    )
+                    // window JSONB NULL on Postgres / JSON on SQLite —
+                    // serialized Resource::Window; NULL when Window = (). Same
+                    // rationale as ResourceKey above.
+                    .col(ColumnDef::new(Reservations::Window).json_binary().null())
                     // quantity INTEGER NOT NULL — u32 stored as INTEGER
                     .col(ColumnDef::new(Reservations::Quantity).integer().not_null())
                     // status VARCHAR NOT NULL — D-16 stringly-typed (not SeaORM ActiveEnum)

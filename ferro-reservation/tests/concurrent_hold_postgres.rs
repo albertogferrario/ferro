@@ -2,7 +2,19 @@
 //!
 //! Run with:
 //!   DATABASE_URL=postgres://user:pass@localhost:5432/ferro_test \
-//!     cargo test -p ferro-reservation --features postgres-tests
+//!     cargo test -p ferro-reservation --features postgres-tests \
+//!     -- --test-threads=1
+//!
+//! `--test-threads=1` is REQUIRED for the Postgres path. Each test calls
+//! `TestMigrator::down`/`up` on the shared database, which creates and drops
+//! the `reservations` and `audit_entries` tables along with their backing
+//! Postgres types. With cargo's default parallel test execution, two tests
+//! race on `pg_catalog.pg_type` and fail with SQLSTATE 23505
+//! ("duplicate key value violates unique constraint pg_type_typname_nsp_index").
+//! Cargo's default parallelism is fine for the SQLite tests (each `fresh_db`
+//! creates a new in-memory connection), but Postgres tests share the live
+//! database identified by `DATABASE_URL` and must serialize at the test
+//! harness level.
 //!
 //! Requires:
 //!   - A reachable Postgres instance at `DATABASE_URL`.

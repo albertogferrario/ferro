@@ -97,7 +97,11 @@ impl<R: Resource> ReservationKernel<R> {
             });
         }
 
-        // Step 5: INSERT reservations row (inside txn)
+        // Step 5: INSERT reservations row (inside txn). On Postgres SSI,
+        // pivot-detection can fire SQLSTATE 40001 here ("during write" — see
+        // predicate.c::OnConflict_CheckForSerializationFailure) rather than
+        // at commit time. D-07 translation must therefore cover the INSERT
+        // site too, not only `txn.commit()`.
         let key_json = serde_json::to_value(&key)?;
         let window_json_raw = serde_json::to_value(&window)?;
         let window_json: Option<serde_json::Value> = if window_json_raw.is_null() {
@@ -134,10 +138,21 @@ impl<R: Resource> ReservationKernel<R> {
             release_reason: ActiveValue::Set(None),
             tenant_id: ActiveValue::Set(ctx.tenant_id.clone()),
         };
-        am.insert(&txn).await.map_err(ReservationError::Db)?;
+        am.insert(&txn).await.map_err(|e| {
+            if is_serialization_failure(&e) {
+                ReservationError::Insufficient {
+                    requested: quantity,
+                    available: 0,
+                    capacity,
+                }
+            } else {
+                ReservationError::Db(e)
+            }
+        })?;
 
         // Step 6: AuditEntry::record("reservation.held").write(&txn) — D-04: inside
         // the transaction so a conflict-losing task's audit row rolls back with it.
+        // 40001 can also fire here (write touches audit_entries); translate per D-07.
         let mut audit = AuditEntry::record("reservation.held")
             .actor(ctx.actor.clone())
             .target(AuditTarget::new("reservation", id.to_string()))
@@ -156,11 +171,27 @@ impl<R: Resource> ReservationKernel<R> {
         if let Some(reason) = ctx.reason.as_deref() {
             audit = audit.reason(reason);
         }
-        audit.write(&txn).await.map_err(ReservationError::Audit)?;
+        audit.write(&txn).await.map_err(|e| {
+            // AuditError wraps the underlying DbErr where applicable. Probe
+            // through the source chain for a 40001 marker and translate;
+            // otherwise propagate as Audit.
+            if let Some(db_err) = audit_error_db(&e) {
+                if is_serialization_failure(db_err) {
+                    return ReservationError::Insufficient {
+                        requested: quantity,
+                        available: 0,
+                        capacity,
+                    };
+                }
+            }
+            ReservationError::Audit(e)
+        })?;
 
-        // Commit — detect Postgres SQLSTATE 40001 (serialization failure) and
-        // translate to ReservationError::Insufficient per D-07. On SQLite this
-        // path is never taken (no 40001 from SQLite); the stub returns false.
+        // Commit — Postgres can ALSO fire 40001 at commit time (deferred SSI
+        // detection). The INSERT and audit sites above cover the "during write"
+        // path; this site covers the "at commit" path. Both translate to
+        // ReservationError::Insufficient per D-07. On SQLite the stub returns
+        // false and this branch never fires.
         txn.commit().await.map_err(|e| {
             if is_serialization_failure(&e) {
                 ReservationError::Insufficient {
@@ -457,6 +488,17 @@ fn is_serialization_failure(err: &sea_orm::DbErr) -> bool {
 #[cfg(not(feature = "sqlx-postgres"))]
 fn is_serialization_failure(_: &sea_orm::DbErr) -> bool {
     false
+}
+
+/// Extract an inner `sea_orm::DbErr` reference from a `ferro_audit::AuditError`
+/// if one is present. Used during `hold` to detect SQLSTATE 40001 surfaced
+/// through the audit write path so D-07 translation covers it. Returns `None`
+/// for audit-internal error variants that do not wrap a DbErr.
+fn audit_error_db(err: &ferro_audit::AuditError) -> Option<&sea_orm::DbErr> {
+    match err {
+        ferro_audit::AuditError::Db(db_err) => Some(db_err),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
