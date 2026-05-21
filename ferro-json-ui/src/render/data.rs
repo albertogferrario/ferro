@@ -114,6 +114,28 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     html
 }
 
+/// Derives a short, HTML-ID-safe token from a `data_path` string.
+///
+/// Used to namespace per-row popover IDs so that two DataTables on the same
+/// page with overlapping integer `row_key` values do not produce duplicate
+/// `id` attributes.
+///
+/// Strips the leading `/`, then replaces every run of characters that are not
+/// ASCII alphanumeric or `_` with a single `-`.  An empty result falls back
+/// to `"t"` so the ID is always valid.
+fn table_token_from_path(path: &str) -> String {
+    let stripped = path.trim_start_matches('/');
+    let token: String = stripped
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    if token.is_empty() { "t".to_string() } else { token }
+}
+
 /// Renders a `DataTable`. Supports declarative columns with formatters,
 /// per-row actions wrapped in a portal-mode dropdown (positioned with
 /// `position: fixed` so it escapes the table wrapper's overflow), optional search
@@ -136,6 +158,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
         }
     };
 
+    let table_token = table_token_from_path(&props.data_path);
     let rows = resolve_path(data, &props.data_path);
     let items: Vec<Value> = rows.and_then(|v| v.as_array().cloned()).unwrap_or_default();
     let has_actions = props.row_actions.is_some();
@@ -193,7 +216,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 .as_deref()
                 .map(|tmpl| template_url(tmpl, row, &row_key_value));
             let (extra_class, click_attrs) = if has_actions {
-                let menu_id = format!("dt-{row_key_value}");
+                let menu_id = format!("dt-{table_token}-{row_key_value}");
                 let onclick = format!(
                     " onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))document.getElementById('{}').showPopover()\"",
                     html_escape(&menu_id)
@@ -222,7 +245,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 let templated = template_actions(actions, row, &row_key_value);
                 html.push_str("<td class=\"px-4 py-2 text-right\">");
                 html.push_str(&render_inline_dropdown(
-                    &format!("dt-{row_key_value}"),
+                    &format!("dt-{table_token}-{row_key_value}"),
                     &templated,
                 ));
                 html.push_str("</td>");
@@ -244,7 +267,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 .as_deref()
                 .map(|tmpl| template_url(tmpl, row, &row_key_value));
             let (open_tag, close_tag) = if has_actions {
-                let menu_id = format!("dt-m-{row_key_value}");
+                let menu_id = format!("dt-m-{table_token}-{row_key_value}");
                 (
                     format!(
                         "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2 cursor-pointer hover:bg-surface/60\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))document.getElementById('{}').showPopover()\">",
@@ -280,7 +303,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 let templated = template_actions(actions, row, &row_key_value);
                 html.push_str("<div class=\"pt-2 border-t border-border flex justify-end\">");
                 html.push_str(&render_inline_dropdown(
-                    &format!("dt-m-{row_key_value}"),
+                    &format!("dt-m-{table_token}-{row_key_value}"),
                     &templated,
                 ));
                 html.push_str("</div>");
@@ -1028,17 +1051,70 @@ mod tests {
             "rows with actions must open dropdown on click; got: {html}"
         );
         assert!(
-            html.contains("dt-42"),
-            "popover id must include row key; got: {html}"
+            html.contains("dt-items-42"),
+            "popover id must include table token and row key; got: {html}"
         );
         assert!(
-            html.contains("dt-m-42"),
-            "mobile popover id must include row key; got: {html}"
+            html.contains("dt-m-items-42"),
+            "mobile popover id must include table token and row key; got: {html}"
         );
         assert!(
             !html.contains("window.location.assign"),
             "row with actions must not navigate on click; got: {html}"
         );
+    }
+
+    // ── table_token_from_path ────────────────────────────────────────────
+
+    #[test]
+    fn table_token_strips_leading_slash() {
+        assert_eq!(table_token_from_path("/items"), "items");
+        assert_eq!(table_token_from_path("/staff_linked"), "staff_linked");
+    }
+
+    #[test]
+    fn table_token_collapses_separators() {
+        assert_eq!(table_token_from_path("/inventory/links"), "inventory-links");
+        assert_eq!(table_token_from_path("//double"), "double");
+    }
+
+    #[test]
+    fn table_token_empty_path_fallback() {
+        assert_eq!(table_token_from_path(""), "t");
+        assert_eq!(table_token_from_path("/"), "t");
+    }
+
+    #[test]
+    fn data_table_two_tables_same_row_key_produce_distinct_ids() {
+        // Regression: two DataTables on the same page with data_path="/links"
+        // and data_path="/staff" and row_key=1 must not both emit id="dt-1".
+        let make_el = |data_path: &str| {
+            mk_element(
+                "DataTable",
+                json!({
+                    "data_path": data_path,
+                    "row_key": "id",
+                    "columns": [{"key": "name", "label": "Name"}],
+                    "row_actions": [
+                        {"label": "Remove", "action": {"handler": "rm", "url": "/rm/{id}", "method": "POST"}}
+                    ],
+                }),
+            )
+        };
+        let spec = mk_spec("root", make_el("/links"));
+        let data_links = json!({"links": [{"id": 1, "name": "Alpha"}]});
+        let data_staff = json!({"staff": [{"id": 1, "name": "Beta"}]});
+
+        let el_links = make_el("/links");
+        let el_staff = make_el("/staff");
+
+        let html_links = render_data_table(&el_links, &spec, &data_links, 1);
+        let html_staff = render_data_table(&el_staff, &spec, &data_staff, 1);
+
+        assert!(html_links.contains("dt-links-1"), "links table: got: {html_links}");
+        assert!(html_staff.contains("dt-staff-1"), "staff table: got: {html_staff}");
+        assert!(!html_links.contains("dt-staff-1"), "links HTML must not contain staff id; got: {html_links}");
+        assert!(!html_staff.contains("dt-links-1"), "staff HTML must not contain links id; got: {html_staff}");
     }
 
     #[test]
