@@ -37,10 +37,22 @@ impl MigratorTrait for TestMigrator {
 
 /// Connect to the Postgres instance pointed at by DATABASE_URL, drop and
 /// recreate the two tables this crate owns, and return a fresh
-/// `DatabaseConnection`. Panics if DATABASE_URL is unset.
+/// `DatabaseConnection`.
+///
+/// WARNING — DESTRUCTIVE: this function calls `TestMigrator::down` then `up`
+/// on whatever `DATABASE_URL` points at. The `audit_entries` and
+/// `reservations` tables are dropped and recreated on every test invocation.
+/// NEVER run with `DATABASE_URL` pointing at a production database, a shared
+/// staging database, or any database whose contents you wish to preserve.
+/// Use a dedicated test database (typically localhost via docker-compose).
 async fn fresh_pg_db() -> DatabaseConnection {
-    let url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set for the postgres-tests feature");
+    let url = std::env::var("DATABASE_URL").expect(
+        "DATABASE_URL must be set for the postgres-tests feature. \
+         WARNING: this test is DESTRUCTIVE — it drops and recreates the \
+         `audit_entries` and `reservations` tables. Use a dedicated test \
+         database (e.g. postgres://test:test@localhost:5432/ferro_test). \
+         Never point at production or shared staging.",
+    );
     let conn = Database::connect(&url).await.expect("connect to postgres");
     // Down-then-up so re-running the test on the same DB does not collide
     // on already-existing tables. `down` is a no-op if tables do not exist.
@@ -95,7 +107,12 @@ impl Resource for TestResource {
 /// SC-1 (Postgres): 50 iterations of (2 tasks race on capacity=1) ->
 /// exactly 1 Ok + 1 Insufficient. Validates SERIALIZABLE isolation +
 /// SQLSTATE 40001 -> ReservationError::Insufficient translation.
-#[tokio::test(flavor = "current_thread")]
+///
+/// `multi_thread` flavor: Postgres SSI contention is more faithfully
+/// stressed when racing tasks run on distinct OS threads. `current_thread`
+/// can mask races by serializing `.await` resumption on the cooperative
+/// scheduler.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hold_race_capacity_1_exactly_one_succeeds_postgres() {
     for iteration in 0..50 {
         let conn = Arc::new(fresh_pg_db().await);
@@ -145,7 +162,9 @@ async fn hold_race_capacity_1_exactly_one_succeeds_postgres() {
 /// SC-5 (Postgres): after a capacity=1 race resolves, exactly 1
 /// reservation row exists. The conflict-losing task's row and audit row
 /// were rolled back with its serializable transaction.
-#[tokio::test(flavor = "current_thread")]
+/// `multi_thread` flavor: matches the SC-1 race test rationale — distinct
+/// OS threads stress Postgres SSI contention faithfully.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hold_race_audit_atomicity_exactly_one_row_postgres() {
     let conn = Arc::new(fresh_pg_db().await);
     let kernel = Arc::new(ReservationKernel::new(
