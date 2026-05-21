@@ -1,17 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 177-reservation-kernel-hold-atomicity
 source: [177-VERIFICATION.md]
 started: 2026-05-21T00:00:00Z
-updated: 2026-05-21T00:30:00Z
+updated: 2026-05-21T01:00:00Z
 ---
 
 ## Current Test
 
-number: 2
-name: gestiscilo-it consumer regression — `concurrent_double_book_same_staff`
-expected: cross-repo test now passes 5/5
-awaiting: user response (Test 1 surfaced a pre-existing Postgres migration gap — see Gaps section)
+[testing complete — both items resolved]
 
 ## Tests
 
@@ -43,14 +40,16 @@ expected:
 - The test must now PASS 5/5 deterministically — it previously failed 5/5 against the unpatched ferro per the consumer field test (gestiscilo-it phase 152 STBOOK-15 Bug R5).
 - Also run gestiscilo-it's Phase 130/131/132 inventory test suite — must remain green (SC-3 byte-identical single-writer behavior).
 - If `concurrent_double_book_same_staff` still fails, the kernel fix has a bug not caught by the in-workspace tests — surface immediately as a gap.
-result: [pending]
+result: pass
+reported: "5/5 PASS, zero flakiness on `concurrent_double_book_same_staff` (the killer-feature acceptance test that originally failed 5/5 against unpatched ferro). STBOOK-15 closed. Phase 130/131/132 inventory regression suite ran green — SC-3 byte-identical single-writer behavior preserved."
+killer_feature_closed: "gestiscilo-it phase 152 Bug R5 — concurrent_double_book_same_staff acceptance now green. Friction loop with consumer closed against patched ferro local-path."
 
 ## Summary
 
 total: 2
-passed: 1
+passed: 2
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
