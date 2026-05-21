@@ -130,6 +130,32 @@ pub(super) fn should_spawn_keyboard(is_tty: bool) -> bool {
 /// colored prefix. The shutdown flag stops the reader threads when servers shut
 /// down. Extracted from `ProcessManager::spawn_with_prefix_env` so 02b's
 /// `BackendSupervisor` can reuse the same piping logic without duplicating it.
+/// Configure a `Command` so the spawned child becomes the leader of a fresh
+/// process group. On Unix this means `cargo run`'s grandchild (the user's app
+/// binary) inherits the same PGID, so `kill(-pgid, sig)` reaches every
+/// descendant when we tear down. Without this, `Child::kill()` sends SIGKILL
+/// only to cargo and the app binary is orphaned, keeping the bound port held
+/// until launchd reaps it.
+#[cfg(unix)]
+fn configure_new_process_group(cmd: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    // SAFETY: setsid() is async-signal-safe and the only call we make between
+    // fork and exec. It creates a new session whose PGID equals the child's
+    // PID, so all descendants share that PGID unless they call setsid/setpgid
+    // themselves.
+    unsafe {
+        cmd.pre_exec(|| {
+            if libc::setsid() == -1 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
+}
+
+#[cfg(not(unix))]
+fn configure_new_process_group(_cmd: &mut Command) {}
+
 fn spawn_child_with_prefix(
     command: &str,
     args: &[&str],
@@ -149,6 +175,8 @@ fn spawn_child_with_prefix(
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
     }
+
+    configure_new_process_group(&mut cmd);
 
     let mut child = cmd
         .spawn()
@@ -195,6 +223,52 @@ fn spawn_child_with_prefix(
     Ok(child)
 }
 
+/// Total wait budget before escalating from SIGTERM to SIGKILL.
+const GROUP_KILL_GRACE: Duration = Duration::from_millis(2000);
+/// Polling interval while waiting for the child to exit after SIGTERM.
+const GROUP_KILL_POLL: Duration = Duration::from_millis(50);
+
+/// Terminate `child` and every descendant in its process group.
+///
+/// On Unix, the child was spawned via `setsid()`, so its PID equals its PGID
+/// and `kill(-pgid, sig)` reaches the grandchild that actually binds the
+/// listening socket. We send SIGTERM first to give the app a chance to flush,
+/// poll `try_wait()` for up to `GROUP_KILL_GRACE`, then escalate to SIGKILL on
+/// the same group. On non-Unix targets we fall back to `Child::kill()`, which
+/// matches the previous behavior.
+fn terminate_child_group(child: &mut Child) {
+    #[cfg(unix)]
+    {
+        let pid = child.id() as i32;
+        // Negative target = process group. Ignore ESRCH (already gone).
+        unsafe {
+            libc::kill(-pid, libc::SIGTERM);
+        }
+        let deadline = std::time::Instant::now() + GROUP_KILL_GRACE;
+        loop {
+            match child.try_wait() {
+                Ok(Some(_)) => return,
+                Ok(None) => {
+                    if std::time::Instant::now() >= deadline {
+                        break;
+                    }
+                    thread::sleep(GROUP_KILL_POLL);
+                }
+                Err(_) => break,
+            }
+        }
+        unsafe {
+            libc::kill(-pid, libc::SIGKILL);
+        }
+        let _ = child.wait();
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+}
+
 struct ProcessManager {
     children: Vec<Child>,
     shutdown: Arc<AtomicBool>,
@@ -233,8 +307,7 @@ impl ProcessManager {
     fn shutdown_all(&mut self) {
         self.shutdown.store(true, Ordering::SeqCst);
         for child in &mut self.children {
-            let _ = child.kill();
-            let _ = child.wait();
+            terminate_child_group(child);
         }
     }
 }
@@ -447,11 +520,12 @@ impl BackendSupervisor {
     }
 
     /// Kill and reap the in-flight backend child if any. No-op when `current`
-    /// is None (D-11).
+    /// is None (D-11). On Unix this signals the whole process group so the
+    /// `cargo run` grandchild (which holds the listening socket) is also
+    /// terminated rather than orphaned.
     fn kill_current(&mut self) {
         if let Some(mut child) = self.current.take() {
-            let _ = child.kill();
-            let _ = child.wait();
+            terminate_child_group(&mut child);
         }
     }
 
@@ -939,6 +1013,98 @@ mod tests {
             rx.try_recv().is_err(),
             "all triggers must have been drained"
         );
+    }
+
+    // Phase 145 follow-up — spawned children must be session leaders so we can
+    // signal their entire descendant tree on shutdown. Without this, killing
+    // `cargo run` leaves the grandchild app binary holding the listening port.
+    #[cfg(unix)]
+    #[test]
+    fn spawn_child_with_prefix_uses_new_process_group() {
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let mut child = spawn_child_with_prefix(
+            "sh",
+            &["-c", "sleep 30"],
+            None,
+            "[t]",
+            console::Color::Black,
+            &[],
+            shutdown,
+        )
+        .expect("spawn");
+        let pid = child.id() as i32;
+        let pgid = unsafe { libc::getpgid(pid) };
+        // Reap before asserting so a failing test does not leak a sleep.
+        unsafe {
+            libc::kill(-pid, libc::SIGKILL);
+        }
+        let _ = child.wait();
+        assert_eq!(
+            pgid, pid,
+            "child PGID ({pgid}) must equal child PID ({pid}) after setsid"
+        );
+    }
+
+    // Reproduces the orphan-grandchild bug: a `sh -c 'sleep N & wait'` shell
+    // models cargo-run's two-layer process tree. terminate_child_group must
+    // kill the inner sleep, not just the shell.
+    #[cfg(unix)]
+    #[test]
+    fn terminate_child_group_reaches_grandchild() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let pid_file = tmp.path().join("gc.pid");
+        let script = format!("sleep 60 & echo $! > {}; wait", pid_file.display());
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let mut child = spawn_child_with_prefix(
+            "sh",
+            &["-c", &script],
+            None,
+            "[t]",
+            console::Color::Black,
+            &[],
+            shutdown,
+        )
+        .expect("spawn");
+
+        // Wait for the shell to record the grandchild PID.
+        let deadline = std::time::Instant::now() + Duration::from_secs(3);
+        let grandchild_pid: i32 = loop {
+            if let Ok(s) = std::fs::read_to_string(&pid_file) {
+                if let Ok(p) = s.trim().parse::<i32>() {
+                    if p > 0 {
+                        break p;
+                    }
+                }
+            }
+            if std::time::Instant::now() > deadline {
+                unsafe {
+                    libc::kill(-(child.id() as i32), libc::SIGKILL);
+                }
+                let _ = child.wait();
+                panic!("grandchild PID never recorded");
+            }
+            thread::sleep(Duration::from_millis(25));
+        };
+        assert_eq!(
+            unsafe { libc::kill(grandchild_pid, 0) },
+            0,
+            "precondition: grandchild must be alive"
+        );
+
+        terminate_child_group(&mut child);
+
+        // The grandchild was reparented to init the moment sh died; init reaps
+        // it asynchronously. Poll briefly for `kill(pid, 0) == ESRCH`.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            if unsafe { libc::kill(grandchild_pid, 0) } != 0 {
+                return;
+            }
+            if std::time::Instant::now() > deadline {
+                panic!("grandchild {grandchild_pid} still alive after terminate_child_group");
+            }
+            thread::sleep(Duration::from_millis(25));
+        }
     }
 
     // D-19 — debouncer coalesces a burst of *.rs writes into (strictly fewer
