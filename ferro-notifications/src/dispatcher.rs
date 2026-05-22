@@ -454,7 +454,8 @@ impl NotificationDispatcher {
         use lettre::transport::smtp::authentication::Credentials;
         use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 
-        let from: Mailbox = if let Some(ref name) = config.from_name {
+        let effective_from_name = message.from_name.as_ref().or(config.from_name.as_ref());
+        let from: Mailbox = if let Some(name) = effective_from_name {
             format!("{} <{}>", name, config.from)
                 .parse()
                 .map_err(|e| Error::mail(format!("Invalid from address: {e}")))?
@@ -570,7 +571,8 @@ impl NotificationDispatcher {
             .ok_or_else(|| Error::mail("Resend config missing for Resend driver"))?;
 
         let from = message.from.clone().unwrap_or_else(|| {
-            if let Some(ref name) = config.from_name {
+            let effective_name = message.from_name.as_ref().or(config.from_name.as_ref());
+            if let Some(name) = effective_name {
                 format!("{} <{}>", name, config.from)
             } else {
                 config.from.clone()

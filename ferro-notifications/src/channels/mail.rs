@@ -30,6 +30,8 @@ pub struct MailMessage {
     pub html: Option<String>,
     /// From address (if different from default).
     pub from: Option<String>,
+    /// From display name override (e.g. tenant business name). Overrides `MailConfig::from_name`.
+    pub from_name: Option<String>,
     /// Reply-to address.
     pub reply_to: Option<String>,
     /// CC recipients.
@@ -70,6 +72,13 @@ impl MailMessage {
     /// Set the from address.
     pub fn from(mut self, from: impl Into<String>) -> Self {
         self.from = Some(from.into());
+        self
+    }
+
+    /// Override the sender display name for this message (e.g. tenant business name).
+    /// Takes precedence over `MailConfig::from_name`.
+    pub fn from_name(mut self, name: impl Into<String>) -> Self {
+        self.from_name = Some(name.into());
         self
     }
 
