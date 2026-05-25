@@ -144,6 +144,11 @@ jobs:
       - name: Pull latest changes
         run: git pull origin master
 
+      - uses: actions/cache@v4
+        with:
+          path: ~/.rustup/toolchains
+          key: rustup-1.88.0-${{ runner.os }}
+
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.88.0"
@@ -175,6 +180,11 @@ jobs:
 
       - name: Pull latest changes
         run: git pull origin master
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.rustup/toolchains
+          key: rustup-1.88.0-${{ runner.os }}
 
       - uses: dtolnay/rust-toolchain@master
         with:
