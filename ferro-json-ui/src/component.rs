@@ -966,6 +966,44 @@ pub struct DataTableProps {
     pub row_href: Option<String>,
 }
 
+/// Props for MediaCardGrid — a responsive card grid backed by a data array.
+/// Mirrors DataTable's row_key/row_actions/data_path contract but renders
+/// cards with an optional screenshot image instead of table rows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct MediaCardGridProps {
+    pub data_path: String,
+    /// Key in each row object whose value becomes the card title.
+    pub title_key: String,
+    /// Key for the subtitle/URL line below the title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description_key: Option<String>,
+    /// Key for the screenshot image URL. No image rendered when absent or empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_key: Option<String>,
+    /// Key for the URL the image links to (opens in new tab).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_href_key: Option<String>,
+    /// CSS aspect-ratio value for the image (default "4/5").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_aspect_ratio: Option<String>,
+    /// Key for the footer badge label text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub badge_key: Option<String>,
+    /// Key for the badge variant string: "outline" | "destructive" | "default".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub badge_variant_key: Option<String>,
+    /// Key used for {row_key} substitution in row_action URLs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_actions: Option<Vec<DropdownMenuAction>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_message: Option<String>,
+    /// Number of columns in the grid (default 3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<u8>,
+}
+
 /// Props for a single column in a KanbanBoard.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct KanbanColumnProps {
