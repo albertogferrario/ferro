@@ -1464,7 +1464,10 @@ mod tests {
         let spec = mk_spec("root", el.clone());
         let data = json!({"rows": [{"id": "1", "can_download": false}]});
         let html = render_data_table(&el, &spec, &data, 1);
-        assert!(!html.contains("Scarica"), "action should be hidden; got: {html}");
+        assert!(
+            !html.contains("Scarica"),
+            "action should be hidden; got: {html}"
+        );
     }
 
     #[test]
@@ -1535,15 +1538,30 @@ mod tests {
         ]});
         let html = render_data_table(&el, &spec, &data, 1);
         // Both labels present in the full HTML (one per row).
-        assert!(html.contains("Send link"), "row 1 action missing; got: {html}");
-        assert!(html.contains("Download"), "row 2 action missing; got: {html}");
+        assert!(
+            html.contains("Send link"),
+            "row 1 action missing; got: {html}"
+        );
+        assert!(
+            html.contains("Download"),
+            "row 2 action missing; got: {html}"
+        );
         // Each row's dropdown menu has its own popover id, so this asserts the
         // filter ran per-row by checking action urls land on the right rows.
         // Row 1's dropdown should contain /s/1 (send) but not /d/1 (download).
         // Row 2's dropdown should contain /d/2 (download) but not /s/2 (send).
         assert!(html.contains("/s/1"), "row 1 send url missing; got: {html}");
-        assert!(!html.contains("/d/1"), "row 1 should not show download; got: {html}");
-        assert!(html.contains("/d/2"), "row 2 download url missing; got: {html}");
-        assert!(!html.contains("/s/2"), "row 2 should not show send; got: {html}");
+        assert!(
+            !html.contains("/d/1"),
+            "row 1 should not show download; got: {html}"
+        );
+        assert!(
+            html.contains("/d/2"),
+            "row 2 download url missing; got: {html}"
+        );
+        assert!(
+            !html.contains("/s/2"),
+            "row 2 should not show send; got: {html}"
+        );
     }
 }
