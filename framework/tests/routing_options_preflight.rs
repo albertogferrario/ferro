@@ -10,7 +10,7 @@
 
 extern crate ferro_rs as ferro;
 
-use ferro_rs::{Request, Response, Router, HttpResponse};
+use ferro_rs::{HttpResponse, Request, Response, Router};
 use serial_test::serial;
 
 async fn ok_handler(_req: Request) -> Response {
@@ -20,7 +20,9 @@ async fn ok_handler(_req: Request) -> Response {
 #[tokio::test]
 #[serial]
 async fn options_preflight_resolves_when_get_route_exists() {
-    let router = Router::new().get("/api/v1/products", ok_handler).name("opt_get");
+    let router = Router::new()
+        .get("/api/v1/products", ok_handler)
+        .name("opt_get");
 
     let m = router.match_route(&hyper::Method::OPTIONS, "/api/v1/products");
     assert!(m.is_some(), "OPTIONS must resolve when a GET route exists");
@@ -68,7 +70,9 @@ async fn options_preflight_extracts_path_params() {
 #[tokio::test]
 #[serial]
 async fn options_on_unregistered_path_still_404s() {
-    let router = Router::new().get("/api/v1/products", ok_handler).name("opt_unregistered");
+    let router = Router::new()
+        .get("/api/v1/products", ok_handler)
+        .name("opt_unregistered");
 
     let m = router.match_route(&hyper::Method::OPTIONS, "/totally/unregistered");
     assert!(

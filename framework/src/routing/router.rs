@@ -489,9 +489,7 @@ impl Router {
                     .collect();
                 let (_, pattern) = matched.value.clone();
                 let handler: BoxedHandler = Box::new(|_req| {
-                    Box::pin(async move {
-                        Ok(crate::http::HttpResponse::new().status(204))
-                    })
+                    Box::pin(async move { Ok(crate::http::HttpResponse::new().status(204)) })
                 });
                 return Some((Arc::new(handler), params, pattern));
             }
