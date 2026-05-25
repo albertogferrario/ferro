@@ -287,8 +287,8 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.components.len(),
-            43,
-            "Catalog should contain all 43 built-in components (incl. CheckboxList, CheckboxGroup, RawHtml, DetailPage), got {}",
+            44,
+            "Catalog should contain all 44 built-in components (incl. CheckboxList, CheckboxGroup, RawHtml, DetailPage, MediaCardGrid), got {}",
             catalog.components.len()
         );
 
@@ -336,6 +336,8 @@ mod tests {
             "ProductTile",
             "RawHtml",
             "Image",
+            "DetailPage",
+            "MediaCardGrid",
         ];
         for name in &expected {
             assert!(names.contains(name), "Missing component: {name}");

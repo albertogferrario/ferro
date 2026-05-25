@@ -528,7 +528,9 @@ pub(crate) fn render_media_card_grid(
             .and_then(|v| v.as_str())
             .unwrap_or("outline");
 
-        html.push_str("<div class=\"rounded-lg border border-border bg-card overflow-hidden flex flex-col\">");
+        html.push_str(
+            "<div class=\"rounded-lg border border-border bg-card overflow-hidden flex flex-col\">",
+        );
 
         // Image section
         if let Some(img_src) = image_url {
@@ -546,8 +548,7 @@ pub(crate) fn render_media_card_grid(
                 ));
             } else {
                 html.push_str(&format!(
-                    "<div class=\"overflow-hidden bg-surface shrink-0\">{}</div>",
-                    img_tag
+                    "<div class=\"overflow-hidden bg-surface shrink-0\">{img_tag}</div>"
                 ));
             }
         }
@@ -1170,22 +1171,31 @@ mod tests {
 
     #[test]
     fn media_card_grid_empty_state() {
-        let el = mk_element("MediaCardGrid", json!({
-            "data_path": "/items",
-            "title_key": "name"
-        }));
+        let el = mk_element(
+            "MediaCardGrid",
+            json!({
+                "data_path": "/items",
+                "title_key": "name"
+            }),
+        );
         let spec = mk_spec("root", el.clone());
         let html = render_media_card_grid(&el, &spec, &json!({"items": []}), 1);
         assert!(html.contains("Nessun elemento trovato"), "got: {html}");
-        assert!(!html.contains("<img"), "should not render image in empty state");
+        assert!(
+            !html.contains("<img"),
+            "should not render image in empty state"
+        );
     }
 
     #[test]
     fn media_card_grid_renders_title() {
-        let el = mk_element("MediaCardGrid", json!({
-            "data_path": "/items",
-            "title_key": "name"
-        }));
+        let el = mk_element(
+            "MediaCardGrid",
+            json!({
+                "data_path": "/items",
+                "title_key": "name"
+            }),
+        );
         let spec = mk_spec("root", el.clone());
         let data = json!({"items": [{"name": "Hair Factory", "id": 1}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
@@ -1194,27 +1204,39 @@ mod tests {
 
     #[test]
     fn media_card_grid_renders_image_with_link() {
-        let el = mk_element("MediaCardGrid", json!({
-            "data_path": "/items",
-            "title_key": "name",
-            "image_key": "screenshot_url",
-            "image_href_key": "preview_url"
-        }));
+        let el = mk_element(
+            "MediaCardGrid",
+            json!({
+                "data_path": "/items",
+                "title_key": "name",
+                "image_key": "screenshot_url",
+                "image_href_key": "preview_url"
+            }),
+        );
         let spec = mk_spec("root", el.clone());
         let data = json!({"items": [{"name": "HF3", "id": 1, "screenshot_url": "/dashboard/pagine/1/screenshot.png", "preview_url": "/s/amaris-experience/hf3/"}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
         assert!(html.contains("<img"), "expected img tag, got: {html}");
-        assert!(html.contains("/dashboard/pagine/1/screenshot.png"), "got: {html}");
-        assert!(html.contains("target=\"_blank\""), "expected new-tab link, got: {html}");
+        assert!(
+            html.contains("/dashboard/pagine/1/screenshot.png"),
+            "got: {html}"
+        );
+        assert!(
+            html.contains("target=\"_blank\""),
+            "expected new-tab link, got: {html}"
+        );
         assert!(html.contains("/s/amaris-experience/hf3/"), "got: {html}");
     }
 
     #[test]
     fn media_card_grid_no_image_when_key_absent() {
-        let el = mk_element("MediaCardGrid", json!({
-            "data_path": "/items",
-            "title_key": "name"
-        }));
+        let el = mk_element(
+            "MediaCardGrid",
+            json!({
+                "data_path": "/items",
+                "title_key": "name"
+            }),
+        );
         let spec = mk_spec("root", el.clone());
         let data = json!({"items": [{"name": "HF3", "id": 1}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
@@ -1223,14 +1245,18 @@ mod tests {
 
     #[test]
     fn media_card_grid_badge_destructive() {
-        let el = mk_element("MediaCardGrid", json!({
-            "data_path": "/items",
-            "title_key": "name",
-            "badge_key": "status",
-            "badge_variant_key": "variant"
-        }));
+        let el = mk_element(
+            "MediaCardGrid",
+            json!({
+                "data_path": "/items",
+                "title_key": "name",
+                "badge_key": "status",
+                "badge_variant_key": "variant"
+            }),
+        );
         let spec = mk_spec("root", el.clone());
-        let data = json!({"items": [{"name": "HF", "status": "Non visibile", "variant": "destructive"}]});
+        let data =
+            json!({"items": [{"name": "HF", "status": "Non visibile", "variant": "destructive"}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
         assert!(html.contains("Non visibile"), "got: {html}");
         assert!(html.contains("text-destructive"), "got: {html}");
@@ -1238,12 +1264,15 @@ mod tests {
 
     #[test]
     fn media_card_grid_row_actions_interpolated() {
-        let el = mk_element("MediaCardGrid", json!({
-            "data_path": "/items",
-            "title_key": "name",
-            "row_key": "id",
-            "row_actions": [{"label": "Elimina", "action": {"handler": "/dashboard/pagine/{row_key}/delete", "method": "POST"}, "destructive": true}]
-        }));
+        let el = mk_element(
+            "MediaCardGrid",
+            json!({
+                "data_path": "/items",
+                "title_key": "name",
+                "row_key": "id",
+                "row_actions": [{"label": "Elimina", "action": {"handler": "/dashboard/pagine/{row_key}/delete", "method": "POST"}, "destructive": true}]
+            }),
+        );
         let spec = mk_spec("root", el.clone());
         let data = json!({"items": [{"name": "HF", "id": 42}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
