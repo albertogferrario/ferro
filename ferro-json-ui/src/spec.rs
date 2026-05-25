@@ -958,7 +958,11 @@ fn walk(
 // Inline unit tests
 // ---------------------------------------------------------------------------
 
+// rustfmt 1.88.0 hangs (>30 min, pathological complexity) when formatting this
+// test module alongside the rest of the file. Skip the module — its contents
+// are stable and don't need ongoing reformatting.
 #[cfg(test)]
+#[rustfmt::skip]
 mod tests {
     use super::*;
     use serde_json::json;
