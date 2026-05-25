@@ -87,7 +87,13 @@ impl Resource for TestResource {
 
 /// SC-1: 50 iterations of (2 tasks race on capacity=1) → exactly 1 Ok + 1 Insufficient.
 /// Proves the kernel's serializable transaction serializes the check+INSERT pair.
-#[tokio::test(flavor = "current_thread")]
+///
+/// `multi_thread` flavor: `tokio::spawn`-ed race tasks run on distinct OS
+/// threads, generating true parallelism between the `capacity()`/`held()`
+/// reads and the INSERT — the same configuration the Postgres mirror uses
+/// to exercise SSI conflict detection. Keeps SQLite and Postgres tests on
+/// the same runtime model for symmetry.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hold_race_capacity_1_exactly_one_succeeds() {
     for iteration in 0..50 {
         let conn = Arc::new(fresh_db().await);
@@ -130,7 +136,9 @@ async fn hold_race_capacity_1_exactly_one_succeeds() {
 
 /// SC-1 extended: 50 iterations of (6 tasks race on capacity=5) → exactly 5 Ok + 1 Insufficient.
 /// Confirms the fix correctly handles `capacity > 1` without false rejections.
-#[tokio::test(flavor = "current_thread")]
+///
+/// `multi_thread` flavor: see `hold_race_capacity_1_exactly_one_succeeds`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hold_race_capacity_n_admits_exactly_n() {
     const CAPACITY: u32 = 5;
     const TASKS: usize = 6;
@@ -184,7 +192,12 @@ async fn hold_race_capacity_n_admits_exactly_n() {
 /// SC-2: two `hold(...)` calls on different keys both succeed.
 /// Boundary preservation — the atomicity fix must not introduce false positives
 /// that reject legitimate non-overlapping holds.
-#[tokio::test(flavor = "current_thread")]
+///
+/// `multi_thread` flavor: keeps runtime configuration consistent across the
+/// suite. This test is sequential (no race), so flavor is not load-bearing
+/// for the assertion — uniformity prevents accidental drift if the test is
+/// later extended to race non-overlapping keys.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hold_non_overlapping_keys_both_succeed() {
     let conn = Arc::new(fresh_db().await);
     let kernel = ReservationKernel::new((*conn).clone(), TestResource { capacity_value: 1 });
@@ -217,7 +230,9 @@ async fn hold_non_overlapping_keys_both_succeed() {
 /// SC-5 / D-04: after a capacity=1 race resolves, exactly 1 `reservations`
 /// row AND exactly 1 `audit_entries` row exist. The conflict-losing task's
 /// audit row was rolled back with its transaction.
-#[tokio::test(flavor = "current_thread")]
+///
+/// `multi_thread` flavor: see `hold_race_capacity_1_exactly_one_succeeds`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hold_race_audit_atomicity_exactly_n_audit_rows() {
     const CAPACITY: u32 = 1;
 
