@@ -1985,3 +1985,17 @@ Both tokio tasks read `held = 0`, both pass `available = capacity - 0 ≥ quanti
 - [x] 177-01-PLAN.md — Kernel atomicity fix + SQLite primary tests (SC-1, SC-2, SC-3, SC-4, SC-5)
 - [x] 177-02-PLAN.md — Postgres feature scaffolding + cfg-gated mirror test (SC-1 Postgres facet)
 - [x] 177-03-PLAN.md — Documentation correction sweep in docs/src/database/reservations.md (SC-6)
+
+### Phase 179: DataTable RawHtml-free heterogeneous rows — Badge column format + per-row visible_if on row_actions
+
+**Goal:** Two additive ferro-json-ui primitives that let a DataTable express per-row varying actions and typed status pills without forcing callers to emit raw HTML strings into cell values (which would then be escaped, currently a silent UX bug). After this phase: (a) `ColumnFormat::Badge` reads `{variant, label}` per cell and emits the same `<span>` shape as the existing Badge component; (b) `DropdownMenuAction.visible_if: Option<String>` gates an action item per row based on a boolean row field, so a single table-level `row_actions` declaration can serve heterogeneous row states.
+
+**Killer feature:** A DataTable can render a status pill column AND a kebab dropdown whose item set varies per row, with the controller emitting structured data only — no HTML strings, no per-row HTML builders, no XSS surface.
+
+**Motivation:** Gestiscilo Phase 172 (unified Documenti tab) tried to render heterogeneous per-row kebab actions by emitting HTML strings into a cell and assuming a RawHtml cell variant existed. It doesn't — `render_data_table` html-escapes every cell unconditionally (tested at `ferro-json-ui/src/render/data.rs:687-704`). Result: the table renders escaped literal HTML instead of badges/buttons. Adding `RawHtml` would solve it but introduces an XSS surface that callers can misuse. The typed `Badge` column format + per-row `visible_if` solves the same problem without the escape hatch.
+
+**Requirements:** [internal — design decisions in PLAN]
+**Plans:** 1 plan
+
+Plans:
+- [ ] 179-01-PLAN.md — Badge column format + DropdownMenuAction.visible_if + tests + version bump
