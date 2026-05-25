@@ -1888,6 +1888,16 @@ mplete.**
 | 172. MCP Tool Wrappers | 0/? | Not started | - |
 | 173. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |
 
+### Phase 178: Refactor json-ui plugin registry to instance-scoped CatalogBuilder (replace global mutable state; remove build_builtins_only workaround)
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 177
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 178 to break down)
+
 ---
 
 ### 🔭 v13.0 Future UI Spec Evaluation (Phase 174, planned 2026-05-17)
