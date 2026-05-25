@@ -16,7 +16,7 @@
 
 use serde_json::Value;
 
-use crate::component::{DataTableProps, DropdownMenuAction, TableProps};
+use crate::component::{DataTableProps, DropdownMenuAction, MediaCardGridProps, TableProps};
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
@@ -438,6 +438,169 @@ fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]) -> String
         ));
     }
     html.push_str("</div>");
+    html
+}
+
+/// Renders a `MediaCardGrid`. Each item in `data_path` becomes a card with
+/// an optional screenshot image, title, description, status badge, and
+/// per-row dropdown actions. URL placeholders follow the same `{row_key}`
+/// / `{id}` interpolation rules as `DataTable`.
+pub(crate) fn render_media_card_grid(
+    el: &Element,
+    _spec: &Spec,
+    data: &Value,
+    _depth: usize,
+) -> String {
+    let props: MediaCardGridProps = match serde_json::from_value(el.props.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: failed to decode MediaCardGrid props: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    let rows = resolve_path(data, &props.data_path);
+    let items: Vec<Value> = rows.and_then(|v| v.as_array().cloned()).unwrap_or_default();
+    let empty_msg = props
+        .empty_message
+        .as_deref()
+        .unwrap_or("Nessun elemento trovato");
+
+    if items.is_empty() {
+        return format!(
+            "<div class=\"rounded-lg border border-border bg-card min-h-40 py-8 px-6 flex items-center justify-center\">\
+             <p class=\"text-sm text-text-muted text-center max-w-md\">{}</p>\
+             </div>",
+            html_escape(empty_msg)
+        );
+    }
+
+    let col_class = match props.columns.unwrap_or(3) {
+        2 => "grid-cols-1 md:grid-cols-2",
+        4 => "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
+        _ => "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+    };
+
+    let mut html = format!("<div class=\"grid {col_class} gap-4\">");
+
+    let aspect_ratio = props.image_aspect_ratio.as_deref().unwrap_or("4/5");
+
+    for (index, row) in items.iter().enumerate() {
+        let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
+
+        let title = row
+            .get(props.title_key.as_str())
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        let description = props
+            .description_key
+            .as_deref()
+            .and_then(|k| row.get(k))
+            .and_then(|v| v.as_str());
+
+        let image_url = props
+            .image_key
+            .as_deref()
+            .and_then(|k| row.get(k))
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty());
+
+        let image_href = props
+            .image_href_key
+            .as_deref()
+            .and_then(|k| row.get(k))
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty());
+
+        let badge_label = props
+            .badge_key
+            .as_deref()
+            .and_then(|k| row.get(k))
+            .and_then(|v| v.as_str());
+
+        let badge_variant = props
+            .badge_variant_key
+            .as_deref()
+            .and_then(|k| row.get(k))
+            .and_then(|v| v.as_str())
+            .unwrap_or("outline");
+
+        html.push_str("<div class=\"rounded-lg border border-border bg-card overflow-hidden flex flex-col\">");
+
+        // Image section
+        if let Some(img_src) = image_url {
+            let img_tag = format!(
+                "<img src=\"{}\" alt=\"{}\" class=\"w-full object-cover\" style=\"aspect-ratio: {};\" loading=\"lazy\">",
+                html_escape(img_src),
+                html_escape(title),
+                html_escape(aspect_ratio),
+            );
+            if let Some(href) = image_href {
+                html.push_str(&format!(
+                    "<a href=\"{}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"block overflow-hidden bg-surface shrink-0\">{}</a>",
+                    html_escape(href),
+                    img_tag
+                ));
+            } else {
+                html.push_str(&format!(
+                    "<div class=\"overflow-hidden bg-surface shrink-0\">{}</div>",
+                    img_tag
+                ));
+            }
+        }
+
+        // Body
+        html.push_str("<div class=\"p-4 flex flex-col gap-1 flex-1\">");
+        html.push_str(&format!(
+            "<div class=\"text-sm font-semibold text-text\">{}</div>",
+            html_escape(title)
+        ));
+        if let Some(desc) = description {
+            html.push_str(&format!(
+                "<div class=\"text-xs text-text-muted truncate\">{}</div>",
+                html_escape(desc)
+            ));
+        }
+        html.push_str("</div>");
+
+        // Footer: badge + dropdown
+        let has_badge = badge_label.is_some();
+        let has_actions = props.row_actions.is_some();
+        if has_badge || has_actions {
+            html.push_str("<div class=\"px-4 pb-4 flex items-center justify-between gap-2\">");
+
+            if let Some(label) = badge_label {
+                let badge_classes = match badge_variant {
+                    "destructive" => "bg-destructive/10 text-destructive",
+                    _ => "border border-border text-text",
+                };
+                html.push_str(&format!(
+                    "<span class=\"inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {}\">{}</span>",
+                    badge_classes,
+                    html_escape(label)
+                ));
+            } else if has_actions {
+                html.push_str("<span></span>");
+            }
+
+            if let Some(ref actions) = props.row_actions {
+                let templated = template_actions(actions, row, &row_key_value);
+                html.push_str(&render_inline_dropdown(
+                    &format!("mcg-{row_key_value}"),
+                    &templated,
+                ));
+            }
+
+            html.push_str("</div>");
+        }
+
+        html.push_str("</div>"); // card
+    }
+
+    html.push_str("</div>"); // grid
     html
 }
 
@@ -1001,5 +1164,89 @@ mod tests {
             html.contains("/p/row-3/7"),
             "legacy {{row_key}} and {{id}} must still be substituted; got: {html}"
         );
+    }
+
+    // ── MediaCardGrid ────────────────────────────────────────────────────
+
+    #[test]
+    fn media_card_grid_empty_state() {
+        let el = mk_element("MediaCardGrid", json!({
+            "data_path": "/items",
+            "title_key": "name"
+        }));
+        let spec = mk_spec("root", el.clone());
+        let html = render_media_card_grid(&el, &spec, &json!({"items": []}), 1);
+        assert!(html.contains("Nessun elemento trovato"), "got: {html}");
+        assert!(!html.contains("<img"), "should not render image in empty state");
+    }
+
+    #[test]
+    fn media_card_grid_renders_title() {
+        let el = mk_element("MediaCardGrid", json!({
+            "data_path": "/items",
+            "title_key": "name"
+        }));
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"name": "Hair Factory", "id": 1}]});
+        let html = render_media_card_grid(&el, &spec, &data, 1);
+        assert!(html.contains("Hair Factory"), "got: {html}");
+    }
+
+    #[test]
+    fn media_card_grid_renders_image_with_link() {
+        let el = mk_element("MediaCardGrid", json!({
+            "data_path": "/items",
+            "title_key": "name",
+            "image_key": "screenshot_url",
+            "image_href_key": "preview_url"
+        }));
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"name": "HF3", "id": 1, "screenshot_url": "/dashboard/pagine/1/screenshot.png", "preview_url": "/s/amaris-experience/hf3/"}]});
+        let html = render_media_card_grid(&el, &spec, &data, 1);
+        assert!(html.contains("<img"), "expected img tag, got: {html}");
+        assert!(html.contains("/dashboard/pagine/1/screenshot.png"), "got: {html}");
+        assert!(html.contains("target=\"_blank\""), "expected new-tab link, got: {html}");
+        assert!(html.contains("/s/amaris-experience/hf3/"), "got: {html}");
+    }
+
+    #[test]
+    fn media_card_grid_no_image_when_key_absent() {
+        let el = mk_element("MediaCardGrid", json!({
+            "data_path": "/items",
+            "title_key": "name"
+        }));
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"name": "HF3", "id": 1}]});
+        let html = render_media_card_grid(&el, &spec, &data, 1);
+        assert!(!html.contains("<img"), "got: {html}");
+    }
+
+    #[test]
+    fn media_card_grid_badge_destructive() {
+        let el = mk_element("MediaCardGrid", json!({
+            "data_path": "/items",
+            "title_key": "name",
+            "badge_key": "status",
+            "badge_variant_key": "variant"
+        }));
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"name": "HF", "status": "Non visibile", "variant": "destructive"}]});
+        let html = render_media_card_grid(&el, &spec, &data, 1);
+        assert!(html.contains("Non visibile"), "got: {html}");
+        assert!(html.contains("text-destructive"), "got: {html}");
+    }
+
+    #[test]
+    fn media_card_grid_row_actions_interpolated() {
+        let el = mk_element("MediaCardGrid", json!({
+            "data_path": "/items",
+            "title_key": "name",
+            "row_key": "id",
+            "row_actions": [{"label": "Elimina", "action": {"handler": "/dashboard/pagine/{row_key}/delete", "method": "POST"}, "destructive": true}]
+        }));
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"name": "HF", "id": 42}]});
+        let html = render_media_card_grid(&el, &spec, &data, 1);
+        assert!(html.contains("/dashboard/pagine/42/delete"), "got: {html}");
     }
 }

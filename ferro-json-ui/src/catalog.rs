@@ -31,9 +31,10 @@ use crate::component::{
     ButtonProps, CalendarCellProps, CardProps, CheckboxListProps, CheckboxProps, ChecklistProps,
     CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps, DropdownMenuProps,
     EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
-    KanbanBoardProps, ModalProps, NotificationDropdownProps, PageHeaderProps, PaginationProps,
-    ProductTileProps, ProgressProps, RawHtmlProps, SelectProps, SeparatorProps, SidebarProps,
-    SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
+    KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
+    PaginationProps, ProductTileProps, ProgressProps, RawHtmlProps, SelectProps, SeparatorProps,
+    SidebarProps, SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextProps,
+    ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -384,6 +385,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "DataTable",
         "Stripe-style alternating-row table with per-row DropdownMenu and mobile card fallback.",
         || to_value(schema_for!(DataTableProps)).unwrap(),
+        &[],
+    ),
+    (
+        "MediaCardGrid",
+        "Responsive card grid backed by a data array. Each card shows an optional screenshot image, title, description, status badge, and per-row dropdown actions.",
+        || to_value(schema_for!(MediaCardGridProps)).unwrap(),
         &[],
     ),
 ];
@@ -1065,13 +1072,14 @@ mod tests {
         // Updated to 40 in Phase 162 Plan 01 (CheckboxList added).
         // Updated to 42 when DetailPage was added.
         // Updated to 43 in Phase 175 Plan 04 (CheckboxGroup alias added).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 43);
+        // Updated to 44 when MediaCardGrid was added.
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 44);
     }
 
     #[test]
     fn builtin_specs_len_matches_dispatch() {
         assert_eq!(BUILTIN_SPECS.len(), crate::render::BUILTIN_TYPES.len());
-        assert_eq!(BUILTIN_SPECS.len(), 43);
+        assert_eq!(BUILTIN_SPECS.len(), 44);
     }
 
     #[test]
