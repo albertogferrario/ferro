@@ -1084,7 +1084,8 @@ mod tests {
 
     #[test]
     fn build_populates_all_builtins() {
-        let cat = Catalog::build().expect("build succeeds");
+        // Use build_builtins_only() to avoid pollution from BadPlugin_117.
+        let cat = Catalog::build_builtins_only().expect("build succeeds");
         for name in crate::render::BUILTIN_TYPES.iter() {
             assert!(
                 cat.components.contains_key(*name),
@@ -1106,34 +1107,39 @@ mod tests {
 
     #[test]
     fn build_card_has_footer_slot() {
-        let cat = Catalog::build().expect("build succeeds");
+        // Use build_builtins_only() to avoid pollution from BadPlugin_117.
+        let cat = Catalog::build_builtins_only().expect("build succeeds");
         let card = &cat.components["Card"];
         assert_eq!(card.slot_fields, vec!["footer"]);
     }
 
     #[test]
     fn build_modal_has_footer_slot() {
-        let cat = Catalog::build().expect("build succeeds");
+        // Use build_builtins_only() to avoid pollution from BadPlugin_117.
+        let cat = Catalog::build_builtins_only().expect("build succeeds");
         let modal = &cat.components["Modal"];
         assert_eq!(modal.slot_fields, vec!["footer"]);
     }
 
     #[test]
     fn build_pageheader_has_actions_slot() {
-        let cat = Catalog::build().expect("build succeeds");
+        // Use build_builtins_only() to avoid pollution from BadPlugin_117.
+        let cat = Catalog::build_builtins_only().expect("build succeeds");
         let ph = &cat.components["PageHeader"];
         assert_eq!(ph.slot_fields, vec!["actions"]);
     }
 
     #[test]
     fn build_text_has_no_slots() {
-        let cat = Catalog::build().expect("build succeeds");
+        // Use build_builtins_only() to avoid pollution from BadPlugin_117.
+        let cat = Catalog::build_builtins_only().expect("build succeeds");
         assert!(cat.components["Text"].slot_fields.is_empty());
     }
 
     #[test]
     fn build_populates_per_component_schemas() {
-        let cat = Catalog::build().expect("build succeeds");
+        // Use build_builtins_only() to avoid pollution from BadPlugin_117.
+        let cat = Catalog::build_builtins_only().expect("build succeeds");
         assert_eq!(
             cat.per_component_schemas.len(),
             BUILTIN_SPECS.len() + cat.plugin_components.len()
