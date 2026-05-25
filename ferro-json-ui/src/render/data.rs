@@ -16,11 +16,14 @@
 
 use serde_json::Value;
 
-use crate::component::{DataTableProps, DropdownMenuAction, MediaCardGridProps, TableProps};
+use crate::component::{
+    BadgeVariant, Column, ColumnFormat, DataTableProps, DropdownMenuAction, MediaCardGridProps,
+    TableProps,
+};
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
-use super::atoms::render_menu_item;
+use super::atoms::{badge_inline_html, render_menu_item};
 use super::html_escape;
 
 /// Renders a simple `Table` element. Reads `TableProps.columns` and
@@ -211,10 +214,9 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 "<tr class=\"even:bg-surface hover:bg-surface/80 transition-colors duration-150 border-t border-border{extra_class}\"{click_attrs}>"
             ));
             for col in &props.columns {
-                let cell_text = cell_string(row.get(&col.key));
                 html.push_str(&format!(
                     "<td class=\"px-4 py-2 text-sm text-text\">{}</td>",
-                    html_escape(&cell_text)
+                    render_cell(col, row.get(&col.key))
                 ));
             }
             if let Some(ref actions) = props.row_actions {
@@ -267,11 +269,10 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             };
             html.push_str(&open_tag);
             for col in &props.columns {
-                let cell_text = cell_string(row.get(&col.key));
                 html.push_str(&format!(
                     "<div class=\"flex justify-between\"><span class=\"text-xs font-semibold text-text-muted uppercase\">{}</span><span class=\"text-sm text-text\">{}</span></div>",
                     html_escape(&col.label),
-                    html_escape(&cell_text)
+                    render_cell(col, row.get(&col.key))
                 ));
             }
             if let Some(ref actions) = props.row_actions {
@@ -304,6 +305,52 @@ fn cell_string(v: Option<&Value>) -> String {
             serde_json::to_string(v).unwrap_or_default()
         }
     }
+}
+
+/// Render a single DataTable cell. Dispatches on `col.format`:
+///
+/// - `Some(ColumnFormat::Badge)` reads the cell as `{variant, label}` and
+///   emits a Badge `<span>` (shared shape with the standalone `Badge`
+///   component via [`badge_inline_html`]). Invalid values emit an HTML
+///   comment diagnostic instead of falling back to text — a typed column
+///   that silently rendered raw JSON would hide real spec bugs.
+/// - All other formats (including absent) emit the existing
+///   `html_escape(cell_string(...))` text.
+///
+/// The Badge cell intentionally bypasses `html_escape` on the wrapper markup
+/// because the markup is server-controlled (no caller input flows through
+/// the class names or `<span>` chrome). The `label` itself IS html-escaped
+/// inside `badge_inline_html`.
+fn render_cell(col: &Column, value: Option<&Value>) -> String {
+    if let Some(ColumnFormat::Badge) = col.format {
+        // Cell must be an object `{variant, label}` (or absent — empty cell).
+        match value {
+            None | Some(Value::Null) => return String::new(),
+            Some(v @ Value::Object(_)) => {
+                #[derive(serde::Deserialize)]
+                struct BadgeCell {
+                    variant: BadgeVariant,
+                    label: String,
+                }
+                match serde_json::from_value::<BadgeCell>(v.clone()) {
+                    Ok(cell) => return badge_inline_html(cell.variant, &cell.label),
+                    Err(e) => {
+                        return format!(
+                            "<!-- ferro-json-ui: invalid Badge cell value: {} -->",
+                            html_escape(&e.to_string())
+                        );
+                    }
+                }
+            }
+            Some(_) => {
+                return format!(
+                    "<!-- ferro-json-ui: invalid Badge cell value: expected object {{variant, label}}, got {} -->",
+                    html_escape(&cell_string(value))
+                );
+            }
+        }
+    }
+    html_escape(&cell_string(value))
 }
 
 /// Substitute placeholders in a URL template against a row.
@@ -368,6 +415,37 @@ fn resolve_row_key(row: &Value, row_key_prop: Option<&str>, index: usize) -> Str
 ///
 /// Missing placeholders (no matching column, and not `{row_key}` / `{id}`)
 /// are left unsubstituted — no panic, no silent removal.
+/// Returns `true` iff a row-action item should appear for this row.
+///
+/// - No `visible_if` declared → always visible (backwards compat).
+/// - `visible_if = Some(field)` and `row[field]` is truthy → visible.
+///   Truthy = `true` / non-zero number / non-empty string / non-empty array
+///   or object.
+/// - `visible_if = Some(field)` and `row[field]` is missing, null, false,
+///   `0`, or empty → hidden. **Fail-closed** so a typo in the field name
+///   cannot leak an action onto every row.
+fn action_visible_for_row(action: &DropdownMenuAction, row: &Value) -> bool {
+    let Some(field) = action.visible_if.as_deref() else {
+        return true;
+    };
+    match row.get(field) {
+        None | Some(Value::Null) => false,
+        Some(Value::Bool(b)) => *b,
+        Some(Value::Number(n)) => {
+            if let Some(i) = n.as_i64() {
+                i != 0
+            } else if let Some(f) = n.as_f64() {
+                f != 0.0
+            } else {
+                false
+            }
+        }
+        Some(Value::String(s)) => !s.is_empty(),
+        Some(Value::Array(a)) => !a.is_empty(),
+        Some(Value::Object(o)) => !o.is_empty(),
+    }
+}
+
 fn template_actions(
     actions: &[DropdownMenuAction],
     row: &Value,
@@ -381,6 +459,7 @@ fn template_actions(
 
     actions
         .iter()
+        .filter(|a| action_visible_for_row(a, row))
         .map(|a| {
             let mut cloned = a.clone();
             // URL fallback: when the action has no explicit `url`, use the
@@ -1277,5 +1356,194 @@ mod tests {
         let data = json!({"items": [{"name": "HF", "id": 42}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
         assert!(html.contains("/dashboard/pagine/42/delete"), "got: {html}");
+    }
+
+    // ── ColumnFormat::Badge ──────────────────────────────────────────────
+
+    #[test]
+    fn data_table_badge_column_format_renders_pill() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "status", "label": "Status", "format": "badge"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"status": {"variant": "destructive", "label": "Mancante"}}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(html.contains("Mancante"), "label missing; got: {html}");
+        assert!(
+            html.contains("bg-destructive/10"),
+            "missing destructive class; got: {html}"
+        );
+        assert!(
+            html.contains("rounded-full"),
+            "missing badge base class; got: {html}"
+        );
+        assert!(
+            !html.contains("{&quot;variant&quot;"),
+            "raw json leaked into cell; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_badge_column_format_invalid_value_emits_diagnostic() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "status", "label": "Status", "format": "badge"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        // String instead of {variant, label}
+        let data = json!({"rows": [{"status": "Mancante"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("<!-- ferro-json-ui: invalid Badge cell value"),
+            "expected diagnostic; got: {html}"
+        );
+        // The bad value itself should NOT be rendered as live UI.
+        assert!(!html.contains(">Mancante<"), "got: {html}");
+    }
+
+    #[test]
+    fn data_table_badge_column_format_null_value_renders_empty_cell() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "status", "label": "Status", "format": "badge"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"status": null}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        // No diagnostic, no badge — just an empty cell. Confirms null is a
+        // first-class "this row has no status" rather than an error.
+        assert!(
+            !html.contains("<!-- ferro-json-ui: invalid"),
+            "null should be valid; got: {html}"
+        );
+        assert!(!html.contains("rounded-full"), "got: {html}");
+    }
+
+    // ── DropdownMenuAction::visible_if ────────────────────────────────────
+
+    #[test]
+    fn data_table_visible_if_keeps_action_when_truthy() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "id", "label": "Id"}],
+                "row_actions": [
+                    {"label": "Scarica", "action": {"handler": "download", "url": "/d/{id}", "method": "GET"}, "visible_if": "can_download"}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"id": "1", "can_download": true}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(html.contains("Scarica"), "got: {html}");
+    }
+
+    #[test]
+    fn data_table_visible_if_drops_action_when_falsy() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "id", "label": "Id"}],
+                "row_actions": [
+                    {"label": "Scarica", "action": {"handler": "download", "url": "/d/{id}", "method": "GET"}, "visible_if": "can_download"}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"id": "1", "can_download": false}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(!html.contains("Scarica"), "action should be hidden; got: {html}");
+    }
+
+    #[test]
+    fn data_table_visible_if_drops_action_when_field_missing() {
+        // Fail-closed: missing field = hide. A typo in the spec must NOT show
+        // the action everywhere (would expose privileged actions on every row).
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "id", "label": "Id"}],
+                "row_actions": [
+                    {"label": "Scarica", "action": {"handler": "download", "url": "/d/{id}", "method": "GET"}, "visible_if": "can_download_typo"}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"id": "1", "can_download": true}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            !html.contains("Scarica"),
+            "missing field must hide action; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_visible_if_absent_keeps_action() {
+        // Backwards-compat: actions with no visible_if always show.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "id", "label": "Id"}],
+                "row_actions": [
+                    {"label": "Open", "action": {"handler": "open", "url": "/o/{id}", "method": "GET"}}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"id": "1"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("Open"),
+            "action without visible_if should always show; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_visible_if_filters_per_row_independently() {
+        // Two rows, one declared action with visible_if — the action shows on
+        // the row whose gate is true and hides on the row whose gate is false.
+        // This is the load-bearing scenario for heterogeneous-row tables.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "id", "label": "Id"}],
+                "row_actions": [
+                    {"label": "Send link", "action": {"handler": "send", "url": "/s/{id}", "method": "POST"}, "visible_if": "can_send"},
+                    {"label": "Download", "action": {"handler": "dl", "url": "/d/{id}", "method": "GET"}, "visible_if": "can_dl"}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [
+            {"id": "1", "can_send": true,  "can_dl": false},
+            {"id": "2", "can_send": false, "can_dl": true},
+        ]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        // Both labels present in the full HTML (one per row).
+        assert!(html.contains("Send link"), "row 1 action missing; got: {html}");
+        assert!(html.contains("Download"), "row 2 action missing; got: {html}");
+        // Each row's dropdown menu has its own popover id, so this asserts the
+        // filter ran per-row by checking action urls land on the right rows.
+        // Row 1's dropdown should contain /s/1 (send) but not /d/1 (download).
+        // Row 2's dropdown should contain /d/2 (download) but not /s/2 (send).
+        assert!(html.contains("/s/1"), "row 1 send url missing; got: {html}");
+        assert!(!html.contains("/d/1"), "row 1 should not show download; got: {html}");
+        assert!(html.contains("/d/2"), "row 2 download url missing; got: {html}");
+        assert!(!html.contains("/s/2"), "row 2 should not show send; got: {html}");
     }
 }

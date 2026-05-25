@@ -124,6 +124,9 @@ pub enum TextElement {
 }
 
 /// Column display format for tables.
+///
+/// `Badge` cells expect the row value to be an object `{variant, label}` matching
+/// [`BadgeProps`]. Other variants are display hints layered over plain cell text.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ColumnFormat {
@@ -131,6 +134,7 @@ pub enum ColumnFormat {
     DateTime,
     Currency,
     Boolean,
+    Badge,
 }
 
 /// Table column definition.
@@ -937,6 +941,14 @@ pub struct DropdownMenuAction {
     pub action: Action,
     #[serde(default)]
     pub destructive: bool,
+    /// When set, this item is only emitted in a DataTable row when the row's
+    /// `visible_if` field is truthy (true / non-zero number / non-empty string /
+    /// non-empty array or object). An absent or falsy field hides the item —
+    /// fail-closed so a typo in the view spec cannot leak an action onto every
+    /// row. Outside DataTable contexts (e.g. standalone `DropdownMenu` element)
+    /// the field is ignored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible_if: Option<String>,
 }
 
 /// Props for DropdownMenu component — trigger button with absolutely-positioned action panel.

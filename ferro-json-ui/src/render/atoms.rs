@@ -251,8 +251,15 @@ pub(crate) fn render_badge(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Badge", e),
     };
+    badge_inline_html(props.variant, &props.label)
+}
+
+/// Render a Badge `<span>` from `(variant, label)`. Shared by `render_badge` and
+/// the DataTable `ColumnFormat::Badge` cell renderer so both surfaces stay in
+/// lockstep — the base+variant CSS string is the single source of truth.
+pub(crate) fn badge_inline_html(variant: BadgeVariant, label: &str) -> String {
     let base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
-    let variant_classes = match props.variant {
+    let variant_classes = match variant {
         BadgeVariant::Default => "bg-primary/10 text-primary",
         BadgeVariant::Secondary => "bg-secondary/10 text-secondary-foreground",
         BadgeVariant::Destructive => "bg-destructive/10 text-destructive",
@@ -266,7 +273,7 @@ pub(crate) fn render_badge(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         "<span class=\"{} {}\" style=\"justify-self: start;\">{}</span>",
         base,
         variant_classes,
-        html_escape(&props.label)
+        html_escape(label)
     )
 }
 
