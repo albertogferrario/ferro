@@ -51,26 +51,23 @@ impl MigratorTrait for TestMigrator {
 /// recreate the two tables this crate owns, and return a fresh
 /// `DatabaseConnection`.
 ///
-/// WARNING — DESTRUCTIVE: this function calls `TestMigrator::down` then `up`
-/// on whatever `DATABASE_URL` points at. The `audit_entries` and
-/// `reservations` tables are dropped and recreated on every test invocation.
-/// NEVER run with `DATABASE_URL` pointing at a production database, a shared
-/// staging database, or any database whose contents you wish to preserve.
-/// Use a dedicated test database (typically localhost via docker-compose).
-async fn fresh_pg_db() -> DatabaseConnection {
-    let url = std::env::var("DATABASE_URL").expect(
-        "DATABASE_URL must be set for the postgres-tests feature. \
-         WARNING: this test is DESTRUCTIVE — it drops and recreates the \
-         `audit_entries` and `reservations` tables. Use a dedicated test \
-         database (e.g. postgres://test:test@localhost:5432/ferro_test). \
-         Never point at production or shared staging.",
-    );
+/// Returns `None` when `DATABASE_URL` is unset (typical CI without a Postgres
+/// service), so callers can skip the test gracefully instead of panicking.
+///
+/// WARNING — DESTRUCTIVE: when `DATABASE_URL` is set, this calls
+/// `TestMigrator::down` then `up` on whatever it points at. The
+/// `audit_entries` and `reservations` tables are dropped and recreated on
+/// every test invocation. NEVER point at a production or shared staging
+/// database — use a dedicated test database (e.g.
+/// `postgres://test:test@localhost:5432/ferro_test`).
+async fn fresh_pg_db() -> Option<DatabaseConnection> {
+    let url = std::env::var("DATABASE_URL").ok()?;
     let conn = Database::connect(&url).await.expect("connect to postgres");
     // Down-then-up so re-running the test on the same DB does not collide
     // on already-existing tables. `down` is a no-op if tables do not exist.
     let _ = TestMigrator::down(&conn, None).await;
     TestMigrator::up(&conn, None).await.expect("migrate");
-    conn
+    Some(conn)
 }
 
 /// Identical to the SQLite-side `TestResource` in `concurrent_hold.rs`.
@@ -126,8 +123,12 @@ impl Resource for TestResource {
 /// scheduler.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hold_race_capacity_1_exactly_one_succeeds_postgres() {
+    if std::env::var("DATABASE_URL").is_err() {
+        eprintln!("DATABASE_URL not set — skipping postgres race test");
+        return;
+    }
     for iteration in 0..50 {
-        let conn = Arc::new(fresh_pg_db().await);
+        let conn = Arc::new(fresh_pg_db().await.expect("DATABASE_URL checked above"));
         let kernel = Arc::new(ReservationKernel::new(
             (*conn).clone(),
             TestResource { capacity_value: 1 },
@@ -178,7 +179,11 @@ async fn hold_race_capacity_1_exactly_one_succeeds_postgres() {
 /// OS threads stress Postgres SSI contention faithfully.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hold_race_audit_atomicity_exactly_one_row_postgres() {
-    let conn = Arc::new(fresh_pg_db().await);
+    if std::env::var("DATABASE_URL").is_err() {
+        eprintln!("DATABASE_URL not set — skipping postgres audit atomicity test");
+        return;
+    }
+    let conn = Arc::new(fresh_pg_db().await.expect("DATABASE_URL checked above"));
     let kernel = Arc::new(ReservationKernel::new(
         (*conn).clone(),
         TestResource { capacity_value: 1 },
