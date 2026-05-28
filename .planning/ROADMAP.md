@@ -1898,6 +1898,16 @@ mplete.**
 Plans:
 - [ ] TBD (run /gsd-plan-phase 178 to break down)
 
+### Phase 180: Declarative action handler primitive — typed Result return so POST handlers redirect-on-error without manual try-catch ladders
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 179
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 180 to break down)
+
 ---
 
 ### 🔭 v13.0 Future UI Spec Evaluation (Phase 174, planned 2026-05-17)
