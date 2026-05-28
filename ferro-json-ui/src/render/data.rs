@@ -565,6 +565,7 @@ pub(crate) fn render_media_card_grid(
     let mut html = format!("<div class=\"grid {col_class} gap-4\">");
 
     let aspect_ratio = props.image_aspect_ratio.as_deref().unwrap_or("4/5");
+    let image_position = props.image_position.as_deref().unwrap_or("center");
 
     for (index, row) in items.iter().enumerate() {
         let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
@@ -611,23 +612,33 @@ pub(crate) fn render_media_card_grid(
             "<div class=\"rounded-lg border border-border bg-card overflow-hidden flex flex-col\">",
         );
 
-        // Image section
-        if let Some(img_src) = image_url {
-            let img_tag = format!(
-                "<img src=\"{}\" alt=\"{}\" class=\"w-full object-cover\" style=\"aspect-ratio: {};\" loading=\"lazy\">",
-                html_escape(img_src),
-                html_escape(title),
-                html_escape(aspect_ratio),
-            );
-            if let Some(href) = image_href {
-                html.push_str(&format!(
-                    "<a href=\"{}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"block overflow-hidden bg-surface shrink-0\">{}</a>",
-                    html_escape(href),
-                    img_tag
-                ));
+        // Image section. If image_key resolves to null/empty, render a blank
+        // placeholder slot with the same aspect ratio so card heights stay
+        // consistent across the grid.
+        if props.image_key.is_some() {
+            if let Some(img_src) = image_url {
+                let img_tag = format!(
+                    "<img src=\"{}\" alt=\"{}\" class=\"w-full object-cover\" style=\"aspect-ratio: {}; object-position: {};\" loading=\"lazy\">",
+                    html_escape(img_src),
+                    html_escape(title),
+                    html_escape(aspect_ratio),
+                    html_escape(image_position),
+                );
+                if let Some(href) = image_href {
+                    html.push_str(&format!(
+                        "<a href=\"{}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"block overflow-hidden bg-surface shrink-0\">{}</a>",
+                        html_escape(href),
+                        img_tag
+                    ));
+                } else {
+                    html.push_str(&format!(
+                        "<div class=\"overflow-hidden bg-surface shrink-0\">{img_tag}</div>"
+                    ));
+                }
             } else {
                 html.push_str(&format!(
-                    "<div class=\"overflow-hidden bg-surface shrink-0\">{img_tag}</div>"
+                    "<div class=\"w-full bg-surface shrink-0\" style=\"aspect-ratio: {};\" aria-hidden=\"true\"></div>",
+                    html_escape(aspect_ratio),
                 ));
             }
         }

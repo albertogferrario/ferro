@@ -998,6 +998,10 @@ pub struct MediaCardGridProps {
     /// CSS aspect-ratio value for the image (default "4/5").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image_aspect_ratio: Option<String>,
+    /// CSS object-position for the cropped image: "top" | "center" | "bottom"
+    /// (or any valid object-position value). Default "center".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_position: Option<String>,
     /// Key for the footer badge label text.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub badge_key: Option<String>,
