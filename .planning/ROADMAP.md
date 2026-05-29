@@ -1908,16 +1908,6 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 180 to break down)
 
-### Phase 181: ferro-static-template — generic MiniJinja directory renderer with underscore-prefix partial convention (consumed by gestiscilo page_publish; spec in gestiscilo-it/app/docs/superpowers/specs/2026-05-29-frontend-template-composition-design.md)
-
-**Goal:** New crate `ferro-static-template` (name TBD; could land as a module inside an existing crate) exposing `render_directory(dir, context)`, `strip_partials(dir)`, `is_partial_path(rel_path)`. Wires `set_loader(path_loader(dir))` so `{% extends %}` / `{% include %}` resolve against the render root; enforces the `_`-prefix partial convention (files/dirs starting with `_` are loadable but never rendered as standalone pages); auto-escape on `.html`/`.htm`; path traversal sandboxed by `path_loader`. Adds the `loader` feature on the `minijinja` dep. Driver: gestiscilo-it field test — published frontends share large duplicated `<head>`/nav/footer blocks with no way to compose.
-**Requirements**: TBD
-**Depends on:** None (greenfield primitive)
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 181 to break down)
-
 ---
 
 ### 🔭 v13.0 Future UI Spec Evaluation (Phase 174, planned 2026-05-17)
