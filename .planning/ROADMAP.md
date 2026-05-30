@@ -1903,12 +1903,12 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
 - [x] 180-02-PLAN.md — Extract param-extraction helpers from `ferro-macros/src/handler.rs` into `ferro-macros/src/utils.rs` as `pub(crate)`
-- [ ] 180-03-PLAN.md — `#[action]` proc-macro in `ferro-macros/src/action.rs` + registration + re-export
+- [x] 180-03-PLAN.md — `#[action]` proc-macro in `ferro-macros/src/action.rs` + registration + re-export
 - [ ] 180-04-PLAN.md — trybuild UI tests + integration smoke tests + back-compat query-string verification
 - [ ] 180-05-PLAN.md — `docs/src/the-basics/action-handlers.md` user guide + SUMMARY.md wiring
 - [ ] 180-06-PLAN.md — `action_handler` MCP code template in `ferro-mcp/src/tools/code_templates.rs`
