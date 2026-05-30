@@ -569,8 +569,6 @@ impl Request {
     }
 
     /// Internal — read by the `#[action]` macro runtime to apply recorded overrides.
-    // Called from handle_action_result in action.rs; no external call site exists until Plan 03.
-    #[allow(dead_code)]
     pub(crate) fn action_overrides(&self) -> &crate::http::action::ActionOverrides {
         &self.action_overrides
     }

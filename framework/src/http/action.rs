@@ -294,10 +294,18 @@ pub fn handle_action_result(
                 crate::session::session_mut(|s| s.flash("_action", &payload));
             }
 
-            // Back-compat query string (D-06 fallback).
+            // Back-compat query string (D-06 fallback). Uses `&` when the
+            // user-supplied redirect target already contains a query string.
+            // The flash key is percent-encoded — flash keys may carry user
+            // input, and `&` / `=` / space in the key would otherwise break
+            // the URL.
+            let sep = if target.contains('?') { '&' } else { '?' };
             let suffix = match overrides.flash.as_deref() {
-                Some(k) if !k.is_empty() => format!("?success={k}"),
-                _ => "?success=1".to_string(),
+                Some(k) if !k.is_empty() => {
+                    let encoded_key: String = byte_serialize(k.as_bytes()).collect();
+                    format!("{sep}success={encoded_key}")
+                }
+                _ => format!("{sep}success=1"),
             };
             let location = format!("{target}{suffix}");
 
@@ -339,11 +347,14 @@ pub fn handle_action_result(
             };
             crate::session::session_mut(|s| s.flash("_action", &payload));
 
-            // Back-compat query string.
+            // Back-compat query string. Uses `&` when the user-supplied
+            // redirect target already contains a query string.
+            let sep = if target.contains('?') { '&' } else { '?' };
             let encoded_msg: String = byte_serialize(err.message.as_bytes()).collect();
             let location = format!(
-                "{target}?error={kind}&msg={msg}",
+                "{target}{sep}error={kind}&msg={msg}",
                 target = target,
+                sep = sep,
                 kind = err.kind.as_query_str(),
                 msg = encoded_msg
             );

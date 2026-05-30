@@ -202,6 +202,62 @@ async fn t_180_03_log_injection_message_percent_encoded() {
     assert!(loc.contains("%0A") || loc.contains("%0a"), "got: {loc}");
 }
 
+/// Regression for WR-01 (180-REVIEW.md): redirect target that already
+/// contains a query string must use `&` instead of `?` for the back-compat
+/// success/error suffix. Without this fix, `/list?page=2` would become
+/// `/list?page=2?success=created` (malformed URL).
+#[tokio::test]
+async fn redirect_target_with_query_string_uses_ampersand_separator_success_path() {
+    let mut req = make_request().await;
+    req.redirect_to("/list?page=2");
+    req.flash("created");
+    let resp = handle_action_result(Ok(()), "/dashboard", "test::ampersand_success", &mut req);
+    let r = unwrap_response(&resp);
+    let loc = location_header(r).expect("Location header present");
+    assert!(
+        loc.starts_with("/list?page=2&success=created"),
+        "got: {loc} — expected '&' separator when target already has '?'"
+    );
+    assert!(
+        !loc.contains("?page=2?"),
+        "double '?' produced — got: {loc}"
+    );
+}
+
+/// Regression for WR-01 (180-REVIEW.md): error path with a redirect-override
+/// that already contains a query string.
+#[tokio::test]
+async fn redirect_target_with_query_string_uses_ampersand_separator_error_path() {
+    let mut req = make_request().await;
+    let err = ActionError::msg("boom").redirect_to("/list?page=2");
+    let resp = handle_action_result(Err(err), "/dashboard", "test::ampersand_error", &mut req);
+    let r = unwrap_response(&resp);
+    let loc = location_header(r).expect("Location header present");
+    assert!(
+        loc.starts_with("/list?page=2&error=generic&msg="),
+        "got: {loc} — expected '&' separator when target already has '?'"
+    );
+    assert!(
+        !loc.contains("?page=2?"),
+        "double '?' produced — got: {loc}"
+    );
+}
+
+/// Regression for WR-02 (180-REVIEW.md): flash key is percent-encoded so
+/// `&` / `=` / space in user-supplied keys do not break the URL.
+#[tokio::test]
+async fn flash_key_is_percent_encoded() {
+    let mut req = make_request().await;
+    req.flash("foo & bar");
+    let resp = handle_action_result(Ok(()), "/dashboard", "test::flash_pct_encode", &mut req);
+    let r = unwrap_response(&resp);
+    let loc = location_header(r).expect("Location header present");
+    assert!(
+        loc.contains("success=foo+%26+bar") || loc.contains("success=foo%20%26%20bar"),
+        "flash key not percent-encoded: {loc}"
+    );
+}
+
 #[tokio::test]
 async fn warning_flash_variant_records_303_on_error_path() {
     let mut req = make_request().await;
