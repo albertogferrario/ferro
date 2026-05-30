@@ -287,3 +287,10 @@ pub async fn index(req: Request, page: Option<i64>, per_page: Option<i64>) -> Re
     }))
 }
 ```
+
+## See also
+
+For POST handlers that mutate state and redirect on every code path, use
+[`#[action]`](./action-handlers.md). It preserves `Ok(())` and bare `?`
+ergonomics while handling the 303 redirect, session flash, and back-compat
+query string automatically.
