@@ -126,8 +126,18 @@ Recommended defaults for the seven design-surface gray areas. Planner may overri
 ### Error type and result shape
 
 - **D-01 — `ActionError` fields.** All four: `message: String` (required), `kind: ActionKind` (default `Generic`; variants `Generic | NotFound | Forbidden | Unauthorized`), `flash_variant: FlashVariant` (default `Error`; variants `Error | Warning | Info`), `redirect_override: Option<String>` (default `None`). Constructors: `ActionError::msg(impl Into<String>)`, `::not_found(...)`, `::forbidden(...)`, `::unauthorized(...)`. Builder methods: `.with_flash(FlashVariant)`, `.redirect_to(impl Into<String>)`.
-- **D-02 — `ActionOk` fields.** `flash: Option<&'static str>` and `redirect_override: Option<String>`. Returning `Ok(())` is the common case (`From<()> for ActionOk`). Override constructors: `ActionOk::flash("created")`, `ActionOk::redirect_to("/dashboard/x/{id}")`.
-- **D-03 — `ActionResult = Result<ActionOk, ActionError>`.** Type alias exported from `ferro::action` (or wherever the primitive lands).
+- **D-02 — Success-side overrides via `Request` setters (REVISED 2026-05-30).** Original D-02 (`ActionOk` as public type returned by `Ok(...)`) was unworkable: `Ok(())` does not auto-coerce into `Ok(ActionOk::default())` because `?` only crosses the `Err` side. Forcing users to write `Ok(ActionOk::default())` everywhere defeats D-02's "common case stays terse" intent, and the silent macro AST rewriter that would make `Ok(())` work was explicitly rejected as too magical. **New surface:** `Request` gains two setter methods — `req.flash(impl Into<String>)` and `req.redirect_to(impl Into<String>)` — that record success-side overrides on the request's mutable override-state. The macro reads that override-state after the body returns and applies it. `ActionOk` becomes an internal type (`pub(crate)`) or is dropped entirely. User-facing code:
+  ```rust
+  #[action(redirect_to = "/dashboard/pagine")]
+  pub async fn create(req: Request) -> ActionResult {
+      let new_id = Page::create(...).await?;
+      req.redirect_to(format!("/dashboard/pagine/{new_id}"));
+      req.flash("created");
+      Ok(())
+  }
+  ```
+  The killer-feature contract (`Ok(())` + `?` on every error type) is preserved without any macro AST rewriting. Override discoverability moves from "return value gymnastics" to "self-documenting Request setter methods", consistent with how Inertia handles deferred state and how Laravel uses `redirect()->with(...)`.
+- **D-03 — `ActionResult = Result<(), ActionError>` (REVISED 2026-05-30).** Type alias exported from `ferro::http` (canonical) and re-exported from the crate root. `()` on the `Ok` side because all success-side variation moves to `Request` setters (D-02). `Err(ActionError)` still threads through `?` on every error type via the concrete `From` impls (D-04). This is the killer-feature: bare `Ok(())` works, `?` works on `String`, `&str`, `FrameworkError`, `sea_orm::DbErr`, and `IntoActionError` shim handles the long tail.
 
 ### Error conversion ergonomics
 
