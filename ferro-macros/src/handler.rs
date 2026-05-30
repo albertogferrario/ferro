@@ -4,26 +4,10 @@
 //! from HTTP requests, including path parameters and route model binding.
 
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_macro_input, FnArg, ItemFn, Pat, Type};
+use syn::{parse_macro_input, FnArg, ItemFn};
 
-/// Returns the token stream for the ferro crate path: `::ferro`
-fn ferro() -> TokenStream2 {
-    quote!(::ferro)
-}
-
-/// Parameter classification for extraction strategy
-enum ParamKind {
-    /// Request type - pass through unchanged
-    Request,
-    /// Primitive type (i32, String, etc.) - extract from path params via FromParam
-    Primitive,
-    /// Model type (*::Model) - extract via RouteBinding
-    Model,
-    /// Other types - extract via FromRequest (FormRequest, etc.)
-    FormRequest,
-}
+use crate::utils::{classify_param_type, extract_param_name, ferro, generate_extraction};
 
 /// Implementation of the `#[handler]` attribute macro
 ///
@@ -153,118 +137,4 @@ pub fn handler_impl(_attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     output.into()
-}
-
-/// Extract the parameter name as a string from the pattern
-fn extract_param_name(pat: &Pat) -> String {
-    match pat {
-        Pat::Ident(pat_ident) => pat_ident.ident.to_string(),
-        Pat::Wild(_) => "_".to_string(),
-        _ => "param".to_string(),
-    }
-}
-
-/// Classify the parameter type to determine extraction strategy
-fn classify_param_type(ty: &Type) -> ParamKind {
-    match ty {
-        Type::Path(type_path) => {
-            let segments = &type_path.path.segments;
-
-            // Check for Request type
-            if segments.len() == 1 && segments[0].ident == "Request" {
-                return ParamKind::Request;
-            }
-            if segments.len() == 2 && segments[0].ident == "ferro" && segments[1].ident == "Request"
-            {
-                return ParamKind::Request;
-            }
-
-            // Check for primitive types
-            if segments.len() == 1 {
-                let ident = segments[0].ident.to_string();
-                if is_primitive_type_name(&ident) {
-                    return ParamKind::Primitive;
-                }
-            }
-
-            // Check for Model type (path ends with ::Model)
-            if let Some(last_segment) = segments.last() {
-                if last_segment.ident == "Model" && segments.len() >= 2 {
-                    return ParamKind::Model;
-                }
-            }
-
-            // Default to FormRequest for other types
-            ParamKind::FormRequest
-        }
-        _ => ParamKind::FormRequest,
-    }
-}
-
-/// Check if a type name is a primitive that should use FromParam
-fn is_primitive_type_name(name: &str) -> bool {
-    matches!(
-        name,
-        "i8" | "i16"
-            | "i32"
-            | "i64"
-            | "i128"
-            | "u8"
-            | "u16"
-            | "u32"
-            | "u64"
-            | "u128"
-            | "usize"
-            | "isize"
-            | "String"
-    )
-}
-
-/// Generate extraction code for a parameter based on its classification
-fn generate_extraction(
-    ferro: &TokenStream2,
-    pat: &Pat,
-    ty: &Type,
-    param_name: &str,
-    kind: &ParamKind,
-    has_consumer: &mut bool,
-    has_request: &mut bool,
-) -> TokenStream2 {
-    match kind {
-        ParamKind::Request => {
-            *has_request = true;
-            *has_consumer = true;
-            quote! {
-                let #pat: #ty = __ferro_req;
-            }
-        }
-        ParamKind::Primitive => {
-            // Extract from path params using FromParam
-            quote! {
-                let #pat: #ty = {
-                    let __value = __ferro_params.get(#param_name)
-                        .ok_or_else(|| #ferro::FrameworkError::param(#param_name))?;
-                    <#ty as #ferro::FromParam>::from_param(__value)?
-                };
-            }
-        }
-        ParamKind::Model => {
-            // Route model binding using AutoRouteBinding trait
-            // The parameter name comes from the function signature
-            quote! {
-                let #pat: #ty = {
-                    let __value = __ferro_params.get(#param_name)
-                        .ok_or_else(|| #ferro::FrameworkError::param(#param_name))?;
-                    <#ty as #ferro::AutoRouteBinding>::from_route_param(__value).await?
-                };
-            }
-        }
-        ParamKind::FormRequest => {
-            // Use FromRequest trait (consumes request body)
-            *has_consumer = true;
-            quote! {
-                let #pat: #ty = <#ty as #ferro::FromRequest>::from_request(__ferro_req).await?;
-            }
-        }
-    }
 }
