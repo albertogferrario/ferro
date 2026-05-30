@@ -310,6 +310,7 @@ pub use validation::{
 };
 
 // Re-export the proc-macros for compile-time component validation and type safety
+pub use ferro_macros::action;
 pub use ferro_macros::domain_error;
 pub use ferro_macros::ferro_test;
 pub use ferro_macros::handler;

@@ -239,7 +239,7 @@ struct ActionFlashPayload<'a> {
     message: &'a str,
 }
 
-/// Runtime helper called from macro-generated code. NOT a public API.
+/// Runtime helper called from macro-generated code. NOT a stable public API.
 ///
 /// On `Ok(())`:
 ///   - Reads `req.action_overrides()` — if `flash` is set, writes
@@ -255,9 +255,14 @@ struct ActionFlashPayload<'a> {
 ///     otherwise falls back to `redirect_to`.
 ///   - Appends back-compat `?error=<err.kind>&msg=<pct(err.message)>`.
 ///   - Emits `tracing::error!(handler=%name, msg=%sanitize, kind=?err.kind, ...)`.
-// Called from macro-generated code in Plan 03; no direct call site exists yet.
-#[allow(dead_code)]
-pub(crate) fn handle_action_result(
+///
+/// # Stability
+///
+/// This function is `pub` only so proc-macro-generated code can call it from
+/// outside the framework crate. It is NOT part of the stable public API.
+/// Breaking changes may occur in any release.
+#[doc(hidden)]
+pub fn handle_action_result(
     result: ActionResult,
     redirect_to: &'static str,
     handler_name: &'static str,

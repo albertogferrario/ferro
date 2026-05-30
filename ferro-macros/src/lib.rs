@@ -10,6 +10,7 @@
 
 use proc_macro::TokenStream;
 
+mod action;
 mod describe;
 mod domain_error;
 mod ferro_test;
@@ -230,6 +231,39 @@ pub fn domain_error(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn handler(attr: TokenStream, input: TokenStream) -> TokenStream {
     handler::handler_impl(attr, input)
+}
+
+/// Attribute macro for POST-style action handlers that mutate state and redirect.
+///
+/// Transforms an async function returning `ActionResult` into a
+/// `Response`-returning handler. On `Ok(())` emits a 303 redirect to
+/// `redirect_to`; on `Err(ActionError)` emits a 303 redirect to `redirect_to`
+/// (or `err.redirect_override` if set and same-origin) with a flash payload
+/// and back-compat `?error=...&msg=...` query parameters.
+///
+/// # Required attributes
+///
+/// - `redirect_to = "<path>"` — the default 303 target on success.
+///
+/// # Optional attributes
+///
+/// - `method = "<METHOD>"` — HTTP method hint (default `"POST"`).
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ferro::{action, ActionError, ActionResult, Request};
+///
+/// #[action(redirect_to = "/dashboard/pagine")]
+/// pub async fn publish_by_id(req: Request) -> ActionResult {
+///     let id: i64 = req.param("id")?.parse()?;
+///     publish_page(id).await?;
+///     Ok(())
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn action(attr: TokenStream, input: TokenStream) -> TokenStream {
+    action::action_impl(attr, input)
 }
 
 /// Derive macro for FormRequest trait
