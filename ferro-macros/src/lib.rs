@@ -10,7 +10,6 @@
 
 use proc_macro::TokenStream;
 
-mod action;
 mod describe;
 mod domain_error;
 mod ferro_test;
@@ -228,45 +227,6 @@ pub fn domain_error(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     json_response!({ "status": "ok" })
 /// }
 /// ```
-/// Attribute macro for declarative action handlers.
-///
-/// Wraps an `async fn ... -> ActionResult` body in the standard ferro
-/// handler shape, catching any `ActionError` and emitting a 303 redirect
-/// to the configured `redirect_to`. Use this instead of `#[handler]` for
-/// POST endpoints that mutate state and need to redirect-on-error.
-///
-/// # Attributes
-///
-/// - `redirect_to` (required): the success-side 303 target URL.
-/// - `method` (optional, default `"POST"`): HTTP method this action handles.
-///
-/// # Security
-///
-/// The `ActionError::message` field is stored in the session flash payload
-/// and encoded into the back-compat query string. Consumer templates that
-/// render the flash message into HTML MUST HTML-escape it — the framework
-/// does not perform HTML escaping at write time (T-180-01). Treat `message`
-/// as untrusted text.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use ferro::{action, ActionError, ActionResult, Request};
-///
-/// #[action(redirect_to = "/dashboard/pages")]
-/// pub async fn publish_by_id(req: Request) -> ActionResult {
-///     let id: i64 = req.param("id")?.parse()?;
-///     let page = Page::find_by_id(id).await?
-///         .ok_or(ActionError::not_found("Page not found"))?;
-///     publish(page).await?;
-///     Ok(())  // → 303 to /dashboard/pages?success=1
-/// }
-/// ```
-#[proc_macro_attribute]
-pub fn action(attr: TokenStream, input: TokenStream) -> TokenStream {
-    action::action_impl(attr, input)
-}
-
 #[proc_macro_attribute]
 pub fn handler(attr: TokenStream, input: TokenStream) -> TokenStream {
     handler::handler_impl(attr, input)
