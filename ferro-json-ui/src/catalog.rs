@@ -795,12 +795,13 @@ impl Catalog {
 
     /// Generate a concise text system prompt summarizing every component.
     ///
-    /// Format: `## Component Catalog` header, then one `### <Name>` section
-    /// per component (built-ins then plugins, both sorted by name). Each
-    /// section contains the description, a single `Props:` line with
-    /// `name (Type)` tuples, and (when non-empty) a `Slots:` line.
+    /// Format: `## Component Catalog` header, a one-line note explaining the
+    /// slot convention, then one `### <Name>` section per component (built-ins
+    /// then plugins, both sorted by name). Each section contains the
+    /// description, a single `Props:` line with `name (Type)` tuples, and
+    /// (when non-empty) a `Slots:` line listing slot field names only.
     ///
-    /// The prompt is intentionally CONCISE (≤ 8 KB, CONTEXT D-17) — the full
+    /// The prompt is intentionally CONCISE (≤ 10 KB, CONTEXT D-17) — the full
     /// JSON Schema is NOT embedded. Consumers wanting machine-readable schemas
     /// use [`Self::json_schema`] or [`Self::component_schema`] (Plan 07 CLI).
     ///
@@ -810,6 +811,7 @@ impl Catalog {
     pub fn prompt(&self) -> String {
         let mut out = String::with_capacity(8 * 1024);
         out.push_str("## Component Catalog\n\n");
+        out.push_str("Slot fields are Vec<String> of element IDs; body children come from Element.children.\n\n");
         for spec in self.components_sorted() {
             render_component_section(&mut out, spec);
         }
@@ -833,9 +835,13 @@ impl Catalog {
 /// ### Card
 /// Content container with title and optional footer slot.
 /// Props: title (String), description (Option<String>), ...
-/// Slots: footer (Vec<String> of element IDs) — body children come from Element.children.
+/// Slots: footer
 ///
 /// ```
+///
+/// The slot semantics (Vec<String> of element IDs, body children from
+/// Element.children) are declared once in the catalog header by
+/// [`Catalog::prompt`] rather than repeated per section.
 fn render_component_section(out: &mut String, spec: &ComponentSpec) {
     out.push_str("### ");
     out.push_str(&spec.name);
@@ -852,7 +858,7 @@ fn render_component_section(out: &mut String, spec: &ComponentSpec) {
     if !spec.slot_fields.is_empty() {
         out.push_str("Slots: ");
         out.push_str(&spec.slot_fields.join(", "));
-        out.push_str(" (Vec<String> of element IDs) — body children come from Element.children.\n");
+        out.push('\n');
     }
     out.push('\n');
 }
