@@ -123,12 +123,7 @@ pub(crate) async fn parse_multipart_body(
     max_file_bytes: u64,
     max_fields: usize,
 ) -> Result<MultipartForm, FrameworkError> {
-    let boundary = multer::parse_boundary(content_type).map_err(|_| {
-        FrameworkError::domain(
-            "Content-Type is not multipart/form-data or missing boundary",
-            400,
-        )
-    })?;
+    let boundary = parse_boundary(content_type)?;
 
     let body_stream = BodyStream::new(body)
         .filter_map(|result| async move { result.map(|frame| frame.into_data().ok()).transpose() });
@@ -136,8 +131,58 @@ pub(crate) async fn parse_multipart_body(
     let constraints =
         multer::Constraints::new().size_limit(multer::SizeLimit::new().per_field(max_file_bytes));
 
-    let mut multipart = multer::Multipart::with_constraints(body_stream, boundary, constraints);
+    let multipart = multer::Multipart::with_constraints(body_stream, boundary, constraints);
+    drain_multipart(multipart, max_fields).await
+}
 
+/// Parse cached multipart bytes — used by `Request::multipart_mut` and
+/// `Request::file_mut` to re-parse a body that was already collected to memory
+/// by `body_bytes_mut`. Mirrors `parse_multipart_body` but takes `Bytes`
+/// instead of a streaming `Incoming` body. Both call into `drain_multipart`
+/// for the actual field-by-field iteration.
+pub(crate) async fn parse_multipart_bytes(
+    bytes: Bytes,
+    content_type: &str,
+    max_file_bytes: u64,
+    max_fields: usize,
+) -> Result<MultipartForm, FrameworkError> {
+    let boundary = parse_boundary(content_type)?;
+
+    // Single-chunk stream over the cached bytes — multer accepts any stream of
+    // `Result<Bytes, _>`. `stream::once` keeps the API surface identical to the
+    // Incoming path so `drain_multipart` doesn't need to know which constructor
+    // it was called with.
+    let body_stream = futures_util::stream::once(async move {
+        Ok::<_, std::io::Error>(bytes)
+    });
+
+    let constraints =
+        multer::Constraints::new().size_limit(multer::SizeLimit::new().per_field(max_file_bytes));
+
+    let multipart = multer::Multipart::with_constraints(body_stream, boundary, constraints);
+    drain_multipart(multipart, max_fields).await
+}
+
+/// Shared boundary extraction used by both `parse_multipart_body` and
+/// `parse_multipart_bytes`. Returns the same `FrameworkError::domain(400)`
+/// shape callers already match against, keeping their behaviour identical.
+fn parse_boundary(content_type: &str) -> Result<String, FrameworkError> {
+    multer::parse_boundary(content_type).map_err(|_| {
+        FrameworkError::domain(
+            "Content-Type is not multipart/form-data or missing boundary",
+            400,
+        )
+    })
+}
+
+/// Iterate every field on a constructed `multer::Multipart`, separating files
+/// from text fields. Extracted so both stream variants (`Incoming` and cached
+/// `Bytes`) share one implementation. `Multipart<'_>` erases its inner stream
+/// type, so the function is non-generic — both callers' stream types fit.
+async fn drain_multipart(
+    mut multipart: multer::Multipart<'_>,
+    max_fields: usize,
+) -> Result<MultipartForm, FrameworkError> {
     let mut files_map: HashMap<String, Vec<UploadedFile>> = HashMap::new();
     let mut text_fields: HashMap<String, String> = HashMap::new();
     let mut field_count: usize = 0;

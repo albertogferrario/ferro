@@ -9,7 +9,13 @@ use std::collections::HashMap;
 
 /// HTTP Request wrapper providing Laravel-like access to request data
 pub struct Request {
-    inner: hyper::Request<hyper::body::Incoming>,
+    /// Request head: method, URI, headers, version, extensions.
+    /// Split out from the original `hyper::Request` so the body can be consumed
+    /// independently via `body_bytes_mut` / `form_mut` / `multipart_mut` etc.
+    parts: hyper::http::request::Parts,
+    /// Request body — either still pending on the wire, cached after a `*_mut`
+    /// read, or taken by a `self`-consuming method (`body_bytes`, `form`, ...).
+    body: BodyState,
     params: HashMap<String, String>,
     extensions: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
     /// Route pattern for metrics (e.g., "/users/{id}" instead of "/users/123")
@@ -19,11 +25,38 @@ pub struct Request {
     action_overrides: crate::http::action::ActionOverrides,
 }
 
+/// State of the request body inside a `Request`.
+///
+/// The body can be in one of three states:
+/// - `Pending`: still streaming from the wire (default after `Request::new`).
+/// - `Cached`: collected to memory by a `*_mut` reader (`body_bytes_mut`, etc.).
+///   Multiple `*_mut` calls are safe — they all return the same cached bytes.
+/// - `Consumed`: taken by a `self`-consuming method (`body_bytes`, `form`, ...).
+///   Cannot be read again; the request is typically dropped after.
+///
+/// Mixing `self`-consuming methods with `*_mut` methods on the same request is
+/// safe: after a `*_mut` call caches the body, a subsequent `self`-consuming
+/// method returns the cached bytes; after a `self`-consuming method, the
+/// request is dropped (no `*_mut` call is possible).
+enum BodyState {
+    /// Body is still on the wire — not yet read.
+    Pending(hyper::body::Incoming),
+    /// Body has been collected and cached. Both `*_mut` readers and the legacy
+    /// `self`-consuming `body_bytes` will return clones of these bytes.
+    Cached(Bytes),
+    /// Body was taken by a `self`-consuming method that does not cache (e.g.
+    /// the legacy `Request::into_parts` returning `hyper::body::Incoming`).
+    /// Any subsequent body read returns an error.
+    Consumed,
+}
+
 impl Request {
     /// Create a new request from a raw hyper request.
     pub fn new(inner: hyper::Request<hyper::body::Incoming>) -> Self {
+        let (parts, body) = inner.into_parts();
         Self {
-            inner,
+            parts,
+            body: BodyState::Pending(body),
             params: HashMap::new(),
             extensions: HashMap::new(),
             route_pattern: None,
@@ -71,12 +104,22 @@ impl Request {
 
     /// Get the request method
     pub fn method(&self) -> &hyper::Method {
-        self.inner.method()
+        &self.parts.method
+    }
+
+    /// Get the request URI
+    pub fn uri(&self) -> &http::Uri {
+        &self.parts.uri
+    }
+
+    /// Get the request headers
+    pub fn headers(&self) -> &http::HeaderMap {
+        &self.parts.headers
     }
 
     /// Get the request path
     pub fn path(&self) -> &str {
-        self.inner.uri().path()
+        self.parts.uri.path()
     }
 
     /// Rewrite the request path (server-side only — the browser URL is unchanged).
@@ -91,7 +134,7 @@ impl Request {
             new_path.starts_with('/'),
             "set_path: path must begin with '/', got {new_path:?}"
         );
-        let old_uri = self.inner.uri();
+        let old_uri = &self.parts.uri;
         // Preserve scheme, authority, and query string; replace path only.
         let mut parts = old_uri.clone().into_parts();
         let path_and_query = match old_uri.query() {
@@ -104,7 +147,7 @@ impl Request {
                 .unwrap_or_else(|_| new_path.parse().expect("invalid path")),
         );
         if let Ok(new_uri) = http::Uri::from_parts(parts) {
-            *self.inner.uri_mut() = new_uri;
+            self.parts.uri = new_uri;
         }
     }
 
@@ -156,7 +199,7 @@ impl Request {
     /// let sort = req.query("sort"); // None
     /// ```
     pub fn query(&self, name: &str) -> Option<String> {
-        self.inner.uri().query().and_then(|q| {
+        self.parts.uri.query().and_then(|q| {
             form_urlencoded::parse(q.as_bytes())
                 .find(|(key, _)| key == name)
                 .map(|(_, value)| value.into_owned())
@@ -251,14 +294,20 @@ impl Request {
             .unwrap_or(false)
     }
 
-    /// Get the inner hyper request
-    pub fn inner(&self) -> &hyper::Request<hyper::body::Incoming> {
-        &self.inner
+    /// Get a reference to the request head (method, URI, headers, version).
+    ///
+    /// Previously this method returned `&hyper::Request<hyper::body::Incoming>`.
+    /// The signature changed when the body was split out from the head to support
+    /// `&mut self` body readers — callers that need only headers/URI/method should
+    /// use the dedicated accessors (`uri()`, `headers()`, `method()`); callers
+    /// that need the raw `Parts` for low-level work can use this method.
+    pub fn inner(&self) -> &hyper::http::request::Parts {
+        &self.parts
     }
 
     /// Get a header value by name
     pub fn header(&self, name: &str) -> Option<&str> {
-        self.inner.headers().get(name).and_then(|v| v.to_str().ok())
+        self.parts.headers.get(name).and_then(|v| v.to_str().ok())
     }
 
     /// Get the Content-Type header
@@ -364,17 +413,30 @@ impl Request {
             .map(|v| v.split(',').collect())
     }
 
-    /// Consume the request and collect the body as bytes
+    /// Consume the request and collect the body as bytes.
+    ///
+    /// If the body has already been read via `body_bytes_mut` (or any other
+    /// `*_mut` body reader), this returns the cached bytes. If the body was
+    /// taken by `into_parts` (the legacy FormRequest extraction path), this
+    /// returns an error.
     pub async fn body_bytes(self) -> Result<(RequestParts, Bytes), FrameworkError> {
         let content_type = self
-            .inner
-            .headers()
+            .parts
+            .headers
             .get("content-type")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
 
         let params = self.params;
-        let bytes = collect_body(self.inner.into_body()).await?;
+        let bytes = match self.body {
+            BodyState::Pending(body) => collect_body(body).await?,
+            BodyState::Cached(bytes) => bytes,
+            BodyState::Consumed => {
+                return Err(FrameworkError::internal(
+                    "Request body already consumed — cannot read body_bytes after into_parts",
+                ));
+            }
+        };
 
         Ok((
             RequestParts {
@@ -450,20 +512,35 @@ impl Request {
     /// ```
     pub async fn multipart(self) -> Result<super::multipart::MultipartForm, FrameworkError> {
         let content_type = self
-            .inner
-            .headers()
+            .parts
+            .headers
             .get("content-type")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string())
             .unwrap_or_default();
-        let body = self.inner.into_body();
-        super::multipart::parse_multipart_body(
-            body,
-            &content_type,
-            super::multipart::max_file_bytes(),
-            super::multipart::max_fields(),
-        )
-        .await
+        match self.body {
+            BodyState::Pending(body) => {
+                super::multipart::parse_multipart_body(
+                    body,
+                    &content_type,
+                    super::multipart::max_file_bytes(),
+                    super::multipart::max_fields(),
+                )
+                .await
+            }
+            BodyState::Cached(bytes) => {
+                super::multipart::parse_multipart_bytes(
+                    bytes,
+                    &content_type,
+                    super::multipart::max_file_bytes(),
+                    super::multipart::max_fields(),
+                )
+                .await
+            }
+            BodyState::Consumed => Err(FrameworkError::internal(
+                "Request body already consumed — cannot read multipart after into_parts",
+            )),
+        }
     }
 
     /// Parse the body as multipart/form-data and return the first file
@@ -513,19 +590,32 @@ impl Request {
         }
     }
 
-    /// Consume the request and return its parts along with the inner hyper request body
+    /// Consume the request and return its parts along with the inner hyper request body.
     ///
-    /// This is used internally by the handler macro for FormRequest extraction.
+    /// Used internally by the handler macro for FormRequest extraction.
+    /// Panics if the body has already been read by a `*_mut` method or `body_bytes`
+    /// — FormRequest paths must own a fresh hyper body. This is consistent with
+    /// the pre-Phase-180 contract: a request flows into exactly one of the two
+    /// extraction paths.
     pub fn into_parts(self) -> (RequestParts, hyper::body::Incoming) {
         let content_type = self
-            .inner
-            .headers()
+            .parts
+            .headers
             .get("content-type")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
 
         let params = self.params;
-        let body = self.inner.into_body();
+        let body = match self.body {
+            BodyState::Pending(body) => body,
+            BodyState::Cached(_) => panic!(
+                "Request::into_parts called after body was read via a *_mut method; \
+                 FormRequest extraction requires a fresh hyper body."
+            ),
+            BodyState::Consumed => panic!(
+                "Request::into_parts called twice; FormRequest extraction requires a fresh hyper body."
+            ),
+        };
 
         (
             RequestParts {
@@ -534,6 +624,116 @@ impl Request {
             },
             body,
         )
+    }
+
+    // ── `*_mut` body readers — usable inside `#[action]`-decorated handlers ──
+    //
+    // The `#[action]` proc-macro binds the user's `req` parameter as
+    // `&mut Request`. The legacy `self`-consuming body readers (`body_bytes`,
+    // `form`, `multipart`, `file`, `json`, `input`) cannot be called on a
+    // mutable reference. The methods below are `&mut self`-compatible
+    // equivalents that cache the body bytes on first read so subsequent
+    // calls return the same payload.
+    //
+    // Each method delegates to `body_bytes_mut` for the actual body collection,
+    // then re-parses the cached bytes for its specific content type. The cache
+    // makes second/third calls a near-zero-cost `Bytes::clone()` (which only
+    // bumps a refcount, no allocation).
+
+    /// Collect the request body as bytes — `&mut self` variant.
+    ///
+    /// First call drains the body from the wire and caches it on `self`.
+    /// Subsequent calls return clones of the cached bytes (refcount bump).
+    /// Returns an error if the body was already taken by `into_parts`.
+    ///
+    /// Use this inside `#[action]`-decorated handlers where `req: &mut Request`.
+    pub async fn body_bytes_mut(&mut self) -> Result<Bytes, FrameworkError> {
+        if let BodyState::Cached(bytes) = &self.body {
+            return Ok(bytes.clone());
+        }
+        // Take ownership of the body state so we can consume the Incoming.
+        let prev = std::mem::replace(&mut self.body, BodyState::Consumed);
+        let bytes = match prev {
+            BodyState::Pending(body) => collect_body(body).await?,
+            BodyState::Cached(bytes) => bytes,
+            BodyState::Consumed => {
+                return Err(FrameworkError::internal(
+                    "Request body already consumed — cannot read body_bytes_mut after into_parts",
+                ));
+            }
+        };
+        self.body = BodyState::Cached(bytes.clone());
+        Ok(bytes)
+    }
+
+    /// Parse the body as JSON — `&mut self` variant.
+    ///
+    /// First call drains and caches; subsequent calls re-parse cached bytes.
+    pub async fn json_mut<T: DeserializeOwned>(&mut self) -> Result<T, FrameworkError> {
+        let bytes = self.body_bytes_mut().await?;
+        parse_json(&bytes)
+    }
+
+    /// Parse the body as form-urlencoded — `&mut self` variant.
+    pub async fn form_mut<T: DeserializeOwned>(&mut self) -> Result<T, FrameworkError> {
+        let bytes = self.body_bytes_mut().await?;
+        parse_form(&bytes)
+    }
+
+    /// Parse the body based on Content-Type — `&mut self` variant.
+    /// Mirrors `input(self)` semantics: form-urlencoded → form, everything else → JSON.
+    pub async fn input_mut<T: DeserializeOwned>(&mut self) -> Result<T, FrameworkError> {
+        let content_type = self
+            .parts
+            .headers
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+        let bytes = self.body_bytes_mut().await?;
+        match content_type.as_deref() {
+            Some(ct) if ct.starts_with("application/x-www-form-urlencoded") => parse_form(&bytes),
+            _ => parse_json(&bytes),
+        }
+    }
+
+    /// Parse the body as `multipart/form-data` — `&mut self` variant.
+    ///
+    /// Each call re-parses the multipart structure from the cached bytes, so
+    /// calling this twice returns two independent `MultipartForm` values.
+    /// Per-field and per-request limits read from `UPLOAD_MAX_SIZE_MB`
+    /// and `UPLOAD_MAX_FIELDS` (same as the legacy `multipart(self)`).
+    pub async fn multipart_mut(&mut self) -> Result<super::multipart::MultipartForm, FrameworkError> {
+        let content_type = self
+            .parts
+            .headers
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+        let bytes = self.body_bytes_mut().await?;
+        super::multipart::parse_multipart_bytes(
+            bytes,
+            &content_type,
+            super::multipart::max_file_bytes(),
+            super::multipart::max_fields(),
+        )
+        .await
+    }
+
+    /// Parse the body as multipart and return the first file under `field` —
+    /// `&mut self` variant.
+    pub async fn file_mut(
+        &mut self,
+        field: &str,
+    ) -> Result<Option<super::multipart::UploadedFile>, FrameworkError> {
+        let mut form = self.multipart_mut().await?;
+        Ok(form.files_map.remove(field).and_then(|mut v| {
+            if v.is_empty() {
+                None
+            } else {
+                Some(v.swap_remove(0))
+            }
+        }))
     }
 }
 

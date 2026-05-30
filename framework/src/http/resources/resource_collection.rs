@@ -74,7 +74,7 @@ impl<T: Resource> ResourceCollection<T> {
 
         if let Some(meta) = &self.pagination {
             let path = req.path();
-            let query = req.inner().uri().query();
+            let query = req.uri().query();
             let links = meta.links(path, query);
 
             if let Some(obj) = response.as_object_mut() {
