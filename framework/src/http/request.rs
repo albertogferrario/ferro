@@ -14,6 +14,9 @@ pub struct Request {
     extensions: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
     /// Route pattern for metrics (e.g., "/users/{id}" instead of "/users/123")
     route_pattern: Option<String>,
+    /// Success-side overrides recorded by `req.flash(...)` / `req.redirect_to(...)`.
+    /// Read by the `#[action]` macro runtime after the handler body returns.
+    action_overrides: crate::http::action::ActionOverrides,
 }
 
 impl Request {
@@ -24,6 +27,7 @@ impl Request {
             params: HashMap::new(),
             extensions: HashMap::new(),
             route_pattern: None,
+            action_overrides: crate::http::action::ActionOverrides::default(),
         }
     }
 
@@ -530,6 +534,45 @@ impl Request {
             },
             body,
         )
+    }
+}
+
+impl Request {
+    /// Record a success-side flash key for the `#[action]` macro runtime to write
+    /// to the session `_action` flash slot when the handler returns `Ok(())`.
+    ///
+    /// Has no observable effect outside an `#[action]`-decorated handler.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// #[action(redirect_to = "/dashboard/pagine")]
+    /// pub async fn create(req: Request) -> ActionResult {
+    ///     let new_id = Page::create(...).await?;
+    ///     req.redirect_to(format!("/dashboard/pagine/{new_id}"));
+    ///     req.flash("created");
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn flash(&mut self, key: impl Into<String>) {
+        self.action_overrides.flash = Some(key.into());
+    }
+
+    /// Record a success-side redirect override for the `#[action]` macro runtime
+    /// to apply when the handler returns `Ok(())`. The URL is validated as
+    /// same-origin (must start with `/`) when applied — external URLs are
+    /// silently rejected (T-180-02).
+    ///
+    /// Has no observable effect outside an `#[action]`-decorated handler.
+    pub fn redirect_to(&mut self, url: impl Into<String>) {
+        self.action_overrides.redirect_override = Some(url.into());
+    }
+
+    /// Internal — read by the `#[action]` macro runtime to apply recorded overrides.
+    // Called from handle_action_result in action.rs; no external call site exists until Plan 03.
+    #[allow(dead_code)]
+    pub(crate) fn action_overrides(&self) -> &crate::http::action::ActionOverrides {
+        &self.action_overrides
     }
 }
 
