@@ -19,3 +19,13 @@ syn = { version = "2", features = ["full", "parsing"] }
 serde = { version = "1", features = ["derive"] }
 serde_derive_internals = "0.29"
 regex = "1"
+
+[dev-dependencies]
+trybuild = "1"
+# The framework crate is needed to expand the `#[action]` macro inside
+# `tests/action_macro.rs` — the test harness imports `ferro_rs as ferro`
+# so the generated code's `::ferro::Request` / `::ferro::ActionResult` /
+# `::ferro::http::handle_action_result` paths resolve.
+ferro-rs = { path = "../framework", version = "0.2" }
+tokio = { version = "1", features = ["macros", "rt"] }
+serde_json = { version = "1" }
