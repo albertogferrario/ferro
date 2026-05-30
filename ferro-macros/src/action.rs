@@ -259,7 +259,13 @@ pub fn action_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
             let mut __ferro_req = __ferro_req;
             let __ferro_params = __ferro_req.params().clone();
             #(#extractions)*
-            let __action_result: #ferro::ActionResult = { #fn_block };
+            // The body runs inside an `async move` block so the `?` operator
+            // propagates to ActionResult (the block's inferred Output), not to
+            // the outer Response-returning fn. Without this wrapping `?` would
+            // try to convert errors via `From<E> for HttpResponse`, defeating
+            // the killer-feature ergonomics of `?` on `String`, `FrameworkError`,
+            // and `sea_orm::DbErr`.
+            let __action_result: #ferro::ActionResult = async move { #fn_block }.await;
             #ferro::http::action::handle_action_result(
                 __action_result,
                 #redirect_to_lit,

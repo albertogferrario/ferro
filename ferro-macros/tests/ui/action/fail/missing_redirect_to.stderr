@@ -1,0 +1,7 @@
+error: #[action]: `redirect_to` is required, e.g. #[action(redirect_to = "/dashboard/foo")]
+ --> tests/ui/action/fail/missing_redirect_to.rs:9:1
+  |
+9 | #[action]
+  | ^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `action` (in Nightly builds, run with -Z macro-backtrace for more info)

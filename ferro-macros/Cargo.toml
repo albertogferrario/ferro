@@ -19,3 +19,9 @@ syn = { version = "2", features = ["full", "parsing"] }
 serde = { version = "1", features = ["derive"] }
 serde_derive_internals = "0.29"
 regex = "1"
+
+[dev-dependencies]
+trybuild = "1"
+ferro-rs = { path = "../framework" }
+tokio = { version = "1", features = ["macros", "rt"] }
+sea-orm = { version = "1.0", default-features = false }

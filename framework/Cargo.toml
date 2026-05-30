@@ -78,3 +78,6 @@ tracing = "0.1"
 [dev-dependencies]
 serial_test = "3"
 tempfile = "3"
+# Integration test helpers (action_handler.rs uses TCP-loopback Request constructor).
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"

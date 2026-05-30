@@ -1,0 +1,5 @@
+error: #[action]: unknown attribute `banana` — supported keys: `redirect_to`, `method`
+ --> tests/ui/action/fail/unknown_attr_key.rs:9:38
+  |
+9 | #[action(redirect_to = "/dashboard", banana = "yellow")]
+  |                                      ^^^^^^
