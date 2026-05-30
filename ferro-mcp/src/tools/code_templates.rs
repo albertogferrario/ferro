@@ -288,6 +288,50 @@ pub async fn destroy(req: Request, id: Path<i32>) -> Response {
             ],
         },
         CodeTemplate {
+            name: "action_handler".to_string(),
+            category: "handler".to_string(),
+            description: "POST action handler that mutates state and redirects on every code path. \
+                          Uses #[action] for typed Result<(), ActionError> ergonomics — bare `?` on most error \
+                          types, success-side overrides via req.flash(...) / req.redirect_to(...), and an \
+                          automatic 303 redirect with session flash and back-compat query string.".to_string(),
+            code: r#"#[action(redirect_to = "/dashboard/{{resource}}")]
+pub async fn {{action}}(req: Request) -> ActionResult {
+    let id: i64 = req.param("id")?.parse()?;
+    let record = {{Entity}}::find_by_id(id).await?
+        .ok_or(ActionError::not_found("{{Entity}} not found"))?;
+    // perform mutation here
+    record.save().await?;
+    Ok(())
+}"#
+            .to_string(),
+            imports: vec![
+                "use ferro::{action, ActionError, ActionResult, Request};".to_string(),
+                "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
+            ],
+            placeholders: vec![
+                Placeholder {
+                    name: "{{resource}}".to_string(),
+                    description: "Dashboard resource path segment (snake_case or kebab-case).".to_string(),
+                    example: "pages".to_string(),
+                },
+                Placeholder {
+                    name: "{{action}}".to_string(),
+                    description: "Handler function name (snake_case).".to_string(),
+                    example: "publish_by_id".to_string(),
+                },
+                Placeholder {
+                    name: "{{Entity}}".to_string(),
+                    description: "Model name in PascalCase.".to_string(),
+                    example: "Page".to_string(),
+                },
+                Placeholder {
+                    name: "{{entity}}".to_string(),
+                    description: "Model name in snake_case (module path segment).".to_string(),
+                    example: "page".to_string(),
+                },
+            ],
+        },
+        CodeTemplate {
             name: "inertia_handler".to_string(),
             category: "handler".to_string(),
             description: "Render Inertia component with props".to_string(),
@@ -1614,6 +1658,44 @@ mod tests {
         assert!(
             templates.templates.is_empty(),
             "Unknown category should return empty"
+        );
+    }
+
+    #[test]
+    fn action_handler_template_registered() {
+        let templates = handler_templates();
+        let names: Vec<&str> = templates.iter().map(|t| t.name.as_str()).collect();
+        assert!(
+            names.contains(&"action_handler"),
+            "action_handler template missing from handler_templates(); got: {names:?}"
+        );
+        let tmpl = templates
+            .iter()
+            .find(|t| t.name == "action_handler")
+            .unwrap();
+        assert_eq!(tmpl.category, "handler");
+        assert!(
+            tmpl.code.contains("#[action(redirect_to"),
+            "template body must contain #[action(redirect_to"
+        );
+        assert!(
+            tmpl.code.contains("ActionResult"),
+            "template body must reference ActionResult"
+        );
+        assert!(
+            tmpl.imports.iter().any(|i| i.contains("action")
+                && i.contains("ActionError")
+                && i.contains("ActionResult")
+                && i.contains("Request")),
+            "imports must list action, ActionError, ActionResult, Request"
+        );
+        assert!(
+            !tmpl.imports.iter().any(|i| i.contains("ActionOk")),
+            "imports must not contain ActionOk (D-02 revised)"
+        );
+        assert!(
+            !tmpl.code.contains("/accedi"),
+            "template must not contain consumer-specific path /accedi (D-08)"
         );
     }
 }
