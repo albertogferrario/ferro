@@ -800,19 +800,19 @@ The `#[action]` macro is imported as `use ferro_macros::action;` or via `ferro` 
 
 ---
 
-## 9. Open Questions for the Planner
+## 9. Open Questions (RESOLVED)
 
-**(OQ-A) Does `impl<T: IntoActionError> From<T> for ActionError` compile cleanly on stable alongside concrete `From<FrameworkError>`?**
+**(OQ-A) Does `impl<T: IntoActionError> From<T> for ActionError` compile cleanly on stable alongside concrete `From<FrameworkError>`? — RESOLVED**
 
-Research shows this produces E0119 (conflicting implementations of `From<T>`) because `FrameworkError: IntoActionError` (it implements `Display`) and `FrameworkError` matches the blanket. The planner MUST verify this compiles — or use the concrete-only `From` approach documented in section 4.7. Do NOT assume the blanket `From` + concrete `From` pattern compiles; test it before committing the type design.
+**Resolution:** Concrete `From` impls only. NO blanket `impl<T: IntoActionError> From<T> for ActionError`. The blanket conflicts with concrete `From<FrameworkError>` / `From<String>` / `From<&'static str>` / `From<sea_orm::DbErr>` under E0119 because each concrete type implements `Display` and thus matches the blanket. Plan 01 encodes the four concrete impls. `IntoActionError` is provided as a trait with an `.into_action_error()` shim method (extension trait) for the long tail of `Display` types; users invoke it explicitly (`.map_err(IntoActionError::into_action_error)?`) when `?` would not work directly. See section 4.7 for the full type design.
 
-**(OQ-B) Does `::tracing::error!` in macro-generated code resolve in user application crates?**
+**(OQ-B) Does `::tracing::error!` in macro-generated code resolve in user application crates? — RESOLVED**
 
-User application crates depend on `ferro`, which depends on `tracing`. On stable Rust, `::tracing::error!` in generated code resolves only if `tracing` is reachable from the crate root of the _application_ crate — which it is, transitively, via `ferro → framework → tracing`. However, `tracing` macros use `$crate` internally, so `::tracing::error!` emitted from a proc-macro expands in the _call site_ crate's namespace. The call site is the user's application, which has `tracing` transitively. This should work but needs a compile test to confirm.
+**Resolution:** `tracing::error!` is NOT emitted from the proc-macro token stream. Instead, the macro generates a call to the runtime helper `::ferro::handle_action_result(__result, redirect_to, handler_name)` and the `tracing::error!` invocation lives inside that runtime helper in the `framework` crate. This sidesteps any `$crate` / call-site resolution concerns because `tracing` resolves at the `framework` crate's own root, where it is a direct dependency. Plan 01 places the `tracing::error!` call in `handle_action_result`; Plan 03 only emits a call to the helper.
 
-**(OQ-C) Where does the proc-macro `#[action]` re-export land in `framework/src/lib.rs`?**
+**(OQ-C) Where does the proc-macro `#[action]` re-export land in `framework/src/lib.rs`? — RESOLVED**
 
-The existing `#[handler]` macro is likely re-exported via `pub use ferro_macros::handler;` somewhere — verify this in `lib.rs` (the read only covered to line 199 of lib.rs; the file may be longer). If proc-macros are NOT re-exported from `framework`, the user would write `use ferro_macros::action;` separately. Resolve this during implementation by grepping lib.rs for `ferro_macros`.
+**Resolution:** `pub use ferro_macros::action;` lands in `framework/src/lib.rs` in the same `pub use ferro_macros::*;` block that already re-exports `#[handler]` (PATTERNS.md confirmed the re-export line for `handler` exists around lines 310-322; Plan 03 Task 2 adds `action` to that block). Consumers consequently write `use ferro::action;` — no separate `ferro_macros` dependency is required in application crates.
 
 ---
 
