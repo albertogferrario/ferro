@@ -17,20 +17,23 @@ Most handlers hand the framework a `ValidationError` value and let it plumb mess
 **GET handler — re-render after a validation failure:**
 
 ```rust
-use ferro::{JsonUi, ValidationError};
+use ferro::{JsonUi, session};
 use ferro_json_ui::{Element, Spec};
+use std::collections::HashMap;
 
 #[handler]
 pub async fn show(req: Request) -> Response {
     let spec = build_spec(&req);
     let data = serde_json::json!({});
 
-    let ve = ValidationError::default();
-    JsonUi::render_validation_error(&spec, &data, &ve)
+    let errors: HashMap<String, Vec<String>> = session()
+        .and_then(|s| s.get("_flash.old._validation_errors"))
+        .unwrap_or_default();
+    JsonUi::render_with_errors(&spec, &data, &errors)
 }
 ```
 
-In practice the `ValidationError` value comes from the session flash written by the POST handler (see Flash Round-Trip below). The blessed path reads it automatically from `_flash.old._validation_errors` when you use `render_validation_error`.
+The handler reads the validation errors map from the session flash (written by the POST handler — see Flash Round-Trip below) and passes it explicitly to `render_with_errors`. The framework then matches field names against the spec's form-control elements and populates each matching `error` prop. When no errors were flashed, `unwrap_or_default()` produces an empty map and the form renders without error state.
 
 **POST handler — detect and redirect on failure:**
 
