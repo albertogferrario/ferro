@@ -867,6 +867,55 @@ mod tests {
         );
     }
 
+    // ── Checkbox ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn checkbox_error_renders_destructive_class_and_aria() {
+        let el = mk_element(
+            "Checkbox",
+            json!({"field": "agreed", "label": "Agree", "error": "required"}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_checkbox(&el, &spec, &json!({}), 1);
+
+        // Pitfall 3 guard: border-destructive must be ON the <input>, not on an outer <div>.
+        let input_pos = html
+            .find("<input type=\"checkbox\"")
+            .expect("<input type=\"checkbox\" not found in rendered output");
+        let input_close_rel = html[input_pos..]
+            .find('>')
+            .expect("closing > for <input> not found");
+        let input_tag = &html[input_pos..=(input_pos + input_close_rel)];
+        assert!(
+            input_tag.contains("border-destructive"),
+            "border-destructive must be on the <input> tag itself; input tag: {input_tag}"
+        );
+        assert!(
+            input_tag.contains("focus-visible:ring-destructive"),
+            "focus-visible:ring-destructive must be on the <input>; input tag: {input_tag}"
+        );
+        assert!(
+            input_tag.contains("aria-invalid=\"true\""),
+            "aria-invalid must be on the <input>; input tag: {input_tag}"
+        );
+        assert!(
+            input_tag.contains("aria-describedby=\"err-agreed\""),
+            "aria-describedby must be on the <input>; input tag: {input_tag}"
+        );
+
+        // Locked error <p> DOM shape per UI-SPEC.md.
+        assert!(
+            html.contains("<p id=\"err-agreed\" class=\"ml-6 text-sm text-destructive\">required</p>"),
+            "error <p> must have id=\"err-agreed\" and locked class chain; got: {html}"
+        );
+
+        // Diagnostic-comment guard (RESEARCH Pattern Map §Decode-Failure).
+        assert!(
+            !html.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments in happy path; got: {html}"
+        );
+    }
+
     // ── Select ───────────────────────────────────────────────────────────
 
     #[test]
