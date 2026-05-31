@@ -765,27 +765,20 @@ mod tests {
 
     use std::collections::HashMap;
 
-    /// A form spec with two Input children identified by field name. The
-    /// v2 walker renders each Input with its `props.errors` array, which
-    /// `resolve_errors` populates per-field before render. Error strings
-    /// surface both in the rendered Input markup and (for JSON handlers)
-    /// in the serialized spec under `data-view`.
+    /// A form spec with two Input children identified by field name.
+    /// `resolve_errors` populates per-field `error` props before render.
+    /// Error strings surface as `<p id="err-{field}">` elements in the
+    /// rendered HTML.
     fn form_spec_with_inputs() -> Spec {
-        let action = Action {
-            handler: ferro_json_ui::action::ActionHandler::Literal("users.store".to_string()),
-            url: None,
-            method: HttpMethod::Post,
-            confirm: None,
-            on_success: None,
-            on_error: None,
-            target: None,
-        };
         Spec::builder()
             .title("Create User")
             .element(
                 "form",
                 Element::new("Form")
-                    .action(action)
+                    .prop(
+                        "action",
+                        serde_json::json!({"handler": "/users", "method": "POST"}),
+                    )
                     .child("name-input")
                     .child("email-input"),
             )

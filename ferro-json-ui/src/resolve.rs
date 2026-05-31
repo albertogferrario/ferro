@@ -188,10 +188,9 @@ fn attach_errors(el: &mut Element, errors: &HashMap<String, Vec<String>>, all: b
         .map(String::from);
     if let Some(k) = key {
         if let Some(msgs) = errors.get(&k) {
-            props_obj.insert(
-                "errors".to_string(),
-                Value::Array(msgs.iter().cloned().map(Value::String).collect()),
-            );
+            if let Some(first) = msgs.first() {
+                props_obj.insert("error".to_string(), Value::String(first.clone()));
+            }
         }
     } else if all {
         if let Ok(errors_value) = serde_json::to_value(errors) {
@@ -794,8 +793,8 @@ mod tests {
         resolve_errors(&mut spec, &errors);
 
         let el = spec.elements.get("email").unwrap();
-        let err_val = el.props.as_object().unwrap().get("errors").unwrap();
-        assert_eq!(err_val, &serde_json::json!(["required"]));
+        let err_val = el.props.as_object().unwrap().get("error").unwrap();
+        assert_eq!(err_val, &serde_json::json!("required"));
     }
 
     #[test]
@@ -811,8 +810,8 @@ mod tests {
         resolve_errors(&mut spec, &errors);
 
         let el = spec.elements.get("email").unwrap();
-        let err_val = el.props.as_object().unwrap().get("errors").unwrap();
-        assert_eq!(err_val, &serde_json::json!(["required"]));
+        let err_val = el.props.as_object().unwrap().get("error").unwrap();
+        assert_eq!(err_val, &serde_json::json!("required"));
     }
 
     #[test]
