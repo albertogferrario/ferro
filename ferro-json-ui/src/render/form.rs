@@ -1011,6 +1011,57 @@ mod tests {
         assert!(!html.contains("<!-- ferro-json-ui:"), "no diagnostic comments; got: {html}");
     }
 
+    #[test]
+    fn switch_error_renders_destructive_ring_and_aria() {
+        let el = mk_element(
+            "Switch",
+            json!({"field": "notify", "label": "Notify me", "error": "required"}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_switch(&el, &spec, &json!({}), 1);
+
+        // Hidden checkbox <input> must carry aria-invalid + aria-describedby.
+        // We isolate the hidden input (it has class "sr-only peer") to make sure the
+        // ARIA is on the form control element, not on a sibling div.
+        let input_pos = html
+            .find("<input")
+            .expect("<input not found in rendered output");
+        let input_close_rel = html[input_pos..]
+            .find('>')
+            .expect("closing > for <input> not found");
+        let input_tag = &html[input_pos..=(input_pos + input_close_rel)];
+        assert!(
+            input_tag.contains("sr-only peer"),
+            "the first <input> should be the hidden sr-only peer; tag: {input_tag}"
+        );
+        assert!(
+            input_tag.contains("aria-invalid=\"true\""),
+            "aria-invalid must be on the hidden <input>; tag: {input_tag}"
+        );
+        assert!(
+            input_tag.contains("aria-describedby=\"err-notify\""),
+            "aria-describedby must be on the hidden <input>; tag: {input_tag}"
+        );
+
+        // The visible pill <div> must carry peer-focus:ring-destructive/30, NOT primary.
+        assert!(
+            html.contains("peer-focus:ring-destructive/30"),
+            "pill must carry peer-focus:ring-destructive/30; got: {html}"
+        );
+        assert!(
+            !html.contains("peer-focus:ring-primary/30"),
+            "pill must NOT carry peer-focus:ring-primary/30 when has_error; got: {html}"
+        );
+
+        // Locked error <p> DOM shape per UI-SPEC.md.
+        assert!(
+            html.contains("<p id=\"err-notify\" class=\"text-sm text-destructive\">required</p>"),
+            "error <p> must have id=\"err-notify\" and locked class chain; got: {html}"
+        );
+
+        assert!(!html.contains("<!-- ferro-json-ui:"), "no diagnostic comments; got: {html}");
+    }
+
     // ── Select ───────────────────────────────────────────────────────────
 
     #[test]
