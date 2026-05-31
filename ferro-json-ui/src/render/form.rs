@@ -591,7 +591,7 @@ pub(crate) fn render_checkbox_list(
     }
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
-            "<p class=\"text-sm text-muted-foreground mb-2\">{}</p>",
+            "<p class=\"text-sm text-text-muted mb-2\">{}</p>",
             html_escape(desc)
         ));
     }
