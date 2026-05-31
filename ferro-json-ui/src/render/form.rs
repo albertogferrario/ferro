@@ -444,6 +444,14 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
 
     let is_checked = resolve_checked(props.checked, props.data_path.as_deref(), data);
 
+    let has_error = props.error.is_some();
+    let border_class = if has_error { "border-destructive" } else { "border-border" };
+    let focus_ring_class = if has_error {
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+    } else {
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    };
+
     let value_attr = props.value.as_deref().unwrap_or("1");
     let checkbox_id = match &props.value {
         Some(v) => format!("{}_{}", props.field, v),
@@ -453,10 +461,12 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
     let mut html = String::from("<div class=\"space-y-1\">");
     html.push_str("<div class=\"flex items-center gap-2\">");
     html.push_str(&format!(
-        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm border-border text-primary transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\"",
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm {} text-primary transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
         html_escape(&checkbox_id),
         html_escape(&props.field),
-        html_escape(value_attr)
+        html_escape(value_attr),
+        border_class,
+        focus_ring_class,
     ));
     if is_checked {
         html.push_str(" checked");
@@ -466,6 +476,12 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
     }
     if props.disabled == Some(true) {
         html.push_str(" disabled");
+    }
+    if has_error {
+        html.push_str(&format!(
+            " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
+            html_escape(&props.field)
+        ));
     }
     html.push('>');
     html.push_str(&format!(
@@ -484,7 +500,8 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
 
     if let Some(ref error) = props.error {
         html.push_str(&format!(
-            "<p class=\"ml-6 text-sm text-destructive\">{}</p>",
+            "<p id=\"err-{}\" class=\"ml-6 text-sm text-destructive\">{}</p>",
+            html_escape(&props.field),
             html_escape(error)
         ));
     }
