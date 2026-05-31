@@ -760,8 +760,7 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
     }
     html.push('>');
     html.push_str(&format!(
-        "<div class=\"w-11 h-6 bg-border rounded-full peer peer-checked:bg-primary {} after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>",
-        peer_ring_class
+        "<div class=\"w-11 h-6 bg-border rounded-full peer peer-checked:bg-primary {peer_ring_class} after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>",
     ));
     html.push_str("</label>");
     html.push_str("</div>");
