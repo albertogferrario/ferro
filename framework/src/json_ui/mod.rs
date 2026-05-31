@@ -212,7 +212,8 @@ impl JsonUi {
     /// If `data` is non-null, it takes precedence over the spec's embedded data.
     /// If `data` is null, falls back to the spec's `.data` field.
     pub fn render_json(spec: &Spec, data: &serde_json::Value) -> Response {
-        let spec = Self::resolve(spec);
+        let spec_with_data = spec.clone().merge_data(data.clone());
+        let spec = Self::resolve(&spec_with_data);
         let effective_data = if data.is_null() { &spec.data } else { data };
         let payload = serde_json::json!({
             "spec": spec,
@@ -279,7 +280,8 @@ impl JsonUi {
         data: &serde_json::Value,
         errors: &HashMap<String, Vec<String>>,
     ) -> Response {
-        let spec = Self::resolve_with_errors(spec, errors);
+        let spec_with_data = spec.clone().merge_data(data.clone());
+        let spec = Self::resolve_with_errors(&spec_with_data, errors);
         let effective_data = if data.is_null() { &spec.data } else { data };
         let payload = serde_json::json!({
             "spec": spec,
