@@ -901,6 +901,68 @@ mod tests {
         assert!(!body.contains("<!-- ferro-json-ui:"), "no diagnostic comments in happy path; got: {body}");
     }
 
+    // D-07a: manual $data binding path — runtime handler data → error <p>
+    #[test]
+    fn pipeline_data_binding_error_prop_renders_p_tag() {
+        let spec = Spec::builder()
+            .element(
+                "email-input",
+                Element::new("Input")
+                    .prop("field", "email")
+                    .prop("label", "Email")
+                    .prop("error", serde_json::json!({"$data": "/email_error"})),
+            )
+            .build()
+            .expect("spec is valid");
+
+        let data = serde_json::json!({"email_error": "must be valid"});
+        let result = JsonUi::render(&spec, &data);
+        let body = html_body(ok_response(result));
+
+        assert!(
+            body.contains(r#"<p id="err-email" class="text-sm text-destructive">must be valid</p>"#),
+            "error paragraph must appear below the input; got: {body}"
+        );
+        assert!(
+            !body.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments in happy path; got: {body}"
+        );
+    }
+
+    // D-07b: blessed render_validation_error path → error <p>
+    #[test]
+    fn pipeline_render_validation_error_renders_p_tag() {
+        let spec = Spec::builder()
+            .element(
+                "email-input",
+                Element::new("Input")
+                    .prop("field", "email")
+                    .prop("label", "Email"),
+            )
+            .build()
+            .expect("spec is valid");
+
+        let mut ve = crate::validation::ValidationError::new();
+        ve.add("email", "must be valid");
+
+        let data = serde_json::json!({});
+        let result = JsonUi::render_validation_error(&spec, &data, &ve);
+        let body = html_body(ok_response(result));
+
+        assert!(
+            body.contains(r#"<p id="err-email" class="text-sm text-destructive">must be valid</p>"#),
+            "error paragraph must appear below the input; got: {body}"
+        );
+        assert!(
+            body.contains(r#"aria-invalid="true""#),
+            "aria-invalid must be set on the input; got: {body}"
+        );
+        assert!(
+            !body.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments in happy path; got: {body}"
+        );
+    }
+
     #[test]
     fn render_with_errors_preserves_action_resolution() {
         crate::routing::register_route_name("users.store", "/users");
