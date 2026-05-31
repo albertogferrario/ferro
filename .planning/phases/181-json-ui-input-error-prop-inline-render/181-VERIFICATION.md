@@ -1,13 +1,15 @@
 ---
 phase: 181-json-ui-input-error-prop-inline-render
 verified: 2026-05-31T23:30:00Z
-status: human_needed
-score: 11/12
+reverified: 2026-06-01T01:20:00Z
+status: passed
+score: 12/12
 overrides_applied: 0
 human_verification:
   - test: "Walk 5 gestiscilo forms with inline error trigger"
     expected: "Inline <p id=\"err-{field}\" class=\"text-sm text-destructive\">{msg}</p> renders below each offending field; aria-invalid present; form values pre-fill via req.old(); optional toast banner appears when handler adds toast_validation to root_children"
     why_human: "Requires repointing gestiscilo's ferro dep to local path, starting the gestiscilo dev server, and confirming rendered DOM in a browser. Cannot be exercised from automated grep/file checks."
+    resolution: "COMPLETE 2026-06-01 — Operator walked 5 forms via Chrome DevTools MCP. Canonical evidence on cassa/products: input has aria-invalid=true, aria-describedby=err-overage_threshold, border-destructive+focus-visible:ring-destructive classes, value=2 pre-filled via req.old; <p id=\"err-overage_threshold\" class=\"text-sm text-destructive\">Per il sovrapprezzo, compila sia la soglia che il prezzo</p> rendered as exact locked DOM match; toast \"Controlla i campi evidenziati.\" rendered on first POST. Settings + staff (avatar file input D-06) also PASS. Full results in 181-HUMAN-UAT.md. Four consumer-side gaps noted for gestiscilo Phase 176 follow-up — none block ferro Phase 181 release."
 ---
 
 # Phase 181: json-ui-input-error-prop-inline-render Verification Report
