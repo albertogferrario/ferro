@@ -107,6 +107,13 @@ consumer-side gaps (gestiscilo Phase 176 follow-up):
   severity: cosmetic
   repo: gestiscilo-it
   test: 6
+- truth: "Booking form per-item staff dropdowns (`staff_id_{idx}`) rendered as RawHtml bypass ferro JSON-UI Select entirely — no D-06 destructive ring, no aria-invalid, no inline <p id=\"err-staff_id_0\">. Any server-side staff validation error (eligibility, double-booking, etc.) would fall through to URL fallback flash instead of inline rendering."
+  status: open
+  severity: minor
+  repo: gestiscilo-it
+  test: post-UAT investigation
+  location: "app/src/controllers/calendario/bookings.rs:652-707 — RawHtml staff_per_item_html loop"
+  remediation: "Migrate from RawHtml string concat to a Repeat/Each composition of JSON-UI Select components (one per product). Inherits Phase 181 D-06 parity automatically + per-field ValidationError rendering."
 
 ferro Phase 181 verdict: VERIFIED — pipeline + form-control renderers + ARIA + id all work end-to-end in production against real gestiscilo handlers.
 
