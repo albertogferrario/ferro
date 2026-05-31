@@ -55,6 +55,7 @@
 - [Components](json-ui/components.md)
 - [Actions](json-ui/actions.md)
 - [Data Binding & Visibility](json-ui/data-binding.md)
+- [Form Validation](json-ui/forms.md)
 - [Layouts](json-ui/layouts.md)
 - [Plugins](json-ui/plugins.md)
 - [Spec construction](./json-ui/spec-construction.md)
