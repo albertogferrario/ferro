@@ -1919,7 +1919,7 @@ Plans:
 
 **Requirements**: D-01 .. D-09 (locked decisions in 181-CONTEXT.md)
 **Depends on:** None (touches resolve.rs pipeline + form renderers — independent of v12.0 closure phases)
-**Plans:** 5/8 plans executed
+**Plans:** 6/8 plans executed
 
 Plans:
 - [x] 181-01-PLAN.md — Wave 0 RED-state tests: 2 new pipeline integration tests + upgrade 2 existing tests to `html_body` + `<p id="err-` assertion (D-07)
@@ -1927,7 +1927,7 @@ Plans:
 - [x] 181-03-PLAN.md — D-06 Checkbox parity: `border-destructive` + `focus-visible:ring-destructive` + ARIA on `<input>`, `id="err-{field}"` on error `<p>` + new unit test
 - [x] 181-04-PLAN.md — D-06 CheckboxList parity: fieldset ARIA + per-option `border-destructive` + `id` on error `<p>` + new unit test
 - [x] 181-05-PLAN.md — D-06 Switch parity: `peer-focus:ring-destructive/30` on pill + ARIA on hidden `<input>` + `id` on error `<p>` + new unit test
-- [ ] 181-06-PLAN.md — D-06 Input (file) parity: `ring-1 ring-destructive` + ARIA + new unit test
+- [x] 181-06-PLAN.md — D-06 Input (file) parity: `ring-1 ring-destructive` + ARIA + new unit test
 - [ ] 181-07-PLAN.md — D-08 cross-repo gestiscilo audit (`rg` for plural `errors` reads) + manual UAT on 5 representative forms + full pre-commit gate
 - [ ] 181-08-PLAN.md — D-09 docs page `docs/src/json-ui/forms.md` covering the four authoring patterns (blessed / `$data` escape hatch / flash round-trip / cross-field summary) + SUMMARY.md navigation entry
 
