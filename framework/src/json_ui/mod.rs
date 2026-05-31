@@ -81,7 +81,8 @@ impl JsonUi {
         data: &serde_json::Value,
         config: &JsonUiConfig,
     ) -> Response {
-        let resolved = Self::resolve(spec);
+        let spec_with_data = spec.clone().merge_data(data.clone());
+        let resolved = Self::resolve(&spec_with_data);
         Self::build_response(&resolved, data, config)
     }
 
@@ -264,7 +265,8 @@ impl JsonUi {
         errors: &HashMap<String, Vec<String>>,
         config: &JsonUiConfig,
     ) -> Response {
-        let resolved = Self::resolve_with_errors(spec, errors);
+        let spec_with_data = spec.clone().merge_data(data.clone());
+        let resolved = Self::resolve_with_errors(&spec_with_data, errors);
         Self::build_response(&resolved, data, config)
     }
 
