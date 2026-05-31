@@ -927,6 +927,73 @@ mod tests {
         );
     }
 
+    #[test]
+    fn checkbox_list_error_renders_fieldset_aria() {
+        let el = mk_element(
+            "CheckboxList",
+            json!({
+                "field": "topics",
+                "label": "Topics",
+                "options": [
+                    {"value": "a", "label": "A"},
+                    {"value": "b", "label": "B"}
+                ],
+                "error": "pick at least one"
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_checkbox_list(&el, &spec, &json!({}), 1);
+
+        // Fieldset must carry the ARIA pairing.
+        let fieldset_pos = html
+            .find("<fieldset")
+            .expect("<fieldset not found in rendered output");
+        let fieldset_close_rel = html[fieldset_pos..]
+            .find('>')
+            .expect("closing > for <fieldset> not found");
+        let fieldset_tag = &html[fieldset_pos..=(fieldset_pos + fieldset_close_rel)];
+        assert!(
+            fieldset_tag.contains("aria-invalid=\"true\""),
+            "aria-invalid must be on <fieldset>; fieldset tag: {fieldset_tag}"
+        );
+        assert!(
+            fieldset_tag.contains("aria-describedby=\"err-topics\""),
+            "aria-describedby must be on <fieldset>; fieldset tag: {fieldset_tag}"
+        );
+
+        // Each per-option <input type="checkbox"> must carry border-destructive.
+        let input_count = html.matches("<input type=\"checkbox\"").count();
+        assert_eq!(input_count, 2, "expected 2 option inputs; got {input_count} in: {html}");
+        let destructive_input_count = html
+            .split("<input type=\"checkbox\"")
+            .skip(1)
+            .filter(|chunk| {
+                let close_rel = chunk.find('>').expect(">/closing not found in option input");
+                chunk[..close_rel].contains("border-destructive")
+            })
+            .count();
+        assert_eq!(
+            destructive_input_count, 2,
+            "both option inputs must carry border-destructive; got {destructive_input_count} of 2 in: {html}"
+        );
+
+        // Per-option inputs MUST NOT carry their own aria-invalid (group-level ARIA only).
+        // The single aria-invalid above on <fieldset> is the only occurrence we expect.
+        let aria_count = html.matches("aria-invalid=\"true\"").count();
+        assert_eq!(
+            aria_count, 1,
+            "aria-invalid should appear only on <fieldset> (count=1); got {aria_count} in: {html}"
+        );
+
+        // Locked error <p> DOM shape per UI-SPEC.md.
+        assert!(
+            html.contains("<p id=\"err-topics\" class=\"text-sm text-destructive mt-1\">pick at least one</p>"),
+            "error <p> must have id=\"err-topics\" and locked class chain; got: {html}"
+        );
+
+        assert!(!html.contains("<!-- ferro-json-ui:"), "no diagnostic comments; got: {html}");
+    }
+
     // ── Select ───────────────────────────────────────────────────────────
 
     #[test]
