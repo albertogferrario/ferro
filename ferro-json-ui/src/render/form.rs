@@ -636,6 +636,13 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
 
     let is_checked = resolve_checked(props.checked, props.data_path.as_deref(), data);
 
+    let has_error = props.error.is_some();
+    let peer_ring_class = if has_error {
+        "peer-focus:ring-2 peer-focus:ring-destructive/30"
+    } else {
+        "peer-focus:ring-2 peer-focus:ring-primary/30"
+    };
+
     let compact_class = if props.compact == Some(true) {
         " scale-75 origin-left"
     } else {
@@ -725,14 +732,24 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
     if props.disabled == Some(true) {
         html.push_str(" disabled");
     }
+    if has_error {
+        html.push_str(&format!(
+            " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
+            html_escape(&props.field)
+        ));
+    }
     html.push('>');
-    html.push_str("<div class=\"w-11 h-6 bg-border rounded-full peer peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>");
+    html.push_str(&format!(
+        "<div class=\"w-11 h-6 bg-border rounded-full peer peer-checked:bg-primary {} after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>",
+        peer_ring_class
+    ));
     html.push_str("</label>");
     html.push_str("</div>");
 
     if let Some(ref error) = props.error {
         html.push_str(&format!(
-            "<p class=\"text-sm text-destructive\">{}</p>",
+            "<p id=\"err-{}\" class=\"text-sm text-destructive\">{}</p>",
+            html_escape(&props.field),
             html_escape(error)
         ));
     }
