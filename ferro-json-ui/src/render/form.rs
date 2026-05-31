@@ -219,7 +219,11 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
             html.push_str(&format!(">{}</textarea>", html_escape(val)));
         }
         InputType::File => {
-            let file_ring_class = if has_error { " ring-1 ring-destructive" } else { "" };
+            let file_ring_class = if has_error {
+                " ring-1 ring-destructive"
+            } else {
+                ""
+            };
             html.push_str(&format!(
                 "<input type=\"file\" id=\"{}\" name=\"{}\" class=\"block w-full text-sm text-text file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-surface file:text-text hover:file:bg-surface/80{}\"",
                 html_escape(&props.field),
@@ -453,7 +457,11 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
     let is_checked = resolve_checked(props.checked, props.data_path.as_deref(), data);
 
     let has_error = props.error.is_some();
-    let border_class = if has_error { "border-destructive" } else { "border-border" };
+    let border_class = if has_error {
+        "border-destructive"
+    } else {
+        "border-border"
+    };
     let focus_ring_class = if has_error {
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
     } else {
@@ -587,7 +595,11 @@ pub(crate) fn render_checkbox_list(
             html_escape(desc)
         ));
     }
-    let checkbox_border = if has_error { "border-destructive" } else { "border-border" };
+    let checkbox_border = if has_error {
+        "border-destructive"
+    } else {
+        "border-border"
+    };
     for option in &options {
         let is_checked = selected.contains(&option.value);
         let checkbox_id = format!("{}_{}", props.field, option.value);
@@ -941,7 +953,9 @@ mod tests {
 
         // Locked error <p> DOM shape per UI-SPEC.md.
         assert!(
-            html.contains("<p id=\"err-agreed\" class=\"ml-6 text-sm text-destructive\">required</p>"),
+            html.contains(
+                "<p id=\"err-agreed\" class=\"ml-6 text-sm text-destructive\">required</p>"
+            ),
             "error <p> must have id=\"err-agreed\" and locked class chain; got: {html}"
         );
 
@@ -988,12 +1002,17 @@ mod tests {
 
         // Each per-option <input type="checkbox"> must carry border-destructive.
         let input_count = html.matches("<input type=\"checkbox\"").count();
-        assert_eq!(input_count, 2, "expected 2 option inputs; got {input_count} in: {html}");
+        assert_eq!(
+            input_count, 2,
+            "expected 2 option inputs; got {input_count} in: {html}"
+        );
         let destructive_input_count = html
             .split("<input type=\"checkbox\"")
             .skip(1)
             .filter(|chunk| {
-                let close_rel = chunk.find('>').expect(">/closing not found in option input");
+                let close_rel = chunk
+                    .find('>')
+                    .expect(">/closing not found in option input");
                 chunk[..close_rel].contains("border-destructive")
             })
             .count();
@@ -1016,7 +1035,10 @@ mod tests {
             "error <p> must have id=\"err-topics\" and locked class chain; got: {html}"
         );
 
-        assert!(!html.contains("<!-- ferro-json-ui:"), "no diagnostic comments; got: {html}");
+        assert!(
+            !html.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments; got: {html}"
+        );
     }
 
     #[test]
@@ -1067,7 +1089,10 @@ mod tests {
             "error <p> must have id=\"err-notify\" and locked class chain; got: {html}"
         );
 
-        assert!(!html.contains("<!-- ferro-json-ui:"), "no diagnostic comments; got: {html}");
+        assert!(
+            !html.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments; got: {html}"
+        );
     }
 
     #[test]
@@ -1108,11 +1133,16 @@ mod tests {
 
         // Shared error <p> already has id (form.rs:309-315) — confirm it survives.
         assert!(
-            html.contains("<p id=\"err-avatar\" class=\"text-sm text-destructive\">must be PNG</p>"),
+            html.contains(
+                "<p id=\"err-avatar\" class=\"text-sm text-destructive\">must be PNG</p>"
+            ),
             "shared error <p> must carry id and locked class chain; got: {html}"
         );
 
-        assert!(!html.contains("<!-- ferro-json-ui:"), "no diagnostic comments; got: {html}");
+        assert!(
+            !html.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments; got: {html}"
+        );
     }
 
     // ── Select ───────────────────────────────────────────────────────────

@@ -334,7 +334,8 @@ async fn make_request_with_body(content_type: &str, body: &'static [u8]) -> Requ
 
 #[tokio::test]
 async fn body_bytes_mut_reads_body() {
-    let mut req = make_request_with_body("application/x-www-form-urlencoded", b"name=alice&age=30").await;
+    let mut req =
+        make_request_with_body("application/x-www-form-urlencoded", b"name=alice&age=30").await;
     let bytes = req.body_bytes_mut().await.expect("body_bytes_mut succeeds");
     assert_eq!(&bytes[..], b"name=alice&age=30");
 }
@@ -343,7 +344,10 @@ async fn body_bytes_mut_reads_body() {
 async fn body_bytes_mut_is_idempotent_via_cache() {
     let mut req = make_request_with_body("application/x-www-form-urlencoded", b"x=1").await;
     let a = req.body_bytes_mut().await.expect("first read succeeds");
-    let b = req.body_bytes_mut().await.expect("second read succeeds (cached)");
+    let b = req
+        .body_bytes_mut()
+        .await
+        .expect("second read succeeds (cached)");
     assert_eq!(&a[..], b"x=1");
     assert_eq!(&b[..], b"x=1");
 }
@@ -462,5 +466,8 @@ async fn body_mut_coexists_with_flash_and_redirect_to() {
         loc.starts_with("/dashboard/things/42"),
         "override should win — got: {loc}"
     );
-    assert!(loc.contains("success=created"), "flash should be present — got: {loc}");
+    assert!(
+        loc.contains("success=created"),
+        "flash should be present — got: {loc}"
+    );
 }

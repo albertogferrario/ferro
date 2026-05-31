@@ -152,9 +152,7 @@ pub(crate) async fn parse_multipart_bytes(
     // `Result<Bytes, _>`. `stream::once` keeps the API surface identical to the
     // Incoming path so `drain_multipart` doesn't need to know which constructor
     // it was called with.
-    let body_stream = futures_util::stream::once(async move {
-        Ok::<_, std::io::Error>(bytes)
-    });
+    let body_stream = futures_util::stream::once(async move { Ok::<_, std::io::Error>(bytes) });
 
     let constraints =
         multer::Constraints::new().size_limit(multer::SizeLimit::new().per_field(max_file_bytes));

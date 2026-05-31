@@ -821,14 +821,21 @@ mod tests {
         let body = html_body(ok_response(result));
 
         assert!(
-            body.contains(r#"<p id="err-name" class="text-sm text-destructive">Name is required</p>"#),
+            body.contains(
+                r#"<p id="err-name" class="text-sm text-destructive">Name is required</p>"#
+            ),
             "error <p> must appear below name input; got: {body}"
         );
         assert!(
-            body.contains(r#"<p id="err-email" class="text-sm text-destructive">Email is invalid</p>"#),
+            body.contains(
+                r#"<p id="err-email" class="text-sm text-destructive">Email is invalid</p>"#
+            ),
             "error <p> must appear below email input; got: {body}"
         );
-        assert!(!body.contains("<!-- ferro-json-ui:"), "no diagnostic comments in happy path; got: {body}");
+        assert!(
+            !body.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments in happy path; got: {body}"
+        );
     }
 
     #[test]
@@ -886,14 +893,21 @@ mod tests {
         assert!(result.is_ok());
         let body = html_body(ok_response(result));
         assert!(
-            body.contains(r#"<p id="err-name" class="text-sm text-destructive">Name is required</p>"#),
+            body.contains(
+                r#"<p id="err-name" class="text-sm text-destructive">Name is required</p>"#
+            ),
             "error <p> must appear below name input; got: {body}"
         );
         assert!(
-            body.contains(r#"<p id="err-email" class="text-sm text-destructive">Email must be valid</p>"#),
+            body.contains(
+                r#"<p id="err-email" class="text-sm text-destructive">Email must be valid</p>"#
+            ),
             "error <p> must appear below email input; got: {body}"
         );
-        assert!(!body.contains("<!-- ferro-json-ui:"), "no diagnostic comments in happy path; got: {body}");
+        assert!(
+            !body.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments in happy path; got: {body}"
+        );
     }
 
     // D-07a: manual $data binding path — runtime handler data → error <p>
@@ -915,7 +929,9 @@ mod tests {
         let body = html_body(ok_response(result));
 
         assert!(
-            body.contains(r#"<p id="err-email" class="text-sm text-destructive">must be valid</p>"#),
+            body.contains(
+                r#"<p id="err-email" class="text-sm text-destructive">must be valid</p>"#
+            ),
             "error paragraph must appear below the input; got: {body}"
         );
         assert!(
@@ -945,7 +961,9 @@ mod tests {
         let body = html_body(ok_response(result));
 
         assert!(
-            body.contains(r#"<p id="err-email" class="text-sm text-destructive">must be valid</p>"#),
+            body.contains(
+                r#"<p id="err-email" class="text-sm text-destructive">must be valid</p>"#
+            ),
             "error paragraph must appear below the input; got: {body}"
         );
         assert!(

@@ -702,7 +702,9 @@ impl Request {
     /// calling this twice returns two independent `MultipartForm` values.
     /// Per-field and per-request limits read from `UPLOAD_MAX_SIZE_MB`
     /// and `UPLOAD_MAX_FIELDS` (same as the legacy `multipart(self)`).
-    pub async fn multipart_mut(&mut self) -> Result<super::multipart::MultipartForm, FrameworkError> {
+    pub async fn multipart_mut(
+        &mut self,
+    ) -> Result<super::multipart::MultipartForm, FrameworkError> {
         let content_type = self
             .parts
             .headers
