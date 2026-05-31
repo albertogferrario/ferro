@@ -219,10 +219,12 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
             html.push_str(&format!(">{}</textarea>", html_escape(val)));
         }
         InputType::File => {
+            let file_ring_class = if has_error { " ring-1 ring-destructive" } else { "" };
             html.push_str(&format!(
-                "<input type=\"file\" id=\"{}\" name=\"{}\" class=\"block w-full text-sm text-text file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-surface file:text-text hover:file:bg-surface/80\"",
+                "<input type=\"file\" id=\"{}\" name=\"{}\" class=\"block w-full text-sm text-text file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-surface file:text-text hover:file:bg-surface/80{}\"",
                 html_escape(&props.field),
                 html_escape(&props.field),
+                file_ring_class,
             ));
             if let Some(ref accept) = props.accept {
                 html.push_str(&format!(" accept=\"{}\"", html_escape(accept)));
@@ -232,6 +234,12 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
             }
             if props.disabled == Some(true) {
                 html.push_str(" disabled");
+            }
+            if has_error {
+                html.push_str(&format!(
+                    " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
+                    html_escape(&props.field)
+                ));
             }
             html.push('>');
         }
