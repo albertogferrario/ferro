@@ -558,7 +558,15 @@ pub(crate) fn render_checkbox_list(
         })
         .unwrap_or_default();
 
-    let mut html = String::from("<fieldset class=\"space-y-2\">");
+    let has_error = props.error.is_some();
+    let mut html = if has_error {
+        format!(
+            "<fieldset class=\"space-y-2\" aria-invalid=\"true\" aria-describedby=\"err-{}\">",
+            html_escape(&props.field)
+        )
+    } else {
+        String::from("<fieldset class=\"space-y-2\">")
+    };
     if let Some(ref label) = props.label {
         html.push_str(&format!(
             "<legend class=\"text-sm font-medium text-text\">{}</legend>",
@@ -571,16 +579,18 @@ pub(crate) fn render_checkbox_list(
             html_escape(desc)
         ));
     }
+    let checkbox_border = if has_error { "border-destructive" } else { "border-border" };
     for option in &options {
         let is_checked = selected.contains(&option.value);
         let checkbox_id = format!("{}_{}", props.field, option.value);
         html.push_str("<div class=\"flex items-center gap-2\">");
         html.push_str(&format!(
             "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" \
-             class=\"h-4 w-4 rounded-sm border-border text-primary\"",
+             class=\"h-4 w-4 rounded-sm {} text-primary\"",
             html_escape(&checkbox_id),
             html_escape(&props.field),
-            html_escape(&option.value)
+            html_escape(&option.value),
+            checkbox_border,
         ));
         if is_checked {
             html.push_str(" checked");
@@ -598,7 +608,8 @@ pub(crate) fn render_checkbox_list(
     }
     if let Some(ref err) = props.error {
         html.push_str(&format!(
-            "<p class=\"text-sm text-destructive mt-1\">{}</p>",
+            "<p id=\"err-{}\" class=\"text-sm text-destructive mt-1\">{}</p>",
+            html_escape(&props.field),
             html_escape(err)
         ));
     }
