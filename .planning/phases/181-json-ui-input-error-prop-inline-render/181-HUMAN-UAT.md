@@ -107,13 +107,14 @@ consumer-side gaps (gestiscilo Phase 176 follow-up):
   severity: cosmetic
   repo: gestiscilo-it
   test: 6
-- truth: "Booking form per-item staff dropdowns (`staff_id_{idx}`) rendered as RawHtml bypass ferro JSON-UI Select entirely — no D-06 destructive ring, no aria-invalid, no inline <p id=\"err-staff_id_0\">. Any server-side staff validation error (eligibility, double-booking, etc.) would fall through to URL fallback flash instead of inline rendering."
+- truth: "Booking form per-item staff dropdowns are structurally wrong, not just visually off. The `staff_per_item_html` RawHtml loop iterates over ALL available products in the catalog and emits N <select> widgets BEFORE the operator adds anything to the cart — the form posts staff_id_0..staff_id_{N-1} for every catalog product even when the cart is empty. Index-keying (staff_id_{idx} 0-based on product list order) is a workaround because items have no IDs yet (per controller comment line 653-654). The correct UX is: 0 dropdowns when cart empty, one dropdown per cart item as products are added/removed, field keyed on cart slot (0..M where M=cart size), not catalog position. Bonus: RawHtml bypasses ferro JSON-UI Select entirely so no D-06 destructive ring, no aria-invalid, no inline <p id=\"err-staff_id_0\"> — any future staff validation error (eligibility, double-booking, staff-unavailable) falls through to URL fallback flash."
   status: open
-  severity: minor
+  severity: major
   repo: gestiscilo-it
   test: post-UAT investigation
-  location: "app/src/controllers/calendario/bookings.rs:652-707 — RawHtml staff_per_item_html loop"
-  remediation: "Migrate from RawHtml string concat to a Repeat/Each composition of JSON-UI Select components (one per product). Inherits Phase 181 D-06 parity automatically + per-field ValidationError rendering."
+  location: "app/src/controllers/calendario/bookings.rs:652-707 — RawHtml staff_per_item_html loop + app/src/views/calendario/booking_new.json staff_per_item_section block"
+  remediation: "(a) Drop the catalog-wide loop in bookings.rs, move staff-select rendering into the cart-render path. (b) Replace booking_new.json staff_per_item_section RawHtml with a JSON-UI composition tied to cart items. (c) Re-key form field from staff_id_{product_idx} to staff_id_{cart_slot} and update item-creation logic accordingly. As a side benefit the dropdowns become JSON-UI Select components and inherit Phase 181 D-06 parity + per-field ValidationError rendering automatically."
+  tracked_in: "gestiscilo-it Phase 176 gap 5 (added to ROADMAP.md 2026-06-01)"
 
 ferro Phase 181 verdict: VERIFIED — pipeline + form-control renderers + ARIA + id all work end-to-end in production against real gestiscilo handlers.
 
