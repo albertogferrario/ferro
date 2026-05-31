@@ -1913,15 +1913,25 @@ Plans:
 - [x] 180-05-PLAN.md — `docs/src/the-basics/action-handlers.md` user guide + SUMMARY.md wiring
 - [x] 180-06-PLAN.md — `action_handler` MCP code template in `ferro-mcp/src/tools/code_templates.rs`
 
-### Phase 181: JSON-UI v1 Input — render `error` prop binding inline below the field
+### Phase 181: JSON-UI Input — render `error` prop inline below the field
 
-**Goal:** Patch the `ferro-json-ui` v1 Input renderer so that when the `error` prop resolves to a non-null string via `{"$data": "/<field>_error"}`, the renderer emits a destructive-tone element (e.g. `<p class="text-destructive text-sm mt-1">{error}</p>`) directly below the `<input>` inside the same `space-y-1` wrapper — and ideally adds an error-state class chain to the `<input>` itself (`border-destructive ring-destructive/20`). Same change applies to Select / Textarea / Checkbox carrying the same `error` prop. Closes a visible-display gap that affects every form in every gestiscilo controller with an `error` prop binding (~30 sites today). Possibly reconciles the related `req.has_validation_errors()` vs per-field `req.validation_error("X")` discrepancy in the same handler that surfaces as the `toast_validation` element being dropped from `root_children`.
+**Goal:** Fix the JSON-UI resolution pipeline so form-control error messages bound via `{"$data": "/<field>_error"}` or via `JsonUi::render_validation_error` actually reach `props.error` and render as the locked DOM shape `<p id="err-{field}" class="text-sm text-destructive">{error}</p>` below the offending field. Two pipeline fixes (D-02 root causes 1 & 2): (Fix A) `JsonUi::render` merges runtime `data` into a `spec.data` clone before `resolve_expressions` so `$data` bindings resolve against handler-supplied data; (Fix B) `attach_errors` writes singular `error: String` matching the form-control prop shape (was writing plural `errors: Vec<String>` which serde silently dropped). Bring `Checkbox`, `CheckboxList`, `Switch`, and `Input (file)` to error-state class+ARIA parity with `Input (text)` / `Select` (D-06). Cross-repo audit confirms no gestiscilo consumer was reading the pre-fix plural shape (D-08 clean break). Docs page covers the blessed `render_validation_error` path, the manual `$data` escape hatch, the flash round-trip, and the cross-field summary (D-09).
 
-**Requirements:** TBD (capture during `/gsd-discuss-phase 181`)
-**Depends on:** None (touches v1 Input renderer only — independent of v12.0 JSON-UI v2)
-**Plans:** TBD (CONTEXT.md captured 2026-05-31; needs discuss + plan)
+**Requirements**: D-01 .. D-09 (locked decisions in 181-CONTEXT.md)
+**Depends on:** None (touches resolve.rs pipeline + form renderers — independent of v12.0 closure phases)
+**Plans:** 8/8 plans pending
 
-Discovery: surfaced during gestiscilo Phase 175 UAT (2026-05-31) on the operator product-edit form. Backend validation logic ships correctly via `ValidationError::new().add(field, msg).with_old_input(&data).redirect_to(...)`, but the error string never reaches a visible DOM element — operator only sees the generic ferro URL-fallback flash `?error=generic&msg=…`. Full repro in `.planning/phases/181-json-ui-input-error-prop-inline-render/181-CONTEXT.md`. Cross-tracked as gestiscilo Phase 176 [FERRO REPO].
+Plans:
+- [ ] 181-01-PLAN.md — Wave 0 RED-state tests: 2 new pipeline integration tests + upgrade 2 existing tests to `html_body` + `<p id="err-` assertion (D-07)
+- [ ] 181-02-PLAN.md — Fix A (merge runtime data before resolve in `JsonUi::render` + `JsonUi::render_with_errors_config`) AND Fix B (`attach_errors` writes singular `error: String`) + update 2 resolve.rs tests (D-02, D-03, D-04, D-08)
+- [ ] 181-03-PLAN.md — D-06 Checkbox parity: `border-destructive` + `focus-visible:ring-destructive` + ARIA on `<input>`, `id="err-{field}"` on error `<p>` + new unit test
+- [ ] 181-04-PLAN.md — D-06 CheckboxList parity: fieldset ARIA + per-option `border-destructive` + `id` on error `<p>` + new unit test
+- [ ] 181-05-PLAN.md — D-06 Switch parity: `peer-focus:ring-destructive/30` on pill + ARIA on hidden `<input>` + `id` on error `<p>` + new unit test
+- [ ] 181-06-PLAN.md — D-06 Input (file) parity: `ring-1 ring-destructive` + ARIA + new unit test
+- [ ] 181-07-PLAN.md — D-08 cross-repo gestiscilo audit (`rg` for plural `errors` reads) + manual UAT on 5 representative forms + full pre-commit gate
+- [ ] 181-08-PLAN.md — D-09 docs page `docs/src/json-ui/forms.md` covering the four authoring patterns (blessed / `$data` escape hatch / flash round-trip / cross-field summary) + SUMMARY.md navigation entry
+
+Discovery: surfaced during gestiscilo Phase 175 UAT (2026-05-31) on the operator product-edit form. Backend validation logic ships correctly via `ValidationError::new().add(field, msg).with_old_input(&data).redirect_to(...)`, but the error string never reaches a visible DOM element — operator only sees the generic ferro URL-fallback flash `?error=generic&msg=…`. CONTEXT and RESEARCH (2026-05-31) revised the original framing: the renderer is already correct; the bug lives in the resolution pipeline. Full repro and root-cause analysis in `.planning/phases/181-json-ui-input-error-prop-inline-render/181-CONTEXT.md` and `181-RESEARCH.md`. Cross-tracked as gestiscilo Phase 176 [FERRO REPO].
 
 ---
 
