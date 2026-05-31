@@ -1913,6 +1913,16 @@ Plans:
 - [x] 180-05-PLAN.md — `docs/src/the-basics/action-handlers.md` user guide + SUMMARY.md wiring
 - [x] 180-06-PLAN.md — `action_handler` MCP code template in `ferro-mcp/src/tools/code_templates.rs`
 
+### Phase 181: JSON-UI v1 Input — render `error` prop binding inline below the field
+
+**Goal:** Patch the `ferro-json-ui` v1 Input renderer so that when the `error` prop resolves to a non-null string via `{"$data": "/<field>_error"}`, the renderer emits a destructive-tone element (e.g. `<p class="text-destructive text-sm mt-1">{error}</p>`) directly below the `<input>` inside the same `space-y-1` wrapper — and ideally adds an error-state class chain to the `<input>` itself (`border-destructive ring-destructive/20`). Same change applies to Select / Textarea / Checkbox carrying the same `error` prop. Closes a visible-display gap that affects every form in every gestiscilo controller with an `error` prop binding (~30 sites today). Possibly reconciles the related `req.has_validation_errors()` vs per-field `req.validation_error("X")` discrepancy in the same handler that surfaces as the `toast_validation` element being dropped from `root_children`.
+
+**Requirements:** TBD (capture during `/gsd-discuss-phase 181`)
+**Depends on:** None (touches v1 Input renderer only — independent of v12.0 JSON-UI v2)
+**Plans:** TBD (CONTEXT.md captured 2026-05-31; needs discuss + plan)
+
+Discovery: surfaced during gestiscilo Phase 175 UAT (2026-05-31) on the operator product-edit form. Backend validation logic ships correctly via `ValidationError::new().add(field, msg).with_old_input(&data).redirect_to(...)`, but the error string never reaches a visible DOM element — operator only sees the generic ferro URL-fallback flash `?error=generic&msg=…`. Full repro in `.planning/phases/181-json-ui-input-error-prop-inline-render/181-CONTEXT.md`. Cross-tracked as gestiscilo Phase 176 [FERRO REPO].
+
 ---
 
 ### 🔭 v13.0 Future UI Spec Evaluation (Phase 174, planned 2026-05-17)
