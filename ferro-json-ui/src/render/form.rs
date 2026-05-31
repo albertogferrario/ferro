@@ -1070,6 +1070,51 @@ mod tests {
         assert!(!html.contains("<!-- ferro-json-ui:"), "no diagnostic comments; got: {html}");
     }
 
+    #[test]
+    fn input_file_error_renders_destructive_ring_and_aria() {
+        let el = mk_element(
+            "Input",
+            json!({
+                "field": "avatar",
+                "label": "Avatar",
+                "input_type": "file",
+                "error": "must be PNG"
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+
+        // Isolate the <input type="file"> tag bytes (Pitfall 3 guard).
+        let input_pos = html
+            .find("<input type=\"file\"")
+            .expect("<input type=\"file\" not found in rendered output");
+        let input_close_rel = html[input_pos..]
+            .find('>')
+            .expect("closing > for <input type=\"file\"> not found");
+        let input_tag = &html[input_pos..=(input_pos + input_close_rel)];
+
+        assert!(
+            input_tag.contains("ring-1 ring-destructive"),
+            "ring-1 ring-destructive must be on the <input type=\"file\">; tag: {input_tag}"
+        );
+        assert!(
+            input_tag.contains("aria-invalid=\"true\""),
+            "aria-invalid must be on the <input type=\"file\">; tag: {input_tag}"
+        );
+        assert!(
+            input_tag.contains("aria-describedby=\"err-avatar\""),
+            "aria-describedby must be on the <input type=\"file\">; tag: {input_tag}"
+        );
+
+        // Shared error <p> already has id (form.rs:309-315) — confirm it survives.
+        assert!(
+            html.contains("<p id=\"err-avatar\" class=\"text-sm text-destructive\">must be PNG</p>"),
+            "shared error <p> must carry id and locked class chain; got: {html}"
+        );
+
+        assert!(!html.contains("<!-- ferro-json-ui:"), "no diagnostic comments; got: {html}");
+    }
+
     // ── Select ───────────────────────────────────────────────────────────
 
     #[test]
