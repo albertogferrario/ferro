@@ -823,20 +823,17 @@ mod tests {
         let result = JsonUi::render_with_errors(&spec, &data, &errors);
 
         assert!(result.is_ok());
-        let body = response_body(ok_response(result));
+        let body = html_body(ok_response(result));
 
-        // resolve_errors populates each Input's props.errors array; the v2
-        // walker renders each Input body so the error strings appear in the
-        // HTML directly, and the data-view serialized spec embedded in the
-        // page also carries them.
         assert!(
-            body.contains("Name is required"),
-            "body should contain 'Name is required'"
+            body.contains(r#"<p id="err-name" class="text-sm text-destructive">Name is required</p>"#),
+            "error <p> must appear below name input; got: {body}"
         );
         assert!(
-            body.contains("Email is invalid"),
-            "body should contain 'Email is invalid'"
+            body.contains(r#"<p id="err-email" class="text-sm text-destructive">Email is invalid</p>"#),
+            "error <p> must appear below email input; got: {body}"
         );
+        assert!(!body.contains("<!-- ferro-json-ui:"), "no diagnostic comments in happy path; got: {body}");
     }
 
     #[test]
@@ -892,15 +889,16 @@ mod tests {
         let result = JsonUi::render_validation_error(&spec, &data, &ve);
 
         assert!(result.is_ok());
-        let body = response_body(ok_response(result));
+        let body = html_body(ok_response(result));
         assert!(
-            body.contains("Name is required"),
-            "should contain name error"
+            body.contains(r#"<p id="err-name" class="text-sm text-destructive">Name is required</p>"#),
+            "error <p> must appear below name input; got: {body}"
         );
         assert!(
-            body.contains("Email must be valid"),
-            "should contain email error"
+            body.contains(r#"<p id="err-email" class="text-sm text-destructive">Email must be valid</p>"#),
+            "error <p> must appear below email input; got: {body}"
         );
+        assert!(!body.contains("<!-- ferro-json-ui:"), "no diagnostic comments in happy path; got: {body}");
     }
 
     #[test]
