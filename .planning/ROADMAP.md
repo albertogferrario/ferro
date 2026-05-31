@@ -1919,10 +1919,10 @@ Plans:
 
 **Requirements**: D-01 .. D-09 (locked decisions in 181-CONTEXT.md)
 **Depends on:** None (touches resolve.rs pipeline + form renderers — independent of v12.0 closure phases)
-**Plans:** 8/8 plans pending
+**Plans:** 1/8 plans executed
 
 Plans:
-- [ ] 181-01-PLAN.md — Wave 0 RED-state tests: 2 new pipeline integration tests + upgrade 2 existing tests to `html_body` + `<p id="err-` assertion (D-07)
+- [x] 181-01-PLAN.md — Wave 0 RED-state tests: 2 new pipeline integration tests + upgrade 2 existing tests to `html_body` + `<p id="err-` assertion (D-07)
 - [ ] 181-02-PLAN.md — Fix A (merge runtime data before resolve in `JsonUi::render` + `JsonUi::render_with_errors_config`) AND Fix B (`attach_errors` writes singular `error: String`) + update 2 resolve.rs tests (D-02, D-03, D-04, D-08)
 - [ ] 181-03-PLAN.md — D-06 Checkbox parity: `border-destructive` + `focus-visible:ring-destructive` + ARIA on `<input>`, `id="err-{field}"` on error `<p>` + new unit test
 - [ ] 181-04-PLAN.md — D-06 CheckboxList parity: fieldset ARIA + per-option `border-destructive` + `id` on error `<p>` + new unit test
