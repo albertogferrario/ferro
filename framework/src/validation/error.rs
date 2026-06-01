@@ -141,6 +141,27 @@ impl ValidationError {
         crate::http::Redirect::to(url.into()).into()
     }
 
+    /// Flash per-field errors + old input into the session, then produce an
+    /// `ActionError` configured to redirect to `url` WITHOUT writing the URL
+    /// `?error=...&msg=...` envelope (the per-field errors already carry the
+    /// user-visible message — a generic envelope toast would be redundant).
+    ///
+    /// This is the consumer-side replacement for the "discard-Response" idiom:
+    ///
+    /// ```ignore
+    /// // BEFORE — chains `redirect_to` for its session flash side-effect, then
+    /// // returns an ActionError that adds a redundant `?error=generic&msg=...`:
+    /// let _ = errors.with_old_input(&data).redirect_to(&back_url);
+    /// return Err(ActionError::msg("Dati non validi").redirect_to(&back_url));
+    ///
+    /// // AFTER — single chain; per-field errors flash, no envelope:
+    /// return Err(errors.with_old_input(&data).into_action_error(&back_url));
+    /// ```
+    pub fn into_action_error(self, url: impl Into<String>) -> crate::http::action::ActionError {
+        self.flash_into_session();
+        crate::http::action::ActionError::validation_failed(url)
+    }
+
     /// Write the error map and optional old input into the session flash store.
     ///
     /// Uses the reserved key prefix `_validation_errors` / `_old_input.<field>`

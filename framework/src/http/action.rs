@@ -89,6 +89,12 @@ pub struct ActionError {
     pub flash_variant: FlashVariant,
     /// Optional redirect override. Validated as same-origin when applied (T-180-02).
     pub redirect_override: Option<String>,
+    /// When `true`, `handle_action_result` skips both the `?error=<kind>&msg=<pct>`
+    /// query envelope and the `_action` session flash write. Used by
+    /// `validation_failed` so per-field validation errors (already flashed via
+    /// `ValidationError::into_action_error`) are not duplicated by a generic
+    /// envelope toast.
+    pub(crate) suppress_url_envelope: bool,
 }
 
 impl ActionError {
@@ -99,6 +105,27 @@ impl ActionError {
             kind: ActionKind::Generic,
             flash_variant: FlashVariant::Error,
             redirect_override: None,
+            suppress_url_envelope: false,
+        }
+    }
+
+    /// Constructor for handlers that have already flashed per-field validation
+    /// errors via `ValidationError::with_old_input(&data).redirect_to(url)` (or
+    /// equivalently via `ValidationError::into_action_error(url)`).
+    ///
+    /// Drives the 303 redirect WITHOUT writing the URL `?error=...&msg=...`
+    /// envelope (which would render a redundant generic toast alongside the
+    /// per-field inline errors). Also skips the `_action` session flash write.
+    ///
+    /// The 303 status, the Location header, and the `tracing::error!` log line
+    /// still emit unconditionally.
+    pub fn validation_failed(redirect_to: impl Into<String>) -> Self {
+        Self {
+            message: String::new(),
+            kind: ActionKind::Generic,
+            flash_variant: FlashVariant::Error,
+            redirect_override: Some(redirect_to.into()),
+            suppress_url_envelope: true,
         }
     }
 
@@ -335,29 +362,38 @@ pub fn handle_action_result(
                 None => redirect_to.to_string(),
             };
 
-            // Flash write (error / warning / info).
-            let variant_str = match err.flash_variant {
-                FlashVariant::Error => "error",
-                FlashVariant::Warning => "warning",
-                FlashVariant::Info => "info",
-            };
-            let payload = ActionFlashPayload {
-                variant: variant_str,
-                message: &err.message,
-            };
-            crate::session::session_mut(|s| s.flash("_action", &payload));
+            // Validation handlers (ActionError::validation_failed) suppress
+            // both the session flash write AND the `?error=...&msg=...` URL
+            // envelope so the per-field errors already flashed by
+            // `ValidationError::into_action_error` are not duplicated by a
+            // generic toast.
+            let location = if err.suppress_url_envelope {
+                target
+            } else {
+                // Flash write (error / warning / info).
+                let variant_str = match err.flash_variant {
+                    FlashVariant::Error => "error",
+                    FlashVariant::Warning => "warning",
+                    FlashVariant::Info => "info",
+                };
+                let payload = ActionFlashPayload {
+                    variant: variant_str,
+                    message: &err.message,
+                };
+                crate::session::session_mut(|s| s.flash("_action", &payload));
 
-            // Back-compat query string. Uses `&` when the user-supplied
-            // redirect target already contains a query string.
-            let sep = if target.contains('?') { '&' } else { '?' };
-            let encoded_msg: String = byte_serialize(err.message.as_bytes()).collect();
-            let location = format!(
-                "{target}{sep}error={kind}&msg={msg}",
-                target = target,
-                sep = sep,
-                kind = err.kind.as_query_str(),
-                msg = encoded_msg
-            );
+                // Back-compat query string. Uses `&` when the user-supplied
+                // redirect target already contains a query string.
+                let sep = if target.contains('?') { '&' } else { '?' };
+                let encoded_msg: String = byte_serialize(err.message.as_bytes()).collect();
+                format!(
+                    "{target}{sep}error={kind}&msg={msg}",
+                    target = target,
+                    sep = sep,
+                    kind = err.kind.as_query_str(),
+                    msg = encoded_msg
+                )
+            };
 
             Ok(crate::http::HttpResponse::new()
                 .status(303)
