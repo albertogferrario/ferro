@@ -33,12 +33,20 @@ impl Translator {
     ///
     /// Returns the translated string with `:param` placeholders replaced.
     /// If the key is not found, returns the key itself (no panic, no Option).
+    ///
+    /// Resolution order: exact locale → base language (region stripped) →
+    /// configured fallback. The base-language step lets a request for
+    /// `it-IT` resolve against translations loaded under `lang/it/`.
     pub fn get(&self, locale: &str, key: &str, params: &[(&str, &str)]) -> String {
         let locale = normalize_locale(locale);
         let value = self
             .translations
             .get(&locale)
             .and_then(|m| m.get(key))
+            .or_else(|| {
+                base_language(&locale)
+                    .and_then(|base| self.translations.get(base).and_then(|m| m.get(key)))
+            })
             .or_else(|| {
                 self.translations
                     .get(&self.fallback)
@@ -59,12 +67,19 @@ impl Translator {
     /// Selects the correct plural form from pipe-separated values, then
     /// applies parameter interpolation. A `:count` parameter is automatically
     /// added with the string representation of `count`.
+    ///
+    /// Uses the same resolution order as [`get`]: exact → base language →
+    /// configured fallback.
     pub fn choice(&self, locale: &str, key: &str, count: i64, params: &[(&str, &str)]) -> String {
         let locale = normalize_locale(locale);
         let value = self
             .translations
             .get(&locale)
             .and_then(|m| m.get(key))
+            .or_else(|| {
+                base_language(&locale)
+                    .and_then(|base| self.translations.get(base).and_then(|m| m.get(key)))
+            })
             .or_else(|| {
                 self.translations
                     .get(&self.fallback)
@@ -98,6 +113,14 @@ impl Translator {
     pub fn locales(&self) -> Vec<&str> {
         self.translations.keys().map(|s| s.as_str()).collect()
     }
+}
+
+/// Strip the region subtag from a normalized locale.
+///
+/// Returns `Some("it")` for `"it-it"`, `Some("zh")` for `"zh-hans-cn"`,
+/// and `None` for bare language tags like `"it"` that have no region.
+fn base_language(locale: &str) -> Option<&str> {
+    locale.split_once('-').map(|(base, _)| base)
 }
 
 #[cfg(test)]
@@ -304,5 +327,95 @@ mod tests {
         let result = Translator::load(dir.to_str().unwrap(), "en");
         assert!(result.is_err());
         cleanup(&dir);
+    }
+
+    // ── regional locale → base language fallback ──────────────────────
+    //
+    // Mobile browsers virtually always send region-tagged Accept-Language
+    // (e.g. `it-IT`, `en-US`), but translation files are typically loaded
+    // under base-language directories (`lang/it/`, `lang/en/`). The
+    // translator must try the base language before falling through to
+    // the configured fallback locale, otherwise every mobile user sees
+    // the fallback locale's strings regardless of device language.
+
+    #[test]
+    fn get_regional_locale_falls_back_to_base_language() {
+        let dir = unique_dir("regional_base");
+        write_fixtures(&dir);
+        let t = Translator::load(dir.to_str().unwrap(), "en").unwrap();
+        // Request "es-MX" — no es-MX dir exists, but "es" does.
+        // Must return Spanish, not English (the configured fallback).
+        assert_eq!(
+            t.get("es-MX", "welcome", &[("name", "Ana")]),
+            "Bienvenido, Ana!"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn get_regional_locale_prefers_exact_match_over_base() {
+        let dir = unique_dir("regional_exact");
+        write_fixtures(&dir);
+        // Add an exact es-MX dir with a different greeting
+        let es_mx = dir.join("es-mx");
+        fs::create_dir_all(&es_mx).unwrap();
+        fs::write(
+            es_mx.join("messages.json"),
+            serde_json::json!({"welcome": "¡Qué onda, :name!"}).to_string(),
+        )
+        .unwrap();
+        let t = Translator::load(dir.to_str().unwrap(), "en").unwrap();
+        // Exact es-mx match wins over base "es"
+        assert_eq!(
+            t.get("es-MX", "welcome", &[("name", "Ana")]),
+            "¡Qué onda, Ana!"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn get_regional_locale_uses_global_fallback_when_no_base() {
+        let dir = unique_dir("regional_no_base");
+        write_fixtures(&dir);
+        let t = Translator::load(dir.to_str().unwrap(), "en").unwrap();
+        // Request "fr-CA" — no fr-CA, no fr loaded; falls through to "en".
+        assert_eq!(
+            t.get("fr-CA", "welcome", &[("name", "Léa")]),
+            "Welcome, Léa!"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn choice_regional_locale_falls_back_to_base_language() {
+        let dir = unique_dir("regional_choice");
+        write_fixtures(&dir);
+        let t = Translator::load(dir.to_str().unwrap(), "en").unwrap();
+        // es has its own plural form; es-MX request should reach it
+        // via base-language fallback, not slip through to English.
+        assert_eq!(t.choice("es-MX", "items.count", 5, &[]), "5 elementos");
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn get_underscore_regional_input_falls_back_to_base() {
+        let dir = unique_dir("regional_underscore");
+        write_fixtures(&dir);
+        let t = Translator::load(dir.to_str().unwrap(), "en").unwrap();
+        // Accept-Language hyphens are the common form, but the API also
+        // accepts underscore form. Both must normalize and fall back.
+        assert_eq!(
+            t.get("es_MX", "welcome", &[("name", "Ana")]),
+            "Bienvenido, Ana!"
+        );
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn base_language_helper() {
+        assert_eq!(super::base_language("it-it"), Some("it"));
+        assert_eq!(super::base_language("zh-hans-cn"), Some("zh"));
+        assert_eq!(super::base_language("it"), None);
+        assert_eq!(super::base_language(""), None);
     }
 }
