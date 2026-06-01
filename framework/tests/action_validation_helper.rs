@@ -90,7 +90,10 @@ async fn make_request() -> Request {
 #[test]
 fn validation_failed_constructor_sets_suppress_flag() {
     let e = ActionError::validation_failed("/dashboard/staff/nuovo");
-    assert_eq!(e.message, "", "message must be empty — per-field flash carries the text");
+    assert_eq!(
+        e.message, "",
+        "message must be empty — per-field flash carries the text"
+    );
     assert!(
         matches!(e.flash_variant, FlashVariant::Error),
         "flash_variant defaults to Error"
