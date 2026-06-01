@@ -1,7 +1,7 @@
 //! Renders a `Spec` to HTML.
 //!
 //! Walks `spec.elements` by ID starting at `spec.root`, dispatches per-element
-//! by `type_name` against [`BUILTIN_TYPES`] (or the plugin registry for any
+//! by `type_name` against `BUILTIN_TYPES` (or the plugin registry for any
 //! type name not in that list), and lets each container recurse via
 //! `render_element` for its child IDs. The renderer is infallible — every
 //! failure path (missing ID, decode error, depth overflow) emits an HTML

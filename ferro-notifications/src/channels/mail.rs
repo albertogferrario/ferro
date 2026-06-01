@@ -109,7 +109,7 @@ impl MailMessage {
     /// Add an attachment to the mail message.
     ///
     /// Returns `Err(Error::AttachmentTooLarge { .. })` if `content.len()` exceeds
-    /// [`MAX_ATTACHMENT_BYTES`] (25 MB) per CONTEXT.md D-11. The cap is per-attachment;
+    /// `MAX_ATTACHMENT_BYTES` (25 MB) per CONTEXT.md D-11. The cap is per-attachment;
     /// no cumulative cap is enforced (Resend's 40 MB total is the carrier's responsibility).
     ///
     /// Multiple calls accumulate.

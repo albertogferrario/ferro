@@ -68,7 +68,7 @@ impl Translator {
     /// applies parameter interpolation. A `:count` parameter is automatically
     /// added with the string representation of `count`.
     ///
-    /// Uses the same resolution order as [`get`]: exact → base language →
+    /// Uses the same resolution order as [`Self::get`]: exact → base language →
     /// configured fallback.
     pub fn choice(&self, locale: &str, key: &str, count: i64, params: &[(&str, &str)]) -> String {
         let locale = normalize_locale(locale);

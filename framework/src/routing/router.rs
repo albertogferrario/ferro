@@ -430,7 +430,7 @@ impl Router {
     /// Returns (handler, params, route_pattern) where route_pattern is the original
     /// pattern like "/users/{id}" for metrics grouping.
     ///
-    /// OPTIONS requests are dispatched through [`match_preflight`](Self::match_preflight):
+    /// OPTIONS requests are dispatched through `match_preflight` (private helper):
     /// any path registered under any other verb returns a synthetic 204 handler so
     /// route-level middleware (CORS in particular) still runs. The CORS middleware
     /// then short-circuits the preflight with the configured ACAO / ACAH / ACAM

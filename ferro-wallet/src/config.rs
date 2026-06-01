@@ -9,7 +9,7 @@
 //! `Debug` is derived on every config struct for ergonomics; it includes raw PEM
 //! strings for [`AppleConfig`] / [`GoogleConfig`]. Callers MUST NOT log these
 //! configs in production — the exposure parity is identical to
-//! [`ferro_stripe::config::StripeConfig`]'s `api_key` exposure.
+//! `ferro_stripe::config::StripeConfig`'s `api_key` exposure.
 
 use crate::WalletError;
 
@@ -67,7 +67,7 @@ impl WalletConfig {
     /// Loads wallet configuration from environment variables.
     ///
     /// `APP_NAME` and `APP_URL` fall back to the same defaults as
-    /// [`framework::config::AppConfig::from_env`]: `"Ferro Application"` and
+    /// `framework::config::AppConfig::from_env`: `"Ferro Application"` and
     /// `"http://localhost:8080"`.
     ///
     /// Per D-02 (permissive semantics): missing Apple or Google env vars NEVER

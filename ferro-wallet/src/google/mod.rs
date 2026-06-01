@@ -43,8 +43,8 @@ impl GoogleWalletBuilder {
 
     /// Sign the save JWT for a single subject.
     ///
-    /// Composes the per-subject [`object::build_event_ticket_object`] JSON and signs
-    /// the surrounding [`jwt::sign_save_jwt`] envelope with RS256.
+    /// Composes the per-subject `object::build_event_ticket_object` JSON and signs
+    /// the surrounding `jwt::sign_save_jwt` envelope with RS256.
     ///
     /// # Errors
     ///

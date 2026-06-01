@@ -67,7 +67,7 @@ pub(crate) fn sign_save_jwt(
 /// Compose the Google Wallet save URL for a previously signed JWT.
 ///
 /// Pure formatting — does NOT validate the JWT segment structure. The caller is
-/// responsible for passing a JWT produced by [`sign_save_jwt`].
+/// responsible for passing a JWT produced by `sign_save_jwt`.
 pub fn save_url(jwt: &str) -> String {
     format!("https://pay.google.com/gp/v/save/{jwt}")
 }

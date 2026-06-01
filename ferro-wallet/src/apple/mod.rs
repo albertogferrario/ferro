@@ -29,7 +29,7 @@ impl ApplePassBuilder {
     /// the pass-type / team identifiers used for every issued pass.
     ///
     /// The private key may be passphrase-protected; `cfg.key_password` is
-    /// forwarded to [`sign::SigningMaterial::parse`].
+    /// forwarded to `sign::SigningMaterial::parse`.
     pub fn new(cfg: AppleConfig, app_name: String) -> Result<Self, WalletError> {
         let signing = sign::SigningMaterial::parse(
             &cfg.cert_pem,

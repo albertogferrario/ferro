@@ -25,7 +25,7 @@ pub struct ModelMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldMetadata {
     pub name: String,
-    /// Raw Rust/SeaORM type string (e.g., "String", "i32", "Option<Uuid>").
+    /// Raw Rust/SeaORM type string (e.g., `String`, `i32`, `Option<Uuid>`).
     pub column_type: String,
     pub is_primary_key: bool,
     pub is_nullable: bool,

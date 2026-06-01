@@ -10,7 +10,7 @@
 //!
 //! A JSON-UI Spec consists of:
 //! - **Spec** - Top-level container: `$schema`, `root`, `elements`, `title?`, `layout?`, `data?`
-//! - **Element** - Single UI node: `type` (string), `props` (Value), `children` (Vec<String> of IDs), `action?`, `visible?`
+//! - **Element** - Single UI node: `type` (string), `props` (Value), `children` (`Vec<String>` of IDs), `action?`, `visible?`
 //! - **Actions** - Handler references with confirmations and outcomes
 //! - **Visibility** - Conditional rendering based on data conditions
 //!
