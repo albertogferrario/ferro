@@ -36,6 +36,9 @@ pub mod seeder;
 pub mod server;
 pub mod session;
 pub(crate) mod static_files;
+/// Request-scoped telemetry primitives — inline-vs-preload decisioning and a
+/// process-global ring-buffer for sampled time-series telemetry.
+pub mod telemetry;
 pub mod tenant;
 pub mod testing;
 #[cfg(feature = "theme")]
@@ -177,6 +180,7 @@ pub use routing::{
 pub use schedule::{CronExpression, DayOfWeek, Schedule, Task, TaskBuilder, TaskEntry, TaskResult};
 pub use seeder::{DatabaseSeeder, Seeder, SeederRegistry};
 pub use server::Server;
+pub use telemetry::{Decision, RequestTelemetry, Sample};
 
 // Re-export ferro-events for event-driven architecture
 pub use ferro_events::{
