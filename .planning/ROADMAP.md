@@ -234,7 +234,7 @@ Phase 143 — full details archived in [milestones/v11.7-ROADMAP.md](milestones/
 
 ---
 
-### 📋 v12.0 JSON-UI v2 — Spec-Driven Rendering (Planned)
+### ✅ v12.0 JSON-UI v2 — Spec-Driven Rendering (Shipped 2026-05-19)
 
 **Milestone Goal:** Pivot ferro-json-ui from nested component trees built in Rust to flat, JSON-first specs with JSON Schema as the validation contract. AI generates specs constrained by schema; developers write static JSON files validated by the same schema. Handlers become data-only providers.
 
@@ -275,12 +275,12 @@ Ferro adopts the structural patterns (flat element map, props separation, formal
 
 ## Phases
 
-- [ ] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, clean break from v1
+- [x] **Phase 115: Spec v2 Data Structures** — New `Spec` type with flat element map, props separation, clean break from v1 (shipped 2026-05-19 with v12.0)
 - [x] **Phase 116: Flat Element Renderer** — Update render pipeline to walk flat element map via ID lookups
 - [x] **Phase 117: Catalog & JSON Schema** — Machine-readable `Catalog` with per-component JSON Schema, full spec schema, validation, and `ferro json-ui:schema` CLI export (completed 2026-04-18)
 - [x] **Phase 117.1: Schema-Driven Projections** — `Spec::from_service_def()` generates v2 specs from ServiceDef using JSON Schema type mapping, replacing hardcoded `field_to_input()` mappings (completed 2026-04-18)
 - [x] **Phase 118: Server-Side Expressions** — `$data` path resolution and `$template` string interpolation at render time (completed 2026-04-19)
-- [ ] **Phase 119: Page Loader** — Framework loads JSON spec files, merges handler data, integrates with layouts
+- [x] **Phase 119: Page Loader** — Framework loads JSON spec files, merges handler data, integrates with layouts (shipped 2026-05-19 with v12.0)
 - [x] **Phase 120: CLI & MCP Updates** — Update `make:json-view` and MCP tools for v2 format with JSON Schema as structured output constraint (completed 2026-04-21)
 - [x] **Phase 121: Documentation & Field Test** — Update all JSON-UI docs, convert one gestiscilo page as proof of concept (completed 2026-05-15)
 
@@ -1721,10 +1721,13 @@ Plans:
 | v11.5 Projection Architecture Prep | 133-135 | 4 | ✅ Shipped | 2026-04-17 |
 | v11.6 ferro-stripe Capability Refactor | 140-142 | 11 | ✅ Shipped | 2026-04-20 |
 | v11.7 Tailwind Static CSS Pipeline | 143 | 4 | ✅ Shipped | 2026-04-21 |
-| v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121 | ? | 📋 Planned | - |
+| v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121, 159-164 | 491 commits | ✅ Shipped | 2026-05-19 |
 | v12.2 Frontend Performance Hardening | 182-184 | 10 | ✅ Shipped | 2026-06-06 |
+| v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding | 165-173 | — | 📋 Planned (not started) | - |
 
-**Total: 29 milestones shipped, 280 plans complete.**
+**Total: 30 milestones shipped, plan totals approximate (v12.0 logged 491 commits in the top-line milestone log).**
+
+> **Reconciliation notes (2026-06-07 audit):** v12.0 milestone header and Phase 115/119 checkboxes were stale — flipped to `✅` based on the top-line milestone log entry at the start of this file. Standalone shipped phases not yet attached to a milestone: **180** (Declarative action handler primitive), **181** (JSON-UI Input error prop inline render). Standalone phases in flight: **179** (DataTable RawHtml-free heterogeneous rows — 1/N plans, no verification). Never started: **178** (json-ui plugin registry refactor — no plans). v12.1 Form Validation DX (phases 137-139) has no phase directories in `.planning/phases/` — either deferred or relocated to the gestiscilo repo.
 
 
 ---
