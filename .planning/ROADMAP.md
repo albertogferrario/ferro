@@ -1976,7 +1976,7 @@ Discovery: surfaced during the 2026-06-06 jetskiadriatic startup-lifecycle audit
 
 **Depends on:** None (new crate, additive to the workspace).
 
-**Requirements:** TBD (locked during /gsd-discuss-phase 183)
+**Requirements:** BUNDLE-01..BUNDLE-06 (informal IDs aligned 1:1 with the six Success Criteria below; `phase_req_ids: null` in REQUIREMENTS.md — Phase 183 is not enumerated in the v12.1 AI requirements doc)
 
 **Success Criteria** (what must be TRUE):
   1. `Bundle::new("embed-v1", BYTES).content_type("application/javascript").hashed_url()` returns a string like `/bundles/embed-v1.{8hex}.js` deterministically derived from SHA-256 of `BYTES`.
@@ -1986,7 +1986,13 @@ Discovery: surfaced during the 2026-06-06 jetskiadriatic startup-lifecycle audit
   5. The crate README documents the bundle-vs-filesystem split (immutable byte blobs vs mutable filesystem assets) so future contributors do not collapse them.
   6. `ferro-bundle` publishes to crates.io via the existing GH Actions workflow; gestiscilo Phase 185 consumes it via Cargo.toml bump.
 
-**Plans:** TBD (run /gsd-plan-phase 183 to break down)
+**Plans:** 4 plans
+
+Plans:
+- [ ] 183-01-PLAN.md — Scaffold ferro-bundle crate (Cargo.toml + lib.rs stub + README) + workspace member + version bump 0.2.42 -> 0.2.43 + publish.yml Wave 3 entry (Shape B: appended alongside ferro-cli)
+- [ ] 183-02-PLAN.md — Core implementation: Bundle struct + 5 builder methods + Error enum + OnceLock<DashMap> registries + serve_inner dispatcher + unit tests (BUNDLE-01, BUNDLE-04)
+- [ ] 183-03-PLAN.md — Integration tests: serve_cold, serve_304, alias_redirect via __test_internals::serve_inner shim (BUNDLE-02 cold, BUNDLE-02 304, BUNDLE-03)
+- [ ] 183-04-PLAN.md — Publish bootstrap: cargo publish --dry-run gate + manual cargo publish from local terminal (D-12) + SUMMARY with runbook (BUNDLE-06)
 
 Discovery: gestiscilo `/embed/v1.js` SDK bundle is forever-stable per the SDK-10 contract but served today with `max-age=300, stale-while-revalidate=86400` (adequate but not optimal). A content-hashed URL unlocks truly immutable caching with one-year `max-age`. Generic enough to live in ferro: any ferro app shipping versioned static asset bundles can reuse the same primitive. Cross-tracked as gestiscilo Phase 185 [FERRO REPO].
 
