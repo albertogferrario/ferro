@@ -46,7 +46,6 @@ pub mod runtime;
 
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
 pub use assets::FERRO_BASE_CSS;
-pub use runtime::FERRO_RUNTIME_JS;
 pub use component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType,
@@ -62,6 +61,7 @@ pub use component::{
     ToastVariant,
 };
 pub use config::JsonUiConfig;
+pub use runtime::FERRO_RUNTIME_JS;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers
 pub use layout::{
     register_layout, render_layout, DashboardLayout, DashboardLayoutConfig, Layout, LayoutContext,
