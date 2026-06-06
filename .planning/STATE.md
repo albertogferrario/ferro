@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
-status: verifying
-stopped_at: Completed 184-03-PLAN.md (Phase 184 ready for verification)
+milestone: v12.2
+milestone_name: Frontend Performance Hardening
+status: complete
+stopped_at: Phase 184 verified — workspace at 0.2.44, ready to push for WAVE2 publish
 last_updated: "2026-06-06T21:03:45.571Z"
 last_activity: 2026-06-06
 progress:
   total_phases: 183
-  completed_phases: 165
+  completed_phases: 166
   total_plans: 508
-  completed_plans: 498
-  percent: 98
+  completed_plans: 501
+  percent: 99
 ---
 
 # Project State
@@ -20,16 +20,17 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 184 — ferro-inlinebudget-ferro-requesttelemetry
+**Current focus:** v12.2 Frontend Performance Hardening complete — Phase 184 closed.
 
 ## Current Position
 
-Phase: 184
-Plan: Not started
-Next: Push master + publish v12.0 release; then begin v12.1 Form Validation DX (Phases 137-139)
-Workspace version: 0.2.35 (publish bump pending)
-Status: Phase complete — ready for verification
-Last activity: 2026-06-06
+Phase: 184 (ferro::InlineBudget + ferro::RequestTelemetry) — COMPLETE
+Plan: 3/3 complete and verified (5/5 SCs, 15/15 D decisions, 20/20 new tests)
+Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
+      Pre-push reminder: `ferro-bundle` (Phase 183) needs a one-time manual `cargo publish -p ferro-bundle` from a local terminal before push, because the CI token has `publish-update` only (not `publish-new`).
+Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
+Status: v12.2 milestone complete, push-pending
+Last activity: 2026-06-06 — Phase 184 verified
 
 Progress: [████████░░] 84%
 

@@ -1722,9 +1722,9 @@ Plans:
 | v11.6 ferro-stripe Capability Refactor | 140-142 | 11 | ✅ Shipped | 2026-04-20 |
 | v11.7 Tailwind Static CSS Pipeline | 143 | 4 | ✅ Shipped | 2026-04-21 |
 | v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121 | ? | 📋 Planned | - |
+| v12.2 Frontend Performance Hardening | 182-184 | 10 | ✅ Shipped | 2026-06-06 |
 
-**Total: 28 milestones shipped, 270 plans complete.**
-mplete.**
+**Total: 29 milestones shipped, 280 plans complete.**
 
 
 ---
@@ -1936,7 +1936,7 @@ Discovery: surfaced during gestiscilo Phase 175 UAT (2026-05-31) on the operator
 
 ---
 
-### 📋 v12.2 Frontend Performance Hardening (Phases 182-184, planned 2026-06-06)
+### ✅ v12.2 Frontend Performance Hardening (Phases 182-184, shipped 2026-06-06)
 
 Three runtime/framework primitives surfaced by the gestiscilo-it jetskiadriatic startup-lifecycle audit on 2026-06-06. Each phase pairs 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). Build order recommendation: 182 → 183 → 184 (smallest to largest ferro-side scope; 182 acts as the pattern-rodage phase).
 
