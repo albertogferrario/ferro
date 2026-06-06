@@ -701,13 +701,13 @@ Sequential. No parallelization opportunity — each plan strictly depends on the
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **A1 default-when-config-uninit:** Should the fallback be `unwrap_or(102_400)` (current recommendation) or `expect("Config::init() must be called before req.inline_budget")` (stricter)? Test isolation prefers the soft fallback. **Recommendation:** Soft fallback; if a user wants strict, they call `Config::init()` in their integration tests.
+1. **OQ1 (A1) default-when-config-uninit — RESOLVED:** Use the soft fallback `Config::get::<AppConfig>().map(|c| c.inline_budget_threshold_bytes).unwrap_or(102_400)`. Preserves test isolation (tests don't have to call `Config::init`); the strict variant (`.expect(...)`) would force every test using `req.inline_budget` to bootstrap config, which is friction without benefit.
 
-2. **A3 InlineBudget re-export:** CONTEXT has conflicting text. **Recommendation:** Trust user's prompt + D-02 semantics ("never user-typed") — do NOT re-export `InlineBudget`.
+2. **OQ2 (A3) `InlineBudget` re-export — RESOLVED:** Do NOT re-export `InlineBudget` from `framework::lib.rs`. The re-export set is exactly `{Decision, RequestTelemetry, Sample}`. D-02 semantics ("never user-typed") supersede D-11's mistakenly-broader list. Pattern-mapper independently flagged the same resolution.
 
-3. **Sample::from_value constructor:** CONTEXT D-07 "Claude's Discretion" allows planner to add `Sample::from_value(value)` (sugar for `Sample::now(value)`). **Recommendation:** Don't add it. Two constructors is the locked surface; sugar can come later if redundancy proves real.
+3. **OQ3 Sample::from_value constructor — RESOLVED:** Do NOT add the sugar `Sample::from_value(value)`. The two locked constructors (`Sample::now(value)` for the 99% case and `Sample::at(when, value)` for backfill) are sufficient. Additional sugar can ship in a follow-up if real redundancy emerges across consumers.
 
 ---
 
