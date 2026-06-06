@@ -2011,10 +2011,10 @@ Discovery: gestiscilo `/embed/v1.js` SDK bundle is forever-stable per the SDK-10
   4. The crate location decision (ferro-core extension vs new ferro-telemetry crate) is recorded in the phase's CONTEXT.md with rationale.
   5. ferro publishes the new version to crates.io via GH Actions; gestiscilo Phase 187 consumes both primitives via Cargo.toml bump.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 184-01-PLAN.md — Foundation: telemetry module (Sample + RequestTelemetry + global store + Decision enum + InlineBudgetState) + AppConfig.inline_budget_threshold_bytes field + crate-root re-exports (Decision, RequestTelemetry, Sample — NOT InlineBudget per OQ2)
+- [x] 184-01-PLAN.md — Foundation: telemetry module (Sample + RequestTelemetry + global store + Decision enum + InlineBudgetState) + AppConfig.inline_budget_threshold_bytes field + crate-root re-exports (Decision, RequestTelemetry, Sample — NOT InlineBudget per OQ2)
 - [ ] 184-02-PLAN.md — Request integration: decide() body with state machine + fire-once tracing::warn! + Request methods (inline_budget, telemetry_record, telemetry_record_scoped) added to the second impl block
 - [ ] 184-03-PLAN.md — Integration test (tests/telemetry_smoke.rs) + docs page (docs/src/the-basics/inline-budget-and-telemetry.md) + SUMMARY.md entry + workspace.package.version bump 0.2.43 → 0.2.44 + cargo publish --dry-run gate
 
