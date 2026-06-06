@@ -46,10 +46,17 @@ impl Sample {
 /// `crate::http::Request::telemetry_record_scoped`.
 pub struct RequestTelemetry;
 
-static TELEMETRY_STORE: OnceLock<DashMap<(String, Option<String>), VecDeque<Sample>>> =
-    OnceLock::new();
+/// `(key, scope)` bucket identifier. `scope` is caller-defined; convention is
+/// `"tenant:42"`, `"route:/api/products"`, etc.
+type BucketKey = (String, Option<String>);
 
-fn telemetry_store() -> &'static DashMap<(String, Option<String>), VecDeque<Sample>> {
+/// Per-bucket sample storage. `VecDeque` is used for O(1) push-back / pop-front
+/// ring-buffer semantics.
+type TelemetryStore = DashMap<BucketKey, VecDeque<Sample>>;
+
+static TELEMETRY_STORE: OnceLock<TelemetryStore> = OnceLock::new();
+
+fn telemetry_store() -> &'static TelemetryStore {
     TELEMETRY_STORE.get_or_init(DashMap::new)
 }
 
@@ -185,11 +192,7 @@ mod tests {
             .map(|t| {
                 thread::spawn(move || {
                     for i in 0..50usize {
-                        record(
-                            "concurrent",
-                            None,
-                            Sample::now(json!({"t": t, "i": i})),
-                        );
+                        record("concurrent", None, Sample::now(json!({"t": t, "i": i})));
                     }
                 })
             })
