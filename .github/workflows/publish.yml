@@ -294,20 +294,28 @@ jobs:
           echo "Waiting for crates.io to index Wave 2 crates..."
           sleep 30
 
-      - name: Publish Wave 3 (CLI)
+      - name: Publish Wave 3 (framework-consumers)
         run: |
-          echo "Publishing ferro-cli..."
-          if OUTPUT=$(cargo publish -p ferro-cli --no-verify 2>&1); then
-            echo "ferro-cli published successfully"
-          else
-            if echo "$OUTPUT" | grep -q "already exists\|already uploaded"; then
-              echo "ferro-cli already published, skipping"
+          echo "Publishing Wave 3 crates..."
+
+          # Wave 3: Framework consumers (depend on Wave 2's ferro-rs)
+          WAVE3_CRATES="ferro-cli ferro-bundle"
+
+          for crate in $WAVE3_CRATES; do
+            echo "Publishing $crate..."
+            if OUTPUT=$(cargo publish -p $crate --no-verify 2>&1); then
+              echo "$crate published successfully"
             else
-              echo "Failed to publish ferro-cli"
-              echo "$OUTPUT"
-              exit 1
+              if echo "$OUTPUT" | grep -q "already exists\|already uploaded"; then
+                echo "$crate already published, skipping"
+              else
+                echo "Failed to publish $crate"
+                echo "$OUTPUT"
+                exit 1
+              fi
             fi
-          fi
+            sleep 5
+          done
 
       - name: Create and push tag
         run: |
