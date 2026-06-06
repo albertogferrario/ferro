@@ -256,6 +256,29 @@ pub(crate) fn serve_inner(path: &str, if_none_match: Option<&str>) -> HttpRespon
         .header("Content-Type", "text/plain")
 }
 
+// ── Integration-test access shim ───────────────────────────────────────
+
+/// Doc-hidden wrapper around the crate-private `serve_inner` dispatcher for
+/// integration tests.
+///
+/// Each `tests/*.rs` file is its own compilation unit and cannot see `pub(crate)`
+/// items. This shim provides reachability without polluting the public crate API.
+/// The `__test_internals` name signals "do not call from production code."
+///
+/// We expose a thin `pub fn` wrapper (rather than a `pub use`) because Rust's
+/// visibility rules forbid `pub use` of a `pub(crate)` item — the re-export
+/// cannot exceed the imported item's visibility. The wrapper is inlined.
+#[doc(hidden)]
+pub mod __test_internals {
+    use ferro_rs::HttpResponse;
+
+    /// Doc-hidden bridge to the crate-private dispatcher. Integration tests only.
+    #[inline]
+    pub fn serve_inner(path: &str, if_none_match: Option<&str>) -> HttpResponse {
+        crate::serve_inner(path, if_none_match)
+    }
+}
+
 // ── Test isolation helper (D-13) ───────────────────────────────────────
 
 /// Clear all registries. Visible only under `#[cfg(test)]`. Call at the top of every
