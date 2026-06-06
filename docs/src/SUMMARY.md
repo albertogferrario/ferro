@@ -16,6 +16,7 @@
 - [Controllers](the-basics/controllers.md)
 - [Action Handlers](the-basics/action-handlers.md)
 - [Request & Response](the-basics/request-response.md)
+- [Inline Budget & Telemetry](the-basics/inline-budget-and-telemetry.md)
 
 # Features
 
