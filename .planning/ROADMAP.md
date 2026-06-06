@@ -1942,7 +1942,7 @@ Three runtime/framework primitives surfaced by the gestiscilo-it jetskiadriatic 
 
 #### Phases
 
-- [ ] **Phase 182: `ferro-json-ui` `data-lazy-hero` runtime primitive** — Add an IntersectionObserver block to `ferro-json-ui/src/runtime.rs` (sibling of SSE/tabs/toasts/sidebar) promoting `<video preload="none">` → `preload="auto"` on viewport approach. Single observer per page fans out to all `[data-lazy-hero]` elements. Per-element `rootMargin` via `data-lazy-hero-margin="…"` attribute. Default `200px 0px`. Idempotent via `data-lazy-hero-promoted="1"` marker. Pure attribute-driven, zero per-page JS for consumers. **Paired with:** gestiscilo Phase 186 (SDK auto-wiring + adopt `data-lazy-hero`).
+- [x] **Phase 182: `ferro-json-ui` `data-lazy-hero` runtime primitive** — Add an IntersectionObserver block to `ferro-json-ui/src/runtime.rs` (sibling of SSE/tabs/toasts/sidebar) promoting `<video preload="none">` → `preload="auto"` on viewport approach. Single observer per page fans out to all `[data-lazy-hero]` elements. Per-element `rootMargin` via `data-lazy-hero-margin="…"` attribute. Default `200px 0px`. Idempotent via `data-lazy-hero-promoted="1"` marker. Pure attribute-driven, zero per-page JS for consumers. **Paired with:** gestiscilo Phase 186 (SDK auto-wiring + adopt `data-lazy-hero`). (completed 2026-06-06)
 - [ ] **Phase 183: `ferro-bundle` capability (new crate)** — Top-level crate `ferro-bundle` for in-memory immutable byte blobs registered at boot. `Bundle::new(name, bytes).content_type(…).hashed_url()` → returns `/bundles/{name}.{sha8}.{ext}`-style URL; `Bundle::serve(req)` serves with `Cache-Control: public, max-age=31536000, immutable` + SHA-256 ETag + `If-None-Match` 304 fast path. `.with_alias("/embed/v1.js")` registers a plain-URL alias that 301-redirects to the current hash for backward compat. Targets symbolic byte blobs; does NOT replace the filesystem static-file handler (two parallel paths intentional — filesystem path is mutable, freshness via `bust_asset_urls`; bundle path is immutable, freshness via content hash). **Paired with:** gestiscilo Phase 185 (consume `ferro-bundle` + tenant asset minification + font subsetting).
 - [ ] **Phase 184: `ferro::InlineBudget` + `ferro::RequestTelemetry`** — Two request-scoped primitives. (a) `InlineBudget`: request extension `req.inline_budget(key, bytes) -> Decision::{Inline, Preload(url)}`. Tracks cumulative inlined bytes per request, fires a structured warning + flips to `Preload` once a configurable threshold is crossed. Targets: HTML inline scripts/styles, JSON-LD blobs, critical-CSS. (b) `RequestTelemetry`: per-key ring buffer (last N samples, in-process). `req.telemetry_record(key, sample)` for writers; `RequestTelemetry::snapshot(key, scope) -> Vec<Sample>` for operator surfaces. Thread-safe, lost-on-restart documented. Crate location decision (extension trait in `ferro-core` vs new `ferro-telemetry` crate) locked during discuss. **Paired with:** gestiscilo Phase 187 (consume `InlineBudget` + `RequestTelemetry` + bootstrap-endpoint fallback).
 
@@ -1961,12 +1961,12 @@ Three runtime/framework primitives surfaced by the gestiscilo-it jetskiadriatic 
   4. The runtime IIFE size grows by at most ~400 bytes (single-observer fan-out, no per-element observer cost).
   5. `ferro-json-ui` publishes the new version to crates.io via the existing GH Actions workflow; gestiscilo Phase 186 consumes it via Cargo.toml bump.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 182-01-PLAN.md — Create ferro-json-ui/src/runtime/hero_lazy.rs (setupLazyHeroes SOURCE) + wire into runtime/mod.rs (mod list, push_str chain, dispatcher, three test extensions/additions)
 - [x] 182-02-PLAN.md — Create docs/src/json-ui/runtime-primitives.md (public DOM-attribute contract page) + register in docs/src/SUMMARY.md
-- [ ] 182-03-PLAN.md — Bump workspace.package.version 0.2.41 → 0.2.42 in Cargo.toml + sync Cargo.lock (triggers existing Wave1A publish workflow on master merge)
+- [x] 182-03-PLAN.md — Bump workspace.package.version 0.2.41 → 0.2.42 in Cargo.toml + sync Cargo.lock (triggers existing Wave1A publish workflow on master merge)
 
 Discovery: surfaced during the 2026-06-06 jetskiadriatic startup-lifecycle audit. Tenant `index.html` has 4 below-the-fold heroes at `preload="none"`; the only way to lazily promote them today is per-page IntersectionObserver boilerplate. Pure generic web primitive — any ferro app with above-the-fold + below-the-fold hero videos benefits. Cross-tracked as gestiscilo Phase 186 [FERRO REPO]. Same elevation rule as Phase 165 F11/F13/F14 (runtime gaps belong in ferro, not in consumer-side scripts).
 
