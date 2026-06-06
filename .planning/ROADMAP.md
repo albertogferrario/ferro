@@ -1723,7 +1723,7 @@ Plans:
 | v11.7 Tailwind Static CSS Pipeline | 143 | 4 | ✅ Shipped | 2026-04-21 |
 | v12.0 JSON-UI v2 — Spec-Driven Rendering | 115-121, 159-164 | 491 commits | ✅ Shipped | 2026-05-19 |
 | v12.2 Frontend Performance Hardening | 182-184 | 10 | ✅ Shipped | 2026-06-06 |
-| v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding | 165-173 | — | 📋 Planned (not started) | - |
+| v12.1 AI — ferro-ai SDK & AI as Projection Consumer | 165-173 | — | 📋 Planned (not started) | - |
 
 **Total: 30 milestones shipped, plan totals approximate (v12.0 logged 491 commits in the top-line milestone log).**
 
@@ -1732,38 +1732,39 @@ Plans:
 
 ---
 
-### 📋 v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding (Phases 165-173, planned 2026-05-15)
+### 📋 v12.1 AI — ferro-ai SDK & AI as Projection Consumer (Phases 165-173, planned 2026-05-15, reframed 2026-06-07)
 
-**Milestone Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and build AI-assisted scaffolding on top of it. The killer feature: `ferro ai:make <description>` uses live `ferro-mcp` introspection (called in-process, not via subprocess) to generate code that fits the actual project rather than a generic template.
+**Milestone Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and make AI a first-class consumer of the projection / intent core. The killer feature: `ferro ai:make <description>` produces a typed `ferro_projections::ServiceDef` — the universal projection contract. The existing rendering pipeline (`ferro-json-ui` renderer, `ferro-mcp` introspection renderer, future modality renderers) covers everything downstream. AI does NOT recreate the pre-projections multi-file scaffolding workflow; it generates the input the projection layer already knows how to render. Live `ferro-mcp` introspection (called in-process, not via subprocess) supplies the project-specific context so generated `ServiceDef`s reference existing models, intents, and conventions rather than generic templates.
 
-**Requirements:** AISDK-01..06, AISSE-01..02, AICLI-01..05 (13 requirements, 1 deferred)
+**Conceptual coherence anchor:** Every AI surface either produces or consumes a `ServiceDef`. The structured-outputs schema normalizer is `ServiceDef`-aware so the LLM cannot drift from the intent system. See `.planning/REQUIREMENTS.md` for the full anti-requirements set.
 
-**Relationship to v12.0:** v12.0 (Phases 115-121) runs first. AICLI-04 (`make:json-view` v2) is gated on v12.0 shipping; it is deferred to Phase 173 and blocked until then.
+**Requirements:** AISDK-01..06, AISSE-01..02, AICLI-01..06 (14 requirements; AICLI-04 was deferred pending v12.0 — now unblocked since v12.0 shipped 2026-05-19)
+
+**Relationship to v12.0:** v12.0 shipped 2026-05-19. AICLI-04 (`make:json-view` v2 — the first concrete `Renderer` over an AI-produced `ServiceDef`) is now unblocked and joins Phase 171 in closing the produce-then-render loop end-to-end via AICLI-06.
 
 **New dependencies:**
 - `reqwest-eventsource 0.6` — parse incoming SSE from Anthropic/OpenAI/Groq/Ollama (new to workspace)
 - `pgvector 0.4` — optional feature-gate on ferro-ai for vector storage (new to workspace)
 
 **Build order:**
-- Wave 1 (ferro-ai foundation): Phases 165, 166, 167 — ferro-ai leaf crate first; everything builds on `LlmClient` trait
+- Wave 1 (ferro-ai foundation): Phases 165, 166, 167 — ferro-ai leaf crate first; everything builds on `LlmClient` trait. Phase 166's schema normalizer must ship the `ServiceDef`-aware path here (required by the killer feature in Wave 4).
 - Wave 1b (parallel): Phase 168 — SSE primitives in framework have no ferro-ai dependency
 - Wave 2: Phase 169 — StreamText depends on SSE URL convention from Phase 168
-- Wave 3: Phase 170 — ferro-cli migration, validates SDK against existing make:json-view command
-- Wave 4: Phase 171 — AI CLI commands, the killer feature; uses ferro-mcp in-process
-- Wave 5: Phase 172 — MCP tool wrappers, thin layer on top of CLI logic
-- Deferred: Phase 173 — gated on v12.0 shipping
+- Wave 3: Phase 170 — ferro-cli migration, validates SDK against existing `make:json-view` command
+- Wave 4: Phase 171 — `ai:make` produces `ServiceDef`, `ai:explain` returns projection-framed explanation; uses ferro-mcp in-process. Killer feature.
+- Wave 5: Phase 172 — MCP tool wrappers (thin layer on top of CLI logic); Phase 173 — `make:json-view` v2 as the first concrete `Renderer` over a ServiceDef produced by `ai:make`, plus AICLI-06 projection-roundtrip test closing the loop end-to-end.
 
 ## Phases
 
 - [ ] **Phase 165: LlmClient Trait & Provider Implementations** — `LlmClient` trait + Anthropic/OpenAI/Ollama providers + `AiConfig::from_env()` + `ClassifierConfig` default-model fix
-- [ ] **Phase 166: Structured Outputs, Tool Calling & Schema Normalizer** — `ferro_ai::complete::<T>()` + schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ToolRegistry` with `max_iterations` hard cap
+- [ ] **Phase 166: Structured Outputs, Tool Calling & ServiceDef-aware Schema Normalizer** — `ferro_ai::complete::<T>()` + generic schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ServiceDef`-aware specialization that locks the LLM to valid projection shapes when `T` is `ferro_projections::ServiceDef` + `ToolRegistry` with `max_iterations` hard cap
 - [ ] **Phase 167: Embeddings & pgvector** — `embed()` + `cosine_similarity()` pure Rust helpers + optional `pgvector` feature-gated module
 - [ ] **Phase 168: Framework SSE Primitives** — `SseEvent` + `SseStream` + `HttpResponse::sse()` in framework crate; SSE routes structurally excluded from CompressionLayer
 - [ ] **Phase 169: StreamText Component** — `StreamText` ferro-json-ui component rendering a token stream from an SSE endpoint URL
 - [ ] **Phase 170: ferro-cli Migration** — delete `ferro-cli/src/ai.rs` blocking client; wire all LLM calls through `ferro_ai::complete::<T>()`
-- [ ] **Phase 171: ferro ai:make & ferro ai:explain CLI Commands** — killer-feature commands using live ferro-mcp introspection in-process; `ScaffoldPlan` typed struct; selective context loading
-- [ ] **Phase 172: MCP Tool Wrappers** — `ai_scaffold` + `ai_explain` tools in ferro-mcp wrapping CLI command logic for in-process agent consumption
-- [ ] **Phase 173: make:json-view v2 (DEFERRED — gated on v12.0)** — `ferro make:json-view` upgraded to structured outputs + ServiceDef introspection; blocked until v12.0 JSON-UI v2 ships
+- [ ] **Phase 171: ferro ai:make & ferro ai:explain CLI Commands** — killer-feature commands. `ai:make <description>` produces a typed `ferro_projections::ServiceDef` (NOT a multi-file scaffold bundle and NO `ScaffoldPlan` intermediary — structured outputs complete directly into the projection contract). `ai:explain <route|model|service>` returns a projection-framed explanation (`Intent`, `FieldMeaning`, `ActionDef`/`GuardDef`, `StateMachine`). Live ferro-mcp introspection in-process; selective context loading.
+- [ ] **Phase 172: MCP Tool Wrappers** — `ai_scaffold` + `ai_explain` tools in ferro-mcp wrapping CLI command logic for in-process agent consumption. `ai_scaffold` returns the same `ServiceDef` shape the CLI produces — no parallel surface.
+- [ ] **Phase 173: make:json-view v2 (unblocked — v12.0 shipped 2026-05-19)** — `ferro make:json-view` upgraded to structured outputs + `ServiceDef` introspection. The first concrete `Renderer` over a ServiceDef produced by `ai:make`. Includes AICLI-06 projection-roundtrip test (NL description → `ServiceDef` → rendered JSON-UI spec) as the structural proof that AI is a first-class projection consumer.
 
 #### Phase Details
 
@@ -1780,17 +1781,18 @@ Plans:
   6. `reqwest-eventsource 0.6` is declared as a `pub(crate)` dependency in provider modules only — not re-exported as a public ferro-ai surface
 **Plans**: TBD
 
-### Phase 166: Structured Outputs, Tool Calling & Schema Normalizer
-**Goal**: Ship `ferro_ai::complete::<T>()` for typed structured outputs, the schema normalizer that makes `schemars` output compatible with provider structured-output APIs, and `ToolRegistry` with a hard `max_iterations` guard.
+### Phase 166: Structured Outputs, Tool Calling & ServiceDef-aware Schema Normalizer
+**Goal**: Ship `ferro_ai::complete::<T>()` for typed structured outputs, the schema normalizer that makes `schemars` output compatible with provider structured-output APIs, the `ServiceDef`-aware specialization that locks the LLM to valid projection shapes, and `ToolRegistry` with a hard `max_iterations` guard.
 **Depends on**: Phase 165
 **Requirements**: AISDK-02, AISDK-03
 **Success Criteria** (what must be TRUE):
   1. `ferro_ai::complete::<T>(client, prompt)` where `T: schemars::JsonSchema + serde::DeserializeOwned` returns `Result<T, Error>` — caller never calls schemars or JSON parsing directly
   2. `ferro_ai::schema::for_structured_output(root_schema)` resolves all `$ref`/`$defs` inline, adds `additionalProperties: false` to every object schema, and strips constraints Anthropic structured-output rejects; a unit test verifies the output against Anthropic's documented constraints
-  3. `ToolDef` struct carries `name: String`, `description: String`, `parameters_schema: serde_json::Value` (normalized via `for_structured_output`), and a handler closure
-  4. `ToolRegistry::dispatch(messages, client)` runs the tool-calling loop; `max_iterations: u32` (default 10) is required at construction time and enforced with no override path to an unbounded loop; a warning is logged at 5 iterations and an error at the hard cap
-  5. Tool errors carry model-legible `ToolError { message: String }` descriptions — not raw Rust stack traces or DB constraint strings
-  6. `cargo test --all-features` passes; existing `Classifier<T>` tests are green
+  3. **`ServiceDef`-aware path:** when `T` is `ferro_projections::ServiceDef` (or contains one), the normalizer constrains the schema to valid projection shapes: `FieldMeaning` enum values, `Intent` enum (Browse / Focus / Collect / Process / Summarize / Analyze / Track), `Cardinality` enum, `ActionDef` / `GuardDef` / `StateDef` shapes derived from `ferro-projections`. A unit test asserts the LLM cannot produce a schema-passing `ServiceDef` that contains an invalid `FieldMeaning` or `Intent` value. This is the structural guarantee referenced by AISDK-02's projection-coherence clause.
+  4. `ToolDef` struct carries `name: String`, `description: String`, `parameters_schema: serde_json::Value` (normalized via `for_structured_output`), and a handler closure
+  5. `ToolRegistry::dispatch(messages, client)` runs the tool-calling loop; `max_iterations: u32` (default 10) is required at construction time and enforced with no override path to an unbounded loop; a warning is logged at 5 iterations and an error at the hard cap
+  6. Tool errors carry model-legible `ToolError { message: String }` descriptions — not raw Rust stack traces or DB constraint strings
+  7. `cargo test --all-features` passes; existing `Classifier<T>` tests are green
 **Plans**: TBD
 
 ### Phase 167: Embeddings & pgvector
@@ -1842,40 +1844,41 @@ Plans:
 **Plans**: TBD
 
 ### Phase 171: ferro ai:make & ferro ai:explain CLI Commands
-**Goal**: Ship the killer-feature CLI commands. `ferro ai:make <description>` produces a complete feature scaffold using live ferro-mcp introspection loaded in-process (not subprocess). `ferro ai:explain <route|model>` explains an existing handler or model using actual source loaded through ferro-mcp.
-**Depends on**: Phase 170 (SDK migration complete), Phase 166 (structured outputs)
+**Goal**: Ship the killer-feature CLI commands. `ferro ai:make <description>` produces a typed `ferro_projections::ServiceDef` — the universal projection contract — using live ferro-mcp introspection loaded in-process (not subprocess). `ferro ai:explain <route|model|service>` returns a projection-framed explanation of an existing service using actual source loaded through ferro-mcp. **No `ScaffoldPlan` intermediary type; no multi-file scaffold output.** The existing rendering pipeline (Phase 173 `make:json-view` v2, ferro-mcp introspection renderer, future modality renderers) consumes the `ServiceDef` to produce downstream artifacts.
+**Depends on**: Phase 170 (SDK migration complete), Phase 166 (structured outputs + `ServiceDef`-aware schema normalizer)
 **Requirements**: AICLI-01, AICLI-02, AICLI-03
 **Success Criteria** (what must be TRUE):
-  1. `ferro ai:make <description>` calls ferro-mcp library functions in-process to load `list_routes`, `list_models`, `db_schema`, and `generation_context`; context is filtered to items semantically relevant to the description before prompt construction (prevents context window overflow on large projects)
-  2. `ferro ai:make` generates a typed `ScaffoldPlan` struct via `ferro_ai::complete::<ScaffoldPlan>()` before writing any files; `--dry-run` prints the plan without writing
-  3. `ferro ai:make` delegates file generation to existing scaffold helpers (`generate_model`, `generate_migration`, `make:json-view`); no parallel file-writing path exists
-  4. `ferro ai:explain <route|model>` calls the `get_handler` (or equivalent) ferro-mcp tool in-process to load actual handler source, then returns a plain-English explanation including side effects (events dispatched, jobs queued, models touched)
+  1. `ferro ai:make <description>` calls ferro-mcp library functions in-process to load `list_routes`, `list_models`, `db_schema`, `generation_context`, and existing `ServiceDef`s in the project; context is filtered to items semantically relevant to the description before prompt construction (prevents context window overflow on large projects)
+  2. `ferro ai:make` produces a typed `ferro_projections::ServiceDef` via `ferro_ai::complete::<ServiceDef>()` using the `ServiceDef`-aware schema normalizer path from Phase 166. The output is a single commit-ready `ServiceDef` definition — fields with `FieldMeaning`, `Intent` hints, `ActionDef`s with `GuardDef`s, `StateMachine` if stateful, `RelationshipDef`s with `Cardinality`. `--dry-run` prints the `ServiceDef` without registering it.
+  3. `ferro ai:make` does NOT write a multi-file scaffold bundle. Downstream artifacts (rendered JSON-UI spec, route registration glue, migration scaffolding) are produced by existing `make:*` helpers consuming the `ServiceDef` — `make:json-view` v2 (Phase 173) is the primary downstream `Renderer`. There is no parallel file-writing path inside `ai:make`.
+  4. `ferro ai:explain <route|model|service>` calls ferro-mcp introspection in-process; when a `ServiceDef` is found for the target, the explanation is projection-framed: the `Intent`s the service projects, which fields' `FieldMeaning`s drive the rendering, which `ActionDef`s are exposed under which `GuardDef`s, what state transitions exist via `StateMachine`. Plain code prose is the fallback only when no `ServiceDef` is found for the target.
   5. Both commands respect `FERRO_AI_MAX_TOKENS_PER_COMMAND` env var as a cost guard; both support `--dry-run`
-  6. Neither command generates non-ferro code; all scaffolds are validated against project conventions as reported by ferro-mcp introspection
+  6. Neither command generates non-ferro code; the produced `ServiceDef` references existing models, intents, and conventions as reported by ferro-mcp introspection — not generic templates.
 **Plans**: TBD
 
 ### Phase 172: MCP Tool Wrappers
-**Goal**: Expose `ai_scaffold` and `ai_explain` as ferro-mcp tools so agents can invoke scaffolding and explanation logic in-process without shelling out to the CLI.
+**Goal**: Expose `ai_scaffold` and `ai_explain` as ferro-mcp tools so agents can invoke `ServiceDef` production and projection-framed explanation logic in-process without shelling out to the CLI.
 **Depends on**: Phase 171 (CLI command logic validated end-to-end)
 **Requirements**: AICLI-05
 **Success Criteria** (what must be TRUE):
-  1. `ai_scaffold` MCP tool accepts `description: String` and returns a `ScaffoldPlan` JSON object plus a list of files written (or would-be-written in dry-run mode)
-  2. `ai_explain` MCP tool accepts `target: String` (route path or model name) and returns the plain-English explanation as a string
+  1. `ai_scaffold` MCP tool accepts `description: String` and returns a `ferro_projections::ServiceDef` JSON object (the same shape `ai:make` produces — no parallel surface, no `ScaffoldPlan` intermediary)
+  2. `ai_explain` MCP tool accepts `target: String` (route path, model name, or service name) and returns the projection-framed explanation (`Intent`, `FieldMeaning`, `ActionDef` / `GuardDef`, `StateMachine`) as structured JSON; plain prose fallback when no `ServiceDef` is found
   3. Both tools share the same logic path as the CLI commands — no duplicate implementation
   4. MCP tool descriptions are accurate and sufficient for an agent to use them without out-of-band guidance
   5. `ferro-mcp` version bumped; `cargo test --all-features` passes
 **Plans**: TBD
 
-### Phase 173: make:json-view v2 (DEFERRED — gated on v12.0)
-**Goal**: Upgrade `ferro make:json-view` to use structured outputs with ServiceDef introspection and schema-driven component selection. This phase is blocked until v12.0 JSON-UI v2 ships and `catalog.prompt()` / `catalog.component_schema()` are available.
-**Depends on**: Phase 170; v12.0 Phase 117 (Catalog & JSON Schema) and Phase 120 (CLI & MCP Updates)
-**Requirements**: AICLI-04
-**Status**: DEFERRED — do not plan or execute until v12.0 Phase 117 and Phase 120 are complete
+### Phase 173: make:json-view v2 + projection-roundtrip test (UNBLOCKED — v12.0 shipped 2026-05-19)
+**Goal**: Upgrade `ferro make:json-view` to use structured outputs with `ServiceDef` introspection and schema-driven component selection. This is the **first concrete `Renderer` over a `ServiceDef` produced by `ai:make`** (Phase 171). Ship AICLI-06 alongside: a single end-to-end test that runs NL description → `ServiceDef` (via `ai:make`) → rendered JSON-UI spec (via `make:json-view` v2) → renderable view. This roundtrip is the structural proof that AI is a first-class projection consumer rather than a parallel scaffolding system.
+**Depends on**: Phase 171 (`ai:make` produces `ServiceDef`); Phase 170 (SDK migration). v12.0 Phase 117 / Phase 120 already shipped.
+**Requirements**: AICLI-04, AICLI-06
+**Status**: UNBLOCKED — v12.0 shipped 2026-05-19; this phase is now in the active build order.
 **Success Criteria** (what must be TRUE):
   1. `ferro make:json-view` uses `catalog.prompt()` for concise AI context and `catalog.component_schema()` for per-component structured output (not the flat string prompt from v1)
   2. Generated views are v2 flat specs validated against `catalog.json_schema()` before being written to disk
-  3. ServiceDef introspection (via `ferro-mcp generate_projection`) is used to select components matching the model's field types
+  3. `make:json-view` consumes a `ServiceDef` (either freshly produced by `ai:make` or loaded from an existing project file); selection of JSON-UI components is driven by `FieldMeaning` and `Intent` from the `ServiceDef`, not by re-prompting the LLM about field types
   4. No v1 `JsonUiView` types appear in the generated output or the generation pipeline
+  5. **Projection-roundtrip test** at `ferro-ai/tests/projection_roundtrip.rs`: a fixed NL description completes against `ai:make` → produces a deterministic-shape `ServiceDef` (asserted on `Intent` derivation outputs, `FieldMeaning` set, `ActionDef` set) → that `ServiceDef` runs through `make:json-view` v2 → produces a JSON-UI spec validated against `catalog.json_schema()`. The test passes via the `ServiceDef`-aware path; it cannot pass via the generic schema-normalization fallback.
 **Plans**: TBD
 
 #### Progress

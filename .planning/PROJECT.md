@@ -254,30 +254,31 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - Multimodal projection (audio/voice/physical) — v2.0+ direction
 - Bundled agent UX — `ferro-mcp` plus the user's existing agent is the supported workflow
 
-## Upcoming Milestone: v12.1 AI — ferro-ai SDK & AI-Assisted Scaffolding
+## Upcoming Milestone: v12.1 AI — ferro-ai SDK & AI as Projection Consumer
 
-**Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and build AI-assisted scaffolding on top of it, so an agent or developer can go from natural language to working code in one command.
+**Goal:** Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and make AI a first-class consumer of the projection / intent core. The killer feature: `ferro ai:make <description>` produces a typed `ferro_projections::ServiceDef` — the universal projection contract — and the existing rendering pipeline (`ferro-json-ui` renderer, `ferro-mcp` introspection renderer, future modality renderers) covers everything downstream. AI does not recreate pre-projections multi-file scaffolding; it generates the input the projection layer already knows how to render.
 
 **Target features:**
 
 *SDK (ferro-ai expansion — foundation):*
-- Multi-provider LLM client: Anthropic, OpenAI, Groq, Ollama via a provider-agnostic trait; config from env vars
+- Multi-provider LLM client: Anthropic, OpenAI, Groq (OpenAI-compatible), Ollama via a provider-agnostic trait; config from env vars
 - Structured outputs: `ferro_ai::complete::<T>()` returns typed Rust structs via JSON Schema
-- Tool calling: register Rust functions as AI tools; SDK dispatches tool-use calls automatically
+- **`ServiceDef`-aware schema normalizer**: when the LLM completes into a `ServiceDef`, the schema locks output to valid projection shapes (`FieldMeaning`, `Intent`, `Cardinality`, `ActionDef` / `GuardDef`, `StateMachine`). Structural guarantee that AI cannot drift from the intent system.
+- Tool calling: register Rust functions as AI tools; SDK dispatches tool-use calls automatically with a hard `max_iterations` guard
 - Embeddings + cosine similarity helpers; optional pgvector integration for semantic search
 
 *Streaming:*
 - SSE streaming support so handlers can push LLM tokens to the browser as they arrive
-- ferro-json-ui streaming text component for token-by-token display
+- `ferro-json-ui` streaming text component for token-by-token display
 
-*AI CLI commands (built on SDK):*
-- `ferro ai:make <description>` — natural language → scaffolded handler + model + routes + JSON-UI view, using ferro-mcp introspection as context
-- `ferro ai:explain <route|model>` — plain-English explanation of an existing handler or model
-- Improved `ferro make:json-view` using structured outputs and ServiceDef introspection
+*AI CLI commands (built on SDK, framed as projection produce / consume / render):*
+- `ferro ai:make <description>` — natural language → typed `ferro_projections::ServiceDef`, using ferro-mcp introspection as context. No multi-file scaffold output; no `ScaffoldPlan` intermediary.
+- `ferro ai:explain <route|model|service>` — projection-framed explanation (`Intent`, `FieldMeaning`, `ActionDef` / `GuardDef`, `StateMachine`); plain code prose is the fallback only when no `ServiceDef` is found.
+- `ferro make:json-view` v2 — first concrete `Renderer` over a ServiceDef produced by `ai:make`. Now unblocked since v12.0 shipped 2026-05-19. Closes the produce-then-render loop end-to-end via a projection-roundtrip test (NL description → `ServiceDef` → rendered JSON-UI spec).
 
-**Phases:** 159+ (continuing from Phase 158)
+**Phases:** 165-173 (per ROADMAP.md v12.1 AI section)
 
-**Relationship to v12.0:** v12.0 (JSON-UI v2, phases 115-121) runs first. v12.1 begins after v12.0 ships. The `ferro-ai` SDK is the foundation; CLI commands land on top of it.
+**Relationship to v12.0:** v12.0 (JSON-UI v2, phases 115-121) shipped 2026-05-19. The `Renderer` trait + `Catalog` + spec schema from v12.0 are exactly the surfaces `make:json-view` v2 consumes — v12.1 builds AI on top of the projection contract v12.0 made addressable.
 
 ## Upcoming Milestone: v13.0 Road to v1.0
 
