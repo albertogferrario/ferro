@@ -42,10 +42,11 @@ pub mod resolve;
 pub mod spec;
 pub mod visibility;
 
-pub(crate) mod runtime;
+pub mod runtime;
 
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
 pub use assets::FERRO_BASE_CSS;
+pub use runtime::FERRO_RUNTIME_JS;
 pub use component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType,

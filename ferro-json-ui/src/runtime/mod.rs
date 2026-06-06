@@ -24,7 +24,7 @@ use std::sync::LazyLock;
 /// Assembled JS runtime bundle. Lazily concatenated from per-concern
 /// submodules on first access; the resulting string is stable for the
 /// process lifetime.
-pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
+pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     let mut s = String::with_capacity(8 * 1024);
     s.push_str("(function() {\n    'use strict';\n");
     s.push_str(sse::SOURCE);
