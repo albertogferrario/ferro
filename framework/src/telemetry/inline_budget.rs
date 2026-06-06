@@ -98,7 +98,6 @@ impl InlineBudgetState {
 ///
 /// `crate::AppConfig` resolves via the pre-existing re-export at
 /// `framework/src/lib.rs:60-63` (NOT added by Plan 01).
-#[allow(dead_code)] // Wired by Request::inline_budget in Task 2 of this same plan.
 pub(crate) fn decide(req: &mut Request, key: &str, bytes: usize, fallback_url: &str) -> Decision {
     // 1. Read &self-borrowing values first.
     let threshold = crate::Config::get::<crate::AppConfig>()

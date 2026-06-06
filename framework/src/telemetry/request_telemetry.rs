@@ -68,8 +68,7 @@ pub(crate) const RING_BUFFER_CAPACITY: usize = 128;
 /// exceeds [`RING_BUFFER_CAPACITY`].
 ///
 /// Called from `crate::http::Request::telemetry_record` and
-/// `crate::http::Request::telemetry_record_scoped` (Plan 02 wires them).
-#[allow(dead_code)] // Plan 02 wires Request::telemetry_record to this.
+/// `crate::http::Request::telemetry_record_scoped`.
 pub(crate) fn record(key: &str, scope: Option<&str>, sample: Sample) {
     let map_key = (key.to_string(), scope.map(|s| s.to_string()));
     let mut entry = telemetry_store()

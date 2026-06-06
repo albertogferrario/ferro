@@ -774,6 +774,55 @@ impl Request {
     pub(crate) fn action_overrides(&self) -> &crate::http::action::ActionOverrides {
         &self.action_overrides
     }
+
+    /// Decide whether `bytes` should be inlined into the response or preloaded
+    /// from `fallback_url`. Decision is request-scoped; cumulative bytes per
+    /// `key` accumulate across calls within a single request.
+    ///
+    /// A `tracing::warn!` fires exactly once per `(key, request)` when the
+    /// cumulative byte count first crosses
+    /// [`crate::AppConfig::inline_budget_threshold_bytes`] (default 100 KiB —
+    /// override via env `INLINE_BUDGET_BYTES`).
+    ///
+    /// `fallback_url` MUST be a caller-designed compile-time-shaped string —
+    /// NOT user-controlled input (it appears in structured log fields).
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let bytes = render_jsonld_blob();
+    /// let html = match req.inline_budget("jsonld", bytes.len(), "/_/jsonld.json") {
+    ///     ferro_rs::Decision::Inline       => emit_inline_script(&bytes),
+    ///     ferro_rs::Decision::Preload(url) => emit_preload_link(&url),
+    /// };
+    /// ```
+    pub fn inline_budget(
+        &mut self,
+        key: &str,
+        bytes: usize,
+        fallback_url: &str,
+    ) -> crate::Decision {
+        crate::telemetry::inline_budget::decide(self, key, bytes, fallback_url)
+    }
+
+    /// Record a telemetry [`Sample`](crate::Sample) into the global ring buffer
+    /// keyed by `(key, None)`. Equivalent to
+    /// [`Request::telemetry_record_scoped`] with `scope = None`.
+    pub fn telemetry_record(&mut self, key: &str, sample: crate::Sample) {
+        crate::telemetry::request_telemetry::record(key, None, sample);
+    }
+
+    /// Record a telemetry [`Sample`](crate::Sample) into the global ring buffer
+    /// keyed by `(key, scope)`. `scope` is caller-defined; common conventions
+    /// are `"tenant:42"`, `"route:/api/products"`, `"region:eu-west-1"`.
+    pub fn telemetry_record_scoped(
+        &mut self,
+        key: &str,
+        scope: Option<&str>,
+        sample: crate::Sample,
+    ) {
+        crate::telemetry::request_telemetry::record(key, scope, sample);
+    }
 }
 
 /// Request parts after body has been separated
