@@ -180,7 +180,10 @@ pub use routing::{
 pub use schedule::{CronExpression, DayOfWeek, Schedule, Task, TaskBuilder, TaskEntry, TaskResult};
 pub use seeder::{DatabaseSeeder, Seeder, SeederRegistry};
 pub use server::Server;
-pub use telemetry::{Decision, RequestTelemetry, Sample};
+pub use telemetry::{
+    inline_budget::DEFAULT_INLINE_BUDGET_THRESHOLD_BYTES, request_telemetry::RING_BUFFER_CAPACITY,
+    Decision, RequestTelemetry, Sample,
+};
 
 // Re-export ferro-events for event-driven architecture
 pub use ferro_events::{

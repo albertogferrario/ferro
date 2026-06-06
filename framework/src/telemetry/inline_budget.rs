@@ -21,6 +21,15 @@ use std::collections::{HashMap, HashSet};
 
 use crate::http::Request;
 
+/// Default cumulative-byte threshold per `key` for
+/// [`crate::http::Request::inline_budget`]. 100 KiB.
+///
+/// Single source of truth for the default consumed by both
+/// [`crate::AppConfig::from_env`] (via the `INLINE_BUDGET_BYTES` env var) and
+/// the in-`decide()` fallback when `Config::get::<AppConfig>()` returns `None`
+/// (i.e. unit-test contexts where no `AppConfig` is registered).
+pub const DEFAULT_INLINE_BUDGET_THRESHOLD_BYTES: usize = 102_400;
+
 /// Outcome of `crate::http::Request::inline_budget`: inline the bytes into the
 /// response, or preload them via the caller-provided fallback URL.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,9 +80,10 @@ impl InlineBudgetState {
             return Decision::Inline;
         }
 
-        // 3. Fire-once warning per (key, request).
-        if !self.warned.contains(key) {
-            self.warned.insert(key.to_string());
+        // 3. Fire-once warning per (key, request). `HashSet::insert` returns
+        //    true on first insert, false on subsequent crosses — atomic
+        //    test-and-set, no double-hash on the hot already-warned path.
+        if self.warned.insert(key.to_string()) {
             tracing::warn!(
                 key = %key,
                 cumulative_bytes = cumulative,
@@ -102,7 +112,7 @@ pub(crate) fn decide(req: &mut Request, key: &str, bytes: usize, fallback_url: &
     // 1. Read &self-borrowing values first.
     let threshold = crate::Config::get::<crate::AppConfig>()
         .map(|c| c.inline_budget_threshold_bytes)
-        .unwrap_or(102_400);
+        .unwrap_or(DEFAULT_INLINE_BUDGET_THRESHOLD_BYTES);
     let route_pattern = req.route_pattern().unwrap_or_default();
 
     // 2. Lazy-init InlineBudgetState in extensions.

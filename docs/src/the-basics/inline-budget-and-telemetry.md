@@ -81,12 +81,19 @@ INLINE_BUDGET_BYTES=204800  # 200 KiB
 Or programmatically:
 
 ```rust,ignore
-use ferro_rs::AppConfigBuilder;
+use ferro_rs::{AppConfigBuilder, Config};
 
 let cfg = AppConfigBuilder::default()
     .inline_budget_threshold_bytes(204_800)
     .build();
+
+// Register the built config with the container so `req.inline_budget(...)`
+// will pick up the override. Building the config without registering it has
+// no effect — `decide()` reads from the container, not from a local binding.
+Config::register(cfg);
 ```
+
+If you skip the `Config::register(cfg)` step, `inline_budget` silently falls back to the `INLINE_BUDGET_BYTES` env var or to [`ferro_rs::DEFAULT_INLINE_BUDGET_THRESHOLD_BYTES`] (currently 100 KiB).
 
 The threshold is global — there is no per-key override in v1. If your application needs heterogeneous budgets per key, file an issue requesting `req.inline_budget_with_limit(key, bytes, fallback_url, limit)`.
 
@@ -131,6 +138,8 @@ impl Sample {
 ```
 
 `recorded_at` uses `SystemTime` (wall-clock) so samples remain comparable across process restarts. `value` is a `serde_json::Value` so heterogeneous payloads from different writers can share a snapshot reader.
+
+**Sample payload size is unbounded** and caller-controlled. Keep payloads small — a few hundred bytes is typical for an operator-dashboard sample (a couple of numeric fields, a tenant id, maybe a route pattern). The ring buffer holds [`ferro_rs::RING_BUFFER_CAPACITY`] samples per `(key, scope)`, so the per-bucket memory ceiling is `payload_size × RING_BUFFER_CAPACITY`. The framework does not enforce a per-sample size cap; that is caller discipline, the same framing as the `(key, scope)` cardinality note above.
 
 ## Writer methods
 

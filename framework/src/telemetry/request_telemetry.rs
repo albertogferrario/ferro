@@ -62,7 +62,10 @@ fn telemetry_store() -> &'static TelemetryStore {
 
 /// Per-bucket ring-buffer capacity. Power of 2; chosen for cheap arithmetic
 /// and a "lots of samples without crowding memory" budget.
-pub(crate) const RING_BUFFER_CAPACITY: usize = 128;
+///
+/// Exposed publicly so operator dashboards rendering "showing N of CAPACITY
+/// samples" can refer to the const symbolically instead of hardcoding `128`.
+pub const RING_BUFFER_CAPACITY: usize = 128;
 
 /// Push `sample` into the `(key, scope)` bucket. Drops the oldest if the bucket
 /// exceeds [`RING_BUFFER_CAPACITY`].

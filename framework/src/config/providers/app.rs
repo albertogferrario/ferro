@@ -24,7 +24,10 @@ impl AppConfig {
             environment: Environment::detect(),
             debug: env("APP_DEBUG", true),
             url: env("APP_URL", "http://localhost:8080".to_string()),
-            inline_budget_threshold_bytes: env("INLINE_BUDGET_BYTES", 102_400usize),
+            inline_budget_threshold_bytes: env(
+                "INLINE_BUDGET_BYTES",
+                crate::telemetry::inline_budget::DEFAULT_INLINE_BUDGET_THRESHOLD_BYTES,
+            ),
         }
     }
 
