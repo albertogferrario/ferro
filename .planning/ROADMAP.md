@@ -1727,7 +1727,7 @@ Plans:
 
 **Total: 30 milestones shipped, plan totals approximate (v12.0 logged 491 commits in the top-line milestone log).**
 
-> **Reconciliation notes (2026-06-07 audit):** v12.0 milestone header and Phase 115/119 checkboxes were stale — flipped to `✅` based on the top-line milestone log entry at the start of this file. Standalone shipped phases not yet attached to a milestone: **180** (Declarative action handler primitive), **181** (JSON-UI Input error prop inline render). Standalone phases in flight: **179** (DataTable RawHtml-free heterogeneous rows — 1/N plans, no verification). Never started: **178** (json-ui plugin registry refactor — no plans). v12.1 Form Validation DX (phases 137-139) has no phase directories in `.planning/phases/` — either deferred or relocated to the gestiscilo repo.
+> **Reconciliation notes (2026-06-07 audit):** v12.0 milestone header and Phase 115/119 checkboxes were stale — flipped to `✅` based on the top-line milestone log entry at the start of this file. Standalone shipped phases not yet attached to a milestone: **179** (DataTable RawHtml-free heterogeneous rows — shipped 2026-05-25 in v0.2.38; closed with SUMMARY.md, no separate VERIFICATION.md), **180** (Declarative action handler primitive), **181** (JSON-UI Input error prop inline render). Never started: **178** (json-ui plugin registry refactor — directory holds only `.gitkeep`, no plans). v12.1 Form Validation DX (phases 137-139) has no phase directories in `.planning/phases/` — either deferred or relocated to the gestiscilo repo.
 
 
 ---
@@ -2123,4 +2123,4 @@ Both tokio tasks read `held = 0`, both pass `available = capacity - 0 ≥ quanti
 **Plans:** 1 plan
 
 Plans:
-- [ ] 179-01-PLAN.md — Badge column format + DropdownMenuAction.visible_if + tests + version bump
+- [x] 179-01-PLAN.md — Badge column format + DropdownMenuAction.visible_if + tests + version bump (shipped 2026-05-25 in workspace v0.2.38)
