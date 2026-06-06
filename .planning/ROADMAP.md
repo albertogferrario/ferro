@@ -1961,11 +1961,11 @@ Three runtime/framework primitives surfaced by the gestiscilo-it jetskiadriatic 
   4. The runtime IIFE size grows by at most ~400 bytes (single-observer fan-out, no per-element observer cost).
   5. `ferro-json-ui` publishes the new version to crates.io via the existing GH Actions workflow; gestiscilo Phase 186 consumes it via Cargo.toml bump.
 
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
-- [ ] 182-01-PLAN.md — Create ferro-json-ui/src/runtime/hero_lazy.rs (setupLazyHeroes SOURCE) + wire into runtime/mod.rs (mod list, push_str chain, dispatcher, three test extensions/additions)
-- [ ] 182-02-PLAN.md — Create docs/src/json-ui/runtime-primitives.md (public DOM-attribute contract page) + register in docs/src/SUMMARY.md
+- [x] 182-01-PLAN.md — Create ferro-json-ui/src/runtime/hero_lazy.rs (setupLazyHeroes SOURCE) + wire into runtime/mod.rs (mod list, push_str chain, dispatcher, three test extensions/additions)
+- [x] 182-02-PLAN.md — Create docs/src/json-ui/runtime-primitives.md (public DOM-attribute contract page) + register in docs/src/SUMMARY.md
 - [ ] 182-03-PLAN.md — Bump workspace.package.version 0.2.41 → 0.2.42 in Cargo.toml + sync Cargo.lock (triggers existing Wave1A publish workflow on master merge)
 
 Discovery: surfaced during the 2026-06-06 jetskiadriatic startup-lifecycle audit. Tenant `index.html` has 4 below-the-fold heroes at `preload="none"`; the only way to lazily promote them today is per-page IntersectionObserver boilerplate. Pure generic web primitive — any ferro app with above-the-fold + below-the-fold hero videos benefits. Cross-tracked as gestiscilo Phase 186 [FERRO REPO]. Same elevation rule as Phase 165 F11/F13/F14 (runtime gaps belong in ferro, not in consumer-side scripts).
