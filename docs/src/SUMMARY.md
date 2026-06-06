@@ -58,6 +58,7 @@
 - [Form Validation](json-ui/forms.md)
 - [Layouts](json-ui/layouts.md)
 - [Plugins](json-ui/plugins.md)
+- [Runtime Primitives](json-ui/runtime-primitives.md)
 - [Spec construction](./json-ui/spec-construction.md)
 - [Expressions](json-ui/expressions.md)
 - [JSON Schema](json-ui/json-schema.md)
