@@ -8,6 +8,7 @@
 mod dismissibles;
 mod dropdowns;
 mod form_guards;
+mod hero_lazy;
 mod kanban;
 mod modals;
 mod notifications;
@@ -38,6 +39,7 @@ pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(product_tiles::SOURCE);
     s.push_str(kanban::SOURCE);
     s.push_str(scroll_preserve::SOURCE);
+    s.push_str(hero_lazy::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
          \x20       setupScrollPreserve();\n\
@@ -52,6 +54,7 @@ pub(crate) static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20       setupProductTiles();\n\
          \x20       setupModals();\n\
          \x20       setupToasts();\n\
+         \x20       setupLazyHeroes();\n\
          \x20   }\n\
          \x20   document.addEventListener('DOMContentLoaded', ferroRuntime);\n\
          })();\n",
@@ -153,6 +156,7 @@ mod tests {
             "setupProductTiles",
             "setupKanban",
             "setupScrollPreserve",
+            "setupLazyHeroes",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
@@ -185,8 +189,23 @@ mod tests {
             "setupProductTiles();",
             "setupKanban();",
             "setupScrollPreserve();",
+            "setupLazyHeroes();",
         ] {
             assert!(dispatcher.contains(call), "dispatcher missing {call}");
         }
+    }
+
+    #[test]
+    fn runtime_contains_lazy_hero_setup() {
+        assert!(FERRO_RUNTIME_JS.contains("setupLazyHeroes"));
+        assert!(FERRO_RUNTIME_JS.contains("data-lazy-hero"));
+        assert!(FERRO_RUNTIME_JS.contains("data-lazy-hero-margin"));
+        assert!(FERRO_RUNTIME_JS.contains("data-lazy-hero-promoted"));
+        assert!(FERRO_RUNTIME_JS.contains("IntersectionObserver"));
+        assert!(FERRO_RUNTIME_JS.contains("preload"));
+        // JS source uses single quotes (`setAttribute('preload', 'auto')`),
+        // matching sibling-runtime convention; assert the single-quoted literal.
+        assert!(FERRO_RUNTIME_JS.contains("'auto'"));
+        assert!(FERRO_RUNTIME_JS.contains("unobserve"));
     }
 }
