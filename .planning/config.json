@@ -24,7 +24,7 @@
   },
   "granularity": "fine",
   "workflow": {
-    "_auto_chain_active": false,
+    "_auto_chain_active": true,
     "research": true
   }
 }

@@ -52,6 +52,7 @@
 - 📋 **v12.0.2 JSON-UI v2 Runtime Patches — Booking↔Staff Binding Field Test** — Phase 176 (planned 2026-05-20). Source: gestiscilo-it v6.9 booking↔staff binding UAT (consumer phase 152 β). Three runtime gaps surfaced by a kanban dashboard with countdown badges + per-staff filter chip strip + staff-member detail widget: F7 `Card.badge` prop silently dropped (server emits, renderer ignores), F8 `Card.subtitle` prop silently dropped (server emits, renderer ignores), F9 `Grid.visible` conditional drops the entire subtree even when the path evaluates to true. Each finding ships server spec correctly; renderer template has no slot for `badge`/`subtitle`, and Grid's visibility evaluator either doesn't parse `visible` or evaluates against the wrong scope. One plan per finding; F7+F8 both extend the Card component slot template and can share a plan if the planner judges them coupled. [Context](phases/176-json-ui-v2-runtime-patches-booking-staff-field-test/176-CONTEXT.md)
 - 📋 **v11.11.1 ferro-reservation Kernel Atomicity Hardening** — Phase 177 (planned 2026-05-20, URGENT). Source: gestiscilo-it v6.9 β killer-feature acceptance failure (consumer phase 152 STBOOK-15). `ReservationKernel::hold` at `ferro-reservation/src/kernel.rs:54-122` does check-then-act (read `held()`, compute `available`, INSERT) without a transaction or unique constraint. Two concurrent `tokio::spawn` tasks racing `kernel.hold` on identical `(resource_kind, resource_key, window)` both pass the `held=0 → available=1 ≥ quantity=1` check and both INSERT a `status='held'` row — violating the load-bearing invariant `held ≤ capacity`. `GuardedUpdate` is used in `commit/release/sweeper` (UPDATEs) but never in `hold` (the INSERT path). PITFALLS T-69-1.2 expectation that the kernel arbitrates concurrent holds is WRONG against current implementation. Three candidate fix paths, planner picks: (a) wrap `hold` body in `conn.begin()` transaction with serializable isolation, (b) add a unique partial index on `reservations (resource_kind, resource_key, window_hash) WHERE status='held'`, (c) `INSERT … SELECT … WHERE NOT EXISTS` atomic check-and-insert. Path (a) is the minimum-blast-radius choice and matches existing GuardedUpdate discipline. [Context](phases/177-reservation-kernel-hold-atomicity/177-CONTEXT.md)
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
+- 📋 **v12.2 Frontend Performance Hardening** — Phases 182-184 (planned 2026-06-06). Source: gestiscilo-it jetskiadriatic startup-lifecycle audit. Three runtime/framework primitives, each paired 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). (182) `ferro-json-ui` `data-lazy-hero` runtime primitive — IntersectionObserver promoting `<video preload="none">` → `preload="auto"` on viewport approach; (183) `ferro-bundle` new crate — in-memory immutable byte blobs with content-hashed immutable-cache serving; (184) `ferro::InlineBudget` + `ferro::RequestTelemetry` — request-scoped accumulator with inline/preload decision + per-key ring buffer.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
 
@@ -1932,6 +1933,81 @@ Plans:
 - [x] 181-08-PLAN.md — D-09 docs page `docs/src/json-ui/forms.md` covering the four authoring patterns (blessed / `$data` escape hatch / flash round-trip / cross-field summary) + SUMMARY.md navigation entry
 
 Discovery: surfaced during gestiscilo Phase 175 UAT (2026-05-31) on the operator product-edit form. Backend validation logic ships correctly via `ValidationError::new().add(field, msg).with_old_input(&data).redirect_to(...)`, but the error string never reaches a visible DOM element — operator only sees the generic ferro URL-fallback flash `?error=generic&msg=…`. CONTEXT and RESEARCH (2026-05-31) revised the original framing: the renderer is already correct; the bug lives in the resolution pipeline. Full repro and root-cause analysis in `.planning/phases/181-json-ui-input-error-prop-inline-render/181-CONTEXT.md` and `181-RESEARCH.md`. Cross-tracked as gestiscilo Phase 176 [FERRO REPO].
+
+---
+
+### 📋 v12.2 Frontend Performance Hardening (Phases 182-184, planned 2026-06-06)
+
+Three runtime/framework primitives surfaced by the gestiscilo-it jetskiadriatic startup-lifecycle audit on 2026-06-06. Each phase pairs 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). Build order recommendation: 182 → 183 → 184 (smallest to largest ferro-side scope; 182 acts as the pattern-rodage phase).
+
+#### Phases
+
+- [ ] **Phase 182: `ferro-json-ui` `data-lazy-hero` runtime primitive** — Add an IntersectionObserver block to `ferro-json-ui/src/runtime.rs` (sibling of SSE/tabs/toasts/sidebar) promoting `<video preload="none">` → `preload="auto"` on viewport approach. Single observer per page fans out to all `[data-lazy-hero]` elements. Per-element `rootMargin` via `data-lazy-hero-margin="…"` attribute. Default `200px 0px`. Idempotent via `data-lazy-hero-promoted="1"` marker. Pure attribute-driven, zero per-page JS for consumers. **Paired with:** gestiscilo Phase 186 (SDK auto-wiring + adopt `data-lazy-hero`).
+- [ ] **Phase 183: `ferro-bundle` capability (new crate)** — Top-level crate `ferro-bundle` for in-memory immutable byte blobs registered at boot. `Bundle::new(name, bytes).content_type(…).hashed_url()` → returns `/bundles/{name}.{sha8}.{ext}`-style URL; `Bundle::serve(req)` serves with `Cache-Control: public, max-age=31536000, immutable` + SHA-256 ETag + `If-None-Match` 304 fast path. `.with_alias("/embed/v1.js")` registers a plain-URL alias that 301-redirects to the current hash for backward compat. Targets symbolic byte blobs; does NOT replace the filesystem static-file handler (two parallel paths intentional — filesystem path is mutable, freshness via `bust_asset_urls`; bundle path is immutable, freshness via content hash). **Paired with:** gestiscilo Phase 185 (consume `ferro-bundle` + tenant asset minification + font subsetting).
+- [ ] **Phase 184: `ferro::InlineBudget` + `ferro::RequestTelemetry`** — Two request-scoped primitives. (a) `InlineBudget`: request extension `req.inline_budget(key, bytes) -> Decision::{Inline, Preload(url)}`. Tracks cumulative inlined bytes per request, fires a structured warning + flips to `Preload` once a configurable threshold is crossed. Targets: HTML inline scripts/styles, JSON-LD blobs, critical-CSS. (b) `RequestTelemetry`: per-key ring buffer (last N samples, in-process). `req.telemetry_record(key, sample)` for writers; `RequestTelemetry::snapshot(key, scope) -> Vec<Sample>` for operator surfaces. Thread-safe, lost-on-restart documented. Crate location decision (extension trait in `ferro-core` vs new `ferro-telemetry` crate) locked during discuss. **Paired with:** gestiscilo Phase 187 (consume `InlineBudget` + `RequestTelemetry` + bootstrap-endpoint fallback).
+
+### Phase 182: `ferro-json-ui` `data-lazy-hero` runtime primitive
+
+**Goal:** Extend `ferro-json-ui/src/runtime.rs` with an IntersectionObserver primitive that promotes `<video preload="none">` to `preload="auto"` (and calls `.load()` defensively) when the video crosses a configurable `rootMargin`. A single observer per page fans out to all `[data-lazy-hero]` elements, reading per-element `rootMargin` via `data-lazy-hero-margin="400px 0px"` (string parsed at observer setup). Default `200px 0px` — gives the network ~half a second before viewport entry. Idempotent via `data-lazy-hero-promoted="1"` marker. The `data-lazy-hero` attribute name and the override attribute name are part of the public ferro contract.
+
+**Depends on:** None (single-file runtime extension; sibling primitives already exist for SSE/tabs/toasts/sidebar).
+
+**Requirements:** TBD (locked during /gsd-discuss-phase 182)
+
+**Success Criteria** (what must be TRUE):
+  1. Loading any page with `<video preload="none" data-lazy-hero>` below the fold and scrolling causes the `preload` attribute to flip to `"auto"` exactly when the element crosses the configured `rootMargin` boundary (verified via Chrome DevTools Network panel showing video bytes only after scroll).
+  2. Per-element override via `data-lazy-hero-margin="400px 0px"` is honored at observer setup.
+  3. The promoted-marker (`data-lazy-hero-promoted="1"`) prevents double-promotion; re-running the observer on the same element is a no-op.
+  4. The runtime IIFE size grows by at most ~400 bytes (single-observer fan-out, no per-element observer cost).
+  5. `ferro-json-ui` publishes the new version to crates.io via the existing GH Actions workflow; gestiscilo Phase 186 consumes it via Cargo.toml bump.
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 182-01-PLAN.md — Create ferro-json-ui/src/runtime/hero_lazy.rs (setupLazyHeroes SOURCE) + wire into runtime/mod.rs (mod list, push_str chain, dispatcher, three test extensions/additions)
+- [ ] 182-02-PLAN.md — Create docs/src/json-ui/runtime-primitives.md (public DOM-attribute contract page) + register in docs/src/SUMMARY.md
+- [ ] 182-03-PLAN.md — Bump workspace.package.version 0.2.41 → 0.2.42 in Cargo.toml + sync Cargo.lock (triggers existing Wave1A publish workflow on master merge)
+
+Discovery: surfaced during the 2026-06-06 jetskiadriatic startup-lifecycle audit. Tenant `index.html` has 4 below-the-fold heroes at `preload="none"`; the only way to lazily promote them today is per-page IntersectionObserver boilerplate. Pure generic web primitive — any ferro app with above-the-fold + below-the-fold hero videos benefits. Cross-tracked as gestiscilo Phase 186 [FERRO REPO]. Same elevation rule as Phase 165 F11/F13/F14 (runtime gaps belong in ferro, not in consumer-side scripts).
+
+### Phase 183: `ferro-bundle` capability (new crate)
+
+**Goal:** Ship a new top-level crate `ferro-bundle` for in-memory immutable byte blobs registered at boot. Public API: `Bundle::new(name: &str, bytes: &'static [u8]).content_type(ct).hashed_url() -> String` returns `/bundles/{name}.{sha8}.{ext}`-style URL; `Bundle::serve(req) -> HttpResponse` handles the request, returning the bytes with `Cache-Control: public, max-age=31536000, immutable`, `ETag: "{sha256}"`, and a 304 fast-path on `If-None-Match` match. `.with_alias("/embed/v1.js")` registers a plain-URL alias that 301-redirects to the current hashed URL for backward compat. Two parallel asset-serving paths intentional: filesystem static-file handler stays for mutable tenant assets (freshness via `bust_asset_urls` timestamp); `ferro-bundle` targets symbolic immutable blobs (freshness via content hash). The split is documented in the crate README so future contributors do not fold them.
+
+**Depends on:** None (new crate, additive to the workspace).
+
+**Requirements:** TBD (locked during /gsd-discuss-phase 183)
+
+**Success Criteria** (what must be TRUE):
+  1. `Bundle::new("embed-v1", BYTES).content_type("application/javascript").hashed_url()` returns a string like `/bundles/embed-v1.{8hex}.js` deterministically derived from SHA-256 of `BYTES`.
+  2. `Bundle::serve(req)` returns 200 with `Cache-Control: public, max-age=31536000, immutable` + `ETag` header on a cold request; returns 304 on `If-None-Match` exact match.
+  3. `.with_alias("/embed/v1.js")` registers a plain-URL alias that returns 301 redirect to the current hashed URL.
+  4. Content-type is caller-provided at registration (no filename sniffing); default `application/octet-stream` if unspecified.
+  5. The crate README documents the bundle-vs-filesystem split (immutable byte blobs vs mutable filesystem assets) so future contributors do not collapse them.
+  6. `ferro-bundle` publishes to crates.io via the existing GH Actions workflow; gestiscilo Phase 185 consumes it via Cargo.toml bump.
+
+**Plans:** TBD (run /gsd-plan-phase 183 to break down)
+
+Discovery: gestiscilo `/embed/v1.js` SDK bundle is forever-stable per the SDK-10 contract but served today with `max-age=300, stale-while-revalidate=86400` (adequate but not optimal). A content-hashed URL unlocks truly immutable caching with one-year `max-age`. Generic enough to live in ferro: any ferro app shipping versioned static asset bundles can reuse the same primitive. Cross-tracked as gestiscilo Phase 185 [FERRO REPO].
+
+### Phase 184: `ferro::InlineBudget` + `ferro::RequestTelemetry`
+
+**Goal:** Ship two request-scoped framework primitives. (a) **`InlineBudget`** — request extension `req.inline_budget(key, bytes) -> Decision::{Inline, Preload(url)}`. Tracks cumulative inlined bytes per request keyed by `key` (e.g. `"products_payload"`, `"jsonld_blob"`, `"critical_css"`); compares against a configurable threshold; returns `Decision::Inline` when below, `Decision::Preload(url)` once crossed (caller-provided fallback URL for the `<link rel=preload>`). Fires a structured warning the first time threshold is crossed per request. (b) **`RequestTelemetry`** — per-key in-process ring buffer. `req.telemetry_record(key, sample)` for writers; `RequestTelemetry::snapshot(key, scope) -> Vec<Sample>` for operator surfaces. Thread-safe, lost-on-restart semantics explicitly documented. Crate location decision (extension trait in `ferro-core` vs new `ferro-telemetry` crate) is owned by this phase's discuss — NOT pre-committed here. Both primitives are generic — gestiscilo Phase 187 is the first consumer; JSON-LD inlining, critical-CSS inlining, render-latency telemetry, cache-hit-rate telemetry are all future consumers.
+
+**Depends on:** None (new request extensions, additive to the request lifecycle).
+
+**Requirements:** TBD (locked during /gsd-discuss-phase 184)
+
+**Success Criteria** (what must be TRUE):
+  1. `req.inline_budget(key, bytes)` returns `Decision::Inline` when cumulative bytes for `key` remain below the configured threshold within the same request; returns `Decision::Preload(url)` once crossed.
+  2. The structured warning fires exactly once per `key` per request when the threshold is crossed (no warning spam on subsequent inline_budget calls past the threshold).
+  3. `req.telemetry_record(key, sample)` and `RequestTelemetry::snapshot(key, scope)` round-trip Sample data correctly; concurrent reads + writes are thread-safe; the buffer keeps at most N samples per (key, scope) and drops oldest on overflow.
+  4. The crate location decision (ferro-core extension vs new ferro-telemetry crate) is recorded in the phase's CONTEXT.md with rationale.
+  5. ferro publishes the new version to crates.io via GH Actions; gestiscilo Phase 187 consumes both primitives via Cargo.toml bump.
+
+**Plans:** TBD (run /gsd-plan-phase 184 to break down)
+
+Discovery: surfaced during the 2026-06-06 jetskiadriatic startup-lifecycle audit. gestiscilo `inject_config_and_products` unconditionally inlines up to 100 products into every HTML response — fat tenants can blow past 200 KB, paid as HTML-parse cost on every page load. The right primitive (decide inline vs preload based on measured bytes) is request-scoped + framework-level, not gestiscilo-specific. Same elevation rule as `feedback_ferro_first_primitives.md`: cross-cutting capabilities go in ferro by default rather than waiting for N consumers. Cross-tracked as gestiscilo Phase 187 [FERRO REPO].
 
 ---
 
