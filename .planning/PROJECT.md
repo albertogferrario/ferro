@@ -47,7 +47,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - **Pre-1.0.** Breaking changes acceptable across all 0.x.
 - Published on crates.io as `ferro-rs`. Repo public.
 - v0.2.33 shipped.
-- 24 workspace crates.
+- 25 workspace crates.
 
 ---
 
@@ -202,6 +202,12 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - ✓ Focus-visible rings and hover states on all interactive elements — v10.0
 - ✓ SVG icons replacing emoji (alerts, bell, breadcrumb, collapsible), shimmer animation, semibold active tabs — v10.0
 
+**v12.2 Frontend Performance Hardening (shipped 2026-06-06):**
+- ✓ `ferro-json-ui` `data-lazy-hero` runtime primitive — IntersectionObserver-based promotion of below-the-fold `<video preload="none">` to `preload="auto"`, single-observer fan-out grouped by `data-lazy-hero-margin`, idempotent via `data-lazy-hero-promoted` marker (Phase 182) — v12.2
+- ✓ `ferro-bundle` capability (new crate) — in-memory immutable byte blobs registered via `Bundle::new(name, bytes).content_type(ct).with_alias(path).hashed_url()`, served with `Cache-Control: max-age=31536000, immutable` + SHA-256 ETag + `If-None-Match` 304 + 301 alias redirects (Phase 183) — v12.2
+- ✓ `ferro::InlineBudget` request extension — `req.inline_budget(key, bytes, fallback_url) -> Decision::{Inline, Preload(url)}` for per-request inline-vs-preload decisioning, configurable threshold via `AppConfig::inline_budget_threshold_bytes` (default 100 KB / `INLINE_BUDGET_BYTES` env var), fire-once `tracing::warn!` per (key, request) with structured fields key/cumulative_bytes/threshold_bytes/fallback_url/route_pattern (Phase 184) — v12.2
+- ✓ `ferro::RequestTelemetry` per-key in-process ring buffer — `req.telemetry_record(key, sample)` and `req.telemetry_record_scoped(key, scope, sample)` writers, `RequestTelemetry::snapshot(key, scope) -> Vec<Sample>` reader, `Sample { recorded_at: SystemTime, value: serde_json::Value }`, thread-safe via `OnceLock<DashMap>`, 128 samples per (key, scope), lost-on-restart documented (Phase 184) — v12.2
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
@@ -209,7 +215,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - [ ] v12.0 JSON-UI v2 spec-driven rendering
 - [ ] v12.1 AI — ferro-ai SDK expansion + AI-assisted scaffolding CLI
 - [ ] v13.0 Road to v1.0 — close the gap across all four beauty dimensions
-- [ ] Continuous conceptual coherence across all 20 crates
+- [ ] Continuous conceptual coherence across all 25 crates
 - [ ] Case-study diversification across application domains
 - [ ] Synthetic canonical-app-class catalog
 
