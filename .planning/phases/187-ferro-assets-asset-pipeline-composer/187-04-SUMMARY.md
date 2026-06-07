@@ -108,11 +108,21 @@ with production transforms, not stubs. Full workspace CI-parity gate green.
 - **Files modified:** ferro-assets/tests/passthrough_proof.rs
 - **Commit:** 2f47a0df (included with Task 2 fix)
 
+## Manual First-Publish Reminder
+
+`ferro-assets` is a new crate — it does not yet exist on crates.io. The CI publish token has `publish-update` scope only (not `publish-new`). Before the first CI push:
+
+```bash
+cargo publish -p ferro-assets
+```
+
+Run from a local terminal with a full-scope API token. This is the same pattern as `ferro-bundle` (Phase 183) and `ferro-deployments` (Phase 186). After the first manual publish succeeds, all subsequent publishes are handled by the Wave 1a CI job.
+
+The user chose to defer this step to the milestone master-push (same precedent as Phase 183 and Phase 186).
+
 ## Known Stubs
 
 None. ferro-assets is fully implemented, documented, and CI-green.
-
-The manual first-publish (`cargo publish -p ferro-assets`) is pending — see checkpoint below.
 
 ## Threat Flags
 

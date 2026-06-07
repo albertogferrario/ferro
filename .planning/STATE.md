@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
-stopped_at: "Completed 187-04-PLAN.md (checkpoint: manual first-publish of ferro-assets pending)"
+stopped_at: "Completed 187-04-PLAN.md (manual first-publish of ferro-assets deferred to milestone push)"
 last_updated: "2026-06-07T21:58:27.452Z"
 last_activity: 2026-06-07
 progress:
@@ -27,7 +27,11 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Phase: 187 (ferro-assets — Asset Pipeline Composer) — EXECUTING
 Plan: 4 of 4
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
-      Pre-push reminder: `ferro-bundle` (Phase 183) needs a one-time manual `cargo publish -p ferro-bundle` from a local terminal before push, because the CI token has `publish-update` only (not `publish-new`).
+      Pre-push reminders (three NEW crates, CI token has publish-update only, not publish-new):
+        1. `cargo publish -p ferro-bundle`      # Phase 183
+        2. `cargo publish -p ferro-deployments` # Phase 186
+        3. `cargo publish -p ferro-assets`      # Phase 187 — deferred from Plan 04 checkpoint
+      Run each from a local terminal with a full-scope crates.io token before the first CI push.
 Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
 Status: Phase complete — ready for verification
 Last activity: 2026-06-07
