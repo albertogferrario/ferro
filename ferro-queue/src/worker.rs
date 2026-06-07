@@ -235,12 +235,25 @@ impl WorkerLoop {
         );
 
         // Install SIGTERM / Ctrl-C handler — sets the same shutdown flag.
-        {
+        // Hold the JoinHandle so it is aborted when `run()` returns (WR-02);
+        // otherwise a clean shutdown or a `stop_on_error` exit would leak a
+        // detached task holding a `shutdown` Arc clone, and a second `run()`
+        // would install a duplicate handler.
+        let signal_task = {
             let shutdown = self.shutdown.clone();
             tokio::spawn(async move {
-                let mut sigterm =
-                    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                        .expect("install SIGTERM handler");
+                // Registration failure must not panic inside a detached task
+                // (unobservable to the caller). Log and request shutdown instead.
+                let mut sigterm = match tokio::signal::unix::signal(
+                    tokio::signal::unix::SignalKind::terminate(),
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        error!(error = %e, "failed to install SIGTERM handler — requesting shutdown");
+                        shutdown.store(true, Ordering::SeqCst);
+                        return;
+                    }
+                };
                 tokio::select! {
                     _ = sigterm.recv() => {
                         info!("SIGTERM received — shutting down WorkerLoop");
@@ -250,8 +263,10 @@ impl WorkerLoop {
                     }
                 }
                 shutdown.store(true, Ordering::SeqCst);
-            });
-        }
+            })
+        };
+        // Abort the signal task on any exit path from this function.
+        let _signal_guard = AbortOnDrop(signal_task);
 
         'outer: loop {
             // --- Shutdown gate ---
@@ -448,6 +463,18 @@ fn default_jitter_delay(attempt: u32) -> Duration {
     let max_delay = cap_secs.min(base_secs.saturating_mul(2u64.saturating_pow(attempt)));
     let jitter = rand::thread_rng().gen_range(0..=max_delay);
     Duration::from_secs(jitter)
+}
+
+/// RAII guard that aborts a spawned task when dropped.
+///
+/// Used to tie the SIGTERM/Ctrl-C signal task's lifetime to `WorkerLoop::run`
+/// so it never outlives the loop on any exit path (WR-02).
+struct AbortOnDrop(tokio::task::JoinHandle<()>);
+
+impl Drop for AbortOnDrop {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
 }
 
 /// Type alias for API continuity with callers that use the old `Worker` name.
