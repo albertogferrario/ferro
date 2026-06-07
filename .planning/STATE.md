@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.2
-milestone_name: Frontend Performance Hardening
-status: complete
-stopped_at: Phase 184 verified — workspace at 0.2.44, ready to push for WAVE2 publish
-last_updated: "2026-06-06T21:03:45.571Z"
-last_activity: 2026-06-06
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
+status: completed
+stopped_at: Phase 189 context gathered
+last_updated: "2026-06-07T14:51:18.514Z"
+last_activity: 2026-06-07 — v12.3 Deployment Platform Primitives roadmapped (Phases 185-188)
 progress:
-  total_phases: 183
-  completed_phases: 166
-  total_plans: 508
-  completed_plans: 501
-  percent: 99
+  total_phases: 65
+  completed_phases: 49
+  total_plans: 240
+  completed_plans: 240
+  percent: 100
 ---
 
 # Project State
@@ -296,7 +296,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-06T20:56:36.630Z
-Stopped at: Completed 184-03-PLAN.md (Phase 184 ready for verification)
-Resume file: None
+Last session: 2026-06-07T14:51:18.498Z
+Stopped at: Phase 189 context gathered
+Resume file: .planning/phases/189-ferro-stripe-manual-capture/189-CONTEXT.md
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
