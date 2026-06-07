@@ -34,8 +34,10 @@ pub(crate) mod deployment;
 mod error;
 mod migration;
 pub(crate) mod promote;
+mod storage;
 
 pub use config::DeploymentConfig;
 pub use deployment::{Deployment, DeploymentStatus, Deployments};
 pub use error::Error;
 pub use migration::{CreateDeploymentPointersTable, CreateDeploymentsTable};
+pub use storage::{preview_url, DeploymentStorage, StorageDeploymentStorage};
