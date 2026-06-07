@@ -59,6 +59,11 @@ pub use drivers::{LocalDriver, MemoryDriver};
 
 pub use cdn::{DoSpacesCdn, DoSpacesCdnConfig, PurgeApi};
 
+#[cfg(feature = "cdn-bunny")]
+pub use cdn::{BunnyCdn, BunnyCdnConfig};
+#[cfg(feature = "cdn-cloudflare")]
+pub use cdn::{CloudflareCdn, CloudflareCdnConfig};
+
 pub use config::StorageConfig;
 pub use error::Error;
 pub use facade::{Disk, DiskConfig, DiskDriver, Storage};

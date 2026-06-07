@@ -189,6 +189,16 @@ impl PurgeApi for DoSpacesCdn {
     }
 }
 
+#[cfg(feature = "cdn-bunny")]
+pub mod bunny;
+#[cfg(feature = "cdn-bunny")]
+pub use bunny::{BunnyCdn, BunnyCdnConfig};
+
+#[cfg(feature = "cdn-cloudflare")]
+pub mod cloudflare;
+#[cfg(feature = "cdn-cloudflare")]
+pub use cloudflare::{CloudflareCdn, CloudflareCdnConfig};
+
 #[cfg(test)]
 mod tests {
     use super::*;
