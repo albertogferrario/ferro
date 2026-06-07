@@ -2185,7 +2185,11 @@ Plans:
   3. `rollback` is implemented as promote-of-previous; promoting a deployment whose status is not `ready` is rejected
   4. `DeploymentStorage` trait abstracts artifact persistence with an S3-compatible default implementation delegating to ferro-storage; `preview_url(deployment_id)` returns the wildcard-subdomain URL form (consumers may leave it unwired)
   5. Crate contains zero HTML/gestiscilo-specific assumptions — a doc-test or example stores a non-HTML artifact bundle (e.g. JSON specs) through the same API
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 186-01-PLAN.md — Crate skeleton + workspace/publish.yml registration + error/config + portable migration helpers (Wave 1)
+- [ ] 186-02-PLAN.md — Deployments handle lifecycle + atomic promote/rollback + concurrent-promote race tests (Wave 2)
+- [ ] 186-03-PLAN.md — DeploymentStorage trait (S3-compatible default) + preview_url subdomain helper (Wave 2)
+- [ ] 186-04-PLAN.md — Criterion-5 JSON-artifact doc-test + docs page + version bump 0.2.45 + publish dry-run (Wave 3)
 
 ### Phase 187: ferro-assets — Asset Pipeline Composer
 **Goal**: New crate providing a composable, content-type-aware asset pipeline for publish-time optimization: HTML/CSS/JS minification, pure-Rust image transcoding with responsive variants, and generic tag injection — the Tier 1 pipeline gestiscilo's `PublishFrontendJob` composes.
