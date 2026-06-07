@@ -9,7 +9,8 @@ use chrono::{DateTime, TimeZone, Utc};
 use stripe::{
     CheckoutSession, CheckoutSessionMode, CreateCheckoutSession, CreateCheckoutSessionLineItems,
     CreateCheckoutSessionLineItemsPriceData, CreateCheckoutSessionLineItemsPriceDataProductData,
-    CreateCheckoutSessionPaymentIntentData, CreateCheckoutSessionPaymentIntentDataTransferData,
+    CreateCheckoutSessionPaymentIntentData, CreateCheckoutSessionPaymentIntentDataCaptureMethod,
+    CreateCheckoutSessionPaymentIntentDataTransferData,
 };
 
 /// Which Stripe Checkout mode to use.
@@ -57,6 +58,7 @@ pub struct CheckoutBuilder {
     customer_email: Option<String>,
     destination: Option<(String, Option<i64>)>,
     idempotency_key: Option<String>,
+    manual_capture: bool,
 }
 
 impl CheckoutBuilder {
@@ -71,6 +73,7 @@ impl CheckoutBuilder {
             customer_email: None,
             destination: None,
             idempotency_key: None,
+            manual_capture: false,
         }
     }
 
@@ -128,16 +131,64 @@ impl CheckoutBuilder {
         self
     }
 
+    /// Enables manual capture for this Checkout Session.
+    ///
+    /// The payment is authorized but not charged at checkout. Call
+    /// [`crate::payment_intent::capture`] to charge or
+    /// [`crate::payment_intent::cancel`] to release the hold.
+    ///
+    /// Only valid with [`Mode::Payment`]. Calling this with [`Mode::Subscription`]
+    /// returns [`Error::ManualCaptureRequiresPaymentMode`] when `create()` is called.
+    pub fn manual_capture(mut self) -> Self {
+        self.manual_capture = true;
+        self
+    }
+
+    /// Builds the `payment_intent_data` params when either `manual_capture` or
+    /// `destination` is set, merging both into a single struct to avoid
+    /// double-overwrite.
+    fn build_payment_intent_data(&self) -> Option<CreateCheckoutSessionPaymentIntentData> {
+        let needs_payment_intent_data = self.destination.is_some() || self.manual_capture;
+        if needs_payment_intent_data {
+            let mut pid = CreateCheckoutSessionPaymentIntentData::default();
+            if self.manual_capture {
+                pid.capture_method =
+                    Some(CreateCheckoutSessionPaymentIntentDataCaptureMethod::Manual);
+            }
+            if let Some((account_id, fee_cents)) = &self.destination {
+                pid.application_fee_amount = *fee_cents;
+                pid.transfer_data = Some(CreateCheckoutSessionPaymentIntentDataTransferData {
+                    destination: account_id.clone(),
+                    ..Default::default()
+                });
+                pid.on_behalf_of = Some(account_id.clone());
+            }
+            Some(pid)
+        } else {
+            None
+        }
+    }
+
     /// Creates the Checkout Session via the Stripe API.
     ///
     /// # Errors
     ///
     /// - [`Error::MissingIdempotencyKey`] when `.idempotency_key()` was not called.
     ///   This check fires before any network call is made.
+    /// - [`Error::ManualCaptureRequiresPaymentMode`] when `manual_capture()` is used
+    ///   with `Mode::Subscription`. Fires before any network call.
     /// - [`Error::Stripe`] on currency parse failure, invalid IDs, or API errors.
     pub async fn create(self) -> Result<CheckoutIntent, Error> {
-        // Runtime guard — fail before any network call.
-        let idempotency_key = self.idempotency_key.ok_or(Error::MissingIdempotencyKey)?;
+        // Runtime guards — fail before any network call.
+        // Check idempotency key presence via ref to avoid partial move.
+        if self.idempotency_key.is_none() {
+            return Err(Error::MissingIdempotencyKey);
+        }
+        if self.manual_capture && self.mode == Mode::Subscription {
+            return Err(Error::ManualCaptureRequiresPaymentMode);
+        }
+        // SAFETY: checked is_none() above.
+        let idempotency_key = self.idempotency_key.clone().unwrap();
 
         let client = crate::Stripe::client();
         let mut params = CreateCheckoutSession::new();
@@ -195,17 +246,7 @@ impl CheckoutBuilder {
             params.customer_email = Some(email.as_str());
         }
 
-        if let Some((account_id, fee_cents)) = &self.destination {
-            params.payment_intent_data = Some(CreateCheckoutSessionPaymentIntentData {
-                application_fee_amount: *fee_cents,
-                transfer_data: Some(CreateCheckoutSessionPaymentIntentDataTransferData {
-                    destination: account_id.clone(),
-                    ..Default::default()
-                }),
-                on_behalf_of: Some(account_id.clone()),
-                ..Default::default()
-            });
-        }
+        params.payment_intent_data = self.build_payment_intent_data();
 
         // Note: async-stripe 0.41 does not expose a per-request idempotency-key
         // strategy on CheckoutSession::create. The idempotency_key is stored on
@@ -286,6 +327,72 @@ mod tests {
         assert!(
             matches!(result, Err(Error::MissingIdempotencyKey)),
             "expected Err(MissingIdempotencyKey), got {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn checkout_create_manual_capture_subscription_returns_err() {
+        // manual_capture() + Mode::Subscription must return
+        // Err(ManualCaptureRequiresPaymentMode) BEFORE any network call.
+        // idempotency_key IS set so the MissingIdempotencyKey guard does not fire first.
+        let result = CheckoutBuilder::new(Mode::Subscription)
+            .idempotency_key("k")
+            .manual_capture()
+            .create()
+            .await;
+        assert!(
+            matches!(result, Err(Error::ManualCaptureRequiresPaymentMode)),
+            "expected Err(ManualCaptureRequiresPaymentMode), got {result:?}"
+        );
+    }
+
+    #[test]
+    fn checkout_create_manual_capture_sets_capture_method() {
+        use stripe::CreateCheckoutSessionPaymentIntentDataCaptureMethod;
+
+        let builder = CheckoutBuilder::new(Mode::Payment).manual_capture();
+        let pid = builder
+            .build_payment_intent_data()
+            .expect("manual_capture=true should produce Some(payment_intent_data)");
+        assert_eq!(
+            pid.capture_method,
+            Some(CreateCheckoutSessionPaymentIntentDataCaptureMethod::Manual),
+            "capture_method must be Manual when manual_capture() is set"
+        );
+        assert!(
+            pid.transfer_data.is_none(),
+            "transfer_data must be None when destination() is not set"
+        );
+    }
+
+    #[test]
+    fn checkout_create_manual_capture_with_destination_sets_both_fields() {
+        use stripe::CreateCheckoutSessionPaymentIntentDataCaptureMethod;
+
+        let builder = CheckoutBuilder::new(Mode::Payment)
+            .manual_capture()
+            .destination("acct_test", Some(200));
+        let pid = builder
+            .build_payment_intent_data()
+            .expect("manual_capture + destination should produce Some(payment_intent_data)");
+        assert_eq!(
+            pid.capture_method,
+            Some(CreateCheckoutSessionPaymentIntentDataCaptureMethod::Manual),
+            "capture_method must be Manual"
+        );
+        assert!(
+            pid.transfer_data.is_some(),
+            "transfer_data must be Some when destination() is set"
+        );
+        assert_eq!(
+            pid.on_behalf_of,
+            Some("acct_test".to_string()),
+            "on_behalf_of must match the destination account_id"
+        );
+        assert_eq!(
+            pid.application_fee_amount,
+            Some(200),
+            "application_fee_amount must match the fee_cents"
         );
     }
 }
