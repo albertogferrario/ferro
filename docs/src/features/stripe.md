@@ -228,6 +228,96 @@ pub async fn pay(req: Request) -> Response {
 }
 ```
 
+## Manual Capture
+
+Manual capture authorizes card funds at checkout without charging them, then captures (charges) some or all of the authorized amount later, or cancels (releases) the hold. Useful for booking deposits where the final charge amount may differ from the initially authorized amount.
+
+### Authorize at checkout
+
+Set `manual_capture()` on the builder to authorize funds without an immediate charge:
+
+```rust
+use ferro::{CheckoutBuilder, LineItem, Mode, handler, HttpResponse, Request, Response};
+use ferro_stripe::payment_intent;
+
+#[handler]
+pub async fn book(req: Request) -> Response {
+    let intent = CheckoutBuilder::new(Mode::Payment)
+        .manual_capture()
+        .line_item(LineItem {
+            name: "Booking deposit".into(),
+            description: None,
+            unit_amount_cents: 5000, // $50.00 authorized
+            quantity: 1,
+            currency: "usd".into(),
+        })
+        .success_url("https://app.example.com/bookings/success")
+        .cancel_url("https://app.example.com/bookings/cancel")
+        .idempotency_key("booking-deposit-42")
+        .create()
+        .await
+        .map_err(|e| HttpResponse::text(e.to_string()).status(500))?;
+
+    Ok(HttpResponse::redirect(&intent.url))
+}
+```
+
+`manual_capture()` is only valid with `Mode::Payment`. Calling it with `Mode::Subscription` returns `Error::ManualCaptureRequiresPaymentMode` from `create()` before any network call is made.
+
+### Capture and cancel
+
+After the customer completes checkout, use the `payment_intent` module to resolve the hold:
+
+```rust
+use ferro_stripe::payment_intent;
+
+// Full capture — charge the entire authorized amount.
+payment_intent::capture(&payment_intent_id, None).await?;
+
+// Partial capture — charge 2000 cents; Stripe auto-releases the remainder.
+payment_intent::capture(&payment_intent_id, Some(2000)).await?;
+
+// Cancel — release the hold without charging.
+payment_intent::cancel(&payment_intent_id).await?;
+
+// Retrieve — poll current authorization state.
+payment_intent::retrieve(&payment_intent_id).await?;
+```
+
+Application-layer deduplication is required for capture retries. async-stripe 0.41 does not forward per-request idempotency keys to `PaymentIntent::capture`; a database unique constraint on the operation is the recommended guard against double-captures.
+
+### Webhook lifecycle
+
+Two typed events track the manual capture lifecycle:
+
+| Stripe event | Typed event | Meaning |
+|---|---|---|
+| `payment_intent.amount_capturable_updated` | `StripePaymentIntentAmountCapturableUpdated` | Funds authorized and capturable (hold is live) |
+| `payment_intent.canceled` | `StripePaymentIntentCanceled` | Hold released (manually or by Stripe auto-expiry) |
+
+These events parse and dispatch the same way as all other typed ferro-stripe events — register handlers against them using `SyncDispatcher` or the queue-based path, identically to `StripeCheckoutCompleted` or `StripeSubscriptionUpdated`.
+
+### Operational realities
+
+- Stripe holds a card authorization for approximately 7 days. Uncaptured PaymentIntents are auto-cancelled after this window expires, surfacing as a `payment_intent.canceled` event. The `cancellation_reason` field on `StripePaymentIntentCanceled` indicates automatic expiry when Stripe triggers the cancellation.
+- A partial capture charges the specified amount and Stripe automatically releases the remainder of the authorization.
+
+### Connect composition
+
+`manual_capture()` composes with `destination()`. The authorization is created on the platform account; on capture, Stripe performs the transfer to the connected account per the destination-charge pattern. `payment_intent::capture` and `payment_intent::cancel` are platform-scoped — no connected-account header is required.
+
+### Correspondence with ferro-reservation
+
+The authorize/capture/cancel triple maps directly to the `ferro-reservation` hold/commit/release vocabulary:
+
+| ferro-reservation | Stripe PaymentIntent |
+|---|---|
+| `hold()` | Authorize at checkout (`manual_capture()` sets `capture_method=manual`) |
+| `commit()` | `payment_intent::capture(id, amount)` |
+| `release()` | `payment_intent::cancel(id)` |
+
+This is a documented semantic correspondence — a convention for pairing a reservation hold with a payment authorization. There is no compile-time dependency between the two crates.
+
 ## Webhook Configuration
 
 ### Two Webhook Endpoints
