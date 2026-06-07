@@ -1,8 +1,8 @@
 //! DB engine for ferro-queue: dual-backend atomic claim, idempotent enqueue,
 //! stuck-job reaper, job lifecycle ops, and the `Queue` global.
 //!
-//! Supports SQLite (raw `BEGIN IMMEDIATE` claim) and Postgres
-//! (`FOR UPDATE SKIP LOCKED` inside a transaction). All dynamic values are
+//! Supports SQLite (single `UPDATE … RETURNING` inside a pinned transaction)
+//! and Postgres (`FOR UPDATE SKIP LOCKED` inside a transaction). All dynamic values are
 //! bound via `Statement::from_sql_and_values` — no string interpolation of
 //! caller-supplied data (T-185-01).
 
@@ -268,8 +268,10 @@ fn ph(backend: DatabaseBackend, n: usize) -> String {
 /// Returns `None` when the queue is empty or all eligible jobs are locked by
 /// another worker (Postgres). Uses:
 /// - Postgres: `SELECT … FOR UPDATE SKIP LOCKED` + `UPDATE` inside a transaction.
-/// - SQLite: raw `BEGIN IMMEDIATE` + `UPDATE … RETURNING` (no `begin_with_config`
-///   which does NOT emit `BEGIN IMMEDIATE` on SQLite — Pitfall 2).
+/// - SQLite: single `UPDATE … RETURNING` inside a `conn.begin()` transaction so
+///   every statement is pinned to one pooled connection; the write lock is taken
+///   on the UPDATE itself (no prior read to upgrade, so no `BEGIN IMMEDIATE`
+///   needed).
 pub async fn claim(
     conn: &DatabaseConnection,
     queue: &str,
@@ -326,14 +328,20 @@ async fn claim_sqlite(
 ) -> Result<Option<JobRow>, Error> {
     let now_iso = Utc::now().to_rfc3339();
 
-    // Raw BEGIN IMMEDIATE — not begin_with_config(Serializable) which does NOT
-    // emit BEGIN IMMEDIATE on SQLite (see ferro-reservation/src/kernel.rs lines 69-79).
-    conn.execute(Statement::from_string(
-        DatabaseBackend::Sqlite,
-        "BEGIN IMMEDIATE".to_string(),
-    ))
-    .await
-    .map_err(Error::Db)?;
+    // Acquire a transaction handle: SeaORM `begin()` checks out ONE physical
+    // connection from the pool and pins every statement on this handle to it.
+    // This is the correctness-critical change (CR-01) — issuing BEGIN/UPDATE/
+    // COMMIT directly on `conn` let the statements land on different pooled
+    // connections, breaking atomicity and leaking an open transaction back into
+    // the pool on the error path.
+    //
+    // `begin()` emits a DEFERRED BEGIN on SQLite. We do not need an explicit
+    // BEGIN IMMEDIATE here: the claim is a single `UPDATE … RETURNING`, so the
+    // write lock is acquired on that first (and only) statement. There is no
+    // prior read in this txn that could trigger the deferred-read-then-upgrade
+    // deadlock that BEGIN IMMEDIATE exists to avoid. Atomicity is guaranteed by
+    // the statements being pinned to one connection inside the txn handle.
+    let txn = conn.begin().await.map_err(Error::Db)?;
 
     let stmt = Statement::from_sql_and_values(
         DatabaseBackend::Sqlite,
@@ -349,17 +357,16 @@ async fn claim_sqlite(
         ],
     );
 
-    // Capture result before COMMIT so we can always commit the transaction.
-    let row_result = conn.query_one(stmt).await;
+    let row = match txn.query_one(stmt).await {
+        Ok(r) => r,
+        Err(e) => {
+            // Roll back so the connection returns to the pool with no open txn.
+            let _ = txn.rollback().await;
+            return Err(Error::Db(e));
+        }
+    };
+    txn.commit().await.map_err(Error::Db)?;
 
-    conn.execute(Statement::from_string(
-        DatabaseBackend::Sqlite,
-        "COMMIT".to_string(),
-    ))
-    .await
-    .map_err(Error::Db)?;
-
-    let row = row_result.map_err(Error::Db)?;
     row.map(|r| parse_job_row(&r)).transpose()
 }
 
