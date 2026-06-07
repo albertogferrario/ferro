@@ -2204,3 +2204,37 @@ Plans:
   3. DO adapter config reads `DO_SPACES_CDN_ID` + API token from env; a missing CDN id makes `purge` a logged no-op (consumers without CDN keep working)
   4. Bunny and Cloudflare adapters compile behind cargo features without entering the default dependency graph
 **Plans**: TBD
+
+## v11.6.1 ferro-stripe Manual Capture (Phase 189)
+
+**Source:** gestiscilo-it v6.3-extended booking fund-hold field test. Extends the v11.6 capability-axis crate with Stripe manual capture so consumer apps can authorize card funds without charging (booking deposits). Consumer: gestiscilo-it v6.3 Online Checkout & Payments (queued after its v7.1), consumes via published crates.io bump per the Phase 176 ↔ ferro Phase 181 pattern.
+
+**Design note:** the authorize/capture/cancel triple deliberately mirrors `ferro-reservation` hold/commit/release semantics — the correspondence is documented, not coupled (no compile dependency between the crates).
+
+**Out of scope:** SetupIntent save-card flow for authorizations beyond the ~7-day card window (consumer-side design decision at gestiscilo v6.3 plan time; promote to a ferro phase only if gestiscilo picks that path).
+
+**Requirements:**
+
+- **STRIPE-MC-01**: `CheckoutBuilder::manual_capture()` sets `payment_intent_data.capture_method = manual` on the created Checkout Session, in `mode=payment` only
+- **STRIPE-MC-02**: New `payment_intent.rs` capability module exposes `capture(payment_intent_id, amount_cents: Option<i64>)` (partial capture supported via `Some(n)`) and `cancel(payment_intent_id)`
+- **STRIPE-MC-03**: New typed events `StripePaymentIntentAmountCapturableUpdated` and `StripePaymentIntentCanceled` registered in the webhook parser contract with golden-JSON fixtures
+- **STRIPE-MC-04**: Manual capture composes with `destination()` Connect charges — authorize on platform, capture transfers to connected account
+- **STRIPE-MC-05**: `docs/src/features/stripe.md` documents the authorize/capture/cancel ↔ `ferro-reservation` hold/commit/release correspondence
+
+## Phases
+
+- [ ] **Phase 189: ferro-stripe Manual Capture** — `CheckoutBuilder::manual_capture()` + `payment_intent.rs` capture/cancel module + typed PaymentIntent webhook events with golden-JSON fixtures + Connect `destination()` composition
+
+#### Phase Details
+
+### Phase 189: ferro-stripe Manual Capture
+**Goal**: A consumer app can authorize card funds at checkout without charging (booking deposit hold), then later capture some-or-all of the authorized amount or release the hold — with typed webhook events covering the authorization lifecycle and full composition with Connect destination charges.
+**Depends on**: Nothing (extends existing ferro-stripe capability axis; independent of v12.3 phases)
+**Requirements**: STRIPE-MC-01, STRIPE-MC-02, STRIPE-MC-03, STRIPE-MC-04, STRIPE-MC-05
+**Success Criteria** (what must be TRUE):
+  1. `CheckoutBuilder::new(Mode::Payment).manual_capture()` produces a Checkout Session whose PaymentIntent has `capture_method = manual`; calling it in a non-payment mode is rejected at build time or returns a structured error
+  2. `payment_intent::capture(id, None)` captures the full authorized amount; `capture(id, Some(n))` performs a partial capture of `n` cents; `payment_intent::cancel(id)` releases the hold — all three return structured `Error` values on invalid ids and Stripe API failures (same error contract as `refund.rs`)
+  3. `StripePaymentIntentAmountCapturableUpdated` and `StripePaymentIntentCanceled` implement the `StripeEvent` trait, are parsed from golden-JSON webhook fixtures in tests, and unknown/other event types continue to pass through unmatched
+  4. A checkout built with both `manual_capture()` and `destination(account_id, fee)` authorizes on the platform account and, on capture, transfers to the connected account per the destination-charge pattern (covered by a builder-level test of the generated params; live-mode verification owned by the consumer field test)
+  5. `docs/src/features/stripe.md` documents manual capture end-to-end and the hold/commit/release ↔ authorize/capture/cancel correspondence with `ferro-reservation`
+**Plans**: TBD
