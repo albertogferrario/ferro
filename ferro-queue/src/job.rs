@@ -262,4 +262,20 @@ mod tests {
             .with_tenant_id(None);
         assert_eq!(payload_none.tenant_id, None);
     }
+
+    #[test]
+    fn backoff_delay_range() {
+        let job = TestJob { value: 0 };
+        for _ in 0..100 {
+            assert!(job.retry_delay(0).as_secs() <= 5);
+            assert!(job.retry_delay(3).as_secs() <= 40);
+            assert!(job.retry_delay(30).as_secs() <= 900);
+        }
+    }
+
+    #[test]
+    fn idempotency_key_defaults_to_none() {
+        let job = TestJob { value: 0 };
+        assert_eq!(job.idempotency_key(), None);
+    }
 }
