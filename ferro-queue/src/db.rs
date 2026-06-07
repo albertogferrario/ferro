@@ -376,8 +376,13 @@ async fn claim_sqlite(
 
 /// Re-queue claimed rows that have been held longer than `visibility_timeout`.
 ///
-/// Rows below `max_retries` are reset to `pending` with `attempts + 1`.
-/// Rows at or above `max_retries` are parked as `failed` (T-185-04).
+/// `attempts` is the number of attempts already completed. A row is requeued
+/// (for one more attempt) only while `attempts + 1 < max_retries`; once the
+/// next attempt would be the last allowed (`attempts + 1 >= max_retries`) the
+/// row is parked as `failed`. This matches the worker's handler-failure
+/// boundary (`handle_failure`: park when `attempts + 1 >= max_retries`) so a
+/// job gets the same total attempt count whether it fails via handler error or
+/// via visibility timeout (WR-01, T-185-04).
 pub async fn reaper(
     conn: &DatabaseConnection,
     queue: &str,
@@ -392,13 +397,16 @@ pub async fn reaper(
     let backend = conn.get_database_backend();
     let txn = conn.begin().await.map_err(Error::Db)?;
 
-    // Step 1: re-queue rows below max_retries.
+    // Step 1: re-queue rows that still have a retry left after counting this
+    // timed-out attempt. The in-flight attempt (number `attempts + 1`) failed,
+    // so requeue only while `attempts + 1 < max_retries` — matching
+    // `worker::handle_failure`.
     let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
     let requeue_sql = format!(
         "UPDATE jobs SET status='pending', claimed_at=NULL, claimed_by=NULL, \
          attempts = attempts + 1, available_at = {p1} \
          WHERE status='claimed' AND claimed_at < {p2} \
-         AND attempts < max_retries AND queue = {p3}"
+         AND attempts + 1 < max_retries AND queue = {p3}"
     );
     let requeue = Statement::from_sql_and_values(
         backend,
@@ -417,7 +425,7 @@ pub async fn reaper(
     let park_sql = format!(
         "UPDATE jobs SET status='failed', error='visibility timeout exceeded' \
          WHERE status='claimed' AND claimed_at < {pp1} \
-         AND attempts >= max_retries AND queue = {pp2}"
+         AND attempts + 1 >= max_retries AND queue = {pp2}"
     );
     let park = Statement::from_sql_and_values(
         backend,
@@ -1021,6 +1029,50 @@ mod tests {
             "reaper should reset stuck job to pending"
         );
         assert_eq!(attempts, 1, "reaper should increment attempts");
+    }
+
+    #[tokio::test]
+    async fn reaper_boundary_parks_last_attempt() {
+        // attempts == max_retries - 1: the in-flight (timed-out) attempt is the
+        // last allowed, so the reaper must PARK it, not requeue — matching the
+        // worker's handle_failure boundary (WR-01).
+        let conn = setup().await;
+        let ten_min_ago = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
+        let now = Utc::now().to_rfc3339();
+        let id = insert_job(
+            &conn,
+            "default",
+            "BoundaryJob",
+            "claimed",
+            2, // attempts
+            3, // max_retries
+            Some(&ten_min_ago),
+            &now,
+        )
+        .await;
+
+        reaper(&conn, "default", std::time::Duration::from_secs(5 * 60))
+            .await
+            .expect("reaper failed");
+
+        let row = conn
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("SELECT status, attempts FROM jobs WHERE id={id}"),
+            ))
+            .await
+            .expect("select after reaper")
+            .expect("row");
+        let status: String = row.try_get_by::<String, _>("status").expect("status");
+        let attempts: i32 = row.try_get_by::<i32, _>("attempts").expect("attempts");
+        assert_eq!(
+            status, "failed",
+            "job at attempts == max_retries - 1 must be parked by the reaper, not requeued"
+        );
+        assert_eq!(
+            attempts, 2,
+            "parked job keeps its attempt count (no further requeue)"
+        );
     }
 
     #[tokio::test]
