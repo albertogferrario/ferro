@@ -353,12 +353,7 @@ pub async fn reaper(
     let txn = conn.begin().await.map_err(Error::Db)?;
 
     // Step 1: re-queue rows below max_retries.
-    let (p1, p2, p3, p4) = (
-        ph(backend, 1),
-        ph(backend, 2),
-        ph(backend, 3),
-        ph(backend, 4),
-    );
+    let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
     let requeue_sql = format!(
         "UPDATE jobs SET status='pending', claimed_at=NULL, claimed_by=NULL, \
          attempts = attempts + 1, available_at = {p1} \
@@ -377,10 +372,12 @@ pub async fn reaper(
     txn.execute(requeue).await.map_err(Error::Db)?;
 
     // Step 2: park exhausted rows as failed.
+    // Use fresh placeholders ?1 and ?2 (independent statement, not continuing p1..p4).
+    let (pp1, pp2) = (ph(backend, 1), ph(backend, 2));
     let park_sql = format!(
         "UPDATE jobs SET status='failed', error='visibility timeout exceeded' \
-         WHERE status='claimed' AND claimed_at < {p2} \
-         AND attempts >= max_retries AND queue = {p4}"
+         WHERE status='claimed' AND claimed_at < {pp1} \
+         AND attempts >= max_retries AND queue = {pp2}"
     );
     let park = Statement::from_sql_and_values(
         backend,
