@@ -8,10 +8,11 @@
 //!
 //! Writers reach this module through [`crate::http::Request::inline_budget`].
 //!
-//! The state machine is implemented on [`InlineBudgetState::record_and_decide`]
-//! (pure: no `Request` involved). The [`decide`] function is a thin wrapper that
-//! reads the threshold + route_pattern from a `&mut Request`, lazy-inits the
-//! state in `Request::extensions`, then delegates to `record_and_decide`. This
+//! The state machine is implemented on `InlineBudgetState::record_and_decide`
+//! (pure: no `Request` involved; `pub(crate)`, not part of the public surface).
+//! The `decide` function (also `pub(crate)`) is a thin wrapper that reads the
+//! threshold + route_pattern from a `&mut Request`, lazy-inits the state in
+//! `Request::extensions`, then delegates to `record_and_decide`. This
 //! split keeps the state machine unit-testable without constructing a synthetic
 //! `Request` (`Request` has no `Default` impl — see
 //! `framework/tests/action_handler.rs:47-90` for the only viable constructor
