@@ -22,8 +22,7 @@ static GLOBAL_CONNECTION: std::sync::OnceLock<DatabaseConnection> = std::sync::O
 
 /// Registered job-type applier functions, collected before the server starts.
 type RegisterFn = Box<dyn Fn(&mut crate::WorkerLoop) + Send + Sync>;
-static JOB_REGISTRARS: std::sync::Mutex<Vec<RegisterFn>> =
-    std::sync::Mutex::new(Vec::new());
+static JOB_REGISTRARS: std::sync::Mutex<Vec<RegisterFn>> = std::sync::Mutex::new(Vec::new());
 
 /// Global handle to the queue's database connection.
 ///

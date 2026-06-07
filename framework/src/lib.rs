@@ -194,10 +194,10 @@ pub use ferro_events::{
 /// Background job queue. Use `ferro::queue::Job`, `ferro::queue::dispatch`, etc.
 pub mod queue {
     pub use ferro_queue::{
-        dispatch, dispatch_later, dispatch_to, register_tenant_capture_hook,
-        CreateJobsTable, Error, FailedJobInfo, Job, JobInfo, JobPayload,
-        JobState, PendingDispatch, Queue, QueueConfig, QueueStats, Queueable,
-        SingleQueueStats, TenantScopeProvider, Worker, WorkerConfig, WorkerLoop,
+        dispatch, dispatch_later, dispatch_to, register_tenant_capture_hook, CreateJobsTable,
+        Error, FailedJobInfo, Job, JobInfo, JobPayload, JobState, PendingDispatch, Queue,
+        QueueConfig, QueueStats, Queueable, SingleQueueStats, TenantScopeProvider, Worker,
+        WorkerConfig, WorkerLoop,
     };
 }
 
