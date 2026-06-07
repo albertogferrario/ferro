@@ -4,7 +4,7 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
 stopped_at: Completed 185-05-PLAN.md
-last_updated: "2026-06-07T18:17:28.571Z"
+last_updated: "2026-06-07T18:41:46.010Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 184
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 185 (ferro::queue — DB-Backed Job Queue) — EXECUTING
-Plan: 5 of 5
+Phase: 189
+Plan: Not started
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminder: `ferro-bundle` (Phase 183) needs a one-time manual `cargo publish -p ferro-bundle` from a local terminal before push, because the CI token has `publish-update` only (not `publish-new`).
 Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
@@ -42,7 +42,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 154
+- Total plans completed: 159
 - Average duration: —
 - Total execution time: —
 
@@ -77,6 +77,7 @@ Progress: [████████░░] 84%
 | 181 | 8 | - | - |
 | 184 | 3 | - | - |
 | 189 | 4 | - | - |
+| 185 | 5 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
