@@ -4,9 +4,7 @@
 //! no string interpolation of caller-supplied data (T-186-04).
 
 use chrono::{DateTime, Utc};
-use sea_orm::{
-    ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement, Value,
-};
+use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement, Value};
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
@@ -100,7 +98,12 @@ impl Deployments {
         let now_iso = now.to_rfc3339();
         let backend = self.db.get_database_backend();
 
-        let (p1, p2, p3, p4) = (ph(backend, 1), ph(backend, 2), ph(backend, 3), ph(backend, 4));
+        let (p1, p2, p3, p4) = (
+            ph(backend, 1),
+            ph(backend, 2),
+            ph(backend, 3),
+            ph(backend, 4),
+        );
         let sql = format!(
             "INSERT INTO deployments \
              (identifier, owner_key, source_ref, artifact_location, byte_size, status, \
@@ -159,7 +162,12 @@ impl Deployments {
     ) -> Result<(), Error> {
         let now_iso = Utc::now().to_rfc3339();
         let backend = self.db.get_database_backend();
-        let (p1, p2, p3, p4) = (ph(backend, 1), ph(backend, 2), ph(backend, 3), ph(backend, 4));
+        let (p1, p2, p3, p4) = (
+            ph(backend, 1),
+            ph(backend, 2),
+            ph(backend, 3),
+            ph(backend, 4),
+        );
         let sql = format!(
             "UPDATE deployments \
              SET status = 'ready', artifact_location = {p1}, byte_size = {p2}, terminated_at = {p3} \
@@ -194,7 +202,11 @@ impl Deployments {
     /// the schema). Returns `Err` when the row does not exist or is already
     /// terminal.
     pub async fn mark_failed(&self, id: i64, error: &str) -> Result<(), Error> {
-        tracing::warn!(deployment_id = id, error = error, "deployment marked failed");
+        tracing::warn!(
+            deployment_id = id,
+            error = error,
+            "deployment marked failed"
+        );
         let now_iso = Utc::now().to_rfc3339();
         let backend = self.db.get_database_backend();
         let (p1, p2) = (ph(backend, 1), ph(backend, 2));
@@ -230,8 +242,7 @@ impl Deployments {
              status, artifact_deleted_at, terminated_at, created_at \
              FROM deployments WHERE id = {p1}"
         );
-        let stmt =
-            Statement::from_sql_and_values(backend, &sql, [Value::BigInt(Some(id))]);
+        let stmt = Statement::from_sql_and_values(backend, &sql, [Value::BigInt(Some(id))]);
         let row = self
             .db
             .query_one(stmt)
@@ -264,9 +275,7 @@ impl Deployments {
     pub async fn active(&self, owner_key: &str) -> Result<Option<Deployment>, Error> {
         let backend = self.db.get_database_backend();
         let p1 = ph(backend, 1);
-        let sql = format!(
-            "SELECT deployment_id FROM deployment_pointers WHERE owner_key = {p1}"
-        );
+        let sql = format!("SELECT deployment_id FROM deployment_pointers WHERE owner_key = {p1}");
         let stmt = Statement::from_sql_and_values(
             backend,
             &sql,
@@ -293,11 +302,7 @@ impl Deployments {
     ///
     /// Returns the previously-active deployment id, or `None` when this is the
     /// first promotion.
-    pub async fn promote(
-        &self,
-        owner_key: &str,
-        deployment_id: i64,
-    ) -> Result<Option<i64>, Error> {
+    pub async fn promote(&self, owner_key: &str, deployment_id: i64) -> Result<Option<i64>, Error> {
         let dep = self.get(deployment_id).await?;
         if dep.status != DeploymentStatus::Ready {
             return Err(Error::NotReady { id: deployment_id });
@@ -459,9 +464,7 @@ mod tests {
         let conn = Database::connect("sqlite::memory:")
             .await
             .expect("connect sqlite::memory:");
-        TestMigrator::up(&conn, None)
-            .await
-            .expect("run migrations");
+        TestMigrator::up(&conn, None).await.expect("run migrations");
         conn
     }
 
@@ -485,10 +488,7 @@ mod tests {
     async fn get_round_trips() {
         let conn = setup().await;
         let d = Deployments::new(conn);
-        let dep = d
-            .create("owner:2", Some("ref-xyz"))
-            .await
-            .expect("create");
+        let dep = d.create("owner:2", Some("ref-xyz")).await.expect("create");
         let fetched = d.get(dep.id).await.expect("get");
         assert_eq!(fetched.id, dep.id);
         assert_eq!(fetched.identifier, dep.identifier);
@@ -509,7 +509,10 @@ mod tests {
         assert_eq!(fetched.status, DeploymentStatus::Ready);
         assert_eq!(fetched.artifact_location.as_deref(), Some("deployments/1/"));
         assert_eq!(fetched.byte_size, Some(4096));
-        assert!(fetched.terminated_at.is_some(), "terminated_at must be set after mark_ready");
+        assert!(
+            fetched.terminated_at.is_some(),
+            "terminated_at must be set after mark_ready"
+        );
     }
 
     #[tokio::test]
@@ -538,7 +541,10 @@ mod tests {
             .expect("mark_failed");
         let fetched = d.get(dep.id).await.expect("get");
         assert_eq!(fetched.status, DeploymentStatus::Failed);
-        assert!(fetched.terminated_at.is_some(), "terminated_at must be set after mark_failed");
+        assert!(
+            fetched.terminated_at.is_some(),
+            "terminated_at must be set after mark_failed"
+        );
     }
 
     #[tokio::test]
@@ -561,6 +567,103 @@ mod tests {
         let conn = setup().await;
         let d = Deployments::new(conn);
         let result = d.active("owner:7").await.expect("active");
-        assert!(result.is_none(), "active should be None when no pointer exists");
+        assert!(
+            result.is_none(),
+            "active should be None when no pointer exists"
+        );
+    }
+
+    #[tokio::test]
+    async fn promote_rejects_non_ready() {
+        let conn = setup().await;
+        let d = Deployments::new(conn);
+        let dep = d.create("owner:8", None).await.expect("create");
+        // dep is still Building — promote must reject it
+        let result = d.promote("owner:8", dep.id).await;
+        assert!(
+            matches!(result, Err(Error::NotReady { id }) if id == dep.id),
+            "promote should return Error::NotReady for a Building deployment, got: {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn promote_rejects_deleted_artifact() {
+        let conn = setup().await;
+        let d = Deployments::new(conn.clone());
+        let dep = d.create("owner:9", None).await.expect("create");
+        d.mark_ready(dep.id, "artifacts/9/", 512)
+            .await
+            .expect("mark_ready");
+        // Manually set artifact_deleted_at to simulate GC.
+        let now_iso = chrono::Utc::now().to_rfc3339();
+        conn.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            format!(
+                "UPDATE deployments SET artifact_deleted_at = '{}' WHERE id = {}",
+                now_iso, dep.id
+            ),
+        ))
+        .await
+        .expect("set artifact_deleted_at");
+        let result = d.promote("owner:9", dep.id).await;
+        assert!(
+            matches!(result, Err(Error::ArtifactDeleted { id }) if id == dep.id),
+            "promote should return Error::ArtifactDeleted, got: {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn promote_returns_previous_id() {
+        let conn = setup().await;
+        let d = Deployments::new(conn);
+        let dep_a = d.create("owner:10", None).await.expect("create a");
+        let dep_b = d.create("owner:10", None).await.expect("create b");
+        d.mark_ready(dep_a.id, "a/", 1).await.expect("ready a");
+        d.mark_ready(dep_b.id, "b/", 2).await.expect("ready b");
+
+        // First promote: no previous.
+        let prev = d
+            .promote("owner:10", dep_a.id)
+            .await
+            .expect("first promote");
+        assert!(
+            prev.is_none(),
+            "first promote should return None as previous"
+        );
+
+        // Second promote: previous is dep_a.
+        let prev2 = d
+            .promote("owner:10", dep_b.id)
+            .await
+            .expect("second promote");
+        assert_eq!(
+            prev2,
+            Some(dep_a.id),
+            "second promote should return dep_a.id as previous"
+        );
+    }
+
+    #[tokio::test]
+    async fn rollback_promotes_previous() {
+        let conn = setup().await;
+        let d = Deployments::new(conn);
+        let dep_a = d.create("owner:11", None).await.expect("create a");
+        let dep_b = d.create("owner:11", None).await.expect("create b");
+        d.mark_ready(dep_a.id, "a/", 1).await.expect("ready a");
+        d.mark_ready(dep_b.id, "b/", 2).await.expect("ready b");
+        d.promote("owner:11", dep_a.id).await.expect("promote a");
+        d.promote("owner:11", dep_b.id).await.expect("promote b");
+
+        // Rollback: should promote dep_a again.
+        d.rollback("owner:11").await.expect("rollback");
+        let active = d
+            .active("owner:11")
+            .await
+            .expect("active after rollback")
+            .expect("should have active deployment");
+        assert_eq!(
+            active.id, dep_a.id,
+            "after rollback, active should be dep_a"
+        );
     }
 }
