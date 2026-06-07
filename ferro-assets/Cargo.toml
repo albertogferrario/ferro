@@ -13,6 +13,7 @@ readme = "README.md"
 lol_html = "2.6"
 lightningcss = "=1.0.0-alpha.71"
 swc = "66"
+swc_common = "23"
 image = { version = "0.25", features = ["avif"] }
 ravif = "0.13"
 rayon = "1"

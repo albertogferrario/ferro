@@ -17,5 +17,11 @@
 
 pub use crate::pipeline::Transform;
 
+mod css_minify;
+pub use css_minify::CssMinify;
+
 mod html_minify;
 pub use html_minify::HtmlMinify;
+
+mod js_minify;
+pub use js_minify::JsMinify;
