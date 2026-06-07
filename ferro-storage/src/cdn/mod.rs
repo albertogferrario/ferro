@@ -114,28 +114,14 @@ impl DoSpacesCdn {
 
     /// Sliding-window rate limiter: ensures ≤ RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW.
     ///
-    /// Uses `tokio::sync::Mutex` (not `std::sync::Mutex`) so the lock can be held across
-    /// the `.await` in the sleep path without deadlocking.
+    /// Loops until a free slot is confirmed while holding the lock, so concurrent callers
+    /// cannot both observe `len < RATE_LIMIT_MAX` and both proceed. The lock is never held
+    /// across the `.await` sleep to avoid deadlocking other waiters.
     async fn throttle(&self) {
-        let mut times = self.request_times.lock().await;
-        let now = Instant::now();
-        // Evict entries older than the window
-        while times
-            .front()
-            .map(|t| now.duration_since(*t) >= RATE_LIMIT_WINDOW)
-            .unwrap_or(false)
-        {
-            times.pop_front();
-        }
-        if times.len() >= RATE_LIMIT_MAX {
-            // Sleep until the oldest entry falls out of the window
-            let oldest = *times.front().unwrap();
-            let sleep_for = RATE_LIMIT_WINDOW - now.duration_since(oldest);
-            drop(times);
-            tokio::time::sleep(sleep_for).await;
-            // Re-acquire and re-evict after sleeping
+        loop {
             let mut times = self.request_times.lock().await;
             let now = Instant::now();
+            // Evict entries older than the window.
             while times
                 .front()
                 .map(|t| now.duration_since(*t) >= RATE_LIMIT_WINDOW)
@@ -143,9 +129,17 @@ impl DoSpacesCdn {
             {
                 times.pop_front();
             }
-            times.push_back(Instant::now());
-        } else {
-            times.push_back(now);
+            if times.len() < RATE_LIMIT_MAX {
+                // Slot available — record this request and proceed.
+                times.push_back(Instant::now());
+                return;
+            }
+            // Window full: compute sleep duration, drop the lock, then re-check.
+            let oldest = *times.front().unwrap();
+            let sleep_for = RATE_LIMIT_WINDOW - now.duration_since(oldest);
+            drop(times);
+            tokio::time::sleep(sleep_for).await;
+            // Loop back to re-acquire and re-check under the lock.
         }
     }
 }
