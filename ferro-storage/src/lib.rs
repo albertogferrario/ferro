@@ -46,6 +46,7 @@
 //! storage.put("temp/cache.txt", cache_data).await?;
 //! ```
 
+pub mod cdn;
 mod config;
 mod drivers;
 mod error;
@@ -55,6 +56,8 @@ mod storage;
 #[cfg(feature = "s3")]
 pub use drivers::S3Driver;
 pub use drivers::{LocalDriver, MemoryDriver};
+
+pub use cdn::{DoSpacesCdn, DoSpacesCdnConfig, PurgeApi};
 
 pub use config::StorageConfig;
 pub use error::Error;
