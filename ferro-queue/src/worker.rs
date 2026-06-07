@@ -199,6 +199,16 @@ impl WorkerLoop {
         self.handlers.insert(type_name, handler);
     }
 
+    /// Build a `WorkerLoop` and apply all job types registered via [`Queue::register`].
+    ///
+    /// This is the entry point used by the framework's server boot path to create
+    /// the auto-started worker when at least one job type has been registered.
+    pub fn from_registry(config: WorkerConfig) -> Self {
+        let mut w = Self::new(config);
+        crate::db::Queue::apply_registrars(&mut w);
+        w
+    }
+
     /// Signal the worker loop to shut down gracefully.
     ///
     /// Sets the same AtomicBool that the SIGTERM/Ctrl-C handler sets, so

@@ -191,12 +191,15 @@ pub use ferro_events::{
     Listener, ShouldQueue,
 };
 
-// Re-export ferro-queue for background job processing
-pub use ferro_queue::{
-    dispatch as queue_dispatch, dispatch_later, dispatch_to, register_tenant_capture_hook,
-    Error as QueueError, Job, JobPayload, PendingDispatch, Queue, QueueConfig, QueueConnection,
-    Queueable, TenantScopeProvider, Worker, WorkerConfig,
-};
+/// Background job queue. Use `ferro::queue::Job`, `ferro::queue::dispatch`, etc.
+pub mod queue {
+    pub use ferro_queue::{
+        dispatch, dispatch_later, dispatch_to, register_tenant_capture_hook,
+        CreateJobsTable, Error, FailedJobInfo, Job, JobInfo, JobPayload,
+        JobState, PendingDispatch, Queue, QueueConfig, QueueStats, Queueable,
+        SingleQueueStats, TenantScopeProvider, Worker, WorkerConfig, WorkerLoop,
+    };
+}
 
 // Re-export ferro-notifications for multi-channel notifications
 pub use ferro_notifications::{

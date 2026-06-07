@@ -20,6 +20,11 @@ use crate::error::Error;
 
 static GLOBAL_CONNECTION: std::sync::OnceLock<DatabaseConnection> = std::sync::OnceLock::new();
 
+/// Registered job-type applier functions, collected before the server starts.
+type RegisterFn = Box<dyn Fn(&mut crate::WorkerLoop) + Send + Sync>;
+static JOB_REGISTRARS: std::sync::Mutex<Vec<RegisterFn>> =
+    std::sync::Mutex::new(Vec::new());
+
 /// Global handle to the queue's database connection.
 ///
 /// Initialise once at application start with [`Queue::init`]; worker loops
@@ -51,6 +56,35 @@ impl Queue {
     /// Returns `true` if [`Queue::init`] has been called.
     pub fn is_initialized() -> bool {
         GLOBAL_CONNECTION.get().is_some()
+    }
+
+    /// Register a job type for auto-start by the framework's WorkerLoop.
+    ///
+    /// Call this in your application bootstrap before the server starts.
+    /// The framework's server boot path inspects [`Queue::has_registered_jobs`]
+    /// and spawns a `WorkerLoop` automatically when at least one type is registered.
+    pub fn register<J>()
+    where
+        J: crate::Job + serde::de::DeserializeOwned + 'static,
+    {
+        JOB_REGISTRARS
+            .lock()
+            .unwrap()
+            .push(Box::new(|w: &mut crate::WorkerLoop| w.register::<J>()));
+    }
+
+    /// Returns `true` if at least one job type has been registered via [`Queue::register`].
+    pub fn has_registered_jobs() -> bool {
+        !JOB_REGISTRARS.lock().unwrap().is_empty()
+    }
+
+    /// Apply all registered job types to the given `WorkerLoop`.
+    ///
+    /// Used internally by [`WorkerLoop::from_registry`].
+    pub(crate) fn apply_registrars(w: &mut crate::WorkerLoop) {
+        for r in JOB_REGISTRARS.lock().unwrap().iter() {
+            r(w);
+        }
     }
 }
 
@@ -132,7 +166,7 @@ pub struct SingleQueueStats {
 }
 
 /// Aggregate stats across all queues.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct QueueStats {
     /// Per-queue breakdown.
     pub queues: Vec<SingleQueueStats>,

@@ -197,18 +197,19 @@ pub async fn handle_queue_jobs() -> hyper::Response<Full<Bytes>> {
     }
 
     let conn = ferro_queue::Queue::connection();
-    let default_queue = conn.config().default_queue.as_str();
+    let default_queue = ferro_queue::QueueConfig::from_env().default_queue;
+    let default_queue = default_queue.as_str();
 
-    // Fetch jobs from the default queue
-    let pending = conn
-        .get_pending_jobs(default_queue, 100)
+    // Fetch jobs from the default queue (DB-backed, D-18).
+    let pending = ferro_queue::get_pending_jobs(conn, default_queue, 100)
         .await
         .unwrap_or_default();
-    let delayed = conn
-        .get_delayed_jobs(default_queue, 100)
+    let delayed = ferro_queue::get_delayed_jobs(conn, default_queue, 100)
         .await
         .unwrap_or_default();
-    let failed = conn.get_failed_jobs(100).await.unwrap_or_default();
+    let failed = ferro_queue::get_failed_jobs(conn, 100)
+        .await
+        .unwrap_or_default();
 
     json_response(
         DebugResponse {
@@ -251,10 +252,13 @@ pub async fn handle_queue_stats() -> hyper::Response<Full<Bytes>> {
     }
 
     let conn = ferro_queue::Queue::connection();
-    let default_queue = conn.config().default_queue.as_str();
+    let default_queue = ferro_queue::QueueConfig::from_env().default_queue;
+    let default_queue = default_queue.as_str();
 
-    // Get stats for default queue
-    let stats = conn.get_stats(&[default_queue]).await.unwrap_or_default();
+    // Get stats for default queue (DB-backed, D-18).
+    let stats = ferro_queue::get_stats(conn, &[default_queue])
+        .await
+        .unwrap_or_default();
 
     json_response(
         DebugResponse {

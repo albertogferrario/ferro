@@ -405,6 +405,23 @@ where
             bootstrap_fn().await;
         }
 
+        // Initialize the queue DB connection + spawn the WorkerLoop if jobs are
+        // registered (D-09). Guard with is_initialized() so a consumer bootstrap
+        // that already called Queue::init() does not cause a double-init error.
+        if !ferro_queue::Queue::is_initialized() {
+            let conn = Self::get_database_connection().await;
+            let _ = ferro_queue::Queue::init(conn).await;
+        }
+        if ferro_queue::Queue::has_registered_jobs() {
+            let config = ferro_queue::WorkerConfig::default();
+            let worker = ferro_queue::WorkerLoop::from_registry(config);
+            tokio::spawn(async move {
+                if let Err(e) = worker.run().await {
+                    eprintln!("WorkerLoop exited with error: {e}");
+                }
+            });
+        }
+
         // Get router
         let router = if let Some(routes_fn) = routes_fn {
             routes_fn()
