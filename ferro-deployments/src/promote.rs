@@ -71,7 +71,13 @@ async fn promote_sqlite(
     );
 
     let row = match txn.query_one(stmt).await {
-        Ok(r) => r,
+        Ok(Some(r)) => r,
+        Ok(None) => {
+            let _ = txn.rollback().await;
+            return Err(Error::custom(
+                "promote: RETURNING yielded no row; pointer state unknown",
+            ));
+        }
         Err(e) => {
             let _ = txn.rollback().await;
             return Err(Error::Db(e));
@@ -79,11 +85,10 @@ async fn promote_sqlite(
     };
     txn.commit().await.map_err(Error::Db)?;
 
-    Ok(row.and_then(|r| {
-        r.try_get_by::<Option<i64>, _>("previous_deployment_id")
-            .ok()
-            .flatten()
-    }))
+    let previous_id = row
+        .try_get_by::<Option<i64>, _>("previous_deployment_id")
+        .map_err(|e| Error::custom(format!("promote: parse previous_deployment_id: {e}")))?;
+    Ok(previous_id)
 }
 
 // ---------------------------------------------------------------------------
@@ -115,7 +120,13 @@ async fn promote_postgres(
     );
 
     let row = match txn.query_one(stmt).await {
-        Ok(r) => r,
+        Ok(Some(r)) => r,
+        Ok(None) => {
+            let _ = txn.rollback().await;
+            return Err(Error::custom(
+                "promote: RETURNING yielded no row; pointer state unknown",
+            ));
+        }
         Err(e) => {
             let _ = txn.rollback().await;
             return Err(Error::Db(e));
@@ -123,9 +134,8 @@ async fn promote_postgres(
     };
     txn.commit().await.map_err(Error::Db)?;
 
-    Ok(row.and_then(|r| {
-        r.try_get_by::<Option<i64>, _>("previous_deployment_id")
-            .ok()
-            .flatten()
-    }))
+    let previous_id = row
+        .try_get_by::<Option<i64>, _>("previous_deployment_id")
+        .map_err(|e| Error::custom(format!("promote: parse previous_deployment_id: {e}")))?;
+    Ok(previous_id)
 }
