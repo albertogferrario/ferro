@@ -2203,7 +2203,7 @@ Plans:
   5. Pipeline failure at any stage returns a structured per-file error and produces NO partial output set — the caller can implement all-or-nothing upload (gestiscilo PUB-05 two-phase invariant builds on this)
 **Plans**: 4 plans (4 waves, serialized for the one-CPU-op-at-a-time constraint)
 
-- [ ] 187-01-PLAN.md — Crate scaffold + Wave 0 swc-version verification + Asset/ContentType/Error model + Transform/Pipeline (all-or-nothing) + passthrough (SC-1) & atomicity (SC-5) tests (Wave 1)
+- [x] 187-01-PLAN.md — Crate scaffold + Wave 0 swc-version verification + Asset/ContentType/Error model + Transform/Pipeline (all-or-nothing) + passthrough (SC-1) & atomicity (SC-5) tests (Wave 1)
 - [ ] 187-02-PLAN.md — Text transforms: html_minify (opaque script/style, SC-2 fixture), css_minify, js_minify, inject_before_tag, replace_tokens (Wave 2)
 - [ ] 187-03-PLAN.md — Image transforms: image_transcode (image+ravif+rayon, AVIF+JPEG, no-upscale, bounded ≤2) + responsive_images (img→picture), SC-3 test (Wave 3)
 - [ ] 187-04-PLAN.md — README + docs/src feature page + SUMMARY link + full real-transform passthrough proof + CI-parity gate + manual first-publish checkpoint (Wave 4)

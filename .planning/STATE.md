@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: verifying
-stopped_at: Phase 187 context gathered
-last_updated: "2026-06-07T20:10:38.067Z"
+status: executing
+stopped_at: Completed 187-01-PLAN.md
+last_updated: "2026-06-07T20:57:44.953Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 186
   completed_phases: 168
-  total_plans: 521
-  completed_plans: 511
+  total_plans: 525
+  completed_plans: 512
   percent: 98
 ---
 
@@ -20,16 +20,16 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 186 — ferro-deployments-immutable-deployments-atomic-promote
+**Current focus:** Phase 187 — ferro-assets — Asset Pipeline Composer
 
 ## Current Position
 
-Phase: 189
-Plan: Not started
+Phase: 187 (ferro-assets — Asset Pipeline Composer) — EXECUTING
+Plan: 2 of 4
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminder: `ferro-bundle` (Phase 183) needs a one-time manual `cargo publish -p ferro-bundle` from a local terminal before push, because the CI token has `publish-update` only (not `publish-new`).
 Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-06-07
 
 ## Queued Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
@@ -228,6 +228,7 @@ Progress: [████████░░] 84%
 | Phase 186 P02 | 382s | 2 tasks | 5 files |
 | Phase 186 P03 | 148s | 2 tasks | 2 files |
 | Phase 186 P04 | 471s | 3 tasks | 4 files |
+| Phase 187 P01 | 525s | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -312,7 +313,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-07T20:10:38.056Z
-Stopped at: Phase 187 context gathered
-Resume file: .planning/phases/187-ferro-assets-asset-pipeline-composer/187-CONTEXT.md
+Last session: 2026-06-07T20:57:44.943Z
+Stopped at: Completed 187-01-PLAN.md
+Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
