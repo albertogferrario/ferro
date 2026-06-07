@@ -49,6 +49,7 @@
 - [Service Projections](features/projections.md)
 - [Live Read-Models](features/live-read-models.md)
 - [AI & Confirmation](features/ai.md)
+- [Deployments](features/deployments.md)
 
 # JSON-UI
 
