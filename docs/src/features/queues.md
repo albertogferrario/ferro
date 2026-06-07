@@ -1,50 +1,72 @@
 # Queues & Background Jobs
 
-Ferro provides a Redis-backed queue system for processing jobs asynchronously. This is essential for handling time-consuming tasks like sending emails, processing uploads, or generating reports without blocking HTTP requests.
+Ferro provides a database-backed queue for processing jobs asynchronously. The queue uses the application's existing `DatabaseConnection` — no separate external queue server is needed. The `WorkerLoop` runs in-process inside `Application::run` and is started automatically when at least one job type is registered.
 
-## Configuration
+Atomic claim is dual-backend:
+
+- **Postgres** — `SELECT … FOR UPDATE SKIP LOCKED` inside a transaction
+- **SQLite** — raw `BEGIN IMMEDIATE` + `UPDATE … RETURNING`
+
+Both paths claim exactly one job per cycle; two workers on the same table cannot double-claim a row.
+
+## Setup
+
+### Migration
+
+Register `CreateJobsTable` in your application's `Migrator` alongside your own migrations:
+
+```rust
+use ferro_queue::CreateJobsTable;
+use sea_orm_migration::prelude::*;
+
+pub struct Migrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for Migrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            Box::new(CreateJobsTable),
+            // ... your own migrations
+        ]
+    }
+}
+```
+
+### Registration
+
+Register job types in your bootstrap before the server starts. The framework's server boot path (inside `Application::run`) detects registered job types and spawns a `WorkerLoop` automatically — no separate process or CLI command required.
+
+```rust
+// src/bootstrap.rs
+use ferro::queue::Queue;
+use crate::jobs::{ProcessPayment, SendEmail, GenerateReport};
+
+pub async fn register() {
+    // Register job types — the framework auto-starts the WorkerLoop.
+    Queue::register::<ProcessPayment>();
+    Queue::register::<SendEmail>();
+    Queue::register::<GenerateReport>();
+}
+```
 
 ### Environment Variables
 
-Configure queues in your `.env` file:
-
 ```env
-# Queue driver: "sync" for development, "redis" for production
+# Queue driver: "sync" for development (jobs run inline), any other value for background
 QUEUE_CONNECTION=sync
 
 # Default queue name
 QUEUE_DEFAULT=default
 
-# Redis connection
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DATABASE=0
+# Maximum concurrent jobs per worker instance
+QUEUE_MAX_CONCURRENT=10
 ```
 
-### Bootstrap Setup
-
-In `src/bootstrap.rs`, initialize the queue system:
-
-```rust
-use ferro::{Queue, QueueConfig};
-
-pub async fn register() {
-    // ... other setup ...
-
-    // Initialize queue (for production with Redis)
-    if !QueueConfig::is_sync_mode() {
-        let config = QueueConfig::from_env();
-        Queue::init(config).await.expect("Failed to initialize queue");
-    }
-}
-```
+In development, `QUEUE_CONNECTION=sync` (the default) runs jobs inline during the HTTP request — no background worker, no database polling. Set any other value to enable background processing.
 
 ## Creating Jobs
 
 ### Using the CLI
-
-Generate a new job:
 
 ```bash
 ferro make:job ProcessPayment
@@ -53,7 +75,7 @@ ferro make:job ProcessPayment
 This creates `src/jobs/process_payment.rs`:
 
 ```rust
-use ferro::{Job, Error, async_trait};
+use ferro::queue::{Job, Error, async_trait};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,11 +95,6 @@ impl Job for ProcessPayment {
     fn max_retries(&self) -> u32 {
         3
     }
-
-    fn retry_delay(&self, attempt: u32) -> std::time::Duration {
-        // Exponential backoff: 2s, 4s, 8s...
-        std::time::Duration::from_secs(2u64.pow(attempt))
-    }
 }
 ```
 
@@ -88,9 +105,38 @@ impl Job for ProcessPayment {
 | `handle()` | Job execution logic | Required |
 | `name()` | Job identifier for logging | Type name |
 | `max_retries()` | Retry attempts on failure | 3 |
-| `retry_delay(attempt)` | Delay before retry | 5 seconds |
+| `retry_delay(attempt)` | Delay before retry | Full-jitter exponential (see below) |
 | `timeout()` | Maximum execution time | 60 seconds |
 | `failed(error)` | Called when all retries exhausted | Logs error |
+| `idempotency_key()` | Deduplication key on enqueue | `None` |
+
+### Retry Delay Default
+
+The default `retry_delay` uses full-jitter exponential backoff: `rand(0..=min(cap, base × 2^attempt))` where base = 5 s and cap = 15 min. Override it on individual job types:
+
+```rust
+fn retry_delay(&self, attempt: u32) -> std::time::Duration {
+    // Fixed 30-second delay regardless of attempt count.
+    std::time::Duration::from_secs(30)
+}
+```
+
+### Idempotency Keys
+
+Provide `idempotency_key()` to prevent duplicate jobs when the same event fires more than once. Enqueue skips insertion when a `pending` or `claimed` row with the same `(job_type, idempotency_key)` already exists:
+
+```rust
+impl Job for SendInvoice {
+    fn idempotency_key(&self) -> Option<String> {
+        Some(format!("send-invoice-{}", self.invoice_id))
+    }
+
+    async fn handle(&self) -> Result<(), Error> {
+        // Will only run once per invoice_id even if dispatched multiple times.
+        Ok(())
+    }
+}
+```
 
 ## Dispatching Jobs
 
@@ -99,7 +145,6 @@ impl Job for ProcessPayment {
 ```rust
 use crate::jobs::ProcessPayment;
 
-// In a controller or service
 ProcessPayment {
     order_id: 123,
     amount: 99.99,
@@ -110,20 +155,16 @@ ProcessPayment {
 
 ### With Delay
 
-Process the job after a delay:
-
 ```rust
 use std::time::Duration;
 
 ProcessPayment { order_id: 123, amount: 99.99 }
-    .delay(Duration::from_secs(60))  // Wait 1 minute
+    .delay(Duration::from_secs(300))  // Run after 5 minutes
     .dispatch()
     .await?;
 ```
 
 ### To Specific Queue
-
-Route jobs to different queues for priority handling:
 
 ```rust
 ProcessPayment { order_id: 123, amount: 99.99 }
@@ -136,132 +177,144 @@ ProcessPayment { order_id: 123, amount: 99.99 }
 
 ```rust
 ProcessPayment { order_id: 123, amount: 99.99 }
-    .delay(Duration::from_secs(300))  // 5 minute delay
+    .delay(Duration::from_secs(60))
     .on_queue("payments")
     .dispatch()
     .await?;
 ```
 
-## Running Workers
+## WorkerLoop Configuration
 
-### Development
-
-For development, use sync mode (`QUEUE_CONNECTION=sync`) which processes jobs immediately during the HTTP request.
-
-### Production
-
-Run a worker process to consume jobs from Redis:
+The framework creates a `WorkerLoop` with `WorkerConfig::default()` when job types are registered. Override the configuration by calling `WorkerLoop::new(config)` directly if you need custom settings.
 
 ```rust
-// src/bin/worker.rs
-use ferro::{Worker, WorkerConfig};
-use myapp::jobs::{ProcessPayment, SendEmail, GenerateReport};
+use ferro::queue::{WorkerConfig, WorkerLoop};
+use std::time::Duration;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize app (loads .env, connects to Redis)
-    myapp::bootstrap::register().await;
+let config = WorkerConfig {
+    queues: vec!["high-priority".into(), "default".into()],
+    max_jobs: 20,
+    sleep_duration: Duration::from_millis(500),
+    visibility_timeout: Duration::from_secs(300), // 5 min default
+    ..Default::default()
+};
+```
 
-    let worker = Worker::new(WorkerConfig {
-        queue: "default".into(),
-        ..Default::default()
-    });
+| Field | Description | Default |
+|-------|-------------|---------|
+| `queues` | Queue names to process, in priority order | `["default"]` |
+| `max_jobs` | Maximum concurrent in-flight jobs | `10` |
+| `sleep_duration` | Idle poll interval when queue is empty | `1s` |
+| `visibility_timeout` | Time before a claimed job is reclaimed by the reaper | `300s` |
 
-    // Register all job types this worker handles
-    worker.register::<ProcessPayment>();
-    worker.register::<SendEmail>();
-    worker.register::<GenerateReport>();
+## CPU-Heavy Jobs
 
-    // Run forever (handles graceful shutdown)
-    worker.run().await?;
+The `WorkerLoop` runs on the async executor. Jobs that do CPU-bound work (PDF rendering, image processing, compression) must wrap that work in `tokio::task::spawn_blocking` to avoid starving the executor of threads and blocking other jobs from running:
 
+```rust
+use ferro::queue::{Job, Error, async_trait};
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RenderDocumentPdfJob {
+    pub document_id: i64,
+}
+
+#[async_trait]
+impl Job for RenderDocumentPdfJob {
+    async fn handle(&self) -> Result<(), Error> {
+        let document_id = self.document_id;
+
+        // spawn_blocking moves CPU work off the async executor thread pool.
+        tokio::task::spawn_blocking(move || {
+            // CPU-intensive PDF rendering here...
+            render_pdf(document_id)
+        })
+        .await
+        .map_err(|e| Error::custom(format!("spawn_blocking join: {e}")))?
+        .map_err(|e| Error::custom(format!("render_pdf: {e}")))
+    }
+}
+
+fn render_pdf(_document_id: i64) -> Result<(), String> {
+    // synchronous rendering work
     Ok(())
 }
 ```
 
-Run with:
-
-```bash
-cargo run --bin worker
-```
-
-### Multiple Queues
-
-Run separate workers for different queues:
-
-```bash
-# High priority worker
-QUEUE_NAME=high-priority cargo run --bin worker
-
-# Default queue worker
-cargo run --bin worker
-
-# Email-specific worker
-QUEUE_NAME=emails cargo run --bin worker
-```
+This applies to any job doing significant CPU work: document rendering, image resizing, compression, or large in-memory data transformations.
 
 ## Error Handling
 
 ### Automatic Retries
 
-Failed jobs are automatically retried based on `max_retries()` and `retry_delay()`:
+Failed jobs are automatically retried based on `max_retries()` and `retry_delay()`. After all retries are exhausted, the job is parked as `failed` with the error message recorded:
 
 ```rust
 impl Job for ProcessPayment {
     fn max_retries(&self) -> u32 {
-        5  // Try 5 times total
+        5
     }
 
-    fn retry_delay(&self, attempt: u32) -> Duration {
-        // Exponential backoff with jitter
-        let base = Duration::from_secs(2u64.pow(attempt));
-        let jitter = Duration::from_millis(rand::random::<u64>() % 1000);
-        base + jitter
-    }
-}
-```
-
-### Failed Job Handler
-
-Handle permanent failures:
-
-```rust
-impl Job for ProcessPayment {
     async fn failed(&self, error: &Error) {
         tracing::error!(
             order_id = self.order_id,
-            error = ?error,
+            error = %error,
             "Payment processing permanently failed"
         );
-
-        // Notify admins, update order status, etc.
+        // Notify, update order status, etc.
     }
 }
 ```
 
-## Best Practices
+### Stuck Job Reaper
 
-1. **Keep jobs small** - Jobs should do one thing well
-2. **Make jobs idempotent** - Safe to run multiple times
-3. **Use appropriate timeouts** - Set `timeout()` based on expected duration
-4. **Handle failures gracefully** - Implement `failed()` for cleanup
-5. **Use dedicated queues** - Separate critical jobs from bulk processing
-6. **Monitor queue depth** - Alert on growing backlogs
+The worker runs a reaper before each claim cycle. Jobs that have been `claimed` for longer than the `visibility_timeout` (default 5 min) are:
 
-## Environment Variables Reference
+- Reset to `pending` with `attempts + 1` if they have retries remaining
+- Parked as `failed` if they have exhausted `max_retries`
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `QUEUE_CONNECTION` | "sync" or "redis" | sync |
-| `QUEUE_DEFAULT` | Default queue name | default |
-| `QUEUE_PREFIX` | Redis key prefix | ferro_queue |
-| `QUEUE_BLOCK_TIMEOUT` | Worker polling timeout (seconds) | 5 |
-| `QUEUE_MAX_CONCURRENT` | Max parallel jobs per worker | 10 |
-| `REDIS_URL` | Full Redis URL (overrides individual settings) | - |
-| `REDIS_HOST` | Redis server host | 127.0.0.1 |
-| `REDIS_PORT` | Redis server port | 6379 |
-| `REDIS_PASSWORD` | Redis password | - |
-| `REDIS_DATABASE` | Redis database number | 0 |
+This recovers from worker crashes without any manual intervention.
+
+### Graceful Shutdown
+
+On SIGTERM or Ctrl-C the worker stops claiming new jobs, waits for in-flight jobs to finish, and resets any `claimed` rows it held back to `pending` — those jobs will be claimed by the next worker instance.
+
+## Failed Job Inspection
+
+Failed jobs are stored in the `jobs` table with `status = 'failed'`. Inspect them via the debug endpoint or ferro-mcp:
+
+```bash
+# Debug endpoint (requires APP_ENV=local or DEBUG_MODE=true)
+curl http://localhost:3000/_ferro/queue/stats
+curl http://localhost:3000/_ferro/queue/jobs
+```
+
+## Migration Guide
+
+The following table maps the previous external-broker API to the current DB-backed API.
+
+| Old API | New (DB) | Notes |
+|---------|----------|-------|
+| `Queue::init(QueueConfig::new(broker_url))` | `Queue::register::<J>()` in bootstrap; framework auto-inits | Connection injected at bootstrap from the app DB |
+| Separate worker process / `cargo run --bin worker` | `WorkerLoop` auto-started inside `Application::run` | Single binary, work-stealing |
+| External broker env vars (`HOST`, `PORT`, `PASSWORD`) | None required | Queue uses the app's `DATABASE_URL` |
+| `failed_jobs` table | `jobs WHERE status='failed'` | Single table, error recorded inline |
+| `2^attempt` fixed backoff | Full-jitter exponential default | Override via `Job::retry_delay` |
+| No deduplication hook | `Job::idempotency_key()` | Dedup on enqueue when `Some` |
+| `QueueConnection` type | Removed | `Queue::connection()` returns `&DatabaseConnection` |
+
+### Gestiscilo Consumer Migration (Phase 188)
+
+The following job types migrate in gestiscilo Phase 188. Each keeps its `Job` implementation unchanged; only the registration and migration registration change:
+
+| Job | Old registration | New registration |
+|-----|-----------------|-----------------|
+| `RenderDocumentPdfJob` | `worker.register::<RenderDocumentPdfJob>()` in worker binary | `Queue::register::<RenderDocumentPdfJob>()` in bootstrap |
+| `SendBookingReminderJob` | `worker.register::<SendBookingReminderJob>()` in worker binary | `Queue::register::<SendBookingReminderJob>()` in bootstrap |
+| `DeliverNotificationJob` | `worker.register::<DeliverNotificationJob>()` in worker binary | `Queue::register::<DeliverNotificationJob>()` in bootstrap |
+| `screenshot_worker` | separate process binary | `Queue::register::<ScreenshotJob>()` in bootstrap |
+
+Add `Box::new(ferro_queue::CreateJobsTable)` to your `Migrator::migrations()` list (one-time migration). The `failed_jobs` table (if present) can be dropped after migration — failed job history is now in `jobs WHERE status='failed'`.
 
 ## MCP Tools
 
@@ -273,8 +326,8 @@ Returns all `Job` implementations found in `src/jobs/`, including the job struct
 
 ### `job_history`
 
-Returns recent job execution history from Redis: job name, status (completed, failed, retrying), attempt count, and timestamp. Use this to diagnose jobs that are silently failing or retrying excessively.
+Returns recent failed job history from `jobs WHERE status='failed'`: job name, error message, attempt count, and timestamp. Use this to diagnose jobs that are permanently failing.
 
 ### `queue_status`
 
-Returns current queue depth, active workers, and pending job counts per queue name. Use this to check whether a queue is backed up or whether workers are running.
+Returns current queue depth and pending job counts per queue name. Use this to check whether a queue is backed up.

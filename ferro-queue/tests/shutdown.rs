@@ -30,9 +30,18 @@ async fn graceful_shutdown_requeues_claimed_jobs() {
 
     // 2. Enqueue one job.
     let now = chrono::Utc::now();
-    enqueue(&conn, "default", "ShutdownTestJob", "{}", 3, None, None, now)
-        .await
-        .expect("enqueue failed");
+    enqueue(
+        &conn,
+        "default",
+        "ShutdownTestJob",
+        "{}",
+        3,
+        None,
+        None,
+        now,
+    )
+    .await
+    .expect("enqueue failed");
 
     // 3. Claim it (status -> 'claimed', claimed_by='w-shutdown') WITHOUT executing.
     let row = claim(&conn, "default", "w-shutdown")
