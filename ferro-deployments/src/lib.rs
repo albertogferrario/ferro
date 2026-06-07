@@ -35,4 +35,4 @@ mod migration;
 
 pub use config::DeploymentConfig;
 pub use error::Error;
-pub use migration::{CreateDeploymentsTable, CreateDeploymentPointersTable};
+pub use migration::{CreateDeploymentPointersTable, CreateDeploymentsTable};

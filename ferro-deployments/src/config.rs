@@ -74,7 +74,10 @@ mod tests {
         guard.also_set("DEPLOYMENT_PREVIEW_DOMAIN", "preview.example.test");
 
         let config = DeploymentConfig::from_env();
-        assert_eq!(config.preview_domain, Some("preview.example.test".to_string()));
+        assert_eq!(
+            config.preview_domain,
+            Some("preview.example.test".to_string())
+        );
     }
 
     #[test]
