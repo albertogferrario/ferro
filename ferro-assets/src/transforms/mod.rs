@@ -23,5 +23,11 @@ pub use css_minify::CssMinify;
 mod html_minify;
 pub use html_minify::HtmlMinify;
 
+mod inject_before_tag;
+pub use inject_before_tag::InjectBeforeTag;
+
 mod js_minify;
 pub use js_minify::JsMinify;
+
+mod replace_tokens;
+pub use replace_tokens::ReplaceTokens;
