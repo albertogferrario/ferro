@@ -126,13 +126,13 @@ async fn get_database_job_history(
         Err(_) => vec![],
     };
 
-    // Get failed jobs
+    // Get failed jobs from the single jobs table (status='failed').
     let failed_query = if let Some(queue) = queue_filter {
         format!(
-            "SELECT * FROM failed_jobs WHERE queue = '{queue}' ORDER BY failed_at DESC LIMIT {limit}"
+            "SELECT * FROM jobs WHERE status = 'failed' AND queue = '{queue}' ORDER BY created_at DESC LIMIT {limit}"
         )
     } else {
-        format!("SELECT * FROM failed_jobs ORDER BY failed_at DESC LIMIT {limit}")
+        format!("SELECT * FROM jobs WHERE status = 'failed' ORDER BY created_at DESC LIMIT {limit}")
     };
 
     let failed_jobs = match db
@@ -150,8 +150,10 @@ async fn get_database_job_history(
                     .try_get_by("queue")
                     .unwrap_or_else(|_| "default".to_string());
                 let payload: String = row.try_get_by("payload").unwrap_or_default();
-                let exception: String = row.try_get_by("exception").unwrap_or_default();
-                let failed_at: String = row.try_get_by("failed_at").unwrap_or_default();
+                // `error` column from the jobs table; field name kept as `exception` for API compat.
+                let exception: String = row.try_get_by("error").unwrap_or_default();
+                // `failed_at` reads from `created_at` — the jobs table has no separate failed_at column.
+                let failed_at: String = row.try_get_by("created_at").unwrap_or_default();
 
                 let job_type = extract_job_type(&payload);
                 let payload_preview = truncate_payload(&payload, 200);
