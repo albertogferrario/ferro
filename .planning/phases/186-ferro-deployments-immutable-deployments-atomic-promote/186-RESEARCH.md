@@ -585,7 +585,7 @@ WAVE1B_CRATES="ferro-ai ferro-projections ferro-stripe ferro-whatsapp ferro-noti
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Two-table vs one-table migration helper**
    - What we know: CONTEXT.md recommends a `deployment_pointers` table. ROADMAP says "deployments migration helper." CreateJobsTable is one struct per table.
