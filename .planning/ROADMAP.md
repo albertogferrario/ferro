@@ -2188,7 +2188,7 @@ Plans:
 **Plans**: 4 plans
 - [x] 186-01-PLAN.md — Crate skeleton + workspace/publish.yml registration + error/config + portable migration helpers (Wave 1)
 - [x] 186-02-PLAN.md — Deployments handle lifecycle + atomic promote/rollback + concurrent-promote race tests (Wave 2)
-- [ ] 186-03-PLAN.md — DeploymentStorage trait (S3-compatible default) + preview_url subdomain helper (Wave 2)
+- [x] 186-03-PLAN.md — DeploymentStorage trait (S3-compatible default) + preview_url subdomain helper (Wave 2)
 - [ ] 186-04-PLAN.md — Criterion-5 JSON-artifact doc-test + docs page + version bump 0.2.45 + publish dry-run (Wave 3)
 
 ### Phase 187: ferro-assets — Asset Pipeline Composer
