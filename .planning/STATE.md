@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 189 context gathered
-last_updated: "2026-06-07T15:17:21.255Z"
-last_activity: 2026-06-07 -- Phase 189 planning complete
+stopped_at: Completed 189-01-PLAN.md
+last_updated: "2026-06-07T15:23:27.506Z"
+last_activity: 2026-06-07
 progress:
   total_phases: 183
   completed_phases: 165
   total_plans: 512
-  completed_plans: 498
+  completed_plans: 499
   percent: 97
 ---
 
@@ -20,17 +20,17 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v12.2 Frontend Performance Hardening complete — Phase 184 closed.
+**Current focus:** Phase 189 — ferro-stripe Manual Capture
 
 ## Current Position
 
-Phase: 184 (ferro::InlineBudget + ferro::RequestTelemetry) — COMPLETE
-Plan: 3/3 complete and verified (5/5 SCs, 15/15 D decisions, 20/20 new tests)
+Phase: 189 (ferro-stripe Manual Capture) — EXECUTING
+Plan: 2 of 4
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminder: `ferro-bundle` (Phase 183) needs a one-time manual `cargo publish -p ferro-bundle` from a local terminal before push, because the CI token has `publish-update` only (not `publish-new`).
 Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
 Status: Ready to execute
-Last activity: 2026-06-07 -- Phase 189 planning complete
+Last activity: 2026-06-07
 
 ## Queued Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
 
@@ -212,6 +212,7 @@ Progress: [████████░░] 84%
 | Phase 184 P01 | 17min | 3 tasks | 5 files |
 | Phase 184 P02 | 15min | 3 tasks | 3 files |
 | Phase 184-ferro-inlinebudget-ferro-requesttelemetry P184-03 | 12min | 3 tasks | 5 files |
+| Phase 189 P01 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -296,7 +297,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-07T14:51:18.498Z
-Stopped at: Phase 189 context gathered
-Resume file: .planning/phases/189-ferro-stripe-manual-capture/189-CONTEXT.md
+Last session: 2026-06-07T15:23:27.498Z
+Stopped at: Completed 189-01-PLAN.md
+Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
