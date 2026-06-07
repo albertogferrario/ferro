@@ -772,19 +772,19 @@ async fn poison_job_exceeding_max_retries_parks_as_failed() {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`rand` crate availability**
+1. **`rand` crate availability** — RESOLVED: Plan 01 Task 1 adds `rand = "0.8"` to `ferro-queue/Cargo.toml`.
    - What we know: No `rand` dep in current `ferro-queue/Cargo.toml`.
    - What's unclear: Whether another workspace crate already pulls in `rand` (if so, no need to add it explicitly — but ferro-queue's Cargo.toml would still need it).
    - Recommendation: Add `rand = "0.8"` to `ferro-queue/Cargo.toml` dependencies; check `Cargo.lock` for conflicts before plan execution.
 
-2. **WorkerLoop startup condition: "at least one job type is registered"**
+2. **WorkerLoop startup condition: "at least one job type is registered"** — RESOLVED: Plan 04 Task 1 adopts the recommended global registry (`JOB_REGISTRARS` + `Queue::has_registered_jobs()`); `Application::run_server_internal` gates loop startup on it.
    - What we know: D-09 says `WorkerLoop` auto-starts inside the server path when at least one job type is registered.
    - What's unclear: How the typed registry (from `Worker::register::<J>()`) is globally accessible at the `run_server_internal` call site. Options: (a) global `OnceLock<JobRegistry>` in `ferro-queue`; (b) consumer passes the registry into `Queue::init()`.
    - Recommendation: Use a global `OnceLock<JobRegistry>` in `ferro-queue` alongside `OnceLock<DatabaseConnection>`. Consumer calls `Queue::register::<J>()` in bootstrap before `Queue::init(conn)`. `Application::run_server_internal` checks `Queue::has_registered_jobs()` to decide whether to spawn the loop.
 
-3. **Server shutdown propagation to WorkerLoop**
+3. **Server shutdown propagation to WorkerLoop** — RESOLVED: Plan 03 Task 1 implements an independent SIGTERM handler in WorkerLoop (`tokio::signal::unix`); server graceful shutdown stays out of scope.
    - What we know: `Server::run()` (`server.rs:140-181`) has a bare `loop` with no shutdown signal handling. The worker loop must register its own SIGTERM handler.
    - What's unclear: Whether the server should be extended with graceful shutdown as part of this phase, or whether the WorkerLoop handles it independently.
    - Recommendation: WorkerLoop registers its own `tokio::signal::unix::signal(SignalKind::terminate())` independently. Server shutdown is orthogonal and can be a separate phase. Note: on macOS, `SIGTERM` via `tokio::signal::unix` requires `unix` signal feature — verify `tokio` features in `ferro-queue/Cargo.toml`.
