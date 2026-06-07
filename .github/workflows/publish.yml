@@ -208,7 +208,7 @@ jobs:
           echo "Publishing Wave 1a crates..."
 
           # Wave 1a: Crates with ZERO internal ferro-* dependencies
-          WAVE1A_CRATES="ferro-macros ferro-events ferro-queue ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-theme ferro-json-ui ferro-inertia ferro-api-mcp ferro-wallet ferro-orm ferro-audit ferro-migration"
+          WAVE1A_CRATES="ferro-macros ferro-events ferro-queue ferro-broadcast ferro-storage ferro-cache ferro-lang ferro-theme ferro-json-ui ferro-inertia ferro-api-mcp ferro-wallet ferro-orm ferro-audit ferro-migration ferro-assets"
 
           for crate in $WAVE1A_CRATES; do
             echo "Publishing $crate..."

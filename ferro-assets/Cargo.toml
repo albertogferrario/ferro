@@ -1,0 +1,24 @@
+[package]
+name = "ferro-assets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Composable, content-type-aware asset pipeline for the Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["assets", "pipeline", "minify", "avif", "ferro"]
+categories = ["web-programming", "multimedia"]
+readme = "README.md"
+
+[dependencies]
+lol_html = "2.6"
+lightningcss = "=1.0.0-alpha.71"
+swc = "66"
+image = { version = "0.25", features = ["avif"] }
+ravif = "0.13"
+rayon = "1"
+bytes = "1"
+thiserror = "2"
+tracing = "0.1"
+
+[features]
+slow-tests = []
