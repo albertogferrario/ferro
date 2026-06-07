@@ -1,9 +1,9 @@
 ---
 phase: 188
 slug: ferro-storage-cdn-extension
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: ready
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-08
 ---
 
@@ -40,7 +40,10 @@ created: 2026-06-08
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 188-01-01 | 01 | 1 | STOR-F-01 | — | N/A | unit | `cargo test -p ferro-storage cdn_url` | ❌ W0 | ⬜ pending |
+| 188-01-T1 | 01 | 1 | STOR-F-01 | T-188-03 | Error::cdn carries no secret | unit/compile | `cargo build -p ferro-storage --features cdn-bunny,cdn-cloudflare` | ❌ W0 | ⬜ pending |
+| 188-01-T2 | 01 | 1 | STOR-F-01 | T-188-01 | double-slash-safe URL composition | unit | `cargo test -p ferro-storage cdn_url` + full `cargo test -p ferro-storage` | ❌ W0 | ⬜ pending |
+| 188-02 | 02 | 2 | STOR-F-02 | T-188-10..13 | DO adapter: batching/throttle/no-op; token redaction | integration (wiremock) | `cargo test -p ferro-storage do_adapter` | ❌ W0 | ⬜ pending |
+| 188-03 | 03 | 3 | STOR-F-02 (crit 4) | T-188-10..13 | Bunny/CF redacted Debug; default-graph absence | compile + full gate | `cargo build -p ferro-storage --features cdn-bunny,cdn-cloudflare` + `cargo test --all-features` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -50,7 +53,7 @@ created: 2026-06-08
 
 | Criterion | What must be observable | Test |
 |-----------|-------------------------|------|
-| 1 — cdn_url + fallback | `cdn_url(path)` returns `{cdn_base}/{path}` when configured, origin `url()` when unset | unit (configured + unset disk) |
+| 1 — cdn_url + fallback | `cdn_url(path)` returns `{cdn_base}/{path}` when configured, origin `url()` when unset; `Storage::cdn_url` facade delegates to default disk | unit (configured + unset disk + Storage-facade delegation) |
 | 2 — PurgeApi + DO adapter | DO adapter sends `DELETE /v2/cdn/endpoints/{id}/cache` body `{"files":[...]}` Bearer auth; batches >50 into N requests; wildcard = 1 slot; throttle serializes ≥6 rapid calls under 5/10s | wiremock: assert request shape/count/batching; timing assertion for throttle |
 | 3 — missing-id no-op | DO adapter with no `DO_SPACES_CDN_ID` → `purge()` logs + returns `Ok(())`, makes NO HTTP call | unit (wiremock receives zero requests) |
 | 4 — Bunny/CF feature-gated | `cdn-bunny`/`cdn-cloudflare` adapters compile under `--all-features`; absent from default `cargo tree` | `cargo build --features cdn-bunny,cdn-cloudflare` + `cargo tree` default has no bunny/cf module symbols |
@@ -78,11 +81,11 @@ created: 2026-06-08
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (wiremock, reqwest, features)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (wiremock, reqwest, features)
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** ready

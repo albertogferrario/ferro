@@ -622,17 +622,19 @@ async fn test_cdn_url_falls_back_to_origin() {
 | A3 | Cloudflare `purge_cache` returns HTTP 200 with `{"success":true}` JSON rather than 204 | Code Examples | If Cloudflare returns a different success code, the success-check logic needs updating |
 | A4 | `tokio::sync::Mutex` (async) is the right primitive for the throttle (not `std::sync::Mutex`) | Pattern 3 | `std::sync::Mutex` would deadlock if held across an `.await` in the sleep path; async Mutex is correct |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`api_base` override on `DoSpacesCdn` for testability**
    - What we know: `wiremock` runs on a random localhost port; the production URL is hardcoded.
    - What's unclear: whether to expose `api_base` in the public `DoSpacesCdnConfig` struct or use a builder method only visible in tests (`#[cfg(test)]`).
    - Recommendation: Add `pub(crate) api_base: Option<String>` to `DoSpacesCdnConfig`; `DoSpacesCdn` uses it in tests. Avoids polluting the public API with a test-only field.
+   - **RESOLVED** — `DoSpacesCdnConfig` carries `pub(crate) api_base: Option<String>`; tests point it at the wiremock server (Plan 02-T1/T2).
 
 2. **`Disk::new()` signature change**
    - What we know: currently `Disk::new(driver: Arc<dyn StorageDriver>) -> Self`.
    - What's unclear: whether to add `cdn_url: Option<String>` as a second parameter or use a `Disk` builder.
    - Recommendation: Add the `cdn_url` parameter directly; it mirrors the existing `DiskConfig` pattern. `Disk` is a lightweight handle, not a builder target. Public callers constructing `Disk::new()` directly are rare — the `register_disk` path uses `Arc<dyn StorageDriver>` and those callers get `cdn_url = None` (no CDN).
+   - **RESOLVED** — `Disk::new(driver, cdn_url: Option<String>)` 2-arg form (Plan 01-T2).
 
 ## Environment Availability
 
