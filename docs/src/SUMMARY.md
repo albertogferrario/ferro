@@ -50,6 +50,7 @@
 - [Live Read-Models](features/live-read-models.md)
 - [AI & Confirmation](features/ai.md)
 - [Deployments](features/deployments.md)
+- [Asset Pipeline](features/ferro-assets.md)
 
 # JSON-UI
 

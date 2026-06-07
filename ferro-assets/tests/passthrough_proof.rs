@@ -5,10 +5,19 @@
 //! transform's accepted set are never touched. The pipeline returns the same
 //! bytes it received.
 //!
+//! Includes the real-transform version (criterion 1): a JSON file through all
+//! seven built-in transforms exits byte-identical. This is the artifact-agnostic
+//! guarantee with the actual production transforms, not local stubs.
+//!
 //! Run: `cargo test -p ferro-assets --test passthrough_proof`
 
 use bytes::Bytes;
 use ferro_assets::{Asset, ContentType, Error, Pipeline, Transform};
+use ferro_assets::transforms::{
+    CssMinify, HtmlMinify, ImageTranscode, InjectBeforeTag, JsMinify, ReplaceTokens,
+    ResponsiveImages,
+};
+use std::collections::HashMap;
 
 /// A transform that only accepts HTML. Everything else passes through.
 struct HtmlOnlyNoOp;
@@ -153,5 +162,46 @@ fn pipeline_applies_transforms_in_insertion_order() {
         *log.lock().unwrap(),
         vec![1, 2, 3],
         "transforms must run in insertion order"
+    );
+}
+
+/// SC-1 (real-transform version, criterion 1): a JSON file run through all
+/// seven production built-in transforms exits byte-identical.
+///
+/// This is the artifact-agnostic guarantee: ContentType::Other files are
+/// never touched by any built-in transform, regardless of which transforms
+/// are in the pipeline.
+#[test]
+fn json_file_unchanged_by_all_seven_real_transforms() {
+    let json_bytes =
+        Bytes::from_static(br#"{"intent":"browse","fields":[],"version":"1.0"}"#);
+    let assets = vec![Asset::new("spec.json", json_bytes.clone())];
+
+    let pipeline = Pipeline::new()
+        .add(HtmlMinify::new())
+        .add(CssMinify::new())
+        .add(JsMinify::new())
+        .add(ImageTranscode::new())
+        .add(ResponsiveImages::new())
+        .add(InjectBeforeTag::new("</body>", "<script></script>"))
+        .add(ReplaceTokens::new(HashMap::new()));
+
+    let result = pipeline
+        .run(assets)
+        .expect("full real-transform pipeline must succeed on JSON input");
+
+    assert_eq!(
+        result.len(),
+        1,
+        "output must have exactly one asset (no variants emitted for non-image)"
+    );
+    assert_eq!(
+        result[0].bytes, json_bytes,
+        "JSON bytes must be byte-identical after all seven real transforms"
+    );
+    assert_eq!(
+        result[0].content_type,
+        ContentType::Other,
+        "content type must remain Other after all seven real transforms"
     );
 }
