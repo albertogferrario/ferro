@@ -2153,7 +2153,7 @@ Plans:
 
 - [x] **Phase 185: ferro::queue — DB-Backed Job Queue** — `Job` trait + `WorkerLoop` in `ferro serve` + atomic claim (Postgres/SQLite) + retry/backoff + reaper; replaces the Redis-only ferro-queue backend (completed 2026-06-07)
 - [x] **Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote** — new crate: `Deployment` model, `DeploymentStorage` trait, `promote`/`rollback`, `preview_url` helper (completed 2026-06-07)
-- [ ] **Phase 187: ferro-assets — Asset Pipeline Composer** — new crate: content-type-aware `Pipeline` with HTML/CSS/JS minify, pure-Rust image transcode, generic injection — 4 plans planned
+- [x] **Phase 187: ferro-assets — Asset Pipeline Composer** — new crate: content-type-aware `Pipeline` with HTML/CSS/JS minify, pure-Rust image transcode, generic injection — 4 plans planned (completed 2026-06-07)
 - [ ] **Phase 188: ferro-storage CDN Extension** — `cdn_url()` + `PurgeApi` trait + DO Spaces CDN adapter, feature-flagged Bunny/Cloudflare
 
 #### Phase Details
@@ -2206,7 +2206,7 @@ Plans:
 - [x] 187-01-PLAN.md — Crate scaffold + Wave 0 swc-version verification + Asset/ContentType/Error model + Transform/Pipeline (all-or-nothing) + passthrough (SC-1) & atomicity (SC-5) tests (Wave 1)
 - [x] 187-02-PLAN.md — Text transforms: html_minify (opaque script/style, SC-2 fixture), css_minify, js_minify, inject_before_tag, replace_tokens (Wave 2)
 - [x] 187-03-PLAN.md — Image transforms: image_transcode (image+ravif+rayon, AVIF+JPEG, no-upscale, bounded ≤2) + responsive_images (img→picture), SC-3 test (Wave 3)
-- [ ] 187-04-PLAN.md — README + docs/src feature page + SUMMARY link + full real-transform passthrough proof + CI-parity gate + manual first-publish checkpoint (Wave 4)
+- [x] 187-04-PLAN.md — README + docs/src feature page + SUMMARY link + full real-transform passthrough proof + CI-parity gate + manual first-publish checkpoint (Wave 4)
 
 ### Phase 188: ferro-storage CDN Extension
 **Goal**: Extend ferro-storage with CDN awareness: full CDN URLs for stored objects and a cache-purge abstraction with a DigitalOcean Spaces CDN default adapter, so promote-then-purge becomes a two-call sequence for any consumer.
