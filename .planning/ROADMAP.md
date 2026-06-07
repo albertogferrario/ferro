@@ -2219,7 +2219,7 @@ Plans:
   4. Bunny and Cloudflare adapters compile behind cargo features without entering the default dependency graph
 **Plans**: 3 plans
 
-- [ ] 188-01-PLAN.md — cdn_url() field/builder/method + AWS_CDN_URL env + Error::Cdn + reqwest/tokio-time/cdn-bunny/cdn-cloudflare Cargo scaffolding (Wave 1)
+- [x] 188-01-PLAN.md — cdn_url() field/builder/method + AWS_CDN_URL env + Error::Cdn + reqwest/tokio-time/cdn-bunny/cdn-cloudflare Cargo scaffolding (Wave 1)
 - [ ] 188-02-PLAN.md — PurgeApi trait + DoSpacesCdn adapter (DELETE/204, <=50 batch, 5 req/10s throttle, wildcard, missing-id no-op, token-redacted Debug) + wiremock tests (Wave 2)
 - [ ] 188-03-PLAN.md — Bunny + Cloudflare feature-gated adapters + default-graph absence proof + docs CDN section + version bump 0.2.45->0.2.46 + full --all-features CI gate (Wave 3)
 
