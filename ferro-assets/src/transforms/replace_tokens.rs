@@ -1,9 +1,11 @@
 //! Raw-bytes token substitution transform.
 //!
 //! Substitutes `%%TOKEN%%`-style placeholders in asset bytes via literal
-//! find-and-replace, applying to **all** [`ContentType`] variants — not just HTML.
-//! This is intentional (D-16): tokens can appear anywhere — attribute values,
-//! inline JS, text nodes, JSON, and other file formats.
+//! find-and-replace. Applies to text-bearing content types only: [`ContentType::Html`],
+//! [`ContentType::Css`], [`ContentType::Js`], and [`ContentType::Other`] (D-16).
+//! Binary image types ([`ContentType::Avif`], [`ContentType::Jpeg`], [`ContentType::Png`])
+//! are passed through unchanged — raw-byte substitution on compressed image data risks
+//! silent corruption if a token pattern appears in the compressed bitstream.
 //!
 //! # Security note
 //!
@@ -12,27 +14,42 @@
 //! replacement values before passing them in. `ferro-assets` does not sanitize.
 //!
 //! [`ContentType`]: crate::ContentType
+//! [`ContentType::Html`]: crate::ContentType::Html
+//! [`ContentType::Css`]: crate::ContentType::Css
+//! [`ContentType::Js`]: crate::ContentType::Js
+//! [`ContentType::Other`]: crate::ContentType::Other
+//! [`ContentType::Avif`]: crate::ContentType::Avif
+//! [`ContentType::Jpeg`]: crate::ContentType::Jpeg
+//! [`ContentType::Png`]: crate::ContentType::Png
 
 use std::collections::HashMap;
 
 use bytes::Bytes;
 
+use crate::asset::ContentType;
 use crate::{Asset, Error};
 
-/// Substitute `%%TOKEN%%`-style placeholders across all assets.
+/// Substitute `%%TOKEN%%`-style placeholders in text-bearing assets.
 ///
 /// The `map` associates token strings (e.g. `"%%API_KEY%%"`) to their
 /// replacement values. Substitution is performed via literal raw-byte
-/// find-and-replace on every asset regardless of content type — tokens can
+/// find-and-replace on [`ContentType::Html`], [`ContentType::Css`],
+/// [`ContentType::Js`], and [`ContentType::Other`] assets — tokens can
 /// appear in HTML attributes, inline `<script>` bodies, text nodes, JSON, and
-/// any other file format.
+/// any other text file format (D-16).
 ///
-/// This transform intentionally does **not** use [`map_matching`] — it must
-/// process every [`ContentType`], including [`ContentType::Other`].
+/// Binary image types ([`ContentType::Avif`], [`ContentType::Jpeg`],
+/// [`ContentType::Png`]) pass through unchanged. Raw-byte substitution on
+/// compressed image data risks silent corruption if the token byte sequence
+/// coincidentally appears in the compressed bitstream.
 ///
-/// [`map_matching`]: crate::map_matching
-/// [`ContentType`]: crate::ContentType
+/// [`ContentType::Html`]: crate::ContentType::Html
+/// [`ContentType::Css`]: crate::ContentType::Css
+/// [`ContentType::Js`]: crate::ContentType::Js
 /// [`ContentType::Other`]: crate::ContentType::Other
+/// [`ContentType::Avif`]: crate::ContentType::Avif
+/// [`ContentType::Jpeg`]: crate::ContentType::Jpeg
+/// [`ContentType::Png`]: crate::ContentType::Png
 #[derive(Debug, Clone)]
 pub struct ReplaceTokens {
     map: HashMap<String, String>,
@@ -50,10 +67,17 @@ impl ReplaceTokens {
 
 impl crate::pipeline::Transform for ReplaceTokens {
     fn run(&self, assets: Vec<Asset>) -> Result<Vec<Asset>, Error> {
-        // Applies to ALL content types — no map_matching gate.
         assets
             .into_iter()
             .map(|a| {
+                // Skip binary image types — raw-byte substitution would corrupt
+                // compressed data if a token pattern appears in the bitstream.
+                if matches!(
+                    a.content_type,
+                    ContentType::Jpeg | ContentType::Png | ContentType::Avif
+                ) {
+                    return Ok(a);
+                }
                 let mut bytes = a.bytes.to_vec();
                 for (token, replacement) in &self.map {
                     bytes = replace_bytes(&bytes, token.as_bytes(), replacement.as_bytes());
