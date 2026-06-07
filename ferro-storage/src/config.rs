@@ -52,6 +52,7 @@ impl StorageConfig {
     /// - `AWS_BUCKET`: S3 bucket name
     /// - `AWS_PUBLIC_URL`: Public base URL for generated file URLs (overrides `AWS_URL` for this purpose)
     /// - `AWS_URL`: S3 API endpoint; also used as public URL base if `AWS_PUBLIC_URL` is not set
+    /// - `AWS_CDN_URL`: CDN base URL fronting the Spaces bucket (optional; used by `cdn_url()`)
     ///
     /// # Example
     ///
@@ -90,6 +91,7 @@ impl StorageConfig {
                 driver: DiskDriver::S3,
                 root: None,
                 url: None,
+                cdn_url: None,
                 bucket: Some(bucket.clone()),
                 region: Some(region),
             };
@@ -114,6 +116,9 @@ impl StorageConfig {
                 None
             };
             s3_config.url = public_url;
+            if let Ok(cdn) = env::var("AWS_CDN_URL") {
+                s3_config = s3_config.with_cdn_url(cdn);
+            }
             disks.insert("s3".to_string(), s3_config);
         }
 
@@ -172,5 +177,20 @@ mod tests {
         assert_eq!(config.default, "local");
         assert!(config.disks.contains_key("local"));
         assert!(config.disks.contains_key("public"));
+    }
+
+    #[cfg(feature = "s3")]
+    #[test]
+    fn from_env_cdn_url() {
+        std::env::set_var("AWS_BUCKET", "test-bucket");
+        std::env::set_var("AWS_CDN_URL", "https://cdn.test.example.com");
+        let config = StorageConfig::from_env();
+        let s3_disk = config.get_disk("s3").expect("s3 disk should be configured");
+        assert_eq!(
+            s3_disk.cdn_url,
+            Some("https://cdn.test.example.com".to_string())
+        );
+        std::env::remove_var("AWS_BUCKET");
+        std::env::remove_var("AWS_CDN_URL");
     }
 }

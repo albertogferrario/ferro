@@ -18,6 +18,8 @@ pub struct DiskConfig {
     pub root: Option<String>,
     /// URL base for generating URLs.
     pub url: Option<String>,
+    /// CDN base URL for generating edge URLs (falls back to url when None).
+    pub cdn_url: Option<String>,
     /// S3 bucket for S3 driver.
     #[cfg(feature = "s3")]
     pub bucket: Option<String>,
@@ -44,6 +46,7 @@ impl Default for DiskConfig {
             driver: DiskDriver::Local,
             root: Some("storage".to_string()),
             url: None,
+            cdn_url: None,
             #[cfg(feature = "s3")]
             bucket: None,
             #[cfg(feature = "s3")]
@@ -59,6 +62,7 @@ impl DiskConfig {
             driver: DiskDriver::Local,
             root: Some(root.into()),
             url: None,
+            cdn_url: None,
             #[cfg(feature = "s3")]
             bucket: None,
             #[cfg(feature = "s3")]
@@ -72,6 +76,7 @@ impl DiskConfig {
             driver: DiskDriver::Memory,
             root: None,
             url: None,
+            cdn_url: None,
             #[cfg(feature = "s3")]
             bucket: None,
             #[cfg(feature = "s3")]
@@ -84,6 +89,12 @@ impl DiskConfig {
         self.url = Some(url.into());
         self
     }
+
+    /// Set the CDN base URL.
+    pub fn with_cdn_url(mut self, cdn_url: impl Into<String>) -> Self {
+        self.cdn_url = Some(cdn_url.into());
+        self
+    }
 }
 
 /// Storage facade for file operations.
@@ -93,7 +104,7 @@ pub struct Storage {
 }
 
 struct StorageInner {
-    disks: DashMap<String, Arc<dyn StorageDriver>>,
+    disks: DashMap<String, (Arc<dyn StorageDriver>, Option<String>)>,
     default_disk: String,
 }
 
@@ -120,7 +131,7 @@ impl Storage {
         storage
             .inner
             .disks
-            .insert("local".to_string(), Arc::new(local));
+            .insert("local".to_string(), (Arc::new(local), None));
 
         storage
     }
@@ -138,7 +149,10 @@ impl Storage {
 
         for (name, config) in configs {
             let driver = Self::create_driver(&config);
-            storage.inner.disks.insert(name.to_string(), driver);
+            storage
+                .inner
+                .disks
+                .insert(name.to_string(), (driver, config.cdn_url.clone()));
         }
 
         storage
@@ -173,7 +187,10 @@ impl Storage {
 
         for (name, disk_config) in config.disks {
             let driver = Self::create_driver(&disk_config);
-            storage.inner.disks.insert(name, driver);
+            storage
+                .inner
+                .disks
+                .insert(name, (driver, disk_config.cdn_url.clone()));
         }
 
         storage
@@ -218,14 +235,14 @@ impl Storage {
 
     /// Get a specific disk.
     pub fn disk(&self, name: &str) -> Result<Disk, Error> {
-        let driver = self
+        let entry = self
             .inner
             .disks
             .get(name)
-            .map(|d| d.clone())
             .ok_or_else(|| Error::disk_not_configured(name))?;
+        let (driver, cdn_url) = entry.clone();
 
-        Ok(Disk { driver })
+        Ok(Disk::new(driver, cdn_url))
     }
 
     /// Get the default disk.
@@ -235,7 +252,7 @@ impl Storage {
 
     /// Register a disk.
     pub fn register_disk(&self, name: impl Into<String>, driver: Arc<dyn StorageDriver>) {
-        self.inner.disks.insert(name.into(), driver);
+        self.inner.disks.insert(name.into(), (driver, None));
     }
 
     // Convenience methods that operate on the default disk
@@ -291,18 +308,24 @@ impl Storage {
     pub async fn url(&self, path: &str) -> Result<String, Error> {
         self.default_disk()?.url(path).await
     }
+
+    /// Get the CDN edge URL for a path (origin fallback when no CDN configured).
+    pub async fn cdn_url(&self, path: &str) -> Result<String, Error> {
+        self.default_disk()?.cdn_url(path).await
+    }
 }
 
 /// A handle to a specific disk.
 #[derive(Clone)]
 pub struct Disk {
     driver: Arc<dyn StorageDriver>,
+    cdn_url: Option<String>,
 }
 
 impl Disk {
     /// Create a disk from a driver.
-    pub fn new(driver: Arc<dyn StorageDriver>) -> Self {
-        Self { driver }
+    pub fn new(driver: Arc<dyn StorageDriver>, cdn_url: Option<String>) -> Self {
+        Self { driver, cdn_url }
     }
 
     /// Check if a file exists.
@@ -367,6 +390,17 @@ impl Disk {
         self.driver.url(path).await
     }
 
+    /// Returns the CDN edge URL for a stored path, falling back to the origin URL when no CDN is configured.
+    pub async fn cdn_url(&self, path: &str) -> Result<String, Error> {
+        match &self.cdn_url {
+            Some(base) => {
+                let path = path.trim_start_matches('/');
+                Ok(format!("{}/{}", base.trim_end_matches('/'), path))
+            }
+            None => self.url(path).await,
+        }
+    }
+
     /// Get temporary URL.
     pub async fn temporary_url(&self, path: &str, expiration: Duration) -> Result<String, Error> {
         self.driver.temporary_url(path, expiration).await
@@ -401,6 +435,77 @@ impl Disk {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn cdn_url_returns_cdn_when_configured() {
+        let storage = Storage::with_config(
+            "memory",
+            vec![(
+                "memory",
+                DiskConfig::memory()
+                    .with_url("https://origin.example.com")
+                    .with_cdn_url("https://cdn.example.com"),
+            )],
+        );
+        let url = storage
+            .disk("memory")
+            .unwrap()
+            .cdn_url("images/photo.jpg")
+            .await
+            .unwrap();
+        assert_eq!(url, "https://cdn.example.com/images/photo.jpg");
+    }
+
+    #[tokio::test]
+    async fn cdn_url_falls_back_to_origin() {
+        let storage = Storage::with_config(
+            "memory",
+            vec![(
+                "memory",
+                DiskConfig::memory().with_url("https://origin.example.com"),
+            )],
+        );
+        let url = storage
+            .disk("memory")
+            .unwrap()
+            .cdn_url("images/photo.jpg")
+            .await
+            .unwrap();
+        assert_eq!(url, "https://origin.example.com/images/photo.jpg");
+    }
+
+    #[tokio::test]
+    async fn cdn_url_no_double_slash() {
+        let storage = Storage::with_config(
+            "memory",
+            vec![(
+                "memory",
+                DiskConfig::memory().with_cdn_url("https://cdn.example.com/"),
+            )],
+        );
+        let url = storage
+            .disk("memory")
+            .unwrap()
+            .cdn_url("/index.html")
+            .await
+            .unwrap();
+        assert_eq!(url, "https://cdn.example.com/index.html");
+    }
+
+    #[tokio::test]
+    async fn cdn_url_via_storage_facade() {
+        let storage = Storage::with_config(
+            "memory",
+            vec![(
+                "memory",
+                DiskConfig::memory()
+                    .with_url("https://origin.example.com")
+                    .with_cdn_url("https://cdn.example.com"),
+            )],
+        );
+        let url = storage.cdn_url("images/photo.jpg").await.unwrap();
+        assert_eq!(url, "https://cdn.example.com/images/photo.jpg");
+    }
 
     #[tokio::test]
     async fn test_storage_default_disk() {
