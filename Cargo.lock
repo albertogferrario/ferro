@@ -2027,6 +2027,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-deployments"
+version = "0.2.44"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "chrono",
+ "ferro-storage",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "ferro-events"
 version = "0.2.44"
 dependencies = [
