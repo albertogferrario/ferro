@@ -2205,7 +2205,7 @@ Plans:
 
 - [x] 187-01-PLAN.md — Crate scaffold + Wave 0 swc-version verification + Asset/ContentType/Error model + Transform/Pipeline (all-or-nothing) + passthrough (SC-1) & atomicity (SC-5) tests (Wave 1)
 - [x] 187-02-PLAN.md — Text transforms: html_minify (opaque script/style, SC-2 fixture), css_minify, js_minify, inject_before_tag, replace_tokens (Wave 2)
-- [ ] 187-03-PLAN.md — Image transforms: image_transcode (image+ravif+rayon, AVIF+JPEG, no-upscale, bounded ≤2) + responsive_images (img→picture), SC-3 test (Wave 3)
+- [x] 187-03-PLAN.md — Image transforms: image_transcode (image+ravif+rayon, AVIF+JPEG, no-upscale, bounded ≤2) + responsive_images (img→picture), SC-3 test (Wave 3)
 - [ ] 187-04-PLAN.md — README + docs/src feature page + SUMMARY link + full real-transform passthrough proof + CI-parity gate + manual first-publish checkpoint (Wave 4)
 
 ### Phase 188: ferro-storage CDN Extension
