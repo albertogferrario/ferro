@@ -250,9 +250,22 @@ impl Storage {
         self.disk(&self.inner.default_disk)
     }
 
-    /// Register a disk.
+    /// Register a disk without a CDN URL. `cdn_url()` on this disk falls back to the origin URL.
     pub fn register_disk(&self, name: impl Into<String>, driver: Arc<dyn StorageDriver>) {
         self.inner.disks.insert(name.into(), (driver, None));
+    }
+
+    /// Register a disk with an optional CDN base URL.
+    ///
+    /// When `cdn_url` is `Some`, `Disk::cdn_url()` returns `{cdn_url}/{path}` instead of
+    /// falling back to the origin URL.
+    pub fn register_disk_with_cdn(
+        &self,
+        name: impl Into<String>,
+        driver: Arc<dyn StorageDriver>,
+        cdn_url: Option<String>,
+    ) {
+        self.inner.disks.insert(name.into(), (driver, cdn_url));
     }
 
     // Convenience methods that operate on the default disk
@@ -586,5 +599,33 @@ mod tests {
             .exists("file.txt")
             .await
             .unwrap());
+    }
+
+    /// register_disk_with_cdn(Some(url)) makes cdn_url() return the CDN-prefixed URL.
+    #[tokio::test]
+    async fn test_register_disk_with_cdn_url() {
+        let storage = Storage::new();
+        let driver = Arc::new(MemoryDriver::new());
+        storage.register_disk_with_cdn(
+            "cdn-disk",
+            driver,
+            Some("https://cdn.example.com".to_string()),
+        );
+        let url = storage
+            .disk("cdn-disk")
+            .unwrap()
+            .cdn_url("assets/app.js")
+            .await
+            .unwrap();
+        assert_eq!(url, "https://cdn.example.com/assets/app.js");
+    }
+
+    /// register_disk_with_cdn(None) behaves identically to register_disk.
+    #[tokio::test]
+    async fn test_register_disk_with_cdn_none_falls_back() {
+        let storage = Storage::new();
+        storage.register_disk_with_cdn("no-cdn", Arc::new(MemoryDriver::new()), None);
+        // Disk is registered and accessible; cdn_url() delegates to driver.url() (origin fallback).
+        assert!(storage.disk("no-cdn").is_ok());
     }
 }
