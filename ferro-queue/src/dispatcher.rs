@@ -1,6 +1,6 @@
 //! Job dispatching utilities.
 
-use crate::{Error, Job, JobPayload, Queue, QueueConfig};
+use crate::{Error, Job, QueueConfig};
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -70,6 +70,7 @@ where
     /// Resolve the tenant ID to attach to the job payload.
     ///
     /// Precedence: explicit override (for_tenant) > auto-capture hook > None.
+    #[allow(dead_code)] // used by dispatch_to_queue in Plan 02
     fn captured_tenant_id(&self) -> Option<i64> {
         self.tenant_id
             .or_else(|| TENANT_ID_HOOK.get().and_then(|f| f()))
@@ -127,20 +128,12 @@ where
         }
     }
 
-    /// Push the job to the Redis queue.
+    /// Push the job to the database queue.
+    ///
+    /// Full implementation lands in Plan 02 (db.rs claim path).
     async fn dispatch_to_queue(self) -> Result<(), Error> {
-        let conn = Queue::connection();
-        let queue = self.queue.unwrap_or(&conn.config().default_queue);
-        let tenant_id = self.captured_tenant_id();
-
-        let payload = match self.delay {
-            Some(delay) => JobPayload::with_delay(&self.job, queue, delay)?,
-            None => JobPayload::new(&self.job, queue)?,
-        };
-
-        let payload = payload.with_tenant_id(tenant_id);
-
-        conn.push(payload).await
+        // Plan 02 replaces this stub with the DB enqueue path.
+        Err(Error::custom("Queue not initialized. Call Queue::init() first."))
     }
 
     /// Dispatch the job in a background task (fire and forget).

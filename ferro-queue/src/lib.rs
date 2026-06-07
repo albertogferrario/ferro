@@ -46,8 +46,9 @@ mod config;
 mod dispatcher;
 mod error;
 mod job;
-mod queue;
-mod worker;
+// queue and worker modules are being replaced in Plans 02-03; excluded until then
+// mod queue;
+// mod worker;
 
 pub use config::QueueConfig;
 pub use dispatcher::{
@@ -55,10 +56,7 @@ pub use dispatcher::{
 };
 pub use error::Error;
 pub use job::{Job, JobPayload};
-pub use queue::{
-    FailedJobInfo, JobInfo, JobState, Queue, QueueConnection, QueueStats, SingleQueueStats,
-};
-pub use worker::{TenantScopeProvider, Worker, WorkerConfig};
+// re-exports from queue/worker land in Plan 03 lib.rs rework
 
 /// Re-export async_trait for convenience
 pub use async_trait::async_trait;

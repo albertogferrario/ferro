@@ -56,8 +56,17 @@ pub trait Job: Send + Sync + 'static {
     }
 
     /// Delay before retrying after a failure.
-    fn retry_delay(&self, _attempt: u32) -> std::time::Duration {
-        std::time::Duration::from_secs(5)
+    ///
+    /// Default: full-jitter exponential backoff — `rand(0..=min(cap, base * 2^attempt))`.
+    /// Base 5 s, cap 15 min. Saturating arithmetic prevents overflow on large `attempt` values.
+    fn retry_delay(&self, attempt: u32) -> std::time::Duration {
+        // Full jitter: rand(0 ..= min(cap, base * 2^attempt)). Base 5s, cap 15min.
+        use rand::Rng;
+        let base_secs: u64 = 5;
+        let cap_secs: u64 = 15 * 60;
+        let max_delay = cap_secs.min(base_secs.saturating_mul(2u64.saturating_pow(attempt)));
+        let jitter = rand::thread_rng().gen_range(0..=max_delay);
+        std::time::Duration::from_secs(jitter)
     }
 
     /// Called when the job fails after all retries are exhausted.
@@ -68,6 +77,14 @@ pub trait Job: Send + Sync + 'static {
     /// Timeout for job execution.
     fn timeout(&self) -> std::time::Duration {
         std::time::Duration::from_secs(60)
+    }
+
+    /// Idempotency key for deduplication on enqueue.
+    ///
+    /// When `Some`, enqueue skips insertion if a pending or claimed row with
+    /// the same `(job_type, idempotency_key)` already exists (D-15).
+    fn idempotency_key(&self) -> Option<String> {
+        None
     }
 }
 
