@@ -2237,4 +2237,9 @@ Plans:
   3. `StripePaymentIntentAmountCapturableUpdated` and `StripePaymentIntentCanceled` implement the `StripeEvent` trait, are parsed from golden-JSON webhook fixtures in tests, and unknown/other event types continue to pass through unmatched
   4. A checkout built with both `manual_capture()` and `destination(account_id, fee)` authorizes on the platform account and, on capture, transfers to the connected account per the destination-charge pattern (covered by a builder-level test of the generated params; live-mode verification owned by the consumer field test)
   5. `docs/src/features/stripe.md` documents manual capture end-to-end and the hold/commit/release ↔ authorize/capture/cancel correspondence with `ferro-reservation`
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 189-01-PLAN.md — CheckoutBuilder::manual_capture() flag + mode guard + merged payment_intent_data (Connect composition) (Wave 1)
+- [ ] 189-02-PLAN.md — payment_intent.rs capability module: capture/cancel/retrieve + lib.rs registration (Wave 2)
+- [ ] 189-03-PLAN.md — Two typed PaymentIntent webhook events + golden-JSON fixtures + parser-contract tests (Wave 3)
+- [ ] 189-04-PLAN.md — docs/src/features/stripe.md Manual Capture section + ferro-reservation correspondence (Wave 4)
