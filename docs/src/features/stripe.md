@@ -297,6 +297,8 @@ Two typed events track the manual capture lifecycle:
 
 These events parse and dispatch the same way as all other typed ferro-stripe events — register handlers against them using `SyncDispatcher` or the queue-based path, identically to `StripeCheckoutCompleted` or `StripeSubscriptionUpdated`.
 
+When capturing the full authorized amount, call `capture(&payment_intent_id, None)` rather than echoing `amount_capturable_cents` from a stored event — the event snapshot can be stale, while `None` always captures the current capturable amount.
+
 ### Operational realities
 
 - Stripe holds a card authorization for approximately 7 days. Uncaptured PaymentIntents are auto-cancelled after this window expires, surfacing as a `payment_intent.canceled` event. The `cancellation_reason` field on `StripePaymentIntentCanceled` indicates automatic expiry when Stripe triggers the cancellation.

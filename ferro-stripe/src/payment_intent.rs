@@ -28,6 +28,11 @@ pub async fn capture(
         .map_err(|_| Error::Stripe(format!("invalid payment intent id: {payment_intent_id}")))?;
     let amount_to_capture = match amount_cents {
         None => None,
+        Some(n) if n <= 0 => {
+            return Err(Error::Stripe(
+                "amount_to_capture must be positive".to_string(),
+            ))
+        }
         Some(n) => Some(
             u64::try_from(n)
                 .map_err(|_| Error::Stripe("amount_to_capture must be positive".to_string()))?,
@@ -82,6 +87,15 @@ mod tests {
         assert!(
             matches!(result, Err(Error::Stripe(ref m)) if m.contains("must be positive")),
             "expected positive-amount error, got {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn capture_rejects_zero_amount() {
+        let result = capture("pi_test_123", Some(0)).await;
+        assert!(
+            matches!(result, Err(Error::Stripe(ref m)) if m.contains("must be positive")),
+            "expected positive-amount error for zero, got {result:?}"
         );
     }
 
