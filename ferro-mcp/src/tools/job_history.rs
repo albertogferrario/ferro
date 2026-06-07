@@ -1,7 +1,7 @@
 //! Job history tool - view background job execution history
 
 use crate::error::{McpError, Result};
-use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
+use sea_orm::{ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, Statement, Value};
 use serde::Serialize;
 use std::path::Path;
 
@@ -83,20 +83,33 @@ async fn get_database_job_history(
         .await
         .map_err(|e| McpError::DatabaseError(format!("Failed to connect: {e}")))?;
 
-    // Get pending jobs
-    let pending_query = if let Some(queue) = queue_filter {
-        format!("SELECT * FROM jobs WHERE queue = '{queue}' ORDER BY created_at DESC LIMIT {limit}")
-    } else {
-        format!("SELECT * FROM jobs ORDER BY created_at DESC LIMIT {limit}")
+    let backend = db.get_database_backend();
+
+    // Get pending jobs. All dynamic values are bound, never interpolated (WR-05).
+    let pending_stmt = match queue_filter {
+        Some(queue) => Statement::from_sql_and_values(
+            backend,
+            format!(
+                "SELECT * FROM jobs WHERE queue = {} ORDER BY created_at DESC LIMIT {}",
+                ph(backend, 1),
+                ph(backend, 2)
+            ),
+            [
+                Value::String(Some(Box::new(queue.to_string()))),
+                Value::BigInt(Some(limit as i64)),
+            ],
+        ),
+        None => Statement::from_sql_and_values(
+            backend,
+            format!(
+                "SELECT * FROM jobs ORDER BY created_at DESC LIMIT {}",
+                ph(backend, 1)
+            ),
+            [Value::BigInt(Some(limit as i64))],
+        ),
     };
 
-    let pending_jobs = match db
-        .query_all(Statement::from_string(
-            db.get_database_backend(),
-            pending_query,
-        ))
-        .await
-    {
+    let pending_jobs = match db.query_all(pending_stmt).await {
         Ok(rows) => rows
             .iter()
             .filter_map(|row| {
@@ -127,21 +140,32 @@ async fn get_database_job_history(
     };
 
     // Get failed jobs from the single jobs table (status='failed').
-    let failed_query = if let Some(queue) = queue_filter {
-        format!(
-            "SELECT * FROM jobs WHERE status = 'failed' AND queue = '{queue}' ORDER BY created_at DESC LIMIT {limit}"
-        )
-    } else {
-        format!("SELECT * FROM jobs WHERE status = 'failed' ORDER BY created_at DESC LIMIT {limit}")
+    // All dynamic values are bound, never interpolated (WR-05).
+    let failed_stmt = match queue_filter {
+        Some(queue) => Statement::from_sql_and_values(
+            backend,
+            format!(
+                "SELECT * FROM jobs WHERE status = 'failed' AND queue = {} \
+                 ORDER BY created_at DESC LIMIT {}",
+                ph(backend, 1),
+                ph(backend, 2)
+            ),
+            [
+                Value::String(Some(Box::new(queue.to_string()))),
+                Value::BigInt(Some(limit as i64)),
+            ],
+        ),
+        None => Statement::from_sql_and_values(
+            backend,
+            format!(
+                "SELECT * FROM jobs WHERE status = 'failed' ORDER BY created_at DESC LIMIT {}",
+                ph(backend, 1)
+            ),
+            [Value::BigInt(Some(limit as i64))],
+        ),
     };
 
-    let failed_jobs = match db
-        .query_all(Statement::from_string(
-            db.get_database_backend(),
-            failed_query,
-        ))
-        .await
-    {
+    let failed_jobs = match db.query_all(failed_stmt).await {
         Ok(rows) => rows
             .iter()
             .filter_map(|row| {
@@ -266,6 +290,14 @@ fn get_redis_job_history(queue_filter: Option<&str>, _limit: usize) -> Result<Jo
         Err(e) => Err(McpError::DatabaseError(format!(
             "Redis client creation failed: {e}"
         ))),
+    }
+}
+
+/// SQL placeholder style: Postgres uses `$N`, SQLite/others use `?N`.
+fn ph(backend: DatabaseBackend, n: usize) -> String {
+    match backend {
+        DatabaseBackend::Postgres => format!("${n}"),
+        _ => format!("?{n}"),
     }
 }
 
