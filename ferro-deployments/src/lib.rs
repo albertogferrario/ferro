@@ -30,9 +30,12 @@
 //! ```
 
 mod config;
+pub(crate) mod deployment;
 mod error;
 mod migration;
+pub(crate) mod promote;
 
 pub use config::DeploymentConfig;
+pub use deployment::{Deployment, DeploymentStatus, Deployments};
 pub use error::Error;
 pub use migration::{CreateDeploymentPointersTable, CreateDeploymentsTable};
