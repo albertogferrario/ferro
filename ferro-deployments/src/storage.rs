@@ -66,16 +66,25 @@ impl StorageDeploymentStorage {
 #[async_trait::async_trait]
 impl DeploymentStorage for StorageDeploymentStorage {
     async fn store(&self, deployment_id: i64, path: &str, bytes: Bytes) -> Result<(), Error> {
+        if path.contains("..") || path.starts_with('/') {
+            return Err(Error::custom(format!("invalid artifact path: {path:?}")));
+        }
         let full = format!("{}{}", Self::prefix(deployment_id), path);
         self.disk.put(&full, bytes).await.map_err(Error::from)
     }
 
     async fn retrieve(&self, deployment_id: i64, path: &str) -> Result<Bytes, Error> {
+        if path.contains("..") || path.starts_with('/') {
+            return Err(Error::custom(format!("invalid artifact path: {path:?}")));
+        }
         let full = format!("{}{}", Self::prefix(deployment_id), path);
         self.disk.get(&full).await.map_err(Error::from)
     }
 
     async fn remove(&self, deployment_id: i64, path: &str) -> Result<(), Error> {
+        if path.contains("..") || path.starts_with('/') {
+            return Err(Error::custom(format!("invalid artifact path: {path:?}")));
+        }
         let full = format!("{}{}", Self::prefix(deployment_id), path);
         self.disk.delete(&full).await.map_err(Error::from)
     }
@@ -196,5 +205,41 @@ mod tests {
         let config = DeploymentConfig::default();
         let url = preview_url(&config, "abc");
         assert_eq!(url, None);
+    }
+
+    #[tokio::test]
+    async fn path_traversal_store_rejected() {
+        let s = make_storage();
+        let result = s
+            .store(1, "../2/secret.json", Bytes::from_static(b"data"))
+            .await;
+        assert!(result.is_err(), "store with path traversal must return Err");
+    }
+
+    #[tokio::test]
+    async fn path_traversal_retrieve_rejected() {
+        let s = make_storage();
+        let result = s.retrieve(1, "../2/secret.json").await;
+        assert!(
+            result.is_err(),
+            "retrieve with path traversal must return Err"
+        );
+    }
+
+    #[tokio::test]
+    async fn path_traversal_remove_rejected() {
+        let s = make_storage();
+        let result = s.remove(1, "../2/secret.json").await;
+        assert!(
+            result.is_err(),
+            "remove with path traversal must return Err"
+        );
+    }
+
+    #[tokio::test]
+    async fn absolute_path_store_rejected() {
+        let s = make_storage();
+        let result = s.store(1, "/etc/passwd", Bytes::from_static(b"data")).await;
+        assert!(result.is_err(), "store with absolute path must return Err");
     }
 }
