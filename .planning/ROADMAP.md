@@ -2172,7 +2172,7 @@ Plans:
 - [x] 185-01-PLAN.md — Foundation: drop redis, add deps, Job idempotency_key + jittered retry_delay, QueueConfig refactor, CreateJobsTable migration
 - [x] 185-02-PLAN.md — DB engine: dual-backend atomic claim, reaper, idempotent enqueue, lifecycle ops, stat queries, Queue global
 - [x] 185-03-PLAN.md — WorkerLoop (panic isolation, SIGTERM drain+requeue) + DB-backed dispatcher; delete queue.rs; lib.rs re-exports
-- [ ] 185-04-PLAN.md — Framework: ferro::queue namespaced module, WorkerLoop auto-start, debug endpoints over DB, ferro-mcp job_history fix
+- [x] 185-04-PLAN.md — Framework: ferro::queue namespaced module, WorkerLoop auto-start, debug endpoints over DB, ferro-mcp job_history fix
 - [ ] 185-05-PLAN.md — Proof artifacts: SQLite + Postgres race tests, shutdown test, docs rewrite, full-suite gate
 
 ### Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote
