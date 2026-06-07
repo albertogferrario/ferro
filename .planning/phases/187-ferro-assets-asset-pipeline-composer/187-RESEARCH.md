@@ -780,22 +780,22 @@ Nothing found in any category — this phase creates a new crate. No rename/refa
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **swc exact version and API at plan time**
+1. **swc exact version and API at plan time** — **RESOLVED**
    - What we know: gestiscilo research cited 0.203 sub-crates (stale); crates.io shows swc_ecma_minifier ~v55 and swc umbrella ~v66 as of 2026-06-07
    - What's unclear: Exact minor/patch version and whether `Compiler::minify` + `GLOBALS.set` pattern is unchanged
-   - Recommendation: Planner adds a Wave 0 step: `cargo search swc` + `cargo add swc --dry-run` to lock the exact version before implementation begins
+   - **Resolution:** Converted into a blocking Wave 0 task in Plan 01 (`cargo search swc` to lock the exact version before `js_minify.rs` is written). Resolved at plan time to **swc 66.0.0** (pinned); the Wave 0 task re-confirms at execute time. This is the prescribed fallback per the Assumptions Log.
 
-2. **rayon workspace dependency status**
+2. **rayon workspace dependency status** — **RESOLVED**
    - What we know: rayon is not listed in ferro-queue or ferro-deployments Cargo.toml
    - What's unclear: Whether `image 0.25` with the `avif` feature transitively pulls rayon
-   - Recommendation: Executor confirms with `cargo tree -p ferro-assets 2>/dev/null | grep rayon` after adding deps; if present transitively, no direct dep needed
+   - **Resolution:** rayon 1.x is available on crates.io; ferro-assets adds it as a direct dep for the bounded `ThreadPoolBuilder` (D-09). Transitive status confirmed at execute time via `cargo tree -p ferro-assets | grep rayon`. Non-blocking — either path yields a working bounded pool.
 
-3. **lol_html 2.6 exact API for the opaque-script pattern**
+3. **lol_html 2.6 exact API for the opaque-script pattern** — **RESOLVED**
    - What we know: The pattern is "element handler only, no text handler for script/style"; confirmed from official docs and Context7
    - What's unclear: Whether lol_html 2.6 changed any API surface vs 2.4/2.5
-   - Recommendation: Verified from crates.io that 2.6.0 is the current release [VERIFIED]; API is stable at the `HtmlRewriter` + `Settings` + `element!` macro level
+   - **Resolution:** lol_html 2.6.0 confirmed as the current release from crates.io and Context7 [VERIFIED]; API is stable at the `HtmlRewriter` + `Settings` + `element!` macro level. No version-specific surprises — the element-handler-without-text-handler pattern is stable.
 
 ---
 
