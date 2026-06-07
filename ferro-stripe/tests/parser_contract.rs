@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use ferro_stripe::{
     StripeChargeDisputeCreated, StripeChargeRefunded, StripeCheckoutCompleted,
     StripeCheckoutExpired, StripeConnectAccountUpdated, StripeConnectPaymentSucceeded, StripeEvent,
-    StripeInvoicePaid, StripePaymentIntentFailed, StripeSubscriptionDeleted,
-    StripeSubscriptionUpdated,
+    StripeInvoicePaid, StripePaymentIntentAmountCapturableUpdated, StripePaymentIntentCanceled,
+    StripePaymentIntentFailed, StripeSubscriptionDeleted, StripeSubscriptionUpdated,
 };
 
 fn parse_event(raw: &str) -> stripe::Event {
@@ -222,4 +222,60 @@ fn connect_payment_succeeded_parses_all_fields() {
     assert_eq!(typed.event_id, "evt_test_pi_connect_001");
     assert_eq!(typed.payment_intent_id, "pi_test_connect_001");
     assert_eq!(typed.connect_account_id, "acct_test_connect_001");
+}
+
+// --- StripePaymentIntentAmountCapturableUpdated + StripePaymentIntentCanceled ---
+
+const PI_AMOUNT_CAPTURABLE: &str =
+    include_str!("fixtures/stripe_events/payment_intent_amount_capturable_updated.json");
+const PI_CANCELED: &str = include_str!("fixtures/stripe_events/payment_intent_canceled.json");
+
+#[test]
+fn payment_intent_amount_capturable_updated_parses_all_fields() {
+    let event = parse_event(PI_AMOUNT_CAPTURABLE);
+    let typed = StripePaymentIntentAmountCapturableUpdated::from_raw(&event)
+        .expect("from_raw should return Some for payment_intent.amount_capturable_updated");
+    assert_eq!(typed.event_id, "evt_test_pi_capturable_001");
+    assert_eq!(typed.payment_intent_id, "pi_test_capturable_001");
+    assert_eq!(typed.amount_capturable_cents, 5000);
+    assert_eq!(typed.currency, "usd");
+    assert_eq!(
+        typed.metadata.get("booking_id").map(String::as_str),
+        Some("bk_42")
+    );
+}
+
+#[test]
+fn payment_intent_canceled_parses_all_fields() {
+    let event = parse_event(PI_CANCELED);
+    let typed = StripePaymentIntentCanceled::from_raw(&event)
+        .expect("from_raw should return Some for payment_intent.canceled");
+    assert_eq!(typed.event_id, "evt_test_pi_canceled_001");
+    assert_eq!(typed.payment_intent_id, "pi_test_canceled_001");
+    assert_eq!(
+        typed.cancellation_reason.as_deref(),
+        Some("requested_by_customer")
+    );
+    assert_eq!(
+        typed.metadata.get("booking_id").map(String::as_str),
+        Some("bk_43")
+    );
+}
+
+#[test]
+fn payment_intent_amount_capturable_updated_rejects_canceled_event() {
+    let event = parse_event(PI_CANCELED);
+    assert!(
+        StripePaymentIntentAmountCapturableUpdated::from_raw(&event).is_none(),
+        "must reject payment_intent.canceled (type_ guard)"
+    );
+}
+
+#[test]
+fn payment_intent_canceled_rejects_amount_capturable_event() {
+    let event = parse_event(PI_AMOUNT_CAPTURABLE);
+    assert!(
+        StripePaymentIntentCanceled::from_raw(&event).is_none(),
+        "must reject payment_intent.amount_capturable_updated (type_ guard)"
+    );
 }

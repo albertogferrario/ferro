@@ -1,0 +1,30 @@
+{
+  "id": "evt_test_pi_canceled_001",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1700000020,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "payment_intent.canceled",
+  "data": {
+    "object": {
+      "id": "pi_test_canceled_001",
+      "object": "payment_intent",
+      "amount": 5000,
+      "amount_capturable": 0,
+      "amount_received": 0,
+      "currency": "usd",
+      "livemode": false,
+      "metadata": {
+        "booking_id": "bk_43"
+      },
+      "capture_method": "manual",
+      "confirmation_method": "automatic",
+      "created": 1700000020,
+      "payment_method_types": ["card"],
+      "status": "canceled",
+      "cancellation_reason": "requested_by_customer"
+    }
+  }
+}

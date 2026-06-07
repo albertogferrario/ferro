@@ -1,0 +1,29 @@
+{
+  "id": "evt_test_pi_capturable_001",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1700000010,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "payment_intent.amount_capturable_updated",
+  "data": {
+    "object": {
+      "id": "pi_test_capturable_001",
+      "object": "payment_intent",
+      "amount": 5000,
+      "amount_capturable": 5000,
+      "amount_received": 0,
+      "currency": "usd",
+      "livemode": false,
+      "metadata": {
+        "booking_id": "bk_42"
+      },
+      "capture_method": "manual",
+      "confirmation_method": "automatic",
+      "created": 1700000010,
+      "payment_method_types": ["card"],
+      "status": "requires_capture"
+    }
+  }
+}
