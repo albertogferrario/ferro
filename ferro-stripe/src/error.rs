@@ -24,6 +24,11 @@ pub enum Error {
     /// Idempotency key not set on CheckoutBuilder before calling create().
     #[error("idempotency key required: call .idempotency_key() before .create()")]
     MissingIdempotencyKey,
+
+    /// manual_capture() requires Mode::Payment. Mode::Subscription does not support
+    /// deferred capture — each subscription invoice is charged automatically.
+    #[error("manual capture requires payment mode; use Mode::Payment with manual_capture()")]
+    ManualCaptureRequiresPaymentMode,
 }
 
 impl From<stripe::StripeError> for Error {
