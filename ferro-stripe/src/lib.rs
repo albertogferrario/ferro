@@ -62,8 +62,8 @@ pub use webhook::events::StripeEvent;
 pub use webhook::events::{
     StripeChargeDisputeCreated, StripeChargeRefunded, StripeCheckoutCompleted,
     StripeCheckoutExpired, StripeConnectAccountUpdated, StripeConnectPaymentSucceeded,
-    StripeInvoicePaid, StripePaymentIntentFailed, StripeSubscriptionDeleted,
-    StripeSubscriptionUpdated,
+    StripeInvoicePaid, StripePaymentIntentAmountCapturableUpdated, StripePaymentIntentCanceled,
+    StripePaymentIntentFailed, StripeSubscriptionDeleted, StripeSubscriptionUpdated,
 };
 pub use webhook::queue::ProcessStripeWebhook;
 pub use webhook::sync::SyncDispatcher;

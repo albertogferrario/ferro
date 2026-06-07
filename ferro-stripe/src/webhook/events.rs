@@ -228,6 +228,67 @@ impl StripeEvent for StripePaymentIntentFailed {
     }
 }
 
+/// Stripe webhook event for `payment_intent.amount_capturable_updated`.
+///
+/// Emitted when the capturable amount on a PaymentIntent changes, confirming
+/// a manual-capture hold is live and ready to be captured.
+#[derive(Debug, Clone)]
+pub struct StripePaymentIntentAmountCapturableUpdated {
+    pub event_id: String,
+    pub payment_intent_id: String,
+    pub amount_capturable_cents: i64,
+    pub currency: String,
+    pub metadata: HashMap<String, String>,
+}
+
+impl StripeEvent for StripePaymentIntentAmountCapturableUpdated {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::PaymentIntentAmountCapturableUpdated {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::PaymentIntent(pi) => Some(Self {
+                event_id: event.id.to_string(),
+                payment_intent_id: pi.id.to_string(),
+                amount_capturable_cents: pi.amount_capturable,
+                currency: pi.currency.to_string(),
+                metadata: pi.metadata.clone(),
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// Stripe webhook event for `payment_intent.canceled`.
+///
+/// Emitted when a PaymentIntent is canceled — either manually via
+/// `payment_intent::cancel()` or automatically by Stripe after the
+/// ~7-day authorization window expires.
+#[derive(Debug, Clone)]
+pub struct StripePaymentIntentCanceled {
+    pub event_id: String,
+    pub payment_intent_id: String,
+    pub cancellation_reason: Option<String>,
+    pub metadata: HashMap<String, String>,
+}
+
+impl StripeEvent for StripePaymentIntentCanceled {
+    fn from_raw(event: &stripe::Event) -> Option<Self> {
+        if event.type_ != stripe::EventType::PaymentIntentCanceled {
+            return None;
+        }
+        match &event.data.object {
+            stripe::EventObject::PaymentIntent(pi) => Some(Self {
+                event_id: event.id.to_string(),
+                payment_intent_id: pi.id.to_string(),
+                cancellation_reason: pi.cancellation_reason.map(|r| r.as_str().to_string()),
+                metadata: pi.metadata.clone(),
+            }),
+            _ => None,
+        }
+    }
+}
+
 /// Stripe webhook event for `charge.refunded`.
 ///
 /// Emitted when a charge is refunded.
@@ -333,6 +394,8 @@ mod tests {
         _assert_clone_send_sync::<StripeCheckoutExpired>();
         _assert_clone_send_sync::<StripeInvoicePaid>();
         _assert_clone_send_sync::<StripePaymentIntentFailed>();
+        _assert_clone_send_sync::<StripePaymentIntentAmountCapturableUpdated>();
+        _assert_clone_send_sync::<StripePaymentIntentCanceled>();
         _assert_clone_send_sync::<StripeChargeRefunded>();
         _assert_clone_send_sync::<StripeChargeDisputeCreated>();
         _assert_clone_send_sync::<StripeConnectAccountUpdated>();
@@ -347,6 +410,8 @@ mod tests {
         _assert_stripe_event::<StripeCheckoutExpired>();
         _assert_stripe_event::<StripeInvoicePaid>();
         _assert_stripe_event::<StripePaymentIntentFailed>();
+        _assert_stripe_event::<StripePaymentIntentAmountCapturableUpdated>();
+        _assert_stripe_event::<StripePaymentIntentCanceled>();
         _assert_stripe_event::<StripeChargeRefunded>();
         _assert_stripe_event::<StripeChargeDisputeCreated>();
         _assert_stripe_event::<StripeConnectAccountUpdated>();
