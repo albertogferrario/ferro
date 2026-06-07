@@ -2223,7 +2223,7 @@ Plans:
 
 ## Phases
 
-- [ ] **Phase 189: ferro-stripe Manual Capture** — `CheckoutBuilder::manual_capture()` + `payment_intent.rs` capture/cancel module + typed PaymentIntent webhook events with golden-JSON fixtures + Connect `destination()` composition
+- [x] **Phase 189: ferro-stripe Manual Capture** — `CheckoutBuilder::manual_capture()` + `payment_intent.rs` capture/cancel module + typed PaymentIntent webhook events with golden-JSON fixtures + Connect `destination()` composition (completed 2026-06-07)
 
 #### Phase Details
 
@@ -2242,4 +2242,4 @@ Plans:
 - [x] 189-01-PLAN.md — CheckoutBuilder::manual_capture() flag + mode guard + merged payment_intent_data (Connect composition) (Wave 1)
 - [x] 189-02-PLAN.md — payment_intent.rs capability module: capture/cancel/retrieve + lib.rs registration (Wave 2)
 - [x] 189-03-PLAN.md — Two typed PaymentIntent webhook events + golden-JSON fixtures + parser-contract tests (Wave 3)
-- [ ] 189-04-PLAN.md — docs/src/features/stripe.md Manual Capture section + ferro-reservation correspondence (Wave 4)
+- [x] 189-04-PLAN.md — docs/src/features/stripe.md Manual Capture section + ferro-reservation correspondence (Wave 4)
