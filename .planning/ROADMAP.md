@@ -2154,7 +2154,7 @@ Plans:
 - [x] **Phase 185: ferro::queue — DB-Backed Job Queue** — `Job` trait + `WorkerLoop` in `ferro serve` + atomic claim (Postgres/SQLite) + retry/backoff + reaper; replaces the Redis-only ferro-queue backend (completed 2026-06-07)
 - [x] **Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote** — new crate: `Deployment` model, `DeploymentStorage` trait, `promote`/`rollback`, `preview_url` helper (completed 2026-06-07)
 - [x] **Phase 187: ferro-assets — Asset Pipeline Composer** — new crate: content-type-aware `Pipeline` with HTML/CSS/JS minify, pure-Rust image transcode, generic injection — 4 plans planned (completed 2026-06-07)
-- [ ] **Phase 188: ferro-storage CDN Extension** — `cdn_url()` + `PurgeApi` trait + DO Spaces CDN adapter, feature-flagged Bunny/Cloudflare — 3 plans planned
+- [x] **Phase 188: ferro-storage CDN Extension** — `cdn_url()` + `PurgeApi` trait + DO Spaces CDN adapter, feature-flagged Bunny/Cloudflare — 3 plans planned (completed 2026-06-07)
 
 #### Phase Details
 
@@ -2221,7 +2221,7 @@ Plans:
 
 - [x] 188-01-PLAN.md — cdn_url() field/builder/method + AWS_CDN_URL env + Error::Cdn + reqwest/tokio-time/cdn-bunny/cdn-cloudflare Cargo scaffolding (Wave 1)
 - [x] 188-02-PLAN.md — PurgeApi trait + DoSpacesCdn adapter (DELETE/204, <=50 batch, 5 req/10s throttle, wildcard, missing-id no-op, token-redacted Debug) + wiremock tests (Wave 2)
-- [ ] 188-03-PLAN.md — Bunny + Cloudflare feature-gated adapters + default-graph absence proof + docs CDN section + version bump 0.2.45->0.2.46 + full --all-features CI gate (Wave 3)
+- [x] 188-03-PLAN.md — Bunny + Cloudflare feature-gated adapters + default-graph absence proof + docs CDN section + version bump 0.2.45->0.2.46 + full --all-features CI gate (Wave 3)
 
 ## v11.6.1 ferro-stripe Manual Capture (Phase 189)
 
