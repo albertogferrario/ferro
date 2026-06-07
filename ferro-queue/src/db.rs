@@ -577,7 +577,8 @@ pub async fn delete_job(conn: &DatabaseConnection, id: i64) -> Result<(), Error>
 pub async fn fail_job(conn: &DatabaseConnection, id: i64, error: &str) -> Result<(), Error> {
     let backend = conn.get_database_backend();
     let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
-    let sql = format!("UPDATE jobs SET status='failed', error={p1}, failed_at={p2} WHERE id = {p3}");
+    let sql =
+        format!("UPDATE jobs SET status='failed', error={p1}, failed_at={p2} WHERE id = {p3}");
     let stmt = Statement::from_sql_and_values(
         backend,
         &sql,
