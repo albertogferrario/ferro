@@ -51,8 +51,10 @@
     - [x] 175-05-PLAN.md — F4: pin Switch-at-depth-8 regression after F1; document Checkbox-styled-as-switch substitution (Wave 5 — runs after 175-04 to avoid `components.md` overlap and after 175-06 to avoid `render/form.rs` overlap)
 - 📋 **v12.0.2 JSON-UI v2 Runtime Patches — Booking↔Staff Binding Field Test** — Phase 176 (planned 2026-05-20). Source: gestiscilo-it v6.9 booking↔staff binding UAT (consumer phase 152 β). Three runtime gaps surfaced by a kanban dashboard with countdown badges + per-staff filter chip strip + staff-member detail widget: F7 `Card.badge` prop silently dropped (server emits, renderer ignores), F8 `Card.subtitle` prop silently dropped (server emits, renderer ignores), F9 `Grid.visible` conditional drops the entire subtree even when the path evaluates to true. Each finding ships server spec correctly; renderer template has no slot for `badge`/`subtitle`, and Grid's visibility evaluator either doesn't parse `visible` or evaluates against the wrong scope. One plan per finding; F7+F8 both extend the Card component slot template and can share a plan if the planner judges them coupled. [Context](phases/176-json-ui-v2-runtime-patches-booking-staff-field-test/176-CONTEXT.md)
 - 📋 **v11.11.1 ferro-reservation Kernel Atomicity Hardening** — Phase 177 (planned 2026-05-20, URGENT). Source: gestiscilo-it v6.9 β killer-feature acceptance failure (consumer phase 152 STBOOK-15). `ReservationKernel::hold` at `ferro-reservation/src/kernel.rs:54-122` does check-then-act (read `held()`, compute `available`, INSERT) without a transaction or unique constraint. Two concurrent `tokio::spawn` tasks racing `kernel.hold` on identical `(resource_kind, resource_key, window)` both pass the `held=0 → available=1 ≥ quantity=1` check and both INSERT a `status='held'` row — violating the load-bearing invariant `held ≤ capacity`. `GuardedUpdate` is used in `commit/release/sweeper` (UPDATEs) but never in `hold` (the INSERT path). PITFALLS T-69-1.2 expectation that the kernel arbitrates concurrent holds is WRONG against current implementation. Three candidate fix paths, planner picks: (a) wrap `hold` body in `conn.begin()` transaction with serializable isolation, (b) add a unique partial index on `reservations (resource_kind, resource_key, window_hash) WHERE status='held'`, (c) `INSERT … SELECT … WHERE NOT EXISTS` atomic check-and-insert. Path (a) is the minimum-blast-radius choice and matches existing GuardedUpdate discipline. [Context](phases/177-reservation-kernel-hold-atomicity/177-CONTEXT.md)
+- 📋 **v11.6.1 ferro-stripe Manual Capture** — Phase 189 (planned 2026-06-07). Source: gestiscilo-it v6.3-extended booking fund-hold field test. Extends the v11.6 capability-axis crate with Stripe manual capture so consumer apps can authorize card funds without charging (booking deposits): `CheckoutBuilder::manual_capture()` sets `payment_intent_data.capture_method = manual`; new `payment_intent.rs` capability module with `capture(payment_intent_id, amount_cents: Option<i64>)` (partial capture supported) and `cancel(payment_intent_id)`; new typed events `StripePaymentIntentAmountCapturableUpdated` and `StripePaymentIntentCanceled` registered in the parser contract with golden-JSON fixtures; manual capture must compose with `destination()` Connect charges (authorize on platform, capture transfers to connected account). The authorize/capture/cancel triple deliberately mirrors `ferro-reservation` hold/commit/release semantics — document the correspondence in `docs/src/features/stripe.md`. Out of scope: SetupIntent save-card flow for authorizations beyond the ~7-day card window (consumer-side design decision at gestiscilo v6.3 plan time; promote to a ferro phase only if gestiscilo picks that path). Consumer: gestiscilo-it v6.3 Online Checkout & Payments (queued after its v7.1), consumes via published crates.io bump per the Phase 176 ↔ ferro Phase 181 pattern.
 - 📋 **v12.1 Form Validation DX** — Phases 137-139. Validator struct, old input preservation, DB constraint error mapping. Source: gestiscilo-it field test.
 - 📋 **v12.2 Frontend Performance Hardening** — Phases 182-184 (planned 2026-06-06). Source: gestiscilo-it jetskiadriatic startup-lifecycle audit. Three runtime/framework primitives, each paired 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). (182) `ferro-json-ui` `data-lazy-hero` runtime primitive — IntersectionObserver promoting `<video preload="none">` → `preload="auto"` on viewport approach; (183) `ferro-bundle` new crate — in-memory immutable byte blobs with content-hashed immutable-cache serving; (184) `ferro::InlineBudget` + `ferro::RequestTelemetry` — request-scoped accumulator with inline/preload decision + per-key ring buffer.
+- 📋 **v12.3 Deployment Platform Primitives** — Phases 185-188 (planned 2026-06-07). Source: gestiscilo-it v7.1 Tenant Frontend Platform (locked design at gestiscilo `.planning/research/v7.1-ARCHITECTURE.md`, D-01..D-06). Four generic primitives, each paired 1:1 with a gestiscilo consumer phase that bumps the published crate (185 ↔ gestiscilo 188, 186 ↔ gestiscilo 188, 187 ↔ gestiscilo 189, 188 ↔ gestiscilo 190). (185) `ferro::queue` — DB-backed job queue replacing the Redis-only ferro-queue backend: `Job` trait, `WorkerLoop` in `ferro serve`, atomic claim (Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` + `UPDATE…RETURNING`), retry/backoff, stuck-job reaper; (186) `ferro-deployments` new crate — immutable `Deployment` model, `DeploymentStorage` trait, atomic `promote`/`rollback`, `preview_url` helper, artifact-shape agnostic; (187) `ferro-assets` new crate — `Pipeline` composer with content-type-aware transforms: `html_minify` (lol_html), `css_minify` (lightningcss), `js_minify` (swc_ecma_minifier), `image_transcode` (pure-Rust `image`+`ravif`, AVIF+JPEG responsive variants — libvips rejected for thread-safety), `inject_before_tag`; (188) `ferro-storage` extension — `cdn_url()`, `PurgeApi` trait, DO Spaces CDN adapter (feature-flagged Bunny/Cloudflare). Primitives stay consumer-agnostic: static HTML sites, JSON-UI spec bundles, and Inertia SSR manifests all fit the deployment abstraction. See "v12.3 Deployment Platform Primitives" phase details at the end of this file.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
 
@@ -2117,3 +2119,85 @@ Both tokio tasks read `held = 0`, both pass `available = capacity - 0 ≥ quanti
 
 Plans:
 - [x] 179-01-PLAN.md — Badge column format + DropdownMenuAction.visible_if + tests + version bump (shipped 2026-05-25 in workspace v0.2.38)
+
+---
+
+## v12.3 Deployment Platform Primitives (Phases 185–188)
+
+**Source:** gestiscilo-it v7.1 Tenant Frontend Platform — locked design at gestiscilo `.planning/research/v7.1-ARCHITECTURE.md` (D-01..D-06) + research at `.planning/research/v7.1-{STACK,INTEGRATION,PITFALLS}.md`. Consumer pairing: ferro 185+186 ↔ gestiscilo Phase 188, ferro 187 ↔ gestiscilo Phase 189, ferro 188 ↔ gestiscilo Phase 190. Each crate auto-publishes via GH Actions on push to master; the gestiscilo consumer phase closes with an atomic `[patch.crates-io]` revert + version bump.
+
+**Design constraint (architecture principle):** every primitive stays consumer-agnostic. A deployment is "a versioned, addressable bundle of artifacts with an atomic active pointer" — static HTML sites, compiled JSON-UI spec bundles, and Inertia-style SSR manifests all fit. No gestiscilo-specific assumptions in any crate.
+
+**Requirements:**
+
+- **QUEUE-F-01**: A consumer app can define a background job by implementing `ferro::queue::Job` and have it claimed, executed, retried with exponential backoff, and parked after max retries
+- **QUEUE-F-02**: Job claim is atomic on Postgres (`FOR UPDATE SKIP LOCKED`) and SQLite (`BEGIN IMMEDIATE` + `UPDATE … RETURNING`) — two concurrent workers never execute the same job
+- **QUEUE-F-03**: `WorkerLoop` runs inside `ferro serve` (work-stealing single binary, D-01); a crashed/killed worker's claimed jobs are reaped and retried
+- **QUEUE-F-04**: `jobs` table migration helper provided; migration portable across SQLite + Postgres
+- **DEPL-F-01**: `Deployment` model records immutable rows (identifier, source ref, artifact location, byte size, status, timestamps) with a portable migration helper
+- **DEPL-F-02**: `promote(owner_key, deployment_id)` is a single atomic UPDATE of the active pointer; `rollback` is promoting a previous deployment
+- **DEPL-F-03**: `DeploymentStorage` trait abstracts artifact persistence (S3-compatible default via ferro-storage); `preview_url(deployment_id)` subdomain helper present (consumers may defer wiring it)
+- **ASSET-F-01**: `Pipeline` composes ordered transforms; each transform declares accepted content types and passes everything else through unchanged
+- **ASSET-F-02**: `html_minify` (lol_html), `css_minify` (lightningcss `=1.0.0-alpha.71`), `js_minify` (swc_ecma_minifier) ship as built-in transforms; inline `<script>`/`<style>` content survives byte-correct (no template corruption)
+- **ASSET-F-03**: `image_transcode` emits AVIF + JPEG responsive variants via pure-Rust `image`+`ravif` (no C system deps), with bounded concurrency (semaphore) so encoding cannot OOM a small instance
+- **ASSET-F-04**: `inject_before_tag` generic HTML injection transform (SDK script tags, token substitution) ships as a built-in
+- **STOR-F-01**: `Storage::cdn_url(path)` returns the full CDN URL for a stored object
+- **STOR-F-02**: `PurgeApi` trait with default DO Spaces CDN adapter (`DELETE /v2/cdn/endpoints/{id}/cache`, batches ≤50 files/request, respects 5 req/10s rate limit, wildcard purge supported); Bunny + Cloudflare adapters feature-flagged
+
+**Build order:** 185 → 186 → 187 → 188 is the natural publish order (gestiscilo consumes them in that sequence), but 186/187/188 have no inter-dependency and can run in parallel once 185's `jobs` infrastructure exists. Estimated effort per the design doc: 185 ≈ 2w, 186 ≈ 1-2w, 187 ≈ 2-3w, 188 ≈ 1w.
+
+## Phases
+
+- [ ] **Phase 185: ferro::queue — DB-Backed Job Queue** — `Job` trait + `WorkerLoop` in `ferro serve` + atomic claim (Postgres/SQLite) + retry/backoff + reaper; replaces the Redis-only ferro-queue backend
+- [ ] **Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote** — new crate: `Deployment` model, `DeploymentStorage` trait, `promote`/`rollback`, `preview_url` helper
+- [ ] **Phase 187: ferro-assets — Asset Pipeline Composer** — new crate: content-type-aware `Pipeline` with HTML/CSS/JS minify, pure-Rust image transcode, generic injection
+- [ ] **Phase 188: ferro-storage CDN Extension** — `cdn_url()` + `PurgeApi` trait + DO Spaces CDN adapter, feature-flagged Bunny/Cloudflare
+
+#### Phase Details
+
+### Phase 185: ferro::queue — DB-Backed Job Queue
+**Goal**: Replace the Redis-only ferro-queue backend with a DB-backed queue living in the framework crate: consumers implement `Job`, `ferro serve` runs the `WorkerLoop` in-process (work-stealing across identical instances per gestiscilo D-01), and the claim path is atomic on both production Postgres and dev SQLite.
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: QUEUE-F-01, QUEUE-F-02, QUEUE-F-03, QUEUE-F-04
+**Success Criteria** (what must be TRUE):
+  1. A race test with two concurrent `WorkerLoop`s against the same `jobs` table claims each job exactly once — verified on SQLite (`BEGIN IMMEDIATE` + `UPDATE … RETURNING`) and, behind a cfg-gated test, on Postgres (`FOR UPDATE SKIP LOCKED`); no raw `FOR UPDATE SKIP LOCKED` SQL in any migration file (claim SQL branches on live backend at runtime)
+  2. A job whose worker dies mid-execution is reaped after a visibility timeout and retried; a job failing `max_retries` times is parked as `failed` with its error recorded and never blocks subsequent claims (poison-job isolation)
+  3. Retry delay follows exponential backoff with jitter; `Job` trait exposes `max_retries()` and an idempotency-key hook
+  4. `WorkerLoop` starts inside `ferro serve` with no separate process; CPU-heavy job bodies documented to use `tokio::task::spawn_blocking`; graceful shutdown re-queues claimed-but-incomplete jobs
+  5. The existing `Job`/`Queueable` public API surface is preserved where possible; any breaking change is documented with a migration table (consumer: gestiscilo Phase 188 migrates 4 job types against it); Redis dependency droppable by consumers after migration
+**Plans**: TBD
+
+### Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote
+**Goal**: New crate providing the deployment abstraction: every publish is an immutable, addressable row; going live is one atomic pointer flip; rollback is promoting an older row. Artifact shape is opaque — static HTML, JSON-UI bundles, and SSR manifests all fit.
+**Depends on**: Phase 185 (jobs table conventions; not a hard compile dependency)
+**Requirements**: DEPL-F-01, DEPL-F-02, DEPL-F-03
+**Success Criteria** (what must be TRUE):
+  1. `deployments` migration helper creates a portable schema (SQLite + Postgres) recording identifier, source ref (e.g. git SHA), artifact location, byte size, status (`building`/`ready`/`failed`), timestamps; rows are never mutated after reaching a terminal status
+  2. `promote(owner_key, deployment_id)` executes a single atomic UPDATE of the active pointer and returns the previously-active deployment id; a race test shows two concurrent promotes serialize correctly (last-write-wins, no torn state)
+  3. `rollback` is implemented as promote-of-previous; promoting a deployment whose status is not `ready` is rejected
+  4. `DeploymentStorage` trait abstracts artifact persistence with an S3-compatible default implementation delegating to ferro-storage; `preview_url(deployment_id)` returns the wildcard-subdomain URL form (consumers may leave it unwired)
+  5. Crate contains zero HTML/gestiscilo-specific assumptions — a doc-test or example stores a non-HTML artifact bundle (e.g. JSON specs) through the same API
+**Plans**: TBD
+
+### Phase 187: ferro-assets — Asset Pipeline Composer
+**Goal**: New crate providing a composable, content-type-aware asset pipeline for publish-time optimization: HTML/CSS/JS minification, pure-Rust image transcoding with responsive variants, and generic tag injection — the Tier 1 pipeline gestiscilo's `PublishFrontendJob` composes.
+**Depends on**: Nothing (leaf crate; parallel-capable with 186)
+**Requirements**: ASSET-F-01, ASSET-F-02, ASSET-F-03, ASSET-F-04
+**Success Criteria** (what must be TRUE):
+  1. `Pipeline::new().add(transform)...run(files)` applies transforms in order; each transform declares accepted content types and files outside its types pass through byte-identical (a JSON file run through the full HTML/CSS/JS/image pipeline is untouched)
+  2. `html_minify` (lol_html), `css_minify` (lightningcss pinned `=1.0.0-alpha.71`), `js_minify` (swc_ecma_minifier) ship as built-ins; a fixture with inline `<script>` templating and inline `<style>` survives minification with semantics intact (regression fixtures from a real tenant site)
+  3. `image_transcode` emits AVIF (`ravif`) + JPEG fallback at configurable responsive widths using pure-Rust codecs — `cargo build` introduces no new C system dependencies; concurrent encodes bounded by a semaphore (default ≤2) so peak memory stays bounded on a 512MB instance
+  4. `responsive_images` lol_html rewriter transforms `<img>` → `<picture><source srcset=…>` referencing the emitted variants; `inject_before_tag(tag, html)` covers SDK script injection and is string-substitution safe (used for `%%TOKEN%%`-style replacement)
+  5. Pipeline failure at any stage returns a structured per-file error and produces NO partial output set — the caller can implement all-or-nothing upload (gestiscilo PUB-05 two-phase invariant builds on this)
+**Plans**: TBD
+
+### Phase 188: ferro-storage CDN Extension
+**Goal**: Extend ferro-storage with CDN awareness: full CDN URLs for stored objects and a cache-purge abstraction with a DigitalOcean Spaces CDN default adapter, so promote-then-purge becomes a two-call sequence for any consumer.
+**Depends on**: Nothing (extension to existing crate; parallel-capable)
+**Requirements**: STOR-F-01, STOR-F-02
+**Success Criteria** (what must be TRUE):
+  1. `Storage::cdn_url(path)` returns the CDN edge URL for a stored object, configured via env (CDN base URL); falls back to the origin URL when no CDN is configured
+  2. `PurgeApi` trait exposes `purge(paths: &[String])`; the DO Spaces adapter calls `DELETE /v2/cdn/endpoints/{id}/cache`, batches requests at ≤50 files each, honors the 5 req/10s rate limit (internal throttle, not caller burden), and supports wildcard paths (1 wildcard = 1 file slot)
+  3. DO adapter config reads `DO_SPACES_CDN_ID` + API token from env; a missing CDN id makes `purge` a logged no-op (consumers without CDN keep working)
+  4. Bunny and Cloudflare adapters compile behind cargo features without entering the default dependency graph
+**Plans**: TBD

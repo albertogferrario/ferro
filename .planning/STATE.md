@@ -30,7 +30,11 @@ Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscil
       Pre-push reminder: `ferro-bundle` (Phase 183) needs a one-time manual `cargo publish -p ferro-bundle` from a local terminal before push, because the CI token has `publish-update` only (not `publish-new`).
 Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
 Status: v12.2 milestone complete, push-pending
-Last activity: 2026-06-06 — Phase 184 verified
+Last activity: 2026-06-07 — v12.3 Deployment Platform Primitives roadmapped (Phases 185-188)
+
+## Queued Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
+
+Roadmapped 2026-06-07, sourced from gestiscilo-it v7.1 Tenant Frontend Platform (consumer phases 188-193). Four phases: 185 `ferro::queue` DB-backed job queue (replaces Redis-only ferro-queue backend; Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` claim), 186 `ferro-deployments` new crate (immutable deployments + atomic promote/rollback), 187 `ferro-assets` new crate (content-type-aware pipeline: lol_html + lightningcss + swc + pure-Rust image/ravif — libvips rejected), 188 `ferro-storage` CDN extension (`cdn_url()` + `PurgeApi` + DO Spaces adapter). Phase 185 blocks gestiscilo Phase 188; 186/187/188 parallel-capable after 185. Note: ferro-bundle manual-publish reminder applies again — 186 and 187 are NEW crates, CI token has `publish-update` only, so each needs a one-time manual `cargo publish` before its first CI publish. Details: ROADMAP.md §"v12.3 Deployment Platform Primitives". Start via `/gsd-plan-phase 185`.
 
 Progress: [████████░░] 84%
 
