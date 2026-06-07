@@ -2151,7 +2151,7 @@ Plans:
 
 ## Phases
 
-- [ ] **Phase 185: ferro::queue — DB-Backed Job Queue** — `Job` trait + `WorkerLoop` in `ferro serve` + atomic claim (Postgres/SQLite) + retry/backoff + reaper; replaces the Redis-only ferro-queue backend
+- [x] **Phase 185: ferro::queue — DB-Backed Job Queue** — `Job` trait + `WorkerLoop` in `ferro serve` + atomic claim (Postgres/SQLite) + retry/backoff + reaper; replaces the Redis-only ferro-queue backend (completed 2026-06-07)
 - [ ] **Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote** — new crate: `Deployment` model, `DeploymentStorage` trait, `promote`/`rollback`, `preview_url` helper
 - [ ] **Phase 187: ferro-assets — Asset Pipeline Composer** — new crate: content-type-aware `Pipeline` with HTML/CSS/JS minify, pure-Rust image transcode, generic injection
 - [ ] **Phase 188: ferro-storage CDN Extension** — `cdn_url()` + `PurgeApi` trait + DO Spaces CDN adapter, feature-flagged Bunny/Cloudflare
@@ -2173,7 +2173,7 @@ Plans:
 - [x] 185-02-PLAN.md — DB engine: dual-backend atomic claim, reaper, idempotent enqueue, lifecycle ops, stat queries, Queue global
 - [x] 185-03-PLAN.md — WorkerLoop (panic isolation, SIGTERM drain+requeue) + DB-backed dispatcher; delete queue.rs; lib.rs re-exports
 - [x] 185-04-PLAN.md — Framework: ferro::queue namespaced module, WorkerLoop auto-start, debug endpoints over DB, ferro-mcp job_history fix
-- [ ] 185-05-PLAN.md — Proof artifacts: SQLite + Postgres race tests, shutdown test, docs rewrite, full-suite gate
+- [x] 185-05-PLAN.md — Proof artifacts: SQLite + Postgres race tests, shutdown test, docs rewrite, full-suite gate
 
 ### Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote
 **Goal**: New crate providing the deployment abstraction: every publish is an immutable, addressable row; going live is one atomic pointer flip; rollback is promoting an older row. Artifact shape is opaque — static HTML, JSON-UI bundles, and SSR manifests all fit.
