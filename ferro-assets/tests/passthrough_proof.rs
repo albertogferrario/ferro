@@ -12,11 +12,11 @@
 //! Run: `cargo test -p ferro-assets --test passthrough_proof`
 
 use bytes::Bytes;
-use ferro_assets::{Asset, ContentType, Error, Pipeline, Transform};
 use ferro_assets::transforms::{
     CssMinify, HtmlMinify, ImageTranscode, InjectBeforeTag, JsMinify, ReplaceTokens,
     ResponsiveImages,
 };
+use ferro_assets::{Asset, ContentType, Error, Pipeline, Transform};
 use std::collections::HashMap;
 
 /// A transform that only accepts HTML. Everything else passes through.
@@ -173,8 +173,7 @@ fn pipeline_applies_transforms_in_insertion_order() {
 /// are in the pipeline.
 #[test]
 fn json_file_unchanged_by_all_seven_real_transforms() {
-    let json_bytes =
-        Bytes::from_static(br#"{"intent":"browse","fields":[],"version":"1.0"}"#);
+    let json_bytes = Bytes::from_static(br#"{"intent":"browse","fields":[],"version":"1.0"}"#);
     let assets = vec![Asset::new("spec.json", json_bytes.clone())];
 
     let pipeline = Pipeline::new()
