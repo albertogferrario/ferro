@@ -4,7 +4,7 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
 stopped_at: Completed 189-04-PLAN.md
-last_updated: "2026-06-07T15:40:19.752Z"
+last_updated: "2026-06-07T15:49:20.549Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 183
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 189 (ferro-stripe Manual Capture) — EXECUTING
-Plan: 4 of 4
+Phase: 189
+Plan: Not started
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminder: `ferro-bundle` (Phase 183) needs a one-time manual `cargo publish -p ferro-bundle` from a local terminal before push, because the CI token has `publish-update` only (not `publish-new`).
 Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
@@ -42,7 +42,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 150
+- Total plans completed: 154
 - Average duration: —
 - Total execution time: —
 
@@ -76,6 +76,7 @@ Progress: [████████░░] 84%
 | 180 | 6 | - | - |
 | 181 | 8 | - | - |
 | 184 | 3 | - | - |
+| 189 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
