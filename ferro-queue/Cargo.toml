@@ -5,8 +5,8 @@ edition.workspace = true
 license.workspace = true
 description = "Background job queue system for Ferro framework"
 repository = "https://github.com/albertogferrario/ferro"
-keywords = ["queue", "jobs", "background", "redis", "ferro"]
-categories = ["web-programming", "asynchronous"]
+keywords = ["queue", "jobs", "background", "async", "ferro"]
+categories = ["database", "asynchronous"]
 readme = "README.md"
 
 [dependencies]
@@ -17,10 +17,18 @@ parking_lot = "0.12"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls", "macros"] }
+sea-orm-migration = "1.0"
+rand = "0.8"
+futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 serial_test = "3"
+tempfile = "3"
+
+[features]
+sqlx-postgres = ["sea-orm/sqlx-postgres"]
+postgres-tests = ["sqlx-postgres"]

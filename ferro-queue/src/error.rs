@@ -53,9 +53,13 @@ pub enum Error {
         max_retries: u32,
     },
 
-    /// Redis error.
-    #[error("Redis error: {0}")]
-    Redis(#[from] redis::RedisError),
+    /// Database error.
+    #[error("Database error: {0}")]
+    Db(#[from] sea_orm::DbErr),
+
+    /// Unsupported database backend.
+    #[error("Unsupported database backend")]
+    UnsupportedBackend,
 
     /// JSON error.
     #[error("JSON error: {0}")]
