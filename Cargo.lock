@@ -160,7 +160,7 @@ checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
 name = "app"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "chrono",
@@ -228,6 +228,16 @@ name = "ascii"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d92bec98840b8f03a5ff5413de5293bfcd8bf96467cf5452609f939ec6f5de16"
+
+[[package]]
+name = "assert-json-diff"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e4f2b81832e72834d7518d8487a0396a28cc408186a2e8854c0f98011faf12"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "ast_node"
@@ -1744,6 +1754,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "deadpool"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0be2b1d1d6ec8d846f05e137292d0b89133caf95ef33695424c09568bdd39b1b"
+dependencies = [
+ "deadpool-runtime",
+ "lazy_static",
+ "num_cpus",
+ "tokio",
+]
+
+[[package]]
+name = "deadpool-runtime"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "092966b41edc516079bdf31ec78a2e0588d1d0c08f78b91d8307215928642b2b"
+
+[[package]]
 name = "debugid"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2154,7 +2182,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-ai"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2170,7 +2198,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-api-mcp"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "clap",
  "openapiv3",
@@ -2187,7 +2215,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-assets"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "bytes",
  "image",
@@ -2203,7 +2231,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-audit"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "chrono",
  "sea-orm",
@@ -2218,7 +2246,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-broadcast"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "dashmap 6.1.0",
@@ -2235,7 +2263,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-bundle"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "bytes",
  "dashmap 6.1.0",
@@ -2247,7 +2275,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-cache"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "dashmap 6.1.0",
@@ -2262,7 +2290,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-cli"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2299,7 +2327,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-deployments"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2319,7 +2347,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-events"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "inventory",
@@ -2331,7 +2359,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-inertia"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "serde",
  "serde_json",
@@ -2341,7 +2369,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-json-ui"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "ferro-projections",
  "ferro-theme",
@@ -2356,7 +2384,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-lang"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "serde",
  "serde_json",
@@ -2367,7 +2395,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-macros"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "ferro-rs",
  "proc-macro2",
@@ -2383,7 +2411,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-mcp"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2415,7 +2443,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-migration"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "sea-orm",
  "sea-orm-migration",
@@ -2425,7 +2453,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-notifications"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2443,7 +2471,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-orm"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "sea-orm",
  "thiserror 2.0.17",
@@ -2452,7 +2480,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-projection"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2473,7 +2501,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-projections"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "schemars",
  "serde",
@@ -2483,7 +2511,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-queue"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2504,7 +2532,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-reservation"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2525,7 +2553,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-rs"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2586,7 +2614,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-storage"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -2595,12 +2623,14 @@ dependencies = [
  "bytes",
  "dashmap 6.1.0",
  "mime_guess",
+ "reqwest",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "wiremock",
 ]
 
 [[package]]
@@ -2624,7 +2654,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-theme"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "serde",
  "serde_json",
@@ -2634,7 +2664,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-wallet"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2651,7 +2681,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-whatsapp"
-version = "0.2.45"
+version = "0.2.46"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3379,6 +3409,7 @@ dependencies = [
  "tokio",
  "tokio-rustls 0.26.4",
  "tower-service",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -4082,6 +4113,12 @@ checksum = "7f66e8d5d03f609abc3a39e6f08e4164ebf1447a732906d39eb9b99b7919ef39"
 dependencies = [
  "hashbrown 0.16.1",
 ]
+
+[[package]]
+name = "lru-slab"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
 name = "lzma-rs"
@@ -5279,6 +5316,61 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
 
 [[package]]
+name = "quinn"
+version = "0.11.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e20a958963c291dc322d98411f541009df2ced7b5a4f2bd52337638cfccf20"
+dependencies = [
+ "bytes",
+ "cfg_aliases",
+ "pin-project-lite",
+ "quinn-proto",
+ "quinn-udp",
+ "rustc-hash",
+ "rustls 0.23.36",
+ "socket2 0.6.1",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "web-time",
+]
+
+[[package]]
+name = "quinn-proto"
+version = "0.11.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "434b42fec591c96ef50e21e886936e66d3cc3f737104fdb9b737c40ffb94c098"
+dependencies = [
+ "bytes",
+ "getrandom 0.3.4",
+ "lru-slab",
+ "rand 0.9.2",
+ "ring",
+ "rustc-hash",
+ "rustls 0.23.36",
+ "rustls-pki-types",
+ "slab",
+ "thiserror 2.0.17",
+ "tinyvec",
+ "tracing",
+ "web-time",
+]
+
+[[package]]
+name = "quinn-udp"
+version = "0.5.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "addec6a0dcad8a8d96a771f815f0eaf55f9d1805756410b39f5fa81332574cbd"
+dependencies = [
+ "cfg_aliases",
+ "libc",
+ "once_cell",
+ "socket2 0.6.1",
+ "tracing",
+ "windows-sys 0.60.2",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5655,6 +5747,8 @@ dependencies = [
  "native-tls",
  "percent-encoding",
  "pin-project-lite",
+ "quinn",
+ "rustls 0.23.36",
  "rustls-pki-types",
  "serde",
  "serde_json",
@@ -5662,6 +5756,7 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-native-tls",
+ "tokio-rustls 0.26.4",
  "tower",
  "tower-http",
  "tower-service",
@@ -5669,6 +5764,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -5852,6 +5948,7 @@ checksum = "c665f33d38cea657d9614f766881e4d510e0eda4239891eea56b4cadcf01801b"
 dependencies = [
  "aws-lc-rs",
  "once_cell",
+ "ring",
  "rustls-pki-types",
  "rustls-webpki 0.103.10",
  "subtle",
@@ -5876,6 +5973,7 @@ version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21e6f2ab2928ca4291b86736a8bd920a277a399bba1589409d72154ff87c1282"
 dependencies = [
+ "web-time",
  "zeroize",
 ]
 
@@ -8921,6 +9019,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "web-time"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "webpki-roots"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52f5ee44c96cf55f1b349600768e3ece3a8f26010c05265ab73f945bb1a2eb9d"
+dependencies = [
+ "rustls-pki-types",
+]
+
+[[package]]
 name = "weezl"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9326,6 +9443,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "wiremock"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08db1edfb05d9b3c1542e521aea074442088292f00b5f28e435c714a98f85031"
+dependencies = [
+ "assert-json-diff",
+ "base64 0.22.1",
+ "deadpool",
+ "futures",
+ "http 1.4.0",
+ "http-body-util",
+ "hyper 1.8.1",
+ "hyper-util",
+ "log",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
 ]
 
 [[package]]

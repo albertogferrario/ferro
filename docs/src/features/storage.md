@@ -374,6 +374,125 @@ async fn upload_avatar(
 }
 ```
 
+## CDN
+
+### CDN Edge URLs
+
+Configure a CDN base URL for a disk to serve stored files from an edge node rather than the storage origin.
+
+```env
+# S3 / DigitalOcean Spaces disk — CDN base URL
+AWS_CDN_URL=https://cdn.example.com
+```
+
+Or set it programmatically:
+
+```rust
+use ferro_storage::DiskConfig;
+
+let config = DiskConfig::local("./storage/public")
+    .with_url("https://origin.example.com/storage")
+    .with_cdn_url("https://cdn.example.com/storage");
+```
+
+`Disk::cdn_url(path)` and `Storage::cdn_url(path)` return the CDN edge URL when a CDN base is configured, or fall back to the origin `url()` otherwise:
+
+```rust
+// With CDN configured — returns "https://cdn.example.com/storage/images/logo.png"
+let url = storage.disk("public")?.cdn_url("images/logo.png").await?;
+
+// Without CDN configured — falls back to origin URL
+let url = storage.disk("local")?.cdn_url("images/logo.png").await?;
+```
+
+The CDN URL computation is pure string composition at the facade layer — no network call is made. Double slashes are normalized: a trailing slash on the base and a leading slash on the path produce a single slash in the result.
+
+### Cache Invalidation
+
+The `PurgeApi` trait abstracts CDN cache invalidation across providers:
+
+```rust
+use ferro_storage::PurgeApi;
+
+#[async_trait]
+pub trait PurgeApi: Send + Sync {
+    async fn purge(&self, paths: &[String]) -> Result<(), Error>;
+}
+```
+
+Paths are relative (e.g. `"index.html"`, `"assets/*"`). Implementations handle batching, rate limiting, and full-URL construction internally.
+
+### DigitalOcean Spaces CDN Adapter
+
+The `DoSpacesCdn` adapter is the default, batteries-included implementation. It calls the DigitalOcean CDN purge API (`DELETE /v2/cdn/endpoints/{id}/cache`) and encapsulates:
+
+- **Batching:** at most 50 file paths per request (the DO API limit).
+- **Rate limiting:** an internal sliding-window throttle enforces at most 5 requests per 10-second window.
+- **Wildcard paths:** `"assets/*"` counts as one file slot, not an expanded set.
+- **Missing endpoint id:** when `DO_SPACES_CDN_ID` is unset, `purge()` is a logged no-op that returns `Ok(())`. Applications without a CDN endpoint continue to work without error.
+
+```env
+DO_SPACES_CDN_ID=your-cdn-endpoint-id
+DIGITALOCEAN_ACCESS_TOKEN=your-do-api-token
+```
+
+```rust
+use ferro_storage::{DoSpacesCdn, DoSpacesCdnConfig, PurgeApi};
+
+let purger = DoSpacesCdn::new(DoSpacesCdnConfig::from_env());
+
+// Purge a set of paths after a deployment promote
+purger.purge(&[
+    "index.html".to_string(),
+    "de/index.html".to_string(),
+]).await?;
+```
+
+The `DIGITALOCEAN_ACCESS_TOKEN` is never written to logs. `DoSpacesCdnConfig` implements a hand-written `Debug` that prints `<redacted>` for the token field.
+
+### Feature-gated Adapters
+
+Bunny CDN and Cloudflare CDN adapters are available behind optional cargo features. They are not compiled into the default dependency graph:
+
+```toml
+[dependencies]
+ferro-storage = { version = "0.2", features = ["cdn-bunny"] }
+# or
+ferro-storage = { version = "0.2", features = ["cdn-cloudflare"] }
+```
+
+**Bunny CDN** (`cdn-bunny`): calls `POST https://api.bunny.net/purge?url={full_url}&async=false` per path with an `AccessKey` header. Requires `BUNNY_CDN_URL` and `BUNNY_ACCESS_KEY`.
+
+```rust
+use ferro_storage::{BunnyCdn, BunnyCdnConfig, PurgeApi};
+
+let purger = BunnyCdn::new(BunnyCdnConfig::from_env());
+purger.purge(&["index.html".to_string()]).await?;
+```
+
+**Cloudflare CDN** (`cdn-cloudflare`): calls `POST /zones/{zone_id}/purge_cache` with `{"files": [...full_urls...]}` and Bearer auth. Requires `CF_ZONE_ID`, `CF_API_TOKEN`, and `CF_CDN_URL`.
+
+```rust
+use ferro_storage::{CloudflareCdn, CloudflareCdnConfig, PurgeApi};
+
+let purger = CloudflareCdn::new(CloudflareCdnConfig::from_env());
+purger.purge(&["index.html".to_string()]).await?;
+```
+
+### Promote → Purge Sequence
+
+The standard deployment workflow is a two-call sequence: promote the new deployment, then purge the affected HTML keys:
+
+```rust
+use ferro_storage::{DoSpacesCdn, DoSpacesCdnConfig, PurgeApi};
+
+// After ferro_deployments::promote(...)
+let purger = DoSpacesCdn::new(DoSpacesCdnConfig::from_env());
+purger.purge(&html_keys).await?;
+```
+
+**Purge policy:** purge only the non-hashed HTML keys after a promote. Content-hashed asset URLs (e.g. `app.a1b2c3d4.js`) are immutable — their content never changes at the same URL, so purging them is unnecessary and consumes rate-limit budget. Purging `*` invalidates the entire CDN cache; reserve that for deliberate full-cache invalidation.
+
 ## Environment Variables Reference
 
 | Variable | Description | Default |
