@@ -180,7 +180,8 @@ pub struct FailedJobInfo {
     pub job: JobInfo,
     /// Error message stored at failure time.
     pub error: String,
-    /// When the job was parked as failed (same as `created_at` for reaper-parked).
+    /// When the job was parked as failed (recorded in the `failed_at` column;
+    /// falls back to `created_at` only for legacy rows that predate the column).
     pub failed_at: DateTime<Utc>,
 }
 
@@ -249,6 +250,28 @@ fn parse_timestamp(row: &sea_orm::QueryResult, col: &str) -> Result<DateTime<Utc
     DateTime::parse_from_rfc3339(&s)
         .map(|dt| dt.with_timezone(&Utc))
         .map_err(|e| Error::custom(format!("parse {col} as rfc3339 ('{s}'): {e}")))
+}
+
+/// Parse a nullable timestamp column. Returns `Ok(None)` when the column is
+/// SQL NULL, mirroring `parse_timestamp`'s Postgres-then-SQLite fallback.
+fn parse_optional_timestamp(
+    row: &sea_orm::QueryResult,
+    col: &str,
+) -> Result<Option<DateTime<Utc>>, Error> {
+    // Native Option<DateTime<Utc>> first (Postgres timestamptz).
+    if let Ok(opt) = row.try_get_by::<Option<DateTime<Utc>>, _>(col) {
+        return Ok(opt);
+    }
+    // Fall back to Option<String> (SQLite TEXT column).
+    let s: Option<String> = row
+        .try_get_by::<Option<String>, _>(col)
+        .map_err(|e| Error::custom(format!("parse {col}: {e}")))?;
+    match s {
+        None => Ok(None),
+        Some(s) => DateTime::parse_from_rfc3339(&s)
+            .map(|dt| Some(dt.with_timezone(&Utc)))
+            .map_err(|e| Error::custom(format!("parse {col} as rfc3339 ('{s}'): {e}"))),
+    }
 }
 
 /// SQL placeholder style: Postgres uses `$N`, SQLite uses `?N`.
@@ -419,18 +442,19 @@ pub async fn reaper(
     );
     txn.execute(requeue).await.map_err(Error::Db)?;
 
-    // Step 2: park exhausted rows as failed.
-    // Use fresh placeholders ?1 and ?2 (independent statement, not continuing p1..p4).
-    let (pp1, pp2) = (ph(backend, 1), ph(backend, 2));
+    // Step 2: park exhausted rows as failed, recording the failure time.
+    // Use fresh placeholders (independent statement, not continuing p1..p3).
+    let (pp1, pp2, pp3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
     let park_sql = format!(
-        "UPDATE jobs SET status='failed', error='visibility timeout exceeded' \
-         WHERE status='claimed' AND claimed_at < {pp1} \
-         AND attempts + 1 >= max_retries AND queue = {pp2}"
+        "UPDATE jobs SET status='failed', error='visibility timeout exceeded', failed_at={pp1} \
+         WHERE status='claimed' AND claimed_at < {pp2} \
+         AND attempts + 1 >= max_retries AND queue = {pp3}"
     );
     let park = Statement::from_sql_and_values(
         backend,
         &park_sql,
         [
+            Value::String(Some(Box::new(now_iso))),
             Value::String(Some(Box::new(cutoff))),
             Value::String(Some(Box::new(queue.to_string()))),
         ],
@@ -549,16 +573,17 @@ pub async fn delete_job(conn: &DatabaseConnection, id: i64) -> Result<(), Error>
     Ok(())
 }
 
-/// Park a job as `failed` with an error message.
+/// Park a job as `failed` with an error message, recording the failure time.
 pub async fn fail_job(conn: &DatabaseConnection, id: i64, error: &str) -> Result<(), Error> {
     let backend = conn.get_database_backend();
-    let (p1, p2) = (ph(backend, 1), ph(backend, 2));
-    let sql = format!("UPDATE jobs SET status='failed', error={p1} WHERE id = {p2}");
+    let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
+    let sql = format!("UPDATE jobs SET status='failed', error={p1}, failed_at={p2} WHERE id = {p3}");
     let stmt = Statement::from_sql_and_values(
         backend,
         &sql,
         [
             Value::String(Some(Box::new(error.to_string()))),
+            Value::String(Some(Box::new(Utc::now().to_rfc3339()))),
             Value::BigInt(Some(id)),
         ],
     );
@@ -680,9 +705,12 @@ pub async fn get_failed_jobs(
 ) -> Result<Vec<FailedJobInfo>, Error> {
     let backend = conn.get_database_backend();
     let p1 = ph(backend, 1);
+    // Order by failure time, falling back to created_at for any legacy row that
+    // predates the failed_at column (WR-06).
     let sql = format!(
-        "SELECT id, job_type, queue, attempts, max_retries, created_at, available_at, error \
-         FROM jobs WHERE status='failed' ORDER BY created_at DESC LIMIT {p1}"
+        "SELECT id, job_type, queue, attempts, max_retries, created_at, available_at, \
+         error, failed_at FROM jobs WHERE status='failed' \
+         ORDER BY COALESCE(failed_at, created_at) DESC LIMIT {p1}"
     );
     let stmt = Statement::from_sql_and_values(backend, &sql, [Value::BigInt(Some(limit as i64))]);
     let rows = conn.query_all(stmt).await.map_err(Error::Db)?;
@@ -807,7 +835,10 @@ fn parse_failed_job_info(row: &sea_orm::QueryResult) -> Result<FailedJobInfo, Er
         .try_get_by::<Option<String>, _>("error")
         .map_err(|e| Error::custom(format!("parse error: {e}")))?
         .unwrap_or_default();
-    let failed_at = parse_timestamp(row, "created_at")?;
+    // Prefer the recorded failure time; fall back to created_at for legacy rows
+    // parked before the failed_at column existed (WR-06).
+    let failed_at =
+        parse_optional_timestamp(row, "failed_at")?.unwrap_or(parse_timestamp(row, "created_at")?);
 
     Ok(FailedJobInfo {
         job,

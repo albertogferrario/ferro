@@ -81,6 +81,11 @@ impl MigrationTrait for CreateJobsTable {
                     .col(ColumnDef::new(Jobs::ClaimedBy).string().null())
                     .col(ColumnDef::new(Jobs::Error).text().null())
                     .col(
+                        ColumnDef::new(Jobs::FailedAt)
+                            .timestamp_with_time_zone()
+                            .null(),
+                    )
+                    .col(
                         ColumnDef::new(Jobs::CreatedAt)
                             .timestamp_with_time_zone()
                             .not_null(),
@@ -154,6 +159,7 @@ pub(crate) enum Jobs {
     ClaimedAt,
     ClaimedBy,
     Error,
+    FailedAt,
     CreatedAt,
 }
 

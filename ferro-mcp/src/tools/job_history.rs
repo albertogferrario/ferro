@@ -176,8 +176,14 @@ async fn get_database_job_history(
                 let payload: String = row.try_get_by("payload").unwrap_or_default();
                 // `error` column from the jobs table; field name kept as `exception` for API compat.
                 let exception: String = row.try_get_by("error").unwrap_or_default();
-                // `failed_at` reads from `created_at` — the jobs table has no separate failed_at column.
-                let failed_at: String = row.try_get_by("created_at").unwrap_or_default();
+                // Prefer the recorded failure time; fall back to created_at for
+                // legacy rows parked before the failed_at column existed (WR-06).
+                let failed_at: String = row
+                    .try_get_by::<Option<String>, _>("failed_at")
+                    .ok()
+                    .flatten()
+                    .or_else(|| row.try_get_by("created_at").ok())
+                    .unwrap_or_default();
 
                 let job_type = extract_job_type(&payload);
                 let payload_preview = truncate_payload(&payload, 200);
