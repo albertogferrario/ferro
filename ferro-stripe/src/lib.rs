@@ -46,6 +46,7 @@ pub mod client;
 pub mod config;
 pub mod error;
 pub mod idempotency;
+pub mod payment_intent;
 pub mod refund;
 #[cfg(any(test, feature = "test-helpers"))]
 pub mod testing;
