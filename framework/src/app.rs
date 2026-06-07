@@ -413,6 +413,20 @@ where
             let _ = ferro_queue::Queue::init(conn).await;
         }
         if ferro_queue::Queue::has_registered_jobs() {
+            // Warn when jobs are registered (so a WorkerLoop is started) but the
+            // queue is in sync mode (WR-04). In sync mode every `dispatch()`
+            // runs inline in the request path — `.delay()`/`.on_queue()` are
+            // ignored — while the WorkerLoop polls an empty queue. This is the
+            // default when QUEUE_CONNECTION is unset, which is a foot-gun in
+            // production.
+            if ferro_queue::QueueConfig::is_sync_mode() {
+                eprintln!(
+                    "WARNING: queue jobs are registered but QUEUE_CONNECTION is sync \
+                     (or unset, which defaults to sync). dispatch() will run jobs inline \
+                     in the request path and ignore delay/on_queue. Set QUEUE_CONNECTION \
+                     to a non-sync value (e.g. 'db') to enable background processing."
+                );
+            }
             let config = ferro_queue::WorkerConfig::default();
             let worker = ferro_queue::WorkerLoop::from_registry(config);
             tokio::spawn(async move {

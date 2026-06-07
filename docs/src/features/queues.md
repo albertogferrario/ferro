@@ -52,8 +52,10 @@ pub async fn register() {
 ### Environment Variables
 
 ```env
-# Queue driver: "sync" for development (jobs run inline), any other value for background
-QUEUE_CONNECTION=sync
+# Queue driver: "sync" for development (jobs run inline), any other value for background.
+# IMPORTANT: when QUEUE_CONNECTION is UNSET it defaults to "sync" — background
+# processing is OFF unless you set this to a non-sync value (e.g. "db").
+QUEUE_CONNECTION=db
 
 # Default queue name
 QUEUE_DEFAULT=default
@@ -62,7 +64,7 @@ QUEUE_DEFAULT=default
 QUEUE_MAX_CONCURRENT=10
 ```
 
-In development, `QUEUE_CONNECTION=sync` (the default) runs jobs inline during the HTTP request — no background worker, no database polling. Set any other value to enable background processing.
+`QUEUE_CONNECTION` defaults to `sync` when unset. In sync mode jobs run inline during the HTTP request — no background worker, no database polling — and `.delay()` / `.on_queue()` are ignored. Set any other value (e.g. `db`) to enable background processing. If jobs are registered while the queue is in sync mode, the server logs a startup warning, since this combination is usually unintended in production.
 
 ## Creating Jobs
 
