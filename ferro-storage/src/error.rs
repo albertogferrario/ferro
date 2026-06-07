@@ -38,6 +38,10 @@ pub enum Error {
     /// Serialization error.
     #[error("Serialization error: {0}")]
     Serialization(String),
+
+    /// CDN operation error.
+    #[error("CDN error: {0}")]
+    Cdn(String),
 }
 
 impl Error {
@@ -64,5 +68,10 @@ impl Error {
     /// Create a not implemented error.
     pub fn not_implemented(feature: impl Into<String>) -> Self {
         Self::NotImplemented(feature.into())
+    }
+
+    /// Create a CDN error.
+    pub fn cdn(msg: impl Into<String>) -> Self {
+        Self::Cdn(msg.into())
     }
 }
