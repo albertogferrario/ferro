@@ -31,3 +31,6 @@ pub use js_minify::JsMinify;
 
 mod replace_tokens;
 pub use replace_tokens::ReplaceTokens;
+
+mod image_transcode;
+pub use image_transcode::ImageTranscode;
