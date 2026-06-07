@@ -9,6 +9,7 @@
 use image::codecs::jpeg::JpegEncoder;
 use image::DynamicImage;
 use ravif::{Encoder, Img, RGBA8};
+use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 
 use crate::asset::ContentType;
@@ -34,8 +35,8 @@ use crate::{Asset, Error};
 /// ## Concurrency (D-09)
 ///
 /// Encodes run inside a rayon [`ThreadPool`](rayon::ThreadPool) with `num_threads` set to
-/// `max_concurrent` (default 2). At most that many image encodes run in parallel, bounding
-/// peak memory on small instances.
+/// `max_concurrent` (default 2). `into_par_iter()` distributes work across the pool's threads so
+/// at most `max_concurrent` encodes run simultaneously, bounding peak memory on small instances.
 #[derive(Debug, Clone)]
 pub struct ImageTranscode {
     /// Maximum number of concurrent image encodes. Default: 2.
@@ -68,8 +69,11 @@ impl ImageTranscode {
     }
 
     /// Set the maximum number of concurrent image encodes.
+    ///
+    /// Values of 0 are clamped to 1. (rayon treats `num_threads(0)` as "use all logical CPUs",
+    /// which would violate the stated bound.)
     pub fn with_max_concurrent(mut self, n: usize) -> Self {
-        self.max_concurrent = n;
+        self.max_concurrent = n.max(1);
         self
     }
 
@@ -167,10 +171,11 @@ impl Transform for ImageTranscode {
         // Non-image assets pass through unchanged
         let mut output: Vec<Asset> = others;
 
-        // pool.install bounds parallelism to max_concurrent threads (D-09)
+        // pool.install bounds parallelism to max_concurrent threads (D-09);
+        // into_par_iter() distributes work across the pool's threads in parallel.
         let variants: Result<Vec<Vec<Asset>>, Error> = pool.install(|| {
             images
-                .into_iter()
+                .into_par_iter()
                 .map(|a| self.transcode_image(a))
                 .collect()
         });
@@ -185,7 +190,12 @@ impl Transform for ImageTranscode {
 
 /// Resize `src` to `width`, preserving aspect ratio via Lanczos3 (D-11).
 fn resize_to_width(src: &DynamicImage, width: u32) -> DynamicImage {
-    let height = ((src.height() as f64 * width as f64) / src.width() as f64).round() as u32;
+    debug_assert!(
+        src.width() > 0,
+        "resize_to_width called on zero-width image"
+    );
+    let src_w = src.width().max(1); // defensive guard; valid images are never zero-width
+    let height = ((src.height() as f64 * width as f64) / src_w as f64).round() as u32;
     let height = height.max(1);
     src.resize_exact(width, height, image::imageops::FilterType::Lanczos3)
 }
