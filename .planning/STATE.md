@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
-stopped_at: "Completed 187-04-PLAN.md (manual first-publish of ferro-assets deferred to milestone push)"
-last_updated: "2026-06-07T21:58:27.452Z"
+stopped_at: "Completed 187-04-PLAN.md (checkpoint: manual first-publish of ferro-assets pending)"
+last_updated: "2026-06-07T22:34:40.304Z"
 last_activity: 2026-06-07
 progress:
   total_phases: 186
@@ -24,10 +24,11 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 187 (ferro-assets — Asset Pipeline Composer) — EXECUTING
-Plan: 4 of 4
+Phase: 189
+Plan: Not started
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminders (three NEW crates, CI token has publish-update only, not publish-new):
+
         1. `cargo publish -p ferro-bundle`      # Phase 183
         2. `cargo publish -p ferro-deployments` # Phase 186
         3. `cargo publish -p ferro-assets`      # Phase 187 — deferred from Plan 04 checkpoint
@@ -46,7 +47,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 163
+- Total plans completed: 167
 - Average duration: —
 - Total execution time: —
 
@@ -83,6 +84,7 @@ Progress: [████████░░] 84%
 | 189 | 4 | - | - |
 | 185 | 5 | - | - |
 | 186 | 4 | - | - |
+| 187 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
