@@ -200,10 +200,7 @@ mod tests {
             ))
             .await
             .expect("query sqlite_master for idx_jobs_claim");
-        assert!(
-            idx_row.is_some(),
-            "idx_jobs_claim not created by migration"
-        );
+        assert!(idx_row.is_some(), "idx_jobs_claim not created by migration");
 
         // Verify all three indexes exist.
         for idx_name in &["idx_jobs_claim", "idx_jobs_reaper", "idx_jobs_idempotency"] {
@@ -216,10 +213,7 @@ mod tests {
                 ))
                 .await
                 .expect("query sqlite_master for index");
-            assert!(
-                row.is_some(),
-                "index {idx_name} not created by migration"
-            );
+            assert!(row.is_some(), "index {idx_name} not created by migration");
         }
 
         // Verify down() drops the table.

@@ -133,7 +133,9 @@ where
     /// Full implementation lands in Plan 02 (db.rs claim path).
     async fn dispatch_to_queue(self) -> Result<(), Error> {
         // Plan 02 replaces this stub with the DB enqueue path.
-        Err(Error::custom("Queue not initialized. Call Queue::init() first."))
+        Err(Error::custom(
+            "Queue not initialized. Call Queue::init() first.",
+        ))
     }
 
     /// Dispatch the job in a background task (fire and forget).

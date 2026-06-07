@@ -43,22 +43,26 @@
 //! ```
 
 mod config;
+mod db;
 mod dispatcher;
 mod error;
 mod job;
 mod migration;
-// queue and worker modules are being replaced in Plans 02-03; excluded until then
-// mod queue;
+// worker module is being replaced in Plan 03; excluded until then
 // mod worker;
 
 pub use config::QueueConfig;
+pub use db::{
+    claim, delete_job, enqueue, fail_job, get_delayed_jobs, get_failed_jobs, get_pending_jobs,
+    get_stats, reaper, release_job, requeue_claimed_by, FailedJobInfo, JobInfo, JobRow, JobState,
+    Queue, QueueStats, SingleQueueStats,
+};
 pub use dispatcher::{
     dispatch, dispatch_later, dispatch_to, register_tenant_capture_hook, PendingDispatch,
 };
 pub use error::Error;
 pub use job::{Job, JobPayload};
 pub use migration::CreateJobsTable;
-// re-exports from queue/worker land in Plan 03 lib.rs rework
 
 /// Re-export async_trait for convenience
 pub use async_trait::async_trait;
