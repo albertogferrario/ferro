@@ -46,6 +46,7 @@ mod config;
 mod dispatcher;
 mod error;
 mod job;
+mod migration;
 // queue and worker modules are being replaced in Plans 02-03; excluded until then
 // mod queue;
 // mod worker;
@@ -56,6 +57,7 @@ pub use dispatcher::{
 };
 pub use error::Error;
 pub use job::{Job, JobPayload};
+pub use migration::CreateJobsTable;
 // re-exports from queue/worker land in Plan 03 lib.rs rework
 
 /// Re-export async_trait for convenience
