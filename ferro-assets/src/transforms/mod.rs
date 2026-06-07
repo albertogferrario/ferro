@@ -34,3 +34,6 @@ pub use replace_tokens::ReplaceTokens;
 
 mod image_transcode;
 pub use image_transcode::ImageTranscode;
+
+mod responsive_images;
+pub use responsive_images::ResponsiveImages;
