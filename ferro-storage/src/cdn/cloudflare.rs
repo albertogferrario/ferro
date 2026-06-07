@@ -3,6 +3,9 @@ use crate::cdn::PurgeApi;
 use crate::Error;
 use async_trait::async_trait;
 
+/// Cloudflare purge API rejects more than 30 URLs per request.
+const CF_BATCH_SIZE: usize = 30;
+
 /// Configuration for the Cloudflare CDN purge adapter.
 #[derive(Clone)]
 pub struct CloudflareCdnConfig {
@@ -68,6 +71,16 @@ impl PurgeApi for CloudflareCdn {
         if self.config.api_token.is_empty() {
             return Err(Error::cdn("CF_API_TOKEN not set"));
         }
+        if self.config.zone_id.is_empty() {
+            return Err(Error::cdn("CF_ZONE_ID not set"));
+        }
+        if self.config.cdn_base_url.is_empty() {
+            return Err(Error::cdn("CF_CDN_URL not set"));
+        }
+        let url = format!(
+            "https://api.cloudflare.com/client/v4/zones/{}/purge_cache",
+            self.config.zone_id
+        );
         let full_urls: Vec<String> = paths
             .iter()
             .map(|p| {
@@ -78,25 +91,93 @@ impl PurgeApi for CloudflareCdn {
                 )
             })
             .collect();
-        let url = format!(
-            "https://api.cloudflare.com/client/v4/zones/{}/purge_cache",
-            self.config.zone_id
-        );
-        let resp = self
-            .client
-            .post(&url)
-            .bearer_auth(&self.config.api_token)
-            .json(&serde_json::json!({ "files": full_urls }))
-            .send()
-            .await
-            .map_err(|e| Error::cdn(e.to_string()))?;
-        if !resp.status().is_success() {
-            let status = resp.status().as_u16();
-            let body = resp.text().await.unwrap_or_default();
-            return Err(Error::cdn(format!(
-                "Cloudflare purge status {status}: {body}"
-            )));
+        for chunk in full_urls.chunks(CF_BATCH_SIZE) {
+            let resp = self
+                .client
+                .post(&url)
+                .bearer_auth(&self.config.api_token)
+                .json(&serde_json::json!({ "files": chunk }))
+                .send()
+                .await
+                .map_err(|e| Error::cdn(e.to_string()))?;
+            if !resp.status().is_success() {
+                let status = resp.status().as_u16();
+                let body = resp.text().await.unwrap_or_default();
+                return Err(Error::cdn(format!(
+                    "Cloudflare purge status {status}: {body}"
+                )));
+            }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_cdn() -> CloudflareCdn {
+        CloudflareCdn::new(CloudflareCdnConfig {
+            zone_id: "zone-id".to_string(),
+            api_token: "test-token".to_string(),
+            cdn_base_url: "https://cdn.example.com".to_string(),
+        })
+    }
+
+    /// CF_BATCH_SIZE is 30; 35 paths must produce 2 chunks.
+    #[test]
+    fn cf_batch_size_chunks_correctly() {
+        let paths: Vec<String> = (0..35).map(|i| format!("file{i}.html")).collect();
+        let cdn_base = "https://cdn.example.com";
+        let full_urls: Vec<String> = paths
+            .iter()
+            .map(|p| format!("{cdn_base}/{p}"))
+            .collect();
+        let chunks: Vec<&[String]> = full_urls.chunks(CF_BATCH_SIZE).collect();
+        assert_eq!(chunks.len(), 2, "35 paths → 2 chunks of ≤30");
+        assert_eq!(chunks[0].len(), 30);
+        assert_eq!(chunks[1].len(), 5);
+    }
+
+    /// purge(&[]) → Ok(()), no HTTP.
+    #[tokio::test]
+    async fn cf_adapter_empty_noop() {
+        valid_cdn().purge(&[]).await.unwrap();
+    }
+
+    /// Empty api_token → Err before any HTTP call.
+    #[tokio::test]
+    async fn cf_adapter_missing_token_errors() {
+        let cdn = CloudflareCdn::new(CloudflareCdnConfig {
+            zone_id: "zone-id".to_string(),
+            api_token: "".to_string(),
+            cdn_base_url: "https://cdn.example.com".to_string(),
+        });
+        let err = cdn.purge(&["index.html".to_string()]).await.unwrap_err();
+        assert!(err.to_string().contains("CF_API_TOKEN"), "Error: {err}");
+    }
+
+    /// Empty zone_id → Err before any HTTP call.
+    #[tokio::test]
+    async fn cf_adapter_missing_zone_id_errors() {
+        let cdn = CloudflareCdn::new(CloudflareCdnConfig {
+            zone_id: "".to_string(),
+            api_token: "test-token".to_string(),
+            cdn_base_url: "https://cdn.example.com".to_string(),
+        });
+        let err = cdn.purge(&["index.html".to_string()]).await.unwrap_err();
+        assert!(err.to_string().contains("CF_ZONE_ID"), "Error: {err}");
+    }
+
+    /// Empty cdn_base_url → Err before any HTTP call.
+    #[tokio::test]
+    async fn cf_adapter_missing_cdn_url_errors() {
+        let cdn = CloudflareCdn::new(CloudflareCdnConfig {
+            zone_id: "zone-id".to_string(),
+            api_token: "test-token".to_string(),
+            cdn_base_url: "".to_string(),
+        });
+        let err = cdn.purge(&["index.html".to_string()]).await.unwrap_err();
+        assert!(err.to_string().contains("CF_CDN_URL"), "Error: {err}");
     }
 }
