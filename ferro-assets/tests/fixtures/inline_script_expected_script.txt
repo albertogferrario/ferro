@@ -1,0 +1,33 @@
+
+// Template literal with ${} interpolation
+const greeting = `Hello, ${window.location.hostname}!
+This is a multi-line
+template literal.`;
+
+// Multi-line string via concatenation
+const message = "First line\n" +
+  "Second line\n" +
+  "Third line";
+
+// JSON blob
+const config = {
+  "apiEndpoint": "/api/v1",
+  "timeout": 5000,
+  "features": {
+    "darkMode": true,
+    "notifications": false
+  },
+  "allowedOrigins": [
+    "https://example.com",
+    "https://app.example.com"
+  ]
+};
+
+// Another template literal with nested expressions
+const rendered = `
+  <div class="${config.features.darkMode ? 'dark' : 'light'}">
+    ${greeting}
+  </div>
+`;
+
+console.log(rendered);
