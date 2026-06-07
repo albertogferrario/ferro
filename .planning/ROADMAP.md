@@ -2168,7 +2168,12 @@ Plans:
   3. Retry delay follows exponential backoff with jitter; `Job` trait exposes `max_retries()` and an idempotency-key hook
   4. `WorkerLoop` starts inside `ferro serve` with no separate process; CPU-heavy job bodies documented to use `tokio::task::spawn_blocking`; graceful shutdown re-queues claimed-but-incomplete jobs
   5. The existing `Job`/`Queueable` public API surface is preserved where possible; any breaking change is documented with a migration table (consumer: gestiscilo Phase 188 migrates 4 job types against it); Redis dependency droppable by consumers after migration
-**Plans**: TBD
+**Plans**: 5 plans (5 sequential waves — one-CPU-op-at-a-time constraint)
+- [ ] 185-01-PLAN.md — Foundation: drop redis, add deps, Job idempotency_key + jittered retry_delay, QueueConfig refactor, CreateJobsTable migration
+- [ ] 185-02-PLAN.md — DB engine: dual-backend atomic claim, reaper, idempotent enqueue, lifecycle ops, stat queries, Queue global
+- [ ] 185-03-PLAN.md — WorkerLoop (panic isolation, SIGTERM drain+requeue) + DB-backed dispatcher; delete queue.rs; lib.rs re-exports
+- [ ] 185-04-PLAN.md — Framework: ferro::queue namespaced module, WorkerLoop auto-start, debug endpoints over DB, ferro-mcp job_history fix
+- [ ] 185-05-PLAN.md — Proof artifacts: SQLite + Postgres race tests, shutdown test, docs rewrite, full-suite gate
 
 ### Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote
 **Goal**: New crate providing the deployment abstraction: every publish is an immutable, addressable row; going live is one atomic pointer flip; rollback is promoting an older row. Artifact shape is opaque — static HTML, JSON-UI bundles, and SSR manifests all fit.
