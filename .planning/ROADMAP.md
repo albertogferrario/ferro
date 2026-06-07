@@ -2169,7 +2169,7 @@ Plans:
   4. `WorkerLoop` starts inside `ferro serve` with no separate process; CPU-heavy job bodies documented to use `tokio::task::spawn_blocking`; graceful shutdown re-queues claimed-but-incomplete jobs
   5. The existing `Job`/`Queueable` public API surface is preserved where possible; any breaking change is documented with a migration table (consumer: gestiscilo Phase 188 migrates 4 job types against it); Redis dependency droppable by consumers after migration
 **Plans**: 5 plans (5 sequential waves — one-CPU-op-at-a-time constraint)
-- [ ] 185-01-PLAN.md — Foundation: drop redis, add deps, Job idempotency_key + jittered retry_delay, QueueConfig refactor, CreateJobsTable migration
+- [x] 185-01-PLAN.md — Foundation: drop redis, add deps, Job idempotency_key + jittered retry_delay, QueueConfig refactor, CreateJobsTable migration
 - [ ] 185-02-PLAN.md — DB engine: dual-backend atomic claim, reaper, idempotent enqueue, lifecycle ops, stat queries, Queue global
 - [ ] 185-03-PLAN.md — WorkerLoop (panic isolation, SIGTERM drain+requeue) + DB-backed dispatcher; delete queue.rs; lib.rs re-exports
 - [ ] 185-04-PLAN.md — Framework: ferro::queue namespaced module, WorkerLoop auto-start, debug endpoints over DB, ferro-mcp job_history fix
