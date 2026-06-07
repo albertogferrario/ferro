@@ -129,10 +129,7 @@ mod tests {
     fn cf_batch_size_chunks_correctly() {
         let paths: Vec<String> = (0..35).map(|i| format!("file{i}.html")).collect();
         let cdn_base = "https://cdn.example.com";
-        let full_urls: Vec<String> = paths
-            .iter()
-            .map(|p| format!("{cdn_base}/{p}"))
-            .collect();
+        let full_urls: Vec<String> = paths.iter().map(|p| format!("{cdn_base}/{p}")).collect();
         let chunks: Vec<&[String]> = full_urls.chunks(CF_BATCH_SIZE).collect();
         assert_eq!(chunks.len(), 2, "35 paths → 2 chunks of ≤30");
         assert_eq!(chunks[0].len(), 30);
