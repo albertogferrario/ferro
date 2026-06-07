@@ -99,10 +99,10 @@ impl Deployments {
         let backend = self.db.get_database_backend();
 
         let (p1, p2, p3, p4) = (
-            ph(backend, 1),
-            ph(backend, 2),
-            ph(backend, 3),
-            ph(backend, 4),
+            ph(backend, 1)?,
+            ph(backend, 2)?,
+            ph(backend, 3)?,
+            ph(backend, 4)?,
         );
         let sql = format!(
             "INSERT INTO deployments \
@@ -163,10 +163,10 @@ impl Deployments {
         let now_iso = Utc::now().to_rfc3339();
         let backend = self.db.get_database_backend();
         let (p1, p2, p3, p4) = (
-            ph(backend, 1),
-            ph(backend, 2),
-            ph(backend, 3),
-            ph(backend, 4),
+            ph(backend, 1)?,
+            ph(backend, 2)?,
+            ph(backend, 3)?,
+            ph(backend, 4)?,
         );
         let sql = format!(
             "UPDATE deployments \
@@ -209,7 +209,7 @@ impl Deployments {
         );
         let now_iso = Utc::now().to_rfc3339();
         let backend = self.db.get_database_backend();
-        let (p1, p2) = (ph(backend, 1), ph(backend, 2));
+        let (p1, p2) = (ph(backend, 1)?, ph(backend, 2)?);
         let sql = format!(
             "UPDATE deployments \
              SET status = 'failed', terminated_at = {p1} \
@@ -236,7 +236,7 @@ impl Deployments {
     /// Fetch a deployment by its primary key.
     pub async fn get(&self, id: i64) -> Result<Deployment, Error> {
         let backend = self.db.get_database_backend();
-        let p1 = ph(backend, 1);
+        let p1 = ph(backend, 1)?;
         let sql = format!(
             "SELECT id, identifier, owner_key, source_ref, artifact_location, byte_size, \
              status, artifact_deleted_at, terminated_at, created_at \
@@ -255,7 +255,7 @@ impl Deployments {
     /// List all deployments for `owner_key`, newest first.
     pub async fn list(&self, owner_key: &str) -> Result<Vec<Deployment>, Error> {
         let backend = self.db.get_database_backend();
-        let p1 = ph(backend, 1);
+        let p1 = ph(backend, 1)?;
         let sql = format!(
             "SELECT id, identifier, owner_key, source_ref, artifact_location, byte_size, \
              status, artifact_deleted_at, terminated_at, created_at \
@@ -274,7 +274,7 @@ impl Deployments {
     /// no pointer row exists yet.
     pub async fn active(&self, owner_key: &str) -> Result<Option<Deployment>, Error> {
         let backend = self.db.get_database_backend();
-        let p1 = ph(backend, 1);
+        let p1 = ph(backend, 1)?;
         let sql = format!("SELECT deployment_id FROM deployment_pointers WHERE owner_key = {p1}");
         let stmt = Statement::from_sql_and_values(
             backend,
@@ -319,7 +319,7 @@ impl Deployments {
     /// `previous_deployment_id`.
     pub async fn rollback(&self, owner_key: &str) -> Result<Option<i64>, Error> {
         let backend = self.db.get_database_backend();
-        let p1 = ph(backend, 1);
+        let p1 = ph(backend, 1)?;
         let sql = format!(
             "SELECT previous_deployment_id FROM deployment_pointers WHERE owner_key = {p1}"
         );
@@ -431,10 +431,14 @@ fn parse_optional_timestamp(
 }
 
 /// SQL placeholder style: Postgres uses `$N`, SQLite uses `?N`.
-fn ph(backend: DatabaseBackend, n: usize) -> String {
+///
+/// Returns `Err(Error::UnsupportedBackend)` for any backend other than
+/// Postgres or SQLite (e.g. MySQL uses plain `?` without positional index).
+fn ph(backend: DatabaseBackend, n: usize) -> Result<String, Error> {
     match backend {
-        DatabaseBackend::Postgres => format!("${n}"),
-        _ => format!("?{n}"),
+        DatabaseBackend::Postgres => Ok(format!("${n}")),
+        DatabaseBackend::Sqlite => Ok(format!("?{n}")),
+        _ => Err(Error::UnsupportedBackend),
     }
 }
 
