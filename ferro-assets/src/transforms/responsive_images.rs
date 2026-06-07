@@ -157,9 +157,11 @@ fn rewrite_img_to_picture(
                 };
 
                 // Build srcset string: "hero-480w.avif 480w, hero-768w.avif 768w, ..."
+                // Paths are HTML-encoded to prevent attribute boundary corruption if a path
+                // contains `"`, `&`, `<`, or `>`.
                 let srcset: String = variants
                     .iter()
-                    .map(|(w, p)| format!("{p} {w}w"))
+                    .map(|(w, p)| format!("{} {w}w", html_encode_attr(p)))
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -182,6 +184,16 @@ fn rewrite_img_to_picture(
     rewriter.end().map_err(|e| e.to_string())?;
 
     Ok(output)
+}
+
+/// HTML-encode characters that would corrupt a double-quoted attribute value.
+///
+/// Escapes `&`, `"`, `<`, `>` (in that order — `&` must be first to avoid double-escaping).
+fn html_encode_attr(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// Extract the stem from an `<img src>` value.
