@@ -273,8 +273,13 @@ impl WorkerLoop {
             if self.shutdown.load(Ordering::SeqCst) {
                 info!(worker_id = %self.worker_id, "Shutdown flag set — draining in-flight jobs");
 
-                // Drain: acquire all permits (waits for running spawned tasks to finish).
-                let _ = self
+                // Drain: acquire ALL permits and HOLD them across the requeue
+                // (WR-03). Binding to a named guard keeps the permits held until
+                // the end of this scope; `let _ =` would release them
+                // immediately, letting a still-pending spawn_job task grab a
+                // permit and start a new job after the drain — which
+                // requeue_claimed_by could then yank out from under it.
+                let _drain_guard = self
                     .semaphore
                     .acquire_many(self.config.max_jobs as u32)
                     .await;
@@ -288,6 +293,7 @@ impl WorkerLoop {
                     })?;
 
                 info!(worker_id = %self.worker_id, "WorkerLoop shut down cleanly");
+                // _drain_guard dropped here, after requeue completes.
                 return Ok(());
             }
 
@@ -336,10 +342,27 @@ impl WorkerLoop {
         let handlers = self.handlers.clone();
         let tenant_scope = self.tenant_scope.clone();
         let worker_id = self.worker_id.clone();
+        let shutdown = self.shutdown.clone();
 
         tokio::spawn(async move {
+            // Gate on the shutdown flag before doing any work (WR-03). If drain
+            // has begun, do not start this job — the claimed row will be reset
+            // to pending by `requeue_claimed_by`. Checking before acquiring the
+            // permit also avoids contending with the drain's `acquire_many`.
+            if shutdown.load(Ordering::SeqCst) {
+                return;
+            }
+
             // Acquire the permit inside the task so it is held for the full duration.
             let _permit = permit.acquire_owned().await.expect("semaphore closed");
+
+            // Re-check after acquiring: drain may have set the flag while we
+            // waited on the permit. If so, bail before executing so the claimed
+            // row is left for `requeue_claimed_by` rather than running a job
+            // whose row is about to be (or has been) requeued.
+            if shutdown.load(Ordering::SeqCst) {
+                return;
+            }
 
             let job_id = job_row.id;
             let job_type = job_row.job_type.clone();
