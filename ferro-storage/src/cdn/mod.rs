@@ -320,10 +320,7 @@ mod tests {
             .await;
 
         let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), "test-token"));
-        let err = purger
-            .purge(&["index.html".to_string()])
-            .await
-            .unwrap_err();
+        let err = purger.purge(&["index.html".to_string()]).await.unwrap_err();
         assert!(
             err.to_string().contains("403"),
             "Error must contain status 403: {err}"
@@ -342,10 +339,7 @@ mod tests {
             .await;
 
         let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), ""));
-        let err = purger
-            .purge(&["index.html".to_string()])
-            .await
-            .unwrap_err();
+        let err = purger.purge(&["index.html".to_string()]).await.unwrap_err();
         assert!(
             err.to_string().contains("DIGITALOCEAN_ACCESS_TOKEN"),
             "Error must mention the token env var: {err}"
