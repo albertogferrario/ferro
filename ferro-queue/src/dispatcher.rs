@@ -70,7 +70,6 @@ where
     /// Resolve the tenant ID to attach to the job payload.
     ///
     /// Precedence: explicit override (for_tenant) > auto-capture hook > None.
-    #[allow(dead_code)] // used by dispatch_to_queue in Plan 02
     fn captured_tenant_id(&self) -> Option<i64> {
         self.tenant_id
             .or_else(|| TENANT_ID_HOOK.get().and_then(|f| f()))
@@ -81,8 +80,8 @@ where
     /// In sync mode (`QUEUE_CONNECTION=sync`), the job is executed immediately
     /// in the current task. This is useful for development and testing.
     ///
-    /// In redis mode (`QUEUE_CONNECTION=redis`), the job is pushed to the
-    /// Redis queue for background processing by a worker.
+    /// Otherwise, the job is inserted into the `jobs` table for background
+    /// processing by a `WorkerLoop`.
     pub async fn dispatch(self) -> Result<(), Error> {
         if QueueConfig::is_sync_mode() {
             return self.dispatch_immediately().await;
@@ -128,14 +127,32 @@ where
         }
     }
 
-    /// Push the job to the database queue.
-    ///
-    /// Full implementation lands in Plan 02 (db.rs claim path).
+    /// Push the job to the database queue via `db::enqueue`.
     async fn dispatch_to_queue(self) -> Result<(), Error> {
-        // Plan 02 replaces this stub with the DB enqueue path.
-        Err(Error::custom(
-            "Queue not initialized. Call Queue::init() first.",
-        ))
+        let conn = crate::db::Queue::connection();
+        let queue = self.queue.unwrap_or("default");
+        let tenant_id = self.captured_tenant_id();
+        let now = chrono::Utc::now();
+        let available_at = match self.delay {
+            Some(d) => now + chrono::Duration::from_std(d).unwrap_or_default(),
+            None => now,
+        };
+        let payload = serde_json::to_string(&self.job)
+            .map_err(|e| Error::SerializationFailed(e.to_string()))?;
+        let job_type = self.job.name().to_string();
+        let max_retries = self.job.max_retries();
+        let idempotency_key = self.job.idempotency_key();
+        crate::db::enqueue(
+            conn,
+            queue,
+            &job_type,
+            &payload,
+            max_retries,
+            idempotency_key.as_deref(),
+            tenant_id,
+            available_at,
+        )
+        .await
     }
 
     /// Dispatch the job in a background task (fire and forget).
@@ -167,8 +184,8 @@ where
 
 /// Dispatch a job using the global queue.
 ///
-/// In sync mode, the job executes immediately. In redis mode, it's
-/// queued for background processing.
+/// In sync mode, the job executes immediately. Otherwise, it is inserted
+/// into the `jobs` table for background processing by a `WorkerLoop`.
 ///
 /// # Example
 ///

@@ -2,17 +2,17 @@
 //!
 //! Background job queue system for the Ferro framework.
 //!
-//! Provides a Laravel-inspired queue system with support for:
-//! - Redis-backed job queues
-//! - Job delays and retries
-//! - Multiple named queues
-//! - Job chaining
-//! - Graceful shutdown
+//! Provides a Laravel-inspired queue system backed by the application database:
+//! - SQLite (`BEGIN IMMEDIATE`) and Postgres (`FOR UPDATE SKIP LOCKED`) atomic claim
+//! - Job delays, retries with full-jitter exponential backoff, and idempotency keys
+//! - Multiple named queues processed in priority order
+//! - Panic-isolated worker loop with SIGTERM graceful shutdown
+//! - Tenant-scoped job execution
 //!
 //! ## Example
 //!
 //! ```rust,ignore
-//! use ferro_queue::{Job, Queueable, dispatch};
+//! use ferro_queue::{Job, Queue, QueueConfig, WorkerLoop, WorkerConfig, Queueable};
 //! use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +29,10 @@
 //!     }
 //! }
 //!
-//! // Dispatch a job
+//! // Initialise the queue at application start (once):
+//! // Queue::init(db_connection).await?;
+//!
+//! // Dispatch a job (sync mode by default; set QUEUE_CONNECTION=db for background):
 //! SendEmail { to: "user@example.com".into(), subject: "Hello".into() }
 //!     .dispatch()
 //!     .await?;
