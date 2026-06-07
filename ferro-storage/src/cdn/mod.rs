@@ -192,18 +192,28 @@ impl PurgeApi for DoSpacesCdn {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wiremock::matchers::{body_json, header, method, path_regex};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    // Tests for Task 1 acceptance criteria (structural/behavioral verification without HTTP).
-    // HTTP-backed tests are in Task 2 (wiremock suite).
+    /// Build a DoSpacesCdnConfig pointing at the wiremock server URI.
+    fn cfg(server_uri: &str, id: Option<&str>, token: &str) -> DoSpacesCdnConfig {
+        DoSpacesCdnConfig {
+            endpoint_id: id.map(String::from),
+            api_token: token.to_string(),
+            api_base: Some(server_uri.to_string()),
+        }
+    }
+
+    // --- Structural / no-HTTP tests ---
 
     #[test]
     fn debug_does_not_contain_token() {
-        let cfg = DoSpacesCdnConfig {
+        let config = DoSpacesCdnConfig {
             endpoint_id: Some("ep-123".into()),
             api_token: "secret-token-abc".into(),
             api_base: None,
         };
-        let dbg = format!("{cfg:?}");
+        let dbg = format!("{config:?}");
         assert!(
             !dbg.contains("secret-token-abc"),
             "Debug output must not contain the token: {dbg}"
@@ -214,32 +224,162 @@ mod tests {
         );
     }
 
+    // --- wiremock-backed tests ---
+
+    /// 1 path → exactly 1 DELETE to /v2/cdn/endpoints/test-id/cache, correct auth, correct body.
     #[tokio::test]
-    async fn purge_empty_slice_returns_ok_no_panic() {
-        let cfg = DoSpacesCdnConfig {
-            endpoint_id: Some("ep-123".into()),
-            api_token: "tok".into(),
-            api_base: None,
-        };
-        let purger = DoSpacesCdn::new(cfg);
-        // Should return Ok(()) immediately, no network calls
+    async fn do_adapter_request_shape() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path_regex(r"/v2/cdn/endpoints/test-id/cache"))
+            .and(header("Authorization", "Bearer test-token"))
+            .and(body_json(serde_json::json!({ "files": ["index.html"] })))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), "test-token"));
+        purger.purge(&["index.html".to_string()]).await.unwrap();
+        // wiremock verifies .expect(1) on drop
+    }
+
+    /// 55 paths → exactly 2 DELETE requests (chunks of 50 + 5).
+    #[tokio::test]
+    async fn do_adapter_batches_over_50() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path_regex(r"/v2/cdn/endpoints/test-id/cache"))
+            .and(header("Authorization", "Bearer test-token"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), "test-token"));
+        let paths: Vec<String> = (0..55).map(|i| format!("file{i}.html")).collect();
+        purger.purge(&paths).await.unwrap();
+    }
+
+    /// 50 plain paths + 1 wildcard "dir/*" = 51 elements → 2 requests.
+    /// Wildcard counts as 1 slot, not expanded.
+    #[tokio::test]
+    async fn do_adapter_wildcard_slot() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path_regex(r"/v2/cdn/endpoints/test-id/cache"))
+            .and(header("Authorization", "Bearer test-token"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), "test-token"));
+        let mut paths: Vec<String> = (0..50).map(|i| format!("file{i}.html")).collect();
+        paths.push("dir/*".to_string()); // 51 total → 2 requests
+        purger.purge(&paths).await.unwrap();
+    }
+
+    /// Missing endpoint id → purge() returns Ok(()), zero HTTP requests.
+    #[tokio::test]
+    async fn do_adapter_noop_missing_id() {
+        let server = MockServer::start().await;
+        // Expect zero requests — wiremock will fail the test if any arrive
+        Mock::given(method("DELETE"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let purger = DoSpacesCdn::new(cfg(&server.uri(), None, "test-token"));
+        purger.purge(&["a".to_string()]).await.unwrap();
+    }
+
+    /// purge(&[]) → Ok(()), zero HTTP requests.
+    #[tokio::test]
+    async fn purge_empty_noop() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), "test-token"));
         purger.purge(&[]).await.unwrap();
     }
 
+    /// Non-204 response → Err(Error::Cdn(...)) whose message contains the status code.
     #[tokio::test]
-    async fn missing_token_with_id_set_returns_error() {
-        let cfg = DoSpacesCdnConfig {
-            endpoint_id: Some("ep-123".into()),
-            api_token: "".into(),
-            api_base: Some("http://127.0.0.1:9".into()), // unreachable — no request should be made
-        };
-        let purger = DoSpacesCdn::new(cfg);
-        let result = purger.purge(&["index.html".into()]).await;
-        assert!(result.is_err());
-        let msg = result.unwrap_err().to_string();
+    async fn do_adapter_error_on_non_204() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path_regex(r"/v2/cdn/endpoints/test-id/cache"))
+            .respond_with(ResponseTemplate::new(403))
+            .mount(&server)
+            .await;
+
+        let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), "test-token"));
+        let err = purger
+            .purge(&["index.html".to_string()])
+            .await
+            .unwrap_err();
         assert!(
-            msg.contains("DIGITALOCEAN_ACCESS_TOKEN"),
-            "Error must mention the token env var: {msg}"
+            err.to_string().contains("403"),
+            "Error must contain status 403: {err}"
+        );
+    }
+
+    /// Empty token with id set → Err(Error::Cdn) mentioning DIGITALOCEAN_ACCESS_TOKEN.
+    /// Zero HTTP requests are made.
+    #[tokio::test]
+    async fn do_adapter_missing_token_errors() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), ""));
+        let err = purger
+            .purge(&["index.html".to_string()])
+            .await
+            .unwrap_err();
+        assert!(
+            err.to_string().contains("DIGITALOCEAN_ACCESS_TOKEN"),
+            "Error must mention the token env var: {err}"
+        );
+    }
+
+    /// 300 paths → 6 chunks. The 6th request must wait for the rate-limit window.
+    /// Total elapsed must be >= ~9 s (RATE_LIMIT_WINDOW - 1s tolerance).
+    ///
+    /// NOTE: This test takes ~10 s due to the real rate-limit sleep. This is intentional —
+    /// it asserts that the throttle actually serializes under the 5-req/10s window without
+    /// relying on tokio::time::pause (which could give a false pass).
+    #[tokio::test]
+    async fn do_adapter_throttle_serializes() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path_regex(r"/v2/cdn/endpoints/test-id/cache"))
+            .and(header("Authorization", "Bearer test-token"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(6)
+            .mount(&server)
+            .await;
+
+        let purger = DoSpacesCdn::new(cfg(&server.uri(), Some("test-id"), "test-token"));
+        // 300 paths → 6 chunks of 50 — the 6th must wait for the window
+        let paths: Vec<String> = (0..300).map(|i| format!("file{i}.html")).collect();
+
+        let start = std::time::Instant::now();
+        purger.purge(&paths).await.unwrap();
+        let elapsed = start.elapsed();
+
+        assert!(
+            elapsed >= Duration::from_secs(9),
+            "Throttle should have held the 6th request for ~10s; elapsed: {elapsed:?}"
         );
     }
 }
