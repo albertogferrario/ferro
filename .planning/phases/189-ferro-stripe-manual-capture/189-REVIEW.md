@@ -18,7 +18,7 @@ findings:
   warning: 2
   info: 3
   total: 5
-status: issues_found
+status: resolved
 ---
 
 # Phase 189: Code Review Report
@@ -143,3 +143,12 @@ Phase 189 regression — flagged because the file is in scope.
 _Reviewed: 2026-06-07_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+
+---
+
+## Resolution (2026-06-07)
+
+- **WR-01** FIXED — `capture()` now rejects `Some(n)` for `n <= 0` before any network call; `capture_rejects_zero_amount` test added (commit follows review).
+- **WR-02** FIXED — webhook lifecycle docs now advise `capture(&id, None)` over echoing `amount_capturable_cents` from stored events.
+- Info items (IN-01..03) accepted as-is: cosmetic clone pattern, optional fixture variant, pre-existing TODO(140) markers outside phase scope.
