@@ -2186,7 +2186,7 @@ Plans:
   4. `DeploymentStorage` trait abstracts artifact persistence with an S3-compatible default implementation delegating to ferro-storage; `preview_url(deployment_id)` returns the wildcard-subdomain URL form (consumers may leave it unwired)
   5. Crate contains zero HTML/gestiscilo-specific assumptions — a doc-test or example stores a non-HTML artifact bundle (e.g. JSON specs) through the same API
 **Plans**: 4 plans
-- [ ] 186-01-PLAN.md — Crate skeleton + workspace/publish.yml registration + error/config + portable migration helpers (Wave 1)
+- [x] 186-01-PLAN.md — Crate skeleton + workspace/publish.yml registration + error/config + portable migration helpers (Wave 1)
 - [ ] 186-02-PLAN.md — Deployments handle lifecycle + atomic promote/rollback + concurrent-promote race tests (Wave 2)
 - [ ] 186-03-PLAN.md — DeploymentStorage trait (S3-compatible default) + preview_url subdomain helper (Wave 2)
 - [ ] 186-04-PLAN.md — Criterion-5 JSON-artifact doc-test + docs page + version bump 0.2.45 + publish dry-run (Wave 3)
