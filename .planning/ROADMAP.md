@@ -2152,7 +2152,7 @@ Plans:
 ## Phases
 
 - [x] **Phase 185: ferro::queue — DB-Backed Job Queue** — `Job` trait + `WorkerLoop` in `ferro serve` + atomic claim (Postgres/SQLite) + retry/backoff + reaper; replaces the Redis-only ferro-queue backend (completed 2026-06-07)
-- [ ] **Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote** — new crate: `Deployment` model, `DeploymentStorage` trait, `promote`/`rollback`, `preview_url` helper
+- [x] **Phase 186: ferro-deployments — Immutable Deployments + Atomic Promote** — new crate: `Deployment` model, `DeploymentStorage` trait, `promote`/`rollback`, `preview_url` helper (completed 2026-06-07)
 - [ ] **Phase 187: ferro-assets — Asset Pipeline Composer** — new crate: content-type-aware `Pipeline` with HTML/CSS/JS minify, pure-Rust image transcode, generic injection
 - [ ] **Phase 188: ferro-storage CDN Extension** — `cdn_url()` + `PurgeApi` trait + DO Spaces CDN adapter, feature-flagged Bunny/Cloudflare
 
@@ -2189,7 +2189,7 @@ Plans:
 - [x] 186-01-PLAN.md — Crate skeleton + workspace/publish.yml registration + error/config + portable migration helpers (Wave 1)
 - [x] 186-02-PLAN.md — Deployments handle lifecycle + atomic promote/rollback + concurrent-promote race tests (Wave 2)
 - [x] 186-03-PLAN.md — DeploymentStorage trait (S3-compatible default) + preview_url subdomain helper (Wave 2)
-- [ ] 186-04-PLAN.md — Criterion-5 JSON-artifact doc-test + docs page + version bump 0.2.45 + publish dry-run (Wave 3)
+- [x] 186-04-PLAN.md — Criterion-5 JSON-artifact doc-test + docs page + version bump 0.2.45 + publish dry-run (Wave 3)
 
 ### Phase 187: ferro-assets — Asset Pipeline Composer
 **Goal**: New crate providing a composable, content-type-aware asset pipeline for publish-time optimization: HTML/CSS/JS minification, pure-Rust image transcoding with responsive variants, and generic tag injection — the Tier 1 pipeline gestiscilo's `PublishFrontendJob` composes.
