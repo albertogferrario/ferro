@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: executing
-stopped_at: Completed 166-01-PLAN.md
-last_updated: "2026-06-08T03:45:19.309Z"
+stopped_at: Completed 166-02-PLAN.md
+last_updated: "2026-06-08T03:50:30.870Z"
 last_activity: 2026-06-08
 progress:
   total_phases: 62
   completed_phases: 47
   total_plans: 239
-  completed_plans: 235
-  percent: 98
+  completed_plans: 236
+  percent: 99
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 166 (Structured Outputs, Tool Calling & ServiceDef-aware Schema Normalizer) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminders (three NEW crates, CI token has publish-update only, not publish-new):
 
@@ -248,6 +248,7 @@ Progress: [████████░░] 84%
 | Phase 165 P03 | 10 | 1 tasks | 1 files |
 | Phase 165 P04 | 24min | 3 tasks | 6 files |
 | Phase 166 P01 | 5min | 3 tasks | 4 files |
+| Phase 166 P02 | 300 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -332,7 +333,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T03:45:19.302Z
-Stopped at: Completed 166-01-PLAN.md
+Last session: 2026-06-08T03:50:30.864Z
+Stopped at: Completed 166-02-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
