@@ -1834,7 +1834,7 @@ Plans:
   4. A keep-alive `:ping\n\n` comment is emitted every 15 seconds on idle SSE connections to prevent reverse-proxy idle-timeout disconnects
   5. An integration test verifies token-by-token delivery: a test SSE endpoint sends three events with delays; the test client receives each event before the next is sent
 **Plans**: 2 plans
-- [ ] 168-01-PLAN.md — FerroBody enum + http_body::Body impl + 17-site Full<Bytes>→FerroBody refactor (load-bearing structural change; buffered-path regression green)
+- [x] 168-01-PLAN.md — FerroBody enum + http_body::Body impl + 17-site Full<Bytes>→FerroBody refactor (load-bearing structural change; buffered-path regression green)
 - [ ] 168-02-PLAN.md — SseEvent wire serializer + SseStream keep-alive + HttpResponse::sse factory + full SSE unit suite
 
 ### Phase 169: StreamText Component
@@ -1906,7 +1906,7 @@ Plans:
 | 165. LlmClient Trait & Providers | 4/4 | Complete    | 2026-06-08 |
 | 166. Structured Outputs & Tool Calling | 5/5 | Complete    | 2026-06-08 |
 | 167. Embeddings & pgvector | 2/2 | Complete    | 2026-06-08 |
-| 168. Framework SSE Primitives | 0/? | Not started | - |
+| 168. Framework SSE Primitives | 1/2 | In Progress|  |
 | 169. StreamText Component | 0/? | Not started | - |
 | 170. ferro-cli Migration | 0/? | Not started | - |
 | 171. ai:make & ai:explain CLI Commands | 0/? | Not started | - |
@@ -1918,7 +1918,7 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 2/2 plans complete
+**Plans:** 1/2 plans executed
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
