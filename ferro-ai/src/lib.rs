@@ -46,8 +46,10 @@ pub mod client;
 pub mod complete;
 pub mod config;
 pub mod confirmation;
+pub mod embed;
 pub mod error;
 pub mod schema;
+pub mod similarity;
 pub mod tools;
 
 pub use classifier::anthropic::AnthropicProvider;
