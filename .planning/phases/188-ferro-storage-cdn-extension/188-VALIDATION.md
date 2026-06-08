@@ -40,12 +40,33 @@ created: 2026-06-08
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 188-01-T1 | 01 | 1 | STOR-F-01 | T-188-03 | Error::cdn carries no secret | unit/compile | `cargo build -p ferro-storage --features cdn-bunny,cdn-cloudflare` | ❌ W0 | ⬜ pending |
-| 188-01-T2 | 01 | 1 | STOR-F-01 | T-188-01 | double-slash-safe URL composition | unit | `cargo test -p ferro-storage cdn_url` + full `cargo test -p ferro-storage` | ❌ W0 | ⬜ pending |
-| 188-02 | 02 | 2 | STOR-F-02 | T-188-10..13 | DO adapter: batching/throttle/no-op; token redaction | integration (wiremock) | `cargo test -p ferro-storage do_adapter` | ❌ W0 | ⬜ pending |
-| 188-03 | 03 | 3 | STOR-F-02 (crit 4) | T-188-10..13 | Bunny/CF redacted Debug; default-graph absence | compile + full gate | `cargo build -p ferro-storage --features cdn-bunny,cdn-cloudflare` + `cargo test --all-features` | ❌ W0 | ⬜ pending |
+| 188-01-T1 | 01 | 1 | STOR-F-01 | T-188-03 | Error::cdn carries no secret | unit/compile | `cargo build -p ferro-storage --features cdn-bunny,cdn-cloudflare` | ✅ | ✅ green |
+| 188-01-T2 | 01 | 1 | STOR-F-01 | T-188-01 | double-slash-safe URL composition | unit | `cargo test -p ferro-storage cdn_url` (+ `from_env_cdn_url`) | ✅ | ✅ green |
+| 188-02 | 02 | 2 | STOR-F-02 | T-188-04..09 | DO adapter: batching/throttle/no-op; token redaction | integration (wiremock) | `cargo test -p ferro-storage do_adapter` (+ `purge_empty_noop`, `debug_does_not_contain_token`) | ✅ | ✅ green |
+| 188-03 | 03 | 3 | STOR-F-02 (crit 4) | T-188-10..13 | Bunny/CF redacted Debug; chunking; default-graph absence | compile + full gate | `cargo test -p ferro-storage --all-features` (bunny/cf tests) + `cargo tree` absence proof | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+---
+
+## Validation Audit 2026-06-08
+
+| Metric | Count |
+|--------|-------|
+| Requirements / criteria | 2 reqs (STOR-F-01/02), 4 success criteria |
+| COVERED (automated) | 4/4 criteria — all green |
+| PARTIAL | 0 |
+| MISSING | 0 |
+| Manual-only | 1 (live DO endpoint smoke — needs real credentials) |
+
+**Evidence:** `cargo test -p ferro-storage --all-features` green at HEAD (lib unit + integration + doc-tests, 0 failures). 26 CDN/cdn_url-related test functions cover every criterion:
+- SC-1 → `cdn_url_returns_cdn_when_configured`, `cdn_url_falls_back_to_origin`, `cdn_url_no_double_slash`, `cdn_url_via_storage_facade`, `from_env_cdn_url`
+- SC-2 → `do_adapter_request_shape`, `do_adapter_batches_over_50`, `do_adapter_wildcard_slot`, `do_adapter_throttle_serializes`, `do_adapter_error_on_non_204`, `do_adapter_missing_token_errors`, `purge_empty_noop`, `debug_does_not_contain_token`
+- SC-3 → `do_adapter_noop_missing_id` (wiremock `.expect(0)`)
+- SC-4 → `bunny_adapter_*`, `cf_adapter_*`, `cf_batch_size_chunks_correctly` (compiled+run under `--all-features`); default-graph absence proven by identical `cargo tree`
+- Code-review-fix coverage: `cf_batch_size_chunks_correctly` (WR-03), `*_missing_*_errors` (WR-04), `test_register_disk_with_cdn_url`/`_none_falls_back` (IN-01)
+
+No gaps to fill — auditor not spawned. `nyquist_compliant: true` confirmed.
 
 ---
 
