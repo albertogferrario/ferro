@@ -1894,7 +1894,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 165. LlmClient Trait & Providers | 4/4 | Complete   | 2026-06-08 |
+| 165. LlmClient Trait & Providers | 4/4 | Complete    | 2026-06-08 |
 | 166. Structured Outputs & Tool Calling | 0/? | Not started | - |
 | 167. Embeddings & pgvector | 0/? | Not started | - |
 | 168. Framework SSE Primitives | 0/? | Not started | - |
