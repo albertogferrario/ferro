@@ -1763,7 +1763,7 @@ Plans:
 
 - [x] **Phase 165: LlmClient Trait & Provider Implementations** — `LlmClient` trait + Anthropic/OpenAI/Ollama providers + `AiConfig::from_env()` + `ClassifierConfig` default-model fix (completed 2026-06-08)
 - [x] **Phase 166: Structured Outputs, Tool Calling & ServiceDef-aware Schema Normalizer** — `ferro_ai::complete::<T>()` + generic schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ServiceDef`-aware specialization that locks the LLM to valid projection shapes when `T` is `ferro_projections::ServiceDef` + `ToolRegistry` with `max_iterations` hard cap (completed 2026-06-08)
-- [ ] **Phase 167: Embeddings & pgvector** — `embed()` + `cosine_similarity()` pure Rust helpers + optional `pgvector` feature-gated module
+- [x] **Phase 167: Embeddings & pgvector** — `embed()` + `cosine_similarity()` pure Rust helpers + optional `pgvector` feature-gated module (completed 2026-06-08)
 - [ ] **Phase 168: Framework SSE Primitives** — `SseEvent` + `SseStream` + `HttpResponse::sse()` in framework crate; SSE routes structurally excluded from CompressionLayer
 - [ ] **Phase 169: StreamText Component** — `StreamText` ferro-json-ui component rendering a token stream from an SSE endpoint URL
 - [ ] **Phase 170: ferro-cli Migration** — delete `ferro-cli/src/ai.rs` blocking client; wire all LLM calls through `ferro_ai::complete::<T>()`
@@ -1821,7 +1821,7 @@ Plans:
   5. Unit tests for `cosine_similarity`: orthogonal vectors return 0.0, identical vectors return 1.0, opposite vectors return -1.0
 **Plans**: 2 plans
 - [x] 167-01-PLAN.md — Wave 1 (AISDK-04): cosine_similarity + embed() free fn + D-13 embed-model fix (Ollama/OpenAI) + Error::Sqlx variant + lib.rs core re-exports
-- [ ] 167-02-PLAN.md — Wave 2 (AISDK-05): pgvector feature + optional pgvector/sqlx deps + PgVectorStore (store/nearest) + gated integration test + SC#4 dep-graph assertion
+- [x] 167-02-PLAN.md — Wave 2 (AISDK-05): pgvector feature + optional pgvector/sqlx deps + PgVectorStore (store/nearest) + gated integration test + SC#4 dep-graph assertion
 
 ### Phase 168: Framework SSE Primitives
 **Goal**: Add SSE streaming support to the framework so handlers can push events to the browser. SSE routes are structurally excluded from CompressionLayer — this is a guarantee, not documentation.
@@ -1903,7 +1903,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 165. LlmClient Trait & Providers | 4/4 | Complete    | 2026-06-08 |
 | 166. Structured Outputs & Tool Calling | 5/5 | Complete    | 2026-06-08 |
-| 167. Embeddings & pgvector | 1/2 | In Progress|  |
+| 167. Embeddings & pgvector | 2/2 | Complete   | 2026-06-08 |
 | 168. Framework SSE Primitives | 0/? | Not started | - |
 | 169. StreamText Component | 0/? | Not started | - |
 | 170. ferro-cli Migration | 0/? | Not started | - |
@@ -1916,7 +1916,7 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
