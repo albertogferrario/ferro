@@ -1847,7 +1847,10 @@ Plans:
   3. `COMPONENT_CATALOG` and ferro-mcp `CatalogComponent` include `StreamText` with accurate prop descriptions for AI generation
   4. Documented under `### StreamText` in `docs/src/json-ui/components.md`
   5. `cargo clippy --all --all-targets -- -D warnings` and `cargo test --all-features` green
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 169-01-PLAN.md — StreamTextProps struct + render_streamtext leaf renderer + escaping (Wave 1)
+- [ ] 169-02-PLAN.md — Registry sync (BUILTIN_TYPES/dispatch/count) + built-in init-script mechanism + EventSource JS + catalog registration (Wave 2)
+- [ ] 169-03-PLAN.md — ### StreamText docs section + event:done server contract (Wave 2)
 
 ### Phase 170: ferro-cli Migration
 **Goal**: Delete the blocking Anthropic-only `ferro-cli/src/ai.rs` client and route all LLM calls through the `ferro_ai` SDK. Validates the SDK against the existing `make:json-view` command before new AI commands are built on top.
