@@ -1,32 +1,30 @@
+use crate::client::anthropic::AnthropicClient;
+use crate::client::{CompletionRequest, LlmClient, Message, Role};
 use crate::error::Error;
 use async_trait::async_trait;
+use std::sync::Arc;
 
 use super::{ClassificationProvider, ClassifierConfig};
 
 /// Anthropic API-based classification provider.
 ///
-/// Uses the Anthropic Messages API with `output_config.format.type = "json_schema"`
-/// for guaranteed schema-compliant JSON output.
+/// Thin adapter over [`AnthropicClient`]. All HTTP logic lives in the client;
+/// this type builds the [`CompletionRequest`] and delegates (D-10).
 ///
 /// # Authentication
 ///
 /// Requires an `ANTHROPIC_API_KEY` environment variable or an explicit API key
 /// passed to [`AnthropicProvider::new`].
 pub struct AnthropicProvider {
-    client: reqwest::Client,
-    api_key: String,
+    client: Arc<AnthropicClient>,
 }
 
 impl AnthropicProvider {
     /// Create a new provider with an explicit API key.
-    ///
-    /// The internal `reqwest::Client` uses a 60-second timeout.
     pub fn new(api_key: String) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(60))
-            .build()
-            .expect("failed to build reqwest client");
-        Self { client, api_key }
+        Self {
+            client: Arc::new(AnthropicClient::new(api_key, None)),
+        }
     }
 
     /// Create a provider reading the API key from `ANTHROPIC_API_KEY`.
@@ -34,35 +32,6 @@ impl AnthropicProvider {
         let api_key = std::env::var("ANTHROPIC_API_KEY")
             .map_err(|_| Error::Config("ANTHROPIC_API_KEY not set".to_string()))?;
         Ok(Self::new(api_key))
-    }
-
-    /// Build the request body for the Anthropic Messages API.
-    ///
-    /// Uses `output_config.format.type = "json_schema"` for structured output.
-    /// The system prompt is cached with `cache_control.type = "ephemeral"` to
-    /// reduce token costs on repeated calls with the same system prompt.
-    pub(crate) fn build_request_body(
-        system_prompt: &str,
-        user_prompt: &str,
-        schema: &serde_json::Value,
-        config: &ClassifierConfig,
-    ) -> serde_json::Value {
-        serde_json::json!({
-            "model": config.model,
-            "max_tokens": config.max_tokens,
-            "system": [{
-                "type": "text",
-                "text": system_prompt,
-                "cache_control": {"type": "ephemeral"}
-            }],
-            "messages": [{"role": "user", "content": user_prompt}],
-            "output_config": {
-                "format": {
-                    "type": "json_schema",
-                    "schema": schema
-                }
-            }
-        })
     }
 }
 
@@ -75,107 +44,77 @@ impl ClassificationProvider for AnthropicProvider {
         schema: &serde_json::Value,
         config: &ClassifierConfig,
     ) -> Result<serde_json::Value, Error> {
-        let body = Self::build_request_body(system_prompt, user_prompt, schema, config);
-
-        let response = self
-            .client
-            .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", &self.api_key)
-            .header("anthropic-version", "2023-06-01")
-            .header("content-type", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| {
-                if e.is_timeout() {
-                    Error::Timeout
-                } else {
-                    Error::Provider { status: None, message: e.to_string() }
-                }
-            })?;
-
-        let status = response.status().as_u16();
-
-        if !response.status().is_success() {
-            let text = response.text().await.unwrap_or_default();
-            return Err(Error::Provider { status: Some(status), message: text });
-        }
-
-        let json: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| Error::Deserialization(e.to_string()))?;
-
-        // Extract content[0].text from Anthropic response envelope
-        let text = json["content"]
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|item| item["text"].as_str())
-            .ok_or_else(|| {
-                Error::Deserialization(format!("unexpected response structure: {json}"))
-            })?;
-
-        serde_json::from_str(text).map_err(|e| Error::Deserialization(e.to_string()))
+        let request = CompletionRequest {
+            system: Some(system_prompt.to_string()),
+            messages: vec![Message {
+                role: Role::User,
+                content: user_prompt.to_string(),
+            }],
+            max_tokens: config.max_tokens,
+            model_override: if config.model.is_empty() {
+                None
+            } else {
+                Some(config.model.clone())
+            },
+            schema: Some(schema.clone()),
+        };
+        let text = self.client.complete(request).await?;
+        serde_json::from_str(&text).map_err(|e| Error::Deserialization(e.to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::client::anthropic::AnthropicClient;
+    use crate::client::{CompletionRequest, Message, Role};
 
+    /// Verify the CompletionRequest built for classification carries the schema
+    /// and model_override fields correctly. Exercises AnthropicClient::build_body
+    /// (the body-shape assertions moved to client/anthropic.rs in Plan 02).
     #[test]
-    fn test_build_request_body_contains_output_config() {
-        let config = ClassifierConfig {
-            model: "claude-sonnet-4-6".to_string(), // explicit model (default is now empty per D-03)
-            ..Default::default()
+    fn test_classify_request_shape_with_explicit_model() {
+        let client = AnthropicClient::new("k".into(), None);
+        let schema =
+            serde_json::json!({"type": "object", "properties": {"category": {"type": "string"}}});
+        let request = CompletionRequest {
+            system: Some("You classify intents.".into()),
+            messages: vec![Message {
+                role: Role::User,
+                content: "Hello world".into(),
+            }],
+            max_tokens: 1024,
+            model_override: Some("claude-opus-4-6".into()),
+            schema: Some(schema.clone()),
         };
-        let schema = serde_json::json!({
-            "type": "object",
-            "properties": {
-                "category": {"type": "string"}
-            }
-        });
+        let body = client.build_body(&request, false);
 
-        let body = AnthropicProvider::build_request_body(
-            "You classify intents.",
-            "Hello world",
-            &schema,
-            &config,
-        );
-
-        // Verify model and max_tokens from config
-        assert_eq!(body["model"], "claude-sonnet-4-6");
+        assert_eq!(body["model"], "claude-opus-4-6");
         assert_eq!(body["max_tokens"], 1024);
-
-        // Verify output_config.format.type = "json_schema"
         assert_eq!(body["output_config"]["format"]["type"], "json_schema");
         assert_eq!(body["output_config"]["format"]["schema"], schema);
-
-        // Verify system prompt with cache_control
         let system = &body["system"][0];
         assert_eq!(system["type"], "text");
         assert_eq!(system["text"], "You classify intents.");
         assert_eq!(system["cache_control"]["type"], "ephemeral");
-
-        // Verify user message
         assert_eq!(body["messages"][0]["role"], "user");
         assert_eq!(body["messages"][0]["content"], "Hello world");
     }
 
     #[test]
-    fn test_build_request_body_uses_config_model() {
-        let config = ClassifierConfig {
-            model: "claude-opus-4-6".to_string(),
-            max_tokens: 2048,
-            ..Default::default()
+    fn test_classify_request_empty_model_uses_client_default() {
+        let client = AnthropicClient::new("k".into(), None);
+        let request = CompletionRequest {
+            system: None,
+            messages: vec![Message {
+                role: Role::User,
+                content: "hi".into(),
+            }],
+            max_tokens: 512,
+            model_override: None, // empty config.model → no override
+            schema: None,
         };
-        let body = AnthropicProvider::build_request_body(
-            "system",
-            "user",
-            &serde_json::json!({}),
-            &config,
-        );
-        assert_eq!(body["model"], "claude-opus-4-6");
-        assert_eq!(body["max_tokens"], 2048);
+        let body = client.build_body(&request, false);
+        // AnthropicClient::default_model() returns "claude-sonnet-4-6"
+        assert_eq!(body["model"], "claude-sonnet-4-6");
     }
 }

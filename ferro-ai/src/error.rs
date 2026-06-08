@@ -54,7 +54,9 @@ impl Error {
     /// All non-`Provider` variants (including `Unsupported` and `Timeout`) return `false`.
     pub fn is_retryable(&self) -> bool {
         match self {
-            Error::Provider { status: Some(s), .. } => !matches!(s, 400 | 401 | 403 | 404 | 422),
+            Error::Provider {
+                status: Some(s), ..
+            } => !matches!(s, 400 | 401 | 403 | 404 | 422),
             Error::Provider { status: None, .. } => true, // network error → retry
             _ => false,
         }
@@ -67,16 +69,56 @@ mod tests {
 
     #[test]
     fn test_error_is_retryable() {
-        assert!(!Error::Provider { status: Some(400), message: "".into() }.is_retryable());
-        assert!(!Error::Provider { status: Some(401), message: "".into() }.is_retryable());
-        assert!(!Error::Provider { status: Some(403), message: "".into() }.is_retryable());
-        assert!(!Error::Provider { status: Some(404), message: "".into() }.is_retryable());
-        assert!(!Error::Provider { status: Some(422), message: "".into() }.is_retryable());
-        assert!(Error::Provider { status: Some(429), message: "".into() }.is_retryable());
-        assert!(Error::Provider { status: Some(500), message: "".into() }.is_retryable());
-        assert!(Error::Provider { status: Some(503), message: "".into() }.is_retryable());
-        assert!(Error::Provider { status: Some(529), message: "".into() }.is_retryable());
-        assert!(Error::Provider { status: None, message: "".into() }.is_retryable());
+        assert!(!Error::Provider {
+            status: Some(400),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(!Error::Provider {
+            status: Some(401),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(!Error::Provider {
+            status: Some(403),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(!Error::Provider {
+            status: Some(404),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(!Error::Provider {
+            status: Some(422),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(Error::Provider {
+            status: Some(429),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(Error::Provider {
+            status: Some(500),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(Error::Provider {
+            status: Some(503),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(Error::Provider {
+            status: Some(529),
+            message: "".into()
+        }
+        .is_retryable());
+        assert!(Error::Provider {
+            status: None,
+            message: "".into()
+        }
+        .is_retryable());
         assert!(!Error::Unsupported.is_retryable());
         assert!(!Error::Timeout.is_retryable());
     }

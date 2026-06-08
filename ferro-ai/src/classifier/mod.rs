@@ -169,7 +169,6 @@ impl<T: DeserializeOwned> Classifier<T> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,7 +273,10 @@ mod tests {
         ) -> Result<serde_json::Value, Error> {
             let count = self.call_count.fetch_add(1, Ordering::SeqCst) + 1;
             if count <= self.fail_times {
-                Err(Error::Provider { status: Some(500), message: "internal server error".into() })
+                Err(Error::Provider {
+                    status: Some(500),
+                    message: "internal server error".into(),
+                })
             } else {
                 Ok(serde_json::json!({"category": "ok"}))
             }
@@ -325,7 +327,10 @@ mod tests {
                 _config: &ClassifierConfig,
             ) -> Result<serde_json::Value, Error> {
                 self.call_count.fetch_add(1, Ordering::SeqCst);
-                Err(Error::Provider { status: Some(401), message: "unauthorized".into() })
+                Err(Error::Provider {
+                    status: Some(401),
+                    message: "unauthorized".into(),
+                })
             }
         }
 
