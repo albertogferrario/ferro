@@ -15,7 +15,8 @@ use crate::component::{
     ChecklistProps, DescriptionListProps, DropdownMenuAction, DropdownMenuProps, EmptyStateProps,
     HeaderProps, IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
     ProductTileProps, ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps,
-    Size, SkeletonProps, StatCardProps, TextElement, TextProps, ToastProps, ToastVariant,
+    Size, SkeletonProps, StatCardProps, StreamTextProps, TextElement, TextProps, ToastProps,
+    ToastVariant,
 };
 use crate::spec::{Element, Spec};
 
@@ -1379,6 +1380,44 @@ pub(crate) fn render_raw_html(el: &Element, _spec: &Spec, _data: &Value, _depth:
     // Verbatim emission — intentionally NOT escaped (server-only trust).
     // See RawHtmlProps rustdoc for the trust boundary.
     format!("<div data-ferro-raw-html>{}</div>", props.html)
+}
+
+// ── StreamText — SSE token stream renderer ───────────────────────────────
+
+pub(crate) fn render_streamtext(
+    el: &Element,
+    _spec: &Spec,
+    _data: &Value,
+    _depth: usize,
+) -> String {
+    let props: StreamTextProps = match decode_props(&el.props) {
+        Ok(p) => p,
+        Err(e) => return decode_diagnostic("StreamText", e),
+    };
+    let escaped_url = html_escape(&props.sse_url);
+    let placeholder_html = props
+        .placeholder
+        .as_deref()
+        .map(|t| {
+            format!(
+                "<span data-ferro-stream-placeholder class=\"text-sm text-text-muted\">{}</span>",
+                html_escape(t)
+            )
+        })
+        .unwrap_or_default();
+    let loading_html = props
+        .loading_text
+        .as_deref()
+        .map(|t| {
+            format!(
+                "<span data-ferro-stream-loading class=\"text-sm text-text-muted\">{}</span>",
+                html_escape(t)
+            )
+        })
+        .unwrap_or_default();
+    format!(
+        "<div data-ferro-stream-url=\"{escaped_url}\">{placeholder_html}{loading_html}</div>"
+    )
 }
 
 // ────────────────────────────────────────────────────────────────────────
