@@ -1876,7 +1876,11 @@ Plans:
   4. `ferro ai:explain <route|model|service>` calls ferro-mcp introspection in-process; when a `ServiceDef` is found for the target, the explanation is projection-framed: the `Intent`s the service projects, which fields' `FieldMeaning`s drive the rendering, which `ActionDef`s are exposed under which `GuardDef`s, what state transitions exist via `StateMachine`. Plain code prose is the fallback only when no `ServiceDef` is found for the target.
   5. Both commands respect `FERRO_AI_MAX_TOKENS_PER_COMMAND` env var as a cost guard; both support `--dry-run`
   6. Neither command generates non-ferro code; the produced `ServiceDef` references existing models, intents, and conventions as reported by ferro-mcp introspection — not generic templates.
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 171-01-PLAN.md — ferro-ai `complete_with::<T>()` + `CompleteOptions` (configurable max_tokens/system/model; cost-guard enabler)
+- [ ] 171-02-PLAN.md — `ferro ai:make`: in-process introspection + lexical relevance filter + ServiceDef→builder-source emitter + single-file output + sanitization + dry-run
+- [ ] 171-03-PLAN.md — `ferro ai:explain`: service→route→model resolution, projection-framed prompt, raw prose completion, dry-run
+- [ ] 171-04-PLAN.md — full CI gate (fmt+clippy -D warnings+test --all-features) + human-verify live ai:make/ai:explain quality (SC#4/SC#6)
 
 ### Phase 172: MCP Tool Wrappers
 **Goal**: Expose `ai_scaffold` and `ai_explain` as ferro-mcp tools so agents can invoke `ServiceDef` production and projection-framed explanation logic in-process without shelling out to the CLI.
