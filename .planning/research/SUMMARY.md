@@ -1,232 +1,185 @@
-# Research Summary — ferro v12.1 AI Milestone
+# Project Research Summary
 
-**Domain:** ferro-ai SDK expansion + AI-assisted scaffolding CLI
-**Synthesized:** 2026-05-15
-**Confidence:** HIGH (all four research files: HIGH confidence, based on live codebase inspection + verified external sources)
-
----
+**Project:** ferro v12.4 Form Validation DX
+**Domain:** Async DB-backed uniqueness validation + DB constraint-to-field-error mapping in a SeaORM dual-backend (SQLite + Postgres) Rust web framework
+**Researched:** 2026-06-09
+**Confidence:** HIGH
 
 ## Executive Summary
 
-v12.1 expands `ferro-ai` from a single-provider classification utility into a production-grade, multi-provider LLM SDK, and ships two new CLI commands (`ferro ai:make`, `ferro ai:explain`) that use live `ferro-mcp` introspection to generate and explain project-specific code. The milestone requires zero new crates for most capabilities — the workspace already contains `reqwest`, `serde_json`, `schemars`, `tokio`, `futures-util`, and `bytes`. Only two new dependencies are needed: `reqwest-eventsource 0.6` (incoming SSE from LLM providers) and optionally `pgvector 0.4` (feature-gated vector storage). No multi-provider abstraction crate (`genai`, `async-openai`) is adopted; each provider is implemented directly against its own wire format.
+The v12.4 milestone addresses a concrete, field-confirmed deficiency: uniqueness violations in ferro forms surface raw SQL error strings to end users instead of inline field-level errors with preserved input. Every mature web framework solves this with two complementary mechanisms — a proactive pre-write uniqueness rule and a defensive post-write constraint-violation mapper. The two are not alternatives; they compose. The proactive rule handles the common case before the write with a clean user experience; the constraint mapper is the safety net that closes the TOCTOU race window the proactive rule cannot eliminate. Shipping only one of the two is incomplete, and the MCP code template must make this composition explicit to prevent the pattern from being applied incorrectly by agents scaffolding handlers.
 
-The recommended approach is a five-wave build order: expand `ferro-ai` first (the leaf crate everything else depends on), then add SSE HTTP primitives to `framework`, then `StreamText` to `ferro-json-ui`, then the CLI commands, and finally thin MCP tool wrappers. The `ferro-cli/src/ai.rs` blocking Anthropic client is deleted in full during Wave 4 and replaced by direct `ferro_ai::complete::<T>()` calls. The two new CLI commands are not generic AI assistants — they read actual project models, routes, and handler source via `ferro-mcp` functions called in-process, so generated scaffolds match the real project rather than a synthetic template.
+The technical path is fully resolved. Rust's async trait limitations on stable 2021 edition rule out making the existing sync `Rule` trait async — instead, a separate `AsyncRule` trait using `Pin<Box<dyn Future>>` is the correct object-safe design, requiring no new crate dependencies (`async-trait` is already in the workspace). The `Unique` struct implements `AsyncRule` by running a raw `SELECT COUNT(*)` via `sea_orm::Statement::from_sql_and_values`, which is backend-agnostic. For constraint detection, `DbErr::sql_err()` is the portable entry point; constraint-to-field mapping lives at the handler call site as an explicit `ConstraintMap` builder, which respects the project-agnostic-crates rule (no consumer strings embed in `framework/`). Both features are entirely contained within `framework/src/validation/` with no changes to `framework/src/http/action.rs`.
 
-The primary risk is not in the LLM integration itself but in five compounding complexity areas: (1) JSON Schema normalization before each structured-output call (Anthropic rejects `schemars` default output); (2) unbounded tool-calling loops requiring a hard `max_iterations` cap from day one; (3) SSE compression middleware silently buffering token streams; (4) context window overflow when the full `ferro-mcp` introspection output is used as a prompt without filtering; and (5) the `ClassifierConfig` default model being wrong for non-Anthropic providers. All five are preventable if addressed at the phase where they first become relevant.
-
----
+The primary implementation risk is backend divergence in constraint identification: SQLite embeds `"table.column"` in the error message string while Postgres embeds the index name. The `ConstraintMap::try_map()` implementation must handle both formats. The Postgres path has a structured `constraint()` field available via sqlx downcast — message-string parsing on the Postgres path is fragile and should not be used. CI exercises SQLite by default; Postgres constraint-name matching requires either a Postgres CI step or a documented manual gate. This is the only open question that cannot be fully resolved before implementation.
 
 ## Key Findings
 
-### Stack — What Is New vs Already Present
+### Recommended Stack
 
-Only two crates are genuinely new to the workspace. Everything else is already available.
+No version changes or new crates required. The entire milestone is implementable against the pinned stack: `sea-orm 1.1.19` (with `sqlx-postgres`, `sqlx-sqlite` features), `sqlx 0.8.6` (transitive). `async-trait` is added to `framework/Cargo.toml` but is already present in the workspace via `ferro-events` and `ferro-queue`. All SeaORM APIs used (`DbErr::sql_err()`, `SqlErr::UniqueConstraintViolation`, `Statement::from_sql_and_values`) are verified against sea-orm 1.1.14/1.1.19 docs.
 
-| Crate | Version | Status | Reason |
-|-------|---------|--------|--------|
-| `reqwest-eventsource` | `0.6.0` | **NEW** | Parse incoming SSE from Anthropic/OpenAI/Groq provider streams |
-| `pgvector` | `0.4.1` | **NEW, optional** | `feature = "pgvector"` on `ferro-ai`; direct sqlx wrapper for vector storage |
-| `schemars` | `1.2.1` | Exists in workspace; add to `ferro-ai` | JSON Schema generation for `complete::<T>()` and tool parameter schemas |
-| `futures-util` | `0.3` | Exists in workspace; add to `ferro-ai` | `StreamExt` for token stream iteration |
-| `http-body-util` | `0.1` | Exists as hyper-util dep; add to `framework` | `StreamBody` for hyper 1.x SSE responses |
+**Core technologies:**
+- `sea-orm 1.1.19`: DB layer and constraint detection via `DbErr::sql_err()` — portable across SQLite and Postgres without feature flags
+- `async-trait` (workspace, no new dep): enables `Box<dyn AsyncRule>` object safety on stable Rust — required by `AsyncRule` trait
+- `sqlx 0.8.6` (transitive only): `PgDatabaseError::constraint()` available for structured constraint name extraction on Postgres; not added as a direct dep to preserve backend portability
 
-The decision not to adopt `genai 0.5.3` is load-bearing: that crate lacks tool calling and embeddings as of May 2026. Adopting it now forces either a crate swap or a dual implementation later.
+### Expected Features
 
-Groq is implemented as a config variant of `OpenAiClient` (same wire format, different base URL), not a separate provider struct.
+**Must have (table stakes for v12.4):**
+- `AsyncRule` trait — object-safe async rule trait; foundation for all async validation
+- `unique(table, column)` rule — pre-write SELECT COUNT(*) check; every framework with a validator ships this
+- `.ignore(id)` on `Unique` — exclude-self for edit forms; without this, every unchanged-slug edit fails (the #1 foot-gun across all frameworks)
+- `AsyncValidator` — unified place to declare both sync and async rules; sync rules run first (fail-fast before DB hit)
+- `ConstraintMap::new().on(constraint, field, message).try_map(err)` — explicit opt-in constraint-to-field mapping at the handler write site; closes the TOCTOU window
 
-### Features — Table Stakes, Differentiators, Anti-Features
+**Should have (differentiators):**
+- Driver-aware constraint hint matching (SQLite `"table.column"` format + Postgres constraint-name-in-message format) in `ConstraintMap::try_map()`
+- `suppress_url_envelope` on constraint-mapped errors — reuses existing Phase 180 flag; constraint violation surfaces identically to a proactive rule failure
+- MCP code template including both async rule AND constraint mapping in the `action_handler` template — makes the two-layer composition impossible to miss when scaffolding
 
-**Must ship for v12.1 to be useful (table stakes):**
+**Defer (post-v12.4):**
+- `map_unique_auto(field, message)` — auto-parses constraint name without a hint; needs field testing on both drivers
+- `exists(table, column)` async rule — complement to `unique`
+- Async rule support in `ValidateRules` derive macro
+- Multi-column scoped uniqueness: `unique(...).scoped_to("account_id", id)`
 
-- Multi-provider async `LlmClient` trait with Anthropic, OpenAI, Groq, Ollama implementations
-- `ferro_ai::complete::<T>()` structured output via `schemars::JsonSchema` derive (generalizes existing `Classifier<T>`)
-- SSE streaming: `TokenStream` in `ferro-ai`; `SseStream`/`SseEvent` HTTP primitives in `framework`
-- `ferro ai:make <description>` — context-aware scaffolding using live `ferro-mcp` introspection
-- `ferro ai:explain <route|model>` — LLM-backed explanation from actual handler source, not rule-based heuristics
-- `FERRO_AI_PROVIDER` + `FERRO_AI_MODEL` env vars centralized in `AiConfig::from_env()`; consistent across all AI commands
-- `--dry-run` flag and `FERRO_AI_MAX_TOKENS_PER_COMMAND` env var on AI CLI commands (cost control)
+### Architecture Approach
 
-**Differentiators (what makes v12.1 worth shipping):**
+Both features are additive within `framework/src/validation/` and share no code with `framework/src/http/action.rs` (unchanged). The `AsyncRule` trait and `AsyncValidator` are parallel to the existing sync `Rule`/`Validator` pair — existing callers see no change. `ConstraintMap` is a standalone struct at the handler call site, keeping consumer constraint names out of the framework crate. The global `DB::connection()` singleton is the DB access pattern for async rules, consistent with `framework/src/database/model.rs`, `query_builder.rs`, and `transaction.rs`.
 
-- `ai:make` assembles live context from `ferro-mcp` (`list_routes`, `list_models`, `db_schema`, `generation_context`) and generates a structured `ScaffoldPlan` before any file is written — this is what makes it real scaffolding, not a template expander
-- `ai:explain` calls `get_handler` MCP tool to read actual handler source, then explains business logic including side effects (events, jobs) — not metadata reformatting
-- `StreamText` JSON-UI component renders `<div data-ferro-stream-url>` + inline `EventSource` JS — server-driven streaming UI with zero client-side framework
-- Schema normalization module (`ferro_ai::schema::for_structured_output`) that resolves `$ref`, adds `additionalProperties: false`, and strips unsupported constraints per provider — makes structured output portable across providers
+**Major components:**
+1. `async_rule.rs` (new) — `AsyncRule` trait: `Pin<Box<dyn Future>>` return, `Send + Sync`, `async-trait` derived
+2. `rules/unique.rs` (new) — `Unique` struct + `unique()` constructor + `.ignore()` + `.ignore_where()` builders, implements `AsyncRule`
+3. `validator.rs` (modified) — `async_rule()` builder + `validate_async()` method added; sync `validate()` unchanged
+4. `constraint.rs` (new) — `ConstraintMap` builder + `try_map(DbErr) -> Result<ValidationError, DbErr>` with SQLite/Postgres bifurcated detection
+5. `mod.rs` (modified) — re-exports `AsyncRule`, `Unique`, `unique`, `AsyncValidator`, `ConstraintMap`
 
-**Explicitly out of scope (anti-features):**
+### Critical Pitfalls
 
-- Bundled agent runtime or `make:agent` command — ferro's agent is external (Claude Code, Cursor via `ferro-mcp`); a second in-framework agent model is the wrong abstraction
-- Conversation memory / session management in the SDK — application concern; callers supply `Vec<Message>` history
-- Multi-modal generation (image, TTS, STT) — deferred post-v1.0
-- Vector store integrations beyond optional `pgvector` — application infrastructure choice
-- Provider failover / automatic fallback — explicit `Result<_, AiError>` is correct; silent failover masks misconfiguration
-- Generic AI CLI for non-ferro questions — all AI CLI commands are scoped to ferro artifacts only
-- `useChat`/`useCompletion` React hooks — frontend concern; SSE server support is the framework's responsibility
+1. **TOCTOU — async `unique` rule treated as the authoritative guarantee** — two concurrent requests can both pass the pre-write SELECT and both attempt the INSERT; one hits the DB constraint. If `ConstraintMap` is absent, the constraint violation leaks as raw SQL. Mitigation: always pair `unique` rule with `ConstraintMap` at the write site; MCP code template must show both; code review must flag handlers with `unique` but no downstream `ConstraintMap`.
 
-### Architecture — What Changes, What Stays
+2. **`block_on` inside sync `Rule::validate()`** — blocking the async executor inside a sync rule causes starvation under concurrent load and can deadlock. Mitigation: separate `AsyncRule` trait is the architectural invariant; the trait split must be the first design decision.
 
-**Deleted:**
-- `ferro-cli/src/ai.rs` — blocking `reqwest::Client`, Anthropic-only, duplicates `ferro-ai` logic; replaced wholesale by `ferro_ai::complete::<T>()` and `AiConfig::from_env()`
+3. **SQLite vs Postgres constraint detection divergence** — SQLite embeds `"table.column"` in the error message string; Postgres exposes the index name via `PgDatabaseError::constraint()` (sqlx downcast). Parsing the Postgres message string for the constraint name is fragile. Mitigation: `ConstraintMap::try_map()` uses structured `constraint()` for Postgres and string-match for SQLite, applied in that order.
 
-**New modules in `ferro-ai`:**
+4. **Exclude-self bug on edit forms** — copy-pasting the create handler's validator to the edit handler without adding `.ignore(id)` causes the rule to reject the record's own existing value. Mitigation: `.ignore(id)` must be in the first API version; MCP edit-handler template must always include it; integration tests must cover create-then-edit-with-same-value.
 
-```
-src/client/         LlmClient trait + 4 provider impls (Anthropic, OpenAI, Groq, Ollama)
-src/client/config.rs  AiConfig::from_env() -> Box<dyn LlmClient>
-src/complete.rs     ferro_ai::complete::<T>() entry point
-src/tools.rs        ToolDef, ToolRegistry, dispatch loop with max_iterations guard
-src/embeddings.rs   embed() + cosine_similarity() + optional pgvector::PgVectorStore
-src/stream.rs       TokenStream = Pin<Box<dyn Stream<Item=Result<String, Error>>>>
-src/schema.rs       for_structured_output() normalizer (resolve $ref, add additionalProperties)
-```
+5. **Raw SQL leak via `From<DbErr> for ActionError`** — `?` on an unguarded `Entity::insert().exec(&db).await?` passes `"UNIQUE constraint failed: pages.slug"` to the user as a flash message. Mitigation: constraint violations must be intercepted by `ConstraintMap::try_map()` before `?` converts them to `ActionError`; the `From<DbErr>` impl is not removed (correct for non-constraint errors) but must not be reached for constraint violations.
 
-**New in `framework`:**
-```
-src/http/sse.rs     SseEvent, SseStream (mpsc + StreamBody); HttpResponse::sse() factory
-```
+## Implications for Roadmap
 
-**New in `ferro-json-ui`:**
-```
-src/components/stream_text.rs  StreamText variant; render.rs updated
-```
+Based on research, suggested phase structure:
 
-**New in `ferro-cli`:**
-```
-src/commands/ai_make.rs      ferro ai:make
-src/commands/ai_explain.rs   ferro ai:explain
-```
+### Phase 1: Async Rule Infrastructure + `unique` Rule
 
-**Unchanged:** `ClassificationProvider`, `Classifier<T>`, `InMemoryConfirmationStore`, all 35+ `ferro-mcp` tools, `make:scaffold` helpers, `framework` `ai` feature flag, all Inertia paths.
+**Rationale:** `AsyncRule` trait is the strict foundation — nothing else in the milestone compiles without it. The `Unique` struct is the only concrete `AsyncRule` in v12.4 scope and validates the trait design immediately. `AsyncValidator` is the integration point that proves both work end-to-end. This unit has no dependency on constraint detection and can ship atomically.
 
-**Key structural decision:** `ClassificationProvider` is kept alongside `LlmClient`. They coexist without breaking existing callers. `Classifier<T>` delegates its HTTP work to the new `AnthropicClient` internally.
+**Delivers:**
+- `AsyncRule` trait (object-safe, stable Rust, `async-trait`, no new crate dep beyond workspace)
+- `Unique` struct with `unique()`, `.ignore()`, `.ignore_where()` builders
+- `AsyncValidator` with sync-then-async execution and field-skipping on prior sync failures
+- `validation.unique` translation key in the ferro-lang bridge
+- Integration tests: create-form uniqueness, edit-form self-exclusion (the regression Pitfall 3 identifies as most likely to be missed)
 
-**Key decoupling decision:** `SseStream` has no dependency on `ferro-ai`. The wiring of `TokenStream` -> `SseStream` happens in application handler code, not in either library. Both crates are independently testable.
+**Addresses:** AsyncRule, unique rule, exclude-self, AsyncValidator (all P1 from FEATURES.md)
 
-### Build Order
+**Avoids:** `block_on` inside sync Rule (Pitfall 5), exclude-self bug on edit forms (Pitfall 3)
 
-```
-Wave 1 — ferro-ai (leaf; no consumer changes yet)
-  Step 1: LlmClient trait + 4 provider modules  [all subsequent steps depend on this]
-  Step 2: complete::<T>(), tools.rs, embeddings.rs, schema.rs
-  Step 3: TokenStream (stream.rs)  [async cancellation needs isolated step]
-
-Wave 2 — framework SSE (no ferro-ai dep; can run in parallel with Wave 1)
-  Step 4: SseEvent + SseStream + HttpResponse::sse()
-
-Wave 3 — ferro-json-ui StreamText (depends on SSE URL convention from Step 4)
-  Step 5: StreamText component + render.rs handler
-
-Wave 4 — ferro-cli (depends on Waves 1-3)
-  Step 6: Delete src/ai.rs; wire ferro-ai SDK into make:json-view  [validates SDK against existing command]
-  Step 7: ferro ai:make  [primary CLI command; uses ferro-mcp in-process + SDK]
-  Step 8: ferro ai:explain  [simpler; can parallelize with Step 7]
-  Step 9: Improved make:json-view via ServiceDef  [gated on v12.0 catalog.prompt() shipping]
-
-Wave 5 — ferro-mcp tools (thin wrappers; validated by Wave 4 first)
-  Step 10: ai_scaffold + ai_explain MCP tools
-```
-
-Rationale: `ferro-ai` is a leaf crate; everything builds on the `LlmClient` trait established in Step 1. Wave 2 can start immediately in parallel because `SseStream` has no `ferro-ai` dependency. Step 9 is gated on v12.0 shipping; do not block v12.1 on it.
+**Research flag:** Standard patterns. `Pin<Box<dyn Future>>` object-safe async trait is well-documented stable Rust. `async-trait` usage in `ferro-events` and `ferro-queue` provides workspace precedent. No further research needed.
 
 ---
 
-## Watch Out For
+### Phase 2: `ConstraintMap` + Constraint Detection
 
-### 1. JSON Schema Normalization (Wave 1, Step 2)
+**Rationale:** Depends on Phase 1 confirming the `AsyncRule`/`AsyncValidator` API is stable before the handler-level API is finalized. `ConstraintMap` is independently testable (no async dependency) but its call-site API is more clearly designed with the full picture visible. This phase closes the TOCTOU window and eliminates the raw SQL leak confirmed in `action.rs:196`.
 
-`schemars` emits `$ref` references for complex types and does not add `additionalProperties: false`. Anthropic's structured output endpoint rejects both. The error returned is a 400 with no echo of the rejected schema, making it hard to debug.
+**Delivers:**
+- `ConstraintMap::new().on(constraint, field, message).try_map(err)` struct in `constraint.rs`
+- Bifurcated detection: SQLite message-string parse + Postgres `PgDatabaseError::constraint()` downcast
+- `Err(DbErr)` return on no-match (never silently swallows; falls through to existing `From<DbErr>` passthrough)
+- Integration tests for both backends; concurrent-insert simulation for the TOCTOU path
+- Old-input preservation verified: constraint redirect uses `with_old_input` + `into_action_error`, not `?error=` query param
 
-**Prevention:** Implement `ferro_ai::schema::for_structured_output()` before any provider integration test. It resolves `$ref` inline, adds `additionalProperties: false` to every object, and strips unsupported constraints. This is the only path for generating schemas for structured output calls. Include a test that verifies output against Anthropic's documented constraints.
+**Addresses:** DB-constraint mapping, driver-aware hint matching, suppress_url_envelope (all P1 from FEATURES.md)
 
----
+**Avoids:** Raw SQL leak via `From<DbErr>` (Pitfall 4), constraint detection divergence (Pitfall 2), silent error swallowing
 
-### 2. Unbounded Tool-Calling Loops (Wave 1, Step 2 / tools.rs)
-
-LLM tool-calling loops can run indefinitely — documented real-world incident: 1.67B tokens in 5 hours. Tool errors that return non-actionable messages (stack traces, DB constraint errors) cause the model to retry the same call with the same arguments.
-
-**Prevention:** Hard `max_iterations: u32` cap in `ToolRegistry` dispatch loop, default 10, never unbounded. Define `ToolError { message: String }` with model-legible descriptions. Log warnings at 5, errors at 10. Must be in the initial implementation, not added after observing runaway behavior.
-
----
-
-### 3. SSE Compression Middleware (Wave 2, Step 4)
-
-`tower-http`'s `CompressionLayer` buffers the response body before compressing. SSE responses buffered this way deliver all tokens at once after a long pause. The middleware does not warn.
-
-**Prevention:** Exclude SSE routes from `CompressionLayer`. Add an integration test that verifies token-by-token delivery, not just final output correctness. Default keep-alive at 15-second intervals (`:ping\n\n`) prevents reverse proxy idle-timeout disconnects on long reasoning steps.
+**Research flag:** Postgres constraint-name extraction via `PgDatabaseError::constraint()` requires a real Postgres instance to test. If Postgres CI is not available, require a documented manual test step as part of the phase closure criteria.
 
 ---
 
-### 4. Context Window Overflow in `ai:make` (Wave 4, Step 7)
+### Phase 3: MCP Template + Docs
 
-For a large application, full `ferro-mcp` introspection output easily exceeds 50K tokens as a system prompt. Quality degrades before the context limit is reached. The full JSON-UI component catalog (40-80 KB schema) compounds this.
+**Rationale:** Both runtime primitives must be stable before templates and documentation can accurately represent the composition pattern. The MCP `action_handler` template is the highest-leverage surface — every agent-scaffolded handler with a unique constraint will follow it. A template that shows only the async rule without the `ConstraintMap` call leaks TOCTOU into every generated handler.
 
-**Prevention:** Apply selective context loading: filter models and routes to those semantically relevant to the user's description using string matching. Use per-component schemas (v12.0 direction), not the full catalog. Build context selection logic before prompt construction; do not add it after observing cost or quality problems.
+**Delivers:**
+- `ferro-mcp/src/tools/code_templates.rs`: `unique_validation` and `constraint_map` templates; updated `action_handler` template showing both layers together
+- `docs/src/the-basics/validation.md`: async rules section + constraint mapping section with explicit proactive-vs-defensive framing
+- Phase gate: confirm no generated handler template shows `unique` without a downstream `ConstraintMap`
 
----
+**Addresses:** ferro-mcp code template (P1 from FEATURES.md), proactive-vs-defensive documentation
 
-### 5. `ClassifierConfig` Default Model Wrong for Non-Anthropic Providers (Wave 1, Step 1)
+**Avoids:** TOCTOU in agent-generated code (Pitfall 1 — most likely failure mode in scaffolded handlers)
 
-`ClassifierConfig::default()` hardcodes `model: "claude-sonnet-4-6"`. When a user configures OpenAI or Groq, the default model is wrong and surfaces only as a 400 at runtime.
-
-**Prevention:** Add `fn default_model(&self) -> &str` to `ClassificationProvider`. Remove the hardcoded default from `ClassifierConfig` (or make it `Option<String>` resolved through the provider). Must be fixed before any provider other than Anthropic is added.
-
----
-
-## Open Questions
-
-These need a decision before or during Phase 1 (SDK foundation):
-
-1. **Capability trait split vs single `LlmClient` trait.** PITFALLS.md recommends splitting into `CompletionProvider`, `StreamingProvider`, `EmbeddingProvider`, `ToolProvider`. ARCHITECTURE.md describes a single `LlmClient` with four methods. Recommendation: single `LlmClient` trait with `Err(Error::Unsupported)` for capabilities a provider lacks — preserves ergonomic dispatch without lowest-common-denominator collapse.
-
-2. **`async_trait` retention.** Rust 1.75+ has stable async fn in traits, but native async traits are not dyn-compatible. `async_trait` is still required for `dyn LlmClient`. Keep it; document the constraint; do not migrate speculatively.
-
-3. **`ScaffoldPlan` type design.** The two-step `ai:make` approach (generate `ScaffoldPlan` via structured output, then expand per file) requires designing the `ScaffoldPlan` struct before Step 7 begins. This type must be designed during Step 7 planning, not during implementation.
-
-4. **v12.0 gate for Step 9.** Improved `make:json-view` via `ServiceDef` and `catalog.prompt()` is gated on v12.0 JSON-UI v2. Confirm v12.0 status before scoping Step 9; if not shipped, Step 9 moves to v12.2.
-
-5. **`reqwest-eventsource` visibility.** Needed inside provider implementations but must not be a public API surface. Confirm it is `pub(crate)` in all provider modules before the first PR.
+**Research flag:** Standard patterns. MCP template registration follows the established `code_templates.rs` pattern from Phase 180. No further research needed.
 
 ---
+
+### Phase Ordering Rationale
+
+- `AsyncRule` trait must precede `Unique` rule (which implements it) must precede `AsyncValidator` (which holds `Vec<Box<dyn AsyncRule>>`). These are a strict compile-time dependency chain and belong in one phase.
+- `ConstraintMap` is independently testable but its call-site API is more clearly designed once `AsyncValidator` is finalized. Phase 2 gets one phase of design stability before finalizing the complementary API.
+- MCP templates and docs must trail stable runtime code. Documenting a pattern before its API is locked risks shipping docs that describe the wrong surface.
+- All three phases are entirely within `framework/src/validation/` and `ferro-mcp/src/tools/` — no cross-crate coordination needed.
+
+### Research Flags
+
+Phases needing deeper research or explicit verification during planning:
+- **Phase 2 (ConstraintMap):** Postgres constraint-name extraction must be tested against a real Postgres instance. Plan must include either a Postgres CI step or a documented manual verification gate as part of closure criteria.
+- **Phase 1 (AsyncValidator — design decision):** Mixed sync+async rules in one `AsyncValidator` call vs. two separate calls must be locked before writing code. Research notes both are valid; the phase plan must make this call explicitly. Two-call pattern is more explicit; unified pattern is more ergonomic. Either is acceptable.
+
+Phases with standard patterns (no research phase needed):
+- **Phase 1 (AsyncRule trait):** `Pin<Box<dyn Future>>` object-safe async trait is well-documented; workspace precedent in `ferro-events` and `ferro-queue`.
+- **Phase 3 (MCP + Docs):** Template registration follows Phase 180 pattern exactly.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Versions verified against crates.io 2026-05-15; rejection of `genai`/`async-openai` substantiated with documented capability gaps |
-| Features | HIGH | Verified against Laravel AI SDK, Vercel AI SDK 6, Spring AI, Rig v0.37.0 live sources; existing ferro-ai capabilities from direct codebase read |
-| Architecture | HIGH | All component boundaries and integration points from direct codebase inspection; no speculation |
-| Pitfalls | HIGH | All pitfalls backed by documented incidents, provider bug reports, and confirmed codebase issues |
+| Stack | HIGH | sea-orm 1.1.19 + sqlx 0.8.6 verified from Cargo.toml + cargo tree. All APIs verified via Context7 + docs.rs. No version changes needed. |
+| Features | HIGH | Table-stakes features cross-validated against Laravel, Rails, Django. Anti-features justified with concrete failure modes from the codebase. |
+| Architecture | HIGH | All integration points verified against actual framework source files. `ferro-reservation/src/kernel.rs` provides constraint-detection downcast precedent. |
+| Pitfalls | HIGH | Critical pitfalls derived from codebase inspection (confirmed `From<DbErr>` passthrough at action.rs:196) + SeaORM/SQLite/Postgres error-code specifications. |
 
-**Overall: HIGH**
+**Overall confidence:** HIGH
 
-**Gaps:**
-- `ScaffoldPlan` type design is not in research; must be done during Step 7 planning
-- `ferro-mcp` in-process function signatures assumed stable; verify against current `ferro-mcp/src/tools/` before Step 7
-- Step 9 timing depends on v12.0 shipping; treat as out of scope until confirmed
+### Gaps to Address
 
----
+- **Mixed sync+async rules in one `AsyncValidator` call:** Design choice left open for Phase 1 planning. Recommendation: start with two-call (explicit); defer unified API to post-v12.4 if gestiscilo usage makes the ergonomic argument concrete.
+- **Postgres-only CI coverage for constraint-name path:** `PgDatabaseError::constraint()` downcast cannot be exercised by `cargo test` defaults. Phase 2 plan must address this explicitly — either add a Postgres CI step or define a manual verification gate in the closure criteria.
+- **`ConstraintMap` file location:** Research notes it could be inlined in `mod.rs` or split to `constraint.rs`. Recommendation: split to `constraint.rs` (consistent with `async_rule.rs` and `rules/unique.rs` being new files). Lock in Phase 2.
 
 ## Sources
 
-Full source lists are in the individual research files. Key sources:
+### Primary (HIGH confidence)
+- Context7 `/websites/rs_sea-orm_1_1_14` — `DbErr::sql_err()` full source, `SqlErr` enum, per-backend error-code dispatch (Postgres SQLSTATE 23505, SQLite extended codes 1555/2067)
+- `https://docs.rs/sqlx/0.8.6/sqlx/postgres/struct.PgDatabaseError.html` — `constraint() -> Option<&str>` confirmed Postgres-only
+- `https://docs.rs/sqlx/0.8.6/sqlx/error/trait.DatabaseError.html` — `DatabaseError` trait; no `column()` method confirmed
+- `framework/Cargo.toml` + `cargo tree` — sea-orm 1.1.19, sqlx 0.8.6 pinning verified
+- `framework/src/validation/rule.rs`, `validator.rs`, `error.rs`, `bridge.rs` — existing sync validation surface
+- `framework/src/http/action.rs` lines 196-199 — `From<DbErr> for ActionError` passthrough (confirmed pre-existing leak)
+- `framework/src/database/mod.rs` — `DB::connection()` singleton facade
+- `ferro-reservation/src/kernel.rs` — `DbErr::Exec(RuntimeErr::SqlxError(...))` destructuring precedent for constraint detection
+- `https://www.sqlite.org/rescode.html` — SQLite extended result codes 1555, 2067
+- `https://www.postgresql.org/docs/current/errcodes-appendix.html` — Postgres SQLSTATE 23505
 
-**HIGH confidence (live, verified 2026-05-15):**
-- pgvector 0.4.1: https://docs.rs/pgvector
-- reqwest-eventsource 0.6.0: https://docs.rs/reqwest-eventsource
-- schemars 1.2.1: https://docs.rs/schemars
-- Laravel AI SDK 12.x/13.x: https://laravel.com/docs/12.x/ai-sdk
-- Vercel AI SDK 6: https://vercel.com/blog/ai-sdk-6
-- Rig v0.37.0: https://github.com/0xPlaygrounds/rig
-- Anthropic structured outputs: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
-- Ollama streaming+tool bug: https://github.com/ollama/ollama/issues/12557
-- Groq finish_reason streaming bug: https://community.groq.com/t/groq-api-bug-report-missing-finish-reason-in-streaming-responses/775
-- Direct codebase: `ferro-ai/src/`, `ferro-cli/src/ai.rs`, `ferro-mcp/src/tools/`, `framework/src/http/`
-
-**MEDIUM confidence:**
-- PostHog LLM code generation retrospective: https://posthog.com/blog/correct-llm-code-generation
-- LLM tool loop failure modes (documented $50K incident): https://medium.com/@komalbaparmar007/llm-tool-calling-in-production-rate-limits-retries-and-the-infinite-loop-failure-mode-you-must-2a1e2a1e84c8
+### Secondary (MEDIUM confidence)
+- Laravel validation docs (`Rule::unique`, `.ignore()`) — cross-validation of proactive/exclude-self API ergonomics
+- Rails Active Record Validations guide (`uniqueness:`, rescue pattern) — cross-validation
+- Django docs (`UniqueConstraint`, `ModelForm.validate_unique()`) — cross-validation
+- SQLite `"UNIQUE constraint failed: table.column"` message format — stable in practice, not part of SQLite's formal API contract
 
 ---
-
-*Research synthesized: 2026-05-15*
+*Research completed: 2026-06-09*
 *Ready for roadmap: yes*

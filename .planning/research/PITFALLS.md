@@ -1,298 +1,370 @@
-# Pitfalls Research — v12.1 AI Milestone
+# Pitfalls Research — v12.4 Form Validation DX
 
-**Domain:** Multi-provider AI SDK in Rust + AI-assisted scaffolding CLI for an Axum-based framework
-**Researched:** 2026-05-15
-**Confidence:** HIGH (codebase inspection of ferro-ai, verified against current provider docs, Axum internals, and production reports)
-
----
-
-## 1. Multi-Provider Abstraction Traps
-
-**Pitfall: Lowest-Common-Denominator Trait Surface**
-
-The `ClassificationProvider` trait already exists and is intentionally minimal: `classify_raw(system, user, schema, config) -> Value`. When adding streaming, tool calling, and embeddings, there is pressure to fold all capabilities into one trait. This is wrong. Providers diverge on every capability axis: Anthropic uses `output_config.format.json_schema`, OpenAI uses `response_format.json_schema.schema`, Groq uses OpenAI-compatible format with its own streaming gaps, Ollama's `/api/chat` streaming differs from its `/v1/chat/completions` compatibility layer. A single trait that tries to express all of these collapses to the lowest common denominator and forces callers to work around it.
-
-**Prevention:** Model the SDK as capability traits, not a monolith. Define separate traits: `CompletionProvider`, `StreamingProvider`, `EmbeddingProvider`, `ToolProvider`. Let each provider implement only what it supports. The `AnthropicProvider` implements all four; `Ollama` implements `CompletionProvider` and `EmbeddingProvider` but `StreamingProvider` only when tools are absent. Callers bind to the specific trait they need.
-
-**Phase:** SDK foundation (first ferro-ai expansion phase). Trait surface is load-bearing for every downstream phase. If it is wrong, everything built on it must be rebuilt.
+**Domain:** Async DB-backed uniqueness validation + DB-constraint-violation → field-level error mapping in a SeaORM dual-backend (SQLite + Postgres) Rust web framework
+**Researched:** 2026-06-09
+**Confidence:** HIGH (codebase inspection of `framework/src/validation/`, `framework/src/http/action.rs`, SeaORM 1.x docs, SQLite and Postgres error-code specifications)
 
 ---
 
-**Pitfall: Assuming `tool_choice: "any"` Works Everywhere**
+## Critical Pitfalls
 
-Anthropic returns a 400 error when `tool_choice: {"type": "any"}` is combined with extended thinking. OpenAI and Groq have no such restriction. If the `ToolProvider` trait passes `tool_choice` as a parameter without provider-aware validation, callers will get opaque 400 errors from Anthropic but succeed on OpenAI with the same configuration.
+### Pitfall 1: Treating the async `unique` rule as the authoritative guarantee
 
-**Prevention:** The `ToolProvider` implementation for Anthropic must validate that extended thinking and forced tool choice are not combined before sending the request. Document this constraint explicitly in the provider struct doc comment. Do not push this validation into the trait — it is provider-specific.
+**What goes wrong:**
+The async pre-write SELECT that checks uniqueness creates a TOCTOU (time-of-check / time-of-use) window. Two concurrent requests can both pass the SELECT check, both proceed to INSERT, and one will hit the DB UNIQUE index. If the constraint→field mapping is not implemented (or is incomplete), that second INSERT surfaces as a raw `DbErr` with no field attribution — the exact problem the milestone exists to fix.
 
-**Phase:** Tool calling phase. Must be addressed before any integration test that spans providers.
+**Why it happens:**
+The natural mental model is: "I checked before writing, so it must be unique." This leads consumers to implement the `unique` rule carefully but to handle the actual DB INSERT path with `?` on `DbErr` → `ActionError::from(err)`, which passes the raw message through.
 
----
+**How to avoid:**
+Communicate the architecture explicitly in the rule's documentation and in any generated code template:
 
-**Pitfall: Assuming OpenAI's Compatibility Layer is Faithful**
+1. The async `unique` rule is a UX layer — it catches the common case before the round-trip and produces a clean field-level error immediately.
+2. The UNIQUE index is the invariant. It is always enforced by the DB.
+3. The constraint→field mapping (step 2) is the safety net that must be present regardless of whether the async rule is registered.
 
-Ollama's `/v1/chat/completions` (OpenAI-compatible endpoint) silently drops tool calls when streaming is enabled as of mid-2025. Groq's SSE implementation is missing `finish_reason` in some streaming chunks, which breaks parsers that rely on it for stream termination. The compatibility layer is not the same as the native API.
+Design principle: the async rule and the constraint mapping are not alternatives; they compose. The async rule without mapping is incomplete. The mapping without the async rule is correct but produces a worse UX (race is rare; pre-check prevents the error in the common case).
 
-**Prevention:** For Ollama, disable streaming when tools are present (`stream: false`). Document this in the `OllamaProvider` struct. Test tool calling specifically against the native `/api/chat` endpoint, not the compatibility layer. For Groq, handle missing `finish_reason` in the stream parser by also checking for the `[DONE]` SSE sentinel.
+In code, the pattern is:
+```rust
+// Step 1: async pre-check (UX)
+Validator::new(&data)
+    .rules("slug", rules![unique("articles", "slug")])
+    .validate_async(&db).await?;
 
-**Phase:** Each new provider implementation phase. Each provider needs a compatibility test that covers streaming + tool calling together, not in isolation.
+// Step 2: write + constraint mapping (invariant)
+Article::create(&data)
+    .save(&db).await
+    .map_constraint("articles_slug_key", "slug", "This slug is already taken.")?;
+```
 
----
+**Warning signs:**
+- Generated `#[action]` handlers that use `?` directly on `Entity::insert().exec(&db).await?` after an async validation step — the constraint path is unhandled.
+- MCP code templates that show the async rule but omit constraint mapping.
+- Test suites that exercise only the serial (single-request) path, never concurrent inserts.
 
-**Pitfall: JSON Schema Portability Across Providers**
-
-No provider accepts top-level `$ref` in structured output schemas. Anthropic additionally requires `additionalProperties: false` on every object in the schema, prohibits recursive schemas, and does not support numerical constraints (`minimum`, `maximum`) or string constraints (`minLength`, `maxLength`). OpenAI's `chat/completions` and `responses` API endpoints use different field structures for the schema. Gemini requires explicit `type` on array `items`.
-
-The `schemars` crate generates schemas from Rust structs via `schema_for!(T)`. By default, `schemars` emits `$defs` with `$ref` references for complex types. This output will be rejected by Anthropic's structured output endpoint.
-
-**Prevention:** Implement a schema normalizer that runs `schemars` output through a post-processing step before sending to each provider: resolve `$ref` references inline, add `additionalProperties: false` to all objects for Anthropic, strip unsupported constraints per provider. Place this in a `schema` module inside `ferro-ai`. The normalizer runs once per call and is not on the hot path.
-
-**Phase:** Structured output phase. Must exist before any use of `schemars` with a live provider.
-
----
-
-## 2. Async / Streaming in Axum Handlers
-
-**Pitfall: Using `reqwest::blocking` Inside the Server**
-
-The existing `ferro-cli/src/ai.rs` uses `reqwest::blocking::Client`. This is correct for CLI commands (no Tokio runtime in scope). If any of this code is copy-pasted into an Axum handler, it will panic at runtime: `reqwest::blocking` cannot run inside a Tokio runtime. The panic message is `Cannot start a runtime from within a runtime.`
-
-**Prevention:** Handlers that proxy LLM responses must use `reqwest::Client` (async) throughout. Add a compile-time marker or doc comment on the CLI-only `call_anthropic` function making the restriction explicit. Do not share the `ai.rs` module between CLI and handler code — they have different runtime contexts.
-
-**Phase:** Any phase that adds SSE streaming to Axum handlers. The divergence between CLI and handler usage must be resolved before mixing them.
+**Phase to address:**
+The constraint-mapping primitive (Phase 1 of v12.4). The documentation and MCP template must make this composition explicit before any consumer can scaffold a uniqueness-validated form.
 
 ---
 
-**Pitfall: Tower-http `CompressionLayer` Breaks SSE**
+### Pitfall 2: Backend-portable constraint detection — SQLite message parsing vs Postgres structured fields
 
-`CompressionLayer` buffers the response body before compressing it. SSE responses must not be buffered — the client receives no tokens until the buffer fills. The symptoms are: SSE handler appears to work in tests, but the browser receives all tokens at once after a long pause. The middleware does not warn; it silently buffers.
+**What goes wrong:**
+The constraint→field mapping must identify which constraint was violated to route the error to the right field. Postgres and SQLite provide this information differently:
 
-**Prevention:** SSE routes must be excluded from `CompressionLayer` either by not applying it at the router level for streaming routes, or by using Axum's per-route layer composition to skip compression. Do not apply `CompressionLayer` globally and assume SSE routes are exempt.
+- **Postgres**: `PgDatabaseError` exposes `constraint() -> Option<&str>` (the index name, e.g. `"articles_slug_key"`) and `table() -> Option<&str>` via sqlx downcast. SeaORM's `DbErr::sql_err()` returns `SqlErr::UniqueConstraintViolation(message)` where `message` is the human-readable error string (`"duplicate key value violates unique constraint \"articles_slug_key\""`). The constraint name is available without string parsing by downcasting through `DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))` and calling `e.constraint()`.
 
-**Phase:** SSE streaming phase. Add an integration test that verifies token-by-token delivery, not just final output correctness.
+- **SQLite**: `SqliteError` exposes only an extended error code (`2067` for UNIQUE constraint, `1555` for PRIMARY KEY constraint) and a message string. The message format is `"UNIQUE constraint failed: articles.slug"` (table.column format). There is no separate `constraint()` field — the constraint NAME is not included in SQLite's error output because SQLite does not name its UNIQUE indexes in the error text. The only structured information is the table and column name embedded in the message.
 
----
+SeaORM's `sql_err()` wraps both into `SqlErr::UniqueConstraintViolation(message)` and discards the Postgres constraint name. If the mapping logic uses only what `sql_err()` returns, it can never access the Postgres constraint name without re-doing the downcast.
 
-**Pitfall: Slow Client Suspends the Provider Task**
+**Why it happens:**
+Developers reach for `db_err.sql_err()` as the portable API (correct) but then try to extract the constraint name from the message string (wrong for Postgres — unnecessary; wrong for SQLite — the name is not there at all).
 
-Axum SSE uses a `Stream`-based response. When the client's TCP receive buffer fills (slow browser, mobile, or dropped connection), backpressure propagates up through the network stack into the task writing to the stream. The server task that is forwarding LLM tokens suspends. The LLM connection stays open and accumulates tokens that cannot be sent. On Anthropic's API, this means the connection timeout clock runs while nothing is being consumed.
+**How to avoid:**
+Design the constraint→field mapping around two separate identification strategies, applied in order:
 
-**Prevention:** Wrap the SSE write side in a timeout: if a single `yield` takes longer than a threshold (500ms is reasonable), close the SSE connection and drop the LLM response stream. Use `tokio::time::timeout` around each `yield`. The LLM client should independently have a per-token deadline. This prevents runaway server tasks from open connections to slow clients.
+1. **Constraint name match (Postgres)**: Downcast through `DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))` and call `e.constraint()`. Match against the registered constraint name (e.g. `"articles_slug_key"`). This is reliable and does not require string parsing.
 
-**Phase:** SSE streaming phase. Must be in the initial implementation, not added later when problems appear in production.
+2. **Table+column match (SQLite fallback)**: Parse the `message` string from `SqlErr::UniqueConstraintViolation(message)`. For SQLite the format is consistently `"UNIQUE constraint failed: <table>.<column>"`. Match on `table_name` + `column_name` extracted from this string.
 
----
+The public API for consumers should register mappings at both levels:
 
-**Pitfall: Missing `keep-alive` on Long-Running Streams**
+```rust
+db_err
+    .map_constraint("articles_slug_key", "slug", "Slug already taken")   // Postgres: by index name
+    .map_column("articles", "slug", "slug", "Slug already taken")         // SQLite: by table+column
+```
 
-Long LLM responses can take 30–90 seconds. Load balancers and reverse proxies (nginx, Caddy, AWS ALB) have idle connection timeouts, typically 60 seconds. If no bytes are sent during a long reasoning step, the proxy closes the connection mid-stream. The client sees a truncated response with no error.
+Or unify into a single registration that stores both keys and matches whichever applies.
 
-**Prevention:** Configure SSE keep-alive pings. Axum's `Sse::keep_alive()` method sends a `:ping\n\n` comment periodically. Set the interval to 15 seconds. This does not affect the client's event parsing. Document the keep-alive interval in the handler so it is not removed without understanding the consequence.
+The Postgres extraction path requires re-downcasting after `sql_err()` has already returned. Structure the utility so the downcast happens once, and both the constraint name and the `SqlErr` variant are extracted in the same match arm.
 
-**Phase:** SSE streaming phase. Default keep-alive should be part of any SSE handler scaffold.
+**Warning signs:**
+- Any code that calls `.contains("duplicate key")` or regex-matches against error message strings on the Postgres path.
+- Any code that tries to extract a constraint name from a SQLite error message (the constraint name is not present in SQLite output).
+- CI that only tests SQLite (the default `cargo test` environment) — Postgres-specific constraint-name matching is never exercised.
 
----
-
-## 3. Structured Output Reliability
-
-**Pitfall: Schema Compliance Does Not Guarantee Semantic Correctness**
-
-Provider structured output features (Anthropic's `output_config.json_schema`, OpenAI's `response_format.json_schema`) guarantee syntactic conformance. They do not guarantee correct answers. A classifier that always returns `"confidence": 0.99` is schema-compliant but operationally wrong. Required fields force the model to hallucinate when no good answer exists. The failure mode is silent: valid JSON, wrong data, crashes no parser.
-
-**Prevention:** Schema compliance and business logic validation are separate steps. After deserialization, validate fields that have business constraints (confidence in range, non-empty strings where required, enum values that correspond to real entities). The existing `ClassifierConfig.confidence_threshold` is correct but insufficient alone. Add post-deserialization validators as part of `ClassificationResult`.
-
-**Phase:** Every phase that uses structured outputs. The validator pattern should be established in the SDK foundation phase, not retrofitted.
-
----
-
-**Pitfall: Model Returns a Refusal Instead of JSON**
-
-When using Anthropic structured outputs, the model can return a `stop_reason: "end_turn"` with the content being a refusal text block instead of a JSON block. The existing `ferro-ai` parser looks for `content[0].text` and calls `serde_json::from_str`. If the model refused, this parses to an `Error::Deserialization` with an opaque message like "expected value at line 1 column 1", hiding the fact that a refusal occurred.
-
-**Prevention:** Before calling `serde_json::from_str`, check whether the text content starts with `{` or `[`. If it does not, check for common refusal patterns and return a dedicated `Error::Refusal(String)` variant. The caller can then decide whether to retry with a relaxed prompt or surface the refusal to the user.
-
-**Phase:** SDK foundation phase. The `Error` enum and the response parser are already in `ferro-ai`; the refusal check should be added there, not deferred.
+**Phase to address:**
+The constraint-detection primitive phase. Must be tested against both backends. If Postgres CI is not available in the gate, add a compile-time check and a documented manual test step.
 
 ---
 
-**Pitfall: `schemars` Default Output Not Accepted by Anthropic**
+### Pitfall 3: Exclude-self bug on edit forms
 
-`schema_for!(T)` from `schemars` produces schemas with `$defs` and `$ref` references for any type that appears more than once, and does not add `additionalProperties: false`. Both patterns are rejected by Anthropic's structured output endpoint. The error from Anthropic is a 400 with a message about unsupported schema features; the schema that caused the rejection is not echoed back, making it hard to debug.
+**What goes wrong:**
+The `unique` rule checks whether a value already exists in a column. For edit forms, the record being edited already exists, so the check must exclude the current record's ID. If the exclusion is omitted or uses the wrong column, the rule fires even when the user has not changed the field — the form refuses to save a record that was already saved with that value.
 
-**Prevention:** Write a `ferro_ai::schema::for_structured_output` function that takes the `schemars`-generated `RootSchema`, resolves all `$ref` references inline, adds `additionalProperties: false` to every object, and strips unsupported keywords before returning the cleaned `serde_json::Value`. This function is the only path for generating schemas for structured output calls. Include a test that round-trips a complex struct through this function and verifies the output against Anthropic's documented constraints.
+Common mistakes:
+- Excluding by a different column than the actual primary key (e.g., excluding by `uuid` when the index uses `id`).
+- Hardcoding `"id"` when the entity uses a non-standard primary key column name.
+- Forgetting to exclude self entirely on edit handlers (copy-pasting the create handler's validator).
 
-**Phase:** Structured output phase. Block provider integration tests on this being present.
+**Why it happens:**
+The create and edit handlers share the same validator setup code in many templates. The create path works correctly; the edit path is a copy where the `exclude_id` parameter is not added.
 
----
+**How to avoid:**
+The `unique` rule must have an explicit `exclude_id` parameter. The API should make the exclusion positionally unavoidable on the edit path:
 
-## 4. Tool Calling Complexity
+```rust
+// Create form — no exclusion
+rules![unique("articles", "slug")]
 
-**Pitfall: Unbounded Tool Call Loops**
+// Edit form — exclusion required; omitting it is a compile-time or runtime error
+rules![unique("articles", "slug").exclude_self(article.id)]
+```
 
-An LLM agent that can call tools will sometimes enter a loop: tool result → model reasons → tool call → tool result → ... A Claude Code instance in July 2025 consumed 1.67 billion tokens in 5 hours in a loop before the user noticed, generating an estimated $16,000–$50,000 in charges. The loop did not crash or error; it just continued.
+The MCP code template for edit handlers must always include `exclude_self`. If the entity's PK column name is not `"id"`, the rule must accept a column name parameter: `exclude_self_on("uid", article.uid)`.
 
-**Prevention:** The `ToolProvider` orchestration layer must enforce a `max_iterations: u32` parameter. After `max_iterations` tool call + response pairs, force a final extraction step rather than allowing another tool call. Default to 10 iterations. Log a warning at 5 and an error at 10. Make the limit configurable but never unbounded. This is not optional — treat it as a hard invariant in the loop.
+Test: assert that a record CAN be saved with its own existing slug — this is the self-exclusion regression test. This test is distinct from the "create duplicate" test and must exist independently.
 
-**Phase:** Tool calling phase. The limit must be present in the initial implementation, not added after observing runaway behavior.
+**Warning signs:**
+- Edit handler that copies the create handler's validator without adding `exclude_self`.
+- Users reporting that editing a record without changing the slug produces a "slug already taken" error.
+- Integration tests that only test create, not create-then-edit-with-same-value.
 
----
-
-**Pitfall: Tool Error → Model Cannot Interpret → Loop**
-
-When a tool returns an error, the model receives the error message as a tool result. If the error message is not actionable (stack trace, internal ID, database constraint error), the model will often retry the same tool call with the same arguments, producing the same error, looping. The loop runs until `max_iterations` fires or until the user kills the process.
-
-**Prevention:** Tool implementations must return user-legible error messages, not raw error chains. Define a `ToolError` type with a `message: String` field intended for the model to read. Map internal errors to actionable descriptions before returning them to the orchestrator. The orchestrator should not pass raw `Display` output from `anyhow::Error` or `Box<dyn Error>` back to the model.
-
-**Phase:** Tool calling phase. Establish the `ToolError` type before registering any tools.
-
----
-
-**Pitfall: Parallel Tool Calls Return Out-of-Order**
-
-Both OpenAI and Anthropic can request multiple tool calls in a single response. If the orchestrator executes them with `tokio::spawn` for parallelism, results arrive out of order. Providers require tool results to be submitted in the same order as the tool call IDs in the request. Submitting results out of order produces a 400 error with a message about mismatched tool use IDs.
-
-**Prevention:** Collect all tool calls from the model's response, execute them in parallel with `tokio::join_all`, and then reassemble results in the original order by matching on the `tool_use_id` field before submitting. The join is on the IDs, not on execution order.
-
-**Phase:** Tool calling phase. Test with a multi-tool request to confirm ordering is preserved.
+**Phase to address:**
+The async rule implementation phase. The `exclude_self` parameter must be part of the first version of the rule; retrofitting it later risks silently incorrect edit forms in existing consumer code.
 
 ---
 
-## 5. Rate Limiting and Cost Control
+### Pitfall 4: Leaking raw SQL error messages to end users via `From<DbErr> for ActionError`
 
-**Pitfall: CLI Commands With No Rate Limiting or Cost Cap**
+**What goes wrong:**
+`framework/src/http/action.rs` line 196–199 implements:
+```rust
+impl From<sea_orm::DbErr> for ActionError {
+    fn from(err: sea_orm::DbErr) -> Self {
+        Self::msg(err.to_string())
+    }
+}
+```
 
-`ferro ai:make` and `ferro ai:explain` will make LLM API calls on behalf of the developer. Without limits, a developer writing a shell script around `ferro ai:make` in a loop (scaffolding 50 models from a CSV) will hit Anthropic's rate limits and generate unexpected costs. Rate limits (429) surface as transient errors that the existing retry logic will retry, amplifying the problem.
+`DbErr::to_string()` for a Postgres unique constraint violation produces: `"error returned from database: duplicate key value violates unique constraint \"articles_slug_key\""`. For SQLite: `"error returned from database: UNIQUE constraint failed: articles.slug"`. Both strings contain table and column internals. They are the user-facing `ActionError::message` field, which lands in the flash toast.
 
-**Prevention:** Add three controls to every AI CLI command: (1) a `--dry-run` flag that prints the prompt and estimated token count without calling the API; (2) a configurable `FERRO_AI_MAX_TOKENS_PER_COMMAND` env var that aborts before sending if the prompt exceeds the limit (default 100K tokens); (3) exponential backoff for 429 responses with a maximum wait of 30 seconds and a maximum of 3 retries before surfacing the error. The dry-run flag is the most user-visible safety net.
+The `?` operator inside `#[action]` handlers triggers this `From` impl automatically. Every `Entity::insert().exec(&db).await?` is a potential info leak.
 
-**Phase:** AI CLI commands phase. All three controls must be present in the first CLI command shipped.
+**Why it happens:**
+The `From<DbErr>` impl was added for ergonomics — `?` on DB operations just works. The fact that the converted message is user-facing is not obvious from the call site.
 
----
+**How to avoid:**
+The milestone's constraint→field mapping must intercept constraint violations before they reach the `From<DbErr>` conversion. The idiomatic pattern:
 
-**Pitfall: Retry Logic Amplifies Rate-Limit Cost**
+```rust
+Article::insert(model)
+    .exec(&db).await
+    .map_constraint_err("articles_slug_key", "slug", "Slug already taken")?
+    // ^ returns Err(ValidationError) routed through into_action_error, not Err(ActionError)
+```
 
-The existing `Classifier` retry logic retries `max_retries` times on transient errors, including 429. A 429 retry with a 1-second delay (current default) can still exceed rate limits because the retry itself is within the rate limit window. Retrying a 429 immediately is the same as sending the original request again too fast.
+The `From<DbErr> for ActionError` impl should NOT be removed — it is correct for non-constraint DB errors (connection failures, syntax errors, etc.). Instead, constraint violations must be caught BEFORE the `?` operator converts them to `ActionError`. The safety net documentation in the `From<DbErr>` impl should note that constraint violations should be handled via `map_constraint_err` before `?`.
 
-**Prevention:** When the error is a 429, extract the `retry-after` header from Anthropic's response and wait that duration before retrying. If no header is present, use exponential backoff with jitter starting at 5 seconds. The current `retry_delay` default of 1 second is too short for 429 handling. The `is_transient_error` classification for 429 is correct, but the delay logic must be rate-limit-aware.
+**Warning signs:**
+- User sees a toast containing "UNIQUE constraint failed" or "duplicate key value violates unique constraint".
+- `ActionError::message` containing table or column names from the schema.
+- Handlers that use `entity_insert().exec(&db).await?` without a preceding `map_constraint_err` call when the entity has UNIQUE indexes.
 
-**Phase:** SDK foundation phase. Fix before any production use; the current implementation will amplify rate limit pressure.
-
----
-
-## 6. Context Window Management for AI Scaffolding
-
-**Pitfall: ferro-mcp Introspection Output Is Too Large for a Single Prompt**
-
-`ferro ai:make <description>` will use `ferro-mcp` introspection as context: routes, models, schema, events, and generation hints. For a large application (the sample `app/` already has dozens of routes and models), the introspection output easily exceeds 50K tokens. Sending the full introspection as a system prompt has two problems: cost (system prompts are billed at input token rates) and quality degradation (models perform worse on tasks when the context is dominated by irrelevant information).
-
-Research shows performance degrades reliably once effective context exceeds ~128K tokens for most models, and the degradation begins well below the advertised context limit.
-
-**Prevention:** Apply selective context loading: include only the models and routes that are semantically relevant to the user's description. For `ferro ai:make "order checkout form"`, include only models with fields related to "order", "checkout", or "payment", and only the routes that match those models. Use string matching against the description as a first-pass filter. This is not semantic search — string matching against route names and model field names is sufficient for CLI scaffolding and avoids introducing an embeddings dependency.
-
-**Phase:** AI CLI commands phase. The context selection logic should be built before the prompt construction, not after observing cost or quality problems.
-
----
-
-**Pitfall: Component Catalog in Prompt Is Unbounded**
-
-The existing `build_view_context` in `ferro-cli/src/ai.rs` includes the full `COMPONENT_CATALOG` in the system prompt. For v12.0 JSON-UI v2, the catalog will grow. Embedding the full catalog schema in every AI generation request is expensive and, per the v12.0 decision record, explicitly rejected: "Full catalog schema in AI prompts — 36-component oneOf produces 40-80 KB schema, too large for system prompts."
-
-**Prevention:** Use per-component schemas for generation (as decided in v12.0), not the full catalog. The `ferro ai:make` command selects which components are likely needed based on the description, injects only those component schemas, and provides a component list summary for the others. This is already the documented direction for v12.0 MCP integration; carry it through to the CLI commands.
-
-**Phase:** AI CLI commands phase. The prompt construction strategy from v12.0 must be applied here; do not regress to full-catalog prompts.
+**Phase to address:**
+The constraint→field mapping phase. The `From<DbErr>` impl is a pre-existing leak; the milestone closes it by providing a correct interception point.
 
 ---
 
-## 7. Integration with Existing ferro-ai Crate
+### Pitfall 5: Blocking the async executor with DB queries inside the validation loop
 
-**Pitfall: `reqwest::blocking::Client` in ferro-cli vs Async in ferry-ai**
+**What goes wrong:**
+The existing `Rule` trait is synchronous:
+```rust
+pub trait Rule: Send + Sync {
+    fn validate(&self, field: &str, value: &Value, data: &Value) -> Result<(), String>;
+}
+```
 
-`ferro-cli/src/ai.rs` uses `reqwest::blocking::Client` with `reqwest::blocking::ClientBuilder`. `ferro-ai/src/classifier/anthropic.rs` uses `reqwest::Client` (async). These cannot share provider implementations. If the CLI commands are refactored to use `ferro-ai` directly, the blocking client must be removed and the CLI binary must run inside a Tokio runtime.
+A `unique` rule that queries the database cannot implement this trait directly. The temptation is to call `tokio::runtime::Handle::current().block_on(db_query)` inside the synchronous `validate()` method, which blocks the async executor thread and can deadlock or severely degrade throughput.
 
-**Prevention:** The AI CLI commands expansion should route through `ferro-ai`'s async providers using `tokio::runtime::Runtime::block_on` at the CLI entry point, or by adding `#[tokio::main]` to the CLI binary. Do not maintain two parallel HTTP client paths for AI calls. The blocking client in `ferro-cli/src/ai.rs` should be deleted when the CLI commands migrate to `ferro-ai`.
+**Why it happens:**
+The easiest path to "make the test green" when the trait is sync is to block inside the rule. The issue is invisible in development with a single-threaded runtime and no concurrent requests.
 
-**Phase:** AI CLI commands phase. The migration must happen in full; a hybrid state where some CLI commands use blocking and others use async via `ferro-ai` is a maintenance trap.
+**How to avoid:**
+Introduce a separate `AsyncRule` trait (or an `AsyncValidator`) rather than hacking sync-to-async conversion inside a sync rule:
 
----
+```rust
+pub trait AsyncRule: Send + Sync {
+    async fn validate(&self, field: &str, value: &Value, data: &Value, db: &DatabaseConnection) -> Result<(), String>;
+}
+```
 
-**Pitfall: `async_trait` and `dyn ClassificationProvider` Are Coupled**
+The `Validator` type needs an `async fn validate_async(&self, db: &DatabaseConnection) -> Result<(), ValidationError>` method. Sync rules run synchronously; async rules run in the async path. They do not mix: a validator with async rules cannot call the sync `validate()` method.
 
-The existing `ClassificationProvider` trait uses `#[async_trait]` to achieve object safety (`Arc<dyn ClassificationProvider>`). Rust 1.75 stabilized native `async fn` in traits, but native async traits are not dyn-compatible without the `trait_variant` crate or manual boxing. Removing `async_trait` while keeping `dyn ClassificationProvider` will break compilation.
+The Tokio runtime constraint is hard: never call `block_on` from within an async context. The test that catches this: run the async validator under `#[tokio::test]` with a concurrent request simulation — if it deadlocks, `block_on` is present.
 
-**Prevention:** Keep `async_trait` on the provider traits. It is not deprecated; it has reduced applicability but is still required for dyn-compatible async traits. If native async trait support improves to include dyn compatibility before this milestone ships, reassess. Do not perform the migration speculatively.
+**Warning signs:**
+- `Rule::validate()` implementation that calls `Handle::current().block_on(...)`.
+- Handler under load shows executor thread starvation (all threads blocked, no progress).
+- Any use of `std::sync::Mutex` or `std::thread::sleep` inside a `Rule` implementation.
 
-**Phase:** No migration needed. This is a false target; keep `async_trait` and note it in the `ClassificationProvider` doc comment.
-
----
-
-**Pitfall: Adding OpenAI/Groq Providers Breaks the Current `ClassifierConfig.model` Default**
-
-`ClassifierConfig::default()` hardcodes `model: "claude-sonnet-4-6"`. When a user configures an OpenAI or Groq provider and uses `ClassifierConfig::default()`, the default model is wrong for the provider. There is no type-level enforcement — the mismatch surfaces only at runtime as a 400 error from the provider.
-
-**Prevention:** The SDK expansion must change `ClassifierConfig` to either: (a) have no default model (force the caller to supply one), or (b) have the provider supply its own default model via a method on the provider trait. Option (b) is cleaner because the provider knows its own supported models. Add `fn default_model(&self) -> &str` to `ClassificationProvider`. Remove the hardcoded default from `ClassifierConfig` or make it `Option<String>` and resolve it through the provider at call time.
-
-**Phase:** SDK foundation phase. Fix before any provider other than Anthropic is added.
-
----
-
-## 8. Axum SSE Response and Streaming Architecture
-
-**Pitfall: Axum `Sse<S>` Requires the Stream to Be `Unpin`**
-
-Axum's `Sse<S>` response wrapper requires `S: Stream + Unpin`. When constructing a stream from an `async fn` or from an LLM response body using `futures::stream::unfold`, the result is not `Unpin` by default. The compiler error ("the trait bound `impl Stream<...>: Unpin` is not satisfied") is correct but the fix is non-obvious: `Box::pin` or `tokio_stream::wrappers::ReceiverStream` from an `mpsc::channel`.
-
-**Prevention:** For handler-to-LLM token streams, use the channel pattern: spawn a background task that reads from the LLM response stream and sends tokens through a `tokio::sync::mpsc::channel`, then wrap the receiver in `ReceiverStream` which is `Unpin`. This also naturally handles the backpressure and timeout patterns described in Section 2. Document this as the canonical SSE handler pattern in `ferro-ai`.
-
-**Phase:** SSE streaming phase. Include a working example handler in the crate documentation; do not leave this as an exercise for the caller.
+**Phase to address:**
+The async rule trait design phase — this is the foundational decision. The trait split must be the first thing designed; everything else builds on it.
 
 ---
 
-**Pitfall: Anthropic Response Parsing Assumes `content[0].text` Is JSON**
+### Pitfall 6: N queries for N unique fields in a single validation pass
 
-The current `AnthropicProvider::classify_raw` extracts `content[0].text` and calls `serde_json::from_str`. With the GA structured output API (`output_config.format.json_schema`), Anthropic returns the structured JSON in `content[0].text` as a JSON string. This is correct for the current implementation.
+**What goes wrong:**
+A form with three unique fields (`slug`, `email`, `sku`) runs three separate DB queries if each field has its own `unique` rule. Under the async-rule design, `validate_async` iterates rules in sequence, and each `unique` rule issues one SELECT. At N=3 this is minor; in a form with many indexed fields or under high concurrency, the sequential query pattern amplifies DB load.
 
-However, for streaming responses, Anthropic sends content as a sequence of delta events (`content_block_delta` with `delta.type = "text_delta"` and `delta.text = "<chunk>"`). The streaming parser must accumulate these deltas and parse the assembled string at the end, not parse each chunk as JSON. Parsing chunks individually will fail because each chunk is a partial JSON string.
+**Why it happens:**
+The rule-per-field model maps naturally to one query per rule. Batching requires cross-field coordination that is absent from the per-field rule design.
 
-**Prevention:** The streaming provider implementation must buffer `text_delta` chunks and parse the complete assembled string after receiving `message_stop`. Do not attempt streaming + structured output parsing simultaneously (parse per-chunk). For non-structured streaming, yield each delta immediately to the Axum SSE stream.
+**How to avoid:**
+For the v12.4 scope (typically 1–3 unique fields per form), sequential queries are acceptable. Do not over-engineer batching now. However:
 
-**Phase:** SSE streaming phase. Keep structured output parsing (blocking, via `classify_raw`) separate from streaming token delivery. Do not combine them in the same code path.
+1. Document the N-query behavior explicitly so consumers know to minimize `unique` rule count.
+2. Design the async-rule interface so that batching could be added later without breaking the consumer API (e.g., a `batch_validate_async` hook on a trait the rule can optionally implement).
+3. Add a connection-acquisition cost note: each query in the pool may acquire a connection. With SeaORM's connection pool, this is cheap but not free. Do not use `unique` rules for fields that could instead be validated by DB triggers or deferred to the constraint-mapping path.
+
+**Warning signs:**
+- Forms with more than five `unique` rules.
+- Slow form submission under load that is not explained by the write path.
+
+**Phase to address:**
+Async rule implementation phase. Add the documentation note; defer batching to a later phase if the need is confirmed.
 
 ---
 
-## Phase-Specific Warning Matrix
+### Pitfall 7: Case-sensitivity and collation mismatch between the app-level check and the DB index
 
-| Phase Topic | Pitfall | Mitigation |
-|---|---|---|
-| SDK provider trait | Monolithic trait forcing LCD surface | Capability traits: `CompletionProvider`, `StreamingProvider`, `EmbeddingProvider`, `ToolProvider` |
-| Anthropic structured output | `schemars` emits `$ref`; rejected as 400 | `schema::for_structured_output()` normalizer before any provider call |
-| Structured output | Model returns refusal, parsed as deserialization error | `Error::Refusal` variant; check `text` before JSON parse |
-| Multi-provider `ClassifierConfig` | Default model `"claude-sonnet-4-6"` wrong for OpenAI/Groq | Provider-supplied `default_model()` or `Option<String>` in config |
-| SSE in handlers | `reqwest::blocking` panics in Tokio context | Delete blocking path; CLI entry point uses `block_on` |
-| SSE in handlers | `CompressionLayer` buffers SSE | Exclude SSE routes from compression middleware |
-| SSE in handlers | Slow client suspends provider task | `tokio::time::timeout` on each SSE yield; close on exceeded threshold |
-| SSE in handlers | Reverse proxy closes idle long connections | `Sse::keep_alive()` at 15-second interval |
-| Tool calling | Unbounded iteration loops, $50K incidents documented | `max_iterations` hard limit, default 10 |
-| Tool calling | Tool errors cause retry loops | `ToolError` with model-legible `message` field |
-| Tool calling | Parallel tool results sent out of order | Join on `tool_use_id`; submit results in original request order |
-| Rate limiting | 429 retried too fast, amplifies rate pressure | Extract `retry-after` header; exponential backoff for 429 |
-| CLI cost | No cost visibility before invoking model | `--dry-run` flag + token count estimate |
-| Context size | Full `ferro-mcp` output exceeds 50K tokens | Selective context: filter to description-relevant models and routes |
-| Ollama provider | OpenAI compat layer drops tool calls when streaming | `stream: false` when tools present on Ollama |
-| Provider config | `tool_choice: "any"` + extended thinking → 400 on Anthropic | Validate in `AnthropicToolProvider` before sending |
+**What goes wrong:**
+The async `unique` SELECT uses whatever collation the query applies by default. If the DB index uses a case-insensitive collation (`COLLATE NOCASE` in SQLite, `citext` or `COLLATE "ci_..."` in Postgres), the proactive SELECT may pass ("HELLO" not found) while the DB insert fails the constraint ("hello" already exists — the index treats them as equal).
+
+Alternatively, the proactive SELECT may use a case-insensitive comparison (`LIKE` or `LOWER(value) = LOWER(column)`) while the DB index is case-sensitive, producing false positives (the rule rejects the value, but the DB would have accepted it).
+
+**Why it happens:**
+The `unique` rule constructs a `SELECT COUNT(*) WHERE column = ?` query using SeaORM's query builder. The comparison uses the column's default collation. The developer writes the rule without inspecting the index's collation, and the mismatch is invisible until an edge case hits.
+
+**How to avoid:**
+1. The `unique` rule's SELECT must match the index's collation. For case-insensitive indexes, use `LOWER(column) = LOWER(?)` or a collation-aware SeaORM condition.
+2. Document the collation parameter on the `unique` rule: `unique("articles", "slug").case_insensitive()` generates `WHERE LOWER(slug) = LOWER(?)`.
+3. Prefer matching the DB index exactly: if the index is case-sensitive, the rule is case-sensitive. Do not add case-insensitivity at the app layer that the index does not share.
+4. The constraint mapping path is immune to this problem — the DB enforces its own collation. This is another argument for treating constraint mapping as the ground truth and the async rule as a best-effort pre-check.
+
+**Warning signs:**
+- Users can create "hello" and "HELLO" as distinct slugs when they should be the same.
+- Users are blocked from using a value that differs only in case from an existing value, when the index is case-sensitive.
+- The rule passes, the INSERT fires, and the constraint violation fires anyway (the async rule's collation does not match the index).
+
+**Phase to address:**
+Async rule implementation phase. The rule must expose a collation parameter from the start. Retrofitting collation handling breaks existing rule invocations.
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Implement `unique` as a sync rule using `block_on` | No new trait needed | Executor starvation, potential deadlock under concurrent requests | Never |
+| Route constraint violations through `From<DbErr> for ActionError` with a generic message | No constraint-mapping API needed | Raw SQL internals visible to users; no field attribution | Never for user-facing forms |
+| Use `sql_err()` message string parsing for both Postgres and SQLite constraint name extraction | Single code path | Fragile: Postgres message format is an implementation detail that can change; constraint name is not in SQLite messages at all | Never; use structured fields for Postgres, table.column parsing for SQLite |
+| Skip `exclude_self` on the first version and add later | Faster initial implementation | Every consumer edit handler is silently broken until the upgrade | Never; must be in v1 of the rule |
+| Only test SQLite in CI for constraint mapping | Fast CI | Postgres-specific constraint name matching is never tested | Acceptable only if a documented manual Postgres test step exists |
+
+---
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| SeaORM `sql_err()` | Using only `SqlErr::UniqueConstraintViolation(message)` and parsing the message for the constraint name | For Postgres: downcast the underlying `sqlx::Error` to `PgDatabaseError` and call `.constraint()`. For SQLite: parse `"UNIQUE constraint failed: <table>.<column>"` from the message. |
+| SeaORM `sql_err()` scope | Calling `sql_err()` on `DbErr::Connect` or `DbErr::Migration` variants | `sql_err()` only returns `Some` for `DbErr::Exec` and `DbErr::Query` variants wrapping `RuntimeErr::SqlxError(sqlx::Error::Database(...))`. Other variants return `None`. |
+| SeaORM dual-backend | SQLite error code `2067` (UNIQUE) vs `1555` (PRIMARY KEY) | Both map to `SqlErr::UniqueConstraintViolation`. Distinguish PK violations from column violations by the message content if needed, but for field mapping this distinction rarely matters. |
+| Postgres `constraint()` | Assuming the constraint name matches the column name | Constraint names are index names, set at migration time (e.g. `"articles_slug_key"`). They do not match column names. Consumers must register the index name, not the column name. |
+| SQLite UNIQUE constraint messages | Assuming `"UNIQUE constraint failed: table.column"` format is guaranteed | This is SQLite's current format and has been stable, but it is not part of SQLite's API contract. A version update could change it. Treat it as best-effort; the constraint-mapping path is the canonical guarantee. |
+| `ValidationError::into_action_error` | Using `redirect_to` + `return Err(ActionError::msg(...))` instead | Use `ValidationError::into_action_error(url)` which flashes per-field errors AND suppresses the redundant generic toast. The old two-step pattern was deprecated in Phase 180. |
+
+---
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Sequential async uniqueness queries for N fields | Form submission latency increases linearly with N unique fields | Document the N-query cost; recommend limiting `unique` rules; design for optional batching later | Noticeable at N ≥ 5 unique fields under concurrent load |
+| Connection pool exhaustion from validator acquiring connections inside a request | Request latency spikes; pool timeout errors | Reuse the request's existing DB connection in the validator, do not acquire a fresh pool connection per rule | Under load with a small pool (< 10 connections) |
+| Duplicate uniqueness checks (async rule + redundant SELECT in the handler before insert) | 2x DB queries for no gain | Trust the async rule result; do not re-check in the handler body | Any load |
+
+---
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| `DbErr::to_string()` as `ActionError::message` on constraint violations | Leaks table names, column names, and index names to the user via the flash toast and URL query string | Intercept constraint violations with `map_constraint_err` before `?` converts them to `ActionError`. The `From<DbErr>` impl is not removed, but constraint violations must not reach it. |
+| Constraint-field mapping accepting user-supplied field names at runtime | An attacker could supply an arbitrary field name and have arbitrary error messages attributed to arbitrary form fields | The constraint→field mapping must be static (compile-time or configuration-time). The field name in the error is always the developer-registered field key, never derived from the error message. |
+| Exposing the constraint name in a user-visible error message | Leaks internal schema naming conventions | Never include the raw constraint name (e.g. `"articles_slug_key"`) in a user-visible message. The constraint name is an internal registration key only. |
+
+---
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Constraint violation with no field attribution (current state) | User sees a generic error toast with raw SQL text; no indication which field is invalid; form input is lost | Constraint→field mapping routes the error to the field inline with `with_old_input` preserving form state |
+| Async `unique` rule without `with_old_input` | User sees field-level error but the form is blank — all input is lost on the redirect | Always chain `with_old_input(&data)` before `into_action_error(url)` |
+| `unique` check passes, but constraint fails on concurrent insert, and no mapping is registered | User sees raw SQL error from the racing insert | The constraint mapping is the safety net; it must always be registered even when an async rule is present |
+| Showing a uniqueness error before the user finishes typing | User is interrupted mid-input | The async rule runs on form submit only, never on keypress. No client-side polling. |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Async unique rule:** Verify `exclude_self` is in the API and tested with an edit-form scenario (record flagging itself).
+- [ ] **Constraint mapping:** Verify it is tested against both SQLite (error code 2067, message parsing) AND Postgres (SQLSTATE 23505, constraint name via downcast).
+- [ ] **Concurrent insert:** Verify there is a test that simulates two simultaneous inserts of the same unique value, confirming the constraint-mapping path fires and produces a field-level error (not a raw SQL message).
+- [ ] **Old input preservation:** Verify form input survives the constraint-violation redirect — the flash round-trip must use `with_old_input` + `into_action_error`, not the query-param `?error=...` path.
+- [ ] **No raw SQL in user output:** Verify `ActionError::message` never contains "UNIQUE constraint failed" or "duplicate key value" in any test path.
+- [ ] **`From<DbErr> for ActionError` gap:** Verify the existing blanket `From` impl is documented with a warning that constraint violations must be handled upstream via `map_constraint_err`.
+- [ ] **Collation coverage:** Verify the `unique` rule's SELECT uses the same case sensitivity as the target index (document the `case_insensitive()` parameter if it exists).
+- [ ] **MCP code template:** Verify the `action_handler` template includes both the async rule AND the constraint-mapping call — not one without the other.
+
+---
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| `unique` rule without `exclude_self` shipped to consumers | MEDIUM | Add `exclude_self` to the rule, update MCP template, issue a BREAKING CHANGE note since existing edit handlers need update |
+| Constraint detection broken on Postgres but not SQLite | LOW | Fix the downcast path; no API change; add Postgres CI step |
+| Raw SQL in user-visible messages found post-ship | LOW | Add `map_constraint_err` call to affected handlers; no framework change needed |
+| Async rule using `block_on` discovered under load | HIGH | Requires trait redesign; all consumers must update to `validate_async`; cannot be hot-patched |
+| Collation mismatch causing duplicate inserts to slip through async check | MEDIUM | Add `case_insensitive()` parameter to rule; existing call sites without the parameter retain old behavior |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| TOCTOU — async rule treated as the guarantee | Constraint-mapping primitive phase | Code review: every handler with a `unique` rule also has `map_constraint_err`; MCP template includes both |
+| SQLite vs Postgres constraint detection divergence | Constraint-detection primitive phase | CI gate: integration tests run against both backends; Postgres constraint name test must be present |
+| Exclude-self bug on edit forms | Async rule implementation phase | Integration test: create record, edit with same value, assert save succeeds |
+| Raw SQL leak via `From<DbErr>` | Constraint-mapping primitive phase | Snapshot test: no `ActionError::message` ever matches `"UNIQUE constraint failed"` or `"duplicate key"` regex |
+| `block_on` inside sync Rule | Async rule trait design — first | Compile-time: `AsyncRule` trait is separate; no `block_on` in any `Rule` impl; async validator path requires `validate_async` |
+| N queries for N unique fields | Async rule implementation phase | Document; add note in rule docs; no structural fix needed for v12.4 |
+| Case-collation mismatch | Async rule implementation phase | API review: `unique` rule exposes `case_insensitive()` from the start |
+| Old input loss on constraint redirect | Constraint-mapping phase | Integration test: constraint redirect preserves all form fields in `req.old()` |
 
 ---
 
 ## Sources
 
-- [Axum SSE backpressure thread, Rust Users Forum](https://users.rust-lang.org/t/axum-sse-and-backpressure/133061)
-- [LLM API differences that break your code (FutureSearch)](https://futuresearch.ai/blog/llm-provider-quirks/)
-- [Structured output reliability in production (TianPan.co, 2026-04)](https://tianpan.co/blog/2026-04-20-structured-output-reliability-production)
-- [Anthropic structured outputs docs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
-- [Ollama streaming + tool calling bug report](https://github.com/ollama/ollama/issues/12557)
-- [LLM tool calling in production — infinite loop failure mode (Medium)](https://medium.com/@komalbaparmar007/llm-tool-calling-in-production-rate-limits-retries-and-the-infinite-loop-failure-mode-you-must-2a1e2a1e84c8)
-- [Tool-use API design: 5 patterns that prevent agent loops](https://dev.to/adamo_software/tool-use-api-design-for-llms-5-patterns-that-prevent-agent-loops-and-silent-failures-f29)
-- [Axum SSE docs](https://docs.rs/axum/latest/axum/response/sse/)
-- [async fn in traits stabilization (Rust blog)](https://blog.rust-lang.org/2023/12/21/async-fn-rpit-in-traits.html)
-- [Context window management strategies (GetMaxim)](https://www.getmaxim.ai/articles/context-window-management-strategies-for-long-context-ai-agents-and-chatbots/)
-- [Groq streaming finish_reason bug report](https://community.groq.com/t/groq-api-bug-report-missing-finish-reason-in-streaming-responses/775)
-- [reqwest-eventsource crate](https://docs.rs/reqwest-eventsource/)
-- [Structured output comparison across providers (Medium)](https://medium.com/@rosgluk/structured-output-comparison-across-popular-llm-providers-openai-gemini-anthropic-mistral-and-1a5d42fa612a)
+- SeaORM 1.x `DbErr::sql_err()` and `SqlErr` enum: https://docs.rs/sea-orm/1.1.14/src/sea_orm/error.rs.html
+- sqlx `PgDatabaseError::constraint()`: https://docs.rs/sea-orm/1.1.14/sea_orm/error/struct.SqlxPostgresError.html
+- SQLite extended error codes 1555 (SQLITE_CONSTRAINT_PRIMARYKEY) and 2067 (SQLITE_CONSTRAINT_UNIQUE): https://www.sqlite.org/rescode.html
+- Postgres SQLSTATE 23505 (unique_violation): https://www.postgresql.org/docs/current/errcodes-appendix.html
+- Codebase inspection: `framework/src/http/action.rs` lines 196–199 (`From<sea_orm::DbErr> for ActionError` passthrough)
+- Codebase inspection: `framework/src/validation/rule.rs` (synchronous `Rule` trait — no `db` parameter, no `async fn`)
+- Codebase inspection: `framework/src/validation/error.rs` — `with_old_input`, `into_action_error`, `flash_into_session` chain
+- PROJECT.md v12.4 milestone description — gestiscilo-it slug-uniqueness raw-SQL field-test source
+
+---
+*Pitfalls research for: async DB-backed uniqueness validation + constraint→field error mapping in SeaORM dual-backend Rust framework*
+*Researched: 2026-06-09*

@@ -1,358 +1,309 @@
-# Architecture: ferro v12.1 AI Milestone
+# Architecture Research
 
-**Domain:** Multi-provider LLM SDK + AI-assisted scaffolding CLI
-**Researched:** 2026-05-15
-**Confidence:** HIGH — based on direct codebase reading
+**Domain:** ferro v12.4 — async validation rules + DB constraint→field-level error mapping
+**Researched:** 2026-06-09
+**Confidence:** HIGH (all findings grounded in source code)
 
----
-
-## Component Overview
+## Existing System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         USER / AGENT                                │
-│               ferro ai:make "..."   ferro ai:explain ...            │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │ invokes
-┌──────────────────────────────▼──────────────────────────────────────┐
-│                         ferro-cli                                   │
-│  src/commands/ai_make.rs        src/commands/ai_explain.rs          │
-│  src/commands/make_json_view.rs (modified: use SDK instead of ai.rs)│
-│                                                                     │
-│  src/ai.rs  <-- REPLACED by direct ferro-ai SDK calls              │
-└────────────────────┬────────────────────────────────────────────────┘
-                     │ depends on
-┌────────────────────▼────────────────────────────────────────────────┐
-│                         ferro-ai  (EXPANDED)                        │
-│                                                                     │
-│  src/client/          <- NEW: provider-agnostic LLM client          │
-│    mod.rs             (LlmClient trait)                             │
-│    anthropic.rs       (existing classify_raw promoted here)         │
-│    openai.rs          <- NEW                                        │
-│    groq.rs            <- NEW (reuses openai wire format)            │
-│    ollama.rs          <- NEW                                        │
-│    config.rs          <- NEW: AiConfig (from_env, provider select)  │
-│                                                                     │
-│  src/complete.rs      <- NEW: ferro_ai::complete::<T>() entry point │
-│  src/tools.rs         <- NEW: tool-calling register & dispatch      │
-│  src/embeddings.rs    <- NEW: embed() + cosine_similarity()         │
-│  src/stream.rs        <- NEW: TokenStream (async stream of tokens)  │
-│                                                                     │
-│  src/classifier/      <- KEPT unchanged                             │
-│  src/confirmation/    <- KEPT unchanged                             │
-│  src/error.rs         <- MODIFIED: new Stream/Tool/Embed variants   │
-└────────────────────┬────────────────────────────────────────────────┘
-                     │ introspection context via
-┌────────────────────▼────────────────────────────────────────────────┐
-│                         ferro-mcp                                   │
-│                                                                     │
-│  src/tools/ai.rs       <- MODIFIED: add ai_scaffold, ai_explain     │
-│                           MCP tools calling the new SDK             │
-│  (existing generation_context, list_routes, list_models unchanged)  │
-└────────────────────┬────────────────────────────────────────────────┘
-                     │ SSE response via
-┌────────────────────▼────────────────────────────────────────────────┐
-│                    framework (ferro-rs)  (MODIFIED)                 │
-│                                                                     │
-│  src/http/sse.rs        <- NEW: SseEvent, SseStream                 │
-│  src/http/response.rs   <- MODIFIED: HttpResponse::sse() factory    │
-│  src/lib.rs             <- MODIFIED: re-export SseStream, SseEvent  │
-│  Cargo.toml [ai] feature <- already optional; unchanged             │
-└────────────────────┬────────────────────────────────────────────────┘
-                     │ renders streaming text via
-┌────────────────────▼────────────────────────────────────────────────┐
-│                    ferro-json-ui  (MODIFIED)                        │
-│                                                                     │
-│  src/components/stream_text.rs  <- NEW: StreamText component        │
-│    renders <div data-ferro-stream-url="..."> + inline EventSource   │
-│  src/render.rs          <- MODIFIED: handle StreamText variant      │
-└─────────────────────────────────────────────────────────────────────┘
+POST handler (#[action])
+    │
+    ├─ Validator::new(&data)         ← sync; Rule trait: validate(&str,&Value,&Value)->Result<(),String>
+    │   .rules("field", rules![...])
+    │   .validate()                  ← returns Result<(), ValidationError>
+    │
+    ├─ ValidationError::with_old_input(&data)
+    │   .into_action_error(&back_url)  ← flashes _validation_errors + _old_input.*, returns ActionError
+    │
+    └─ #[action] macro → handle_action_result()
+            │
+            ├─ Ok(()) → 303 + ?success=1
+            └─ Err(ActionError) → 303 + optional ?error=kind&msg= envelope
+                    (suppress_url_envelope=true when ActionError::validation_failed)
+
+DB Errors today:
+    sea_orm::DbErr  →  From<DbErr> for ActionError  →  ActionError::msg(err.to_string())
+                       raw SQL string in flash, no field attribution
 ```
 
----
+## v12.4 Integration Design
 
-## New vs Modified Components
+### Decision 1: Async Rule Architecture
 
-### NEW — ferro-ai modules
+**Chosen: `AsyncRule` trait + `validate_async` method on `Validator`.**
 
-| Module | Path | What it adds |
-|--------|------|--------------|
-| `LlmClient` trait | `ferro-ai/src/client/mod.rs` | Provider-agnostic `complete_raw`, `complete_structured`, `stream_raw`, `embed_raw` |
-| `AnthropicClient` | `ferro-ai/src/client/anthropic.rs` | Promote existing reqwest logic; add streaming and plain completions |
-| `OpenAiClient` | `ferro-ai/src/client/openai.rs` | OpenAI-compatible provider |
-| `GroqClient` | `ferro-ai/src/client/groq.rs` | Groq via OpenAI wire format with different base URL |
-| `OllamaClient` | `ferro-ai/src/client/ollama.rs` | Ollama local provider |
-| `AiConfig` | `ferro-ai/src/client/config.rs` | `from_env()` reads `FERRO_AI_PROVIDER`; returns `Box<dyn LlmClient>` |
-| `complete::<T>()` | `ferro-ai/src/complete.rs` | One-shot typed completion via JSON Schema; wraps `LlmClient` |
-| `Tool` + `ToolRegistry` | `ferro-ai/src/tools.rs` | Register Rust fns as AI tools; dispatch tool-use calls from provider response |
-| `embed()` + `cosine_similarity()` | `ferro-ai/src/embeddings.rs` | Embedding helpers; optional `pgvector` cargo feature |
-| `TokenStream` | `ferro-ai/src/stream.rs` | `Pin<Box<dyn Stream<Item=Result<String, Error>>>>` from streaming provider |
+Do not add async capability to the existing `Rule` trait. Rust `async fn` in traits requires either `async_trait` (dyn-safe boxed futures) or returned `impl Future` (not dyn-compatible without boxing). The sync `Rule` trait is already used as `dyn Rule` in `Vec<Box<dyn Rule>>` — introducing async changes the vtable shape and forces every existing rule to grow an async impl or adapter.
 
-### NEW — ferro-cli commands
+The clean approach:
 
-| Command | File | Depends on |
-|---------|------|------------|
-| `ferro ai:make <description>` | `ferro-cli/src/commands/ai_make.rs` | `ferro-ai` SDK + ferro-mcp context fns in-process |
-| `ferro ai:explain <route\|model>` | `ferro-cli/src/commands/ai_explain.rs` | `ferro-ai` SDK + file scanning |
-
-### NEW — framework
-
-| Component | Path | What it adds |
-|-----------|------|--------------|
-| `SseEvent` | `framework/src/http/sse.rs` | Single SSE frame with `data:`, optional `id:`, optional `event:` |
-| `SseStream` | `framework/src/http/sse.rs` | `mpsc::Sender` + `StreamBody`-backed hyper response |
-| `HttpResponse::sse()` factory | `framework/src/http/response.rs` | Returns `(SseStream, SseSender)` pair |
-
-### NEW — ferro-json-ui
-
-| Component | Path | What it adds |
-|-----------|------|--------------|
-| `StreamText` variant | `ferro-json-ui/src/components/stream_text.rs` | Emits `<div>` with `data-ferro-stream-url` attribute and inline `EventSource` JS snippet |
-
-### MODIFIED — existing components
-
-| Component | Change |
-|-----------|--------|
-| `ferro-ai/src/error.rs` | Add `Stream`, `Tool`, `Embed` error variants |
-| `ferro-ai/src/classifier/anthropic.rs` | Extract shared HTTP logic into `client/anthropic.rs`; `classify_raw` delegates to new client |
-| `ferro-ai/src/lib.rs` | Export new public surface: `complete`, `LlmClient`, `AiConfig`, `TokenStream`, `embed`, `Tool` |
-| `ferro-ai/Cargo.toml` | Add `tokio-stream` for `AsyncStream`; optional `pgvector` feature |
-| `framework/src/lib.rs` | Re-export `SseStream`, `SseEvent` under `ai` feature flag |
-| `ferro-cli/src/ai.rs` | Delete and replace with `ferro-ai` SDK calls |
-| `ferro-cli/Cargo.toml` | Add `ferro-ai = { path = "../ferro-ai", version = "0.2" }` (currently absent) |
-| `ferro-cli/src/commands/make_json_view.rs` | Replace `ai::call_anthropic` with `ferro_ai::complete::<String>()` |
-| `ferro-cli/src/commands/mod.rs` | Register `ai_make`, `ai_explain` |
-| `ferro-cli/src/main.rs` | Add `AiMake`, `AiExplain` variants to `Commands` enum |
-| `ferro-mcp/src/tools/ai.rs` | Add `ai_scaffold` and `ai_explain` MCP tool implementations |
-| `ferro-json-ui/src/components/` | Add `StreamText` to the `Component` enum |
-| `ferro-json-ui/src/render.rs` | Handle `StreamText` variant in HTML renderer |
-
----
-
-## Data Flow Descriptions
-
-### Flow 1: `ferro ai:make "a product catalog with filters"`
-
-```
-1. ferro-cli/ai_make.rs
-   |-- Loads .env (dotenvy — already used in existing CLI commands)
-   |-- Calls ferro-mcp context builders in-process:
-   |     generation_context::execute()        -> naming conventions, patterns
-   |     list_routes::execute(project_root)   -> existing route list
-   |     list_models::execute(project_root)   -> existing model shapes
-   |     application_info::execute(...)       -> app name, installed crates
-   |-- Assembles system prompt: context + description
-   `-- Calls ferro_ai::complete::<ScaffoldPlan>(system, user)
-         |
-2. ferro-ai/complete.rs
-   |-- AiConfig::from_env() selects provider
-   |-- provider.complete_structured(system, user, json_schema::<ScaffoldPlan>())
-   `-- Returns ScaffoldPlan { handlers, model, routes, view }
-         |
-3. ferro-cli/ai_make.rs
-   |-- Interprets ScaffoldPlan
-   |-- Calls existing scaffold helpers (same functions as make:scaffold):
-   |     generate_migration(), generate_model(), generate_controller()
-   |     make_json_view::run() for the view
-   `-- Writes files, prints summary
+```rust
+// New trait — framework/src/validation/async_rule.rs
+#[async_trait::async_trait]
+pub trait AsyncRule: Send + Sync {
+    async fn validate(&self, field: &str, value: &Value, data: &Value) -> Result<(), String>;
+    fn name(&self) -> &'static str;
+}
 ```
 
-### Flow 2: `ferro ai:explain users/show`
+`Validator` gains two new methods. Existing sync `validate()` is unchanged:
 
-```
-1. ferro-cli/ai_explain.rs
-   |-- Resolves route or model identifier to a source file path
-   |-- Reads source content
-   |-- Calls ferro_ai::complete::<String>(explain_system_prompt, source_code)
-         |
-2. ferro-ai/complete.rs -> plain text explanation string
-         |
-3. ferro-cli/ai_explain.rs
-   `-- Prints explanation to stdout
-```
+```rust
+impl<'a> Validator<'a> {
+    // existing — unchanged
+    pub fn validate(self) -> Result<(), ValidationError> { ... }
 
-### Flow 3: SSE streaming in an application handler
+    // new builder — mirrors .rules() signature
+    pub fn async_rule<R: AsyncRule + 'static>(mut self, field: impl Into<String>, rule: R) -> Self { ... }
 
-```
-Application handler (written by developer or generated by ai:make):
-
-  pub async fn chat_stream(req: Request) -> SseResponse {
-      let (sse, tx) = SseStream::new();
-      tokio::spawn(async move {
-          let mut tokens = ferro_ai::stream(system, user, AiConfig::from_env()?).await?;
-          while let Some(token) = tokens.next().await {
-              tx.send(SseEvent::data(token?)).await.ok();
-          }
-      });
-      Ok(sse.into_response())
-  }
-
-Browser side:
-  <div data-ferro-stream-url="/chat/stream">Loading...</div>
-  (rendered by StreamText component in a JSON-UI spec)
-  |
-  EventSource("/chat/stream")
-  |-- receives: data: <token>\n\n
-  `-- appends tokens to element textContent
+    // new — runs sync rules first, then async rules on remaining fields
+    pub async fn validate_async(self) -> Result<(), ValidationError> { ... }
+}
 ```
 
-### Flow 4: `ferro make:json-view` improvement
+`validate_async` semantics:
+1. Run all sync rules exactly as `validate()` does now.
+2. If `stop_on_first_failure` is set and sync errors exist, return early — skip async (pointless to DB-check uniqueness when required fields are missing).
+3. Skip async rules for fields that already have sync errors (avoids a `unique()` SELECT on an empty string, which would pass and mask the required error).
+4. Run async rules for each field sequentially — not concurrent. All async rules are fast DB point-reads; sequential execution avoids thundering-herd on validation under load.
+5. Merge errors from both passes into one `ValidationError`.
+
+**DB connection in async rules:** `DB::connection()` is a global singleton facade (`App::resolve::<DbConnection>()`). Async rules call it directly — no injection argument on the trait. The connection is always initialized before any request handler runs. This matches the established pattern used throughout `framework/src/database/model.rs`, `query_builder.rs`, and `transaction.rs`. No connection argument on `AsyncRule`; no coupling to `Request`.
+
+### Decision 2: The `unique` Rule
+
+```rust
+// framework/src/validation/rules.rs (or rules/unique.rs if split)
+pub struct Unique {
+    table: &'static str,
+    column: &'static str,
+    except_id: Option<i64>,
+    except_column: &'static str,  // default "id"
+}
+
+pub fn unique(table: &'static str, column: &'static str) -> Unique { ... }
+
+impl Unique {
+    /// Edit forms: exclude the current row from the uniqueness check.
+    pub fn ignore(mut self, id: i64) -> Self { ... }
+    /// Non-id primary key or composite key.
+    pub fn ignore_where(mut self, col: &'static str, id: i64) -> Self { ... }
+}
+```
+
+Implementation executes `SELECT COUNT(*) FROM <table> WHERE <column> = ? [AND <except_col> != ?]` via `sea_orm::Statement::from_sql_and_values`. Using raw SQL keeps the rule free of `EntityTrait` generics and avoids any dependency on consumer model types. Table and column names are `'static str` constants — no user-supplied strings at runtime. Project-agnostic-crates rule respected; no consumer strings embedded in the framework crate.
+
+### Decision 3: Constraint-Error Mapping
+
+**Chosen: explicit `ConstraintMap` builder, called at the handler write site.**
+
+Three options evaluated:
+
+| Option | Verdict |
+|--------|---------|
+| Mutate `From<DbErr> for ActionError` to detect UNIQUE and attribute fields | Rejected. `From` impls have no knowledge of field names. A UNIQUE violation on `pages.slug` cannot be attributed to a field without consumer-specific configuration embedded in the framework crate — violates project-agnostic-crates rule. |
+| Catch in `#[action]` macro wrapper with a constraint map attribute | Rejected. The macro wrapper runs after the handler body returns; it has `ActionError` but not the original `DbErr` unless re-surfaced. Requires non-trivial macro expansion changes and a new attribute syntax. |
+| Explicit `ConstraintMap` builder at the call site in the handler | Chosen. Handler code holds the `DbErr` immediately after the insert/update call. One method converts it to `ValidationError` shape, flowing through the existing `into_action_error` path identically to a proactive rule failure. |
+
+```rust
+// framework/src/validation/constraint.rs  (new file)
+
+/// Maps a DB constraint violation to a field-level ValidationError.
+///
+/// Declared at the call site — no consumer strings live inside the framework
+/// crate. The constraint name is the DB-level index name; the field name is
+/// the form field the error surfaces under.
+pub struct ConstraintMap {
+    mappings: Vec<ConstraintMapping>,
+}
+
+struct ConstraintMapping {
+    constraint: String,
+    field: String,
+    message: String,
+}
+
+impl ConstraintMap {
+    pub fn new() -> Self { ... }
+
+    /// Register a mapping: constraint_name → field + user-facing message.
+    pub fn on(mut self, constraint: impl Into<String>, field: impl Into<String>, message: impl Into<String>) -> Self { ... }
+
+    /// Try to convert a `sea_orm::DbErr` into a `ValidationError`.
+    ///
+    /// Returns `Ok(ValidationError)` when a constraint match is found.
+    /// Returns `Err(DbErr)` when no mapping matched — caller handles as generic error.
+    pub fn try_map(&self, err: sea_orm::DbErr) -> Result<ValidationError, sea_orm::DbErr> { ... }
+}
+```
+
+Consumer call-site:
+
+```rust
+match page.insert(db.conn()).await {
+    Ok(_) => { /* success */ }
+    Err(e) => {
+        return Err(ConstraintMap::new()
+            .on("uniq_pages_slug", "slug", "This slug is already taken.")
+            .try_map(e)
+            .map(|ve| ve.with_old_input(&data).into_action_error(&back_url))
+            .unwrap_or_else(|e| ActionError::msg(e.to_string()).redirect_to(&back_url)));
+    }
+}
+```
+
+The consumer supplies constraint name and field name. Framework supplies the plumbing. No consumer string in `framework/`. Project-agnostic-crates rule holds.
+
+### Decision 4: Constraint Name Extraction
+
+`sea_orm::DbErr` surfaces constraint violations as:
+`DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))` or the `Query` variant.
+
+The underlying `sqlx::DatabaseError` provides `.code()` and `.message()`. Format differs by backend:
+
+- **SQLite:** `"UNIQUE constraint failed: pages.slug"` — constraint name parseable from message text
+- **Postgres:** code `"23505"`, message `"duplicate key value violates unique constraint \"uniq_pages_slug\""` — constraint name appears in double-quotes in the message
+
+`try_map` strategy (cfg-agnostic — no feature flag required):
+1. Detect violation: message contains `"UNIQUE constraint failed"` (SQLite) OR code is `"23505"` (Postgres) OR message contains `"duplicate key value violates unique constraint"`.
+2. If violation detected, scan registered `constraint` strings. Each registered name is checked against the full `DbErr` message with `.contains(constraint_name)`. The names are short and known at compile time — no regex needed.
+3. First match wins → construct `ValidationError`, `add(field, message)`, return `Ok(ValidationError)`.
+4. No match → return `Err(original_err)`.
+
+This is a direct parallel to `ferro-reservation/src/kernel.rs:is_serialization_failure` which uses the same `DbErr::Exec(RuntimeErr::SqlxError(...))` pattern. Unlike that function, constraint detection does NOT require the `sqlx-postgres` feature gate because string-based matching works on both backends.
+
+## Component Map: New vs Modified
 
 ```
-Current path:
-  ferro-cli/src/ai.rs::call_anthropic()
-    -> blocking reqwest::Client (not reusable, not provider-agnostic)
+framework/src/validation/
+├── mod.rs              MODIFIED  — re-export AsyncRule, ConstraintMap, new validate() docs
+├── rule.rs             UNCHANGED — sync Rule trait
+├── validator.rs        MODIFIED  — add async_rules field, async_rule(), validate_async()
+├── async_rule.rs       NEW       — AsyncRule trait (async_trait)
+├── constraint.rs       NEW       — ConstraintMap, try_map()
+├── rules.rs            MODIFIED  — add unique() and Unique struct implementing AsyncRule
+├── bridge.rs           UNCHANGED — OnceLock<TranslatorFn> translation bridge
+├── error.rs            UNCHANGED — ValidationError, with_old_input, into_action_error
+└── validatable.rs      UNCHANGED — Validatable trait
 
-After v12.1:
-  ferro_ai::complete::<String>(system, user)
-    -> AiConfig::from_env() (provider-agnostic, respects FERRO_AI_PROVIDER)
-    -> same result, no behavioral change for users
+framework/src/http/action.rs    UNCHANGED — ActionError, handle_action_result
+framework/Cargo.toml            MODIFIED  — add async_trait (already in workspace)
+docs/src/the-basics/validation.md  MODIFIED — async rules section + constraint mapping section
+ferro-mcp/src/tools/code_templates.rs  MODIFIED — add unique/ConstraintMap templates
 ```
 
----
+## Data Flows
+
+### Async Uniqueness Check (proactive — before write)
+
+```
+POST /pages
+    │
+    ├─ let data = req.input::<Value>().await?
+    │
+    ├─ Validator::new(&data)
+    │   .rules("title", rules![required()])
+    │   .async_rule("slug", unique("pages", "slug").ignore(page_id))  ← edit form
+    │   .validate_async().await
+    │        │
+    │        ├─ sync pass: required() on title
+    │        └─ async pass: SELECT COUNT(*) FROM pages WHERE slug = ? AND id != ?
+    │                        via DB::connection() — global singleton, no arg needed
+    │
+    ├─ Err(ve) → ve.with_old_input(&data).into_action_error(&back_url)
+    │             flash _validation_errors + _old_input.* → 303
+    │
+    └─ Ok(()) → proceed to insert/update
+```
+
+### Constraint Violation Catch (defensive — after write)
+
+```
+    ├─ entity.insert(db.conn()).await
+    │        │
+    │        ├─ Ok(row) → success path
+    │        └─ Err(DbErr)
+    │                │
+    │                └─ ConstraintMap::new()
+    │                     .on("uniq_pages_slug", "slug", "This slug is already taken.")
+    │                     .try_map(err)
+    │                      │
+    │                      ├─ Ok(ValidationError)
+    │                      │    → .with_old_input(&data).into_action_error(&back_url)
+    │                      │    → flash _validation_errors + _old_input.* → 303
+    │                      │    (identical redirect path to proactive rule failure)
+    │                      │
+    │                      └─ Err(DbErr) — no constraint match
+    │                           → ActionError::msg(err.to_string()).redirect_to(&back_url)
+    │                           (non-constraint DB error → generic toast + tracing::error!)
+```
 
 ## Integration Points
 
-### ferro-cli depends on ferro-ai (gap to close)
+### Existing Surfaces Unchanged
 
-ferro-cli currently has its own AI client in `src/ai.rs`: a blocking `reqwest::Client`, hardcoded to Anthropic, with no retry logic and no reuse across commands. This is a direct duplicate of part of `ferro-ai`. The integration point:
+| Surface | Status | Note |
+|---------|--------|------|
+| `Rule` trait signature | Unchanged | All existing sync rules continue to work |
+| `Validator::validate()` | Unchanged | Existing callers compile without modification |
+| `ValidationError` (all methods) | Unchanged | `add`, `with_old_input`, `into_action_error`, flash format |
+| `ActionError` (all methods) | Unchanged | `validation_failed`, `suppress_url_envelope` |
+| `handle_action_result()` | Unchanged | No modification needed |
+| `From<DbErr> for ActionError` | Unchanged | Still the fallback for unmapped/non-constraint DB errors |
+| `DB::connection()` | Used, not modified | Async rules call the existing singleton |
 
-- Add `ferro-ai = { path = "../ferro-ai", version = "0.2" }` to `ferro-cli/Cargo.toml`
-- Delete `ferro-cli/src/ai.rs` and replace call sites with `ferro_ai::complete::<T>()` and `AiConfig::from_env()`
-- `ferro-cli` already uses `tokio = { features = ["full"] }`, so async usage requires no new dep
+### New Dependency
 
-### ferro-cli reads ferro-mcp context in-process
-
-`ferro-cli/Cargo.toml` already lists `ferro-mcp = { path = "../ferro-mcp" }`. The `ai:make` command can call the same context-gathering functions that ferro-mcp exposes for its MCP tools. These functions accept `project_root: &Path` and return serializable structs — no MCP transport, no subprocess.
-
-Functions called in-process by `ai:make`:
-- `ferro_mcp::tools::generation_context::execute()`
-- `ferro_mcp::tools::list_routes::execute(project_root)`
-- `ferro_mcp::tools::list_models::execute(project_root)`
-- `ferro_mcp::tools::application_info::execute(project_root, config)`
-
-### ClassificationProvider is kept alongside LlmClient
-
-`ClassificationProvider` covers structured-output classification only. `LlmClient` is broader (plain text, streaming, embeddings). The two coexist: `AnthropicProvider` (and any future provider) implements both traits. `Classifier<T>` continues to work unchanged by calling `ClassificationProvider::classify_raw`, which the new `AnthropicClient` delegates to `complete_structured`. No callers of the existing API break.
-
-### Framework SSE has no dependency on ferro-ai
-
-`SseStream` is a pure HTTP primitive: `mpsc::Sender<SseEvent>` + a `StreamBody` hyper response. It does not depend on `ferro-ai`. The wiring of `TokenStream` into `SseStream` is done inside application handler code, not inside either library. This keeps both crates decoupled and separately testable.
-
-### AiConfig provider selection
-
-```
-FERRO_AI_PROVIDER=anthropic   -> AnthropicClient (default when unset)
-FERRO_AI_PROVIDER=openai      -> OpenAiClient     (reads OPENAI_API_KEY)
-FERRO_AI_PROVIDER=groq        -> GroqClient       (reads GROQ_API_KEY, OpenAI wire)
-FERRO_AI_PROVIDER=ollama      -> OllamaClient     (reads OLLAMA_BASE_URL)
-FERRO_AI_MODEL=<model-id>     -> overrides default model for selected provider
-```
-
-`AiConfig::from_env()` returns `Box<dyn LlmClient>`. Call sites do not branch on provider. This follows the pattern of `StorageConfig::from_env()` in ferro-storage and `CacheConfig::from_env()` in ferro-cache.
-
----
+`async_trait` crate — required for `Box<dyn AsyncRule>` dyn-compatibility. Already present in the workspace (used by `ferro-events`, `ferro-queue`). Add to `framework/Cargo.toml` only.
 
 ## Build Order
 
-Dependencies flow in one direction: ferro-ai is a leaf crate; framework, ferro-cli, ferro-mcp all depend on it. The correct build order is:
+Dependency-ordered sequence:
 
-```
-Wave 1 — ferro-ai expansion (no dependents change yet)
-  Step 1: LlmClient trait + provider modules
-          [ferro-ai/src/client/]
-          Rationale: All subsequent steps depend on this trait.
-          Risk: Refactoring AnthropicProvider must not break the
-                existing ClassificationProvider usage.
+1. **`AsyncRule` trait** (`async_rule.rs`) — foundation, zero deps beyond `serde_json` and `async_trait`
+2. **`Unique` struct** (`rules.rs` or split file) — implements `AsyncRule`; uses `DB::connection()`; compile-tests `ignore()` / `ignore_where()` builders
+3. **`Validator` extension** (`validator.rs`) — adds `async_rules` field, `async_rule()` builder, `validate_async()` method; run existing validator tests to confirm no regression
+4. **`ConstraintMap`** (`constraint.rs`) — standalone struct; unit-testable with synthetic `DbErr` values; no async dependency
+5. **`mod.rs` re-exports** — expose `AsyncRule`, `ConstraintMap`, `unique` at the `ferro_rs::validation` level
+6. **Integration tests** — async rule tests via `TestDatabase` (exists in `framework/src/database/testing.rs`); constraint-map tests for both SQLite and Postgres message formats
+7. **`ferro-mcp` code templates** — `unique_validation` and `constraint_map` template entries in `code_templates.rs`
+8. **Docs** — `docs/src/the-basics/validation.md` async rules section + constraint mapping section
 
-  Step 2: complete::<T>(), tools.rs, embeddings.rs
-          [ferro-ai/src/complete.rs, tools.rs, embeddings.rs]
-          Rationale: Builds on LlmClient. Fully testable in isolation
-                     before any consumer crate changes.
+Steps 1–5 are a single logical unit; 6–8 can trail but must complete before the phase closes.
 
-  Step 3: TokenStream (stream.rs)
-          [ferro-ai/src/stream.rs]
-          Rationale: Streaming requires careful async cancellation
-                     handling. Separate step to keep it isolated.
-                     Consumers (framework SSE, CLI) depend on the
-                     type shape established here.
+## Anti-Patterns to Avoid
 
-Wave 2 — framework SSE (depends only on hyper/mpsc, not on ferro-ai)
-  Step 4: SseEvent + SseStream
-          [framework/src/http/sse.rs]
-          Rationale: Can be built and tested before Wave 1 is complete
-                     because it has no ferro-ai dependency. Delivers
-                     streaming response infrastructure independently.
+### 1. Async Rule in Sync Trait via Block-On
 
-Wave 3 — ferro-json-ui StreamText (depends on SSE URL convention)
-  Step 5: StreamText component + renderer
-          [ferro-json-ui/src/components/stream_text.rs + render.rs]
-          Rationale: The URL attribute convention is established by
-                     Step 4. This step is a pure JSON-UI concern.
+**What goes wrong:** Implementing `Rule::validate()` to call `tokio::task::block_in_place` or `Handle::current().block_on(...)` to make a DB query synchronously.
+**Why it's wrong:** Blocks an async executor thread. Causes starvation under concurrent requests. The sync `Rule` trait must stay sync — that is the architectural invariant.
 
-Wave 4 — ferro-cli commands (depends on Waves 1-3)
-  Step 6: Replace src/ai.rs; wire ferro-ai SDK into make:json-view
-          Rationale: Validates the SDK against an existing workflow
-                     before building new commands on top.
-                     Reduces risk for Steps 7-8.
+### 2. Consumer Constraint Names in a Global Registry
 
-  Step 7: ai:make command
-          Rationale: The primary CLI command; highest value.
-                     Uses ferro-mcp in-process context + SDK.
-                     Depends on Step 6 (SDK wired in).
+**What goes wrong:** Adding a `register_constraint_mapping(constraint, field)` global at framework boot so handlers can skip the `ConstraintMap::new().on(...)` call.
+**Why it's wrong:** The registry stores consumer strings ("uniq_pages_slug") inside the framework crate at runtime. Violates project-agnostic-crates rule. The per-call builder keeps the mapping at the correct scope (handler).
 
-  Step 8: ai:explain command
-          Rationale: Simpler than ai:make. Can be developed in
-                     parallel with Step 7 but has no dependency on it.
+### 3. Running Async Rules on Fields Already Failing Sync Rules
 
-  Step 9: Improved make:json-view (v2 spec + ServiceDef introspection)
-          Rationale: Depends on v12.0 (JSON-UI v2) having shipped.
-                     Listed last to clarify the ordering constraint
-                     relative to v12.0.
+**What goes wrong:** Calling `SELECT COUNT(*) FROM pages WHERE slug = ''` after `required()` already failed on `slug` — the SELECT returns 0 (no match), passes, and the required error may be obscured or the behavior seems inconsistent.
+**Prevention:** `validate_async` skips async rules for fields that already carry sync errors. This is the correct default; opt-out not provided.
 
-Wave 5 — ferro-mcp tools (depends on Wave 4 being proven)
-  Step 10: ai_scaffold and ai_explain MCP tools
-           Rationale: MCP tools are thin wrappers over the same logic
-                      as the CLI commands. Come last because the CLI
-                      validates the underlying functions first.
-```
+### 4. Returning Generic ValidationError on Constraint Miss
 
----
-
-## Key Architecture Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| New `LlmClient` trait alongside `ClassificationProvider` | `ClassificationProvider` is narrow (structured JSON only); `LlmClient` is broader. Keeping both avoids a breaking change to existing `Classifier<T>` callers. |
-| `AiConfig::from_env()` returns `Box<dyn LlmClient>` | Matches the provider-selection pattern in ferro-storage and ferro-cache. Call sites stay provider-agnostic. |
-| Delete `ferro-cli/src/ai.rs` rather than wrap it | It is a partial duplicate of AnthropicClient in ferro-ai. Pre-1.0, there is no backward compatibility constraint. Deletion is cleaner than maintaining two implementations. |
-| SSE as a framework HTTP primitive, not a ferro-ai type | `SseStream` is an HTTP concern. `TokenStream` is a Rust async stream. The conversion happens in the application handler. Neither crate depends on the other. |
-| Groq shares OpenAI wire format | Groq's API accepts OpenAI-format requests with a different base URL and `Authorization: Bearer` header. `GroqClient` composes `OpenAiClient` with config overrides rather than duplicating HTTP logic. |
-| Tool calling dispatch in ferro-ai | Tool dispatch is a general SDK capability used in application handlers as well as the CLI. Keeping it in ferro-ai ensures one implementation. |
-| `ai:make` reads ferro-mcp in-process | ferro-cli already depends on ferro-mcp. Direct function calls are faster, simpler, and have no transport overhead compared to spawning a subprocess. |
-| Introspection context is assembled before the LLM call | The system prompt (conventions, routes, models) is built entirely from file-system reads and serialized to a string before any API call. This makes the prompt deterministic and testable. |
-
----
-
-## What Does Not Change
-
-- `ClassificationProvider` and `Classifier<T>` — kept, not deleted
-- `InMemoryConfirmationStore` and `ConfirmationStore` — unchanged
-- `framework/Cargo.toml` `ai` feature flag — remains optional
-- The `ferro-mcp` MCP server binary and its existing 35+ tools
-- `ferro-cli/src/commands/make_scaffold.rs` — `ai:make` calls its helpers, does not replace it
-- All Inertia/React-based scaffolding paths — unrelated to this milestone
-- `ferro-ai` crate name and crates.io identity
-
----
+**What goes wrong:** `try_map` returning `Ok(ValidationError)` with a generic "database error" message when no constraint mapping matched.
+**Why it's wrong:** Produces a field-less validation error bag, corrupts the flash UX, and hides unexpected DB errors from `tracing::error!` logging. `try_map` must return `Err(DbErr)` on no-match so the caller routes it through `ActionError::msg(...)`.
 
 ## Sources
 
-All findings from direct reading of the codebase:
+- `framework/src/validation/validator.rs` — existing `Validator`, `Rule` trait bounds, `validate()` body
+- `framework/src/validation/rule.rs` — current `Rule` trait signature
+- `framework/src/validation/error.rs` — `ValidationError`, `into_action_error`, `flash_into_session`
+- `framework/src/validation/bridge.rs` — `OnceLock<TranslatorFn>` precedent for framework-internal registries
+- `framework/src/http/action.rs` — `ActionError`, `ActionError::validation_failed`, `handle_action_result`, `suppress_url_envelope`
+- `framework/src/database/mod.rs` — `DB::connection()` singleton facade, `App::singleton` / `App::resolve` pattern
+- `framework/src/database/connection.rs` — `DbConnection` Arc wrapper, `Deref<Target=DatabaseConnection>`
+- `ferro-reservation/src/kernel.rs` — `DbErr::Exec(RuntimeErr::SqlxError(...))` destructuring precedent for constraint detection
 
-- `ferro-ai/src/lib.rs`, `ferro-ai/src/classifier/`, `ferro-ai/src/error.rs`, `ferro-ai/Cargo.toml`
-- `ferro-cli/src/ai.rs`, `ferro-cli/Cargo.toml`, `ferro-cli/src/main.rs`, `ferro-cli/src/commands/mod.rs`
-- `ferro-cli/src/commands/make_json_view.rs`, `ferro-cli/src/commands/make_scaffold.rs`
-- `ferro-mcp/src/tools/ai.rs`, `ferro-mcp/src/tools/generation_context.rs`
-- `framework/Cargo.toml`, `framework/src/http/response.rs`, `framework/src/websocket.rs`, `framework/src/lib.rs`
-- `.planning/PROJECT.md` (v12.1 target features section)
+---
+*Architecture research for: ferro v12.4 Form Validation DX*
+*Researched: 2026-06-09*
