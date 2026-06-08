@@ -1858,11 +1858,12 @@ Plans:
 **Requirements**: AISDK-06
 **Success Criteria** (what must be TRUE):
   1. `ferro-cli/src/ai.rs` is deleted; no `reqwest::blocking::Client` or direct Anthropic API calls remain in ferro-cli
-  2. `ferro-cli` depends on `ferro-ai`; all LLM calls go through `ferro_ai::complete::<T>()` using `AiConfig::from_env()`
+  2. `ferro-cli` depends on `ferro-ai`; all LLM calls go through the ferro-ai SDK (`LlmClient::complete()`) using `AiConfig::from_env()` — see Phase 170 plan `<scope_note>` for why `complete::<T>()` is not literally applicable here (Pass 1 is schema-less plain text; Pass 2 must carry the catalog runtime schema, not a schemars-derived one)
   3. `ferro make:json-view` works end-to-end after the migration; existing behavior is preserved
   4. `FERRO_AI_PROVIDER`, `FERRO_AI_MODEL`, `FERRO_AI_API_KEY` env vars control the provider for `make:json-view` (previously only Anthropic was supported)
   5. `cargo test --all-features` passes; no new compilation warnings in ferro-cli
-**Plans**: TBD
+**Plans**: 1 plan (1 wave)
+  - [ ] 170-01-PLAN.md — Delete ai.rs, add ferro-ai dep, relocate transport-agnostic helpers, rewire make:json-view two-pass generation through AiConfig::from_env() + client.complete() with a tokio runtime bridge
 
 ### Phase 171: ferro ai:make & ferro ai:explain CLI Commands
 **Goal**: Ship the killer-feature CLI commands. `ferro ai:make <description>` produces a typed `ferro_projections::ServiceDef` — the universal projection contract — using live ferro-mcp introspection loaded in-process (not subprocess). `ferro ai:explain <route|model|service>` returns a projection-framed explanation of an existing service using actual source loaded through ferro-mcp. **No `ScaffoldPlan` intermediary type; no multi-file scaffold output.** The existing rendering pipeline (Phase 173 `make:json-view` v2, ferro-mcp introspection renderer, future modality renderers) consumes the `ServiceDef` to produce downstream artifacts.
