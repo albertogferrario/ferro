@@ -343,6 +343,20 @@ pub struct TestClassifierParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct AiScaffoldParams {
+    /// Natural-language description of the service to scaffold.
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct AiExplainParams {
+    /// Target: route path (e.g. "/orders/{id}"), model name, or service name.
+    pub target: String,
+    /// Optional type hint: "service", "route", or "model". Auto-detect if omitted.
+    pub type_override: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ListPendingConfirmationsParams {
     // No parameters — scans src/ for request_confirmation calls
 }
@@ -1685,6 +1699,74 @@ impl FerroMcpService {
         };
         let result = tools::ai::test_classifier(&self.project_root, ai_params).await;
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Generate a ferro_projections::ServiceDef from a natural-language description
+    #[tool(
+        name = "ai_scaffold",
+        description = "Generate a ferro_projections::ServiceDef from a natural-language \
+            description using the project's live introspection as context.\n\n\
+            **When to use:** Starting a new service; getting a typed ServiceDef to inspect \
+            or pass to a renderer. The deliberate verb divergence from the CLI `ai:make` \
+            is intentional — this tool returns data, the CLI writes a file.\n\n\
+            **Returns:** A ServiceDef JSON object (same shape as `ferro ai:make` output). \
+            Does NOT write files — use the `ferro ai:make` CLI command when you want the \
+            .rs file written to src/projections/.\n\n\
+            **Note:** Makes a real LLM API call — costs tokens (governed by \
+            FERRO_AI_MAX_TOKENS_PER_COMMAND). Requires FERRO_AI_PROVIDER, FERRO_AI_API_KEY, \
+            FERRO_AI_MODEL in environment or .env.\n\n\
+            **Combine with:** `list_projections` to avoid naming collisions before scaffolding, \
+            `inspect_projection` to see an existing projection's structure, `ai_explain` to \
+            understand a service in projection vocabulary."
+    )]
+    pub async fn ai_scaffold(&self, params: Parameters<AiScaffoldParams>) -> String {
+        let result =
+            tools::ai_scaffold::scaffold_core(&params.0.description, &self.project_root).await;
+        match result {
+            Ok(service_def) => {
+                serde_json::to_string_pretty(&service_def).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => serde_json::to_string_pretty(&serde_json::json!({
+                "success": false,
+                "error": e,
+            }))
+            .unwrap_or_else(|_| r#"{"success":false}"#.to_string()),
+        }
+    }
+
+    /// Explain a route, model, or service projection in projection-framed vocabulary
+    #[tool(
+        name = "ai_explain",
+        description = "Explain a route, model, or service projection in projection-framed \
+            vocabulary (Intent, FieldMeaning, actions, state machine).\n\n\
+            **When to use:** Understanding what a service/route/model does and how it maps \
+            onto the projection/intent model, before modifying or rendering it.\n\n\
+            **Returns:** When the target resolves to a ServiceDef, structured projection JSON \
+            (name, fields with meaning/readable/writable, relationships, actions, \
+            has_state_machine, intent_hints) — produced deterministically from introspection \
+            with ZERO LLM tokens. When only a route or model matches, an LLM-generated \
+            `{ \"prose\": \"...\" }` explanation. On no match, `{ \"success\": false, \"error\": ... }`.\n\n\
+            **Note:** The structured (ServiceDef) branch spends no tokens. The prose fallback \
+            makes a real LLM call (FERRO_AI_* required, governed by FERRO_AI_MAX_TOKENS_PER_COMMAND).\n\n\
+            **Combine with:** `inspect_projection` for the raw projection structure, \
+            `list_projections` to enumerate available services, `ai_scaffold` to generate a \
+            new ServiceDef."
+    )]
+    pub async fn ai_explain(&self, params: Parameters<AiExplainParams>) -> String {
+        let result = tools::ai_explain_core::explain_core(
+            &params.0.target,
+            params.0.type_override.as_deref(),
+            &self.project_root,
+        )
+        .await;
+        match result {
+            Ok(value) => serde_json::to_string_pretty(&value).unwrap_or_else(|_| "{}".to_string()),
+            Err(e) => serde_json::to_string_pretty(&serde_json::json!({
+                "success": false,
+                "error": e,
+            }))
+            .unwrap_or_else(|_| r#"{"success":false}"#.to_string()),
+        }
     }
 
     /// Scan source code for confirmation usage patterns (request_confirmation calls)
