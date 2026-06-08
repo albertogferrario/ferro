@@ -79,11 +79,47 @@ Output: lists `<TARGET>` argument, `--type` flag, `--dry-run` flag. Exit 0.
 
 All acceptance criteria from the plan's `<task type="auto">` are satisfied.
 
-## Checkpoint Pending
+## Human Verification Pending
 
-**Task 2: Human-verify live ai:make and ai:explain quality (SC#6, SC#4)** has not yet been completed. See `.planning/phases/171-ferro-ai-make-ferro-ai-explain-cli-commands/171-04-PLAN.md §Task 2` for the exact verification steps (live provider + sample ferro project required).
+**Task 2: Human-verify live ai:make and ai:explain quality (SC#6, SC#4)** — automated CI gate passed and command surfaces (`--help`, `--dry-run`, `--type`, fail-fast, unit tests) are verified. The live-output quality checks could not be executed in this autonomous run (require a real LLM provider + a sample ferro project). They remain PENDING user action.
 
-When human verification completes, record the outcome in this SUMMARY under a `## Human Verification Record` section.
+### Check 1: ai:make live quality (SC#1, SC#2, SC#6)
+
+Run in a ferro project directory with a configured provider:
+
+```
+export FERRO_AI_PROVIDER=<provider>
+export FERRO_AI_API_KEY=<key>
+export FERRO_AI_MODEL=<model>
+
+ferro ai:make "track customer orders with pending/paid/shipped states" --dry-run
+```
+
+Confirm the printed ServiceDef JSON:
+- uses real `FieldMeaning` values (Status, Money, EntityName, etc.) — not invented strings
+- includes a `state_machine` with pending/paid/shipped states
+- references model/field names that actually exist in the sample project (not generic templates)
+- is a SINGLE ServiceDef; with `--dry-run`, no files are written
+
+### Check 2: ai:explain live quality (SC#4)
+
+Pick an existing service/projection name in the project:
+
+```
+ferro ai:explain <service-name>
+```
+
+Confirm prose is projection-framed: names the service's Intents, the fields whose FieldMeanings drive rendering, the ActionDefs and the GuardDefs they sit under, and any StateMachine transitions — and references only what the service actually defines.
+
+### Optional: cost guard
+
+```
+FERRO_AI_MAX_TOKENS_PER_COMMAND=256 ferro ai:explain <service-name>
+```
+
+Response should be shorter/truncated, confirming the cap is applied.
+
+Status: **PENDING** — auto-approved in --auto chain mode. Operator should run these checks against a real provider before treating Phase 171 as production-verified.
 
 ## Deviations from Plan
 

@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: executing
-stopped_at: Completed 171-04 Task 1 (CI gate green); awaiting human-verify checkpoint for Task 2 (live LLM quality check)
-last_updated: "2026-06-08T19:24:32.851Z"
+status: verifying
+stopped_at: Completed 171-04 (all tasks done; live LLM quality checks deferred as PENDING in SUMMARY)
+last_updated: "2026-06-08T19:26:37.364Z"
 last_activity: 2026-06-08
 progress:
   total_phases: 62
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Phase: 171 (ferro ai:make & ferro ai:explain CLI Commands) — EXECUTING
 Plan: 4 of 4
 Next: Plan Phase 169 (StreamText JSON-UI component consuming an SSE endpoint URL — builds on the Phase 168 SSE primitives) — `/gsd-discuss-phase 169 --auto`. Then 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-08
 Workspace version: 0.2.46
 
@@ -262,6 +262,7 @@ Progress: [████████░░] 84%
 | Phase 171-ferro-ai-make-ferro-ai-explain-cli-commands P02 | 90 | 3 tasks | 7 files |
 | Phase 171 P03 | 315s | 2 tasks | 3 files |
 | Phase 171 P04 | 967 | 1 tasks | 4 files |
+| Phase 171 P04 | continuation | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -346,7 +347,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T19:24:32.843Z
-Stopped at: Completed 171-04 Task 1 (CI gate green); awaiting human-verify checkpoint for Task 2 (live LLM quality check)
+Last session: 2026-06-08T19:26:37.358Z
+Stopped at: Completed 171-04 (all tasks done; live LLM quality checks deferred as PENDING in SUMMARY)
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
