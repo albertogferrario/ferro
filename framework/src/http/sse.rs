@@ -11,9 +11,10 @@
 //!
 //! # Security note
 //!
-//! The `event` and `id` builder setters on [`SseEvent`] strip `\n` and `\r` characters to
-//! prevent SSE field injection: a caller-supplied value cannot inject an extra SSE field or
-//! event boundary. The `data` field is safe by construction — newlines in `data` produce
+//! The `event` and `id` builder setters on [`SseEvent`] strip `\n`, `\r`, and `\0` characters
+//! to prevent SSE field injection: a caller-supplied value cannot inject an extra SSE field or
+//! event boundary (and a NUL cannot silently reset the browser's last-event-id). The `data`
+//! field is safe by construction — newlines in `data` produce
 //! repeated `data:` lines per the WHATWG spec, which is not an injection risk. The `retry`
 //! field is `u64` and cannot carry newlines.
 
@@ -70,23 +71,24 @@ impl SseEvent {
 
     /// Set the named event type.
     ///
-    /// `event` is a single-line SSE field. Any `\n` or `\r` characters in the value are
-    /// stripped to prevent SSE field injection. `data` may contain newlines (rendered as
-    /// multiple `data:` lines per the WHATWG spec), so it is not stripped.
+    /// `event` is a single-line SSE field. Any `\n`, `\r`, or `\0` characters in the value
+    /// are stripped to prevent SSE field injection (and, for `id`, last-event-id resets).
+    /// `data` may contain newlines (rendered as multiple `data:` lines per the WHATWG
+    /// spec), so it is not stripped.
     pub fn event(mut self, event: impl Into<String>) -> Self {
         let s: String = event.into();
-        self.event = Some(s.replace(['\n', '\r'], ""));
+        self.event = Some(s.replace(['\n', '\r', '\0'], ""));
         self
     }
 
     /// Set the last-event ID.
     ///
-    /// `id` is a single-line SSE field. Any `\n` or `\r` characters in the value are
-    /// stripped to prevent SSE field injection. `data` may contain newlines (rendered as
-    /// multiple `data:` lines per the WHATWG spec), so it is not stripped.
+    /// `id` is a single-line SSE field. Any `\n`, `\r`, or `\0` characters in the value are
+    /// stripped to prevent SSE field injection and to avoid a null byte silently resetting
+    /// the browser's last-event-id on reconnection.
     pub fn id(mut self, id: impl Into<String>) -> Self {
         let s: String = id.into();
-        self.id = Some(s.replace(['\n', '\r'], ""));
+        self.id = Some(s.replace(['\n', '\r', '\0'], ""));
         self
     }
 
@@ -212,8 +214,9 @@ impl Body for SseStream {
         // Both Receiver and Interval are Unpin — Pin::new is valid without pin-project.
         match self.receiver.poll_recv(cx) {
             Poll::Ready(Some(event)) => {
-                // Reset idle window: consume any pending interval tick silently.
-                let _ = Pin::new(&mut self.ping_interval).poll_tick(cx);
+                // Reset the idle window so the next keep-alive ping fires one full
+                // period AFTER this event, not at the original deadline (WR-01).
+                self.ping_interval.reset();
                 let bytes = Bytes::from(event.to_wire());
                 return Poll::Ready(Some(Ok(Frame::data(bytes))));
             }
@@ -370,6 +373,13 @@ mod tests {
         assert_eq!(
             id_lines[0], "id: cd",
             "embedded carriage-return should be stripped, not injected"
+        );
+
+        // id with embedded NUL — a null byte would reset the browser's last-event-id (IN-01)
+        let wire3 = SseEvent::data("z").id("e\0f").event("g\0h").to_wire();
+        assert!(
+            wire3.contains("id: ef") && wire3.contains("event: gh"),
+            "embedded NUL should be stripped from id and event, got: {wire3:?}"
         );
     }
 
