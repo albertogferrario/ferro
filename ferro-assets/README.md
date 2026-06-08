@@ -16,7 +16,10 @@ unchanged (the **passthrough guarantee**).
   seven-transform integration test against a JSON file.
 - **Zero C system dependencies** — every codec is pure Rust (`ravif`, `image`, `lol_html`,
   `lightningcss`, `swc`). `cargo build` adds no `libvips`, `libavif`, `libwebp`, or any
-  other system package to the production image.
+  other system package to the production image. AVIF encoding uses `rav1e` without its
+  assembly kernels, so no `nasm` is required. To trade that for faster encodes, enable
+  `rav1e`'s SIMD path from your own manifest with `ravif = { version = "0.13", features =
+  ["asm"] }` (this requires the `nasm` assembler at build time).
 - **All-or-nothing execution** — any transform failure returns a structured `Error` with
   per-transform and per-file context; no partial output set is produced.
 - **Synchronous API** — no async runtime dependency. The consumer wraps `pipeline.run()`
