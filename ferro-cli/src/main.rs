@@ -660,11 +660,18 @@ fn main() {
             commands::projection_check::execute(name.as_deref());
         }
         #[cfg(feature = "projections")]
-        Commands::AiMake { description, dry_run } => {
+        Commands::AiMake {
+            description,
+            dry_run,
+        } => {
             commands::ai_make::run(description, dry_run);
         }
         #[cfg(feature = "projections")]
-        Commands::AiExplain { target, r#type, dry_run } => {
+        Commands::AiExplain {
+            target,
+            r#type,
+            dry_run,
+        } => {
             commands::ai_explain::run(target, r#type, dry_run);
         }
         Commands::MakeResource { name, model } => {

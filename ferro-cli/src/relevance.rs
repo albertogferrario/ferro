@@ -68,9 +68,7 @@ pub(crate) fn select_relevant(description: &str, mut candidates: Vec<Candidate>)
 
     // Sort descending: first by score, then by tier
     scored.sort_by(|(score_a, a), (score_b, b)| {
-        score_b
-            .cmp(score_a)
-            .then_with(|| b.tier.cmp(&a.tier))
+        score_b.cmp(score_a).then_with(|| b.tier.cmp(&a.tier))
     });
 
     let mut result = Vec::new();
@@ -105,7 +103,10 @@ mod tests {
         assert!(tokens.contains(&"order".to_string()), "tokens: {tokens:?}");
         assert!(tokens.contains(&"item".to_string()), "tokens: {tokens:?}");
         assert!(tokens.contains(&"track".to_string()), "tokens: {tokens:?}");
-        assert!(tokens.contains(&"customer".to_string()), "tokens: {tokens:?}");
+        assert!(
+            tokens.contains(&"customer".to_string()),
+            "tokens: {tokens:?}"
+        );
         assert!(tokens.contains(&"orders".to_string()), "tokens: {tokens:?}");
     }
 

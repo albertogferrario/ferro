@@ -8,7 +8,8 @@
 
 #[cfg(feature = "projections")]
 use ferro_mcp::tools::{
-    explain_model::ModelExplanation, explain_route::RouteExplanation,
+    explain_model::ModelExplanation,
+    explain_route::RouteExplanation,
     inspect_projection::{InspectResult, ProjectionDetail},
 };
 #[cfg(feature = "projections")]
@@ -83,32 +84,20 @@ pub(crate) fn resolve_target(
     use ferro_mcp::tools::{explain_model, explain_route, inspect_projection};
 
     match type_override {
-        Some("service") => {
-            match inspect_projection::execute(root, target) {
-                InspectResult::Found(d) => return ResolvedTarget::Service(d),
-                InspectResult::NotFound(_) => {
-                    return ResolvedTarget::NotFound(format!(
-                        "No projection named '{target}' found"
-                    ))
-                }
+        Some("service") => match inspect_projection::execute(root, target) {
+            InspectResult::Found(d) => return ResolvedTarget::Service(d),
+            InspectResult::NotFound(_) => {
+                return ResolvedTarget::NotFound(format!("No projection named '{target}' found"))
             }
-        }
-        Some("route") => {
-            match rt.block_on(explain_route::execute(root, target)) {
-                Ok(r) => return ResolvedTarget::Route(r),
-                Err(_) => {
-                    return ResolvedTarget::NotFound(format!("No route '{target}' found"))
-                }
-            }
-        }
-        Some("model") => {
-            match rt.block_on(explain_model::execute(root, target)) {
-                Ok(m) => return ResolvedTarget::Model(m),
-                Err(_) => {
-                    return ResolvedTarget::NotFound(format!("No model '{target}' found"))
-                }
-            }
-        }
+        },
+        Some("route") => match rt.block_on(explain_route::execute(root, target)) {
+            Ok(r) => return ResolvedTarget::Route(r),
+            Err(_) => return ResolvedTarget::NotFound(format!("No route '{target}' found")),
+        },
+        Some("model") => match rt.block_on(explain_model::execute(root, target)) {
+            Ok(m) => return ResolvedTarget::Model(m),
+            Err(_) => return ResolvedTarget::NotFound(format!("No model '{target}' found")),
+        },
         Some(other) => {
             return ResolvedTarget::NotFound(format!(
                 "Unknown --type value '{other}'. Use 'service', 'route', or 'model'."
@@ -375,7 +364,10 @@ pub fn run(target: String, type_override: Option<String>, dry_run: bool) {
                     println!("{prose}");
                 }
                 Err(e) => {
-                    eprintln!("{} LLM completion failed: {e}", style("Error:").red().bold());
+                    eprintln!(
+                        "{} LLM completion failed: {e}",
+                        style("Error:").red().bold()
+                    );
                     std::process::exit(1);
                 }
             }
@@ -470,15 +462,39 @@ mod tests {
 
         // SC#4: projection vocabulary must appear
         assert!(system.contains("Intent"), "system must mention Intent");
-        assert!(system.contains("FieldMeaning"), "system must mention FieldMeaning");
-        assert!(system.contains("StateMachine"), "system must mention StateMachine");
+        assert!(
+            system.contains("FieldMeaning"),
+            "system must mention FieldMeaning"
+        );
+        assert!(
+            system.contains("StateMachine"),
+            "system must mention StateMachine"
+        );
         // SC#6: actual field/action names must appear (grounded in introspected facts)
-        assert!(user.contains("status"), "user must reference field 'status'");
-        assert!(user.contains("amount"), "user must reference field 'amount'");
-        assert!(user.contains("submit"), "user must reference action 'submit'");
-        assert!(user.contains("approve"), "user must reference action 'approve'");
-        assert!(user.contains("Primary(Process)"), "user must reference intent hint");
-        assert!(user.contains("StateMachine"), "user must note state machine presence");
+        assert!(
+            user.contains("status"),
+            "user must reference field 'status'"
+        );
+        assert!(
+            user.contains("amount"),
+            "user must reference field 'amount'"
+        );
+        assert!(
+            user.contains("submit"),
+            "user must reference action 'submit'"
+        );
+        assert!(
+            user.contains("approve"),
+            "user must reference action 'approve'"
+        );
+        assert!(
+            user.contains("Primary(Process)"),
+            "user must reference intent hint"
+        );
+        assert!(
+            user.contains("StateMachine"),
+            "user must note state machine presence"
+        );
     }
 
     #[test]
@@ -498,7 +514,10 @@ mod tests {
         let (_system, user) = build_route_prompt(&route);
 
         assert!(user.contains("/orders/{id}"), "must reference route path");
-        assert!(user.contains("controllers::orders::show"), "must reference handler");
+        assert!(
+            user.contains("controllers::orders::show"),
+            "must reference handler"
+        );
     }
 
     // ---- Task 2 tests ----
@@ -524,7 +543,10 @@ mod tests {
         };
         let (system, user) = build_service_prompt(&detail);
         assert!(!system.is_empty(), "system prompt must be non-empty");
-        assert!(user.contains("test_service"), "user prompt must reference service name");
+        assert!(
+            user.contains("test_service"),
+            "user prompt must reference service name"
+        );
     }
 
     #[test]

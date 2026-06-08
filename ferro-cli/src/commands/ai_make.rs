@@ -300,7 +300,10 @@ fn emit_intent(intent: &Intent) -> String {
 /// Emit a StateMachine builder chain as a multi-line block for `.state_machine(...)`.
 #[cfg(feature = "projections")]
 fn emit_state_machine(sm: &StateMachine) -> String {
-    let mut lines = vec![format!("        .state_machine(StateMachine::new({:?})", sm.name)];
+    let mut lines = vec![format!(
+        "        .state_machine(StateMachine::new({:?})",
+        sm.name
+    )];
 
     if let Some(ref dn) = sm.display_name {
         lines.push(format!("            .display_name({dn:?})"));
@@ -503,12 +506,12 @@ pub fn run(description: String, dry_run: bool) {
 
     // Async tools: bridge via rt.block_on
     // Pitfall 2: list_routes tries HTTP first; static-analysis fallback handles non-running app
-    let routes = rt
-        .block_on(list_routes::execute(root))
-        .unwrap_or_else(|_| ferro_mcp::tools::list_routes::RoutesInfo {
+    let routes = rt.block_on(list_routes::execute(root)).unwrap_or_else(|_| {
+        ferro_mcp::tools::list_routes::RoutesInfo {
             routes: vec![],
             source: ferro_mcp::tools::list_routes::RouteSource::StaticAnalysis,
-        });
+        }
+    });
 
     // Pitfall 1: DB unavailable is non-fatal — empty schema is valid sparse context
     let schema = rt
@@ -622,10 +625,7 @@ pub fn run(description: String, dry_run: bool) {
     let max_tokens = resolve_max_tokens();
 
     // 7. Structured LLM completion → typed ServiceDef (AICLI-02)
-    println!(
-        "{} Generating ServiceDef via AI...",
-        style("⏳").cyan()
-    );
+    println!("{} Generating ServiceDef via AI...", style("⏳").cyan());
 
     let service: ServiceDef = match rt.block_on(ferro_ai::complete_with::<ServiceDef>(
         client.as_ref(),
@@ -650,7 +650,11 @@ pub fn run(description: String, dry_run: bool) {
     match service.validate() {
         Ok(warnings) => {
             for w in &warnings {
-                eprintln!("{} Projection warning: {:?}", style("Warn:").yellow().bold(), w);
+                eprintln!(
+                    "{} Projection warning: {:?}",
+                    style("Warn:").yellow().bold(),
+                    w
+                );
             }
         }
         Err(e) => {
@@ -669,11 +673,7 @@ pub fn run(description: String, dry_run: bool) {
             println!("{json}");
         }
         Ok(OutputResult::Written(path)) => {
-            println!(
-                "{} Created {}",
-                style("✓").green(),
-                path.display()
-            );
+            println!("{} Created {}", style("✓").green(), path.display());
         }
         Ok(OutputResult::AlreadyExists(path)) => {
             eprintln!(
@@ -718,7 +718,10 @@ mod tests {
 
     #[test]
     fn emit_field_meaning_known_variant() {
-        assert_eq!(emit_field_meaning(&FieldMeaning::Money), "FieldMeaning::Money");
+        assert_eq!(
+            emit_field_meaning(&FieldMeaning::Money),
+            "FieldMeaning::Money"
+        );
     }
 
     #[test]
@@ -749,9 +752,11 @@ mod tests {
             .field("sku", DataType::String, FieldMeaning::Custom("sku".into()))
             .guard(GuardDef::new("authenticated"))
             .action(ActionDef::new("create"))
-            .relationship(
-                RelationshipDef::new("customer", "customer", Cardinality::ManyToOne),
-            )
+            .relationship(RelationshipDef::new(
+                "customer",
+                "customer",
+                Cardinality::ManyToOne,
+            ))
             .intent_hint(IntentHint::Primary(Intent::Browse))
             .state_machine(
                 StateMachine::new("lifecycle")
@@ -769,11 +774,17 @@ mod tests {
             "missing function signature\nsource:\n{source}"
         );
         // Check ServiceDef::new call
-        assert!(source.contains(r#"ServiceDef::new("test_service")"#), "source:\n{source}");
+        assert!(
+            source.contains(r#"ServiceDef::new("test_service")"#),
+            "source:\n{source}"
+        );
         // Check data type (must NOT be snake_case)
         assert!(source.contains("DataType::Integer"), "source:\n{source}");
         // Check field meaning
-        assert!(source.contains("FieldMeaning::Identifier"), "source:\n{source}");
+        assert!(
+            source.contains("FieldMeaning::Identifier"),
+            "source:\n{source}"
+        );
         // Check custom meaning
         assert!(
             source.contains(r#"FieldMeaning::Custom("sku".into())"#),
@@ -784,7 +795,10 @@ mod tests {
         // Check action
         assert!(source.contains("ActionDef::new("), "source:\n{source}");
         // Check relationship
-        assert!(source.contains("RelationshipDef::new("), "source:\n{source}");
+        assert!(
+            source.contains("RelationshipDef::new("),
+            "source:\n{source}"
+        );
         // Check intent hint
         assert!(source.contains("IntentHint"), "source:\n{source}");
         // Check state machine
@@ -804,10 +818,7 @@ mod tests {
     #[test]
     fn ai_make_accepts_valid_name() {
         let path = resolve_projection_path("Order").expect("valid name should succeed");
-        assert!(
-            path.ends_with("src/projections/order.rs"),
-            "got: {path:?}"
-        );
+        assert!(path.ends_with("src/projections/order.rs"), "got: {path:?}");
     }
 
     // ---- Dry-run test ----
@@ -815,11 +826,10 @@ mod tests {
     #[test]
     fn dry_run_no_file_write() {
         let dir = TempDir::new().expect("tempdir");
-        let service = ServiceDef::new("preview")
-            .field("id", DataType::Integer, FieldMeaning::Identifier);
+        let service =
+            ServiceDef::new("preview").field("id", DataType::Integer, FieldMeaning::Identifier);
 
-        let result = render_output(&service, true, dir.path())
-            .expect("dry-run should not error");
+        let result = render_output(&service, true, dir.path()).expect("dry-run should not error");
 
         match result {
             OutputResult::DryRun(json) => {
