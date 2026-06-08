@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: executing
-stopped_at: Phase 169 UI-SPEC approved
-last_updated: "2026-06-08T15:20:19.616Z"
-last_activity: 2026-06-08 -- Phase 169 planning complete
+stopped_at: Completed 169-01-PLAN.md
+last_updated: "2026-06-08T15:27:41.390Z"
+last_activity: 2026-06-08
 progress:
   total_phases: 62
   completed_phases: 50
   total_plans: 246
-  completed_plans: 243
+  completed_plans: 244
   percent: 99
 ---
 
@@ -20,15 +20,15 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 169 — StreamText Component (v12.1 AI; Phases 165–168 complete)
+**Current focus:** Phase 169 — StreamText Component
 
 ## Current Position
 
-Phase: 169
-Plan: Not started
+Phase: 169 (StreamText Component) — EXECUTING
+Plan: 2 of 3
 Next: Plan Phase 169 (StreamText JSON-UI component consuming an SSE endpoint URL — builds on the Phase 168 SSE primitives) — `/gsd-discuss-phase 169 --auto`. Then 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
 Status: Ready to execute
-Last activity: 2026-06-08 -- Phase 169 planning complete
+Last activity: 2026-06-08
 Workspace version: 0.2.46
 
 Pending publish (v12.3 crates — see "Queued Milestone: v12.3" below; CI token is publish-update only):
@@ -253,6 +253,7 @@ Progress: [████████░░] 84%
 | Phase 166 P03 | 525s | 3 tasks | 4 files |
 | Phase 166 P04 | 453 | 3 tasks | 8 files |
 | Phase 166 P05 | 598 | 2 tasks | 1 files |
+| Phase 169 P01 | 275s | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -337,7 +338,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T15:07:53.492Z
-Stopped at: Phase 169 UI-SPEC approved
-Resume file: .planning/phases/169-streamtext-component/169-UI-SPEC.md
+Last session: 2026-06-08T15:27:41.383Z
+Stopped at: Completed 169-01-PLAN.md
+Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
