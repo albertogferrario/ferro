@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.1
-milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: verifying
-stopped_at: Completed 172-04-PLAN.md
-last_updated: "2026-06-08T21:25:42.663Z"
+milestone: v12.3
+milestone_name: Deployment Platform Primitives
+status: complete
+stopped_at: All roadmapped phases shipped through Phase 189 (v12.1 AI, v12.2, v12.3, v11.6.1 complete 2026-06-07/08)
+last_updated: "2026-06-08T21:38:07.000Z"
 last_activity: 2026-06-08
 progress:
   total_phases: 62
-  completed_phases: 54
+  completed_phases: 62
   total_plans: 255
   completed_plans: 255
   percent: 100
@@ -20,26 +20,26 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 172 — MCP Tool Wrappers
+**Current focus:** None — all roadmapped phases shipped through Phase 189. Next: publish bootstrap of new crates, then start a new milestone.
 
 ## Current Position
 
-Phase: 180
-Plan: Not started
-Next: Plan Phase 169 (StreamText JSON-UI component consuming an SSE endpoint URL — builds on the Phase 168 SSE primitives) — `/gsd-discuss-phase 169 --auto`. Then 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
-Status: Phase complete — ready for verification
+Phase: None active — roadmap complete through Phase 189
+Plan: —
+Next: (1) One-time manual `cargo publish` bootstrap of the new crates listed below; (2) start the next build cycle via `/gsd-new-milestone` (next planned: v12.4 Form Validation DX — async DB-backed rules; phase numbers TBD at plan time).
+Status: All roadmapped phases complete and verified
 Last activity: 2026-06-08
 Workspace version: 0.2.46
 
-Pending publish (v12.3 crates — see "Queued Milestone: v12.3" below; CI token is publish-update only):
+Pending publish (new crates — CI token is `publish-update` only, so new crates need a one-time manual bootstrap from a local terminal before their first CI push):
 
-  - `cargo publish -p ferro-bundle` (Phase 183), `-p ferro-deployments` (186), `-p ferro-assets` (187) — one-time manual bootstrap from a local terminal before first CI push.
+  - `cargo publish -p ferro-bundle` (Phase 183), `-p ferro-deployments` (186), `-p ferro-assets` (187).
 
-## Queued Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
+## Shipped Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
 
-Roadmapped 2026-06-07, sourced from gestiscilo-it v7.1 Tenant Frontend Platform (consumer phases 188-193). Four phases: 185 `ferro::queue` DB-backed job queue (replaces Redis-only ferro-queue backend; Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` claim), 186 `ferro-deployments` new crate (immutable deployments + atomic promote/rollback), 187 `ferro-assets` new crate (content-type-aware pipeline: lol_html + lightningcss + swc + pure-Rust image/ravif — libvips rejected), 188 `ferro-storage` CDN extension (`cdn_url()` + `PurgeApi` + DO Spaces adapter). Phase 185 blocks gestiscilo Phase 188; 186/187/188 parallel-capable after 185. Note: ferro-bundle manual-publish reminder applies again — 186 and 187 are NEW crates, CI token has `publish-update` only, so each needs a one-time manual `cargo publish` before its first CI publish. Details: ROADMAP.md §"v12.3 Deployment Platform Primitives". Start via `/gsd-plan-phase 185`.
+Shipped 2026-06-07, sourced from gestiscilo-it v7.1 Tenant Frontend Platform (consumer phases 188-193). Four phases, all complete: 185 `ferro::queue` DB-backed job queue (replaces Redis-only ferro-queue backend; Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` claim), 186 `ferro-deployments` new crate (immutable deployments + atomic promote/rollback), 187 `ferro-assets` new crate (content-type-aware pipeline: lol_html + lightningcss + swc + pure-Rust image/ravif — libvips rejected), 188 `ferro-storage` CDN extension (`cdn_url()` + `PurgeApi` + DO Spaces adapter). Remaining release task: manual `cargo publish` bootstrap of the NEW crates (186 `ferro-deployments`, 187 `ferro-assets`) — see "Pending publish" above.
 
-Progress: [████████░░] 84%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -353,7 +353,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T21:17:25.071Z
-Stopped at: Completed 172-04-PLAN.md
+Last session: 2026-06-08T21:38:07.000Z
+Stopped at: Roadmap fully shipped through Phase 189 (v12.1 AI 165-172, v12.2 182-184, v12.3 185-188, v11.6.1 189 all complete)
 Resume file: None
-Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
+Next action: (1) manual `cargo publish` bootstrap of ferro-bundle / ferro-deployments / ferro-assets from a local terminal (CI token is publish-update only); (2) `/gsd-new-milestone` to open the next build cycle (next planned: v12.4 Form Validation DX). No active phase pointer.
