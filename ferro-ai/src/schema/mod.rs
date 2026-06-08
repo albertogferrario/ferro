@@ -43,6 +43,94 @@ use std::collections::HashSet;
 
 use serde_json::{Map, Value};
 
+// ── ServiceDef-aware projection enum closing (Plan 03) ─────────────────────
+
+/// Names of ferro-projections types that trigger the ServiceDef-aware closing path (D-07).
+///
+/// If any of these names appear as a key in the schema's `$defs`, the normalizer
+/// activates the projection-enum closing pass before resolving refs.
+const PROJECTION_DEF_NAMES: &[&str] = &[
+    "FieldMeaning",
+    "Intent",
+    "ServiceDef",
+    "Cardinality",
+    "ActionDef",
+    "GuardDef",
+    "StateDef",
+];
+
+/// Returns `true` if `schema.$defs` contains any ferro-projections type name (D-07).
+fn has_projection_defs(schema: &Value) -> bool {
+    schema
+        .get("$defs")
+        .and_then(|d| d.as_object())
+        .map(|defs| PROJECTION_DEF_NAMES.iter().any(|n| defs.contains_key(*n)))
+        .unwrap_or(false)
+}
+
+/// Close a projection enum in `$defs` by replacing its open `anyOf` with a closed `enum`.
+///
+/// Handles two schemars output shapes (D-08: vocabulary derived from schema, never hardcoded):
+///
+/// - **`FieldMeaning`** shape (no per-variant doc comments): anyOf with a branch that has
+///   `{"type":"string","enum":[...known...]}` — extract that branch directly.
+/// - **`Intent`** shape (per-variant doc comments): anyOf with individual `{"const":"browse",...}`
+///   branches per known variant, plus an open `{"type":"string"}` Custom branch — collect all
+///   `const` values, emit `{"type":"string","enum":[...collected...]}`.
+///
+/// If the entry has no `anyOf`, it is left unchanged (e.g., `Cardinality` is already a
+/// closed enum — schemars emits it as `{"type":"string","enum":[...]}` directly).
+///
+/// The outer `description` (if any) is preserved on the resulting closed schema.
+fn close_projection_enum(defs: &mut Map<String, Value>, name: &str) {
+    if let Some(entry) = defs.get_mut(name) {
+        // Preserve any outer description.
+        let desc = entry.get("description").cloned();
+
+        if let Some(branches) = entry
+            .get("anyOf")
+            .and_then(|a| a.as_array())
+            .map(|a| a.to_vec())
+        {
+            // Shape A: one branch carries a closed `enum` array.
+            // Use `.find` (not `[0]`) to be robust against branch reordering (defends A2).
+            let closed = if let Some(enum_branch) =
+                branches.iter().find(|b| b.get("enum").is_some()).cloned()
+            {
+                // Shape A: FieldMeaning-style.
+                let mut closed = enum_branch;
+                if let (Some(d), Some(obj)) = (desc, closed.as_object_mut()) {
+                    obj.entry("description").or_insert(d);
+                }
+                closed
+            } else {
+                // Shape B: Intent-style — collect all `const` values from branches that have one.
+                // Branches without `const` (the open Custom escape hatch) are dropped.
+                let consts: Vec<Value> = branches
+                    .iter()
+                    .filter_map(|b| b.get("const").cloned())
+                    .collect();
+
+                if consts.is_empty() {
+                    // Nothing to close — leave the entry unchanged.
+                    return;
+                }
+
+                let mut obj = serde_json::Map::new();
+                obj.insert("type".into(), Value::String("string".into()));
+                obj.insert("enum".into(), Value::Array(consts));
+                if let Some(d) = desc {
+                    obj.insert("description".into(), d);
+                }
+                Value::Object(obj)
+            };
+
+            *entry = closed;
+        }
+        // If there is no `anyOf`, the entry is already a closed-enum schema — no action.
+    }
+}
+
 /// Keywords to strip from normalized schemas (explicit allowlist — only these are removed).
 ///
 /// `enum` is intentionally absent: it is the locking mechanism for the ServiceDef-aware
@@ -76,24 +164,36 @@ const ALLOWED_FORMATS: &[&str] = &[
 
 /// Normalize a schemars 1.x schema for Anthropic / OpenAI structured-output APIs.
 ///
-/// This is the **generic** normalizer. The ServiceDef-aware projection-enum closing
-/// (Plan 03) must run on `$defs` BEFORE this function is called — see module docs
-/// for mandatory ordering.
-///
-/// Steps (order is fixed):
-/// 1. Clone `$defs` / `definitions` into a lookup map.
-/// 2. Resolve all `{"$ref": "#/$defs/Name"}` inline recursively (cycle-guarded).
-/// 3. Remove `$defs` / `definitions` from the root — the result has no `$ref` anywhere.
-/// 4. Strip Anthropic-rejected keywords via `STRIP_KEYWORDS` allowlist; strip
+/// Steps (order is mandatory — see Pitfall 2 in module docs):
+/// 1. **Close projection enums in `$defs` FIRST** (ServiceDef-aware path, D-06/D-07).
+///    If any ferro-projections type name appears in `$defs`, close `FieldMeaning` and
+///    `Intent` by replacing their open `anyOf` with a closed `enum` constraint. This
+///    must happen before ref inlining so every inlined occurrence resolves to the
+///    closed form.
+/// 2. Clone `$defs` / `definitions` into a lookup map.
+/// 3. Resolve all `{"$ref": "#/$defs/Name"}` inline recursively (cycle-guarded).
+/// 4. Remove `$defs` / `definitions` from the root — the result has no `$ref` anywhere.
+/// 5. Strip Anthropic-rejected keywords via `STRIP_KEYWORDS` allowlist; strip
 ///    non-string `format` values; `enum` is never stripped.
-/// 5. Add `additionalProperties: false` to every schema node that has BOTH
+/// 6. Add `additionalProperties: false` to every schema node that has BOTH
 ///    `"type": "object"` AND a `"properties"` key (Pitfall 6: skip composition nodes).
 ///
 /// The function is idempotent — running it twice on already-normalized input is a no-op.
 pub fn for_structured_output(schema: Value) -> Value {
-    // Extract $defs (and legacy definitions) into a flat lookup map.
+    let mut root = schema;
+
+    // Step 1 (MANDATORY FIRST): Close projection enums in $defs before ref inlining.
+    // Pitfall 2: if we inline $ref before closing, the open anyOf propagates everywhere.
+    if has_projection_defs(&root) {
+        if let Some(defs_mut) = root.get_mut("$defs").and_then(|d| d.as_object_mut()) {
+            close_projection_enum(defs_mut, "FieldMeaning");
+            close_projection_enum(defs_mut, "Intent");
+        }
+    }
+
+    // Step 2: Extract $defs (and legacy definitions) into a flat lookup map.
     let mut defs: Map<String, Value> = Map::new();
-    if let Some(obj) = schema.as_object() {
+    if let Some(obj) = root.as_object() {
         if let Some(Value::Object(d)) = obj.get("$defs") {
             for (k, v) in d {
                 defs.insert(k.clone(), v.clone());
@@ -106,17 +206,17 @@ pub fn for_structured_output(schema: Value) -> Value {
         }
     }
 
-    // Inline all $ref occurrences (cycle-guarded).
+    // Step 3: Inline all $ref occurrences (cycle-guarded).
     let mut visited: HashSet<String> = HashSet::new();
-    let mut root = resolve_refs(schema, &defs, &mut visited);
+    root = resolve_refs(root, &defs, &mut visited);
 
-    // Remove $defs / definitions — all refs are now inlined.
+    // Step 4: Remove $defs / definitions — all refs are now inlined.
     if let Some(obj) = root.as_object_mut() {
         obj.remove("$defs");
         obj.remove("definitions");
     }
 
-    // Strip rejected keywords and add additionalProperties: false.
+    // Steps 5-6: Strip rejected keywords and add additionalProperties: false.
     normalize_node(root)
 }
 
@@ -417,6 +517,122 @@ mod tests {
         assert!(enum_val.iter().any(|v| v == "active"));
         assert!(enum_val.iter().any(|v| v == "inactive"));
         assert!(enum_val.iter().any(|v| v == "pending"));
+    }
+
+    // ── SC#3 projection enum closing tests (Plan 03) ───────────────────────
+
+    /// Verifies that `close_projection_enum` replaces the FieldMeaning `anyOf` with the
+    /// closed enum branch, so the resulting normalized schema has no open string branch.
+    ///
+    /// Uses an object schema with a `meaning` property that $ref's FieldMeaning, which is
+    /// the real pattern schemars emits for types containing a FieldMeaning field.
+    #[test]
+    fn closes_field_meaning_enum() {
+        // Schema shaped like schemars output for a struct with a FieldMeaning field.
+        let input = json!({
+            "type": "object",
+            "properties": {
+                "meaning": { "$ref": "#/$defs/FieldMeaning" }
+            },
+            "required": ["meaning"],
+            "$defs": {
+                "FieldMeaning": {
+                    "description": "Semantic field meaning.",
+                    "anyOf": [
+                        { "type": "string", "enum": ["money", "status"] },
+                        { "type": "string" }
+                    ]
+                }
+            }
+        });
+        let out = for_structured_output(input);
+        // $defs removed after inlining.
+        assert!(out.get("$defs").is_none(), "$defs must be removed");
+        // The meaning property must be the closed enum — no anyOf remaining.
+        let meaning = &out["properties"]["meaning"];
+        assert!(
+            meaning.get("anyOf").is_none(),
+            "anyOf must be gone after closing; got meaning: {meaning:?}"
+        );
+        assert_eq!(meaning["type"], json!("string"));
+        let enum_val = meaning["enum"]
+            .as_array()
+            .expect("closed enum must have enum key");
+        assert!(enum_val.iter().any(|v| v == "money"));
+        assert!(enum_val.iter().any(|v| v == "status"));
+        // The open string branch must NOT be represented (only 2 values, not a free string).
+        assert_eq!(enum_val.len(), 2);
+    }
+
+    /// Verifies that non-projection `anyOf` schemas are NOT closed by the projection pass.
+    ///
+    /// A schema whose `$defs` contains only a non-projection type should leave its
+    /// `anyOf` intact (aside from generic normalization like ref inlining).
+    #[test]
+    fn non_projection_schema_not_closed() {
+        // $defs only has a non-projection type name — closing pass must not activate.
+        let input = json!({
+            "type": "object",
+            "properties": {
+                "status": { "$ref": "#/$defs/MyStatus" }
+            },
+            "required": ["status"],
+            "$defs": {
+                "MyStatus": {
+                    "anyOf": [
+                        { "type": "string", "enum": ["active", "inactive"] },
+                        { "type": "string" }
+                    ]
+                }
+            }
+        });
+        let out = for_structured_output(input);
+        // Non-projection: anyOf must survive after $ref inlining (closing pass skipped).
+        let status_schema = &out["properties"]["status"];
+        assert!(
+            status_schema.get("anyOf").is_some(),
+            "non-projection anyOf must survive; got status schema: {status_schema:?}"
+        );
+    }
+
+    /// Verifies Intent closing (Shape B: const-per-variant).
+    ///
+    /// The Intent anyOf has individual `const` branches per known variant plus an
+    /// open `{"type":"string"}` Custom branch. The closing pass must collect the
+    /// `const` values and emit a closed enum.
+    #[test]
+    fn closes_intent_enum_const_branch_style() {
+        let input = json!({
+            "type": "object",
+            "properties": {
+                "intent": { "$ref": "#/$defs/Intent" }
+            },
+            "required": ["intent"],
+            "$defs": {
+                "Intent": {
+                    "description": "Structural intent.",
+                    "anyOf": [
+                        { "type": "string", "const": "browse", "description": "Browse intent." },
+                        { "type": "string", "const": "focus",  "description": "Focus intent."  },
+                        { "type": "string" }
+                    ]
+                }
+            }
+        });
+        let out = for_structured_output(input);
+        let intent = &out["properties"]["intent"];
+        assert!(
+            intent.get("anyOf").is_none(),
+            "anyOf must be gone after closing; got: {intent:?}"
+        );
+        assert_eq!(intent["type"], json!("string"));
+        let enum_val = intent["enum"]
+            .as_array()
+            .expect("closed enum must have enum key");
+        assert!(enum_val.iter().any(|v| v == "browse"));
+        assert!(enum_val.iter().any(|v| v == "focus"));
+        // Open-string Custom branch must NOT appear as a value.
+        assert_eq!(enum_val.len(), 2, "only const values; open branch dropped");
     }
 
     /// Regression guard for Pitfall 6: composition nodes without `properties`
