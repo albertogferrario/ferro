@@ -31,9 +31,9 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 - [x] **AISDK-03** — Developer can register Rust functions as AI tools; SDK dispatches tool-use calls automatically with a hard `max_iterations` guard. Tool registration accepts both arbitrary closures (existing pattern) and `Renderer` implementations from `ferro-projections` (a `Renderer` IS a tool the LLM can invoke to materialize a `ServiceDef` into any modality during a multi-turn loop).
 
-- [ ] **AISDK-04** — Developer can generate text embeddings and compute cosine similarity (pure Rust helpers, zero extra crates).
+- [x] **AISDK-04** — Developer can generate text embeddings and compute cosine similarity (pure Rust helpers, zero extra crates).
 
-- [ ] **AISDK-05** — Developer can persist and query embeddings via pgvector (feature-gated `pgvector 0.4`, thin sqlx raw-query module).
+- [x] **AISDK-05** — Developer can persist and query embeddings via pgvector (feature-gated `pgvector 0.4`, thin sqlx raw-query module).
 
 - [ ] **AISDK-06** — `ferro-cli/src/ai.rs` blocking client deleted; ferro-cli depends on ferro-ai and routes all LLM calls through it.
 
@@ -107,8 +107,8 @@ Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173)
 | AISDK-01 | Phase 165 (LlmClient Trait & Provider Implementations) | Complete |
 | AISDK-02 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Complete |
 | AISDK-03 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Complete |
-| AISDK-04 | Phase 167 (Embeddings & pgvector) | Pending |
-| AISDK-05 | Phase 167 (Embeddings & pgvector) | Pending |
+| AISDK-04 | Phase 167 (Embeddings & pgvector) | Complete |
+| AISDK-05 | Phase 167 (Embeddings & pgvector) | Complete |
 | AISDK-06 | Phase 170 (ferro-cli Migration) | Pending |
 | AISSE-01 | Phase 168 (Framework SSE Primitives) | Pending |
 | AISSE-02 | Phase 169 (StreamText Component) | Pending |
