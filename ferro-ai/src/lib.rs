@@ -62,7 +62,7 @@ pub use client::{
     AnthropicClient, CompletionRequest, CompletionResponse, LlmClient, OllamaClient, OpenAiClient,
     TokenStream, ToolChoice, ToolRequest, ToolUseBlock,
 };
-pub use complete::complete;
+pub use complete::{complete, complete_with, CompleteOptions};
 pub use config::AiConfig;
 pub use confirmation::events::ConfirmationExpired;
 pub use confirmation::store::InMemoryConfirmationStore;
