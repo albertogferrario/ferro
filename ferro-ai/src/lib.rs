@@ -46,6 +46,7 @@ pub mod client;
 pub mod config;
 pub mod confirmation;
 pub mod error;
+pub mod schema;
 
 pub use classifier::anthropic::AnthropicProvider;
 pub use classifier::provider::ClassificationProvider;
