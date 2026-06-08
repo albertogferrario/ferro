@@ -42,6 +42,7 @@
 //! ```
 
 pub mod classifier;
+pub mod client;
 pub mod confirmation;
 pub mod error;
 

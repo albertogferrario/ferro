@@ -66,20 +66,6 @@ impl AnthropicProvider {
     }
 }
 
-/// Returns `true` for HTTP status codes that indicate a permanent failure.
-///
-/// Permanent errors (400, 401, 403, 404, 422) should not be retried.
-pub(crate) fn is_permanent_error(status: u16) -> bool {
-    matches!(status, 400 | 401 | 403 | 404 | 422)
-}
-
-/// Returns `true` for HTTP status codes that indicate a transient failure.
-///
-/// Transient errors (429, 500, 503, 529) are safe to retry with a delay.
-pub(crate) fn is_transient_error(status: u16) -> bool {
-    matches!(status, 429 | 500 | 503 | 529)
-}
-
 #[async_trait]
 impl ClassificationProvider for AnthropicProvider {
     async fn classify_raw(
@@ -136,32 +122,6 @@ impl ClassificationProvider for AnthropicProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_is_permanent_error() {
-        assert!(is_permanent_error(400));
-        assert!(is_permanent_error(401));
-        assert!(is_permanent_error(403));
-        assert!(is_permanent_error(404));
-        assert!(is_permanent_error(422));
-        assert!(!is_permanent_error(200));
-        assert!(!is_permanent_error(429));
-        assert!(!is_permanent_error(500));
-        assert!(!is_permanent_error(503));
-        assert!(!is_permanent_error(529));
-    }
-
-    #[test]
-    fn test_is_transient_error() {
-        assert!(is_transient_error(429));
-        assert!(is_transient_error(500));
-        assert!(is_transient_error(503));
-        assert!(is_transient_error(529));
-        assert!(!is_transient_error(200));
-        assert!(!is_transient_error(400));
-        assert!(!is_transient_error(401));
-        assert!(!is_transient_error(422));
-    }
 
     #[test]
     fn test_build_request_body_contains_output_config() {
