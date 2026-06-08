@@ -1784,7 +1784,11 @@ Plans:
   4. `ClassifierConfig` default model is resolved through `LlmClient::default_model()` per provider; the hardcoded `"claude-sonnet-4-6"` string is removed from `ClassifierConfig::default()`
   5. `Classifier<T>` compiles and passes its existing tests with the new client plumbing underneath; `ClassificationProvider` and existing public API are preserved
   6. `reqwest-eventsource 0.6` is declared as a `pub(crate)` dependency in provider modules only — not re-exported as a public ferro-ai surface
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 165-01-PLAN.md — Foundation: streaming deps + Error restructure (Unsupported/Provider{status,message}/is_retryable) + LlmClient trait + CompletionRequest/TokenStream + client module skeleton
+- [ ] 165-02-PLAN.md — AnthropicClient + OpenAiClient (Groq via base_url): complete/complete_stream (SSE)/embed/default_model
+- [ ] 165-03-PLAN.md — OllamaClient: NDJSON streaming, no-auth local default, /api/chat + /api/embed
+- [ ] 165-04-PLAN.md — Convergence: AiConfig::from_env() + AnthropicProvider→AnthropicClient bridge (delete dup HTTP) + classifier retry/default-model fix + lib.rs re-exports + phase gate
 
 ### Phase 166: Structured Outputs, Tool Calling & ServiceDef-aware Schema Normalizer
 **Goal**: Ship `ferro_ai::complete::<T>()` for typed structured outputs, the schema normalizer that makes `schemars` output compatible with provider structured-output APIs, the `ServiceDef`-aware specialization that locks the LLM to valid projection shapes, and `ToolRegistry` with a hard `max_iterations` guard.
