@@ -1819,7 +1819,9 @@ Plans:
   3. `ferro_ai::pgvector` module exists behind the `pgvector` cargo feature; `PgVectorStore::store` and `PgVectorStore::nearest` accept raw sqlx connections and return typed results
   4. Feature flag `pgvector` adds only `pgvector 0.4` to the dependency graph; non-flagged builds do not pull pgvector
   5. Unit tests for `cosine_similarity`: orthogonal vectors return 0.0, identical vectors return 1.0, opposite vectors return -1.0
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 167-01-PLAN.md — Wave 1 (AISDK-04): cosine_similarity + embed() free fn + D-13 embed-model fix (Ollama/OpenAI) + Error::Sqlx variant + lib.rs core re-exports
+- [ ] 167-02-PLAN.md — Wave 2 (AISDK-05): pgvector feature + optional pgvector/sqlx deps + PgVectorStore (store/nearest) + gated integration test + SC#4 dep-graph assertion
 
 ### Phase 168: Framework SSE Primitives
 **Goal**: Add SSE streaming support to the framework so handlers can push events to the browser. SSE routes are structurally excluded from CompressionLayer — this is a guarantee, not documentation.
