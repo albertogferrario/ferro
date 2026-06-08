@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.3
-milestone_name: Deployment Platform Primitives
-status: complete
-stopped_at: All roadmapped phases shipped through Phase 189 (v12.1 AI, v12.2, v12.3, v11.6.1 complete 2026-06-07/08)
-last_updated: "2026-06-08T21:38:07.000Z"
-last_activity: 2026-06-08
+milestone: v12.4
+milestone_name: Form Validation DX
+status: defining-requirements
+stopped_at: Milestone v12.4 started (defining requirements)
+last_updated: "2026-06-09T00:00:00.000Z"
+last_activity: 2026-06-09
 progress:
   total_phases: 62
   completed_phases: 62
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: None active — roadmap complete through Phase 189; opening v12.4
+Phase: Not started (defining requirements)
 Plan: —
-Next: start the v12.4 build cycle via `/gsd-new-milestone` (Form Validation DX — async DB-backed `unique` rules + DB-constraint→field-error mapping; phase numbers TBD at plan time).
-Status: 0.2.48 released; all roadmapped phases complete and verified
-Last activity: 2026-06-09
-Workspace version: 0.2.48
+Next: define v12.4 requirements → roadmap → `/gsd-plan-phase [N]`
+Status: Defining requirements — Milestone v12.4 Form Validation DX
+Last activity: 2026-06-09 — Milestone v12.4 started
+Workspace version: 0.2.48 (released to crates.io)
 
 Release 0.2.48 (2026-06-09): all crates published to crates.io and tagged `v0.2.48`. New crates `ferro-deployments` and `ferro-assets` bootstrapped (manual first publish, since the CI token is `publish-update` only); CI updates them from here. `ferro-assets 0.2.47` was shipped requiring `nasm` (rav1e asm) and is superseded by the pure-Rust 0.2.48 — yank of 0.2.47 pending a yank-scoped token (optional cleanup). See memory `project_ferro_codec_asm_nasm_gotcha.md`.
 
