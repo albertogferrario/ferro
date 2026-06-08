@@ -33,7 +33,7 @@ pub struct ClassifierConfig {
 impl Default for ClassifierConfig {
     fn default() -> Self {
         Self {
-            model: "claude-sonnet-4-6".to_string(),
+            model: String::new(), // resolved from client.default_model() at call time (D-03)
             max_tokens: 1024,
             max_retries: 1,
             retry_delay: Duration::from_secs(1),
@@ -146,9 +146,9 @@ impl<T: DeserializeOwned> Classifier<T> {
                         raw_json,
                     });
                 }
-                Err(Error::Provider(msg)) if is_permanent_provider_error(&msg) => {
+                Err(e) if !e.is_retryable() => {
                     // Do not retry permanent errors
-                    return Err(Error::Provider(msg));
+                    return Err(e);
                 }
                 Err(e) => {
                     warn!(attempt, error = %e, "Classification attempt failed, may retry");
@@ -169,17 +169,6 @@ impl<T: DeserializeOwned> Classifier<T> {
     }
 }
 
-/// Returns true if the provider error message indicates a permanent failure
-/// that should not be retried.
-///
-/// Permanent HTTP status codes: 400, 401, 403, 404, 422.
-pub(crate) fn is_permanent_provider_error(msg: &str) -> bool {
-    msg.contains("400")
-        || msg.contains("401")
-        || msg.contains("403")
-        || msg.contains("404")
-        || msg.contains("422")
-}
 
 #[cfg(test)]
 mod tests {
@@ -192,7 +181,8 @@ mod tests {
     #[test]
     fn test_classifier_config_defaults() {
         let config = ClassifierConfig::default();
-        assert_eq!(config.model, "claude-sonnet-4-6");
+        // model is empty string after D-03: resolved from client.default_model() at call time
+        assert!(config.model.is_empty());
         assert_eq!(config.max_tokens, 1024);
         assert_eq!(config.max_retries, 1);
         assert_eq!(config.retry_delay, Duration::from_secs(1));
@@ -284,7 +274,7 @@ mod tests {
         ) -> Result<serde_json::Value, Error> {
             let count = self.call_count.fetch_add(1, Ordering::SeqCst) + 1;
             if count <= self.fail_times {
-                Err(Error::Provider("500 internal server error".to_string()))
+                Err(Error::Provider { status: Some(500), message: "internal server error".into() })
             } else {
                 Ok(serde_json::json!({"category": "ok"}))
             }
@@ -335,7 +325,7 @@ mod tests {
                 _config: &ClassifierConfig,
             ) -> Result<serde_json::Value, Error> {
                 self.call_count.fetch_add(1, Ordering::SeqCst);
-                Err(Error::Provider("401 unauthorized".to_string()))
+                Err(Error::Provider { status: Some(401), message: "unauthorized".into() })
             }
         }
 

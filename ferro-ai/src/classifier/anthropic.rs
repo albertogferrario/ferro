@@ -104,25 +104,15 @@ impl ClassificationProvider for AnthropicProvider {
                 if e.is_timeout() {
                     Error::Timeout
                 } else {
-                    Error::Provider(format!("request failed: {e}"))
+                    Error::Provider { status: None, message: e.to_string() }
                 }
             })?;
 
         let status = response.status().as_u16();
 
-        if is_permanent_error(status) {
-            let text = response.text().await.unwrap_or_default();
-            return Err(Error::Provider(format!("{status} {text}")));
-        }
-
-        if is_transient_error(status) {
-            let text = response.text().await.unwrap_or_default();
-            return Err(Error::Provider(format!("{status} {text}")));
-        }
-
         if !response.status().is_success() {
             let text = response.text().await.unwrap_or_default();
-            return Err(Error::Provider(format!("{status} {text}")));
+            return Err(Error::Provider { status: Some(status), message: text });
         }
 
         let json: serde_json::Value = response
@@ -175,7 +165,10 @@ mod tests {
 
     #[test]
     fn test_build_request_body_contains_output_config() {
-        let config = ClassifierConfig::default();
+        let config = ClassifierConfig {
+            model: "claude-sonnet-4-6".to_string(), // explicit model (default is now empty per D-03)
+            ..Default::default()
+        };
         let schema = serde_json::json!({
             "type": "object",
             "properties": {
