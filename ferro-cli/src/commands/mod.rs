@@ -1,3 +1,4 @@
+pub mod ai_make;
 pub mod api_check;
 pub mod auth_link;
 pub mod boost_install;
