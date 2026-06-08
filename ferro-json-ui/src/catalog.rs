@@ -1079,13 +1079,14 @@ mod tests {
         // Updated to 42 when DetailPage was added.
         // Updated to 43 in Phase 175 Plan 04 (CheckboxGroup alias added).
         // Updated to 44 when MediaCardGrid was added.
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 44);
+        // Updated to 45 in Phase 169 Plan 02 (StreamText added).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 45);
     }
 
     #[test]
     fn builtin_specs_len_matches_dispatch() {
         assert_eq!(BUILTIN_SPECS.len(), crate::render::BUILTIN_TYPES.len());
-        assert_eq!(BUILTIN_SPECS.len(), 44);
+        assert_eq!(BUILTIN_SPECS.len(), 45);
     }
 
     #[test]
