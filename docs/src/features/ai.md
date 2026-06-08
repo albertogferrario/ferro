@@ -340,3 +340,31 @@ Scan source code for `request_confirmation` call sites:
 - **When to use:** Auditing which handlers use confirmation, understanding confirmation flows
 - **Note:** Confirmation state is in-memory — this tool scans source files, not runtime state
 - **Returns:** File paths and line numbers where `request_confirmation` is called
+
+### `ai_scaffold`
+
+Generate a `ferro_projections::ServiceDef` from a natural-language description, using
+the project's live introspection (models, routes, schema, existing projections) as
+context.
+
+- **When to use:** Starting a new service; getting a typed `ServiceDef` to inspect or
+  pass to a renderer.
+- **Returns:** A `ServiceDef` JSON object — the same shape `ferro ai:make` produces.
+  Does NOT write files; use the `ferro ai:make` CLI command to write `src/projections/<name>.rs`.
+- **Note:** Makes a real LLM call (costs tokens, governed by
+  `FERRO_AI_MAX_TOKENS_PER_COMMAND`). Requires `FERRO_AI_PROVIDER`, `FERRO_AI_API_KEY`,
+  `FERRO_AI_MODEL`.
+- **Combine with:** `list_projections` (avoid name collisions), `inspect_projection`,
+  `ai_explain`.
+
+### `ai_explain`
+
+Explain a route, model, or service projection in projection-framed vocabulary.
+
+- **When to use:** Understanding how a service/route/model maps onto the projection/intent
+  model before modifying or rendering it.
+- **Returns:** Structured projection JSON (Intent hints, field meanings, actions, state
+  machine) with zero LLM tokens when the target resolves to a `ServiceDef`; an LLM-generated
+  `{ "prose": ... }` explanation when only a route or model matches.
+- **Note:** The structured branch spends no tokens; the prose fallback makes a real LLM call.
+- **Combine with:** `inspect_projection`, `list_projections`, `ai_scaffold`.
