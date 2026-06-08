@@ -1762,7 +1762,7 @@ Plans:
 ## Phases
 
 - [x] **Phase 165: LlmClient Trait & Provider Implementations** — `LlmClient` trait + Anthropic/OpenAI/Ollama providers + `AiConfig::from_env()` + `ClassifierConfig` default-model fix (completed 2026-06-08)
-- [ ] **Phase 166: Structured Outputs, Tool Calling & ServiceDef-aware Schema Normalizer** — `ferro_ai::complete::<T>()` + generic schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ServiceDef`-aware specialization that locks the LLM to valid projection shapes when `T` is `ferro_projections::ServiceDef` + `ToolRegistry` with `max_iterations` hard cap
+- [x] **Phase 166: Structured Outputs, Tool Calling & ServiceDef-aware Schema Normalizer** — `ferro_ai::complete::<T>()` + generic schema normalizer (resolves `$ref`/`$defs`, adds `additionalProperties: false`) + `ServiceDef`-aware specialization that locks the LLM to valid projection shapes when `T` is `ferro_projections::ServiceDef` + `ToolRegistry` with `max_iterations` hard cap (completed 2026-06-08)
 - [ ] **Phase 167: Embeddings & pgvector** — `embed()` + `cosine_similarity()` pure Rust helpers + optional `pgvector` feature-gated module
 - [ ] **Phase 168: Framework SSE Primitives** — `SseEvent` + `SseStream` + `HttpResponse::sse()` in framework crate; SSE routes structurally excluded from CompressionLayer
 - [ ] **Phase 169: StreamText Component** — `StreamText` ferro-json-ui component rendering a token stream from an SSE endpoint URL
@@ -1807,7 +1807,7 @@ Plans:
 - [x] 166-02-PLAN.md — generic `for_structured_output` normalizer (resolve $ref/$defs, strip Anthropic-rejected keywords, additionalProperties:false) + SC#2
 - [x] 166-03-PLAN.md — ServiceDef-aware enum closing (D-06/07/08) + SC#3 jsonschema test + typed `complete::<T>()` (D-01) + SC#1
 - [x] 166-04-PLAN.md — tool calling: client `complete_with_tools` (D-14) + `ToolDef`/`ToolRegistry`/`ToolError` + dispatch max_iterations loop (SC#4/5/6)
-- [ ] 166-05-PLAN.md — publish.yml WAVE1B reorder (ferro-projections before ferro-ai) + full fmt/clippy/test gate (SC#7)
+- [x] 166-05-PLAN.md — publish.yml WAVE1B reorder (ferro-projections before ferro-ai) + full fmt/clippy/test gate (SC#7)
 
 ### Phase 167: Embeddings & pgvector
 **Goal**: Ship pure-Rust embedding helpers and cosine similarity, plus an optional pgvector integration for semantic search.
@@ -1900,7 +1900,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 165. LlmClient Trait & Providers | 4/4 | Complete    | 2026-06-08 |
-| 166. Structured Outputs & Tool Calling | 4/5 | In Progress|  |
+| 166. Structured Outputs & Tool Calling | 5/5 | Complete   | 2026-06-08 |
 | 167. Embeddings & pgvector | 0/? | Not started | - |
 | 168. Framework SSE Primitives | 0/? | Not started | - |
 | 169. StreamText Component | 0/? | Not started | - |
@@ -1914,7 +1914,7 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
