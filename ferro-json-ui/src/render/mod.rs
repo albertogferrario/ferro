@@ -628,7 +628,10 @@ mod tests {
     #[test]
     fn render_spec_with_stream_text_emits_init_script() {
         let spec = Spec::builder()
-            .element("root", Element::new("StreamText").prop("sse_url", "/stream"))
+            .element(
+                "root",
+                Element::new("StreamText").prop("sse_url", "/stream"),
+            )
             .build()
             .expect("spec builds");
         let result = render_spec_to_html_with_plugins(&spec, &json!({}));

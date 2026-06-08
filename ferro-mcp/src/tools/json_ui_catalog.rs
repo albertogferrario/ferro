@@ -287,8 +287,8 @@ mod tests {
         let catalog = execute(None);
         assert_eq!(
             catalog.components.len(),
-            44,
-            "Catalog should contain all 44 built-in components (incl. CheckboxList, CheckboxGroup, RawHtml, DetailPage, MediaCardGrid), got {}",
+            45,
+            "Catalog should contain all 45 built-in components (incl. CheckboxList, CheckboxGroup, RawHtml, DetailPage, MediaCardGrid, StreamText), got {}",
             catalog.components.len()
         );
 
@@ -335,6 +335,7 @@ mod tests {
             "ActionCard",
             "ProductTile",
             "RawHtml",
+            "StreamText",
             "Image",
             "DetailPage",
             "MediaCardGrid",
@@ -506,6 +507,9 @@ mod tests {
                 "DescriptionList",
                 // D-17a: html is #[serde(default)] — empty HTML is a valid no-op.
                 "RawHtml",
+                // sse_url is #[serde(default)] — matches RawHtml pattern; stream renders
+                // empty when url is absent rather than failing.
+                "StreamText",
                 // D-13a: columns is now #[serde(default)] — data_path can be the sole source.
                 "KanbanBoard",
             ];

@@ -33,8 +33,8 @@ use crate::component::{
     EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
     KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
     PaginationProps, ProductTileProps, ProgressProps, RawHtmlProps, SelectProps, SeparatorProps,
-    SidebarProps, SkeletonProps, StatCardProps, SwitchProps, TableProps, TabsProps, TextProps,
-    ToastProps,
+    SidebarProps, SkeletonProps, StatCardProps, StreamTextProps, SwitchProps, TableProps,
+    TabsProps, TextProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -265,6 +265,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "RawHtml",
         "Server-injected HTML island. CONSUMER is responsible for sanitization — see docs/src/json-ui/plugins.md.",
         || to_value(schema_for!(RawHtmlProps)).unwrap(),
+        &[],
+    ),
+    (
+        "StreamText",
+        "Connects to a server-sent-events endpoint and renders token-by-token output as plain text. The SSE endpoint must emit `event: done` on completion to prevent auto-reconnect.",
+        || to_value(schema_for!(StreamTextProps)).unwrap(),
         &[],
     ),
     // === Containers (containers.rs) ===
@@ -1700,9 +1706,10 @@ mod tests {
         let bytes = prompt.len();
         // Budget bumped from 8 KB to 9 KB in Phase 162 Plan 01 (CheckboxList added, 40 components).
         // Budget bumped from 9 KB to 10 KB in Phase 175 Plan 04 (CheckboxGroup alias added, 43 components).
+        // Budget bumped from 10 KB to 11 KB in Phase 169 Plan 02 (StreamText added, 45 components).
         assert!(
-            bytes <= 10 * 1024,
-            "prompt() is {bytes} bytes, exceeds 10 KB budget (CONTEXT D-17)"
+            bytes <= 11 * 1024,
+            "prompt() is {bytes} bytes, exceeds 11 KB budget (CONTEXT D-17)"
         );
     }
 
@@ -1771,5 +1778,26 @@ mod tests {
             cat.component_schema("CheckboxGroup").is_some(),
             "CheckboxGroup must be registered in BUILTIN_SPECS as an alias for CheckboxList"
         );
+    }
+
+    #[test]
+    fn global_catalog_includes_stream_text() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        assert!(
+            cat.components.contains_key("StreamText"),
+            "catalog must include StreamText"
+        );
+        let spec = &cat.components["StreamText"];
+        assert_eq!(spec.name, "StreamText");
+        assert!(
+            spec.description.contains("event: done"),
+            "StreamText description must mention 'event: done'; got: {}",
+            spec.description
+        );
+        assert!(
+            spec.props_schema.is_object(),
+            "StreamText props_schema must be a JSON object"
+        );
+        assert!(!spec.is_plugin);
     }
 }
