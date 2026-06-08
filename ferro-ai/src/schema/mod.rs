@@ -226,8 +226,9 @@ pub fn for_structured_output(schema: Value) -> Value {
 /// Cycle guard: if `name` is already in `visited`, returns `{"type":"object"}`.
 fn resolve_refs(node: Value, defs: &Map<String, Value>, visited: &mut HashSet<String>) -> Value {
     match node {
-        Value::Object(ref obj) if obj.len() == 1 && obj.contains_key("$ref") => {
-            // Pure $ref node — inline it.
+        Value::Object(ref obj) if obj.contains_key("$ref") => {
+            // $ref node (may have sibling keys like "description" from schemars property annotations).
+            // Resolve the ref, then merge any sibling keys into the resolved object.
             if let Some(ref_str) = obj.get("$ref").and_then(|v| v.as_str()) {
                 if let Some(name) = parse_ref_name(ref_str) {
                     if visited.contains(name) {
@@ -238,12 +239,34 @@ fn resolve_refs(node: Value, defs: &Map<String, Value>, visited: &mut HashSet<St
                         visited.insert(name.to_string());
                         let resolved = resolve_refs(def.clone(), defs, visited);
                         visited.remove(name);
+
+                        // If there are sibling keys (e.g. "description"), merge them into
+                        // the resolved object. Sibling keys take precedence over same-named
+                        // keys in the resolved def (e.g. the property-level description
+                        // overrides the type-level one for clarity).
+                        if obj.len() > 1 {
+                            if let Value::Object(mut resolved_obj) = resolved {
+                                for (k, v) in obj {
+                                    if k != "$ref" {
+                                        resolved_obj.insert(k.clone(), v.clone());
+                                    }
+                                }
+                                return Value::Object(resolved_obj);
+                            }
+                        }
                         return resolved;
                     }
                 }
             }
-            // Unknown $ref — return unchanged.
-            node
+            // Unknown $ref or non-object resolved value — rebuild as generic object.
+            let Value::Object(obj) = node else {
+                unreachable!()
+            };
+            let mut new_obj = Map::with_capacity(obj.len());
+            for (k, v) in obj {
+                new_obj.insert(k, resolve_refs(v, defs, visited));
+            }
+            Value::Object(new_obj)
         }
         Value::Object(obj) => {
             // Rebuild the object, recursing into each value.
