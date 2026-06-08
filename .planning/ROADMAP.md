@@ -1803,7 +1803,7 @@ Plans:
   6. Tool errors carry model-legible `ToolError { message: String }` descriptions — not raw Rust stack traces or DB constraint strings
   7. `cargo test --all-features` passes; existing `Classifier<T>` tests are green
 **Plans**: 5 plans
-- [ ] 166-01-PLAN.md — Wave 0 foundation: deps (schemars, ferro-projections, jsonschema dev) + Error variants + schemars anyOf shape probe (resolves A1/A2)
+- [x] 166-01-PLAN.md — Wave 0 foundation: deps (schemars, ferro-projections, jsonschema dev) + Error variants + schemars anyOf shape probe (resolves A1/A2)
 - [ ] 166-02-PLAN.md — generic `for_structured_output` normalizer (resolve $ref/$defs, strip Anthropic-rejected keywords, additionalProperties:false) + SC#2
 - [ ] 166-03-PLAN.md — ServiceDef-aware enum closing (D-06/07/08) + SC#3 jsonschema test + typed `complete::<T>()` (D-01) + SC#1
 - [ ] 166-04-PLAN.md — tool calling: client `complete_with_tools` (D-14) + `ToolDef`/`ToolRegistry`/`ToolError` + dispatch max_iterations loop (SC#4/5/6)
@@ -1900,7 +1900,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 165. LlmClient Trait & Providers | 4/4 | Complete    | 2026-06-08 |
-| 166. Structured Outputs & Tool Calling | 0/? | Not started | - |
+| 166. Structured Outputs & Tool Calling | 1/5 | In Progress|  |
 | 167. Embeddings & pgvector | 0/? | Not started | - |
 | 168. Framework SSE Primitives | 0/? | Not started | - |
 | 169. StreamText Component | 0/? | Not started | - |
@@ -1914,7 +1914,7 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 4/4 plans complete
+**Plans:** 1/5 plans executed
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports

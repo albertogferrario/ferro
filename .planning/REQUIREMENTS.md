@@ -27,9 +27,9 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 - [x] **AISDK-01** — Developer can configure and use an LLM provider (Anthropic, OpenAI, Groq via OpenAI-compatible endpoint, Ollama) via env vars through a unified `LlmClient` trait; existing `Classifier<T>` API is preserved or cleanly superseded.
 
-- [ ] **AISDK-02** — Developer can request typed responses via `ferro_ai::complete::<T>()` backed by a JSON Schema normalizer that resolves `schemars` `$ref` / `$defs` incompatibility with provider structured-output APIs. **`ServiceDef`-aware:** when `T` is `ferro_projections::ServiceDef` (or contains one), the normalizer emits a constrained schema that locks the LLM to valid projection shapes — `FieldMeaning` values from the published enum, `Intent` values from the seven structural intents, `Cardinality` from the relationship enum, `ActionDef` / `GuardDef` / `StateDef` shapes derived from `ferro-projections`. This is what makes AI output structurally inseparable from the intent system.
+- [x] **AISDK-02** — Developer can request typed responses via `ferro_ai::complete::<T>()` backed by a JSON Schema normalizer that resolves `schemars` `$ref` / `$defs` incompatibility with provider structured-output APIs. **`ServiceDef`-aware:** when `T` is `ferro_projections::ServiceDef` (or contains one), the normalizer emits a constrained schema that locks the LLM to valid projection shapes — `FieldMeaning` values from the published enum, `Intent` values from the seven structural intents, `Cardinality` from the relationship enum, `ActionDef` / `GuardDef` / `StateDef` shapes derived from `ferro-projections`. This is what makes AI output structurally inseparable from the intent system.
 
-- [ ] **AISDK-03** — Developer can register Rust functions as AI tools; SDK dispatches tool-use calls automatically with a hard `max_iterations` guard. Tool registration accepts both arbitrary closures (existing pattern) and `Renderer` implementations from `ferro-projections` (a `Renderer` IS a tool the LLM can invoke to materialize a `ServiceDef` into any modality during a multi-turn loop).
+- [x] **AISDK-03** — Developer can register Rust functions as AI tools; SDK dispatches tool-use calls automatically with a hard `max_iterations` guard. Tool registration accepts both arbitrary closures (existing pattern) and `Renderer` implementations from `ferro-projections` (a `Renderer` IS a tool the LLM can invoke to materialize a `ServiceDef` into any modality during a multi-turn loop).
 
 - [ ] **AISDK-04** — Developer can generate text embeddings and compute cosine similarity (pure Rust helpers, zero extra crates).
 
@@ -105,8 +105,8 @@ Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173)
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | AISDK-01 | Phase 165 (LlmClient Trait & Provider Implementations) | Complete |
-| AISDK-02 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Pending |
-| AISDK-03 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Pending |
+| AISDK-02 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Complete |
+| AISDK-03 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Complete |
 | AISDK-04 | Phase 167 (Embeddings & pgvector) | Pending |
 | AISDK-05 | Phase 167 (Embeddings & pgvector) | Pending |
 | AISDK-06 | Phase 170 (ferro-cli Migration) | Pending |
