@@ -20,24 +20,22 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** None — all roadmapped phases shipped through Phase 189. Next: publish bootstrap of new crates, then start a new milestone.
+**Current focus:** Starting milestone v12.4 (Form Validation DX). Roadmap shipped through Phase 189; 0.2.48 released to crates.io.
 
 ## Current Position
 
-Phase: None active — roadmap complete through Phase 189
+Phase: None active — roadmap complete through Phase 189; opening v12.4
 Plan: —
-Next: (1) One-time manual `cargo publish` bootstrap of the new crates listed below; (2) start the next build cycle via `/gsd-new-milestone` (next planned: v12.4 Form Validation DX — async DB-backed rules; phase numbers TBD at plan time).
-Status: All roadmapped phases complete and verified
-Last activity: 2026-06-08
-Workspace version: 0.2.46
+Next: start the v12.4 build cycle via `/gsd-new-milestone` (Form Validation DX — async DB-backed `unique` rules + DB-constraint→field-error mapping; phase numbers TBD at plan time).
+Status: 0.2.48 released; all roadmapped phases complete and verified
+Last activity: 2026-06-09
+Workspace version: 0.2.48
 
-Pending publish (new crates — CI token is `publish-update` only, so new crates need a one-time manual bootstrap from a local terminal before their first CI push):
-
-  - `cargo publish -p ferro-bundle` (Phase 183), `-p ferro-deployments` (186), `-p ferro-assets` (187).
+Release 0.2.48 (2026-06-09): all crates published to crates.io and tagged `v0.2.48`. New crates `ferro-deployments` and `ferro-assets` bootstrapped (manual first publish, since the CI token is `publish-update` only); CI updates them from here. `ferro-assets 0.2.47` was shipped requiring `nasm` (rav1e asm) and is superseded by the pure-Rust 0.2.48 — yank of 0.2.47 pending a yank-scoped token (optional cleanup). See memory `project_ferro_codec_asm_nasm_gotcha.md`.
 
 ## Shipped Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
 
-Shipped 2026-06-07, sourced from gestiscilo-it v7.1 Tenant Frontend Platform (consumer phases 188-193). Four phases, all complete: 185 `ferro::queue` DB-backed job queue (replaces Redis-only ferro-queue backend; Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` claim), 186 `ferro-deployments` new crate (immutable deployments + atomic promote/rollback), 187 `ferro-assets` new crate (content-type-aware pipeline: lol_html + lightningcss + swc + pure-Rust image/ravif — libvips rejected), 188 `ferro-storage` CDN extension (`cdn_url()` + `PurgeApi` + DO Spaces adapter). Remaining release task: manual `cargo publish` bootstrap of the NEW crates (186 `ferro-deployments`, 187 `ferro-assets`) — see "Pending publish" above.
+Shipped 2026-06-07, sourced from gestiscilo-it v7.1 Tenant Frontend Platform (consumer phases 188-193). Four phases, all complete: 185 `ferro::queue` DB-backed job queue (replaces Redis-only ferro-queue backend; Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` claim), 186 `ferro-deployments` new crate (immutable deployments + atomic promote/rollback), 187 `ferro-assets` new crate (content-type-aware pipeline: lol_html + lightningcss + swc + pure-Rust image/ravif — libvips rejected), 188 `ferro-storage` CDN extension (`cdn_url()` + `PurgeApi` + DO Spaces adapter). Released to crates.io at 0.2.48 (2026-06-09); new crates `ferro-deployments` and `ferro-assets` bootstrapped manually, rest updated by CI.
 
 Progress: [██████████] 100%
 
@@ -316,8 +314,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Push workspace to origin/master to publish v0.2.0 (627 commits ahead).
 - Ferro doctor `db_connection` and `migrations_pending` checks should auto-resolve `--bin <pkg>` for multi-bin projects without `default-run`. Tracked in `.planning/phases/122.2-deploy-simplification/122.2-VERIFICATION.md`.
+- (Optional) Yank `ferro-assets 0.2.47` (requires `nasm`; superseded by pure-Rust 0.2.48). Needs a yank-scoped crates.io token or the web UI.
 
 ### Blockers/Concerns
 
