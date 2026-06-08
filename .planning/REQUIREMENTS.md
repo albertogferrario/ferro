@@ -35,7 +35,7 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 - [x] **AISDK-05** — Developer can persist and query embeddings via pgvector (feature-gated `pgvector 0.4`, thin sqlx raw-query module).
 
-- [ ] **AISDK-06** — `ferro-cli/src/ai.rs` blocking client deleted; ferro-cli depends on ferro-ai and routes all LLM calls through it.
+- [x] **AISDK-06** — `ferro-cli/src/ai.rs` blocking client deleted; ferro-cli depends on ferro-ai and routes all LLM calls through it.
 
 ### SSE Streaming
 
@@ -109,7 +109,7 @@ Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173)
 | AISDK-03 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Complete |
 | AISDK-04 | Phase 167 (Embeddings & pgvector) | Complete |
 | AISDK-05 | Phase 167 (Embeddings & pgvector) | Complete |
-| AISDK-06 | Phase 170 (ferro-cli Migration) | Pending |
+| AISDK-06 | Phase 170 (ferro-cli Migration) | Complete |
 | AISSE-01 | Phase 168 (Framework SSE Primitives) | Complete |
 | AISSE-02 | Phase 169 (StreamText Component) | Complete |
 | AICLI-01 | Phase 171 (ai:make & ai:explain CLI Commands) | Pending |

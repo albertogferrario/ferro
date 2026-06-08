@@ -4,13 +4,13 @@ milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: executing
 stopped_at: Phase 170 context gathered
-last_updated: "2026-06-08T16:50:17.351Z"
-last_activity: 2026-06-08 -- Phase 170 execution started
+last_updated: "2026-06-08T17:52:50.141Z"
+last_activity: 2026-06-08
 progress:
   total_phases: 62
-  completed_phases: 51
+  completed_phases: 52
   total_plans: 247
-  completed_plans: 246
+  completed_plans: 247
   percent: 100
 ---
 
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 170 (ferro-cli-migration) — EXECUTING
-Plan: 1 of 1
+Phase: 180
+Plan: Not started
 Next: Plan Phase 169 (StreamText JSON-UI component consuming an SSE endpoint URL — builds on the Phase 168 SSE primitives) — `/gsd-discuss-phase 169 --auto`. Then 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
 Status: Executing Phase 170
-Last activity: 2026-06-08 -- Phase 170 execution started
+Last activity: 2026-06-08
 Workspace version: 0.2.46
 
 Pending publish (v12.3 crates — see "Queued Milestone: v12.3" below; CI token is publish-update only):
@@ -45,7 +45,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 191
+- Total plans completed: 192
 - Average duration: —
 - Total execution time: —
 
@@ -89,6 +89,7 @@ Progress: [████████░░] 84%
 | 167 | 2 | - | - |
 | 168 | 2 | - | - |
 | 169 | 3 | - | - |
+| 170 | 1 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
