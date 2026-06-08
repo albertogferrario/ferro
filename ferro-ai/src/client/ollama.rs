@@ -43,6 +43,15 @@ impl OllamaClient {
         }
     }
 
+    /// The embedding model for `/api/embed`.
+    ///
+    /// Reads `FERRO_AI_EMBED_MODEL`; falls back to `"nomic-embed-text"`.
+    /// Intentionally separate from `default_model()` (the chat model) — sending a
+    /// chat model such as `llama3.1` to `/api/embed` yields no/garbage vectors.
+    pub(crate) fn embed_model() -> String {
+        std::env::var("FERRO_AI_EMBED_MODEL").unwrap_or_else(|_| "nomic-embed-text".to_string())
+    }
+
     /// Build the request body for `/api/chat`.
     ///
     /// Ollama ignores `max_tokens` and structured-output schema fields — only
@@ -222,7 +231,7 @@ impl LlmClient for OllamaClient {
     }
 
     async fn embed(&self, text: &str) -> Result<Vec<f32>, Error> {
-        let model = self.default_model().to_string();
+        let model = Self::embed_model();
         let body = serde_json::json!({
             "model": model,
             "input": text,
@@ -327,5 +336,20 @@ mod tests {
     #[test]
     fn test_ollama_is_object_safe() {
         let _: Box<dyn LlmClient> = Box::new(OllamaClient::new(None, None));
+    }
+
+    #[test]
+    fn embed_model_default_is_nomic() {
+        let _g = crate::ENV_LOCK.lock().unwrap();
+        std::env::remove_var("FERRO_AI_EMBED_MODEL");
+        assert_eq!(OllamaClient::embed_model(), "nomic-embed-text");
+    }
+
+    #[test]
+    fn embed_model_from_env() {
+        let _g = crate::ENV_LOCK.lock().unwrap();
+        std::env::set_var("FERRO_AI_EMBED_MODEL", "mxbai-embed-large");
+        assert_eq!(OllamaClient::embed_model(), "mxbai-embed-large");
+        std::env::remove_var("FERRO_AI_EMBED_MODEL");
     }
 }

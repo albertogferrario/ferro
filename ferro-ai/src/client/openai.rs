@@ -50,6 +50,15 @@ impl OpenAiClient {
         }
     }
 
+    /// The embedding model for `/v1/embeddings`.
+    ///
+    /// Reads `FERRO_AI_EMBED_MODEL`; falls back to `"text-embedding-3-small"`.
+    /// Intentionally separate from `default_model()` (the chat model).
+    pub(crate) fn embed_model() -> String {
+        std::env::var("FERRO_AI_EMBED_MODEL")
+            .unwrap_or_else(|_| "text-embedding-3-small".to_string())
+    }
+
     /// Build the request body for the Chat Completions API.
     ///
     /// Includes `response_format.type = "json_schema"` only when
@@ -288,7 +297,7 @@ impl LlmClient for OpenAiClient {
 
     async fn embed(&self, text: &str) -> Result<Vec<f32>, Error> {
         let body = serde_json::json!({
-            "model": "text-embedding-3-small",
+            "model": Self::embed_model(),
             "input": text,
         });
 
@@ -620,5 +629,20 @@ mod tests {
         };
         let body2 = client.build_body(&req_default, false);
         assert_eq!(body2["tool_choice"], "auto");
+    }
+
+    #[test]
+    fn embed_model_default_is_text_embedding_3_small() {
+        let _g = crate::ENV_LOCK.lock().unwrap();
+        std::env::remove_var("FERRO_AI_EMBED_MODEL");
+        assert_eq!(OpenAiClient::embed_model(), "text-embedding-3-small");
+    }
+
+    #[test]
+    fn embed_model_from_env() {
+        let _g = crate::ENV_LOCK.lock().unwrap();
+        std::env::set_var("FERRO_AI_EMBED_MODEL", "text-embedding-ada-002");
+        assert_eq!(OpenAiClient::embed_model(), "text-embedding-ada-002");
+        std::env::remove_var("FERRO_AI_EMBED_MODEL");
     }
 }

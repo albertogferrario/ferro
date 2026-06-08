@@ -69,3 +69,12 @@ pub use error::Error;
 pub use schema::for_structured_output;
 pub use similarity::cosine_similarity;
 pub use tools::{make_handler, ToolDef, ToolError, ToolRegistry};
+
+/// Process-wide mutex that serializes env-var mutation across all test modules.
+///
+/// Tests that read or write `FERRO_AI_*` environment variables must hold this
+/// lock for the duration of the test to prevent cross-module interference.
+/// Per-module `static ENV_LOCK` instances are insufficient because each module
+/// gets its own mutex instance; only a crate-level mutex serializes across modules.
+#[cfg(test)]
+pub static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());

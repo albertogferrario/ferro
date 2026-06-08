@@ -76,14 +76,10 @@ impl AiConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    // Serialize env-var tests — process-wide state, parallel tests corrupt each other.
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn from_env_fails_on_unknown_provider() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = crate::ENV_LOCK.lock().unwrap();
         std::env::set_var("FERRO_AI_PROVIDER", "bogus");
         std::env::remove_var("FERRO_AI_MODEL");
         std::env::remove_var("FERRO_AI_API_KEY");
@@ -98,7 +94,7 @@ mod tests {
 
     #[test]
     fn from_env_ollama_default_model() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = crate::ENV_LOCK.lock().unwrap();
         std::env::set_var("FERRO_AI_PROVIDER", "ollama");
         std::env::remove_var("FERRO_AI_MODEL");
         std::env::remove_var("FERRO_AI_API_KEY");
@@ -110,7 +106,7 @@ mod tests {
 
     #[test]
     fn from_env_anthropic_missing_key_errors() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = crate::ENV_LOCK.lock().unwrap();
         std::env::set_var("FERRO_AI_PROVIDER", "anthropic");
         // Remove both key sources so there is nothing to fall back to.
         std::env::remove_var("FERRO_AI_API_KEY");
@@ -127,7 +123,7 @@ mod tests {
 
     #[test]
     fn from_env_anthropic_with_explicit_key() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = crate::ENV_LOCK.lock().unwrap();
         std::env::set_var("FERRO_AI_PROVIDER", "anthropic");
         std::env::set_var("FERRO_AI_API_KEY", "test-key");
         std::env::remove_var("FERRO_AI_MODEL");
@@ -141,7 +137,7 @@ mod tests {
 
     #[test]
     fn from_env_groq_base_url_default() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = crate::ENV_LOCK.lock().unwrap();
         std::env::set_var("FERRO_AI_PROVIDER", "groq");
         std::env::set_var("FERRO_AI_API_KEY", "groq-key");
         std::env::remove_var("FERRO_AI_MODEL");
