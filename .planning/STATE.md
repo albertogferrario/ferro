@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: executing
-stopped_at: Completed 169-01-PLAN.md
-last_updated: "2026-06-08T15:27:41.390Z"
+stopped_at: Completed 169-02-PLAN.md
+last_updated: "2026-06-08T15:59:18.532Z"
 last_activity: 2026-06-08
 progress:
   total_phases: 62
   completed_phases: 50
   total_plans: 246
-  completed_plans: 244
-  percent: 99
+  completed_plans: 245
+  percent: 100
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 169 (StreamText Component) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: Plan Phase 169 (StreamText JSON-UI component consuming an SSE endpoint URL — builds on the Phase 168 SSE primitives) — `/gsd-discuss-phase 169 --auto`. Then 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
 Status: Ready to execute
 Last activity: 2026-06-08
@@ -254,6 +254,7 @@ Progress: [████████░░] 84%
 | Phase 166 P04 | 453 | 3 tasks | 8 files |
 | Phase 166 P05 | 598 | 2 tasks | 1 files |
 | Phase 169 P01 | 275s | 3 tasks | 2 files |
+| Phase 169-streamtext-component P02 | 1688s | 4 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -338,7 +339,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T15:27:41.383Z
-Stopped at: Completed 169-01-PLAN.md
+Last session: 2026-06-08T15:59:18.525Z
+Stopped at: Completed 169-02-PLAN.md
 Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
