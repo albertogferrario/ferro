@@ -110,9 +110,9 @@ pub use http::action::{
 };
 pub use http::{
     bytes, json, request_host, text, validate_mime, validate_size, Cookie, CookieOptions,
-    FormRequest, FromParam, FromRequest, HttpResponse, InertiaRedirect, MultipartForm,
+    FerroBody, FormRequest, FromParam, FromRequest, HttpResponse, InertiaRedirect, MultipartForm,
     PaginationLinks, PaginationMeta, Redirect, Request, Resource, ResourceCollection, ResourceMap,
-    Response, ResponseExt, SameSite, UploadedFile,
+    Response, ResponseExt, SameSite, SseEvent, SseStream, UploadedFile,
 };
 #[cfg(feature = "inertia")]
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};

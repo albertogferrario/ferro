@@ -4,6 +4,7 @@
 //! to the Broadcaster for channel subscriptions and message dispatch.
 
 use crate::container::App;
+use crate::http::FerroBody;
 use bytes::Bytes;
 use ferro_broadcast::{Broadcaster, ClientMessage, PresenceMember, ServerMessage};
 use futures_util::{SinkExt, StreamExt};
@@ -19,13 +20,15 @@ use uuid::Uuid;
 /// message loop runs in a spawned task after the upgrade completes.
 pub(crate) fn handle_ws_upgrade(
     mut req: hyper::Request<hyper::body::Incoming>,
-) -> hyper::Response<Full<Bytes>> {
+) -> hyper::Response<FerroBody> {
     let broadcaster = match App::get::<Broadcaster>() {
         Some(b) => b,
         None => {
             return hyper::Response::builder()
                 .status(503)
-                .body(Full::new(Bytes::from("Broadcasting not configured")))
+                .body(FerroBody::Full(Full::new(Bytes::from(
+                    "Broadcasting not configured",
+                ))))
                 .unwrap();
         }
     };
@@ -36,7 +39,9 @@ pub(crate) fn handle_ws_upgrade(
             eprintln!("WebSocket upgrade failed: {e}");
             return hyper::Response::builder()
                 .status(400)
-                .body(Full::new(Bytes::from("WebSocket upgrade failed")))
+                .body(FerroBody::Full(Full::new(Bytes::from(
+                    "WebSocket upgrade failed",
+                ))))
                 .unwrap();
         }
     };
@@ -52,7 +57,10 @@ pub(crate) fn handle_ws_upgrade(
         }
     });
 
-    response
+    // Map the tungstenite response body (hyper::body::Incoming) to FerroBody::Full.
+    // The WebSocket upgrade is tracked via request extensions, not the response body,
+    // so mapping to an empty Full<Bytes> does not affect the upgrade protocol.
+    response.map(|_incoming| FerroBody::Full(Full::new(Bytes::new())))
 }
 
 /// Run the WebSocket message loop with heartbeat and timeout.

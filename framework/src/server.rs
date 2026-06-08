@@ -1,6 +1,7 @@
 use crate::cache::Cache;
 use crate::config::{Config, ServerConfig};
 use crate::container::App;
+use crate::http::FerroBody;
 use crate::http::{HttpResponse, Request};
 use crate::middleware::{Middleware, MiddlewareChain, MiddlewareRegistry};
 use crate::routing::Router;
@@ -23,7 +24,7 @@ use tokio::net::TcpListener;
 type WsInterceptor = Box<
     dyn Fn(
             hyper::Request<hyper::body::Incoming>,
-        ) -> Result<hyper::Response<Full<Bytes>>, hyper::Request<hyper::body::Incoming>>
+        ) -> Result<hyper::Response<FerroBody>, hyper::Request<hyper::body::Incoming>>
         + Send
         + Sync,
 >;
@@ -93,7 +94,7 @@ impl Server {
         F: Fn(
                 hyper::Request<hyper::body::Incoming>,
             )
-                -> Result<hyper::Response<Full<Bytes>>, hyper::Request<hyper::body::Incoming>>
+                -> Result<hyper::Response<FerroBody>, hyper::Request<hyper::body::Incoming>>
             + Send
             + Sync
             + 'static,
@@ -186,7 +187,7 @@ async fn handle_request(
     middleware_registry: Arc<MiddlewareRegistry>,
     ws_interceptor: Option<Arc<WsInterceptor>>,
     mut req: hyper::Request<hyper::body::Incoming>,
-) -> hyper::Response<Full<Bytes>> {
+) -> hyper::Response<FerroBody> {
     // Application WS interceptor runs before /_ferro/ws
     if let Some(ref interceptor) = ws_interceptor {
         if hyper_tungstenite::is_upgrade_request(&req) {
@@ -325,7 +326,7 @@ async fn handle_request(
 /// Built-in health check endpoint at /_ferro/health
 /// Returns {"status": "ok", "timestamp": "..."} by default
 /// Add ?db=true to also check database connectivity (/_ferro/health?db=true)
-async fn health_response(query: &str) -> hyper::Response<Full<Bytes>> {
+async fn health_response(query: &str) -> hyper::Response<FerroBody> {
     use chrono::Utc;
     use serde_json::json;
 
@@ -356,7 +357,7 @@ async fn health_response(query: &str) -> hyper::Response<Full<Bytes>> {
     hyper::Response::builder()
         .status(200)
         .header("Content-Type", "application/json")
-        .body(Full::new(Bytes::from(body)))
+        .body(FerroBody::Full(Full::new(Bytes::from(body))))
         .unwrap()
 }
 
@@ -366,14 +367,14 @@ async fn health_response(query: &str) -> hyper::Response<Full<Bytes>> {
 /// Response: 200, text/css, 24h cache. No user input reaches this handler —
 /// the match arm is an exact string, and the body is static framework content.
 #[cfg(feature = "json-ui")]
-fn serve_ferro_base_css() -> hyper::Response<Full<Bytes>> {
+fn serve_ferro_base_css() -> hyper::Response<FerroBody> {
     let css = ferro_json_ui::FERRO_BASE_CSS;
     hyper::Response::builder()
         .status(200)
         .header("Content-Type", "text/css; charset=utf-8")
         .header("Content-Length", css.len().to_string())
         .header("Cache-Control", "public, max-age=31536000, immutable")
-        .body(Full::new(Bytes::from_static(css.as_bytes())))
+        .body(FerroBody::Full(Full::new(Bytes::from_static(css.as_bytes()))))
         .unwrap()
 }
 

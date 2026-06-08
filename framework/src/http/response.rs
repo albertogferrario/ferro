@@ -1,3 +1,4 @@
+use super::body::FerroBody;
 use super::cookie::Cookie;
 use bytes::Bytes;
 use http_body_util::Full;
@@ -164,15 +165,74 @@ impl HttpResponse {
         Ok(self)
     }
 
-    /// Convert to hyper response
-    pub fn into_hyper(self) -> hyper::Response<Full<Bytes>> {
+    /// Convert to hyper response.
+    ///
+    /// Returns `hyper::Response<FerroBody>` — the buffered body is wrapped as
+    /// `FerroBody::Full`. For streaming SSE responses, use `HttpResponse::sse()` instead,
+    /// which returns the response with a `FerroBody::Stream` body directly.
+    pub fn into_hyper(self) -> hyper::Response<FerroBody> {
         let mut builder = hyper::Response::builder().status(self.status);
 
         for (name, value) in self.headers {
             builder = builder.header(name, value);
         }
 
-        builder.body(Full::new(self.body)).unwrap()
+        builder.body(FerroBody::Full(Full::new(self.body))).unwrap()
+    }
+
+    /// Create an SSE streaming response with the correct headers, returning a channel
+    /// sender and the ready-to-send hyper response.
+    ///
+    /// Sets `Content-Type: text/event-stream`, `Cache-Control: no-cache`,
+    /// `Connection: keep-alive`, and `X-Accel-Buffering: no` (disables nginx proxy
+    /// buffering). The response body is `FerroBody::Stream` — structurally guaranteed
+    /// to never be whole-body buffered (D-06).
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// #[handler]
+    /// pub async fn stream(req: Request) -> Response {
+    ///     let (tx, response) = HttpResponse::sse_channel(16);
+    ///     tokio::spawn(async move {
+    ///         tx.send(SseEvent::data("hello")).await.ok();
+    ///         // tx dropped → stream ends
+    ///     });
+    ///     Ok(response.into())
+    /// }
+    /// ```
+    pub fn sse_channel(
+        buffer: usize,
+    ) -> (
+        tokio::sync::mpsc::Sender<super::sse::SseEvent>,
+        hyper::Response<FerroBody>,
+    ) {
+        let (tx, stream) = super::sse::SseStream::channel(buffer);
+        let response = hyper::Response::builder()
+            .status(200)
+            .header("Content-Type", "text/event-stream")
+            .header("Cache-Control", "no-cache")
+            .header("Connection", "keep-alive")
+            .header("X-Accel-Buffering", "no")
+            .body(FerroBody::Stream(stream))
+            .unwrap();
+        (tx, response)
+    }
+
+    /// Create an SSE streaming response from an existing [`SseStream`](super::sse::SseStream).
+    ///
+    /// Sets the same four required SSE headers as [`sse_channel`](Self::sse_channel).
+    /// Use this when you already have an `SseStream` (e.g. created via
+    /// [`SseStream::channel`](super::sse::SseStream::channel)).
+    pub fn sse(stream: super::sse::SseStream) -> hyper::Response<FerroBody> {
+        hyper::Response::builder()
+            .status(200)
+            .header("Content-Type", "text/event-stream")
+            .header("Cache-Control", "no-cache")
+            .header("Connection", "keep-alive")
+            .header("X-Accel-Buffering", "no")
+            .body(FerroBody::Stream(stream))
+            .unwrap()
     }
 }
 

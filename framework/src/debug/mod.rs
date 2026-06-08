@@ -5,6 +5,7 @@
 
 use crate::config::Config;
 use crate::container::get_registered_services;
+use crate::http::FerroBody;
 use crate::metrics;
 use crate::middleware::get_global_middleware_info;
 use crate::routing::get_registered_routes;
@@ -47,17 +48,17 @@ pub fn is_debug_enabled() -> bool {
 }
 
 /// Build a JSON response for debug endpoints
-fn json_response<T: Serialize>(data: T, status: u16) -> hyper::Response<Full<Bytes>> {
+fn json_response<T: Serialize>(data: T, status: u16) -> hyper::Response<FerroBody> {
     let body = serde_json::to_string_pretty(&data).unwrap_or_else(|_| "{}".to_string());
     hyper::Response::builder()
         .status(status)
         .header("Content-Type", "application/json")
-        .body(Full::new(Bytes::from(body)))
+        .body(FerroBody::Full(Full::new(Bytes::from(body))))
         .unwrap()
 }
 
 /// Handle /_ferro/routes endpoint
-pub fn handle_routes() -> hyper::Response<Full<Bytes>> {
+pub fn handle_routes() -> hyper::Response<FerroBody> {
     if !is_debug_enabled() {
         return json_response(
             DebugErrorResponse {
@@ -88,7 +89,7 @@ pub struct MiddlewareInfo {
 }
 
 /// Handle /_ferro/middleware endpoint
-pub fn handle_middleware() -> hyper::Response<Full<Bytes>> {
+pub fn handle_middleware() -> hyper::Response<FerroBody> {
     if !is_debug_enabled() {
         return json_response(
             DebugErrorResponse {
@@ -112,7 +113,7 @@ pub fn handle_middleware() -> hyper::Response<Full<Bytes>> {
 }
 
 /// Handle /_ferro/services endpoint
-pub fn handle_services() -> hyper::Response<Full<Bytes>> {
+pub fn handle_services() -> hyper::Response<FerroBody> {
     if !is_debug_enabled() {
         return json_response(
             DebugErrorResponse {
@@ -136,7 +137,7 @@ pub fn handle_services() -> hyper::Response<Full<Bytes>> {
 }
 
 /// Handle /_ferro/metrics endpoint
-pub fn handle_metrics() -> hyper::Response<Full<Bytes>> {
+pub fn handle_metrics() -> hyper::Response<FerroBody> {
     if !is_debug_enabled() {
         return json_response(
             DebugErrorResponse {
@@ -171,7 +172,7 @@ pub struct QueueJobsInfo {
 }
 
 /// Handle /_ferro/queue/jobs endpoint
-pub async fn handle_queue_jobs() -> hyper::Response<Full<Bytes>> {
+pub async fn handle_queue_jobs() -> hyper::Response<FerroBody> {
     if !is_debug_enabled() {
         return json_response(
             DebugErrorResponse {
@@ -226,7 +227,7 @@ pub async fn handle_queue_jobs() -> hyper::Response<Full<Bytes>> {
 }
 
 /// Handle /_ferro/queue/stats endpoint
-pub async fn handle_queue_stats() -> hyper::Response<Full<Bytes>> {
+pub async fn handle_queue_stats() -> hyper::Response<FerroBody> {
     if !is_debug_enabled() {
         return json_response(
             DebugErrorResponse {

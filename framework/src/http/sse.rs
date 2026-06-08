@@ -97,24 +97,24 @@ impl SseEvent {
 impl fmt::Display for SseEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(event) = &self.event {
-            write!(f, "event: {event}\n")?;
+            writeln!(f, "event: {event}")?;
         }
         if let Some(id) = &self.id {
-            write!(f, "id: {id}\n")?;
+            writeln!(f, "id: {id}")?;
         }
         if let Some(retry) = self.retry {
-            write!(f, "retry: {retry}\n")?;
+            writeln!(f, "retry: {retry}")?;
         }
         // Multi-line data: each line gets its own `data:` prefix per WHATWG spec.
         for line in self.data.lines() {
-            write!(f, "data: {line}\n")?;
+            writeln!(f, "data: {line}")?;
         }
-        // Empty data still emits one data: line.
+        // Empty data still emits one data: line (space after colon per spec).
         if self.data.is_empty() {
-            write!(f, "data: \n")?;
+            writeln!(f, "data: ")?;
         }
         // Blank line terminates the event.
-        write!(f, "\n")
+        writeln!(f)
     }
 }
 

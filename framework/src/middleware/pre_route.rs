@@ -23,14 +23,18 @@
 //! ```
 
 use async_trait::async_trait;
-use bytes::Bytes;
-use http_body_util::Full;
+use crate::http::FerroBody;
 use std::sync::{Arc, OnceLock, RwLock};
 
 /// Pre-route middleware result: `Ok` continues with the (possibly rewritten) request,
 /// `Err` short-circuits and sends the response immediately.
+///
+/// **Breaking change (pre-1.0):** The `Err` arm now carries `hyper::Response<FerroBody>`
+/// instead of `hyper::Response<Full<Bytes>>`. Implementations that build the error response
+/// manually should use `HttpResponse::text("...").into_hyper()` (which now returns
+/// `hyper::Response<FerroBody>`) rather than `hyper::Response::builder().body(Full::new(...))`.
 pub type PreRouteResult =
-    Result<hyper::Request<hyper::body::Incoming>, hyper::Response<Full<Bytes>>>;
+    Result<hyper::Request<hyper::body::Incoming>, hyper::Response<FerroBody>>;
 
 /// Trait for middleware that runs before path extraction and route matching.
 ///

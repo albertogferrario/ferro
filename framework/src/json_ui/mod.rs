@@ -374,7 +374,7 @@ mod tests {
     /// After the phase 143.1 header replace-semantics fix, only one Content-Type
     /// entry is emitted per response; `get_all` now yields a single-element iterator.
     fn has_content_type(
-        hyper: &hyper::Response<http_body_util::Full<bytes::Bytes>>,
+        hyper: &hyper::Response<crate::http::FerroBody>,
         expected: &str,
     ) -> bool {
         hyper

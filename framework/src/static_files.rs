@@ -1,3 +1,4 @@
+use crate::http::FerroBody;
 use bytes::Bytes;
 use http_body_util::Full;
 use std::path::Path;
@@ -9,7 +10,7 @@ use std::path::Path;
 pub(crate) async fn try_serve_from_dir(
     base_dir: &Path,
     request_path: &str,
-) -> Option<hyper::Response<Full<Bytes>>> {
+) -> Option<hyper::Response<FerroBody>> {
     // Reject empty paths and paths with null bytes
     if request_path.is_empty() || request_path.contains('\0') {
         return None;
@@ -63,7 +64,7 @@ pub(crate) async fn try_serve_from_dir(
         .header("Content-Type", &content_type)
         .header("Content-Length", bytes.len().to_string())
         .header("Cache-Control", cache_control)
-        .body(Full::new(Bytes::from(bytes)))
+        .body(FerroBody::Full(Full::new(Bytes::from(bytes))))
         .unwrap();
 
     Some(response)
@@ -74,7 +75,7 @@ pub(crate) async fn try_serve_from_dir(
 /// This is the entry point called from `server.rs` for unmatched routes.
 pub(crate) async fn try_serve_static_file(
     request_path: &str,
-) -> Option<hyper::Response<Full<Bytes>>> {
+) -> Option<hyper::Response<FerroBody>> {
     try_serve_from_dir(Path::new("public"), request_path).await
 }
 

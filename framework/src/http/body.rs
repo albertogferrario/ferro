@@ -61,6 +61,15 @@ pub enum FerroBody {
     Stream(crate::http::sse::SseStream),
 }
 
+impl std::fmt::Debug for FerroBody {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FerroBody::Full(b) => write!(f, "FerroBody::Full({b:?})"),
+            FerroBody::Stream(_) => write!(f, "FerroBody::Stream(..)"),
+        }
+    }
+}
+
 impl Body for FerroBody {
     type Data = Bytes;
     type Error = std::convert::Infallible;
