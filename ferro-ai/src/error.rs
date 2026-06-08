@@ -46,6 +46,14 @@ pub enum Error {
     ToolIterationLimit(u32),
 
     /// A tool name referenced in a provider response is not registered.
+    ///
+    /// **Not currently constructed by `ToolRegistry::dispatch`.** The dispatch loop
+    /// intentionally surfaces unknown tool names to the LLM as a [`ToolError`] message
+    /// (model-recoverable, per D-13/SC#6) rather than aborting the loop. This variant
+    /// is reserved for future direct-dispatch helpers (e.g. a `dispatch_single` that
+    /// calls one tool by name and must distinguish "not registered" from handler errors).
+    /// Callers pattern-matching on `Error` should not expect this variant to be
+    /// reachable from `dispatch` in the current implementation.
     #[error("tool not found: {0}")]
     ToolNotFound(String),
 
