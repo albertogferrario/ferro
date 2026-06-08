@@ -25,7 +25,7 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 ### AI SDK — ferro-ai Expansion
 
-- [ ] **AISDK-01** — Developer can configure and use an LLM provider (Anthropic, OpenAI, Groq via OpenAI-compatible endpoint, Ollama) via env vars through a unified `LlmClient` trait; existing `Classifier<T>` API is preserved or cleanly superseded.
+- [x] **AISDK-01** — Developer can configure and use an LLM provider (Anthropic, OpenAI, Groq via OpenAI-compatible endpoint, Ollama) via env vars through a unified `LlmClient` trait; existing `Classifier<T>` API is preserved or cleanly superseded.
 
 - [ ] **AISDK-02** — Developer can request typed responses via `ferro_ai::complete::<T>()` backed by a JSON Schema normalizer that resolves `schemars` `$ref` / `$defs` incompatibility with provider structured-output APIs. **`ServiceDef`-aware:** when `T` is `ferro_projections::ServiceDef` (or contains one), the normalizer emits a constrained schema that locks the LLM to valid projection shapes — `FieldMeaning` values from the published enum, `Intent` values from the seven structural intents, `Cardinality` from the relationship enum, `ActionDef` / `GuardDef` / `StateDef` shapes derived from `ferro-projections`. This is what makes AI output structurally inseparable from the intent system.
 
@@ -104,7 +104,7 @@ Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173)
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| AISDK-01 | Phase 165 (LlmClient Trait & Provider Implementations) | Pending |
+| AISDK-01 | Phase 165 (LlmClient Trait & Provider Implementations) | Complete |
 | AISDK-02 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Pending |
 | AISDK-03 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Pending |
 | AISDK-04 | Phase 167 (Embeddings & pgvector) | Pending |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: verifying
-stopped_at: Phase 165 context gathered
-last_updated: "2026-06-08T01:23:31.194Z"
+status: executing
+stopped_at: Completed 165-01-PLAN.md
+last_updated: "2026-06-08T02:02:34.955Z"
 last_activity: 2026-06-08
 progress:
-  total_phases: 188
-  completed_phases: 170
-  total_plans: 528
-  completed_plans: 518
-  percent: 98
+  total_phases: 62
+  completed_phases: 46
+  total_plans: 234
+  completed_plans: 231
+  percent: 99
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 188 — ferro-storage CDN Extension
+**Current focus:** Phase 165 — LlmClient Trait & Provider Implementations
 
 ## Current Position
 
-Phase: 189
-Plan: Not started
+Phase: 165 (LlmClient Trait & Provider Implementations) — EXECUTING
+Plan: 2 of 4
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminders (three NEW crates, CI token has publish-update only, not publish-new):
 
@@ -34,7 +34,7 @@ Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscil
         3. `cargo publish -p ferro-assets`      # Phase 187 — deferred from Plan 04 checkpoint
       Run each from a local terminal with a full-scope crates.io token before the first CI push.
 Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-06-08
 
 ## Queued Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
@@ -242,6 +242,7 @@ Progress: [████████░░] 84%
 | Phase 188 P01 | 720 | 2 tasks | 4 files |
 | Phase 188 P02 | 294 | 2 tasks | 3 files |
 | Phase 188 P03 | 848 | 2 tasks | 6 files |
+| Phase 165 P01 | 286s | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -326,7 +327,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T01:23:31.136Z
-Stopped at: Phase 165 context gathered
-Resume file: .planning/phases/165-llmclient-trait-provider-implementations/165-CONTEXT.md
+Last session: 2026-06-08T02:02:34.950Z
+Stopped at: Completed 165-01-PLAN.md
+Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations

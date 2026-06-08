@@ -1785,7 +1785,7 @@ Plans:
   5. `Classifier<T>` compiles and passes its existing tests with the new client plumbing underneath; `ClassificationProvider` and existing public API are preserved
   6. `reqwest-eventsource 0.6` is declared as a `pub(crate)` dependency in provider modules only — not re-exported as a public ferro-ai surface
 **Plans**: 4 plans
-- [ ] 165-01-PLAN.md — Foundation: streaming deps + Error restructure (Unsupported/Provider{status,message}/is_retryable) + LlmClient trait + CompletionRequest/TokenStream + client module skeleton
+- [x] 165-01-PLAN.md — Foundation: streaming deps + Error restructure (Unsupported/Provider{status,message}/is_retryable) + LlmClient trait + CompletionRequest/TokenStream + client module skeleton
 - [ ] 165-02-PLAN.md — AnthropicClient + OpenAiClient (Groq via base_url): complete/complete_stream (SSE)/embed/default_model
 - [ ] 165-03-PLAN.md — OllamaClient: NDJSON streaming, no-auth local default, /api/chat + /api/embed
 - [ ] 165-04-PLAN.md — Convergence: AiConfig::from_env() + AnthropicProvider→AnthropicClient bridge (delete dup HTTP) + classifier retry/default-model fix + lib.rs re-exports + phase gate
@@ -1894,7 +1894,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 165. LlmClient Trait & Providers | 0/? | Not started | - |
+| 165. LlmClient Trait & Providers | 1/4 | In Progress|  |
 | 166. Structured Outputs & Tool Calling | 0/? | Not started | - |
 | 167. Embeddings & pgvector | 0/? | Not started | - |
 | 168. Framework SSE Primitives | 0/? | Not started | - |
@@ -1909,7 +1909,7 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 6/6 plans complete
+**Plans:** 1/4 plans executed
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
