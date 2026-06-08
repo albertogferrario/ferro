@@ -1877,7 +1877,7 @@ Plans:
   5. Both commands respect `FERRO_AI_MAX_TOKENS_PER_COMMAND` env var as a cost guard; both support `--dry-run`
   6. Neither command generates non-ferro code; the produced `ServiceDef` references existing models, intents, and conventions as reported by ferro-mcp introspection — not generic templates.
 **Plans**: 4 plans
-- [ ] 171-01-PLAN.md — ferro-ai `complete_with::<T>()` + `CompleteOptions` (configurable max_tokens/system/model; cost-guard enabler)
+- [x] 171-01-PLAN.md — ferro-ai `complete_with::<T>()` + `CompleteOptions` (configurable max_tokens/system/model; cost-guard enabler)
 - [ ] 171-02-PLAN.md — `ferro ai:make`: in-process introspection + lexical relevance filter + ServiceDef→builder-source emitter + single-file output + sanitization + dry-run
 - [ ] 171-03-PLAN.md — `ferro ai:explain`: service→route→model resolution, projection-framed prompt, raw prose completion, dry-run
 - [ ] 171-04-PLAN.md — full CI gate (fmt+clippy -D warnings+test --all-features) + human-verify live ai:make/ai:explain quality (SC#4/SC#6)
@@ -1917,7 +1917,7 @@ Plans:
 | 168. Framework SSE Primitives | 2/2 | Complete    | 2026-06-08 |
 | 169. StreamText Component | 3/3 | Complete    | 2026-06-08 |
 | 170. ferro-cli Migration | 1/1 | Complete    | 2026-06-08 |
-| 171. ai:make & ai:explain CLI Commands | 0/? | Not started | - |
+| 171. ai:make & ai:explain CLI Commands | 1/4 | In Progress|  |
 | 172. MCP Tool Wrappers | 0/? | Not started | - |
 | 173. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |
 
@@ -1926,7 +1926,7 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 1/1 plans complete
+**Plans:** 1/4 plans executed
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: executing
-stopped_at: Phase 171 context gathered
-last_updated: "2026-06-08T18:10:18.332Z"
+stopped_at: Completed 171-01-PLAN.md
+last_updated: "2026-06-08T18:40:09.564Z"
 last_activity: 2026-06-08
 progress:
   total_phases: 62
   completed_phases: 52
-  total_plans: 247
-  completed_plans: 247
-  percent: 100
+  total_plans: 251
+  completed_plans: 248
+  percent: 99
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 170 — ferro-cli-migration
+**Current focus:** Phase 171 — ferro ai:make & ferro ai:explain CLI Commands
 
 ## Current Position
 
-Phase: 180
-Plan: Not started
+Phase: 171 (ferro ai:make & ferro ai:explain CLI Commands) — EXECUTING
+Plan: 2 of 4
 Next: Plan Phase 169 (StreamText JSON-UI component consuming an SSE endpoint URL — builds on the Phase 168 SSE primitives) — `/gsd-discuss-phase 169 --auto`. Then 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
-Status: Executing Phase 170
+Status: Ready to execute
 Last activity: 2026-06-08
 Workspace version: 0.2.46
 
@@ -258,6 +258,7 @@ Progress: [████████░░] 84%
 | Phase 169 P01 | 275s | 3 tasks | 2 files |
 | Phase 169-streamtext-component P02 | 1688s | 4 tasks | 4 files |
 | Phase 169 P03 | 65s | 1 tasks | 1 files |
+| Phase 171 P01 | 161s | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -342,7 +343,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T18:10:18.307Z
-Stopped at: Phase 171 context gathered
-Resume file: .planning/phases/171-ferro-ai-make-ferro-ai-explain-cli-commands/171-CONTEXT.md
+Last session: 2026-06-08T18:40:09.557Z
+Stopped at: Completed 171-01-PLAN.md
+Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
