@@ -111,11 +111,14 @@ pub fn render_spec_to_html(spec: &Spec, data: &Value) -> String {
 }
 
 /// Plugin-aware variant. Walks `spec.elements` to collect plugin type names,
-/// then asks the registry for their CSS/JS asset URLs.
+/// then asks the registry for their CSS/JS asset URLs. Also collects built-in
+/// init scripts (e.g. the `StreamText` EventSource wiring) and merges them
+/// into the scripts output even when no plugins are present.
 pub fn render_spec_to_html_with_plugins(spec: &Spec, data: &Value) -> RenderResult {
     let html = render_spec_to_html(spec, data);
+    let builtin_scripts = collect_builtin_init_scripts(spec);
     let plugin_types = collect_plugin_types(spec);
-    if plugin_types.is_empty() {
+    if plugin_types.is_empty() && builtin_scripts.is_empty() {
         return RenderResult {
             html,
             css_head: String::new(),
@@ -124,10 +127,16 @@ pub fn render_spec_to_html_with_plugins(spec: &Spec, data: &Value) -> RenderResu
     }
     let type_names: Vec<String> = plugin_types.into_iter().collect();
     let assets = collect_plugin_assets(&type_names);
+    let all_init_scripts: Vec<String> = assets
+        .init_scripts
+        .iter()
+        .chain(builtin_scripts.iter())
+        .cloned()
+        .collect();
     RenderResult {
         html,
         css_head: render_css_tags(&assets.css),
-        scripts: render_js_tags(&assets.js, &assets.init_scripts),
+        scripts: render_js_tags(&assets.js, &all_init_scripts),
     }
 }
 
@@ -249,6 +258,48 @@ pub(crate) fn collect_plugin_types(spec: &Spec) -> HashSet<String> {
         }
     }
     types
+}
+
+/// Dependency-free inline EventSource wiring for `StreamText` components.
+/// Appends streamed tokens as text nodes (never `innerHTML`), removes the
+/// placeholder on the first token, and closes the source on `event: done`
+/// to prevent `EventSource` auto-reconnect. Emitted at most once per page.
+const FERRO_STREAM_TEXT_INIT: &str = r#"(function(){
+  document.querySelectorAll('[data-ferro-stream-url]').forEach(function(el){
+    var src = new EventSource(el.dataset.ferroStreamUrl);
+    var placeholder = el.querySelector('[data-ferro-stream-placeholder]');
+    var loading = el.querySelector('[data-ferro-stream-loading]');
+    var firstToken = true;
+    src.onmessage = function(e){
+      if(firstToken){ firstToken=false; if(placeholder) placeholder.remove(); }
+      el.appendChild(document.createTextNode(e.data));
+    };
+    src.addEventListener('done', function(){
+      src.close();
+      if(loading) loading.remove();
+    });
+    src.onerror = function(){
+      src.close();
+      if(loading) loading.remove();
+    };
+  });
+})();"#;
+
+/// Returns the StreamText EventSource init script if the spec contains at least
+/// one `StreamText` element; otherwise an empty `Vec`. Walks `spec.elements`
+/// the same way `collect_plugin_types` does. Returns at most one entry so the
+/// script is emitted exactly once regardless of how many StreamText elements
+/// the spec contains.
+fn collect_builtin_init_scripts(spec: &Spec) -> Vec<String> {
+    let has_stream_text = spec
+        .elements
+        .values()
+        .any(|el| el.type_name == "StreamText");
+    if has_stream_text {
+        vec![FERRO_STREAM_TEXT_INIT.to_string()]
+    } else {
+        vec![]
+    }
 }
 
 /// HTML-escapes interpolated identifiers in diagnostic comments and any prop
