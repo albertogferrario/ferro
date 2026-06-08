@@ -1415,9 +1415,7 @@ pub(crate) fn render_streamtext(
             )
         })
         .unwrap_or_default();
-    format!(
-        "<div data-ferro-stream-url=\"{escaped_url}\">{placeholder_html}{loading_html}</div>"
-    )
+    format!("<div data-ferro-stream-url=\"{escaped_url}\">{placeholder_html}{loading_html}</div>")
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -2276,8 +2274,14 @@ mod tests {
             loading_text: None,
         };
         let j = serde_json::to_value(&p).unwrap();
-        assert!(j.get("placeholder").is_none(), "placeholder must be absent when None");
-        assert!(j.get("loading_text").is_none(), "loading_text must be absent when None");
+        assert!(
+            j.get("placeholder").is_none(),
+            "placeholder must be absent when None"
+        );
+        assert!(
+            j.get("loading_text").is_none(),
+            "loading_text must be absent when None"
+        );
         let back: StreamTextProps = serde_json::from_value(j).unwrap();
         assert_eq!(p, back);
     }
@@ -2302,6 +2306,9 @@ mod tests {
         let html = render_streamtext(el, &spec, &json!(null), 1);
         // Raw ampersand and raw angle bracket from the url must not survive.
         assert!(!html.contains("&b="), "raw & must be escaped; got: {html}");
-        assert!(!html.contains("<script>"), "raw <script> must be escaped; got: {html}");
+        assert!(
+            !html.contains("<script>"),
+            "raw <script> must be escaped; got: {html}"
+        );
     }
 }
