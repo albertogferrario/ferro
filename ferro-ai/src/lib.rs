@@ -57,3 +57,4 @@ pub use confirmation::events::ConfirmationExpired;
 pub use confirmation::store::InMemoryConfirmationStore;
 pub use confirmation::{ConfirmationStore, PendingActionInfo};
 pub use error::Error;
+pub use schema::for_structured_output;
