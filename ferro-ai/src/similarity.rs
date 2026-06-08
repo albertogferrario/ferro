@@ -79,4 +79,11 @@ mod tests {
     fn panics_on_dim_mismatch() {
         cosine_similarity(&[1.0], &[1.0, 2.0]);
     }
+
+    #[test]
+    fn zero_magnitude_yields_nan() {
+        // Locked contract: a zero-magnitude vector divides by zero → NaN, not a panic.
+        let s = cosine_similarity(&[0.0f32, 0.0, 0.0], &[1.0f32, 2.0, 3.0]);
+        assert!(s.is_nan(), "zero-magnitude: expected NaN, got {s}");
+    }
 }

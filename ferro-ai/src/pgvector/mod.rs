@@ -82,6 +82,11 @@ impl PgVectorStore {
     /// `table` and `column` must be names of an existing Postgres table and
     /// vector column. They are interpolated into SQL strings — supply only
     /// trusted, application-controlled values (not user input).
+    ///
+    /// The table's primary key column is assumed to be named `id` (type
+    /// `BIGINT`). This name is hardcoded in the generated `store`/`nearest`
+    /// SQL; a table with a differently named key column produces a runtime
+    /// [`Error::Sqlx`]. See the module-level setup SQL for the expected schema.
     pub fn new(table: &str, column: &str) -> Self {
         Self {
             table: table.to_string(),
@@ -117,7 +122,8 @@ impl PgVectorStore {
     ///
     /// Uses the pgvector `<=>` cosine distance operator. The returned [`Neighbor::score`]
     /// is `1 - cosine_distance` so it falls in `[-1, 1]` and aligns with the
-    /// `ferro_ai::cosine_similarity` convention.
+    /// `ferro_ai::cosine_similarity` convention. `k` is a `u32` so a negative limit
+    /// is rejected at the type level rather than producing a runtime SQL error.
     ///
     /// # Errors
     ///
@@ -127,7 +133,7 @@ impl PgVectorStore {
         &self,
         pool: &PgPool,
         query: &[f32],
-        k: i64,
+        k: u32,
     ) -> Result<Vec<Neighbor>, Error> {
         let vec = Vector::from(query.to_vec());
         let sql = format!(
@@ -136,7 +142,7 @@ impl PgVectorStore {
         );
         sqlx::query_as::<_, Neighbor>(&sql)
             .bind(vec)
-            .bind(k)
+            .bind(i64::from(k))
             .fetch_all(pool)
             .await
             .map_err(|e| Error::Sqlx(e.to_string()))

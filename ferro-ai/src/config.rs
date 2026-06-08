@@ -13,6 +13,7 @@
 //! | `FERRO_AI_MODEL` | No | provider default | Model identifier override |
 //! | `FERRO_AI_API_KEY` | Yes (except ollama) | — | API key for the selected provider |
 //! | `FERRO_AI_BASE_URL` | No | provider default | Base URL override (useful for proxies) |
+//! | `FERRO_AI_EMBED_MODEL` | No | provider default | Embedding model override, read per-provider by `embed()` (separate from the chat `FERRO_AI_MODEL`) |
 //!
 //! For `anthropic`, `ANTHROPIC_API_KEY` is accepted as a fallback when
 //! `FERRO_AI_API_KEY` is not set (backward compatibility only; `FERRO_AI_API_KEY`
