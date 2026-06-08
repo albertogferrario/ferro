@@ -1,3 +1,4 @@
+use crate::naming::{is_valid_identifier, to_snake_case};
 use console::style;
 use quote::ToTokens;
 use std::fs;
@@ -550,36 +551,6 @@ pub fn {name}_service() -> ServiceDef {{
     )
 }
 
-fn is_valid_identifier(name: &str) -> bool {
-    if name.is_empty() {
-        return false;
-    }
-
-    let mut chars = name.chars();
-
-    match chars.next() {
-        Some(c) if c.is_alphabetic() || c == '_' => {}
-        _ => return false,
-    }
-
-    chars.all(|c| c.is_alphanumeric() || c == '_')
-}
-
-fn to_snake_case(s: &str) -> String {
-    let mut result = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if c.is_uppercase() {
-            if i > 0 {
-                result.push('_');
-            }
-            result.push(c.to_lowercase().next().unwrap());
-        } else {
-            result.push(c);
-        }
-    }
-    result
-}
-
 fn to_pascal_case(s: &str) -> String {
     let mut result = String::new();
     let mut capitalize_next = true;
@@ -631,7 +602,7 @@ fn generate_in_dir(
     Ok((projection_file, mod_file))
 }
 
-fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
+pub(crate) fn update_mod_file(mod_file: &Path, file_name: &str) -> Result<(), String> {
     let content =
         fs::read_to_string(mod_file).map_err(|e| format!("Failed to read mod.rs: {e}"))?;
 

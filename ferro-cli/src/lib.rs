@@ -8,5 +8,7 @@ pub mod analyzer;
 pub mod commands;
 pub mod deploy;
 pub mod doctor;
+pub(crate) mod naming;
 pub mod project;
+pub(crate) mod relevance;
 pub mod templates;
