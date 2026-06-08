@@ -1,120 +1,55 @@
-# Requirements: v12.1 AI — ferro-ai SDK & AI as Projection Consumer
+# Requirements: v12.4 Form Validation DX
 
 ## Milestone Goal
 
-Expand `ferro-ai` into a production-grade, provider-agnostic AI SDK and make AI a first-class consumer of the projection / intent core. The killer feature: `ferro ai:make <description>` produces a typed `ferro_projections::ServiceDef` — the universal projection contract. The existing rendering pipeline (`ferro-json-ui` renderer, `ferro-mcp` introspection renderer, future modality renderers) covers everything downstream. AI does NOT recreate the pre-projections multi-file scaffolding workflow; it generates the input that the projection layer already knows how to render.
+Make uniqueness validation a first-class, ergonomic part of ferro forms — both proactively (an async DB-backed `unique` rule that runs before the write) and defensively (DB constraint violations mapped to field-level errors instead of leaking raw SQL to end users). The killer feature: a uniqueness violation that today surfaces as a raw SQL error instead lands inline under the right field with the user's input preserved — uniqueness "just works" before the write (async rule, UX) and as a safety net at the write (constraint mapping, concurrency invariant).
 
-Live `ferro-mcp` introspection is the in-process context source so generated `ServiceDef`s reference existing models, intents, and conventions in the project — not generic templates.
+Source: gestiscilo-it field test — slug-uniqueness violations surfaced as raw SQL errors through the `From<sea_orm::DbErr> for ActionError` passthrough.
 
 ## Conceptual Coherence Anchor
 
-v12.1 AI does NOT introduce a new abstraction parallel to projection / intent. Every AI surface either **consumes** or **produces** a `ServiceDef`:
+v12.4 introduces no new abstraction. It extends the existing validation layer (`framework/src/validation/`) with an async sibling of the established sync `Rule`/`Validator` surface, and composes with Phase 180's `#[action]` / `ActionError` and the existing `ValidationError` → redirect-back-with-old-input path. Both new surfaces produce the same `ValidationError` shape and flow through the same 303 redirect mechanism as every existing rule — the user-visible behavior is identical whether a failure is caught proactively or defensively.
 
-- **Produces:** `ai:make` (NL → `ServiceDef`).
-- **Consumes:** `ai:explain` (`ServiceDef` → NL explanation framed in projection terms).
-- **Renders from:** `make:json-view` v2 (`ServiceDef` → JSON-UI spec, AICLI-04, now unblocked).
-- **Future modalities** (`make:whatsapp-flow`, voice, etc.) follow the same shape — each is a `Renderer` over `ServiceDef`.
-
-The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when the LLM is completing into a `ServiceDef` (or a type containing one), the normalizer constrains output to valid projection shapes (`FieldMeaning`, `Intent`, `Cardinality`, `ActionDef` / `GuardDef`, `StateMachine`). For non-projection `T`, behaviour matches generic normalization. This is the structural guarantee that AI cannot drift from the intent system.
-
-`ferro-mcp` introspection (already framed as a projection renderer in memory `project_mcp_as_projection_renderer.md`) is the in-process context source for both `ai:make` (what's already in the project) and `ai:explain` (what to interpret).
-
----
+**Two-layer model (both required, neither sufficient alone):**
+- **Proactive** — the async `unique` rule is UX: it catches the common case with a clean field error before the write.
+- **Defensive** — the DB UNIQUE index remains the source of truth; constraint→field mapping closes the check-then-insert (TOCTOU) race that the proactive rule cannot.
 
 ## v1 Requirements
 
-### AI SDK — ferro-ai Expansion
+### Async DB-Backed Validation
 
-- [x] **AISDK-01** — Developer can configure and use an LLM provider (Anthropic, OpenAI, Groq via OpenAI-compatible endpoint, Ollama) via env vars through a unified `LlmClient` trait; existing `Classifier<T>` API is preserved or cleanly superseded.
+- [ ] **VALID-01** — A developer can validate that a field's value is unique in a DB table via an async rule (`unique(table, column)`), failing validation **before** the insert/update with a field-level error message.
+- [ ] **VALID-02** — A developer can exclude the current record from the uniqueness check on edit forms (`.ignore(id)` / exclude-self), so saving an unchanged unique value does not falsely fail. Exclude-self ships in v1 (retrofitting it later is a breaking change for edit handlers).
+- [ ] **VALID-03** — Async rules run through an `AsyncValidator` / `validate_async` path that leaves the existing synchronous `Validator` API and its existing rules unchanged, obtains its DB connection via the existing `DB::connection()` singleton (no connection threaded through the rule signature), and surfaces failures through the existing `ValidationError` → `with_old_input` → 303 redirect-back flow.
 
-- [x] **AISDK-02** — Developer can request typed responses via `ferro_ai::complete::<T>()` backed by a JSON Schema normalizer that resolves `schemars` `$ref` / `$defs` incompatibility with provider structured-output APIs. **`ServiceDef`-aware:** when `T` is `ferro_projections::ServiceDef` (or contains one), the normalizer emits a constrained schema that locks the LLM to valid projection shapes — `FieldMeaning` values from the published enum, `Intent` values from the seven structural intents, `Cardinality` from the relationship enum, `ActionDef` / `GuardDef` / `StateDef` shapes derived from `ferro-projections`. This is what makes AI output structurally inseparable from the intent system.
+### DB Constraint → Field-Level Error Mapping
 
-- [x] **AISDK-03** — Developer can register Rust functions as AI tools; SDK dispatches tool-use calls automatically with a hard `max_iterations` guard. Tool registration accepts both arbitrary closures (existing pattern) and `Renderer` implementations from `ferro-projections` (a `Renderer` IS a tool the LLM can invoke to materialize a `ServiceDef` into any modality during a multi-turn loop).
+- [ ] **VALID-04** — A developer can opt in to mapping a DB UNIQUE-constraint violation to a specific field's validation error at the handler call site (e.g. a `ConstraintMap` / `map_unique` builder), so a concurrent-insert violation surfaces inline under the field with input preserved — identical to a proactive rule failure — instead of a raw SQL error.
+- [ ] **VALID-05** — Constraint-violation detection is backend-portable across SQLite and Postgres (via `DbErr::sql_err()` and bifurcated identification — Postgres constraint name, SQLite table.column from the message). A `DbErr` that does not match a registered mapping falls through unchanged to the existing `From<sea_orm::DbErr> for ActionError` passthrough — never swallowed, never panics. The framework holds no consumer-specific constraint/field strings (project-agnostic-crates rule): mapping is registered at the consumer call site.
 
-- [x] **AISDK-04** — Developer can generate text embeddings and compute cosine similarity (pure Rust helpers, zero extra crates).
+### Introspection & Docs
 
-- [x] **AISDK-05** — Developer can persist and query embeddings via pgvector (feature-gated `pgvector 0.4`, thin sqlx raw-query module).
-
-- [x] **AISDK-06** — `ferro-cli/src/ai.rs` blocking client deleted; ferro-cli depends on ferro-ai and routes all LLM calls through it.
-
-### SSE Streaming
-
-- [x] **AISSE-01** — Handler can return a streaming SSE response that pushes LLM tokens to the browser as they arrive; SSE responses are structurally non-bufferable. *(Delivered via `FerroBody::Stream` over raw hyper 1 — the framework has no `CompressionLayer`/axum stack; the structural non-buffering guarantee fulfills the original CompressionLayer-exclusion intent. See Phase 168 CONTEXT scope-premise correction.)*
-
-- [x] **AISSE-02** — `ferro-json-ui` provides a `StreamText` component that connects to an SSE endpoint URL and renders a token stream in place. The component is a JSON-UI element produced by a `Renderer` — consistent with the projection rendering pipeline.
-
-### AI CLI Commands (the killer-feature surface)
-
-- [x] **AICLI-01** — Developer can run `ferro ai:make <description>` to produce a typed `ferro_projections::ServiceDef` from a natural-language description. The output is a commit-ready `ServiceDef` definition — fields with `FieldMeaning`, `Intent` hints, `ActionDef`s with `GuardDef`s, `StateMachine` if stateful, `RelationshipDef`s with `Cardinality`. Live `ferro-mcp` introspection is loaded as context so the generated `ServiceDef` references existing models, established `Intent` patterns in the project, naming conventions, and tenant scoping rules. **Output unit is the `ServiceDef`, NOT a pre-scaffolded handler / model / route bundle.** The existing rendering pipeline (`ferro-json-ui` renderer per AICLI-04, `ferro-mcp` introspection renderer, future modality renderers) produces the downstream artifacts.
-
-- [x] **AICLI-02** — `ferro ai:make` uses structured outputs (AISDK-02) to produce the `ServiceDef` directly. No `ScaffoldPlan` intermediary type. The schema the LLM completes against IS the schema for `ServiceDef` itself, derived from the existing `#[derive(Serialize, Deserialize, JsonSchema)]` on the `ferro-projections` types and normalized by the `ServiceDef`-aware path in AISDK-02. Non-projection glue (registration on `App`, handler skeleton for `ServiceDef::handle(...)`, migration generation) is invoked **after** the `ServiceDef` is produced, by calling the existing `make:*` helpers — those helpers consume the `ServiceDef`, they don't compete with it.
-
-- [x] **AICLI-03** — Developer can run `ferro ai:explain <route|model|service>` to get a projection-framed explanation: the `Intent`s the service projects (Browse / Focus / Collect / Process / Summarize / Analyze / Track), which fields' `FieldMeaning`s drive the rendering, what `ActionDef`s are exposed under which `GuardDef`s, what state transitions exist via `StateMachine`. Plain code prose is the fallback only when no `ServiceDef` is found for the target. Context loaded from `ferro-mcp` introspection.
-
-- [ ] **AICLI-04** — `ferro make:json-view` upgraded to use structured outputs + `ServiceDef` introspection for schema-driven component selection. **Now unblocked: v12.0 JSON-UI v2 shipped 2026-05-19.** This is the first concrete `Renderer` over the `ServiceDef` produced by `ai:make` and is the second AI surface to land. Together with AICLI-01, this closes the produce-then-render loop end-to-end.
-
-- [x] **AICLI-05** — MCP tools `ai_scaffold` and `ai_explain` in `ferro-mcp` wrap the CLI command logic for in-process agent consumption. Agents calling `ai_scaffold` over MCP get the same `ServiceDef` output as the CLI — no parallel surface.
-
-- [ ] **AICLI-06** — `ferro ai:make` and `make:json-view` v2 share a single end-to-end test: from NL description → `ServiceDef` → rendered JSON-UI spec → renderable view. This is the structural proof that AI is a first-class projection consumer rather than a parallel scaffolding system. The test lives in `ferro-ai/tests/projection_roundtrip.rs`.
-
----
+- [ ] **VALID-06** — The `ferro-mcp` `action_handler` code template and the validation docs demonstrate the async `unique` rule **and** constraint mapping together (proactive + defensive), so the two-layer pattern is discoverable and no surface shows one layer without the other.
 
 ## Anti-Requirements (explicit non-goals to prevent scope drift)
 
-The following framings are explicitly rejected and any plan reintroducing them must be challenged at discuss-phase:
+- The synchronous `Validator` / `Rule` API is not changed or deprecated — async is a parallel path, not a replacement.
+- No general-purpose async rule library beyond `unique` for this milestone (other async rules can follow the same `AsyncRule` trait later).
+- No automatic, framework-level `DbErr` → field inference without explicit consumer registration (would require embedding consumer strings in `framework`).
+- The `From<sea_orm::DbErr> for ActionError` passthrough at `action.rs:196` is retained as the non-constraint fallback — not removed.
 
-- **`ai:make` does NOT produce a multi-file scaffold bundle as its primary output.** The unit of work is the `ServiceDef`. Downstream files are byproducts produced by `Renderer`s that consume the `ServiceDef`.
-- **There is no `ScaffoldPlan` intermediary type.** Structured outputs complete directly into `ServiceDef`. An intermediary type would be a parallel abstraction to the projection contract.
-- **Schema normalization is NOT projection-agnostic.** AISDK-02's `ServiceDef`-aware path is required, not optional. Generic normalization is the fallback for non-projection `T`.
-- **`ai:explain` does NOT default to code prose.** It defaults to a projection-framed explanation; code prose is the fallback only when no `ServiceDef` is found.
-- **There is no in-framework agent runtime.** `ferro-mcp` + user-owned agent remains the architecture (carried from original scope).
+## Future Requirements (deferred)
 
----
-
-## Future Requirements
-
-These are real capabilities deferred beyond v12.1:
-
-- **Tool calling in streaming context** — multi-turn tool interactions with partial streaming; Ollama has a documented bug dropping tool calls when `stream: true`; defer until stabilized upstream.
-- **Conversation memory management** — per-session message history; out of scope for v12.1 (stateless completions are sufficient for projection production).
-- **Multi-modal inputs** — image / audio input to LLM; v2.0+ direction per PROJECT.md.
-- **In-framework agent runtime** — `make:agent` scaffolding, built-in loop orchestration; no bundled agent UX is a ferro architecture decision (anti-requirement above).
-- **Non-visual modality `Renderer`s for AI-produced `ServiceDef`s** (`make:whatsapp-flow`, voice, native) — same `ServiceDef` input, additional output crates. Tracked under v2.0+ multimodal direction.
-
----
+- Additional async rules (e.g. `exists`, async cross-field checks) on the `AsyncRule` trait.
+- CHECK / FK / NOT NULL constraint mapping beyond UNIQUE.
+- Per-rule async timeout guard.
 
 ## Out of Scope
 
-| Item | Reason |
-|------|--------|
-| In-framework agent runtime / `make:agent` | `ferro-mcp` + user's own agent is the supported workflow; bundled UX creates a competing abstraction to projection / intent. |
-| Conversation memory management | Stateless completions sufficient for `ServiceDef` production; conversation memory is an agent-runtime concern, not a projection concern. |
-| Multi-modal (image / audio) | v2.0+ direction; not needed to produce `ServiceDef`. |
-| Groq as a distinct provider | Groq's API is OpenAI-compatible at `https://api.groq.com/openai/v1`; it's an `OpenAiProvider` config variant, not a separate impl. |
-| `genai` crate as provider abstraction | Missing tool calling + embeddings in v0.5.3; lowest-common-denominator API trap. |
-| `async-openai` crate | Leaks its types into `ferro-ai`'s public API; hand-rolled `reqwest` pattern is cleaner. |
-| `ScaffoldPlan` intermediary type | Anti-requirement above — structured outputs complete directly into `ServiceDef`. |
-| Pre-projection multi-file scaffolding output for `ai:make` | Anti-requirement above — the projection / intent core handles downstream rendering. |
-
----
+- Original v12.1-era Phase 137–139 scope (Validator struct, sync rules, old-input flash, `req.old()`) — already shipped organically via the validation module.
+- Client-side / JS validation — ferro forms are server-validated; out of scope.
+- ORM-entity-generic uniqueness (typed entity column references) — raw `SELECT COUNT(*)` via `Statement` is backend-agnostic and sufficient.
 
 ## Traceability
 
-Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173).
-
-| REQ-ID | Phase | Status |
-|--------|-------|--------|
-| AISDK-01 | Phase 165 (LlmClient Trait & Provider Implementations) | Complete |
-| AISDK-02 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Complete |
-| AISDK-03 | Phase 166 (Structured Outputs, Tool Calling & Schema Normalizer) | Complete |
-| AISDK-04 | Phase 167 (Embeddings & pgvector) | Complete |
-| AISDK-05 | Phase 167 (Embeddings & pgvector) | Complete |
-| AISDK-06 | Phase 170 (ferro-cli Migration) | Complete |
-| AISSE-01 | Phase 168 (Framework SSE Primitives) | Complete |
-| AISSE-02 | Phase 169 (StreamText Component) | Complete |
-| AICLI-01 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
-| AICLI-02 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
-| AICLI-03 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
-| AICLI-04 | Phase 173 (make:json-view v2) | Unblocked — v12.0 shipped 2026-05-19 |
-| AICLI-05 | Phase 172 (MCP Tool Wrappers) | Complete |
-| AICLI-06 | Phase 173 (make:json-view v2) | Unblocked — projection-roundtrip test ships with the second `Renderer` |
+<!-- Filled by roadmapper: REQ-ID → Phase mapping -->
