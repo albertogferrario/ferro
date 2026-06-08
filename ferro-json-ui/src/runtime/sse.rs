@@ -31,6 +31,20 @@ pub(super) const SOURCE: &str = r#"
                 window.location.reload();
             }
         }
+        // App-registered SSE handlers. Apps push functions onto
+        // window.__ferroSSEHandlers (creating it if absent, so registration is
+        // ordering-safe relative to this IIFE). Each receives the parsed frame
+        // and may act on custom keys the built-in handlers ignore. A throwing
+        // handler must not break sibling handlers or the stream.
+        if (window.__ferroSSEHandlers) {
+            for (var hi = 0; hi < window.__ferroSSEHandlers.length; hi++) {
+                try {
+                    window.__ferroSSEHandlers[hi](data);
+                } catch (e) {
+                    // Ignore handler errors — isolate app code from the stream
+                }
+            }
+        }
     }
 
     function updateLiveValues(key, value) {
