@@ -41,8 +41,8 @@ impl AiConfig {
     /// - `"groq"` — [`OpenAiClient`] with Groq base URL; requires `FERRO_AI_API_KEY`
     /// - `"ollama"` — [`OllamaClient`]; no key needed
     pub fn from_env() -> Result<Box<dyn LlmClient>, Error> {
-        let provider = std::env::var("FERRO_AI_PROVIDER")
-            .unwrap_or_else(|_| "anthropic".to_string());
+        let provider =
+            std::env::var("FERRO_AI_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
         let model = std::env::var("FERRO_AI_MODEL").ok();
         let api_key = std::env::var("FERRO_AI_API_KEY").ok();
         let base_url = std::env::var("FERRO_AI_BASE_URL").ok();
@@ -51,25 +51,18 @@ impl AiConfig {
             "anthropic" => {
                 let key = api_key
                     .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
-                    .ok_or_else(|| {
-                        Error::Config("FERRO_AI_API_KEY not set".into())
-                    })?;
+                    .ok_or_else(|| Error::Config("FERRO_AI_API_KEY not set".into()))?;
                 Ok(Box::new(AnthropicClient::new(key, model)))
             }
             "openai" => {
                 let key = api_key
-                    .ok_or_else(|| {
-                        Error::Config("FERRO_AI_API_KEY not set for openai".into())
-                    })?;
+                    .ok_or_else(|| Error::Config("FERRO_AI_API_KEY not set for openai".into()))?;
                 Ok(Box::new(OpenAiClient::new(key, model, base_url)))
             }
             "groq" => {
                 let key = api_key
-                    .ok_or_else(|| {
-                        Error::Config("FERRO_AI_API_KEY not set for groq".into())
-                    })?;
-                let url = base_url
-                    .unwrap_or_else(|| "https://api.groq.com/openai".into());
+                    .ok_or_else(|| Error::Config("FERRO_AI_API_KEY not set for groq".into()))?;
+                let url = base_url.unwrap_or_else(|| "https://api.groq.com/openai".into());
                 Ok(Box::new(OpenAiClient::new(key, model, Some(url))))
             }
             "ollama" => Ok(Box::new(OllamaClient::new(model, base_url))),
