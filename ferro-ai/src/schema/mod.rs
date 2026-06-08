@@ -49,6 +49,25 @@ use serde_json::{Map, Value};
 ///
 /// If any of these names appear as a key in the schema's `$defs`, the normalizer
 /// activates the projection-enum closing pass before resolving refs.
+///
+/// **Trigger list vs. closed list — these are not the same:**
+///
+/// This list is a *superset* of the types that are actually closed by the pass.
+/// Only `"FieldMeaning"` and `"Intent"` are passed to `close_projection_enum` —
+/// they are the two types with an open `anyOf` escape hatch (`Custom(String)`) that
+/// must be replaced with a closed `enum` for structured-output APIs.
+///
+/// The remaining names (`"ServiceDef"`, `"Cardinality"`, `"ActionDef"`, `"GuardDef"`,
+/// `"StateDef"`) are trigger-only: their presence activates the pass so that
+/// `FieldMeaning`/`Intent` are closed whenever any projection type appears in the
+/// schema, but `close_projection_enum` is not called for them because:
+/// - `Cardinality`, `ActionDef`, `GuardDef`, `StateDef`: schemars already emits them
+///   as closed `{"type":"string","enum":[...]}` — no `anyOf`, nothing to close.
+/// - `ServiceDef`: a struct (object schema), not an enum — no closing needed.
+///
+/// If a new projection enum with a `Custom` escape hatch is added to ferro-projections,
+/// add its name to this list AND add a `close_projection_enum(defs_mut, "NewType")` call
+/// in `for_structured_output`.
 const PROJECTION_DEF_NAMES: &[&str] = &[
     "FieldMeaning",
     "Intent",
