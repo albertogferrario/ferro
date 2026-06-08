@@ -1448,6 +1448,44 @@ For plugin components (third-party or custom types not in the built-in catalog),
 
 ---
 
+### StreamText
+
+Connects to a server-sent-events endpoint and renders token-by-token output as
+plain text. Tokens are appended as text nodes — no HTML interpretation.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `sse_url` | `string` | URL of the SSE endpoint that streams tokens |
+| `placeholder` | `string?` | Text shown inside the content area before the first token arrives |
+| `loading_text` | `string?` | Status indicator shown while the stream is open |
+
+```json
+"response_area": {
+  "type": "StreamText",
+  "props": {
+    "sse_url": "/ai/generate",
+    "placeholder": "Response will appear here…",
+    "loading_text": "Generating…"
+  }
+}
+```
+
+**Server contract.** The SSE endpoint must emit `event: done` when the stream
+is complete:
+
+```rust
+tx.send(SseEvent::new().event("done").data("")).await.ok();
+```
+
+Without `event: done`, the browser's `EventSource` auto-reconnects after the
+connection closes, causing the component to re-fetch the endpoint in a loop.
+
+**Security.** Tokens are appended as plain text nodes — `innerHTML` is never
+called. Streamed content cannot inject HTML or execute scripts regardless of
+its content.
+
+---
+
 ## Inline view/edit pattern
 
 An inline view/edit page is built from a `Form` element whose children include both read-only display items and editable inputs, each toggled by a `visible` condition on a query parameter.
