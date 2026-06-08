@@ -49,7 +49,7 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 - [x] **AICLI-02** — `ferro ai:make` uses structured outputs (AISDK-02) to produce the `ServiceDef` directly. No `ScaffoldPlan` intermediary type. The schema the LLM completes against IS the schema for `ServiceDef` itself, derived from the existing `#[derive(Serialize, Deserialize, JsonSchema)]` on the `ferro-projections` types and normalized by the `ServiceDef`-aware path in AISDK-02. Non-projection glue (registration on `App`, handler skeleton for `ServiceDef::handle(...)`, migration generation) is invoked **after** the `ServiceDef` is produced, by calling the existing `make:*` helpers — those helpers consume the `ServiceDef`, they don't compete with it.
 
-- [ ] **AICLI-03** — Developer can run `ferro ai:explain <route|model|service>` to get a projection-framed explanation: the `Intent`s the service projects (Browse / Focus / Collect / Process / Summarize / Analyze / Track), which fields' `FieldMeaning`s drive the rendering, what `ActionDef`s are exposed under which `GuardDef`s, what state transitions exist via `StateMachine`. Plain code prose is the fallback only when no `ServiceDef` is found for the target. Context loaded from `ferro-mcp` introspection.
+- [x] **AICLI-03** — Developer can run `ferro ai:explain <route|model|service>` to get a projection-framed explanation: the `Intent`s the service projects (Browse / Focus / Collect / Process / Summarize / Analyze / Track), which fields' `FieldMeaning`s drive the rendering, what `ActionDef`s are exposed under which `GuardDef`s, what state transitions exist via `StateMachine`. Plain code prose is the fallback only when no `ServiceDef` is found for the target. Context loaded from `ferro-mcp` introspection.
 
 - [ ] **AICLI-04** — `ferro make:json-view` upgraded to use structured outputs + `ServiceDef` introspection for schema-driven component selection. **Now unblocked: v12.0 JSON-UI v2 shipped 2026-05-19.** This is the first concrete `Renderer` over the `ServiceDef` produced by `ai:make` and is the second AI surface to land. Together with AICLI-01, this closes the produce-then-render loop end-to-end.
 
@@ -114,7 +114,7 @@ Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173)
 | AISSE-02 | Phase 169 (StreamText Component) | Complete |
 | AICLI-01 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
 | AICLI-02 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
-| AICLI-03 | Phase 171 (ai:make & ai:explain CLI Commands) | Pending |
+| AICLI-03 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
 | AICLI-04 | Phase 173 (make:json-view v2) | Unblocked — v12.0 shipped 2026-05-19 |
 | AICLI-05 | Phase 172 (MCP Tool Wrappers) | Pending |
 | AICLI-06 | Phase 173 (make:json-view v2) | Unblocked — projection-roundtrip test ships with the second `Renderer` |
