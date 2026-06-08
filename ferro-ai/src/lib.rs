@@ -64,4 +64,4 @@ pub use confirmation::store::InMemoryConfirmationStore;
 pub use confirmation::{ConfirmationStore, PendingActionInfo};
 pub use error::Error;
 pub use schema::for_structured_output;
-pub use tools::{ToolDef, ToolError, ToolRegistry};
+pub use tools::{make_handler, ToolDef, ToolError, ToolRegistry};
