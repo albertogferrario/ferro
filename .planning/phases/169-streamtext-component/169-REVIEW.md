@@ -16,7 +16,8 @@ findings:
   warning: 2
   info: 2
   total: 4
-status: issues_found
+status: resolved
+resolution: WR-01 (empty-URL guard) and WR-02 (clear placeholder on empty stream) fixed inline; gate green. Info items accepted.
 ---
 
 # Phase 169: Code Review Report
