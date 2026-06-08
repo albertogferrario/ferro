@@ -2251,4 +2251,57 @@ mod tests {
         assert!(crate::render::BUILTIN_TYPES.contains(&"RawHtml"));
         assert_eq!(crate::render::BUILTIN_TYPES.len(), 44);
     }
+
+    // ── StreamText (D-04 / AISSE-02 SC#1, SC#2a, SC#2b) ──────────────────────
+
+    #[test]
+    fn stream_text_props_serde_roundtrip() {
+        use crate::component::StreamTextProps;
+        let p = StreamTextProps {
+            sse_url: "/ai/stream".to_string(),
+            placeholder: Some("Response will appear here\u{2026}".to_string()),
+            loading_text: Some("Generating\u{2026}".to_string()),
+        };
+        let j = serde_json::to_value(&p).unwrap();
+        let back: StreamTextProps = serde_json::from_value(j).unwrap();
+        assert_eq!(p, back);
+    }
+
+    #[test]
+    fn stream_text_props_minimal_serde_roundtrip() {
+        use crate::component::StreamTextProps;
+        let p = StreamTextProps {
+            sse_url: "/stream".to_string(),
+            placeholder: None,
+            loading_text: None,
+        };
+        let j = serde_json::to_value(&p).unwrap();
+        assert!(j.get("placeholder").is_none(), "placeholder must be absent when None");
+        assert!(j.get("loading_text").is_none(), "loading_text must be absent when None");
+        let back: StreamTextProps = serde_json::from_value(j).unwrap();
+        assert_eq!(p, back);
+    }
+
+    #[test]
+    fn render_streamtext_emits_data_attribute() {
+        let spec = spec_with_root(Element::new("StreamText").prop("sse_url", "/api/stream"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_streamtext(el, &spec, &json!(null), 1);
+        assert!(
+            html.contains("data-ferro-stream-url=\"/api/stream\""),
+            "got: {html}"
+        );
+    }
+
+    #[test]
+    fn render_streamtext_escapes_url() {
+        // T-169-01: a url containing "><script> must not break out of the attribute.
+        let spec =
+            spec_with_root(Element::new("StreamText").prop("sse_url", "/stream?q=a&b=\"><script>"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_streamtext(el, &spec, &json!(null), 1);
+        // Raw ampersand and raw angle bracket from the url must not survive.
+        assert!(!html.contains("&b="), "raw & must be escaped; got: {html}");
+        assert!(!html.contains("<script>"), "raw <script> must be escaped; got: {html}");
+    }
 }
