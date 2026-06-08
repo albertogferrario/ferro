@@ -49,6 +49,7 @@ pub mod projection_coverage;
 pub mod queue_status;
 pub mod read_logs;
 pub mod relation_map;
+pub mod relevance;
 pub mod render_projection;
 pub mod request_metrics;
 pub mod route_dependencies;
