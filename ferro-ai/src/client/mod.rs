@@ -35,6 +35,11 @@ pub enum Role {
     User,
     /// A message from the assistant (used for multi-turn conversations).
     Assistant,
+    /// A tool result message.
+    ///
+    /// Anthropic: sent as `role: "user"` with `type: "tool_result"` content.
+    /// OpenAI: sent as `role: "tool"` with `tool_call_id`.
+    Tool,
 }
 
 /// A single message in a completion conversation.
@@ -44,6 +49,51 @@ pub struct Message {
     pub role: Role,
     /// The text content of the message.
     pub content: String,
+}
+
+/// A tool definition included in a completion request.
+///
+/// `parameters_schema` must already be normalized via
+/// `schema::for_structured_output` before being placed here (D-14).
+#[derive(Debug, Clone)]
+pub struct ToolRequest {
+    /// The tool name. Must match the name in [`crate::tools::ToolDef`].
+    pub name: String,
+    /// Human-readable description of what the tool does.
+    pub description: String,
+    /// JSON Schema for the tool's input parameters (normalized).
+    pub parameters_schema: serde_json::Value,
+}
+
+/// Controls how the LLM selects a tool when tools are available.
+#[derive(Debug, Clone)]
+pub enum ToolChoice {
+    /// The LLM decides whether to call a tool (default).
+    Auto,
+    /// The LLM must not call any tool.
+    None,
+}
+
+/// A single tool-use block returned by the LLM.
+#[derive(Debug, Clone)]
+pub struct ToolUseBlock {
+    /// Provider-assigned call identifier (used when sending back tool results).
+    pub id: String,
+    /// The tool name the LLM chose to call.
+    pub name: String,
+    /// The arguments the LLM generated for the tool call.
+    pub input: serde_json::Value,
+}
+
+/// The result of a `complete_with_tools` call.
+///
+/// Either the LLM produced a final text answer or it wants to call one or more tools.
+#[derive(Debug)]
+pub enum CompletionResponse {
+    /// The LLM produced a final text response (stop_reason "end_turn" / finish_reason "stop").
+    Text(String),
+    /// The LLM wants to invoke tools (stop_reason "tool_use" / finish_reason "tool_calls").
+    ToolUse(Vec<ToolUseBlock>),
 }
 
 /// Request for a text completion from an LLM provider.
@@ -66,6 +116,13 @@ pub struct CompletionRequest {
     /// With streaming + schema, tokens arrive as raw JSON fragments — callers
     /// must accumulate before parsing (Pitfall 1).
     pub schema: Option<serde_json::Value>,
+    /// Optional tool definitions for the tool-calling dispatch loop.
+    ///
+    /// Each entry's `parameters_schema` must be pre-normalized via
+    /// `schema::for_structured_output`. Set by `ToolRegistry::dispatch` (D-14).
+    pub tools: Option<Vec<ToolRequest>>,
+    /// Controls how the LLM selects a tool when `tools` is `Some`.
+    pub tool_choice: Option<ToolChoice>,
 }
 
 /// Provider-agnostic LLM client.
@@ -97,4 +154,20 @@ pub trait LlmClient: Send + Sync {
     /// Returns `Err(Error::Unsupported)` for providers without an embeddings
     /// endpoint (e.g. [`anthropic::AnthropicClient`]).
     async fn embed(&self, text: &str) -> Result<Vec<f32>, Error>;
+
+    /// Run a completion that may invoke tools.
+    ///
+    /// Returns [`CompletionResponse::Text`] when the LLM produces a final answer,
+    /// or [`CompletionResponse::ToolUse`] when the LLM requests tool execution.
+    ///
+    /// The default implementation returns `Err(Error::Unsupported)` — providers
+    /// that do not support tool calling (e.g. [`ollama::OllamaClient`]) inherit this
+    /// and existing callers of `complete()` are unaffected (D-14).
+    async fn complete_with_tools(
+        &self,
+        request: CompletionRequest,
+    ) -> Result<CompletionResponse, Error> {
+        let _ = request;
+        Err(Error::Unsupported)
+    }
 }

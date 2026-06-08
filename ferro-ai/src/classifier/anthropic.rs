@@ -57,6 +57,8 @@ impl ClassificationProvider for AnthropicProvider {
                 Some(config.model.clone())
             },
             schema: Some(schema.clone()),
+            tools: None,
+            tool_choice: None,
         };
         let text = self.client.complete(request).await?;
         serde_json::from_str(&text).map_err(|e| Error::Deserialization(e.to_string()))
@@ -85,6 +87,8 @@ mod tests {
             max_tokens: 1024,
             model_override: Some("claude-opus-4-6".into()),
             schema: Some(schema.clone()),
+            tools: None,
+            tool_choice: None,
         };
         let body = client.build_body(&request, false);
 
@@ -112,6 +116,8 @@ mod tests {
             max_tokens: 512,
             model_override: None, // empty config.model → no override
             schema: None,
+            tools: None,
+            tool_choice: None,
         };
         let body = client.build_body(&request, false);
         // AnthropicClient::default_model() returns "claude-sonnet-4-6"

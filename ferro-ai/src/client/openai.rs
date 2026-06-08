@@ -1,4 +1,6 @@
-use crate::client::{CompletionRequest, LlmClient, Role, TokenStream};
+use crate::client::{
+    CompletionRequest, CompletionResponse, LlmClient, Role, ToolUseBlock, TokenStream,
+};
 use crate::error::Error;
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -67,7 +69,11 @@ impl OpenAiClient {
             .iter()
             .map(|m| {
                 serde_json::json!({
-                    "role": match m.role { Role::User => "user", Role::Assistant => "assistant" },
+                    "role": match m.role {
+                        Role::User => "user",
+                        Role::Assistant => "assistant",
+                        Role::Tool => "tool",
+                    },
                     "content": m.content,
                 })
             })
@@ -91,8 +97,44 @@ impl OpenAiClient {
             });
         }
 
+        if let Some(tools) = &request.tools {
+            let tools_json: Vec<serde_json::Value> = tools
+                .iter()
+                .map(|t| {
+                    serde_json::json!({
+                        "type": "function",
+                        "function": {
+                            "name": t.name,
+                            "description": t.description,
+                            "parameters": t.parameters_schema,
+                            "strict": true,
+                        }
+                    })
+                })
+                .collect();
+            body["tools"] = serde_json::Value::Array(tools_json);
+            body["tool_choice"] = serde_json::json!("auto");
+        }
+
         body
     }
+}
+
+/// Parse tool_calls from an OpenAI response into [`ToolUseBlock`]s.
+pub(crate) fn parse_openai_tool_calls(json: &serde_json::Value) -> Vec<ToolUseBlock> {
+    let Some(tool_calls) = json["choices"][0]["message"]["tool_calls"].as_array() else {
+        return vec![];
+    };
+    tool_calls
+        .iter()
+        .filter_map(|c| {
+            Some(ToolUseBlock {
+                id: c["id"].as_str()?.to_string(),
+                name: c["function"]["name"].as_str()?.to_string(),
+                input: serde_json::from_str(c["function"]["arguments"].as_str()?).ok()?,
+            })
+        })
+        .collect()
 }
 
 /// Result of parsing a single OpenAI SSE chunk data string.
@@ -274,6 +316,59 @@ impl LlmClient for OpenAiClient {
 
         parse_embedding(&json)
     }
+
+    async fn complete_with_tools(
+        &self,
+        request: CompletionRequest,
+    ) -> Result<CompletionResponse, Error> {
+        let body = self.build_body(&request, false);
+
+        let resp = self
+            .client
+            .post(format!("{}/v1/chat/completions", self.base_url))
+            .bearer_auth(&self.api_key)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    Error::Timeout
+                } else {
+                    Error::Provider {
+                        status: None,
+                        message: e.to_string(),
+                    }
+                }
+            })?;
+
+        let status = resp.status().as_u16();
+        if !resp.status().is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            return Err(Error::Provider {
+                status: Some(status),
+                message: text,
+            });
+        }
+
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| Error::Deserialization(e.to_string()))?;
+
+        let finish_reason = json["choices"][0]["finish_reason"].as_str().unwrap_or("");
+        if finish_reason == "tool_calls" {
+            let blocks = parse_openai_tool_calls(&json);
+            return Ok(CompletionResponse::ToolUse(blocks));
+        }
+
+        // stop or any other finish_reason → extract text content
+        let text = json["choices"][0]["message"]["content"]
+            .as_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| Error::Deserialization("no content in response".into()))?;
+
+        Ok(CompletionResponse::Text(text))
+    }
 }
 
 #[cfg(test)]
@@ -313,6 +408,8 @@ mod tests {
             max_tokens: 100,
             model_override: None,
             schema: Some(schema.clone()),
+            tools: None,
+            tool_choice: None,
         };
         let body = client.build_body(&request, false);
 
@@ -334,6 +431,8 @@ mod tests {
             max_tokens: 100,
             model_override: None,
             schema: None,
+            tools: None,
+            tool_choice: None,
         };
         let body = client.build_body(&request, false);
         assert!(body.get("response_format").is_none());

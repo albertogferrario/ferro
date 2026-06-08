@@ -1,4 +1,6 @@
-use crate::client::{CompletionRequest, LlmClient, Role, TokenStream};
+use crate::client::{
+    CompletionRequest, CompletionResponse, LlmClient, Role, ToolChoice, ToolUseBlock, TokenStream,
+};
 use crate::error::Error;
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -62,7 +64,10 @@ impl AnthropicClient {
             .iter()
             .map(|m| {
                 serde_json::json!({
-                    "role": match m.role { Role::User => "user", Role::Assistant => "assistant" },
+                    "role": match m.role {
+                        Role::User | Role::Tool => "user",
+                        Role::Assistant => "assistant",
+                    },
                     "content": m.content,
                 })
             })
@@ -92,8 +97,45 @@ impl AnthropicClient {
             });
         }
 
+        if let Some(tools) = &request.tools {
+            let tools_json: Vec<serde_json::Value> = tools
+                .iter()
+                .map(|t| {
+                    serde_json::json!({
+                        "name": t.name,
+                        "description": t.description,
+                        "input_schema": t.parameters_schema,
+                    })
+                })
+                .collect();
+            body["tools"] = serde_json::Value::Array(tools_json);
+            if let Some(choice) = &request.tool_choice {
+                body["tool_choice"] = match choice {
+                    ToolChoice::Auto => serde_json::json!({"type": "auto"}),
+                    ToolChoice::None => serde_json::json!({"type": "none"}),
+                };
+            }
+        }
+
         body
     }
+}
+
+/// Parse tool_use content blocks from an Anthropic response `content` array.
+pub(crate) fn parse_anthropic_tool_use_blocks(content: &serde_json::Value) -> Vec<ToolUseBlock> {
+    let Some(arr) = content.as_array() else {
+        return vec![];
+    };
+    arr.iter()
+        .filter(|item| item["type"].as_str() == Some("tool_use"))
+        .filter_map(|item| {
+            Some(ToolUseBlock {
+                id: item["id"].as_str()?.to_string(),
+                name: item["name"].as_str()?.to_string(),
+                input: item["input"].clone(),
+            })
+        })
+        .collect()
 }
 
 /// Parse a `content_block_delta` SSE event data string, returning the delta
@@ -217,6 +259,62 @@ impl LlmClient for AnthropicClient {
     async fn embed(&self, _text: &str) -> Result<Vec<f32>, Error> {
         Err(Error::Unsupported)
     }
+
+    async fn complete_with_tools(
+        &self,
+        request: CompletionRequest,
+    ) -> Result<CompletionResponse, Error> {
+        let body = self.build_body(&request, false);
+
+        let resp = self
+            .client
+            .post("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    Error::Timeout
+                } else {
+                    Error::Provider {
+                        status: None,
+                        message: e.to_string(),
+                    }
+                }
+            })?;
+
+        let status = resp.status().as_u16();
+        if !resp.status().is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            return Err(Error::Provider {
+                status: Some(status),
+                message: text,
+            });
+        }
+
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| Error::Deserialization(e.to_string()))?;
+
+        let stop_reason = json["stop_reason"].as_str().unwrap_or("");
+        if stop_reason == "tool_use" {
+            let blocks = parse_anthropic_tool_use_blocks(&json["content"]);
+            return Ok(CompletionResponse::ToolUse(blocks));
+        }
+
+        // end_turn or any other stop reason → extract text
+        let text = json["content"]
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(|i| i["text"].as_str())
+            .ok_or_else(|| Error::Deserialization(format!("unexpected response: {json}")))?;
+
+        Ok(CompletionResponse::Text(text.to_string()))
+    }
 }
 
 #[cfg(test)]
@@ -249,6 +347,8 @@ mod tests {
             max_tokens: 100,
             model_override: None,
             schema: Some(schema.clone()),
+            tools: None,
+            tool_choice: None,
         };
         let body = client.build_body(&request, false);
 
@@ -268,6 +368,8 @@ mod tests {
             max_tokens: 100,
             model_override: None,
             schema: None,
+            tools: None,
+            tool_choice: None,
         };
         let body = client.build_body(&request, false);
 
@@ -286,6 +388,8 @@ mod tests {
             max_tokens: 100,
             model_override: None,
             schema: None,
+            tools: None,
+            tool_choice: None,
         };
         let streaming_body = client.build_body(&request, true);
         let non_streaming_body = client.build_body(&request, false);

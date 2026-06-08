@@ -71,6 +71,8 @@ where
         max_tokens: 4096,
         model_override: None,
         schema: Some(normalized),
+        tools: None,
+        tool_choice: None,
     };
 
     let text = client.complete(request).await?;

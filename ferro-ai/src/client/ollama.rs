@@ -68,7 +68,11 @@ impl OllamaClient {
 
         for m in &request.messages {
             messages.push(serde_json::json!({
-                "role": match m.role { Role::User => "user", Role::Assistant => "assistant" },
+                "role": match m.role {
+                    Role::User => "user",
+                    Role::Assistant => "assistant",
+                    Role::Tool => "tool",
+                },
                 "content": m.content,
             }));
         }
