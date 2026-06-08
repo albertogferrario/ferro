@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: verifying
-stopped_at: Phase 172 context gathered
-last_updated: "2026-06-08T20:02:00.171Z"
+status: executing
+stopped_at: Completed 172-01-PLAN.md
+last_updated: "2026-06-08T20:41:07.744Z"
 last_activity: 2026-06-08
 progress:
   total_phases: 62
   completed_phases: 53
-  total_plans: 251
-  completed_plans: 251
-  percent: 100
+  total_plans: 255
+  completed_plans: 252
+  percent: 99
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 171 — ferro ai:make & ferro ai:explain CLI Commands
+**Current focus:** Phase 172 — MCP Tool Wrappers
 
 ## Current Position
 
-Phase: 180
-Plan: Not started
+Phase: 172 (MCP Tool Wrappers) — EXECUTING
+Plan: 2 of 4
 Next: Plan Phase 169 (StreamText JSON-UI component consuming an SSE endpoint URL — builds on the Phase 168 SSE primitives) — `/gsd-discuss-phase 169 --auto`. Then 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-06-08
 Workspace version: 0.2.46
 
@@ -264,6 +264,7 @@ Progress: [████████░░] 84%
 | Phase 171 P03 | 315s | 2 tasks | 3 files |
 | Phase 171 P04 | 967 | 1 tasks | 4 files |
 | Phase 171 P04 | continuation | 2 tasks | 1 files |
+| Phase 172 P01 | 187s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -348,7 +349,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T20:02:00.146Z
-Stopped at: Phase 172 context gathered
-Resume file: .planning/phases/172-mcp-tool-wrappers/172-CONTEXT.md
+Last session: 2026-06-08T20:41:07.737Z
+Stopped at: Completed 172-01-PLAN.md
+Resume file: None
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations

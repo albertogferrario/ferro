@@ -53,7 +53,7 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 - [ ] **AICLI-04** — `ferro make:json-view` upgraded to use structured outputs + `ServiceDef` introspection for schema-driven component selection. **Now unblocked: v12.0 JSON-UI v2 shipped 2026-05-19.** This is the first concrete `Renderer` over the `ServiceDef` produced by `ai:make` and is the second AI surface to land. Together with AICLI-01, this closes the produce-then-render loop end-to-end.
 
-- [ ] **AICLI-05** — MCP tools `ai_scaffold` and `ai_explain` in `ferro-mcp` wrap the CLI command logic for in-process agent consumption. Agents calling `ai_scaffold` over MCP get the same `ServiceDef` output as the CLI — no parallel surface.
+- [x] **AICLI-05** — MCP tools `ai_scaffold` and `ai_explain` in `ferro-mcp` wrap the CLI command logic for in-process agent consumption. Agents calling `ai_scaffold` over MCP get the same `ServiceDef` output as the CLI — no parallel surface.
 
 - [ ] **AICLI-06** — `ferro ai:make` and `make:json-view` v2 share a single end-to-end test: from NL description → `ServiceDef` → rendered JSON-UI spec → renderable view. This is the structural proof that AI is a first-class projection consumer rather than a parallel scaffolding system. The test lives in `ferro-ai/tests/projection_roundtrip.rs`.
 
@@ -116,5 +116,5 @@ Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173)
 | AICLI-02 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
 | AICLI-03 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
 | AICLI-04 | Phase 173 (make:json-view v2) | Unblocked — v12.0 shipped 2026-05-19 |
-| AICLI-05 | Phase 172 (MCP Tool Wrappers) | Pending |
+| AICLI-05 | Phase 172 (MCP Tool Wrappers) | Complete |
 | AICLI-06 | Phase 173 (make:json-view v2) | Unblocked — projection-roundtrip test ships with the second `Renderer` |
