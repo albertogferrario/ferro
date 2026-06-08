@@ -4,7 +4,7 @@ milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: verifying
 stopped_at: Completed 166-05-PLAN.md
-last_updated: "2026-06-08T04:26:25.367Z"
+last_updated: "2026-06-08T04:45:18.270Z"
 last_activity: 2026-06-08
 progress:
   total_phases: 62
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 166 (Structured Outputs, Tool Calling & ServiceDef-aware Schema Normalizer) — EXECUTING
-Plan: 5 of 5
+Phase: 180
+Plan: Not started
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminders (three NEW crates, CI token has publish-update only, not publish-new):
 
@@ -47,7 +47,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 174
+- Total plans completed: 179
 - Average duration: —
 - Total execution time: —
 
@@ -87,6 +87,7 @@ Progress: [████████░░] 84%
 | 187 | 4 | - | - |
 | 188 | 3 | - | - |
 | 165 | 4 | - | - |
+| 166 | 5 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
