@@ -37,6 +37,18 @@ pub enum Error {
     #[error("deserialization error: {0}")]
     Deserialization(String),
 
+    /// Schema normalization failed (malformed schemars output or unexpected structure).
+    #[error("schema normalization error: {0}")]
+    SchemaError(String),
+
+    /// Tool dispatch loop exceeded the configured `max_iterations` without finishing.
+    #[error("tool dispatch exceeded max_iterations ({0})")]
+    ToolIterationLimit(u32),
+
+    /// A tool name referenced in a provider response is not registered.
+    #[error("tool not found: {0}")]
+    ToolNotFound(String),
+
     /// Request timed out after all retries were exhausted.
     #[error("classification request timed out after retries")]
     Timeout,
