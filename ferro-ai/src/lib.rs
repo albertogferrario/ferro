@@ -43,12 +43,15 @@
 
 pub mod classifier;
 pub mod client;
+pub mod config;
 pub mod confirmation;
 pub mod error;
 
 pub use classifier::anthropic::AnthropicProvider;
 pub use classifier::provider::ClassificationProvider;
 pub use classifier::{ClassificationResult, Classifier, ClassifierConfig};
+pub use client::{AnthropicClient, LlmClient, OllamaClient, OpenAiClient, TokenStream};
+pub use config::AiConfig;
 pub use confirmation::events::ConfirmationExpired;
 pub use confirmation::store::InMemoryConfirmationStore;
 pub use confirmation::{ConfirmationStore, PendingActionInfo};

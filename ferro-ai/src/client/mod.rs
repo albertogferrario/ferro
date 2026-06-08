@@ -11,6 +11,10 @@ pub mod anthropic;
 pub mod ollama;
 pub mod openai;
 
+pub use anthropic::AnthropicClient;
+pub use ollama::OllamaClient;
+pub use openai::OpenAiClient;
+
 use crate::error::Error;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
