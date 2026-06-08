@@ -669,5 +669,4 @@ mod tests {
             _ => panic!("expected DryRun result"),
         }
     }
-
 }

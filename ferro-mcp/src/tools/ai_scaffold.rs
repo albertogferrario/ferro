@@ -322,13 +322,17 @@ mod tests {
 
     #[tokio::test]
     async fn scaffold_core_returns_err_without_ai_config() {
-        let _lock = ENV_LOCK.lock().unwrap();
-        // Clear all AI-related env vars.
-        unsafe {
-            std::env::remove_var("FERRO_AI_PROVIDER");
-            std::env::remove_var("FERRO_AI_API_KEY");
-            std::env::remove_var("FERRO_AI_MODEL");
-        }
+        // Acquire and drop the lock synchronously before the await point so
+        // clippy::await_holding_lock is not triggered.
+        {
+            let _lock = ENV_LOCK.lock().unwrap();
+            // Clear all AI-related env vars.
+            unsafe {
+                std::env::remove_var("FERRO_AI_PROVIDER");
+                std::env::remove_var("FERRO_AI_API_KEY");
+                std::env::remove_var("FERRO_AI_MODEL");
+            }
+        } // _lock dropped here, before any .await
 
         let dir = TempDir::new().expect("tempdir");
 

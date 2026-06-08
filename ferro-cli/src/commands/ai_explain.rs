@@ -25,8 +25,8 @@ pub fn run(target: String, type_override: Option<String>, dry_run: bool) {
     use ferro_ai::client::{Message, Role};
     use ferro_ai::{AiConfig, CompletionRequest};
     use ferro_mcp::tools::ai_explain_core::{
-        build_model_prompt, build_route_prompt, build_service_prompt, resolve_max_tokens_with_default,
-        resolve_target, ResolvedTarget,
+        build_model_prompt, build_route_prompt, build_service_prompt,
+        resolve_max_tokens_with_default, resolve_target, ResolvedTarget,
     };
 
     // 1. Fail-fast: require AI provider unless --dry-run (D-06).
