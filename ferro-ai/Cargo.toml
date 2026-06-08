@@ -21,8 +21,11 @@ async-trait = "0.1"
 thiserror = "2"
 tracing = "0.1"
 ferro-events = { path = "../ferro-events", version = "0.2" }
+ferro-projections = { path = "../ferro-projections", version = "0.2" }
+schemars = { version = "1", features = ["derive"] }
 dashmap = "6"
 chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
+jsonschema = { version = "0.46", default-features = false }
