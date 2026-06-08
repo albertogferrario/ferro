@@ -119,6 +119,8 @@ cargo test --all-features
 ```
 `--all-targets` is required — it catches issues in test code that `--all` alone misses. CI enforces `-D warnings` so any warning is a build failure.
 
+**No external build tooling.** `cargo build` of any published `ferro-*` crate must succeed with the Rust toolchain alone — no assemblers, compilers, or system libraries. Some codec crates default-enable native acceleration that needs such tooling: e.g. `rav1e` (pulled by `ravif` and by `image`'s `avif` feature) enables an `asm` feature requiring the `nasm` assembler. Disable it by default — `ravif = { default-features = false, features = ["threading"] }` — and let consumers opt into SIMD via the upstream crate's own feature in their manifest. CI runs `--all-features`, so a forwarding `asm` feature would re-activate the requirement; do not add one. Verify with `cargo tree --all-features -e features | grep <codec>` showing no `asm`, not just a green local build (a dev machine with the tool installed masks the violation).
+
 ### Documentation
 - User docs: `docs/src/`
 - API docs: `cargo doc --no-deps`
