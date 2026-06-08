@@ -1802,7 +1802,12 @@ Plans:
   5. `ToolRegistry::dispatch(messages, client)` runs the tool-calling loop; `max_iterations: u32` (default 10) is required at construction time and enforced with no override path to an unbounded loop; a warning is logged at 5 iterations and an error at the hard cap
   6. Tool errors carry model-legible `ToolError { message: String }` descriptions — not raw Rust stack traces or DB constraint strings
   7. `cargo test --all-features` passes; existing `Classifier<T>` tests are green
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 166-01-PLAN.md — Wave 0 foundation: deps (schemars, ferro-projections, jsonschema dev) + Error variants + schemars anyOf shape probe (resolves A1/A2)
+- [ ] 166-02-PLAN.md — generic `for_structured_output` normalizer (resolve $ref/$defs, strip Anthropic-rejected keywords, additionalProperties:false) + SC#2
+- [ ] 166-03-PLAN.md — ServiceDef-aware enum closing (D-06/07/08) + SC#3 jsonschema test + typed `complete::<T>()` (D-01) + SC#1
+- [ ] 166-04-PLAN.md — tool calling: client `complete_with_tools` (D-14) + `ToolDef`/`ToolRegistry`/`ToolError` + dispatch max_iterations loop (SC#4/5/6)
+- [ ] 166-05-PLAN.md — publish.yml WAVE1B reorder (ferro-projections before ferro-ai) + full fmt/clippy/test gate (SC#7)
 
 ### Phase 167: Embeddings & pgvector
 **Goal**: Ship pure-Rust embedding helpers and cosine similarity, plus an optional pgvector integration for semantic search.
