@@ -20,16 +20,19 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 168 — Framework SSE Primitives
+**Current focus:** Phase 169 — StreamText Component (v12.1 AI; Phases 165–168 complete)
 
 ## Current Position
 
-Phase: 180
+Phase: 169
 Plan: Not started
-Next: Plan Phase 168 (Framework SSE Primitives) — `/gsd-discuss-phase 168 --auto`. Then 169 (StreamText) → 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
-Status: Executing Phase 168
+Next: Plan Phase 169 (StreamText JSON-UI component consuming an SSE endpoint URL — builds on the Phase 168 SSE primitives) — `/gsd-discuss-phase 169 --auto`. Then 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
+Status: Phase 168 (Framework SSE Primitives) complete and verified 5/5 — ready to plan Phase 169
 Last activity: 2026-06-08
 Workspace version: 0.2.46
+
+Pending publish (v12.3 crates — see "Queued Milestone: v12.3" below; CI token is publish-update only):
+  - `cargo publish -p ferro-bundle` (Phase 183), `-p ferro-deployments` (186), `-p ferro-assets` (187) — one-time manual bootstrap from a local terminal before first CI push.
 
 Pending publish (v12.3 crates — see "Queued Milestone: v12.3" below; CI token is publish-update only):
 

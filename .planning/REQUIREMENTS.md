@@ -39,7 +39,7 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 ### SSE Streaming
 
-- [ ] **AISSE-01** — Handler can return a streaming SSE response that pushes LLM tokens to the browser as they arrive; SSE routes are structurally excluded from any `CompressionLayer`.
+- [x] **AISSE-01** — Handler can return a streaming SSE response that pushes LLM tokens to the browser as they arrive; SSE responses are structurally non-bufferable. *(Delivered via `FerroBody::Stream` over raw hyper 1 — the framework has no `CompressionLayer`/axum stack; the structural non-buffering guarantee fulfills the original CompressionLayer-exclusion intent. See Phase 168 CONTEXT scope-premise correction.)*
 
 - [ ] **AISSE-02** — `ferro-json-ui` provides a `StreamText` component that connects to an SSE endpoint URL and renders a token stream in place. The component is a JSON-UI element produced by a `Renderer` — consistent with the projection rendering pipeline.
 
@@ -110,7 +110,7 @@ Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173)
 | AISDK-04 | Phase 167 (Embeddings & pgvector) | Complete |
 | AISDK-05 | Phase 167 (Embeddings & pgvector) | Complete |
 | AISDK-06 | Phase 170 (ferro-cli Migration) | Pending |
-| AISSE-01 | Phase 168 (Framework SSE Primitives) | Pending |
+| AISSE-01 | Phase 168 (Framework SSE Primitives) | Complete |
 | AISSE-02 | Phase 169 (StreamText Component) | Pending |
 | AICLI-01 | Phase 171 (ai:make & ai:explain CLI Commands) | Pending |
 | AICLI-02 | Phase 171 (ai:make & ai:explain CLI Commands) | Pending |
