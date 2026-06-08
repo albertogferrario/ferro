@@ -373,10 +373,7 @@ mod tests {
     /// Check that a hyper response contains a Content-Type header with the given value.
     /// After the phase 143.1 header replace-semantics fix, only one Content-Type
     /// entry is emitted per response; `get_all` now yields a single-element iterator.
-    fn has_content_type(
-        hyper: &hyper::Response<crate::http::FerroBody>,
-        expected: &str,
-    ) -> bool {
+    fn has_content_type(hyper: &hyper::Response<crate::http::FerroBody>, expected: &str) -> bool {
         hyper
             .headers()
             .get_all("Content-Type")

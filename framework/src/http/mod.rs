@@ -15,7 +15,6 @@ pub use action::{
     ActionError, ActionKind, ActionResult, ActionResultExt, FlashVariant, IntoActionError,
 };
 pub use body::{collect_body, parse_form, parse_json, FerroBody};
-pub use sse::{SseEvent, SseStream};
 pub use cookie::{parse_cookies, Cookie, CookieOptions, SameSite};
 pub use extract::{FromParam, FromRequest};
 pub use form_request::FormRequest;
@@ -26,6 +25,7 @@ pub use resources::{PaginationLinks, PaginationMeta, Resource, ResourceCollectio
 pub use response::{
     HttpResponse, InertiaRedirect, Redirect, RedirectRouteBuilder, Response, ResponseExt,
 };
+pub use sse::{SseEvent, SseStream};
 
 /// Error type for missing route parameters
 ///

@@ -374,7 +374,9 @@ fn serve_ferro_base_css() -> hyper::Response<FerroBody> {
         .header("Content-Type", "text/css; charset=utf-8")
         .header("Content-Length", css.len().to_string())
         .header("Cache-Control", "public, max-age=31536000, immutable")
-        .body(FerroBody::Full(Full::new(Bytes::from_static(css.as_bytes()))))
+        .body(FerroBody::Full(Full::new(Bytes::from_static(
+            css.as_bytes(),
+        ))))
         .unwrap()
 }
 

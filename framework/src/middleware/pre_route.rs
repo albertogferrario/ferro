@@ -22,8 +22,8 @@
 //! }
 //! ```
 
-use async_trait::async_trait;
 use crate::http::FerroBody;
+use async_trait::async_trait;
 use std::sync::{Arc, OnceLock, RwLock};
 
 /// Pre-route middleware result: `Ok` continues with the (possibly rewritten) request,
@@ -33,8 +33,7 @@ use std::sync::{Arc, OnceLock, RwLock};
 /// instead of `hyper::Response<Full<Bytes>>`. Implementations that build the error response
 /// manually should use `HttpResponse::text("...").into_hyper()` (which now returns
 /// `hyper::Response<FerroBody>`) rather than `hyper::Response::builder().body(Full::new(...))`.
-pub type PreRouteResult =
-    Result<hyper::Request<hyper::body::Incoming>, hyper::Response<FerroBody>>;
+pub type PreRouteResult = Result<hyper::Request<hyper::body::Incoming>, hyper::Response<FerroBody>>;
 
 /// Trait for middleware that runs before path extraction and route matching.
 ///
