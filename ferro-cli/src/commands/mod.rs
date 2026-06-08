@@ -66,3 +66,13 @@ pub mod validate_contracts;
 /// it until they restore the previous directory.
 #[cfg(test)]
 pub(crate) static CWD_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Process-wide lock for tests that mutate environment variables.
+///
+/// Per-module `static ENV_LOCK` instances are insufficient: each module gets
+/// its own `Mutex` instance, so parallel test threads from different modules
+/// can still race on shared env vars like `FERRO_AI_MAX_TOKENS_PER_COMMAND`.
+/// All env-var-mutating tests across `ai_make` and `ai_explain` must acquire
+/// this single lock so mutations are fully serialized.
+#[cfg(test)]
+pub(crate) static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());

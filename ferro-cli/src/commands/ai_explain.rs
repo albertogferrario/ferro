@@ -287,9 +287,10 @@ pub fn run(target: String, type_override: Option<String>, dry_run: bool) {
     use ferro_ai::client::{Message, Role};
     use ferro_ai::{AiConfig, CompletionRequest};
 
-    // 1. Fail-fast: require AI provider unless --dry-run (D-06)
-    //    Even in dry-run we validate config to surface missing env vars early,
-    //    but we skip the actual LLM call.
+    // 1. Fail-fast: require AI provider unless --dry-run (D-06).
+    //    In dry-run mode, AI config is NOT checked — the assembled prompt is
+    //    printed and the function returns without calling the LLM or requiring
+    //    any env vars to be set.
     let client_result = AiConfig::from_env();
     if !dry_run {
         if let Err(ref e) = client_result {
@@ -382,13 +383,11 @@ pub fn run(target: String, type_override: Option<String>, dry_run: bool) {
 #[cfg(all(test, feature = "projections"))]
 mod tests {
     use super::*;
+    use crate::commands::ENV_LOCK;
     use ferro_mcp::tools::{
         explain_route::RouteExplanation,
         inspect_projection::{FieldInfo, ProjectionDetail},
     };
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     // ---- Task 1 tests ----
 
