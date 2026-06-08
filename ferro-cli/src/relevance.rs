@@ -39,6 +39,7 @@ pub(crate) fn tokenize(s: &str) -> Vec<String> {
 /// A context candidate with its searchable tokens and serialized form.
 pub(crate) struct Candidate {
     /// Human-readable label for debugging (e.g. "model:Order").
+    #[allow(dead_code)]
     pub label: String,
     /// Lowercased identifier tokens extracted from the candidate's content.
     pub tokens: HashSet<String>,

@@ -452,16 +452,242 @@ pub(crate) fn render_output(
 }
 
 // ---------------------------------------------------------------------------
-// Command entry point (wired in Task 3 — placeholder here)
+// Command entry point
 // ---------------------------------------------------------------------------
 
 /// Run the `ferro ai:make <description>` command.
+///
+/// Loads in-process ferro-mcp introspection, filters to description-relevant
+/// items, prompts the LLM via `complete_with::<ServiceDef>()`, validates the
+/// result, and writes exactly one `src/projections/<snake>.rs` file.
+/// `--dry-run` prints the ServiceDef as pretty JSON and writes nothing.
 #[cfg(feature = "projections")]
-#[allow(dead_code)]
-pub fn run(_description: String, _dry_run: bool) {
-    // Full implementation added in Task 3
-    eprintln!("ai:make: command wiring pending (Task 3)");
-    std::process::exit(1);
+pub fn run(description: String, dry_run: bool) {
+    use console::style;
+    use ferro_mcp::tools::{
+        database_schema, generation_context, list_models, list_projections, list_routes,
+    };
+
+    // 1. Fail-fast: require AI provider configuration (D-06)
+    let client = match ferro_ai::AiConfig::from_env() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!(
+                "{} {}",
+                style("Error:").red().bold(),
+                ai_config_error_message(&e)
+            );
+            std::process::exit(1);
+        }
+    };
+
+    // 2. Tokio runtime bridge (ferro-cli main is sync)
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!(
+                "{} Failed to create tokio runtime: {e}",
+                style("Error:").red().bold()
+            );
+            std::process::exit(1);
+        }
+    };
+
+    let root = std::path::Path::new(".");
+
+    // 3. In-process introspection (D-01)
+    // Sync tools: call directly
+    let models = list_models::execute(root).unwrap_or_default();
+    let gen_ctx = generation_context::execute(); // always succeeds
+    let projections = list_projections::execute(root, None);
+
+    // Async tools: bridge via rt.block_on
+    // Pitfall 2: list_routes tries HTTP first; static-analysis fallback handles non-running app
+    let routes = rt
+        .block_on(list_routes::execute(root))
+        .unwrap_or_else(|_| ferro_mcp::tools::list_routes::RoutesInfo {
+            routes: vec![],
+            source: ferro_mcp::tools::list_routes::RouteSource::StaticAnalysis,
+        });
+
+    // Pitfall 1: DB unavailable is non-fatal — empty schema is valid sparse context
+    let schema = rt
+        .block_on(database_schema::execute(root, None))
+        .unwrap_or_else(|_| ferro_mcp::tools::database_schema::SchemaInfo { tables: vec![] });
+
+    // 4. Relevance filter (D-02): build Candidates from each introspection source
+    let mut candidates: Vec<crate::relevance::Candidate> = Vec::new();
+
+    // Tier 3: existing projections (highest relevance)
+    for p in &projections.projections {
+        let mut tokens: std::collections::HashSet<String> =
+            crate::relevance::tokenize(&p.name).into_iter().collect();
+        if let Some(ref sn) = p.service_name {
+            tokens.extend(crate::relevance::tokenize(sn));
+        }
+        if let Some(ref dn) = p.display_name {
+            tokens.extend(crate::relevance::tokenize(dn));
+        }
+        let serialized = format!("projection: {} (file: {})\n", p.name, p.file);
+        candidates.push(crate::relevance::Candidate {
+            label: format!("projection:{}", p.name),
+            tokens,
+            serialized,
+            tier: 3,
+        });
+    }
+
+    // Tier 2: models
+    for m in &models {
+        let mut tokens: std::collections::HashSet<String> =
+            crate::relevance::tokenize(&m.name).into_iter().collect();
+        for f in &m.fields {
+            tokens.extend(crate::relevance::tokenize(&f.name));
+        }
+        let field_list = m
+            .fields
+            .iter()
+            .map(|f| format!("  {}: {}", f.name, f.field_type))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let serialized = format!("model: {}\nfields:\n{field_list}\n", m.name);
+        candidates.push(crate::relevance::Candidate {
+            label: format!("model:{}", m.name),
+            tokens,
+            serialized,
+            tier: 2,
+        });
+    }
+
+    // Tier 1: routes
+    for r in &routes.routes {
+        let mut tokens: std::collections::HashSet<String> =
+            crate::relevance::tokenize(&r.path).into_iter().collect();
+        tokens.extend(crate::relevance::tokenize(&r.handler));
+        if let Some(ref name) = r.name {
+            tokens.extend(crate::relevance::tokenize(name));
+        }
+        let serialized = format!("route: {} {} (handler: {})\n", r.method, r.path, r.handler);
+        candidates.push(crate::relevance::Candidate {
+            label: format!("route:{} {}", r.method, r.path),
+            tokens,
+            serialized,
+            tier: 1,
+        });
+    }
+
+    // Tier 0: schema tables
+    for t in &schema.tables {
+        let tokens: std::collections::HashSet<String> =
+            crate::relevance::tokenize(&t.name).into_iter().collect();
+        let serialized = format!("table: {}\n", t.name);
+        candidates.push(crate::relevance::Candidate {
+            label: format!("table:{}", t.name),
+            tokens,
+            serialized,
+            tier: 0,
+        });
+    }
+
+    let selected = crate::relevance::select_relevant(&description, candidates);
+
+    // 5. Assemble prompt: generation_context always prepended unconditionally (SC#1)
+    let gen_ctx_text = format!(
+        "Generation context:\n- naming: models={}, handlers={}, routes={}\n- avoid: {}\n",
+        gen_ctx.naming_conventions.models,
+        gen_ctx.naming_conventions.handlers,
+        gen_ctx.naming_conventions.routes,
+        gen_ctx.avoid.join(", ")
+    );
+
+    let system_prompt =
+        "You are a Ferro framework expert. Generate a valid ferro_projections::ServiceDef \
+         for the described domain service. Use ONLY the introspection context provided. \
+         Reference actual model names, field names, and route patterns from the context. \
+         Do NOT use generic placeholders — every field should reflect the real project."
+            .to_string();
+
+    let context_block = std::iter::once(gen_ctx_text)
+        .chain(selected)
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Prompt-injection mitigation: wrap description in delimited block (T-171-PI)
+    let user_prompt = format!(
+        "Project introspection:\n{context_block}\n\n\
+         <description>\n{description}\n</description>"
+    );
+
+    // 6. Cost guard (SC#5)
+    let max_tokens = resolve_max_tokens();
+
+    // 7. Structured LLM completion → typed ServiceDef (AICLI-02)
+    println!(
+        "{} Generating ServiceDef via AI...",
+        style("⏳").cyan()
+    );
+
+    let service: ServiceDef = match rt.block_on(ferro_ai::complete_with::<ServiceDef>(
+        client.as_ref(),
+        &user_prompt,
+        ferro_ai::CompleteOptions {
+            max_tokens,
+            system: Some(system_prompt),
+            model_override: None,
+        },
+    )) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!(
+                "{} LLM completion failed: {e}",
+                style("Error:").red().bold()
+            );
+            std::process::exit(1);
+        }
+    };
+
+    // 8. Validate before writing
+    match service.validate() {
+        Ok(warnings) => {
+            for w in &warnings {
+                eprintln!("{} Projection warning: {:?}", style("Warn:").yellow().bold(), w);
+            }
+        }
+        Err(e) => {
+            eprintln!(
+                "{} ServiceDef validation failed: {e}",
+                style("Error:").red().bold()
+            );
+            std::process::exit(1);
+        }
+    }
+
+    // 9. Output (D-03, SC#3): single file only
+    let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    match render_output(&service, dry_run, &cwd) {
+        Ok(OutputResult::DryRun(json)) => {
+            println!("{json}");
+        }
+        Ok(OutputResult::Written(path)) => {
+            println!(
+                "{} Created {}",
+                style("✓").green(),
+                path.display()
+            );
+        }
+        Ok(OutputResult::AlreadyExists(path)) => {
+            eprintln!(
+                "{} Projection already exists at {}. Delete it first or use a different name.",
+                style("Info:").yellow().bold(),
+                path.display()
+            );
+            std::process::exit(0);
+        }
+        Err(e) => {
+            eprintln!("{} {e}", style("Error:").red().bold());
+            std::process::exit(1);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

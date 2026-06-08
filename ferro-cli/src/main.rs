@@ -263,6 +263,16 @@ enum Commands {
         #[arg(long)]
         name: Option<String>,
     },
+    /// Generate a service projection from a natural-language description (AI-powered)
+    #[cfg(feature = "projections")]
+    #[command(name = "ai:make")]
+    AiMake {
+        /// Natural-language description of the service to generate
+        description: String,
+        /// Print the produced ServiceDef as JSON without writing files
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Generate a new API resource
     #[command(name = "make:resource")]
     MakeResource {
@@ -635,6 +645,10 @@ fn main() {
         #[cfg(feature = "projections")]
         Commands::ProjectionCheck { name } => {
             commands::projection_check::execute(name.as_deref());
+        }
+        #[cfg(feature = "projections")]
+        Commands::AiMake { description, dry_run } => {
+            commands::ai_make::run(description, dry_run);
         }
         Commands::MakeResource { name, model } => {
             commands::make_resource::run(name, model);
