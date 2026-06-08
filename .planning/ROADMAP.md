@@ -1910,7 +1910,7 @@ Plans:
 | 166. Structured Outputs & Tool Calling | 5/5 | Complete    | 2026-06-08 |
 | 167. Embeddings & pgvector | 2/2 | Complete    | 2026-06-08 |
 | 168. Framework SSE Primitives | 2/2 | Complete    | 2026-06-08 |
-| 169. StreamText Component | 3/3 | Complete   | 2026-06-08 |
+| 169. StreamText Component | 3/3 | Complete    | 2026-06-08 |
 | 170. ferro-cli Migration | 0/? | Not started | - |
 | 171. ai:make & ai:explain CLI Commands | 0/? | Not started | - |
 | 172. MCP Tool Wrappers | 0/? | Not started | - |
