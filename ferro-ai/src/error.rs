@@ -30,3 +30,24 @@ pub enum Error {
     #[error("confirmation store error: {0}")]
     StoreError(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_is_retryable() {
+        assert!(!Error::Provider { status: Some(400), message: "".into() }.is_retryable());
+        assert!(!Error::Provider { status: Some(401), message: "".into() }.is_retryable());
+        assert!(!Error::Provider { status: Some(403), message: "".into() }.is_retryable());
+        assert!(!Error::Provider { status: Some(404), message: "".into() }.is_retryable());
+        assert!(!Error::Provider { status: Some(422), message: "".into() }.is_retryable());
+        assert!(Error::Provider { status: Some(429), message: "".into() }.is_retryable());
+        assert!(Error::Provider { status: Some(500), message: "".into() }.is_retryable());
+        assert!(Error::Provider { status: Some(503), message: "".into() }.is_retryable());
+        assert!(Error::Provider { status: Some(529), message: "".into() }.is_retryable());
+        assert!(Error::Provider { status: None, message: "".into() }.is_retryable());
+        assert!(!Error::Unsupported.is_retryable());
+        assert!(!Error::Timeout.is_retryable());
+    }
+}
