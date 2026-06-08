@@ -4,14 +4,14 @@ milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: executing
 stopped_at: Phase 167 context gathered
-last_updated: "2026-06-08T11:42:54.099Z"
-last_activity: 2026-06-08 -- Phase 167 execution started
+last_updated: "2026-06-08T12:21:55.038Z"
+last_activity: 2026-06-08
 progress:
   total_phases: 62
-  completed_phases: 48
+  completed_phases: 49
   total_plans: 241
-  completed_plans: 239
-  percent: 99
+  completed_plans: 241
+  percent: 100
 ---
 
 # Project State
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 167 (Embeddings & pgvector) — EXECUTING
-Plan: 1 of 2
+Phase: 180
+Plan: Not started
 Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
       Pre-push reminders (three NEW crates, CI token has publish-update only, not publish-new):
 
@@ -35,7 +35,7 @@ Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscil
       Run each from a local terminal with a full-scope crates.io token before the first CI push.
 Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
 Status: Executing Phase 167
-Last activity: 2026-06-08 -- Phase 167 execution started
+Last activity: 2026-06-08
 
 ## Queued Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
 
@@ -47,7 +47,7 @@ Progress: [████████░░] 84%
 
 **Velocity:**
 
-- Total plans completed: 184
+- Total plans completed: 186
 - Average duration: —
 - Total execution time: —
 
@@ -88,6 +88,7 @@ Progress: [████████░░] 84%
 | 188 | 3 | - | - |
 | 165 | 4 | - | - |
 | 166 | 5 | - | - |
+| 167 | 2 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
