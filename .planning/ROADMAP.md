@@ -1892,7 +1892,12 @@ Plans:
   3. Both tools share the same logic path as the CLI commands — no duplicate implementation
   4. MCP tool descriptions are accurate and sufficient for an agent to use them without out-of-band guidance
   5. `ferro-mcp` version bumped; `cargo test --all-features` passes
-**Plans**: TBD
+**Plans**: 4 plans (Wave 1: 172-01 relevance relocation + ENV_LOCK foundation; Wave 2: 172-02 scaffold_core + ai_explain_core cores; Wave 3: 172-03 register ai_scaffold/ai_explain MCP tools; Wave 4: 172-04 CLI rewire + version bump + docs + full gate)
+Plans:
+- [ ] 172-01-PLAN.md — Relocate relevance filter into ferro-mcp (pub) + add test ENV_LOCK
+- [ ] 172-02-PLAN.md — scaffold_core + ai_explain_core async cores (structured + prose branches)
+- [ ] 172-03-PLAN.md — Register ai_scaffold + ai_explain #[tool] methods in service.rs
+- [ ] 172-04-PLAN.md — Delete CLI relevance dup, thin CLI wrappers, version 0.2.47, docs, full gate
 
 ### Phase 173: make:json-view v2 + projection-roundtrip test (UNBLOCKED — JSON-UI v2 shipped 2026-05-19)
 **Goal**: Upgrade `ferro make:json-view` to use structured outputs with `ServiceDef` introspection and schema-driven component selection. This is the **first concrete `Renderer` over a `ServiceDef` produced by `ai:make`** (Phase 171). Ship AICLI-06 alongside: a single end-to-end test that runs NL description → `ServiceDef` (via `ai:make`) → rendered JSON-UI spec (via `make:json-view` v2) → renderable view. This roundtrip is the structural proof that AI is a first-class projection consumer rather than a parallel scaffolding system.
