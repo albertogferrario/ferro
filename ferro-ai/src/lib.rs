@@ -48,11 +48,15 @@ pub mod config;
 pub mod confirmation;
 pub mod error;
 pub mod schema;
+pub mod tools;
 
 pub use classifier::anthropic::AnthropicProvider;
 pub use classifier::provider::ClassificationProvider;
 pub use classifier::{ClassificationResult, Classifier, ClassifierConfig};
-pub use client::{AnthropicClient, LlmClient, OllamaClient, OpenAiClient, TokenStream};
+pub use client::{
+    AnthropicClient, CompletionRequest, CompletionResponse, LlmClient, OllamaClient, OpenAiClient,
+    ToolChoice, ToolRequest, ToolUseBlock, TokenStream,
+};
 pub use complete::complete;
 pub use config::AiConfig;
 pub use confirmation::events::ConfirmationExpired;
@@ -60,3 +64,4 @@ pub use confirmation::store::InMemoryConfirmationStore;
 pub use confirmation::{ConfirmationStore, PendingActionInfo};
 pub use error::Error;
 pub use schema::for_structured_output;
+pub use tools::{ToolDef, ToolError, ToolRegistry};
