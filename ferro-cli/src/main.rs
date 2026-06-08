@@ -273,6 +273,19 @@ enum Commands {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Explain a route, model, or service in projection terms (AI-powered)
+    #[cfg(feature = "projections")]
+    #[command(name = "ai:explain")]
+    AiExplain {
+        /// Route path, model name, or service/projection name to explain
+        target: String,
+        /// Force resolution to a specific kind: route, model, or service
+        #[arg(long)]
+        r#type: Option<String>,
+        /// Print the assembled prompt without making an LLM call
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Generate a new API resource
     #[command(name = "make:resource")]
     MakeResource {
@@ -649,6 +662,10 @@ fn main() {
         #[cfg(feature = "projections")]
         Commands::AiMake { description, dry_run } => {
             commands::ai_make::run(description, dry_run);
+        }
+        #[cfg(feature = "projections")]
+        Commands::AiExplain { target, r#type, dry_run } => {
+            commands::ai_explain::run(target, r#type, dry_run);
         }
         Commands::MakeResource { name, model } => {
             commands::make_resource::run(name, model);
