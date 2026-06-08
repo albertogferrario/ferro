@@ -1,5 +1,5 @@
 use crate::client::{
-    CompletionRequest, CompletionResponse, LlmClient, Role, ToolChoice, ToolUseBlock, TokenStream,
+    CompletionRequest, CompletionResponse, LlmClient, Role, TokenStream, ToolChoice, ToolUseBlock,
 };
 use crate::error::Error;
 use async_trait::async_trait;

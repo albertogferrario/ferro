@@ -55,7 +55,7 @@ pub use classifier::provider::ClassificationProvider;
 pub use classifier::{ClassificationResult, Classifier, ClassifierConfig};
 pub use client::{
     AnthropicClient, CompletionRequest, CompletionResponse, LlmClient, OllamaClient, OpenAiClient,
-    ToolChoice, ToolRequest, ToolUseBlock, TokenStream,
+    TokenStream, ToolChoice, ToolRequest, ToolUseBlock,
 };
 pub use complete::complete;
 pub use config::AiConfig;

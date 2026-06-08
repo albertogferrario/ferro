@@ -17,7 +17,10 @@
 //! Handler closures must satisfy `'static` — all captured state must be owned or
 //! `Arc`-wrapped. Capturing `&references` will not compile.
 
-use crate::client::{CompletionRequest, CompletionResponse, LlmClient, Message, Role, ToolChoice, ToolRequest, ToolUseBlock};
+use crate::client::{
+    CompletionRequest, CompletionResponse, LlmClient, Message, Role, ToolChoice, ToolRequest,
+    ToolUseBlock,
+};
 use crate::error::Error;
 use futures::future::BoxFuture;
 use std::collections::HashMap;
@@ -258,10 +261,7 @@ impl ToolRegistry {
     ///
     /// Unknown tool names are surfaced to the LLM as a model-recoverable error string
     /// rather than aborting the dispatch loop — the model can select a different tool.
-    async fn call_tool(
-        &self,
-        block: &ToolUseBlock,
-    ) -> Result<serde_json::Value, ToolError> {
+    async fn call_tool(&self, block: &ToolUseBlock) -> Result<serde_json::Value, ToolError> {
         match self.tools.get(&block.name) {
             None => Err(ToolError {
                 message: format!("tool '{}' is not registered", block.name),
@@ -291,9 +291,9 @@ mod tests {
             name: "my_tool".into(),
             description: "does a thing".into(),
             parameters_schema: schema.clone(),
-            handler: make_handler(|_input| async move {
-                Ok(serde_json::json!({"result": "done"}))
-            }),
+            handler: make_handler(
+                |_input| async move { Ok(serde_json::json!({"result": "done"})) },
+            ),
         };
         assert_eq!(def.name, "my_tool");
         assert_eq!(def.description, "does a thing");
@@ -443,13 +443,14 @@ mod tests {
         };
 
         let result = registry.dispatch(vec![], &client).await;
-        assert!(result.is_ok(), "dispatch must complete even after tool error");
+        assert!(
+            result.is_ok(),
+            "dispatch must complete even after tool error"
+        );
 
         let messages = result.unwrap();
         // There must be a Role::Tool message carrying the model-legible error.
-        let tool_result = messages
-            .iter()
-            .find(|m| matches!(m.role, Role::Tool));
+        let tool_result = messages.iter().find(|m| matches!(m.role, Role::Tool));
         assert!(
             tool_result.is_some(),
             "expected a Role::Tool result message"
