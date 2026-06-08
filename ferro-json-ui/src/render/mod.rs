@@ -624,4 +624,49 @@ mod tests {
         // runtime check pins the invariant for future edits.
         assert_eq!(BUILTIN_TYPES.len(), 45);
     }
+
+    #[test]
+    fn render_spec_with_stream_text_emits_init_script() {
+        let spec = Spec::builder()
+            .element("root", Element::new("StreamText").prop("sse_url", "/stream"))
+            .build()
+            .expect("spec builds");
+        let result = render_spec_to_html_with_plugins(&spec, &json!({}));
+        assert!(
+            result.scripts.contains("EventSource"),
+            "init script must be present; got: {}",
+            result.scripts
+        );
+        // T-169-02 / T-169-03: tokens appended as text nodes, never parsed as HTML.
+        assert!(
+            result.scripts.contains("createTextNode"),
+            "tokens must append via createTextNode; got: {}",
+            result.scripts
+        );
+        assert!(
+            !result.scripts.contains("innerHTML"),
+            "init script must never use innerHTML; got: {}",
+            result.scripts
+        );
+        // D-03: source closes on `done` to prevent reconnect loop.
+        assert!(
+            result.scripts.contains("'done'") && result.scripts.contains("close()"),
+            "init script must close on done event; got: {}",
+            result.scripts
+        );
+    }
+
+    #[test]
+    fn render_spec_without_stream_text_emits_no_init_script() {
+        let spec = Spec::builder()
+            .element("root", Element::new("Text").prop("content", "Hello"))
+            .build()
+            .expect("spec builds");
+        let result = render_spec_to_html_with_plugins(&spec, &json!({}));
+        assert!(
+            result.scripts.is_empty(),
+            "no init script when no StreamText; got: {}",
+            result.scripts
+        );
+    }
 }
