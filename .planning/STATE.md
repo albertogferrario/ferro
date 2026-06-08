@@ -20,22 +20,19 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 167 — Embeddings & pgvector
+**Current focus:** Phase 168 — Framework SSE Primitives (v12.1 AI; Phases 165–167 complete)
 
 ## Current Position
 
-Phase: 180
+Phase: 168
 Plan: Not started
-Next: Push master → WAVE2 GH Actions publishes `ferro-rs@0.2.44` → gestiscilo Phase 187 bumps consumer.
-      Pre-push reminders (three NEW crates, CI token has publish-update only, not publish-new):
-
-        1. `cargo publish -p ferro-bundle`      # Phase 183
-        2. `cargo publish -p ferro-deployments` # Phase 186
-        3. `cargo publish -p ferro-assets`      # Phase 187 — deferred from Plan 04 checkpoint
-      Run each from a local terminal with a full-scope crates.io token before the first CI push.
-Workspace version: 0.2.44 (bumped during Phase 184; not yet pushed)
-Status: Executing Phase 167
+Next: Plan Phase 168 (Framework SSE Primitives) — `/gsd-discuss-phase 168 --auto`. Then 169 (StreamText) → 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
+Status: Phase 167 (Embeddings & pgvector) complete and verified 5/5 — ready to plan Phase 168
 Last activity: 2026-06-08
+Workspace version: 0.2.46
+
+Pending publish (v12.3 crates — see "Queued Milestone: v12.3" below; CI token is publish-update only):
+  - `cargo publish -p ferro-bundle` (Phase 183), `-p ferro-deployments` (186), `-p ferro-assets` (187) — one-time manual bootstrap from a local terminal before first CI push.
 
 ## Queued Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
 
