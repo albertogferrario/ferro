@@ -52,6 +52,9 @@ pub mod schema;
 pub mod similarity;
 pub mod tools;
 
+#[cfg(feature = "pgvector")]
+pub mod pgvector;
+
 pub use classifier::anthropic::AnthropicProvider;
 pub use classifier::provider::ClassificationProvider;
 pub use classifier::{ClassificationResult, Classifier, ClassifierConfig};
@@ -69,6 +72,9 @@ pub use error::Error;
 pub use schema::for_structured_output;
 pub use similarity::cosine_similarity;
 pub use tools::{make_handler, ToolDef, ToolError, ToolRegistry};
+
+#[cfg(feature = "pgvector")]
+pub use pgvector::{Neighbor, PgVectorStore};
 
 /// Process-wide mutex that serializes env-var mutation across all test modules.
 ///
