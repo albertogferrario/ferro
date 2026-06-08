@@ -1833,7 +1833,9 @@ Plans:
   3. SSE responses are excluded from `CompressionLayer` at the router level via a structural mechanism (not per-route annotation); the exclusion is tested, not only documented
   4. A keep-alive `:ping\n\n` comment is emitted every 15 seconds on idle SSE connections to prevent reverse-proxy idle-timeout disconnects
   5. An integration test verifies token-by-token delivery: a test SSE endpoint sends three events with delays; the test client receives each event before the next is sent
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 168-01-PLAN.md — FerroBody enum + http_body::Body impl + 17-site Full<Bytes>→FerroBody refactor (load-bearing structural change; buffered-path regression green)
+- [ ] 168-02-PLAN.md — SseEvent wire serializer + SseStream keep-alive + HttpResponse::sse factory + full SSE unit suite
 
 ### Phase 169: StreamText Component
 **Goal**: Ship the `StreamText` ferro-json-ui component that connects to an SSE endpoint URL and renders token-by-token output in place. No external JS framework required.
