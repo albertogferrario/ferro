@@ -332,7 +332,9 @@ fn model_aware_template(name: &str, display_name: &str, fields: &[ModelField]) -
         };
 
         let meaning_str = if meaning == "custom" {
-            format!("FieldMeaning::Custom(\"{}\".into())", field.name)
+            // Use {:?} debug-formatting (same as ai_make.rs) so field names with
+            // special characters produce valid Rust source rather than broken code.
+            format!("FieldMeaning::Custom({:?}.into())", field.name)
         } else {
             meaning.to_string()
         };
