@@ -45,7 +45,7 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 ### AI CLI Commands (the killer-feature surface)
 
-- [ ] **AICLI-01** — Developer can run `ferro ai:make <description>` to produce a typed `ferro_projections::ServiceDef` from a natural-language description. The output is a commit-ready `ServiceDef` definition — fields with `FieldMeaning`, `Intent` hints, `ActionDef`s with `GuardDef`s, `StateMachine` if stateful, `RelationshipDef`s with `Cardinality`. Live `ferro-mcp` introspection is loaded as context so the generated `ServiceDef` references existing models, established `Intent` patterns in the project, naming conventions, and tenant scoping rules. **Output unit is the `ServiceDef`, NOT a pre-scaffolded handler / model / route bundle.** The existing rendering pipeline (`ferro-json-ui` renderer per AICLI-04, `ferro-mcp` introspection renderer, future modality renderers) produces the downstream artifacts.
+- [x] **AICLI-01** — Developer can run `ferro ai:make <description>` to produce a typed `ferro_projections::ServiceDef` from a natural-language description. The output is a commit-ready `ServiceDef` definition — fields with `FieldMeaning`, `Intent` hints, `ActionDef`s with `GuardDef`s, `StateMachine` if stateful, `RelationshipDef`s with `Cardinality`. Live `ferro-mcp` introspection is loaded as context so the generated `ServiceDef` references existing models, established `Intent` patterns in the project, naming conventions, and tenant scoping rules. **Output unit is the `ServiceDef`, NOT a pre-scaffolded handler / model / route bundle.** The existing rendering pipeline (`ferro-json-ui` renderer per AICLI-04, `ferro-mcp` introspection renderer, future modality renderers) produces the downstream artifacts.
 
 - [x] **AICLI-02** — `ferro ai:make` uses structured outputs (AISDK-02) to produce the `ServiceDef` directly. No `ScaffoldPlan` intermediary type. The schema the LLM completes against IS the schema for `ServiceDef` itself, derived from the existing `#[derive(Serialize, Deserialize, JsonSchema)]` on the `ferro-projections` types and normalized by the `ServiceDef`-aware path in AISDK-02. Non-projection glue (registration on `App`, handler skeleton for `ServiceDef::handle(...)`, migration generation) is invoked **after** the `ServiceDef` is produced, by calling the existing `make:*` helpers — those helpers consume the `ServiceDef`, they don't compete with it.
 
@@ -112,7 +112,7 @@ Phase numbers reflect the ROADMAP.md v12.1 AI milestone section (Phases 165-173)
 | AISDK-06 | Phase 170 (ferro-cli Migration) | Complete |
 | AISSE-01 | Phase 168 (Framework SSE Primitives) | Complete |
 | AISSE-02 | Phase 169 (StreamText Component) | Complete |
-| AICLI-01 | Phase 171 (ai:make & ai:explain CLI Commands) | Pending |
+| AICLI-01 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
 | AICLI-02 | Phase 171 (ai:make & ai:explain CLI Commands) | Complete |
 | AICLI-03 | Phase 171 (ai:make & ai:explain CLI Commands) | Pending |
 | AICLI-04 | Phase 173 (make:json-view v2) | Unblocked — v12.0 shipped 2026-05-19 |
