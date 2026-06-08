@@ -167,7 +167,13 @@ impl SseStream {
         // interval_at defers the first tick, avoiding the immediate-first-tick pitfall.
         let period = Duration::from_secs(15);
         let ping = interval_at(Instant::now() + period, period);
-        (tx, SseStream { receiver: rx, ping_interval: ping })
+        (
+            tx,
+            SseStream {
+                receiver: rx,
+                ping_interval: ping,
+            },
+        )
     }
 
     /// Returns `true` if the internal channel has been closed (sender dropped).
@@ -185,7 +191,13 @@ impl SseStream {
     ) -> (mpsc::Sender<SseEvent>, Self) {
         let (tx, rx) = mpsc::channel(buffer);
         let ping = interval_at(Instant::now() + interval_period, interval_period);
-        (tx, SseStream { receiver: rx, ping_interval: ping })
+        (
+            tx,
+            SseStream {
+                receiver: rx,
+                ping_interval: ping,
+            },
+        )
     }
 }
 
@@ -239,6 +251,7 @@ impl Body for SseStream {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::http::response::HttpResponse;
     use futures_util::task::noop_waker;
 
     // ── SseEvent wire format ──────────────────────────────────────────────────
@@ -336,14 +349,28 @@ mod tests {
         // event with embedded newline
         let wire = SseEvent::data("x").event("a\nb").to_wire();
         let event_lines: Vec<&str> = wire.lines().filter(|l| l.starts_with("event:")).collect();
-        assert_eq!(event_lines.len(), 1, "expected exactly one event: line, got: {wire:?}");
-        assert_eq!(event_lines[0], "event: ab", "embedded newline should be stripped, not injected");
+        assert_eq!(
+            event_lines.len(),
+            1,
+            "expected exactly one event: line, got: {wire:?}"
+        );
+        assert_eq!(
+            event_lines[0], "event: ab",
+            "embedded newline should be stripped, not injected"
+        );
 
         // id with embedded carriage-return
         let wire2 = SseEvent::data("y").id("c\rd").to_wire();
         let id_lines: Vec<&str> = wire2.lines().filter(|l| l.starts_with("id:")).collect();
-        assert_eq!(id_lines.len(), 1, "expected exactly one id: line, got: {wire2:?}");
-        assert_eq!(id_lines[0], "id: cd", "embedded carriage-return should be stripped, not injected");
+        assert_eq!(
+            id_lines.len(),
+            1,
+            "expected exactly one id: line, got: {wire2:?}"
+        );
+        assert_eq!(
+            id_lines[0], "id: cd",
+            "embedded carriage-return should be stripped, not injected"
+        );
     }
 
     /// T-168-09: incremental delivery — event N frame before event N+1 is sent
@@ -376,6 +403,58 @@ mod tests {
         assert!(
             matches!(still_pending, Poll::Pending),
             "expected Poll::Pending before N+1 send"
+        );
+    }
+
+    // ── Factory headers + FerroBody::Stream variant (T-168-07, T-168-08) ─────
+
+    /// T-168-07: SSE response includes all 4 required headers.
+    #[tokio::test]
+    async fn sse_factory_headers() {
+        let (_, resp) = HttpResponse::sse_channel(16);
+        let headers = resp.headers();
+
+        let header_value =
+            |name: &str| -> Option<&str> { headers.get(name).and_then(|v| v.to_str().ok()) };
+
+        assert_eq!(
+            header_value("content-type"),
+            Some("text/event-stream"),
+            "Content-Type must be text/event-stream"
+        );
+        assert_eq!(
+            header_value("cache-control"),
+            Some("no-cache"),
+            "Cache-Control must be no-cache"
+        );
+        assert_eq!(
+            header_value("connection"),
+            Some("keep-alive"),
+            "Connection must be keep-alive"
+        );
+        assert_eq!(
+            header_value("x-accel-buffering"),
+            Some("no"),
+            "X-Accel-Buffering must be no"
+        );
+    }
+
+    /// T-168-08 (D-06 / SC#3 reinterpreted): SSE response body is FerroBody::Stream, not Full.
+    ///
+    /// A buffered response body (via `into_hyper()`) must return `is_streaming() == false`.
+    /// The SSE response (via `sse_channel()`) must return `is_streaming() == true`.
+    #[tokio::test]
+    async fn sse_response_is_stream_variant() {
+        let (_, sse_resp) = HttpResponse::sse_channel(16);
+        assert!(
+            sse_resp.body().is_streaming(),
+            "SSE response body must be FerroBody::Stream"
+        );
+
+        let buffered_resp = HttpResponse::text("hello").into_hyper();
+        assert!(
+            !buffered_resp.body().is_streaming(),
+            "buffered response body must NOT be FerroBody::Stream"
         );
     }
 }

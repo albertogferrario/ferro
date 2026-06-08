@@ -7,8 +7,8 @@
 use crate::error::FrameworkError;
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
-use hyper::body::{Body, Frame, SizeHint};
 use hyper::body::Incoming;
+use hyper::body::{Body, Frame, SizeHint};
 use serde::de::DeserializeOwned;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -99,6 +99,19 @@ impl Body for FerroBody {
             FerroBody::Full(b) => b.size_hint(),
             FerroBody::Stream(s) => s.size_hint(),
         }
+    }
+}
+
+impl FerroBody {
+    /// Returns `true` if this body is the streaming `Stream` variant.
+    ///
+    /// # Structural compression rule (D-06)
+    ///
+    /// If a compression layer is added in a future phase, it must check `is_streaming()` and
+    /// pass `FerroBody::Stream` bodies through untouched — only `FerroBody::Full` can be
+    /// whole-body buffered without breaking the SSE protocol.
+    pub fn is_streaming(&self) -> bool {
+        matches!(self, FerroBody::Stream(_))
     }
 }
 
