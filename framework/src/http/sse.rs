@@ -11,11 +11,11 @@
 //!
 //! # Security note
 //!
-//! The `event` and `id` fields of [`SseEvent`] are set by application code, not from raw
-//! user input. If these fields could contain user-controlled data, the application layer must
-//! sanitize them — the SSE primitive does not escape field values. The `data` field is safe:
-//! newlines in `data` produce repeated `data:` lines per the WHATWG spec, which is not an
-//! injection risk.
+//! The `event` and `id` builder setters on [`SseEvent`] strip `\n` and `\r` characters to
+//! prevent SSE field injection: a caller-supplied value cannot inject an extra SSE field or
+//! event boundary. The `data` field is safe by construction — newlines in `data` produce
+//! repeated `data:` lines per the WHATWG spec, which is not an injection risk. The `retry`
+//! field is `u64` and cannot carry newlines.
 
 use bytes::Bytes;
 use hyper::body::{Body, Frame, SizeHint};
@@ -69,14 +69,24 @@ impl SseEvent {
     }
 
     /// Set the named event type.
+    ///
+    /// `event` is a single-line SSE field. Any `\n` or `\r` characters in the value are
+    /// stripped to prevent SSE field injection. `data` may contain newlines (rendered as
+    /// multiple `data:` lines per the WHATWG spec), so it is not stripped.
     pub fn event(mut self, event: impl Into<String>) -> Self {
-        self.event = Some(event.into());
+        let s: String = event.into();
+        self.event = Some(s.replace(['\n', '\r'], ""));
         self
     }
 
     /// Set the last-event ID.
+    ///
+    /// `id` is a single-line SSE field. Any `\n` or `\r` characters in the value are
+    /// stripped to prevent SSE field injection. `data` may contain newlines (rendered as
+    /// multiple `data:` lines per the WHATWG spec), so it is not stripped.
     pub fn id(mut self, id: impl Into<String>) -> Self {
-        self.id = Some(id.into());
+        let s: String = id.into();
+        self.id = Some(s.replace(['\n', '\r'], ""));
         self
     }
 
@@ -314,6 +324,26 @@ mod tests {
 
         let data = frame.into_data().expect("expected data frame");
         assert_eq!(data, Bytes::from_static(b":ping\n\n"));
+    }
+
+    /// T-168-SEC: field injection — newline in `event`/`id` is stripped, never injected.
+    ///
+    /// An `event` or `id` value containing `\n` or `\r` must produce exactly one
+    /// `event:`/`id:` field line in the wire output. The newline is stripped so a
+    /// caller-supplied value cannot inject extra SSE fields.
+    #[test]
+    fn sse_field_injection_newline_stripped() {
+        // event with embedded newline
+        let wire = SseEvent::data("x").event("a\nb").to_wire();
+        let event_lines: Vec<&str> = wire.lines().filter(|l| l.starts_with("event:")).collect();
+        assert_eq!(event_lines.len(), 1, "expected exactly one event: line, got: {wire:?}");
+        assert_eq!(event_lines[0], "event: ab", "embedded newline should be stripped, not injected");
+
+        // id with embedded carriage-return
+        let wire2 = SseEvent::data("y").id("c\rd").to_wire();
+        let id_lines: Vec<&str> = wire2.lines().filter(|l| l.starts_with("id:")).collect();
+        assert_eq!(id_lines.len(), 1, "expected exactly one id: line, got: {wire2:?}");
+        assert_eq!(id_lines[0], "id: cd", "embedded carriage-return should be stripped, not injected");
     }
 
     /// T-168-09: incremental delivery — event N frame before event N+1 is sent
