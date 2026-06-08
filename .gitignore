@@ -32,3 +32,6 @@ node_modules/
 
 # GSD workspace clones (/gsd-new-workspace) — local-only worktrees and planning
 .clone/
+
+# Generated cargo doc output (root doc/)
+/doc/
