@@ -64,6 +64,8 @@ pub use config::AiConfig;
 pub use confirmation::events::ConfirmationExpired;
 pub use confirmation::store::InMemoryConfirmationStore;
 pub use confirmation::{ConfirmationStore, PendingActionInfo};
+pub use embed::embed;
 pub use error::Error;
 pub use schema::for_structured_output;
+pub use similarity::cosine_similarity;
 pub use tools::{make_handler, ToolDef, ToolError, ToolRegistry};

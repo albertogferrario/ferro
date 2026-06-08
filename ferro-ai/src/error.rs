@@ -64,6 +64,15 @@ pub enum Error {
     /// Confirmation store operation failed.
     #[error("confirmation store error: {0}")]
     StoreError(String),
+
+    /// sqlx database error from the `pgvector` store.
+    ///
+    /// Only reachable when the `pgvector` feature is enabled and
+    /// `PgVectorStore::store` or `PgVectorStore::nearest` is called.
+    /// The message is `sqlx::Error::to_string()` — it does not contain
+    /// embedding data (`f32` arrays are not included in sqlx error messages).
+    #[error("pgvector store error: {0}")]
+    Sqlx(String),
 }
 
 impl Error {
