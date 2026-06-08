@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: planning
+status: executing
 stopped_at: Phase 168 context gathered
-last_updated: "2026-06-08T13:37:00.067Z"
-last_activity: 2026-06-08
+last_updated: "2026-06-08T13:58:39.544Z"
+last_activity: 2026-06-08 -- Phase 168 execution started
 progress:
   total_phases: 62
   completed_phases: 49
-  total_plans: 241
+  total_plans: 243
   completed_plans: 241
-  percent: 100
+  percent: 99
 ---
 
 # Project State
@@ -20,15 +20,15 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 168 — Framework SSE Primitives (v12.1 AI; Phases 165–167 complete)
+**Current focus:** Phase 168 — Framework SSE Primitives
 
 ## Current Position
 
-Phase: 168
-Plan: Not started
+Phase: 168 (Framework SSE Primitives) — EXECUTING
+Plan: 1 of 2
 Next: Plan Phase 168 (Framework SSE Primitives) — `/gsd-discuss-phase 168 --auto`. Then 169 (StreamText) → 170 (ferro-cli migration) → 171 (ai:make/ai:explain — milestone killer feature) → 172 (MCP wrappers).
-Status: Phase 167 (Embeddings & pgvector) complete and verified 5/5 — ready to plan Phase 168
-Last activity: 2026-06-08
+Status: Executing Phase 168
+Last activity: 2026-06-08 -- Phase 168 execution started
 Workspace version: 0.2.46
 
 Pending publish (v12.3 crates — see "Queued Milestone: v12.3" below; CI token is publish-update only):
