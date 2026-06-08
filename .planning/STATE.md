@@ -1,8 +1,8 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
-status: verifying
+milestone: v12.1
+milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
+status: planning
 stopped_at: Completed 188-03-PLAN.md
 last_updated: "2026-06-08T00:03:50.419Z"
 last_activity: 2026-06-08

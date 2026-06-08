@@ -25,7 +25,7 @@ The structured-outputs schema normalizer (AISDK-02) is `ServiceDef`-aware: when 
 
 ### AI SDK — ferro-ai Expansion
 
-- [ ] **AISDK-01** — Developer can configure and use an LLM provider (Anthropic, OpenAI, Groq via OpenAI-compatible endpoint, Ollama) via env vars through a unified `LlmProvider` trait; existing `Classifier<T>` API is preserved or cleanly superseded.
+- [ ] **AISDK-01** — Developer can configure and use an LLM provider (Anthropic, OpenAI, Groq via OpenAI-compatible endpoint, Ollama) via env vars through a unified `LlmClient` trait; existing `Classifier<T>` API is preserved or cleanly superseded.
 
 - [ ] **AISDK-02** — Developer can request typed responses via `ferro_ai::complete::<T>()` backed by a JSON Schema normalizer that resolves `schemars` `$ref` / `$defs` incompatibility with provider structured-output APIs. **`ServiceDef`-aware:** when `T` is `ferro_projections::ServiceDef` (or contains one), the normalizer emits a constrained schema that locks the LLM to valid projection shapes — `FieldMeaning` values from the published enum, `Intent` values from the seven structural intents, `Cardinality` from the relationship enum, `ActionDef` / `GuardDef` / `StateDef` shapes derived from `ferro-projections`. This is what makes AI output structurally inseparable from the intent system.
 

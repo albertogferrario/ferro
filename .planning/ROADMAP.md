@@ -472,7 +472,7 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 
 ---
 
-### 📋 v12.4 Form Validation DX — Remaining Scope (Planned; was v12.1, renamed 2026-06-07)
+### 📋 v12.4 Form Validation DX — Remaining Scope (Planned; renamed 2026-06-07, see status note)
 
 > **Status reconciliation (2026-06-07):** Renamed from v12.1 to resolve a label collision with v12.1 AI (Phases 165-173). Phase-137 scope below (Validator struct, sync rules, old-input flash, `req.old()`) shipped organically via `framework/src/validation/` and `Request::old()` — only Phases 138-139 substance remains. Phase numbers 137-139 are stale reservations; renumber at plan time.
 
