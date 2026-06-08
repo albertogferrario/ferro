@@ -1896,7 +1896,7 @@ Plans:
 Plans:
 - [x] 172-01-PLAN.md — Relocate relevance filter into ferro-mcp (pub) + add test ENV_LOCK
 - [x] 172-02-PLAN.md — scaffold_core + ai_explain_core async cores (structured + prose branches)
-- [ ] 172-03-PLAN.md — Register ai_scaffold + ai_explain #[tool] methods in service.rs
+- [x] 172-03-PLAN.md — Register ai_scaffold + ai_explain #[tool] methods in service.rs
 - [ ] 172-04-PLAN.md — Delete CLI relevance dup, thin CLI wrappers, version 0.2.47, docs, full gate
 
 ### Phase 173: make:json-view v2 + projection-roundtrip test (UNBLOCKED — JSON-UI v2 shipped 2026-05-19)
@@ -1923,7 +1923,7 @@ Plans:
 | 169. StreamText Component | 3/3 | Complete    | 2026-06-08 |
 | 170. ferro-cli Migration | 1/1 | Complete    | 2026-06-08 |
 | 171. ai:make & ai:explain CLI Commands | 4/4 | Complete    | 2026-06-08 |
-| 172. MCP Tool Wrappers | 2/4 | In Progress|  |
+| 172. MCP Tool Wrappers | 3/4 | In Progress|  |
 | 173. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |
 
 ### Phase 180: Declarative action handler primitive — typed Result return so POST handlers redirect-on-error without manual try-catch ladders
@@ -1931,7 +1931,7 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
