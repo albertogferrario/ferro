@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: verifying
-stopped_at: Completed 171-04 (all tasks done; live LLM quality checks deferred as PENDING in SUMMARY)
-last_updated: "2026-06-08T19:41:50.342Z"
+stopped_at: Phase 172 context gathered
+last_updated: "2026-06-08T20:02:00.171Z"
 last_activity: 2026-06-08
 progress:
   total_phases: 62
@@ -348,7 +348,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T19:26:37.358Z
-Stopped at: Completed 171-04 (all tasks done; live LLM quality checks deferred as PENDING in SUMMARY)
-Resume file: None
+Last session: 2026-06-08T20:02:00.146Z
+Stopped at: Phase 172 context gathered
+Resume file: .planning/phases/172-mcp-tool-wrappers/172-CONTEXT.md
 Next action: gestiscilo points `ferro = { path = "../ferro" }` and runs friction phases 162-164; v12.1 AI plan-phase target is now `/gsd-plan-phase 165` — LlmClient Trait & Provider Implementations
