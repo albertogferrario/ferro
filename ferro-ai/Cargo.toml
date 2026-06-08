@@ -26,6 +26,20 @@ schemars = { version = "1", features = ["derive"] }
 dashmap = "6"
 chrono = { version = "0.4", features = ["serde"] }
 
+# pgvector 0.4 supports sqlx >= 0.8, < 0.10 (docs.rs/pgvector/0.4.2).
+# Workspace Cargo.lock pins sqlx 0.8.6 via sea-orm; "0.8" matches that pin and
+# avoids a second sqlx compilation. Do NOT bump to "0.9".
+pgvector = { version = "0.4", features = ["sqlx"], optional = true }
+sqlx     = { version = "0.8", features = ["postgres", "runtime-tokio"], optional = true }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 jsonschema = { version = "0.46", default-features = false }
+
+[features]
+# Vector persistence/search over raw sqlx. SC#4 reconciliation (D-12): the only NEW
+# vector-specific direct dependency is `pgvector 0.4`; `sqlx` is the transport the
+# public PgVectorStore API is defined over (pgvector 0.4 does not re-export PgPool).
+pgvector       = ["dep:pgvector", "dep:sqlx"]
+# Enables the gated integration test in tests/pgvector_integration.rs.
+postgres-tests = ["pgvector"]
