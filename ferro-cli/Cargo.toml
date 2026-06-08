@@ -43,6 +43,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ferro-json-ui = { path = "../ferro-json-ui", version = "0.2" }
 ferro-mcp = { path = "../ferro-mcp", version = "0.2" }
+ferro-ai = { path = "../ferro-ai", version = "0.2" }
 ferro-projections = { path = "../ferro-projections", version = "0.2", optional = true }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 rand = "0.8"

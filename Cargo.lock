@@ -2320,6 +2320,7 @@ dependencies = [
  "dialoguer",
  "dirs",
  "dotenvy",
+ "ferro-ai",
  "ferro-json-ui",
  "ferro-mcp",
  "ferro-projections",
