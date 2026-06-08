@@ -67,6 +67,7 @@ where
         messages: vec![Message {
             role: Role::User,
             content: prompt.to_string(),
+            tool_call_id: None,
         }],
         max_tokens: 4096,
         model_override: None,

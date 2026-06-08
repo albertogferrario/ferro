@@ -62,14 +62,24 @@ impl AnthropicClient {
         let messages: Vec<serde_json::Value> = request
             .messages
             .iter()
-            .map(|m| {
-                serde_json::json!({
-                    "role": match m.role {
-                        Role::User | Role::Tool => "user",
-                        Role::Assistant => "assistant",
-                    },
-                    "content": m.content,
-                })
+            .map(|m| match m.role {
+                Role::Tool => {
+                    // Anthropic wire format: role "user" with a tool_result content block.
+                    // tool_use_id must be a real field, not embedded in the content string.
+                    let tool_use_id = m.tool_call_id.as_deref().unwrap_or("");
+                    serde_json::json!({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_id,
+                            "content": m.content,
+                        }]
+                    })
+                }
+                Role::User => serde_json::json!({"role": "user", "content": m.content}),
+                Role::Assistant => {
+                    serde_json::json!({"role": "assistant", "content": m.content})
+                }
             })
             .collect();
 
@@ -303,7 +313,11 @@ impl LlmClient for AnthropicClient {
         let stop_reason = json["stop_reason"].as_str().unwrap_or("");
         if stop_reason == "tool_use" {
             let blocks = parse_anthropic_tool_use_blocks(&json["content"]);
-            return Ok(CompletionResponse::ToolUse(blocks));
+            let assistant_content = json["content"].to_string();
+            return Ok(CompletionResponse::ToolUse {
+                blocks,
+                assistant_content,
+            });
         }
 
         // end_turn or any other stop reason → extract text
@@ -343,6 +357,7 @@ mod tests {
             messages: vec![Message {
                 role: Role::User,
                 content: "hi".into(),
+                tool_call_id: None,
             }],
             max_tokens: 100,
             model_override: None,
@@ -364,6 +379,7 @@ mod tests {
             messages: vec![Message {
                 role: Role::User,
                 content: "hi".into(),
+                tool_call_id: None,
             }],
             max_tokens: 100,
             model_override: None,
@@ -384,6 +400,7 @@ mod tests {
             messages: vec![Message {
                 role: Role::User,
                 content: "hi".into(),
+                tool_call_id: None,
             }],
             max_tokens: 100,
             model_override: None,
@@ -428,5 +445,56 @@ mod tests {
     #[test]
     fn test_anthropic_is_object_safe() {
         let _: Box<dyn LlmClient> = Box::new(AnthropicClient::new("k".into(), None));
+    }
+
+    /// CR-01 regression: tool result messages must emit a tool_result content block,
+    /// not a plain string. The tool_use_id must appear as a real field, not embedded
+    /// inside the content string.
+    #[test]
+    fn test_build_body_tool_result_wire_format() {
+        let client = AnthropicClient::new("k".into(), None);
+        let request = CompletionRequest {
+            system: None,
+            messages: vec![
+                Message {
+                    role: Role::User,
+                    content: "what is 2+2?".into(),
+                    tool_call_id: None,
+                },
+                Message {
+                    role: Role::Tool,
+                    content: "4".into(),
+                    tool_call_id: Some("toolu_abc123".into()),
+                },
+            ],
+            max_tokens: 100,
+            model_override: None,
+            schema: None,
+            tools: None,
+            tool_choice: None,
+        };
+        let body = client.build_body(&request, false);
+        let msgs = body["messages"].as_array().expect("messages must be array");
+        assert_eq!(msgs.len(), 2);
+
+        // The tool result message must use role "user" with a content array block.
+        let tool_msg = &msgs[1];
+        assert_eq!(
+            tool_msg["role"], "user",
+            "Anthropic tool result must use role 'user'"
+        );
+
+        let content_arr = tool_msg["content"]
+            .as_array()
+            .expect("tool result content must be an array of blocks");
+        assert_eq!(content_arr.len(), 1);
+
+        let block = &content_arr[0];
+        assert_eq!(block["type"], "tool_result");
+        assert_eq!(
+            block["tool_use_id"], "toolu_abc123",
+            "tool_use_id must be a real field, not embedded in content"
+        );
+        assert_eq!(block["content"], "4");
     }
 }

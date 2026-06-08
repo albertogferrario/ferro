@@ -49,6 +49,7 @@ impl ClassificationProvider for AnthropicProvider {
             messages: vec![Message {
                 role: Role::User,
                 content: user_prompt.to_string(),
+                tool_call_id: None,
             }],
             max_tokens: config.max_tokens,
             model_override: if config.model.is_empty() {
@@ -83,6 +84,7 @@ mod tests {
             messages: vec![Message {
                 role: Role::User,
                 content: "Hello world".into(),
+                tool_call_id: None,
             }],
             max_tokens: 1024,
             model_override: Some("claude-opus-4-6".into()),
@@ -112,6 +114,7 @@ mod tests {
             messages: vec![Message {
                 role: Role::User,
                 content: "hi".into(),
+                tool_call_id: None,
             }],
             max_tokens: 512,
             model_override: None, // empty config.model → no override

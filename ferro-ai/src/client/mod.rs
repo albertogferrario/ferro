@@ -49,6 +49,13 @@ pub struct Message {
     pub role: Role,
     /// The text content of the message.
     pub content: String,
+    /// Provider call identifier for tool results.
+    ///
+    /// Set by `ToolRegistry::result_to_message` when `role == Role::Tool`.
+    /// Anthropic places this as `tool_use_id` inside a `tool_result` content block.
+    /// OpenAI places this as the top-level `tool_call_id` field.
+    /// `None` for all non-tool messages.
+    pub tool_call_id: Option<String>,
 }
 
 /// A tool definition included in a completion request.
@@ -93,7 +100,18 @@ pub enum CompletionResponse {
     /// The LLM produced a final text response (stop_reason "end_turn" / finish_reason "stop").
     Text(String),
     /// The LLM wants to invoke tools (stop_reason "tool_use" / finish_reason "tool_calls").
-    ToolUse(Vec<ToolUseBlock>),
+    ///
+    /// Carries both the parsed tool-use blocks and the raw assistant content string.
+    /// The dispatch loop must push an `Assistant` message with `assistant_content` into
+    /// history BEFORE appending tool result messages — both Anthropic and OpenAI require
+    /// the assistant's tool-call turn to precede the corresponding tool_result messages.
+    ToolUse {
+        /// Parsed tool-use blocks to dispatch.
+        blocks: Vec<ToolUseBlock>,
+        /// Raw assistant content (JSON array string for Anthropic, or tool_calls JSON for
+        /// OpenAI). Stored verbatim so the dispatch loop can reconstruct the assistant message.
+        assistant_content: String,
+    },
 }
 
 /// Request for a text completion from an LLM provider.

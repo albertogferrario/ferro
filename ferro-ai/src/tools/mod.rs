@@ -182,17 +182,20 @@ impl ToolRegistry {
     ///
     /// On `Ok(value)` → JSON-serialized result.
     /// On `Err(ToolError { message })` → the model-legible message (SC#6).
+    ///
+    /// The `block_id` is stored in `tool_call_id` so each provider's `build_body`
+    /// can place it in the correct wire location without string encoding/decoding:
+    /// - Anthropic: `tool_use_id` inside a `tool_result` content block.
+    /// - OpenAI: top-level `tool_call_id` field on the `role: "tool"` message.
     fn result_to_message(block_id: &str, result: Result<serde_json::Value, ToolError>) -> Message {
         let content = match result {
             Ok(value) => value.to_string(),
             Err(te) => te.message,
         };
-        // Role::Tool — providers translate to their wire format in build_body
-        // (Anthropic: role "user" + type "tool_result"; OpenAI: role "tool")
-        // Content carries the block_id reference so the provider can link it.
         Message {
             role: Role::Tool,
-            content: format!("[tool_use_id:{block_id}] {content}"),
+            content,
+            tool_call_id: Some(block_id.to_string()),
         }
     }
 
@@ -220,19 +223,20 @@ impl ToolRegistry {
         client: &dyn LlmClient,
     ) -> Result<Vec<Message>, Error> {
         for iteration in 0..=self.max_iterations {
+            // WR-02: warn fires before the cap check so it is reachable when max_iterations > 5.
+            if iteration == 5 && self.max_iterations > 5 {
+                warn!(
+                    iteration,
+                    max = self.max_iterations,
+                    "tool dispatch at iteration 5"
+                );
+            }
             if iteration == self.max_iterations {
                 error!(
                     max_iterations = self.max_iterations,
                     "tool dispatch hit iteration limit"
                 );
                 return Err(Error::ToolIterationLimit(self.max_iterations));
-            }
-            if iteration == 5 {
-                warn!(
-                    iteration,
-                    max = self.max_iterations,
-                    "tool dispatch at iteration 5"
-                );
             }
 
             let request = self.build_request(messages.clone());
@@ -243,10 +247,22 @@ impl ToolRegistry {
                     messages.push(Message {
                         role: Role::Assistant,
                         content: text,
+                        tool_call_id: None,
                     });
                     return Ok(messages);
                 }
-                CompletionResponse::ToolUse(blocks) => {
+                // CR-02: push the assistant tool-use turn BEFORE the tool result messages.
+                // Both Anthropic and OpenAI require alternating roles with the assistant's
+                // tool_use/tool_calls block present before the corresponding tool_result.
+                CompletionResponse::ToolUse {
+                    blocks,
+                    assistant_content,
+                } => {
+                    messages.push(Message {
+                        role: Role::Assistant,
+                        content: assistant_content,
+                        tool_call_id: None,
+                    });
                     for block in &blocks {
                         let result = self.call_tool(block).await;
                         messages.push(Self::result_to_message(&block.id, result));
@@ -366,11 +382,17 @@ mod tests {
             if n >= self.stop_after {
                 Ok(CompletionResponse::Text("done".into()))
             } else {
-                Ok(CompletionResponse::ToolUse(vec![ToolUseBlock {
-                    id: format!("call_{n}"),
-                    name: self.tool_name.clone(),
-                    input: serde_json::json!({}),
-                }]))
+                Ok(CompletionResponse::ToolUse {
+                    blocks: vec![ToolUseBlock {
+                        id: format!("call_{n}"),
+                        name: self.tool_name.clone(),
+                        input: serde_json::json!({}),
+                    }],
+                    assistant_content: format!(
+                        r#"[{{"type":"tool_use","id":"call_{n}","name":"{}","input":{{}}}}]"#,
+                        self.tool_name
+                    ),
+                })
             }
         }
     }
@@ -464,6 +486,91 @@ mod tests {
         assert!(
             !content.contains("panicked at"),
             "tool result must not contain panic text"
+        );
+    }
+
+    /// CR-02 regression: the dispatch loop must push the assistant tool-use turn into
+    /// history BEFORE the tool result messages. Providers require alternating roles.
+    #[tokio::test]
+    async fn dispatch_includes_assistant_turn_before_tool_results() {
+        let mut registry = ToolRegistry::new(5);
+
+        registry.register(ToolDef {
+            name: "echo".into(),
+            description: "echoes input".into(),
+            parameters_schema: serde_json::json!({}),
+            handler: make_handler(|_| async move { Ok(serde_json::json!({"result": "ok"})) }),
+        });
+
+        // Client: one ToolUse call then Text.
+        let calls = Arc::new(AtomicU32::new(0));
+        let client = LoopingClient {
+            calls,
+            stop_after: 1,
+            tool_name: "echo".into(),
+        };
+
+        let messages = registry.dispatch(vec![], &client).await.unwrap();
+
+        // Find positions of the assistant tool-use turn and the tool result turn.
+        let assistant_pos = messages
+            .iter()
+            .position(|m| matches!(m.role, Role::Assistant) && m.content.contains("tool_use"))
+            .expect("must have an assistant turn with tool_use content");
+        let tool_result_pos = messages
+            .iter()
+            .position(|m| matches!(m.role, Role::Tool))
+            .expect("must have a tool result message");
+
+        assert!(
+            assistant_pos < tool_result_pos,
+            "assistant tool-use turn (pos {assistant_pos}) must precede tool result (pos {tool_result_pos})"
+        );
+
+        // The tool result must carry a real tool_call_id, not embedded in content.
+        let tool_msg = &messages[tool_result_pos];
+        assert!(
+            tool_msg.tool_call_id.is_some(),
+            "tool result message must carry tool_call_id"
+        );
+        assert!(
+            !tool_msg.content.contains("call_"),
+            "tool_call_id must not be embedded in content string, got: {}",
+            tool_msg.content
+        );
+    }
+
+    /// WR-03: call_tool returns a ToolError (not Error::ToolNotFound) for unknown tool names,
+    /// so the dispatch loop can surface it to the LLM as a recoverable message.
+    /// Error::ToolNotFound is reserved as a public API variant for future direct-dispatch helpers.
+    #[tokio::test]
+    async fn dispatch_surfaces_unknown_tool_as_tool_error() {
+        // Registry with no registered tools.
+        let registry = ToolRegistry::new(5);
+
+        // Client returns one ToolUse for an unregistered tool, then Text.
+        let calls = Arc::new(AtomicU32::new(0));
+        let client = LoopingClient {
+            calls,
+            stop_after: 1,
+            tool_name: "nonexistent_tool".into(),
+        };
+
+        let result = registry.dispatch(vec![], &client).await;
+        // Dispatch must complete (not abort with ToolNotFound) — unknown tool is LLM-recoverable.
+        assert!(
+            result.is_ok(),
+            "dispatch must not abort for unknown tool; got {result:?}"
+        );
+        let messages = result.unwrap();
+        let tool_msg = messages
+            .iter()
+            .find(|m| matches!(m.role, Role::Tool))
+            .expect("must have a tool result message for the unknown tool");
+        assert!(
+            tool_msg.content.contains("not registered"),
+            "unknown tool error must surface to LLM as a message, got: {}",
+            tool_msg.content
         );
     }
 }

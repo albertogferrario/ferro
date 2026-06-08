@@ -1,5 +1,5 @@
 use crate::client::{
-    CompletionRequest, CompletionResponse, LlmClient, Role, TokenStream, ToolUseBlock,
+    CompletionRequest, CompletionResponse, LlmClient, Role, TokenStream, ToolChoice, ToolUseBlock,
 };
 use crate::error::Error;
 use async_trait::async_trait;
@@ -67,15 +67,21 @@ impl OpenAiClient {
         let messages: Vec<serde_json::Value> = request
             .messages
             .iter()
-            .map(|m| {
-                serde_json::json!({
-                    "role": match m.role {
-                        Role::User => "user",
-                        Role::Assistant => "assistant",
-                        Role::Tool => "tool",
-                    },
-                    "content": m.content,
-                })
+            .map(|m| match m.role {
+                Role::Tool => {
+                    // OpenAI wire format: role "tool" with tool_call_id as a real field.
+                    // tool_call_id must not be embedded in the content string.
+                    let call_id = m.tool_call_id.as_deref().unwrap_or("");
+                    serde_json::json!({
+                        "role": "tool",
+                        "tool_call_id": call_id,
+                        "content": m.content,
+                    })
+                }
+                Role::User => serde_json::json!({"role": "user", "content": m.content}),
+                Role::Assistant => {
+                    serde_json::json!({"role": "assistant", "content": m.content})
+                }
             })
             .collect();
 
@@ -113,7 +119,11 @@ impl OpenAiClient {
                 })
                 .collect();
             body["tools"] = serde_json::Value::Array(tools_json);
-            body["tool_choice"] = serde_json::json!("auto");
+            // WR-01: honor request.tool_choice; default to "auto" when not specified.
+            body["tool_choice"] = match request.tool_choice.as_ref() {
+                Some(ToolChoice::None) => serde_json::json!("none"),
+                Some(ToolChoice::Auto) | None => serde_json::json!("auto"),
+            };
         }
 
         body
@@ -358,7 +368,11 @@ impl LlmClient for OpenAiClient {
         let finish_reason = json["choices"][0]["finish_reason"].as_str().unwrap_or("");
         if finish_reason == "tool_calls" {
             let blocks = parse_openai_tool_calls(&json);
-            return Ok(CompletionResponse::ToolUse(blocks));
+            let assistant_content = json["choices"][0]["message"]["tool_calls"].to_string();
+            return Ok(CompletionResponse::ToolUse {
+                blocks,
+                assistant_content,
+            });
         }
 
         // stop or any other finish_reason → extract text content
@@ -404,6 +418,7 @@ mod tests {
             messages: vec![Message {
                 role: Role::User,
                 content: "hi".into(),
+                tool_call_id: None,
             }],
             max_tokens: 100,
             model_override: None,
@@ -427,6 +442,7 @@ mod tests {
             messages: vec![Message {
                 role: Role::User,
                 content: "hi".into(),
+                tool_call_id: None,
             }],
             max_tokens: 100,
             model_override: None,
@@ -490,5 +506,119 @@ mod tests {
     #[test]
     fn test_openai_is_object_safe() {
         let _: Box<dyn LlmClient> = Box::new(OpenAiClient::new("k".into(), None, None));
+    }
+
+    /// CR-03 regression: OpenAI tool result messages must include `tool_call_id` as a
+    /// real top-level field. The id must not be embedded inside the content string.
+    #[test]
+    fn test_build_body_tool_result_wire_format() {
+        let client = OpenAiClient::new("k".into(), None, None);
+        let request = CompletionRequest {
+            system: None,
+            messages: vec![
+                Message {
+                    role: Role::User,
+                    content: "what is 2+2?".into(),
+                    tool_call_id: None,
+                },
+                Message {
+                    role: Role::Tool,
+                    content: "4".into(),
+                    tool_call_id: Some("call_abc123".into()),
+                },
+            ],
+            max_tokens: 100,
+            model_override: None,
+            schema: None,
+            tools: None,
+            tool_choice: None,
+        };
+        let body = client.build_body(&request, false);
+        let msgs = body["messages"].as_array().expect("messages must be array");
+        assert_eq!(msgs.len(), 2);
+
+        let tool_msg = &msgs[1];
+        assert_eq!(tool_msg["role"], "tool");
+        assert_eq!(
+            tool_msg["tool_call_id"], "call_abc123",
+            "tool_call_id must be a real top-level field"
+        );
+        assert_eq!(tool_msg["content"], "4");
+        // The id must not also appear embedded in the content string.
+        assert!(
+            !tool_msg["content"]
+                .as_str()
+                .unwrap_or("")
+                .contains("call_abc123"),
+            "tool_call_id must not be embedded in content"
+        );
+    }
+
+    /// WR-01 regression: OpenAI build_body must honor request.tool_choice.
+    #[test]
+    fn test_build_body_tool_choice_none() {
+        use crate::client::{ToolChoice, ToolRequest};
+
+        let client = OpenAiClient::new("k".into(), None, None);
+        let request = CompletionRequest {
+            system: None,
+            messages: vec![Message {
+                role: Role::User,
+                content: "hi".into(),
+                tool_call_id: None,
+            }],
+            max_tokens: 100,
+            model_override: None,
+            schema: None,
+            tools: Some(vec![ToolRequest {
+                name: "my_tool".into(),
+                description: "does stuff".into(),
+                parameters_schema: serde_json::json!({"type": "object"}),
+            }]),
+            tool_choice: Some(ToolChoice::None),
+        };
+        let body = client.build_body(&request, false);
+        assert_eq!(
+            body["tool_choice"], "none",
+            "ToolChoice::None must emit tool_choice: 'none'"
+        );
+    }
+
+    /// WR-01: Auto tool_choice (explicit) and default (None) both emit "auto".
+    #[test]
+    fn test_build_body_tool_choice_auto() {
+        use crate::client::{ToolChoice, ToolRequest};
+
+        let client = OpenAiClient::new("k".into(), None, None);
+        let tools = Some(vec![ToolRequest {
+            name: "my_tool".into(),
+            description: "does stuff".into(),
+            parameters_schema: serde_json::json!({"type": "object"}),
+        }]);
+
+        // Explicit Auto.
+        let req_auto = CompletionRequest {
+            system: None,
+            messages: vec![Message {
+                role: Role::User,
+                content: "hi".into(),
+                tool_call_id: None,
+            }],
+            max_tokens: 100,
+            model_override: None,
+            schema: None,
+            tools: tools.clone(),
+            tool_choice: Some(ToolChoice::Auto),
+        };
+        let body = client.build_body(&req_auto, false);
+        assert_eq!(body["tool_choice"], "auto");
+
+        // Default None → also "auto".
+        let req_default = CompletionRequest {
+            tool_choice: None,
+            ..req_auto
+        };
+        let body2 = client.build_body(&req_default, false);
+        assert_eq!(body2["tool_choice"], "auto");
     }
 }
