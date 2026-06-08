@@ -664,6 +664,25 @@ pub struct RawHtmlProps {
     pub html: String,
 }
 
+/// Props for the `StreamText` component — SSE token stream renderer.
+///
+/// Connects to `sse_url` via the browser `EventSource` API and appends arriving
+/// tokens as plain text nodes. The SSE endpoint MUST emit `event: done` on
+/// completion to prevent `EventSource` auto-reconnect.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct StreamTextProps {
+    /// URL of the server-sent-events endpoint that streams tokens.
+    /// Must emit `event: done` on completion.
+    #[serde(default)]
+    pub sse_url: String,
+    /// Text shown inside the content area before the first token arrives.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+    /// Status text shown while the stream is open.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub loading_text: Option<String>,
+}
+
 /// Toast visual variants.
 #[derive(
     Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
