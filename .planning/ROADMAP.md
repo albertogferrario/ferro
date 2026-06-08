@@ -1820,7 +1820,7 @@ Plans:
   4. Feature flag `pgvector` adds only `pgvector 0.4` to the dependency graph; non-flagged builds do not pull pgvector
   5. Unit tests for `cosine_similarity`: orthogonal vectors return 0.0, identical vectors return 1.0, opposite vectors return -1.0
 **Plans**: 2 plans
-- [ ] 167-01-PLAN.md — Wave 1 (AISDK-04): cosine_similarity + embed() free fn + D-13 embed-model fix (Ollama/OpenAI) + Error::Sqlx variant + lib.rs core re-exports
+- [x] 167-01-PLAN.md — Wave 1 (AISDK-04): cosine_similarity + embed() free fn + D-13 embed-model fix (Ollama/OpenAI) + Error::Sqlx variant + lib.rs core re-exports
 - [ ] 167-02-PLAN.md — Wave 2 (AISDK-05): pgvector feature + optional pgvector/sqlx deps + PgVectorStore (store/nearest) + gated integration test + SC#4 dep-graph assertion
 
 ### Phase 168: Framework SSE Primitives
@@ -1903,7 +1903,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 165. LlmClient Trait & Providers | 4/4 | Complete    | 2026-06-08 |
 | 166. Structured Outputs & Tool Calling | 5/5 | Complete    | 2026-06-08 |
-| 167. Embeddings & pgvector | 0/? | Not started | - |
+| 167. Embeddings & pgvector | 1/2 | In Progress|  |
 | 168. Framework SSE Primitives | 0/? | Not started | - |
 | 169. StreamText Component | 0/? | Not started | - |
 | 170. ferro-cli Migration | 0/? | Not started | - |
@@ -1916,7 +1916,7 @@ Plans:
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 5/5 plans complete
+**Plans:** 1/2 plans executed
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
