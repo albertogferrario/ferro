@@ -261,12 +261,15 @@ pub(crate) fn collect_plugin_types(spec: &Spec) -> HashSet<String> {
 }
 
 /// Dependency-free inline EventSource wiring for `StreamText` components.
-/// Appends streamed tokens as text nodes (never `innerHTML`), removes the
-/// placeholder on the first token, and closes the source on `event: done`
-/// to prevent `EventSource` auto-reconnect. Emitted at most once per page.
+/// Skips elements with an empty URL, appends streamed tokens as text nodes
+/// (never `innerHTML`), removes the placeholder on the first token (or on
+/// `done` for an empty stream), and closes the source on `event: done` to
+/// prevent `EventSource` auto-reconnect. Emitted at most once per page.
 const FERRO_STREAM_TEXT_INIT: &str = r#"(function(){
   document.querySelectorAll('[data-ferro-stream-url]').forEach(function(el){
-    var src = new EventSource(el.dataset.ferroStreamUrl);
+    var url = el.dataset.ferroStreamUrl;
+    if(!url) return;
+    var src = new EventSource(url);
     var placeholder = el.querySelector('[data-ferro-stream-placeholder]');
     var loading = el.querySelector('[data-ferro-stream-loading]');
     var firstToken = true;
@@ -276,6 +279,7 @@ const FERRO_STREAM_TEXT_INIT: &str = r#"(function(){
     };
     src.addEventListener('done', function(){
       src.close();
+      if(placeholder) placeholder.remove();
       if(loading) loading.remove();
     });
     src.onerror = function(){
