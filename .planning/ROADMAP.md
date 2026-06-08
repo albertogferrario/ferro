@@ -53,7 +53,7 @@
 - ✅ **v11.11.1 ferro-reservation Kernel Atomicity Hardening** — Phase 177 (shipped 2026-05-21). Source: gestiscilo-it v6.9 β acceptance failure (consumer phase 152 STBOOK-15). Closed the `ReservationKernel::hold` check-then-act race: hold body now runs in a serializable transaction, with SQLSTATE 40001 translated to `ReservationError::Insufficient` at every write site (INSERT, audit write, commit — not just commit); migration columns switched to `json_binary` so btree indexes are valid on Postgres. Verified 6/6 success criteria; 50-iteration race tests pass flake-free on both SQLite and live Postgres SERIALIZABLE; gestiscilo-it consumer regression `concurrent_double_book_same_staff` passes deterministically. [Context](phases/177-reservation-kernel-hold-atomicity/177-CONTEXT.md) · [Verification](phases/177-reservation-kernel-hold-atomicity/177-VERIFICATION.md)
 - 📋 **v11.6.1 ferro-stripe Manual Capture** — Phase 189 (planned 2026-06-07). Source: gestiscilo-it v6.3-extended booking fund-hold field test. Extends the v11.6 capability-axis crate with Stripe manual capture so consumer apps can authorize card funds without charging (booking deposits): `CheckoutBuilder::manual_capture()` sets `payment_intent_data.capture_method = manual`; new `payment_intent.rs` capability module with `capture(payment_intent_id, amount_cents: Option<i64>)` (partial capture supported) and `cancel(payment_intent_id)`; new typed events `StripePaymentIntentAmountCapturableUpdated` and `StripePaymentIntentCanceled` registered in the parser contract with golden-JSON fixtures; manual capture must compose with `destination()` Connect charges (authorize on platform, capture transfers to connected account). The authorize/capture/cancel triple deliberately mirrors `ferro-reservation` hold/commit/release semantics — document the correspondence in `docs/src/features/stripe.md`. Out of scope: SetupIntent save-card flow for authorizations beyond the ~7-day card window (consumer-side design decision at gestiscilo v6.3 plan time; promote to a ferro phase only if gestiscilo picks that path). Consumer: gestiscilo-it v6.3 Online Checkout & Payments (queued after its v7.1), consumes via published crates.io bump per the Phase 176 ↔ ferro Phase 181 pattern.
 - 🚧 **v12.1 AI — ferro-ai SDK & AI as Projection Consumer** — Phases 165-173 (in progress; planned 2026-05-15, reframed 2026-06-07, started 2026-06-08). AI as a first-class consumer of the projection/intent core. See phase detail sections below; requirements in `.planning/REQUIREMENTS.md` (AICLI-01..03, AISDK-*).
-- 📋 **v12.4 Form Validation DX — Remaining Scope** *(was v12.1; renamed 2026-06-07 to resolve label collision with v12.1 AI)* — Phases TBD (original 137-139 reservation stale; renumber at plan time). Original Phase-137 scope (Validator struct, sync rules, old-input flash, `req.old()`) shipped organically via the validation module and is no longer in scope. Remaining: async DB-backed rules (`unique` with exclude-self) and opt-in DB constraint violation mapping to field-level validation errors (current `From<sea_orm::DbErr> for ActionError` is a raw message passthrough). Source: gestiscilo-it field test (slug uniqueness violations surfacing as raw SQL errors).
+- 🚧 **v12.4 Form Validation DX** — Phases 190-192 (started 2026-06-09). Async DB-backed `unique` rule with exclude-self (edit-form safety) + `ConstraintMap` opt-in DB constraint→field-level error mapping + ferro-mcp template and docs showing the two-layer proactive+defensive pattern together. Source: gestiscilo-it field test (slug-uniqueness violations surfacing as raw SQL errors). See phase detail sections at the end of this file.
 - 📋 **v12.2 Frontend Performance Hardening** — Phases 182-184 (planned 2026-06-06). Source: gestiscilo-it jetskiadriatic startup-lifecycle audit. Three runtime/framework primitives, each paired 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). (182) `ferro-json-ui` `data-lazy-hero` runtime primitive — IntersectionObserver promoting `<video preload="none">` → `preload="auto"` on viewport approach; (183) `ferro-bundle` new crate — in-memory immutable byte blobs with content-hashed immutable-cache serving; (184) `ferro::InlineBudget` + `ferro::RequestTelemetry` — request-scoped accumulator with inline/preload decision + per-key ring buffer.
 - 📋 **v12.3 Deployment Platform Primitives** — Phases 185-188 (planned 2026-06-07). Source: gestiscilo-it v7.1 Tenant Frontend Platform (locked design at gestiscilo `.planning/research/v7.1-ARCHITECTURE.md`, D-01..D-06). Four generic primitives, each paired 1:1 with a gestiscilo consumer phase that bumps the published crate (185 ↔ gestiscilo 188, 186 ↔ gestiscilo 188, 187 ↔ gestiscilo 189, 188 ↔ gestiscilo 190). (185) `ferro::queue` — DB-backed job queue replacing the Redis-only ferro-queue backend: `Job` trait, `WorkerLoop` in `ferro serve`, atomic claim (Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` + `UPDATE…RETURNING`), retry/backoff, stuck-job reaper; (186) `ferro-deployments` new crate — immutable `Deployment` model, `DeploymentStorage` trait, atomic `promote`/`rollback`, `preview_url` helper, artifact-shape agnostic; (187) `ferro-assets` new crate — `Pipeline` composer with content-type-aware transforms: `html_minify` (lol_html), `css_minify` (lightningcss), `js_minify` (swc_ecma_minifier), `image_transcode` (pure-Rust `image`+`ravif`, AVIF+JPEG responsive variants — libvips rejected for thread-safety), `inject_before_tag`; (188) `ferro-storage` extension — `cdn_url()`, `PurgeApi` trait, DO Spaces CDN adapter (feature-flagged Bunny/Cloudflare). Primitives stay consumer-agnostic: static HTML sites, JSON-UI spec bundles, and Inertia SSR manifests all fit the deployment abstraction. See "v12.3 Deployment Platform Primitives" phase details at the end of this file.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -2287,3 +2287,69 @@ Plans:
 - [x] 189-02-PLAN.md — payment_intent.rs capability module: capture/cancel/retrieve + lib.rs registration (Wave 2)
 - [x] 189-03-PLAN.md — Two typed PaymentIntent webhook events + golden-JSON fixtures + parser-contract tests (Wave 3)
 - [x] 189-04-PLAN.md — docs/src/features/stripe.md Manual Capture section + ferro-reservation correspondence (Wave 4)
+
+---
+
+## v12.4 Form Validation DX (Phases 190-192)
+
+**Source:** gestiscilo-it field test — slug-uniqueness violations surfacing as raw SQL errors through the `From<sea_orm::DbErr> for ActionError` passthrough.
+
+**Milestone Goal:** Make uniqueness validation a first-class, ergonomic part of ferro forms — both proactively (async DB-backed `unique` rule that runs before the write) and defensively (DB constraint violations mapped to field-level errors instead of leaking raw SQL to end users). The killer feature: a uniqueness violation that today surfaces as a raw SQL error lands inline under the right field with user input preserved — uniqueness "just works" before the write (async rule, UX) and as a safety net at the write (constraint mapping, concurrency invariant).
+
+**Key constraints encoded in this roadmap:**
+- The sync `Validator` / `Rule` API is unchanged — async is a parallel path, not a replacement.
+- Exclude-self (`.ignore(id)`) ships in Phase 190 (not retrofitted); retrofitting is a breaking change for edit handlers.
+- All implementation contained in `framework/src/validation/` except the Phase 192 ferro-mcp template.
+- Project-agnostic-crates rule: no consumer constraint/field strings in `framework` or `ferro-*` crates. All mapping registered at consumer call sites.
+- Phase 191 Postgres constraint-name path cannot be exercised by `cargo test` defaults (SQLite-only CI). Closure criteria include a documented manual verification gate.
+
+**Requirements:** VALID-01, VALID-02, VALID-03, VALID-04, VALID-05, VALID-06
+
+## Phases
+
+- [ ] **Phase 190: Async Rule Infrastructure + `unique` Rule** — `AsyncRule` trait, `Unique` struct with `.ignore()` exclude-self, `AsyncValidator` / `validate_async`, ferro-lang translation key
+- [ ] **Phase 191: ConstraintMap + Portable UNIQUE-Violation Detection** — `ConstraintMap` builder, SQLite/Postgres bifurcated detection, `try_map` falls through unchanged to `From<DbErr>`
+- [ ] **Phase 192: ferro-mcp Template + Validation Docs** — `action_handler` code template updated with both layers, validation docs page extended
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 190. Async Rule Infrastructure | 0/TBD | Not started | - |
+| 191. ConstraintMap + Detection | 0/TBD | Not started | - |
+| 192. MCP Template + Docs | 0/TBD | Not started | - |
+
+## Phase Details
+
+### Phase 190: Async Rule Infrastructure + `unique` Rule
+**Goal**: Developers can validate field uniqueness against the DB before insert/update, with exclude-self for edit forms, through a new async validation path that leaves the existing sync API untouched.
+**Depends on**: Nothing (first phase of milestone; all components are new files in `framework/src/validation/`)
+**Requirements**: VALID-01, VALID-02, VALID-03
+**Success Criteria** (what must be TRUE):
+  1. A handler can call `AsyncValidator::new().async_rule("slug", unique("pages", "slug"))` and `validate_async(&req).await` surfaces a field-level error under `"slug"` when the value already exists in the table — not a raw SQL error, not a server 500
+  2. An edit handler calling `.ignore(record_id)` (exclude-self) does not reject a record whose slug is unchanged from its own current value in the DB — the regression that every copy-pasted create handler without exclude-self would trigger
+  3. `validate_async()` runs sync rules first and skips async rules on fields that already have sync errors (fail-fast before hitting the DB)
+  4. The existing `Validator` / `validate()` sync API compiles and behaves identically with no changes to its call sites
+  5. `DB::connection()` is the access pattern inside `Unique` — no DB connection threaded through the rule signature or `validate_async()`
+**Plans**: TBD
+
+### Phase 191: ConstraintMap + Portable UNIQUE-Violation Detection
+**Goal**: A handler can intercept a DB UNIQUE constraint violation at the write site and surface it as a field-level validation error — with user input preserved and the same 303 redirect behavior as a proactive rule failure — closing the TOCTOU window the async `unique` rule cannot eliminate.
+**Depends on**: Phase 190 (async validation surface stable before finalizing the complementary handler-level API)
+**Requirements**: VALID-04, VALID-05
+**Success Criteria** (what must be TRUE):
+  1. `ConstraintMap::new().on("pages_slug_unique", "slug", "has already been taken").try_map(err)` returns `Ok(ValidationError)` when `err` is a UNIQUE constraint violation matching the registered constraint, and returns `Err(DbErr)` unchanged when it does not match — never silently swallowing any error
+  2. A `DbErr` that is not a UNIQUE violation (e.g. a connection error) passes through `try_map` unchanged and reaches the existing `From<sea_orm::DbErr> for ActionError` fallback without any interception
+  3. Constraint-name detection is backend-bifurcated: SQLite matches on `"table.column"` from the error message string; Postgres matches on the structured constraint name via `PgDatabaseError::constraint()` (no Postgres message-string parsing)
+  4. A concurrent-insert scenario simulation (two handlers both pass the pre-write `unique` check, one INSERT hits the constraint) results in the losing request rendering the same field-level error with old input as a proactive rule failure — not a raw SQL message
+  5. The `ConstraintMap` type and its API carry no consumer-specific strings inside the framework crate; all constraint names and field mappings are registered at the application call site (project-agnostic-crates rule)
+**Plans**: TBD
+**Gate**: Postgres constraint-name extraction (`PgDatabaseError::constraint()`) requires a real Postgres instance to verify. Phase closure criteria include either a Postgres CI step or a documented manual test step signed off in the phase VERIFICATION.md.
+
+### Phase 192: ferro-mcp Template + Validation Docs
+**Goal**: An agent scaffolding a handler with a unique field sees the two-layer proactive + defensive pattern together in the `action_handler` code template, and the validation documentation page covers both layers explicitly — so neither layer is used in isolation.
+**Depends on**: Phase 191 (both runtime surfaces stable before templates and docs can accurately represent the composition)
+**Requirements**: VALID-06
+**Success Criteria** (what must be TRUE):
+  1. The ferro-mcp `action_handler` code template includes both `AsyncValidator` with `unique` (proactive layer) and `ConstraintMap::try_map` at the write site (defensive layer) — no generated handler template shows `unique` without a downstream `ConstraintMap`
+  2. `docs/src/the-basics/validation.md` has a dedicated section for async rules showing `unique` with and without exclude-self, and a dedicated section for constraint mapping showing the `ConstraintMap` builder with the two-layer rationale (proactive catches UX case; defensive closes TOCTOU race)
+  3. The two sections are cross-referenced so a developer reading either section discovers the other
+**Plans**: TBD

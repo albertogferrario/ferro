@@ -52,4 +52,11 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 
 ## Traceability
 
-<!-- Filled by roadmapper: REQ-ID → Phase mapping -->
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| VALID-01 | Phase 190 | Pending |
+| VALID-02 | Phase 190 | Pending |
+| VALID-03 | Phase 190 | Pending |
+| VALID-04 | Phase 191 | Pending |
+| VALID-05 | Phase 191 | Pending |
+| VALID-06 | Phase 192 | Pending |
