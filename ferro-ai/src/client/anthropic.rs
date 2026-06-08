@@ -1,4 +1,4 @@
-use crate::client::{CompletionRequest, LlmClient, Message, Role, TokenStream};
+use crate::client::{CompletionRequest, LlmClient, Role, TokenStream};
 use crate::error::Error;
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -35,7 +35,11 @@ impl AnthropicClient {
             .timeout(std::time::Duration::from_secs(60))
             .build()
             .expect("failed to build reqwest client");
-        Self { client, api_key, model }
+        Self {
+            client,
+            api_key,
+            model,
+        }
     }
 
     /// Build the request body for the Anthropic Messages API.
@@ -43,7 +47,11 @@ impl AnthropicClient {
     /// Includes `output_config.format.type = "json_schema"` only when
     /// `request.schema` is `Some` (D-11). System prompt uses ephemeral
     /// prompt caching. Sets `"stream": stream`.
-    pub(crate) fn build_body(&self, request: &CompletionRequest, stream: bool) -> serde_json::Value {
+    pub(crate) fn build_body(
+        &self,
+        request: &CompletionRequest,
+        stream: bool,
+    ) -> serde_json::Value {
         let model = request
             .model_override
             .as_deref()
@@ -125,18 +133,26 @@ impl LlmClient for AnthropicClient {
                 if e.is_timeout() {
                     Error::Timeout
                 } else {
-                    Error::Provider { status: None, message: e.to_string() }
+                    Error::Provider {
+                        status: None,
+                        message: e.to_string(),
+                    }
                 }
             })?;
 
         let status = resp.status().as_u16();
         if !resp.status().is_success() {
             let text = resp.text().await.unwrap_or_default();
-            return Err(Error::Provider { status: Some(status), message: text });
+            return Err(Error::Provider {
+                status: Some(status),
+                message: text,
+            });
         }
 
-        let json: serde_json::Value =
-            resp.json().await.map_err(|e| Error::Deserialization(e.to_string()))?;
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| Error::Deserialization(e.to_string()))?;
 
         let text = json["content"]
             .as_array()
@@ -183,7 +199,10 @@ impl LlmClient for AnthropicClient {
                     Some(Err(e)) => {
                         es.close();
                         return Some((
-                            Err(Error::Provider { status: None, message: e.to_string() }),
+                            Err(Error::Provider {
+                                status: None,
+                                message: e.to_string(),
+                            }),
                             es,
                         ));
                     }
@@ -203,6 +222,7 @@ impl LlmClient for AnthropicClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::client::Message;
 
     #[test]
     fn test_anthropic_default_model() {
@@ -222,7 +242,10 @@ mod tests {
         let schema = serde_json::json!({"type": "object", "properties": {"x": {"type": "string"}}});
         let request = CompletionRequest {
             system: None,
-            messages: vec![Message { role: Role::User, content: "hi".into() }],
+            messages: vec![Message {
+                role: Role::User,
+                content: "hi".into(),
+            }],
             max_tokens: 100,
             model_override: None,
             schema: Some(schema.clone()),
@@ -238,7 +261,10 @@ mod tests {
         let client = AnthropicClient::new("k".into(), None);
         let request = CompletionRequest {
             system: None,
-            messages: vec![Message { role: Role::User, content: "hi".into() }],
+            messages: vec![Message {
+                role: Role::User,
+                content: "hi".into(),
+            }],
             max_tokens: 100,
             model_override: None,
             schema: None,
@@ -253,7 +279,10 @@ mod tests {
         let client = AnthropicClient::new("k".into(), None);
         let request = CompletionRequest {
             system: None,
-            messages: vec![Message { role: Role::User, content: "hi".into() }],
+            messages: vec![Message {
+                role: Role::User,
+                content: "hi".into(),
+            }],
             max_tokens: 100,
             model_override: None,
             schema: None,
@@ -274,13 +303,15 @@ mod tests {
     #[test]
     fn test_parse_anthropic_delta() {
         // Fixture from RESEARCH lines 582-583
-        let data = r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hi"}}"#;
+        let data =
+            r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hi"}}"#;
         assert_eq!(parse_anthropic_delta(data), Some("Hi".to_string()));
     }
 
     #[test]
     fn test_parse_anthropic_delta_empty_text() {
-        let data = r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":""}}"#;
+        let data =
+            r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":""}}"#;
         assert_eq!(parse_anthropic_delta(data), None);
     }
 
