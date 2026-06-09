@@ -18,8 +18,8 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 
 ### Async DB-Backed Validation
 
-- [ ] **VALID-01** — A developer can validate that a field's value is unique in a DB table via an async rule (`unique(table, column)`), failing validation **before** the insert/update with a field-level error message.
-- [ ] **VALID-02** — A developer can exclude the current record from the uniqueness check on edit forms (`.ignore(id)` / exclude-self), so saving an unchanged unique value does not falsely fail. Exclude-self ships in v1 (retrofitting it later is a breaking change for edit handlers).
+- [x] **VALID-01** — A developer can validate that a field's value is unique in a DB table via an async rule (`unique(table, column)`), failing validation **before** the insert/update with a field-level error message.
+- [x] **VALID-02** — A developer can exclude the current record from the uniqueness check on edit forms (`.ignore(id)` / exclude-self), so saving an unchanged unique value does not falsely fail. Exclude-self ships in v1 (retrofitting it later is a breaking change for edit handlers).
 - [x] **VALID-03** — Async rules run through an `AsyncValidator` / `validate_async` path that leaves the existing synchronous `Validator` API and its existing rules unchanged, obtains its DB connection via the existing `DB::connection()` singleton (no connection threaded through the rule signature), and surfaces failures through the existing `ValidationError` → `with_old_input` → 303 redirect-back flow.
 
 ### DB Constraint → Field-Level Error Mapping
@@ -54,8 +54,8 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VALID-01 | Phase 190 | Pending |
-| VALID-02 | Phase 190 | Pending |
+| VALID-01 | Phase 190 | Complete |
+| VALID-02 | Phase 190 | Complete |
 | VALID-03 | Phase 190 | Complete |
 | VALID-04 | Phase 191 | Pending |
 | VALID-05 | Phase 191 | Pending |
