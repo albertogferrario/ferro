@@ -1,19 +1,28 @@
 //! `ferro make:json-view` command implementation.
 //!
-//! Generates a JSON-UI v2 spec file (`src/views/{name}.json`), optionally using
-//! an AI provider for two-pass generation from a natural language description.
+//! Generates a JSON-UI v2 spec file (`src/views/{name}.json`) from a `ServiceDef`
+//! via the deterministic `Spec::from_service_def` renderer. Two ServiceDef sources
+//! are supported:
+//!
+//! - NL description (`-d "<text>"`) → `scaffold_core` → `ServiceDef`
+//! - Pre-serialized JSON file (`--from-service-json <path>`) → `ServiceDef`
+//!
 //! Handlers call `JsonUi::render_file("views/{name}.json", data)`.
 
 use console::style;
-use ferro_ai::client::{Message, Role};
-use ferro_ai::{AiConfig, CompletionRequest};
-use ferro_json_ui::global_catalog;
+use ferro_ai::AiConfig;
 use std::fs;
 use std::path::Path;
 
 use crate::templates;
 
-pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Option<String>) {
+pub fn run(
+    name: String,
+    description: Option<String>,
+    no_ai: bool,
+    layout: Option<String>,
+    from_service_json: Option<String>,
+) {
     let file_name = to_snake_case(&name);
 
     if !is_valid_identifier(&file_name) {
@@ -57,15 +66,106 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
 
     let content = if no_ai {
         templates::json_view_template(&file_name, &title, layout_name)
+    } else if let Some(ref _path) = from_service_json {
+        // --from-service-json path: deserialize ServiceDef from JSON file, render deterministically.
+        #[cfg(feature = "projections")]
+        {
+            let path = _path;
+            let json_content = match fs::read_to_string(path) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!(
+                        "{} Failed to read service JSON file '{}': {}",
+                        style("Error:").red().bold(),
+                        path,
+                        e
+                    );
+                    std::process::exit(1);
+                }
+            };
+            let service: ferro_projections::ServiceDef = match serde_json::from_str(&json_content) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!(
+                        "{} Failed to parse ServiceDef from '{}': {}",
+                        style("Error:").red().bold(),
+                        path,
+                        e
+                    );
+                    std::process::exit(1);
+                }
+            };
+            println!(
+                "{} Rendering ServiceDef from {} ...",
+                style("⏳").cyan(),
+                path
+            );
+            render_service_def(&service, &file_name, &title, layout_name)
+        }
+        #[cfg(not(feature = "projections"))]
+        {
+            eprintln!(
+                "{} make:json-view --from-service-json requires the `projections` feature",
+                style("Error:").red().bold()
+            );
+            std::process::exit(1);
+        }
     } else {
         match AiConfig::from_env() {
-            Ok(client) => {
+            Ok(_) => {
                 let desc = description.as_deref().unwrap_or(&title);
-                println!(
-                    "{} Generating view with AI (two passes)...",
-                    style("⏳").cyan()
-                );
-                generate_with_ai(client.as_ref(), &file_name, &title, layout_name, desc)
+                #[cfg(feature = "projections")]
+                {
+                    // NL → ServiceDef via scaffold_core, then deterministic render.
+                    let rt = match tokio::runtime::Runtime::new() {
+                        Ok(r) => r,
+                        Err(e) => {
+                            eprintln!(
+                                "{} Failed to create tokio runtime: {}",
+                                style("Warning:").yellow().bold(),
+                                e
+                            );
+                            eprintln!("{}", style("Falling back to static template.").dim());
+                            return write_content(
+                                &view_file,
+                                templates::json_view_template(&file_name, &title, layout_name),
+                                &file_name,
+                            );
+                        }
+                    };
+                    let cwd =
+                        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                    println!("{} Generating ServiceDef via AI...", style("⏳").cyan());
+                    let desc_owned = desc.to_string();
+                    match rt.block_on(ferro_mcp::tools::ai_scaffold::scaffold_core(
+                        &desc_owned,
+                        &cwd,
+                    )) {
+                        Ok(service) => {
+                            println!("{} Rendering projection spec...", style("⏳").cyan());
+                            render_service_def(&service, &file_name, &title, layout_name)
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "{} AI scaffold failed: {}",
+                                style("Warning:").yellow().bold(),
+                                e
+                            );
+                            eprintln!("{}", style("Falling back to static template.").dim());
+                            templates::json_view_template(&file_name, &title, layout_name)
+                        }
+                    }
+                }
+                #[cfg(not(feature = "projections"))]
+                {
+                    // projections feature disabled — note and fall back.
+                    let _ = desc;
+                    eprintln!(
+                        "{} AI generation requires the `projections` feature. Using static template.",
+                        style("Info:").yellow().bold()
+                    );
+                    templates::json_view_template(&file_name, &title, layout_name)
+                }
             }
             Err(_) => {
                 if description.is_some() {
@@ -80,7 +180,12 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
         }
     };
 
-    if let Err(e) = fs::write(&view_file, content) {
+    write_content(&view_file, content, &file_name);
+}
+
+/// Write spec content to the view file and print usage guidance.
+fn write_content(view_file: &Path, content: String, file_name: &str) {
+    if let Err(e) = fs::write(view_file, content) {
         eprintln!(
             "{} Failed to write view file: {}",
             style("Error:").red().bold(),
@@ -94,7 +199,7 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
     println!();
     println!(
         "View {} created successfully!",
-        style(&file_name).cyan().bold()
+        style(file_name).cyan().bold()
     );
     println!();
     println!("Usage:");
@@ -108,164 +213,57 @@ pub fn run(name: String, description: Option<String>, no_ai: bool, layout: Optio
     println!();
 }
 
-/// Orchestrate two-pass AI generation with catalog validation and static fallback.
+/// Render a `ServiceDef` deterministically to a JSON-UI v2 spec string.
 ///
-/// Pass 1: plain-text component plan via `client.complete` (schema: None).
-/// Pass 2: structured JSON via `client.complete` + `global_catalog().json_schema()`.
-/// On any failure (runtime, HTTP error, unparseable spec, catalog validation error),
-/// prints a yellow warning to stderr and falls back to the static template.
-fn generate_with_ai(
-    client: &dyn ferro_ai::LlmClient,
+/// Uses `derive_intents` + `Spec::from_service_def` (FieldMeaning-driven component
+/// dispatch). On any render/serialize/parse failure, prints a yellow warning and
+/// returns the static template fallback.
+#[cfg(feature = "projections")]
+fn render_service_def(
+    service: &ferro_projections::ServiceDef,
     file_name: &str,
     title: &str,
     layout_name: &str,
-    description: &str,
 ) -> String {
-    // One runtime, reused across both passes (D-01). ferro-cli main() is sync (no #[tokio::main]),
-    // so Runtime::new() is safe — no nested-runtime panic.
-    let rt = match tokio::runtime::Runtime::new() {
-        Ok(r) => r,
+    use ferro_json_ui::{Spec, VisualContext};
+    use ferro_projections::derive_intents;
+
+    let intents = derive_intents(service);
+    let ctx = VisualContext::default();
+    match Spec::from_service_def(service, &intents, &ctx) {
         Err(e) => {
             eprintln!(
-                "{} Failed to create tokio runtime: {}",
-                style("Warning:").yellow().bold(),
-                e
-            );
-            eprintln!("{}", style("Falling back to static template.").dim());
-            return templates::json_view_template(file_name, title, layout_name);
-        }
-    };
-
-    // ── Pass 1: plain-text plan (schema: None, max_tokens 1024) ──────────────
-    let (sys1, usr1) = build_json_view_pass1(file_name, description);
-    let req1 = CompletionRequest {
-        system: Some(sys1),
-        messages: vec![Message {
-            role: Role::User,
-            content: usr1,
-            tool_call_id: None,
-        }],
-        max_tokens: 1024,
-        model_override: None,
-        schema: None,
-        tools: None,
-        tool_choice: None,
-    };
-    let pass1_result = match rt.block_on(client.complete(req1)) {
-        Ok(text) => text,
-        Err(e) => {
-            eprintln!(
-                "{} AI Pass 1 failed: {}",
-                style("Warning:").yellow().bold(),
-                e
-            );
-            eprintln!("{}", style("Falling back to static template.").dim());
-            return templates::json_view_template(file_name, title, layout_name);
-        }
-    };
-
-    // ── Pass 2: structured spec against the catalog schema (max_tokens 4096) ─
-    let (sys2, usr2) = build_json_view_pass2(&pass1_result);
-    let schema = ferro_json_ui::global_catalog().json_schema().clone();
-    let req2 = CompletionRequest {
-        system: Some(sys2),
-        messages: vec![Message {
-            role: Role::User,
-            content: usr2,
-            tool_call_id: None,
-        }],
-        max_tokens: 4096,
-        model_override: None,
-        // Catalog runtime schema is the validation source of truth (D-02) — NOT schemars.
-        schema: Some(schema),
-        tools: None,
-        tool_choice: None,
-    };
-    let json_str = match rt.block_on(client.complete(req2)) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!(
-                "{} AI Pass 2 failed: {}",
-                style("Warning:").yellow().bold(),
-                e
-            );
-            eprintln!("{}", style("Falling back to static template.").dim());
-            return templates::json_view_template(file_name, title, layout_name);
-        }
-    };
-
-    // ── Validation (D-03): unchanged from the current implementation ─────────
-    match ferro_json_ui::Spec::from_json(&json_str) {
-        Err(parse_err) => {
-            eprintln!(
-                "{} Generated spec failed structural parse: {}",
-                style("Warning:").yellow().bold(),
-                parse_err
+                "{} Projection render failed: {e}",
+                style("Warning:").yellow().bold()
             );
             eprintln!("{}", style("Falling back to static template.").dim());
             templates::json_view_template(file_name, title, layout_name)
         }
-        Ok(spec) => match ferro_json_ui::global_catalog().validate(&spec) {
-            Ok(()) => json_str,
-            Err(errors) => {
+        Ok(spec) => match serde_json::to_string_pretty(&spec) {
+            Err(e) => {
                 eprintln!(
-                    "{} Generated spec failed catalog validation ({} error{}):",
-                    style("Warning:").yellow().bold(),
-                    errors.len(),
-                    if errors.len() == 1 { "" } else { "s" }
+                    "{} Spec serialization failed: {e}",
+                    style("Warning:").yellow().bold()
                 );
-                for err in &errors {
-                    eprintln!("  - {err}");
-                }
                 eprintln!("{}", style("Falling back to static template.").dim());
                 templates::json_view_template(file_name, title, layout_name)
             }
+            Ok(json_str) => {
+                // Write-gate re-parse (D-02): validate the serialized JSON form.
+                match Spec::from_json(&json_str) {
+                    Err(e) => {
+                        eprintln!(
+                            "{} Spec parse failed: {e}",
+                            style("Warning:").yellow().bold()
+                        );
+                        eprintln!("{}", style("Falling back to static template.").dim());
+                        templates::json_view_template(file_name, title, layout_name)
+                    }
+                    Ok(_) => json_str,
+                }
+            }
         },
     }
-}
-
-/// Build Pass 1 prompts for JSON-UI v2 view generation (plain-text component plan).
-///
-/// Returns `(system_prompt, user_prompt)` ready for `client.complete` with `schema: None`.
-fn build_json_view_pass1(name: &str, description: &str) -> (String, String) {
-    let catalog = global_catalog();
-    let catalog_prompt = catalog.prompt();
-
-    let system = format!(
-        "You are a JSON-UI v2 view planner for the Ferro framework.\n\n\
-         {catalog_prompt}\n\n\
-         Given a view name and description, produce a concise plain-text component plan: \
-         which components to use, what data each displays, what actions are present. \
-         Do not emit any JSON or code — only a human-readable plan."
-    );
-
-    let user = format!(
-        "View name: {name}\n\
-         Description: {description}\n\n\
-         Describe the component plan for this view."
-    );
-
-    (system, user)
-}
-
-/// Build Pass 2 prompts for JSON-UI v2 view generation (structured spec).
-///
-/// Returns `(system_prompt, user_prompt)` ready for `client.complete` with the catalog schema.
-/// Pass 2 receives the plain-text plan from Pass 1 and produces a structured JSON spec.
-fn build_json_view_pass2(pass1_result: &str) -> (String, String) {
-    let system = format!(
-        "You are a JSON-UI v2 spec generator for the Ferro framework.\n\n\
-         Component plan from previous step:\n{pass1_result}\n\n\
-         Generate the complete v2 JSON spec matching this plan. \
-         Root element id must be \"root\". \
-         All element ids are unique strings. Use flat elements map — no nesting."
-    );
-
-    let user =
-        "Generate the complete JSON-UI v2 spec for the view described in the component plan."
-            .to_string();
-
-    (system, user)
 }
 
 fn is_valid_identifier(name: &str) -> bool {

@@ -161,6 +161,10 @@ enum Commands {
         /// Layout to use (default: app)
         #[arg(long, short = 'l')]
         layout: Option<String>,
+        /// Render an already-serialized ServiceDef (JSON) instead of calling AI.
+        /// Path to a JSON file produced by `ferro ai:make --dry-run > service.json`.
+        #[arg(long, value_name = "PATH")]
+        from_service_json: Option<String>,
     },
     /// Migrate a v1 JSON-UI controller file to v2 (flat JSON spec + render_file).
     #[command(name = "json-ui:migrate-v1")]
@@ -608,8 +612,9 @@ fn main() {
             description,
             no_ai,
             layout,
+            from_service_json,
         } => {
-            commands::make_json_view::run(name, description, no_ai, layout);
+            commands::make_json_view::run(name, description, no_ai, layout, from_service_json);
         }
         Commands::JsonUiMigrateV1 { file, dry_run } => {
             if let Err(e) = commands::json_ui_migrate_v1::run(file, dry_run) {
