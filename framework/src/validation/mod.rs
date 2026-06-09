@@ -51,6 +51,7 @@
 //! ```
 
 mod async_rule;
+mod async_validator;
 mod bridge;
 mod error;
 mod rule;
