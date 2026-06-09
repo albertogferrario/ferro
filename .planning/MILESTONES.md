@@ -1,5 +1,22 @@
 # Project Milestones: Ferro Framework
 
+## v12.4 Form Validation DX (Shipped: 2026-06-09)
+
+**Phases 190-192** (4+2+2 plans). Async DB-backed uniqueness validation as a first-class ferro form primitive, two layers:
+- **190 — proactive:** `AsyncRule` trait + `AsyncValidator`/`validate_async` + `unique(table, col)` with `.ignore(id)` exclude-self; fails before the write with a field-level error via the existing `ValidationError` → redirect-back flow. SQLite + Postgres (live-PG gate test).
+- **191 — defensive:** `ConstraintMap` + `try_map` + `MapConstraintExt::map_constraint` — maps a DB UNIQUE violation at the write site to the same field error, closing the TOCTOU race; portable detection (`sql_err()` + Postgres `constraint()` / SQLite message parse); unmatched `DbErr` falls through unchanged. Live-PG gate test.
+- **192 — surface:** ferro-mcp `action_handler` template + `validation.md` show both layers together (no surface shows one without the other).
+
+All requirements VALID-01..06 Complete. Both live-Postgres manual gates closed via `#[ignore]`d tests.
+
+## v12.1 AI — ferro-ai SDK & AI as Projection Consumer (Shipped: 2026-06-09)
+
+**Phases 165-173** (9 phases). AI as a first-class consumer of the projection/intent core: `LlmClient` trait + providers (165), structured outputs + ServiceDef-aware schema normalizer + tool calling (166), embeddings + pgvector (167), framework SSE primitives (168), `StreamText` component (169), ferro-cli SDK migration (170), `ai:make`/`ai:explain` killer-feature CLI commands producing typed `ServiceDef` (171), MCP tool wrappers (172). **Capstone (173):** `make:json-view` consumes a `ServiceDef` via the existing `Spec::from_service_def` renderer + the offline projection-roundtrip proof test (NL → ServiceDef → rendered JSON-UI, pinned to the ServiceDef-aware path via the `Money → currency` assertion) — the structural proof that AI feeds the projection core, not a parallel scaffolder.
+
+## v11.6.2 ferro-stripe Refund Event Completeness + 0.7.0 Release (Code complete: 2026-06-09)
+
+**Phase 193** (1 plan). Adds `StripeChargeRefunded::refund_id: Option<String>` parsed from the charge's refunds list (`charge.refunds.data[].id` — corrected from the roadmap's mistaken `EventObject::Refund`); golden-JSON fixture + parser-contract test; ferro-stripe `0.5.0 → 0.7.0` + CHANGELOG bundling the Phase 189 manual-capture work. **Publish pending:** the 0.7.0 crates.io release fires on the operator's `git push` (GH Actions), which unblocks gestiscilo Phase 99. Requirements STRIPE-REFUND-01/02 (code) complete.
+
 ## v12.0 JSON-UI v2 — Spec-Driven Rendering (Shipped: 2026-05-19)
 
 **Phases completed:** 115-121, 159-164 (incl. friction loop with gestiscilo)

@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.1
-milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: verifying
-stopped_at: Completed 193-01-PLAN.md
+milestone: none
+milestone_name: (between milestones — v12.1, v12.4, v11.6.2 completed 2026-06-09)
+status: planning
+stopped_at: v12.1 + v12.4 + v11.6.2 marked complete; awaiting next milestone (/gsd-new-milestone)
 last_updated: "2026-06-09T18:18:48.378Z"
 last_activity: 2026-06-09
 progress:
@@ -20,16 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 193 — ferro-stripe-refund-event-completeness
+**Current focus:** Between milestones — three completed 2026-06-09. Next: `/gsd-new-milestone` or push/publish.
 
 ## Current Position
 
-Phase: 193
-Plan: Not started
-Next: `/gsd-plan-phase 192`
-Status: Phase complete — ready for verification
+Phase: none active
+Next: `/gsd-new-milestone` (start next cycle) — or `git push` to publish ferro-stripe 0.7.0
+Status: v12.1 AI (165-173), v12.4 Form Validation DX (190-192), v11.6.2 ferro-stripe (193) all marked ✅ complete in ROADMAP + logged in MILESTONES.md.
 Last activity: 2026-06-09
 Workspace version: 0.2.48 (released to crates.io)
+
+> **Operator actions pending:**
+> - `git push` — master is ~91 commits ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.7.0** (completes v11.6.2's publish, unblocks gestiscilo Phase 99).
+> - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
+> - REQUIREMENTS.md still holds the completed v12.4 + v11.6.2 reqs (all Complete) — `/gsd-new-milestone` refreshes it for the next cycle.
+> - Note: this project's v12.x practice is lightweight ✅-marking (no milestones/ archive files or git tags were created for any v12.x milestone); these three follow that convention.
 
 > v12.4 close-out: after 192 lands, mark v12.4 ✅ in ROADMAP overview and
 > `/gsd-complete-milestone`. v12.1 AI (165-173) is also feature-complete and
