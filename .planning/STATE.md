@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.4
-milestone_name: Form Validation DX
+milestone: v12.1
+milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: in_progress
-stopped_at: Phase 191 context gathered (CONTEXT.md committed); next /gsd-plan-phase 191
+stopped_at: Phase 173 context gathered (CONTEXT.md committed); next /gsd-plan-phase 173
 last_updated: "2026-06-09T13:49:03.253Z"
 last_activity: 2026-06-09
 progress:
@@ -20,21 +20,28 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v12.4 Form Validation DX — Phase 191 ConstraintMap + Portable UNIQUE-Violation Detection
+**Current focus:** v12.1 AI — Phase 173 make:json-view v2 + projection-roundtrip test (milestone capstone)
 
 ## Current Position
 
-Phase: 191
+Phase: 173
 Plan: Not started
-Next: `/gsd-plan-phase 191`
-Status: Phase 190 complete, verified (5/5), and Nyquist-validated; 191 unblocked
+Next: `/gsd-plan-phase 173`
+Status: Phase 173 context gathered (CONTEXT.md committed); 173 unblocked (v12.0 shipped 2026-05-19). It is the v12.1 capstone — closing it completes the milestone.
 Last activity: 2026-06-09
 Workspace version: 0.2.48 (released to crates.io)
 
-> Note: v12.1 AI (Phases 165-173) is marked 🚧 in ROADMAP but 165-172 are all
-> executed and 173 was deferred until v12.0 shipped (now shipped, no phase dir).
-> v12.1 needs a close-out decision (`/gsd-complete-milestone` dropping/deferring
-> 173, or plan 173) — separate from the active v12.4 work.
+> Two milestones open in parallel:
+> - **v12.1 AI** — 165-172 done; **173 in progress** (this phase, the capstone:
+>   make:json-view consumes a ServiceDef via the existing `Spec::from_service_def`
+>   renderer + the projection-roundtrip proof test). Closing 173 completes v12.1.
+> - **v12.4 Form Validation DX** — 190 done & validated; **191 context captured**
+>   (`.planning/phases/191-.../191-CONTEXT.md`), ready for `/gsd-plan-phase 191`;
+>   192 after. Resume after 173 or in parallel.
+>
+> Milestone-pointer note: the ROADMAP overview has two 🚧 markers (v12.1, v12.4);
+> gsd-tools resolves the FIRST (v12.1), which is correct while working 173.
+> When v12.1 closes, mark it ✅ so v12.4 becomes the sole active pointer.
 
 Release 0.2.48 (2026-06-09): all crates published to crates.io and tagged `v0.2.48`. New crates `ferro-deployments` and `ferro-assets` bootstrapped (manual first publish, since the CI token is `publish-update` only); CI updates them from here. `ferro-assets 0.2.47` was shipped requiring `nasm` (rav1e asm) and is superseded by the pure-Rust 0.2.48 — yank of 0.2.47 pending a yank-scoped token (optional cleanup). See memory `project_ferro_codec_asm_nasm_gotcha.md`.
 
