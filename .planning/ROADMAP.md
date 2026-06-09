@@ -1838,7 +1838,11 @@ Plans:
   3. `make:json-view` consumes a `ServiceDef` (either freshly produced by `ai:make` or loaded from an existing project file); selection of JSON-UI components is driven by `FieldMeaning` and `Intent` from the `ServiceDef`, not by re-prompting the LLM about field types
   4. No v1 `JsonUiView` types appear in the generated output or the generation pipeline
   5. **Projection-roundtrip test** at `ferro-ai/tests/projection_roundtrip.rs`: a fixed NL description completes against `ai:make` → produces a deterministic-shape `ServiceDef` (asserted on `Intent` derivation outputs, `FieldMeaning` set, `ActionDef` set) → that `ServiceDef` runs through `make:json-view` v2 → produces a JSON-UI spec validated against `catalog.json_schema()`. The test passes via the `ServiceDef`-aware path; it cannot pass via the generic schema-normalization fallback.
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 173-01-PLAN.md — Rewire make:json-view to the ServiceDef-driven projection path (NL via scaffold_core or --from-service-json) feeding Spec::from_service_def; delete the direct NL→spec two-pass (AICLI-04)
+- [ ] 173-02-PLAN.md — Offline projection-roundtrip proof test (ferro-ai/tests/projection_roundtrip.rs) + ferro-json-ui dev-dep + 173-VERIFICATION.md; pins the ServiceDef-aware path via the Money→currency assertion (AICLI-06)
 
 #### Progress
 
@@ -1852,7 +1856,7 @@ Plans:
 | 170. ferro-cli Migration | 1/1 | Complete    | 2026-06-08 |
 | 171. ai:make & ai:explain CLI Commands | 4/4 | Complete    | 2026-06-08 |
 | 172. MCP Tool Wrappers | 4/4 | Complete    | 2026-06-08 |
-| 173. make:json-view v2 + roundtrip | 0/? | Not started | - |
+| 173. make:json-view v2 + roundtrip | 0/2 | Not started | - |
 
 ### Phase 180: Declarative action handler primitive — typed Result return so POST handlers redirect-on-error without manual try-catch ladders
 
