@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.1
-milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: verifying
-stopped_at: Completed 190-async-rule-infrastructure-unique-rule/190-04-PLAN.md
-last_updated: "2026-06-09T01:10:23.053Z"
+milestone: v12.4
+milestone_name: Form Validation DX
+status: in_progress
+stopped_at: Phase 190 complete & validated (Nyquist-compliant); next Phase 191
+last_updated: "2026-06-09T14:30:00.000Z"
 last_activity: 2026-06-09
 progress:
   total_phases: 59
@@ -20,16 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 190 — Async Rule Infrastructure + unique Rule
+**Current focus:** v12.4 Form Validation DX — Phase 191 ConstraintMap + Portable UNIQUE-Violation Detection
 
 ## Current Position
 
-Phase: 190
+Phase: 191
 Plan: Not started
-Next: `/gsd-plan-phase 190`
-Status: Phase complete — ready for verification
+Next: `/gsd-plan-phase 191`
+Status: Phase 190 complete, verified (5/5), and Nyquist-validated; 191 unblocked
 Last activity: 2026-06-09
 Workspace version: 0.2.48 (released to crates.io)
+
+> Note: v12.1 AI (Phases 165-173) is marked 🚧 in ROADMAP but 165-172 are all
+> executed and 173 was deferred until v12.0 shipped (now shipped, no phase dir).
+> v12.1 needs a close-out decision (`/gsd-complete-milestone` dropping/deferring
+> 173, or plan 173) — separate from the active v12.4 work.
 
 Release 0.2.48 (2026-06-09): all crates published to crates.io and tagged `v0.2.48`. New crates `ferro-deployments` and `ferro-assets` bootstrapped (manual first publish, since the CI token is `publish-update` only); CI updates them from here. `ferro-assets 0.2.47` was shipped requiring `nasm` (rav1e asm) and is superseded by the pure-Rust 0.2.48 — yank of 0.2.47 pending a yank-scoped token (optional cleanup). See memory `project_ferro_codec_asm_nasm_gotcha.md`.
 
