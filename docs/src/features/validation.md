@@ -558,6 +558,73 @@ pub async fn store(req: Request) -> Response {
 | `nullable()` | Can be null (stops if null) | `nullable()` |
 | `accepted()` | Must be "yes", "on", "1", true | `accepted()` |
 
+## Async Rules (DB-backed)
+
+Some validation rules must query the database — for example, checking whether a slug is already taken. These run through `AsyncValidator` and `validate_async`, a parallel path that leaves the synchronous `Validator` API unchanged.
+
+### Create Form (No Exclude-Self)
+
+On a create form every submitted value must be globally unique:
+
+```rust
+use ferro::{AsyncValidator, AsyncValidationError, unique, rules, required, string};
+
+let data = req.input::<serde_json::Value>().await?;
+
+match AsyncValidator::new(&data)
+    .rules("slug", rules![required(), string()])
+    .async_rule("slug", unique("pages", "slug"))
+    .validate_async()
+    .await
+{
+    Ok(()) => { /* proceed to insert */ }
+    Err(AsyncValidationError::Validation(e)) => {
+        return Err(e.with_old_input(&data).into_action_error("/pages/new"));
+    }
+    Err(AsyncValidationError::Infra(fe)) => return Err(fe.into()),
+}
+```
+
+Sync rules run first; an async rule is skipped for any field that already failed a sync rule (fail-fast — no needless DB query). A `Validation` error surfaces under the field with old input preserved (303 redirect-back); an `Infra` error is a 500, never a silent validation pass.
+
+### Exclude-Self on Edit Forms
+
+On edit forms the record being edited would fail its own current value. `.ignore(id)` excludes the record from the uniqueness check:
+
+```rust
+// Edit form: allow record #42 to keep its current slug.
+.async_rule("slug", unique("pages", "slug").ignore(record_id))
+```
+
+Use `.ignore_on("uuid", id)` when the primary key column is not named `id`.
+
+The async rule is the proactive layer. It cannot eliminate the check-then-write race under concurrency — pair it with the defensive [Constraint Mapping](#constraint-mapping) layer at the write site.
+
+## Constraint Mapping
+
+Even with the proactive async rule, two requests can both pass the uniqueness check and one loses the INSERT race (TOCTOU). `ConstraintMap` maps the resulting DB UNIQUE violation to the same field-level error instead of leaking a raw SQL error to the caller.
+
+This is the defensive complement to the proactive [Async Rules](#async-rules-db-backed) layer — use both together.
+
+```rust
+use ferro::{ConstraintMap, MapConstraintExt};
+
+let map = ConstraintMap::new()
+    .on("pages_slug_unique", "slug", "has already been taken")
+    .sqlite("pages.slug");
+
+let page = new_page
+    .insert(db.inner())
+    .await
+    .map_constraint(&map, &data, "/pages/new")?;
+```
+
+**Two-layer rationale:** the proactive `unique` rule catches the common case before the write (good UX — inline error, no wasted INSERT); the defensive `ConstraintMap` closes the TOCTOU race at the write (concurrency safety net). A non-matching `DbErr` falls through `map_constraint` unchanged to the existing `From<DbErr> for ActionError` passthrough — no error is ever swallowed.
+
+Note: `map_constraint` is implemented on `Result<T, sea_orm::DbErr>`, so the write must be a SeaORM-native call (`.insert(...)` / `.update(...)` on an `ActiveModel`), not the framework-wrapped `.save()`.
+
+**Postgres vs SQLite identity:** Postgres matches by the structured constraint NAME (the `.on("pages_slug_unique", ...)` key); SQLite matches by `table.column` from the error message (the `.sqlite("pages.slug")` discriminator). One registration covers both backends by chaining both.
+
 ## Best Practices
 
 1. **Use Form Requests for complex validation** - Keeps controllers clean
@@ -571,8 +638,8 @@ pub async fn store(req: Request) -> Response {
 
 ## MCP Tools
 
-Use `code_templates` with the `validation` category to generate validator boilerplate without memorizing rule names.
+Use `code_templates` with the `validation` category to generate validator boilerplate without memorizing rule names. For handlers with unique fields, use `category: "handler"` — the `action_handler` template demonstrates the full two-layer pattern (proactive `AsyncValidator` + `unique` async rule, defensive `ConstraintMap` at the write site) so an agent scaffolds both layers together.
 
 ### `code_templates`
 
-Returns ready-to-use code snippets for common validation patterns. Pass `category: "validation"` to get templates for the fluent `Validator::new()` API, Form Requests with the `validator` crate, and custom rule implementations. Useful when setting up validation for a new handler quickly.
+Returns ready-to-use code snippets for common validation patterns. Pass `category: "validation"` to get templates for the fluent `Validator::new()` API, Form Requests with the `validator` crate, and custom rule implementations. Pass `category: "handler"` to get the `action_handler` template, which shows both the proactive `unique` async rule and the defensive `ConstraintMap` write-site guard — ensuring neither layer is omitted when scaffolding a handler for a unique field. Useful when setting up validation for a new handler quickly.
