@@ -60,16 +60,16 @@ mod rules_async;
 mod validatable;
 mod validator;
 
+pub use async_rule::AsyncRule;
+pub use async_validator::{AsyncValidationError, AsyncValidator};
 pub(crate) use bridge::translate_validation;
 pub use bridge::{register_validation_translator, TranslatorFn};
 pub use error::ValidationError;
 pub use rule::Rule;
 pub use rules::*;
+pub use rules_async::unique;
 pub use validatable::Validatable;
 pub use validator::{validate, Validator};
-pub use async_rule::AsyncRule;
-pub use async_validator::{AsyncValidationError, AsyncValidator};
-pub use rules_async::unique;
 
 /// Macro for creating a vector of boxed validation rules.
 ///
