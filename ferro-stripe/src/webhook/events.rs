@@ -297,6 +297,9 @@ pub struct StripeChargeRefunded {
     pub event_id: String,
     pub charge_id: String,
     pub payment_intent_id: Option<String>,
+    /// The refund identifier from the charge's refunds list (`charge.refunds.data[0].id`).
+    /// `None` when the event carries no refund.
+    pub refund_id: Option<String>,
     pub amount_refunded_cents: i64,
     pub metadata: HashMap<String, String>,
 }
@@ -311,6 +314,11 @@ impl StripeEvent for StripeChargeRefunded {
                 event_id: event.id.to_string(),
                 charge_id: charge.id.to_string(),
                 payment_intent_id: charge.payment_intent.as_ref().map(|e| e.id().to_string()),
+                refund_id: charge
+                    .refunds
+                    .as_ref()
+                    .and_then(|list| list.data.first())
+                    .map(|r| r.id.to_string()),
                 amount_refunded_cents: charge.amount_refunded,
                 metadata: charge.metadata.clone(),
             }),

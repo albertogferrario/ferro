@@ -114,6 +114,7 @@ fn charge_refunded_parses_all_fields() {
     assert_eq!(typed.charge_id, "ch_test_refunded_001");
     assert_eq!(typed.payment_intent_id.as_deref(), Some("pi_test_ref_001"));
     assert_eq!(typed.amount_refunded_cents, 2000);
+    assert_eq!(typed.refund_id.as_deref(), Some("re_test_refunded_001"));
     assert_eq!(
         typed.metadata.get("order_id").map(String::as_str),
         Some("order_ref")

@@ -29,7 +29,22 @@
       "paid": true,
       "payment_intent": "pi_test_ref_001",
       "refunded": true,
-      "status": "succeeded"
+      "status": "succeeded",
+      "refunds": {
+        "object": "list",
+        "data": [
+          {
+            "id": "re_test_refunded_001",
+            "object": "refund",
+            "amount": 2000,
+            "currency": "usd",
+            "created": 1700000003
+          }
+        ],
+        "has_more": false,
+        "total_count": 1,
+        "url": "/v1/charges/ch_test_refunded_001/refunds"
+      }
     }
   }
 }
