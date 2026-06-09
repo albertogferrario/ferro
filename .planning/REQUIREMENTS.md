@@ -1,69 +1,77 @@
-# Requirements: v12.4 Form Validation DX
+# Requirements: v12.5 Projection Checkpoint
 
 ## Milestone Goal
 
-Make uniqueness validation a first-class, ergonomic part of ferro forms — both proactively (an async DB-backed `unique` rule that runs before the write) and defensively (DB constraint violations mapped to field-level errors instead of leaking raw SQL to end users). The killer feature: a uniqueness violation that today surfaces as a raw SQL error instead lands inline under the right field with the user's input preserved — uniqueness "just works" before the write (async rule, UX) and as a safety net at the write (constraint mapping, concurrency invariant).
+Close the agent write→verify loop. Ferro's write side is rich (generators, templates); the verify side is fragmented across single-purpose validators an agent must know to call and sequence itself. `checkpoint_projection` is one projection-anchored MCP call that walks the intent-slice spine, dispatches to the existing validators at each seam, runs the one seam no validator covers today (projection field → model column), and returns a single structured verdict with ranked next steps — honest about coverage, and closing by default after generation.
 
-Source: gestiscilo-it field test — slug-uniqueness violations surfaced as raw SQL errors through the `From<sea_orm::DbErr> for ActionError` passthrough.
+Killer feature: an agent that adds a projection field referencing a model attribute the migration never created learns it statically, in one call, instead of at runtime — the silent F11-class seam becomes a ranked, actionable next step.
 
 ## Conceptual Coherence Anchor
 
-v12.4 introduces no new abstraction. It extends the existing validation layer (`framework/src/validation/`) with an async sibling of the established sync `Rule`/`Validator` surface, and composes with Phase 180's `#[action]` / `ActionError` and the existing `ValidationError` → redirect-back-with-old-input path. Both new surfaces produce the same `ValidationError` shape and flow through the same 303 redirect mechanism as every existing rule — the user-visible behavior is identical whether a failure is caught proactively or defensively.
+v12.5 introduces no new abstraction. The unit of verification is the **intent slice**, anchored on the projection / `ServiceDef`, which already ties model → intent → derived view. The tool is a pure orchestrator: it owns exactly one new check (field→column) plus aggregation, and **delegates every other seam to an existing validator** (`validate_projection`, `json_ui_verify_action`, `render_projection` + `json_ui_validate_spec`, `validate_contracts`) — no duplicate control surface. It is read-only and introspective: no `cargo`/compile; it reads source, the route registry, and DB schema, reusing primitives already in the `ferro-mcp` crate graph (`list_models::execute`, the `projection_coverage` model-resolution predicate, `reconstruct_service_def`). Zero new dependencies.
 
-**Two-layer model (both required, neither sufficient alone):**
-- **Proactive** — the async `unique` rule is UX: it catches the common case with a clean field error before the write.
-- **Defensive** — the DB UNIQUE index remains the source of truth; constraint→field mapping closes the check-then-insert (TOCTOU) race that the proactive rule cannot.
+The load-bearing trust invariant: **`not_checked` never collapses into `pass`.** A checkpoint that reports `pass` on something it did not actually verify trains the agent to trust a lie, which is worse than no checkpoint.
 
 ## v1 Requirements
 
-### Async DB-Backed Validation
+### Core Checkpoint (P1)
 
-- [x] **VALID-01** — A developer can validate that a field's value is unique in a DB table via an async rule (`unique(table, column)`), failing validation **before** the insert/update with a field-level error message.
-- [x] **VALID-02** — A developer can exclude the current record from the uniqueness check on edit forms (`.ignore(id)` / exclude-self), so saving an unchanged unique value does not falsely fail. Exclude-self ships in v1 (retrofitting it later is a breaking change for edit handlers).
-- [x] **VALID-03** — Async rules run through an `AsyncValidator` / `validate_async` path that leaves the existing synchronous `Validator` API and its existing rules unchanged, obtains its DB connection via the existing `DB::connection()` singleton (no connection threaded through the rule signature), and surfaces failures through the existing `ValidationError` → `with_old_input` → 303 redirect-back flow.
+- [ ] **CHK-01** — An agent can call `checkpoint_projection { name }` and receive a single structured verdict: top-level `status` (`pass`/`warn`/`fail`), a per-seam result list, and a ranked, deduplicated `next_steps` list of actionable fixes. Each seam finding names its producing validator in `source` (provenance).
+- [ ] **CHK-02** — The field→column seam flags every projection field with no backing entity column. It resolves the projection to its source model via the same `src/projections/` ↔ `src/models/` name-match `projection_coverage` uses, reconstructs the `ServiceDef` via `reconstruct_service_def`, and compares field names against the model's columns (`list_models::execute`, no running DB required).
+- [ ] **CHK-03** — Every seam reports its state as one of `pass` / `fail` / `warn` / `not_checked`, distinctly. `not_checked` is used when a prerequisite is absent (no source model resolved, no rendered view exists, reconstruction incomplete) and is **never** coerced to `pass`. Unchecked seams do not raise overall `status` to `fail` but are listed. (Enforced by a dedicated test.)
+- [ ] **CHK-04** — The field→column seam never raises a false positive on a field that legitimately has no column: relationship navigation fields (carried in `ServiceDef.relationships`, not `.fields`) and computed/virtual fields are exempted by construction, not flagged.
+- [ ] **CHK-05** — When `reconstruct_service_def` cannot fully parse the projection source (a builder pattern it does not cover), the field→column seam reports `not_checked` with a reason rather than a false `pass` — verified by a completeness check, not assumed.
+- [ ] **CHK-06** — `next_steps` is ranked (failures above warnings; within a rank, earlier seams first) and deduplicated, and each entry is actionable (names the subject, the problem, and a concrete fix path).
 
-### DB Constraint → Field-Level Error Mapping
+### Close the Loop by Default (P2)
 
-- [x] **VALID-04** — A developer can opt in to mapping a DB UNIQUE-constraint violation to a specific field's validation error at the handler call site (e.g. a `ConstraintMap` / `map_unique` builder), so a concurrent-insert violation surfaces inline under the field with input preserved — identical to a proactive rule failure — instead of a raw SQL error.
-- [x] **VALID-05** — Constraint-violation detection is backend-portable across SQLite and Postgres (via `DbErr::sql_err()` and bifurcated identification — Postgres constraint name, SQLite table.column from the message). A `DbErr` that does not match a registered mapping falls through unchanged to the existing `From<sea_orm::DbErr> for ActionError` passthrough — never swallowed, never panics. The framework holds no consumer-specific constraint/field strings (project-agnostic-crates rule): mapping is registered at the consumer call site.
+- [ ] **CHK-07** — `generate_projection` and `json_ui_generate` return the checkpoint verdict inline in their response after generating, so the agent receives it whether or not it issues a separate call. The dependency is one-way: the generators depend on the checkpoint; the checkpoint does not depend on the generators.
+- [ ] **CHK-08** — `application_info` and `projection_coverage` surface a per-projection checkpoint status (`clean` / `failing` / `unverified`) as read-only consumers, so an agent surveying the project sees verification debt without probing for it.
+- [ ] **CHK-09** — Seams 1, 3, 4, and 5 dispatch to the existing validators (`validate_projection`, `json_ui_verify_action`, `render_projection` + `json_ui_validate_spec`, `validate_contracts`) and aggregate their output into the unified verdict. No validation logic for these seams is reimplemented in the checkpoint; each finding's `source` names the producing validator.
 
-### Introspection & Docs
+### Dogfood Acceptance (P3)
 
-- [x] **VALID-06** — The `ferro-mcp` `action_handler` code template and the validation docs demonstrate the async `unique` rule **and** constraint mapping together (proactive + defensive), so the two-layer pattern is discoverable and no surface shows one layer without the other.
+- [ ] **CHK-10** — The checkpoint is run across the synthetic app catalog — which must include at least one **deliberately poisoned** projection (a field with no backing column), since model-derived projections auto-pass seam 2 and would make the gate vacuous — and against one live consumer application. Acceptance requires it to surface at least one real seam defect; a checkpoint that finds nothing real in a real project fails acceptance and the design is revisited, not shipped.
 
-### ferro-stripe Refund Event (Phase 193 — milestone v11.6.2)
+## Design Decisions To Resolve In Planning
 
-- [x] **STRIPE-REFUND-01** — The `StripeChargeRefunded` typed webhook event exposes the refund identifier as `pub refund_id: Option<String>`, parsed from the charge's refunds list (`charge.refunds.data[].id`), with golden-JSON fixture coverage and a parser-contract test asserting the parsed value — so a consumer can look up its local refund row without bypassing ferro-stripe via direct `stripe::` imports (V-95-01 gate).
-- [x] **STRIPE-REFUND-02** — ferro-stripe carries a `0.7.0` release label (version bump from `0.5.0`, no intermediate `0.6.x`) with a `CHANGELOG.md` `## [0.7.0]` entry documenting the new `refund_id` field, the bundled Phase 189 manual-capture additions, and the version-skip rationale. (Publish to crates.io is an operator-owned step — push to master triggers GH Actions auto-publish; out of scope for the code phase.)
+Surfaced by research as underspecified in the design spec; the phase planner must resolve them (not user-facing requirements):
+
+- **Seam cascade** (P1): when an upstream seam fails (e.g. projection malformed), do dependent downstream seams report `not_checked` with reason, or run anyway? Research recommends cascade-to-`not_checked`.
+- **Fix-string normalization** (decide P1, ship P2): sub-validators for seams 1/3/4/5 return heterogeneous shapes; decide whether the checkpoint normalizes them into the uniform finding shape or passes through with a documented caveat. The output contract must commit to a shape in P1.
+- **Ambient status freshness** (P2): is the `application_info`/`projection_coverage` status a cached last-run result or an always-fresh lightweight recompute? Two materially different implementation costs.
 
 ## Anti-Requirements (explicit non-goals to prevent scope drift)
 
-- The synchronous `Validator` / `Rule` API is not changed or deprecated — async is a parallel path, not a replacement.
-- No general-purpose async rule library beyond `unique` for this milestone (other async rules can follow the same `AsyncRule` trait later).
-- No automatic, framework-level `DbErr` → field inference without explicit consumer registration (would require embedding consumer strings in `framework`).
-- The `From<sea_orm::DbErr> for ActionError` passthrough at `action.rs:196` is retained as the non-constraint fallback — not removed.
+- No auto-fix / mutation — the checkpoint reports what to fix; it never edits code. The read-only contract preserves the agent's review step.
+- No parallel validation engine — every seam except field→column reuses an existing validator; a second implementation would create two sources of truth.
+- No mega-verdict — one call verifies one projection; whole-project status is surfaced via `projection_coverage`, not an aggregate of every projection.
+- No `cargo`/compile invocation — the checkpoint stays introspective/read-only.
 
 ## Future Requirements (deferred)
 
-- Additional async rules (e.g. `exists`, async cross-field checks) on the `AsyncRule` trait.
-- CHECK / FK / NOT NULL constraint mapping beyond UNIQUE.
-- Per-rule async timeout guard.
+- Model-anchored fan-out: checkpoint every projection/route/view touching a given model (projection anchor only for v12.5).
+- A `cargo check`-backed compile seam.
+- A method-threaded seam-3 check (verify the action's HTTP method, not just handler registration).
 
 ## Out of Scope
 
-- Original v12.1-era Phase 137–139 scope (Validator struct, sync rules, old-input flash, `req.old()`) — already shipped organically via the validation module.
-- Client-side / JS validation — ferro forms are server-validated; out of scope.
-- ORM-entity-generic uniqueness (typed entity column references) — raw `SELECT COUNT(*)` via `Statement` is backend-agnostic and sufficient.
+- Model-anchored and compile seams (see Future) — explicitly deferred to keep the spine walk bounded and the loop fast.
+- Client-side surfacing of the verdict (IDE panel, etc.) — the consumer is the agent via MCP.
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VALID-01 | Phase 190 | Complete |
-| VALID-02 | Phase 190 | Complete |
-| VALID-03 | Phase 190 | Complete |
-| VALID-04 | Phase 191 | Complete |
-| VALID-05 | Phase 191 | Complete |
-| VALID-06 | Phase 192 | Complete |
-| STRIPE-REFUND-01 | Phase 193 | Complete |
-| STRIPE-REFUND-02 | Phase 193 | Complete |
+| CHK-01 | — | Pending |
+| CHK-02 | — | Pending |
+| CHK-03 | — | Pending |
+| CHK-04 | — | Pending |
+| CHK-05 | — | Pending |
+| CHK-06 | — | Pending |
+| CHK-07 | — | Pending |
+| CHK-08 | — | Pending |
+| CHK-09 | — | Pending |
+| CHK-10 | — | Pending |
+
+*(Phase column filled by the roadmapper.)*
