@@ -1,20 +1,22 @@
 ---
 phase: 191-constraintmap-portable-unique-violation-detection
 verified: 2026-06-09T17:00:00Z
-status: human_needed
+status: passed
 score: 5/5
 overrides_applied: 0
+postgres_gate_closed: 2026-06-09
 human_verification:
   - test: "Postgres constraint() identity path"
-    expected: "ConstraintMap::new().on(\"pages_slug_unique\", \"slug\", \"has already been taken\").try_map(err) returns Ok(ve) with ve.has(\"slug\") true — match must come from DatabaseError::constraint(), NOT message parse (omit .sqlite() from the map)"
-    why_human: "The Postgres-specific constraint() dispatch path cannot run under the SQLite-only cargo test default. No Postgres instance is available in CI. The shared sql_err() type gate and the entry-match loop are fully SQLite-tested; only the PgDatabaseError::constraint() runtime branch requires a live Postgres instance."
+    expected: "ConstraintMap::new().on(\"<pg_constraint_name>\", \"slug\", \"...\").try_map(err) returns Ok(ve) with ve.has(\"slug\") true — match must come from DatabaseError::constraint(), NOT message parse (omit .sqlite() from the map)"
+    status: passed
+    evidence: "framework/tests/constraint_map_pg_gate.rs::pg_constraint_name_identity_match — ran green against live Postgres (postgres@localhost:5432) 2026-06-09. Named constraint cw_pg_slug_key matched via constraint() dispatch with NO .sqlite() discriminator. Test is #[ignore]d (run with DATABASE_URL + -- --ignored)."
 ---
 
 # Phase 191: ConstraintMap + Portable UNIQUE-Violation Detection — Verification Report
 
 **Phase Goal:** A handler opt-in `ConstraintMap` intercepts a DB UNIQUE-constraint violation at the write site and maps it to a field-level `ValidationError` (input preserved, same 303 redirect-back as a proactive failure), closing the TOCTOU window the Phase 190 `unique` rule cannot. A `DbErr` matching no registered mapping falls through UNCHANGED to the existing `From<sea_orm::DbErr> for ActionError` passthrough. Backend-portable (SQLite + Postgres). Framework holds no consumer-specific strings.
 **Verified:** 2026-06-09T17:00:00Z
-**Status:** human_needed (all automated SCs pass; Postgres constraint() branch requires manual gate)
+**Status:** passed (all automated SCs pass; Postgres constraint() gate closed 2026-06-09 via `framework/tests/constraint_map_pg_gate.rs` against live Postgres)
 **Re-verification:** No — initial verification
 
 ---
