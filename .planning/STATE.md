@@ -4,7 +4,7 @@ milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: verifying
 stopped_at: Completed 191-02-PLAN.md
-last_updated: "2026-06-09T16:28:16.817Z"
+last_updated: "2026-06-09T16:33:42.021Z"
 last_activity: 2026-06-09
 progress:
   total_phases: 59
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 191 (constraintmap-portable-unique-violation-detection) — EXECUTING
-Plan: 2 of 2
+Phase: 191
+Plan: Not started
 Next: `/gsd-plan-phase 173`
 Status: Phase complete — ready for verification
 Last activity: 2026-06-09
@@ -55,7 +55,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 206
+- Total plans completed: 208
 - Average duration: —
 - Total execution time: —
 
@@ -104,6 +104,7 @@ Progress: [██████████] 100%
 | 172 | 4 | - | - |
 | 190 | 4 | - | - |
 | 173 | 2 | - | - |
+| 191 | 2 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
