@@ -21,7 +21,7 @@ The load-bearing trust invariant: **`not_checked` never collapses into `pass`.**
 - [x] **CHK-03** — Every seam reports its state as one of `pass` / `fail` / `warn` / `not_checked`, distinctly. `not_checked` is used when a prerequisite is absent (no source model resolved, no rendered view exists, reconstruction incomplete) and is **never** coerced to `pass`. Unchecked seams do not raise overall `status` to `fail` but are listed. (Enforced by a dedicated test.)
 - [x] **CHK-04** — The field→column seam never raises a false positive on a field that legitimately has no column: relationship navigation fields (carried in `ServiceDef.relationships`, not `.fields`) and computed/virtual fields are exempted by construction, not flagged.
 - [x] **CHK-05** — When `reconstruct_service_def` cannot fully parse the projection source (a builder pattern it does not cover), the field→column seam reports `not_checked` with a reason rather than a false `pass` — verified by a completeness check, not assumed.
-- [ ] **CHK-06** — `next_steps` is ranked (failures above warnings; within a rank, earlier seams first) and deduplicated, and each entry is actionable (names the subject, the problem, and a concrete fix path).
+- [x] **CHK-06** — `next_steps` is ranked (failures above warnings; within a rank, earlier seams first) and deduplicated, and each entry is actionable (names the subject, the problem, and a concrete fix path).
 
 ### Close the Loop by Default (P2)
 
@@ -68,7 +68,7 @@ Surfaced by research as underspecified in the design spec; the phase planner mus
 | CHK-03 | Phase 194 | Complete |
 | CHK-04 | Phase 194 | Complete |
 | CHK-05 | Phase 194 | Complete |
-| CHK-06 | Phase 194 | Pending |
+| CHK-06 | Phase 194 | Complete |
 | CHK-07 | Phase 195 | Pending |
 | CHK-08 | Phase 195 | Pending |
 | CHK-09 | Phase 195 | Pending |

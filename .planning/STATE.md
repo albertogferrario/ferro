@@ -4,7 +4,7 @@ milestone: v12.5
 milestone_name: Projection Checkpoint
 status: verifying
 stopped_at: Completed 194-core-checkpoint-tool-03-PLAN.md
-last_updated: "2026-06-09T23:14:58.262Z"
+last_updated: "2026-06-09T23:24:00.026Z"
 last_activity: 2026-06-09
 progress:
   total_phases: 78
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 194 (Core Checkpoint Tool) — EXECUTING
-Plan: 3 of 3
+Phase: 195
+Plan: Not started
 Next: `/gsd-plan-phase 194`
 Status: Phase complete — ready for verification
 
@@ -72,7 +72,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 257
+- Total plans completed: 260
 - Average duration: —
 - Total execution time: —
 
@@ -124,6 +124,7 @@ Progress: [░░░░░░░░░░] 0%
 | 191 | 2 | - | - |
 | 192 | 2 | - | - |
 | 193 | 1 | - | - |
+| 194 | 3 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
