@@ -1,9 +1,5 @@
 //! Async validation rule trait.
 
-// AsyncRule is declared in a private module and re-exported in Plan 04.
-// Suppress dead_code lint until the pub use chain is wired.
-#![allow(dead_code)]
-
 use async_trait::async_trait;
 use serde_json::Value;
 

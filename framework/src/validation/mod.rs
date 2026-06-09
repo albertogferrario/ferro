@@ -67,6 +67,9 @@ pub use rule::Rule;
 pub use rules::*;
 pub use validatable::Validatable;
 pub use validator::{validate, Validator};
+pub use async_rule::AsyncRule;
+pub use async_validator::{AsyncValidationError, AsyncValidator};
+pub use rules_async::unique;
 
 /// Macro for creating a vector of boxed validation rules.
 ///

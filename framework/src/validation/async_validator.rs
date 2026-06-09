@@ -1,9 +1,5 @@
 //! Async validator builder and error types.
 
-// async_validator is declared in a private module; pub use re-exports are wired
-// in Plan 04. Suppress dead_code until the pub use chain is in place.
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 
 use serde_json::Value;
