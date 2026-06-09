@@ -2248,7 +2248,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 190. Async Rule Infrastructure | 4/4 | Complete    | 2026-06-09 |
 | 191. ConstraintMap + Detection | 2/2 | Complete    | 2026-06-09 |
-| 192. MCP Template + Docs | 2/2 | Complete   | 2026-06-09 |
+| 192. MCP Template + Docs | 2/2 | Complete    | 2026-06-09 |
 
 ## Phase Details
 
