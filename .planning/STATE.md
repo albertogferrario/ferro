@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.4
-milestone_name: Form Validation DX
-status: in_progress
-stopped_at: Phase 190 complete & validated (Nyquist-compliant); next Phase 191
-last_updated: "2026-06-09T14:30:00.000Z"
+milestone: v12.1
+milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
+status: verifying
+stopped_at: Phase 191 context gathered
+last_updated: "2026-06-09T13:49:03.253Z"
 last_activity: 2026-06-09
 progress:
-  total_phases: 59
-  completed_phases: 54
-  total_plans: 255
-  completed_plans: 255
+  total_phases: 74
+  completed_phases: 66
+  total_plans: 295
+  completed_plans: 295
   percent: 100
 ---
 
@@ -361,7 +361,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T01:00:45.362Z
-Stopped at: Completed 190-async-rule-infrastructure-unique-rule/190-04-PLAN.md
-Resume file: None
+Last session: 2026-06-09T13:49:03.217Z
+Stopped at: Phase 191 context gathered
+Resume file: .planning/phases/191-constraintmap-portable-unique-violation-detection/191-CONTEXT.md
 Next action: (1) manual `cargo publish` bootstrap of ferro-bundle / ferro-deployments / ferro-assets from a local terminal (CI token is publish-update only); (2) `/gsd-new-milestone` to open the next build cycle (next planned: v12.4 Form Validation DX). No active phase pointer.
