@@ -16,7 +16,7 @@ const BUNNY_RATE_LIMIT_MAX: usize = 100;
 /// Configuration for the Bunny CDN URL-purge adapter.
 #[derive(Clone)]
 pub struct BunnyCdnConfig {
-    /// CDN zone base URL, e.g. "https://myzone.b-cdn.net" (Bunny requires full URLs).
+    /// CDN zone base URL, e.g. `https://myzone.b-cdn.net` (Bunny requires full URLs).
     pub cdn_base_url: String,
     /// Bunny API access key (`BUNNY_ACCESS_KEY`). Never logged.
     pub access_key: String,

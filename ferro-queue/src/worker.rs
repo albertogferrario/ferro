@@ -199,7 +199,7 @@ impl WorkerLoop {
         self.handlers.insert(type_name, handler);
     }
 
-    /// Build a `WorkerLoop` and apply all job types registered via [`Queue::register`].
+    /// Build a `WorkerLoop` and apply all job types registered via `Queue::register`.
     ///
     /// This is the entry point used by the framework's server boot path to create
     /// the auto-started worker when at least one job type has been registered.

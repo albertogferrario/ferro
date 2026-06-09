@@ -136,7 +136,7 @@ impl fmt::Display for SseEvent {
 
 /// Streaming HTTP body that serializes [`SseEvent`]s from an mpsc channel.
 ///
-/// Implements [`http_body::Body`] so it can be carried as `FerroBody::Stream` through the
+/// Implements `http_body::Body` so it can be carried as `FerroBody::Stream` through the
 /// framework's hyper serve loop. The stream ends when the [`mpsc::Sender`] is dropped.
 ///
 /// A `:ping\n\n` keep-alive comment is emitted every 15 seconds while the channel is idle.
@@ -160,7 +160,7 @@ impl SseStream {
     /// Create a bounded channel for pushing events and the streaming body.
     ///
     /// Returns `(sender, stream)`. The handler holds the sender and pushes events from
-    /// a spawned task; the stream is wrapped in an [`HttpResponse::sse`] response.
+    /// a spawned task; the stream is wrapped in an `HttpResponse::sse` response.
     ///
     /// Uses [`interval_at`] with an initial delay equal to `interval_period` so that
     /// the first ping is deferred — avoiding an immediate `:ping` frame on connection.

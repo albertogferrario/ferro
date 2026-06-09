@@ -13,7 +13,7 @@ pub struct CloudflareCdnConfig {
     pub zone_id: String,
     /// Cloudflare API token (`CF_API_TOKEN`). Never logged.
     pub api_token: String,
-    /// CDN base URL, e.g. "https://example.com" (Cloudflare requires full URLs).
+    /// CDN base URL, e.g. `https://example.com` (Cloudflare requires full URLs).
     pub cdn_base_url: String,
 }
 

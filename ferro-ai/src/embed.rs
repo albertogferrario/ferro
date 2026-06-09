@@ -2,7 +2,7 @@
 //!
 //! [`embed`] is the primary surface for generating text embeddings.
 //! It is a thin delegate over [`LlmClient::embed`], symmetric with
-//! [`crate::complete`].
+//! [`crate::complete()`].
 //!
 //! ## Usage
 //!
@@ -28,7 +28,7 @@ use crate::error::Error;
 /// Generate a text embedding vector using the configured LLM provider.
 ///
 /// Thin pass-through to [`LlmClient::embed`]: no batching, normalization, or retry.
-/// Symmetric with [`crate::complete`].
+/// Symmetric with [`crate::complete()`].
 ///
 /// Returns `Err(Error::Unsupported)` for providers without an embeddings
 /// endpoint (e.g. `AnthropicClient`).

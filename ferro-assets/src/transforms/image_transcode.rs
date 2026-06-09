@@ -54,7 +54,7 @@ pub struct ImageTranscode {
 impl ImageTranscode {
     /// Create a new `ImageTranscode` with default settings.
     ///
-    /// Defaults: max_concurrent=2, widths=[480,768,1200,1920], avif_quality=70.0, avif_speed=4, jpeg_quality=80.
+    /// Defaults: max_concurrent=2, widths=`[480,768,1200,1920]`, avif_quality=70.0, avif_speed=4, jpeg_quality=80.
     ///
     /// Speed 4 is chosen deliberately over the ravif default (speed=1) to avoid 10–30 second
     /// encode times per image during publish jobs (see RESEARCH.md Pitfall 3).
