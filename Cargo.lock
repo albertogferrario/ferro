@@ -2656,7 +2656,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-stripe"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "async-stripe",
  "async-trait",
