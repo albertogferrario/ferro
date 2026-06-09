@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: Roadmap created — starting Phase 190
+status: executing
 stopped_at: Phase 190 context gathered
-last_updated: "2026-06-08T23:40:42.264Z"
-last_activity: 2026-06-09 — v12.4 roadmap created (Phases 190-192)
+last_updated: "2026-06-09T00:11:26.163Z"
+last_activity: 2026-06-09 -- Phase 190 planning complete
 progress:
-  total_phases: 74
-  completed_phases: 65
-  total_plans: 291
-  completed_plans: 291
+  total_phases: 59
+  completed_phases: 54
+  total_plans: 255
+  completed_plans: 255
   percent: 100
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Phase: 190 — Async Rule Infrastructure + `unique` Rule
 Plan: —
 Next: `/gsd-plan-phase 190`
-Status: Roadmap created — starting Phase 190
-Last activity: 2026-06-09 — v12.4 roadmap created (Phases 190-192)
+Status: Ready to execute
+Last activity: 2026-06-09 -- Phase 190 planning complete
 Workspace version: 0.2.48 (released to crates.io)
 
 Release 0.2.48 (2026-06-09): all crates published to crates.io and tagged `v0.2.48`. New crates `ferro-deployments` and `ferro-assets` bootstrapped (manual first publish, since the CI token is `publish-update` only); CI updates them from here. `ferro-assets 0.2.47` was shipped requiring `nasm` (rav1e asm) and is superseded by the pure-Rust 0.2.48 — yank of 0.2.47 pending a yank-scoped token (optional cleanup). See memory `project_ferro_codec_asm_nasm_gotcha.md`.
