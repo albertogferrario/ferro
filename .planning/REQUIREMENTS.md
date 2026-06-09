@@ -63,15 +63,15 @@ Surfaced by research as underspecified in the design spec; the phase planner mus
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHK-01 | — | Pending |
-| CHK-02 | — | Pending |
-| CHK-03 | — | Pending |
-| CHK-04 | — | Pending |
-| CHK-05 | — | Pending |
-| CHK-06 | — | Pending |
-| CHK-07 | — | Pending |
-| CHK-08 | — | Pending |
-| CHK-09 | — | Pending |
-| CHK-10 | — | Pending |
+| CHK-01 | Phase 194 | Pending |
+| CHK-02 | Phase 194 | Pending |
+| CHK-03 | Phase 194 | Pending |
+| CHK-04 | Phase 194 | Pending |
+| CHK-05 | Phase 194 | Pending |
+| CHK-06 | Phase 194 | Pending |
+| CHK-07 | Phase 195 | Pending |
+| CHK-08 | Phase 195 | Pending |
+| CHK-09 | Phase 195 | Pending |
+| CHK-10 | Phase 196 | Pending |
 
 *(Phase column filled by the roadmapper.)*

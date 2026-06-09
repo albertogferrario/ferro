@@ -55,6 +55,7 @@
 - ✅ **v11.6.2 ferro-stripe Refund Event Completeness + 0.7.0 Release** — Phase 193 (code complete 2026-06-09; **ferro-stripe 0.7.0 publish pending operator `git push`** — GH Actions auto-publishes on push to master, unblocking gestiscilo Phase 99). Source: gestiscilo-it v6.3 Phase 99 (Refund dashboard UX) field test — operator-locked Option B per gestiscilo CONTEXT.md D-27. Closes a payload-coverage gap in the `StripeChargeRefunded` typed event: the struct currently exposes `event_id / charge_id / payment_intent_id / amount_refunded_cents / metadata` but NOT the `refund_id` field that Stripe always sends. Consumer use case: gestiscilo Phase 99 `on_refunded` handler needs to look up its local `refunds` table row by `stripe_refund_id` (set when the operator clicked "Emetti rimborso") and mark `confirmed_at = now()` — without the `refund_id` field on the event struct, the consumer cannot perform that lookup without bypassing ferro-stripe via direct `stripe::` imports (violates the V-95-01 "no direct `stripe::` import" gate established in v11.6). Adds `refund_id: Option<String>` to `StripeChargeRefunded` (parsed from the charge's refunds list — `charge.refunds.data[].id`; a `charge.refunded` event carries a `Charge`, not a top-level `Refund`), with golden-JSON fixture updates + parser-contract test. Releases ferro-stripe 0.7.0 — the published version label that captures Phase 189 (Manual Capture, shipped 2026-06-07 but not yet released) + this new refund_id work as combined breaking changes per gestiscilo Phase 97 D-14 expectation. Consumer: gestiscilo-it v6.3 Phase 99 Plan 03 (webhook extension) hard-blocks on the field; Plan 04 (closeout) hard-blocks on the 0.7.0 publish per `feedback_ferro_publish.md` auto-publish via GitHub Actions on push to master. Out of scope: backporting refund_id to existing v0.5.x consumers (v0.7.0 is opt-in via the documented consumer bump).
 - ✅ **v12.1 AI — ferro-ai SDK & AI as Projection Consumer** — Phases 165-173 (shipped 2026-06-09; planned 2026-05-15, reframed 2026-06-07, started 2026-06-08). AI as a first-class consumer of the projection/intent core. Capstone (Phase 173): `make:json-view` consumes a `ServiceDef` via the existing `Spec::from_service_def` renderer + the projection-roundtrip proof test (NL → ServiceDef → rendered JSON-UI). All 9 phases verified.
 - ✅ **v12.4 Form Validation DX** — Phases 190-192 (shipped 2026-06-09). Async DB-backed `unique` rule with exclude-self (edit-form safety) + `ConstraintMap` opt-in DB constraint→field-level error mapping + ferro-mcp template and docs showing the two-layer proactive+defensive pattern together. Source: gestiscilo-it field test (slug-uniqueness violations surfacing as raw SQL errors). Both live-Postgres paths verified via `#[ignore]`d gate tests. All 3 phases verified.
+- 🚧 **v12.5 Projection Checkpoint** — Phases 194-196 (started 2026-06-09). Close the agent write→verify loop: `checkpoint_projection` MCP tool walks the intent-slice spine, owns the field→column seam (the only silent gap no existing validator covers), delegates the remaining seams to existing validators, and returns a single structured verdict with ranked next steps. Closes by default after generation; ambient status in `application_info`/`projection_coverage`. Killer feature: a dangling projection field (no backing migration column) surfaces statically in one call rather than at runtime.
 - 📋 **v12.2 Frontend Performance Hardening** — Phases 182-184 (planned 2026-06-06). Source: gestiscilo-it jetskiadriatic startup-lifecycle audit. Three runtime/framework primitives, each paired 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). (182) `ferro-json-ui` `data-lazy-hero` runtime primitive — IntersectionObserver promoting `<video preload="none">` → `preload="auto"` on viewport approach; (183) `ferro-bundle` new crate — in-memory immutable byte blobs with content-hashed immutable-cache serving; (184) `ferro::InlineBudget` + `ferro::RequestTelemetry` — request-scoped accumulator with inline/preload decision + per-key ring buffer.
 - 📋 **v12.3 Deployment Platform Primitives** — Phases 185-188 (planned 2026-06-07). Source: gestiscilo-it v7.1 Tenant Frontend Platform (locked design at gestiscilo `.planning/research/v7.1-ARCHITECTURE.md`, D-01..D-06). Four generic primitives, each paired 1:1 with a gestiscilo consumer phase that bumps the published crate (185 ↔ gestiscilo 188, 186 ↔ gestiscilo 188, 187 ↔ gestiscilo 189, 188 ↔ gestiscilo 190). (185) `ferro::queue` — DB-backed job queue replacing the Redis-only ferro-queue backend: `Job` trait, `WorkerLoop` in `ferro serve`, atomic claim (Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` + `UPDATE…RETURNING`), retry/backoff, stuck-job reaper; (186) `ferro-deployments` new crate — immutable `Deployment` model, `DeploymentStorage` trait, atomic `promote`/`rollback`, `preview_url` helper, artifact-shape agnostic; (187) `ferro-assets` new crate — `Pipeline` composer with content-type-aware transforms: `html_minify` (lol_html), `css_minify` (lightningcss), `js_minify` (swc_ecma_minifier), `image_transcode` (pure-Rust `image`+`ravif`, AVIF+JPEG responsive variants — libvips rejected for thread-safety), `inject_before_tag`; (188) `ferro-storage` extension — `cdn_url()`, `PurgeApi` trait, DO Spaces CDN adapter (feature-flagged Bunny/Cloudflare). Primitives stay consumer-agnostic: static HTML sites, JSON-UI spec bundles, and Inertia SSR manifests all fit the deployment abstraction. See "v12.3 Deployment Platform Primitives" phase details at the end of this file.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -2333,3 +2334,80 @@ Plans:
 
 **Plans:** 1/1 plans complete
 - [x] 193-01-PLAN.md — refund_id field + parser from charge.refunds, fixture + parser-contract round-trip, 0.7.0 version bump + CHANGELOG (no push/publish)
+
+
+---
+
+## v12.5 Projection Checkpoint (Phases 194–196)
+
+**Source:** Design spec `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`. Closes the one gap in ferro's generate→verify loop that no existing tool covers: cross-artifact seam coherence anchored on a projection. Killer feature: a projection field referencing a model attribute the migration never created surfaces statically in one MCP call instead of at runtime.
+
+**Design decisions locked at roadmap time:**
+- **Seam cascade:** when seam 1 (well-formed) fails, seams 4 and 5 report `not_checked` with `reason: "seam_1_failed"` (they depend on a valid ServiceDef parse). Seam 2 (field→column) runs independently if `reconstruct_service_def` succeeds. Seam 3 (action→route) runs independently. If seam 4 (render) fails, seam 5 (props→contract) reports `not_checked` with `reason: "seam_4_failed"`.
+- **Fix-string normalization:** the checkpoint normalizes all seam findings into the uniform `Finding { subject, detail, fix }` shape at the module boundary. Sub-validator heterogeneous output shapes (`fix_suggestions[].details`, `message/candidate`, `mismatches[].details`) are translated by per-seam normalization functions inside `checkpoint_projection.rs`. This output contract is established in Phase 194 (P1) and reused verbatim by Phase 195 wrapper seams.
+- **Ambient status freshness:** `application_info` and `projection_coverage` read the `.ferro/checkpoints/{name}.json` status cache written by the last `run_for` call (stale-ok read). No live recompute on ambient status queries. Mitigated by the inline hook on generators (Phase 195) ensuring the cache is refreshed on every generation. The alternative (always-fresh recompute) has I/O cost proportional to projection count and is not acceptable for `application_info` (called frequently by agents surveying the project).
+
+**Conceptual coherence note:** no new abstraction. The unit of verification is the intent slice, anchored on the projection/ServiceDef. The checkpoint is a pure orchestrator — it owns exactly one new check (field→column) plus aggregation. Every other seam delegates to an existing validator with no logic duplication.
+
+## Phases
+
+- [ ] **Phase 194: Core Checkpoint Tool** — `checkpoint_projection` MCP tool + field→column seam (the new check) + aggregation + ranked `next_steps` + `not_checked` coverage-honesty invariant + reconstruction completeness assertion + false-positive exemptions + status cache write
+- [ ] **Phase 195: Close the Loop by Default** — wrapper seams 1/3/4/5 dispatching to existing validators + inline verdict hook in `generate_projection`/`json_ui_generate` + per-projection checkpoint status in `application_info`/`projection_coverage`
+- [ ] **Phase 196: Dogfood Acceptance + Hardening** — acceptance run across synthetic catalog (including a deliberately poisoned fixture) + one live consumer; `next_steps` capped to 5; go/no-go gate
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 194. Core Checkpoint Tool | 0/TBD | Not started | - |
+| 195. Close the Loop by Default | 0/TBD | Not started | - |
+| 196. Dogfood Acceptance + Hardening | 0/TBD | Not started | - |
+
+#### Phase Details
+
+### Phase 194: Core Checkpoint Tool
+
+**Goal:** An agent calling `checkpoint_projection { name }` receives a single structured verdict (`pass`/`warn`/`fail`) with per-seam results and a ranked, actionable `next_steps` list. The field→column seam is the load-bearing new check: it resolves the projection to its source model via the same predicate `projection_coverage` uses, compares every `FieldDef` name against the entity's column set, and reports findings with `source: "checkpoint"` and a concrete `fix` string. Coverage-honesty holds by construction: `not_checked` is a distinct `SeamStatus` variant, never coerced to `pass`.
+
+**Depends on:** Phase 193 (continues numbering; no runtime dependency)
+
+**Requirements:** CHK-01, CHK-02, CHK-03, CHK-04, CHK-05, CHK-06
+
+**Success Criteria** (what must be TRUE):
+  1. An agent calling `checkpoint_projection { name: "Booking" }` on a projection with a field referencing no backing entity column receives `status: "fail"`, a `seams` entry with `seam: "field_to_column"` and a finding that names the dangling field in `subject` and a concrete migration step in `fix`.
+  2. An agent calling `checkpoint_projection` on a projection whose source model cannot be resolved receives `seams[field_to_column].status: "not_checked"` (never `"pass"`), and the overall verdict is not elevated to `"fail"` solely because of this.
+  3. A projection with a `has_many` or `belongs_to` relationship field and a computed display field produces zero findings on the field→column seam — no false positives on legitimate non-column fields.
+  4. A projection source file where the field-builder invocation count exceeds `ServiceDef.fields.len()` (reconstruction is incomplete) reports a `warn` on the field→column seam stating reconstruction may be incomplete — not a silent clean result.
+  5. A mixed-seam fixture with a seam 2 `fail` and a seam 1 `warn` produces a `next_steps` list where the seam 2 failure appears before the seam 1 warning.
+
+**Plans:** TBD
+
+### Phase 195: Close the Loop by Default
+
+**Goal:** Verification happens without the agent asking for it. Wrapper seams 1, 3, 4, and 5 dispatch to existing validators (`validate_projection`, `json_ui_verify_action`, `render_projection` + `json_ui_validate_spec`, `validate_contracts`) and fold their output into the unified verdict — no validation logic reimplemented in the checkpoint. `generate_projection` and `json_ui_generate` embed the checkpoint verdict inline (summary format only — not a full five-seam breakdown immediately after generation). `application_info` and `projection_coverage` surface per-projection checkpoint status (`clean`/`failing`/`unverified`) from the `.ferro/checkpoints/{name}.json` cache.
+
+**Depends on:** Phase 194 (checkpoint tool and output types stable)
+
+**Requirements:** CHK-07, CHK-08, CHK-09
+
+**Success Criteria** (what must be TRUE):
+  1. An agent calling `generate_projection` receives a `checkpoint` key in the response; it contains at minimum a top-level `status` field and does not present five `not_checked` seam entries with empty findings arrays (summary format, not full seam breakdown).
+  2. An agent calling `projection_coverage` sees a `checkpoint_status` field (`"clean"`, `"failing"`, or `"unverified"`) on each covered projection without issuing a separate `checkpoint_projection` call.
+  3. An agent calling `application_info` sees a `projection_checkpoint` summary with `total_projections`, `clean`, `failing`, and `unverified` counts reflecting the last-run cache state.
+  4. The `source` field on every seam finding produced by a wrapper seam names the delegating validator (`"validate_projection"`, `"json_ui_verify_action"`, `"render_projection"`, `"json_ui_validate_spec"`, `"validate_contracts"`) — `"checkpoint"` appears only on field→column (seam 2) findings, confirming no logic was reimplemented.
+
+**Plans:** TBD
+
+### Phase 196: Dogfood Acceptance + Hardening
+
+**Goal:** The checkpoint earns its place by finding a real seam defect in a real project. The synthetic app catalog must include at least one deliberately poisoned projection (a field with no backing migration column, since model-derived projections auto-pass seam 2 and would make the gate vacuous). The live consumer must produce at least one finding (fail or warn on any seam). Any wrapper seam that produces zero findings across all dogfood inputs is demoted to reporting `not_checked` by default rather than shipped active. `next_steps` is capped to 5 entries.
+
+**Depends on:** Phase 195 (all seams active and inline hook in place)
+
+**Requirements:** CHK-10
+
+**Success Criteria** (what must be TRUE):
+  1. The poisoned synthetic-catalog projection produces `status: "fail"` with the field→column seam finding naming exactly the planted dangling field in `subject` — and no other field in the same projection.
+  2. Running `checkpoint_projection` against at least one live consumer projection produces at least one finding (fail or warn on any seam); a run that finds nothing fails acceptance and the design is revisited, not shipped.
+  3. `next_steps` in any verdict contains at most 5 entries; a fixture with more than 5 findings confirms the cap is enforced.
+  4. Any wrapper seam (1, 3, 4, 5) that produced zero findings across all dogfood inputs is documented as `not_checked`-by-default in the tool description, not silently omitted.
+
+**Plans:** TBD

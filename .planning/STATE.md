@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v12.5
 milestone_name: Projection Checkpoint
 status: planning
-stopped_at: v12.5 milestone opened; defining requirements + roadmap (phases 194-196)
-last_updated: "2026-06-09T18:18:48.378Z"
+stopped_at: Roadmap created for v12.5 (phases 194-196); ready to plan Phase 194
+last_updated: "2026-06-09T18:30:00.000Z"
 last_activity: 2026-06-09
 progress:
-  total_phases: 59
+  total_phases: 62
   completed_phases: 55
   total_plans: 257
   completed_plans: 257
-  percent: 100
+  percent: 89
 ---
 
 # Project State
@@ -20,51 +20,57 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Milestone v12.5 Projection Checkpoint — close the agent write→verify loop (AX). Design spec approved: `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`.
+**Current focus:** Milestone v12.5 Projection Checkpoint — close the agent write→verify loop (AX). Design spec approved: `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`. Roadmap phases 194-196 written and ready for planning.
 
 ## Current Position
 
-Phase: Not started (defining requirements + roadmap)
-Next: `/gsd-plan-phase 194` (after roadmap) — or `/gsd-discuss-phase 194`
-Status: v12.5 opened. Phases 194-196 (P1 checkpoint tool + field→column seam; P2 close-loop-by-default; P3 wrapper seams + dogfood). Continues numbering from v11.6.2 (max phase 193). Note: `phases clear` deliberately skipped — the 200 accumulated phase dirs are full project history (committed); new phases 194+ do not collide.
-Last activity: 2026-06-09 — Milestone v12.5 started
+Phase: 194 (not started)
+Next: `/gsd-plan-phase 194`
+Status: v12.5 roadmap complete. Three phases: 194 (core tool + field→column seam), 195 (close loop by default), 196 (dogfood acceptance + hardening).
+
+Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (55/62 phases)
+
+Last activity: 2026-06-09 — v12.5 ROADMAP.md + STATE.md written; REQUIREMENTS.md traceability updated (CHK-01..06 → Phase 194; CHK-07..09 → Phase 195; CHK-10 → Phase 196)
 Workspace version: 0.2.49
 
 > **Operator actions pending:**
-> - `git push` — master is ~91 commits ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.7.0** (completes v11.6.2's publish, unblocks gestiscilo Phase 99).
+> - `git push` — master is ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.7.0** (completes v11.6.2's publish, unblocks gestiscilo Phase 99).
 > - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
-> - REQUIREMENTS.md still holds the completed v12.4 + v11.6.2 reqs (all Complete) — `/gsd-new-milestone` refreshes it for the next cycle.
-> - Note: this project's v12.x practice is lightweight ✅-marking (no milestones/ archive files or git tags were created for any v12.x milestone); these three follow that convention.
 
-> v12.4 close-out: after 192 lands, mark v12.4 ✅ in ROADMAP overview and
-> `/gsd-complete-milestone`. v12.1 AI (165-173) is also feature-complete and
-> awaiting the same close-out. master is ~70 commits ahead of origin (push pending).
+## Shipped Milestone: v12.4 Form Validation DX (Phases 190-192)
 
-> Two milestones open in parallel:
-> - **v12.1 AI** — 165-172 done; **173 in progress** (this phase, the capstone:
->   make:json-view consumes a ServiceDef via the existing `Spec::from_service_def`
->   renderer + the projection-roundtrip proof test). Closing 173 completes v12.1.
-> - **v12.4 Form Validation DX** — 190 done & validated; **191 context captured**
->   (`.planning/phases/191-.../191-CONTEXT.md`), ready for `/gsd-plan-phase 191`;
->   192 after. Resume after 173 or in parallel.
->
-> Milestone-pointer note: the ROADMAP overview has two 🚧 markers (v12.1, v12.4);
-> gsd-tools resolves the FIRST (v12.1), which is correct while working 173.
-> When v12.1 closes, mark it ✅ so v12.4 becomes the sole active pointer.
+Shipped 2026-06-09. Async DB-backed `unique` rule with exclude-self (edit-form safety) + `ConstraintMap` opt-in DB constraint→field-level error mapping + ferro-mcp template and docs. Source: gestiscilo-it field test (slug-uniqueness violations surfacing as raw SQL errors). All 3 phases verified.
 
-Release 0.2.48 (2026-06-09): all crates published to crates.io and tagged `v0.2.48`. New crates `ferro-deployments` and `ferro-assets` bootstrapped (manual first publish, since the CI token is `publish-update` only); CI updates them from here. `ferro-assets 0.2.47` was shipped requiring `nasm` (rav1e asm) and is superseded by the pure-Rust 0.2.48 — yank of 0.2.47 pending a yank-scoped token (optional cleanup). See memory `project_ferro_codec_asm_nasm_gotcha.md`.
+Progress: [██████████] 100%
 
 ## Shipped Milestone: v12.3 Deployment Platform Primitives (Phases 185-188)
 
-Shipped 2026-06-07, sourced from gestiscilo-it v7.1 Tenant Frontend Platform (consumer phases 188-193). Four phases, all complete: 185 `ferro::queue` DB-backed job queue (replaces Redis-only ferro-queue backend; Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` claim), 186 `ferro-deployments` new crate (immutable deployments + atomic promote/rollback), 187 `ferro-assets` new crate (content-type-aware pipeline: lol_html + lightningcss + swc + pure-Rust image/ravif — libvips rejected), 188 `ferro-storage` CDN extension (`cdn_url()` + `PurgeApi` + DO Spaces adapter). Released to crates.io at 0.2.48 (2026-06-09); new crates `ferro-deployments` and `ferro-assets` bootstrapped manually, rest updated by CI.
+Shipped 2026-06-07, sourced from gestiscilo-it v7.1 Tenant Frontend Platform. Four phases, all complete: 185 `ferro::queue` DB-backed job queue, 186 `ferro-deployments` new crate, 187 `ferro-assets` new crate, 188 `ferro-storage` CDN extension. Released to crates.io at 0.2.48.
 
 Progress: [██████████] 100%
+
+## Active Milestone: v12.5 Projection Checkpoint (Phases 194-196)
+
+**Killer feature:** an agent that adds a projection field referencing a model attribute the migration never created learns it statically, in one call, instead of at runtime — the silent F11-class seam becomes a ranked, actionable next step.
+
+**Design decisions resolved:**
+- Seam cascade: seam 1 fail → seams 4+5 `not_checked`; seam 4 fail → seam 5 `not_checked`. Seams 2 and 3 run independently.
+- Fix-string normalization: uniform `Finding { subject, detail, fix }` shape established in Phase 194; wrapper seams in Phase 195 use same type.
+- Ambient status freshness: stale-ok read from `.ferro/checkpoints/{name}.json`; inline hook on generators (Phase 195) keeps cache fresh.
+
+| Phase | Status |
+|-------|--------|
+| 194. Core Checkpoint Tool | Not started |
+| 195. Close the Loop by Default | Not started |
+| 196. Dogfood Acceptance + Hardening | Not started |
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 211
+- Total plans completed: 257
 - Average duration: —
 - Total execution time: —
 
@@ -313,6 +319,12 @@ See PROJECT.md Key Decisions table for full history.
 
 Recent decisions affecting current work:
 
+- [v12.5] Seam cascade rule: seam 1 fail → seams 4+5 `not_checked` (reason: "seam_1_failed"); seam 4 fail → seam 5 `not_checked` (reason: "seam_4_failed"); seams 2 and 3 run independently of seam 1.
+- [v12.5] Fix-string normalization: uniform `Finding { subject, detail, fix }` output contract established in Phase 194; per-seam translation functions in `checkpoint_projection.rs` convert sub-validator shapes.
+- [v12.5] Ambient status freshness: stale-ok read from `.ferro/checkpoints/{name}.json`; inline hook on generators (Phase 195) keeps cache fresh on write paths.
+- [v12.5] `not_checked` invariant: four-variant `SeamStatus` enum required (`Pass`, `Fail`, `Warn`, `NotChecked`); prerequisite-absent paths must return `NotChecked`, not `Pass`; unit test required in Phase 194.
+- [v12.5] Seam 2 scoped to presence-only in Phase 194; type compatibility checking deferred to post-v12.5.
+- [v12.5] `next_steps` capped at 10 for Phase 194, tightened to 5 in Phase 196 dogfood.
 - Research established strict ordering: P0 accuracy → CLI/MCP → completeness → philosophy → metadata
 - COMPONENT_CATALOG duplication requires a design decision before implementation (Phase 113)
 - ferro-stripe phantom stubs: classify as incomplete, add callout — do not implement in v11.0
@@ -325,29 +337,10 @@ Recent decisions affecting current work:
 - [112-01] Agent-to-CLI workflow documented within working-with-agents.md as a section, not a separate page
 - [112-01] MCP config command is `ferro mcp` — not a standalone ferro-mcp binary
 - [145-01] Test-fixture crates under workspace root need an empty [workspace] table in their Cargo.toml to opt out of the enclosing workspace and build standalone
-- [145-01] classify_key signature declared with final crossterm types (KeyCode, KeyModifiers) at Wave 0 — no Plan-02 signature rewrite needed
-- [145-02b] BackendSupervisor owns backend child in its own thread; main thread holds JoinHandle for deterministic shutdown ordering per D-29
-- [145-02b] drop(reload_tx) after cloning to producers lets the supervisor's recv_timeout see Disconnected — belt-and-braces termination path in addition to the AtomicBool shutdown flag
-- [145-02b] debouncer_coalesces_burst uses 500ms production window and "strictly fewer events than raw writes" invariant; plan's 50ms + "exactly one" was flaky under macOS FSEvents + parallel-test CPU contention
-- [145-02b] ProcessManager::any_exited deleted entirely (D-12: backend child exits are not grounds for shutdown); also deleted spawn_with_prefix convenience wrapper since only spawn_with_prefix_env is still called
 - [v12.1] LlmClient single trait with Err(Error::Unsupported) for missing capabilities — preserves ergonomic dispatch without lowest-common-denominator collapse
 - [v12.1] async_trait retained — Rust 1.75+ stable async fn in traits is not dyn-compatible; async_trait required for Box<dyn LlmClient>
-- [v12.1] ClassificationProvider coexists alongside LlmClient — existing callers unchanged; Classifier<T> delegates HTTP to AnthropicClient internally
 - [v12.1] SseStream has no dependency on ferro-ai — wiring of TokenStream → SseStream happens in application handler code
-- [v12.1] ferro ai:make context loaded from ferro-mcp library functions in-process (not subprocess) — prevents context window overflow via selective filtering
-- [v12.1] ScaffoldPlan type design deferred to Phase 171 planning — must be designed before implementation begins
-- [v12.1] Phase 173 (make:json-view v2) gated on v12.0 Phase 117 + 120 shipping — do not plan until confirmed
 - [160-02] MCP code_templates category deletion pattern: drop registration+comment, producer fn, and integration test in one diff — no orphaned comment, no green-test artifact
-- [160-04] Test-fixture rename pattern: when v1-coded fixture identifiers carry no behavioral weight, rename them in-place to neutral equivalents — keeps regression coverage equivalent while satisfying user-naming constraint (CONTEXT D-06)
-- [160-05] Pre-publish README audit: any crate ferro publishes must have its README usage block compile against the current public API — drift on the crates.io front page is a first-impression bug, not a docs nit
-- [160-06] Pattern 5 verbatim drop-in: rewriting v1-framed prose with the exact RESEARCH replacement avoids leaving the surrounding "but/however" contrast intact (a string-substitution would have)
-- [160-06] Correct, do not append: rendering.md Output Format reframe also fixed two pre-existing factual errors (no `version` field, no `body` field on Spec) — corrective parentheticals would have left the wrong text in place
-- [160-07] Triple-stale docs fix pattern: when a single code block carries multiple drift markers (wrong type, wrong schema, wrong field name), replace the whole block in one edit rather than chaining three substitutions
-- [160-07] Docs-rustdoc shape parity: hand-written feature docs mirror the source rustdoc structure exactly (e.g., the `let result = ...; let spec = result.expect(...)` two-line split) so future API drift is mechanically visible in diff review
-- [160-09] D-08 sweep clean — 152 hits across 5 in-scope trees, all whitelistable (125 api-versioning-example, 11 arbitrary-fixture, 16 legitimate-historical), zero FAIL; Plans 01-08 caught the v1 JSON-UI narrative framing cleanly
-- [160-09] Audit-only plan pattern: classify-without-modify gate produces a stable artifact the next plan's verifier reads instead of re-running classification — preserves the per-row rationale chain across plan boundaries
-- [160-10] Cross-repo failure triage by attribution: a test that `include_str!`s its own crate source and asserts on a literal string in that source cannot be caused by an upstream dependency change — classify as out-of-scope before flagging as a verification gap (8 gestiscilo test failures all classified this way; ferro Phase 160 verdict PASS)
-- [160-10] Descope-with-record pattern (OQ-2 ferro-code): when a cross-repo verification target is genuinely unavailable (empty repo, no Cargo.toml), record the descope in BOTH the plan VERIFICATION.md AND the plan SUMMARY so future audits read the rationale instead of re-opening the gap
 
 ### Pending Todos
 
@@ -357,38 +350,15 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - [Research flag] Phase 113: COMPONENT_CATALOG resolution needs design decision evaluation (shared data file vs build script vs new crate) — evaluate options before scoping
-- [Harness] `isolation="worktree"` agent harness branches from a stale base (~37 commits behind HEAD) — surfaced during Phase 153 plan 01. Cherry-picked the source commit manually and switched plans 02-06 to no-worktree execution. Six locked worktree branches remain in `.claude/worktrees/`; harmless but investigate before parallel-wave phases.
-- [Planner] Phase 153 planner placed 153-01 + 153-02 both in Wave 1 with `depends_on: []` despite Phase 152's proven 1→2 sequential pattern (152-01's verify `cargo build -p ferro-orm` needs workspace membership from 152-02). Executor for 153-01 applied the same deviation Phase 152-01 used (added crate to `[workspace.members]` in plan 01). Future phases scaffolding new workspace crates should default to sequential Wave 1→2.
-- [v12.1] Phase 173 blocked on v12.0 shipping — do not plan until v12.0 Phase 117 and Phase 120 are complete.
+- [Harness] `isolation="worktree"` agent harness branches from a stale base — surfaced during Phase 153 plan 01. Six locked worktree branches remain in `.claude/worktrees/`; harmless but investigate before parallel-wave phases.
 
 ### Roadmap Evolution
 
-- Phase 180 added (2026-05-28): Declarative action handler primitive — typed Result return so POST handlers redirect-on-error without manual try-catch ladders. Source: gestiscilo-it 2026-05-28 publish-action field test. Consumer's `publish_by_id` handler was returning HTTP 500 from any of ~6 fallible steps (resolve_tenant, param parse, DB find, ownership check, publish_page, save_validation_json, mark_published); browser stranded at the POST URL (`/dashboard/pagine/{id}/publish`) on any failure. Shipped workaround: per-handler `pagine_redirect(Result<(), String>)` helper + manual async-closure wrapping around the handler body — boilerplate that calcifies fast and is already needed in delete_by_id, every cassa/ordini action, prenotazioni, etc. Real fix: `#[action(redirect_to = "...")]` attribute (or equivalent typed `ActionResult` return) — ferro catches any `Result::Err` from the handler, percent-encodes the message, redirects 303 to the configured URL with `?error=…&msg=…`, and logs the full error to stderr. Blanket `From<E: Display>` impl on `ActionError` so `?` works on any `Result`. Cross-cutting: per gestiscilo `feedback_ferro_first_primitives` — error-to-redirect is a web primitive that belongs in ferro, not in consumer middleware. **Scope is category-wide, not site-specific:** `/pagine` is the symptom; ~40–60 POST handlers across the gestiscilo-it consumer share the exact same boilerplate pattern. Phase deliverable includes a coordinated migration sweep across all of them — `pagine_redirect`-style helpers deleted, `error_response(` removed from every POST handler body, codemod returns zero matches. Half-migrated state is not an acceptable end state.
-- Phase 178 added (2026-05-25): Refactor ferro-json-ui plugin registry from global mutable state to instance-scoped `CatalogBuilder`. Driver: CI test failure where `build_discovers_plugins_and_rejects_invalid_schema` registers `BadPlugin_117` into the process-wide registry and every other test in the same binary that calls `Catalog::build()` fails order-dependently. Current workaround: 6 test sites switched to `Catalog::build_builtins_only()` (`ferro-json-ui/src/catalog.rs`). Real fix: expose `Catalog::builder().with_plugin(...).build()`, keep a global default catalog for non-test callers, migrate the polluting test to the builder, then delete `build_builtins_only()` and the workaround comments.
-- Phase 163.1 inserted after Phase 163 (2026-05-17): Codemod multi-root handler fix (G-163-01) — reject as Unsupported with TODO marker. Source: 163-REVIEW.md WR-01 — `ferro json-ui:migrate-v1` silently orphans elements when a v1 handler has multiple top-level nodes. Repair: Option B from review (aligns with D-11). Manually scaffolded — `gsd-tools phase insert` rejected because no milestone heading in ROADMAP.md scopes to include Phase 163 (it sits in a gap between v11.12 and v12.1 milestone sections; STATE.md milestone drift is a separate cleanup). Context: pending — run /gsd-discuss-phase 163.1 or /gsd-plan-phase 163.1.
-- Phases 159-164 added (2026-05-15): v12.0/json-ui-v2 closure and gestiscilo friction loop. Phase 159: browser verification + docs build check (DONE). Phases 160-161: v1 API deletion + merge to master. Phases 162-164: JSON-UI improvements from gestiscilo field-test friction.
-- v12.1 AI milestone renumbered (2026-05-16) from Phases 159-167 to Phases 165-173 to resolve collision with v12.0 closure phases — applied during master merge into v12.0/json-ui-v2 branch.
-- Phase 147 added: DetailForm component for inline edit — ferro-json-ui
-- Phase 146 added: Add KeyValueEditor component to ferro-json-ui
-- Phase 122 added: Deploy scaffold core rewrite (docker_init/do_init/templates rewrite, path→git ferro dep handling, multi-bin + worker support) — driven by gestiscilo deployment work
-- Phase 123 added: Deploy MCP tools (deploy_check, deploy_diff_env, runtime_requirements) — read-only deploy diagnostics surfaced via ferro-mcp
-- Phase 124 added: Doctor, introspection, CI scaffold (ferro doctor, routes --json, ci.yml generation, ignore_patterns sync)
-- Phase 125 added: Module scaffolder + ferro-json-ui runtime split (make:module convention, runtime IIFE refactor)
-- [CLI bug] `gsd-tools phase add` assigned 115 four times in one batch — does not detect previously added phases when computing next integer; also collided with an unrelated active milestone (JSON-UI v2 already at 115-121). Manually renumbered to 122-125. File against gsd-tools.
-- Phase 126 added (2026-04-08): Deploy experience feedback triage — analysis-only phase pointing the next agent at `phases/126-deploy-experience-feedback/REPORT.md` (field notes from first end-to-end gestiscilo deploy: 2 fixed bugs already shipped in 0.2.1, 9 sharp edges still present, 6 DX improvements). Agent must produce `PROPOSAL.md` classifying every item before any new ferro work is scoped.
-- Phase 131 added (2026-04-09): Scaffolder multi-bin, copy_dirs, runtime_apt, DO app.yaml robustness, drift detection — promoted from `.planning/backlog/gestiscilo-scaffolder-multibin-gap.md` (gestiscilo-it Phase 75 field test gap). CLI bug recurred again (returned phase 1); manually renumbered.
-- Phase 130 added (2026-04-09): Invert dep convention (simple) — retire `Cargo.docker.toml` and `cargo_docker_toml_staleness` doctor check; Docker builds use `Cargo.toml` directly; local ferro dev via uncommitted `[patch.crates-io]`. Source: `.planning/proposals/dep-override-convention.md` (simplified per user direction — no new CLI verbs, no new doctor check, no doctor check). CLI bug recurred: `gsd-tools phase add` returned phase 1 instead of 130; manually renumbered.
-- Phase 143 inserted (2026-04-20): Tailwind static CSS pipeline (URGENT) — opened new milestone v11.7. Source: gestiscilo-it production field report — `@tailwindcss/browser@4` runtime JIT fails on Safari, renders login page as unstyled HTML. Replace with pre-built static CSS. Manually scaffolded (gsd-tools phase insert rejected because STATE.md milestone field still says v11.0 but v11.6 and earlier have shipped — STATE drift is a separate cleanup). Context: `.planning/phases/143-tailwind-static-css-pipeline/143-CONTEXT.md`.
-- Phase 144 added (2026-04-21): Fix root path routing in group routes — `get!("/", ...)` inside a group does not match the trailing-slash URL. Source: gestiscilo-it field test — `/s/{slug}/` returns 404; `/s/{slug}/index.html` works. The `serve_root` handler is unreachable via the canonical URL.
-- Phase 145 added (2026-04-22): ferro serve manual reload key and watch supervisor — replace external `cargo-watch` with in-process supervisor, flip auto-watch to opt-in via `--watch`, add runtime `r` key for cancel-and-restart rebuilds, unify backend recompile + types regen under one debounced loop. Source: field report — rapid file saves produce compounding stale rebuilds; thermal cost on MacBook. Spec: `docs/superpowers/specs/2026-04-22-ferro-serve-reload-key-design.md`.
-- Phases 152-155 added (2026-05-13): v11.11 Resource Reservation & Live Read-Model Primitives milestone created. Source: gestiscilo-it inventory monitoring field test. Four domain-neutral horizontal primitives — 152 `ferro-orm::GuardedUpdate` (atomic conditional updates), 153 `ferro-audit` (structured before/after log), 154 `ferro-reservation` (generic hold/commit/release with TTL, depends on 152+153), 155 `ferro-projection` (live read-model from domain events with broadcast deltas, uses existing ferro-events + ferro-broadcast). Unblocks gestiscilo-it v6.3 Online Checkout (slot hold during Stripe payment) and v6.7 Inventory Monitoring. Design: `research/INVENTORY-PRIMITIVES.md`.
-- Phase 157 added (2026-05-13, URGENT): v11.12 Migration Deploy Safety milestone created. Source: gestiscilo-it 2026-05-13 production breakage — SQLite-hardcoded backfill SQL failed on Postgres, runtime runner swallowed the error via `eprintln!` + continue, no PRE_DEPLOY gate in scaffolded `.do/app.yaml`, server served a stale schema for hours before discovery. Three framework gaps closed at once: backend-portable migration helpers (`ferro_migration::backfill_random_hex` and friends), `ferro do:init` emits a `PRE_DEPLOY` migrate job by default, `ferro doctor --deploy` adds a `migrate_gate` check. Context: `.planning/phases/157-.../157-CONTEXT.md`.
-- Phase 158 added (2026-05-15): `Request::file()` multipart upload primitive. Source: gestiscilo-it v6.8 Personal Documents field test — `upload_firmato.rs` does 80 lines of inline `multer` parsing that belongs in the framework. Adds `req.file("field")` → `FileUpload { bytes, filename, mime_type }` to the `Request` API; lifts `sanitize_filename` as a public utility. Load-bearing prerequisite for gestiscilo-it Phase 137 (personal documents upload flow).
-- Phases 165-173 added (2026-05-15, renumbered from 159-167 on 2026-05-16): v12.1 AI milestone roadmap created. Nine phases covering ferro-ai SDK expansion (LlmClient trait + providers, structured outputs + tool calling + schema normalizer, embeddings + pgvector), framework SSE primitives, StreamText component, ferro-cli migration, ai:make + ai:explain CLI commands, MCP tool wrappers. Phase 173 (make:json-view v2) deferred until v12.0 ships.
+- Phases 194-196 added (2026-06-09): v12.5 Projection Checkpoint milestone. Three-phase structure derived from research: 194 (core tool + field→column seam + aggregation), 195 (close loop by default: generators + ambient status + wrapper seams), 196 (dogfood acceptance: poisoned fixture + live consumer go/no-go gate). Design spec: `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`.
 
 ## Session Continuity
 
-Last session: 2026-06-09T18:17:24.556Z
-Stopped at: Completed 193-01-PLAN.md
+Last session: 2026-06-09T18:30:00.000Z
+Stopped at: v12.5 ROADMAP.md written, STATE.md updated, REQUIREMENTS.md traceability updated
 Resume file: None
-Next action: (1) manual `cargo publish` bootstrap of ferro-bundle / ferro-deployments / ferro-assets from a local terminal (CI token is publish-update only); (2) `/gsd-new-milestone` to open the next build cycle (next planned: v12.4 Form Validation DX). No active phase pointer.
+Next action: `/gsd-plan-phase 194`
