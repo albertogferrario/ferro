@@ -2248,7 +2248,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 190. Async Rule Infrastructure | 4/4 | Complete    | 2026-06-09 |
 | 191. ConstraintMap + Detection | 2/2 | Complete    | 2026-06-09 |
-| 192. MCP Template + Docs | 0/TBD | Not started | - |
+| 192. MCP Template + Docs | 0/2 | Planned | - |
 
 ## Phase Details
 
@@ -2294,9 +2294,13 @@ Plans:
 **Requirements**: VALID-06
 **Success Criteria** (what must be TRUE):
   1. The ferro-mcp `action_handler` code template includes both `AsyncValidator` with `unique` (proactive layer) and `ConstraintMap::try_map` at the write site (defensive layer) — no generated handler template shows `unique` without a downstream `ConstraintMap`
-  2. `docs/src/the-basics/validation.md` has a dedicated section for async rules showing `unique` with and without exclude-self, and a dedicated section for constraint mapping showing the `ConstraintMap` builder with the two-layer rationale (proactive catches UX case; defensive closes TOCTOU race)
+  2. `docs/src/features/validation.md` has a dedicated section for async rules showing `unique` with and without exclude-self, and a dedicated section for constraint mapping showing the `ConstraintMap` builder with the two-layer rationale (proactive catches UX case; defensive closes TOCTOU race)
   3. The two sections are cross-referenced so a developer reading either section discovers the other
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 192-01-PLAN.md — Enrich ferro-mcp `action_handler` template with both validation layers (proactive AsyncValidator+unique, defensive ConstraintMap/map_constraint) + SC1 catalog audit (Wave 1)
+- [ ] 192-02-PLAN.md — Add Async Rules (DB-backed) + Constraint Mapping sections to validation.md, cross-referenced, + MCP Tools note (Wave 1)
 
 ---
 
