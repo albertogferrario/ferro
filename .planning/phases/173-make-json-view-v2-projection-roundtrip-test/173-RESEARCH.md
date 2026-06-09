@@ -596,16 +596,12 @@ No new ASVS categories apply beyond what Phase 171 already addressed.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`--from-service` flag: JSON file path vs service name lookup**
+1. **`--from-service` flag: JSON file path vs service name lookup** — RESOLVED: Plan 01 implements `--from-service-json <path>` (free-form JSON file path holding a serde-serialized `ServiceDef`, the `ai:make --dry-run` output shape), per the recommendation. Service-name → convention-path lookup is rejected (no runtime `.rs` loading).
    - What we know: ServiceDefs are stored as Rust source (`.rs`), not JSON. `ServiceDef` implements `Serialize + Deserialize`. `ferro ai:make --dry-run` prints the JSON form.
-   - What's unclear: Should `--from-service` accept a service name (and imply a naming convention like `src/projections/{name}.json`) or a free-form file path?
-   - Recommendation: Accept a file path (`--from-service-json <path>`) for maximum flexibility. This is Claude's discretion (D-04).
 
-2. **`generate_via_service_def` — should it accept a `client` parameter?**
-   - The deterministic path does not use an LLM client. But the NL path (via `scaffold_core`) does.
-   - Recommendation: Keep the `run()` function as the coordinator; `generate_via_service_def` takes only `&ServiceDef` — no `client` parameter.
+2. **`generate_via_service_def` — should it accept a `client` parameter?** — RESOLVED: No client parameter. Plan 01 keeps `run()` as the coordinator (it owns the optional LLM call for the NL path via `scaffold_core`); the `render_service_def`/`generate_via_service_def` helper takes only `&ServiceDef` and performs the deterministic `derive_intents` + `Spec::from_service_def` render with no LLM.
 
 ---
 
