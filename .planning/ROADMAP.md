@@ -1697,7 +1697,7 @@ Plans:
 - [x] **Phase 170: ferro-cli Migration** — delete `ferro-cli/src/ai.rs` blocking client; wire all LLM calls through `ferro_ai::complete::<T>()` (completed 2026-06-08)
 - [x] **Phase 171: ferro ai:make & ferro ai:explain CLI Commands** — killer-feature commands. `ai:make <description>` produces a typed `ferro_projections::ServiceDef` (NOT a multi-file scaffold bundle and NO `ScaffoldPlan` intermediary — structured outputs complete directly into the projection contract). `ai:explain <route|model|service>` returns a projection-framed explanation (`Intent`, `FieldMeaning`, `ActionDef`/`GuardDef`, `StateMachine`). Live ferro-mcp introspection in-process; selective context loading. (completed 2026-06-08)
 - [x] **Phase 172: MCP Tool Wrappers** — `ai_scaffold` + `ai_explain` tools in ferro-mcp wrapping CLI command logic for in-process agent consumption. `ai_scaffold` returns the same `ServiceDef` shape the CLI produces — no parallel surface. (completed 2026-06-08)
-- [ ] **Phase 173: make:json-view v2 (unblocked — v12.0 shipped 2026-05-19)** — `ferro make:json-view` upgraded to structured outputs + `ServiceDef` introspection. The first concrete `Renderer` over a ServiceDef produced by `ai:make`. Includes AICLI-06 projection-roundtrip test (NL description → `ServiceDef` → rendered JSON-UI spec) as the structural proof that AI is a first-class projection consumer.
+- [ ] **Phase 173: make:json-view v2 + projection-roundtrip test** — `ferro make:json-view` upgraded to structured outputs + `ServiceDef` introspection. The first concrete `Renderer` over a ServiceDef produced by `ai:make`. Includes AICLI-06 projection-roundtrip test (NL description → `ServiceDef` → rendered JSON-UI spec) as the structural proof that AI is a first-class projection consumer.
 
 #### Phase Details
 
@@ -1827,7 +1827,7 @@ Plans:
 - [x] 172-03-PLAN.md — Register ai_scaffold + ai_explain #[tool] methods in service.rs
 - [x] 172-04-PLAN.md — Delete CLI relevance dup, thin CLI wrappers, version 0.2.47, docs, full gate
 
-### Phase 173: make:json-view v2 + projection-roundtrip test (UNBLOCKED — JSON-UI v2 shipped 2026-05-19)
+### Phase 173: make:json-view v2 + projection-roundtrip test
 **Goal**: Upgrade `ferro make:json-view` to use structured outputs with `ServiceDef` introspection and schema-driven component selection. This is the **first concrete `Renderer` over a `ServiceDef` produced by `ai:make`** (Phase 171). Ship AICLI-06 alongside: a single end-to-end test that runs NL description → `ServiceDef` (via `ai:make`) → rendered JSON-UI spec (via `make:json-view` v2) → renderable view. This roundtrip is the structural proof that AI is a first-class projection consumer rather than a parallel scaffolding system.
 **Depends on**: Phase 171 (`ai:make` produces `ServiceDef`); Phase 170 (SDK migration). v12.0 Phase 117 / Phase 120 already shipped.
 **Requirements**: AICLI-04, AICLI-06
@@ -1852,7 +1852,7 @@ Plans:
 | 170. ferro-cli Migration | 1/1 | Complete    | 2026-06-08 |
 | 171. ai:make & ai:explain CLI Commands | 4/4 | Complete    | 2026-06-08 |
 | 172. MCP Tool Wrappers | 4/4 | Complete    | 2026-06-08 |
-| 173. make:json-view v2 (DEFERRED) | 0/? | Deferred | - |
+| 173. make:json-view v2 + roundtrip | 0/? | Not started | - |
 
 ### Phase 180: Declarative action handler primitive — typed Result return so POST handlers redirect-on-error without manual try-catch ladders
 
