@@ -1856,7 +1856,7 @@ Plans:
 | 170. ferro-cli Migration | 1/1 | Complete    | 2026-06-08 |
 | 171. ai:make & ai:explain CLI Commands | 4/4 | Complete    | 2026-06-08 |
 | 172. MCP Tool Wrappers | 4/4 | Complete    | 2026-06-08 |
-| 173. make:json-view v2 + roundtrip | 2/2 | Complete   | 2026-06-09 |
+| 173. make:json-view v2 + roundtrip | 2/2 | Complete    | 2026-06-09 |
 
 ### Phase 180: Declarative action handler primitive — typed Result return so POST handlers redirect-on-error without manual try-catch ladders
 
