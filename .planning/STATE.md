@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: (between milestones — v12.1, v12.4, v11.6.2 completed 2026-06-09)
+milestone: v12.5
+milestone_name: Projection Checkpoint
 status: planning
-stopped_at: v12.1 + v12.4 + v11.6.2 marked complete; awaiting next milestone (/gsd-new-milestone)
+stopped_at: v12.5 milestone opened; defining requirements + roadmap (phases 194-196)
 last_updated: "2026-06-09T18:18:48.378Z"
 last_activity: 2026-06-09
 progress:
@@ -20,15 +20,15 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Between milestones — three completed 2026-06-09. Next: `/gsd-new-milestone` or push/publish.
+**Current focus:** Milestone v12.5 Projection Checkpoint — close the agent write→verify loop (AX). Design spec approved: `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`.
 
 ## Current Position
 
-Phase: none active
-Next: `/gsd-new-milestone` (start next cycle) — or `git push` to publish ferro-stripe 0.7.0
-Status: v12.1 AI (165-173), v12.4 Form Validation DX (190-192), v11.6.2 ferro-stripe (193) all marked ✅ complete in ROADMAP + logged in MILESTONES.md.
-Last activity: 2026-06-09
-Workspace version: 0.2.48 (released to crates.io)
+Phase: Not started (defining requirements + roadmap)
+Next: `/gsd-plan-phase 194` (after roadmap) — or `/gsd-discuss-phase 194`
+Status: v12.5 opened. Phases 194-196 (P1 checkpoint tool + field→column seam; P2 close-loop-by-default; P3 wrapper seams + dogfood). Continues numbering from v11.6.2 (max phase 193). Note: `phases clear` deliberately skipped — the 200 accumulated phase dirs are full project history (committed); new phases 194+ do not collide.
+Last activity: 2026-06-09 — Milestone v12.5 started
+Workspace version: 0.2.49
 
 > **Operator actions pending:**
 > - `git push` — master is ~91 commits ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.7.0** (completes v11.6.2's publish, unblocks gestiscilo Phase 99).
