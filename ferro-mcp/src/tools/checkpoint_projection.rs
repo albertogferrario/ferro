@@ -427,6 +427,7 @@ mod tests {
 
     /// Create a temp project root with a projection source under src/projections/.
     /// Returns the tempdir (keep it alive for the test duration).
+    #[allow(dead_code)]
     fn project_with_projection(name: &str, projection_src: &str) -> tempfile::TempDir {
         let tmp = tempfile::tempdir().unwrap();
         let proj_dir = tmp.path().join("src/projections");
@@ -436,6 +437,7 @@ mod tests {
     }
 
     /// Add a SeaORM-style model source under src/models/ to an existing temp root.
+    #[allow(dead_code)]
     fn add_model(tmp: &tempfile::TempDir, name: &str, model_src: &str) {
         let models_dir = tmp.path().join("src/models");
         std::fs::create_dir_all(&models_dir).unwrap();
