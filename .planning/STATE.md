@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.4
-milestone_name: Form Validation DX
-status: in_progress
-stopped_at: Phases 190+191 complete & verified (PG gates closed); Phase 192 CONTEXT captured, next /gsd-plan-phase 192
-last_updated: "2026-06-09T16:33:42.021Z"
+milestone: v12.1
+milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
+status: executing
+stopped_at: Completed 192-01-PLAN.md
+last_updated: "2026-06-09T17:26:25.796Z"
 last_activity: 2026-06-09
 progress:
   total_phases: 59
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v12.4 Form Validation DX — Phase 192 ferro-mcp Template + Validation Docs (final phase; closes the milestone)
+**Current focus:** Phase 192 — ferro-mcp-template-validation-docs
 
 ## Current Position
 
-Phase: 192
-Plan: Not started
+Phase: 192 (ferro-mcp-template-validation-docs) — EXECUTING
+Plan: 2 of 2
 Next: `/gsd-plan-phase 192`
-Status: Phase 192 CONTEXT captured (docs/template phase, VALID-06). 190 (proactive unique) + 191 (defensive ConstraintMap) complete & verified; both live-Postgres gates closed via #[ignore]d tests. 192 surfaces the two-layer pattern in the ferro-mcp action_handler template + validation.md.
+Status: Ready to execute
 Last activity: 2026-06-09
 Workspace version: 0.2.48 (released to crates.io)
 
@@ -294,6 +294,7 @@ Progress: [██████████] 100%
 | Phase 173 P02 | 663s | 4 tasks | 3 files |
 | Phase 191 P01 | 176s | 3 tasks | 3 files |
 | Phase 191 P02 | 565 | 3 tasks | 4 files |
+| Phase 192 P01 | 430s | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -378,7 +379,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T16:28:16.810Z
-Stopped at: Completed 191-02-PLAN.md
+Last session: 2026-06-09T17:26:25.790Z
+Stopped at: Completed 192-01-PLAN.md
 Resume file: None
 Next action: (1) manual `cargo publish` bootstrap of ferro-bundle / ferro-deployments / ferro-assets from a local terminal (CI token is publish-update only); (2) `/gsd-new-milestone` to open the next build cycle (next planned: v12.4 Form Validation DX). No active phase pointer.

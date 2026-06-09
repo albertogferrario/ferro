@@ -29,7 +29,7 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 
 ### Introspection & Docs
 
-- [ ] **VALID-06** — The `ferro-mcp` `action_handler` code template and the validation docs demonstrate the async `unique` rule **and** constraint mapping together (proactive + defensive), so the two-layer pattern is discoverable and no surface shows one layer without the other.
+- [x] **VALID-06** — The `ferro-mcp` `action_handler` code template and the validation docs demonstrate the async `unique` rule **and** constraint mapping together (proactive + defensive), so the two-layer pattern is discoverable and no surface shows one layer without the other.
 
 ## Anti-Requirements (explicit non-goals to prevent scope drift)
 
@@ -59,4 +59,4 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 | VALID-03 | Phase 190 | Complete |
 | VALID-04 | Phase 191 | Complete |
 | VALID-05 | Phase 191 | Complete |
-| VALID-06 | Phase 192 | Pending |
+| VALID-06 | Phase 192 | Complete |
