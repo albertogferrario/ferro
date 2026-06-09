@@ -1,10 +1,11 @@
 ---
 phase: 190
 slug: async-rule-infrastructure-unique-rule
-status: planned
+status: executed
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-06-09
+validated: 2026-06-09
 ---
 
 # Phase 190 — Validation Strategy
@@ -46,14 +47,14 @@ created: 2026-06-09
 
 | Task ID | Plan | Wave | Requirement | SC | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|----|-----------|-----------------|-----------|-------------------|-------------|--------|
-| 190-01-01 | 01 | 1 | VALID-03 | SC4 | T-190-01 (accept) | AsyncRule trait dyn-compatible; sync API untouched; __infra_error__ sentinel documented | compile | `cargo check -p ferro-rs --lib` | ❌ W0 (created here) | ⬜ pending |
-| 190-01-02 | 01 | 1 | VALID-03 | — | — | In-memory SQLite fixture (DB::init_with + widgets scratch table) for downstream DB tests | compile | `cargo check -p ferro-rs --tests` | ❌ W0 (created here) | ⬜ pending |
-| 190-02-01 | 02 | 2 | VALID-01, VALID-02 | SC1, SC2 | T-190-01 | unique struct + builders + identifier guard + value-conv helper; pure-unit tests | unit | `cargo test -p ferro-rs --lib validation::` | ✅ after 190-01 | ⬜ pending |
-| 190-02-02 | 02 | 2 | VALID-01, VALID-02 | SC1, SC2, SC5 | T-190-01, T-190-02, T-190-03 | per-backend COUNT (?/$N), exclude-self, identifier rejected before DB, DbErr→sentinel not field error, value bound as param | unit + async (SQLite) + SQL-string assert | `cargo test -p ferro-rs --lib validation::` | ✅ after 190-01 | ⬜ pending |
-| 190-03-01 | 03 | 3 | VALID-03 | SC4 | — | AsyncValidationError enum (Validation vs Infra) + AsyncValidator builders; ActionError conversion routes Infra→500 | compile | `cargo check -p ferro-rs --lib` | ✅ after 190-01/02 | ⬜ pending |
-| 190-03-02 | 03 | 3 | VALID-03 | SC3, SC4, SC5 | T-190-02, T-190-04 | sync-first; async skipped on sync-failed/null-nullable field (no DB query); __infra_error__→Infra not field error | unit + async | `cargo test -p ferro-rs --lib validation::` | ✅ after 190-01/02 | ⬜ pending |
-| 190-04-01 | 04 | 4 | VALID-01, VALID-02, VALID-03 | — | T-190-01, T-190-05 | crate-root public re-exports (no bypass of guards) | compile | `cargo check -p ferro-rs --lib` | ✅ after 190-03 | ⬜ pending |
-| 190-04-02 | 04 | 4 | VALID-01, VALID-02, VALID-03 | SC1, SC2, SC3, SC4, SC5 | T-190-01, T-190-05 | end-to-end via public API: duplicate→Validation, free→Ok, exclude-self→Ok, sync-first, redirect-back shape; full quality gate | integration (SQLite) + fmt + clippy + full suite | `cargo test -p ferro-rs --test async_validation_integration` then `cargo fmt --all -- --check && cargo clippy --all --all-targets -- -D warnings && cargo test --all-features` | ✅ after 190-03 | ⬜ pending |
+| 190-01-01 | 01 | 1 | VALID-03 | SC4 | T-190-01 (accept) | AsyncRule trait dyn-compatible; sync API untouched; __infra_error__ sentinel documented | compile | `cargo check -p ferro-rs --lib` | ✅ async_rule.rs | ✅ green |
+| 190-01-02 | 01 | 1 | VALID-03 | — | — | In-memory SQLite fixture (DB::init_with + widgets scratch table) for downstream DB tests | compile | `cargo check -p ferro-rs --tests` | ✅ async_rule_fixture.rs | ✅ green |
+| 190-02-01 | 02 | 2 | VALID-01, VALID-02 | SC1, SC2 | T-190-01 | unique struct + builders + identifier guard + value-conv helper; pure-unit tests | unit | `cargo test -p ferro-rs --lib validation::` | ✅ rules_async.rs | ✅ green (8 unit tests) |
+| 190-02-02 | 02 | 2 | VALID-01, VALID-02 | SC1, SC2, SC5 | T-190-01, T-190-02, T-190-03 | per-backend COUNT (?/$N), exclude-self, identifier rejected before DB, DbErr→sentinel not field error, value bound as param | unit + async (SQLite) + SQL-string assert | `cargo test -p ferro-rs --lib validation::` | ✅ rules_async.rs | ✅ green (6 tests: 2 guard + 4 #[serial] DB) |
+| 190-03-01 | 03 | 3 | VALID-03 | SC4 | — | AsyncValidationError enum (Validation vs Infra) + AsyncValidator builders | compile | `cargo check -p ferro-rs --lib` | ✅ async_validator.rs | ✅ green |
+| 190-03-02 | 03 | 3 | VALID-03 | SC3, SC4, SC5 | T-190-02, T-190-04 | sync-first; async skipped on sync-failed/null-nullable field (no DB query); __infra_error__→Infra not field error | unit + async | `cargo test -p ferro-rs --lib validation::` | ✅ async_validator.rs | ✅ green (7 tests) |
+| 190-04-01 | 04 | 4 | VALID-01, VALID-02, VALID-03 | — | T-190-01, T-190-05 | crate-root public re-exports (no bypass of guards) | compile | `cargo check -p ferro-rs --lib` | ✅ mod.rs + lib.rs | ✅ green |
+| 190-04-02 | 04 | 4 | VALID-01, VALID-02, VALID-03 | SC1, SC2, SC3, SC4, SC5 | T-190-01, T-190-05 | end-to-end via public API: duplicate→Validation, free→Ok, exclude-self→Ok, sync-first, redirect-back shape; full quality gate | integration (SQLite) + fmt + clippy + full suite | `cargo test -p ferro-rs --test async_validation_integration` then `cargo fmt --all -- --check && cargo clippy --all --all-targets -- -D warnings && cargo test --all-features` | ✅ async_validation_integration.rs | ✅ green (5 integration tests + full gate) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -66,8 +67,8 @@ on sync-failed field) · SC4 sync API byte-compatible/unchanged · SC5 DB via
 
 ## Wave 0 Requirements
 
-- [ ] `framework/src/validation/async_rule.rs` — `AsyncRule` trait (Plan 01, Task 1)
-- [ ] `framework/tests/async_rule_fixture.rs` — in-memory SQLite fixture via `DB::init_with` + `widgets` scratch table (Plan 01, Task 2)
+- [x] `framework/src/validation/async_rule.rs` — `AsyncRule` trait (Plan 01, Task 1)
+- [x] `framework/tests/async_rule_fixture.rs` — in-memory SQLite fixture via `DB::init_with` + `widgets` scratch table (Plan 01, Task 2)
 - [x] `serial_test = "3"` already in `[dev-dependencies]` (framework/Cargo.toml:79) — no new deps
 
 *Existing `cargo test` infrastructure covers the harness; no framework install needed.*
@@ -95,4 +96,29 @@ on sync-failed field) · SC4 sync API byte-compatible/unchanged · SC5 DB via
 - [x] Feedback latency < 90s (quick command)
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** planned — pending execution
+**Approval:** executed & verified — all 8 tasks green, VERIFICATION.md 5/5 passed
+
+---
+
+## Validation Audit 2026-06-09
+
+Retroactive Nyquist audit of executed phase (`/gsd-validate-phase 190`). VALIDATION.md
+was at plan-time state (`status: planned`, all tasks `⬜ pending`); reconciled against
+the four SUMMARY files, VERIFICATION.md (5/5), and on-disk test files.
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Every requirement (VALID-01, VALID-02, VALID-03) has automated verification. Test
+inventory confirmed on disk: `rules_async.rs` (14 tests), `async_validator.rs`
+(7 tests), `async_validation_integration.rs` (5 `#[tokio::test]`), plus compile gates
+on the trait and re-export tasks. Full quality gate (`fmt` + `clippy -D warnings` +
+`cargo test --all-features`) green at commit `9c311935`. No tests generated — coverage
+was already complete at execution time.
+
+The single Manual-Only entry (live-Postgres `unique` round-trip) is unchanged: it
+remains a confidence check, not the sole evidence — the Postgres SQL path is
+generated-SQL-asserted in automated unit tests.
