@@ -290,22 +290,65 @@ pub async fn destroy(req: Request, id: Path<i32>) -> Response {
         CodeTemplate {
             name: "action_handler".to_string(),
             category: "handler".to_string(),
-            description: "POST action handler that mutates state and redirects on every code path. \
-                          Uses #[action] for typed Result<(), ActionError> ergonomics — bare `?` on most error \
-                          types, success-side overrides via req.flash(...) / req.redirect_to(...), and an \
-                          automatic 303 redirect with session flash and back-compat query string.".to_string(),
+            description: "POST action handler demonstrating the two-layer uniqueness pattern. \
+                          Layer 1 (proactive): AsyncValidator + unique async rule runs before the write; \
+                          `.ignore(id)` excludes the current record on update so an unchanged value does \
+                          not falsely fail. Layer 2 (defensive): ConstraintMap::map_constraint at the \
+                          write site closes the TOCTOU race — a concurrent insert that wins between the \
+                          check and the write produces the same field-level error instead of leaking a \
+                          raw SQL error. Uses #[action] for typed ActionResult ergonomics with automatic \
+                          303 redirect on every code path.".to_string(),
             code: r#"#[action(redirect_to = "/dashboard/{{resource}}")]
 pub async fn {{action}}(req: Request) -> ActionResult {
+    let data = req.input::<serde_json::Value>().await?;
     let id: i64 = req.param("id")?.parse()?;
-    let record = {{Entity}}::find_by_id(id).await?
+
+    // --- Layer 1: proactive uniqueness check (UX) -------------------
+    // Runs BEFORE the write. `.ignore(id)` excludes the current record
+    // so an edit that keeps its own value does not falsely fail.
+    match AsyncValidator::new(&data)
+        .rules("{{field}}", rules![required(), string()])
+        .async_rule("{{field}}", unique("{{table}}", "{{field}}").ignore(id))
+        .validate_async()
+        .await
+    {
+        Ok(()) => {}
+        Err(AsyncValidationError::Validation(e)) => {
+            return Err(e.with_old_input(&data).into_action_error("/dashboard/{{resource}}/{id}"));
+        }
+        Err(AsyncValidationError::Infra(fe)) => return Err(fe.into()),
+    }
+
+    // --- Layer 2: defensive constraint mapping (concurrency net) -----
+    // Closes the TOCTOU race: if a concurrent insert wins between the
+    // check above and this write, the DB UNIQUE violation is mapped to
+    // the same field-level error instead of leaking a raw SQL error.
+    let map = ConstraintMap::new()
+        .on("{{constraint_name}}", "{{field}}", "has already been taken")
+        .sqlite("{{table}}.{{field}}");
+
+    // `map_constraint` is implemented for `Result<T, sea_orm::DbErr>`, so the
+    // write MUST be a SeaORM-native call (`.insert(...)` / `.update(...)`),
+    // NOT the framework-wrapped `.save()` (which returns FrameworkError).
+    let db = DB::connection()?;
+    let record = {{Entity}}::find_by_id(id).one(db.inner()).await?
         .ok_or(ActionError::not_found("{{Entity}} not found"))?;
-    // perform mutation here
-    record.save().await?;
+    let mut active: {{entity}}::ActiveModel = record.into();
+    // ... set mutated fields on `active` from `data` ...
+    active
+        .update(db.inner())
+        .await
+        .map_constraint(&map, &data, "/dashboard/{{resource}}/{id}")?;
+
     Ok(())
 }"#
             .to_string(),
             imports: vec![
-                "use ferro::{action, ActionError, ActionResult, Request};".to_string(),
+                "use ferro::{action, ActionError, ActionResult, Request, DB};".to_string(),
+                "use ferro::{AsyncValidator, AsyncValidationError, unique, rules, required, string};".to_string(),
+                "use ferro::{ConstraintMap, MapConstraintExt};".to_string(),
+                "use sea_orm::{ActiveModelTrait, EntityTrait};".to_string(),
+                "use crate::entities::{{entity}};".to_string(),
                 "use crate::entities::{{entity}}::Entity as {{Entity}};".to_string(),
             ],
             placeholders: vec![
@@ -317,7 +360,7 @@ pub async fn {{action}}(req: Request) -> ActionResult {
                 Placeholder {
                     name: "{{action}}".to_string(),
                     description: "Handler function name (snake_case).".to_string(),
-                    example: "publish_by_id".to_string(),
+                    example: "update_by_id".to_string(),
                 },
                 Placeholder {
                     name: "{{Entity}}".to_string(),
@@ -328,6 +371,21 @@ pub async fn {{action}}(req: Request) -> ActionResult {
                     name: "{{entity}}".to_string(),
                     description: "Model name in snake_case (module path segment).".to_string(),
                     example: "page".to_string(),
+                },
+                Placeholder {
+                    name: "{{field}}".to_string(),
+                    description: "Unique form field (snake_case column name).".to_string(),
+                    example: "slug".to_string(),
+                },
+                Placeholder {
+                    name: "{{table}}".to_string(),
+                    description: "DB table the unique column lives in (snake_case).".to_string(),
+                    example: "pages".to_string(),
+                },
+                Placeholder {
+                    name: "{{constraint_name}}".to_string(),
+                    description: "Postgres UNIQUE constraint name (the DB constraint identifier).".to_string(),
+                    example: "pages_slug_unique".to_string(),
                 },
             ],
         },
