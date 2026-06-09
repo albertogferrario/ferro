@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.5
 milestone_name: Projection Checkpoint
-status: planning
-stopped_at: Roadmap created for v12.5 (phases 194-196); ready to plan Phase 194
-last_updated: "2026-06-09T18:30:00.000Z"
-last_activity: 2026-06-09
+status: completed
+stopped_at: Phase 194 context gathered
+last_updated: "2026-06-09T22:28:14.490Z"
+last_activity: 2026-06-09 — v12.5 ROADMAP.md + STATE.md written; REQUIREMENTS.md traceability updated (CHK-01..06 → Phase 194; CHK-07..09 → Phase 195; CHK-10 → Phase 196)
 progress:
-  total_phases: 62
-  completed_phases: 55
-  total_plans: 257
-  completed_plans: 257
-  percent: 89
+  total_phases: 78
+  completed_phases: 70
+  total_plans: 302
+  completed_plans: 302
+  percent: 100
 ---
 
 # Project State
@@ -54,6 +54,7 @@ Progress: [██████████] 100%
 **Killer feature:** an agent that adds a projection field referencing a model attribute the migration never created learns it statically, in one call, instead of at runtime — the silent F11-class seam becomes a ranked, actionable next step.
 
 **Design decisions resolved:**
+
 - Seam cascade: seam 1 fail → seams 4+5 `not_checked`; seam 4 fail → seam 5 `not_checked`. Seams 2 and 3 run independently.
 - Fix-string normalization: uniform `Finding { subject, detail, fix }` shape established in Phase 194; wrapper seams in Phase 195 use same type.
 - Ambient status freshness: stale-ok read from `.ferro/checkpoints/{name}.json`; inline hook on generators (Phase 195) keeps cache fresh.
@@ -358,7 +359,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T18:30:00.000Z
-Stopped at: v12.5 ROADMAP.md written, STATE.md updated, REQUIREMENTS.md traceability updated
-Resume file: None
+Last session: 2026-06-09T22:28:14.480Z
+Stopped at: Phase 194 context gathered
+Resume file: .planning/phases/194-core-checkpoint-tool/194-CONTEXT.md
 Next action: `/gsd-plan-phase 194`
