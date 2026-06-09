@@ -2241,7 +2241,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 190. Async Rule Infrastructure | 2/4 | In Progress|  |
+| 190. Async Rule Infrastructure | 3/4 | In Progress|  |
 | 191. ConstraintMap + Detection | 0/TBD | Not started | - |
 | 192. MCP Template + Docs | 0/TBD | Not started | - |
 
@@ -2257,12 +2257,12 @@ Plans:
   3. `validate_async()` runs sync rules first and skips async rules on fields that already have sync errors (fail-fast before hitting the DB)
   4. The existing `Validator` / `validate()` sync API compiles and behaves identically with no changes to its call sites
   5. `DB::connection()` is the access pattern inside `Unique` — no DB connection threaded through the rule signature or `validate_async()`
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 190-01-PLAN.md — AsyncRule trait (#[async_trait], dyn-compatible) + Wave 0 in-memory SQLite fixture (Wave 1)
 - [x] 190-02-PLAN.md — Unique rule: per-backend parameterized COUNT, .ignore()/.ignore_on() exclude-self, identifier guard, validation.unique message (Wave 2)
-- [ ] 190-03-PLAN.md — AsyncValidator + AsyncValidationError: sync-first/fail-fast run loop, infra-vs-validation distinction (Wave 3)
+- [x] 190-03-PLAN.md — AsyncValidator + AsyncValidationError: sync-first/fail-fast run loop, infra-vs-validation distinction (Wave 3)
 - [ ] 190-04-PLAN.md — Public re-exports (mod.rs + lib.rs) + end-to-end integration test + full quality gate (Wave 4)
 
 ### Phase 191: ConstraintMap + Portable UNIQUE-Violation Detection
