@@ -2398,7 +2398,13 @@ Plans:
   3. An agent calling `application_info` sees a `projection_checkpoint` summary with `total_projections`, `clean`, `failing`, and `unverified` counts reflecting the last-run cache state.
   4. The `source` field on every seam finding produced by a wrapper seam names the delegating validator (`"validate_projection"`, `"json_ui_verify_action"`, `"render_projection"`, `"json_ui_validate_spec"`, `"validate_contracts"`) — `"checkpoint"` appears only on field→column (seam 2) findings, confirming no logic was reimplemented.
 
-**Plans:** TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 195-01-PLAN.md — Foundation: async run_for/execute + seam-name reconciliation (D-01) + VerdictSummary + read_ambient_status (Wave 1)
+- [ ] 195-02-PLAN.md — Wrapper seams 1/3/4/5 dispatch+normalization + seam cascade (D-06) + SC-4 guard (Wave 2)
+- [ ] 195-03-PLAN.md — Inline checkpoint hook in generate_projection + json_ui_generate (CHK-07) (Wave 3)
+- [ ] 195-04-PLAN.md — Ambient status in projection_coverage + application_info (CHK-08) (Wave 4)
 
 ### Phase 196: Dogfood Acceptance + Hardening
 
