@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.1
-milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: verifying
-stopped_at: Phase 191 context gathered
+milestone: v12.4
+milestone_name: Form Validation DX
+status: in_progress
+stopped_at: Phase 191 context gathered (CONTEXT.md committed); next /gsd-plan-phase 191
 last_updated: "2026-06-09T13:49:03.253Z"
 last_activity: 2026-06-09
 progress:
