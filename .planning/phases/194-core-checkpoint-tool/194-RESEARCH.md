@@ -682,9 +682,10 @@ fn aggregate_next_steps(seams: &[SeamResult]) -> Vec<String> {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`write_only_field` builder in `parse_and_add_fields`**
+   - **RESOLVED:** treat all four builders as column-backed for D-05/D-06 purposes (Plan 02 confirms; `count_includes_write_only` test is the regression guard).
    - What we know: `render_projection.rs` lines 186-196 include a `write_only_field`
      regex. `ServiceDef` in `service.rs` line 191 has a `write_only_field` builder.
    - What's unclear: the CONTEXT.md D-05 text lists only three builders in
@@ -695,6 +696,7 @@ fn aggregate_next_steps(seams: &[SeamResult]) -> Vec<String> {
      (they all map to real entity attributes). The plan must confirm this explicitly.
 
 2. **`SeamStatus::NotChecked` serde wire value**
+   - **RESOLVED:** snake_case rename of `NotChecked` produces `"not_checked"` exactly — no custom rename attribute needed.
    - What we know: `#[serde(rename_all = "snake_case")]` on `SeamStatus` with
      variant `NotChecked` would serialize to `"not_checked"`.
    - What's unclear: the design spec output example shows `"not_checked"` as the
