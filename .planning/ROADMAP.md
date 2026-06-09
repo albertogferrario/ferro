@@ -2240,13 +2240,13 @@ Plans:
 ## Phases
 
 - [x] **Phase 190: Async Rule Infrastructure + `unique` Rule** — `AsyncRule` trait, `Unique` struct with `.ignore()` exclude-self, `AsyncValidator` / `validate_async`, ferro-lang translation key (completed 2026-06-09)
-- [ ] **Phase 191: ConstraintMap + Portable UNIQUE-Violation Detection** — `ConstraintMap` builder, SQLite/Postgres bifurcated detection, `try_map` falls through unchanged to `From<DbErr>`
+- [x] **Phase 191: ConstraintMap + Portable UNIQUE-Violation Detection** — `ConstraintMap` builder, SQLite/Postgres bifurcated detection, `try_map` falls through unchanged to `From<DbErr>` (completed 2026-06-09)
 - [ ] **Phase 192: ferro-mcp Template + Validation Docs** — `action_handler` code template updated with both layers, validation docs page extended
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 190. Async Rule Infrastructure | 4/4 | Complete    | 2026-06-09 |
-| 191. ConstraintMap + Detection | 1/2 | In Progress|  |
+| 191. ConstraintMap + Detection | 2/2 | Complete   | 2026-06-09 |
 | 192. MCP Template + Docs | 0/TBD | Not started | - |
 
 ## Phase Details
@@ -2283,7 +2283,7 @@ Plans:
 
 Plans:
 - [x] 191-01-PLAN.md — ConstraintMap + try_map + MapConstraintExt (struct, bifurcated detection, re-exports) [Wave 1]
-- [ ] 191-02-PLAN.md — SQLite TOCTOU/identity integration tests + Postgres manual gate + full quality gate [Wave 2]
+- [x] 191-02-PLAN.md — SQLite TOCTOU/identity integration tests + Postgres manual gate + full quality gate [Wave 2]
 
 **Gate**: Postgres constraint-name extraction (`PgDatabaseError::constraint()`) requires a real Postgres instance to verify. Phase closure criteria include either a Postgres CI step or a documented manual test step signed off in the phase VERIFICATION.md.
 
