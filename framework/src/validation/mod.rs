@@ -50,6 +50,7 @@
 //! }
 //! ```
 
+mod async_rule;
 mod bridge;
 mod error;
 mod rule;
