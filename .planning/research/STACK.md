@@ -1,290 +1,167 @@
-# Stack Research — v12.4 Form Validation DX
+# Technology Stack — v12.5 Projection Checkpoint
 
-**Domain:** Async DB-backed validation + DB-constraint-to-field-error mapping for ferro
+**Project:** ferro / checkpoint_projection MCP tool
 **Researched:** 2026-06-09
-**Confidence:** HIGH (versions verified from Cargo.toml + cargo tree; SeaORM API verified via Context7 + docs.rs)
+**Scope:** Incremental — what the NEW tool needs beyond the existing codebase.
+**Confidence:** HIGH (all findings from direct source reading; no training-data guesses)
 
 ---
 
-## Existing Versions (verified — do not change)
+## Verdict: Zero new dependencies required
 
-| Package | Version in use | Source |
-|---------|---------------|--------|
-| `sea-orm` | 1.1.19 | `framework/Cargo.toml:51` + `cargo tree` |
-| `sqlx` (transitive via sea-orm) | 0.8.6 | `cargo tree` |
-| sea-orm features enabled | `sqlx-postgres`, `sqlx-sqlite`, `runtime-tokio-native-tls`, `macros` | `framework/Cargo.toml:51` |
-
-No version bumps required. Both target features are fully implementable against the currently pinned stack.
+Everything `checkpoint_projection` needs exists in the current `ferro-mcp` crate graph. The implementation is purely additive: a new tool file plus hooks into `generate_projection`, `json_ui_generate`, `application_info`, and `projection_coverage`.
 
 ---
 
-## Feature A: Async DB-backed `unique` validation rule
+## Field→Column Resolver — Reusable Primitives
 
-### The constraint: current `Rule` trait is synchronous
+This is the only genuinely new check. Two source paths already exist for column names; use both in priority order.
 
-`framework/src/validation/rule.rs`:
+### Source 1 — Entity fields via `list_models` (static analysis, always available)
 
-```rust
-pub trait Rule: Send + Sync {
-    fn validate(&self, field: &str, value: &Value, data: &Value) -> Result<(), String>;
-    fn name(&self) -> &'static str;
-}
-```
+**Module:** `ferro-mcp/src/tools/list_models.rs`
 
-`Validator::validate()` drives rules with a plain `for` loop — no `.await`, no async executor context. This is intentional and correct for the 22 existing sync rules.
+`list_models::execute(project_root)` scans `src/models/` and `src/entities/` with `syn` + `WalkDir`, parses `#[derive(DeriveEntityModel)]` structs, and returns `Vec<ModelDetails>` where each entry carries `Vec<FieldInfo> { name, field_type, is_primary_key, is_nullable }`.
 
-### Decision: separate `AsyncRule` trait and `AsyncValidator`, not async `Rule`
+The `name` field on each `FieldInfo` is the entity column name (snake_case). This is exactly what the field→column check needs to assert that every `FieldDef.name` in the `ServiceDef` has a counterpart.
 
-Making `Rule` async is the wrong path:
-- `async fn validate(...)` is not object-safe on stable Rust 2021 without nightly `dyn-async-traits`
-- Using `async-trait` (box-allocates every rule future) forces all 22 existing sync rules to be re-wrapped and adds a proc-macro dependency for no benefit to sync rules
-- RPITIT (`-> impl Future`) breaks `Box<dyn Rule>` and the `rules![...]` macro
+**How to use it in `checkpoint_projection`:**
+1. Resolve the projection's source model name: `ServiceDef.name` (snake_case) matches the `service_name` extracted by `projection_coverage::execute` / `list_projections::execute`. The mapping is `projection.service_name.to_lowercase() == model.name.to_lowercase()` — the exact predicate already in `projection_coverage.rs:76-79`.
+2. Call `list_models::execute(project_root)` (already imported in `projection_coverage.rs` at line 51 as `super::list_models::execute`).
+3. Find the matching `ModelDetails` and build a `HashSet<&str>` of `FieldInfo.name` values.
+4. For each `FieldDef` in the `ServiceDef`, assert membership. Missing → seam-2 finding.
 
-The correct design is a parallel `AsyncRule` trait (stable, no new deps) and an `AsyncValidator` that runs async rules in sequence inside an async context. The two paths share `ValidationError` as output type.
+No new dependency. `syn`, `walkdir`, and `quote` are already in `ferro-mcp/Cargo.toml`.
 
-### `AsyncRule` trait — new, zero new dependencies
+### Source 2 — Live DB schema via `database_schema` (runtime, requires DATABASE_URL)
 
-```rust
-// framework/src/validation/async_rule.rs  (new file)
+**Module:** `ferro-mcp/src/tools/database_schema.rs`
 
-use serde_json::Value;
-use std::future::Future;
-use std::pin::Pin;
+`database_schema::execute(project_root, table_filter)` connects to the live DB (SQLite/Postgres/MySQL via SeaORM) and returns `SchemaInfo { tables: Vec<TableInfo { name, columns: Vec<ColumnInfo { name, ... }> } }`.
 
-pub trait AsyncRule: Send + Sync {
-    fn validate<'a>(
-        &'a self,
-        field: &'a str,
-        value: &'a Value,
-        data: &'a Value,
-    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>>;
+This gives the real applied-migration column set. Use it as a secondary check when the DB is reachable: if a column exists in the entity file but not in the live schema, that is a migration-pending finding (warn, not fail). If a projection field has no entity column AND no DB column, that is a fail.
 
-    fn name(&self) -> &'static str;
-}
-```
+Preference: entity-file scan (Source 1) first. It is synchronous and works without a running database, matching the checkpoint's read-only, no-runtime requirement. DB schema is a strengthening pass, not a prerequisite.
 
-`Pin<Box<dyn Future>>` is the only object-safe async return on stable Rust 2021 edition. `std::future::Future` and `std::pin::Pin` are in `std` — no new crate.
+No new dependency. `sea-orm` is already in `ferro-mcp/Cargo.toml` with SQLite + Postgres features.
 
-### `unique` rule — integration with SeaORM
+### Source 3 — Migration source (static, lower fidelity) — DO NOT USE
 
-The `Unique` struct takes a `sea_orm::DatabaseConnection` at construction time (passed in by the handler, not a global). It runs a parameterised `SELECT COUNT(*)` using `sea_orm::Statement::from_sql_and_values` — this form is backend-agnostic (SQLite and Postgres both accept the same `?`/`$1` placeholder, switched by sea-orm's `DbBackend`).
+**Module:** `ferro-mcp/src/tools/list_migrations.rs`
 
-```rust
-// framework/src/validation/rules/unique.rs  (new file)
-
-pub struct Unique {
-    db: sea_orm::DatabaseConnection,
-    table: String,
-    column: String,
-    except: Option<(String, i64)>,   // (pk_column, id_to_exclude)
-}
-
-pub fn unique(
-    db: sea_orm::DatabaseConnection,
-    table: impl Into<String>,
-    column: impl Into<String>,
-) -> Unique { ... }
-
-impl Unique {
-    /// Exclude an existing row from the uniqueness check (edit-form pattern).
-    pub fn ignore_self(mut self, pk_column: impl Into<String>, id: i64) -> Self {
-        self.except = Some((pk_column.into(), id));
-        self
-    }
-}
-```
-
-No ORM entity type is needed. Raw-SQL avoids requiring callers to pass generic entity type parameters (which would make the rule non-ergonomic in a `dyn AsyncRule` context).
-
-### Target handler API
-
-```rust
-#[action]
-pub async fn store(req: Request, db: DatabaseConnection) -> ActionResult {
-    let data = req.input::<serde_json::Value>().await?;
-
-    // Sync rules — no change to existing pattern
-    Validator::new(&data)
-        .rules("name", rules![required(), string(), max(255)])
-        .validate()
-        .map_err(|e| e.with_old_input(&data).into_action_error("/items/new"))?;
-
-    // Async rules — new AsyncValidator, same ValidationError output
-    AsyncValidator::new(&data, &db)
-        .rule("slug", unique(db.clone(), "items", "slug"))
-        .validate()
-        .await
-        .map_err(|e| e.with_old_input(&data).into_action_error("/items/new"))?;
-
-    // ... insert
-    Ok(())
-}
-
-// Edit-form variant
-AsyncValidator::new(&data, &db)
-    .rule("slug", unique(db.clone(), "items", "slug").ignore_self("id", item.id))
-    .validate()
-    .await
-    ...
-```
-
-Two-step call (sync then async) is explicit. Combining sync and async rules in a single `AsyncValidator` (with sync rules adapted via a wrapper) is also valid and produces a single chain — design choice for the implementation phase.
+`scan_migration_files` lists migration filenames; there is no column-level parsing of migration source. Do not add migration AST parsing for v12.5 — the entity file (Source 1) already contains the column set SeaORM materializes from migrations. Parsing migration source would duplicate information at lower fidelity (migration source is imperative Rust, harder to parse than entity struct definitions).
 
 ---
 
-## Feature B: DB-constraint violation → field-level error mapping
+## ServiceDef Reconstruction — Reuse Exactly
 
-### SeaORM's `DbErr::sql_err()` — verified current API (sea-orm 1.1.19)
+**Module:** `ferro-mcp/src/tools/render_projection.rs` → `reconstruct_service_def(service_name, display_name, content)`
 
-```rust
-// sea_orm::error — verified via Context7 (/websites/rs_sea-orm_1_1_14)
+This is the canonical way all existing validators get their `ServiceDef` from source. It is already used by `validate_projection::execute_single`, `render_projection::execute`, and `projection_coverage::derive_primary_intent`. The checkpoint must use the same entry point to avoid divergence.
 
-impl DbErr {
-    /// Portable UNIQUE/FK constraint detection across all supported backends.
-    pub fn sql_err(&self) -> Option<SqlErr>;
-}
-
-#[non_exhaustive]
-pub enum SqlErr {
-    UniqueConstraintViolation(String),       // carries e.message()
-    ForeignKeyConstraintViolation(String),
-}
-```
-
-This is the correct and only portable detection point. SeaORM's `sql_err()` performs the backend dispatch internally:
-
-| Backend | Error codes handled | Source |
-|---------|-------------------|--------|
-| Postgres | SQLSTATE `23505` | sea-orm source, verified via Context7 |
-| SQLite | Extended result codes `1555` (PK conflict), `2067` (UNIQUE index conflict) | sea-orm source, verified via Context7 |
-| MySQL | Numbers 1022, 1062, 1169, 1586 | sea-orm source (not in scope — ferro does not use MySQL) |
-
-The `String` payload in `UniqueConstraintViolation` is the raw `e.message()` from the underlying sqlx driver — **not** parsed further by SeaORM.
-
-### What the message string contains (per backend — HIGH confidence)
-
-**SQLite:** `"UNIQUE constraint failed: table_name.column_name"` — the table and column are embedded in the message. Substring match on `"table.column"` is reliable.
-
-**Postgres:** Short human-readable message, e.g., `"duplicate key value violates unique constraint \"idx_name\""`. The constraint/index name appears in the message. The constraint name is also available via `PgDatabaseError::constraint() -> Option<&str>` (sqlx 0.8 `DatabaseError` trait), but `sql_err()` discards it — only the message string is carried into `SqlErr::UniqueConstraintViolation(String)`.
-
-**Implication:** `sql_err()` is sufficient for detection but does not provide column identity directly. Field mapping must be caller-supplied, not automatically inferred.
-
-### Why NOT to downcast to `PgDatabaseError` for constraint name
-
-To extract `PgDatabaseError::constraint()`, a caller would need to pattern-match through `DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(e)))`, then downcast with `e.try_downcast_ref::<sqlx::postgres::PgDatabaseError>()`. This:
-- Requires adding `sqlx` as a direct dependency in `framework` (currently only transitive)
-- Is Postgres-only (breaks SQLite portability)
-- Duplicates the backend dispatch already done by `sql_err()`
-
-SeaORM's `sql_err()` + caller-supplied hint strings is the portable design.
-
-### Recommended approach: `map_unique_violation` free function in `framework::validation`
-
-```rust
-// framework/src/validation/mod.rs or a new framework/src/validation/constraint.rs
-
-/// Map a `DbErr` UNIQUE constraint violation to a named field's ValidationError
-/// and redirect, if the constraint detail matches a caller-supplied hint.
-///
-/// `mappings`: `&[("hint_substring", "field_name")]`
-///
-/// Match: substring of `SqlErr::UniqueConstraintViolation(detail)`.
-/// - SQLite: hint = `"table_name.column_name"` (embedded verbatim in message)
-/// - Postgres: hint = constraint/index name (embedded in message after `\"`)
-///
-/// Returns `Err(ActionError)` wrapping a per-field ValidationError on match,
-/// or falls through to `Err(ActionError::from(err))` (raw message) on no match.
-pub fn map_unique_violation(
-    err: sea_orm::DbErr,
-    mappings: &[(&str, &str)],
-    message: impl Into<String>,
-    redirect_url: impl Into<String>,
-    form_data: &serde_json::Value,
-) -> Result<(), crate::http::action::ActionError> {
-    use sea_orm::SqlErr;
-    if let Some(SqlErr::UniqueConstraintViolation(detail)) = err.sql_err() {
-        let msg = message.into();
-        let url = redirect_url.into();
-        for (hint, field) in mappings {
-            if detail.contains(hint) {
-                let mut ve = ValidationError::new();
-                ve.add(field, msg);
-                return Err(ve.with_old_input(form_data).into_action_error(url));
-            }
-        }
-    }
-    Err(crate::http::action::ActionError::from(err))
-}
-```
-
-Consumer call:
-
-```rust
-MyEntity::insert(model)
-    .exec(&db)
-    .await
-    .map_err(|e| map_unique_violation(
-        e,
-        &[("items.slug", "slug"), ("items.name", "name")],
-        "This slug is already taken.",
-        "/items/new",
-        &data,
-    ))?;
-```
-
-### Why NOT to modify `From<sea_orm::DbErr> for ActionError` (action.rs:196)
-
-The current passthrough (`Self::msg(err.to_string())`) is correct for all `DbErr` variants that are not UNIQUE violations — connection failures, type errors, query errors, etc. Changing the `From` impl would silently alter behavior for all consumers of `?` on `DbErr`. `map_unique_violation` is an explicit opt-in, called only in handlers that know a UNIQUE constraint can fire.
+`FieldDef.name` on the reconstructed `ServiceDef` is the authoritative field-name list to check against the column set from Source 1.
 
 ---
 
-## New Files and Change Locations
+## Aggregation and Verdict — Existing Primitives
 
-| File | Change type | What |
-|------|-------------|------|
-| `framework/src/validation/async_rule.rs` | New | `AsyncRule` trait |
-| `framework/src/validation/rules/unique.rs` | New | `Unique` struct + `unique()` constructor |
-| `framework/src/validation/async_validator.rs` | New | `AsyncValidator` struct |
-| `framework/src/validation/constraint.rs` | New (or inline in `mod.rs`) | `map_unique_violation` free function |
-| `framework/src/validation/mod.rs` | Edit | Re-export new public items |
-| `framework/src/http/action.rs` | No change | `From<DbErr>` passthrough stays as-is |
+**serde / serde_json** — already in `ferro-mcp/Cargo.toml` (`serde = { version = "1", features = ["derive"] }`, `serde_json = "1"`). The verdict struct (`CheckpointVerdict`, `SeamResult`, `Finding`) is plain `#[derive(Serialize)]` data — no additional crate.
 
-No changes to `ferro-orm`, `ferro-macros`, or any crate outside `framework`.
+**HashSet** — standard library. No crate.
+
+**SeamStatus enum** (`pass | fail | warn | not_checked`) — plain enum, serializes with `#[serde(rename_all = "snake_case")]` following the existing convention in `ferro-projections`.
+
+---
+
+## Dispatch to Existing Validators
+
+All wrapper seams (1, 3, 4, 5) call existing synchronous or async functions in other tool modules and repackage their output as `SeamResult`. No new logic, no new deps:
+
+| Seam | Existing entry point | Return type to repackage |
+|------|---------------------|--------------------------|
+| 1 — well-formed | `validate_projection::execute_single(root, name)` | `ValidationResult` |
+| 3 — action→route | `json_ui_verify_action::execute(...)` | existing result |
+| 4 — rendered view | `render_projection::execute(...)` + `json_ui_validate_spec::execute(...)` | `RenderResult` + spec validation |
+| 5 — props→contract | `validate_contracts::execute(...)` | existing result |
+
+---
+
+## Existing Dependencies That Cover Each Concern
+
+| Concern | Crate | Version in Cargo.toml |
+|---------|-------|----------------------|
+| Source parsing (entities / models) | `syn` | 2 |
+| File traversal | `walkdir` | 2 |
+| Regex-based projection parsing | `regex` | 1 |
+| JSON serialization of verdict | `serde` + `serde_json` | 1 |
+| ServiceDef type | `ferro-projections` | workspace (0.2.49) |
+| Live DB schema | `sea-orm` | 1.0 |
+| Async runtime | `tokio` | 1 |
+
+All present. None need a version bump for this feature.
 
 ---
 
 ## What NOT to Add
 
-| Do not add | Why |
-|------------|-----|
-| `async-trait` crate | `Pin<Box<dyn Future>>` in `AsyncRule` achieves object-safe async on stable Rust without a proc-macro dep |
-| Direct `sqlx` dep in `framework` | `sqlx` is already transitive via `sea-orm`; adding it directly just to call `PgDatabaseError::constraint()` sacrifices backend portability for no gain |
-| `validator 0.20` extension points | Already in `Cargo.toml` but unused by ferro's validation module; adopting its derive-macro API would conflict with ferro's builder-style API |
-| Automatic constraint→column inference | No portable API exists across SQLite+Postgres without backend-specific downcast; caller-supplied hint strings are the correct design |
-| Global DB connection registry for rules | Rules receive the connection at construction time; a global couples the validation layer to framework internals and is not testable in isolation |
-| Async `Rule` trait (making existing `Rule` async) | Breaks object safety on stable; forces wrapping all 22 sync rules; correct design is a parallel async trait |
-| New crate for async validation | `std::future::Future` + `std::pin::Pin` cover the requirement; no external dependency justified |
+| Item | Why not |
+|------|---------|
+| SeaORM entity-metadata reflection crate | Entity fields are already parsed statically by `list_models` via `syn`; no ORM-level reflection needed |
+| Migration AST parser | Entity struct is the ground truth for column names SeaORM materializes; migration source is derivative and harder to parse |
+| Any diff/comparison crate | Column membership check is a `HashSet::contains` — no library needed |
+| `indexmap` or ordered map | Verdict `next_steps` is a sorted `Vec<String>` built inline; no ordered-map crate needed |
+| `petgraph` or similar | Seam spine is a fixed five-element array, not a runtime graph |
+| Any new async executor | `tokio` already present; DB-schema branch reuses same async path as `database_schema.rs` |
+| New error-type crate | `thiserror` already in Cargo.toml; existing `McpError` is sufficient, or a local `CheckpointError` derives from it |
 
 ---
 
-## Constraint Detection Reference (portable, HIGH confidence)
+## Implementation Entry Points
 
-| Backend | Detection method | Codes | Constraint name? | Column name? |
-|---------|-----------------|-------|-----------------|--------------|
-| Postgres | `DbErr::sql_err()` → `SqlErr::UniqueConstraintViolation(msg)` | SQLSTATE `23505` | In message string (index/constraint name) | No — not in standard message |
-| SQLite | `DbErr::sql_err()` → `SqlErr::UniqueConstraintViolation(msg)` | `1555`, `2067` | No | Yes — `"table.column"` embedded in message |
+```
+ferro-mcp/src/tools/checkpoint_projection.rs  (new file)
+  |
+  +-- list_models::execute(root)               // entity column set (Source 1)
+  +-- database_schema::execute(root, filter)   // live DB column set (Source 2, optional)
+  +-- render_projection::reconstruct_service_def(...)  // ServiceDef reconstruction
+  +-- validate_projection::execute_single(root, name)  // seam 1
+  +-- json_ui_verify_action::execute(...)      // seam 3
+  +-- render_projection::execute(...)          // seam 4 (render half)
+  +-- json_ui_validate_spec::execute(...)      // seam 4 (validate half)
+  +-- validate_contracts::execute(...)         // seam 5
+```
 
-**Canonical detection call:** `err.sql_err()` — never pattern-match on `DbErr::Exec` / `DbErr::Query` directly. `sql_err()` encapsulates the backend dispatch and is maintained by SeaORM across backend changes.
+Model→projection name resolution — copy the predicate from `projection_coverage.rs:76-79`:
+```rust
+p.service_name.as_ref().is_some_and(|sn| sn.to_lowercase() == model_lower)
+```
+
+Column set from entity fields (Source 1):
+```rust
+let columns: HashSet<&str> = model.fields.iter().map(|f| f.name.as_str()).collect();
+```
+
+Field→column seam check loop:
+```rust
+for field in &service.fields {
+    if !columns.contains(field.name.as_str()) {
+        // emit Finding { subject: field.name, detail: "...", fix: "..." }
+    }
+}
+```
+
+When `list_models` returns no match for the projection's `service_name`, seam 2 reports
+`not_checked` (never `pass`).
 
 ---
 
 ## Sources
 
-- Context7 `/websites/rs_sea-orm_1_1_14` — `DbErr::sql_err()` full source, `SqlErr` enum definition, per-backend error-code dispatch table. HIGH confidence.
-- `https://docs.rs/sqlx/0.8.6/sqlx/postgres/struct.PgDatabaseError.html` — `constraint() -> Option<&str>` confirmed; Postgres-only, not on SQLite driver. HIGH confidence.
-- `https://docs.rs/sqlx/0.8.6/sqlx/error/trait.DatabaseError.html` — `DatabaseError` trait methods; confirmed no `column()` method exists on the trait. HIGH confidence.
-- `framework/Cargo.toml` + `cargo tree` output — sea-orm 1.1.19, sqlx 0.8.6 pinning verified directly in the repo. HIGH confidence.
-
----
-*Stack research for: ferro v12.4 Form Validation DX*
-*Researched: 2026-06-09*
+- `ferro-mcp/src/tools/list_models.rs` — direct read (entity field extraction via `syn`)
+- `ferro-mcp/src/tools/database_schema.rs` — direct read (live DB column query)
+- `ferro-mcp/src/tools/projection_coverage.rs` — direct read (model↔projection name matching)
+- `ferro-mcp/src/tools/render_projection.rs` — direct read (`reconstruct_service_def` entry point)
+- `ferro-mcp/src/tools/validate_projection.rs` — direct read (seam-1 dispatch)
+- `ferro-mcp/Cargo.toml` — direct read (all dependency versions)
+- `ferro-projections/src/service.rs` — direct read (`ServiceDef`, `FieldDef`, `validate()`)
+- `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md` — direct read (design spec)
