@@ -2357,7 +2357,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 194. Core Checkpoint Tool | 0/3 | Not started | - |
+| 194. Core Checkpoint Tool | 1/3 | In Progress|  |
 | 195. Close the Loop by Default | 0/TBD | Not started | - |
 | 196. Dogfood Acceptance + Hardening | 0/TBD | Not started | - |
 
@@ -2378,9 +2378,9 @@ Plans:
   4. A projection source file where the field-builder invocation count exceeds `ServiceDef.fields.len()` (reconstruction is incomplete) reports a `warn` on the field→column seam stating reconstruction may be incomplete — not a silent clean result.
   5. A mixed-seam fixture with a seam 2 `fail` and a seam 1 `warn` produces a `next_steps` list where the seam 2 failure appears before the seam 1 warning.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
-- [ ] 194-01-PLAN.md — Foundation: module + public output types (Finding/SeamStatus/SeamResult/Verdict) + path-traversal name guard + test scaffold (Wave 1)
+- [x] 194-01-PLAN.md — Foundation: module + public output types (Finding/SeamStatus/SeamResult/Verdict) + path-traversal name guard + test scaffold (Wave 1)
 - [ ] 194-02-PLAN.md — Field→column seam: completeness counter + dangling-field detection + not_checked paths + relationship/computed exemption (Wave 2)
 - [ ] 194-03-PLAN.md — Aggregation + ranked/deduped next_steps + cache write + MCP tool registration + docs (Wave 3)
 

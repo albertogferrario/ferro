@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.5
 milestone_name: Projection Checkpoint
-status: completed
-stopped_at: Phase 194 context gathered
-last_updated: "2026-06-09T22:28:14.490Z"
-last_activity: 2026-06-09 — v12.5 ROADMAP.md + STATE.md written; REQUIREMENTS.md traceability updated (CHK-01..06 → Phase 194; CHK-07..09 → Phase 195; CHK-10 → Phase 196)
+status: executing
+stopped_at: Completed 194-core-checkpoint-tool-01-PLAN.md
+last_updated: "2026-06-09T22:58:54.423Z"
+last_activity: 2026-06-09
 progress:
   total_phases: 78
   completed_phases: 70
-  total_plans: 302
-  completed_plans: 302
-  percent: 100
+  total_plans: 305
+  completed_plans: 303
+  percent: 99
 ---
 
 # Project State
@@ -20,17 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Milestone v12.5 Projection Checkpoint — close the agent write→verify loop (AX). Design spec approved: `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`. Roadmap phases 194-196 written and ready for planning.
+**Current focus:** Phase 194 — Core Checkpoint Tool
 
 ## Current Position
 
-Phase: 194 (not started)
+Phase: 194 (Core Checkpoint Tool) — EXECUTING
+Plan: 2 of 3
 Next: `/gsd-plan-phase 194`
-Status: v12.5 roadmap complete. Three phases: 194 (core tool + field→column seam), 195 (close loop by default), 196 (dogfood acceptance + hardening).
+Status: Ready to execute
 
 Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (55/62 phases)
 
-Last activity: 2026-06-09 — v12.5 ROADMAP.md + STATE.md written; REQUIREMENTS.md traceability updated (CHK-01..06 → Phase 194; CHK-07..09 → Phase 195; CHK-10 → Phase 196)
+Last activity: 2026-06-09
 Workspace version: 0.2.49
 
 > **Operator actions pending:**
@@ -311,6 +312,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 192 P01 | 430s | 2 tasks | 1 files |
 | Phase 192 P02 | 426s | 2 tasks | 1 files |
 | Phase 193 P01 | ~20 minutes | 2 tasks | 6 files |
+| Phase 194-core-checkpoint-tool P01 | 235s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -359,7 +361,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T22:28:14.480Z
-Stopped at: Phase 194 context gathered
-Resume file: .planning/phases/194-core-checkpoint-tool/194-CONTEXT.md
+Last session: 2026-06-09T22:58:54.383Z
+Stopped at: Completed 194-core-checkpoint-tool-01-PLAN.md
+Resume file: None
 Next action: `/gsd-plan-phase 194`

@@ -16,9 +16,9 @@ The load-bearing trust invariant: **`not_checked` never collapses into `pass`.**
 
 ### Core Checkpoint (P1)
 
-- [ ] **CHK-01** — An agent can call `checkpoint_projection { name }` and receive a single structured verdict: top-level `status` (`pass`/`warn`/`fail`), a per-seam result list, and a ranked, deduplicated `next_steps` list of actionable fixes. Each seam finding names its producing validator in `source` (provenance).
+- [x] **CHK-01** — An agent can call `checkpoint_projection { name }` and receive a single structured verdict: top-level `status` (`pass`/`warn`/`fail`), a per-seam result list, and a ranked, deduplicated `next_steps` list of actionable fixes. Each seam finding names its producing validator in `source` (provenance).
 - [ ] **CHK-02** — The field→column seam flags every projection field with no backing entity column. It resolves the projection to its source model via the same `src/projections/` ↔ `src/models/` name-match `projection_coverage` uses, reconstructs the `ServiceDef` via `reconstruct_service_def`, and compares field names against the model's columns (`list_models::execute`, no running DB required).
-- [ ] **CHK-03** — Every seam reports its state as one of `pass` / `fail` / `warn` / `not_checked`, distinctly. `not_checked` is used when a prerequisite is absent (no source model resolved, no rendered view exists, reconstruction incomplete) and is **never** coerced to `pass`. Unchecked seams do not raise overall `status` to `fail` but are listed. (Enforced by a dedicated test.)
+- [x] **CHK-03** — Every seam reports its state as one of `pass` / `fail` / `warn` / `not_checked`, distinctly. `not_checked` is used when a prerequisite is absent (no source model resolved, no rendered view exists, reconstruction incomplete) and is **never** coerced to `pass`. Unchecked seams do not raise overall `status` to `fail` but are listed. (Enforced by a dedicated test.)
 - [ ] **CHK-04** — The field→column seam never raises a false positive on a field that legitimately has no column: relationship navigation fields (carried in `ServiceDef.relationships`, not `.fields`) and computed/virtual fields are exempted by construction, not flagged.
 - [ ] **CHK-05** — When `reconstruct_service_def` cannot fully parse the projection source (a builder pattern it does not cover), the field→column seam reports `not_checked` with a reason rather than a false `pass` — verified by a completeness check, not assumed.
 - [ ] **CHK-06** — `next_steps` is ranked (failures above warnings; within a rank, earlier seams first) and deduplicated, and each entry is actionable (names the subject, the problem, and a concrete fix path).
@@ -63,9 +63,9 @@ Surfaced by research as underspecified in the design spec; the phase planner mus
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CHK-01 | Phase 194 | Pending |
+| CHK-01 | Phase 194 | Complete |
 | CHK-02 | Phase 194 | Pending |
-| CHK-03 | Phase 194 | Pending |
+| CHK-03 | Phase 194 | Complete |
 | CHK-04 | Phase 194 | Pending |
 | CHK-05 | Phase 194 | Pending |
 | CHK-06 | Phase 194 | Pending |
