@@ -387,6 +387,7 @@ fn aggregate_next_steps(seams: &[SeamResult]) -> Vec<String> {
 
 #[derive(Serialize)]
 struct CacheEntry<'a> {
+    #[serde(flatten)]
     verdict: &'a Verdict,
     ambient_status: &'static str,
     checked_at: chrono::DateTime<chrono::Utc>,
