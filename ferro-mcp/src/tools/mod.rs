@@ -6,6 +6,7 @@ pub mod ai_scaffold;
 pub mod application_info;
 pub mod browser_logs;
 pub mod cache_inspect;
+pub mod checkpoint_projection;
 pub mod code_templates;
 pub mod create_project;
 pub mod crud_operations;
