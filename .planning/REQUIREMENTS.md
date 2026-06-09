@@ -24,8 +24,8 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 
 ### DB Constraint → Field-Level Error Mapping
 
-- [ ] **VALID-04** — A developer can opt in to mapping a DB UNIQUE-constraint violation to a specific field's validation error at the handler call site (e.g. a `ConstraintMap` / `map_unique` builder), so a concurrent-insert violation surfaces inline under the field with input preserved — identical to a proactive rule failure — instead of a raw SQL error.
-- [ ] **VALID-05** — Constraint-violation detection is backend-portable across SQLite and Postgres (via `DbErr::sql_err()` and bifurcated identification — Postgres constraint name, SQLite table.column from the message). A `DbErr` that does not match a registered mapping falls through unchanged to the existing `From<sea_orm::DbErr> for ActionError` passthrough — never swallowed, never panics. The framework holds no consumer-specific constraint/field strings (project-agnostic-crates rule): mapping is registered at the consumer call site.
+- [x] **VALID-04** — A developer can opt in to mapping a DB UNIQUE-constraint violation to a specific field's validation error at the handler call site (e.g. a `ConstraintMap` / `map_unique` builder), so a concurrent-insert violation surfaces inline under the field with input preserved — identical to a proactive rule failure — instead of a raw SQL error.
+- [x] **VALID-05** — Constraint-violation detection is backend-portable across SQLite and Postgres (via `DbErr::sql_err()` and bifurcated identification — Postgres constraint name, SQLite table.column from the message). A `DbErr` that does not match a registered mapping falls through unchanged to the existing `From<sea_orm::DbErr> for ActionError` passthrough — never swallowed, never panics. The framework holds no consumer-specific constraint/field strings (project-agnostic-crates rule): mapping is registered at the consumer call site.
 
 ### Introspection & Docs
 
@@ -57,6 +57,6 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 | VALID-01 | Phase 190 | Complete |
 | VALID-02 | Phase 190 | Complete |
 | VALID-03 | Phase 190 | Complete |
-| VALID-04 | Phase 191 | Pending |
-| VALID-05 | Phase 191 | Pending |
+| VALID-04 | Phase 191 | Complete |
+| VALID-05 | Phase 191 | Complete |
 | VALID-06 | Phase 192 | Pending |
