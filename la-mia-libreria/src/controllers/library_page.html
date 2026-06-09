@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>La Mia Libreria</title>
+  <style>
+    :root {
+      --bg: #faf8f5; --panel: #ffffff; --ink: #2b2b2b; --muted: #8a8378;
+      --line: #e8e2d8; --accent: #8a5a2b; --accent-soft: #f2e9dd; --pd: #2f7d52;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-serif, Georgia, "Times New Roman", serif;
+      background: var(--bg); color: var(--ink); line-height: 1.5;
+    }
+    header {
+      padding: 28px 20px 18px; text-align: center; border-bottom: 1px solid var(--line);
+    }
+    header h1 { margin: 0; font-size: 26px; letter-spacing: .3px; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    main { max-width: 980px; margin: 0 auto; padding: 22px 16px 60px; }
+    .search { display: flex; gap: 8px; margin-bottom: 8px; }
+    .search input {
+      flex: 1; padding: 12px 14px; font-size: 16px; font-family: inherit;
+      border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+    }
+    .search button, .tab {
+      padding: 12px 18px; font-size: 15px; font-family: inherit; cursor: pointer;
+      border: 1px solid var(--accent); background: var(--accent); color: #fff;
+      border-radius: 8px;
+    }
+    .tabs { display: flex; gap: 8px; margin: 18px 0 16px; }
+    .tab { background: transparent; color: var(--accent); }
+    .tab.active { background: var(--accent); color: #fff; }
+    .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .cover {
+      aspect-ratio: 2/3; background: var(--accent-soft); display: flex;
+      align-items: center; justify-content: center; color: var(--muted);
+      font-size: 13px; text-align: center; padding: 8px;
+    }
+    .cover img { width: 100%; height: 100%; object-fit: cover; }
+    .card .body { padding: 10px 12px 12px; display: flex; flex-direction: column; flex: 1; }
+    .card h3 { margin: 0 0 4px; font-size: 15px; line-height: 1.25; }
+    .card .meta { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .badge {
+      display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 20px;
+      margin-bottom: 8px; font-family: system-ui, sans-serif;
+    }
+    .badge.pd { background: #e3f3e9; color: var(--pd); }
+    .badge.meta { background: #efeae2; color: var(--muted); }
+    .badge.owned { background: var(--accent-soft); color: var(--accent); }
+    .actions { margin-top: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .actions button {
+      flex: 1; min-width: 70px; padding: 7px 8px; font-size: 13px; cursor: pointer;
+      border-radius: 6px; border: 1px solid var(--line); background: #fff; color: var(--ink);
+      font-family: system-ui, sans-serif;
+    }
+    .actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .actions button.danger { color: #a23; border-color: #ecc; }
+    .actions button:disabled { opacity: .55; cursor: default; }
+    .empty { text-align: center; color: var(--muted); padding: 48px 0; }
+    .spinner { text-align: center; color: var(--muted); padding: 32px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>La Mia Libreria</h1>
+    <p>Cerca qualsiasi libro esistente · salvalo nella tua collezione · scarica i classici di pubblico dominio</p>
+  </header>
+  <main>
+    <form class="search" id="searchForm">
+      <input id="q" type="search" placeholder="Cerca per titolo o autore… (es. Dante, Pride and Prejudice)" autocomplete="off">
+      <button type="submit">Cerca</button>
+    </form>
+    <div class="tabs">
+      <button class="tab active" data-view="search">Risultati ricerca</button>
+      <button class="tab" data-view="collection">La mia collezione</button>
+    </div>
+    <p class="hint" id="hint"></p>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden></div>
+  </main>
+
+  <script>
+    const grid = document.getElementById('grid');
+    const empty = document.getElementById('empty');
+    const hint = document.getElementById('hint');
+    let view = 'search';
+    let lastResults = [];
+    let collection = [];
+
+    const esc = s => (s ?? '').replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    function coverHtml(b) {
+      return b.cover_url
+        ? `<div class="cover"><img loading="lazy" src="${esc(b.cover_url)}" alt=""></div>`
+        : `<div class="cover">${esc(b.title)}</div>`;
+    }
+
+    function inCollection(r) {
+      return collection.find(b => b.source === r.source && b.source_id === r.source_id);
+    }
+
+    function searchCard(r) {
+      const saved = inCollection(r);
+      const badge = r.public_domain
+        ? '<span class="badge pd">Pubblico dominio</span>'
+        : '<span class="badge meta">Solo metadati</span>';
+      const meta = [r.author, r.year].filter(Boolean).join(' · ');
+      const btn = saved
+        ? `<button disabled>✓ In collezione</button>`
+        : `<button class="primary" onclick='saveBook(${JSON.stringify(r)})'>+ Aggiungi</button>`;
+      return `<div class="card">${coverHtml(r)}<div class="body">
+        ${badge}<h3>${esc(r.title)}</h3><div class="meta">${esc(meta)}</div>
+        <div class="actions">${btn}</div></div></div>`;
+    }
+
+    function collectionCard(b) {
+      const meta = [b.author, b.year].filter(Boolean).join(' · ');
+      const badge = b.local_path
+        ? '<span class="badge owned">Scaricato</span>'
+        : (b.public_domain
+            ? '<span class="badge pd">Pubblico dominio</span>'
+            : '<span class="badge meta">Solo metadati</span>');
+      let dl = '';
+      if (b.public_domain && b.download_url && !b.local_path) {
+        dl = `<button class="primary" onclick="downloadBook(${b.id}, this)">⬇ Scarica</button>`;
+      }
+      return `<div class="card">${coverHtml(b)}<div class="body">
+        ${badge}<h3>${esc(b.title)}</h3><div class="meta">${esc(meta)}</div>
+        <div class="actions">${dl}
+          <button class="danger" onclick="removeBook(${b.id})">Rimuovi</button>
+        </div></div></div>`;
+    }
+
+    function render() {
+      const items = view === 'search' ? lastResults : collection;
+      const cardFn = view === 'search' ? searchCard : collectionCard;
+      if (!items.length) {
+        grid.innerHTML = '';
+        empty.hidden = false;
+        empty.textContent = view === 'search'
+          ? 'Nessun risultato. Prova a cercare un titolo o un autore.'
+          : 'La tua collezione è vuota. Cerca un libro e premi “Aggiungi”.';
+        return;
+      }
+      empty.hidden = true;
+      grid.innerHTML = items.map(cardFn).join('');
+    }
+
+    async function loadCollection() {
+      const res = await fetch('/library/books');
+      const data = await res.json();
+      collection = data.books || [];
+      if (view === 'collection') render();
+    }
+
+    async function doSearch(q) {
+      hint.textContent = 'Ricerca in corso…';
+      grid.innerHTML = '<div class="spinner">Cerco tra milioni di libri…</div>';
+      empty.hidden = true;
+      try {
+        const res = await fetch('/library/search?q=' + encodeURIComponent(q));
+        const data = await res.json();
+        lastResults = data.results || [];
+        hint.textContent = `${lastResults.length} risultati per “${q}”. I titoli di pubblico dominio sono scaricabili.`;
+      } catch (e) {
+        lastResults = [];
+        hint.textContent = 'Errore durante la ricerca.';
+      }
+      render();
+    }
+
+    async function saveBook(r) {
+      await fetch('/library/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(r)
+      });
+      await loadCollection();
+      render();
+    }
+
+    async function removeBook(id) {
+      await fetch('/library/books/' + id, { method: 'DELETE' });
+      await loadCollection();
+      render();
+    }
+
+    async function downloadBook(id, btn) {
+      btn.disabled = true; btn.textContent = 'Scarico…';
+      const res = await fetch('/library/books/' + id + '/download', { method: 'POST' });
+      if (!res.ok) { btn.disabled = false; btn.textContent = '⬇ Riprova'; return; }
+      await loadCollection();
+      render();
+    }
+
+    document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      view = t.dataset.view;
+      hint.textContent = view === 'collection'
+        ? `${collection.length} libri nella tua collezione.` : hint.textContent;
+      render();
+    });
+
+    document.getElementById('searchForm').onsubmit = e => {
+      e.preventDefault();
+      const q = document.getElementById('q').value.trim();
+      if (q) doSearch(q);
+    };
+
+    loadCollection();
+    render();
+  </script>
+</body>
+</html>

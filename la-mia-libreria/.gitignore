@@ -1,0 +1,5 @@
+/target
+/database.db
+/database.db-*
+/storage
+.env

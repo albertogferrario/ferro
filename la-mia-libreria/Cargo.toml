@@ -1,0 +1,28 @@
+# Standalone project: its own empty [workspace] keeps it independent from the
+# surrounding ferro workspace (it lives here only as a transport branch).
+[workspace]
+
+[package]
+name = "la-mia-libreria"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "libreria"
+path = "src/main.rs"
+
+[dependencies]
+# Ferro framework, published on crates.io as `ferro-rs`, imported as `ferro`.
+# Verified to build against the 0.2 line (0.2.48).
+ferro = { package = "ferro-rs", version = "0.2", features = ["projections"] }
+tokio = { version = "1", features = ["full"] }
+sea-orm-migration = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
+serde = { version = "1.0", features = ["derive"] }
+reqwest = { version = "0.12", features = ["json"] }
+async-trait = "0.1"
+dotenvy = "0.15"
+clap = { version = "4", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
