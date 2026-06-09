@@ -66,6 +66,10 @@
 - [Expressions](json-ui/expressions.md)
 - [JSON Schema](json-ui/json-schema.md)
 
+# Agents
+
+- [checkpoint_projection](agents/checkpoint-projection.md)
+
 # Reference
 
 - [CLI Reference](reference/cli.md)

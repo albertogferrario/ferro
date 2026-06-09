@@ -324,6 +324,12 @@ pub struct ProjectionCoverageParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct CheckpointProjectionParams {
+    /// Projection function name (e.g. "user_service") or service name (e.g. "User").
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct GenerateProjectionParams {
     /// Model name (e.g., "User", "Order"). Case-sensitive, matches the struct name from SeaORM entity definitions.
     pub model_name: String,
@@ -1577,6 +1583,31 @@ impl FerroMcpService {
             serde_json::to_string_pretty(&summary).unwrap_or_else(|_| "{}".to_string())
         } else {
             "{\"error\": \"provide 'name' for a single projection or 'all: true' for all projections\"}".to_string()
+        }
+    }
+
+    /// Run the projection checkpoint and return a structured verdict
+    #[tool(
+        name = "checkpoint_projection",
+        description = "Run a checkpoint on a service projection and return a single structured verdict.\n\n\
+            **When to use:** after generating or editing a projection; to catch a projection field that references \
+            a model attribute no migration created (the field→column seam), before it fails at runtime.\n\n\
+            **Returns:** top-level status (pass/warn/fail), a per-seam result list (each finding names its \
+            producing validator in `source`), and a ranked, deduplicated `next_steps` list of actionable fixes. \
+            Also writes a status cache to .ferro/checkpoints/{name}.json.\n\n\
+            **Read-only:** this tool reads source, the route registry, and DB schema — it never compiles \
+            (no cargo) and never edits code.\n\n\
+            **Combine with:** `validate_projection` for structural checks, `projection_coverage` for coverage gaps."
+    )]
+    pub async fn checkpoint_projection(
+        &self,
+        params: Parameters<CheckpointProjectionParams>,
+    ) -> String {
+        match tools::checkpoint_projection::execute(&self.project_root, &params.0.name) {
+            Ok(result) => {
+                serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+            }
+            Err(e) => format!("{{\"error\": \"{}\"}}", e.replace('"', "\\\"")),
         }
     }
 
