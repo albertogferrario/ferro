@@ -146,9 +146,15 @@ impl AsyncRule for Unique {
             .query_one(stmt)
             .await
             .map_err(|e| format!("__infra_error__: {e}"))?;
-        let count: i64 = row
-            .and_then(|r| r.try_get::<i64>("", "count").ok())
-            .unwrap_or(0);
+        // A failure to read the COUNT column is an infrastructure fault, not a
+        // "0 rows" pass — swallowing it would let a duplicate through silently
+        // (D-12: a DB-layer failure must never surface as a validation pass).
+        let count: i64 = match row {
+            Some(r) => r
+                .try_get::<i64>("", "count")
+                .map_err(|e| format!("__infra_error__: {e}"))?,
+            None => return Err("__infra_error__: uniqueness COUNT returned no row".to_string()),
+        };
 
         if count > 0 {
             Err(
@@ -180,6 +186,10 @@ pub(crate) fn json_value_to_sea_value(v: &serde_json::Value) -> sea_orm::Value {
             }
         }
         serde_json::Value::Bool(b) => sea_orm::Value::Bool(Some(*b)),
+        // SQL NULL — not the literal string "null". `col = NULL` is never true,
+        // so a null value is treated as "not taken" (the production path skips
+        // null-nullable fields before reaching here anyway).
+        serde_json::Value::Null => sea_orm::Value::String(None),
         _ => sea_orm::Value::String(Some(Box::new(v.to_string()))),
     }
 }
@@ -287,10 +297,11 @@ mod tests {
     }
 
     #[test]
-    fn json_value_to_sea_value_null_uses_string_fallback() {
+    fn json_value_to_sea_value_null_binds_sql_null() {
+        // JSON null binds as SQL NULL — not the literal string "null" (WR-01).
         let v = json!(null);
         let sv = json_value_to_sea_value(&v);
-        assert!(matches!(sv, sea_orm::Value::String(_)));
+        assert!(matches!(sv, sea_orm::Value::String(None)));
     }
 
     // -------------------------------------------------------------------------

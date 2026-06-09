@@ -49,18 +49,13 @@ impl std::fmt::Display for AsyncValidationError {
 
 impl std::error::Error for AsyncValidationError {}
 
-impl From<AsyncValidationError> for crate::http::action::ActionError {
-    fn from(e: AsyncValidationError) -> Self {
-        match e {
-            // Caller is expected to flash errors via with_old_input before
-            // converting; validation_failed suppresses the redundant envelope.
-            AsyncValidationError::Validation(_) => {
-                crate::http::action::ActionError::validation_failed("/")
-            }
-            AsyncValidationError::Infra(fe) => crate::http::action::ActionError::from(fe),
-        }
-    }
-}
+// NOTE: no blanket `From<AsyncValidationError> for ActionError`. Such a
+// conversion cannot preserve the field errors, the flashed old input, or the
+// redirect-back URL — all of which require caller context. A lossy `?`
+// conversion would silently drop the field-level message. Callers must match
+// the variants explicitly (see the `AsyncValidationError` doc example):
+//   Validation(e) => e.with_old_input(&data).into_action_error(back_url)
+//   Infra(fe)     => ActionError::from(fe)
 
 /// Async request validator.
 ///
