@@ -479,4 +479,306 @@ mod tests {
         assert!(validate_name("Booking").is_ok());
         assert!(validate_name("user_service-1").is_ok());
     }
+
+    // -----------------------------------------------------------------------
+    // Task 1 tests: count_column_backed_builders (CHK-05 / D-05 / D-06)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn count_all_four() {
+        // One invocation of each of the four column-backed builders → total 4.
+        // Verifies that .field( is not double-counted as a substring of the others.
+        let src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .optional_field("note", DataType::Text, FieldMeaning::Description)
+        .read_only_field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+        .write_only_field("password", DataType::Text, FieldMeaning::Credential)
+}
+"#;
+        assert_eq!(count_column_backed_builders(src), 4);
+    }
+
+    #[test]
+    fn count_strips_comments() {
+        // The .field( on the commented-out line must NOT be counted.
+        let src = r#"
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        // .field("commented_out", DataType::Integer, FieldMeaning::Identifier)
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}
+"#;
+        assert_eq!(count_column_backed_builders(src), 1);
+    }
+
+    #[test]
+    fn count_includes_write_only() {
+        // Regression guard for Pitfall 3 — write_only_field must be counted.
+        let src = r#"
+pub fn secret_service() -> ServiceDef {
+    ServiceDef::new("secret")
+        .write_only_field("token", DataType::Text, FieldMeaning::Credential)
+}
+"#;
+        assert_eq!(count_column_backed_builders(src), 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // Task 2 tests: field_to_column_seam (CHK-02 / CHK-03 / CHK-04 / CHK-05)
+    // -----------------------------------------------------------------------
+
+    /// A minimal SeaORM-style model source that list_models::execute can parse.
+    /// `struct_name` is the Rust struct name (e.g. "Booking") — list_models uses
+    /// the struct ident as ModelDetails.name, so it must match the service_name
+    /// (case-insensitive) for D-01 resolution to succeed.
+    fn model_src_with_fields(struct_name: &str, fields: &[&str]) -> String {
+        let field_lines: String = fields
+            .iter()
+            .map(|f| format!("    pub {f}: i64,\n"))
+            .collect();
+        let table = struct_name.to_lowercase() + "s";
+        format!(
+            r#"use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "{table}")]
+pub struct {struct_name} {{
+{field_lines}}}
+"#,
+        )
+    }
+
+    #[test]
+    fn seam2_dangling_field() {
+        // CHK-02: projection has field "phantom" not present in the model → Fail.
+        // Use DataType::String (valid) so both fields are reconstructed — count==fields.len(),
+        // no D-06 warn fires. Model only has "id", so "phantom" is dangling.
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("phantom", DataType::String, FieldMeaning::EntityName)
+}
+"#;
+        let model_src = model_src_with_fields("Booking", &["id"]);
+        let tmp = project_with_projection("booking_service", proj_src);
+        add_model(&tmp, "booking", &model_src);
+
+        let result =
+            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+
+        assert_eq!(result.status, SeamStatus::Fail, "dangling field must fail");
+        assert_eq!(
+            result.findings.len(),
+            1,
+            "exactly one finding for the phantom field"
+        );
+        assert_eq!(result.findings[0].subject, "phantom");
+        assert!(
+            result.findings[0].fix.contains("add column"),
+            "fix must contain 'add column': {}",
+            result.findings[0].fix
+        );
+        assert!(
+            result.findings[0].fix.contains("migration"),
+            "fix must reference migration: {}",
+            result.findings[0].fix
+        );
+    }
+
+    #[test]
+    fn seam2_all_pass() {
+        // CHK-02: projection whose every field matches a model column → Pass, no findings.
+        // Use DataType::String (valid) so all fields are reconstructed correctly.
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("name", DataType::String, FieldMeaning::EntityName)
+}
+"#;
+        let model_src = model_src_with_fields("Booking", &["id", "name"]);
+        let tmp = project_with_projection("booking_service", proj_src);
+        add_model(&tmp, "booking", &model_src);
+
+        let result =
+            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+
+        assert_eq!(result.status, SeamStatus::Pass, "all fields match → pass");
+        assert!(result.findings.is_empty(), "no findings expected");
+    }
+
+    #[test]
+    fn not_checked_no_model() {
+        // CHK-03: service_name matches no model → NotChecked, reason "source_model_unresolved".
+        // NOT Pass — coverage-honesty invariant.
+        // "invoice" struct name != "booking" service name → model resolution fails.
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}
+"#;
+        // Add a model whose struct name is "Invoice" not "Booking".
+        // list_models parses the struct name, so "invoice" != "booking" → not resolved.
+        let invoice_model_src = r#"use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "invoices")]
+pub struct Invoice {
+    pub id: i64,
+}
+"#;
+        let tmp = project_with_projection("booking_service", proj_src);
+        add_model(&tmp, "invoice", invoice_model_src);
+
+        let result =
+            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+
+        assert_eq!(
+            result.status,
+            SeamStatus::NotChecked,
+            "unresolved model must produce NotChecked, not Pass"
+        );
+        assert_eq!(
+            result.reason.as_deref(),
+            Some("source_model_unresolved"),
+            "reason must be source_model_unresolved"
+        );
+        assert!(result.findings.is_empty());
+    }
+
+    #[test]
+    fn not_checked_bad_source() {
+        // CHK-03: reconstruct_service_def is lenient (always Ok), so the not_checked
+        // contract is exercised here via the no-model path — same not_checked
+        // invariant holds. If reconstruct_service_def ever gains strict parsing that
+        // returns Err, it would also produce NotChecked (covered by the Err arm in
+        // field_to_column_seam). The load-bearing assertion: status == NotChecked,
+        // never Pass.
+        //
+        // Fixture: projection source with no models directory at all,
+        // so list_models::execute returns McpError::NotFound → NotChecked.
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}
+"#;
+        // No src/models/ or src/entities/ directory — list_models returns Err.
+        let tmp = project_with_projection("booking_service", proj_src);
+
+        let result =
+            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+
+        assert_ne!(
+            result.status,
+            SeamStatus::Pass,
+            "prerequisite-absent path must never return Pass"
+        );
+        assert_eq!(
+            result.status,
+            SeamStatus::NotChecked,
+            "prerequisite-absent path must return NotChecked"
+        );
+    }
+
+    #[test]
+    fn relationships_not_flagged() {
+        // CHK-04: projection with .has_many/.belongs_to + clean fields → Pass, zero findings.
+        // Relationships live in ServiceDef.relationships, never .fields — exemption by construction.
+        // CHK-04: only column-backed builders populate ServiceDef.fields; relationships
+        // live in .relationships. No computed/virtual marker exists (RESEARCH A1) —
+        // exemption is by construction.
+        //
+        // Use valid DataType::Integer so the field reconstructs correctly (count==fields.len()).
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .has_many("items", "item_service")
+        .belongs_to("user", "user_service")
+}
+"#;
+        // Model struct named "Booking" → to_lowercase "booking" matches service_name "booking".
+        let booking_model_src = r#"use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "bookings")]
+pub struct Booking {
+    pub id: i64,
+}
+"#;
+        let tmp = project_with_projection("booking_service", proj_src);
+        add_model(&tmp, "booking", booking_model_src);
+
+        let result =
+            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+
+        assert_eq!(
+            result.status,
+            SeamStatus::Pass,
+            "relationships must not be flagged — seam only iterates .fields"
+        );
+        assert!(
+            result.findings.is_empty(),
+            "zero findings expected when relationships present but fields all match"
+        );
+    }
+
+    #[test]
+    fn reconstruction_incomplete_warn() {
+        // CHK-05: source with more builder calls than reconstructed fields → Warn.
+        // Drive this by using an unknown DataType ("Text") in the second .field( call.
+        // parse_data_type("Text") returns None, so parse_and_add_fields skips it.
+        // Result: invocation_count (2) > service.fields.len() (1) → Warn.
+        //
+        // Model has both columns so if reconstruction were complete, the result would
+        // be Pass — but the D-06 check fires first because reconstruction is incomplete.
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("name", DataType::Text, FieldMeaning::EntityName)
+}
+"#;
+        // Two .field( invocations; only "id" is reconstructed (DataType::Text is unknown).
+        // Model has both columns so the column check would pass if reconstruction succeeded.
+        let booking_model_src = r#"use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "bookings")]
+pub struct Booking {
+    pub id: i64,
+    pub name: String,
+}
+"#;
+        let tmp = project_with_projection("booking_service", proj_src);
+        add_model(&tmp, "booking", booking_model_src);
+
+        let result =
+            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+
+        assert_eq!(
+            result.status,
+            SeamStatus::Warn,
+            "more builder calls than reconstructed fields must warn (CHK-05)"
+        );
+        assert_eq!(
+            result.reason.as_deref(),
+            Some("reconstruction_incomplete"),
+            "reason must be reconstruction_incomplete"
+        );
+        // Must not be a silent pass
+        assert_ne!(result.status, SeamStatus::Pass);
+    }
 }
