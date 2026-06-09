@@ -316,6 +316,8 @@ pub use validation::{
     AsyncRule,
     AsyncValidationError,
     AsyncValidator,
+    ConstraintMap,
+    MapConstraintExt,
     Rule,
     TranslatorFn,
     Validatable,

@@ -53,6 +53,7 @@
 mod async_rule;
 mod async_validator;
 mod bridge;
+mod constraint_map;
 mod error;
 mod rule;
 mod rules;
@@ -64,6 +65,7 @@ pub use async_rule::AsyncRule;
 pub use async_validator::{AsyncValidationError, AsyncValidator};
 pub(crate) use bridge::translate_validation;
 pub use bridge::{register_validation_translator, TranslatorFn};
+pub use constraint_map::{ConstraintMap, MapConstraintExt};
 pub use error::ValidationError;
 pub use rule::Rule;
 pub use rules::*;
