@@ -789,7 +789,7 @@ Step 2.6: No new external dependencies. All required tools (`cargo`, `sea-orm`, 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`async_rules!` macro — needed?**
    - What we know: `rules!` exists for `Box<dyn Rule>`. Async rules can be added via `.async_rule(field, rule)` one at a time.
