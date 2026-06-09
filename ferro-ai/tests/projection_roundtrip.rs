@@ -7,7 +7,7 @@
 //! it cannot pass via a generic schema-normalization fallback (SC5).
 
 use ferro_json_ui::{global_catalog, VisualContext};
-use ferro_projections::{DataType, FieldMeaning, Intent, ServiceDef, derive_intents};
+use ferro_projections::{derive_intents, DataType, FieldMeaning, Intent, ServiceDef};
 
 fn invoice_fixture() -> ServiceDef {
     ServiceDef::new("invoice")
@@ -21,30 +21,51 @@ fn invoice_fixture() -> ServiceDef {
 fn servicedef_browse_projection_validates_and_pins_servicedef_path() {
     let service = invoice_fixture();
     let intents = derive_intents(&service);
-    assert!(!intents.is_empty(), "invoice fixture must derive at least one intent");
+    assert!(
+        !intents.is_empty(),
+        "invoice fixture must derive at least one intent"
+    );
 
     let browse_idx = intents
         .iter()
         .position(|i| matches!(i.intent, Intent::Browse))
         .unwrap_or(0);
-    let ctx = VisualContext { intent_index: browse_idx, ..VisualContext::default() };
+    let ctx = VisualContext {
+        intent_index: browse_idx,
+        ..VisualContext::default()
+    };
 
     // SC3 + SC5: deterministic render via the ServiceDef-aware path.
     let spec = ferro_json_ui::Spec::from_service_def(&service, &intents, &ctx)
         .expect("invoice fixture must project successfully");
 
     // SC2: catalog write-gate.
-    assert!(global_catalog().validate(&spec).is_ok(), "projected spec must pass catalog validation");
+    assert!(
+        global_catalog().validate(&spec).is_ok(),
+        "projected spec must pass catalog validation"
+    );
     assert_eq!(spec.schema, "ferro-json-ui/v2");
 
-    let root = spec.elements.get(&spec.root).expect("root element must exist");
-    assert_eq!(root.type_name, "DataTable", "Browse intent must produce a DataTable root");
+    let root = spec
+        .elements
+        .get(&spec.root)
+        .expect("root element must exist");
+    assert_eq!(
+        root.type_name, "DataTable",
+        "Browse intent must produce a DataTable root"
+    );
 
-    let cols = root.props.get("columns").and_then(|c| c.as_array())
+    let cols = root
+        .props
+        .get("columns")
+        .and_then(|c| c.as_array())
         .expect("DataTable must have a columns prop");
-    let has_currency = cols.iter()
+    let has_currency = cols
+        .iter()
         .any(|c| c.get("format").and_then(|f| f.as_str()) == Some("currency"));
-    assert!(has_currency,
+    assert!(
+        has_currency,
         "Money field must produce a currency-formatted column — \
-         proves the ServiceDef-aware dispatch (FieldMeaning::Money -> ColumnFormat::Currency)");
+         proves the ServiceDef-aware dispatch (FieldMeaning::Money -> ColumnFormat::Currency)"
+    );
 }
