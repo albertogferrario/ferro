@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: in_progress
-stopped_at: Phase 173 context gathered (CONTEXT.md committed); next /gsd-plan-phase 173
-last_updated: "2026-06-09T13:49:03.253Z"
+status: executing
+stopped_at: Completed 173-01-PLAN.md
+last_updated: "2026-06-09T14:42:49.552Z"
 last_activity: 2026-06-09
 progress:
-  total_phases: 74
-  completed_phases: 66
-  total_plans: 295
-  completed_plans: 295
+  total_phases: 59
+  completed_phases: 54
+  total_plans: 257
+  completed_plans: 256
   percent: 100
 ---
 
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v12.1 AI — Phase 173 make:json-view v2 + projection-roundtrip test (milestone capstone)
+**Current focus:** Phase 173 — make-json-view-v2-projection-roundtrip-test
 
 ## Current Position
 
-Phase: 173
-Plan: Not started
+Phase: 173 (make-json-view-v2-projection-roundtrip-test) — EXECUTING
+Plan: 2 of 2
 Next: `/gsd-plan-phase 173`
-Status: Phase 173 context gathered (CONTEXT.md committed); 173 unblocked (v12.0 shipped 2026-05-19). It is the v12.1 capstone — closing it completes the milestone.
+Status: Ready to execute
 Last activity: 2026-06-09
 Workspace version: 0.2.48 (released to crates.io)
 
@@ -284,6 +284,7 @@ Progress: [██████████] 100%
 | Phase 190-async-rule-infrastructure-unique-rule P02 | 327s | 2 tasks | 2 files |
 | Phase 190 P03 | 236s | 2 tasks | 2 files |
 | Phase 190 P04 | 1255s | 2 tasks | 5 files |
+| Phase 173 P01 | 618 | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -368,7 +369,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T13:49:03.217Z
-Stopped at: Phase 191 context gathered
-Resume file: .planning/phases/191-constraintmap-portable-unique-violation-detection/191-CONTEXT.md
+Last session: 2026-06-09T14:42:49.545Z
+Stopped at: Completed 173-01-PLAN.md
+Resume file: None
 Next action: (1) manual `cargo publish` bootstrap of ferro-bundle / ferro-deployments / ferro-assets from a local terminal (CI token is publish-update only); (2) `/gsd-new-milestone` to open the next build cycle (next planned: v12.4 Form Validation DX). No active phase pointer.

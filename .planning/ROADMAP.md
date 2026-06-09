@@ -1841,7 +1841,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 173-01-PLAN.md — Rewire make:json-view to the ServiceDef-driven projection path (NL via scaffold_core or --from-service-json) feeding Spec::from_service_def; delete the direct NL→spec two-pass (AICLI-04)
+- [x] 173-01-PLAN.md — Rewire make:json-view to the ServiceDef-driven projection path (NL via scaffold_core or --from-service-json) feeding Spec::from_service_def; delete the direct NL→spec two-pass (AICLI-04)
 - [ ] 173-02-PLAN.md — Offline projection-roundtrip proof test (ferro-ai/tests/projection_roundtrip.rs) + ferro-json-ui dev-dep + 173-VERIFICATION.md; pins the ServiceDef-aware path via the Money→currency assertion (AICLI-06)
 
 #### Progress
@@ -1856,14 +1856,14 @@ Plans:
 | 170. ferro-cli Migration | 1/1 | Complete    | 2026-06-08 |
 | 171. ai:make & ai:explain CLI Commands | 4/4 | Complete    | 2026-06-08 |
 | 172. MCP Tool Wrappers | 4/4 | Complete    | 2026-06-08 |
-| 173. make:json-view v2 + roundtrip | 0/2 | Not started | - |
+| 173. make:json-view v2 + roundtrip | 1/2 | In Progress|  |
 
 ### Phase 180: Declarative action handler primitive — typed Result return so POST handlers redirect-on-error without manual try-catch ladders
 
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 4/4 plans complete
+**Plans:** 1/2 plans executed
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
