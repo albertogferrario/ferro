@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.1
-milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
-status: verifying
-stopped_at: Completed 191-02-PLAN.md
+milestone: v12.4
+milestone_name: Form Validation DX
+status: in_progress
+stopped_at: Phases 190+191 complete & verified (PG gates closed); Phase 192 CONTEXT captured, next /gsd-plan-phase 192
 last_updated: "2026-06-09T16:33:42.021Z"
 last_activity: 2026-06-09
 progress:
@@ -20,16 +20,20 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 191 — constraintmap-portable-unique-violation-detection
+**Current focus:** v12.4 Form Validation DX — Phase 192 ferro-mcp Template + Validation Docs (final phase; closes the milestone)
 
 ## Current Position
 
-Phase: 191
+Phase: 192
 Plan: Not started
-Next: `/gsd-plan-phase 173`
-Status: Phase complete — ready for verification
+Next: `/gsd-plan-phase 192`
+Status: Phase 192 CONTEXT captured (docs/template phase, VALID-06). 190 (proactive unique) + 191 (defensive ConstraintMap) complete & verified; both live-Postgres gates closed via #[ignore]d tests. 192 surfaces the two-layer pattern in the ferro-mcp action_handler template + validation.md.
 Last activity: 2026-06-09
 Workspace version: 0.2.48 (released to crates.io)
+
+> v12.4 close-out: after 192 lands, mark v12.4 ✅ in ROADMAP overview and
+> `/gsd-complete-milestone`. v12.1 AI (165-173) is also feature-complete and
+> awaiting the same close-out. master is ~70 commits ahead of origin (push pending).
 
 > Two milestones open in parallel:
 > - **v12.1 AI** — 165-172 done; **173 in progress** (this phase, the capstone:
