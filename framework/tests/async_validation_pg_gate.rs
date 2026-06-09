@@ -37,7 +37,7 @@ async fn exec(sql: &str) {
 /// Init the DB singleton against Postgres and (re)create a clean `widgets` table
 /// with a UNIQUE-relevant `slug` column. Seeds id=1, slug='taken'.
 async fn init_pg() {
-    let config = DatabaseConfig::builder().url(&pg_url()).build();
+    let config = DatabaseConfig::builder().url(pg_url()).build();
     DB::init_with(config)
         .await
         .unwrap_or_else(|e| panic!("init Postgres singleton at {}: {e}", pg_url()));
