@@ -55,6 +55,7 @@ mod bridge;
 mod error;
 mod rule;
 mod rules;
+mod rules_async;
 mod validatable;
 mod validator;
 
