@@ -2331,5 +2331,5 @@ Plans:
   6. Push to ferro/master triggers GitHub Actions auto-publish per `feedback_ferro_publish.md`; `cargo search ferro-stripe --limit 1` returns `ferro-stripe = "0.7.0"` after publish completes
   7. Gestiscilo Phase 99 Plan 03 Task 1 precondition gate (grep `refund_id` in consumed `events.rs`) passes against the published version; Phase 99 Plan 04 Task 1 precondition gate (cargo search for 0.7.0) passes
 
-**Plans:** 1 plan (planned 2026-06-09 — code only; publish is the deferred operator step)
-- [ ] 193-01-PLAN.md — refund_id field + parser from charge.refunds, fixture + parser-contract round-trip, 0.7.0 version bump + CHANGELOG (no push/publish)
+**Plans:** 1/1 plans complete
+- [x] 193-01-PLAN.md — refund_id field + parser from charge.refunds, fixture + parser-contract round-trip, 0.7.0 version bump + CHANGELOG (no push/publish)

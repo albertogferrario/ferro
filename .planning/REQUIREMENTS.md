@@ -33,8 +33,8 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 
 ### ferro-stripe Refund Event (Phase 193 — milestone v11.6.2)
 
-- [ ] **STRIPE-REFUND-01** — The `StripeChargeRefunded` typed webhook event exposes the refund identifier as `pub refund_id: Option<String>`, parsed from the charge's refunds list (`charge.refunds.data[].id`), with golden-JSON fixture coverage and a parser-contract test asserting the parsed value — so a consumer can look up its local refund row without bypassing ferro-stripe via direct `stripe::` imports (V-95-01 gate).
-- [ ] **STRIPE-REFUND-02** — ferro-stripe carries a `0.7.0` release label (version bump from `0.5.0`, no intermediate `0.6.x`) with a `CHANGELOG.md` `## [0.7.0]` entry documenting the new `refund_id` field, the bundled Phase 189 manual-capture additions, and the version-skip rationale. (Publish to crates.io is an operator-owned step — push to master triggers GH Actions auto-publish; out of scope for the code phase.)
+- [x] **STRIPE-REFUND-01** — The `StripeChargeRefunded` typed webhook event exposes the refund identifier as `pub refund_id: Option<String>`, parsed from the charge's refunds list (`charge.refunds.data[].id`), with golden-JSON fixture coverage and a parser-contract test asserting the parsed value — so a consumer can look up its local refund row without bypassing ferro-stripe via direct `stripe::` imports (V-95-01 gate).
+- [x] **STRIPE-REFUND-02** — ferro-stripe carries a `0.7.0` release label (version bump from `0.5.0`, no intermediate `0.6.x`) with a `CHANGELOG.md` `## [0.7.0]` entry documenting the new `refund_id` field, the bundled Phase 189 manual-capture additions, and the version-skip rationale. (Publish to crates.io is an operator-owned step — push to master triggers GH Actions auto-publish; out of scope for the code phase.)
 
 ## Anti-Requirements (explicit non-goals to prevent scope drift)
 
@@ -65,5 +65,5 @@ v12.4 introduces no new abstraction. It extends the existing validation layer (`
 | VALID-04 | Phase 191 | Complete |
 | VALID-05 | Phase 191 | Complete |
 | VALID-06 | Phase 192 | Complete |
-| STRIPE-REFUND-01 | Phase 193 | Pending |
-| STRIPE-REFUND-02 | Phase 193 | Pending |
+| STRIPE-REFUND-01 | Phase 193 | Complete |
+| STRIPE-REFUND-02 | Phase 193 | Complete |
