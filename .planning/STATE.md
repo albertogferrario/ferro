@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v12.1
 milestone_name: AI — ferro-ai SDK & AI as Projection Consumer
 status: executing
-stopped_at: Phase 190 context gathered
-last_updated: "2026-06-09T00:11:26.163Z"
-last_activity: 2026-06-09 -- Phase 190 planning complete
+stopped_at: Completed 190-async-rule-infrastructure-unique-rule/190-01-PLAN.md
+last_updated: "2026-06-09T00:18:07.754Z"
+last_activity: 2026-06-09
 progress:
   total_phases: 59
   completed_phases: 54
@@ -20,15 +20,15 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Milestone v12.4 (Form Validation DX) — roadmap created; Phase 190 ready to plan.
+**Current focus:** Phase 190 — Async Rule Infrastructure + unique Rule
 
 ## Current Position
 
-Phase: 190 — Async Rule Infrastructure + `unique` Rule
-Plan: —
+Phase: 190 (Async Rule Infrastructure + unique Rule) — EXECUTING
+Plan: 2 of 4
 Next: `/gsd-plan-phase 190`
 Status: Ready to execute
-Last activity: 2026-06-09 -- Phase 190 planning complete
+Last activity: 2026-06-09
 Workspace version: 0.2.48 (released to crates.io)
 
 Release 0.2.48 (2026-06-09): all crates published to crates.io and tagged `v0.2.48`. New crates `ferro-deployments` and `ferro-assets` bootstrapped (manual first publish, since the CI token is `publish-update` only); CI updates them from here. `ferro-assets 0.2.47` was shipped requiring `nasm` (rav1e asm) and is superseded by the pure-Rust 0.2.48 — yank of 0.2.47 pending a yank-scoped token (optional cleanup). See memory `project_ferro_codec_asm_nasm_gotcha.md`.
@@ -267,6 +267,7 @@ Progress: [██████████] 100%
 | Phase 172 P02 | 450 | 2 tasks | 4 files |
 | Phase 172 P03 | 105s | 1 tasks | 1 files |
 | Phase 172 P04 | 1100s | 3 tasks | 8 files |
+| Phase 190-async-rule-infrastructure-unique-rule P01 | 214s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -351,7 +352,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-08T23:40:42.233Z
-Stopped at: Phase 190 context gathered
-Resume file: .planning/phases/190-async-rule-infrastructure-unique-rule/190-CONTEXT.md
+Last session: 2026-06-09T00:18:07.747Z
+Stopped at: Completed 190-async-rule-infrastructure-unique-rule/190-01-PLAN.md
+Resume file: None
 Next action: (1) manual `cargo publish` bootstrap of ferro-bundle / ferro-deployments / ferro-assets from a local terminal (CI token is publish-update only); (2) `/gsd-new-milestone` to open the next build cycle (next planned: v12.4 Form Validation DX). No active phase pointer.
