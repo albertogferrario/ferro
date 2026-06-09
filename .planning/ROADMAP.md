@@ -1697,7 +1697,7 @@ Plans:
 - [x] **Phase 170: ferro-cli Migration** — delete `ferro-cli/src/ai.rs` blocking client; wire all LLM calls through `ferro_ai::complete::<T>()` (completed 2026-06-08)
 - [x] **Phase 171: ferro ai:make & ferro ai:explain CLI Commands** — killer-feature commands. `ai:make <description>` produces a typed `ferro_projections::ServiceDef` (NOT a multi-file scaffold bundle and NO `ScaffoldPlan` intermediary — structured outputs complete directly into the projection contract). `ai:explain <route|model|service>` returns a projection-framed explanation (`Intent`, `FieldMeaning`, `ActionDef`/`GuardDef`, `StateMachine`). Live ferro-mcp introspection in-process; selective context loading. (completed 2026-06-08)
 - [x] **Phase 172: MCP Tool Wrappers** — `ai_scaffold` + `ai_explain` tools in ferro-mcp wrapping CLI command logic for in-process agent consumption. `ai_scaffold` returns the same `ServiceDef` shape the CLI produces — no parallel surface. (completed 2026-06-08)
-- [ ] **Phase 173: make:json-view v2 + projection-roundtrip test** — `ferro make:json-view` upgraded to structured outputs + `ServiceDef` introspection. The first concrete `Renderer` over a ServiceDef produced by `ai:make`. Includes AICLI-06 projection-roundtrip test (NL description → `ServiceDef` → rendered JSON-UI spec) as the structural proof that AI is a first-class projection consumer.
+- [x] **Phase 173: make:json-view v2 + projection-roundtrip test** — `ferro make:json-view` upgraded to structured outputs + `ServiceDef` introspection. The first concrete `Renderer` over a ServiceDef produced by `ai:make`. Includes AICLI-06 projection-roundtrip test (NL description → `ServiceDef` → rendered JSON-UI spec) as the structural proof that AI is a first-class projection consumer. (completed 2026-06-09)
 
 #### Phase Details
 
@@ -1842,7 +1842,7 @@ Plans:
 
 Plans:
 - [x] 173-01-PLAN.md — Rewire make:json-view to the ServiceDef-driven projection path (NL via scaffold_core or --from-service-json) feeding Spec::from_service_def; delete the direct NL→spec two-pass (AICLI-04)
-- [ ] 173-02-PLAN.md — Offline projection-roundtrip proof test (ferro-ai/tests/projection_roundtrip.rs) + ferro-json-ui dev-dep + 173-VERIFICATION.md; pins the ServiceDef-aware path via the Money→currency assertion (AICLI-06)
+- [x] 173-02-PLAN.md — Offline projection-roundtrip proof test (ferro-ai/tests/projection_roundtrip.rs) + ferro-json-ui dev-dep + 173-VERIFICATION.md; pins the ServiceDef-aware path via the Money→currency assertion (AICLI-06)
 
 #### Progress
 
@@ -1856,14 +1856,14 @@ Plans:
 | 170. ferro-cli Migration | 1/1 | Complete    | 2026-06-08 |
 | 171. ai:make & ai:explain CLI Commands | 4/4 | Complete    | 2026-06-08 |
 | 172. MCP Tool Wrappers | 4/4 | Complete    | 2026-06-08 |
-| 173. make:json-view v2 + roundtrip | 1/2 | In Progress|  |
+| 173. make:json-view v2 + roundtrip | 2/2 | Complete   | 2026-06-09 |
 
 ### Phase 180: Declarative action handler primitive — typed Result return so POST handlers redirect-on-error without manual try-catch ladders
 
 **Goal:** Ship `#[action(redirect_to = "/path")]` and the `ActionError` / `ActionOk` / `ActionResult` / `IntoActionError` runtime types so POST handlers can return `ActionResult` and use bare `?` end-to-end — failures redirect 303 with a structured flash payload instead of stranding the browser at the POST URL. Wraps Plan 01 runtime types in `framework/src/http/action.rs`, Plan 02 shared param-extraction refactor in `ferro-macros/src/utils.rs`, Plan 03 `#[action]` proc-macro, Plan 04 trybuild + integration test corpus, Plan 05 docs page. Consumer-side sweep across ~40-60 handlers is the friction-loop deliverable in the gestiscilo-it repo; this phase ships the primitive only.
 **Requirements**: D-01 .. D-10 (locked decisions in 180-CONTEXT.md)
 **Depends on:** Phase 179
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 180-01-PLAN.md — Runtime types (`ActionError`, `ActionOk`, `ActionResult`, `IntoActionError`, `handle_action_result`) in `framework/src/http/action.rs` + re-exports
