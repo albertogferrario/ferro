@@ -347,8 +347,8 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    use crate::validation::rules::*;
     use crate::rules;
+    use crate::validation::rules::*;
 
     // -----------------------------------------------------------------------
     // Tiny test AsyncRule implementations.
@@ -359,7 +359,12 @@ mod tests {
 
     #[async_trait]
     impl AsyncRule for OkRule {
-        async fn validate(&self, _field: &str, _value: &Value, _data: &Value) -> Result<(), String> {
+        async fn validate(
+            &self,
+            _field: &str,
+            _value: &Value,
+            _data: &Value,
+        ) -> Result<(), String> {
             Ok(())
         }
 
@@ -381,7 +386,12 @@ mod tests {
 
     #[async_trait]
     impl AsyncRule for CountingRule {
-        async fn validate(&self, _field: &str, _value: &Value, _data: &Value) -> Result<(), String> {
+        async fn validate(
+            &self,
+            _field: &str,
+            _value: &Value,
+            _data: &Value,
+        ) -> Result<(), String> {
             self.counter.fetch_add(1, Ordering::SeqCst);
             Ok(())
         }
@@ -396,7 +406,12 @@ mod tests {
 
     #[async_trait]
     impl AsyncRule for InfraRule {
-        async fn validate(&self, _field: &str, _value: &Value, _data: &Value) -> Result<(), String> {
+        async fn validate(
+            &self,
+            _field: &str,
+            _value: &Value,
+            _data: &Value,
+        ) -> Result<(), String> {
             Err("__infra_error__: boom".to_string())
         }
 
@@ -579,7 +594,10 @@ mod tests {
 
         let data = json!({"slug": "taken"});
         let result = AsyncValidator::new(&data)
-            .async_rule("slug", crate::validation::rules_async::unique("widgets", "slug"))
+            .async_rule(
+                "slug",
+                crate::validation::rules_async::unique("widgets", "slug"),
+            )
             .validate_async()
             .await;
         match result {
