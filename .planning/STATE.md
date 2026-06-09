@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v12.5
 milestone_name: Projection Checkpoint
 status: verifying
-stopped_at: Completed 194-core-checkpoint-tool-03-PLAN.md
-last_updated: "2026-06-09T23:24:00.026Z"
+stopped_at: Phase 195 context gathered
+last_updated: "2026-06-09T23:30:44.885Z"
 last_activity: 2026-06-09
 progress:
   total_phases: 78
@@ -364,7 +364,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T23:14:58.255Z
-Stopped at: Completed 194-core-checkpoint-tool-03-PLAN.md
-Resume file: None
+Last session: 2026-06-09T23:30:44.862Z
+Stopped at: Phase 195 context gathered
+Resume file: .planning/phases/195-close-the-loop-by-default/195-CONTEXT.md
 Next action: `/gsd-plan-phase 194`
