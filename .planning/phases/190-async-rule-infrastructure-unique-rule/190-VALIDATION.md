@@ -79,11 +79,11 @@ on sync-failed field) · SC4 sync API byte-compatible/unchanged · SC5 DB via
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Postgres live UNIQUE pre-check round-trip | VALID-01 (Postgres path) | SQLite-only CI default; Postgres not provisioned in `cargo test` | Run the unique-rule suite against a `DATABASE_URL` Postgres instance; confirm `$1`/`$2` placeholders + double-quoted identifiers execute. Sign off in VERIFICATION.md. |
+| Postgres live UNIQUE pre-check round-trip | VALID-01 (Postgres path) | SQLite-only CI default; Postgres not provisioned in `cargo test` | ✅ CLOSED 2026-06-09 — `framework/tests/async_validation_pg_gate.rs::pg_unique_rule_placeholder_and_quoting_path` ran green against live Postgres (postgres@localhost:5432): duplicate→Validation error, free→Ok, exclude-self→Ok, exercising `$1`/`$2` placeholders + double-quoted identifiers. Now an `#[ignore]`d runnable-on-demand test (`DATABASE_URL=… cargo test -p ferro-rs --test async_validation_pg_gate -- --ignored`). |
 
-> Note: the Postgres path is **generated-SQL-asserted** in automated tests
-> (`build_sql(DatabaseBackend::Postgres, …)` string equality on the bifurcated
-> query), so the manual step is a confidence check, not the sole evidence.
+> Note: the Postgres path is also **generated-SQL-asserted** in automated unit
+> tests (`build_sql(DatabaseBackend::Postgres, …)` string equality). The live-PG
+> gate above is now an executable test, not a manual step.
 
 ---
 
