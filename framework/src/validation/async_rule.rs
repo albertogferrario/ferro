@@ -1,5 +1,9 @@
 //! Async validation rule trait.
 
+// AsyncRule is declared in a private module and re-exported in Plan 04.
+// Suppress dead_code lint until the pub use chain is wired.
+#![allow(dead_code)]
+
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -27,12 +31,7 @@ pub trait AsyncRule: Send + Sync {
     /// Validate the field value. `Ok(())` on pass; `Err(message)` on a
     /// field-level validation failure. See trait docs for the
     /// `__infra_error__:` sentinel used for infrastructure failures.
-    async fn validate(
-        &self,
-        field: &str,
-        value: &Value,
-        data: &Value,
-    ) -> Result<(), String>;
+    async fn validate(&self, field: &str, value: &Value, data: &Value) -> Result<(), String>;
 
     /// Rule name, used for custom-message lookup (e.g. `"unique"`).
     fn name(&self) -> &'static str;

@@ -29,12 +29,8 @@ use sea_orm::{ConnectionTrait, Statement};
 ///
 /// After this returns, `DB::connection()` yields a live SQLite connection.
 pub async fn init_test_db() {
-    let config = DatabaseConfig::builder()
-        .url("sqlite::memory:")
-        .build();
-    DB::init_with(config)
-        .await
-        .expect("init in-memory sqlite");
+    let config = DatabaseConfig::builder().url("sqlite::memory:").build();
+    DB::init_with(config).await.expect("init in-memory sqlite");
     let db = DB::connection().expect("connection after init");
     db.execute(Statement::from_string(
         db.get_database_backend(),
