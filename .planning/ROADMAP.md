@@ -2246,7 +2246,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 190. Async Rule Infrastructure | 4/4 | Complete    | 2026-06-09 |
-| 191. ConstraintMap + Detection | 0/TBD | Not started | - |
+| 191. ConstraintMap + Detection | 0/2 | Planned | - |
 | 192. MCP Template + Docs | 0/TBD | Not started | - |
 
 ## Phase Details
@@ -2279,7 +2279,12 @@ Plans:
   3. Constraint-name detection is backend-bifurcated: SQLite matches on `"table.column"` from the error message string; Postgres matches on the structured constraint name via `PgDatabaseError::constraint()` (no Postgres message-string parsing)
   4. A concurrent-insert scenario simulation (two handlers both pass the pre-write `unique` check, one INSERT hits the constraint) results in the losing request rendering the same field-level error with old input as a proactive rule failure — not a raw SQL message
   5. The `ConstraintMap` type and its API carry no consumer-specific strings inside the framework crate; all constraint names and field mappings are registered at the application call site (project-agnostic-crates rule)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 191-01-PLAN.md — ConstraintMap + try_map + MapConstraintExt (struct, bifurcated detection, re-exports) [Wave 1]
+- [ ] 191-02-PLAN.md — SQLite TOCTOU/identity integration tests + Postgres manual gate + full quality gate [Wave 2]
+
 **Gate**: Postgres constraint-name extraction (`PgDatabaseError::constraint()`) requires a real Postgres instance to verify. Phase closure criteria include either a Postgres CI step or a documented manual test step signed off in the phase VERIFICATION.md.
 
 ### Phase 192: ferro-mcp Template + Validation Docs
