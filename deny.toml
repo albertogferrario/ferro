@@ -36,6 +36,18 @@ ignore = [
     # backend. ferro-notifications ships with the default rustls/openssl backend;
     # the Boring backend is not enabled. Not applicable in our build.
     "RUSTSEC-2026-0141",
+
+    # proc-macro-error2 2.0.1 — unmaintained (INFO). Compile-time proc-macro helper,
+    # runs only at build, zero runtime surface. No patched version exists. Transitive
+    # via sea-bae -> sea-orm-macros -> sea-orm; removable only when sea-orm migrates
+    # off it. Same class as the paste/instant ignores above.
+    "RUSTSEC-2026-0173",
+
+    # http-types 2.12.0 — unmaintained (INFO). Notice that Authorization::value /
+    # WwwAuthenticate::value can violate documented ASCII invariants via safe code;
+    # unconfirmed UB, no patched version. Transitive via async-stripe 0.41 ->
+    # ferro-stripe. Tracked debt: revisit when async-stripe drops http-types.
+    "RUSTSEC-2026-0174",
 ]
 
 [licenses]
