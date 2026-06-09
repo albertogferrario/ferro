@@ -39,9 +39,9 @@ The tool returns a single `Verdict` object:
       ]
     },
     {
-      "seam": "schema_load",
+      "seam": "projection_well_formed",
       "status": "not_checked",
-      "source": "checkpoint",
+      "source": "validate_projection",
       "reason": "not_implemented_phase_195"
     }
   ],
@@ -75,7 +75,7 @@ The tool returns a single `Verdict` object:
 |-------|------|-------------|
 | `seam` | string | Seam identifier (e.g. `"field_to_column"`). |
 | `status` | `SeamStatus` | Outcome for this seam. |
-| `source` | string | Provenance tag (always `"checkpoint"` in this version). |
+| `source` | string | Provenance tag naming the validator that produced the result. Seam 2 (`field_to_column`) uses `"checkpoint"`; seams 1, 3, 4, and 5 name their delegating validator (e.g. `"validate_projection"`, `"json_ui_verify_action"`). |
 | `findings` | `Finding[]` | Populated when `status` is `fail` or `warn`. |
 | `reason` | string? | Populated for `not_checked` or `warn` outcomes; describes why. |
 

@@ -1605,7 +1605,7 @@ impl FerroMcpService {
         &self,
         params: Parameters<CheckpointProjectionParams>,
     ) -> String {
-        match tools::checkpoint_projection::execute(&self.project_root, &params.0.name) {
+        match tools::checkpoint_projection::execute(&self.project_root, &params.0.name).await {
             Ok(result) => {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
