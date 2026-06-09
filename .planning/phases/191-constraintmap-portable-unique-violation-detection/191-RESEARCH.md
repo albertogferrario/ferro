@@ -785,17 +785,12 @@ async fn non_unique_error_passes_through_unchanged() {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Multiple UNIQUE columns in one table entry**
+1. **Multiple UNIQUE columns in one table entry** — RESOLVED: first registered match wins (order of `.on()` calls = priority); document this in the `ConstraintMap` rustdoc. Plan 01 implements the sequential entry-list match and the rustdoc note.
    - What we know: The `.sqlite()` modifier stores a single `table.column` string; `try_map` matches on exact string equality.
-   - What's unclear: If a table has two UNIQUE constraints and both are registered, the first match wins. Order of `.on()` calls determines priority.
-   - Recommendation: Document this behavior in rustdoc; it is the expected behavior for a sequential entry-list design.
 
-2. **`MapConstraintExt` import at crate root vs validation module**
-   - What we know: `ConstraintMap` will be re-exported at crate root; the trait should follow.
-   - What's unclear: Whether `MapConstraintExt` creates a coherence issue (trait on external type `Result`).
-   - Recommendation: `Result<T, sea_orm::DbErr>` is an external type; `MapConstraintExt` is a local trait — this is fine under Rust's orphan rules. Re-export alongside `ConstraintMap`.
+2. **`MapConstraintExt` import at crate root vs validation module** — RESOLVED: `Result<T, sea_orm::DbErr>` is external but `MapConstraintExt` is a local trait, so the impl is sound under Rust's orphan rules. Plan 01 re-exports `MapConstraintExt` alongside `ConstraintMap` at both `validation::` (mod.rs) and crate root (lib.rs).
 
 ---
 
