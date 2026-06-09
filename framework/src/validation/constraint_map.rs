@@ -26,8 +26,8 @@
 //!     .map_constraint(&map, &data, "/pages/new")?;
 //! ```
 
-use sea_orm::{DbErr, RuntimeErr, SqlxError};
 use sea_orm::error::SqlErr;
+use sea_orm::{DbErr, RuntimeErr, SqlxError};
 
 use crate::validation::error::ValidationError;
 
