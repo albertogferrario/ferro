@@ -2200,6 +2200,7 @@ dependencies = [
  "chrono",
  "dashmap 6.1.0",
  "ferro-events",
+ "ferro-json-ui",
  "ferro-projections",
  "futures",
  "jsonschema",
