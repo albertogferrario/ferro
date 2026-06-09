@@ -15,7 +15,7 @@ Call `checkpoint_projection` after generating or editing a projection — specif
 }
 ```
 
-`name` is the projection function name (e.g. `"booking_service"`) or the service name (e.g. `"Booking"`).
+`name` is the projection function name as defined in `src/projections/` (e.g. `"booking_service"`). It is resolved by function name; a service/struct name such as `"Booking"` will not resolve.
 
 ## Verdict Shape
 

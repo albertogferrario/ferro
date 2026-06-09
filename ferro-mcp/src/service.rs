@@ -325,7 +325,9 @@ pub struct ProjectionCoverageParams {
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CheckpointProjectionParams {
-    /// Projection function name (e.g. "user_service") or service name (e.g. "User").
+    /// Projection function name as defined in `src/projections/` (e.g. "user_service").
+    /// Resolved by function name via `inspect_projection`; a service/struct name like
+    /// "User" will not resolve.
     pub name: String,
 }
 

@@ -6,6 +6,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use std::sync::LazyLock;
 
 use super::inspect_projection::InspectResult;
 use super::list_models;
@@ -128,7 +129,12 @@ pub(crate) fn run_for(
         .map_err(|e| format!("failed to read {}: {e}", detail.file))?;
 
     // 3. Run seam 2: field→column presence check.
-    let seam2 = field_to_column_seam(project_root, &detail.service_name, &detail.display_name, &content);
+    let seam2 = field_to_column_seam(
+        project_root,
+        &detail.service_name,
+        &detail.display_name,
+        &content,
+    );
 
     // 4. Stubs for seams 1/3/4/5 (Phase 195 fills these).
     //    Seam cascade rule (locked in STATE.md):
@@ -297,14 +303,30 @@ fn field_to_column_seam(
 // Builder invocation count (D-06 completeness check)
 // ---------------------------------------------------------------------------
 
-/// Count column-backed builder invocations in `content`, stripping `//` line
-/// comments first to avoid matching commented-out calls (RESEARCH.md Pitfall 2).
+/// Compiled once: matches a column-backed builder invocation. The four builders
+/// (D-05 vocabulary — all column-backed) are a single alternation so the count is
+/// one pass over the source.
+static BUILDER_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"\.(?:field|optional_field|read_only_field|write_only_field)\(")
+        .expect("BUILDER_RE is a static, well-formed pattern")
+});
+
+/// Compiled once: matches a `/* ... */` block comment (non-greedy, spans newlines).
+static BLOCK_COMMENT_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"(?s)/\*.*?\*/").expect("BLOCK_COMMENT_RE is a static, well-formed pattern")
+});
+
+/// Count column-backed builder invocations in `content`, stripping `/* */` block
+/// comments and `//` line comments first so commented-out calls are not counted
+/// (RESEARCH.md Pitfall 2 — block comments would otherwise inflate the count and
+/// produce a spurious D-06 completeness warning).
 ///
 /// Four builders counted (D-05 vocabulary — all are column-backed):
 /// `.field(`, `.optional_field(`, `.read_only_field(`, `.write_only_field(`
 fn count_column_backed_builders(content: &str) -> usize {
-    // Strip // line comments before counting.
-    let no_comments: String = content
+    // Strip block comments first, then line comments.
+    let no_block = BLOCK_COMMENT_RE.replace_all(content, "");
+    let no_comments: String = no_block
         .lines()
         .map(|line| {
             if let Some(pos) = line.find("//") {
@@ -316,16 +338,7 @@ fn count_column_backed_builders(content: &str) -> usize {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let patterns = [
-        r"\.field\(",
-        r"\.optional_field\(",
-        r"\.read_only_field\(",
-        r"\.write_only_field\(",
-    ];
-    patterns
-        .iter()
-        .map(|p| regex::Regex::new(p).unwrap().find_iter(&no_comments).count())
-        .sum()
+    BUILDER_RE.find_iter(&no_comments).count()
 }
 
 // ---------------------------------------------------------------------------
@@ -364,7 +377,13 @@ fn aggregate_next_steps(seams: &[SeamResult]) -> Vec<String> {
         };
         for finding in &seam.findings {
             let entry = format!("{} (seam: {})", finding.fix, seam.seam);
-            items.push((rank, idx, finding.subject.clone(), finding.fix.clone(), entry));
+            items.push((
+                rank,
+                idx,
+                finding.subject.clone(),
+                finding.fix.clone(),
+                entry,
+            ));
         }
     }
     items.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
@@ -409,11 +428,10 @@ fn write_cache(
         checked_at: now,
     };
     let cache_dir = project_root.join(".ferro").join("checkpoints");
-    fs::create_dir_all(&cache_dir)
-        .map_err(|e| format!("failed to create cache dir: {e}"))?;
+    fs::create_dir_all(&cache_dir).map_err(|e| format!("failed to create cache dir: {e}"))?;
     let path = cache_dir.join(format!("{name}.json"));
-    let json =
-        serde_json::to_string_pretty(&entry).map_err(|e| format!("failed to serialize cache: {e}"))?;
+    let json = serde_json::to_string_pretty(&entry)
+        .map_err(|e| format!("failed to serialize cache: {e}"))?;
     fs::write(&path, json).map_err(|e| format!("failed to write cache: {e}"))?;
     Ok(())
 }
@@ -462,9 +480,18 @@ mod tests {
 
     #[test]
     fn seamstatus_wire() {
-        assert_eq!(serde_json::to_string(&SeamStatus::Pass).unwrap(), "\"pass\"");
-        assert_eq!(serde_json::to_string(&SeamStatus::Warn).unwrap(), "\"warn\"");
-        assert_eq!(serde_json::to_string(&SeamStatus::Fail).unwrap(), "\"fail\"");
+        assert_eq!(
+            serde_json::to_string(&SeamStatus::Pass).unwrap(),
+            "\"pass\""
+        );
+        assert_eq!(
+            serde_json::to_string(&SeamStatus::Warn).unwrap(),
+            "\"warn\""
+        );
+        assert_eq!(
+            serde_json::to_string(&SeamStatus::Fail).unwrap(),
+            "\"fail\""
+        );
         assert_eq!(
             serde_json::to_string(&SeamStatus::NotChecked).unwrap(),
             "\"not_checked\""
@@ -509,6 +536,22 @@ pub fn booking_service() -> ServiceDef {
 pub fn booking_service() -> ServiceDef {
     ServiceDef::new("booking")
         // .field("commented_out", DataType::Integer, FieldMeaning::Identifier)
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}
+"#;
+        assert_eq!(count_column_backed_builders(src), 1);
+    }
+
+    #[test]
+    fn count_strips_block_comments() {
+        // A .field( inside a /* ... */ block comment must NOT be counted (WR-02).
+        let src = r#"
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        /* legacy:
+        .field("old_a", DataType::Integer, FieldMeaning::Identifier)
+        .field("old_b", DataType::Integer, FieldMeaning::Identifier)
+        */
         .field("id", DataType::Integer, FieldMeaning::Identifier)
 }
 "#;
@@ -569,8 +612,7 @@ pub fn booking_service() -> ServiceDef {
         let tmp = project_with_projection("booking_service", proj_src);
         add_model(&tmp, "booking", &model_src);
 
-        let result =
-            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+        let result = field_to_column_seam(tmp.path(), "booking", &None, proj_src);
 
         assert_eq!(result.status, SeamStatus::Fail, "dangling field must fail");
         assert_eq!(
@@ -607,8 +649,7 @@ pub fn booking_service() -> ServiceDef {
         let tmp = project_with_projection("booking_service", proj_src);
         add_model(&tmp, "booking", &model_src);
 
-        let result =
-            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+        let result = field_to_column_seam(tmp.path(), "booking", &None, proj_src);
 
         assert_eq!(result.status, SeamStatus::Pass, "all fields match → pass");
         assert!(result.findings.is_empty(), "no findings expected");
@@ -639,8 +680,7 @@ pub struct Invoice {
         let tmp = project_with_projection("booking_service", proj_src);
         add_model(&tmp, "invoice", invoice_model_src);
 
-        let result =
-            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+        let result = field_to_column_seam(tmp.path(), "booking", &None, proj_src);
 
         assert_eq!(
             result.status,
@@ -676,8 +716,7 @@ pub fn booking_service() -> ServiceDef {
         // No src/models/ or src/entities/ directory — list_models returns Err.
         let tmp = project_with_projection("booking_service", proj_src);
 
-        let result =
-            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+        let result = field_to_column_seam(tmp.path(), "booking", &None, proj_src);
 
         assert_ne!(
             result.status,
@@ -721,8 +760,7 @@ pub struct Booking {
         let tmp = project_with_projection("booking_service", proj_src);
         add_model(&tmp, "booking", booking_model_src);
 
-        let result =
-            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+        let result = field_to_column_seam(tmp.path(), "booking", &None, proj_src);
 
         assert_eq!(
             result.status,
@@ -766,8 +804,7 @@ pub struct Booking {
         let tmp = project_with_projection("booking_service", proj_src);
         add_model(&tmp, "booking", booking_model_src);
 
-        let result =
-            field_to_column_seam(tmp.path(), "booking", &None, proj_src);
+        let result = field_to_column_seam(tmp.path(), "booking", &None, proj_src);
 
         assert_eq!(
             result.status,
@@ -868,16 +905,18 @@ pub struct Booking {
         // Fail comes before Warn regardless of seam order in the input slice.
         assert!(
             steps[0].contains("field_to_column"),
-            "fail seam entry must be first: {:?}",
-            steps
+            "fail seam entry must be first: {steps:?}"
         );
         assert!(
             steps[1].contains("schema_load"),
-            "warn seam entry must be second: {:?}",
-            steps
+            "warn seam entry must be second: {steps:?}"
         );
         // Each entry uses the D-10 format.
-        assert!(steps[0].contains("(seam: field_to_column)"), "{:?}", steps[0]);
+        assert!(
+            steps[0].contains("(seam: field_to_column)"),
+            "{:?}",
+            steps[0]
+        );
         assert!(steps[1].contains("(seam: schema_load)"), "{:?}", steps[1]);
     }
 
@@ -891,14 +930,14 @@ pub struct Booking {
                 SeamStatus::Fail,
                 vec![dup_finding.clone()],
             ),
-            make_seam(
-                "action_binding",
-                SeamStatus::Fail,
-                vec![dup_finding],
-            ),
+            make_seam("action_binding", SeamStatus::Fail, vec![dup_finding]),
         ];
         let steps = aggregate_next_steps(&seams);
-        assert_eq!(steps.len(), 1, "duplicate (subject,fix) must produce exactly one next_steps entry");
+        assert_eq!(
+            steps.len(),
+            1,
+            "duplicate (subject,fix) must produce exactly one next_steps entry"
+        );
     }
 
     #[test]
@@ -947,12 +986,22 @@ pub fn booking_service() -> ServiceDef {
         // inspect-level Err. If Ok, assert the cache file exists and is valid JSON.
         if let Ok(verdict) = result {
             let cache_path = tmp.path().join(".ferro/checkpoints/booking_service.json");
-            assert!(cache_path.exists(), "cache file must be written: {:?}", cache_path);
+            assert!(
+                cache_path.exists(),
+                "cache file must be written: {cache_path:?}"
+            );
             let content = std::fs::read_to_string(&cache_path).unwrap();
-            let val: serde_json::Value = serde_json::from_str(&content).expect("cache must be valid JSON");
+            let val: serde_json::Value =
+                serde_json::from_str(&content).expect("cache must be valid JSON");
             assert!(val.get("status").is_some(), "cache must have status key");
-            assert!(val.get("ambient_status").is_some(), "cache must have ambient_status key");
-            assert!(val.get("checked_at").is_some(), "cache must have checked_at key");
+            assert!(
+                val.get("ambient_status").is_some(),
+                "cache must have ambient_status key"
+            );
+            assert!(
+                val.get("checked_at").is_some(),
+                "cache must have checked_at key"
+            );
             // ambient_status: "clean" for pass, "failing" for warn/fail.
             if verdict.status == SeamStatus::Pass {
                 assert_eq!(val["ambient_status"], "clean");
@@ -981,7 +1030,10 @@ pub fn booking_service() -> ServiceDef {
         let content = std::fs::read_to_string(&cache_path).unwrap();
         let val: serde_json::Value = serde_json::from_str(&content).expect("must be valid JSON");
         assert_eq!(val["status"], "fail", "serialized status must match");
-        assert_eq!(val["ambient_status"], "failing", "fail verdict → ambient_status failing");
+        assert_eq!(
+            val["ambient_status"], "failing",
+            "fail verdict → ambient_status failing"
+        );
         assert!(val["checked_at"].is_string(), "checked_at must be a string");
         assert_eq!(val["projection"], "booking_service");
     }
@@ -1002,10 +1054,11 @@ pub fn booking_service() -> ServiceDef {
         // Also confirm nothing was written under .ferro at all.
         let cache_dir = tmp.path().join(".ferro/checkpoints");
         if cache_dir.exists() {
-            let entries: Vec<_> = std::fs::read_dir(&cache_dir)
-                .unwrap()
-                .collect();
-            assert!(entries.is_empty(), "cache dir must be empty after traversal rejection");
+            let entries: Vec<_> = std::fs::read_dir(&cache_dir).unwrap().collect();
+            assert!(
+                entries.is_empty(),
+                "cache dir must be empty after traversal rejection"
+            );
         }
     }
 
