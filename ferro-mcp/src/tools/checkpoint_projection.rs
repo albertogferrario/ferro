@@ -1970,4 +1970,46 @@ pub fn booking_service() -> ServiceDef {
             }
         }
     }
+
+    #[test]
+    fn poisoned_projection_dangling_field_acceptance() {
+        // SC-1 / D-01: exactly one planted dangling field → exactly one finding naming it,
+        // and no other field flagged. Model has "id" only; projection adds "phantom_col".
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn dangling_service() -> ServiceDef {
+    ServiceDef::new("dangling")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("phantom_col", DataType::String, FieldMeaning::FreeText)
+}
+"#;
+        let model_src = model_src_with_fields("Dangling", &["id"]);
+        let tmp = project_with_projection("dangling_service", proj_src);
+        add_model(&tmp, "dangling", &model_src);
+
+        let result = field_to_column_seam(tmp.path(), "dangling", &None, proj_src);
+
+        assert_eq!(
+            result.status,
+            SeamStatus::Fail,
+            "dangling field must fail seam 2"
+        );
+        // SC-1: exactly one finding for the one planted dangling field
+        assert_eq!(
+            result.findings.len(),
+            1,
+            "exactly one finding for the one dangling field, got {:?}",
+            result.findings
+        );
+        // SC-1: that finding names exactly the planted field
+        assert_eq!(
+            result.findings[0].subject, "phantom_col",
+            "subject must name the planted field"
+        );
+        // SC-1: no OTHER field flagged — the legitimate `id` must not appear
+        assert!(
+            !result.findings.iter().any(|f| f.subject == "id"),
+            "id has a backing column and must not be flagged"
+        );
+    }
 }
