@@ -21,7 +21,7 @@ pub fn is_filter_field(field: &FieldDef) -> bool {
     if matches!(field.meaning, FieldMeaning::Sensitive) {
         return false;
     } // gate 3
-    // gate 4: equality filter on JSON/Binary columns is not useful
+      // gate 4: equality filter on JSON/Binary columns is not useful
     if matches!(field.data_type, DataType::Json | DataType::Binary) {
         return false;
     }
@@ -125,7 +125,9 @@ mod tests {
     fn test_pagination_params_in_schema() {
         let service = sample_service();
         let schema = build_input_schema(&service).expect("schema ok");
-        let props = schema["properties"].as_object().expect("properties is object");
+        let props = schema["properties"]
+            .as_object()
+            .expect("properties is object");
         assert!(props.contains_key("limit"), "limit missing");
         assert!(props.contains_key("offset"), "offset missing");
     }
@@ -146,8 +148,8 @@ mod tests {
         );
 
         // adding a ForeignKey field increases property count
-        let service_with_extra = service
-            .field("supplier_id", DataType::Integer, FieldMeaning::ForeignKey);
+        let service_with_extra =
+            service.field("supplier_id", DataType::Integer, FieldMeaning::ForeignKey);
         let schema_after = build_input_schema(&service_with_extra).expect("schema ok");
         let count_after = schema_after["properties"]
             .as_object()
@@ -173,8 +175,11 @@ mod tests {
 
     #[test]
     fn test_write_only_excluded() {
-        let service = ServiceDef::new("user")
-            .write_only_field("secret_key", DataType::String, FieldMeaning::Custom("api_key".into()));
+        let service = ServiceDef::new("user").write_only_field(
+            "secret_key",
+            DataType::String,
+            FieldMeaning::Custom("api_key".into()),
+        );
         let schema = build_input_schema(&service).expect("schema ok");
         let props = schema["properties"].as_object().expect("object");
         assert!(

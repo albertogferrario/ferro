@@ -114,21 +114,33 @@ mod tests {
             .and_then(|v| v.as_object())
             .expect("properties object");
         assert!(props.contains_key("limit"), "limit missing from schema");
-        assert!(props.contains_key("status"), "filter field 'status' missing");
+        assert!(
+            props.contains_key("status"),
+            "filter field 'status' missing"
+        );
     }
 
     #[test]
     fn test_mcp_exposed_filter() {
-        let exposed = ServiceDef::new("product")
-            .mcp_exposed(true)
-            .field("id", DataType::Integer, FieldMeaning::Identifier);
-        let hidden = ServiceDef::new("internal_log")
-            .field("id", DataType::Integer, FieldMeaning::Identifier);
+        let exposed = ServiceDef::new("product").mcp_exposed(true).field(
+            "id",
+            DataType::Integer,
+            FieldMeaning::Identifier,
+        );
+        let hidden = ServiceDef::new("internal_log").field(
+            "id",
+            DataType::Integer,
+            FieldMeaning::Identifier,
+        );
 
         let services = vec![exposed, hidden];
         let tools = render_exposed_tools(&services, &McpContext).expect("render ok");
 
-        assert_eq!(tools.len(), 1, "exactly one tool for the exposed projection");
+        assert_eq!(
+            tools.len(),
+            1,
+            "exactly one tool for the exposed projection"
+        );
         assert_eq!(tools[0].name.as_ref(), "list_product");
     }
 
@@ -139,9 +151,9 @@ mod tests {
             .field("id", DataType::Integer, FieldMeaning::Identifier)
             .field("status", DataType::String, FieldMeaning::Status);
 
-        let extended = base
-            .clone()
-            .field("category_id", DataType::Integer, FieldMeaning::ForeignKey);
+        let extended =
+            base.clone()
+                .field("category_id", DataType::Integer, FieldMeaning::ForeignKey);
 
         let tool_base = render_service(&base);
         let tool_ext = render_service(&extended);
