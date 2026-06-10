@@ -1,6 +1,13 @@
-use ferro_projections::ServiceDef;
+use crate::schema::is_filter_field;
+use ferro_projections::{FieldMeaning, ServiceDef};
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde::Serialize;
+
+/// Hard upper bound on rows returned by a dispatch, enforced regardless of the
+/// requested `limit`. Mirrors the `maximum` advertised in the tool input schema
+/// so an oversized `limit` passed directly to `dispatch` cannot bypass the cap
+/// (and cannot wrap negative on the `as i64` cast).
+const MAX_LIMIT: u64 = 100;
 
 /// Result of a dispatch read over a projection's source table.
 #[derive(Debug, Serialize)]
@@ -94,6 +101,10 @@ pub async fn dispatch(
     db: &sea_orm::DatabaseConnection,
 ) -> crate::Result<DispatchResult> {
     let backend = db.get_database_backend();
+    // Clamp the requested limit to MAX_LIMIT regardless of caller. The schema
+    // advertises `maximum: 100`, but a caller invoking `dispatch` directly could
+    // pass an arbitrary `u64`; without this clamp `u64::MAX as i64` wraps negative.
+    let limit = limit.min(MAX_LIMIT);
     // TODO: ServiceDef.table field for irregular plurals / custom table names
     let table = format!("{}s", service.name.to_lowercase());
 
@@ -103,11 +114,19 @@ pub async fn dispatch(
 
     if let Some(obj) = filters.as_object() {
         for (key, val) in obj {
-            // ALLOWLIST: filter key must be a known field name — never interpolate unknown keys
-            if !service.fields.iter().any(|f| &f.name == key) {
-                return Err(crate::Error::Database(format!(
-                    "unknown filter field: {key}"
-                )));
+            // ALLOWLIST: the filter key must name a field that is FILTER-ELIGIBLE
+            // (the exact predicate that gates the input schema), not merely a known
+            // field. This prevents an agent from filtering on a Sensitive,
+            // write-only, list, or Json/Binary field that the schema deliberately
+            // excludes — which would otherwise leak the column via `SELECT *` or
+            // enable an oracle attack. Unknown keys are never interpolated.
+            match service.fields.iter().find(|f| &f.name == key) {
+                Some(field) if is_filter_field(field) => {}
+                _ => {
+                    return Err(crate::Error::Database(format!(
+                        "unknown or non-filterable filter field: {key}"
+                    )));
+                }
             }
             where_clauses.push(format!("\"{}\" = {}", key, placeholder(backend, idx)));
             values.push(json_to_sea_value(val));
@@ -132,6 +151,22 @@ pub async fn dispatch(
         .and_then(|r| r.try_get_by::<i64, _>("cnt").ok())
         .unwrap_or(0) as u64;
 
+    // Deterministic ordering for stable offset pagination. Without ORDER BY,
+    // offset-based pages can overlap or skip rows under concurrent writes. The
+    // sort column is chosen from the projection's own fields (the Identifier
+    // field, else the first field) — never from the call payload — so it cannot
+    // be an injection vector.
+    let order_col = service
+        .fields
+        .iter()
+        .find(|f| matches!(f.meaning, FieldMeaning::Identifier))
+        .or_else(|| service.fields.first())
+        .map(|f| f.name.clone());
+    let order_str = match &order_col {
+        Some(col) => format!(" ORDER BY \"{col}\""),
+        None => String::new(),
+    };
+
     // DATA query with LIMIT/OFFSET bound as parameters
     let limit_str = format!(
         " LIMIT {} OFFSET {}",
@@ -141,7 +176,7 @@ pub async fn dispatch(
     values.push(sea_orm::Value::BigInt(Some(limit as i64)));
     values.push(sea_orm::Value::BigInt(Some(offset as i64)));
 
-    let data_sql = format!("SELECT * FROM \"{table}\"{where_str}{limit_str}");
+    let data_sql = format!("SELECT * FROM \"{table}\"{where_str}{order_str}{limit_str}");
     let data_stmt = Statement::from_sql_and_values(backend, &data_sql, values);
     let rows = db
         .query_all(data_stmt)

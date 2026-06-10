@@ -87,6 +87,29 @@ async fn dispatch_limit_pagination_returns_subset_with_full_total() {
 }
 
 #[tokio::test]
+async fn dispatch_non_filterable_field_rejected() {
+    // WR-01 regression: a known-but-non-filter-eligible field (Sensitive) must be
+    // rejected as a filter key, identically to an unknown key — so it can never
+    // reach the WHERE clause and leak via SELECT *.
+    let db = setup_db().await;
+    let service = ServiceDef::new("item")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("secret_token", DataType::String, FieldMeaning::Sensitive);
+    let res = dispatch(
+        &service,
+        serde_json::json!({"secret_token": "x"}),
+        25,
+        0,
+        &db,
+    )
+    .await;
+    assert!(
+        res.is_err(),
+        "a Sensitive field must be rejected as a filter key, not interpolated into SQL"
+    );
+}
+
+#[tokio::test]
 async fn dispatch_unknown_filter_key_returns_err() {
     let db = setup_db().await;
     let res = dispatch(&item_service(), serde_json::json!({"bogus": 1}), 25, 0, &db).await;
