@@ -12,6 +12,7 @@ members = [
     "ferro-storage",
     "ferro-cache",
     "ferro-mcp",
+    "ferro-mcp-server",
     "ferro-inertia",
     "ferro-json-ui",
     "ferro-lang",
