@@ -1806,10 +1806,7 @@ pub fn booking_service() -> ServiceDef {
         );
         // Demoted → always not_checked with reason "unproven_against_real_inputs".
         assert_eq!(seam.status, SeamStatus::NotChecked);
-        assert_eq!(
-            seam.reason.as_deref(),
-            Some("unproven_against_real_inputs")
-        );
+        assert_eq!(seam.reason.as_deref(), Some("unproven_against_real_inputs"));
     }
 
     // -----------------------------------------------------------------------
