@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.5
 milestone_name: Projection Checkpoint
-status: verifying
-stopped_at: Phase 195 context gathered
-last_updated: "2026-06-09T23:30:44.885Z"
-last_activity: 2026-06-09
+status: executing
+stopped_at: Completed 195-01-PLAN.md
+last_updated: "2026-06-10T00:02:39.397Z"
+last_activity: 2026-06-10
 progress:
   total_phases: 78
   completed_phases: 71
-  total_plans: 305
-  completed_plans: 305
-  percent: 100
+  total_plans: 309
+  completed_plans: 306
+  percent: 99
 ---
 
 # Project State
@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 194 — Core Checkpoint Tool
+**Current focus:** Phase 195 — Close the Loop by Default
 
 ## Current Position
 
-Phase: 195
-Plan: Not started
+Phase: 195 (Close the Loop by Default) — EXECUTING
+Plan: 2 of 4
 Next: `/gsd-plan-phase 194`
-Status: Phase complete — ready for verification
+Status: Ready to execute
 
 Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (55/62 phases)
 
-Last activity: 2026-06-09
+Last activity: 2026-06-10
 Workspace version: 0.2.49
 
 > **Operator actions pending:**
@@ -316,6 +316,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 194-core-checkpoint-tool P01 | 235s | 2 tasks | 3 files |
 | Phase 194-core-checkpoint-tool P02 | 420 | 2 tasks | 1 files |
 | Phase 194-core-checkpoint-tool P03 | 309s | 3 tasks | 4 files |
+| Phase 195 P01 | 377s | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -364,7 +365,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-09T23:30:44.862Z
-Stopped at: Phase 195 context gathered
-Resume file: .planning/phases/195-close-the-loop-by-default/195-CONTEXT.md
+Last session: 2026-06-10T00:02:39.391Z
+Stopped at: Completed 195-01-PLAN.md
+Resume file: None
 Next action: `/gsd-plan-phase 194`

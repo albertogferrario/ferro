@@ -25,9 +25,9 @@ The load-bearing trust invariant: **`not_checked` never collapses into `pass`.**
 
 ### Close the Loop by Default (P2)
 
-- [ ] **CHK-07** — `generate_projection` and `json_ui_generate` return the checkpoint verdict inline in their response after generating, so the agent receives it whether or not it issues a separate call. The dependency is one-way: the generators depend on the checkpoint; the checkpoint does not depend on the generators.
-- [ ] **CHK-08** — `application_info` and `projection_coverage` surface a per-projection checkpoint status (`clean` / `failing` / `unverified`) as read-only consumers, so an agent surveying the project sees verification debt without probing for it.
-- [ ] **CHK-09** — Seams 1, 3, 4, and 5 dispatch to the existing validators (`validate_projection`, `json_ui_verify_action`, `render_projection` + `json_ui_validate_spec`, `validate_contracts`) and aggregate their output into the unified verdict. No validation logic for these seams is reimplemented in the checkpoint; each finding's `source` names the producing validator.
+- [x] **CHK-07** — `generate_projection` and `json_ui_generate` return the checkpoint verdict inline in their response after generating, so the agent receives it whether or not it issues a separate call. The dependency is one-way: the generators depend on the checkpoint; the checkpoint does not depend on the generators.
+- [x] **CHK-08** — `application_info` and `projection_coverage` surface a per-projection checkpoint status (`clean` / `failing` / `unverified`) as read-only consumers, so an agent surveying the project sees verification debt without probing for it.
+- [x] **CHK-09** — Seams 1, 3, 4, and 5 dispatch to the existing validators (`validate_projection`, `json_ui_verify_action`, `render_projection` + `json_ui_validate_spec`, `validate_contracts`) and aggregate their output into the unified verdict. No validation logic for these seams is reimplemented in the checkpoint; each finding's `source` names the producing validator.
 
 ### Dogfood Acceptance (P3)
 
@@ -69,9 +69,9 @@ Surfaced by research as underspecified in the design spec; the phase planner mus
 | CHK-04 | Phase 194 | Complete |
 | CHK-05 | Phase 194 | Complete |
 | CHK-06 | Phase 194 | Complete |
-| CHK-07 | Phase 195 | Pending |
-| CHK-08 | Phase 195 | Pending |
-| CHK-09 | Phase 195 | Pending |
+| CHK-07 | Phase 195 | Complete |
+| CHK-08 | Phase 195 | Complete |
+| CHK-09 | Phase 195 | Complete |
 | CHK-10 | Phase 196 | Pending |
 
 *(Phase column filled by the roadmapper.)*
