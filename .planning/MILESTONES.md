@@ -1,8 +1,44 @@
 # Project Milestones: Ferro Framework
 
+## v12.5 Projection Checkpoint (Shipped: 2026-06-10)
+
+**Phases completed:** 3 phases (194–196), 11 plans
+
+**Delivered:** An agent-facing write→verify loop for projections. The
+`checkpoint_projection` MCP tool walks a five-seam spine, owns the
+projection-field→model-column seam (the one check no existing validator covered),
+delegates the other seams to existing validators, and returns a single
+`pass`/`warn`/`fail` verdict with ranked next steps — honest about coverage,
+closing by default after generation.
+
+**Key accomplishments:**
+
+- Phase 194 — Core checkpoint tool: structured verdict (per-seam results + ranked,
+  deduplicated `next_steps`); the field→column seam resolves projection→model and
+  flags dangling fields; `not_checked` is a distinct status never coerced to `pass`
+  (coverage honesty).
+- Phase 195 — Close the loop by default: wrapper seams 1/3/4/5 dispatch to existing
+  validators (no logic reimplemented; each finding names its source);
+  `generate_projection`/`json_ui_generate` embed the verdict inline;
+  `application_info`/`projection_coverage` surface per-projection checkpoint status
+  from the cache.
+- Phase 196 — Dogfood acceptance + hardening: a deliberately-poisoned synthetic
+  fixture proves the field→column seam; the in-repo `app/` live consumer produced
+  20 findings (seam 3 `action_to_route` the genuine driver — unregistered actions);
+  `next_steps` capped 10→5; the one zero-finding wrapper seam (`props_to_contract`)
+  demoted to `not_checked`-by-default and documented.
+
+**Requirements:** CHK-01 … CHK-10 all complete.
+
+**Acceptance:** GO — the checkpoint surfaced a real seam defect in a real project
+(recorded in `196-ACCEPTANCE.md`).
+
+---
+
 ## v12.4 Form Validation DX (Shipped: 2026-06-09)
 
 **Phases 190-192** (4+2+2 plans). Async DB-backed uniqueness validation as a first-class ferro form primitive, two layers:
+
 - **190 — proactive:** `AsyncRule` trait + `AsyncValidator`/`validate_async` + `unique(table, col)` with `.ignore(id)` exclude-self; fails before the write with a field-level error via the existing `ValidationError` → redirect-back flow. SQLite + Postgres (live-PG gate test).
 - **191 — defensive:** `ConstraintMap` + `try_map` + `MapConstraintExt::map_constraint` — maps a DB UNIQUE violation at the write site to the same field error, closing the TOCTOU race; portable detection (`sql_err()` + Postgres `constraint()` / SQLite message parse); unmatched `DbErr` falls through unchanged. Live-PG gate test.
 - **192 — surface:** ferro-mcp `action_handler` template + `validation.md` show both layers together (no surface shows one without the other).
