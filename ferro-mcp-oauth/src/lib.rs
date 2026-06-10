@@ -24,6 +24,15 @@ pub use jwt::McpTokenClaims;
 pub use migration::Migration as CreateOauthClientsTable;
 pub use validate::{validate_bearer, BearerCheck};
 
+/// Route handler re-exports for mounting in `app/src/routes.rs`.
+pub mod handlers {
+    pub use crate::authorize::authorize_get;
+    pub use crate::consent::authorize_post;
+    pub use crate::discovery::{authorization_server_handler, protected_resource_handler};
+    pub use crate::register::register_client;
+    pub use crate::token::token_exchange;
+}
+
 /// Test helpers for bootstrapping the in-memory cache in unit/integration tests.
 ///
 /// Not gated by `#[cfg(test)]` so they are usable in integration tests under `tests/`.

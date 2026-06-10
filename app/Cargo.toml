@@ -20,3 +20,4 @@ dotenvy = "0.15"
 clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 ferro-mcp-server = { path = "../ferro-mcp-server", version = "0.2" }
+ferro-mcp-oauth = { path = "../ferro-mcp-oauth" }

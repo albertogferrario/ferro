@@ -1,8 +1,8 @@
 use ferro::database::ModelMut;
 use ferro::serde_json::json;
 use ferro::{
-    confirmed, email, handler, hash, json_response, min, required, verify, Auth, HttpResponse,
-    Request, Resource, Response, ResponseExt, Validator,
+    confirmed, email, handler, hash, json_response, min, required, session, session_mut, verify,
+    Auth, HttpResponse, Request, Resource, Response, ResponseExt, Validator,
 };
 use sea_orm::Set;
 use serde::Deserialize;
@@ -130,6 +130,15 @@ pub async fn login(req: Request) -> Response {
 
     match result {
         Some(_) => {
+            // OAuth return-to: if login was initiated by /authorize, resume the OAuth flow.
+            let return_to: Option<String> = session().and_then(|s| s.get("oauth_return_to"));
+            if let Some(url) = return_to {
+                session_mut(|s| {
+                    s.forget("oauth_return_to");
+                });
+                return Ok(HttpResponse::new().status(302).header("Location", url));
+            }
+
             // Fetch user data for response
             let user = User::find_by_email(&input.email)
                 .await?

@@ -1,5 +1,9 @@
 use ferro::{get, group, post, resource, routes};
 use ferro::{AuthMiddleware as SessionAuthMiddleware, GuestMiddleware};
+use ferro_mcp_oauth::handlers::{
+    authorization_server_handler, authorize_get, authorize_post, protected_resource_handler,
+    register_client, token_exchange,
+};
 
 use crate::api::docs::docs_routes;
 use crate::api::routes::api_routes;
@@ -38,10 +42,24 @@ routes! {
         post!("/logout", controllers::auth_controller::logout).name("auth.logout"),
     }).middleware(SessionAuthMiddleware::new()),
 
-    // MCP Streamable HTTP endpoint (Phase 198: always challenges unauthenticated requests)
+    // MCP Streamable HTTP endpoint (Phase 199: bearer validation via ferro-mcp-oauth).
     // GET returns 405: Ferro's router 404s on method mismatch; explicit handler required per MCP spec.
     post!("/mcp", controllers::mcp::handle).name("mcp.endpoint"),
     get!("/mcp", controllers::mcp::method_not_allowed).name("mcp.endpoint.get"),
+
+    // OAuth discovery (public, no middleware)
+    get!("/.well-known/oauth-protected-resource", protected_resource_handler),
+    get!("/.well-known/oauth-authorization-server", authorization_server_handler),
+
+    // Dynamic Client Registration (public)
+    post!("/register", register_client),
+
+    // Authorization + consent (session middleware already global)
+    get!("/authorize", authorize_get),
+    post!("/authorize", authorize_post),
+
+    // Token exchange (public, no session needed)
+    post!("/token", token_exchange),
 
     // API CRUD routes - protected by API key middleware
     api_routes(),

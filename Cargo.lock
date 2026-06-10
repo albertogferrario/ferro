@@ -166,6 +166,7 @@ dependencies = [
  "chrono",
  "clap",
  "dotenvy",
+ "ferro-mcp-oauth",
  "ferro-mcp-server",
  "ferro-rs",
  "sea-orm",

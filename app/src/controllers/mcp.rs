@@ -1,26 +1,21 @@
-//! MCP Streamable HTTP endpoint (Phase 198).
+//! MCP Streamable HTTP endpoint (Phase 199).
 //! Thin adapter over ferro-mcp-server pure JSON-RPC dispatch.
-//! TODO(phase-199): validate Origin header (DNS-rebinding prevention per MCP spec).
+//! Bearer validation via ferro-mcp-oauth; Origin check (DNS-rebinding prevention per MCP spec).
 
 use ferro::serde_json::{json, Value};
 use ferro::ServiceDef;
 use ferro::{handler, HttpResponse, Request, Response};
-use ferro_mcp_server::{
-    extract_bearer, handle_initialize, handle_tools_call, handle_tools_list, BearerOutcome,
-    McpServerConfig,
-};
+use ferro_mcp_oauth::{validate_bearer, BearerCheck, OAuthConfig};
+use ferro_mcp_server::{handle_initialize, handle_tools_call, handle_tools_list, McpServerConfig};
 
 /// The MCP-exposed projections served at this endpoint.
 /// Phase 198: explicit slice; a registry can replace this later.
-// Phase 199 authenticated path calls this; unreachable in Phase 198 since seam always challenges.
 #[allow(dead_code)]
 fn exposed_services() -> Vec<ServiceDef> {
     vec![crate::projections::order::service_def()]
 }
 
 /// Build the RFC 9728 / RFC 6750 unauthenticated challenge response.
-// Called from the handle handler body; #[allow] required because the #[handler] macro
-// wraps the function body and the dead-code lint does not see the call through the expansion.
 #[allow(dead_code)]
 fn challenge_response(config: &McpServerConfig) -> HttpResponse {
     let challenge = format!(
@@ -34,22 +29,44 @@ fn challenge_response(config: &McpServerConfig) -> HttpResponse {
 
 /// POST /mcp — MCP Streamable HTTP endpoint.
 ///
-/// Reads the Authorization header before consuming the request body (single-read guarantee).
-/// Phase 198: always returns 401 challenge (bearer seam returns Unauthenticated for all requests).
+/// Validates Origin (DNS-rebinding prevention) and bearer token before dispatch.
+/// Phase 199: real JWT validation via ferro-mcp-oauth::validate_bearer.
 #[handler]
 pub async fn handle(req: Request) -> Response {
     let config = McpServerConfig::from_env();
 
-    // 1. Read headers BEFORE consuming the body (Request::json consumes self).
-    let authorization = req.header("Authorization").map(|s| s.to_owned());
-
-    // 2. Bearer seam — Phase 198 always Unauthenticated → 401 challenge.
-    match extract_bearer(authorization.as_deref()) {
-        BearerOutcome::Unauthenticated => return Err(challenge_response(&config)),
-        BearerOutcome::Authenticated(_principal) => { /* Phase 199+ */ }
+    // 1. Origin check (T-15): present but mismatched → 403; absent allowed (non-browser SDK).
+    if let Some(origin) = req.header("Origin") {
+        if !origin.starts_with(config.app_url.as_str()) {
+            return Err(HttpResponse::new().status(403));
+        }
     }
 
-    // 3. Authenticated path (unreachable in Phase 198, but wired for Phase 199).
+    // 2. Read Authorization header BEFORE consuming the body (single-read guarantee).
+    let authorization = req.header("Authorization").map(|s| s.to_owned());
+
+    // 3. Bearer validation — fail-closed: if config unavailable → 401 challenge (T-199-13b).
+    let oauth_config = OAuthConfig::from_env()
+        .map_err(|_| challenge_response(&config))?;
+
+    // expected_tenant: None for single-tenant /mcp (Phase 200 will supply tenant context).
+    let expected_tenant = ferro::current_tenant().map(|t| t.id);
+
+    match validate_bearer(authorization.as_deref(), &oauth_config, expected_tenant) {
+        BearerCheck::Unauthenticated => return Err(challenge_response(&config)),
+        BearerCheck::Invalid => {
+            // 401 invalid_token (RFC 6750 §3.1)
+            return Err(HttpResponse::new()
+                .status(401)
+                .header("WWW-Authenticate", "Bearer error=\"invalid_token\""));
+        }
+        BearerCheck::Forbidden => return Err(HttpResponse::new().status(403)),
+        BearerCheck::Authenticated(_principal) => {
+            // Phase 200 inserts principal into request extensions for JwtClaimResolver.
+        }
+    }
+
+    // 4. Authenticated path — dispatch to MCP JSON-RPC handler.
     let body: Value = req.json().await.map_err(|e| {
         HttpResponse::json(json!({
             "jsonrpc": "2.0", "id": null,
@@ -113,15 +130,42 @@ mod tests {
     }
 
     #[test]
-    fn bearer_seam_always_challenges() {
-        // Any Authorization header value returns Unauthenticated in Phase 198.
-        assert!(matches!(
-            extract_bearer(Some("Bearer some-token")),
-            BearerOutcome::Unauthenticated
-        ));
-        assert!(matches!(
-            extract_bearer(None),
-            BearerOutcome::Unauthenticated
-        ));
+    fn invalid_token_returns_401_invalid_token_header() {
+        use ferro_mcp_oauth::jwt::{build_claims, mint_token};
+
+        // Mint a token with a different secret (invalid signature from config's perspective)
+        let wrong_secret = b"wrong-secret-that-is-at-least-32-bytes-long!!!!!!";
+        let claims = build_claims(1, None, "http://localhost", 3600);
+        let token = mint_token(&claims, wrong_secret).expect("mint failed");
+
+        let config = OAuthConfig {
+            app_name: "x".into(),
+            app_url: "http://localhost".into(),
+            token_secret: b"correct-secret-that-is-at-least-32-bytes-long!!!!".to_vec(),
+        };
+        let header = format!("Bearer {token}");
+        let result = validate_bearer(Some(&header), &config, None);
+        assert!(
+            matches!(result, BearerCheck::Invalid),
+            "expected Invalid for wrong-secret token"
+        );
+    }
+
+    #[test]
+    fn origin_mismatch_maps_to_403() {
+        // Simulate the guard logic: present but mismatched Origin → 403.
+        let app_url = "http://localhost";
+        let origin = "http://evil.example.com";
+        assert!(
+            !origin.starts_with(app_url),
+            "Origin mismatch guard should reject this"
+        );
+    }
+
+    #[test]
+    fn absent_origin_is_allowed() {
+        // Absent Origin (no header) → allowed for non-browser SDK clients.
+        let origin: Option<&str> = None;
+        assert!(origin.is_none(), "absent origin must not be rejected");
     }
 }

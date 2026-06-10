@@ -11,7 +11,7 @@ pub mod jsonrpc;
 pub mod renderer;
 pub mod schema;
 
-pub use auth::{extract_bearer, BearerOutcome};
+pub use auth::BearerOutcome;
 pub use config::McpServerConfig;
 pub use dispatch::{dispatch, DispatchResult};
 pub use error::{Error, Result};
