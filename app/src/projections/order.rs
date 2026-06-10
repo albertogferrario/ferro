@@ -9,6 +9,7 @@ use ferro::{
 /// branching states, and transition triggers on actions.
 pub fn service_def() -> ServiceDef {
     ServiceDef::new("order")
+        .mcp_exposed(true)
         .display_name("Order")
         .field("id", DataType::Integer, FieldMeaning::Identifier)
         .field("customer_name", DataType::String, FieldMeaning::EntityName)

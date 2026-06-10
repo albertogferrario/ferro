@@ -38,6 +38,11 @@ routes! {
         post!("/logout", controllers::auth_controller::logout).name("auth.logout"),
     }).middleware(SessionAuthMiddleware::new()),
 
+    // MCP Streamable HTTP endpoint (Phase 198: always challenges unauthenticated requests)
+    // GET returns 405: Ferro's router 404s on method mismatch; explicit handler required per MCP spec.
+    post!("/mcp", controllers::mcp::handle).name("mcp.endpoint"),
+    get!("/mcp", controllers::mcp::method_not_allowed).name("mcp.endpoint.get"),
+
     // API CRUD routes - protected by API key middleware
     api_routes(),
 
