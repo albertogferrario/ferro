@@ -42,7 +42,7 @@ created: 2026-06-10
 | 198-tools-list | jsonrpc | 1 | AMCP-05 (SC-1b) | — | `tools/list` returns exactly the `mcp_exposed` projections | unit | `cargo test -p ferro-mcp-server jsonrpc` | ❌ W0 | ⬜ pending |
 | 198-tools-call | jsonrpc | 1 | AMCP-05 (SC-1c) | T-198 input | `tools/call` returns dispatch rows; strips `list_` prefix; allowlist + limit clamp retained (197 WR-01/WR-02) | integration (in-memory DB) | `cargo test -p ferro-mcp-server jsonrpc` | ❌ W0 | ⬜ pending |
 | 198-bearer-seam | auth | 1 | AMCP-06 (SC-2) | T-198 authn | `extract_bearer` has NO path returning `Authenticated` in Phase 198 | unit | `cargo test -p ferro-mcp-server auth` | ❌ W0 | ⬜ pending |
-| 198-401-challenge | handler | 2 | AMCP-06 (SC-2) | T-198 authn | unauthenticated → `401` + `WWW-Authenticate: Bearer resource_metadata="{APP_URL}/.well-known/oauth-protected-resource"` | unit | `cargo test -p ferro-mcp-server auth` | ❌ W0 | ⬜ pending |
+| 198-401-challenge | handler | 2 | AMCP-06 (SC-2) | T-198 authn | unauthenticated → `401` + `WWW-Authenticate: Bearer resource_metadata="{APP_URL}/.well-known/oauth-protected-resource"` | unit | `cargo test -p app --lib mcp` | ❌ W0 | ⬜ pending |
 | 198-route-mount | handler | 2 | AMCP-05 (SC-3) | — | `post!("/mcp")` registered in app router via same middleware stack | compile-time | `cargo build -p app` | ❌ W0 | ⬜ pending |
 | 198-no-oauth | jsonrpc | 1 | AMCP-06 (SC-4) | — | all four paths exercised without a live server/OAuth | integration (no server) | `cargo test -p ferro-mcp-server` | ❌ W0 | ⬜ pending |
 

@@ -678,25 +678,25 @@ No external services required for Phase 198 tests. The bearer seam is a stub; no
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Ferro router 405 behavior for GET /mcp**
    - What we know: the MCP spec requires `405 Method Not Allowed` when GET is issued and the server doesn't support SSE
-   - What's unclear: does Ferro's router automatically emit 405 when a path exists but the method doesn't match, or does it 404?
-   - Recommendation: verify by reading `framework/src/server.rs` or the router's fallback logic before plan. If Ferro 404s on method mismatch for registered paths, add an explicit `get!("/mcp", …)` returning 405.
-   - Confidence: [ASSUMED — not yet verified]
+   - What was unclear: does Ferro's router automatically emit 405 when a path exists but the method doesn't match, or does it 404?
+   - **RESOLVED:** Ferro's router 404s on method mismatch — verified in `framework/src/server.rs` `match_route(&method, &path)`, which keys on method+path and returns `None` (→ default `404`) for a GET to a POST-only `/mcp`. Therefore an explicit `get!("/mcp", …)` returning `405` is required and is implemented in Plan 198-02 Task 2.
+   - Confidence: HIGH (verified in framework/src/server.rs)
 
 2. **`setup_db()` visibility in dispatch_integration.rs**
    - What we know: `setup_db()` exists and builds an in-memory SQLite with a fixture table
-   - What's unclear: it's defined in the test file without `pub` — it cannot be shared across test files without moving to a `tests/common/mod.rs` or making it a pub helper in a test util module
-   - Recommendation: extract `setup_db()` to `ferro-mcp-server/tests/common/mod.rs` so `jsonrpc_integration.rs` can reuse it
+   - What was unclear: it's defined in the test file without `pub` — it cannot be shared across test files without moving to a `tests/common/mod.rs` or making it a pub helper in a test util module
+   - **RESOLVED:** extract `setup_db()` (and the `item_service()` fixture) to `ferro-mcp-server/tests/common/mod.rs` so `jsonrpc_integration.rs` can reuse it via `mod common;` — standard Rust test organization. Implemented in Plan 198-01 Task 1.
    - Confidence: HIGH (standard Rust test organization pattern)
 
 3. **`tools/call` arguments format in MCP spec**
    - What we know: MCP `tools/call` params shape is `{ "name": "list_item", "arguments": { ... } }`
-   - What's unclear: should pagination params (`limit`, `offset`) be treated as part of `arguments` alongside filter params?
-   - Recommendation: yes — all tool input schema properties (including `limit`/`offset`) are passed in `arguments`; the dispatch function extracts them
-   - Confidence: MEDIUM (inferred from MCP tool schema structure; verified in rmcp model `CallToolParams`)
+   - What was unclear: should pagination params (`limit`, `offset`) be treated as part of `arguments` alongside filter params?
+   - **RESOLVED:** yes — `limit`/`offset` are passed inside `arguments` alongside filter params (confirmed against rmcp 0.12 `CallToolParams`). The dispatch handler reads `arguments.limit` / `arguments.offset`, removes them, and treats the remainder as filters. Implemented in Plan 198-01 Task 3 `handle_tools_call`.
+   - Confidence: HIGH (verified in rmcp model `CallToolParams`)
 
 ---
 
@@ -704,7 +704,7 @@ No external services required for Phase 198 tests. The bearer seam is a stub; no
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Ferro router emits 405 (not 404) for GET /mcp when only POST is registered | D-04 / Open Question 1 | If 404, need to add explicit GET handler returning 405 to satisfy MCP spec |
+| A1 | ~~Ferro router emits 405 (not 404) for GET /mcp~~ — **VERIFIED FALSE: router 404s on method mismatch** (framework/src/server.rs). Explicit `get!("/mcp")` → 405 added in Plan 198-02 Task 2. | D-04 / Open Question 1 | Resolved — no residual risk |
 | A2 | `env!("CARGO_PKG_VERSION")` resolves at compile time to the workspace version in `ferro-mcp-server` | D-03 config.rs | If it resolves to empty or wrong value, use `std::env::var("CARGO_PKG_VERSION").unwrap_or("0.1")` at runtime instead |
 
 ---
