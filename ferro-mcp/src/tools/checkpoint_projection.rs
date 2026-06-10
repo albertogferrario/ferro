@@ -68,7 +68,7 @@ pub struct Verdict {
     /// Projection name as supplied to the tool.
     pub projection: String,
     pub seams: Vec<SeamResult>,
-    /// Ranked, deduplicated actionable strings (failures before warnings; cap 10).
+    /// Ranked, deduplicated actionable strings (failures before warnings; cap 5).
     pub next_steps: Vec<String>,
 }
 
@@ -731,10 +731,13 @@ fn aggregate_status(seams: &[SeamResult]) -> SeamStatus {
     }
 }
 
+/// Maximum number of ranked next_steps returned in a verdict.
+const MAX_NEXT_STEPS: usize = 5;
+
 /// Build ranked, deduplicated, capped next_steps list (D-10).
 ///
 /// Failures before warnings; within a rank, earlier seam first.
-/// Dedup by `(subject, fix)`. Cap at 10.
+/// Dedup by `(subject, fix)`. Cap at 5.
 fn aggregate_next_steps(seams: &[SeamResult]) -> Vec<String> {
     let mut items: Vec<(u8, usize, String, String, String)> = Vec::new();
     for (idx, seam) in seams.iter().enumerate() {
@@ -760,7 +763,7 @@ fn aggregate_next_steps(seams: &[SeamResult]) -> Vec<String> {
     for (_, _, subject, fix, entry) in items {
         if seen.insert((subject, fix)) {
             result.push(entry);
-            if result.len() == 10 {
+            if result.len() == MAX_NEXT_STEPS {
                 break;
             }
         }
@@ -1358,14 +1361,14 @@ pub struct Booking {
     }
 
     #[test]
-    fn next_steps_cap_at_10() {
-        // D-10: 12 distinct findings → exactly 10 next_steps entries.
-        let findings: Vec<Finding> = (0..12)
+    fn next_steps_cap_at_five() {
+        // SC-3: 7 distinct findings (> cap) → exactly 5 next_steps entries.
+        let findings: Vec<Finding> = (0..7)
             .map(|i| make_finding(&format!("field_{i}"), &format!("fix field_{i}")))
             .collect();
         let seams = vec![make_seam("field_to_column", SeamStatus::Fail, findings)];
         let steps = aggregate_next_steps(&seams);
-        assert_eq!(steps.len(), 10, "next_steps must be capped at 10");
+        assert_eq!(steps.len(), 5, "next_steps must be capped at 5");
     }
 
     // -----------------------------------------------------------------------
