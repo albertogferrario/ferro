@@ -1646,7 +1646,7 @@ impl FerroMcpService {
         &self,
         params: Parameters<GenerateProjectionParams>,
     ) -> String {
-        match tools::generate_projection::execute(&self.project_root, &params.0.model_name) {
+        match tools::generate_projection::execute(&self.project_root, &params.0.model_name).await {
             Ok(result) => {
                 serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
             }
