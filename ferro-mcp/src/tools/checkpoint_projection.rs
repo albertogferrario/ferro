@@ -68,6 +68,53 @@ pub struct Verdict {
     pub next_steps: Vec<String>,
 }
 
+/// Compact summary of a checkpoint verdict for embedding in generator responses.
+///
+/// Carries the top-level `status` and the names of failing/warning seams.
+/// Never contains the raw `seams` array (SC-1: a wall of `not_checked` entries
+/// with empty findings must not be surfaced as signal).
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct VerdictSummary {
+    /// Aggregate status across all seams.
+    pub status: SeamStatus,
+    /// Names of seams with `Fail` status.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fail_seams: Vec<String>,
+    /// Names of seams with `Warn` status.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warn_seams: Vec<String>,
+    /// Ranked, deduplicated actionable strings (same as `Verdict.next_steps`).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub next_steps: Vec<String>,
+}
+
+impl Verdict {
+    /// Return a compact summary suitable for embedding in generator responses.
+    ///
+    /// Includes `status`, names of failing/warning seams, and `next_steps`.
+    /// `not_checked` seams are excluded from both vecs (SC-1 signal-to-noise).
+    pub fn summary(&self) -> VerdictSummary {
+        let fail_seams = self
+            .seams
+            .iter()
+            .filter(|s| s.status == SeamStatus::Fail)
+            .map(|s| s.seam.clone())
+            .collect();
+        let warn_seams = self
+            .seams
+            .iter()
+            .filter(|s| s.status == SeamStatus::Warn)
+            .map(|s| s.seam.clone())
+            .collect();
+        VerdictSummary {
+            status: self.status.clone(),
+            fail_seams,
+            warn_seams,
+            next_steps: self.next_steps.clone(),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Name validation (T-194-01: path traversal guard, used by Plan 03 cache write)
 // ---------------------------------------------------------------------------
@@ -434,6 +481,45 @@ fn write_cache(
         .map_err(|e| format!("failed to serialize cache: {e}"))?;
     fs::write(&path, json).map_err(|e| format!("failed to write cache: {e}"))?;
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Ambient status reader (D-11 / CHK-08)
+// ---------------------------------------------------------------------------
+
+/// Read the cached ambient checkpoint status for `name` without recomputing.
+///
+/// The `name` parameter is a projection function name that originates from the
+/// trusted projection scan (`list_projections`/`ModelCoverage.projection_name`),
+/// not raw user input. The write path is already `validate_name`-guarded (T-195-01).
+///
+/// Returns:
+/// - `"clean"` if the cache file exists and `ambient_status == "clean"`
+/// - `"failing"` if the cache file exists and `ambient_status == "failing"`
+/// - `"unverified"` if the file is absent, unreadable, or unparseable
+///
+/// Never calls `run_for` or recomputes — read-only, stale-ok.
+// Plans 03/04 add the callers (projection_coverage, application_info).
+#[allow(dead_code)]
+pub(crate) fn read_ambient_status(project_root: &Path, name: &str) -> &'static str {
+    let path = project_root
+        .join(".ferro")
+        .join("checkpoints")
+        .join(format!("{name}.json"));
+    if !path.exists() {
+        return "unverified";
+    }
+    let Ok(content) = fs::read_to_string(&path) else {
+        return "unverified";
+    };
+    let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return "unverified";
+    };
+    match val.get("ambient_status").and_then(|v| v.as_str()) {
+        Some("clean") => "clean",
+        Some("failing") => "failing",
+        _ => "unverified",
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1097,6 +1183,116 @@ pub fn booking_service() -> ServiceDef {
                 );
             }
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Task 2 tests: VerdictSummary + read_ambient_status
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn verdict_summary_shape() {
+        // VerdictSummary must have top-level status; must NOT have a seams key.
+        // SC-1: not_checked seams must not appear in fail_seams or warn_seams.
+        let verdict = Verdict {
+            status: SeamStatus::Fail,
+            projection: "booking_service".to_string(),
+            seams: vec![
+                SeamResult {
+                    seam: "field_to_column".to_string(),
+                    status: SeamStatus::Fail,
+                    source: "checkpoint".to_string(),
+                    findings: vec![Finding {
+                        subject: "phantom".to_string(),
+                        detail: "no column".to_string(),
+                        fix: "add column".to_string(),
+                    }],
+                    reason: None,
+                },
+                SeamResult {
+                    seam: "projection_well_formed".to_string(),
+                    status: SeamStatus::Warn,
+                    source: "validate_projection".to_string(),
+                    findings: vec![],
+                    reason: None,
+                },
+                SeamResult {
+                    seam: "action_to_route".to_string(),
+                    status: SeamStatus::NotChecked,
+                    source: "checkpoint".to_string(),
+                    findings: vec![],
+                    reason: Some("not_implemented_phase_195".to_string()),
+                },
+            ],
+            next_steps: vec!["add column (seam: field_to_column)".to_string()],
+        };
+
+        let summary = verdict.summary();
+        let val = serde_json::to_value(&summary).unwrap();
+
+        // Must have status at top level.
+        assert!(val.get("status").is_some(), "summary must have status key");
+        // Must NOT have seams array (SC-1).
+        assert!(
+            val.get("seams").is_none(),
+            "summary must not have seams key"
+        );
+
+        // fail_seams contains only the Fail seam name.
+        let fail_seams = val["fail_seams"].as_array().unwrap();
+        assert_eq!(fail_seams.len(), 1);
+        assert_eq!(fail_seams[0], "field_to_column");
+
+        // warn_seams contains only the Warn seam name.
+        let warn_seams = val["warn_seams"].as_array().unwrap();
+        assert_eq!(warn_seams.len(), 1);
+        assert_eq!(warn_seams[0], "projection_well_formed");
+
+        // not_checked seam must not appear in either vec.
+        let all_seam_names: Vec<&str> = fail_seams
+            .iter()
+            .chain(warn_seams.iter())
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert!(
+            !all_seam_names.contains(&"action_to_route"),
+            "not_checked seam must not appear in fail_seams or warn_seams"
+        );
+    }
+
+    #[test]
+    fn ambient_missing_unverified() {
+        // D-11: missing cache file → "unverified".
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(read_ambient_status(tmp.path(), "nope"), "unverified");
+    }
+
+    #[test]
+    fn ambient_read_clean() {
+        // D-11: cache file with ambient_status "clean" → "clean".
+        // cache file with ambient_status "failing" → "failing".
+        let tmp = tempfile::tempdir().unwrap();
+        let cache_dir = tmp.path().join(".ferro").join("checkpoints");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+
+        // Write clean cache.
+        std::fs::write(cache_dir.join("x.json"), r#"{"ambient_status":"clean"}"#).unwrap();
+        assert_eq!(read_ambient_status(tmp.path(), "x"), "clean");
+
+        // Overwrite with failing cache.
+        std::fs::write(cache_dir.join("x.json"), r#"{"ambient_status":"failing"}"#).unwrap();
+        assert_eq!(read_ambient_status(tmp.path(), "x"), "failing");
+
+        // Unknown value → unverified.
+        std::fs::write(
+            cache_dir.join("x.json"),
+            r#"{"ambient_status":"unknown_value"}"#,
+        )
+        .unwrap();
+        assert_eq!(read_ambient_status(tmp.path(), "x"), "unverified");
+
+        // Malformed JSON → unverified.
+        std::fs::write(cache_dir.join("x.json"), b"not json").unwrap();
+        assert_eq!(read_ambient_status(tmp.path(), "x"), "unverified");
     }
 
     #[tokio::test]
