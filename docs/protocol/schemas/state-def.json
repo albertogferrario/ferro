@@ -1,52 +1,52 @@
 {
-  "type": "object",
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/state-def.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A state within a state machine.\n\nStates can declare entry/exit side effects as string references\nand carry optional metadata for rendering hints.",
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "State identifier (e.g., \"draft\", \"pending\", \"completed\")."
+    "description": {
+      "description": "Description of what this state means.",
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "display_name": {
+      "description": "Human-readable name (e.g., \"Pending Review\").",
       "type": [
         "string",
         "null"
-      ],
-      "description": "Human-readable name (e.g., \"Pending Review\")."
-    },
-    "description": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Description of what this state means."
+      ]
     },
     "is_final": {
-      "type": "boolean",
+      "default": false,
       "description": "Whether this is a terminal state.",
-      "default": false
-    },
-    "on_enter": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Side effects triggered on entering this state (string references)."
-    },
-    "on_exit": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Side effects triggered on exiting this state (string references)."
+      "type": "boolean"
     },
     "metadata": {
       "description": "Arbitrary metadata for rendering hints."
+    },
+    "name": {
+      "description": "State identifier (e.g., \"draft\", \"pending\", \"completed\").",
+      "type": "string"
+    },
+    "on_enter": {
+      "description": "Side effects triggered on entering this state (string references).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "on_exit": {
+      "description": "Side effects triggered on exiting this state (string references).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
     }
   },
   "required": [
     "name"
   ],
-  "description": "A state within a state machine.\n\nStates can declare entry/exit side effects as string references\nand carry optional metadata for rendering hints.",
   "title": "StateDef",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/state-def.json"
+  "type": "object"
 }

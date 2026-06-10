@@ -82,6 +82,14 @@ pub struct ServiceDef {
     /// appear in a `tools/list` response.
     #[serde(default)]
     pub mcp_exposed: bool,
+    /// FK column name used to scope reads to a tenant.
+    /// Plain metadata read by ferro-mcp-server dispatch; no auth dependency here.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tenant_column: Option<String>,
+    /// Gate ability required to call this projection via MCP.
+    /// Plain metadata read by the app's MCP handler; no auth dependency here.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mcp_ability: Option<String>,
 }
 
 impl ServiceDef {
@@ -98,6 +106,8 @@ impl ServiceDef {
             intent_hints: Vec::new(),
             state_machine: None,
             mcp_exposed: false,
+            tenant_column: None,
+            mcp_ability: None,
         }
     }
 
@@ -116,6 +126,20 @@ impl ServiceDef {
     /// Marks this projection as MCP-exposed.
     pub fn mcp_exposed(mut self, exposed: bool) -> Self {
         self.mcp_exposed = exposed;
+        self
+    }
+
+    /// Declares the FK column name used to scope reads to a tenant.
+    /// Plain metadata read by ferro-mcp-server dispatch; no auth dependency here.
+    pub fn tenant_column(mut self, col: impl Into<String>) -> Self {
+        self.tenant_column = Some(col.into());
+        self
+    }
+
+    /// Declares the Gate ability required to call this projection via MCP.
+    /// Plain metadata read by the app's MCP handler; no auth dependency here.
+    pub fn mcp_ability(mut self, ability: impl Into<String>) -> Self {
+        self.mcp_ability = Some(ability.into());
         self
     }
 
@@ -1279,6 +1303,41 @@ mod tests {
     fn mcp_exposed_builder_sets_flag() {
         let s = ServiceDef::new("order").mcp_exposed(true);
         assert!(s.mcp_exposed);
+    }
+
+    #[test]
+    fn tenant_and_ability_default_none_when_absent() {
+        let json = r#"{"name":"order","fields":[]}"#;
+        let parsed: ServiceDef = serde_json::from_str(json).unwrap();
+        assert!(parsed.tenant_column.is_none());
+        assert!(parsed.mcp_ability.is_none());
+    }
+
+    #[test]
+    fn tenant_column_and_mcp_ability_builder_sets_values() {
+        let s = ServiceDef::new("order")
+            .tenant_column("tenant_id")
+            .mcp_ability("view-orders");
+        assert_eq!(s.tenant_column, Some("tenant_id".to_string()));
+        assert_eq!(s.mcp_ability, Some("view-orders".to_string()));
+    }
+
+    #[test]
+    fn tenant_column_and_mcp_ability_skip_serializing_when_none() {
+        let s = ServiceDef::new("order").field(
+            "id",
+            crate::field::DataType::Integer,
+            crate::field::FieldMeaning::Identifier,
+        );
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(
+            !json.contains("tenant_column"),
+            "tenant_column should be absent when None"
+        );
+        assert!(
+            !json.contains("mcp_ability"),
+            "mcp_ability should be absent when None"
+        );
     }
 
     #[test]

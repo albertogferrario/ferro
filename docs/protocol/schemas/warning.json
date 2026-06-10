@@ -1,7 +1,11 @@
 {
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/warning.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Structural warnings from service and state machine validation.\n\nWarnings indicate potential issues that may be intentional\n(e.g., unreachable states reached via external means).",
   "oneOf": [
     {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "A state not reachable from the initial state via transitions.",
       "properties": {
         "unreachable_state": {
           "type": "string"
@@ -10,11 +14,11 @@
       "required": [
         "unreachable_state"
       ],
-      "additionalProperties": false,
-      "description": "A state not reachable from the initial state via transitions."
+      "type": "object"
     },
     {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "A non-final state with no outgoing transitions.",
       "properties": {
         "dead_end_state": {
           "type": "string"
@@ -23,16 +27,16 @@
       "required": [
         "dead_end_state"
       ],
-      "additionalProperties": false,
-      "description": "A non-final state with no outgoing transitions."
+      "type": "object"
     },
     {
-      "type": "string",
       "const": "no_final_states",
-      "description": "No states are marked as final."
+      "description": "No states are marked as final.",
+      "type": "string"
     },
     {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "A guard declared but never referenced by any transition or action precondition.",
       "properties": {
         "unused_guard": {
           "type": "string"
@@ -41,11 +45,11 @@
       "required": [
         "unused_guard"
       ],
-      "additionalProperties": false,
-      "description": "A guard declared but never referenced by any transition or action precondition."
+      "type": "object"
     },
     {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "An action has a transition_trigger but the service has no state machine.",
       "properties": {
         "transition_trigger_without_state_machine": {
           "type": "string"
@@ -54,11 +58,11 @@
       "required": [
         "transition_trigger_without_state_machine"
       ],
-      "additionalProperties": false,
-      "description": "An action has a transition_trigger but the service has no state machine."
+      "type": "object"
     },
     {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "Multiple relationships share the same name within a service.",
       "properties": {
         "duplicate_relationship": {
           "type": "string"
@@ -67,14 +71,13 @@
       "required": [
         "duplicate_relationship"
       ],
-      "additionalProperties": false,
-      "description": "Multiple relationships share the same name within a service."
+      "type": "object"
     },
     {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "A many-to-many relationship has a foreign_key set (join tables have no single FK).",
       "properties": {
         "many_to_many_with_foreign_key": {
-          "type": "object",
           "properties": {
             "relationship": {
               "type": "string"
@@ -82,20 +85,20 @@
           },
           "required": [
             "relationship"
-          ]
+          ],
+          "type": "object"
         }
       },
       "required": [
         "many_to_many_with_foreign_key"
       ],
-      "additionalProperties": false,
-      "description": "A many-to-many relationship has a foreign_key set (join tables have no single FK)."
+      "type": "object"
     },
     {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "Primary(X) and Exclude(X) for the same intent.",
       "properties": {
         "conflicting_intent_hints": {
-          "type": "object",
           "properties": {
             "intent": {
               "type": "string"
@@ -103,23 +106,20 @@
           },
           "required": [
             "intent"
-          ]
+          ],
+          "type": "object"
         }
       },
       "required": [
         "conflicting_intent_hints"
       ],
-      "additionalProperties": false,
-      "description": "Primary(X) and Exclude(X) for the same intent."
+      "type": "object"
     },
     {
-      "type": "string",
       "const": "multiple_primary_intent_hints",
-      "description": "More than one Primary hint specified."
+      "description": "More than one Primary hint specified.",
+      "type": "string"
     }
   ],
-  "description": "Structural warnings from service and state machine validation.\n\nWarnings indicate potential issues that may be intentional\n(e.g., unreachable states reached via external means).",
-  "title": "Warning",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/warning.json"
+  "title": "Warning"
 }

@@ -1,7 +1,8 @@
 {
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/field-meaning.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "anyOf": [
     {
-      "type": "string",
       "enum": [
         "identifier",
         "foreign_key",
@@ -21,14 +22,13 @@
         "updated_at",
         "date_time",
         "sensitive"
-      ]
+      ],
+      "type": "string"
     },
     {
       "type": "string"
     }
   ],
   "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning.",
-  "title": "FieldMeaning",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/field-meaning.json"
+  "title": "FieldMeaning"
 }
