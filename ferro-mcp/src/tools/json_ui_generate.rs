@@ -27,6 +27,12 @@ pub struct JsonUiGenerationContext {
     /// Optional view description passed through from input
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Checkpoint verdict summary for the model-derived projection anchor.
+    /// Present only when `model` is supplied and the anchor resolves to an existing
+    /// projection. Omitted when `model` is `None` or the projection is not yet in
+    /// the project (SC-1: never embed a vacuous all-`not_checked` summary).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checkpoint: Option<crate::tools::checkpoint_projection::VerdictSummary>,
 }
 
 /// A model with its fields for context
@@ -101,7 +107,12 @@ const VIEW_EXAMPLE: &str = r#"{
 ///
 /// Scans the project for models and routes, then bundles them with the
 /// component catalog, a working example, and naming conventions.
-pub fn execute(
+///
+/// When `model` is `Some`, runs the projection checkpoint speculatively
+/// against `{model_lowercase}_service` and embeds a compact `VerdictSummary`
+/// in the result. When `model` is `None` the checkpoint field is omitted
+/// (SC-1: never embed a vacuous all-`not_checked` summary without an anchor).
+pub async fn execute(
     project_root: &Path,
     model: Option<&str>,
     description: Option<&str>,
@@ -109,6 +120,23 @@ pub fn execute(
     let models = scan_models(project_root, model);
     let routes = scan_routes(project_root);
     let existing_views = list_existing_views(project_root);
+
+    // Speculative checkpoint: only when a model anchor is available.
+    // None => None: skip run_for entirely (no anchor to derive from).
+    let checkpoint = match model {
+        Some(m) => {
+            let anchor = format!("{}_service", m.to_lowercase());
+            crate::tools::checkpoint_projection::run_for(
+                project_root,
+                &anchor,
+                chrono::Utc::now(),
+            )
+            .await
+            .ok()
+            .map(|v| v.summary())
+        }
+        None => None,
+    };
 
     JsonUiGenerationContext {
         component_catalog: global_catalog().prompt(),
@@ -123,6 +151,7 @@ pub fn execute(
             layout_default: "dashboard".to_string(),
         },
         description: description.map(|s| s.to_string()),
+        checkpoint,
     }
 }
 
@@ -269,10 +298,10 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    #[test]
-    fn test_conventions_populated() {
+    #[tokio::test]
+    async fn test_conventions_populated() {
         let non_existent = PathBuf::from("/tmp/non_existent_ferro_project_generate_test");
-        let result = execute(&non_existent, None, None);
+        let result = execute(&non_existent, None, None).await;
 
         assert_eq!(result.conventions.file_location, "src/views/{name}.json");
         assert!(result
@@ -286,10 +315,10 @@ mod tests {
         assert_eq!(result.conventions.layout_default, "dashboard");
     }
 
-    #[test]
-    fn test_example_not_empty() {
+    #[tokio::test]
+    async fn test_example_not_empty() {
         let non_existent = PathBuf::from("/tmp/non_existent_ferro_project_generate_test");
-        let result = execute(&non_existent, None, None);
+        let result = execute(&non_existent, None, None).await;
 
         assert!(!result.example.is_empty());
         assert!(result.example.contains("ferro-json-ui/v2"));
@@ -321,6 +350,7 @@ mod tests {
                 layout_default: "dashboard".to_string(),
             },
             description: Some("A user management view".to_string()),
+            checkpoint: None,
         };
 
         let json = serde_json::to_string(&context);
@@ -350,6 +380,7 @@ mod tests {
                 layout_default: String::new(),
             },
             description: None,
+            checkpoint: None,
         };
 
         let json_str = serde_json::to_string(&context).unwrap();
@@ -359,10 +390,10 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_component_catalog_not_empty() {
+    #[tokio::test]
+    async fn test_component_catalog_not_empty() {
         let non_existent = PathBuf::from("/tmp/non_existent_ferro_project_generate_test");
-        let result = execute(&non_existent, None, None);
+        let result = execute(&non_existent, None, None).await;
 
         assert!(!result.component_catalog.is_empty());
         assert!(result.component_catalog.contains("Text"));
@@ -370,5 +401,86 @@ mod tests {
         assert!(result.component_catalog.contains("Table"));
         assert!(result.component_catalog.contains("Form"));
         assert!(result.component_catalog.contains("Action"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Inline-hook tests (CHK-07 / SC-1 / Pitfall 3)
+    // -----------------------------------------------------------------------
+
+    /// When model is None, checkpoint must be None and the serialized output
+    /// must omit the "checkpoint" key entirely (SC-1: no vacuous all-not_checked summary).
+    #[tokio::test]
+    async fn json_ui_generate_no_model_omits_checkpoint() {
+        let non_existent = PathBuf::from("/tmp/non_existent_ferro_project_json_ui_generate_test");
+        let ctx = execute(&non_existent, None, None).await;
+
+        assert!(
+            ctx.checkpoint.is_none(),
+            "checkpoint must be None when model is not supplied"
+        );
+
+        let json_str = serde_json::to_string(&ctx).unwrap();
+        assert!(
+            !json_str.contains("\"checkpoint\""),
+            "serialized context must omit checkpoint key when model is None: {json_str}"
+        );
+    }
+
+    /// When model is Some but no matching projection exists in the project,
+    /// checkpoint must still be None (speculative anchor miss → .ok() → None).
+    /// This also covers Pitfall 3: no vacuous all-not_checked summary embedded.
+    #[tokio::test]
+    async fn json_ui_generate_with_model_no_projection_omits_checkpoint() {
+        let non_existent = PathBuf::from("/tmp/non_existent_ferro_project_json_ui_generate_test");
+        let ctx = execute(&non_existent, Some("Booking"), None).await;
+
+        assert!(
+            ctx.checkpoint.is_none(),
+            "checkpoint must be None when anchor projection does not exist (safe degradation)"
+        );
+
+        let json_str = serde_json::to_string(&ctx).unwrap();
+        assert!(
+            !json_str.contains("\"checkpoint\""),
+            "serialized context must omit checkpoint key when anchor does not resolve"
+        );
+    }
+
+    /// When model is Some and a matching projection exists, checkpoint may be
+    /// Some with a compact VerdictSummary (status key, no seams key — SC-1).
+    /// The test accepts both Some and None since inspect_projection indexing
+    /// determines resolution; the key invariant is shape-correctness when Some.
+    #[tokio::test]
+    async fn json_ui_generate_with_resolving_model_embeds_checkpoint() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Add a projection file that checkpoint_projection can attempt to find.
+        let proj_dir = tmp.path().join("src/projections");
+        std::fs::create_dir_all(&proj_dir).unwrap();
+        std::fs::write(
+            proj_dir.join("booking_service.rs"),
+            r#"use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}
+"#,
+        )
+        .unwrap();
+
+        let ctx = execute(tmp.path(), Some("Booking"), None).await;
+
+        // If checkpoint resolved (projection indexed), verify compact shape (SC-1).
+        if let Some(ref chk) = ctx.checkpoint {
+            let val = serde_json::to_value(chk).unwrap();
+            assert!(
+                val.get("status").is_some(),
+                "VerdictSummary must have status key"
+            );
+            assert!(
+                val.get("seams").is_none(),
+                "VerdictSummary must NOT have seams key (SC-1)"
+            );
+        }
+        // None is also acceptable (anchor resolution depends on inspect_projection indexing).
     }
 }

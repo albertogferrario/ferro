@@ -1358,7 +1358,8 @@ impl FerroMcpService {
             &self.project_root,
             params.0.model.as_deref(),
             params.0.description.as_deref(),
-        );
+        )
+        .await;
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
     }
 
