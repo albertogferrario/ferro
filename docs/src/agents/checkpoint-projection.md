@@ -58,7 +58,7 @@ The tool returns a single `Verdict` object:
 | `status` | `SeamStatus` | Aggregate status across all seams. |
 | `projection` | string | The projection name as supplied to the tool. |
 | `seams` | `SeamResult[]` | One entry per seam, regardless of outcome. |
-| `next_steps` | string[] | Ranked, deduplicated actionable strings, capped at 10. |
+| `next_steps` | string[] | Ranked, deduplicated actionable strings, capped at 5. |
 
 ### SeamStatus values
 
@@ -122,7 +122,7 @@ The `next_steps` list is assembled from all `fail` and `warn` findings:
 - Failures appear before warnings.
 - Within a rank, seam order (seam 1 through 5) is preserved.
 - Duplicate `(subject, fix)` pairs are deduplicated across seams.
-- The list is capped at 10 entries.
+- The list is capped at 5 entries.
 - Each entry has the format: `"<fix> (seam: <seam_name>)"`.
 
 ## Status Cache
