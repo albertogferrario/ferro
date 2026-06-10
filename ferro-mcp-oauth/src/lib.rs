@@ -23,3 +23,21 @@ pub use error::OAuthError;
 pub use jwt::McpTokenClaims;
 pub use migration::Migration as CreateOauthClientsTable;
 pub use validate::{validate_bearer, BearerCheck};
+
+/// Test helpers for bootstrapping the in-memory cache in unit/integration tests.
+///
+/// Not gated by `#[cfg(test)]` so they are usable in integration tests under `tests/`.
+/// These functions are intentionally public — they are harmless no-ops on a live server
+/// because `Cache::bootstrap()` via `Server::run()` replaces any earlier binding.
+pub mod cache_test_helpers {
+    use ferro::cache::{CacheStore, InMemoryCache};
+    use ferro::container::App;
+    use std::sync::Arc;
+
+    /// Bind a fresh `InMemoryCache` into the App container.
+    ///
+    /// Call once per test (or test module) before any `Cache::put`/`Cache::get`/`Cache::forget`.
+    pub fn bootstrap_test_cache() {
+        App::bind::<dyn CacheStore>(Arc::new(InMemoryCache::new()));
+    }
+}
