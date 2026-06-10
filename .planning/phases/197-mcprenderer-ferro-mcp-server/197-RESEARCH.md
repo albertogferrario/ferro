@@ -878,9 +878,9 @@ bind parameters.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Table name from ServiceDef**
+1. **RESOLVED: Table name from ServiceDef**
    - What we know: `ServiceDef` has no `table` field; `crud_operations.rs` uses
      `model.table.unwrap_or_else(|| name + "s")`.
    - What's unclear: Phase 197 uses the same heuristic; irregular plurals will
@@ -888,7 +888,7 @@ bind parameters.
    - Recommendation: Add a `TODO` comment; defer a `ServiceDef.table` field to a
      follow-on. For Phase 197 the heuristic is acceptable for the skeleton.
 
-2. **Dispatch result serialization to MCP `CallToolResult` content**
+2. **RESOLVED: Dispatch result serialization to MCP `CallToolResult` content**
    - What we know: Phase 197 needs to serialize `Vec<serde_json::Value>` as MCP
      structured content. `rmcp::model` has `CallToolResult` and `Content` types.
    - What's unclear: Whether `ferro-mcp-server` should produce a `CallToolResult`
