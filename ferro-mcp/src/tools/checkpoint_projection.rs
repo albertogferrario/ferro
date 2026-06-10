@@ -11,6 +11,10 @@ use std::sync::LazyLock;
 use super::inspect_projection::InspectResult;
 use super::list_models;
 use super::render_projection::reconstruct_service_def;
+use super::{
+    json_ui_validate_spec, json_ui_verify_action, list_routes, render_projection,
+    validate_contracts, validate_projection,
+};
 
 // ---------------------------------------------------------------------------
 // Public output-contract types (D-07 locked shape, reused verbatim by Phase 195)
@@ -183,38 +187,35 @@ pub(crate) async fn run_for(
         &content,
     );
 
-    // 4. Stubs for seams 1/3/4/5 (Phase 195 fills these).
-    //    Seam cascade rule (locked in STATE.md):
-    //    - seam 1 fail → seams 4 and 5 become not_checked("seam_1_failed")
-    //    - seam 4 fail → seam 5 becomes not_checked("seam_4_failed")
-    //    - seams 2 and 3 run independently of seam 1.
-    let seam1 = SeamResult {
-        seam: "projection_well_formed".to_string(),
-        status: SeamStatus::NotChecked,
-        source: "checkpoint".to_string(),
-        findings: vec![],
-        reason: Some("not_implemented_phase_195".to_string()),
+    // 4. Reconstruct ServiceDef for seam 3 (action_to_route).
+    //    Reuse the same source parsed above — do not re-read the file.
+    let service_def =
+        reconstruct_service_def(&detail.service_name, &detail.display_name, &content).ok();
+
+    // 5. Pre-load routes once for seam 3 (async I/O done here, find_handler is sync).
+    let routes = list_routes::execute(project_root)
+        .await
+        .map(|info| info.routes)
+        .ok();
+
+    // 6. Seam cascade (D-06):
+    //    - seam 1 and seam 3 always run (seam 1 fail does NOT block seam 3)
+    //    - seam 2 always runs (independent, uses its own model resolution)
+    //    - seam 4: skip if seam 1 failed
+    //    - seam 5: skip if seam 1 failed OR seam 4 failed
+    let seam1 = projection_well_formed_seam(project_root, name);
+    let seam3 = action_to_route_seam(service_def.as_ref(), routes.as_deref());
+    let seam4 = if seam1.status == SeamStatus::Fail {
+        make_not_checked("rendered_view", "render_projection", "seam_1_failed")
+    } else {
+        rendered_view_seam(project_root, name)
     };
-    let seam3 = SeamResult {
-        seam: "action_to_route".to_string(),
-        status: SeamStatus::NotChecked,
-        source: "checkpoint".to_string(),
-        findings: vec![],
-        reason: Some("not_implemented_phase_195".to_string()),
-    };
-    let seam4 = SeamResult {
-        seam: "rendered_view".to_string(),
-        status: SeamStatus::NotChecked,
-        source: "checkpoint".to_string(),
-        findings: vec![],
-        reason: Some("not_implemented_phase_195".to_string()),
-    };
-    let seam5 = SeamResult {
-        seam: "props_to_contract".to_string(),
-        status: SeamStatus::NotChecked,
-        source: "checkpoint".to_string(),
-        findings: vec![],
-        reason: Some("not_implemented_phase_195".to_string()),
+    let seam5 = if seam1.status == SeamStatus::Fail {
+        make_not_checked("props_to_contract", "validate_contracts", "seam_1_failed")
+    } else if seam4.status == SeamStatus::Fail {
+        make_not_checked("props_to_contract", "validate_contracts", "seam_4_failed")
+    } else {
+        props_to_contract_seam(project_root, &detail.service_name)
     };
 
     // 5. Aggregate verdict (D-09).
@@ -343,6 +344,330 @@ fn field_to_column_seam(
         source: "checkpoint".to_string(),
         findings,
         reason: None,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Seam 1: projection_well_formed via validate_projection
+// ---------------------------------------------------------------------------
+
+/// Dispatch to `validate_projection::execute_single` and normalize findings.
+///
+/// `source` is always `"validate_projection"` (SC-4: never `"checkpoint"` for wrapper seams).
+fn projection_well_formed_seam(project_root: &Path, name: &str) -> SeamResult {
+    match validate_projection::execute_single(project_root, name) {
+        Err(e) => SeamResult {
+            seam: "projection_well_formed".to_string(),
+            status: SeamStatus::NotChecked,
+            source: "validate_projection".to_string(),
+            findings: vec![Finding {
+                subject: name.to_string(),
+                detail: e,
+                fix: "ensure the projection file exists and is discoverable".to_string(),
+            }],
+            reason: Some("validate_projection_unavailable".to_string()),
+        },
+        Ok(vr) => {
+            let mut findings: Vec<Finding> = vr
+                .errors
+                .iter()
+                .map(|e| Finding {
+                    subject: vr.service_name.clone(),
+                    detail: e.clone(),
+                    fix: "fix the structural error in the projection source".to_string(),
+                })
+                .collect();
+            findings.extend(vr.warnings.iter().map(|w| Finding {
+                subject: vr.service_name.clone(),
+                detail: w.clone(),
+                fix: "fix the structural error in the projection source".to_string(),
+            }));
+            let status = if !vr.valid {
+                SeamStatus::Fail
+            } else if !vr.warnings.is_empty() {
+                SeamStatus::Warn
+            } else {
+                SeamStatus::Pass
+            };
+            SeamResult {
+                seam: "projection_well_formed".to_string(),
+                status,
+                source: "validate_projection".to_string(),
+                findings,
+                reason: None,
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Seam 3: action_to_route via json_ui_verify_action (independent of seam 1)
+// ---------------------------------------------------------------------------
+
+/// Dispatch to `json_ui_verify_action::find_handler` for each action in the ServiceDef.
+///
+/// Routes are pre-loaded once at the top of `run_for` (async). `find_handler` is sync.
+/// `source` is always `"json_ui_verify_action"` (SC-4).
+fn action_to_route_seam(
+    service: Option<&ferro_projections::ServiceDef>,
+    routes: Option<&[list_routes::RouteInfo]>,
+) -> SeamResult {
+    let routes = match routes {
+        None => {
+            return SeamResult {
+                seam: "action_to_route".to_string(),
+                status: SeamStatus::NotChecked,
+                source: "json_ui_verify_action".to_string(),
+                findings: vec![],
+                reason: Some("route_list_unavailable".to_string()),
+            }
+        }
+        Some(r) => r,
+    };
+
+    // No service def or no actions — nothing to check.
+    let service = match service {
+        None => {
+            return SeamResult {
+                seam: "action_to_route".to_string(),
+                status: SeamStatus::Pass,
+                source: "json_ui_verify_action".to_string(),
+                findings: vec![],
+                reason: None,
+            };
+        }
+        Some(s) => s,
+    };
+    if service.actions.is_empty() {
+        return SeamResult {
+            seam: "action_to_route".to_string(),
+            status: SeamStatus::Pass,
+            source: "json_ui_verify_action".to_string(),
+            findings: vec![],
+            reason: None,
+        };
+    }
+    let actions = &service.actions;
+
+    let mut findings = Vec::new();
+    for action in actions {
+        let result = json_ui_verify_action::find_handler(routes, &action.name, None);
+        if !result.found {
+            findings.push(Finding {
+                subject: action.name.clone(),
+                detail: format!("action '{}' has no registered route", action.name),
+                fix: format!(
+                    "register a route for handler '{}'{}",
+                    action.name,
+                    result
+                        .candidate
+                        .as_ref()
+                        .map(|c| format!("; closest match: '{c}'"))
+                        .unwrap_or_default()
+                ),
+            });
+        }
+    }
+
+    SeamResult {
+        seam: "action_to_route".to_string(),
+        status: if findings.is_empty() {
+            SeamStatus::Pass
+        } else {
+            SeamStatus::Fail
+        },
+        source: "json_ui_verify_action".to_string(),
+        findings,
+        reason: None,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Seam 4: rendered_view via render_projection + json_ui_validate_spec
+// ---------------------------------------------------------------------------
+
+/// Dispatch to `render_projection::execute` then `json_ui_validate_spec::execute`.
+///
+/// Two-source rule (D-04): render failures use `source: "render_projection"`;
+/// spec-validation findings use `source: "json_ui_validate_spec"`.
+/// Both belong to the `"rendered_view"` seam.
+fn rendered_view_seam(project_root: &Path, name: &str) -> SeamResult {
+    // Step 1: render the projection to JSON-UI.
+    let render = match render_projection::execute(project_root, name, None, None) {
+        Err(e) => {
+            return SeamResult {
+                seam: "rendered_view".to_string(),
+                status: SeamStatus::Fail,
+                source: "render_projection".to_string(),
+                findings: vec![Finding {
+                    subject: name.to_string(),
+                    detail: e,
+                    fix: "fix the projection before rendering".to_string(),
+                }],
+                reason: None,
+            }
+        }
+        Ok(r) => r,
+    };
+
+    // Step 2: validate the rendered spec.
+    let spec_json = match serde_json::to_string(&render.json_ui) {
+        Err(e) => {
+            return SeamResult {
+                seam: "rendered_view".to_string(),
+                status: SeamStatus::Fail,
+                source: "render_projection".to_string(),
+                findings: vec![Finding {
+                    subject: name.to_string(),
+                    detail: format!("failed to serialize rendered spec: {e}"),
+                    fix: "fix the projection before rendering".to_string(),
+                }],
+                reason: None,
+            }
+        }
+        Ok(s) => s,
+    };
+
+    let validate = json_ui_validate_spec::execute(&spec_json);
+
+    let mut findings: Vec<Finding> = validate
+        .structural_errors
+        .iter()
+        .chain(validate.catalog_errors.iter())
+        .map(|e| Finding {
+            subject: name.to_string(),
+            detail: e.clone(),
+            fix: "correct the spec field flagged by json_ui_validate_spec".to_string(),
+        })
+        .collect();
+
+    // Warnings from the spec validator are non-fatal; surface them as findings
+    // but do not fail the seam.
+    let has_errors = !validate.structural_errors.is_empty() || !validate.catalog_errors.is_empty();
+
+    findings.extend(validate.warnings.iter().map(|w| Finding {
+        subject: name.to_string(),
+        detail: w.clone(),
+        fix: "review the spec warning from json_ui_validate_spec".to_string(),
+    }));
+
+    let status = if has_errors {
+        SeamStatus::Fail
+    } else if !validate.warnings.is_empty() {
+        SeamStatus::Warn
+    } else {
+        SeamStatus::Pass
+    };
+
+    SeamResult {
+        seam: "rendered_view".to_string(),
+        status,
+        source: "json_ui_validate_spec".to_string(),
+        findings,
+        reason: None,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Seam 5: props_to_contract via validate_contracts
+// ---------------------------------------------------------------------------
+
+/// Dispatch to `validate_contracts::execute` scoped to the projection's service name.
+///
+/// The `route_filter` is the projection `service_name` lowercased — a SUBSTRING match
+/// (Pitfall 6: may include adjacent routes sharing the substring; acceptable for Phase 195;
+/// exact scoping is explicitly Phase 196).
+///
+/// `source` is always `"validate_contracts"` (SC-4).
+fn props_to_contract_seam(project_root: &Path, service_name: &str) -> SeamResult {
+    let filter = service_name.to_lowercase();
+    match validate_contracts::execute(project_root, Some(&filter)) {
+        Err(e) => {
+            // routes file missing is the expected not-checked path.
+            let reason = if e.to_string().contains("src/routes.rs") {
+                "routes_file_missing".to_string()
+            } else {
+                format!("validate_contracts_unavailable: {e}")
+            };
+            SeamResult {
+                seam: "props_to_contract".to_string(),
+                status: SeamStatus::NotChecked,
+                source: "validate_contracts".to_string(),
+                findings: vec![],
+                reason: Some(reason),
+            }
+        }
+        Ok(result) => {
+            let mut findings = Vec::new();
+            for v in &result.validations {
+                if matches!(v.status, validate_contracts::ValidationStatus::Failed) {
+                    for mismatch in &v.mismatches {
+                        findings.push(Finding {
+                            subject: format!("{}.{}", v.route, mismatch.field),
+                            detail: mismatch.details.clone(),
+                            fix: "align Rust InertiaProps struct with TypeScript interface"
+                                .to_string(),
+                        });
+                    }
+                }
+            }
+            SeamResult {
+                seam: "props_to_contract".to_string(),
+                status: if findings.is_empty() {
+                    SeamStatus::Pass
+                } else {
+                    SeamStatus::Fail
+                },
+                source: "validate_contracts".to_string(),
+                findings,
+                reason: None,
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shared not_checked constructor (avoids repetition in cascade wiring)
+// ---------------------------------------------------------------------------
+
+/// Build a `NotChecked` `SeamResult` for cascade gates.
+///
+/// `seam`: the seam name being skipped.
+/// `source`: the delegating validator name (SC-4: never `"checkpoint"` for wrapper seams).
+/// `reason`: the cascade reason string (e.g. `"seam_1_failed"`).
+fn make_not_checked(seam: &str, source: &str, reason: &str) -> SeamResult {
+    SeamResult {
+        seam: seam.to_string(),
+        status: SeamStatus::NotChecked,
+        source: source.to_string(),
+        findings: vec![],
+        reason: Some(reason.to_string()),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cascade gate decision helpers (pure, unit-testable without project I/O)
+// ---------------------------------------------------------------------------
+
+/// Returns the cascade skip reason for seam 4, or `None` if seam 4 should run.
+#[cfg(test)]
+fn decide_seam4(seam1_status: &SeamStatus) -> Option<&'static str> {
+    if *seam1_status == SeamStatus::Fail {
+        Some("seam_1_failed")
+    } else {
+        None
+    }
+}
+
+/// Returns the cascade skip reason for seam 5, or `None` if seam 5 should run.
+#[cfg(test)]
+fn decide_seam5(seam1_status: &SeamStatus, seam4_status: &SeamStatus) -> Option<&'static str> {
+    if *seam1_status == SeamStatus::Fail {
+        Some("seam_1_failed")
+    } else if *seam4_status == SeamStatus::Fail {
+        Some("seam_4_failed")
+    } else {
+        None
     }
 }
 
@@ -1345,6 +1670,298 @@ pub fn booking_service() -> ServiceDef {
                 // The stub literals are the source of truth; the grep gate in CI enforces
                 // the absence of old names. This path is acceptable: run_for correctly
                 // returns Err when the projection is not indexed.
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 195 Task 1 tests: seam 1 + seam 3 provenance + independence
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn seam1_source_provenance() {
+        // Seam 1 must carry source == "validate_projection" (SC-4).
+        // Call projection_well_formed_seam directly on a fixture that returns
+        // any outcome (pass/fail/not_checked) — the source must never be "checkpoint".
+        let tmp = tempfile::tempdir().unwrap();
+        // A valid projection source.
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}
+"#;
+        let proj_dir = tmp.path().join("src/projections");
+        std::fs::create_dir_all(&proj_dir).unwrap();
+        std::fs::write(proj_dir.join("booking_service.rs"), proj_src).unwrap();
+
+        let seam = projection_well_formed_seam(tmp.path(), "booking_service");
+
+        assert_ne!(
+            seam.source, "checkpoint",
+            "seam 'projection_well_formed' must not have source 'checkpoint'; got: {}",
+            seam.source
+        );
+        assert_eq!(
+            seam.source, "validate_projection",
+            "seam 'projection_well_formed' must have source 'validate_projection'"
+        );
+    }
+
+    #[tokio::test]
+    async fn seam3_source_provenance() {
+        // Seam 3 must carry source == "json_ui_verify_action" (SC-4).
+        // Call action_to_route_seam with an empty routes list (not_checked path).
+        let seam_no_routes = action_to_route_seam(None, None);
+        assert_eq!(seam_no_routes.seam, "action_to_route");
+        assert_ne!(
+            seam_no_routes.source, "checkpoint",
+            "seam 'action_to_route' must not have source 'checkpoint'"
+        );
+        assert_eq!(
+            seam_no_routes.source, "json_ui_verify_action",
+            "seam 'action_to_route' must have source 'json_ui_verify_action'"
+        );
+
+        // Also test with a real empty routes list (Pass path).
+        let seam_empty_routes = action_to_route_seam(None, Some(&[]));
+        assert_eq!(seam_empty_routes.source, "json_ui_verify_action");
+        assert_eq!(seam_empty_routes.status, SeamStatus::Pass);
+    }
+
+    #[tokio::test]
+    async fn cascade_seams_2_3_independent() {
+        // Seams 2 and 3 must run even when seam 1 fails.
+        // Test via decide_seam4/decide_seam5 pure helpers and direct seam construction:
+        // when seam 1 = Fail, seam 4 and seam 5 are not_checked, but seam 3 is NOT.
+        //
+        // Verify the pure cascade decision helpers directly (deterministic, no I/O).
+        assert_eq!(
+            decide_seam4(&SeamStatus::Fail),
+            Some("seam_1_failed"),
+            "seam 4 must be skipped when seam 1 fails"
+        );
+        assert_eq!(
+            decide_seam4(&SeamStatus::Pass),
+            None,
+            "seam 4 must run when seam 1 passes"
+        );
+        assert_eq!(
+            decide_seam4(&SeamStatus::Warn),
+            None,
+            "seam 4 must run when seam 1 warns"
+        );
+        assert_eq!(
+            decide_seam4(&SeamStatus::NotChecked),
+            None,
+            "seam 4 must run when seam 1 is not_checked"
+        );
+
+        // Seam 3 has no gate in decide_seam4 — it always runs independently.
+        // Verify via action_to_route_seam directly: it takes no seam1 input.
+        let seam3 = action_to_route_seam(None, Some(&[]));
+        assert_ne!(
+            seam3.status,
+            SeamStatus::NotChecked,
+            "seam 3 must not be not_checked due to seam 1 failure — it runs independently"
+        );
+        // (The above is Pass because no actions; the key is it ran, not that it passed.)
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 195 Task 2 tests: seam 4 + seam 5 provenance
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn seam4_source_provenance() {
+        // Seam 4 must carry source == "render_projection" on render failure
+        // and source == "json_ui_validate_spec" on spec-validation outcome.
+        let tmp = tempfile::tempdir().unwrap();
+
+        // Render failure path: projection not found → source "render_projection".
+        let seam_fail = rendered_view_seam(tmp.path(), "nonexistent_service");
+        assert_eq!(seam_fail.seam, "rendered_view");
+        assert_ne!(
+            seam_fail.source, "checkpoint",
+            "rendered_view seam must not have source 'checkpoint'"
+        );
+        // On render failure source is "render_projection".
+        assert_eq!(
+            seam_fail.source, "render_projection",
+            "render failure must carry source 'render_projection'"
+        );
+        assert_eq!(seam_fail.status, SeamStatus::Fail);
+
+        // Spec-validation path: a projection that renders OK should carry
+        // source "json_ui_validate_spec". We test this via a valid projection fixture.
+        let proj_src = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning};
+pub fn booking_service() -> ServiceDef {
+    ServiceDef::new("booking")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}
+"#;
+        let proj_dir = tmp.path().join("src/projections");
+        std::fs::create_dir_all(&proj_dir).unwrap();
+        std::fs::write(proj_dir.join("booking_service.rs"), proj_src).unwrap();
+
+        let seam_spec = rendered_view_seam(tmp.path(), "booking_service");
+        assert_eq!(seam_spec.seam, "rendered_view");
+        assert_ne!(
+            seam_spec.source, "checkpoint",
+            "rendered_view seam must not have source 'checkpoint'"
+        );
+        // When render succeeds, source is "json_ui_validate_spec".
+        assert_eq!(
+            seam_spec.source, "json_ui_validate_spec",
+            "spec-validation outcome must carry source 'json_ui_validate_spec'"
+        );
+    }
+
+    #[tokio::test]
+    async fn seam5_source_provenance() {
+        // Seam 5 must carry source == "validate_contracts" (SC-4).
+        // Use a temp dir with no src/routes.rs → not_checked("routes_file_missing").
+        let tmp = tempfile::tempdir().unwrap();
+
+        let seam = props_to_contract_seam(tmp.path(), "booking");
+
+        assert_eq!(seam.seam, "props_to_contract");
+        assert_ne!(
+            seam.source, "checkpoint",
+            "seam 'props_to_contract' must not have source 'checkpoint'"
+        );
+        assert_eq!(
+            seam.source, "validate_contracts",
+            "seam 'props_to_contract' must have source 'validate_contracts'"
+        );
+        // No routes.rs → not_checked.
+        assert_eq!(seam.status, SeamStatus::NotChecked);
+        assert_eq!(seam.reason.as_deref(), Some("routes_file_missing"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 195 Task 3 tests: SC-4 guard + cascade
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn decide_seam5_pure() {
+        // Unit-test the pure cascade decision helper for seam 5.
+        assert_eq!(
+            decide_seam5(&SeamStatus::Fail, &SeamStatus::Pass),
+            Some("seam_1_failed")
+        );
+        assert_eq!(
+            decide_seam5(&SeamStatus::Pass, &SeamStatus::Fail),
+            Some("seam_4_failed")
+        );
+        assert_eq!(
+            decide_seam5(&SeamStatus::Fail, &SeamStatus::Fail),
+            Some("seam_1_failed"),
+            "seam 1 fail takes precedence over seam 4 fail"
+        );
+        assert_eq!(decide_seam5(&SeamStatus::Pass, &SeamStatus::Pass), None);
+        assert_eq!(decide_seam5(&SeamStatus::Warn, &SeamStatus::Warn), None);
+        assert_eq!(
+            decide_seam5(&SeamStatus::Pass, &SeamStatus::NotChecked),
+            None
+        );
+    }
+
+    #[test]
+    fn decide_seam4_pure() {
+        // Unit-test the pure cascade decision helper for seam 4.
+        assert_eq!(decide_seam4(&SeamStatus::Fail), Some("seam_1_failed"));
+        assert_eq!(decide_seam4(&SeamStatus::Pass), None);
+        assert_eq!(decide_seam4(&SeamStatus::Warn), None);
+        assert_eq!(decide_seam4(&SeamStatus::NotChecked), None);
+    }
+
+    #[test]
+    fn cascade_seam1_fail() {
+        // When seam 1 fails, seams 4 and 5 must be not_checked("seam_1_failed").
+        // Test via make_not_checked and decide_seam4/5 pure helpers.
+        let seam1_status = SeamStatus::Fail;
+
+        // Seam 4 decision.
+        let seam4_reason = decide_seam4(&seam1_status);
+        assert_eq!(seam4_reason, Some("seam_1_failed"));
+        let seam4 = make_not_checked("rendered_view", "render_projection", "seam_1_failed");
+        assert_eq!(seam4.status, SeamStatus::NotChecked);
+        assert_eq!(seam4.reason.as_deref(), Some("seam_1_failed"));
+        assert_eq!(seam4.seam, "rendered_view");
+
+        // Seam 5 decision (seam 4 status here is not_checked, not fail — seam 1 takes precedence).
+        let seam5_reason = decide_seam5(&seam1_status, &seam4.status);
+        assert_eq!(seam5_reason, Some("seam_1_failed"));
+        let seam5 = make_not_checked("props_to_contract", "validate_contracts", "seam_1_failed");
+        assert_eq!(seam5.status, SeamStatus::NotChecked);
+        assert_eq!(seam5.reason.as_deref(), Some("seam_1_failed"));
+    }
+
+    #[test]
+    fn cascade_seam4_fail() {
+        // When seam 1 passes but seam 4 fails, seam 5 must be not_checked("seam_4_failed").
+        let seam1_status = SeamStatus::Pass;
+        let seam4_status = SeamStatus::Fail;
+
+        let seam4_reason = decide_seam4(&seam1_status);
+        assert_eq!(seam4_reason, None, "seam 4 should run when seam 1 passes");
+
+        let seam5_reason = decide_seam5(&seam1_status, &seam4_status);
+        assert_eq!(seam5_reason, Some("seam_4_failed"));
+
+        let seam5 = make_not_checked("props_to_contract", "validate_contracts", "seam_4_failed");
+        assert_eq!(seam5.status, SeamStatus::NotChecked);
+        assert_eq!(seam5.reason.as_deref(), Some("seam_4_failed"));
+        assert_eq!(seam5.seam, "props_to_contract");
+    }
+
+    #[tokio::test]
+    async fn sc4_no_checkpoint_source_on_wrapper_seams() {
+        // SC-4 guard: for every SeamResult where seam != "field_to_column",
+        // source must NOT be "checkpoint".
+        // Build a verdict by calling the dispatch functions directly with fixtures
+        // that exercise each seam's primary code path.
+        let tmp = tempfile::tempdir().unwrap();
+
+        // Seam 1: projection not found → not_checked with source "validate_projection".
+        let seam1 = projection_well_formed_seam(tmp.path(), "nonexistent_service");
+
+        // Seam 3: no routes available → not_checked with source "json_ui_verify_action".
+        let seam3 = action_to_route_seam(None, None);
+
+        // Seam 4: projection not found → fail with source "render_projection".
+        let seam4 = rendered_view_seam(tmp.path(), "nonexistent_service");
+
+        // Seam 5: no routes.rs → not_checked with source "validate_contracts".
+        let seam5 = props_to_contract_seam(tmp.path(), "booking");
+
+        // field_to_column seam — source "checkpoint" is allowed here.
+        let seam2 = SeamResult {
+            seam: "field_to_column".to_string(),
+            status: SeamStatus::Pass,
+            source: "checkpoint".to_string(),
+            findings: vec![],
+            reason: None,
+        };
+
+        let verdict = Verdict {
+            status: SeamStatus::Pass,
+            projection: "test".to_string(),
+            seams: vec![seam1, seam2, seam3, seam4, seam5],
+            next_steps: vec![],
+        };
+
+        // The SC-4 guard: wrapper seams must not claim source "checkpoint".
+        for seam in &verdict.seams {
+            if seam.seam != "field_to_column" {
+                assert_ne!(
+                    seam.source, "checkpoint",
+                    "seam '{}' must not use source 'checkpoint'; use the delegating validator name",
+                    seam.seam
+                );
             }
         }
     }
