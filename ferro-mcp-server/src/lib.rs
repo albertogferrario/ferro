@@ -10,4 +10,4 @@ pub mod schema;
 
 pub use dispatch::{dispatch, DispatchResult};
 pub use error::{Error, Result};
-pub use renderer::{McpContext, McpRenderer};
+pub use renderer::{render_exposed_tools, McpContext, McpRenderer};
