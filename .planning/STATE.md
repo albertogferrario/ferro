@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v12.5
 milestone_name: Projection Checkpoint
 status: verifying
-stopped_at: Completed 195-close-the-loop-by-default-04-PLAN.md
-last_updated: "2026-06-10T01:00:28.601Z"
+stopped_at: Phase 196 context gathered
+last_updated: "2026-06-10T01:07:05.840Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 78
@@ -369,7 +369,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-10T00:50:22.343Z
-Stopped at: Completed 195-close-the-loop-by-default-04-PLAN.md
-Resume file: None
+Last session: 2026-06-10T01:07:05.805Z
+Stopped at: Phase 196 context gathered
+Resume file: .planning/phases/196-dogfood-acceptance-hardening/196-CONTEXT.md
 Next action: `/gsd-plan-phase 194`
