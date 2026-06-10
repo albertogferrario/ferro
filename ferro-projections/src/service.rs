@@ -77,6 +77,11 @@ pub struct ServiceDef {
     pub intent_hints: Vec<IntentHint>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_machine: Option<StateMachine>,
+    /// Whether this projection is exposed as an MCP tool.
+    /// Defaults to `false`. Only projections with `mcp_exposed: true`
+    /// appear in a `tools/list` response.
+    #[serde(default)]
+    pub mcp_exposed: bool,
 }
 
 impl ServiceDef {
@@ -92,6 +97,7 @@ impl ServiceDef {
             relationships: Vec::new(),
             intent_hints: Vec::new(),
             state_machine: None,
+            mcp_exposed: false,
         }
     }
 
@@ -104,6 +110,12 @@ impl ServiceDef {
     /// Sets the service description.
     pub fn description(mut self, desc: impl Into<String>) -> Self {
         self.description = Some(desc.into());
+        self
+    }
+
+    /// Marks this projection as MCP-exposed.
+    pub fn mcp_exposed(mut self, exposed: bool) -> Self {
+        self.mcp_exposed = exposed;
         self
     }
 
