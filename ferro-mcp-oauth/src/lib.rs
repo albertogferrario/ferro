@@ -20,5 +20,6 @@ pub mod validate;
 
 pub use config::{OAuthConfig, OAuthConfigError};
 pub use error::OAuthError;
+pub use jwt::McpTokenClaims;
 pub use migration::Migration as CreateOauthClientsTable;
-pub use validate::validate_bearer;
+pub use validate::{validate_bearer, BearerCheck};
