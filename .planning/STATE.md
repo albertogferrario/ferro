@@ -4,7 +4,7 @@ milestone: v12.5
 milestone_name: Projection Checkpoint
 status: verifying
 stopped_at: Completed 195-close-the-loop-by-default-04-PLAN.md
-last_updated: "2026-06-10T00:50:22.350Z"
+last_updated: "2026-06-10T01:00:28.601Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 78
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 195 (Close the Loop by Default) — EXECUTING
-Plan: 4 of 4
+Phase: 196
+Plan: Not started
 Next: `/gsd-plan-phase 194`
 Status: Phase complete — ready for verification
 
@@ -72,7 +72,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 260
+- Total plans completed: 264
 - Average duration: —
 - Total execution time: —
 
@@ -125,6 +125,7 @@ Progress: [░░░░░░░░░░] 0%
 | 192 | 2 | - | - |
 | 193 | 1 | - | - |
 | 194 | 3 | - | - |
+| 195 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
