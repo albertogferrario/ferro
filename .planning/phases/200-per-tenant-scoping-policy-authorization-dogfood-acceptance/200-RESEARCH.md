@@ -533,22 +533,25 @@ For the dogfood fixture specifically: a path-based or header-based resolver on `
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`/authorize` tenant resolver for the dogfood**
    - What we know: `authorize_get`/`authorize_post` capture `current_tenant()`. For the dogfood, the token must carry a real `tenant_id`. `TenantMiddleware` must run on `/authorize`.
    - What's unclear: Which resolver? `SubdomainResolver` needs a real domain. `PathResolver` needs URL restructuring. `HeaderResolver` needs client cooperation.
    - Recommendation: Add a `SubdomainResolver` or use a `HeaderResolver("X-Tenant-Slug")` on `/authorize` for the dogfood, pointing at the seeded tenant slug. Alternatively, add `tenant_id` to the existing `users` table and have `/authorize` resolve tenant from the authenticated user's `tenant_id` (a user-scoped resolver).
+   - **RESOLVED:** Plan 04 implements `SessionUserTenantResolver` (reads the session user's `tenant_id` via `Auth::id()` at authorize time, since no JWT exists yet); chosen over subdomain/header for the localhost dogfood.
 
 2. **`users` table migration: add `tenant_id` column or not**
    - What we know: The users table has no `tenant_id` column currently. `TenantMiddleware` on `/authorize` needs to know which tenant the logged-in user belongs to.
    - What's unclear: Whether to (a) add FK to users via a new migration, (b) use a separate resolver that doesn't depend on the user table (subdomain/header), or (c) set a cookie/session after login that specifies tenant.
    - Recommendation: Add `tenant_id INTEGER NULLABLE REFERENCES tenants(id)` to users via a new migration and write a custom resolver that reads the authenticated user's `tenant_id`. This is the cleanest single-source-of-truth approach.
+   - **RESOLVED:** Plan 03 adds the `users.tenant_id` association (migration `m20260611_add_tenant_id_to_users.rs` in Plan 03's task) so a user maps to a tenant.
 
 3. **`ferro-mcp-oauth/src/authorize.rs` — does it already call `current_tenant()`?**
    - What we know: Phase 199 CONTEXT D-06 says "tenant bound from `current_tenant()` at authorize time." The code was written in Phase 199.
    - What's unclear: Whether `authorize_post` already has `current_tenant()` call, making this a wiring-only task.
    - Recommendation: Verify by reading `ferro-mcp-oauth/src/authorize.rs` before planning.
+   - **RESOLVED:** `ferro-mcp-oauth/src/authorize.rs` already calls `current_tenant()` at line 138, so wiring `TenantMiddleware` onto `/authorize` is sufficient (Plan 04, wiring-only).
 
 ---
 
