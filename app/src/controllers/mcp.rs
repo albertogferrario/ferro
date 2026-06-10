@@ -272,11 +272,13 @@ mod tests {
         };
 
         // Must be a JSON-RPC success envelope with isError:true (D-09, not a transport 401).
-        assert_eq!(response["jsonrpc"], "2.0", "must be a valid JSON-RPC envelope");
+        assert_eq!(
+            response["jsonrpc"], "2.0",
+            "must be a valid JSON-RPC envelope"
+        );
         assert_eq!(response["id"], 42, "id must be forwarded");
         assert_eq!(
-            response["result"]["isError"],
-            true,
+            response["result"]["isError"], true,
             "isError must be true for policy deny"
         );
         // No "error" key at top level (this would indicate a JSON-RPC error, not a tool error).
@@ -290,14 +292,26 @@ mod tests {
             .expect("content[0].text must exist");
 
         // D-09: no data disclosure in denial message.
-        assert!(!text.contains("orders"), "denial must not disclose table name 'orders'");
-        assert!(!text.contains("customer_name"), "denial must not disclose column name");
-        assert!(!text.contains("tenant_id"), "denial must not disclose column name");
+        assert!(
+            !text.contains("orders"),
+            "denial must not disclose table name 'orders'"
+        );
+        assert!(
+            !text.contains("customer_name"),
+            "denial must not disclose column name"
+        );
+        assert!(
+            !text.contains("tenant_id"),
+            "denial must not disclose column name"
+        );
         // No digit-only tokens (no row counts).
         let has_row_count = text
             .split_whitespace()
             .any(|w| !w.is_empty() && w.chars().all(|c| c.is_ascii_digit()));
-        assert!(!has_row_count, "denial must not disclose numeric row counts");
+        assert!(
+            !has_row_count,
+            "denial must not disclose numeric row counts"
+        );
     }
 
     /// T-200-04: Gate deny → isError:true; deny body discloses no resource information (D-09).
@@ -335,20 +349,44 @@ mod tests {
         let text = content[0]["text"].as_str().expect("text must be a string");
 
         // D-09 no-disclosure: the message must not contain resource-identifying strings.
-        assert!(!text.contains("orders"), "deny text must not contain table name 'orders'");
-        assert!(!text.contains("customer_name"), "deny text must not disclose column 'customer_name'");
-        assert!(!text.contains("total"), "deny text must not disclose column 'total'");
-        assert!(!text.contains("status"), "deny text must not disclose column 'status'");
-        assert!(!text.contains("tenant_id"), "deny text must not disclose column 'tenant_id'");
+        assert!(
+            !text.contains("orders"),
+            "deny text must not contain table name 'orders'"
+        );
+        assert!(
+            !text.contains("customer_name"),
+            "deny text must not disclose column 'customer_name'"
+        );
+        assert!(
+            !text.contains("total"),
+            "deny text must not disclose column 'total'"
+        );
+        assert!(
+            !text.contains("status"),
+            "deny text must not disclose column 'status'"
+        );
+        assert!(
+            !text.contains("tenant_id"),
+            "deny text must not disclose column 'tenant_id'"
+        );
         // No isolated digit-only tokens (no row counts).
         let has_digits_only_token = text
             .split_whitespace()
             .any(|w| !w.is_empty() && w.chars().all(|c| c.is_ascii_digit()));
-        assert!(!has_digits_only_token, "deny text must not contain numeric row counts");
+        assert!(
+            !has_digits_only_token,
+            "deny text must not contain numeric row counts"
+        );
 
         // No rows or total count in the result.
-        assert!(result.get("rows").is_none(), "deny result must not contain rows");
-        assert!(result.get("total").is_none(), "deny result must not contain total count");
+        assert!(
+            result.get("rows").is_none(),
+            "deny result must not contain rows"
+        );
+        assert!(
+            result.get("total").is_none(),
+            "deny result must not contain total count"
+        );
     }
 
     /// Verify that make_tool_deny_response produces a JSON-RPC success envelope, per D-09.

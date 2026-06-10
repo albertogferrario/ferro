@@ -128,8 +128,8 @@ async fn seed_dogfood_data() {
     let now = "2026-06-10T00:00:00+00:00";
 
     // --- Tenants ---
-    use sea_orm::{ActiveModelTrait, ActiveValue::Set};
     use crate::models::entities::tenants::ActiveModel as TenantActive;
+    use sea_orm::{ActiveModelTrait, ActiveValue::Set};
 
     let acme = TenantActive {
         id: Set(1),

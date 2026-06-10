@@ -6,10 +6,10 @@
 //!
 //! Resolving: Auth::id() → User::find_by_id(id) → user.tenant_id → Tenant::find_by_id(tid)
 
-use async_trait::async_trait;
-use ferro::{Auth, TenantContext, TenantResolver, Request};
-use crate::models::users::User;
 use crate::models::tenants::Tenant;
+use crate::models::users::User;
+use async_trait::async_trait;
+use ferro::{Auth, Request, TenantContext, TenantResolver};
 
 /// Resolves the current tenant from the session-authenticated user's `tenant_id` field.
 ///
@@ -41,10 +41,7 @@ impl TenantResolver for SessionUserTenantResolver {
         let user_id = Auth::id()?;
 
         // Load the concrete user from the database.
-        let user = User::find_by_id(user_id)
-            .await
-            .ok()
-            .flatten()?;
+        let user = User::find_by_id(user_id).await.ok().flatten()?;
 
         // Extract the tenant FK.
         let tenant_id = user.tenant_id?;

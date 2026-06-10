@@ -86,7 +86,15 @@ async fn dispatch_non_filterable_field_rejected() {
 #[tokio::test]
 async fn dispatch_unknown_filter_key_returns_err() {
     let db = setup_db().await;
-    let res = dispatch(&item_service(), serde_json::json!({"bogus": 1}), 25, 0, &db, None).await;
+    let res = dispatch(
+        &item_service(),
+        serde_json::json!({"bogus": 1}),
+        25,
+        0,
+        &db,
+        None,
+    )
+    .await;
     assert!(
         res.is_err(),
         "unknown filter key must be rejected, not interpolated into SQL"

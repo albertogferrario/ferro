@@ -29,8 +29,8 @@ impl Middleware for BearerAuthMiddleware {
     async fn handle(&self, mut request: Request, next: Next) -> Response {
         let auth_header = request.header("Authorization").map(|s| s.to_owned());
 
-        let oauth_config = OAuthConfig::from_env()
-            .map_err(|_| challenge_response(&self.mcp_config))?;
+        let oauth_config =
+            OAuthConfig::from_env().map_err(|_| challenge_response(&self.mcp_config))?;
 
         // expected_tenant: None — TenantMiddleware runs next and owns tenant validation.
         // Pitfall 1: passing current_tenant() here would always be None (middleware ordering).

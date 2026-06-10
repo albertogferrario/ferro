@@ -355,6 +355,10 @@ mod tests {
             .await
             .expect("dispatch ok for non-tenant projection");
 
-        assert_eq!(result.rows.len(), 4, "non-tenant projection returns all 4 rows");
+        assert_eq!(
+            result.rows.len(),
+            4,
+            "non-tenant projection returns all 4 rows"
+        );
     }
 }

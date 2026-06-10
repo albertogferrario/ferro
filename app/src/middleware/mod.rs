@@ -2,8 +2,8 @@
 //!
 //! Each middleware has its own dedicated file following the framework convention.
 
-pub mod bearer_auth;
 mod auth;
+pub mod bearer_auth;
 mod logging;
 mod share_inertia;
 
