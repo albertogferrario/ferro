@@ -49,6 +49,7 @@ pub async fn handle_tools_call(
     call_params: Value,
     services: &[ServiceDef],
     db: &sea_orm::DatabaseConnection,
+    tenant_id: Option<i64>,
 ) -> Value {
     let tool_name = call_params["name"].as_str().unwrap_or("");
     let service_name = tool_name.strip_prefix("list_").unwrap_or(tool_name);
@@ -79,7 +80,7 @@ pub async fn handle_tools_call(
         obj.remove("offset");
     }
 
-    match dispatch(service, filters, limit, offset, db).await {
+    match dispatch(service, filters, limit, offset, db, tenant_id).await {
         Ok(result) => json!({
             "result": {
                 "content": result.rows,

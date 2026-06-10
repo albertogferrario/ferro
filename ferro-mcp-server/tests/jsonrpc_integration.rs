@@ -48,6 +48,7 @@ async fn tools_call_returns_rows() {
         json!({"name": "list_item", "arguments": {"limit": 10, "offset": 0}}),
         &services,
         &db,
+        None,
     )
     .await;
     let content = resp["result"]["content"].as_array().expect("content array");
@@ -62,6 +63,7 @@ async fn tools_call_unknown_tool_is_method_not_found() {
         json!({"name": "list_nonexistent", "arguments": {}}),
         &services,
         &db,
+        None,
     )
     .await;
     assert_eq!(resp["error"]["code"], -32601);
@@ -77,6 +79,7 @@ async fn tools_call_unknown_filter_is_invalid_params() {
         json!({"name": "list_item", "arguments": {"not_a_field": "x"}}),
         &services,
         &db,
+        None,
     )
     .await;
     assert_eq!(resp["error"]["code"], -32602);
