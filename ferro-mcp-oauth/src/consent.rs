@@ -23,6 +23,11 @@ use crate::authorize::html_escape;
 use crate::pkce::generate_auth_code;
 use crate::store::OAuthCode;
 
+/// Content-Type for HTML consent responses.
+///
+/// `HttpResponse::text()` defaults to `text/plain`; callers must override with this value.
+pub const CONSENT_CONTENT_TYPE: &str = "text/html; charset=utf-8";
+
 /// Consent form fields submitted by the browser.
 #[derive(Debug, Deserialize)]
 pub struct ConsentForm {

@@ -166,7 +166,8 @@ pub async fn authorize_get(req: ferro::Request) -> ferro::Response {
         user_id,
         tenant_id,
     );
-    Ok(ferro::HttpResponse::text(html).header("Content-Type", "text/html; charset=utf-8"))
+    Ok(ferro::HttpResponse::text(html)
+        .header("Content-Type", crate::consent::CONSENT_CONTENT_TYPE))
 }
 
 /// Build an HTML error page (never a redirect).
