@@ -1257,6 +1257,19 @@ mod tests {
     }
 
     #[test]
+    fn mcp_exposed_defaults_false_when_absent() {
+        let json = r#"{"name":"order","fields":[]}"#;
+        let parsed: ServiceDef = serde_json::from_str(json).unwrap();
+        assert!(!parsed.mcp_exposed);
+    }
+
+    #[test]
+    fn mcp_exposed_builder_sets_flag() {
+        let s = ServiceDef::new("order").mcp_exposed(true);
+        assert!(s.mcp_exposed);
+    }
+
+    #[test]
     fn service_def_json_schema_includes_relationships() {
         let schema = schemars::schema_for!(ServiceDef);
         let value = schema.to_value();
