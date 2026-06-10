@@ -25,6 +25,10 @@ impl Model {
     pub async fn find_by_email(email: &str) -> Result<Option<Self>, ferro::FrameworkError> {
         Self::query().filter(Column::Email.eq(email)).first().await
     }
+
+    pub async fn find_by_id(id: i64) -> Result<Option<Self>, ferro::FrameworkError> {
+        Self::query().filter(Column::Id.eq(id)).first().await
+    }
 }
 
 // ============================================================================

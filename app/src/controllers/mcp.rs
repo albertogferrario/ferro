@@ -86,7 +86,10 @@ pub async fn handle(req: Request) -> Response {
                     "error": { "code": -32603, "message": e.to_string() }
                 }))
             })?;
-            handle_tools_call(params, &exposed_services(), db.inner()).await
+            // Phase 200: tenant_id passed from current_tenant() (set by TenantMiddleware).
+            // Full gate check (user load + Gate::authorize_for) is wired in Plan 200-05.
+            let tenant_id = ferro::current_tenant().map(|t| t.id);
+            handle_tools_call(params, &exposed_services(), db.inner(), tenant_id).await
         }
         _ => json!({ "error": { "code": -32601, "message": "Method not found" } }),
     };
