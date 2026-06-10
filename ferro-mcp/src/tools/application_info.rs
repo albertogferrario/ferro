@@ -20,6 +20,7 @@ pub struct ApplicationInfo {
     pub features: FeatureSummary,
     pub broadcasting: BroadcastingStatus,
     pub claude_code_skills: ClaudeCodeSkillsStatus,
+    pub projection_checkpoint: ProjectionCheckpointSummary,
 }
 
 #[derive(Debug, Serialize)]
@@ -51,6 +52,14 @@ pub struct ClaudeCodeSkillsStatus {
     pub installed: bool,
     pub skill_count: usize,
     pub install_hint: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProjectionCheckpointSummary {
+    pub total_projections: usize,
+    pub clean: usize,
+    pub failing: usize,
+    pub unverified: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -105,6 +114,9 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
     // Check Claude Code skills installation
     let claude_code_skills = check_claude_code_skills();
 
+    // Aggregate projection checkpoint status from cache (read-only, stale-ok — D-11)
+    let projection_checkpoint = check_projection_checkpoint(project_root);
+
     Ok(ApplicationInfo {
         framework_version,
         rust_version,
@@ -116,6 +128,7 @@ pub fn execute(project_root: &Path) -> Result<ApplicationInfo> {
         features,
         broadcasting,
         claude_code_skills,
+        projection_checkpoint,
     })
 }
 
@@ -415,6 +428,24 @@ fn scan_localization(project_root: &Path) -> LocalizationStatus {
     }
 }
 
+fn check_projection_checkpoint(project_root: &Path) -> ProjectionCheckpointSummary {
+    let list = super::list_projections::execute(project_root, None);
+    let (mut clean, mut failing, mut unverified) = (0usize, 0usize, 0usize);
+    for proj in &list.projections {
+        match crate::tools::checkpoint_projection::read_ambient_status(project_root, &proj.name) {
+            "clean" => clean += 1,
+            "failing" => failing += 1,
+            _ => unverified += 1,
+        }
+    }
+    ProjectionCheckpointSummary {
+        total_projections: list.total,
+        clean,
+        failing,
+        unverified,
+    }
+}
+
 fn check_claude_code_skills() -> ClaudeCodeSkillsStatus {
     // Get home directory and check for skills
     let skills_dir = dirs::home_dir().map(|h| h.join(".claude").join("commands").join("ferro"));
@@ -501,6 +532,83 @@ mod tests {
         assert_eq!(status.view_count, 0);
         assert_eq!(status.views_dir, "src/views/");
         assert!(status.hint.is_some());
+    }
+
+    // ------------------------------------------------------------------
+    // CHK-08 tests: projection_checkpoint rollup via check_projection_checkpoint
+    // ------------------------------------------------------------------
+
+    /// Write a minimal projection source for list_projections to discover.
+    fn write_projection(root: &std::path::Path, fn_name: &str, service_name: &str) {
+        let dir = root.join("src/projections");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join(format!("{fn_name}.rs")),
+            format!(
+                r#"use ferro::{{ServiceDef, DataType, FieldMeaning}};
+pub fn {fn_name}() -> ServiceDef {{
+    ServiceDef::new("{service_name}")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}}
+"#
+            ),
+        )
+        .unwrap();
+    }
+
+    /// Write a checkpoint cache file for `proj_name`.
+    fn write_cache(root: &std::path::Path, proj_name: &str, status: &str) {
+        let dir = root.join(".ferro/checkpoints");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join(format!("{proj_name}.json")),
+            format!(r#"{{"ambient_status":"{status}"}}"#),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn projection_checkpoint_rollup_counts() {
+        // CHK-08: N projections with mixed cache states → rollup matches.
+        // total_projections == clean + failing + unverified.
+        let tmp = TempDir::new().unwrap();
+
+        write_projection(tmp.path(), "alpha_service", "alpha");
+        write_projection(tmp.path(), "beta_service", "beta");
+        write_projection(tmp.path(), "gamma_service", "gamma");
+
+        write_cache(tmp.path(), "alpha_service", "clean");
+        write_cache(tmp.path(), "beta_service", "failing");
+        // gamma_service has no cache → unverified
+
+        let summary = super::check_projection_checkpoint(tmp.path());
+
+        assert_eq!(
+            summary.total_projections,
+            summary.clean + summary.failing + summary.unverified,
+            "total_projections must equal clean + failing + unverified"
+        );
+        assert_eq!(summary.clean, 1, "one clean projection");
+        assert_eq!(summary.failing, 1, "one failing projection");
+        assert_eq!(summary.unverified, 1, "one unverified projection");
+        assert_eq!(summary.total_projections, 3);
+    }
+
+    #[test]
+    fn projection_checkpoint_empty_project() {
+        // CHK-08: no projections at all → all counts zero, total == 0.
+        let tmp = TempDir::new().unwrap();
+
+        let summary = super::check_projection_checkpoint(tmp.path());
+
+        assert_eq!(summary.total_projections, 0);
+        assert_eq!(summary.clean, 0);
+        assert_eq!(summary.failing, 0);
+        assert_eq!(summary.unverified, 0);
+        assert_eq!(
+            summary.total_projections,
+            summary.clean + summary.failing + summary.unverified
+        );
     }
 
     #[test]
