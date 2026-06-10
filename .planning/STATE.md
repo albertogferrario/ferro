@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.5
-milestone_name: Projection Checkpoint
-status: verifying
-stopped_at: Completed 196-04-PLAN.md
+milestone: v12.6
+milestone_name: Consumer App MCP (Browser Login)
+status: defining_requirements
+stopped_at: v12.6 started — defining requirements
 last_updated: "2026-06-10T03:47:30.437Z"
 last_activity: 2026-06-10
 progress:
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 196 — dogfood-acceptance-hardening
+**Current focus:** v12.6 Consumer App MCP (Browser Login) — defining requirements
 
 ## Current Position
 
-Phase: 196
-Plan: Not started
-Next: `/gsd-plan-phase 194`
-Status: Phase complete — ready for verification
+Phase: Not started (defining requirements)
+Plan: —
+Next: requirements → roadmap (phases continue at 197)
+Status: Defining requirements
 
 Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (55/62 phases)
 

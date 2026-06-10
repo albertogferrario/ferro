@@ -219,7 +219,22 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - [ ] Case-study diversification across application domains
 - [ ] Synthetic canonical-app-class catalog
 
-## Current Milestone: v12.5 Projection Checkpoint
+## Current Milestone: v12.6 Consumer App MCP (Browser Login)
+
+**Goal:** A deployed ferro application serves its own OAuth-protected MCP endpoint so a consumer agent can authenticate through the browser and use the application's projections as per-tenant tools.
+
+**Target features:**
+- `ferro-mcp-server` (new output crate) — an `McpRenderer` mapping a projection/intent to an MCP tool, mirroring `JsonUiRenderer` in `ferro-json-ui`; `ferro-projections` stays renderer-free.
+- Application-served MCP endpoint over Streamable HTTP (`initialize` / `tools/list` / `tools/call`).
+- Browser-based OAuth 2.1: the application is its own authorization and resource server, reusing existing login plus a consent step; dynamic client registration, PKCE, audience-bound tokens.
+- Opt-in projection exposure rendered as a read tool, scoped per tenant through the existing multi-tenant middleware and policy layer (no parallel permission system).
+- Dogfood acceptance: a real MCP client completes a browser login against a live consumer application and lists one projection's data, tenant-scoped.
+
+**Walking skeleton first:** read-only, one opt-in projection. Write intents, multi-projection auto-exposure, MCP-specific scopes, and development-time MCP experience are deferred to later milestones.
+
+**Design spec:** `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`.
+
+## Shipped Milestone: v12.5 Projection Checkpoint
 
 **Goal:** Close the agent write→verify loop. A projection-anchored checkpoint walks the intent-slice spine, dispatches to the existing validators at each seam, runs the one seam no validator covers today (projection field → model column), and returns a single structured verdict with ranked next steps — honest about coverage, and closing by default after generation.
 
