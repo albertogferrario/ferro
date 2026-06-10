@@ -198,27 +198,25 @@ pub(crate) async fn run_for(
         .map(|info| info.routes)
         .ok();
 
-    // 6. Seam cascade (D-06):
+    // 6. Seam cascade (D-06) — gate decisions delegated to the pure `decide_seam4`
+    //    / `decide_seam5` helpers (unit-tested directly, so the tests exercise the
+    //    same code this path runs):
     //    - seam 1 and seam 3 always run (seam 1 fail does NOT block seam 3)
     //    - seam 2 always runs (independent, uses its own model resolution)
     //    - seam 4: skip if seam 1 failed
     //    - seam 5: skip if seam 1 failed OR seam 4 failed
     let seam1 = projection_well_formed_seam(project_root, name);
     let seam3 = action_to_route_seam(service_def.as_ref(), routes.as_deref());
-    let seam4 = if seam1.status == SeamStatus::Fail {
-        make_not_checked("rendered_view", "render_projection", "seam_1_failed")
-    } else {
-        rendered_view_seam(project_root, name)
+    let seam4 = match decide_seam4(&seam1.status) {
+        Some(reason) => make_not_checked("rendered_view", "render_projection", reason),
+        None => rendered_view_seam(project_root, name),
     };
-    let seam5 = if seam1.status == SeamStatus::Fail {
-        make_not_checked("props_to_contract", "validate_contracts", "seam_1_failed")
-    } else if seam4.status == SeamStatus::Fail {
-        make_not_checked("props_to_contract", "validate_contracts", "seam_4_failed")
-    } else {
-        props_to_contract_seam(project_root, &detail.service_name)
+    let seam5 = match decide_seam5(&seam1.status, &seam4.status) {
+        Some(reason) => make_not_checked("props_to_contract", "validate_contracts", reason),
+        None => props_to_contract_seam(project_root, &detail.service_name),
     };
 
-    // 5. Aggregate verdict (D-09).
+    // 7. Aggregate verdict (D-09).
     let seams = vec![seam1, seam2, seam3, seam4, seam5];
     let next_steps = aggregate_next_steps(&seams);
     let status = aggregate_status(&seams);
@@ -230,7 +228,7 @@ pub(crate) async fn run_for(
         next_steps,
     };
 
-    // 6. Write status cache (D-11).
+    // 8. Write status cache (D-11).
     write_cache(project_root, name, &verdict, now)?;
 
     Ok(verdict)
@@ -650,7 +648,6 @@ fn make_not_checked(seam: &str, source: &str, reason: &str) -> SeamResult {
 // ---------------------------------------------------------------------------
 
 /// Returns the cascade skip reason for seam 4, or `None` if seam 4 should run.
-#[cfg(test)]
 fn decide_seam4(seam1_status: &SeamStatus) -> Option<&'static str> {
     if *seam1_status == SeamStatus::Fail {
         Some("seam_1_failed")
@@ -660,7 +657,6 @@ fn decide_seam4(seam1_status: &SeamStatus) -> Option<&'static str> {
 }
 
 /// Returns the cascade skip reason for seam 5, or `None` if seam 5 should run.
-#[cfg(test)]
 fn decide_seam5(seam1_status: &SeamStatus, seam4_status: &SeamStatus) -> Option<&'static str> {
     if *seam1_status == SeamStatus::Fail {
         Some("seam_1_failed")
@@ -825,6 +821,12 @@ fn write_cache(
 ///
 /// Never calls `run_for` or recomputes — read-only, stale-ok.
 pub(crate) fn read_ambient_status(project_root: &Path, name: &str) -> &'static str {
+    // Symmetric with the write path (T-195-01): reject unsafe names rather than
+    // building a path from them. Projection names come from the trusted scanner,
+    // so this is defense-in-depth (WR-04).
+    if validate_name(name).is_err() {
+        return "unverified";
+    }
     let path = project_root
         .join(".ferro")
         .join("checkpoints")
@@ -1237,7 +1239,9 @@ pub struct Booking {
         SeamResult {
             seam: seam.to_string(),
             status,
-            source: "checkpoint".to_string(),
+            // "test" rather than "checkpoint" so this helper never fabricates the
+            // SC-4-reserved provenance on a non-field_to_column seam (WR-05).
+            source: "test".to_string(),
             findings,
             reason: None,
         }
