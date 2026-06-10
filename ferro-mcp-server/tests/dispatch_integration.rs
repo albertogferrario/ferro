@@ -15,7 +15,7 @@ use ferro_projections::{DataType, FieldMeaning, ServiceDef};
 #[tokio::test]
 async fn dispatch_empty_filter_returns_all_rows() {
     let db = setup_db().await;
-    let result = dispatch(&item_service(), serde_json::json!({}), 25, 0, &db)
+    let result = dispatch(&item_service(), serde_json::json!({}), 25, 0, &db, None)
         .await
         .expect("dispatch should succeed");
     assert_eq!(result.total, 3, "total count should be 3");
@@ -33,6 +33,7 @@ async fn dispatch_filter_by_status_returns_matching_rows() {
         25,
         0,
         &db,
+        None,
     )
     .await
     .expect("filtered dispatch should succeed");
@@ -46,7 +47,7 @@ async fn dispatch_filter_by_status_returns_matching_rows() {
 #[tokio::test]
 async fn dispatch_limit_pagination_returns_subset_with_full_total() {
     let db = setup_db().await;
-    let result = dispatch(&item_service(), serde_json::json!({}), 2, 0, &db)
+    let result = dispatch(&item_service(), serde_json::json!({}), 2, 0, &db, None)
         .await
         .expect("paginated dispatch should succeed");
     assert_eq!(
@@ -73,6 +74,7 @@ async fn dispatch_non_filterable_field_rejected() {
         25,
         0,
         &db,
+        None,
     )
     .await;
     assert!(
@@ -84,7 +86,7 @@ async fn dispatch_non_filterable_field_rejected() {
 #[tokio::test]
 async fn dispatch_unknown_filter_key_returns_err() {
     let db = setup_db().await;
-    let res = dispatch(&item_service(), serde_json::json!({"bogus": 1}), 25, 0, &db).await;
+    let res = dispatch(&item_service(), serde_json::json!({"bogus": 1}), 25, 0, &db, None).await;
     assert!(
         res.is_err(),
         "unknown filter key must be rejected, not interpolated into SQL"

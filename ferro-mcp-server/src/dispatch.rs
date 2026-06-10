@@ -90,21 +90,28 @@ fn rows_to_json(rows: Vec<sea_orm::QueryResult>) -> Vec<serde_json::Value> {
         .collect()
 }
 
-/// Executes the projection's parameterized read path with filter-key allowlisting and
-/// offset-based pagination.
+/// Executes the projection's parameterized read path with filter-key allowlisting,
+/// offset-based pagination, and optional tenant predicate injection.
 ///
 /// Security: filter KEYS are validated against `service.fields` (allowlist) before any SQL
 /// assembly; unknown keys return `Err` and are never interpolated. Filter VALUES are bound
 /// via `Statement::from_sql_and_values`, never string-interpolated. Table name is derived
 /// from `service.name` (developer-controlled), not from the call payload.
 ///
-/// No tenant or ownership filter is applied here — Phase 200 owns that seam.
+/// Tenant scoping (SC-1): when `service.tenant_column` is `Some(col)`, the tenant predicate
+/// `AND "{col}" = ?` is injected as a bound parameter using `tenant_id`. The tenant value is
+/// NEVER sourced from the call payload — it is always the `tenant_id` function parameter
+/// passed by the caller (the app handler reads `current_tenant().map(|t| t.id)`).
+///
+/// Fail-closed (D-06): if `tenant_column` is `Some` but `tenant_id` is `None`, dispatch
+/// returns `Err(InvalidFilter)` immediately — it never falls back to an unscoped SELECT.
 pub async fn dispatch(
     service: &ServiceDef,
     filters: serde_json::Value,
     limit: u64,
     offset: u64,
     db: &sea_orm::DatabaseConnection,
+    tenant_id: Option<i64>,
 ) -> crate::Result<DispatchResult> {
     let backend = db.get_database_backend();
     // Clamp the requested limit to MAX_LIMIT regardless of caller. The schema
@@ -138,6 +145,24 @@ pub async fn dispatch(
             where_clauses.push(format!("\"{}\" = {}", key, placeholder(backend, idx)));
             values.push(json_to_sea_value(val));
             idx += 1;
+        }
+    }
+
+    // Tenant predicate — injected AFTER user filters, BEFORE count/data queries.
+    // Never sourced from the call payload; always from current_tenant() passed by caller.
+    if let Some(ref col) = service.tenant_column {
+        match tenant_id {
+            Some(tid) => {
+                where_clauses.push(format!("\"{}\" = {}", col, placeholder(backend, idx)));
+                values.push(sea_orm::Value::BigInt(Some(tid)));
+                idx += 1;
+            }
+            None => {
+                // Fail-closed (D-06): tenant-scoped projection + no tenant context → deny.
+                return Err(crate::Error::InvalidFilter(
+                    "tenant context required but not present".to_string(),
+                ));
+            }
         }
     }
 
@@ -196,4 +221,140 @@ pub async fn dispatch(
         limit,
         offset,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ferro_projections::{DataType, FieldMeaning, ServiceDef};
+    use sea_orm::{ConnectionTrait, Database, Statement};
+
+    /// Creates an in-memory SQLite database seeded with an `orders` table
+    /// containing rows for two tenants.
+    async fn setup_orders_db() -> sea_orm::DatabaseConnection {
+        let db = Database::connect("sqlite::memory:")
+            .await
+            .expect("sqlite connect");
+
+        // Create table
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT NOT NULL,
+                total REAL NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                tenant_id INTEGER NOT NULL
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create table");
+
+        // Seed rows: 2 rows for tenant 1, 2 rows for tenant 2
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "INSERT INTO orders (customer_name, total, status, tenant_id) VALUES
+                ('Alice', 100.0, 'pending', 1),
+                ('Bob',   200.0, 'shipped', 1),
+                ('Carol', 150.0, 'pending', 2),
+                ('Dave',  250.0, 'shipped', 2)"
+                .to_string(),
+        ))
+        .await
+        .expect("seed rows");
+
+        db
+    }
+
+    fn order_service_with_tenant() -> ServiceDef {
+        ServiceDef::new("order")
+            .mcp_exposed(true)
+            .tenant_column("tenant_id")
+            .mcp_ability("view-orders")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_name", DataType::String, FieldMeaning::EntityName)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("created_at", DataType::String, FieldMeaning::CreatedAt)
+            .field("tenant_id", DataType::Integer, FieldMeaning::ForeignKey)
+    }
+
+    fn order_service_no_tenant() -> ServiceDef {
+        ServiceDef::new("order")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_name", DataType::String, FieldMeaning::EntityName)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("created_at", DataType::String, FieldMeaning::CreatedAt)
+            .field("tenant_id", DataType::Integer, FieldMeaning::ForeignKey)
+    }
+
+    /// SC-1: tenant A token returns only tenant A rows (not tenant B's).
+    #[tokio::test]
+    async fn tenant_scoping() {
+        let db = setup_orders_db().await;
+        let service = order_service_with_tenant();
+        let result = dispatch(&service, serde_json::json!({}), 10, 0, &db, Some(1))
+            .await
+            .expect("dispatch ok");
+
+        assert_eq!(result.rows.len(), 2, "tenant 1 has exactly 2 rows");
+        for row in &result.rows {
+            let tid = row["tenant_id"].as_i64().expect("tenant_id present");
+            assert_eq!(tid, 1, "all rows belong to tenant 1");
+        }
+    }
+
+    /// SC-1 cross-tenant isolation: tenant B sees only tenant B rows.
+    #[tokio::test]
+    async fn tenant_isolation() {
+        let db = setup_orders_db().await;
+        let service = order_service_with_tenant();
+        let result = dispatch(&service, serde_json::json!({}), 10, 0, &db, Some(2))
+            .await
+            .expect("dispatch ok");
+
+        assert_eq!(result.rows.len(), 2, "tenant 2 has exactly 2 rows");
+        for row in &result.rows {
+            let tid = row["tenant_id"].as_i64().expect("tenant_id present");
+            assert_eq!(tid, 2, "all rows belong to tenant 2");
+        }
+    }
+
+    /// D-06 fail-closed: tenant_column=Some but no tenant context → Err, never rows.
+    #[tokio::test]
+    async fn tenant_fail_closed() {
+        let db = setup_orders_db().await;
+        let service = order_service_with_tenant();
+        let result = dispatch(&service, serde_json::json!({}), 10, 0, &db, None).await;
+
+        assert!(
+            result.is_err(),
+            "must return Err when tenant_column=Some and tenant_id=None"
+        );
+        match result.unwrap_err() {
+            crate::Error::InvalidFilter(msg) => {
+                assert!(
+                    msg.contains("tenant context required but not present"),
+                    "error message: {msg}"
+                );
+            }
+            other => panic!("expected InvalidFilter, got: {other:?}"),
+        }
+    }
+
+    /// Explicit non-tenant projection: tenant_column=None → unscoped, all rows returned.
+    #[tokio::test]
+    async fn non_tenant_unscoped() {
+        let db = setup_orders_db().await;
+        let service = order_service_no_tenant();
+        let result = dispatch(&service, serde_json::json!({}), 10, 0, &db, None)
+            .await
+            .expect("dispatch ok for non-tenant projection");
+
+        assert_eq!(result.rows.len(), 4, "non-tenant projection returns all 4 rows");
+    }
 }
