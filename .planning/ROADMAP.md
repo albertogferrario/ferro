@@ -54,6 +54,7 @@
 - 📋 **v11.6.1 ferro-stripe Manual Capture** — Phase 189 (planned 2026-06-07). Source: gestiscilo-it v6.3-extended booking fund-hold field test. Extends the v11.6 capability-axis crate with Stripe manual capture so consumer apps can authorize card funds without charging (booking deposits): `CheckoutBuilder::manual_capture()` sets `payment_intent_data.capture_method = manual`; new `payment_intent.rs` capability module with `capture(payment_intent_id, amount_cents: Option<i64>)` (partial capture supported) and `cancel(payment_intent_id)`; new typed events `StripePaymentIntentAmountCapturableUpdated` and `StripePaymentIntentCanceled` registered in the parser contract with golden-JSON fixtures; manual capture must compose with `destination()` Connect charges (authorize on platform, capture transfers to connected account). The authorize/capture/cancel triple deliberately mirrors `ferro-reservation` hold/commit/release semantics — document the correspondence in `docs/src/features/stripe.md`. Out of scope: SetupIntent save-card flow for authorizations beyond the ~7-day card window (consumer-side design decision at gestiscilo v6.3 plan time; promote to a ferro phase only if gestiscilo picks that path). Consumer: gestiscilo-it v6.3 Online Checkout & Payments (queued after its v7.1), consumes via published crates.io bump per the Phase 176 ↔ ferro Phase 181 pattern.
 - ✅ **v11.6.2 ferro-stripe Refund Event Completeness + 0.7.0 Release** — Phase 193 (code complete 2026-06-09; **ferro-stripe 0.7.0 publish pending operator `git push`** — GH Actions auto-publishes on push to master, unblocking gestiscilo Phase 99). Source: gestiscilo-it v6.3 Phase 99 (Refund dashboard UX) field test — operator-locked Option B per gestiscilo CONTEXT.md D-27. Closes a payload-coverage gap in the `StripeChargeRefunded` typed event: the struct currently exposes `event_id / charge_id / payment_intent_id / amount_refunded_cents / metadata` but NOT the `refund_id` field that Stripe always sends. Consumer use case: gestiscilo Phase 99 `on_refunded` handler needs to look up its local `refunds` table row by `stripe_refund_id` (set when the operator clicked "Emetti rimborso") and mark `confirmed_at = now()` — without the `refund_id` field on the event struct, the consumer cannot perform that lookup without bypassing ferro-stripe via direct `stripe::` imports (violates the V-95-01 "no direct `stripe::` import" gate established in v11.6). Adds `refund_id: Option<String>` to `StripeChargeRefunded` (parsed from the charge's refunds list — `charge.refunds.data[].id`; a `charge.refunded` event carries a `Charge`, not a top-level `Refund`), with golden-JSON fixture updates + parser-contract test. Releases ferro-stripe 0.7.0 — the published version label that captures Phase 189 (Manual Capture, shipped 2026-06-07 but not yet released) + this new refund_id work as combined breaking changes per gestiscilo Phase 97 D-14 expectation. Consumer: gestiscilo-it v6.3 Phase 99 Plan 03 (webhook extension) hard-blocks on the field; Plan 04 (closeout) hard-blocks on the 0.7.0 publish per `feedback_ferro_publish.md` auto-publish via GitHub Actions on push to master. Out of scope: backporting refund_id to existing v0.5.x consumers (v0.7.0 is opt-in via the documented consumer bump).
 - ✅ **v12.1 AI — ferro-ai SDK & AI as Projection Consumer** — Phases 165-173 (shipped 2026-06-09; planned 2026-05-15, reframed 2026-06-07, started 2026-06-08). AI as a first-class consumer of the projection/intent core. Capstone (Phase 173): `make:json-view` consumes a `ServiceDef` via the existing `Spec::from_service_def` renderer + the projection-roundtrip proof test (NL → ServiceDef → rendered JSON-UI). All 9 phases verified.
+- 📋 **v11.6.3 ferro-stripe Connect Application Fee Helper** — Phase 201 (planned 2026-06-10). Source: gestiscilo-it v7.1 photographer payment-gated-share field test (Marea Studio). The Connect destination-charge surface is otherwise complete in 0.8.0 — `account::{create_account,create_link,retrieve_account}` (Standard), `CheckoutBuilder::destination(account_id, fee_cents)` (sets `application_fee_amount` + `transfer_data.destination` + `on_behalf_of`, composes with `manual_capture`), `WebhookEvent.account: Option<String>` (Connect account routing), `StripeConnectAccountUpdated { account_id, charges_enabled, payouts_enabled, details_submitted }`, `verify_webhook(body, sig, secret)` (consumer passes the connect secret), and `StripeConfig.{connect_webhook_secret, application_fee_percent}` all ship. The one missing primitive is fee computation: `StripeConfig::application_fee_for(amount_cents) -> Option<i64>` turning the platform `application_fee_percent` into rounded cents (`None` when unset/0). Adds ferro-mcp `stripe_config_status` parity (connect-webhook-secret presence + application-fee-percent) and a `docs/src/features/stripe.md` end-to-end Connect application-fee example, mirroring the Phase 189 manual-capture correspondence doc. Publishes ferro-stripe 0.9.0. Consumer: gestiscilo-it v6.3 Phase 99.2 (platform fee + destination wiring) hard-blocks on the helper and consumes via crates.io bump per the Phase 193 ↔ gestiscilo Phase 99 pattern; gestiscilo Phase 99.1 (Connect webhook endpoint + secret split) needs no new ferro surface (consumes the already-shipped 0.8.0 webhook primitives).
 - ✅ **v12.4 Form Validation DX** — Phases 190-192 (shipped 2026-06-09). Async DB-backed `unique` rule with exclude-self (edit-form safety) + `ConstraintMap` opt-in DB constraint→field-level error mapping + ferro-mcp template and docs showing the two-layer proactive+defensive pattern together. Source: gestiscilo-it field test (slug-uniqueness violations surfacing as raw SQL errors). Both live-Postgres paths verified via `#[ignore]`d gate tests. All 3 phases verified.
 - ✅ **v12.5 Projection Checkpoint** — Phases 194-196 (shipped 2026-06-10). Close the agent write→verify loop: `checkpoint_projection` MCP tool walks the intent-slice spine, owns the field→column seam (the only silent gap no existing validator covers), delegates the remaining seams to existing validators, and returns a single structured verdict with ranked next steps. Closes by default after generation; ambient status in `application_info`/`projection_coverage`. Killer feature: a dangling projection field (no backing migration column) surfaces statically in one call rather than at runtime.
 - 🚧 **v12.6 Consumer App MCP (Browser Login)** — Phases 197-200 (in progress). A deployed ferro application serves its own OAuth-protected MCP endpoint so a consumer agent can authenticate through the browser and use the application's projections as per-tenant tools. New `ferro-mcp-server` output crate with `McpRenderer` (projection→tool, `ServiceDef`-derived schema, opt-in marker); Streamable HTTP MCP endpoint; OAuth 2.1 browser login (discovery metadata, DCR, PKCE, consent, audience-bound tokens); per-tenant scoping and policy enforcement reused structurally from existing middleware. Design spec: `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`.
@@ -2339,6 +2340,33 @@ Plans:
 
 ---
 
+## v11.6.3 ferro-stripe Connect Application Fee Helper (Phase 201)
+
+**Source:** gestiscilo-it v7.1 photographer payment-gated-share field test (Marea Studio). The killer feature — "select files → one paid link → client pays → downloads" — routes the client payment to the tenant's Standard Connect account minus a platform fee. Auditing ferro-stripe 0.8.0 for that flow showed the Connect destination-charge surface is complete *except* the fee-computation step: the platform percent lives in `StripeConfig.application_fee_percent` but nothing turns it into a cents amount for `CheckoutBuilder::destination`.
+
+**Already shipped in 0.8.0 (no work):** `account::{create_account, create_link, retrieve_account}` (Standard), `CheckoutBuilder::destination(account_id, fee_cents)` (sets `application_fee_amount` + `transfer_data.destination` + `on_behalf_of`, composes with `manual_capture`), `WebhookEvent.account: Option<String>` (Connect account routing), `StripeConnectAccountUpdated { account_id, charges_enabled, payouts_enabled, details_submitted }`, `verify_webhook(body, sig, secret)` (consumer passes the connect secret), and `StripeConfig.{connect_webhook_secret, application_fee_percent}`.
+
+**Consumer pairing:** gestiscilo-it v6.3 Phase 99.2 consumes `application_fee_for` via the published 0.9.0 bump; gestiscilo Phase 99.1 (Connect webhook endpoint + secret split) needs no new ferro surface (it consumes the already-shipped 0.8.0 webhook primitives). Auto-publishes via GH Actions on push to master per `feedback_ferro_publish.md`.
+
+### Phase 201: ferro-stripe Connect application-fee helper + config-status parity + docs
+
+**Goal:** A consumer holding a charge amount and a configured platform fee percent can compute the application fee in one call, introspect Connect-fee readiness via ferro-mcp, and follow a documented end-to-end Connect application-fee example.
+
+**Depends on:** nothing (additive on 0.8.0).
+
+**Success Criteria:**
+  1. `StripeConfig::application_fee_for(amount_cents: i64) -> Option<i64>` returns `Some(round(amount_cents × application_fee_percent / 100))` when the percent is set and > 0; `None` when unset or ≤ 0; result is non-negative and never exceeds `amount_cents`; unit tests cover unset, 0%, normal, rounding, and clamp cases
+  2. ferro-mcp `stripe_config_status` reports `connect_webhook_secret` presence (bool, never the value) and `application_fee_percent` (the number or null) alongside existing fields
+  3. `docs/src/features/stripe.md` gains a "Connect destination charges with a platform fee" section walking account create→link→`account.updated` capability persistence→`CheckoutBuilder::destination(account_id, StripeConfig::application_fee_for(amount))`, and notes the correspondence with the manual-capture flow from Phase 189
+  4. ferro-stripe Cargo.toml bumped `0.8.0 → 0.9.0`; CHANGELOG `## [0.9.0]` documents the helper + mcp parity + docs (additive, non-breaking)
+  5. `cargo test --all-features` + `cargo clippy --all -- -D warnings` pass on the ferro-stripe workspace
+  6. Push to ferro/master triggers GH Actions auto-publish; `cargo search ferro-stripe --limit 1` returns `ferro-stripe = "0.9.0"` after publish completes
+
+**Plans:** TBD
+
+
+---
+
 ## v12.5 Projection Checkpoint (Phases 194–196)
 
 **Source:** Design spec `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`. Closes the one gap in ferro's generate→verify loop that no existing tool covers: cross-artifact seam coherence anchored on a projection. Killer feature: a projection field referencing a model attribute the migration never created surfaces statically in one MCP call instead of at runtime.
@@ -2485,7 +2513,9 @@ Plans:
   3. The endpoint integrates into the application server via the same middleware stack as other framework routes.
   4. Integration tests exercise the three JSON-RPC methods and the `401` path without requiring a live OAuth server.
 
-**Plans:** TBD
+**Plans:** 2 plans
+- [ ] 198-01-PLAN.md — ferro-mcp-server JSON-RPC dispatch (initialize/tools-list/tools-call) + config + bearer seam + integration tests (Wave 1)
+- [ ] 198-02-PLAN.md — app POST /mcp handler: 401+WWW-Authenticate challenge, route mount, GET 405, expose order projection (Wave 2)
 **UI hint**: no
 
 ### Phase 199: OAuth Browser Login
@@ -2528,6 +2558,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 197. McpRenderer & ferro-mcp-server | 3/3 | Complete    | 2026-06-10 |
-| 198. Streamable HTTP Endpoint + Unauthenticated Challenge | 0/TBD | Not started | - |
+| 198. Streamable HTTP Endpoint + Unauthenticated Challenge | 0/2 | Not started | - |
 | 199. OAuth Browser Login | 0/TBD | Not started | - |
 | 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 0/TBD | Not started | - |
