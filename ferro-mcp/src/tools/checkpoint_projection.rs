@@ -1543,9 +1543,9 @@ pub fn booking_service() -> ServiceDef {
                 SeamResult {
                     seam: "action_to_route".to_string(),
                     status: SeamStatus::NotChecked,
-                    source: "checkpoint".to_string(),
+                    source: "json_ui_verify_action".to_string(),
                     findings: vec![],
-                    reason: Some("not_implemented_phase_195".to_string()),
+                    reason: Some("route_list_unavailable".to_string()),
                 },
             ],
             next_steps: vec!["add column (seam: field_to_column)".to_string()],
