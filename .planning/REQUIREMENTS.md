@@ -19,9 +19,9 @@
 
 ### Browser Authentication (OAuth)
 - [x] **AMCP-06**: An unauthenticated request to the MCP endpoint returns `401` with a `WWW-Authenticate` header referencing the protected-resource metadata.
-- [ ] **AMCP-07**: The application publishes OAuth discovery metadata (`.well-known/oauth-protected-resource`, `.well-known/oauth-authorization-server`) and a dynamic client registration endpoint, advertising the authorization-code grant with PKCE (S256).
-- [ ] **AMCP-08**: A consumer completes a browser authorization-code + PKCE flow that reuses the application's existing login and a consent step, receiving an access token bound to `(user, tenant)` and audience-restricted to the MCP endpoint.
-- [ ] **AMCP-09**: The MCP endpoint validates the bearer token; an invalid or expired token returns `401`, and an audience or tenant mismatch returns `403`.
+- [x] **AMCP-07**: The application publishes OAuth discovery metadata (`.well-known/oauth-protected-resource`, `.well-known/oauth-authorization-server`) and a dynamic client registration endpoint, advertising the authorization-code grant with PKCE (S256).
+- [x] **AMCP-08**: A consumer completes a browser authorization-code + PKCE flow that reuses the application's existing login and a consent step, receiving an access token bound to `(user, tenant)` and audience-restricted to the MCP endpoint.
+- [x] **AMCP-09**: The MCP endpoint validates the bearer token; an invalid or expired token returns `401`, and an audience or tenant mismatch returns `403`.
 
 ### Per-Tenant Scoping & Authorization
 - [ ] **AMCP-10**: A tool call executes within the token's tenant context via the existing multi-tenant middleware; a token scoped to one tenant returns only that tenant's rows.
@@ -51,8 +51,8 @@
 | AMCP-04 | Phase 197 | Complete |
 | AMCP-05 | Phase 198 | Complete |
 | AMCP-06 | Phase 198 | Complete |
-| AMCP-07 | Phase 199 | Pending |
-| AMCP-08 | Phase 199 | Pending |
-| AMCP-09 | Phase 199 | Pending |
+| AMCP-07 | Phase 199 | Complete |
+| AMCP-08 | Phase 199 | Complete |
+| AMCP-09 | Phase 199 | Complete |
 | AMCP-10 | Phase 200 | Pending |
 | AMCP-11 | Phase 200 | Pending |
