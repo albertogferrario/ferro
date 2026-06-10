@@ -17,8 +17,7 @@ fn sanitize_identity(raw: String) -> String {
 ///
 /// Discovery is pre-auth and must work even when `MCP_TOKEN_SECRET` is unset,
 /// so this does NOT go through `from_env()` (which fails closed on the secret).
-/// Used by `discovery.rs` (Plan 02 fills the handler body).
-#[allow(dead_code)]
+/// Used by `discovery.rs` handlers.
 pub(crate) fn sanitized_app_url() -> String {
     sanitize_identity(std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost".to_string()))
 }
@@ -78,9 +77,17 @@ impl OAuthConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    // Serialize all env-var-mutating tests to prevent races between threads.
+    // `std::env::set_var`/`remove_var` is not thread-safe when other threads read
+    // the same vars concurrently. A process-wide lock is the lightest fix that keeps
+    // the tests as plain `#[test]` without an external crate dependency.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn missing_secret_returns_err() {
+        let _g = ENV_LOCK.lock().unwrap();
         std::env::remove_var("MCP_TOKEN_SECRET");
         let result = OAuthConfig::from_env();
         assert!(
@@ -91,6 +98,7 @@ mod tests {
 
     #[test]
     fn short_secret_returns_err() {
+        let _g = ENV_LOCK.lock().unwrap();
         std::env::remove_var("MCP_TOKEN_SECRET");
         std::env::set_var("MCP_TOKEN_SECRET", "tooshort");
         let result = OAuthConfig::from_env();
@@ -103,6 +111,7 @@ mod tests {
 
     #[test]
     fn valid_secret_returns_ok_with_bytes() {
+        let _g = ENV_LOCK.lock().unwrap();
         std::env::remove_var("MCP_TOKEN_SECRET");
         let secret = "a_valid_secret_that_is_at_least_32_bytes_long";
         std::env::set_var("MCP_TOKEN_SECRET", secret);
@@ -115,6 +124,7 @@ mod tests {
     #[test]
     fn sanitize_strips_crlf_and_control_chars() {
         // CR-01 analog: CRLF in env-sourced identity must not survive into headers/JSON.
+        // No env mutation — no lock needed.
         let injected = "https://app.example\r\nX-Injected: evil".to_string();
         let cleaned = sanitize_identity(injected);
         assert!(!cleaned.contains('\r'));
@@ -124,6 +134,7 @@ mod tests {
 
     #[test]
     fn sanitized_app_url_works_without_secret() {
+        let _g = ENV_LOCK.lock().unwrap();
         std::env::remove_var("MCP_TOKEN_SECRET");
         std::env::set_var("APP_URL", "https://test.example.com");
         let url = sanitized_app_url();
