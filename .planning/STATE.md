@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.6
 milestone_name: Consumer App MCP (Browser Login)
-status: defining_requirements
-stopped_at: v12.6 started — defining requirements
-last_updated: "2026-06-10T03:47:30.437Z"
+status: roadmap_ready
+stopped_at: v12.6 roadmap complete — phases 197-200 defined
+last_updated: "2026-06-10T04:00:00.000Z"
 last_activity: 2026-06-10
 progress:
-  total_phases: 78
+  total_phases: 82
   completed_phases: 73
   total_plans: 313
   completed_plans: 313
-  percent: 100
+  percent: 89
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v12.6 Consumer App MCP (Browser Login) — defining requirements
+**Current focus:** v12.6 Consumer App MCP (Browser Login) — roadmap ready, Phase 197 next
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 197 (not started)
 Plan: —
-Next: requirements → roadmap (phases continue at 197)
-Status: Defining requirements
+Next: `/gsd-plan-phase 197`
+Status: Roadmap defined
 
-Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (55/62 phases)
+Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (73/82 phases)
 
 Last activity: 2026-06-10
 Workspace version: 0.2.49
@@ -37,6 +37,33 @@ Workspace version: 0.2.49
 > **Operator actions pending:**
 > - `git push` — master is ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.7.0** (completes v11.6.2's publish, unblocks gestiscilo Phase 99).
 > - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
+
+## Active Milestone: v12.6 Consumer App MCP (Browser Login) (Phases 197-200)
+
+**Design center:** The MCP surface is a rendering target for the projection / intent system — the same `ServiceDef` that renders to JSON-UI (visual) also renders to MCP tool schema and tool output (agent-consumable) via `McpRenderer`. One source of truth; no parallel hand-maintained tool contract.
+
+**Design spec:** `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`
+
+**Key design constraints locked:**
+- `ferro-mcp-server` is a new output crate (mirrors `ferro-json-ui`); `ferro-projections` stays renderer-free.
+- Tenant scoping and authorization are structural — reused from existing multi-tenant middleware and policy layer; no second permission system.
+- Walking skeleton: read-only, one opt-in projection, end to end. Write intents deferred.
+- Dogfood GO/NO-GO in Phase 200 is non-negotiable: a real MCP client completing browser login is the acceptance gate.
+
+| Phase | Status |
+|-------|--------|
+| 197. McpRenderer & ferro-mcp-server | Not started |
+| 198. Streamable HTTP Endpoint + Unauthenticated Challenge | Not started |
+| 199. OAuth Browser Login | Not started |
+| 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | Not started |
+
+Progress: [░░░░░░░░░░] 0%
+
+## Shipped Milestone: v12.5 Projection Checkpoint (Phases 194-196)
+
+Shipped 2026-06-10. Close the agent write→verify loop: `checkpoint_projection` MCP tool walks the intent-slice spine, owns the field→column seam (the only silent gap no existing validator covers), delegates the remaining seams to existing validators, and returns a single structured verdict with ranked next steps. Closes by default after generation; ambient status in `application_info`/`projection_coverage`. Killer feature: a dangling projection field (no backing migration column) surfaces statically in one call rather than at runtime.
+
+Progress: [██████████] 100%
 
 ## Shipped Milestone: v12.4 Form Validation DX (Phases 190-192)
 
@@ -50,29 +77,11 @@ Shipped 2026-06-07, sourced from gestiscilo-it v7.1 Tenant Frontend Platform. Fo
 
 Progress: [██████████] 100%
 
-## Active Milestone: v12.5 Projection Checkpoint (Phases 194-196)
-
-**Killer feature:** an agent that adds a projection field referencing a model attribute the migration never created learns it statically, in one call, instead of at runtime — the silent F11-class seam becomes a ranked, actionable next step.
-
-**Design decisions resolved:**
-
-- Seam cascade: seam 1 fail → seams 4+5 `not_checked`; seam 4 fail → seam 5 `not_checked`. Seams 2 and 3 run independently.
-- Fix-string normalization: uniform `Finding { subject, detail, fix }` shape established in Phase 194; wrapper seams in Phase 195 use same type.
-- Ambient status freshness: stale-ok read from `.ferro/checkpoints/{name}.json`; inline hook on generators (Phase 195) keeps cache fresh.
-
-| Phase | Status |
-|-------|--------|
-| 194. Core Checkpoint Tool | Not started |
-| 195. Close the Loop by Default | Not started |
-| 196. Dogfood Acceptance + Hardening | Not started |
-
-Progress: [░░░░░░░░░░] 0%
-
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 268
+- Total plans completed: 313
 - Average duration: —
 - Total execution time: —
 
@@ -304,7 +313,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 172 P02 | 450 | 2 tasks | 4 files |
 | Phase 172 P03 | 105s | 1 tasks | 1 files |
 | Phase 172 P04 | 1100s | 3 tasks | 8 files |
-| Phase 190-async-rule-infrastructure-unique-rule P01 | 214s | 2 tasks | 3 files |
+| Phase 190-async-rule-infrastructure-unique-rule P01 | 214s | 2 tasks | 2 files |
 | Phase 190-async-rule-infrastructure-unique-rule P02 | 327s | 2 tasks | 2 files |
 | Phase 190 P03 | 236s | 2 tasks | 2 files |
 | Phase 190 P04 | 1255s | 2 tasks | 5 files |
@@ -335,12 +344,15 @@ See PROJECT.md Key Decisions table for full history.
 
 Recent decisions affecting current work:
 
-- [v12.5] Seam cascade rule: seam 1 fail → seams 4+5 `not_checked` (reason: "seam_1_failed"); seam 4 fail → seam 5 `not_checked` (reason: "seam_4_failed"); seams 2 and 3 run independently of seam 1.
-- [v12.5] Fix-string normalization: uniform `Finding { subject, detail, fix }` output contract established in Phase 194; per-seam translation functions in `checkpoint_projection.rs` convert sub-validator shapes.
-- [v12.5] Ambient status freshness: stale-ok read from `.ferro/checkpoints/{name}.json`; inline hook on generators (Phase 195) keeps cache fresh on write paths.
-- [v12.5] `not_checked` invariant: four-variant `SeamStatus` enum required (`Pass`, `Fail`, `Warn`, `NotChecked`); prerequisite-absent paths must return `NotChecked`, not `Pass`; unit test required in Phase 194.
-- [v12.5] Seam 2 scoped to presence-only in Phase 194; type compatibility checking deferred to post-v12.5.
-- [v12.5] `next_steps` capped at 10 for Phase 194, tightened to 5 in Phase 196 dogfood.
+- [v12.6] `ferro-mcp-server` is a new output crate (Wave 2 — depends on `ferro-projections`); add to `.github/workflows/publish.yml`.
+- [v12.6] `ferro-projections` stays renderer-free; `McpRenderer` lives in `ferro-mcp-server` (mirrors `JsonUiRenderer` in `ferro-json-ui`).
+- [v12.6] Tenant scoping and policy authorization are structural — no parallel permission system; existing multi-tenant middleware and policy layer reused.
+- [v12.6] Walking skeleton: read-only, one opt-in projection (`mcp_exposed` marker). Write intents, auto-exposure, and MCP App UI are deferred.
+- [v12.6] OAuth transport is necessary supporting infrastructure implemented to spec-standard (MCP authorization spec: discovery metadata, DCR, PKCE S256) — keep lean; disproportionate investment belongs to the `McpRenderer`.
+- [v12.6] Dogfood GO/NO-GO in Phase 200 is non-negotiable: a real MCP client completing browser login is the acceptance gate (per Phase 196 discipline).
+- [v12.5] Seam cascade rule: seam 1 fail → seams 4+5 `not_checked`; seam 4 fail → seam 5 `not_checked`; seams 2 and 3 run independently.
+- [v12.5] `next_steps` capped at 5 (`MAX_NEXT_STEPS`).
+- [v12.5] `props_to_contract` seam demoted to `not_checked`-by-default (source `validate_contracts`, reason `unproven_against_real_inputs`).
 - Research established strict ordering: P0 accuracy → CLI/MCP → completeness → philosophy → metadata
 - COMPONENT_CATALOG duplication requires a design decision before implementation (Phase 113)
 - ferro-stripe phantom stubs: classify as incomplete, add callout — do not implement in v11.0
@@ -349,13 +361,7 @@ Recent decisions affecting current work:
 - [110-01] Status codes use .status(u16) pattern — StatusCode enum not re-exported from ferro crate
 - [110-01] Validation rule functions imported at crate root: ferro::{Validator, required, email, min, ...}
 - [112-01] introduction.md leads with "agent-first" in sentence 1 — MCP mentioned before any framework comparison or Laravel reference
-- [112-01] Working with Agents guide covers ferro-mcp only — ferro-api-mcp remains on its dedicated api-mcp.md page
-- [112-01] Agent-to-CLI workflow documented within working-with-agents.md as a section, not a separate page
-- [112-01] MCP config command is `ferro mcp` — not a standalone ferro-mcp binary
-- [145-01] Test-fixture crates under workspace root need an empty [workspace] table in their Cargo.toml to opt out of the enclosing workspace and build standalone
 - [v12.1] LlmClient single trait with Err(Error::Unsupported) for missing capabilities — preserves ergonomic dispatch without lowest-common-denominator collapse
-- [v12.1] async_trait retained — Rust 1.75+ stable async fn in traits is not dyn-compatible; async_trait required for Box<dyn LlmClient>
-- [v12.1] SseStream has no dependency on ferro-ai — wiring of TokenStream → SseStream happens in application handler code
 - [160-02] MCP code_templates category deletion pattern: drop registration+comment, producer fn, and integration test in one diff — no orphaned comment, no green-test artifact
 
 ### Pending Todos
@@ -366,15 +372,15 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - [Research flag] Phase 113: COMPONENT_CATALOG resolution needs design decision evaluation (shared data file vs build script vs new crate) — evaluate options before scoping
-- [Harness] `isolation="worktree"` agent harness branches from a stale base — surfaced during Phase 153 plan 01. Six locked worktree branches remain in `.claude/worktrees/`; harmless but investigate before parallel-wave phases.
 
 ### Roadmap Evolution
 
-- Phases 194-196 added (2026-06-09): v12.5 Projection Checkpoint milestone. Three-phase structure derived from research: 194 (core tool + field→column seam + aggregation), 195 (close loop by default: generators + ambient status + wrapper seams), 196 (dogfood acceptance: poisoned fixture + live consumer go/no-go gate). Design spec: `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`.
+- Phases 197-200 added (2026-06-10): v12.6 Consumer App MCP (Browser Login) milestone. Four-phase structure: 197 (ferro-mcp-server + McpRenderer — projection→tool rendering, proven in-process), 198 (Streamable HTTP endpoint + 401 challenge), 199 (OAuth browser login — discovery, DCR, PKCE, consent, token validation), 200 (per-tenant scoping + policy + dogfood acceptance gate). Design spec: `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`.
+- Phases 194-196 added (2026-06-09): v12.5 Projection Checkpoint milestone.
 
 ## Session Continuity
 
-Last session: 2026-06-10T02:15:01.161Z
-Stopped at: Completed 196-04-PLAN.md
+Last session: 2026-06-10T04:00:00.000Z
+Stopped at: v12.6 roadmap written (Phases 197-200)
 Resume file: None
-Next action: `/gsd-plan-phase 194`
+Next action: `/gsd-plan-phase 197`

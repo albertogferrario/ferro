@@ -56,6 +56,7 @@
 - ✅ **v12.1 AI — ferro-ai SDK & AI as Projection Consumer** — Phases 165-173 (shipped 2026-06-09; planned 2026-05-15, reframed 2026-06-07, started 2026-06-08). AI as a first-class consumer of the projection/intent core. Capstone (Phase 173): `make:json-view` consumes a `ServiceDef` via the existing `Spec::from_service_def` renderer + the projection-roundtrip proof test (NL → ServiceDef → rendered JSON-UI). All 9 phases verified.
 - ✅ **v12.4 Form Validation DX** — Phases 190-192 (shipped 2026-06-09). Async DB-backed `unique` rule with exclude-self (edit-form safety) + `ConstraintMap` opt-in DB constraint→field-level error mapping + ferro-mcp template and docs showing the two-layer proactive+defensive pattern together. Source: gestiscilo-it field test (slug-uniqueness violations surfacing as raw SQL errors). Both live-Postgres paths verified via `#[ignore]`d gate tests. All 3 phases verified.
 - ✅ **v12.5 Projection Checkpoint** — Phases 194-196 (shipped 2026-06-10). Close the agent write→verify loop: `checkpoint_projection` MCP tool walks the intent-slice spine, owns the field→column seam (the only silent gap no existing validator covers), delegates the remaining seams to existing validators, and returns a single structured verdict with ranked next steps. Closes by default after generation; ambient status in `application_info`/`projection_coverage`. Killer feature: a dangling projection field (no backing migration column) surfaces statically in one call rather than at runtime.
+- 🚧 **v12.6 Consumer App MCP (Browser Login)** — Phases 197-200 (in progress). A deployed ferro application serves its own OAuth-protected MCP endpoint so a consumer agent can authenticate through the browser and use the application's projections as per-tenant tools. New `ferro-mcp-server` output crate with `McpRenderer` (projection→tool, `ServiceDef`-derived schema, opt-in marker); Streamable HTTP MCP endpoint; OAuth 2.1 browser login (discovery metadata, DCR, PKCE, consent, audience-bound tokens); per-tenant scoping and policy enforcement reused structurally from existing middleware. Design spec: `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`.
 - 📋 **v12.2 Frontend Performance Hardening** — Phases 182-184 (planned 2026-06-06). Source: gestiscilo-it jetskiadriatic startup-lifecycle audit. Three runtime/framework primitives, each paired 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). (182) `ferro-json-ui` `data-lazy-hero` runtime primitive — IntersectionObserver promoting `<video preload="none">` → `preload="auto"` on viewport approach; (183) `ferro-bundle` new crate — in-memory immutable byte blobs with content-hashed immutable-cache serving; (184) `ferro::InlineBudget` + `ferro::RequestTelemetry` — request-scoped accumulator with inline/preload decision + per-key ring buffer.
 - 📋 **v12.3 Deployment Platform Primitives** — Phases 185-188 (planned 2026-06-07). Source: gestiscilo-it v7.1 Tenant Frontend Platform (locked design at gestiscilo `.planning/research/v7.1-ARCHITECTURE.md`, D-01..D-06). Four generic primitives, each paired 1:1 with a gestiscilo consumer phase that bumps the published crate (185 ↔ gestiscilo 188, 186 ↔ gestiscilo 188, 187 ↔ gestiscilo 189, 188 ↔ gestiscilo 190). (185) `ferro::queue` — DB-backed job queue replacing the Redis-only ferro-queue backend: `Job` trait, `WorkerLoop` in `ferro serve`, atomic claim (Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` + `UPDATE…RETURNING`), retry/backoff, stuck-job reaper; (186) `ferro-deployments` new crate — immutable `Deployment` model, `DeploymentStorage` trait, atomic `promote`/`rollback`, `preview_url` helper, artifact-shape agnostic; (187) `ferro-assets` new crate — `Pipeline` composer with content-type-aware transforms: `html_minify` (lol_html), `css_minify` (lightningcss), `js_minify` (swc_ecma_minifier), `image_transcode` (pure-Rust `image`+`ravif`, AVIF+JPEG responsive variants — libvips rejected for thread-safety), `inject_before_tag`; (188) `ferro-storage` extension — `cdn_url()`, `PurgeApi` trait, DO Spaces CDN adapter (feature-flagged Bunny/Cloudflare). Primitives stay consumer-agnostic: static HTML sites, JSON-UI spec bundles, and Inertia SSR manifests all fit the deployment abstraction. See "v12.3 Deployment Platform Primitives" phase details at the end of this file.
 - 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
@@ -2426,3 +2427,102 @@ Plans:
 - [x] 196-02-PLAN.md — D-01/SC-1: poisoned-fixture acceptance test (one dangling field, exact-subject + no-other-field assertions) (Wave 2)
 - [x] 196-03-PLAN.md — D-02/D-03/SC-2: dogfood run against app/ (direct per-file seam calls) + 196-ACCEPTANCE.md GO/NO-GO gate (Wave 3)
 - [x] 196-04-PLAN.md — D-04/SC-4: evidence-driven demotion of zero-finding wrapper seams to not_checked + service.rs/docs (Wave 4)
+
+
+---
+
+## v12.6 Consumer App MCP (Browser Login) (Phases 197–200)
+
+**Milestone goal:** A deployed ferro application serves its own OAuth-protected MCP endpoint. A consumer agent authenticates through the browser, receives a token bound to `(user, tenant)`, and calls a tool rendered from an opt-in projection. The tool returns that tenant's data, gated by the application's existing authorization policies.
+
+**Design center:** The MCP surface is a rendering target for the projection / intent system — the same `ServiceDef` that renders to JSON-UI (visual) also renders to MCP tool schema and tool output (agent-consumable) via `McpRenderer`. One source of truth; no parallel hand-maintained tool contract.
+
+**Design spec:** `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`
+
+### Phases
+
+- [ ] **Phase 197: McpRenderer & ferro-mcp-server** — New output crate `ferro-mcp-server` with `McpRenderer` implementing the `Renderer` trait; projection→tool schema derivation from `ServiceDef`; opt-in `mcp_exposed` marker; unit-tested in-process without a live HTTP server.
+- [ ] **Phase 198: Streamable HTTP Endpoint + Unauthenticated Challenge** — App-served `POST /mcp` supporting `initialize` / `tools/list` / `tools/call`; `401` + `WWW-Authenticate` on unauthenticated requests.
+- [ ] **Phase 199: OAuth Browser Login** — `.well-known` discovery metadata, dynamic client registration, `GET /authorize` (reuses existing login + consent step, issues PKCE auth code), `POST /token` (exchanges code for audience-bound `(user, tenant)` access token); bearer-token validation middleware on `/mcp`.
+- [ ] **Phase 200: Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance** — Tool calls execute within the token's tenant context via existing multi-tenant middleware; policy layer gates each call; dogfood GO/NO-GO acceptance: a real MCP client completes browser login against a live consumer application and lists one projection's data scoped to the authenticated tenant.
+
+### Phase Details
+
+### Phase 197: McpRenderer & ferro-mcp-server
+
+**Goal:** A `ServiceDef`-marked projection appears in an in-process `tools/list` call as exactly one MCP tool, with input JSON schema derived from the projection's filter and pagination fields and output derived from its read path. `ferro-projections` gains no renderer dependency.
+
+**Depends on:** Nothing (first phase of milestone; `ferro-projections` `Renderer` trait and `ServiceDef` from v11.5 are prerequisites already shipped).
+
+**Requirements:** AMCP-01, AMCP-02, AMCP-03, AMCP-04
+
+**Success Criteria** (what must be TRUE):
+  1. A projection with `mcp_exposed: true` appears in `tools/list`; a projection without it does not.
+  2. The tool's `inputSchema` is derived solely from the projection's `ServiceDef` filter and pagination fields — no separately declared schema exists.
+  3. Calling the tool's dispatch function executes the projection's existing read path and returns its rows as MCP structured content, with the output shape derived from the projection.
+  4. `ferro-projections` has no new dependency on `ferro-mcp-server`; the dependency direction is `ferro-mcp-server` → `ferro-projections`.
+  5. The new crate is registered in `.github/workflows/publish.yml` at the correct publish wave.
+
+**Plans:** TBD
+**UI hint**: no
+
+### Phase 198: Streamable HTTP Endpoint + Unauthenticated Challenge
+
+**Goal:** The application server mounts a Streamable HTTP MCP endpoint. An unauthenticated request to it returns `401` with a `WWW-Authenticate` header that a standard MCP client can follow to discover the protected-resource metadata. Authenticated calls are not yet wired (that is Phase 199's responsibility).
+
+**Depends on:** Phase 197 (`McpRenderer` and tool dispatch available).
+
+**Requirements:** AMCP-05, AMCP-06
+
+**Success Criteria** (what must be TRUE):
+  1. `POST /mcp` handles `initialize`, `tools/list`, and `tools/call` JSON-RPC methods over Streamable HTTP.
+  2. An unauthenticated `POST /mcp` returns HTTP `401` with a `WWW-Authenticate` header referencing the protected-resource metadata URL.
+  3. The endpoint integrates into the application server via the same middleware stack as other framework routes.
+  4. Integration tests exercise the three JSON-RPC methods and the `401` path without requiring a live OAuth server.
+
+**Plans:** TBD
+**UI hint**: no
+
+### Phase 199: OAuth Browser Login
+
+**Goal:** A standard MCP client can discover the authorization server, dynamically register, complete a browser authorization-code + PKCE flow that reuses the application's existing login, approve a consent screen, and exchange the code for an access token bound to `(user, tenant)` with this endpoint as audience. The bearer-token validation middleware on `/mcp` accepts valid tokens and rejects invalid or expired ones.
+
+**Depends on:** Phase 198 (MCP endpoint and `401` challenge in place).
+
+**Requirements:** AMCP-07, AMCP-08, AMCP-09
+
+**Success Criteria** (what must be TRUE):
+  1. `GET /.well-known/oauth-protected-resource` and `GET /.well-known/oauth-authorization-server` return spec-compliant discovery documents advertising authorization-code + PKCE (S256).
+  2. `POST /register` (dynamic client registration, RFC 7591) accepts a registration request and returns a `client_id`.
+  3. `GET /authorize` redirects to the application's existing login when no session exists; after login, presents a consent screen; after consent approval, redirects back with a PKCE authorization code.
+  4. `POST /token` exchanges a valid code + PKCE verifier for an access token bound to `(user, tenant)` with the MCP endpoint as audience and a short expiry.
+  5. An invalid or expired bearer token on `POST /mcp` returns `401`; an audience or tenant mismatch returns `403`.
+
+**Plans:** TBD
+**UI hint**: no
+
+### Phase 200: Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance
+
+**Goal:** A tool call executes inside the token's tenant context via the existing multi-tenant middleware and is gated by the same policy layer as the web surface. An agent's reach equals the authenticated user's reach — no parallel permission system, no per-tool ownership filter. The phase closes with a dogfood GO/NO-GO gate: a real MCP client completes browser login against a live consumer application and lists one projection's tenant-scoped data. A run that does not work end to end is cause to revise the design rather than ship.
+
+**Depends on:** Phase 199 (valid tokens issued and validated).
+
+**Requirements:** AMCP-10, AMCP-11
+
+**Success Criteria** (what must be TRUE):
+  1. A tool call with a token scoped to tenant A returns only tenant A's rows; a token scoped to tenant B returns only tenant B's rows.
+  2. A tool call denied by the application's existing policy layer returns an MCP tool error with a clear message and no data disclosure.
+  3. The tenant context established by the MCP middleware is structurally identical to the context established by the web-surface multi-tenant middleware — no second permission system exists.
+  4. Dogfood GO/NO-GO: a real MCP client (e.g. Claude Desktop or a script using the MCP SDK) completes a browser login against a live consumer application and successfully calls `tools/list` followed by `tools/call` for one exposed projection, receiving that tenant's rows. A run that fails end to end is GO/NO-GO = NO-GO and the design is revised before marking this phase complete.
+
+**Plans:** TBD
+**UI hint**: no
+
+### Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 197. McpRenderer & ferro-mcp-server | 0/TBD | Not started | - |
+| 198. Streamable HTTP Endpoint + Unauthenticated Challenge | 0/TBD | Not started | - |
+| 199. OAuth Browser Login | 0/TBD | Not started | - |
+| 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 0/TBD | Not started | - |

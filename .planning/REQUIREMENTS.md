@@ -45,16 +45,14 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| AMCP-01 | TBD | Pending |
-| AMCP-02 | TBD | Pending |
-| AMCP-03 | TBD | Pending |
-| AMCP-04 | TBD | Pending |
-| AMCP-05 | TBD | Pending |
-| AMCP-06 | TBD | Pending |
-| AMCP-07 | TBD | Pending |
-| AMCP-08 | TBD | Pending |
-| AMCP-09 | TBD | Pending |
-| AMCP-10 | TBD | Pending |
-| AMCP-11 | TBD | Pending |
-
-*(Phase column filled by the roadmapper.)*
+| AMCP-01 | Phase 197 | Pending |
+| AMCP-02 | Phase 197 | Pending |
+| AMCP-03 | Phase 197 | Pending |
+| AMCP-04 | Phase 197 | Pending |
+| AMCP-05 | Phase 198 | Pending |
+| AMCP-06 | Phase 198 | Pending |
+| AMCP-07 | Phase 199 | Pending |
+| AMCP-08 | Phase 199 | Pending |
+| AMCP-09 | Phase 199 | Pending |
+| AMCP-10 | Phase 200 | Pending |
+| AMCP-11 | Phase 200 | Pending |
