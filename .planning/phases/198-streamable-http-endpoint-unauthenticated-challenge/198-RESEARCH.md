@@ -146,7 +146,9 @@ pub async fn handle_tools_list(
 ) -> serde_json::Value;
 
 pub async fn handle_tools_call(
-    service_name: &str,
+    // FINAL (Plan 198-01 Task 3): the full MCP params object `{ "name": "list_<svc>",
+    // "arguments": {...} }`. The handler strips the "list_" prefix from `name` internally
+    // (no separate service_name parameter).
     call_params: serde_json::Value,
     services: &[ServiceDef],
     db: &sea_orm::DatabaseConnection,
