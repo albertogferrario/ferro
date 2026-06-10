@@ -42,7 +42,7 @@ The tool returns a single `Verdict` object:
       "seam": "projection_well_formed",
       "status": "not_checked",
       "source": "validate_projection",
-      "reason": "not_implemented_phase_195"
+      "reason": "unproven_against_real_inputs"
     }
   ],
   "next_steps": [
@@ -106,6 +106,20 @@ A `not_checked` seam means the prerequisite for running the check was absent —
 `not_checked` never contributes to the aggregate `status` rising to `fail`. However, it is always listed in `seams[]` so the caller can see which checks did not run and why.
 
 Do not treat a `not_checked` seam as equivalent to `pass`. A verdict of `pass` means all runnable seams passed. A verdict with `not_checked` seams means some checks were skipped.
+
+### Seam coverage by default
+
+Not all seams run on every call. The table below documents which seams are active and which report `not_checked` by default.
+
+| Seam | Default outcome | Rationale |
+|------|----------------|-----------|
+| `field_to_column` | Active | Proven by an acceptance fixture (dangling field planted, exactly one finding). |
+| `action_to_route` | Active | Proven against the in-repo sample application (4 unregistered actions detected). |
+| `projection_well_formed` | Active | Runs via `validate_projection`; findings reported on name-collision path. |
+| `rendered_view` | Active | Runs via `render_projection`; findings reported on name-collision path. |
+| `props_to_contract` | `not_checked` by default | Produced zero findings across both dogfood inputs (Phase 196 acceptance run). Reported as `not_checked` with `reason: "unproven_against_real_inputs"` rather than a vacuous pass. |
+
+A `not_checked` seam does not mean the projection is clean — it means the seam has not been exercised against real inputs that expose defects. When `props_to_contract` is `not_checked`, the aggregate status is determined by the other seams.
 
 ## Aggregate Status Logic
 

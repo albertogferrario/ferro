@@ -1606,7 +1606,11 @@ impl FerroMcpService {
             Also writes a status cache to .ferro/checkpoints/{name}.json.\n\n\
             **Read-only:** this tool reads source, the route registry, and DB schema — it never compiles \
             (no cargo) and never edits code.\n\n\
-            **Combine with:** `validate_projection` for structural checks, `projection_coverage` for coverage gaps."
+            **Combine with:** `validate_projection` for structural checks, `projection_coverage` for coverage gaps.\n\n\
+            **Seam coverage:** Seam `props_to_contract` is reported `not_checked` by default — it was unproven \
+            across dogfood inputs (Phase 196) and is surfaced as `not_checked` rather than passed, preserving the \
+            coverage-honesty invariant. Seam `field_to_column` is proven by an acceptance fixture; seams \
+            `projection_well_formed`, `action_to_route`, and `rendered_view` run actively."
     )]
     pub async fn checkpoint_projection(
         &self,
