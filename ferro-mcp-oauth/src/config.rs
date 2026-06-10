@@ -17,6 +17,8 @@ fn sanitize_identity(raw: String) -> String {
 ///
 /// Discovery is pre-auth and must work even when `MCP_TOKEN_SECRET` is unset,
 /// so this does NOT go through `from_env()` (which fails closed on the secret).
+/// Used by `discovery.rs` (Plan 02 fills the handler body).
+#[allow(dead_code)]
 pub(crate) fn sanitized_app_url() -> String {
     sanitize_identity(std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost".to_string()))
 }

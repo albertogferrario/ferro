@@ -3,6 +3,7 @@ pub use sea_orm_migration::prelude::*;
 mod m20251208_160100_create_users_table;
 mod m20251208_200000_create_todos_table;
 mod m20260228_create_api_keys_table;
+mod m20260611_create_oauth_clients_table;
 
 pub struct Migrator;
 
@@ -13,6 +14,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251208_160100_create_users_table::Migration),
             Box::new(m20251208_200000_create_todos_table::Migration),
             Box::new(m20260228_create_api_keys_table::Migration),
+            Box::new(m20260611_create_oauth_clients_table::Migration),
         ]
     }
 }
