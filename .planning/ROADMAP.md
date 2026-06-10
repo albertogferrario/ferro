@@ -2441,7 +2441,7 @@ Plans:
 
 ### Phases
 
-- [ ] **Phase 197: McpRenderer & ferro-mcp-server** — New output crate `ferro-mcp-server` with `McpRenderer` implementing the `Renderer` trait; projection→tool schema derivation from `ServiceDef`; opt-in `mcp_exposed` marker; unit-tested in-process without a live HTTP server.
+- [x] **Phase 197: McpRenderer & ferro-mcp-server** — New output crate `ferro-mcp-server` with `McpRenderer` implementing the `Renderer` trait; projection→tool schema derivation from `ServiceDef`; opt-in `mcp_exposed` marker; unit-tested in-process without a live HTTP server. (completed 2026-06-10)
 - [ ] **Phase 198: Streamable HTTP Endpoint + Unauthenticated Challenge** — App-served `POST /mcp` supporting `initialize` / `tools/list` / `tools/call`; `401` + `WWW-Authenticate` on unauthenticated requests.
 - [ ] **Phase 199: OAuth Browser Login** — `.well-known` discovery metadata, dynamic client registration, `GET /authorize` (reuses existing login + consent step, issues PKCE auth code), `POST /token` (exchanges code for audience-bound `(user, tenant)` access token); bearer-token validation middleware on `/mcp`.
 - [ ] **Phase 200: Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance** — Tool calls execute within the token's tenant context via existing multi-tenant middleware; policy layer gates each call; dogfood GO/NO-GO acceptance: a real MCP client completes browser login against a live consumer application and lists one projection's data scoped to the authenticated tenant.
@@ -2463,12 +2463,12 @@ Plans:
   4. `ferro-projections` has no new dependency on `ferro-mcp-server`; the dependency direction is `ferro-mcp-server` → `ferro-projections`.
   5. The new crate is registered in `.github/workflows/publish.yml` at the correct publish wave.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 197-01-PLAN.md — Scaffold ferro-mcp-server crate + add mcp_exposed marker to ServiceDef
 - [x] 197-02-PLAN.md — McpRenderer::render + inputSchema derivation from ServiceDef fields
-- [ ] 197-03-PLAN.md — Dispatch read path (parameterized SQL) + SQLite test + publish.yml Wave 2 registration
+- [x] 197-03-PLAN.md — Dispatch read path (parameterized SQL) + SQLite test + publish.yml Wave 2 registration
 **UI hint**: no
 
 ### Phase 198: Streamable HTTP Endpoint + Unauthenticated Challenge
@@ -2527,7 +2527,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 197. McpRenderer & ferro-mcp-server | 2/3 | In Progress|  |
+| 197. McpRenderer & ferro-mcp-server | 3/3 | Complete   | 2026-06-10 |
 | 198. Streamable HTTP Endpoint + Unauthenticated Challenge | 0/TBD | Not started | - |
 | 199. OAuth Browser Login | 0/TBD | Not started | - |
 | 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 0/TBD | Not started | - |
