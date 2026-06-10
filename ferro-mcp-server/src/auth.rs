@@ -28,7 +28,10 @@ mod tests {
 
     #[test]
     fn no_header_is_unauthenticated() {
-        assert!(matches!(extract_bearer(None), BearerOutcome::Unauthenticated));
+        assert!(matches!(
+            extract_bearer(None),
+            BearerOutcome::Unauthenticated
+        ));
     }
 
     #[test]

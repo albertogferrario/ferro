@@ -19,8 +19,7 @@ impl Default for McpServerConfig {
     fn default() -> Self {
         Self {
             app_name: std::env::var("APP_NAME").unwrap_or_else(|_| "Ferro".to_string()),
-            app_url: std::env::var("APP_URL")
-                .unwrap_or_else(|_| "http://localhost".to_string()),
+            app_url: std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost".to_string()),
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
