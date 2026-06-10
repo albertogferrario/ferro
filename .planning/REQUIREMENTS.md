@@ -15,10 +15,10 @@
 - [x] **AMCP-04**: The `McpRenderer` lives in a new output crate `ferro-mcp-server` implementing the `Renderer` trait; `ferro-projections` gains no renderer dependency.
 
 ### Endpoint & Transport
-- [ ] **AMCP-05**: The application serves an MCP endpoint over Streamable HTTP supporting `initialize`, `tools/list`, and `tools/call`.
+- [x] **AMCP-05**: The application serves an MCP endpoint over Streamable HTTP supporting `initialize`, `tools/list`, and `tools/call`.
 
 ### Browser Authentication (OAuth)
-- [ ] **AMCP-06**: An unauthenticated request to the MCP endpoint returns `401` with a `WWW-Authenticate` header referencing the protected-resource metadata.
+- [x] **AMCP-06**: An unauthenticated request to the MCP endpoint returns `401` with a `WWW-Authenticate` header referencing the protected-resource metadata.
 - [ ] **AMCP-07**: The application publishes OAuth discovery metadata (`.well-known/oauth-protected-resource`, `.well-known/oauth-authorization-server`) and a dynamic client registration endpoint, advertising the authorization-code grant with PKCE (S256).
 - [ ] **AMCP-08**: A consumer completes a browser authorization-code + PKCE flow that reuses the application's existing login and a consent step, receiving an access token bound to `(user, tenant)` and audience-restricted to the MCP endpoint.
 - [ ] **AMCP-09**: The MCP endpoint validates the bearer token; an invalid or expired token returns `401`, and an audience or tenant mismatch returns `403`.
@@ -49,8 +49,8 @@
 | AMCP-02 | Phase 197 | Complete |
 | AMCP-03 | Phase 197 | Complete |
 | AMCP-04 | Phase 197 | Complete |
-| AMCP-05 | Phase 198 | Pending |
-| AMCP-06 | Phase 198 | Pending |
+| AMCP-05 | Phase 198 | Complete |
+| AMCP-06 | Phase 198 | Complete |
 | AMCP-07 | Phase 199 | Pending |
 | AMCP-08 | Phase 199 | Pending |
 | AMCP-09 | Phase 199 | Pending |
