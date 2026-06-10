@@ -824,8 +824,6 @@ fn write_cache(
 /// - `"unverified"` if the file is absent, unreadable, or unparseable
 ///
 /// Never calls `run_for` or recomputes — read-only, stale-ok.
-// Plans 03/04 add the callers (projection_coverage, application_info).
-#[allow(dead_code)]
 pub(crate) fn read_ambient_status(project_root: &Path, name: &str) -> &'static str {
     let path = project_root
         .join(".ferro")

@@ -404,8 +404,12 @@ impl FerroMcpService {
         description = "Get application overview including framework version, Rust version, models, and installed crates.\n\n\
             **When to use:** Starting work on a Ferro project, understanding project setup, \
             verifying framework version compatibility.\n\n\
-            **Returns:** Framework version, Rust version, list of models, installed Ferro crates.\n\n\
-            **Combine with:** `list_routes` to see API surface, `list_models` for detailed model info."
+            **Returns:** Framework version, Rust version, list of models, installed Ferro crates, \
+            and a `projection_checkpoint: { total_projections, clean, failing, unverified }` rollup \
+            aggregating the cached checkpoint status for each projection (read from \
+            `.ferro/checkpoints/{name}.json`, stale-ok — never recomputes).\n\n\
+            **Combine with:** `list_routes` to see API surface, `list_models` for detailed model info, \
+            `projection_coverage` for per-model checkpoint status."
     )]
     pub async fn application_info(&self) -> String {
         match tools::application_info::execute(&self.project_root) {
@@ -1622,9 +1626,13 @@ impl FerroMcpService {
         description = "Show which models have service projections and which need them. Includes derived primary intent for existing projections.\n\n\
             **When to use:** Identifying coverage gaps in service projections, \
             planning which models need ServiceDef scaffolding, auditing projection completeness.\n\n\
-            **Returns:** Per-model coverage status with primary intent, confidence, and CLI suggestions for uncovered models.\n\n\
+            **Returns:** Per-model coverage status with primary intent, confidence, and CLI suggestions \
+            for uncovered models. Each model entry includes `checkpoint_status: \"clean\" | \"failing\" | \
+            \"unverified\"` read from the cached checkpoint result (`.ferro/checkpoints/{name}.json`, \
+            stale-ok — never recomputes). Key is the projection function name (e.g. `booking_service`).\n\n\
             **Combine with:** `list_models` for model details, `list_projections` for projection details, \
-            `validate_projection` to check existing projections for structural issues."
+            `validate_projection` to check existing projections for structural issues, \
+            `checkpoint_projection` to run a fresh check and update the cache."
     )]
     pub async fn projection_coverage(
         &self,
