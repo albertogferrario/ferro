@@ -34,6 +34,9 @@ pub struct ModelCoverage {
     pub intent_confidence: Option<f64>,
     /// Suggested CLI command to create a missing projection.
     pub suggestion: Option<String>,
+    /// Checkpoint status read from the cache file, stale-ok.
+    /// `"clean"` | `"failing"` | `"unverified"` (file absent or projection not found).
+    pub checkpoint_status: String,
 }
 
 /// Aggregate coverage statistics.
@@ -98,6 +101,11 @@ pub fn execute(project_root: &Path) -> CoverageReport {
                 primary_intent,
                 intent_confidence,
                 suggestion: None,
+                checkpoint_status: crate::tools::checkpoint_projection::read_ambient_status(
+                    project_root,
+                    &proj.name, // FUNCTION name e.g. "booking_service" — NOT model.name
+                )
+                .to_string(),
             });
         } else {
             let snake = to_snake_case(&model.name);
@@ -109,6 +117,7 @@ pub fn execute(project_root: &Path) -> CoverageReport {
                 primary_intent: None,
                 intent_confidence: None,
                 suggestion: Some(format!("ferro make:projection {snake} --from-model")),
+                checkpoint_status: "unverified".to_string(),
             });
         }
     }
@@ -201,6 +210,7 @@ mod tests {
                     primary_intent: Some("Browse".to_string()),
                     intent_confidence: Some(0.85),
                     suggestion: None,
+                    checkpoint_status: "unverified".to_string(),
                 },
                 ModelCoverage {
                     model_name: "Product".to_string(),
@@ -210,6 +220,7 @@ mod tests {
                     primary_intent: None,
                     intent_confidence: None,
                     suggestion: Some("ferro make:projection product --from-model".to_string()),
+                    checkpoint_status: "unverified".to_string(),
                 },
             ],
             coverage: CoverageSummary {
@@ -256,6 +267,7 @@ mod tests {
             primary_intent: None,
             intent_confidence: None,
             suggestion: Some("ferro make:projection order_item --from-model".to_string()),
+            checkpoint_status: "unverified".to_string(),
         };
 
         assert_eq!(
@@ -287,5 +299,143 @@ mod tests {
         assert!(json_str.contains("\"total_models\": 3"));
         assert!(json_str.contains("\"with_projections\": 2"));
         assert!(json_str.contains("\"without_projections\": 1"));
+    }
+
+    // ------------------------------------------------------------------
+    // CHK-08 tests: checkpoint_status populated via read_ambient_status
+    // ------------------------------------------------------------------
+
+    /// Write a checkpoint cache file for `proj_name` under `project_root`.
+    fn write_checkpoint_cache(project_root: &std::path::Path, proj_name: &str, status: &str) {
+        let cache_dir = project_root.join(".ferro").join("checkpoints");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+        std::fs::write(
+            cache_dir.join(format!("{proj_name}.json")),
+            format!(r#"{{"ambient_status":"{status}"}}"#),
+        )
+        .unwrap();
+    }
+
+    /// Build a minimal SeaORM model source for list_models to parse.
+    fn model_src(struct_name: &str) -> String {
+        let table = struct_name.to_lowercase() + "s";
+        format!(
+            r#"use sea_orm::entity::prelude::*;
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "{table}")]
+pub struct {struct_name} {{
+    pub id: i64,
+}}
+"#
+        )
+    }
+
+    /// Build a minimal projection source for list_projections to discover.
+    fn projection_src(fn_name: &str, service_name: &str) -> String {
+        format!(
+            r#"use ferro::{{ServiceDef, DataType, FieldMeaning}};
+pub fn {fn_name}() -> ServiceDef {{
+    ServiceDef::new("{service_name}")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+}}
+"#
+        )
+    }
+
+    #[test]
+    fn checkpoint_status_from_cache_failing() {
+        // CHK-08: a model with a projection whose cache says "failing" →
+        // ModelCoverage.checkpoint_status == "failing".
+        let tmp = tempfile::TempDir::new().unwrap();
+
+        // Write model.
+        let models_dir = tmp.path().join("src/models");
+        std::fs::create_dir_all(&models_dir).unwrap();
+        std::fs::write(models_dir.join("booking.rs"), model_src("Booking")).unwrap();
+
+        // Write projection (list_projections scans src/projections/).
+        let proj_dir = tmp.path().join("src/projections");
+        std::fs::create_dir_all(&proj_dir).unwrap();
+        std::fs::write(
+            proj_dir.join("booking_service.rs"),
+            projection_src("booking_service", "booking"),
+        )
+        .unwrap();
+
+        // Write cache with "failing" status keyed on function name.
+        write_checkpoint_cache(tmp.path(), "booking_service", "failing");
+
+        let report = execute(tmp.path());
+        let booking = report
+            .models
+            .iter()
+            .find(|m| m.model_name == "Booking")
+            .expect("Booking model must appear in coverage report");
+
+        assert!(
+            booking.has_projection,
+            "Booking must be matched to booking_service"
+        );
+        assert_eq!(
+            booking.checkpoint_status, "failing",
+            "checkpoint_status must reflect the cache value"
+        );
+    }
+
+    #[test]
+    fn checkpoint_status_unverified_no_cache() {
+        // CHK-08: a model with a projection but no cache file → "unverified".
+        let tmp = tempfile::TempDir::new().unwrap();
+
+        let models_dir = tmp.path().join("src/models");
+        std::fs::create_dir_all(&models_dir).unwrap();
+        std::fs::write(models_dir.join("booking.rs"), model_src("Booking")).unwrap();
+
+        let proj_dir = tmp.path().join("src/projections");
+        std::fs::create_dir_all(&proj_dir).unwrap();
+        std::fs::write(
+            proj_dir.join("booking_service.rs"),
+            projection_src("booking_service", "booking"),
+        )
+        .unwrap();
+
+        // No cache file written.
+
+        let report = execute(tmp.path());
+        let booking = report
+            .models
+            .iter()
+            .find(|m| m.model_name == "Booking")
+            .expect("Booking model must appear in coverage report");
+
+        assert_eq!(
+            booking.checkpoint_status, "unverified",
+            "missing cache → unverified"
+        );
+    }
+
+    #[test]
+    fn checkpoint_status_unverified_no_projection() {
+        // CHK-08: a model with no projection at all → checkpoint_status == "unverified".
+        let tmp = tempfile::TempDir::new().unwrap();
+
+        let models_dir = tmp.path().join("src/models");
+        std::fs::create_dir_all(&models_dir).unwrap();
+        std::fs::write(models_dir.join("widget.rs"), model_src("Widget")).unwrap();
+
+        // No projection directory or file for Widget.
+
+        let report = execute(tmp.path());
+        let widget = report
+            .models
+            .iter()
+            .find(|m| m.model_name == "Widget")
+            .expect("Widget model must appear in coverage report");
+
+        assert!(!widget.has_projection, "Widget has no projection");
+        assert_eq!(
+            widget.checkpoint_status, "unverified",
+            "no projection → checkpoint_status unverified"
+        );
     }
 }
