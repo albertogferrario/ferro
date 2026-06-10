@@ -4,7 +4,7 @@ milestone: v12.6
 milestone_name: Consumer App MCP (Browser Login)
 status: verifying
 stopped_at: Completed Phase 198 Plan 02 — MCP HTTP transport wiring, 401 challenge, GET/POST routes
-last_updated: "2026-06-10T14:53:59.157Z"
+last_updated: "2026-06-10T15:09:19.096Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 83
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 198 (streamable-http-endpoint-unauthenticated-challenge) — EXECUTING
-Plan: 2 of 2
+Phase: 201
+Plan: Not started
 Next: `/gsd-plan-phase 197`
 Status: Phase complete — ready for verification
 
@@ -82,7 +82,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 316
+- Total plans completed: 318
 - Average duration: —
 - Total execution time: —
 
@@ -138,6 +138,7 @@ Progress: [██████████] 100%
 | 195 | 4 | - | - |
 | 196 | 4 | - | - |
 | 197 | 3 | - | - |
+| 198 | 2 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
