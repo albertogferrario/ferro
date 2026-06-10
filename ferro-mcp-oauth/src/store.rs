@@ -75,9 +75,7 @@ pub async fn insert_client(
         created_at: Set(now),
         ..Default::default()
     };
-    Entity::insert(active)
-        .exec_with_returning(db)
-        .await
+    Entity::insert(active).exec_with_returning(db).await
 }
 
 /// Look up a registered client by its `client_id`.

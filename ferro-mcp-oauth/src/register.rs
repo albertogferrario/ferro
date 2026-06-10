@@ -193,7 +193,8 @@ mod tests {
         assert_ne!(id1, id2, "two generated client_ids must differ");
         // Must be URL-safe base64 (no +, /, =)
         assert!(
-            id1.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_'),
+            id1.chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_'),
             "client_id must be URL-safe: got '{id1}'"
         );
     }
@@ -253,14 +254,9 @@ mod tests {
         let client_id = generate_client_id();
         let redirect_uris_json = r#"["https://app.example.com/cb"]"#.to_string();
 
-        crate::store::insert_client(
-            &db,
-            client_id.clone(),
-            None,
-            redirect_uris_json,
-        )
-        .await
-        .expect("insert should succeed");
+        crate::store::insert_client(&db, client_id.clone(), None, redirect_uris_json)
+            .await
+            .expect("insert should succeed");
 
         let found = crate::store::find_by_client_id(&db, &client_id)
             .await

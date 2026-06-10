@@ -41,9 +41,10 @@ pub struct TokenRequest {
 #[ferro::handler]
 pub async fn token_exchange(req: ferro::Request) -> ferro::Response {
     // ── Step 1: Parse form body ───────────────────────────────────────────────
-    let form: TokenRequest = req.form().await.map_err(|e| {
-        json_error(400, "invalid_request", &format!("form parse error: {e}"))
-    })?;
+    let form: TokenRequest = req
+        .form()
+        .await
+        .map_err(|e| json_error(400, "invalid_request", &format!("form parse error: {e}")))?;
 
     // ── Step 2: grant_type check ──────────────────────────────────────────────
     if form.grant_type != "authorization_code" {
@@ -92,14 +93,12 @@ pub async fn token_exchange(req: ferro::Request) -> ferro::Response {
     }
 
     // ── Step 6: Mint JWT ──────────────────────────────────────────────────────
-    let config = OAuthConfig::from_env().map_err(|e| {
-        json_error(500, "server_error", &format!("OAuth config error: {e}"))
-    })?;
+    let config = OAuthConfig::from_env()
+        .map_err(|e| json_error(500, "server_error", &format!("OAuth config error: {e}")))?;
 
     let claims = build_claims(record.user_id, record.tenant_id, &config.app_url, 3600);
-    let access_token = mint_token(&claims, &config.token_secret).map_err(|e| {
-        json_error(500, "server_error", &format!("token mint error: {e}"))
-    })?;
+    let access_token = mint_token(&claims, &config.token_secret)
+        .map_err(|e| json_error(500, "server_error", &format!("token mint error: {e}")))?;
 
     // ── Step 7: Return token response (RFC 6749 §5.1) ────────────────────────
     Ok(ferro::HttpResponse::json(json!({
@@ -183,14 +182,7 @@ mod tests {
         bootstrap_test_cache();
 
         let verifier = "test_verifier_that_is_long_enough_for_pkce_12345";
-        let code = store_code(
-            "client-abc",
-            "http://localhost:3000/cb",
-            verifier,
-            1,
-            None,
-        )
-        .await;
+        let code = store_code("client-abc", "http://localhost:3000/cb", verifier, 1, None).await;
 
         // First get: should find it
         let key = format!("mcp:code:{code}");
@@ -248,11 +240,8 @@ mod tests {
         let claims = build_claims(42, Some(7), &config.app_url, 3600);
         let token = mint_token(&claims, &config.token_secret).expect("mint ok");
 
-        let result = crate::validate::validate_bearer(
-            Some(&format!("Bearer {token}")),
-            &config,
-            None,
-        );
+        let result =
+            crate::validate::validate_bearer(Some(&format!("Bearer {token}")), &config, None);
         match result {
             crate::validate::BearerCheck::Authenticated(principal) => {
                 assert_eq!(principal["sub"], "42");

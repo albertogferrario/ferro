@@ -56,15 +56,19 @@ pub async fn authorize_get(req: ferro::Request) -> ferro::Response {
         ));
     }
 
-    let client_id = req.query("client_id").ok_or_else(|| {
-        error_page(400, "invalid_request", "client_id is required")
-    })?;
-    let redirect_uri = req.query("redirect_uri").ok_or_else(|| {
-        error_page(400, "invalid_request", "redirect_uri is required")
-    })?;
+    let client_id = req
+        .query("client_id")
+        .ok_or_else(|| error_page(400, "invalid_request", "client_id is required"))?;
+    let redirect_uri = req
+        .query("redirect_uri")
+        .ok_or_else(|| error_page(400, "invalid_request", "redirect_uri is required"))?;
     let code_challenge = req.query("code_challenge").ok_or_else(|| {
         // T-199-01: absent code_challenge → PKCE downgrade rejection
-        error_page(400, "invalid_request", "code_challenge is required (S256 PKCE)")
+        error_page(
+            400,
+            "invalid_request",
+            "code_challenge is required (S256 PKCE)",
+        )
     })?;
     let code_challenge_method = req.query_or("code_challenge_method", "");
     let state = req.query("state").unwrap_or_default();
@@ -100,13 +104,8 @@ pub async fn authorize_get(req: ferro::Request) -> ferro::Response {
     }
 
     // ── Step 4: Client + redirect_uri validation (T-199-04, HIGH) ──────────
-    let db_conn = ferro::DB::connection().map_err(|e| {
-        error_page(
-            500,
-            "server_error",
-            &format!("db connection failed: {e}"),
-        )
-    })?;
+    let db_conn = ferro::DB::connection()
+        .map_err(|e| error_page(500, "server_error", &format!("db connection failed: {e}")))?;
     let client = crate::store::find_by_client_id(db_conn.inner(), &client_id)
         .await
         .map_err(|e| error_page(500, "server_error", &format!("db error: {e}")))?;
@@ -166,8 +165,10 @@ pub async fn authorize_get(req: ferro::Request) -> ferro::Response {
         user_id,
         tenant_id,
     );
-    Ok(ferro::HttpResponse::text(html)
-        .header("Content-Type", crate::consent::CONSENT_CONTENT_TYPE))
+    Ok(
+        ferro::HttpResponse::text(html)
+            .header("Content-Type", crate::consent::CONSENT_CONTENT_TYPE),
+    )
 }
 
 /// Build an HTML error page (never a redirect).
@@ -267,7 +268,10 @@ mod tests {
     /// by confirming Auth::check() returns false when no session is present.
     #[test]
     fn auth_check_is_false_outside_session_scope() {
-        assert!(!Auth::check(), "Auth::check() must be false outside session scope");
+        assert!(
+            !Auth::check(),
+            "Auth::check() must be false outside session scope"
+        );
     }
 
     /// Consent HTML contains the hidden _token field (CSRF) and S256 value.
@@ -285,7 +289,10 @@ mod tests {
             Some(7),
         );
         assert!(html.contains(r#"name="_token""#), "must contain CSRF field");
-        assert!(html.contains("csrf_test_token"), "must embed CSRF token value");
+        assert!(
+            html.contains("csrf_test_token"),
+            "must embed CSRF token value"
+        );
         assert!(html.contains("value=\"S256\""), "must contain S256 value");
         assert!(html.starts_with("<!DOCTYPE html>"), "must be HTML document");
     }
@@ -294,10 +301,8 @@ mod tests {
     /// but we can verify the redirect_uris parse+match logic directly.
     #[test]
     fn redirect_uri_exact_match_check() {
-        let stored: Vec<String> = serde_json::from_str(
-            r#"["http://localhost:3000/callback"]"#,
-        )
-        .unwrap();
+        let stored: Vec<String> =
+            serde_json::from_str(r#"["http://localhost:3000/callback"]"#).unwrap();
         assert!(stored.iter().any(|u| u == "http://localhost:3000/callback"));
         assert!(!stored.iter().any(|u| u == "http://localhost:3000/other"));
     }

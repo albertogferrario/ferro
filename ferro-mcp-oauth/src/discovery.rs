@@ -51,7 +51,9 @@ pub async fn protected_resource_handler(_req: ferro::Request) -> ferro::Response
 #[ferro::handler]
 pub async fn authorization_server_handler(_req: ferro::Request) -> ferro::Response {
     let url = crate::config::sanitized_app_url();
-    Ok(ferro::HttpResponse::json(authorization_server_metadata(&url)))
+    Ok(ferro::HttpResponse::json(authorization_server_metadata(
+        &url,
+    )))
 }
 
 #[cfg(test)]

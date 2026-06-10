@@ -165,9 +165,8 @@ pub async fn authorize_post(req: ferro::Request) -> ferro::Response {
     }
 
     // ── Step 4b: Re-validate client_id + redirect_uri (T-199-16) ─────────────
-    let db_conn = ferro::DB::connection().map_err(|e| {
-        ferry_error_page(500, "server_error", &format!("db error: {e}"))
-    })?;
+    let db_conn = ferro::DB::connection()
+        .map_err(|e| ferry_error_page(500, "server_error", &format!("db error: {e}")))?;
     let client = crate::store::find_by_client_id(db_conn.inner(), &form.client_id)
         .await
         .map_err(|e| ferry_error_page(500, "server_error", &format!("db error: {e}")))?;
@@ -175,16 +174,11 @@ pub async fn authorize_post(req: ferro::Request) -> ferro::Response {
     let client = match client {
         Some(c) => c,
         None => {
-            return Err(ferry_error_page(
-                400,
-                "invalid_client",
-                "Unknown client_id",
-            ));
+            return Err(ferry_error_page(400, "invalid_client", "Unknown client_id"));
         }
     };
 
-    let stored_uris: Vec<String> =
-        serde_json::from_str(&client.redirect_uris).unwrap_or_default();
+    let stored_uris: Vec<String> = serde_json::from_str(&client.redirect_uris).unwrap_or_default();
     if !stored_uris.iter().any(|u| u == &form.redirect_uri) {
         return Err(ferry_error_page(
             400,
@@ -246,10 +240,7 @@ pub async fn authorize_post(req: ferro::Request) -> ferro::Response {
     let location = if form.state.is_empty() {
         format!("{}?code={}", form.redirect_uri, code)
     } else {
-        format!(
-            "{}?code={}&state={}",
-            form.redirect_uri, code, form.state
-        )
+        format!("{}?code={}&state={}", form.redirect_uri, code, form.state)
     };
 
     Err(ferro::HttpResponse::new()

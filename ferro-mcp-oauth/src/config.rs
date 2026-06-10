@@ -55,14 +55,13 @@ impl OAuthConfig {
     /// Returns `Err(MissingSecret)` when `MCP_TOKEN_SECRET` is unset.
     /// Returns `Err(SecretTooShort)` when `MCP_TOKEN_SECRET` is shorter than 32 bytes.
     pub fn from_env() -> Result<Self, OAuthConfigError> {
-        let app_name = sanitize_identity(
-            std::env::var("APP_NAME").unwrap_or_else(|_| "Ferro".to_string()),
-        );
+        let app_name =
+            sanitize_identity(std::env::var("APP_NAME").unwrap_or_else(|_| "Ferro".to_string()));
         let app_url = sanitize_identity(
             std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost".to_string()),
         );
-        let secret_str = std::env::var("MCP_TOKEN_SECRET")
-            .map_err(|_| OAuthConfigError::MissingSecret)?;
+        let secret_str =
+            std::env::var("MCP_TOKEN_SECRET").map_err(|_| OAuthConfigError::MissingSecret)?;
         if secret_str.len() < 32 {
             return Err(OAuthConfigError::SecretTooShort);
         }

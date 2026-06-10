@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn wrong_tenant_returns_forbidden() {
         let token = valid_token(); // tenant_id = Some(7)
-        // Expected tenant is 99 — mismatch
+                                   // Expected tenant is 99 — mismatch
         let result = validate_bearer(Some(&bearer(&token)), &config(), Some(99));
         assert!(
             matches!(result, BearerCheck::Forbidden),

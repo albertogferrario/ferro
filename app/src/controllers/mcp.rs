@@ -46,8 +46,7 @@ pub async fn handle(req: Request) -> Response {
     let authorization = req.header("Authorization").map(|s| s.to_owned());
 
     // 3. Bearer validation — fail-closed: if config unavailable → 401 challenge (T-199-13b).
-    let oauth_config = OAuthConfig::from_env()
-        .map_err(|_| challenge_response(&config))?;
+    let oauth_config = OAuthConfig::from_env().map_err(|_| challenge_response(&config))?;
 
     // expected_tenant: None for single-tenant /mcp (Phase 200 will supply tenant context).
     let expected_tenant = ferro::current_tenant().map(|t| t.id);

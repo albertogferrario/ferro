@@ -63,10 +63,7 @@ pub fn build_claims(
 /// Mints an HS256 JWT.
 ///
 /// Uses `EncodingKey::from_secret(secret)` with `Algorithm::HS256`.
-pub fn mint_token(
-    claims: &McpTokenClaims,
-    secret: &[u8],
-) -> Result<String, crate::OAuthError> {
+pub fn mint_token(claims: &McpTokenClaims, secret: &[u8]) -> Result<String, crate::OAuthError> {
     let header = Header::new(Algorithm::HS256);
     let key = EncodingKey::from_secret(secret);
     encode(&header, claims, &key).map_err(crate::OAuthError::Jwt)
@@ -114,8 +111,8 @@ mod tests {
     fn mint_decode_round_trip() {
         let claims = make_claims();
         let token = mint_token(&claims, SECRET).expect("mint failed");
-        let decoded = decode_token(&token, SECRET, &format!("{APP_URL}/mcp"))
-            .expect("decode failed");
+        let decoded =
+            decode_token(&token, SECRET, &format!("{APP_URL}/mcp")).expect("decode failed");
         assert_eq!(decoded.sub, "42");
         assert_eq!(decoded.tenant_id, Some(7));
         assert_eq!(decoded.iss, APP_URL);

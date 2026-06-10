@@ -28,7 +28,10 @@ pub fn generate_auth_code() -> String {
 pub fn verify_s256(code_verifier: &str, stored_challenge: &str) -> bool {
     let hash = Sha256::digest(code_verifier.as_bytes());
     let recomputed = URL_SAFE_NO_PAD.encode(hash);
-    recomputed.as_bytes().ct_eq(stored_challenge.as_bytes()).into()
+    recomputed
+        .as_bytes()
+        .ct_eq(stored_challenge.as_bytes())
+        .into()
 }
 
 #[cfg(test)]
@@ -63,7 +66,9 @@ mod tests {
         assert_eq!(code1.len(), 43, "expected 43 chars, got {}", code1.len());
         // URL-safe alphabet only
         assert!(
-            code1.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_'),
+            code1
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_'),
             "non-URL-safe char in: {code1}"
         );
         // Two calls yield different values (birthday probability ~2^-256)

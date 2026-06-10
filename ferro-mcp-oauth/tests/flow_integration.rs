@@ -114,8 +114,7 @@ async fn full_pkce_flow() {
     // Simulate what authorize_get does after Auth::check() succeeds:
     // - Validate client exists (done above)
     // - Validate redirect_uri exact-match
-    let stored_uris: Vec<String> =
-        serde_json::from_str(&client.redirect_uris).unwrap_or_default();
+    let stored_uris: Vec<String> = serde_json::from_str(&client.redirect_uris).unwrap_or_default();
     assert!(
         stored_uris.iter().any(|u| u == &redirect_uri),
         "redirect_uri must match registered URIs"
@@ -187,10 +186,7 @@ async fn full_pkce_flow() {
 
     // Validate client_id + redirect_uri (T-199-16)
     assert_eq!(record.client_id, client_id, "client_id must match");
-    assert_eq!(
-        record.redirect_uri, redirect_uri,
-        "redirect_uri must match"
-    );
+    assert_eq!(record.redirect_uri, redirect_uri, "redirect_uri must match");
 
     // PKCE verify (T-199-01)
     assert!(
