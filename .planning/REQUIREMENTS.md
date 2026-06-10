@@ -31,7 +31,7 @@ The load-bearing trust invariant: **`not_checked` never collapses into `pass`.**
 
 ### Dogfood Acceptance (P3)
 
-- [ ] **CHK-10** — The checkpoint is run across the synthetic app catalog — which must include at least one **deliberately poisoned** projection (a field with no backing column), since model-derived projections auto-pass seam 2 and would make the gate vacuous — and against one live consumer application. Acceptance requires it to surface at least one real seam defect; a checkpoint that finds nothing real in a real project fails acceptance and the design is revisited, not shipped.
+- [x] **CHK-10** — The checkpoint is run across the synthetic app catalog — which must include at least one **deliberately poisoned** projection (a field with no backing column), since model-derived projections auto-pass seam 2 and would make the gate vacuous — and against one live consumer application. Acceptance requires it to surface at least one real seam defect; a checkpoint that finds nothing real in a real project fails acceptance and the design is revisited, not shipped.
 
 ## Design Decisions To Resolve In Planning
 
@@ -72,6 +72,6 @@ Surfaced by research as underspecified in the design spec; the phase planner mus
 | CHK-07 | Phase 195 | Complete |
 | CHK-08 | Phase 195 | Complete |
 | CHK-09 | Phase 195 | Complete |
-| CHK-10 | Phase 196 | Pending |
+| CHK-10 | Phase 196 | Complete |
 
 *(Phase column filled by the roadmapper.)*
