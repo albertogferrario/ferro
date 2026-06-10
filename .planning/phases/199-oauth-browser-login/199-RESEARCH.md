@@ -862,27 +862,36 @@ All factual claims about the codebase in sections 1-9 are [VERIFIED] from the co
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Login redirect mechanism (D-06)**
-   - What we know: `POST /auth/login` is JSON-only; no return-to support.
-   - What's unclear: Option A (modify existing login to redirect after session store) vs Option B (new `GET /auth/login` HTML handler). The CONTEXT.md preference is "minimal addition rather than forking".
-   - Recommendation: Option A — add a `session.get("oauth_return_to")` check after `Auth::login()` in the existing `POST /auth/login` handler. Store the return URL as `/authorize?{query_string}` in session before redirecting to `/auth/login` from `GET /authorize`. This is one-line change to auth_controller.
+All four questions are resolved; the resolutions are implemented in the Phase 199 plans
+(Plan 04 Task 1/Task 2 and Plan 05 Task 2).
 
-2. **Single-tenant token without tenant_id**
-   - What we know: `current_tenant()` returns `None` in single-tenant apps.
-   - What's unclear: should `validate_bearer` enforce tenant_id presence, or allow None?
-   - Recommendation: Allow None (single-tenant apps are valid ferro consumers). Phase 200 tenant scoping simply finds no tenant to scope by.
+1. **Login redirect mechanism (D-06)** — **RESOLVED: Option A.**
+   - What we knew: `POST /auth/login` is JSON-only; no return-to support.
+   - Resolution: Option A — add a `session.get("oauth_return_to")` check after `Auth::login()`
+     in the existing `POST /auth/login` handler. `GET /authorize` stores the return URL as
+     `/authorize?{query_string}` in session before redirecting to `/auth/login`. One-line change
+     to auth_controller. Implemented in Plan 05 Task 2 (`oauth_return_to` session key).
 
-3. **Origin validation exact rule**
-   - What we know: Phase 198 TODO says validate Origin header.
-   - What's unclear: whether to reject absent Origin (strict) or allow it (permissive for SDK clients).
-   - Recommendation: Allow absent; reject present-but-mismatched.
+2. **Single-tenant token without tenant_id** — **RESOLVED: allow None.**
+   - What we knew: `current_tenant()` returns `None` in single-tenant apps.
+   - Resolution: `validate_bearer` allows an absent `tenant_id` (single-tenant apps are valid
+     ferro consumers); the tenant check is skipped when `expected_tenant` is `None`. Phase 200
+     tenant scoping simply finds no tenant to scope by. Implemented in Plan 03 (`validate.rs`).
 
-4. **Consent flow for multi-tenant users with ambiguous tenant**
-   - What we know: `current_tenant()` returns `None` when tenant is not resolved from the `/authorize` request URL.
-   - What's unclear: should `/authorize` fail, or issue a tokenless placeholder?
-   - Recommendation: Return a `400 invalid_request` if TenantMiddleware is active but `current_tenant()` is `None` (ambiguous). Single-tenant (no TenantMiddleware) is not ambiguous.
+3. **Origin validation exact rule** — **RESOLVED: allow absent, reject mismatched.**
+   - What we knew: Phase 198 TODO says validate the Origin header.
+   - Resolution: Allow absent `Origin` (non-browser SDK clients); reject present-but-mismatched.
+     Implemented in Plan 05 Task 2 (`/mcp` Origin check).
+
+4. **Consent flow for multi-tenant users with ambiguous tenant** — **RESOLVED: 400 on ambiguity.**
+   - What we knew: `current_tenant()` returns `None` when tenant is not resolved from the
+     `/authorize` request URL.
+   - Resolution: Return `400 invalid_request` if `TenantMiddleware` is active but
+     `current_tenant()` is `None` (ambiguous). Single-tenant (no `TenantMiddleware`) is not
+     ambiguous. A consent-time tenant picker is explicitly deferred to Phase 200. Implemented in
+     Plan 04 Task 1 (`/authorize`).
 
 ---
 
