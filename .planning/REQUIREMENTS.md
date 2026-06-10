@@ -24,8 +24,8 @@
 - [x] **AMCP-09**: The MCP endpoint validates the bearer token; an invalid or expired token returns `401`, and an audience or tenant mismatch returns `403`.
 
 ### Per-Tenant Scoping & Authorization
-- [ ] **AMCP-10**: A tool call executes within the token's tenant context via the existing multi-tenant middleware; a token scoped to one tenant returns only that tenant's rows.
-- [ ] **AMCP-11**: A tool call is gated by the same policy layer as the web surface; a policy-denied call returns an MCP tool error with no data disclosure.
+- [x] **AMCP-10**: A tool call executes within the token's tenant context via the existing multi-tenant middleware; a token scoped to one tenant returns only that tenant's rows.
+- [x] **AMCP-11**: A tool call is gated by the same policy layer as the web surface; a policy-denied call returns an MCP tool error with no data disclosure.
 
 ## Future Requirements (deferred)
 
@@ -54,5 +54,5 @@
 | AMCP-07 | Phase 199 | Complete |
 | AMCP-08 | Phase 199 | Complete |
 | AMCP-09 | Phase 199 | Complete |
-| AMCP-10 | Phase 200 | Pending |
-| AMCP-11 | Phase 200 | Pending |
+| AMCP-10 | Phase 200 | Complete |
+| AMCP-11 | Phase 200 | Complete |
