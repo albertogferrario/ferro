@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v12.6
 milestone_name: Consumer App MCP (Browser Login)
 status: executing
-stopped_at: Completed 199-05-PLAN.md
-last_updated: "2026-06-10T17:37:54.042Z"
+stopped_at: Phase 200 context gathered
+last_updated: "2026-06-10T18:07:01.045Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 83
@@ -393,7 +393,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-10T17:31:46.763Z
-Stopped at: Completed 199-05-PLAN.md
-Resume file: None
+Last session: 2026-06-10T18:07:01.035Z
+Stopped at: Phase 200 context gathered
+Resume file: .planning/phases/200-per-tenant-scoping-policy-authorization-dogfood-acceptance/200-CONTEXT.md
 Next action: `/gsd-plan-phase 197`
