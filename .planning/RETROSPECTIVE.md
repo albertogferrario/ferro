@@ -73,6 +73,48 @@
 
 ---
 
+## Milestone: v12.5 — Projection Checkpoint
+
+**Shipped:** 2026-06-10
+**Phases:** 3 (194–196) | **Plans:** 11
+
+### What Was Built
+An agent-facing write→verify loop for projections. `checkpoint_projection` walks a
+five-seam spine, owns the projection-field→model-column seam, delegates the rest to
+existing validators, returns one ranked verdict, embeds inline after generation, and
+surfaces ambient status. Proven against a poisoned synthetic fixture and the `app/`
+live consumer (20 findings; acceptance GO).
+
+### What Worked
+- Composition over reimplementation: the four wrapper seams delegate to existing
+  validators and carry a `source` — "no logic reimplemented" became mechanically
+  checkable in tests.
+- Coverage honesty as a typed invariant (`not_checked` never coerced to `pass`) kept
+  the verdict trustworthy rather than falsely green.
+- The Phase 196 dogfood gate (poisoned fixture + live run + explicit GO/NO-GO) forced
+  the tool to prove itself on a real project before shipping, and drove the
+  evidence-based demotion of the one seam that found nothing.
+
+### What Was Inefficient
+- The `app/` `service_def` function-name collision (all projections export the same
+  fn name) blocked `run_for`-by-name and produced collision-artifact findings on seams
+  1/4 — a real-app dogfooding limitation surfaced late, recorded in `196-ACCEPTANCE.md`.
+- Seam 2 cannot fire on `app/` (all SeaORM models are `pub struct Model`), so the
+  synthetic poisoned fixture had to carry SC-1 rather than the live app.
+
+### Patterns Established
+- Evidence-driven feature demotion: ship a seam active only if it catches a real defect
+  in dogfood; otherwise report `not_checked`-by-default and document it.
+- Acceptance recorded as a committed report (`196-ACCEPTANCE.md`) with an explicit
+  GO/NO-GO verdict feeding the next plan's decisions.
+
+### Key Lessons
+- A verification tool must earn its place against a real project, not just a synthetic
+  fixture — the dogfood gate is what makes "it works" credible.
+- Capping output (`next_steps` → 5) is part of the product: signal over completeness.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
