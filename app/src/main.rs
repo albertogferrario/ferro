@@ -54,6 +54,8 @@ mod resources;
 mod routes;
 mod tenant_lookup;
 mod tenant_resolver;
+#[cfg(test)]
+mod tests;
 
 use migrations::Migrator;
 

@@ -163,12 +163,16 @@ name = "app"
 version = "0.2.51"
 dependencies = [
  "async-trait",
+ "bytes",
  "chrono",
  "clap",
  "dotenvy",
  "ferro-mcp-oauth",
  "ferro-mcp-server",
  "ferro-rs",
+ "http-body-util",
+ "hyper 1.8.1",
+ "hyper-util",
  "sea-orm",
  "sea-orm-migration",
  "serde",

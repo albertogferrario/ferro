@@ -21,3 +21,9 @@ clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 ferro-mcp-server = { path = "../ferro-mcp-server", version = "0.2" }
 ferro-mcp-oauth = { path = "../ferro-mcp-oauth" }
+
+[dev-dependencies]
+hyper = { version = "1", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+bytes = "1"
+http-body-util = "0.1"
