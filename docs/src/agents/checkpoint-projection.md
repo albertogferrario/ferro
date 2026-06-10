@@ -39,9 +39,9 @@ The tool returns a single `Verdict` object:
       ]
     },
     {
-      "seam": "projection_well_formed",
+      "seam": "props_to_contract",
       "status": "not_checked",
-      "source": "validate_projection",
+      "source": "validate_contracts",
       "reason": "unproven_against_real_inputs"
     }
   ],

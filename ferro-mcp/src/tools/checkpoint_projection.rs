@@ -619,6 +619,12 @@ fn decide_seam4(seam1_status: &SeamStatus) -> Option<&'static str> {
 }
 
 /// Returns the cascade skip reason for seam 5, or `None` if seam 5 should run.
+///
+/// Only a hard `Fail` in a prerequisite seam skips seam 5. A `NotChecked`
+/// prerequisite (e.g. seam 4 had no rendered view) deliberately does NOT skip
+/// seam 5: `not_checked` means "absent prerequisite", not "known broken", so it
+/// must not cascade into suppressing downstream coverage. (Moot while
+/// `props_to_contract` is demoted, but this is the contract if it is reactivated.)
 fn decide_seam5(seam1_status: &SeamStatus, seam4_status: &SeamStatus) -> Option<&'static str> {
     if *seam1_status == SeamStatus::Fail {
         Some("seam_1_failed")
@@ -2084,6 +2090,13 @@ pub fn dangling_service() -> ServiceDef {
         }
 
         // SC-2 gate: at least one finding required. Zero findings = NO-GO.
+        // Note on finding provenance (see 196-ACCEPTANCE.md): the genuine defect
+        // driver is seam 3 (action_to_route) on unregistered actions. Seams 1/4
+        // also contribute findings that are function-name-collision artifacts of
+        // app/ (all projections export `service_def`), and seam 2 produces zero
+        // because app/ entities are all `pub struct Model`. This gate proves the
+        // checkpoint surfaces *something real* in a live project, not that every
+        // seam is exercised — that is what the per-seam tally above records.
         assert!(
             total_findings > 0,
             "SC-2 FAIL: checkpoint found zero findings across all app/ projections.\n\
