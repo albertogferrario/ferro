@@ -228,6 +228,69 @@ pub async fn pay(req: Request) -> Response {
 }
 ```
 
+### Connect destination charges with a platform fee
+
+The end-to-end Connect flow has four stages: create the connected account,
+link the seller through onboarding, persist the granted capabilities when the
+`account.updated` webhook reports them, and route a destination charge with a
+platform application fee derived from configuration.
+
+1. **Create the account.** Register a connected account for the seller and store
+   its `acct_xxx` id on the tenant record.
+2. **Link onboarding.** Send the seller through Stripe-hosted onboarding with
+   `account::create_link(account_id, refresh_url, return_url)` (see
+   [Connect Onboarding](#connect-onboarding)).
+3. **Persist capabilities on `account.updated`.** Stripe emits
+   `account.updated` as the seller completes onboarding. Persist the
+   `charges_enabled` / `payouts_enabled` capability flags from this event so the
+   application only routes charges to accounts that can receive them. Register
+   the handler on the Connect webhook endpoint
+   (`STRIPE_CONNECT_WEBHOOK_SECRET`).
+4. **Route the charge with a computed fee.** Derive the platform fee from
+   `STRIPE_APPLICATION_FEE_PERCENT` via
+   [`StripeConfig::application_fee_for`](#environment-variables) and feed it to
+   `CheckoutBuilder::destination`:
+
+```rust
+use ferro::{CheckoutBuilder, LineItem, Mode, handler, HttpResponse, Request, Response};
+use ferro_stripe::Stripe;
+
+#[handler]
+pub async fn pay_with_platform_fee(req: Request) -> Response {
+    let account_id = "acct_xxx"; // persisted once account.updated reports charges_enabled
+    let amount_cents = 2000; // $20.00
+
+    // None when STRIPE_APPLICATION_FEE_PERCENT is unset or non-positive;
+    // otherwise round(amount * percent / 100), clamped to [0, amount_cents].
+    let fee = Stripe::config().application_fee_for(amount_cents);
+
+    let intent = CheckoutBuilder::new(Mode::Payment)
+        .destination(account_id, fee)
+        .line_item(LineItem {
+            name: "Payment".into(),
+            description: None,
+            unit_amount_cents: amount_cents,
+            quantity: 1,
+            currency: "usd".into(),
+        })
+        .success_url("https://app.example.com/pay/success")
+        .cancel_url("https://app.example.com/pay/cancel")
+        .idempotency_key(&format!("pay-{}", chrono::Utc::now().timestamp()))
+        .create()
+        .await
+        .map_err(|e| HttpResponse::text(e.to_string()).status(500))?;
+
+    Ok(HttpResponse::redirect(&intent.url))
+}
+```
+
+`application_fee_for` returns `None` when no percentage is configured, which
+passes through to `destination(account_id, None)` — a destination charge with
+no platform fee. This mirrors the [manual-capture](#connect-composition) flow:
+`manual_capture()` composes with `destination()`, so a deposit can be
+authorized against a connected account and the platform fee applied at capture
+time using the same `application_fee_for` computation.
+
 ## Manual Capture
 
 Manual capture authorizes card funds at checkout without charging them, then captures (charges) some or all of the authorized amount later, or cancels (releases) the hold. Useful for booking deposits where the final charge amount may differ from the initially authorized amount.
@@ -539,7 +602,7 @@ Three MCP tools support Stripe integration development: configuration status, we
 
 ### `stripe_config_status`
 
-Reports which Stripe environment variables are present or missing, and whether the scaffold directory (`src/stripe/`) exists along with which files it contains. Use this to diagnose missing configuration before debugging webhook failures.
+Reports which Stripe environment variables are present or missing, and whether the scaffold directory (`src/stripe/`) exists along with which files it contains. For Connect, it reports `connect_webhook_secret_present` (a boolean — the secret value is never returned) and `application_fee_percent` (the parsed number, or null when unset). Use this to diagnose missing configuration before debugging webhook failures or destination-charge fee wiring.
 
 ### `stripe_webhook_events`
 

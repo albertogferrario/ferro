@@ -36,6 +36,10 @@ pub struct StripeConfigStatus {
     pub account_exists: bool,
     /// True when src/stripe/webhook/ directory exists.
     pub webhook_dir_exists: bool,
+    /// True when STRIPE_CONNECT_WEBHOOK_SECRET is set (value never reported).
+    pub connect_webhook_secret_present: bool,
+    /// Parsed value of STRIPE_APPLICATION_FEE_PERCENT, or null when unset/invalid.
+    pub application_fee_percent: Option<f64>,
 }
 
 /// Report Stripe configuration status for the project.
@@ -102,6 +106,14 @@ pub fn stripe_config_status(project_root: &Path) -> StripeConfigStatus {
     let account_exists = scaffold_dir.join("account.rs").is_file();
     let webhook_dir_exists = scaffold_dir.join("webhook").is_dir();
 
+    // Connect-specific configuration: report presence only (never the secret
+    // value) for the Connect webhook secret, and the parsed platform fee
+    // percentage so an agent can confirm destination-charge wiring.
+    let connect_webhook_secret_present = std::env::var("STRIPE_CONNECT_WEBHOOK_SECRET").is_ok();
+    let application_fee_percent = std::env::var("STRIPE_APPLICATION_FEE_PERCENT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok());
+
     let configured = keys_missing.is_empty();
 
     StripeConfigStatus {
@@ -114,6 +126,8 @@ pub fn stripe_config_status(project_root: &Path) -> StripeConfigStatus {
         refund_exists,
         account_exists,
         webhook_dir_exists,
+        connect_webhook_secret_present,
+        application_fee_percent,
     }
 }
 
@@ -412,6 +426,8 @@ mod tests {
             refund_exists: false,
             account_exists: false,
             webhook_dir_exists: false,
+            connect_webhook_secret_present: false,
+            application_fee_percent: Some(2.5),
         };
 
         let json = serde_json::to_string(&status).unwrap();
@@ -419,6 +435,38 @@ mod tests {
         assert!(json.contains("STRIPE_WEBHOOK_SECRET"));
         assert!(json.contains("\"configured\":false"));
         assert!(json.contains("\"checkout_exists\":false"));
+        assert!(json.contains("\"connect_webhook_secret_present\":false"));
+        assert!(json.contains("\"application_fee_percent\":2.5"));
+    }
+
+    #[test]
+    fn test_config_status_reports_connect_fields() {
+        // Save and clear so the assertions are deterministic regardless of host env.
+        let old_secret = std::env::var("STRIPE_CONNECT_WEBHOOK_SECRET").ok();
+        let old_percent = std::env::var("STRIPE_APPLICATION_FEE_PERCENT").ok();
+        std::env::remove_var("STRIPE_CONNECT_WEBHOOK_SECRET");
+        std::env::remove_var("STRIPE_APPLICATION_FEE_PERCENT");
+
+        let tmp = TempDir::new().unwrap();
+        let absent = stripe_config_status(tmp.path());
+        assert!(!absent.connect_webhook_secret_present);
+        assert_eq!(absent.application_fee_percent, None);
+
+        std::env::set_var("STRIPE_CONNECT_WEBHOOK_SECRET", "whsec_connect_xxx");
+        std::env::set_var("STRIPE_APPLICATION_FEE_PERCENT", "2.5");
+        let present = stripe_config_status(tmp.path());
+        assert!(present.connect_webhook_secret_present);
+        assert_eq!(present.application_fee_percent, Some(2.5));
+
+        // Restore host env.
+        std::env::remove_var("STRIPE_CONNECT_WEBHOOK_SECRET");
+        std::env::remove_var("STRIPE_APPLICATION_FEE_PERCENT");
+        if let Some(v) = old_secret {
+            std::env::set_var("STRIPE_CONNECT_WEBHOOK_SECRET", v);
+        }
+        if let Some(v) = old_percent {
+            std::env::set_var("STRIPE_APPLICATION_FEE_PERCENT", v);
+        }
     }
 
     #[test]
