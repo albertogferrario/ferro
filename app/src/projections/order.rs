@@ -10,6 +10,8 @@ use ferro::{
 pub fn service_def() -> ServiceDef {
     ServiceDef::new("order")
         .mcp_exposed(true)
+        .tenant_column("tenant_id")   // FK column for dispatch predicate injection (D-02)
+        .mcp_ability("view-orders")   // Gate ability required for tools/call (D-04)
         .display_name("Order")
         .field("id", DataType::Integer, FieldMeaning::Identifier)
         .field("customer_name", DataType::String, FieldMeaning::EntityName)
