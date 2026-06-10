@@ -2533,11 +2533,11 @@ Plans:
   4. `POST /token` exchanges a valid code + PKCE verifier for an access token bound to `(user, tenant)` with the MCP endpoint as audience and a short expiry.
   5. An invalid or expired bearer token on `POST /mcp` returns `401`; an audience or tenant mismatch returns `403`.
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 - [x] 199-01-PLAN.md — Crate scaffold (ferro-mcp-oauth Wave-2), fail-closed OAuthConfig + sanitized_app_url, oauth_clients migration, flow-test harness, publish.yml/workspace registration (Wave 1; AMCP-07/08/09)
 - [x] 199-02-PLAN.md — Discovery metadata (RFC 8414/9728) + Dynamic Client Registration (RFC 7591) (Wave 2; AMCP-07; SC-1, SC-2)
 - [x] 199-03-PLAN.md — Crypto core: PKCE S256 (constant-time) + HS256 JWT mint/decode (alg-pinned, aud-bound) + validate_bearer 401/403 mapping (Wave 2; AMCP-08/09; SC-4, SC-5)
-- [ ] 199-04-PLAN.md — Browser flow: GET/POST /authorize (login reuse + consent + CSRF), /token single-use code + PKCE verify + JWT mint, end-to-end PKCE integration test (Wave 3; AMCP-08; SC-3, SC-4)
+- [x] 199-04-PLAN.md — Browser flow: GET/POST /authorize (login reuse + consent + CSRF), /token single-use code + PKCE verify + JWT mint, end-to-end PKCE integration test (Wave 3; AMCP-08; SC-3, SC-4)
 - [ ] 199-05-PLAN.md — Seam wiring: mount 6 OAuth routes, /mcp bearer validation + Origin check, post-login return-to, delete extract_bearer (Wave 4; AMCP-09; SC-5)
 **UI hint**: no
 
@@ -2564,5 +2564,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 197. McpRenderer & ferro-mcp-server | 3/3 | Complete    | 2026-06-10 |
 | 198. Streamable HTTP Endpoint + Unauthenticated Challenge | 2/2 | Complete    | 2026-06-10 |
-| 199. OAuth Browser Login | 3/5 | In Progress|  |
+| 199. OAuth Browser Login | 4/5 | In Progress|  |
 | 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 0/TBD | Not started | - |
