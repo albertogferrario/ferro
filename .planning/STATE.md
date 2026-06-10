@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v12.5
 milestone_name: Projection Checkpoint
-status: executing
-stopped_at: Completed 195-03-PLAN.md
-last_updated: "2026-06-10T00:44:10.804Z"
+status: verifying
+stopped_at: Completed 195-close-the-loop-by-default-04-PLAN.md
+last_updated: "2026-06-10T00:50:22.350Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 78
-  completed_phases: 71
+  completed_phases: 72
   total_plans: 309
-  completed_plans: 308
+  completed_plans: 309
   percent: 100
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Phase: 195 (Close the Loop by Default) — EXECUTING
 Plan: 4 of 4
 Next: `/gsd-plan-phase 194`
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (55/62 phases)
 
@@ -319,6 +319,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 195 P01 | 377s | 3 tasks | 3 files |
 | Phase 195 P02 | 7 | 3 tasks | 1 files |
 | Phase 195 P03 | 20min | 3 tasks | 3 files |
+| Phase 195-close-the-loop-by-default P04 | 25 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -367,7 +368,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-10T00:44:10.798Z
-Stopped at: Completed 195-03-PLAN.md
+Last session: 2026-06-10T00:50:22.343Z
+Stopped at: Completed 195-close-the-loop-by-default-04-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 194`
