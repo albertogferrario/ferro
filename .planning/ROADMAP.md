@@ -2359,7 +2359,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 194. Core Checkpoint Tool | 3/3 | Complete    | 2026-06-09 |
 | 195. Close the Loop by Default | 4/4 | Complete    | 2026-06-10 |
-| 196. Dogfood Acceptance + Hardening | 2/4 | In Progress|  |
+| 196. Dogfood Acceptance + Hardening | 3/4 | In Progress|  |
 
 #### Phase Details
 
@@ -2420,9 +2420,9 @@ Plans:
   3. `next_steps` in any verdict contains at most 5 entries; a fixture with more than 5 findings confirms the cap is enforced.
   4. Any wrapper seam (1, 3, 4, 5) that produced zero findings across all dogfood inputs is documented as `not_checked`-by-default in the tool description, not silently omitted.
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 - [x] 196-01-PLAN.md — D-05: next_steps cap 10→5 (MAX_NEXT_STEPS const, 4 doc locations, over-cap test) (Wave 1)
 - [x] 196-02-PLAN.md — D-01/SC-1: poisoned-fixture acceptance test (one dangling field, exact-subject + no-other-field assertions) (Wave 2)
-- [ ] 196-03-PLAN.md — D-02/D-03/SC-2: dogfood run against app/ (direct per-file seam calls) + 196-ACCEPTANCE.md GO/NO-GO gate (Wave 3)
+- [x] 196-03-PLAN.md — D-02/D-03/SC-2: dogfood run against app/ (direct per-file seam calls) + 196-ACCEPTANCE.md GO/NO-GO gate (Wave 3)
 - [ ] 196-04-PLAN.md — D-04/SC-4: evidence-driven demotion of zero-finding wrapper seams to not_checked + service.rs/docs (Wave 4)
