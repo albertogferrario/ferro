@@ -2359,7 +2359,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 194. Core Checkpoint Tool | 3/3 | Complete    | 2026-06-09 |
 | 195. Close the Loop by Default | 4/4 | Complete    | 2026-06-10 |
-| 196. Dogfood Acceptance + Hardening | 4/4 | Complete   | 2026-06-10 |
+| 196. Dogfood Acceptance + Hardening | 4/4 | Complete    | 2026-06-10 |
 
 #### Phase Details
 
