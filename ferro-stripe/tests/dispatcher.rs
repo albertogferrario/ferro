@@ -10,11 +10,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use ferro_stripe::testing::{mock_checkout_completed_event, mock_invoice_paid_event};
-use ferro_stripe::{Error, StripeCheckoutCompleted, StripeInvoicePaid, SyncDispatcher};
+use ferro_stripe::{
+    Error, StripeCheckoutCompleted, StripeInvoicePaid, SyncDispatcher, WebhookEvent,
+};
 
-fn parse_event(raw: &str) -> stripe::Event {
-    serde_json::from_str::<stripe::Event>(raw)
-        .expect("mock event JSON should deserialize as stripe::Event")
+fn parse_event(raw: &str) -> WebhookEvent {
+    WebhookEvent::from_json(raw).expect("mock event JSON should parse as WebhookEvent")
 }
 
 #[tokio::test]

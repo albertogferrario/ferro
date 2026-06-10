@@ -10,11 +10,11 @@ use ferro_stripe::{
     StripeChargeDisputeCreated, StripeChargeRefunded, StripeCheckoutCompleted,
     StripeCheckoutExpired, StripeConnectAccountUpdated, StripeConnectPaymentSucceeded, StripeEvent,
     StripeInvoicePaid, StripePaymentIntentAmountCapturableUpdated, StripePaymentIntentCanceled,
-    StripePaymentIntentFailed, StripeSubscriptionDeleted, StripeSubscriptionUpdated,
+    StripePaymentIntentFailed, StripeSubscriptionDeleted, StripeSubscriptionUpdated, WebhookEvent,
 };
 
-fn parse_event(raw: &str) -> stripe::Event {
-    serde_json::from_str::<stripe::Event>(raw).expect("fixture should deserialize as stripe::Event")
+fn parse_event(raw: &str) -> WebhookEvent {
+    WebhookEvent::from_json(raw).expect("fixture should parse as WebhookEvent envelope")
 }
 
 // --- StripeCheckoutCompleted ---

@@ -1,12 +1,124 @@
 use std::collections::HashMap;
 
+use crate::Error;
+
+/// A verified Stripe webhook event, parsed from the raw JSON envelope.
+///
+/// This type is deliberately **independent of `async-stripe`'s versioned
+/// object structs**. Webhook payloads are rendered at the Stripe account's
+/// API version, which drifts ahead of any pinned client crate. Deserializing
+/// the full typed object (`stripe::EventObject`) couples verification to that
+/// version and makes an unrelated field change reject the whole event. Instead
+/// we keep `data` as untyped JSON and let each [`StripeEvent::from_raw`] pull
+/// only the fields it needs — forward-compatible across API versions.
+#[derive(Debug, Clone)]
+pub struct WebhookEvent {
+    /// Event id (e.g. `"evt_..."`).
+    pub id: String,
+    /// Event type string (e.g. `"checkout.session.completed"`).
+    pub type_: String,
+    /// Connect account id for Connect events; `None` for platform events.
+    pub account: Option<String>,
+    /// API version the payload was rendered at (informational).
+    pub api_version: Option<String>,
+    /// Event creation time (Unix seconds).
+    pub created: i64,
+    /// The `data.object` payload, kept as untyped JSON.
+    pub data: serde_json::Value,
+}
+
+impl WebhookEvent {
+    /// Parse a Stripe event envelope from raw JSON.
+    ///
+    /// Does **not** verify the signature — callers handling untrusted input
+    /// must go through [`crate::verify_webhook`], which verifies the HMAC and
+    /// then calls this.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::WebhookVerification`] when the body is not valid JSON
+    /// or is missing the required `type` field.
+    pub fn from_json(raw_body: &str) -> Result<Self, Error> {
+        let v: serde_json::Value = serde_json::from_str(raw_body)
+            .map_err(|e| Error::WebhookVerification(format!("event JSON parse: {e}")))?;
+        let type_ = v
+            .get("type")
+            .and_then(|x| x.as_str())
+            .ok_or_else(|| Error::WebhookVerification("event missing 'type'".into()))?
+            .to_string();
+        Ok(Self {
+            id: v
+                .get("id")
+                .and_then(|x| x.as_str())
+                .unwrap_or_default()
+                .to_string(),
+            type_,
+            account: v
+                .get("account")
+                .and_then(|x| x.as_str())
+                .map(str::to_string),
+            api_version: v
+                .get("api_version")
+                .and_then(|x| x.as_str())
+                .map(str::to_string),
+            created: v.get("created").and_then(|x| x.as_i64()).unwrap_or(0),
+            data: v
+                .get("data")
+                .and_then(|d| d.get("object"))
+                .cloned()
+                .unwrap_or(serde_json::Value::Null),
+        })
+    }
+}
+
+// --- JSON field accessors -------------------------------------------------
+//
+// Stripe object fields are either scalars or "expandable" references that
+// appear as a bare id string OR an inline object carrying `id`. These helpers
+// read both shapes and tolerate missing fields.
+
+fn json_str(v: &serde_json::Value, key: &str) -> Option<String> {
+    v.get(key).and_then(|x| x.as_str()).map(str::to_string)
+}
+
+/// Read an expandable reference: a string id, or an object with an `id` field.
+fn json_id(v: &serde_json::Value, key: &str) -> Option<String> {
+    match v.get(key) {
+        Some(serde_json::Value::String(s)) => Some(s.clone()),
+        Some(serde_json::Value::Object(o)) => {
+            o.get("id").and_then(|x| x.as_str()).map(str::to_string)
+        }
+        _ => None,
+    }
+}
+
+fn json_i64(v: &serde_json::Value, key: &str) -> Option<i64> {
+    v.get(key).and_then(|x| x.as_i64())
+}
+
+fn json_bool(v: &serde_json::Value, key: &str) -> Option<bool> {
+    v.get(key).and_then(|x| x.as_bool())
+}
+
+/// Read a `metadata` object as a `String -> String` map, skipping non-string values.
+fn json_metadata(v: &serde_json::Value) -> HashMap<String, String> {
+    v.get("metadata")
+        .and_then(|m| m.as_object())
+        .map(|o| {
+            o.iter()
+                .filter_map(|(k, val)| val.as_str().map(|s| (k.clone(), s.to_string())))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 /// Marker trait for typed Stripe webhook event structs.
 ///
-/// Every event struct implements this trait. `from_raw` converts a
-/// verified [`stripe::Event`] to the typed struct, or returns `None`
-/// when the event type (or data object variant) does not match.
+/// Every event struct implements this trait. `from_raw` converts a verified
+/// [`WebhookEvent`] to the typed struct, or returns `None` when the event type
+/// does not match (or a required identity field is absent).
 pub trait StripeEvent: Send + Sync + 'static {
-    fn from_raw(event: &stripe::Event) -> Option<Self>
+    fn from_raw(event: &WebhookEvent) -> Option<Self>
     where
         Self: Sized;
 }
@@ -22,18 +134,15 @@ pub struct StripeSubscriptionUpdated {
 }
 
 impl StripeEvent for StripeSubscriptionUpdated {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::CustomerSubscriptionUpdated {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "customer.subscription.updated" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::Subscription(sub) => Some(Self {
-                event_id: event.id.to_string(),
-                subscription_id: sub.id.to_string(),
-                customer_id: sub.customer.id().to_string(),
-            }),
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            subscription_id: json_str(&event.data, "id")?,
+            customer_id: json_id(&event.data, "customer")?,
+        })
     }
 }
 
@@ -48,18 +157,15 @@ pub struct StripeSubscriptionDeleted {
 }
 
 impl StripeEvent for StripeSubscriptionDeleted {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::CustomerSubscriptionDeleted {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "customer.subscription.deleted" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::Subscription(sub) => Some(Self {
-                event_id: event.id.to_string(),
-                subscription_id: sub.id.to_string(),
-                customer_id: sub.customer.id().to_string(),
-            }),
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            subscription_id: json_str(&event.data, "id")?,
+            customer_id: json_id(&event.data, "customer")?,
+        })
     }
 }
 
@@ -81,22 +187,19 @@ pub struct StripeCheckoutCompleted {
 }
 
 impl StripeEvent for StripeCheckoutCompleted {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::CheckoutSessionCompleted {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "checkout.session.completed" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::CheckoutSession(session) => Some(Self {
-                event_id: event.id.to_string(),
-                session_id: session.id.to_string(),
-                payment_intent_id: session.payment_intent.as_ref().map(|e| e.id().to_string()),
-                amount_total_cents: session.amount_total.unwrap_or(0),
-                currency: session.currency.map(|c| c.to_string()).unwrap_or_default(),
-                metadata: session.metadata.clone().unwrap_or_default(),
-                customer_email: session.customer_email.clone(),
-            }),
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            session_id: json_str(&event.data, "id")?,
+            payment_intent_id: json_id(&event.data, "payment_intent"),
+            amount_total_cents: json_i64(&event.data, "amount_total").unwrap_or(0),
+            currency: json_str(&event.data, "currency").unwrap_or_default(),
+            metadata: json_metadata(&event.data),
+            customer_email: json_str(&event.data, "customer_email"),
+        })
     }
 }
 
@@ -111,21 +214,15 @@ pub struct StripeInvoicePaid {
 }
 
 impl StripeEvent for StripeInvoicePaid {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::InvoicePaid {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "invoice.paid" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::Invoice(inv) => {
-                let customer_id = inv.customer.as_ref().map(|e| e.id().to_string())?;
-                Some(Self {
-                    event_id: event.id.to_string(),
-                    invoice_id: inv.id.to_string(),
-                    customer_id,
-                })
-            }
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            invoice_id: json_str(&event.data, "id")?,
+            customer_id: json_id(&event.data, "customer")?,
+        })
     }
 }
 
@@ -140,21 +237,15 @@ pub struct StripeConnectPaymentSucceeded {
 }
 
 impl StripeEvent for StripeConnectPaymentSucceeded {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::PaymentIntentSucceeded {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "payment_intent.succeeded" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::PaymentIntent(pi) => {
-                let connect_account_id = event.account.as_ref()?.to_string();
-                Some(Self {
-                    event_id: event.id.to_string(),
-                    payment_intent_id: pi.id.to_string(),
-                    connect_account_id,
-                })
-            }
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            payment_intent_id: json_str(&event.data, "id")?,
+            connect_account_id: event.account.clone()?,
+        })
     }
 }
 
@@ -169,18 +260,15 @@ pub struct StripeCheckoutExpired {
 }
 
 impl StripeEvent for StripeCheckoutExpired {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::CheckoutSessionExpired {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "checkout.session.expired" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::CheckoutSession(session) => Some(Self {
-                event_id: event.id.to_string(),
-                session_id: session.id.to_string(),
-                metadata: session.metadata.clone().unwrap_or_default(),
-            }),
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            session_id: json_str(&event.data, "id")?,
+            metadata: json_metadata(&event.data),
+        })
     }
 }
 
@@ -198,33 +286,20 @@ pub struct StripePaymentIntentFailed {
 }
 
 impl StripeEvent for StripePaymentIntentFailed {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::PaymentIntentPaymentFailed {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "payment_intent.payment_failed" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::PaymentIntent(pi) => {
-                let failure_code = pi
-                    .last_payment_error
-                    .as_ref()
-                    .and_then(|e| e.code.as_ref())
-                    .map(|c| c.to_string());
-                let failure_message = pi
-                    .last_payment_error
-                    .as_ref()
-                    .and_then(|e| e.message.clone());
-                let session_id = pi.metadata.get("checkout_session_id").cloned();
-                Some(Self {
-                    event_id: event.id.to_string(),
-                    payment_intent_id: pi.id.to_string(),
-                    session_id,
-                    failure_code,
-                    failure_message,
-                    metadata: pi.metadata.clone(),
-                })
-            }
-            _ => None,
-        }
+        let metadata = json_metadata(&event.data);
+        let last_error = event.data.get("last_payment_error");
+        Some(Self {
+            event_id: event.id.clone(),
+            payment_intent_id: json_str(&event.data, "id")?,
+            session_id: metadata.get("checkout_session_id").cloned(),
+            failure_code: last_error.and_then(|e| json_str(e, "code")),
+            failure_message: last_error.and_then(|e| json_str(e, "message")),
+            metadata,
+        })
     }
 }
 
@@ -242,20 +317,17 @@ pub struct StripePaymentIntentAmountCapturableUpdated {
 }
 
 impl StripeEvent for StripePaymentIntentAmountCapturableUpdated {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::PaymentIntentAmountCapturableUpdated {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "payment_intent.amount_capturable_updated" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::PaymentIntent(pi) => Some(Self {
-                event_id: event.id.to_string(),
-                payment_intent_id: pi.id.to_string(),
-                amount_capturable_cents: pi.amount_capturable,
-                currency: pi.currency.to_string(),
-                metadata: pi.metadata.clone(),
-            }),
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            payment_intent_id: json_str(&event.data, "id")?,
+            amount_capturable_cents: json_i64(&event.data, "amount_capturable").unwrap_or(0),
+            currency: json_str(&event.data, "currency").unwrap_or_default(),
+            metadata: json_metadata(&event.data),
+        })
     }
 }
 
@@ -273,19 +345,16 @@ pub struct StripePaymentIntentCanceled {
 }
 
 impl StripeEvent for StripePaymentIntentCanceled {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::PaymentIntentCanceled {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "payment_intent.canceled" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::PaymentIntent(pi) => Some(Self {
-                event_id: event.id.to_string(),
-                payment_intent_id: pi.id.to_string(),
-                cancellation_reason: pi.cancellation_reason.map(|r| r.as_str().to_string()),
-                metadata: pi.metadata.clone(),
-            }),
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            payment_intent_id: json_str(&event.data, "id")?,
+            cancellation_reason: json_str(&event.data, "cancellation_reason"),
+            metadata: json_metadata(&event.data),
+        })
     }
 }
 
@@ -305,25 +374,25 @@ pub struct StripeChargeRefunded {
 }
 
 impl StripeEvent for StripeChargeRefunded {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::ChargeRefunded {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "charge.refunded" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::Charge(charge) => Some(Self {
-                event_id: event.id.to_string(),
-                charge_id: charge.id.to_string(),
-                payment_intent_id: charge.payment_intent.as_ref().map(|e| e.id().to_string()),
-                refund_id: charge
-                    .refunds
-                    .as_ref()
-                    .and_then(|list| list.data.first())
-                    .map(|r| r.id.to_string()),
-                amount_refunded_cents: charge.amount_refunded,
-                metadata: charge.metadata.clone(),
-            }),
-            _ => None,
-        }
+        let refund_id = event
+            .data
+            .get("refunds")
+            .and_then(|r| r.get("data"))
+            .and_then(|d| d.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|first| json_str(first, "id"));
+        Some(Self {
+            event_id: event.id.clone(),
+            charge_id: json_str(&event.data, "id")?,
+            payment_intent_id: json_id(&event.data, "payment_intent"),
+            refund_id,
+            amount_refunded_cents: json_i64(&event.data, "amount_refunded").unwrap_or(0),
+            metadata: json_metadata(&event.data),
+        })
     }
 }
 
@@ -340,20 +409,17 @@ pub struct StripeChargeDisputeCreated {
 }
 
 impl StripeEvent for StripeChargeDisputeCreated {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::ChargeDisputeCreated {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "charge.dispute.created" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::Dispute(dispute) => Some(Self {
-                event_id: event.id.to_string(),
-                charge_id: dispute.charge.id().to_string(),
-                payment_intent_id: dispute.payment_intent.as_ref().map(|e| e.id().to_string()),
-                dispute_reason: dispute.reason.clone(),
-                amount_cents: dispute.amount,
-            }),
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            charge_id: json_id(&event.data, "charge")?,
+            payment_intent_id: json_id(&event.data, "payment_intent"),
+            dispute_reason: json_str(&event.data, "reason").unwrap_or_default(),
+            amount_cents: json_i64(&event.data, "amount").unwrap_or(0),
+        })
     }
 }
 
@@ -370,20 +436,17 @@ pub struct StripeConnectAccountUpdated {
 }
 
 impl StripeEvent for StripeConnectAccountUpdated {
-    fn from_raw(event: &stripe::Event) -> Option<Self> {
-        if event.type_ != stripe::EventType::AccountUpdated {
+    fn from_raw(event: &WebhookEvent) -> Option<Self> {
+        if event.type_ != "account.updated" {
             return None;
         }
-        match &event.data.object {
-            stripe::EventObject::Account(acct) => Some(Self {
-                event_id: event.id.to_string(),
-                account_id: acct.id.to_string(),
-                charges_enabled: acct.charges_enabled.unwrap_or(false),
-                payouts_enabled: acct.payouts_enabled.unwrap_or(false),
-                details_submitted: acct.details_submitted.unwrap_or(false),
-            }),
-            _ => None,
-        }
+        Some(Self {
+            event_id: event.id.clone(),
+            account_id: json_str(&event.data, "id")?,
+            charges_enabled: json_bool(&event.data, "charges_enabled").unwrap_or(false),
+            payouts_enabled: json_bool(&event.data, "payouts_enabled").unwrap_or(false),
+            details_submitted: json_bool(&event.data, "details_submitted").unwrap_or(false),
+        })
     }
 }
 
@@ -424,5 +487,60 @@ mod tests {
         _assert_stripe_event::<StripeChargeDisputeCreated>();
         _assert_stripe_event::<StripeConnectAccountUpdated>();
         _assert_stripe_event::<StripeConnectPaymentSucceeded>();
+    }
+
+    /// Regression: a `checkout.session.completed` payload rendered at a NEWER
+    /// API version (extra/unknown fields, expanded refs) must still parse and
+    /// surface its metadata. This is the exact failure the JSON-native path
+    /// fixes — async-stripe's typed deserializer rejected such payloads.
+    #[test]
+    fn checkout_completed_parses_newer_api_shape_with_metadata() {
+        let raw = serde_json::json!({
+            "id": "evt_1",
+            "object": "event",
+            "api_version": "2026-05-27.dahlia",
+            "created": 1_700_000_000_i64,
+            "type": "checkout.session.completed",
+            "data": { "object": {
+                "id": "cs_test_123",
+                "object": "checkout.session",
+                "payment_status": "paid",
+                "status": "complete",
+                "amount_total": 500,
+                "currency": "eur",
+                "payment_intent": "pi_abc",
+                "metadata": { "order_id": "1", "tenant_id": "1" },
+                // a field that does not exist in older client structs:
+                "some_future_field": { "nested": true }
+            }}
+        })
+        .to_string();
+
+        let event = WebhookEvent::from_json(&raw).expect("envelope parses");
+        let typed = StripeCheckoutCompleted::from_raw(&event).expect("typed event matches");
+        assert_eq!(typed.session_id, "cs_test_123");
+        assert_eq!(typed.payment_intent_id.as_deref(), Some("pi_abc"));
+        assert_eq!(typed.amount_total_cents, 500);
+        assert_eq!(typed.currency, "eur");
+        assert_eq!(
+            typed.metadata.get("order_id").map(String::as_str),
+            Some("1")
+        );
+        assert_eq!(
+            typed.metadata.get("tenant_id").map(String::as_str),
+            Some("1")
+        );
+    }
+
+    #[test]
+    fn wrong_event_type_does_not_match() {
+        let raw = serde_json::json!({
+            "id": "evt_2", "type": "invoice.paid",
+            "data": { "object": { "id": "in_1", "customer": "cus_1" } }
+        })
+        .to_string();
+        let event = WebhookEvent::from_json(&raw).unwrap();
+        assert!(StripeCheckoutCompleted::from_raw(&event).is_none());
+        assert!(StripeInvoicePaid::from_raw(&event).is_some());
     }
 }

@@ -31,11 +31,11 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use crate::webhook::events::StripeEvent;
+use crate::webhook::events::{StripeEvent, WebhookEvent};
 use crate::Error;
 
 type BoxedHandler = Box<
-    dyn Fn(stripe::Event) -> Pin<Box<dyn Future<Output = (bool, Result<(), Error>)> + Send>>
+    dyn Fn(WebhookEvent) -> Pin<Box<dyn Future<Output = (bool, Result<(), Error>)> + Send>>
         + Send
         + Sync,
 >;
@@ -70,7 +70,7 @@ impl SyncDispatcher {
         Fut: Future<Output = Result<(), Error>> + Send + 'static,
     {
         let handler = Arc::new(handler);
-        self.handlers.push(Box::new(move |event: stripe::Event| {
+        self.handlers.push(Box::new(move |event: WebhookEvent| {
             let handler = Arc::clone(&handler);
             Box::pin(async move {
                 match E::from_raw(&event) {
@@ -92,7 +92,7 @@ impl SyncDispatcher {
     /// Returns the first [`Error`] produced by a matching handler. When
     /// no registered handler matches the event type, logs at
     /// `tracing::debug` and returns `Ok(())`.
-    pub async fn dispatch(&self, event: stripe::Event) -> Result<(), Error> {
+    pub async fn dispatch(&self, event: WebhookEvent) -> Result<(), Error> {
         let mut any_matched = false;
         for handler in &self.handlers {
             let (matched, result) = handler(event.clone()).await;

@@ -22,6 +22,7 @@
 
 use std::sync::Arc;
 
+use crate::webhook::events::WebhookEvent;
 use crate::webhook::sync::SyncDispatcher;
 
 /// Background job that dispatches a verified Stripe webhook event through
@@ -73,8 +74,8 @@ impl ferro_queue::Job for ProcessStripeWebhook {
                 job: "ProcessStripeWebhook".to_string(),
                 message: "dispatcher not injected — use ProcessStripeWebhook::new()".to_string(),
             })?;
-        let event: stripe::Event =
-            serde_json::from_str(&self.raw_body).map_err(|e| ferro_queue::Error::JobFailed {
+        let event =
+            WebhookEvent::from_json(&self.raw_body).map_err(|e| ferro_queue::Error::JobFailed {
                 job: "ProcessStripeWebhook".to_string(),
                 message: format!("parse stripe event: {e}"),
             })?;
