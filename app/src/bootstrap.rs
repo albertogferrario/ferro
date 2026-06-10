@@ -30,7 +30,7 @@
 #[allow(unused_imports)]
 use ferro::{
     bind, global_middleware, singleton, ApiKeyProvider, App, AuthResponse, Gate, LangMiddleware,
-    Limit, RateLimiter, UserProvider, DB,
+    Limit, RateLimiter, SessionConfig, SessionMiddleware, UserProvider, DB,
 };
 
 use crate::middleware;
@@ -56,7 +56,12 @@ pub async fn register() {
         std::process::exit(1);
     });
 
-    // Global middleware (runs on every request in registration order)
+    // Global middleware (runs on every request in registration order).
+    // SessionMiddleware MUST be registered first so the session context (and the
+    // session cookie it issues + persists) wraps every downstream middleware —
+    // including the OAuth /authorize group, whose login reuse and CSRF consent
+    // depend on a session that survives across requests.
+    global_middleware!(SessionMiddleware::new(SessionConfig::from_env()));
     global_middleware!(middleware::LoggingMiddleware);
     global_middleware!(middleware::ShareInertiaData);
     global_middleware!(LangMiddleware);
