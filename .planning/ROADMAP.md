@@ -2463,11 +2463,11 @@ Plans:
   4. `ferro-projections` has no new dependency on `ferro-mcp-server`; the dependency direction is `ferro-mcp-server` → `ferro-projections`.
   5. The new crate is registered in `.github/workflows/publish.yml` at the correct publish wave.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 197-01-PLAN.md — Scaffold ferro-mcp-server crate + add mcp_exposed marker to ServiceDef
-- [ ] 197-02-PLAN.md — McpRenderer::render + inputSchema derivation from ServiceDef fields
+- [x] 197-02-PLAN.md — McpRenderer::render + inputSchema derivation from ServiceDef fields
 - [ ] 197-03-PLAN.md — Dispatch read path (parameterized SQL) + SQLite test + publish.yml Wave 2 registration
 **UI hint**: no
 
@@ -2527,7 +2527,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 197. McpRenderer & ferro-mcp-server | 1/3 | In Progress|  |
+| 197. McpRenderer & ferro-mcp-server | 2/3 | In Progress|  |
 | 198. Streamable HTTP Endpoint + Unauthenticated Challenge | 0/TBD | Not started | - |
 | 199. OAuth Browser Login | 0/TBD | Not started | - |
 | 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 0/TBD | Not started | - |
