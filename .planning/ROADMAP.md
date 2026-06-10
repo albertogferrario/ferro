@@ -2555,7 +2555,14 @@ Plans:
   3. The tenant context established by the MCP middleware is structurally identical to the context established by the web-surface multi-tenant middleware — no second permission system exists.
   4. Dogfood GO/NO-GO: a real MCP client (e.g. Claude Desktop or a script using the MCP SDK) completes a browser login against a live consumer application and successfully calls `tools/list` followed by `tools/call` for one exposed projection, receiving that tenant's rows. A run that fails end to end is GO/NO-GO = NO-GO and the design is revised before marking this phase complete.
 
-**Plans:** TBD
+**Plans:** 7 plans
+- [ ] 200-01-PLAN.md — ServiceDef tenant_column/mcp_ability plain-metadata fields (Wave 1; AMCP-10/11)
+- [ ] 200-02-PLAN.md — dispatch tenant predicate (bound param, fail-closed) + handle_tools_call forwarding (Wave 1; AMCP-10)
+- [ ] 200-03-PLAN.md — two-tenant fixture: tenants/orders/users-tenant_id migrations + models (Wave 1; AMCP-10)
+- [ ] 200-04-PLAN.md — BearerAuthMiddleware + /mcp & /authorize wiring + Gate ability + DbTenantLookup + seed + order projection metadata (Wave 2; AMCP-10/11)
+- [ ] 200-05-PLAN.md — controller Gate::authorize_for check + fail-closed + D-09 tool error + tenant_id forwarding (Wave 3; AMCP-11)
+- [ ] 200-06-PLAN.md — two-tenant isolation + middleware-parity integration tests (Wave 4; AMCP-10/11; SC-1/SC-3)
+- [ ] 200-07-PLAN.md — dogfood scripted MCP client + GO/NO-GO acceptance (Wave 5; AMCP-10/11; SC-4)
 **UI hint**: no
 
 ### Progress
@@ -2565,4 +2572,4 @@ Plans:
 | 197. McpRenderer & ferro-mcp-server | 3/3 | Complete    | 2026-06-10 |
 | 198. Streamable HTTP Endpoint + Unauthenticated Challenge | 2/2 | Complete    | 2026-06-10 |
 | 199. OAuth Browser Login | 5/5 | Complete    | 2026-06-10 |
-| 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 0/TBD | Not started | - |
+| 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 0/7 | Not started | - |
