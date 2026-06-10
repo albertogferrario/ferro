@@ -1,0 +1,108 @@
+//! Integration tests for `dispatch()` — SQLite in-memory fixture.
+//!
+//! Proves the projection read path end-to-end:
+//! - returns rows from a fixture table
+//! - paginates correctly (limit/offset)
+//! - filters by field value
+//! - rejects unknown filter keys (allowlist — no SQL injection)
+
+use ferro_mcp_server::dispatch;
+use ferro_projections::{DataType, FieldMeaning, ServiceDef};
+use sea_orm::{ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, Statement};
+
+async fn setup_db() -> DatabaseConnection {
+    let db = Database::connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    db.execute(Statement::from_string(
+        DatabaseBackend::Sqlite,
+        "CREATE TABLE items (id INTEGER PRIMARY KEY, status TEXT NOT NULL, customer_id INTEGER)"
+            .to_string(),
+    ))
+    .await
+    .expect("create table");
+    for (id, status, cust) in [(1, "open", 10), (2, "open", 11), (3, "closed", 10)] {
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            format!(
+                "INSERT INTO items (id, status, customer_id) VALUES ({id}, '{status}', {cust})"
+            ),
+        ))
+        .await
+        .expect("insert");
+    }
+    db
+}
+
+/// ServiceDef whose name "item" → table "items" via the dispatch heuristic.
+fn item_service() -> ServiceDef {
+    ServiceDef::new("item")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("status", DataType::String, FieldMeaning::Status)
+        .field("customer_id", DataType::Integer, FieldMeaning::ForeignKey)
+}
+
+#[tokio::test]
+async fn dispatch_empty_filter_returns_all_rows() {
+    let db = setup_db().await;
+    let result = dispatch(&item_service(), serde_json::json!({}), 25, 0, &db)
+        .await
+        .expect("dispatch should succeed");
+    assert_eq!(result.total, 3, "total count should be 3");
+    assert_eq!(result.rows.len(), 3, "should return all 3 rows");
+    assert_eq!(result.limit, 25);
+    assert_eq!(result.offset, 0);
+}
+
+#[tokio::test]
+async fn dispatch_filter_by_status_returns_matching_rows() {
+    let db = setup_db().await;
+    let result = dispatch(
+        &item_service(),
+        serde_json::json!({"status": "open"}),
+        25,
+        0,
+        &db,
+    )
+    .await
+    .expect("filtered dispatch should succeed");
+    assert_eq!(result.total, 2, "two rows have status='open'");
+    assert_eq!(result.rows.len(), 2);
+    for row in &result.rows {
+        assert_eq!(row["status"], serde_json::json!("open"));
+    }
+}
+
+#[tokio::test]
+async fn dispatch_limit_pagination_returns_subset_with_full_total() {
+    let db = setup_db().await;
+    let result = dispatch(&item_service(), serde_json::json!({}), 2, 0, &db)
+        .await
+        .expect("paginated dispatch should succeed");
+    assert_eq!(result.total, 3, "total should reflect full count (3), not page size");
+    assert_eq!(result.rows.len(), 2, "only limit=2 rows returned");
+    assert_eq!(result.limit, 2);
+    assert_eq!(result.offset, 0);
+}
+
+#[tokio::test]
+async fn dispatch_unknown_filter_key_returns_err() {
+    let db = setup_db().await;
+    let res = dispatch(
+        &item_service(),
+        serde_json::json!({"bogus": 1}),
+        25,
+        0,
+        &db,
+    )
+    .await;
+    assert!(
+        res.is_err(),
+        "unknown filter key must be rejected, not interpolated into SQL"
+    );
+    let msg = res.unwrap_err().to_string();
+    assert!(
+        msg.contains("bogus"),
+        "error message should name the rejected key, got: {msg}"
+    );
+}
