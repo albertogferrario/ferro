@@ -11,9 +11,7 @@ use ferro_projections::{DataType, FieldMeaning, ServiceDef};
 use sea_orm::{ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, Statement};
 
 async fn setup_db() -> DatabaseConnection {
-    let db = Database::connect("sqlite::memory:")
-        .await
-        .expect("connect");
+    let db = Database::connect("sqlite::memory:").await.expect("connect");
     db.execute(Statement::from_string(
         DatabaseBackend::Sqlite,
         "CREATE TABLE items (id INTEGER PRIMARY KEY, status TEXT NOT NULL, customer_id INTEGER)"
@@ -79,7 +77,10 @@ async fn dispatch_limit_pagination_returns_subset_with_full_total() {
     let result = dispatch(&item_service(), serde_json::json!({}), 2, 0, &db)
         .await
         .expect("paginated dispatch should succeed");
-    assert_eq!(result.total, 3, "total should reflect full count (3), not page size");
+    assert_eq!(
+        result.total, 3,
+        "total should reflect full count (3), not page size"
+    );
     assert_eq!(result.rows.len(), 2, "only limit=2 rows returned");
     assert_eq!(result.limit, 2);
     assert_eq!(result.offset, 0);
@@ -88,14 +89,7 @@ async fn dispatch_limit_pagination_returns_subset_with_full_total() {
 #[tokio::test]
 async fn dispatch_unknown_filter_key_returns_err() {
     let db = setup_db().await;
-    let res = dispatch(
-        &item_service(),
-        serde_json::json!({"bogus": 1}),
-        25,
-        0,
-        &db,
-    )
-    .await;
+    let res = dispatch(&item_service(), serde_json::json!({"bogus": 1}), 25, 0, &db).await;
     assert!(
         res.is_err(),
         "unknown filter key must be rejected, not interpolated into SQL"
