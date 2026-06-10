@@ -41,6 +41,29 @@ The slice exercises, once and end to end:
 3. A projection rendered as an MCP tool.
 4. Per-tenant scoping and policy enforcement on the tool call.
 
+## Design properties that shape the approach
+
+The MCP endpoint is a rendering target for the projection / intent system, not a
+separately authored tool surface. Three properties follow from that and are the
+substance of this work:
+
+1. **One source of truth for the tool contract.** A tool's input and output
+   schema are derived from the projection's `ServiceDef`, not declared separately
+   from the validation that runs on the call. The fields that define the
+   projection define the tool.
+2. **Tenant scoping and authorization are structural.** Tool calls run through
+   the same multi-tenant middleware and policy layer as the web surface. There is
+   no second permission system and no per-tool hand-written ownership filter; an
+   agent's reach equals the authenticated user's reach by construction.
+3. **The MCP surface is a projection of the same `ServiceDef`** that renders to
+   screen (JSON-UI) — an `McpRenderer` alongside `JsonUiRenderer`, not a parallel
+   hand-maintained copy of the same capability.
+
+The transport and OAuth endpoints are necessary supporting infrastructure,
+implemented to the MCP authorization specification (standard discovery metadata,
+dynamic client registration, PKCE) so standard MCP clients interoperate without
+bespoke handling. They are not where the design effort concentrates.
+
 ## Non-goals (deferred to follow-on specs)
 
 - Write intents (Collect / Process rendered as create/submit tools).
