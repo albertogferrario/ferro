@@ -13,7 +13,7 @@ use super::list_models;
 use super::render_projection::reconstruct_service_def;
 use super::{
     json_ui_validate_spec, json_ui_verify_action, list_routes, render_projection,
-    validate_contracts, validate_projection,
+    validate_projection,
 };
 
 // ---------------------------------------------------------------------------
@@ -570,57 +570,19 @@ fn rendered_view_seam(project_root: &Path, name: &str) -> SeamResult {
 // Seam 5: props_to_contract via validate_contracts
 // ---------------------------------------------------------------------------
 
-/// Dispatch to `validate_contracts::execute` scoped to the projection's service name.
+/// Demoted (Phase 196 D-04): produced zero findings across all dogfood inputs
+/// (poisoned fixture + app/ live run, see 196-ACCEPTANCE.md). Reported as
+/// not_checked to preserve the coverage-honesty invariant (CHK-03) rather than
+/// emitting a vacuous pass for an unproven check.
 ///
-/// The `route_filter` is the projection `service_name` lowercased — a SUBSTRING match
-/// (Pitfall 6: may include adjacent routes sharing the substring; acceptable for Phase 195;
-/// exact scoping is explicitly Phase 196).
-///
-/// `source` is always `"validate_contracts"` (SC-4).
-fn props_to_contract_seam(project_root: &Path, service_name: &str) -> SeamResult {
-    let filter = service_name.to_lowercase();
-    match validate_contracts::execute(project_root, Some(&filter)) {
-        Err(e) => {
-            // routes file missing is the expected not-checked path.
-            let reason = if e.to_string().contains("src/routes.rs") {
-                "routes_file_missing".to_string()
-            } else {
-                format!("validate_contracts_unavailable: {e}")
-            };
-            SeamResult {
-                seam: "props_to_contract".to_string(),
-                status: SeamStatus::NotChecked,
-                source: "validate_contracts".to_string(),
-                findings: vec![],
-                reason: Some(reason),
-            }
-        }
-        Ok(result) => {
-            let mut findings = Vec::new();
-            for v in &result.validations {
-                if matches!(v.status, validate_contracts::ValidationStatus::Failed) {
-                    for mismatch in &v.mismatches {
-                        findings.push(Finding {
-                            subject: format!("{}.{}", v.route, mismatch.field),
-                            detail: mismatch.details.clone(),
-                            fix: "align Rust InertiaProps struct with TypeScript interface"
-                                .to_string(),
-                        });
-                    }
-                }
-            }
-            SeamResult {
-                seam: "props_to_contract".to_string(),
-                status: if findings.is_empty() {
-                    SeamStatus::Pass
-                } else {
-                    SeamStatus::Fail
-                },
-                source: "validate_contracts".to_string(),
-                findings,
-                reason: None,
-            }
-        }
+/// `source` is always `"validate_contracts"` (SC-4: never `"checkpoint"` for wrapper seams).
+fn props_to_contract_seam(_project_root: &Path, _service_name: &str) -> SeamResult {
+    SeamResult {
+        seam: "props_to_contract".to_string(),
+        status: SeamStatus::NotChecked,
+        source: "validate_contracts".to_string(),
+        findings: vec![],
+        reason: Some("unproven_against_real_inputs".to_string()),
     }
 }
 
@@ -1827,7 +1789,8 @@ pub fn booking_service() -> ServiceDef {
     #[tokio::test]
     async fn seam5_source_provenance() {
         // Seam 5 must carry source == "validate_contracts" (SC-4).
-        // Use a temp dir with no src/routes.rs → not_checked("routes_file_missing").
+        // Demoted (Phase 196 D-04): always returns not_checked with
+        // reason "unproven_against_real_inputs" regardless of project state.
         let tmp = tempfile::tempdir().unwrap();
 
         let seam = props_to_contract_seam(tmp.path(), "booking");
@@ -1841,9 +1804,12 @@ pub fn booking_service() -> ServiceDef {
             seam.source, "validate_contracts",
             "seam 'props_to_contract' must have source 'validate_contracts'"
         );
-        // No routes.rs → not_checked.
+        // Demoted → always not_checked with reason "unproven_against_real_inputs".
         assert_eq!(seam.status, SeamStatus::NotChecked);
-        assert_eq!(seam.reason.as_deref(), Some("routes_file_missing"));
+        assert_eq!(
+            seam.reason.as_deref(),
+            Some("unproven_against_real_inputs")
+        );
     }
 
     // -----------------------------------------------------------------------
