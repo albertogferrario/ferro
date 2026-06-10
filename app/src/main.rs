@@ -52,6 +52,7 @@ mod projections;
 mod providers;
 mod resources;
 mod routes;
+mod tenant_lookup;
 mod tenant_resolver;
 
 use migrations::Migrator;
