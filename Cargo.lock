@@ -2464,6 +2464,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-mcp-oauth"
+version = "0.2.51"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "ferro-rs",
+ "jsonwebtoken",
+ "rand 0.8.5",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "sha2",
+ "subtle",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
 name = "ferro-mcp-server"
 version = "0.2.51"
 dependencies = [
