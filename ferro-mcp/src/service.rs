@@ -1348,7 +1348,9 @@ impl FerroMcpService {
             understanding available models and routes for view building. Does NOT call any AI API — \
             returns context for the agent to write the view itself.\n\n\
             **Returns:** Component catalog, model fields, route definitions, existing view names, \
-            a complete view example, and naming/structure conventions.\n\n\
+            a complete view example, naming/structure conventions, and an optional `checkpoint` summary \
+            when a model is supplied and its projection anchor resolves. The `checkpoint` field is \
+            omitted when no model is provided or the projection does not yet exist.\n\n\
             **Combine with:** `json_ui_catalog` for detailed component reference, \
             `list_models` for full model details, \
             `code_templates` with category=json_view for boilerplate."
@@ -1638,8 +1640,10 @@ impl FerroMcpService {
         description = "Generate a ServiceDef projection from a SeaORM model by inferring fields, data types, and semantic meanings.\n\n\
             **When to use:** Creating a new projection for a model, understanding what ServiceDef would be derived \
             from existing models, bootstrapping projection-driven features.\n\n\
-            **Returns:** Serialized ServiceDef JSON, ranked intent scores, and notes on what needs manual enrichment \
-            (actions, state machines, relationships).\n\n\
+            **Returns:** Serialized ServiceDef JSON, ranked intent scores, notes on what needs manual enrichment \
+            (actions, state machines, relationships), and a `checkpoint` summary field (status + next_steps) \
+            when the projection already exists in the project. The `checkpoint` field is `null`/omitted on \
+            the first run before the projection file is created.\n\n\
             **Combine with:** `list_models` to see available models, `render_projection` to render the result, \
             `inspect_projection` to compare with hand-authored projections."
     )]

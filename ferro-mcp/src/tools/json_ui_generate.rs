@@ -126,14 +126,10 @@ pub async fn execute(
     let checkpoint = match model {
         Some(m) => {
             let anchor = format!("{}_service", m.to_lowercase());
-            crate::tools::checkpoint_projection::run_for(
-                project_root,
-                &anchor,
-                chrono::Utc::now(),
-            )
-            .await
-            .ok()
-            .map(|v| v.summary())
+            crate::tools::checkpoint_projection::run_for(project_root, &anchor, chrono::Utc::now())
+                .await
+                .ok()
+                .map(|v| v.summary())
         }
         None => None,
     };

@@ -39,7 +39,10 @@ pub struct GenerateProjectionResult {
 /// `{model_name_lowercase}_service` and embeds a compact `VerdictSummary` in the
 /// result. The field is omitted (`None`) when the projection is not yet in the
 /// project (first run) — safe degradation via `.ok()`.
-pub async fn execute(project_root: &Path, model_name: &str) -> Result<GenerateProjectionResult, String> {
+pub async fn execute(
+    project_root: &Path,
+    model_name: &str,
+) -> Result<GenerateProjectionResult, String> {
     // 1. Find model via list_models::execute()
     let models =
         list_models::execute(project_root).map_err(|e| format!("Failed to list models: {e}"))?;
@@ -92,14 +95,11 @@ pub async fn execute(project_root: &Path, model_name: &str) -> Result<GeneratePr
     // 7. Run speculative checkpoint against {model_name_lowercase}_service.
     //    .ok() maps Err (projection not yet in project) to None — safe degradation.
     let anchor = format!("{}_service", model_name.to_lowercase());
-    let checkpoint = crate::tools::checkpoint_projection::run_for(
-        project_root,
-        &anchor,
-        chrono::Utc::now(),
-    )
-    .await
-    .ok()
-    .map(|v| v.summary());
+    let checkpoint =
+        crate::tools::checkpoint_projection::run_for(project_root, &anchor, chrono::Utc::now())
+            .await
+            .ok()
+            .map(|v| v.summary());
 
     // 8. Build result
     let inferred_count = service_def.fields.len();
@@ -161,9 +161,7 @@ pub struct {struct_name} {{
         let field_lines: String = fields
             .iter()
             .map(|f| {
-                format!(
-                    "        .field(\"{f}\", DataType::Integer, FieldMeaning::Identifier)\n"
-                )
+                format!("        .field(\"{f}\", DataType::Integer, FieldMeaning::Identifier)\n")
             })
             .collect();
         let src = format!(
