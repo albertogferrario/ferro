@@ -4,13 +4,13 @@ milestone: v12.6
 milestone_name: Consumer App MCP (Browser Login)
 status: executing
 stopped_at: Completed 200-06-PLAN.md
-last_updated: "2026-06-10T19:31:35.559Z"
+last_updated: "2026-06-10T23:03:44.150Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 83
-  completed_phases: 76
+  completed_phases: 77
   total_plans: 330
-  completed_plans: 329
+  completed_plans: 330
   percent: 100
 ---
 
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 200 (Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance) — EXECUTING
-Plan: 7 of 7
+Phase: 201
+Plan: Not started
 Next: `/gsd-plan-phase 197`
 Status: Ready to execute
 
@@ -82,7 +82,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 323
+- Total plans completed: 330
 - Average duration: —
 - Total execution time: —
 
@@ -140,6 +140,7 @@ Progress: [██████████] 100%
 | 197 | 3 | - | - |
 | 198 | 2 | - | - |
 | 199 | 5 | - | - |
+| 200 | 7 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |

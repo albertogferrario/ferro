@@ -2572,4 +2572,4 @@ Plans:
 | 197. McpRenderer & ferro-mcp-server | 3/3 | Complete    | 2026-06-10 |
 | 198. Streamable HTTP Endpoint + Unauthenticated Challenge | 2/2 | Complete    | 2026-06-10 |
 | 199. OAuth Browser Login | 5/5 | Complete    | 2026-06-10 |
-| 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 7/7 | Complete   | 2026-06-10 |
+| 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 7/7 | Complete    | 2026-06-10 |
