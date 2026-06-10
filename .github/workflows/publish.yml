@@ -271,7 +271,7 @@ jobs:
           echo "Publishing Wave 2 crates..."
 
           # Wave 2: Framework and MCP (depend on Wave 1a + 1b)
-          WAVE2_CRATES="ferro-rs ferro-mcp"
+          WAVE2_CRATES="ferro-rs ferro-mcp ferro-mcp-server"
 
           for crate in $WAVE2_CRATES; do
             echo "Publishing $crate..."
