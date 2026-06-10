@@ -24,18 +24,18 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 201
-Plan: Not started
+Phase: 201 — ✅ complete (shipped 2026-06-11, verified retroactively; commit `705bac6b`)
+Plan: None — implemented outside GSD flow, reconciled via `201-VERIFICATION.md`
 Next: `/gsd-plan-phase 197`
-Status: Ready to execute
+Status: Phase 201 done; v12.6 phases 197-200 remain
 
 Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (73/82 phases)
 
-Last activity: 2026-06-10
+Last activity: 2026-06-11
 Workspace version: 0.2.49
 
 > **Operator actions pending:**
-> - `git push` — master is ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.7.0** (completes v11.6.2's publish, unblocks gestiscilo Phase 99).
+> - `git push` — master is ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.9.0** (Phase 201; also flushes the unpushed 0.7.0 from v11.6.2). Unblocks gestiscilo-it v6.10 Phase 204 and gestiscilo Phase 99.
 > - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
 
 ## Active Milestone: v12.6 Consumer App MCP (Browser Login) (Phases 197-200)
