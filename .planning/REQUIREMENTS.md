@@ -9,10 +9,10 @@
 ## v12.6 Requirements
 
 ### Projection → Tool Rendering
-- [ ] **AMCP-01**: A projection marked MCP-exposed (read-only, opt-in) appears in the MCP server's `tools/list` as exactly one tool; an unmarked projection never appears.
+- [x] **AMCP-01**: A projection marked MCP-exposed (read-only, opt-in) appears in the MCP server's `tools/list` as exactly one tool; an unmarked projection never appears.
 - [ ] **AMCP-02**: The exposed tool's input JSON schema is derived from the projection's `ServiceDef` fields (filter / pagination parameters), not declared separately from the validation applied on the call.
 - [ ] **AMCP-03**: Calling the tool runs the projection's existing read path and returns its rows as MCP structured content, with the output shape derived from the projection.
-- [ ] **AMCP-04**: The `McpRenderer` lives in a new output crate `ferro-mcp-server` implementing the `Renderer` trait; `ferro-projections` gains no renderer dependency.
+- [x] **AMCP-04**: The `McpRenderer` lives in a new output crate `ferro-mcp-server` implementing the `Renderer` trait; `ferro-projections` gains no renderer dependency.
 
 ### Endpoint & Transport
 - [ ] **AMCP-05**: The application serves an MCP endpoint over Streamable HTTP supporting `initialize`, `tools/list`, and `tools/call`.
@@ -45,10 +45,10 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| AMCP-01 | Phase 197 | Pending |
+| AMCP-01 | Phase 197 | Complete |
 | AMCP-02 | Phase 197 | Pending |
 | AMCP-03 | Phase 197 | Pending |
-| AMCP-04 | Phase 197 | Pending |
+| AMCP-04 | Phase 197 | Complete |
 | AMCP-05 | Phase 198 | Pending |
 | AMCP-06 | Phase 198 | Pending |
 | AMCP-07 | Phase 199 | Pending |
