@@ -9,6 +9,12 @@ use serde::Serialize;
 /// (and cannot wrap negative on the `as i64` cast).
 const MAX_LIMIT: u64 = 100;
 
+/// Hard upper bound on `offset`, guarding the `u64 -> i64` cast. Without it,
+/// a caller passing a `u64` above `i64::MAX` (e.g. `u64::MAX`) would wrap to a
+/// negative offset on the `as i64` cast (`u64::MAX as i64 == -1`), producing an
+/// incorrect/invalid SQL OFFSET. Mirrors the `MAX_LIMIT` clamp rationale (WR-01).
+const MAX_OFFSET: u64 = i64::MAX as u64;
+
 /// Result of a dispatch read over a projection's source table.
 #[derive(Debug, Serialize)]
 pub struct DispatchResult {
@@ -105,6 +111,7 @@ pub async fn dispatch(
     // advertises `maximum: 100`, but a caller invoking `dispatch` directly could
     // pass an arbitrary `u64`; without this clamp `u64::MAX as i64` wraps negative.
     let limit = limit.min(MAX_LIMIT);
+    let offset = offset.min(MAX_OFFSET);
     // TODO: ServiceDef.table field for irregular plurals / custom table names
     let table = format!("{}s", service.name.to_lowercase());
 
@@ -123,7 +130,7 @@ pub async fn dispatch(
             match service.fields.iter().find(|f| &f.name == key) {
                 Some(field) if is_filter_field(field) => {}
                 _ => {
-                    return Err(crate::Error::Database(format!(
+                    return Err(crate::Error::InvalidFilter(format!(
                         "unknown or non-filterable filter field: {key}"
                     )));
                 }

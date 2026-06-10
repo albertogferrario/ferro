@@ -66,3 +66,18 @@ async fn tools_call_unknown_tool_is_method_not_found() {
     .await;
     assert_eq!(resp["error"]["code"], -32601);
 }
+
+#[tokio::test]
+async fn tools_call_unknown_filter_is_invalid_params() {
+    // WR-02: a non-filterable / unknown filter key is a client parameter
+    // problem (-32602 Invalid params), distinct from an internal error (-32603).
+    let db = setup_db().await;
+    let services = vec![item_service()];
+    let resp = handle_tools_call(
+        json!({"name": "list_item", "arguments": {"not_a_field": "x"}}),
+        &services,
+        &db,
+    )
+    .await;
+    assert_eq!(resp["error"]["code"], -32602);
+}

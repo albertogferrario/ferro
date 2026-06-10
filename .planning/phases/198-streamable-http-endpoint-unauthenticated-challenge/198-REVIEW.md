@@ -21,7 +21,15 @@ findings:
   warning: 2
   info: 1
   total: 4
-status: issues_found
+status: resolved
+resolved: 2026-06-10
+resolution: >
+  CR-01 fixed (sanitize_identity strips ASCII control chars incl. CRLF from
+  APP_URL/APP_NAME at the from_env trust boundary; 2 tests). WR-01 fixed (offset
+  clamped to MAX_OFFSET before the as-i64 cast in dispatch.rs). WR-02 fixed (new
+  Error::InvalidFilter variant → JSON-RPC -32602; DB/internal errors → -32603;
+  integration test added). IN-01 addressed (clarifying comment on the test
+  fixture's hardcoded-literal SQL). fmt + clippy(-D warnings) + scoped tests green.
 ---
 
 # Phase 198: Code Review Report

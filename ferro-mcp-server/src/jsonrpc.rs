@@ -88,6 +88,12 @@ pub async fn handle_tools_call(
                 "offset": result.offset
             }
         }),
-        Err(e) => json!({ "error": { "code": -32602, "message": e.to_string() } }),
+        // A bad filter key is a client parameter problem (-32602); any other
+        // failure (DB/render/serialization) is internal (-32603). Clients use
+        // the code to decide whether to fix the request or retry (WR-02).
+        Err(crate::Error::InvalidFilter(msg)) => {
+            json!({ "error": { "code": -32602, "message": msg } })
+        }
+        Err(e) => json!({ "error": { "code": -32603, "message": e.to_string() } }),
     }
 }

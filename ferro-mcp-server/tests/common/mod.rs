@@ -10,6 +10,10 @@ pub async fn setup_db() -> DatabaseConnection {
     ))
     .await
     .expect("create table");
+    // IN-01: hardcoded test literals — string interpolation is safe here (no
+    // external input). Production read paths bind values via
+    // `Statement::from_sql_and_values`; do NOT copy this `format!` style into
+    // any code that handles caller-supplied data.
     for (id, status, cust) in [(1, "open", 10), (2, "open", 11), (3, "closed", 10)] {
         db.execute(Statement::from_string(
             DatabaseBackend::Sqlite,
