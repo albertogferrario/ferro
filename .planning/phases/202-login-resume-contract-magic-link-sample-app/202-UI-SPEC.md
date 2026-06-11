@@ -1,7 +1,8 @@
 ---
 phase: 202
 slug: login-resume-contract-magic-link-sample-app
-status: draft
+status: approved
+reviewed_at: 2026-06-11
 shadcn_initialized: false
 preset: none
 created: 2026-06-11
@@ -55,15 +56,14 @@ width. No custom px values are authored in view files — all sizing is semantic
 
 ## Typography
 
-Typography is resolved by the theme. View files do not specify font sizes. The roles below
-describe what each JSON-UI component renders to — the executor must not override these.
+These are theme-resolved semantic roles documenting what `ThemeMiddleware` renders for each
+component — view files author zero typography props. Two weights only.
 
 | Role | Size | Weight | Line Height | JSON-UI Usage |
 |------|------|--------|-------------|---------------|
 | Body | 16px | 400 | 1.5 | Input labels, form helper text |
-| Label | 14px | 500 | 1.4 | Field labels (`Input.props.label`) |
+| Label | 14px | 400 | 1.4 | Field labels (`Input.props.label`) |
 | Heading | 20px | 600 | 1.2 | Card title (`Card.props.title`) |
-| Display | 28px | 700 | 1.1 | Not used in auth views |
 
 ---
 
