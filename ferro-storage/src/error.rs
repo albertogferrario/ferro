@@ -42,6 +42,14 @@ pub enum Error {
     /// CDN operation error.
     #[error("CDN error: {0}")]
     Cdn(String),
+
+    /// CDN provider name is not recognized.
+    #[error("CDN_PROVIDER value '{0}' is not valid; valid values: none, digitalocean, bunny, cloudflare")]
+    CdnInvalidProvider(String),
+
+    /// Selected CDN provider requires a cargo feature that is not enabled.
+    #[error("CDN_PROVIDER={0} requires the '{1}' cargo feature")]
+    CdnFeatureRequired(String, &'static str),
 }
 
 impl Error {
@@ -73,5 +81,15 @@ impl Error {
     /// Create a CDN error.
     pub fn cdn(msg: impl Into<String>) -> Self {
         Self::Cdn(msg.into())
+    }
+
+    /// Create a CDN invalid provider error.
+    pub fn cdn_invalid_provider(val: impl Into<String>) -> Self {
+        Self::CdnInvalidProvider(val.into())
+    }
+
+    /// Create a CDN feature-required error.
+    pub fn cdn_feature_required(provider: &str, feature: &'static str) -> Self {
+        Self::CdnFeatureRequired(provider.to_string(), feature)
     }
 }
