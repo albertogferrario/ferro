@@ -109,7 +109,10 @@ mod tests {
             let first = take_oauth_return_to();
             assert!(first.is_some(), "first take must return the stored URL");
             let second = take_oauth_return_to();
-            assert_eq!(second, None, "second take must return None (consume-on-read)");
+            assert_eq!(
+                second, None,
+                "second take must return None (consume-on-read)"
+            );
         })
         .await;
     }

@@ -389,6 +389,41 @@ group!("/")
 
 Authenticated users visiting these routes are redirected to the specified path. Also Inertia-aware.
 
+## Login-resume contract (OAuth/MCP)
+
+When `ferro-mcp-oauth`'s `/authorize` endpoint receives an unauthenticated request, it stores the in-flight authorize URL in the session and redirects to the app login page. After authentication the login handler must redirect back to that stored URL so the OAuth flow resumes and an authorization code is issued.
+
+### Contract
+
+**Any login method** — synchronous password, asynchronous magic-link, future SSO — must call `oauth_resume_redirect(default)` (or `take_oauth_return_to()`) after establishing the session to participate in the OAuth flow. A handler that redirects to a fixed dashboard instead will never resume the authorize request.
+
+### Adoption
+
+```rust
+use ferro_mcp_oauth::oauth_resume_redirect;
+
+// After Auth::login(user_id):
+return oauth_resume_redirect("/");
+```
+
+`oauth_resume_redirect` returns `ferro::Response` and is used with a bare `return`, not `?`. It redirects to the stored authorize URL when an OAuth flow is in progress, or to the supplied default when it is not.
+
+### Available helpers
+
+| Function | Description |
+|----------|-------------|
+| `store_oauth_return_to(url)` | Store the in-flight authorize URL. Called by `/authorize` when redirecting unauthenticated users. |
+| `take_oauth_return_to() -> Option<String>` | Read and clear the stored URL (consume-on-read). Returns `None` when no flow is in progress. |
+| `oauth_resume_redirect(default) -> ferro::Response` | 302-redirect to the stored URL, or to `default` when absent. Consumes the stored key. |
+
+### Open-redirect invariant
+
+The stored URL is written exclusively by the `/authorize` handler from a URL it constructs itself — never from user-supplied input. The `default` argument is a static internal path supplied by the caller. The helper therefore never redirects to an attacker-controlled URL.
+
+### Worked example
+
+The bundled sample app's magic-link `verify` handler is the canonical example of a separate-request login method that uses `oauth_resume_redirect` to resume the OAuth flow after token verification.
+
 ## Login and Registration Example
 
 ### Register Handler
