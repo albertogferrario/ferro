@@ -110,6 +110,23 @@ mod tests {
     }
 
     #[test]
+    fn discovery_advertises_device_authorization_endpoint() {
+        let val = authorization_server_metadata("https://app.example.com");
+        assert_eq!(
+            val["device_authorization_endpoint"].as_str().unwrap(),
+            "https://app.example.com/device_authorization"
+        );
+    }
+
+    #[test]
+    fn discovery_advertises_device_grant_type() {
+        let val = authorization_server_metadata("https://app.example.com");
+        let grant_types = val["grant_types_supported"].as_array().unwrap();
+        assert!(grant_types.iter().any(|v| v.as_str() == Some("authorization_code")));
+        assert!(grant_types.iter().any(|v| v.as_str() == Some("urn:ietf:params:oauth:grant-type:device_code")));
+    }
+
+    #[test]
     fn discovery_urls_interpolate_app_url_no_hardcoded_host() {
         let custom_url = "https://custom.host.io";
         let val = authorization_server_metadata(custom_url);
