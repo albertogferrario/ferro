@@ -38,12 +38,7 @@ pub fn build() -> Arc<dyn TenantLookup> {
                     .await
                     .ok()
                     .flatten()
-                    .map(|t| TenantContext {
-                        id: t.id,
-                        slug: t.slug,
-                        name: t.name,
-                        plan: None,
-                    })
+                    .map(|t| TenantContext::new(t.id, t.slug, t.name, None))
             })
         },
         |id| {
@@ -52,12 +47,7 @@ pub fn build() -> Arc<dyn TenantLookup> {
                     .await
                     .ok()
                     .flatten()
-                    .map(|t| TenantContext {
-                        id: t.id,
-                        slug: t.slug,
-                        name: t.name,
-                        plan: None,
-                    })
+                    .map(|t| TenantContext::new(t.id, t.slug, t.name, None))
             })
         },
     ))

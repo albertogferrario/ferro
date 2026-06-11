@@ -51,11 +51,6 @@ impl TenantResolver for SessionUserTenantResolver {
             .await
             .ok()
             .flatten()
-            .map(|t| TenantContext {
-                id: t.id,
-                slug: t.slug,
-                name: t.name,
-                plan: None,
-            })
+            .map(|t| TenantContext::new(t.id, t.slug, t.name, None))
     }
 }

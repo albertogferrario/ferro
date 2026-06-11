@@ -57,6 +57,25 @@ pub struct TenantContext {
     pub subscription: Option<subscription::SubscriptionInfo>,
 }
 
+impl TenantContext {
+    /// Construct a tenant context from its core identity fields.
+    ///
+    /// The stripe-gated `subscription` field is initialized to `None`; populate
+    /// it afterward (when the `stripe` feature is enabled) if subscription data
+    /// is available. Using this constructor keeps call sites feature-agnostic —
+    /// they do not need to know whether `subscription` exists in the struct.
+    pub fn new(id: i64, slug: String, name: String, plan: Option<String>) -> Self {
+        Self {
+            id,
+            slug,
+            name,
+            plan,
+            #[cfg(feature = "stripe")]
+            subscription: None,
+        }
+    }
+}
+
 #[cfg(feature = "stripe")]
 impl TenantContext {
     /// Returns true when the tenant's subscription is in a trial period.
