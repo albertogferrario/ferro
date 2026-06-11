@@ -481,11 +481,13 @@ pub async fn device_verification_get(req: ferro::Request) -> ferro::Response {
             .filter(|uc| {
                 uc.len() == 9
                     && uc.as_bytes().get(4) == Some(&b'-')
-                    && uc.as_bytes().iter().enumerate().all(|(i, &b)| {
-                        i == 4 || USER_CODE_CHARSET.contains(&b)
-                    })
+                    && uc
+                        .as_bytes()
+                        .iter()
+                        .enumerate()
+                        .all(|(i, &b)| i == 4 || USER_CODE_CHARSET.contains(&b))
             })
-            .map(|uc| url_encode(uc))
+            .map(url_encode)
             .unwrap_or_default();
         let return_url = if encoded_uc.is_empty() {
             "/device".to_string()

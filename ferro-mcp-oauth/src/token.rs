@@ -883,8 +883,10 @@ mod tests {
         );
 
         // Grant must be consumed (forgotten) even though validation failed — no replay possible
-        let device_key_after: Option<DeviceGrant> =
-            Cache::get(&device_cache_key(device_code)).await.ok().flatten();
+        let device_key_after: Option<DeviceGrant> = Cache::get(&device_cache_key(device_code))
+            .await
+            .ok()
+            .flatten();
         assert!(
             device_key_after.is_none(),
             "device_cache_key must be forgotten even on client_id mismatch (no replay)"
