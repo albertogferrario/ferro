@@ -881,7 +881,7 @@ verified code and CONTEXT.md locked decisions.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where to store `normalized_user_code` on `DeviceGrant`**
    - What we know: the token handler needs to forget `mcp:usercode:{...}` on approval; it has
@@ -890,12 +890,16 @@ verified code and CONTEXT.md locked decisions.
      differently.
    - Recommendation: add `normalized_user_code: String` field to `DeviceGrant`. Small cost;
      eliminates the derivation problem. This is Claude's Discretion per CONTEXT.md.
+   - **RESOLVED:** Plan 203-01 adds `normalized_user_code: String` to the `DeviceGrant` struct;
+     Plan 203-04 forgets `usercode_cache_key(&grant.normalized_user_code)` on approval. Decided.
 
 2. **Manual expiry check for strict 600s TTL**
    - What we know: cache put-overwrite resets TTL; approved grants can linger slightly longer.
    - What's unclear: whether the product requires strict TTL or "best-effort" is fine.
    - Recommendation: add `if now_unix - grant.created_at > 600 { return expired_token }` before
      the state-machine match. Cheap and explicit. Default to this.
+   - **RESOLVED:** Plan 203-04 adds the `now_unix - grant.created_at > 600` guard before the
+     state-machine match, returning `expired_token`. Strict TTL enforced independent of cache TTL.
 
 ---
 
