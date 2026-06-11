@@ -471,10 +471,27 @@ pub async fn device_verification_get(req: ferro::Request) -> ferro::Response {
 
     // ── Auth check: redirect unauthenticated users to login (D-04) ────────────
     if !Auth::check() {
-        // Build return_url from the user_code param (if present); only the normalized
-        // user_code value (charset-constrained) flows into this URL — never path/host.
-        let encoded_uc = url_encode(user_code_param.as_deref().unwrap_or(""));
-        let return_url = format!("/device?user_code={encoded_uc}");
+        // Only carry the user_code into the return URL if it matches the expected
+        // XXXX-XXXX format (9 chars, hyphen at position 4, all chars from the RFC 8628
+        // §6.1 charset). Malformed codes are silently dropped — redirect to /device with
+        // no query param. This upholds the resume.rs contract: stored URLs must not
+        // contain user-supplied content that bypasses format validation.
+        let encoded_uc = user_code_param
+            .as_deref()
+            .filter(|uc| {
+                uc.len() == 9
+                    && uc.as_bytes().get(4) == Some(&b'-')
+                    && uc.as_bytes().iter().enumerate().all(|(i, &b)| {
+                        i == 4 || USER_CODE_CHARSET.contains(&b)
+                    })
+            })
+            .map(|uc| url_encode(uc))
+            .unwrap_or_default();
+        let return_url = if encoded_uc.is_empty() {
+            "/device".to_string()
+        } else {
+            format!("/device?user_code={encoded_uc}")
+        };
         crate::resume::store_oauth_return_to(return_url);
         return Err(ferro::HttpResponse::new()
             .status(302)
