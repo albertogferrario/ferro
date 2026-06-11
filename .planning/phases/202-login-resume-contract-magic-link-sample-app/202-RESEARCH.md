@@ -557,17 +557,19 @@ The resume helper is a pure same-device browser redirect mechanism. It reads a s
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Acceptance test session continuity mechanism**
    - What we know: The existing test harness uses direct middleware/dispatch calls, not a full HTTP round-trip. Session state is thread-local.
    - What's unclear: Whether the acceptance test should use actual HTTP requests (adds `reqwest` as dev-dep) or unit-style staged verification.
    - Recommendation: Use unit-style staged verification in `app/src/tests/oauth_magic_link_flow.rs` (test each step with `bootstrap_test_cache()` + direct helper calls). If the planner considers this insufficient for SC-3, add an HTTP round-trip test.
+   - **RESOLVED:** Plan 04 uses offline unit-style staged verification (store→issue→consume→resume, `bootstrap_test_cache()` + direct helper calls); acceptance criteria assert NO `reqwest`/`render_file`/`TcpListener` to keep CI offline-green. No HTTP round-trip needed for SC-3.
 
 2. **`take_oauth_return_to` read-then-forget atomicity**
    - What we know: Session read and mutable access are two separate calls (cannot read and forget in the same `session_mut` closure because `session_mut` takes `&mut SessionData`, not `SessionData`).
    - What's unclear: Whether there are race conditions in concurrent requests for the same session.
    - Recommendation: Not a concern for browser-based OAuth flow (single user, sequential requests). The helper reads, checks, then forgets — this is the same two-call pattern already in the codebase.
+   - **RESOLVED:** Plan 01 implements `take_oauth_return_to` as the established two-call pattern (`session()` read → `session_mut()` forget), matching the existing codebase precedent in `auth_controller.rs`. Single-user sequential OAuth flow — no atomicity concern.
 
 ---
 
