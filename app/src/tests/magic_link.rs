@@ -1,3 +1,4 @@
+use ferro::config::env::Environment;
 /// Unit tests for the magic-link token lifecycle.
 ///
 /// Covers T-202-01 (replay/single-use), T-202-02 (expiry/absent-key),
@@ -7,7 +8,6 @@
 /// cache layer and environment detection (RESEARCH Pitfall 2: view files are
 /// CWD-relative at request time; unit tests avoid that).
 use ferro::Cache;
-use ferro::config::env::Environment;
 use ferro_mcp_oauth::cache_test_helpers::bootstrap_test_cache;
 use std::time::Duration;
 
