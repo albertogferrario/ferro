@@ -4,7 +4,7 @@ milestone: v12.7
 milestone_name: Passwordless MCP Auth
 status: verifying
 stopped_at: Completed 204-03-PLAN.md
-last_updated: "2026-06-11T17:29:57.083Z"
+last_updated: "2026-06-11T17:49:16.435Z"
 last_activity: 2026-06-11
 progress:
   total_phases: 86
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Milestone: v12.7 — 🚧 in progress (Phases 202-203)
-Phase: 204 (ferro-storage provider-agnostic CDN configuration) — EXECUTING
-Plan: 3 of 3
+Phase: 204
+Plan: Not started
 Next: Phase 203 (OAuth Device Authorization Grant, RFC 8628) — `/gsd-discuss-phase 203`
 Prior: v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO); Phase 201 ✅ complete
 Status: Phase complete — ready for verification
@@ -78,7 +78,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 335
+- Total plans completed: 338
 - Average duration: —
 - Total execution time: —
 
@@ -138,6 +138,7 @@ Progress: [██████████] 100%
 | 199 | 5 | - | - |
 | 200 | 7 | - | - |
 | 203 | 5 | - | - |
+| 204 | 3 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
