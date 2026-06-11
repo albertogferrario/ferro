@@ -40,14 +40,21 @@ edition = "2021"
 rust-version = "1.88.0"
 license = "MIT"
 
-# Disable debug-info for dev/test builds. The full `cargo test --all-features`
-# build links every test binary across the workspace; with debug-info the
-# dependency rlibs overflowed the CI runner disk ("ld: No space left on
-# device"). Stripping debug-info cuts target size by the majority and keeps the
-# --all-features test gate within the runner's disk. Panic locations
-# (file!/line!) and #[should_panic(expected=...)] are unaffected.
+# Keep the full `cargo test --all-features` build within the CI runner disk.
+# That build links every test binary across the 26-crate workspace; the
+# accumulated artifacts overflowed the runner ("ld: No space left on device").
+# Three repo-level levers shrink target/ without changing test outcomes:
+#   - debug = false       → no debug-info in the dependency rlibs (the bulk)
+#   - incremental = false → no multi-GB incremental compilation cache
+#   - strip = true        → strip symbols from the final test binaries
+# Panic locations (file!/line!) and #[should_panic(expected=...)] are unaffected;
+# profiles are ignored when these crates are consumed as published dependencies.
 [profile.dev]
 debug = false
+incremental = false
+strip = true
 
 [profile.test]
 debug = false
+incremental = false
+strip = true
