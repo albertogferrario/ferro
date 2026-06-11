@@ -1,0 +1,51 @@
+:root {
+  /* Surface tokens — light mode defaults */
+  --color-background: oklch(98% 0.003 270);
+  --color-surface: oklch(96% 0.005 270);
+  --color-card: oklch(100% 0 0);
+  --color-border: oklch(90% 0.008 270);
+  --color-text: oklch(20% 0.02 270);
+  --color-text-muted: oklch(52% 0.02 270);
+
+  /* Role tokens */
+  --color-primary: oklch(55% 0.18 256);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(94% 0.01 270);
+  --color-secondary-foreground: oklch(25% 0.02 270);
+  --color-accent: oklch(55% 0.18 256);
+  --color-destructive: oklch(52% 0.22 25);
+  --color-success: oklch(52% 0.18 145);
+  --color-warning: oklch(68% 0.18 75);
+
+  /* Shape tokens */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Shadow tokens */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08);
+
+  /* Typography tokens */
+  --font-mono: ui-monospace, "Cascadia Code", monospace;
+}
+
+/* Dark mode: requires class="dark" on <body> (set via JsonUiConfig body_class) */
+.dark {
+  --color-background: oklch(15% 0.01 270);
+  --color-surface: oklch(19% 0.01 270);
+  --color-card: oklch(22% 0.01 270);
+  --color-border: oklch(32% 0.01 270);
+  --color-text: oklch(95% 0 0);
+  --color-text-muted: oklch(62% 0.01 270);
+  --color-primary: oklch(70% 0.16 256);
+  --color-primary-foreground: oklch(18% 0.02 270);
+  --color-secondary: oklch(28% 0.01 270);
+  --color-secondary-foreground: oklch(95% 0 0);
+  --color-accent: oklch(70% 0.16 256);
+  --color-destructive: oklch(60% 0.22 25);
+  --color-success: oklch(60% 0.18 145);
+  --color-warning: oklch(65% 0.18 75);
+}

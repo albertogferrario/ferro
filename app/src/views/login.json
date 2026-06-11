@@ -1,7 +1,7 @@
 {
   "$schema": "ferro-json-ui/v2",
   "title": "Sign in",
-  "layout": "centered",
+  "layout": "auth",
   "root": "card",
   "elements": {
     "card": {

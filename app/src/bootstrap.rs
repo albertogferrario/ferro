@@ -30,7 +30,7 @@
 #[allow(unused_imports)]
 use ferro::{
     bind, global_middleware, singleton, ApiKeyProvider, App, AuthResponse, Gate, LangMiddleware,
-    Limit, RateLimiter, SessionConfig, SessionMiddleware, UserProvider, DB,
+    Limit, RateLimiter, SessionConfig, SessionMiddleware, Theme, ThemeMiddleware, UserProvider, DB,
 };
 
 use crate::middleware;
@@ -65,6 +65,14 @@ pub async fn register() {
     global_middleware!(middleware::LoggingMiddleware);
     global_middleware!(middleware::ShareInertiaData);
     global_middleware!(LangMiddleware);
+
+    // Theme: load the design tokens and inject them as a <style> in the <head>
+    // of every JSON-UI page (ferro-json-ui reads the active theme from this
+    // middleware). Without it, JSON-UI views render structure-only because
+    // ferro-base.css references `var(--color-*)` tokens with no concrete values.
+    let theme = Theme::from_path("./themes/ferro")
+        .expect("themes/ferro must exist with tokens.css and theme.json");
+    global_middleware!(ThemeMiddleware::new().default_theme(theme));
 
     // Register the user provider for Auth::user()
     bind!(dyn UserProvider, DatabaseUserProvider);
