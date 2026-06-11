@@ -332,5 +332,7 @@ mod tests {
         );
         // The email field pre-fills from handler data (preserved on a failed submit).
         assert_eq!(v["elements"]["email"]["props"]["data_path"], "/email");
+        // Submit button label must match the magic-link CTA.
+        assert_eq!(v["elements"]["submit"]["props"]["label"], "Send login link");
     }
 }

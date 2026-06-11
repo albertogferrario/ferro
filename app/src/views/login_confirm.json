@@ -23,9 +23,15 @@
       "type": "Button",
       "props": {
         "label": { "$data": "/dev_link_label" },
-        "href": { "$data": "/dev_link" },
-        "variant": "outline",
-        "visible": { "$data": "/dev_mode" }
+        "variant": "outline"
+      },
+      "action": {
+        "handler": { "$data": "/dev_link" },
+        "method": "GET"
+      },
+      "visible": {
+        "path": "/dev_mode",
+        "operator": "is_true"
       }
     }
   }
