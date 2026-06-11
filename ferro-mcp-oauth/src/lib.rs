@@ -31,6 +31,7 @@ pub use validate::{validate_bearer, BearerCheck};
 pub mod handlers {
     pub use crate::authorize::authorize_get;
     pub use crate::consent::authorize_post;
+    pub use crate::device::{device_authorization, device_verification_get, device_verification_post};
     pub use crate::discovery::{authorization_server_handler, protected_resource_handler};
     pub use crate::register::register_client;
     pub use crate::token::token_exchange;
