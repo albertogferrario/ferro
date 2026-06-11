@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v12.6
 milestone_name: Consumer App MCP (Browser Login)
-status: executing
-stopped_at: Completed 200-06-PLAN.md
-last_updated: "2026-06-10T23:03:44.150Z"
-last_activity: 2026-06-10
+status: shipped
+stopped_at: v12.6 complete — phases 197-200 verified, dogfood GO
+last_updated: "2026-06-11T00:00:00.000Z"
+last_activity: 2026-06-11
 progress:
   total_phases: 83
   completed_phases: 77
@@ -20,45 +20,40 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 200 — Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance
+**Current focus:** v12.6 complete (Phases 197-200 shipped) + Phase 201 shipped. No active milestone — next milestone not yet started.
 
 ## Current Position
 
-Phase: 201 — ✅ complete (shipped 2026-06-11, verified retroactively; commit `705bac6b`)
-Plan: None — implemented outside GSD flow, reconciled via `201-VERIFICATION.md`
-Next: `/gsd-plan-phase 197`
-Status: Phase 201 done; v12.6 phases 197-200 remain
+Milestone: v12.6 — ✅ shipped 2026-06-11 (Phases 197-200 verified, dogfood GO)
+Also: Phase 201 (v11.6.3) — ✅ complete (verified retroactively; commit `705bac6b`)
+Plan: None outstanding
+Next: start a new milestone (`/gsd-new-milestone`) or pick from the planned roadmap (v12.2, v12.3, v13.0, v14.0)
+Status: All started phases complete and verified
 
-Progress: [████████████████████░░░░░░░░░░░░░░░░] 89% (73/82 phases)
+Progress: [████████████████████████████████████] 100% of started phases (197-201 done)
 
 Last activity: 2026-06-11
 Workspace version: 0.2.49
 
 > **Operator actions pending:**
-> - `git push` — master is ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.9.0** (Phase 201; also flushes the unpushed 0.7.0 from v11.6.2). Unblocks gestiscilo-it v6.10 Phase 204 and gestiscilo Phase 99.
+> - `git push` — master is 273 commits ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.9.0** (Phase 201; also flushes the unpushed 0.7.0 from v11.6.2). Unblocks gestiscilo-it v6.10 Phase 204 and gestiscilo Phase 99.
+> - **Bootstrap-publish `ferro-mcp-server`** — it is a NEW crate (v12.6). The CI publish token is publish-update-only and cannot publish a new crate; its first publish must be run from a local terminal (`cargo publish -p ferro-mcp-server`) before the auto-publish wave, or the wave fails on it. See `project_ferro_publish_token_scoping`.
 > - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
 
-## Active Milestone: v12.6 Consumer App MCP (Browser Login) (Phases 197-200)
+## Shipped Milestone: v12.6 Consumer App MCP (Browser Login) (Phases 197-200)
 
-**Design center:** The MCP surface is a rendering target for the projection / intent system — the same `ServiceDef` that renders to JSON-UI (visual) also renders to MCP tool schema and tool output (agent-consumable) via `McpRenderer`. One source of truth; no parallel hand-maintained tool contract.
+Shipped 2026-06-11. A deployed ferro application serves its own OAuth-protected MCP endpoint so a consumer agent authenticates through the browser and uses the application's projections as per-tenant tools. The MCP surface is a rendering target for the projection/intent system — the same `ServiceDef` that renders to JSON-UI also renders to MCP tool schema/output via `McpRenderer` (new `ferro-mcp-server` output crate; `ferro-projections` stays renderer-free). Tenant scoping + policy authorization are structural (existing multi-tenant middleware + policy layer reused). The non-negotiable dogfood gate **passed GO** — a real MCP client completed browser OAuth login end to end with confirmed per-tenant row isolation (`200-ACCEPTANCE.md`; NO-GO on first run from a `/authorize` redirect bug, fixed via `SessionMiddleware` mount, GO on re-run both tenant directions).
 
 **Design spec:** `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`
 
-**Key design constraints locked:**
+| Phase | Status | Verification |
+|-------|--------|--------------|
+| 197. McpRenderer & ferro-mcp-server | ✅ shipped | passed 5/5 |
+| 198. Streamable HTTP Endpoint + Unauthenticated Challenge | ✅ shipped | passed 4/4 |
+| 199. OAuth Browser Login | ✅ shipped | passed 5/5 |
+| 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | ✅ shipped | passed 4/4 (dogfood GO) |
 
-- `ferro-mcp-server` is a new output crate (mirrors `ferro-json-ui`); `ferro-projections` stays renderer-free.
-- Tenant scoping and authorization are structural — reused from existing multi-tenant middleware and policy layer; no second permission system.
-- Walking skeleton: read-only, one opt-in projection, end to end. Write intents deferred.
-- Dogfood GO/NO-GO in Phase 200 is non-negotiable: a real MCP client completing browser login is the acceptance gate.
-
-| Phase | Status |
-|-------|--------|
-| 197. McpRenderer & ferro-mcp-server | Not started |
-| 198. Streamable HTTP Endpoint + Unauthenticated Challenge | Not started |
-| 199. OAuth Browser Login | Not started |
-| 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | Not started |
-
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Shipped Milestone: v12.5 Projection Checkpoint (Phases 194-196)
 
@@ -400,7 +395,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-10T19:31:35.552Z
-Stopped at: Completed 200-06-PLAN.md
+Last session: 2026-06-11
+Stopped at: v12.6 reconciled — Phases 197-200 marked shipped (all verified, dogfood GO); Phase 201 marked complete
 Resume file: None
-Next action: `/gsd-plan-phase 197`
+Next action: `/gsd-new-milestone` (no active milestone) — operator: `git push` + bootstrap-publish `ferro-mcp-server`
