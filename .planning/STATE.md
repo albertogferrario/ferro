@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v12.7
 milestone_name: Passwordless MCP Auth
-status: verifying
+status: in_progress
 stopped_at: Phase 202 context gathered
 last_updated: "2026-06-11T04:07:57.710Z"
 last_activity: 2026-06-11
@@ -20,17 +20,17 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v12.6 complete (Phases 197-200 shipped) + Phase 201 shipped. No active milestone — next milestone not yet started.
+**Current focus:** v12.7 Passwordless MCP Auth (Phases 202-203) started. Phase 202 context gathered.
 
 ## Current Position
 
-Milestone: v12.6 — ✅ shipped 2026-06-11 (Phases 197-200 verified, dogfood GO)
-Also: Phase 201 (v11.6.3) — ✅ complete (verified retroactively; commit `705bac6b`)
-Plan: None outstanding
-Next: start a new milestone (`/gsd-new-milestone`) or pick from the planned roadmap (v12.2, v12.3, v13.0, v14.0)
-Status: All started phases complete and verified
+Milestone: v12.7 — 🚧 in progress (Phases 202-203)
+Phase: 202 (Login-resume contract + magic-link sample app) — context gathered, ready for planning
+Plan: None yet — next is `/gsd-plan-phase 202`
+Prior: v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO); Phase 201 ✅ complete
+Status: Phase 202 CONTEXT.md written
 
-Progress: [████████████████████████████████████] 100% of started phases (197-201 done)
+Progress: [░░░░░░░░░░] v12.7 0% (202 discussed, not yet planned)
 
 Last activity: 2026-06-11
 Workspace version: 0.2.49
