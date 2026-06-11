@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.6
-milestone_name: Consumer App MCP (Browser Login)
-status: shipped
-stopped_at: v12.6 complete — phases 197-200 verified, dogfood GO
-last_updated: "2026-06-11T00:00:00.000Z"
+milestone: v12.7
+milestone_name: Passwordless MCP Auth
+status: verifying
+stopped_at: Phase 202 context gathered
+last_updated: "2026-06-11T04:07:57.710Z"
 last_activity: 2026-06-11
 progress:
-  total_phases: 83
+  total_phases: 85
   completed_phases: 77
   total_plans: 330
   completed_plans: 330
@@ -396,7 +396,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-11
-Stopped at: Published v12.6 crates + ferro-stripe 0.9.0 to crates.io (run 27321715231 green, tag pushed); added v12.7 Passwordless MCP Auth phases (202-203, planned)
-Resume file: None
+Last session: 2026-06-11T04:07:57.700Z
+Stopped at: Phase 202 context gathered
+Resume file: .planning/phases/202-login-resume-contract-magic-link-sample-app/202-CONTEXT.md
 Next action: `/gsd-discuss-phase 202` to start v12.7 (no active milestone yet — set milestone + 🚧 marker when beginning)
