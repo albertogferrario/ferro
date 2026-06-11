@@ -210,17 +210,20 @@ async fn token_exchange_device_code(form: TokenRequest) -> ferro::Response {
             let last_poll = grant.last_polled_at.unwrap_or(grant.created_at);
             let elapsed = now_unix - last_poll;
 
-            // Update last_polled_at regardless of slow_down decision
+            // Update last_polled_at regardless of slow_down decision.
+            // Propagate cache write errors: a failed write means slow_down enforcement
+            // is blind for this poll (the stale timestamp persists, bypassing the interval check).
             let updated = DeviceGrant {
                 last_polled_at: Some(now_unix),
                 ..grant.clone()
             };
-            let _ = Cache::put(
+            Cache::put(
                 &device_cache_key(device_code),
                 &updated,
                 Some(DEVICE_CODE_TTL),
             )
-            .await;
+            .await
+            .map_err(|e| json_error(500, "server_error", &format!("cache error: {e}")))?;
 
             if elapsed < DEVICE_INTERVAL_SECS {
                 return Err(json_error(
