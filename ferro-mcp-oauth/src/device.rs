@@ -587,6 +587,9 @@ pub async fn device_verification_post(req: ferro::Request) -> ferro::Response {
     })?;
 
     // ── Code-entry path: user_code present but no device_code ────────────────
+    // No CSRF validation here: this path only moves user input into the URL query
+    // string via a PRG redirect. No authorization state changes — the approve/deny
+    // POST (which does commit state) validates CSRF separately on the path below.
     if !form.user_code.is_empty() && form.device_code.is_empty() {
         // PRG: redirect to GET /device?user_code=… so browser re-fetches with fresh CSRF
         let encoded = url_encode(&form.user_code);
