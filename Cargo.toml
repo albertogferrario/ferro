@@ -39,3 +39,15 @@ version = "0.2.53"
 edition = "2021"
 rust-version = "1.88.0"
 license = "MIT"
+
+# Disable debug-info for dev/test builds. The full `cargo test --all-features`
+# build links every test binary across the workspace; with debug-info the
+# dependency rlibs overflowed the CI runner disk ("ld: No space left on
+# device"). Stripping debug-info cuts target size by the majority and keeps the
+# --all-features test gate within the runner's disk. Panic locations
+# (file!/line!) and #[should_panic(expected=...)] are unaffected.
+[profile.dev]
+debug = false
+
+[profile.test]
+debug = false
