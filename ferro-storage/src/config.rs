@@ -116,8 +116,10 @@ impl StorageConfig {
                 None
             };
             s3_config.url = public_url;
-            if let Ok(cdn) = env::var("AWS_CDN_URL") {
-                s3_config = s3_config.with_cdn_url(cdn);
+            // Read the unified CDN config (handles CDN_URL quartet + AWS_CDN_URL fallback + deprecation warn).
+            let cdn_config = crate::cdn::Config::from_env();
+            if let Some(cdn_url) = cdn_config.url {
+                s3_config = s3_config.with_cdn_url(cdn_url);
             }
             disks.insert("s3".to_string(), s3_config);
         }
