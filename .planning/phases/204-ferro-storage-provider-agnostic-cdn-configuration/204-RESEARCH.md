@@ -636,7 +636,9 @@ All claims in this research were verified directly against source files. No assu
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+**RESOLVED in planning (204-01/204-02):** OQ-1 — `StorageConfig::from_env` stays **infallible** (`-> Self`, minimum-diff, no caller breakage); `cdn::Config::from_env` is also infallible, and the invalid-provider **boot Error (SC-5b)** surfaces through the provider parse (`from_str_ci`) at `build_purge_api()` time rather than from `StorageConfig::from_env`. OQ-2 — the existing `from_env_cdn_url` test stays green unmodified (it now exercises the silent `AWS_CDN_URL`→`CDN_URL` fallback path; `tracing::warn!` is a no-op without a subscriber). Both carried into the plans; no open items remain.
 
 1. **`StorageConfig::from_env` return type**
    - What we know: currently infallible (`-> Self`); `cdn::Config::from_env` needs to return `Result` to cover the invalid-provider boot error path.
