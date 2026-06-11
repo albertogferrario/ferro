@@ -2629,9 +2629,9 @@ Plans:
 
 **Consumer pairing:** gestiscilo (magic-link, cross-device users) adopts device grant as its primary MCP authentication path.
 
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
-- [ ] 203-01-PLAN.md — device.rs foundation: DeviceGrant record + user_code/device_code primitives (SC-1/SC-4 substrate)
+- [x] 203-01-PLAN.md — device.rs foundation: DeviceGrant record + user_code/device_code primitives (SC-1/SC-4 substrate)
 - [ ] 203-02-PLAN.md — discovery.rs: advertise device_authorization_endpoint + device-code grant type (SC-4)
 - [ ] 203-03-PLAN.md — device.rs handlers: device_authorization + verification page (login-resume, CSRF, user/tenant binding) (SC-1/SC-2)
 - [ ] 203-04-PLAN.md — token.rs device-code arm: §3.5 polling state machine + identical-mint Approved arm (SC-3)
