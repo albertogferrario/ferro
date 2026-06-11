@@ -8,6 +8,7 @@
 pub mod authorize;
 pub mod config;
 pub mod consent;
+pub mod device;
 pub mod discovery;
 pub mod error;
 pub mod jwt;
