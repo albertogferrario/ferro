@@ -195,4 +195,66 @@ mod tests {
         std::env::remove_var("AWS_BUCKET");
         std::env::remove_var("AWS_CDN_URL");
     }
+
+    /// SC-3: AWS_CDN_URL-only env → Disk::cdn_url bytes identical to the pre-phase direct read.
+    /// The fallback path in cdn::Config::from_env() must yield the same URL.
+    #[cfg(feature = "s3")]
+    #[test]
+    fn cdn_url_parity_aws_fallback() {
+        std::env::remove_var("CDN_URL");
+        std::env::set_var("AWS_BUCKET", "test-bucket");
+        std::env::set_var("AWS_CDN_URL", "https://cdn.parity.example.com");
+        let config = StorageConfig::from_env();
+        let s3_disk = config.get_disk("s3").expect("s3 disk should be configured");
+        assert_eq!(
+            s3_disk.cdn_url,
+            Some("https://cdn.parity.example.com".to_string()),
+            "AWS_CDN_URL fallback must yield byte-identical URL (SC-3 parity)"
+        );
+        std::env::remove_var("AWS_BUCKET");
+        std::env::remove_var("AWS_CDN_URL");
+    }
+
+    /// SC-4: legacy DO vars (DO_SPACES_CDN_ID + DIGITALOCEAN_ACCESS_TOKEN) → DoSpacesCdn purge
+    /// hits the same DO Spaces CDN endpoint and auth as the pre-phase code (T-204-PURGE-PARITY).
+    #[tokio::test]
+    async fn purge_parity_legacy_do() {
+        use crate::cdn::PurgeApi;
+        use wiremock::matchers::{header, method, path_regex};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        // Simulate a legacy-DO-only deployment — clear the quartet so inference kicks in.
+        std::env::remove_var("CDN_PROVIDER");
+        std::env::remove_var("CDN_PURGE_ZONE");
+        std::env::remove_var("CDN_PURGE_TOKEN");
+        std::env::set_var("DO_SPACES_CDN_ID", "legacy-id");
+        std::env::set_var("DIGITALOCEAN_ACCESS_TOKEN", "legacy-token");
+
+        let cfg = crate::cdn::Config::from_env();
+        // Provider inferred from DO_SPACES_CDN_ID; zone/token read from legacy fallbacks.
+        assert_eq!(cfg.provider, crate::cdn::CdnProvider::DigitalOcean);
+        assert_eq!(cfg.purge_zone.as_deref(), Some("legacy-id"));
+        assert_eq!(cfg.purge_token.as_deref(), Some("legacy-token"));
+
+        // Build the adapter config the unified path yields, point it at the mock server,
+        // and assert identical endpoint + auth to the pre-phase DO purge path.
+        let server = MockServer::start().await;
+        let do_cfg = crate::DoSpacesCdnConfig {
+            endpoint_id: cfg.purge_zone.clone(),
+            api_token: cfg.purge_token.clone().unwrap_or_default(),
+            api_base: Some(server.uri()),
+        };
+        Mock::given(method("DELETE"))
+            .and(path_regex(r"/v2/cdn/endpoints/legacy-id/cache"))
+            .and(header("Authorization", "Bearer legacy-token"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let purger = crate::DoSpacesCdn::new(do_cfg);
+        purger.purge(&["index.html".to_string()]).await.unwrap();
+
+        std::env::remove_var("DO_SPACES_CDN_ID");
+        std::env::remove_var("DIGITALOCEAN_ACCESS_TOKEN");
+    }
 }
