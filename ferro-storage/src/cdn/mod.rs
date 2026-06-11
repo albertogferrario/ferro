@@ -183,6 +183,167 @@ impl PurgeApi for DoSpacesCdn {
     }
 }
 
+/// CDN provider selected for cache invalidation (`CDN_PROVIDER`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum CdnProvider {
+    /// No purge provider — `purge()` is an explicit logged no-op.
+    #[default]
+    None,
+    /// DigitalOcean Spaces CDN (always available — no cargo feature).
+    DigitalOcean,
+    /// Bunny CDN (requires the `cdn-bunny` feature).
+    Bunny,
+    /// Cloudflare (requires the `cdn-cloudflare` feature).
+    Cloudflare,
+}
+
+impl CdnProvider {
+    /// Parse case-insensitively; unknown value → `Error::CdnInvalidProvider`.
+    pub fn from_str_ci(s: &str) -> Result<Self, Error> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "none" => Ok(Self::None),
+            "digitalocean" => Ok(Self::DigitalOcean),
+            "bunny" => Ok(Self::Bunny),
+            "cloudflare" => Ok(Self::Cloudflare),
+            other => Err(Error::cdn_invalid_provider(other)),
+        }
+    }
+}
+
+/// Read `primary`; if unset, try each `(alias, label)` in order, emitting one
+/// `tracing::warn!` naming the deprecated var (never its value) on first hit.
+fn env_with_fallback(primary: &str, aliases: &[(&str, &str)]) -> Option<String> {
+    if let Ok(val) = std::env::var(primary) {
+        return Some(val);
+    }
+    for (alias, label) in aliases {
+        if let Ok(val) = std::env::var(alias) {
+            tracing::warn!("{} is deprecated; use {} instead", label, primary);
+            return Some(val);
+        }
+    }
+    None
+}
+
+/// Provider-agnostic CDN configuration. Read via [`Config::from_env`];
+/// build the active purge adapter with [`Config::build_purge_api`].
+///
+/// # Token security
+/// `purge_token` is never logged. `Debug` prints `<redacted>` for it.
+#[derive(Clone)]
+pub struct Config {
+    /// CDN base URL fronting the bucket (`CDN_URL`). Drives `Disk::cdn_url()`.
+    pub url: Option<String>,
+    /// Selected provider for cache invalidation (`CDN_PROVIDER`).
+    pub provider: CdnProvider,
+    /// Provider API credential (`CDN_PURGE_TOKEN`). Never logged.
+    pub purge_token: Option<String>,
+    /// Provider-specific zone or endpoint id (`CDN_PURGE_ZONE`).
+    pub purge_zone: Option<String>,
+}
+
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("cdn::Config")
+            .field("url", &self.url)
+            .field("provider", &self.provider)
+            .field("purge_token", &"<redacted>")
+            .field("purge_zone", &self.purge_zone)
+            .finish()
+    }
+}
+
+impl Config {
+    /// Read CDN config from environment: the quartet primary + per-var legacy fallbacks.
+    pub fn from_env() -> Self {
+        let url = env_with_fallback("CDN_URL", &[
+            ("AWS_CDN_URL", "AWS_CDN_URL"),
+            ("CF_CDN_URL", "CF_CDN_URL"),
+            ("BUNNY_CDN_URL", "BUNNY_CDN_URL"),
+        ]);
+        let purge_zone = env_with_fallback("CDN_PURGE_ZONE", &[
+            ("DO_SPACES_CDN_ID", "DO_SPACES_CDN_ID"),
+            ("CF_ZONE_ID", "CF_ZONE_ID"),
+        ]);
+        let purge_token = env_with_fallback("CDN_PURGE_TOKEN", &[
+            ("DIGITALOCEAN_ACCESS_TOKEN", "DIGITALOCEAN_ACCESS_TOKEN"),
+            ("CF_API_TOKEN", "CF_API_TOKEN"),
+            ("BUNNY_ACCESS_KEY", "BUNNY_ACCESS_KEY"),
+        ]);
+
+        let provider = if let Ok(val) = std::env::var("CDN_PROVIDER") {
+            match CdnProvider::from_str_ci(&val) {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::error!("{e}; defaulting CDN purge to no-op");
+                    CdnProvider::None
+                }
+            }
+        } else if std::env::var("DO_SPACES_CDN_ID").is_ok() {
+            tracing::warn!("CDN_PROVIDER unset; inferred digitalocean from DO_SPACES_CDN_ID. Set CDN_PROVIDER=digitalocean to silence.");
+            CdnProvider::DigitalOcean
+        } else if std::env::var("CF_ZONE_ID").is_ok() {
+            tracing::warn!("CDN_PROVIDER unset; inferred cloudflare from CF_ZONE_ID. Set CDN_PROVIDER=cloudflare to silence.");
+            CdnProvider::Cloudflare
+        } else if std::env::var("BUNNY_CDN_URL").is_ok() {
+            tracing::warn!("CDN_PROVIDER unset; inferred bunny from BUNNY_CDN_URL. Set CDN_PROVIDER=bunny to silence.");
+            CdnProvider::Bunny
+        } else {
+            CdnProvider::None
+        };
+
+        Self { url, provider, purge_token, purge_zone }
+    }
+
+    /// Build the active purge adapter, or `Ok(None)` for provider `None`.
+    /// Returns `Err(CdnFeatureRequired)` if the selected provider's feature is off.
+    pub fn build_purge_api(&self) -> Result<Option<Box<dyn PurgeApi>>, Error> {
+        match &self.provider {
+            CdnProvider::None => {
+                tracing::info!("CDN_PROVIDER=none — purge is a no-op");
+                Ok(None)
+            }
+            CdnProvider::DigitalOcean => {
+                let cfg = DoSpacesCdnConfig {
+                    endpoint_id: self.purge_zone.clone(),
+                    api_token: self.purge_token.clone().unwrap_or_default(),
+                    api_base: None,
+                };
+                Ok(Some(Box::new(DoSpacesCdn::new(cfg))))
+            }
+            CdnProvider::Bunny => {
+                #[cfg(feature = "cdn-bunny")]
+                {
+                    let cfg = BunnyCdnConfig {
+                        cdn_base_url: self.url.clone().unwrap_or_default(),
+                        access_key: self.purge_token.clone().unwrap_or_default(),
+                    };
+                    Ok(Some(Box::new(BunnyCdn::new(cfg))))
+                }
+                #[cfg(not(feature = "cdn-bunny"))]
+                {
+                    Err(Error::cdn_feature_required("bunny", "cdn-bunny"))
+                }
+            }
+            CdnProvider::Cloudflare => {
+                #[cfg(feature = "cdn-cloudflare")]
+                {
+                    let cfg = CloudflareCdnConfig {
+                        zone_id: self.purge_zone.clone().unwrap_or_default(),
+                        api_token: self.purge_token.clone().unwrap_or_default(),
+                        cdn_base_url: self.url.clone().unwrap_or_default(),
+                    };
+                    Ok(Some(Box::new(CloudflareCdn::new(cfg))))
+                }
+                #[cfg(not(feature = "cdn-cloudflare"))]
+                {
+                    Err(Error::cdn_feature_required("cloudflare", "cdn-cloudflare"))
+                }
+            }
+        }
+    }
+}
+
 #[cfg(feature = "cdn-bunny")]
 pub mod bunny;
 #[cfg(feature = "cdn-bunny")]
@@ -328,6 +489,123 @@ mod tests {
         assert!(
             err.to_string().contains("403"),
             "Error must contain status 403: {err}"
+        );
+    }
+
+    // --- Config / CdnProvider unit tests ---
+
+    #[test]
+    fn cdn_config_debug_redacts_token() {
+        let config = Config {
+            url: None,
+            provider: CdnProvider::None,
+            purge_token: Some("secret-xyz".into()),
+            purge_zone: None,
+        };
+        let dbg = format!("{config:?}");
+        assert!(
+            !dbg.contains("secret-xyz"),
+            "Debug output must not contain the token: {dbg}"
+        );
+        assert!(
+            dbg.contains("<redacted>"),
+            "Debug output must show <redacted>: {dbg}"
+        );
+    }
+
+    #[test]
+    fn cdn_invalid_provider() {
+        let result = CdnProvider::from_str_ci("Fastly");
+        assert!(result.is_err(), "Expected Err for unknown provider");
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("none, digitalocean, bunny, cloudflare"),
+            "Error must list valid values: {msg}"
+        );
+    }
+
+    #[test]
+    fn cdn_provider_none_no_op() {
+        let config = Config {
+            url: None,
+            provider: CdnProvider::None,
+            purge_token: None,
+            purge_zone: None,
+        };
+        assert!(
+            matches!(config.build_purge_api(), Ok(None)),
+            "provider=None must return Ok(None)"
+        );
+    }
+
+    #[test]
+    fn cdn_config_from_env_quartet() {
+        std::env::set_var("CDN_URL", "https://q.example.com");
+        std::env::set_var("CDN_PROVIDER", "digitalocean");
+        std::env::set_var("CDN_PURGE_TOKEN", "tok");
+        std::env::set_var("CDN_PURGE_ZONE", "ep-9");
+
+        let config = Config::from_env();
+
+        std::env::remove_var("CDN_URL");
+        std::env::remove_var("CDN_PROVIDER");
+        std::env::remove_var("CDN_PURGE_TOKEN");
+        std::env::remove_var("CDN_PURGE_ZONE");
+
+        assert_eq!(config.url, Some("https://q.example.com".into()));
+        assert_eq!(config.provider, CdnProvider::DigitalOcean);
+        assert_eq!(config.purge_token, Some("tok".into()));
+        assert_eq!(config.purge_zone, Some("ep-9".into()));
+    }
+
+    #[test]
+    fn cdn_fallback_aws_cdn_url() {
+        std::env::remove_var("CDN_URL");
+        std::env::set_var("AWS_CDN_URL", "https://legacy");
+
+        let config = Config::from_env();
+
+        std::env::remove_var("AWS_CDN_URL");
+
+        assert_eq!(config.url, Some("https://legacy".into()));
+    }
+
+    #[test]
+    fn cdn_fallback_do_zone_and_token() {
+        std::env::remove_var("CDN_PURGE_ZONE");
+        std::env::remove_var("CDN_PURGE_TOKEN");
+        std::env::remove_var("CDN_PROVIDER");
+        std::env::set_var("DO_SPACES_CDN_ID", "ep-1");
+        std::env::set_var("DIGITALOCEAN_ACCESS_TOKEN", "t");
+
+        let config = Config::from_env();
+
+        std::env::remove_var("DO_SPACES_CDN_ID");
+        std::env::remove_var("DIGITALOCEAN_ACCESS_TOKEN");
+
+        assert_eq!(config.purge_zone, Some("ep-1".into()));
+        assert_eq!(config.purge_token, Some("t".into()));
+        assert_eq!(config.provider, CdnProvider::DigitalOcean);
+    }
+
+    #[cfg(not(feature = "cdn-bunny"))]
+    #[test]
+    fn cdn_feature_required_bunny() {
+        let config = Config {
+            url: None,
+            provider: CdnProvider::Bunny,
+            purge_token: None,
+            purge_zone: None,
+        };
+        let result = config.build_purge_api();
+        assert!(result.is_err(), "Expected Err when cdn-bunny feature is off");
+        let msg = match result {
+            Err(e) => e.to_string(),
+            Ok(_) => unreachable!(),
+        };
+        assert!(
+            msg.contains("cdn-bunny"),
+            "Error must mention the cdn-bunny feature: {msg}"
         );
     }
 
