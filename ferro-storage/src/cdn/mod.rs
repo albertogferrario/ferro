@@ -266,7 +266,7 @@ impl Config {
     ///
     /// If `CDN_PROVIDER` is set to an unrecognized value the struct is returned with
     /// `provider_error` set; the parse failure is surfaced as a boot `Error` by
-    /// [`build_purge_api`].
+    /// [`Config::build_purge_api`].
     pub fn from_env() -> Self {
         // 1. Resolve the CDN display URL (provider-independent).
         let url = env_with_fallback("CDN_URL", &["AWS_CDN_URL", "CF_CDN_URL", "BUNNY_CDN_URL"]);
