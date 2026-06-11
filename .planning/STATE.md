@@ -34,11 +34,10 @@ Status: Phase complete — ready for verification
 Progress: [█████░░░░░] v12.7 (202 ✅ shipped, 203 pending)
 
 Last activity: 2026-06-11
-Workspace version: 0.2.49
+Workspace version: 0.2.53
 
 > **Operator actions pending:**
-> - `git push` — master is 273 commits ahead of origin; the push triggers GH Actions auto-publish of **ferro-stripe 0.9.0** (Phase 201; also flushes the unpushed 0.7.0 from v11.6.2). Unblocks gestiscilo-it v6.10 Phase 204 and gestiscilo Phase 99.
-> - **Bootstrap-publish `ferro-mcp-server`** — it is a NEW crate (v12.6). The CI publish token is publish-update-only and cannot publish a new crate; its first publish must be run from a local terminal (`cargo publish -p ferro-mcp-server`) before the auto-publish wave, or the wave fails on it. See `project_ferro_publish_token_scoping`.
+> - **Release 0.2.53** — push `master` to origin to trigger the GH Actions publish wave (updates all workspace crates 0.2.52 → 0.2.53: ferro-storage CDN quartet, ferro-mcp-oauth device grant, etc.). `ferro-stripe 0.9.0`, `ferro-mcp-server`, and `ferro-mcp-oauth` are ALREADY on crates.io at 0.2.52 — **no bootstrap needed** (the publish-update token updates existing crates; the wave skips already-published versions). The earlier "new crate / bootstrap ferro-mcp-server" note was stale and has been removed.
 > - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
 
 ## Shipped Milestone: v12.6 Consumer App MCP (Browser Login) (Phases 197-200)
