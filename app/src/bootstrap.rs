@@ -66,13 +66,13 @@ pub async fn register() {
     global_middleware!(middleware::ShareInertiaData);
     global_middleware!(LangMiddleware);
 
-    // Theme: load the design tokens and inject them as a <style> in the <head>
-    // of every JSON-UI page (ferro-json-ui reads the active theme from this
-    // middleware). Without it, JSON-UI views render structure-only because
-    // ferro-base.css references `var(--color-*)` tokens with no concrete values.
-    let theme = Theme::from_path("./themes/ferro")
-        .expect("themes/ferro must exist with tokens.css and theme.json");
-    global_middleware!(ThemeMiddleware::new().default_theme(theme));
+    // Theme: inject the design tokens as a <style> in the <head> of every
+    // JSON-UI page (ferro-json-ui reads the active theme from this middleware).
+    // Without it, JSON-UI views render structure-only because ferro-base.css
+    // references `var(--color-*)` tokens with no concrete values. Use the
+    // framework's embedded default theme — CWD-independent (no filesystem read),
+    // so the app boots from any working directory (e.g. under e2e harnesses).
+    global_middleware!(ThemeMiddleware::new().default_theme(Theme::default_theme()));
 
     // Register the user provider for Auth::user()
     bind!(dyn UserProvider, DatabaseUserProvider);
