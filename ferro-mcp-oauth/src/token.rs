@@ -246,9 +246,18 @@ async fn token_exchange_device_code(form: TokenRequest) -> ferro::Response {
         )),
 
         DeviceGrantStatus::Approved => {
-            // Single-use: forget BOTH keys before minting (T-203-DEVICECODE-REPLAY)
+            // Single-use: forget BOTH keys BEFORE any further validation (T-203-DEVICECODE-REPLAY).
+            // This mirrors the auth-code arm's get-then-forget discipline (T-199-02): even if
+            // validation below fails, the grant cannot be replayed.
             let _ = Cache::forget(&device_cache_key(device_code)).await;
             let _ = Cache::forget(&usercode_cache_key(&grant.normalized_user_code)).await;
+
+            // Validate client_id binding (RFC 8628 §3.4 — mirrors auth-code arm, T-199-16).
+            // The device_code was issued to grant.client_id; presenting it with a different
+            // client_id is an invalid_grant error.
+            if grant.client_id != form.client_id {
+                return Err(json_error(400, "invalid_grant", "client_id mismatch"));
+            }
 
             // Mint JWT — IDENTICAL call to the auth-code arm (T-203-CLAIMS-DIVERGE / D-05)
             let config = OAuthConfig::from_env().map_err(|e| {
@@ -822,6 +831,63 @@ mod tests {
         assert_eq!(
             auth_code_claims.tenant_id, device_claims.tenant_id,
             "tenant_id must be identical between auth-code and device arms"
+        );
+    }
+
+    /// Approved grant polled with a different client_id returns invalid_grant and no token.
+    ///
+    /// Security regression test for CR-01 (RFC 8628 §3.4 client_id binding).
+    /// Grant was issued to "client-A"; token request arrives with client_id "client-B".
+    /// Expected: 400 invalid_grant, no access_token.
+    #[tokio::test]
+    async fn device_grant_wrong_client_id_returns_invalid_grant() {
+        let _cache = bootstrap_test_cache();
+
+        let device_code = "dc_wrong_client_test_abc123";
+        let now = now_unix();
+        let normalized_user_code = "WRONGCLI";
+        let grant = DeviceGrant {
+            client_id: "client-A".to_string(), // grant was issued to client-A
+            status: DeviceGrantStatus::Approved,
+            user_id: Some(42),
+            tenant_id: Some(7),
+            created_at: now - 30,
+            last_polled_at: None,
+            normalized_user_code: normalized_user_code.to_string(),
+        };
+        store_device_grant(device_code, grant).await;
+
+        // Poll with client-B — client_id mismatch
+        let form = TokenRequest {
+            grant_type: "urn:ietf:params:oauth:grant-type:device_code".to_string(),
+            code: None,
+            redirect_uri: None,
+            client_id: "client-B".to_string(),
+            code_verifier: None,
+            device_code: Some(device_code.to_string()),
+        };
+
+        let result = token_exchange_dispatch(form).await;
+        assert!(result.is_err(), "wrong client_id must return an error");
+        let err = result.unwrap_err();
+        assert_eq!(err.status_code(), 400);
+        let body: serde_json::Value = serde_json::from_str(err.body()).unwrap();
+        assert_eq!(
+            body["error"].as_str().unwrap(),
+            "invalid_grant",
+            "error must be invalid_grant for client_id mismatch: {body}"
+        );
+        assert!(
+            body.get("access_token").is_none(),
+            "no access_token must be present on client_id mismatch"
+        );
+
+        // Grant must be consumed (forgotten) even though validation failed — no replay possible
+        let device_key_after: Option<DeviceGrant> =
+            Cache::get(&device_cache_key(device_code)).await.ok().flatten();
+        assert!(
+            device_key_after.is_none(),
+            "device_cache_key must be forgotten even on client_id mismatch (no replay)"
         );
     }
 }
