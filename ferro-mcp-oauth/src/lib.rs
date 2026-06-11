@@ -14,6 +14,7 @@ pub mod jwt;
 pub mod migration;
 pub mod pkce;
 pub mod register;
+pub mod resume;
 pub mod store;
 pub mod token;
 pub mod validate;
@@ -22,6 +23,7 @@ pub use config::{OAuthConfig, OAuthConfigError};
 pub use error::OAuthError;
 pub use jwt::McpTokenClaims;
 pub use migration::Migration as CreateOauthClientsTable;
+pub use resume::{oauth_resume_redirect, store_oauth_return_to, take_oauth_return_to};
 pub use validate::{validate_bearer, BearerCheck};
 
 /// Route handler re-exports for mounting in `app/src/routes.rs`.

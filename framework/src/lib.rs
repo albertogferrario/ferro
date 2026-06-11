@@ -124,8 +124,8 @@ pub use sea_orm::{
     QueryFilter, QueryOrder, QuerySelect,
 };
 pub use session::{
-    invalidate_all_for_user, session, session_mut, DatabaseSessionDriver, SessionConfig,
-    SessionData, SessionMiddleware, SessionStore,
+    invalidate_all_for_user, session, session_mut, with_test_session, DatabaseSessionDriver,
+    SessionConfig, SessionData, SessionMiddleware, SessionStore,
 };
 #[cfg(feature = "stripe")]
 pub use tenant::RequiresPlan;

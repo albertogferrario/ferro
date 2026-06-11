@@ -10,7 +10,7 @@
 //! - T-199-16 (code substitution): client_id + redirect_uri re-validated at approve time.
 //! - T-199-XSS: `client_name` HTML-escaped before embedding in page.
 
-use ferro::session::{get_csrf_token, session_mut};
+use ferro::session::get_csrf_token;
 use ferro::tenant::current_tenant;
 use ferro::Auth;
 use ferro::Cache;
@@ -232,9 +232,7 @@ pub async fn authorize_post(req: ferro::Request) -> ferro::Response {
     })?;
 
     // Clear the oauth_return_to session key now that we've reached the consent step
-    session_mut(|s| {
-        s.forget("oauth_return_to");
-    });
+    let _ = crate::resume::take_oauth_return_to();
 
     // ── Step 4d: 302 redirect with code + state ───────────────────────────────
     let location = if form.state.is_empty() {

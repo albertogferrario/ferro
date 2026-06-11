@@ -53,3 +53,41 @@ pub use middleware::{
     session_mut, set_auth_user, SessionMiddleware,
 };
 pub use store::{SessionData, SessionStore};
+
+/// Run an async closure inside a fresh in-memory session scope.
+///
+/// Constructs a [`SessionData`] with the given `id` and an empty CSRF token,
+/// wraps it in the task-local `SESSION_CONTEXT`, and runs `f` within that
+/// scope.  [`session()`] and [`session_mut()`] work normally inside `f`.
+///
+/// Intended for unit tests in downstream crates that need session access
+/// without a full HTTP request cycle.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ferro::session::with_test_session;
+/// use ferro::session::{session, session_mut};
+///
+/// #[tokio::test]
+/// async fn my_test() {
+///     with_test_session("test", || async {
+///         session_mut(|s| { s.put("key", "value"); });
+///         let v: Option<String> = session().and_then(|s| s.get("key"));
+///         assert_eq!(v, Some("value".to_string()));
+///     }).await;
+/// }
+/// ```
+pub async fn with_test_session<F, Fut>(id: &str, f: F)
+where
+    F: FnOnce() -> Fut,
+    Fut: std::future::Future<Output = ()>,
+{
+    use middleware::SESSION_CONTEXT;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    let session = SessionData::new(id.to_string(), String::new());
+    let ctx = Arc::new(RwLock::new(Some(session)));
+    SESSION_CONTEXT.scope(ctx, f()).await;
+}

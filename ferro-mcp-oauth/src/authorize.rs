@@ -9,9 +9,9 @@
 //! - T-199-04 (open redirect): client lookup failure or `redirect_uri` mismatch returns
 //!   an error PAGE — never redirects to an unvalidated URI (RFC 6749 §4.1.2.1).
 //! - D-06 (login reuse): unauthenticated requests are redirected to `/auth/login` with
-//!   `oauth_return_to` stored in the session.
+//!   the authorize URL stored in the session via `crate::resume::store_oauth_return_to`.
 
-use ferro::session::{get_csrf_token, session_mut};
+use ferro::session::get_csrf_token;
 use ferro::tenant::current_tenant;
 use ferro::Auth;
 use serde::Deserialize;
@@ -95,9 +95,7 @@ pub async fn authorize_get(req: ferro::Request) -> ferro::Response {
             urlencoding::encode(&code_challenge),
             urlencoding::encode(&state),
         );
-        session_mut(|s| {
-            s.put("oauth_return_to", return_url.clone());
-        });
+        crate::resume::store_oauth_return_to(return_url.clone());
         return Err(ferro::HttpResponse::new()
             .status(302)
             .header("Location", "/auth/login"));
