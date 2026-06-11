@@ -27,6 +27,7 @@
 - [Storage](features/storage.md)
 - [Caching](features/caching.md)
 - [Authentication](features/authentication.md)
+- [MCP OAuth Authorization Server](features/mcp-oauth.md)
 - [Multi-Tenancy](features/multi-tenancy.md)
 - [API Resources](features/api-resources.md)
 - [REST API](features/api.md)

@@ -2,8 +2,9 @@ use ferro::{get, group, post, resource, routes};
 use ferro::{AuthMiddleware as SessionAuthMiddleware, GuestMiddleware};
 use ferro::{JwtClaimResolver, TenantFailureMode, TenantMiddleware};
 use ferro_mcp_oauth::handlers::{
-    authorization_server_handler, authorize_get, authorize_post, protected_resource_handler,
-    register_client, token_exchange,
+    authorization_server_handler, authorize_get, authorize_post, device_authorization,
+    device_verification_get, device_verification_post, protected_resource_handler, register_client,
+    token_exchange,
 };
 use ferro_mcp_server::McpServerConfig;
 
@@ -86,6 +87,21 @@ routes! {
 
     // Token exchange (public, no session needed)
     post!("/token", token_exchange),
+
+    // Device Authorization Grant (RFC 8628) — public (no session, like /register and /token)
+    post!("/device_authorization", device_authorization),
+
+    // Device verification page — session + tenant (like the /authorize group).
+    // TenantFailureMode::Allow so an unauthenticated visitor reaches the handler
+    // for the login-redirect path.
+    group!("/", {
+        get!("/device", device_verification_get),
+        post!("/device", device_verification_post),
+    }).middleware(
+        TenantMiddleware::new()
+            .resolver(SessionUserTenantResolver::new())
+            .on_failure(TenantFailureMode::Allow),
+    ),
 
     // API CRUD routes - protected by API key middleware
     api_routes(),
