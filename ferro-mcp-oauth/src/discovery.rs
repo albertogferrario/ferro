@@ -22,15 +22,17 @@ pub(crate) fn protected_resource_metadata(app_url: &str) -> Value {
 
 /// Build the RFC 8414 authorization-server metadata JSON for the given `app_url`.
 ///
-/// Advertises authorization-code + PKCE S256 as required by the MCP spec.
+/// Advertises authorization-code + PKCE S256 as required by the MCP spec, and
+/// the device authorization grant (RFC 8628 §4) including `device_authorization_endpoint`.
 pub(crate) fn authorization_server_metadata(app_url: &str) -> Value {
     json!({
         "issuer": app_url,
         "authorization_endpoint": format!("{}/authorize", app_url),
         "token_endpoint": format!("{}/token", app_url),
         "registration_endpoint": format!("{}/register", app_url),
+        "device_authorization_endpoint": format!("{}/device_authorization", app_url),
         "response_types_supported": ["code"],
-        "grant_types_supported": ["authorization_code"],
+        "grant_types_supported": ["authorization_code", "urn:ietf:params:oauth:grant-type:device_code"],
         "code_challenge_methods_supported": ["S256"],
         "token_endpoint_auth_methods_supported": ["none"],
     })
@@ -98,7 +100,9 @@ mod tests {
         assert_eq!(response_types[0].as_str().unwrap(), "code");
 
         let grant_types = val["grant_types_supported"].as_array().unwrap();
-        assert_eq!(grant_types[0].as_str().unwrap(), "authorization_code");
+        assert!(grant_types
+            .iter()
+            .any(|v| v.as_str() == Some("authorization_code")));
 
         let pkce_methods = val["code_challenge_methods_supported"].as_array().unwrap();
         assert_eq!(pkce_methods[0].as_str().unwrap(), "S256");
@@ -122,8 +126,12 @@ mod tests {
     fn discovery_advertises_device_grant_type() {
         let val = authorization_server_metadata("https://app.example.com");
         let grant_types = val["grant_types_supported"].as_array().unwrap();
-        assert!(grant_types.iter().any(|v| v.as_str() == Some("authorization_code")));
-        assert!(grant_types.iter().any(|v| v.as_str() == Some("urn:ietf:params:oauth:grant-type:device_code")));
+        assert!(grant_types
+            .iter()
+            .any(|v| v.as_str() == Some("authorization_code")));
+        assert!(grant_types
+            .iter()
+            .any(|v| v.as_str() == Some("urn:ietf:params:oauth:grant-type:device_code")));
     }
 
     #[test]
