@@ -553,6 +553,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn cdn_config_from_env_quartet() {
         std::env::set_var("CDN_URL", "https://q.example.com");
         std::env::set_var("CDN_PROVIDER", "digitalocean");
@@ -573,6 +574,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn cdn_fallback_aws_cdn_url() {
         std::env::remove_var("CDN_URL");
         std::env::set_var("AWS_CDN_URL", "https://legacy");
@@ -585,6 +587,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn cdn_fallback_do_zone_and_token() {
         std::env::remove_var("CDN_PURGE_ZONE");
         std::env::remove_var("CDN_PURGE_TOKEN");

@@ -153,6 +153,7 @@ impl StorageConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_storage_config_defaults() {
@@ -173,6 +174,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_storage_config_from_env() {
         // Test with default env (no env vars set)
         let config = StorageConfig::from_env();
@@ -183,6 +185,7 @@ mod tests {
 
     #[cfg(feature = "s3")]
     #[test]
+    #[serial]
     fn from_env_cdn_url() {
         std::env::set_var("AWS_BUCKET", "test-bucket");
         std::env::set_var("AWS_CDN_URL", "https://cdn.test.example.com");
@@ -200,6 +203,7 @@ mod tests {
     /// The fallback path in cdn::Config::from_env() must yield the same URL.
     #[cfg(feature = "s3")]
     #[test]
+    #[serial]
     fn cdn_url_parity_aws_fallback() {
         std::env::remove_var("CDN_URL");
         std::env::set_var("AWS_BUCKET", "test-bucket");
@@ -218,6 +222,7 @@ mod tests {
     /// SC-4: legacy DO vars (DO_SPACES_CDN_ID + DIGITALOCEAN_ACCESS_TOKEN) → DoSpacesCdn purge
     /// hits the same DO Spaces CDN endpoint and auth as the pre-phase code (T-204-PURGE-PARITY).
     #[tokio::test]
+    #[serial]
     async fn purge_parity_legacy_do() {
         use crate::cdn::PurgeApi;
         use wiremock::matchers::{header, method, path_regex};
