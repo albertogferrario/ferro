@@ -378,12 +378,31 @@ async fn upload_avatar(
 
 ### CDN Edge URLs
 
-Configure a CDN base URL for a disk to serve stored files from an edge node rather than the storage origin.
+Configure a CDN base URL for a disk to serve stored files from an edge node rather than the storage origin. The primary configuration surface is the provider-agnostic quartet:
 
 ```env
-# S3 / DigitalOcean Spaces disk — CDN base URL
-AWS_CDN_URL=https://cdn.example.com
+# Provider-agnostic CDN quartet (preferred)
+# CDN_PROVIDER: none | digitalocean | bunny | cloudflare
+CDN_URL=https://cdn.example.com
+CDN_PROVIDER=digitalocean
+CDN_PURGE_TOKEN=your-api-token
+CDN_PURGE_ZONE=your-cdn-endpoint-id
 ```
+
+`CDN_URL` drives `Disk::cdn_url()`. `CDN_PROVIDER` selects the purge adapter; `CDN_PROVIDER=none` makes `purge()` a logged no-op. `CDN_URL` (display) and `CDN_PROVIDER` (purge) are independent — a deployment can serve assets through a CDN URL with no purge provider configured.
+
+**Deprecated fallbacks (one release window):** the following legacy env vars are still read as fallbacks and emit a `tracing::warn!` deprecation notice on use. Migrate to the quartet.
+
+| Deprecated var | Replacement |
+|---|---|
+| `AWS_CDN_URL` | `CDN_URL` |
+| `BUNNY_CDN_URL` | `CDN_URL` + `CDN_PROVIDER=bunny` |
+| `CF_CDN_URL` | `CDN_URL` + `CDN_PROVIDER=cloudflare` |
+| `DO_SPACES_CDN_ID` | `CDN_PURGE_ZONE` |
+| `CF_ZONE_ID` | `CDN_PURGE_ZONE` |
+| `DIGITALOCEAN_ACCESS_TOKEN` | `CDN_PURGE_TOKEN` |
+| `CF_API_TOKEN` | `CDN_PURGE_TOKEN` |
+| `BUNNY_ACCESS_KEY` | `CDN_PURGE_TOKEN` |
 
 Or set it programmatically:
 
@@ -429,11 +448,12 @@ The `DoSpacesCdn` adapter is the default, batteries-included implementation. It 
 - **Batching:** at most 50 file paths per request (the DO API limit).
 - **Rate limiting:** an internal sliding-window throttle enforces at most 5 requests per 10-second window.
 - **Wildcard paths:** `"assets/*"` counts as one file slot, not an expanded set.
-- **Missing endpoint id:** when `DO_SPACES_CDN_ID` is unset, `purge()` is a logged no-op that returns `Ok(())`. Applications without a CDN endpoint continue to work without error.
+- **Missing endpoint id:** when `CDN_PURGE_ZONE` is unset, `purge()` is a logged no-op that returns `Ok(())`. Applications without a CDN endpoint continue to work without error.
 
 ```env
-DO_SPACES_CDN_ID=your-cdn-endpoint-id
-DIGITALOCEAN_ACCESS_TOKEN=your-do-api-token
+CDN_PROVIDER=digitalocean
+CDN_PURGE_ZONE=your-cdn-endpoint-id
+CDN_PURGE_TOKEN=your-do-api-token
 ```
 
 ```rust
@@ -461,7 +481,7 @@ ferro-storage = { version = "0.2", features = ["cdn-bunny"] }
 ferro-storage = { version = "0.2", features = ["cdn-cloudflare"] }
 ```
 
-**Bunny CDN** (`cdn-bunny`): calls `POST https://api.bunny.net/purge?url={full_url}&async=false` per path with an `AccessKey` header. Requires `BUNNY_CDN_URL` and `BUNNY_ACCESS_KEY`.
+**Bunny CDN** (`cdn-bunny`): calls `POST https://api.bunny.net/purge?url={full_url}&async=false` per path with an `AccessKey` header. Set `CDN_PROVIDER=bunny`, `CDN_URL`, and `CDN_PURGE_TOKEN` (the Bunny access key).
 
 ```rust
 use ferro_storage::{BunnyCdn, BunnyCdnConfig, PurgeApi};
@@ -470,7 +490,7 @@ let purger = BunnyCdn::new(BunnyCdnConfig::from_env());
 purger.purge(&["index.html".to_string()]).await?;
 ```
 
-**Cloudflare CDN** (`cdn-cloudflare`): calls `POST /zones/{zone_id}/purge_cache` with `{"files": [...full_urls...]}` and Bearer auth. Requires `CF_ZONE_ID`, `CF_API_TOKEN`, and `CF_CDN_URL`.
+**Cloudflare CDN** (`cdn-cloudflare`): calls `POST /zones/{zone_id}/purge_cache` with `{"files": [...full_urls...]}` and Bearer auth. Set `CDN_PROVIDER=cloudflare`, `CDN_URL`, `CDN_PURGE_TOKEN` (the CF API token), and `CDN_PURGE_ZONE` (the CF zone id).
 
 ```rust
 use ferro_storage::{CloudflareCdn, CloudflareCdnConfig, PurgeApi};
