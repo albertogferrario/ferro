@@ -163,6 +163,7 @@ name = "app"
 version = "0.2.52"
 dependencies = [
  "async-trait",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "clap",
@@ -173,10 +174,12 @@ dependencies = [
  "http-body-util",
  "hyper 1.8.1",
  "hyper-util",
+ "rand 0.8.5",
  "sea-orm",
  "sea-orm-migration",
  "serde",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -1,0 +1,32 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Check your email",
+  "layout": "auth",
+  "root": "card",
+  "elements": {
+    "card": {
+      "type": "Card",
+      "props": {
+        "title": "Check your email",
+        "description": "A login link has been sent. It expires in 15 minutes.",
+        "variant": "elevated"
+      },
+      "children": ["body", "dev_link"]
+    },
+    "body": {
+      "type": "Text",
+      "props": {
+        "content": "Click the link in the email to sign in. If you don't see it, check your spam folder."
+      }
+    },
+    "dev_link": {
+      "type": "Button",
+      "props": {
+        "label": { "$data": "/dev_link_label" },
+        "href": { "$data": "/dev_link" },
+        "variant": "outline",
+        "visible": { "$data": "/dev_mode" }
+      }
+    }
+  }
+}

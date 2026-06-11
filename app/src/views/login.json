@@ -6,13 +6,21 @@
   "elements": {
     "card": {
       "type": "Card",
-      "props": { "title": "Sign in", "description": "Authorize access to your account", "variant": "elevated" },
+      "props": {
+        "title": "Sign in",
+        "description": "Enter your email to receive a login link.",
+        "variant": "elevated"
+      },
       "children": ["form"]
     },
     "form": {
       "type": "Form",
-      "props": { "action": { "handler": "/auth/login", "method": "POST" }, "method": "POST", "max_width": "narrow" },
-      "children": ["email", "password", "submit"]
+      "props": {
+        "action": { "handler": "/auth/login", "method": "POST" },
+        "method": "POST",
+        "max_width": "narrow"
+      },
+      "children": ["email", "submit"]
     },
     "email": {
       "type": "Input",
@@ -25,13 +33,13 @@
         "error": { "$data": "/error" }
       }
     },
-    "password": {
-      "type": "Input",
-      "props": { "field": "password", "label": "Password", "input_type": "password", "required": true }
-    },
     "submit": {
       "type": "Button",
-      "props": { "label": "Continue", "button_type": "submit", "variant": "default" }
+      "props": {
+        "label": "Send login link",
+        "button_type": "submit",
+        "variant": "default"
+      }
     }
   }
 }
