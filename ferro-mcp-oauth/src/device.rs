@@ -383,7 +383,7 @@ fn render_code_entry_form() -> String {
   </form>
 </body>
 </html>"#
-    .to_string()
+        .to_string()
 }
 
 /// Render the confirm+consent page for a Pending grant.
