@@ -2656,9 +2656,9 @@ Plans:
 
 **Origin:** Surfaced 2026-06-11 during a cross-repo env-files audit. Today's setup fragments the same DO Spaces CDN across 3 different env-var prefix conventions (`AWS_*`, `SPACES_*`, `DO_SPACES_*`) plus the parallel `BUNNY_*` and `CF_*` clusters — provider-agnostic naming makes the abstraction match what the code actually does (one CDN, one provider at a time).
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 204-01-PLAN.md — Unified cdn::Config + CdnProvider + env_with_fallback + build_purge_api + error variants + exports (SC-1/2/5a/b/c)
-- [ ] 204-02-PLAN.md — Wire CDN_URL through cdn::Config at config.rs:119; SC-3 display-URL parity + SC-4 DO purge-auth parity tests
+- [x] 204-02-PLAN.md — Wire CDN_URL through cdn::Config at config.rs:119; SC-3 display-URL parity + SC-4 DO purge-auth parity tests
 - [ ] 204-03-PLAN.md — Version bump 0.2.53 + CHANGELOG + .env.example/docs quartet migration + BLOCKING full-workspace gate (SC-6/7)
