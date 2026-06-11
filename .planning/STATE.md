@@ -390,12 +390,13 @@ Recent decisions affecting current work:
 
 ### Roadmap Evolution
 
+- Phases 202-203 added (2026-06-11): v12.7 Passwordless MCP Auth milestone (planned). 202 = login-resume contract in `ferro-mcp-oauth` + magic-link sample app exemplar (consumer pairing: gestiscilo `verify_magic_link` honors `oauth_return_to`); 203 = OAuth Device Authorization Grant (RFC 8628) for passwordless/cross-device/headless MCP clients. Source: v12.6 field finding — the OAuth browser flow assumed synchronous password login; magic-link breaks continuation + cross-device delivery.
 - Phases 197-200 added (2026-06-10): v12.6 Consumer App MCP (Browser Login) milestone. Four-phase structure: 197 (ferro-mcp-server + McpRenderer — projection→tool rendering, proven in-process), 198 (Streamable HTTP endpoint + 401 challenge), 199 (OAuth browser login — discovery, DCR, PKCE, consent, token validation), 200 (per-tenant scoping + policy + dogfood acceptance gate). Design spec: `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`.
 - Phases 194-196 added (2026-06-09): v12.5 Projection Checkpoint milestone.
 
 ## Session Continuity
 
 Last session: 2026-06-11
-Stopped at: v12.6 reconciled — Phases 197-200 marked shipped (all verified, dogfood GO); Phase 201 marked complete
+Stopped at: Published v12.6 crates + ferro-stripe 0.9.0 to crates.io (run 27321715231 green, tag pushed); added v12.7 Passwordless MCP Auth phases (202-203, planned)
 Resume file: None
-Next action: `/gsd-new-milestone` (no active milestone) — operator: `git push` + bootstrap-publish `ferro-mcp-server`
+Next action: `/gsd-discuss-phase 202` to start v12.7 (no active milestone yet — set milestone + 🚧 marker when beginning)
