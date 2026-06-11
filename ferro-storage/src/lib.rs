@@ -57,7 +57,7 @@ mod storage;
 pub use drivers::S3Driver;
 pub use drivers::{LocalDriver, MemoryDriver};
 
-pub use cdn::{DoSpacesCdn, DoSpacesCdnConfig, PurgeApi};
+pub use cdn::{CdnProvider, Config as CdnConfig, DoSpacesCdn, DoSpacesCdnConfig, PurgeApi};
 
 #[cfg(feature = "cdn-bunny")]
 pub use cdn::{BunnyCdn, BunnyCdnConfig};
