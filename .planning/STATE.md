@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v12.7
 milestone_name: Passwordless MCP Auth
-status: verifying
-stopped_at: Completed 202-05-PLAN.md (SC-5 gate)
+status: phase_complete
+stopped_at: Phase 202 verified (5/5 SC) — v12.7 Phase 203 pending
 last_updated: "2026-06-11T06:00:59.949Z"
-last_activity: 2026-06-11
+last_activity: 2026-06-11 -- Phase 202 verified & shipped
 progress:
   total_phases: 85
   completed_phases: 78
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Milestone: v12.7 — 🚧 in progress (Phases 202-203)
-Phase: 202 (Login-resume contract + magic-link sample app) — EXECUTING
-Plan: 5 of 5
+Phase: 202 (Login-resume contract + magic-link sample app) — ✅ verified & shipped (5/5 SC)
+Next: Phase 203 (OAuth Device Authorization Grant, RFC 8628) — `/gsd-discuss-phase 203`
 Prior: v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO); Phase 201 ✅ complete
-Status: Phase complete — ready for verification
+Status: Phase 202 complete; v12.7 milestone in progress (203 remaining)
 
-Progress: [██░░░░░░░░] v12.7 (202 planned, 203 pending)
+Progress: [█████░░░░░] v12.7 (202 ✅ shipped, 203 pending)
 
 Last activity: 2026-06-11
 Workspace version: 0.2.49

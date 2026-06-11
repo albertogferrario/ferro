@@ -2588,7 +2588,9 @@ Plans:
 
 **Conceptual coherence:** both phases reuse the v12.6 consent and tenant-scoping surfaces and the existing token issuer — no parallel permission system, no second token path. Phase 202 makes the login-resume contract explicit and feature-agnostic; Phase 203 adds an alternate front door (device grant) to the same token issuance.
 
-### Phase 202: Login-resume contract + magic-link sample app
+### Phase 202: Login-resume contract + magic-link sample app ✅ shipped 2026-06-11
+
+**Verification:** 5/5 success criteria passed (`202-VERIFICATION.md`). Code review: 0 critical, 4 non-blocking warnings (2 pre-existing Phase 199, 2 out of scope). Full `--all-features` clippy + test + `cargo doc -Dwarnings` gate green; CWD-independent boot confirmed.
 
 **Goal:** A passwordless (magic-link) ferro app completes the OAuth/MCP browser-login flow because its login handler resumes the authorize request via `oauth_return_to`, and the bundled sample app demonstrates this as the golden-path exemplar.
 
