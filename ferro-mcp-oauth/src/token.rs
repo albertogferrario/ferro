@@ -199,7 +199,7 @@ async fn token_exchange_device_code(form: TokenRequest) -> ferro::Response {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as i64;
-    if now_unix - grant.created_at > 600 {
+    if now_unix - grant.created_at > DEVICE_CODE_TTL.as_secs() as i64 {
         return Err(json_error(400, "expired_token", "device_code expired"));
     }
 
