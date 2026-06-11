@@ -149,6 +149,9 @@ pub fn generate_device_code() -> String {
 /// The hyphen is for display only; normalization strips it before cache lookup.
 pub fn generate_user_code() -> String {
     use rand::Rng;
+    // thread_rng() is seeded from the OS CSPRNG (rand 0.8). gen_range uses
+    // UniformInt rejection sampling internally — no modular bias against the
+    // 20-character charset.
     let mut rng = rand::thread_rng();
     let chars: String = (0..8)
         .map(|_| USER_CODE_CHARSET[rng.gen_range(0..USER_CODE_CHARSET.len())] as char)
