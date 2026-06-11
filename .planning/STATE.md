@@ -20,17 +20,17 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v12.7 Passwordless MCP Auth (Phases 202-203) started. Phase 202 context gathered.
+**Current focus:** v12.7 Passwordless MCP Auth (Phases 202-203) started. Phase 202 planned (5 plans, 4 waves).
 
 ## Current Position
 
 Milestone: v12.7 — 🚧 in progress (Phases 202-203)
-Phase: 202 (Login-resume contract + magic-link sample app) — context gathered, ready for planning
-Plan: None yet — next is `/gsd-plan-phase 202`
+Phase: 202 (Login-resume contract + magic-link sample app) — planned, ready to execute
+Plan: 5 plans in 4 waves (01 contract → 02 magic-link → 03 views + 04 acceptance test → 05 gate)
 Prior: v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO); Phase 201 ✅ complete
-Status: Ready to execute
+Status: Ready to execute (`/gsd-execute-phase 202`)
 
-Progress: [░░░░░░░░░░] v12.7 0% (202 discussed, not yet planned)
+Progress: [██░░░░░░░░] v12.7 (202 planned, 203 pending)
 
 Last activity: 2026-06-11 -- Phase 202 planning complete
 Workspace version: 0.2.49
