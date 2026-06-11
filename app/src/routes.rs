@@ -36,6 +36,7 @@ routes! {
 
     // Auth routes - guest only (redirects authenticated users)
     group!("/auth", {
+        get!("/login", controllers::auth_controller::login_page).name("auth.login.page"),
         post!("/register", controllers::auth_controller::register).name("auth.register"),
         post!("/login", controllers::auth_controller::login).name("auth.login"),
     }).middleware(GuestMiddleware::redirect_to("/")),

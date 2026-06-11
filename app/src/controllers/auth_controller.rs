@@ -2,7 +2,7 @@ use ferro::database::ModelMut;
 use ferro::serde_json::json;
 use ferro::{
     confirmed, email, handler, hash, json_response, min, required, session, session_mut, verify,
-    Auth, HttpResponse, Request, Resource, Response, ResponseExt, Validator,
+    Auth, HttpResponse, JsonUi, Request, Resource, Response, ResponseExt, Validator,
 };
 use sea_orm::Set;
 use serde::Deserialize;
@@ -89,11 +89,36 @@ pub async fn register(req: Request) -> Response {
     .status(201)
 }
 
+/// GET /auth/login
+///
+/// Login form rendered through JSON-UI (`src/views/login.json`) — the same
+/// server-driven UI layer the rest of the app uses (see `pagamenti`), no
+/// frontend build required. This is the page the OAuth `/authorize` endpoint
+/// redirects unauthenticated browsers to (D-06 login reuse): a real MCP client
+/// completing the browser-login flow lands here, submits the form, and is
+/// redirected back into the OAuth flow via the `oauth_return_to` session value
+/// the authorize handler stored.
+#[handler]
+pub async fn login_page(_req: Request) -> Response {
+    JsonUi::render_file("src/views/login.json", json!({}))
+}
+
 /// POST /auth/login
 ///
-/// Validates credentials and authenticates user via Auth::attempt.
+/// Content-negotiated: a browser form submission (`application/x-www-form-urlencoded`)
+/// establishes a session and 302-redirects (to `oauth_return_to` when present),
+/// while a JSON body keeps the API contract (200/422 JSON for programmatic clients).
 #[handler]
 pub async fn login(req: Request) -> Response {
+    let is_form = req
+        .content_type()
+        .map(|ct| ct.contains("form-urlencoded") || ct.contains("multipart/form-data"))
+        .unwrap_or(false);
+
+    if is_form {
+        return login_form(req).await;
+    }
+
     let input: LoginInput = req.json().await?;
 
     // Validate input
@@ -110,26 +135,8 @@ pub async fn login(req: Request) -> Response {
         return Err(HttpResponse::json(errors.to_json()).status(422));
     }
 
-    let email = input.email.clone();
-    let password = input.password.clone();
-
-    // Attempt authentication
-    let result = Auth::attempt(|| async {
-        let user = match User::find_by_email(&email).await? {
-            Some(u) => u,
-            None => return Ok(None),
-        };
-
-        if verify(&password, &user.password)? {
-            Ok(Some(user.id as i64))
-        } else {
-            Ok(None)
-        }
-    })
-    .await?;
-
-    match result {
-        Some(_) => {
+    match authenticate(&input.email, &input.password).await? {
+        true => {
             // OAuth return-to: if login was initiated by /authorize, resume the OAuth flow.
             let return_to: Option<String> = session().and_then(|s| s.get("oauth_return_to"));
             if let Some(url) = return_to {
@@ -152,7 +159,7 @@ pub async fn login(req: Request) -> Response {
                 }
             })
         }
-        None => Err(HttpResponse::json(json!({
+        false => Err(HttpResponse::json(json!({
             "message": "The given data was invalid.",
             "errors": {
                 "email": ["These credentials do not match our records."]
@@ -160,6 +167,50 @@ pub async fn login(req: Request) -> Response {
         }))
         .status(422)),
     }
+}
+
+/// Browser-form login: authenticate, then 302 to `oauth_return_to` (or `/`).
+/// On failure, re-render the form with an error and the submitted email
+/// preserved (never the password).
+async fn login_form(req: Request) -> Response {
+    let input: LoginInput = req.form().await?;
+
+    if authenticate(&input.email, &input.password).await? {
+        let return_to: Option<String> = session().and_then(|s| s.get("oauth_return_to"));
+        session_mut(|s| {
+            s.forget("oauth_return_to");
+        });
+        let dest = return_to.unwrap_or_else(|| "/".to_string());
+        return Ok(HttpResponse::new().status(302).header("Location", dest));
+    }
+
+    JsonUi::render_file(
+        "src/views/login.json",
+        json!({
+            "email": input.email,
+            "error": "These credentials do not match our records.",
+        }),
+    )
+    .map(|resp| resp.status(422))
+}
+
+/// Verify an email/password pair, establishing the session on success.
+async fn authenticate(email: &str, password: &str) -> Result<bool, HttpResponse> {
+    let email = email.to_string();
+    let password = password.to_string();
+    let result = Auth::attempt(|| async {
+        let user = match User::find_by_email(&email).await? {
+            Some(u) => u,
+            None => return Ok(None),
+        };
+        if verify(&password, &user.password)? {
+            Ok(Some(user.id as i64))
+        } else {
+            Ok(None)
+        }
+    })
+    .await?;
+    Ok(result.is_some())
 }
 
 /// POST /auth/logout
@@ -185,4 +236,30 @@ pub async fn profile(req: Request) -> Response {
         .ok_or_else(|| HttpResponse::json(json!({"message": "Unauthenticated."})).status(401))?;
     let resource = UserResource::from(user);
     Ok(resource.to_wrapped_response(&req))
+}
+
+#[cfg(test)]
+mod tests {
+    use ferro::serde_json::Value;
+
+    /// The login page is a JSON-UI view. Lock its core contract: valid JSON,
+    /// the v2 schema, and a form that posts to `/auth/login` with the email +
+    /// password fields the controller and OAuth flow depend on.
+    #[test]
+    fn login_view_is_valid_and_posts_to_login() {
+        let raw = include_str!("../views/login.json");
+        let v: Value = ferro::serde_json::from_str(raw).expect("login.json must be valid JSON");
+
+        assert_eq!(v["$schema"], "ferro-json-ui/v2");
+        assert_eq!(
+            v["elements"]["form"]["props"]["action"]["handler"],
+            "/auth/login"
+        );
+        assert_eq!(v["elements"]["email"]["props"]["field"], "email");
+        assert_eq!(v["elements"]["email"]["props"]["input_type"], "email");
+        assert_eq!(v["elements"]["password"]["props"]["field"], "password");
+        assert_eq!(v["elements"]["password"]["props"]["input_type"], "password");
+        // The email field pre-fills from handler data (preserved on a failed submit).
+        assert_eq!(v["elements"]["email"]["props"]["data_path"], "/email");
+    }
 }

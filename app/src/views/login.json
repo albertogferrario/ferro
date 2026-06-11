@@ -1,0 +1,37 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Sign in",
+  "layout": "centered",
+  "root": "card",
+  "elements": {
+    "card": {
+      "type": "Card",
+      "props": { "title": "Sign in", "description": "Authorize access to your account", "variant": "elevated" },
+      "children": ["form"]
+    },
+    "form": {
+      "type": "Form",
+      "props": { "action": { "handler": "/auth/login", "method": "POST" }, "method": "POST", "max_width": "narrow" },
+      "children": ["email", "password", "submit"]
+    },
+    "email": {
+      "type": "Input",
+      "props": {
+        "field": "email",
+        "label": "Email",
+        "input_type": "email",
+        "required": true,
+        "data_path": "/email",
+        "error": { "$data": "/error" }
+      }
+    },
+    "password": {
+      "type": "Input",
+      "props": { "field": "password", "label": "Password", "input_type": "password", "required": true }
+    },
+    "submit": {
+      "type": "Button",
+      "props": { "label": "Continue", "button_type": "submit", "variant": "default" }
+    }
+  }
+}
