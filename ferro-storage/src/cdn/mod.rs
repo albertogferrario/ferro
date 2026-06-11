@@ -256,20 +256,29 @@ impl std::fmt::Debug for Config {
 impl Config {
     /// Read CDN config from environment: the quartet primary + per-var legacy fallbacks.
     pub fn from_env() -> Self {
-        let url = env_with_fallback("CDN_URL", &[
-            ("AWS_CDN_URL", "AWS_CDN_URL"),
-            ("CF_CDN_URL", "CF_CDN_URL"),
-            ("BUNNY_CDN_URL", "BUNNY_CDN_URL"),
-        ]);
-        let purge_zone = env_with_fallback("CDN_PURGE_ZONE", &[
-            ("DO_SPACES_CDN_ID", "DO_SPACES_CDN_ID"),
-            ("CF_ZONE_ID", "CF_ZONE_ID"),
-        ]);
-        let purge_token = env_with_fallback("CDN_PURGE_TOKEN", &[
-            ("DIGITALOCEAN_ACCESS_TOKEN", "DIGITALOCEAN_ACCESS_TOKEN"),
-            ("CF_API_TOKEN", "CF_API_TOKEN"),
-            ("BUNNY_ACCESS_KEY", "BUNNY_ACCESS_KEY"),
-        ]);
+        let url = env_with_fallback(
+            "CDN_URL",
+            &[
+                ("AWS_CDN_URL", "AWS_CDN_URL"),
+                ("CF_CDN_URL", "CF_CDN_URL"),
+                ("BUNNY_CDN_URL", "BUNNY_CDN_URL"),
+            ],
+        );
+        let purge_zone = env_with_fallback(
+            "CDN_PURGE_ZONE",
+            &[
+                ("DO_SPACES_CDN_ID", "DO_SPACES_CDN_ID"),
+                ("CF_ZONE_ID", "CF_ZONE_ID"),
+            ],
+        );
+        let purge_token = env_with_fallback(
+            "CDN_PURGE_TOKEN",
+            &[
+                ("DIGITALOCEAN_ACCESS_TOKEN", "DIGITALOCEAN_ACCESS_TOKEN"),
+                ("CF_API_TOKEN", "CF_API_TOKEN"),
+                ("BUNNY_ACCESS_KEY", "BUNNY_ACCESS_KEY"),
+            ],
+        );
 
         let provider = if let Ok(val) = std::env::var("CDN_PROVIDER") {
             match CdnProvider::from_str_ci(&val) {
@@ -292,7 +301,12 @@ impl Config {
             CdnProvider::None
         };
 
-        Self { url, provider, purge_token, purge_zone }
+        Self {
+            url,
+            provider,
+            purge_token,
+            purge_zone,
+        }
     }
 
     /// Build the active purge adapter, or `Ok(None)` for provider `None`.
@@ -598,7 +612,10 @@ mod tests {
             purge_zone: None,
         };
         let result = config.build_purge_api();
-        assert!(result.is_err(), "Expected Err when cdn-bunny feature is off");
+        assert!(
+            result.is_err(),
+            "Expected Err when cdn-bunny feature is off"
+        );
         let msg = match result {
             Err(e) => e.to_string(),
             Ok(_) => unreachable!(),
