@@ -18,7 +18,7 @@ use std::time::Duration;
 /// (token.rs lines 62-64 pattern).
 #[tokio::test]
 async fn magic_link_single_use() {
-    bootstrap_test_cache();
+    let _cache = bootstrap_test_cache();
 
     let token = "test_token_unique_42";
     let key = format!("magic_link:{token}");
@@ -54,7 +54,7 @@ async fn magic_link_single_use() {
 /// absent-key path directly.
 #[tokio::test]
 async fn magic_link_expired() {
-    bootstrap_test_cache();
+    let _cache = bootstrap_test_cache();
 
     let token = "token_that_was_never_stored_or_already_expired_unique_99";
     let key = format!("magic_link:{token}");

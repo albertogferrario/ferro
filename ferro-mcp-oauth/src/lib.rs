@@ -42,13 +42,27 @@ pub mod handlers {
 /// because `Cache::bootstrap()` via `Server::run()` replaces any earlier binding.
 pub mod cache_test_helpers {
     use ferro::cache::{CacheStore, InMemoryCache};
-    use ferro::container::App;
+    use ferro::{TestContainer, TestContainerGuard};
     use std::sync::Arc;
 
-    /// Bind a fresh `InMemoryCache` into the App container.
+    /// Bind a fresh `InMemoryCache` into the thread-local test container.
     ///
-    /// Call once per test (or test module) before any `Cache::put`/`Cache::get`/`Cache::forget`.
-    pub fn bootstrap_test_cache() {
-        App::bind::<dyn CacheStore>(Arc::new(InMemoryCache::new()));
+    /// Returns a [`TestContainerGuard`] that MUST be held for the duration of the test.
+    /// When the guard is dropped, the thread-local container is cleared — ensuring
+    /// concurrent tests do not share state (no global-container data race).
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// #[tokio::test]
+    /// async fn my_test() {
+    ///     let _cache = bootstrap_test_cache();
+    ///     Cache::put("key", &value, Some(Duration::from_secs(60))).await.unwrap();
+    /// }
+    /// ```
+    pub fn bootstrap_test_cache() -> TestContainerGuard {
+        let guard = TestContainer::fake();
+        TestContainer::bind::<dyn CacheStore>(Arc::new(InMemoryCache::new()));
+        guard
     }
 }

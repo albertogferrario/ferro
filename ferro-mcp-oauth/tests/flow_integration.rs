@@ -75,7 +75,7 @@ async fn full_pkce_flow() {
     // ── Step 1: Setup ─────────────────────────────────────────────────────────
     let db = fresh_db().await;
     let config = test_oauth_config();
-    bootstrap_test_cache();
+    let _cache = bootstrap_test_cache();
 
     // ── Step 2: DCR — register a client ──────────────────────────────────────
     let redirect_uri = "http://localhost:3000/callback".to_string();

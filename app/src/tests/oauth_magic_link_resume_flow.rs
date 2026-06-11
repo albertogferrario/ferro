@@ -15,10 +15,10 @@
 //! (`with_test_session`) only. No network calls, no live HTTP server, no SMTP,
 //! no CWD-relative view rendering. CI is always offline-green.
 
-use ferro::Cache;
 use ferro::session::with_test_session;
-use ferro_mcp_oauth::{oauth_resume_redirect, store_oauth_return_to};
+use ferro::Cache;
 use ferro_mcp_oauth::cache_test_helpers::bootstrap_test_cache;
+use ferro_mcp_oauth::{oauth_resume_redirect, store_oauth_return_to};
 use std::time::Duration;
 
 /// SC-3: Full async OAuth resume flow — store → issue → consume → resume.
@@ -28,7 +28,7 @@ use std::time::Duration;
 /// to the redirect in Step 4.
 #[tokio::test]
 async fn oauth_magic_link_resume_flow() {
-    bootstrap_test_cache();
+    let _cache = bootstrap_test_cache();
 
     with_test_session("sc3_flow", || async {
         // ── SC-3 Step 1: unauthenticated /authorize stored the return target ──
@@ -115,7 +115,11 @@ async fn oauth_magic_link_resume_flow_no_key_falls_back_to_default() {
         let resp = oauth_resume_redirect("/")
             .expect("oauth_resume_redirect must return Ok(...) even with no stored key");
 
-        assert_eq!(resp.status_code(), 302, "fallback redirect must be 302 (Step 5)");
+        assert_eq!(
+            resp.status_code(),
+            302,
+            "fallback redirect must be 302 (Step 5)"
+        );
 
         let location = resp
             .headers()

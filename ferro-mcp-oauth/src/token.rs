@@ -179,7 +179,7 @@ mod tests {
     /// a second retrieve returns None.
     #[tokio::test]
     async fn forget_before_validate_single_use() {
-        bootstrap_test_cache();
+        let _cache = bootstrap_test_cache();
 
         let verifier = "test_verifier_that_is_long_enough_for_pkce_12345";
         let code = store_code("client-abc", "http://localhost:3000/cb", verifier, 1, None).await;
@@ -200,7 +200,7 @@ mod tests {
     /// Replaying the same code returns None on the second get.
     #[tokio::test]
     async fn replay_code_returns_none_after_forget() {
-        bootstrap_test_cache();
+        let _cache = bootstrap_test_cache();
 
         let verifier = "replay_verifier_long_enough_for_pkce_requirements_abc";
         let code = store_code("cid", "http://localhost/cb", verifier, 1, None).await;
