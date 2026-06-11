@@ -2603,10 +2603,10 @@ Plans:
 
 **Consumer pairing:** gestiscilo `verify_magic_link` adopts the resume helper so gestiscilo users complete the MCP browser login on the same device. Cross-device is addressed by Phase 203.
 
-**Plans:** 5 plans (5 waves)
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] 202-01-PLAN.md — Resume contract in ferro-mcp-oauth: resume.rs helpers + key constant, refactor authorize.rs/consent.rs (single owner), lib.rs exports, rustdoc + authentication.md doc (Wave 1; SC-1)
+- [x] 202-01-PLAN.md — Resume contract in ferro-mcp-oauth: resume.rs helpers + key constant, refactor authorize.rs/consent.rs (single owner), lib.rs exports, rustdoc + authentication.md doc (Wave 1; SC-1)
 - [ ] 202-02-PLAN.md — Magic-link token + handlers in app: rand/base64 deps, request-link handler, GET /auth/verify, delete password path, dev/mail branch, single-use/expiry/dev-surface tests (Wave 2; SC-2)
 - [ ] 202-03-PLAN.md — JSON-UI auth views: email-only login.json + login_confirm.json, update login_view test (Wave 3; SC-4)
 - [ ] 202-04-PLAN.md — Async-flow acceptance test: store-return-to → token-issue → consume → resume-redirect, offline staged (Wave 3; SC-3)
