@@ -2629,10 +2629,31 @@ Plans:
 
 **Consumer pairing:** gestiscilo (magic-link, cross-device users) adopts device grant as its primary MCP authentication path.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 - [x] 203-01-PLAN.md — device.rs foundation: DeviceGrant record + user_code/device_code primitives (SC-1/SC-4 substrate)
 - [x] 203-02-PLAN.md — discovery.rs: advertise device_authorization_endpoint + device-code grant type (SC-4)
 - [x] 203-03-PLAN.md — device.rs handlers: device_authorization + verification page (login-resume, CSRF, user/tenant binding) (SC-1/SC-2)
 - [x] 203-04-PLAN.md — token.rs device-code arm: §3.5 polling state machine + identical-mint Approved arm (SC-3)
-- [ ] 203-05-PLAN.md — wiring (lib.rs exports + routes.rs mounts) + full SC-5 test matrix + blocking workspace gate (SC-2/SC-3/SC-4/SC-5)
+- [x] 203-05-PLAN.md — wiring (lib.rs exports + routes.rs mounts) + full SC-5 test matrix + blocking workspace gate (SC-2/SC-3/SC-4/SC-5)
+
+### Phase 204: ferro-storage provider-agnostic CDN configuration
+
+**Goal:** Collapse the AWS / DO / Bunny / Cloudflare CDN env-var clusters in ferro-storage into a single provider-agnostic quartet — `CDN_URL` (public base), `CDN_PROVIDER` (`none` | `digitalocean` | `bunny` | `cloudflare`), `CDN_PURGE_TOKEN` (provider API token), `CDN_PURGE_ZONE` (provider-specific zone/endpoint id). Old variable names (`AWS_CDN_URL`, `DO_SPACES_CDN_ID`, `DIGITALOCEAN_ACCESS_TOKEN`, `BUNNY_CDN_URL`, `BUNNY_ACCESS_KEY`, `CF_CDN_URL`, `CF_API_TOKEN`, `CF_ZONE_ID`) read as deprecated fallbacks for one release with a `tracing::warn!` log.
+
+**Depends on:** nothing (additive on current ferro-storage).
+
+**Success Criteria:**
+  1. `ferro_storage::cdn::Config::from_env` reads `CDN_URL` / `CDN_PROVIDER` / `CDN_PURGE_TOKEN` / `CDN_PURGE_ZONE` as primary
+  2. When `CDN_URL` is unset, fall back to `AWS_CDN_URL` (logged warn); same fallback chain for the other three vars (`CDN_PURGE_ZONE` ← `DO_SPACES_CDN_ID`/`CF_ZONE_ID`; `CDN_PURGE_TOKEN` ← `DIGITALOCEAN_ACCESS_TOKEN`/`CF_API_TOKEN`/`BUNNY_ACCESS_KEY`)
+  3. `Disk::cdn_url()` returns the same URL it does today for unchanged callers (parity test against `AWS_CDN_URL`-only env)
+  4. `purge()` authenticates against the same DO Spaces CDN API today when using the legacy vars (parity test)
+  5. `CDN_PROVIDER=none` → `purge()` is an explicit logged no-op; `CDN_PROVIDER` invalid → boot error with a clear message listing valid values
+  6. ferro-storage Cargo.toml bumps minor version; CHANGELOG `## [X.Y.0]` documents the new vars + deprecation policy
+  7. `cargo test --all-features` + `cargo clippy --all -- -D warnings` pass on the ferro-storage workspace
+
+**Consumer pairing:** gestiscilo Phase 205 (consumer-side rename + atomic Cargo.toml bump per the Phase 176 ↔ ferro Phase 181 closeout pattern).
+
+**Origin:** Surfaced 2026-06-11 during a cross-repo env-files audit. Today's setup fragments the same DO Spaces CDN across 3 different env-var prefix conventions (`AWS_*`, `SPACES_*`, `DO_SPACES_*`) plus the parallel `BUNNY_*` and `CF_*` clusters — provider-agnostic naming makes the abstraction match what the code actually does (one CDN, one provider at a time).
+
+**Plans:** TBD (open via `/gsd-plan-phase 204`)
