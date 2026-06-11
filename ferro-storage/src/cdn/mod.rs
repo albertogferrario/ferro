@@ -210,15 +210,15 @@ impl CdnProvider {
     }
 }
 
-/// Read `primary`; if unset, try each `(alias, label)` in order, emitting one
+/// Read `primary`; if unset, try each `alias` in order, emitting one
 /// `tracing::warn!` naming the deprecated var (never its value) on first hit.
-fn env_with_fallback(primary: &str, aliases: &[(&str, &str)]) -> Option<String> {
+fn env_with_fallback(primary: &str, aliases: &[&str]) -> Option<String> {
     if let Ok(val) = std::env::var(primary) {
         return Some(val);
     }
-    for (alias, label) in aliases {
+    for alias in aliases {
         if let Ok(val) = std::env::var(alias) {
-            tracing::warn!("{} is deprecated; use {} instead", label, primary);
+            tracing::warn!("{alias} is deprecated; use {primary} instead");
             return Some(val);
         }
     }
@@ -230,7 +230,7 @@ fn env_with_fallback(primary: &str, aliases: &[(&str, &str)]) -> Option<String> 
 ///
 /// # Token security
 /// `purge_token` is never logged. `Debug` prints `<redacted>` for it.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Config {
     /// CDN base URL fronting the bucket (`CDN_URL`). Drives `Disk::cdn_url()`.
     pub url: Option<String>,
@@ -240,6 +240,9 @@ pub struct Config {
     pub purge_token: Option<String>,
     /// Provider-specific zone or endpoint id (`CDN_PURGE_ZONE`).
     pub purge_zone: Option<String>,
+    /// Set when `CDN_PROVIDER` is explicitly provided but fails to parse.
+    /// `build_purge_api` converts this into a boot `Error` (D-03 / SC-5b).
+    pub provider_error: Option<String>,
 }
 
 impl std::fmt::Debug for Config {
@@ -249,42 +252,33 @@ impl std::fmt::Debug for Config {
             .field("provider", &self.provider)
             .field("purge_token", &"<redacted>")
             .field("purge_zone", &self.purge_zone)
+            .field("provider_error", &self.provider_error)
             .finish()
     }
 }
 
 impl Config {
     /// Read CDN config from environment: the quartet primary + per-var legacy fallbacks.
+    ///
+    /// Provider resolution runs first; token/zone aliases are then scoped to the resolved
+    /// provider so that a stray credential from a different provider's legacy cluster cannot
+    /// win the fallback race.
+    ///
+    /// If `CDN_PROVIDER` is set to an unrecognized value the struct is returned with
+    /// `provider_error` set; the parse failure is surfaced as a boot `Error` by
+    /// [`build_purge_api`].
     pub fn from_env() -> Self {
-        let url = env_with_fallback(
-            "CDN_URL",
-            &[
-                ("AWS_CDN_URL", "AWS_CDN_URL"),
-                ("CF_CDN_URL", "CF_CDN_URL"),
-                ("BUNNY_CDN_URL", "BUNNY_CDN_URL"),
-            ],
-        );
-        let purge_zone = env_with_fallback(
-            "CDN_PURGE_ZONE",
-            &[
-                ("DO_SPACES_CDN_ID", "DO_SPACES_CDN_ID"),
-                ("CF_ZONE_ID", "CF_ZONE_ID"),
-            ],
-        );
-        let purge_token = env_with_fallback(
-            "CDN_PURGE_TOKEN",
-            &[
-                ("DIGITALOCEAN_ACCESS_TOKEN", "DIGITALOCEAN_ACCESS_TOKEN"),
-                ("CF_API_TOKEN", "CF_API_TOKEN"),
-                ("BUNNY_ACCESS_KEY", "BUNNY_ACCESS_KEY"),
-            ],
-        );
+        // 1. Resolve the CDN display URL (provider-independent).
+        let url = env_with_fallback("CDN_URL", &["AWS_CDN_URL", "CF_CDN_URL", "BUNNY_CDN_URL"]);
 
+        // 2. Resolve provider first so token/zone aliases can be scoped to it.
+        let mut provider_error: Option<String> = None;
         let provider = if let Ok(val) = std::env::var("CDN_PROVIDER") {
             match CdnProvider::from_str_ci(&val) {
                 Ok(p) => p,
                 Err(e) => {
-                    tracing::error!("{e}; defaulting CDN purge to no-op");
+                    tracing::error!("{e}; set CDN_PROVIDER to a valid value to enable purging");
+                    provider_error = Some(val);
                     CdnProvider::None
                 }
             }
@@ -294,11 +288,34 @@ impl Config {
         } else if std::env::var("CF_ZONE_ID").is_ok() {
             tracing::warn!("CDN_PROVIDER unset; inferred cloudflare from CF_ZONE_ID. Set CDN_PROVIDER=cloudflare to silence.");
             CdnProvider::Cloudflare
-        } else if std::env::var("BUNNY_CDN_URL").is_ok() {
-            tracing::warn!("CDN_PROVIDER unset; inferred bunny from BUNNY_CDN_URL. Set CDN_PROVIDER=bunny to silence.");
+        } else if std::env::var("BUNNY_CDN_URL").is_ok()
+            || std::env::var("BUNNY_ACCESS_KEY").is_ok()
+        {
+            tracing::warn!("CDN_PROVIDER unset; inferred bunny from BUNNY_CDN_URL/BUNNY_ACCESS_KEY. Set CDN_PROVIDER=bunny to silence.");
             CdnProvider::Bunny
         } else {
             CdnProvider::None
+        };
+
+        // 3. Resolve token/zone using only the aliases that belong to the resolved provider,
+        //    preventing cross-provider credential contamination in mixed legacy deployments.
+        let (purge_token, purge_zone) = match &provider {
+            CdnProvider::DigitalOcean => (
+                env_with_fallback("CDN_PURGE_TOKEN", &["DIGITALOCEAN_ACCESS_TOKEN"]),
+                env_with_fallback("CDN_PURGE_ZONE", &["DO_SPACES_CDN_ID"]),
+            ),
+            CdnProvider::Cloudflare => (
+                env_with_fallback("CDN_PURGE_TOKEN", &["CF_API_TOKEN"]),
+                env_with_fallback("CDN_PURGE_ZONE", &["CF_ZONE_ID"]),
+            ),
+            CdnProvider::Bunny => (
+                env_with_fallback("CDN_PURGE_TOKEN", &["BUNNY_ACCESS_KEY"]),
+                None,
+            ),
+            CdnProvider::None => (
+                env_with_fallback("CDN_PURGE_TOKEN", &[]),
+                env_with_fallback("CDN_PURGE_ZONE", &[]),
+            ),
         };
 
         Self {
@@ -306,12 +323,21 @@ impl Config {
             provider,
             purge_token,
             purge_zone,
+            provider_error,
         }
     }
 
     /// Build the active purge adapter, or `Ok(None)` for provider `None`.
-    /// Returns `Err(CdnFeatureRequired)` if the selected provider's feature is off.
+    ///
+    /// Returns `Err(CdnInvalidProvider)` when `CDN_PROVIDER` was set to an unrecognized
+    /// value during `from_env` (D-03 boot error, SC-5b).
+    /// Returns `Err(CdnFeatureRequired)` if the selected provider's cargo feature is off.
     pub fn build_purge_api(&self) -> Result<Option<Box<dyn PurgeApi>>, Error> {
+        // Surface an invalid CDN_PROVIDER value as a boot error (D-03 / SC-5b).
+        if let Some(bad) = &self.provider_error {
+            return Err(Error::cdn_invalid_provider(bad));
+        }
+
         match &self.provider {
             CdnProvider::None => {
                 tracing::info!("CDN_PROVIDER=none — purge is a no-op");
@@ -511,10 +537,8 @@ mod tests {
     #[test]
     fn cdn_config_debug_redacts_token() {
         let config = Config {
-            url: None,
-            provider: CdnProvider::None,
             purge_token: Some("secret-xyz".into()),
-            purge_zone: None,
+            ..Default::default()
         };
         let dbg = format!("{config:?}");
         assert!(
@@ -538,14 +562,29 @@ mod tests {
         );
     }
 
+    /// When CDN_PROVIDER is explicitly set to an invalid value, build_purge_api must return
+    /// Err listing valid values (D-03 / SC-5b boot error via the env path).
+    #[test]
+    fn cdn_invalid_provider_from_env_errors() {
+        let config = Config {
+            provider_error: Some("Fastly".into()),
+            ..Default::default()
+        };
+        let result = config.build_purge_api();
+        let err = match result {
+            Err(e) => e,
+            Ok(_) => panic!("build_purge_api must return Err when provider_error is set"),
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("none, digitalocean, bunny, cloudflare"),
+            "Error must list valid values: {msg}"
+        );
+    }
+
     #[test]
     fn cdn_provider_none_no_op() {
-        let config = Config {
-            url: None,
-            provider: CdnProvider::None,
-            purge_token: None,
-            purge_zone: None,
-        };
+        let config = Config::default();
         assert!(
             matches!(config.build_purge_api(), Ok(None)),
             "provider=None must return Ok(None)"
@@ -609,10 +648,8 @@ mod tests {
     #[test]
     fn cdn_feature_required_bunny() {
         let config = Config {
-            url: None,
             provider: CdnProvider::Bunny,
-            purge_token: None,
-            purge_zone: None,
+            ..Default::default()
         };
         let result = config.build_purge_api();
         assert!(

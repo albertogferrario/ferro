@@ -52,7 +52,10 @@ impl StorageConfig {
     /// - `AWS_BUCKET`: S3 bucket name
     /// - `AWS_PUBLIC_URL`: Public base URL for generated file URLs (overrides `AWS_URL` for this purpose)
     /// - `AWS_URL`: S3 API endpoint; also used as public URL base if `AWS_PUBLIC_URL` is not set
-    /// - `AWS_CDN_URL`: CDN base URL fronting the Spaces bucket (optional; used by `cdn_url()`)
+    /// - `CDN_URL`: CDN base URL fronting the bucket (used by `cdn_url()`).
+    ///   Legacy aliases `AWS_CDN_URL`, `CF_CDN_URL`, and `BUNNY_CDN_URL` are still accepted
+    ///   with a deprecation warning. Also reads `CDN_PROVIDER` / `CDN_PURGE_TOKEN` /
+    ///   `CDN_PURGE_ZONE` for cache-invalidation configuration; see [`crate::cdn::Config`].
     ///
     /// # Example
     ///
