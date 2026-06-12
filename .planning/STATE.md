@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v12.7
 milestone_name: Passwordless MCP Auth
 status: verifying
-stopped_at: Completed 204-03-PLAN.md
-last_updated: "2026-06-11T17:49:16.435Z"
+stopped_at: Phase 205 context gathered
+last_updated: "2026-06-12T00:06:04.194Z"
 last_activity: 2026-06-11
 progress:
-  total_phases: 86
+  total_phases: 87
   completed_phases: 80
   total_plans: 343
   completed_plans: 343
@@ -411,7 +411,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-11T17:29:57.074Z
-Stopped at: Completed 204-03-PLAN.md
-Resume file: None
+Last session: 2026-06-12T00:06:04.149Z
+Stopped at: Phase 205 context gathered
+Resume file: .planning/phases/205-fix-ferro-mcp-server-tools-call-result-content-blocks-wrap-p/205-CONTEXT.md
 Next action: `/gsd-discuss-phase 202` to start v12.7 (no active milestone yet — set milestone + 🚧 marker when beginning)
