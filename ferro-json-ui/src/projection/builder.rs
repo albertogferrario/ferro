@@ -601,7 +601,10 @@ mod tests {
 
     use super::*;
     use crate::catalog::Catalog;
-    use ferro_projections::{derive_intents, DataType, FieldMeaning, ServiceDef};
+    use ferro_projections::{
+        derive_intents, ActionDef, DataType, FieldMeaning, ServiceDef, StateDef, StateMachine,
+        Transition,
+    };
     use ferro_theme::{IntentModeTemplates, IntentSlotTemplate, ThemeTemplates};
 
     fn sample_service() -> ServiceDef {
@@ -611,6 +614,45 @@ mod tests {
             .field("name", DataType::String, FieldMeaning::EntityName)
             .field("price", DataType::Float, FieldMeaning::Money)
             .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+    }
+
+    fn service_with_actions() -> ServiceDef {
+        ServiceDef::new("staff")
+            .display_name("Staff")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .action(ActionDef::new("view").display_name("View"))
+            .action(ActionDef::new("edit").display_name("Edit"))
+            .action(ActionDef::new("delete").display_name("Delete"))
+    }
+
+    // Reserved for Gap A (kanban state-machine columns) tests in plan 02.
+    #[allow(dead_code)]
+    fn service_with_state_machine() -> ServiceDef {
+        ServiceDef::new("order")
+            .display_name("Order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .state_machine(
+                StateMachine::new("lifecycle")
+                    .initial("draft")
+                    .state(StateDef::new("draft").display_name("Draft"))
+                    .state(StateDef::new("submitted").display_name("Submitted"))
+                    .state(StateDef::new("done").display_name("Done").final_state())
+                    .transition(Transition::new("draft", "submit", "submitted"))
+                    .transition(Transition::new("submitted", "complete", "done")),
+            )
+    }
+
+    // Reserved for Gap C (statcard value binding) tests in plan 03.
+    #[allow(dead_code)]
+    fn service_with_money_field() -> ServiceDef {
+        // sample_service() already carries a Money field (`price`); this fixture
+        // names it explicitly for the Gap C statcard tests.
+        ServiceDef::new("statistics")
+            .display_name("Statistics")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("total_revenue", DataType::Float, FieldMeaning::Money)
     }
 
     fn clean_catalog() -> Catalog {
@@ -940,5 +982,39 @@ mod tests {
             }
             other => panic!("expected IntentIndexOutOfBounds, got {other:?}"),
         }
+    }
+
+    // -- Gap B render tests (TDD RED added in Task 1; GREEN wired in Task 2) --
+
+    #[test]
+    fn actions_slot_emits_dropdown_from_service_actions() {
+        use crate::component::DropdownMenuProps;
+        let service = service_with_actions();
+        let mut aux: Vec<(String, ElementBuilder)> = Vec::new();
+        let mut children: Vec<String> = Vec::new();
+        emit_actions_placeholder(&service, &mut aux, &mut children);
+        assert_eq!(children, vec!["actions_menu".to_string()]);
+        let pos = aux
+            .iter()
+            .position(|(id, _)| id == "actions_menu")
+            .expect("DropdownMenu must be emitted");
+        let (_, el) = aux.remove(pos);
+        let built = el.build();
+        let props: DropdownMenuProps =
+            serde_json::from_value(built.props).expect("props decode as DropdownMenuProps");
+        assert_eq!(props.items.len(), service.actions.len());
+        assert_eq!(props.items[0].label, "View");
+    }
+
+    #[test]
+    fn datatable_root_has_row_actions_from_service_actions() {
+        use crate::component::DataTableProps;
+        let service = service_with_actions();
+        let el = emit_datatable_root(&service);
+        let built = el.build();
+        let props: DataTableProps =
+            serde_json::from_value(built.props).expect("props decode as DataTableProps");
+        let ra = props.row_actions.expect("row_actions must be populated");
+        assert_eq!(ra.len(), service.actions.len());
     }
 }
