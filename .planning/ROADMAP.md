@@ -1986,7 +1986,7 @@ Discovery: surfaced during the 2026-06-06 jetskiadriatic startup-lifecycle audit
 
 ---
 
-### 🔭 v13.0 Future UI Spec Evaluation (Phase 174, planned 2026-05-17)
+### 🔭 Future UI Spec Evaluation (Phase 174, planned 2026-05-17)
 
 Forward-looking exploration of alternative server-driven UI protocols. May seed a downstream prototype milestone, or terminate as a documented decision to stay on the JSON spec.
 
