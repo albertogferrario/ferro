@@ -2722,7 +2722,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 207. COMP-02 Synthetic Regression Catalog | 0/TBD | Not started | - |
+| 207. COMP-02 Synthetic Regression Catalog | 0/1 | Not started | - |
 | 208. COMP-05 Cross-Modality Vocabulary Sketch | 0/TBD | Not started | - |
 | 209. COMP-01 Slice A Gestiscilo Migration | 0/TBD | Not started | - |
 | 210. COMP-03 Agent-Success-Rate Harness | 0/TBD | Not started | - |
@@ -2745,7 +2745,8 @@ Plans:
   4. All seven catalog tests pass under `cargo test --all-features` and are integrated into the standard CI gate (no `#[ignore]`); a future change to `derive.rs` that breaks intent derivation for any canonical class causes a named, legible CI failure.
   5. A "discovered weaknesses" note in the phase verification names at least one real limitation surfaced by writing the catalog (e.g. a canonical class where derivation confidence is lower than expected, or a signal gap). An empty weaknesses section fails the phase close.
 
-**Plans:** TBD
+**Plans:** 1 plan
+- [ ] 207-01-PLAN.md — Synthetic regression catalog: 7 canonical fixtures + per-intent identity/floor/margin tests, 4 adversarial confusable-pair fixtures, proptest engine invariants, insta snapshots (signals only), calibration, discovered-weaknesses note
 
 ### Phase 208: COMP-05 — Cross-Modality Vocabulary Sketch
 
