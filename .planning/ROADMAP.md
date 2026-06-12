@@ -2674,3 +2674,25 @@ Plans:
 - [x] 204-01-PLAN.md — Unified cdn::Config + CdnProvider + env_with_fallback + build_purge_api + error variants + exports (SC-1/2/5a/b/c)
 - [x] 204-02-PLAN.md — Wire CDN_URL through cdn::Config at config.rs:119; SC-3 display-URL parity + SC-4 DO purge-auth parity tests
 - [x] 204-03-PLAN.md — Version bump 0.2.53 + CHANGELOG + .env.example/docs quartet migration + BLOCKING full-workspace gate (SC-6/7)
+
+### Phase 206: ferro-storage provider-agnostic STORAGE_* env vars
+
+**Goal:** Apply the Phase 204 provider-agnostic naming pattern to the six S3-style env vars (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_DEFAULT_REGION` / `AWS_BUCKET` / `AWS_URL` / `AWS_PUBLIC_URL`). All ferro-storage's S3 surface — `StorageConfig::from_env`, `S3Driver::new`, the facade's S3 endpoint read — now read provider-agnostic `STORAGE_*` names through the hoisted `env_with_fallback` helper, with the legacy `AWS_*` names accepted as deprecated aliases for one release. Honest naming: the `s3` driver targets *any* S3-compatible backend (DO Spaces, Wasabi, R2, B2, MinIO), so `STORAGE_*` reflects what's actually abstracted while `FILESYSTEM_DISK` selects the driver.
+
+**Depends on:** Phase 204 (env_with_fallback helper + deprecation-warning convention).
+
+**Success Criteria:**
+  1. `StorageConfig::from_env` reads `STORAGE_BUCKET` / `STORAGE_REGION` / `STORAGE_ENDPOINT` / `STORAGE_PUBLIC_URL` primary with `AWS_*` legacy fallback (per-var `tracing::warn!`)
+  2. `S3Driver::new` reads `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_KEY` primary with `AWS_*` legacy fallback
+  3. `Storage::create_driver` (facade) reads `STORAGE_ENDPOINT` primary with `AWS_URL` legacy fallback
+  4. `env_with_fallback` hoisted from `cdn::mod` private fn to crate-level `env_helpers` module (reused by all four surfaces)
+  5. Legacy fallback parity: existing `from_env_cdn_url` + `cdn_url_parity_aws_fallback` tests (which set `AWS_BUCKET` + `AWS_CDN_URL`) continue to pass byte-identical
+  6. New primary-path test `from_env_storage_primary` sets `STORAGE_BUCKET` / `STORAGE_REGION` / `STORAGE_PUBLIC_URL` and asserts the s3 disk registers with the expected fields
+  7. `ferro/app/.env.example` declares the `STORAGE_*` set as primary with a deprecated-alias note for `AWS_*`
+  8. Workspace `Cargo.toml` bumps to 0.2.54; `ferro-storage/CHANGELOG.md` documents the rename + deprecation table
+
+**Consumer pairing:** gestiscilo follow-up phase mirrors Phase 205's shape — bump ferro to 0.2.54, rename `.env.example` + `app-env/production/.env` to `STORAGE_*` (preserve values verbatim), update ROADMAP Pending Operator Tasks.
+
+**Origin:** Operator-locked principle on 2026-06-12 after Phase 204/205 shipped — ferro env vars must name the *role* (CDN, STORAGE, MAIL), not the *vendor* (AWS, DO, RESEND), where the role is genuinely provider-agnostic. The AWS_* family was the next candidate identified during that conversation. Provider-specific names stay (Stripe / Resend / WhatsApp Cloud / Anthropic) because their values are stamped with one vendor's API contract.
+
+**Plans:** 1/1 complete (single-wave, mechanical rename — see `phases/206-ferro-storage-provider-agnostic-storage-env-vars/206-01-PLAN.md`)

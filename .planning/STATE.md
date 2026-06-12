@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v12.7
 milestone_name: Passwordless MCP Auth
 status: executing
-stopped_at: Completed 205-02-PLAN.md
-last_updated: "2026-06-12T00:35:32.512Z"
+stopped_at: Completed Phase 206 (ferro-storage STORAGE_* rename + workspace 0.2.54 — push pending)
+last_updated: "2026-06-12T06:00:00.000Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 87
@@ -34,11 +34,14 @@ Status: Ready to execute
 Progress: [█████░░░░░] v12.7 (202 ✅ shipped, 203 pending)
 
 Last activity: 2026-06-12
-Workspace version: 0.2.53
+Workspace version: 0.2.54
+
+Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
 
 > **Operator actions pending:**
-> - **Release 0.2.53** — push `master` to origin to trigger the GH Actions publish wave (updates all workspace crates 0.2.52 → 0.2.53: ferro-storage CDN quartet, ferro-mcp-oauth device grant, etc.). `ferro-stripe 0.9.0`, `ferro-mcp-server`, and `ferro-mcp-oauth` are ALREADY on crates.io at 0.2.52 — **no bootstrap needed** (the publish-update token updates existing crates; the wave skips already-published versions). The earlier "new crate / bootstrap ferro-mcp-server" note was stale and has been removed.
+> - **Release 0.2.53 + 0.2.54** — push `master` to origin to trigger the GH Actions publish wave. Bundles Phase 204 (ferro-storage CDN quartet) + Phase 206 (STORAGE_* rename) in one push. `ferro-stripe 0.9.0`, `ferro-mcp-server`, and `ferro-mcp-oauth` are ALREADY on crates.io at 0.2.52 — no bootstrap needed (the publish-update token updates existing crates; the wave skips already-published versions).
 > - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
+> - Open consumer-side phase in gestiscilo-it/app to adopt STORAGE_* rename (mirrors gestiscilo Phase 205 shape).
 
 ## Shipped Milestone: v12.6 Consumer App MCP (Browser Login) (Phases 197-200)
 
