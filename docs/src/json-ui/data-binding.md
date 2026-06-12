@@ -81,7 +81,7 @@ With data `{ "user": { "role": "admin" } }`, `label` resolves to `"admin"` (stri
 }
 ```
 
-Note: `data_path` in `DataTable`, `Input`, `Select`, `Checkbox`, and `Switch` is a plain string JSON Pointer — not a `$data` expression. The component reads rows or pre-fills values from that path at render time, but the path itself is literal.
+Note: `data_path` in `DataTable`, `KanbanBoard`, `Input`, `Select`, `Checkbox`, and `Switch` is a plain string JSON Pointer — not a `$data` expression. The component reads rows, columns, or pre-fills values from that path at render time, but the path itself is literal.
 
 ### $template — string interpolation
 
@@ -243,3 +243,86 @@ Elements can be conditionally shown or hidden with the `"visible"` field. Visibi
 ```
 
 For the full visibility operator reference, see [Visibility](visibility.md).
+
+## data_path Reference
+
+`data_path` is a plain JSON-pointer string (not a `$data` expression). It is supported by three component families and follows a consistent resolution convention: the path is walked against the full handler data object, and the component reads whatever value resides there.
+
+### DataTable — row array
+
+```
+data_path: "/data/{service.name}"
+```
+
+Resolves to an array of row objects. Each row is one `<tr>`; column `key` fields project as cell text.
+
+```json
+"staff_table": {
+  "type": "DataTable",
+  "props": {
+    "data_path": "/data/staff",
+    "columns": [
+      { "key": "name",   "label": "Name" },
+      { "key": "active", "label": "Active", "format": "boolean" }
+    ]
+  }
+}
+```
+
+Handler provides `{ "data": { "staff": [ ... ] } }`.
+
+### KanbanBoard — column array
+
+```
+data_path: "/data/{service.name}/columns"
+```
+
+Resolves to an array of `KanbanColumnProps` objects (`{ id, title, count, children }`). The `/columns` suffix distinguishes the column array from the flat item array at `/data/{service.name}`.
+
+```json
+"order_kanban": {
+  "type": "KanbanBoard",
+  "props": {
+    "data_path": "/data/order/columns",
+    "columns": []
+  }
+}
+```
+
+Handler provides:
+
+```json
+{
+  "data": {
+    "order": {
+      "columns": [
+        { "id": "draft",     "title": "Draft",     "count": 2, "children": [] },
+        { "id": "submitted", "title": "Submitted", "count": 1, "children": [] }
+      ]
+    }
+  }
+}
+```
+
+The static `columns` array in the spec (derived from the service's state machine when using the projection renderer) serves as the schema reference and render fallback when `data_path` fails to resolve. When `data_path` resolves, it takes precedence.
+
+### StatCard — scalar value
+
+`StatCardProps.value_path` resolves to a single scalar (string or number):
+
+```
+value_path: "/data/{service.name}/{field.name}"
+```
+
+```json
+"revenue_stat": {
+  "type": "StatCard",
+  "props": {
+    "label": "Total Revenue",
+    "value": "",
+    "value_path": "/data/statistics/total_revenue"
+  }
+}
+```
+
+Handler provides `{ "data": { "statistics": { "total_revenue": "€12,450" } } }`. The static `value` string is the fallback when `value_path` is absent or fails to resolve.

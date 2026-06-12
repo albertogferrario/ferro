@@ -294,6 +294,151 @@ let spec = JsonUiRenderer.render(&order, &intents, &ctx).expect("rendering a val
 | `VisualContext` | Render parameters: intent index, current state, mode, template overrides |
 | `RenderMode` | `Display` for read-only output; `Input` for editable form output |
 
+## Rendering a Projection Inside an App Shell
+
+A projection `Spec` is a standalone spec rooted at a single content component (`DataTable`, `KanbanBoard`, or `StatCard`). The spec contains no surrounding dashboard chrome — no sidebar, navigation bar, or `PageHeader` wrapper. That surrounding structure is the consumer application's responsibility.
+
+Two supported composition patterns:
+
+### Pattern A: Merge into an existing layout spec
+
+Insert the projection root element into an existing layout spec's main-content children at handler time:
+
+```rust
+// Consumer handler pseudocode
+let intents = derive_intents(&order_service);
+let ctx = VisualContext { mode: RenderMode::Display, ..Default::default() };
+let projection_spec = JsonUiRenderer.render(&order_service, &intents, &ctx)?;
+
+// Load the dashboard layout spec and graft the projection root into it
+let mut layout_spec = /* load or build dashboard layout spec */;
+let root_id = projection_spec.root.clone();
+if let Some(root_el) = projection_spec.elements.get(&root_id) {
+    layout_spec.elements.insert(root_id.clone(), root_el.clone());
+    // also insert any aux elements the projection added
+    for (id, el) in &projection_spec.elements {
+        if id != &root_id {
+            layout_spec.elements.insert(id.clone(), el.clone());
+        }
+    }
+    // wire the projection root into the layout's main-content children list
+    if let Some(main_content) = layout_spec.elements.get_mut("main_content") {
+        main_content.children.push(root_id);
+    }
+}
+```
+
+### Pattern B: Return the projection spec at a known key
+
+The handler returns both the data payload and the projection spec under a documented key. The dashboard layout template reads and embeds it:
+
+```rust
+// Handler response (projection spec returned alongside row data)
+serde_json::json!({
+    "data": {
+        "order": order_rows
+    },
+    "projection": serde_json::to_value(&projection_spec)?
+})
+```
+
+The layout template references `projection` at its documented key to render the content area.
+
+### No first-class layout context
+
+A `VisualContext.layout` field for automatic app-shell selection is not provided in this release. The composition patterns above are the supported contract. Authorization of rendered actions, route existence, and tenant scoping remain the consumer application's responsibility — the renderer emits affordances but does not enforce access control.
+
+---
+
+## Projection Content Binding
+
+This section documents the URL and data-path conventions that link a projection `Spec` to the consumer application's route table and handler data. A consumer integrating a projection spec must implement routes and data shapes that match these conventions.
+
+### Action routes
+
+`ActionDef` has no explicit `route` field. The renderer synthesizes action URLs from service and action names:
+
+| Context | URL pattern | Notes |
+|---------|-------------|-------|
+| Page-level action | `/{service.name}/{action.name}` | Emitted as a `Button` or `DropdownMenu` item |
+| DataTable row action | `/{service.name}/{row_key}/{action.name}` | `{row_key}` is substituted per row at render time using `DataTableProps.row_key` (defaults to `"id"`) |
+
+The consumer's route table must define handlers at these paths for the action affordances to be functional. Example for a service named `order` with an action named `approve`:
+
+- Page-level: `POST /order/approve`
+- Row-level: `POST /order/{id}/approve`
+
+### DataTable rows
+
+`DataTableProps.data_path` points to the flat array of row objects in the handler response:
+
+```
+data_path: "/data/{service.name}"
+```
+
+Handler provides:
+
+```json
+{
+  "data": {
+    "staff": [
+      { "id": 1, "name": "Alice", "active": true },
+      { "id": 2, "name": "Bob",   "active": false }
+    ]
+  }
+}
+```
+
+### KanbanBoard columns
+
+`KanbanBoardProps.data_path` points to an array of `KanbanColumnProps` objects, one per state:
+
+```
+data_path: "/data/{service.name}/columns"
+```
+
+The `/columns` suffix distinguishes the column array from the flat item array at `/data/{service.name}`. Handler provides:
+
+```json
+{
+  "data": {
+    "order": {
+      "columns": [
+        { "id": "draft",     "title": "Draft",     "count": 2, "children": [] },
+        { "id": "submitted", "title": "Submitted", "count": 1, "children": [] },
+        { "id": "done",      "title": "Done",      "count": 0, "children": [] }
+      ]
+    }
+  }
+}
+```
+
+The static `columns` in the emitted spec (derived from the service's state machine) serve as the schema reference and render fallback when `data_path` fails to resolve. The handler is responsible for grouping items by state and computing per-column counts. When `data_path` resolves, it takes precedence over the static columns.
+
+### StatCard value
+
+`StatCardProps.value_path` points to the scalar value for the primary stat field:
+
+```
+value_path: "/data/{service.name}/{field.name}"
+```
+
+The renderer picks the first `Money` or `Quantity` readable field as the primary stat. Handler provides:
+
+```json
+{
+  "data": {
+    "statistics": {
+      "total_revenue": "€12,450"
+    }
+  }
+}
+```
+
+The `value_path` field is resolved at render time via the same JSON-pointer mechanism as `data_path` on other components (see [Data Binding](../json-ui/data-binding.md)). The static `value` string in the spec is the fallback when `value_path` is absent or fails to resolve.
+
+---
+
 ## MCP Tools
 
 Five MCP tools support Service Projections development: listing, inspection, rendering, validation, and coverage analysis.
