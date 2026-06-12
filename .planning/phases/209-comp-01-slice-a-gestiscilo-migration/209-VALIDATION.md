@@ -23,7 +23,7 @@ created: 2026-06-12
 |----------|-------|
 | **Framework** | Rust `#[test]` (ferro intent assertions) + manual checklist markdown (gestiscilo equivalence) |
 | **Config file** | none — ferro tests in `ferro-projections/tests/` (Phase 207 catalog baseline) |
-| **Quick run command** | `cargo test -p ferro-projections gestiscilo_slice_a` |
+| **Quick run command** | `cargo test -p ferro-projections real_world_slice_a` |
 | **Full suite command** | `cargo test --all-features` |
 | **Estimated runtime** | ~30 seconds (ferro intent tests); screenshot capture is manual per gestiscilo merge |
 
@@ -31,7 +31,7 @@ created: 2026-06-12
 
 ## Sampling Rate
 
-- **After every task commit:** Run `cargo test -p ferro-projections gestiscilo_slice_a` (per-entity intent assertion)
+- **After every task commit:** Run `cargo test -p ferro-projections real_world_slice_a` (per-entity intent assertion)
 - **After every plan wave:** Run `cargo test --all-features`
 - **Per gestiscilo entity merge:** Chrome DevTools MCP before/after capture + functional checklist review
 - **Before `/gsd-verify-work`:** Full suite green; all three equivalence records filed; weakness note non-empty
@@ -70,7 +70,7 @@ Each migration's equivalence record (`EQUIV-{entity}.md` in this phase directory
 
 ## Wave 0 Requirements
 
-- [ ] `ferro-projections/tests/` — three canonical gestiscilo ServiceDef fixtures (staff/order/stats) with `derive_intents()` assertions. Live in `catalog.rs` as a `gestiscilo_slice_a` sub-module OR a new `tests/gestiscilo.rs` (planner decides — open question 3).
+- [ ] `ferro-projections/tests/` — three canonical gestiscilo ServiceDef fixtures (staff/order/stats) with `derive_intents()` assertions. Live in `catalog.rs` as a `real_world_slice_a` sub-module OR a new `tests/gestiscilo.rs` (planner decides — open question 3).
 - [ ] gestiscilo `Cargo.toml` — enable `projections` feature: `ferro = { ..., features = ["json-ui", "theme", "projections"] }` (one-line; activates already-published 0.2.54 code, no ferro bump).
 - [ ] Three equivalence record stubs in this phase directory: `EQUIV-staff-browse.md`, `EQUIV-orders-process.md`, `EQUIV-stats-summarize.md`.
 

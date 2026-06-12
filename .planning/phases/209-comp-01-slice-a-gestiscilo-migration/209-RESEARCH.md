@@ -417,7 +417,7 @@ Each migration's equivalence record (`.planning/phases/209-comp-01-slice-a-gesti
 
 ### Wave 0 Gaps
 
-- [ ] `ferro-projections/tests/` — add three canonical gestiscilo ServiceDef fixtures (staff, order, stats) with `derive_intents()` assertions. These can live in `catalog.rs` (Phase 207 file) as a new `gestiscilo_slice_a` sub-module, or in a new `tests/gestiscilo.rs` file.
+- [ ] `ferro-projections/tests/` — add three canonical gestiscilo ServiceDef fixtures (staff, order, stats) with `derive_intents()` assertions. These can live in `catalog.rs` (Phase 207 file) as a new `real_world_slice_a` sub-module, or in a new `tests/gestiscilo.rs` file.
 - [ ] Gestiscilo `Cargo.toml` — enable `projections` feature: `ferro = { ..., features = ["json-ui", "theme", "projections"] }`
 - [ ] Three equivalence record markdown files (stubs): `EQUIV-staff-browse.md`, `EQUIV-orders-process.md`, `EQUIV-stats-summarize.md` in this phase directory
 
@@ -483,7 +483,7 @@ The migration uses `spec.merge_data(json!({...}))` to inject runtime data (rows,
 
 The Statistics view has a period switcher (`Tabs` component with `default_tab: { "$data": "/period_str" }`). The ServiceDef derivation does not know about period switching — this is a controller-side concern. The rendered projection spec will not include the Tabs component unless added manually post-render. The workaround: the Statistics migration may require `spec.merge_data()` supplemented with `spec.elements.insert("period_tabs", Element::...)` to inject the Tabs element. Or the Statistics migration may be structured as: ServiceDef renders the stat cards only, and the wrapper (Tabs, chart card) is expressed as a supplementary spec layer merged on top. This is a structural design decision the planner needs to resolve.
 
-**Open question for planner:** For the Statistics migration, should the `ServiceDef` + `JsonUiRenderer` render ONLY the stat cards (StatCard × 3), with the chart and Tabs expressed as supplementary data-driven elements outside the projection? Or should the full Statistics page be re-expressed as a composite spec that uses the projection for the card section only? The former is safer for the first slice and produces a cleaner equivalence record.
+**Open question for planner — RESOLVED (Plan 04):** For the Statistics migration, should the `ServiceDef` + `JsonUiRenderer` render ONLY the stat cards (StatCard × 3), with the chart and Tabs expressed as supplementary data-driven elements outside the projection? Or should the full Statistics page be re-expressed as a composite spec that uses the projection for the card section only? **Resolution:** stat-cards-only — the projection renders the StatCard section; chart/Tabs/trend-table are opaque `merge_data` passthroughs. This is the cleanest first-slice structure and the deliberate SC#5 gap surface (the SVG chart has no `FieldMeaning`). See `209-04-PLAN.md` `<objective>`.
 
 ### Risk 4: First-migration friction budget (SC#5 gate)
 
