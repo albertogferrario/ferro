@@ -1,58 +1,44 @@
-# Requirements: v12.6 Consumer App MCP (Browser Login)
+# Requirements: v13.0 Compressive Validation
 
-**Milestone goal:** A deployed ferro application serves its own OAuth-protected MCP endpoint so a consumer agent can authenticate through the browser and use the application's projections as per-tenant tools.
+**Milestone goal:** Validate the projection / intent abstraction empirically — the first slice of the v13.0 "Road to v1.0" program. Targets the compressive dimension (substance-first priority #1) and v1.0 criterion #2: *projection / intent is validated through real applications and a synthetic catalog of canonical app classes.*
 
-**Scope:** Walking skeleton — read-only, one opt-in projection, end to end. The MCP endpoint is a rendering target for the projection / intent system (an `McpRenderer` alongside `JsonUiRenderer`), with OAuth/transport implemented to the MCP authorization specification as supporting infrastructure. Design spec: `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md`.
+**Scope:** Validation and measurement against ferro's own projection/intent system. No new published crates; no changes to the seven-intent vocabulary (`ferro-projections/src/intent.rs`) in this milestone. Phase numbering continues from 206 (v13.0 starts at Phase 207).
 
-**Acceptance:** the final phase carries a dogfood GO/NO-GO success criterion — a real MCP client completes a browser login against a live consumer application and lists one projection's data scoped to the authenticated tenant. A run that does not work end to end is cause to revise the design rather than ship it.
+**The honesty requirement (applies to every COMP phase):** Validation must be able to *fail* and surface real weaknesses — a weakness in any beauty dimension is a v1.0 blocker. Every phase MUST name an adversarial input/fixture and include a "discovered weaknesses" section in its verification. A phase that finds nothing wrong is a red flag, not a success.
 
-## v12.6 Requirements
+## v13.0 Requirements
 
-### Projection → Tool Rendering
-- [x] **AMCP-01**: A projection marked MCP-exposed (read-only, opt-in) appears in the MCP server's `tools/list` as exactly one tool; an unmarked projection never appears.
-- [x] **AMCP-02**: The exposed tool's input JSON schema is derived from the projection's `ServiceDef` fields (filter / pagination parameters), not declared separately from the validation applied on the call.
-- [x] **AMCP-03**: Calling the tool runs the projection's existing read path and returns its rows as MCP structured content, with the output shape derived from the projection.
-- [x] **AMCP-04**: The `McpRenderer` lives in a new output crate `ferro-mcp-server` implementing the `Renderer` trait; `ferro-projections` gains no renderer dependency.
+### Compressive Validation
 
-### Endpoint & Transport
-- [x] **AMCP-05**: The application serves an MCP endpoint over Streamable HTTP supporting `initialize`, `tools/list`, and `tools/call`.
-
-### Browser Authentication (OAuth)
-- [x] **AMCP-06**: An unauthenticated request to the MCP endpoint returns `401` with a `WWW-Authenticate` header referencing the protected-resource metadata.
-- [x] **AMCP-07**: The application publishes OAuth discovery metadata (`.well-known/oauth-protected-resource`, `.well-known/oauth-authorization-server`) and a dynamic client registration endpoint, advertising the authorization-code grant with PKCE (S256).
-- [x] **AMCP-08**: A consumer completes a browser authorization-code + PKCE flow that reuses the application's existing login and a consent step, receiving an access token bound to `(user, tenant)` and audience-restricted to the MCP endpoint.
-- [x] **AMCP-09**: The MCP endpoint validates the bearer token; an invalid or expired token returns `401`, and an audience or tenant mismatch returns `403`.
-
-### Per-Tenant Scoping & Authorization
-- [x] **AMCP-10**: A tool call executes within the token's tenant context via the existing multi-tenant middleware; a token scoped to one tenant returns only that tenant's rows.
-- [x] **AMCP-11**: A tool call is gated by the same policy layer as the web surface; a policy-denied call returns an MCP tool error with no data disclosure.
+- [ ] **COMP-01**: A real application (`gestiscilo`) is partially migrated to projection-driven rendering — **Slice A**: three entities spanning the Browse, Process, and Summarize intents, migrated one-per-merge with render equivalence checked against the existing views, and a single ferro publish at the end of the slice. This is the first real-world validation signal for the projection/intent abstraction. (Full gestiscilo migration — 130 views, 69 models — is explicitly out of scope for v13.0.)
+- [ ] **COMP-02**: A synthetic catalog of canonical app classes covering the seven structural intents exists with a regression harness that runs on every `derive_intents()` / projection change. The harness asserts **structural invariants** (e.g. the derived primary intent and at least one key signal per fixture; a Browse projection renders a table with the correct column count) rather than byte-for-byte renderer snapshots, and includes at least one fixture with competing signals proving the intended intent wins under competition.
+- [ ] **COMP-03**: An agent-success-rate harness measures whether an agent reading `ferro-mcp` introspection can produce a working projection from a natural-language description. Pass criteria are **multi-tier** (structural validity → intent coverage → functional completeness → checkpoint pass) and **stated before any runs are collected**; each task runs ≥3 trials; a baseline (model version, prompt version, per-tier pass rates) is committed. The corpus spans all seven intents. The harness drives ferro-mcp developer tools as an in-process client (not `ferro-mcp-server`), and guards against training-data contamination.
+- [ ] **COMP-04**: A time-to-working-app benchmark measures `cargo new` → a running service with authentication, three entity types, and one background job. The published number includes at least one **cold-cache run** (no warm Cargo cache / pre-installed toolchain); the measurement apparatus is committed as a document. The benchmark target is gated (`FERRO_BENCH=1`) to avoid exhausting CI disk.
+- [ ] **COMP-05**: An intent-vocabulary cross-modality sketch takes one intent (e.g. `Process`) and expresses the same feature as a mobile flow, a voice interaction, and a CLI command, producing a **document** that analyzes whether the seven-intent vocabulary survives non-visual rendering. The deliverable is a v14.0 planning input only — it MUST NOT modify `intent.rs` or any renderer in v13.0. v14.0 Channel Projection depends on this analysis.
 
 ## Future Requirements (deferred)
 
-- Write intents — Collect / Process projections rendered as create/submit tools, with a confirmation step.
-- Automatic exposure of multiple projections (catalog-wide), with per-projection configuration.
-- MCP App interactive UI derived from intent templates (Browse→grid, Process→kanban) rather than hand-authored.
-- Development-time MCP experience improvements in `ferro-mcp` (Track A: start / use agent experience).
-- Refresh-token rotation and long-session ergonomics.
+- **Rest of the Road to v1.0 program** — the operational (OPER-01..07), conceptual (CONC-01..04, incl. crate-consolidation audit + ServiceDef derivation bridge), and aesthetic (AEST-01..04) dimensions are subsequent v13.x milestones, prioritized after the compressive validation establishes baseline signal.
+- **Full gestiscilo migration** — beyond Slice A, migrating the remaining views/models once the abstraction is validated.
+- **Intent vocabulary revision** — if COMP-05 reveals the seven intents need reshaping for non-visual rendering, that revision is a v14.0 research outcome (tracked as CHAN-05), not a v13.0 change.
 
 ## Out of Scope
 
-- An MCP-specific permission model separate from the existing policy layer — reusing existing policies and multi-tenant middleware is a design invariant, not a gap to fill later.
-- Rate limiting beyond what the application already applies.
-- A local (stdio) consumer transport for the deployed app — the consumer endpoint is HTTP. (`ferro-mcp` already provides stdio for the development-time surface.)
+| Item | Reason |
+|------|--------|
+| Changing `ferro-projections/src/intent.rs` (the 7 intents) | COMP-05 is a probe, not a build; any revision cascades through 5+ crates and is a v14.0 decision |
+| New published crates | All five COMP artifacts fit in existing crate `tests/` dirs or `pub(crate)` sketch modules |
+| rmcp upgrade (≥1.5) | `rmcp 0.12`'s `transport-async-rw` in-process transport covers COMP-03; upgrading is a breaking change across 3 crates |
+| `hyperfine` or external benchmark binaries | Violates the no-external-build-tooling constraint; use `criterion` |
+| Full gestiscilo migration | Months of cross-repo work; Slice A provides the v1.0 validation signal |
+| Non-visual renderer *implementations* | v14.0 Channel Projection direction; COMP-05 only sketches |
 
 ## Traceability
 
-| REQ-ID | Phase | Status |
-|--------|-------|--------|
-| AMCP-01 | Phase 197 | Complete |
-| AMCP-02 | Phase 197 | Complete |
-| AMCP-03 | Phase 197 | Complete |
-| AMCP-04 | Phase 197 | Complete |
-| AMCP-05 | Phase 198 | Complete |
-| AMCP-06 | Phase 198 | Complete |
-| AMCP-07 | Phase 199 | Complete |
-| AMCP-08 | Phase 199 | Complete |
-| AMCP-09 | Phase 199 | Complete |
-| AMCP-10 | Phase 200 | Complete |
-| AMCP-11 | Phase 200 | Complete |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| COMP-01 | TBD (roadmap) | Pending |
+| COMP-02 | TBD (roadmap) | Pending |
+| COMP-03 | TBD (roadmap) | Pending |
+| COMP-04 | TBD (roadmap) | Pending |
+| COMP-05 | TBD (roadmap) | Pending |
