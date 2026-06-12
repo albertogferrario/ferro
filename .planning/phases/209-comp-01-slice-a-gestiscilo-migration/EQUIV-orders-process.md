@@ -26,22 +26,30 @@
 
 ## Abstraction gaps surfaced
 
-### Gap A (MAJOR, blocking) — `JsonUiRenderer` Process-intent render does not produce a kanban; `merge_data` injects data, not components
+### Gap A (MAJOR, blocking) — ferro's Process projection emits a deliberate placeholder kanban, not a state-machine-aware, data-bound board (ferro-documented deferred limitation)
 
-**What happened.** The migrated handler builds the Order `ServiceDef` (Process intent, guarded state machine), calls `JsonUiRenderer.render(...)`, then `spec.merge_data(json!({ kanban_columns, orders, ... }))`. The rendered page is a generic default skeleton — a header with the entity display name ("Order") and a count badge ("0"). The kanban board, the order cards, and the dashboard layout shell are all absent.
+**Root cause (confirmed against ferro source — NOT a migration mistake).** The migrated handler called the API correctly. The rendered "Order / 0" is exactly the output of `ferro-json-ui/src/projection/builder.rs::emit_kanban_root`, whose own doc comment states:
 
-**Why it is structural.** `spec.merge_data(...)` shallow-merges runtime **data** into the spec's data object; it does **not** add **components** to the spec tree. The projection render for the Process intent (at 0.2.54) emits a minimal summary layout, not a `KanbanBoard` bound to `/kanban_columns`. So even though the column array is present in the merged data, no component consumes it. The bespoke `orders_index.json` carried an explicit hand-authored `KanbanBoard` + card template + page layout; the `ServiceDef` + intent derivation cannot reconstruct that structure. This is not a field-mapping gap — it is a structural inability of the Process intent template to compose a kanban from `ServiceDef` + `merge_data` alone.
+> *"Process root. KanbanBoard emits a single root element with columns in props — no child elements ... Full state-machine awareness is a deferred idea (see CONTEXT.md); for now we emit a single placeholder column carrying the service's display name."*
 
-**Second-order loss.** The projection render replaced the WHOLE page, so the dashboard layout chrome (sidebar/nav) is also gone — the bespoke handler rendered the view inside a dashboard layout shell that the projection path does not reproduce.
+That function hard-codes a single `KanbanColumnProps { title: resolve_title(service) /* "Order" */, count: 0 }` and `KanbanBoardProps { data_path: None }`. So the Process render at 0.2.54 is, by ferro's own design, a one-placeholder-column board that is **not state-machine-aware** (it does not derive columns from the `ServiceDef`'s state machine) and **not data-bound** (`data_path: None` — merged runtime data, including `kanban_columns`, has nothing to bind to). The intent *classification* is correct (Process ✓, ferro test green); the intent *rendering* is an intentional stub.
 
-**Workaround applied (gestiscilo-side, D-05):** none viable that preserves the migration. Injecting the `KanbanBoard` component into the rendered spec post-render (not just data) would mean re-hand-authoring the very component the projection was meant to derive — which defeats the migration for this entity. Recorded as a blocker; branch left unmerged.
+**This is the abstraction's real maturity level, empirically confirmed:** the projection builder emits intent-correct **layouts** but its **content binding is partial**, and several slots are explicitly deferred placeholders in ferro's own code:
+- **Process → KanbanBoard:** placeholder column, not state-machine-aware, not data-bound (`emit_kanban_root`). ← this entity.
+- **Summarize → StatCard:** `value: String::new()` — empty, not data-bound (`emit_statcard_root`). The Statistics migration (gestiscilo 209) would render labels with no values.
+- **actions slot (all intents):** `emit_actions_placeholder` — *"Intentionally empty. Deferred to Phase 118+."* No row/card actions render for any migrated view.
+- **Browse → DataTable:** the one comparative bright spot — `data_path: /data/{service.name}`, genuinely data-bound; rows render IF runtime data is merged at that exact path. (Staff/Browse is the most migratable of the three, modulo the data-path contract and the missing actions slot.)
 
-**Deferred ferro follow-up (NOT done here, D-04):** the ferro Process intent template / `JsonUiRenderer` needs to emit a `KanbanBoard` (and respect a layout context) for state-machine-bearing `ServiceDef`s, and/or `merge_data` needs a component-injection counterpart. Candidate for a later v13.x ferro slice.
+**Second-order loss.** The projection render produces a standalone spec; the dashboard layout chrome (sidebar/nav) the bespoke handler wrapped the view in is not reproduced by the projection path.
 
-### Gap 3 (as forecast, LOW-MED) — kanban column labels have no projection representation
+**Workaround applied (gestiscilo-side, D-05):** none viable that preserves the migration. The missing structure (real columns, cards, actions) is exactly what the projection was meant to derive; re-hand-authoring it defeats the migration. Recorded as a blocker; `feat/207` left unmerged.
 
-The state→column-label mapping ("Confermati", "In corso", …) has no `FieldMeaning`/`StateMachine` hook; `build_status_kanban_columns(...)` stays controller-side. Subsumed by Gap A (there is no kanban to label at all).
+**Deferred ferro follow-up (NOT done here, D-04):** ferro's projection builder needs state-machine-aware Process column derivation + data binding (`emit_kanban_root`), Summarize stat-value binding (`emit_statcard_root`), and action wiring (`emit_actions_placeholder`, ferro's own "Phase 118+"). These are pre-existing ferro deferrals; the migration confirmed they block real-world Process/Summarize adoption. Candidate for a later v13.x ferro slice.
+
+### Gap 3 (as forecast, LOW-MED) — subsumed
+
+The state→column-label mapping was the predicted gap, but Gap A is deeper: there is no real kanban to label — ferro emits one placeholder column regardless.
 
 ## Assessment
 
-The first migrated entity produced the strongest possible validation signal: for a Process/kanban view, the projection abstraction at 0.2.54 does **not** yield a functionally equivalent render. Intent *derivation* is correct (Process is classified right); intent *rendering* is not (the Process template is not a kanban, and `merge_data` cannot supply the missing structure). This is a load-bearing finding for ferro's compressive dimension — the Process intent is the gap, not the migration. Orders should not merge as-is; the result feeds ferro 209's weakness note (SC#5) and a deferred ferro Process-template fix.
+The first migrated entity produced the strongest possible validation signal, and root-cause analysis confirmed it is **a real ferro limitation, not a migration error**. The projection abstraction at 0.2.54 derives intent correctly and emits the intent-appropriate **layout**, but its **content binding is incomplete by design**: Process (kanban) and Summarize (stat values) and actions are ferro-documented deferred placeholders; only Browse is meaningfully data-bound. The compressive abstraction is structurally present but not yet content-complete for real views. gestiscilo Slice A is therefore **blocked on ferro maturing the projection builder**, not on the migration technique. This is precisely the empirical signal COMP-01 was designed to surface.
