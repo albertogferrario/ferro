@@ -2,6 +2,7 @@
 //!
 //! This module is only compiled when the `s3` feature is enabled.
 
+use crate::env_helpers::env_with_fallback;
 use crate::storage::{FileMetadata, PutOptions, StorageDriver, Visibility};
 use crate::Error;
 use async_trait::async_trait;
@@ -24,7 +25,8 @@ pub struct S3Driver {
 impl S3Driver {
     /// Create a new S3 driver.
     ///
-    /// Reads `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from environment.
+    /// Reads `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_KEY` from environment;
+    /// `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` accepted as deprecated aliases.
     /// When `endpoint_url` is `Some`, enables path-style addressing (for MinIO / R2).
     pub fn new(
         bucket: String,
@@ -32,8 +34,10 @@ impl S3Driver {
         url_base: Option<String>,
         endpoint_url: Option<String>,
     ) -> Self {
-        let key_id = std::env::var("AWS_ACCESS_KEY_ID").unwrap_or_default();
-        let secret = std::env::var("AWS_SECRET_ACCESS_KEY").unwrap_or_default();
+        let key_id = env_with_fallback("STORAGE_ACCESS_KEY_ID", &["AWS_ACCESS_KEY_ID"])
+            .unwrap_or_default();
+        let secret = env_with_fallback("STORAGE_SECRET_KEY", &["AWS_SECRET_ACCESS_KEY"])
+            .unwrap_or_default();
 
         let creds = aws_credential_types::Credentials::from_keys(key_id, secret, None);
 

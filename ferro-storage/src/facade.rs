@@ -2,6 +2,8 @@
 
 use crate::config::StorageConfig;
 use crate::drivers::{LocalDriver, MemoryDriver};
+#[cfg(feature = "s3")]
+use crate::env_helpers::env_with_fallback;
 use crate::storage::{FileMetadata, PutOptions, StorageDriver};
 use crate::Error;
 use bytes::Bytes;
@@ -222,7 +224,7 @@ impl Storage {
                     .clone()
                     .unwrap_or_else(|| "us-east-1".to_string());
                 let url_base = config.url.clone();
-                let endpoint_url = std::env::var("AWS_URL").ok();
+                let endpoint_url = env_with_fallback("STORAGE_ENDPOINT", &["AWS_URL"]);
                 Arc::new(crate::drivers::S3Driver::new(
                     bucket,
                     region,
