@@ -1,12 +1,14 @@
 ---
-phase: 209-crud-handler-proc-macros
+phase: 212-crud-handler-proc-macros
+milestone: v13.1
 status: scoped — discuss-phase needed before plan
 created: 2026-06-12
 created_by: gestiscilo Phase 202 evidence-gathering pass
+renumbered: "2026-06-12 — relocated from 209 to 212 (new milestone v13.1) to resolve a phase-number collision: ferro ROADMAP already owns 209 for COMP-01 Gestiscilo Migration"
 paired_consumer_phase: gestiscilo-it/app Phase 202 (see 202-EVIDENCE.md §8)
 ---
 
-# Phase 209 — CRUD handler proc macros
+# Phase 212 — CRUD handler proc macros
 
 Design proc macros for the recurring "GET form" + "POST handler" CRUD shapes that ferro framework consumers write today as 5–15 lines of boilerplate per handler. Two macros in scope, one previously-proposed macro explicitly dropped.
 
@@ -94,7 +96,7 @@ pub async fn save(req: Request, tenant: &Tenant, customer: &Customer) -> ActionR
 
 - `#[confirm_page]` macro — the gestiscilo evidence pass found ZERO recurring confirm-page view shape (202-EVIDENCE.md §1 Pattern E). Destructive actions are inline buttons that POST directly to `/elimina`. No macro target.
 
-- Multipart upload macros — gestiscilo has 4 distinct upload domains (operator file, customer self-upload, staff photo, document signing) with different shapes. Separate macros if warranted, not part of 209.
+- Multipart upload macros — gestiscilo has 4 distinct upload domains (operator file, customer self-upload, staff photo, document signing) with different shapes. Separate macros if warranted, not part of 212.
 
 ## Consumer evidence (what the macros must support)
 
@@ -125,9 +127,9 @@ The full duplication survey is in `/Users/alberto/repositories/gestiscilo-it/app
 
 6. **Form URL synthesis**: when `form_url` is a fmt template with `{id}` placeholders, where do the placeholders come from? The macro can read them from the route params it already extracted (`id` from `path = "{id:i64}"`), but other placeholders (e.g. `{from_query}`) need explicit syntax.
 
-7. **Editor experience**: jump-to-definition, rustdoc rendering, IDE autocomplete — proc macros often break these. The 209 design needs an "IDE experience" section before plan-write.
+7. **Editor experience**: jump-to-definition, rustdoc rendering, IDE autocomplete — proc macros often break these. The 212 design needs an "IDE experience" section before plan-write.
 
-## Deliverables when 209 ships
+## Deliverables when 212 ships
 
 - `ferro_macros::resource_get` + `ferro_macros::resource_post` proc macros, exported via the `ferro` facade
 - `Validator::validate_or_redirect(&data, &url) -> Result<(), ActionError>` helper that composes with the macro
@@ -139,8 +141,8 @@ The full duplication survey is in `/Users/alberto/repositories/gestiscilo-it/app
 
 ## Paired consumer phase
 
-`gestiscilo-it/app` Phase 202 (consumer-side adoption sweep) ships independently of 209 — it adopts the EXISTING ferro APIs (`param_as`, `into_action_error`, `tenant_resource_or_404` helper) and doesn't depend on the macros. After 209 publishes, an optional Phase 202b in gestiscilo adopts the macros on top of the cleaned-up consumer code. The split lets the boilerplate-removal value ship fast and decouples it from the proc-macro design timeline.
+`gestiscilo-it/app` Phase 202 (consumer-side adoption sweep) ships independently of 212 — it adopts the EXISTING ferro APIs (`param_as`, `into_action_error`, `tenant_resource_or_404` helper) and doesn't depend on the macros. After 212 publishes, an optional Phase 202b in gestiscilo adopts the macros on top of the cleaned-up consumer code. The split lets the boilerplate-removal value ship fast and decouples it from the proc-macro design timeline.
 
 ## Next step
 
-`/gsd-discuss-phase 209` (run inside the ferro repo) to lock the seven open questions in §"Open design questions". Plan-phase follows discuss-phase.
+`/gsd-discuss-phase 212` (run inside the ferro repo) to lock the seven open questions in §"Open design questions". Plan-phase follows discuss-phase.

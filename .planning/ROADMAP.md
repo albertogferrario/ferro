@@ -62,6 +62,7 @@
 - 📋 **v12.2 Frontend Performance Hardening** — Phases 182-184 (planned 2026-06-06). Source: gestiscilo-it jetskiadriatic startup-lifecycle audit. Three runtime/framework primitives, each paired 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). (182) `ferro-json-ui` `data-lazy-hero` runtime primitive — IntersectionObserver promoting `<video preload="none">` → `preload="auto"` on viewport approach; (183) `ferro-bundle` new crate — in-memory immutable byte blobs with content-hashed immutable-cache serving; (184) `ferro::InlineBudget` + `ferro::RequestTelemetry` — request-scoped accumulator with inline/preload decision + per-key ring buffer.
 - 📋 **v12.3 Deployment Platform Primitives** — Phases 185-188 (planned 2026-06-07). Source: gestiscilo-it v7.1 Tenant Frontend Platform (locked design at gestiscilo `.planning/research/v7.1-ARCHITECTURE.md`, D-01..D-06). Four generic primitives, each paired 1:1 with a gestiscilo consumer phase that bumps the published crate (185 ↔ gestiscilo 188, 186 ↔ gestiscilo 188, 187 ↔ gestiscilo 189, 188 ↔ gestiscilo 190). (185) `ferro::queue` — DB-backed job queue replacing the Redis-only ferro-queue backend: `Job` trait, `WorkerLoop` in `ferro serve`, atomic claim (Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` + `UPDATE…RETURNING`), retry/backoff, stuck-job reaper; (186) `ferro-deployments` new crate — immutable `Deployment` model, `DeploymentStorage` trait, atomic `promote`/`rollback`, `preview_url` helper, artifact-shape agnostic; (187) `ferro-assets` new crate — `Pipeline` composer with content-type-aware transforms: `html_minify` (lol_html), `css_minify` (lightningcss), `js_minify` (swc_ecma_minifier), `image_transcode` (pure-Rust `image`+`ravif`, AVIF+JPEG responsive variants — libvips rejected for thread-safety), `inject_before_tag`; (188) `ferro-storage` extension — `cdn_url()`, `PurgeApi` trait, DO Spaces CDN adapter (feature-flagged Bunny/Cloudflare). Primitives stay consumer-agnostic: static HTML sites, JSON-UI spec bundles, and Inertia SSR manifests all fit the deployment abstraction. See "v12.3 Deployment Platform Primitives" phase details at the end of this file.
 - 🚧 **v13.0 Compressive Validation** — Phases 207-211 (started 2026-06-12). First slice of the Road to v1.0 program: empirical validation of the projection/intent abstraction across five COMP items. COMP-02 synthetic regression catalog (Phase 207), COMP-05 cross-modality vocabulary sketch (Phase 208), COMP-01 gestiscilo migration Slice A (Phase 209), COMP-03 agent-success-rate harness (Phase 210), COMP-04 time-to-working-app benchmark (Phase 211). Targets v1.0 criterion #2 (projection/intent validated through real applications and a synthetic catalog) and the compressive beauty dimension (priority #1).
+- 📋 **v13.1 CRUD Handler Proc Macros** — Phase 212 (scoped 2026-06-12). Framework-ergonomics feature driven by the gestiscilo Phase 202 duplication survey: two route-attribute proc macros (`#[resource_get]`, `#[resource_post]`) that fold the recurring tenant-resolve + typed-param + tenant-scoped-lookup + 404-dispatch prelude (repeated 200+ times in a single consumer) into a macro, plus a `Validator::validate_or_redirect` helper. Scoped to ferro's framework-product axis, not one consumer's LoC. Originally mis-numbered 209 by the cross-repo gestiscilo evidence pass; relocated here to keep v13.0 purely Compressive Validation. Phase scope at `phases/212-crud-handler-proc-macros/212-CONTEXT.md`.
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
 
 ---
@@ -2822,5 +2823,37 @@ Plans:
   5. A "discovered weaknesses" section in the phase verification names at least one real finding: a step that was slower than expected, an unhappy path that was not measured, or a CI-gate decision with a rationale. An empty section fails the phase close.
 
 **Phase-time calibration:** Whether to assert a wall-clock threshold in CI (and at what value) is decided after a first cold-cache run. If CI disk constraints make it infeasible, the benchmark remains a committed manual artifact.
+
+**Plans:** TBD
+
+---
+
+## 📋 v13.1 CRUD Handler Proc Macros (Phase 212, scoped 2026-06-12)
+
+**Milestone Goal:** Eliminate the recurring "GET form" + "POST handler" CRUD boilerplate that ferro consumers write today as 5–15 lines per handler, by shipping two route-attribute proc macros plus a validator helper. This is a framework-ergonomics feature on ferro's framework-product axis — not a Compressive Validation item — which is why it sits in its own milestone rather than inside v13.0.
+
+**Source:** The gestiscilo Phase 202 duplication survey (`gestiscilo-it/app/.planning/phases/202-adopt-ferro-crud-macros/202-EVIDENCE.md`) — 244 `resolve_tenant()` calls, 55+ tenant-scoped lookups, 129 form-error redirects across one consumer's controllers. The existing `param_as` / `into_action_error` APIs close ~75% of the boilerplate; the macros close the remaining tenant-resolve + lookup + 404-dispatch prelude.
+
+**Provenance note:** This phase was originally mis-numbered 209 by the cross-repo gestiscilo evidence pass, colliding with ferro ROADMAP's 209 (COMP-01 Gestiscilo Migration). Resolved 2026-06-12 by relocating it to a dedicated milestone (v13.1, Phase 212); 209 remains COMP-01.
+
+#### Phases
+
+- [ ] **Phase 212: CRUD Handler Proc Macros** — `#[resource_get]` + `#[resource_post]` proc macros (tenant + typed-param + tenant-scoped-lookup + 404 prelude), `Validator::validate_or_redirect` helper, `TenantResolver` / `TenantScoped` traits, reference fixture, `cargo expand` rustdoc. Seven open design questions to lock in discuss-phase. Paired (optional, post-publish) with gestiscilo Phase 202b adoption.
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 212. CRUD Handler Proc Macros | 0/TBD | Scoped (discuss-phase needed) | - |
+
+#### Phase Details
+
+### Phase 212: CRUD Handler Proc Macros
+
+**Goal:** Ship `#[resource_get]` and `#[resource_post]` route-attribute proc macros that fold the recurring tenant-scoped CRUD prelude into a macro, plus `Validator::validate_or_redirect(&data, &url)`. Full scope, motivation, consumer evidence, deliverables, and the seven open design questions live in `phases/212-crud-handler-proc-macros/212-CONTEXT.md`.
+
+**Depends on:** Nothing (independent framework feature; consumes existing `param_as` / `into_action_error` / `#[action]` surfaces).
+
+**Requirements:** TBD (framework-product axis; not a COMP requirement)
+
+**Status:** Scoped — `/gsd-discuss-phase 212` to lock the seven open design questions, then plan-phase.
 
 **Plans:** TBD
