@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v13.2
 milestone_name: Projection Render Completeness
-status: planning
-stopped_at: Phase 213 context gathered
-last_updated: "2026-06-12T20:17:18.081Z"
-last_activity: 2026-06-12 -- Phase 209 validated; pivoted to v13.2/Phase 213, CONTEXT scoped
+status: executing
+stopped_at: Completed 213-01-PLAN.md
+last_updated: "2026-06-12T20:47:49.971Z"
+last_activity: 2026-06-12
 progress:
   total_phases: 95
   completed_phases: 84
-  total_plans: 352
-  completed_plans: 351
-  percent: 100
+  total_plans: 357
+  completed_plans: 352
+  percent: 99
 ---
 
 # Project State
@@ -20,20 +20,20 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v13.2 Phase 213 — Projection Render Completeness (ACTIVE, scoped). The unblock surfaced by Phase 209: wire ServiceDef data (state machine→kanban columns, actions, stat values, ImageUrl) into the projection render. CONTEXT.md ready; plan next. v13.0 PAUSED at 3/5 (210 agent harness + 211 benchmark deferred until the render is usable — substance-first).
+**Current focus:** Phase 213 — projection-render-completeness
 
 ## Current Position
 
 Milestone: v13.2 Projection Render Completeness — 🚧 ACTIVE (Phase 213). [v13.0 Compressive Validation ⏸ PAUSED at 3/5 — 207/208/209 ✅, 210/211 deferred]
-Phase: 213 — scoped (CONTEXT.md written from Phase 209 weakness note; Gaps A–E)
-Plan: Not started
+Phase: 213 (projection-render-completeness) — EXECUTING
+Plan: 2 of 5
 Next: /gsd-plan-phase 213
 Prior: Phase 209 ✅ VALIDATED 2026-06-12 (projection render content-incomplete — weakness note + 2 unmerged gestiscilo probe branches); v12.7 shipped 2026-06-12 (202-203); 0.2.54 published 2026-06-12
-Status: v13.2 active — ready to plan Phase 213
+Status: Ready to execute
 
 Progress: v13.0 paused at 3/5 (207/208/209 ✅); v13.2 0/1 (213 scoped)
 
-Last activity: 2026-06-12 -- Phase 209 validated; pivoted to v13.2/Phase 213, CONTEXT scoped
+Last activity: 2026-06-12
 Workspace version: 0.2.54
 
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
@@ -386,6 +386,7 @@ Progress: [██████████] 100%
 | Phase 205-fix-ferro-mcp-server-tools-call-result-content-blocks-wrap-p P02 | 5min | 2 tasks | 1 files |
 | Phase 207 P01 | 566 | 3 tasks | 10 files |
 | Phase 209 P01 | 202s | 2 tasks | 4 files |
+| Phase 213 P01 | 354 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -432,7 +433,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-12T20:17:18.062Z
-Stopped at: Phase 213 context gathered
-Resume file: .planning/phases/213-projection-render-completeness/213-CONTEXT.md
+Last session: 2026-06-12T20:47:49.963Z
+Stopped at: Completed 213-01-PLAN.md
+Resume file: None
 Next action: `/gsd-discuss-phase 202` to start v12.7 (no active milestone yet — set milestone + 🚧 marker when beginning)
