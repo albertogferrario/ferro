@@ -7,6 +7,7 @@
 use crate::config::McpServerConfig;
 use crate::{dispatch, render_exposed_tools, McpContext};
 use ferro_projections::ServiceDef;
+use rmcp::model::CallToolResult;
 use serde_json::{json, Value};
 
 /// Handle an MCP `initialize` request.
@@ -81,14 +82,20 @@ pub async fn handle_tools_call(
     }
 
     match dispatch(service, filters, limit, offset, db, tenant_id).await {
-        Ok(result) => json!({
-            "result": {
-                "content": result.rows,
+        // D-01 + D-02 + D-03: single structured value → valid camelCase MCP envelope.
+        // structured() emits one text content block + structuredContent + isError:false.
+        // total/limit/offset are nested INSIDE the payload (D-02), never as extra
+        // top-level keys on the outer "result" object.
+        Ok(result) => {
+            let payload = serde_json::json!({
+                "rows": result.rows,
                 "total": result.total,
                 "limit": result.limit,
                 "offset": result.offset
-            }
-        }),
+            });
+            let tool_result = CallToolResult::structured(payload);
+            json!({ "result": tool_result })
+        }
         // A bad filter key is a client parameter problem (-32602); any other
         // failure (DB/render/serialization) is internal (-32603). Clients use
         // the code to decide whether to fix the request or retry (WR-02).
