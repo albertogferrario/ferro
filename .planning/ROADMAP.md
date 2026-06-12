@@ -2582,11 +2582,11 @@ Plans:
 **Goal:** The ferro-mcp-server `tools/call` success result is a valid MCP `CallToolResult` (one `type:text` content block + `structuredContent` carrying `{rows,total,limit,offset}`), so a strict MCP client parses it without Zod errors; a client-schema interop regression test deserializes the emitted result with the client's own rmcp type; the live :8090 browser-OAuth dogfood (alice@acme.test → list_order) re-runs to GO with tenant scoping intact.
 **Requirements**: AMCP-03 (content fix), AMCP-10 (tenant scoping preserved)
 **Depends on:** Phase 204
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 205-01-PLAN.md — Fix the Ok arm (CallToolResult::structured) + inline D-04 interop regression test in jsonrpc.rs
-- [ ] 205-02-PLAN.md — Re-point tenant_a/tenant_b isolation tests to structuredContent.rows + assert content[0].type==text
+- [x] 205-02-PLAN.md — Re-point tenant_a/tenant_b isolation tests to structuredContent.rows + assert content[0].type==text
 - [ ] 205-03-PLAN.md — Live :8090 browser-OAuth dogfood (D-06 acceptance gate, autonomous:false) + 205-ACCEPTANCE.md
 
 ---
