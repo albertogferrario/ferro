@@ -34,10 +34,10 @@ impl S3Driver {
         url_base: Option<String>,
         endpoint_url: Option<String>,
     ) -> Self {
-        let key_id = env_with_fallback("STORAGE_ACCESS_KEY_ID", &["AWS_ACCESS_KEY_ID"])
-            .unwrap_or_default();
-        let secret = env_with_fallback("STORAGE_SECRET_KEY", &["AWS_SECRET_ACCESS_KEY"])
-            .unwrap_or_default();
+        let key_id =
+            env_with_fallback("STORAGE_ACCESS_KEY_ID", &["AWS_ACCESS_KEY_ID"]).unwrap_or_default();
+        let secret =
+            env_with_fallback("STORAGE_SECRET_KEY", &["AWS_SECRET_ACCESS_KEY"]).unwrap_or_default();
 
         let creds = aws_credential_types::Credentials::from_keys(key_id, secret, None);
 

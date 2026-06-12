@@ -1,12 +1,12 @@
 //! Configuration for the storage system.
 
+#[cfg(feature = "s3")]
+use crate::env_helpers::env_with_fallback;
 use crate::facade::DiskConfig;
 #[cfg(feature = "s3")]
 use crate::facade::DiskDriver;
 use std::collections::HashMap;
 use std::env;
-#[cfg(feature = "s3")]
-use crate::env_helpers::env_with_fallback;
 
 /// Configuration for the storage system.
 #[derive(Debug, Clone)]
