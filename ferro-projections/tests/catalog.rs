@@ -6,13 +6,24 @@
 //! (`ferro-projections/src/derive.rs`) is read-only.
 //!
 //! ## Discovered weaknesses
-//! TODO(Task 3): record >=1 real derivation limitation observed during calibration.
+//!
+//! **Analyze↔Summarize margin is structurally thin.** The `datetime_numeric_cooccurrence` signal
+//! contributes a single flat 0.35 raw weight regardless of how many DateTime fields are present.
+//! In the calibrated fixture (2 writable + 1 read_only DateTime, 1 read_only Money), Analyze wins
+//! by only 0.1429 normalized (runner_up=0.8571). Adding a second Money or Percentage field flips
+//! the winner to Summarize immediately because each numeric-aggregate field adds 0.30 raw weight
+//! while the co-occurrence signal does not scale with DateTime count. The calibrated ANALYZE_MARGIN
+//! is 0.04 — the tightest margin in the catalog. A future `derive.rs` change that raises the
+//! Summarize Money weight even slightly (e.g. 0.31/field) would flip this fixture without any
+//! structural signal overlap being added. This is a genuine derivation limitation: the engine has
+//! no way to distinguish a "time-series with one KPI" from a "dashboard with one KPI and a date".
 
 use ferro_projections::derive_intents;
 use ferro_projections::{
-    ActionDef, Cardinality, DataType, FieldMeaning, GuardDef, Intent, ServiceDef, StateDef,
-    StateMachine, Transition,
+    ActionDef, Cardinality, DataType, FieldMeaning, GuardDef, Intent, IntentScore, ServiceDef,
+    StateDef, StateMachine, Transition,
 };
+use proptest::prelude::*;
 
 // ---------------------------------------------------------------------------
 // Confidence floor + margin constants — calibrated from first observed run.
@@ -620,4 +631,293 @@ fn canonical_track() {
         "Track primary score must contain linear_states signal; got: {:?}",
         scores[0].matching_signals
     );
+}
+
+// ---------------------------------------------------------------------------
+// Snapshot helpers
+// ---------------------------------------------------------------------------
+
+/// Redacted view of an IntentScore for snapshots: signals only, no confidence floats.
+/// Per D-04: confidence values must not appear in snapshot payload.
+#[derive(serde::Serialize)]
+struct IntentSignals<'a> {
+    intent: String,
+    signals: &'a [String],
+}
+
+fn redacted_signals(scores: &[IntentScore]) -> Vec<IntentSignals<'_>> {
+    scores
+        .iter()
+        .map(|s| IntentSignals {
+            intent: format!("{:?}", s.intent),
+            signals: &s.matching_signals,
+        })
+        .collect()
+}
+
+// ---------------------------------------------------------------------------
+// Snapshot tests — one per canonical intent (D-03/D-04).
+// Snapshots capture ranked (intent, signals) only; no confidence floats.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn snapshot_canonical_browse() {
+    let svc = fixtures::browse_catalog();
+    let scores = derive_intents(&svc);
+    insta::assert_yaml_snapshot!("canonical_browse", redacted_signals(&scores));
+}
+
+#[test]
+fn snapshot_canonical_focus() {
+    let svc = fixtures::focus_detail();
+    let scores = derive_intents(&svc);
+    insta::assert_yaml_snapshot!("canonical_focus", redacted_signals(&scores));
+}
+
+#[test]
+fn snapshot_canonical_collect() {
+    let svc = fixtures::collect_form();
+    let scores = derive_intents(&svc);
+    insta::assert_yaml_snapshot!("canonical_collect", redacted_signals(&scores));
+}
+
+#[test]
+fn snapshot_canonical_process() {
+    let svc = fixtures::process_workflow();
+    let scores = derive_intents(&svc);
+    insta::assert_yaml_snapshot!("canonical_process", redacted_signals(&scores));
+}
+
+#[test]
+fn snapshot_canonical_summarize() {
+    let svc = fixtures::summarize_dashboard();
+    let scores = derive_intents(&svc);
+    insta::assert_yaml_snapshot!("canonical_summarize", redacted_signals(&scores));
+}
+
+#[test]
+fn snapshot_canonical_analyze() {
+    let svc = fixtures::analyze_timeseries();
+    let scores = derive_intents(&svc);
+    insta::assert_yaml_snapshot!("canonical_analyze", redacted_signals(&scores));
+}
+
+#[test]
+fn snapshot_canonical_track() {
+    let svc = fixtures::track_timeline();
+    let scores = derive_intents(&svc);
+    insta::assert_yaml_snapshot!("canonical_track", redacted_signals(&scores));
+}
+
+// ---------------------------------------------------------------------------
+// Adversarial tests — confusable intent pairs (D-06).
+// Each fixture resolves a genuine signal competition; winner annotated inline.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn adversarial_browse_vs_summarize() {
+    // competing: entity_name+category (Browse baseline ~0.50) vs money_fields (Summarize 0.90);
+    // Summarize must win because per-field money signal (0.3×3=0.90) outweighs entity_name
+    // accumulation (0.2×1 + 0.1×2 = 0.4) plus Browse baseline (0.1) = 0.50 raw Browse
+    let svc = ServiceDef::new("product_pricing")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("name", DataType::String, FieldMeaning::EntityName)
+        .field("category", DataType::String, FieldMeaning::Category)
+        .field("subcategory", DataType::String, FieldMeaning::Category)
+        .read_only_field("list_price", DataType::Float, FieldMeaning::Money)
+        .read_only_field("sale_price", DataType::Float, FieldMeaning::Money)
+        .read_only_field("cost", DataType::Float, FieldMeaning::Money);
+    let scores = derive_intents(&svc);
+    assert!(!scores.is_empty());
+    assert_eq!(
+        scores[0].intent,
+        Intent::Summarize,
+        "Summarize must beat Browse despite entity_name+category fields; got {:?}",
+        scores[0].intent
+    );
+}
+
+#[test]
+fn adversarial_process_vs_track() {
+    // competing: guarded_transitions (Process) vs linear_states+unguarded (Track);
+    // Process must win because branching factor + guard density dominates Track's linear signal
+    let svc = ServiceDef::new("mixed_workflow")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("title", DataType::String, FieldMeaning::EntityName)
+        .field("status", DataType::String, FieldMeaning::Status)
+        .field("amount", DataType::Float, FieldMeaning::Money)
+        .guard(GuardDef::new("is_authorized"))
+        .guard(GuardDef::new("is_complete"))
+        .guard(GuardDef::new("is_cancellable"))
+        .state_machine(
+            StateMachine::new("mixed_lifecycle")
+                .initial("draft")
+                .state(StateDef::new("draft"))
+                .state(StateDef::new("pending"))
+                .state(StateDef::new("approved"))
+                .state(StateDef::new("rejected").final_state())
+                .transition(Transition::new("draft", "submit", "pending").guard("is_complete"))
+                .transition(
+                    Transition::new("pending", "approve", "approved").guard("is_authorized"),
+                )
+                .transition(Transition::new("pending", "reject", "rejected").guard("is_authorized"))
+                .transition(Transition::new("draft", "cancel", "rejected").guard("is_cancellable")),
+        )
+        .action(
+            ActionDef::new("submit")
+                .precondition("is_complete")
+                .transition_trigger("submit"),
+        )
+        .action(
+            ActionDef::new("approve")
+                .precondition("is_authorized")
+                .transition_trigger("approve"),
+        )
+        .action(
+            ActionDef::new("reject")
+                .precondition("is_authorized")
+                .transition_trigger("reject"),
+        );
+    let scores = derive_intents(&svc);
+    assert!(!scores.is_empty());
+    assert_eq!(
+        scores[0].intent,
+        Intent::Process,
+        "Process must beat Track despite Status field; got {:?}",
+        scores[0].intent
+    );
+}
+
+#[test]
+fn adversarial_analyze_vs_summarize() {
+    // competing: datetime_numeric_cooccurrence (Analyze 0.35) vs money_fields (Summarize 0.30);
+    // Analyze must win because temporal density outweighs single monetary measure in time-series
+    // context (writable_ratio=50% prevents mostly_read_only Summarize boost)
+    let svc = ServiceDef::new("kpi_timeseries")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("measured_at", DataType::DateTime, FieldMeaning::DateTime)
+        .field("window_start", DataType::DateTime, FieldMeaning::DateTime)
+        .read_only_field("window_end", DataType::DateTime, FieldMeaning::DateTime)
+        .read_only_field("kpi_value", DataType::Float, FieldMeaning::Money);
+    let scores = derive_intents(&svc);
+    assert!(!scores.is_empty());
+    assert_eq!(
+        scores[0].intent,
+        Intent::Analyze,
+        "Analyze must beat Summarize with sparse money and dense datetime; got {:?}",
+        scores[0].intent
+    );
+}
+
+#[test]
+fn adversarial_collect_vs_focus() {
+    // competing: free_text+image_url (Focus ~0.60) vs high_writable_ratio+write_only (Collect 0.75);
+    // Collect must win because write-only credential fields accumulate 0.4 on top of writable
+    // ratio signal (0.35), totalling 0.75 raw vs Focus 0.50 field signals + 0.10 baseline = 0.60
+    let svc = ServiceDef::new("profile_setup")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .field("bio", DataType::String, FieldMeaning::FreeText)
+        .field("avatar_url", DataType::String, FieldMeaning::ImageUrl)
+        .field("display_name", DataType::String, FieldMeaning::EntityName)
+        .field("email", DataType::String, FieldMeaning::Email)
+        .write_only_field("password", DataType::String, FieldMeaning::Sensitive)
+        .write_only_field(
+            "password_confirm",
+            DataType::String,
+            FieldMeaning::Sensitive,
+        );
+    let scores = derive_intents(&svc);
+    assert!(!scores.is_empty());
+    assert_eq!(
+        scores[0].intent,
+        Intent::Collect,
+        "Collect must beat Focus despite FreeText+ImageUrl fields; got {:?}",
+        scores[0].intent
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Proptest engine-robustness invariants (D-05).
+// Asserts derive_intents() is total, bounded, sorted, and duplicate-free
+// over arbitrary ServiceDef inputs.
+// ---------------------------------------------------------------------------
+
+fn arb_field_meaning() -> impl Strategy<Value = FieldMeaning> {
+    prop_oneof![
+        Just(FieldMeaning::EntityName),
+        Just(FieldMeaning::Money),
+        Just(FieldMeaning::Percentage),
+        Just(FieldMeaning::Quantity),
+        Just(FieldMeaning::FreeText),
+        Just(FieldMeaning::ImageUrl),
+        Just(FieldMeaning::Status),
+        Just(FieldMeaning::Category),
+        Just(FieldMeaning::DateTime),
+        Just(FieldMeaning::Identifier),
+        Just(FieldMeaning::Email),
+        Just(FieldMeaning::Boolean),
+    ]
+}
+
+fn arb_data_type() -> impl Strategy<Value = DataType> {
+    prop_oneof![
+        Just(DataType::String),
+        Just(DataType::Integer),
+        Just(DataType::Float),
+        Just(DataType::Boolean),
+        Just(DataType::DateTime),
+    ]
+}
+
+fn arb_service_def() -> impl Strategy<Value = ServiceDef> {
+    proptest::collection::vec((arb_data_type(), arb_field_meaning()), 0..8usize).prop_map(
+        |fields| {
+            let mut svc = ServiceDef::new("proptest_subject");
+            for (i, (dt, meaning)) in fields.into_iter().enumerate() {
+                svc = svc.field(format!("f_{i}"), dt, meaning);
+            }
+            svc
+        },
+    )
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 256,
+        .. ProptestConfig::default()
+    })]
+
+    #[test]
+    fn engine_never_panics_returns_valid_scores(svc in arb_service_def()) {
+        let scores = derive_intents(&svc);
+
+        // Invariant 1: never empty
+        prop_assert!(!scores.is_empty());
+
+        // Invariant 2: all confidence values in [0.0, 1.0]
+        for s in &scores {
+            prop_assert!(s.confidence >= 0.0, "confidence below 0: {}", s.confidence);
+            prop_assert!(s.confidence <= 1.0, "confidence above 1: {}", s.confidence);
+        }
+
+        // Invariant 3: sorted descending by confidence
+        for i in 1..scores.len() {
+            prop_assert!(
+                scores[i - 1].confidence >= scores[i].confidence,
+                "not sorted at [{i}]: {} < {}",
+                scores[i - 1].confidence,
+                scores[i].confidence
+            );
+        }
+
+        // Invariant 4: no duplicate Intent in output
+        let intents: Vec<_> = scores.iter().map(|s| format!("{:?}", s.intent)).collect();
+        let unique_count = {
+            let mut deduped = intents.clone();
+            deduped.sort();
+            deduped.dedup();
+            deduped.len()
+        };
+        prop_assert_eq!(intents.len(), unique_count, "duplicate intent in output");
+    }
 }

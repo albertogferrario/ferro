@@ -1,0 +1,15 @@
+---
+source: ferro-projections/tests/catalog.rs
+expression: redacted_signals(&scores)
+---
+- intent: Summarize
+  signals:
+    - money_fields+percentage_fields+quantity_fields
+    - mostly_read_only
+- intent: Focus
+  signals:
+    - more_readable_than_writable
+    - baseline
+- intent: Browse
+  signals:
+    - baseline

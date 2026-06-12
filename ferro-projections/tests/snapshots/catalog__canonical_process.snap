@@ -1,0 +1,29 @@
+---
+source: ferro-projections/tests/catalog.rs
+expression: redacted_signals(&scores)
+---
+- intent: Process
+  signals:
+    - 5/5_guarded_transitions
+    - 2_branching_states
+    - 4_transition_triggers
+    - 3_workflow_states
+    - 4_workflow_actions
+    - 4_guarded_actions
+- intent: Track
+  signals:
+    - status_field
+    - has_final_states
+- intent: Collect
+  signals:
+    - high_writable_ratio
+- intent: Browse
+  signals:
+    - entity_name
+    - baseline
+- intent: Summarize
+  signals:
+    - money_fields
+- intent: Focus
+  signals:
+    - baseline

@@ -1,0 +1,15 @@
+---
+source: ferro-projections/tests/catalog.rs
+expression: redacted_signals(&scores)
+---
+- intent: Collect
+  signals:
+    - high_writable_ratio
+    - write_only_fields
+- intent: Browse
+  signals:
+    - entity_name
+    - baseline
+- intent: Focus
+  signals:
+    - baseline

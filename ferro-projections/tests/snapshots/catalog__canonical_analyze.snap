@@ -1,0 +1,17 @@
+---
+source: ferro-projections/tests/catalog.rs
+expression: redacted_signals(&scores)
+---
+- intent: Analyze
+  signals:
+    - datetime_numeric_cooccurrence
+- intent: Summarize
+  signals:
+    - money_fields
+- intent: Focus
+  signals:
+    - more_readable_than_writable
+    - baseline
+- intent: Browse
+  signals:
+    - baseline
