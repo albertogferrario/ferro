@@ -130,7 +130,7 @@ pub mod fixtures {
                     .initial("draft")
                     .state(StateDef::new("draft"))
                     .state(StateDef::new("submitted"))
-                    .state(StateDef::new("approved"))
+                    .state(StateDef::new("approved").final_state())
                     .state(StateDef::new("rejected").final_state())
                     .state(StateDef::new("cancelled").final_state())
                     .transition(
@@ -392,11 +392,15 @@ fn canonical_collect() {
 fn canonical_process() {
     let svc = fixtures::process_workflow();
 
-    // Validate fixture structural correctness before derivation
+    // Validate fixture structural correctness before derivation.
+    // A regression oracle must carry zero structural warnings (e.g. dangling guards,
+    // unused triggers), not merely a non-error result — assert the warning vec is empty.
+    let warnings = svc
+        .validate()
+        .expect("process fixture must be structurally valid");
     assert!(
-        svc.validate().is_ok(),
-        "process fixture must be structurally valid: {:?}",
-        svc.validate()
+        warnings.is_empty(),
+        "process fixture must have no structural warnings: {warnings:?}"
     );
 
     let scores = derive_intents(&svc);
@@ -562,11 +566,15 @@ fn canonical_analyze() {
 fn canonical_track() {
     let svc = fixtures::track_timeline();
 
-    // Validate fixture structural correctness before derivation
+    // Validate fixture structural correctness before derivation.
+    // A regression oracle must carry zero structural warnings (e.g. dangling guards,
+    // unused triggers), not merely a non-error result — assert the warning vec is empty.
+    let warnings = svc
+        .validate()
+        .expect("track fixture must be structurally valid");
     assert!(
-        svc.validate().is_ok(),
-        "track fixture must be structurally valid: {:?}",
-        svc.validate()
+        warnings.is_empty(),
+        "track fixture must have no structural warnings: {warnings:?}"
     );
 
     let scores = derive_intents(&svc);
@@ -869,16 +877,54 @@ fn arb_data_type() -> impl Strategy<Value = DataType> {
     ]
 }
 
+// Field writability variant — fuzzes the writability analyzer branch of
+// derive_intents (read_only drives Summarize, write_only drives Collect).
+#[derive(Debug, Clone)]
+enum Writability {
+    Normal,
+    ReadOnly,
+    WriteOnly,
+}
+
+fn arb_writability() -> impl Strategy<Value = Writability> {
+    prop_oneof![
+        Just(Writability::Normal),
+        Just(Writability::ReadOnly),
+        Just(Writability::WriteOnly),
+    ]
+}
+
 fn arb_service_def() -> impl Strategy<Value = ServiceDef> {
-    proptest::collection::vec((arb_data_type(), arb_field_meaning()), 0..8usize).prop_map(
-        |fields| {
-            let mut svc = ServiceDef::new("proptest_subject");
-            for (i, (dt, meaning)) in fields.into_iter().enumerate() {
-                svc = svc.field(format!("f_{i}"), dt, meaning);
-            }
-            svc
-        },
-    )
+    // Fuzz three of the five analyzers: field meanings, writability, and
+    // relationships. Each field gets a random meaning + writability; a random
+    // set of belongs_to/has_many edges exercises the relationship analyzer so
+    // the never-panics invariant covers those code paths, not just plain fields.
+    let fields = proptest::collection::vec(
+        (arb_data_type(), arb_field_meaning(), arb_writability()),
+        0..8usize,
+    );
+    let rels = proptest::collection::vec(proptest::bool::ANY, 0..4usize);
+    (fields, rels).prop_map(|(fields, rels)| {
+        let mut svc = ServiceDef::new("proptest_subject");
+        for (i, (dt, meaning, writ)) in fields.into_iter().enumerate() {
+            let name = format!("f_{i}");
+            svc = match writ {
+                Writability::Normal => svc.field(name, dt, meaning),
+                Writability::ReadOnly => svc.read_only_field(name, dt, meaning),
+                Writability::WriteOnly => svc.write_only_field(name, dt, meaning),
+            };
+        }
+        for (j, is_has_many) in rels.into_iter().enumerate() {
+            let name = format!("r_{j}");
+            let target = format!("target_{j}");
+            svc = if is_has_many {
+                svc.has_many(name, target)
+            } else {
+                svc.belongs_to(name, target)
+            };
+        }
+        svc
+    })
 }
 
 proptest! {
