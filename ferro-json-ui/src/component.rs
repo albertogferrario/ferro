@@ -1047,34 +1047,67 @@ pub struct MediaCardGridProps {
     pub columns: Option<u8>,
 }
 
-/// Props for a single column in a KanbanBoard.
+/// Props for a single column (lane) in a KanbanBoard.
+///
+/// A column is structure: its `id` is the lane key matched against each
+/// item's `group_by` value, and `title` is the lane header. `count` and
+/// `children` are only honored by static specs that set neither
+/// `KanbanBoardProps.items_path` nor `group_by`; in the data-bound path the
+/// renderer computes the count and renders cards from `items_path`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct KanbanColumnProps {
     pub id: String,
     pub title: String,
+    #[serde(default)]
     pub count: u32,
-    /// IDs of elements rendered inside this column.
+    /// IDs of elements rendered inside this column (static specs only).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<String>,
 }
 
-/// Props for KanbanBoard component — horizontal scrollable columns on desktop, tab-based on mobile.
+/// Props for KanbanBoard — horizontal scrollable columns on desktop, tab-based
+/// on mobile.
+///
+/// A kanban is fixed lanes plus items sorted into them by a status field.
+/// `columns` is structure only (lane `id` + `title`) and is always rendered —
+/// an empty lane still shows its header and a zero count. Card content is
+/// data-bound: `items_path` resolves a flat array of entity objects, each
+/// bucketed into the column whose `id` equals the item's `group_by` value,
+/// then rendered as a card via the `card_*` / `row_*` bindings. This is the
+/// same prescribed-card + field-key convention used by `DataTable` and
+/// `MediaCardGrid`. For fully-custom card structure, template the cards with
+/// the `$each` directive inside a `KanbanColumn` instead.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct KanbanBoardProps {
-    /// Static columns. Used when `data_path` is None.
+    /// Lane structure — `id` + `title`. Always rendered.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub columns: Vec<KanbanColumnProps>,
-    /// Optional data-path override of `columns`. When set, the renderer
-    /// resolves the array at this path against handler data and decodes
-    /// each entry as a `KanbanColumnProps`. Takes precedence over
-    /// `columns` when both are set.
+    /// JSON-Pointer to a flat array of entity objects. Each item is bucketed
+    /// into the column whose `id` equals the item's `group_by` value.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data_path: Option<String>,
+    pub items_path: Option<String>,
+    /// Field on each item that selects its lane: `column.id == item[group_by]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_by: Option<String>,
+    /// Item field whose value becomes the card title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_title_key: Option<String>,
+    /// Item field whose value becomes the card subtitle/description.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub card_description_key: Option<String>,
+    /// Per-card dropdown actions. `{row_key}` / `{id}` interpolate from the
+    /// item, matching `DataTable` / `MediaCardGrid`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_actions: Option<Vec<DropdownMenuAction>>,
+    /// Item field used for `{row_key}` substitution in action URLs
+    /// (defaults to `id`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mobile_default_column: Option<String>,
-    /// Placeholder text shown inside columns whose `children` list is empty.
-    /// When `None`, columns with no children render no placeholder (back-compat).
-    /// Provide a short, neutral message — e.g. "Nessun ordine", "Nothing here".
+    /// Placeholder text shown inside empty lanes. When `None`, empty lanes
+    /// render no placeholder (back-compat). Provide a short, neutral message —
+    /// e.g. "Nessun ordine", "Nothing here".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empty_label: Option<String>,
 }
@@ -1770,19 +1803,27 @@ mod kanban_board_props_tests {
     #[test]
     fn kanban_board_props_serde_static_columns() {
         let v = serde_json::json!({
-            "columns": [{"title": "To Do", "items": [], "id": "todo", "count": 0}]
+            "columns": [{"title": "To Do", "id": "todo", "count": 0}]
         });
         let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
         assert_eq!(p.columns.len(), 1);
-        assert!(p.data_path.is_none());
+        assert!(p.items_path.is_none());
+        assert!(p.group_by.is_none());
     }
 
     #[test]
-    fn kanban_board_props_serde_data_path() {
-        let v = serde_json::json!({"data_path": "/columns"});
+    fn kanban_board_props_serde_data_bound() {
+        let v = serde_json::json!({
+            "columns": [{"title": "Open", "id": "open"}],
+            "items_path": "/data/order",
+            "group_by": "status",
+            "card_title_key": "name"
+        });
         let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
-        assert!(p.columns.is_empty());
-        assert_eq!(p.data_path.as_deref(), Some("/columns"));
+        assert_eq!(p.columns.len(), 1);
+        assert_eq!(p.items_path.as_deref(), Some("/data/order"));
+        assert_eq!(p.group_by.as_deref(), Some("status"));
+        assert_eq!(p.card_title_key.as_deref(), Some("name"));
     }
 
     #[test]
@@ -1790,14 +1831,20 @@ mod kanban_board_props_tests {
         let v = serde_json::json!({});
         let p: KanbanBoardProps = serde_json::from_value(v).unwrap();
         assert!(p.columns.is_empty());
-        assert!(p.data_path.is_none());
+        assert!(p.items_path.is_none());
+        assert!(p.group_by.is_none());
     }
 
     #[test]
     fn kanban_board_props_empty_columns_skipped_on_serialize() {
         let p = KanbanBoardProps {
             columns: vec![],
-            data_path: Some("/x".into()),
+            items_path: Some("/data/order".into()),
+            group_by: Some("status".into()),
+            card_title_key: None,
+            card_description_key: None,
+            row_actions: None,
+            row_key: None,
             mobile_default_column: None,
             empty_label: None,
         };
@@ -1806,7 +1853,10 @@ mod kanban_board_props_tests {
             j.get("columns").is_none(),
             "empty columns must be skipped, got: {j}"
         );
-        assert_eq!(j.get("data_path").and_then(|v| v.as_str()), Some("/x"));
+        assert_eq!(
+            j.get("items_path").and_then(|v| v.as_str()),
+            Some("/data/order")
+        );
     }
 }
 

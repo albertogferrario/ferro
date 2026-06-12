@@ -1352,48 +1352,63 @@ Product display card with image, title, price, and optional action.
 
 ### KanbanBoard
 
-Kanban board with multiple columns. On mobile, columns switch to tabs.
+Kanban board with fixed lanes. On mobile, lanes switch to tabs.
+
+A kanban is fixed lanes plus items sorted into them by a status field.
+`columns` is **structure** (lane `id` + `title`) and is always rendered — an
+empty lane still shows its header and a zero count. Card **content** is
+data-bound: `items_path` resolves a flat array of entity objects, each bucketed
+into the lane whose `id` equals the item's `group_by` value, then rendered as a
+card via the `card_*` / `row_*` bindings. This is the same prescribed-card +
+field-key convention used by [`DataTable`](#datatable) and
+[`MediaCardGrid`](#mediacardgrid).
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `columns` | `array \| null` | Static `KanbanColumnProps` objects. Used when `data_path` is absent. |
-| `data_path` | `string \| null` | JSON Pointer to an array of `KanbanColumnProps` objects in handler data. Takes precedence over `columns` when set. |
-| `mobile_default_column` | `string \| null` | Column `id` selected by default on mobile tab view |
+| `columns` | `array \| null` | Lane structure — `KanbanColumnProps` objects (`id` + `title`). Always rendered. |
+| `items_path` | `string \| null` | JSON Pointer to a flat array of entity objects to bucket into lanes. |
+| `group_by` | `string \| null` | Field on each item selecting its lane: `column.id == item[group_by]`. |
+| `card_title_key` | `string \| null` | Item field whose value becomes the card title. |
+| `card_description_key` | `string \| null` | Item field whose value becomes the card subtitle. |
+| `row_actions` | `array \| null` | Per-card dropdown actions. `{row_key}` / `{id}` interpolate from the item. |
+| `row_key` | `string \| null` | Item field used for `{row_key}` substitution in action URLs (defaults to `id`). |
+| `mobile_default_column` | `string \| null` | Lane `id` selected by default on mobile tab view. |
+| `empty_label` | `string \| null` | Placeholder text shown inside empty lanes. |
 
 ```json
 "order_board": {
   "type": "KanbanBoard",
   "props": {
-    "columns": ["pending_col", "processing_col", "completed_col"]
+    "columns": [
+      { "id": "pending",    "title": "Pending" },
+      { "id": "processing", "title": "Processing" },
+      { "id": "done",       "title": "Done" }
+    ],
+    "items_path": "/data/order",
+    "group_by": "status",
+    "card_title_key": "name",
+    "card_description_key": "total"
   }
 }
 ```
 
-#### Dynamic columns via data_path
-
-When `data_path` is set, the renderer resolves the array at that path against handler data and decodes each entry as a `KanbanColumnProps` object (`{ "id", "title", "count", "children"? }`). The static `columns` value is ignored.
-
-```json
-"order_board": {
-  "type": "KanbanBoard",
-  "props": {
-    "data_path": "/order_columns"
-  }
-}
-```
-
-Handler data:
+Handler data — a flat array; the renderer buckets by `status`, so handlers need
+no per-lane grouping:
 ```json
 {
-  "order_columns": [
-    { "id": "pending",    "title": "Pending",    "count": 4, "children": [] },
-    { "id": "processing", "title": "Processing", "count": 2, "children": [] },
-    { "id": "done",       "title": "Done",       "count": 9, "children": [] }
-  ]
+  "data": {
+    "order": [
+      { "id": 1, "name": "#1", "total": "€ 16,00", "status": "pending" },
+      { "id": 2, "name": "#2", "total": "€ 40,00", "status": "done" }
+    ]
+  }
 }
 ```
 
-Use `data_path` when the column set varies per request (e.g., one column per order status fetched from the database). For finer-grained templating — one element type per card row inside a fixed column — see the [$each directive for kanban cards](expressions.md#example-kanban-cards-from-a-data-array) in expressions.md.
+For fully-custom card structure (badges, nested elements) rather than the
+prescribed title/description card, template the cards with the
+[`$each` directive inside a fixed `KanbanColumn`](expressions.md#example-kanban-cards-from-a-data-array)
+instead.
 
 ### KanbanColumn
 

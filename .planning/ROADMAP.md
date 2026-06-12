@@ -2875,11 +2875,13 @@ Plans:
 
 #### Phases
 
-- [x] **Phase 213: Projection Render Completeness** — content binding for the projection builder: state-machine→kanban column derivation + card binding (`emit_kanban_root`), StatCard value binding (`emit_statcard_root`), action-slot wiring from `ServiceDef` actions (`emit_actions_placeholder`), `ImageUrl` column rendering, and an app-shell/layout context. May split into per-gap phases at planning time. Depends on Phase 209. (completed 2026-06-12)
+- [x] **Phase 213: Projection Render Completeness** — content binding for the projection builder: state-machine→kanban column derivation + card binding (`emit_kanban_root`), StatCard value binding (`emit_statcard_root`), action-slot wiring from `ServiceDef` actions (`emit_actions_placeholder`), `ImageUrl` column rendering, and an app-shell/layout context. May split into per-gap phases at planning time. Depends on Phase 209. (completed 2026-06-12; **Gap A kanban root fix + integration-verification 2026-06-13** — see 213-06-SUMMARY)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 213. Projection Render Completeness | 5/5 | Complete   | 2026-06-12 |
+| 213. Projection Render Completeness | 5/5 + Gap A root fix | Complete (integration-verified) | 2026-06-13 |
+
+**Integration re-verify (2026-06-13):** The 213-01..05 work was unit-green but the live gestiscilo re-verify exposed a blank Orders kanban — `KanbanBoardProps` conflated lane structure and card content (`data_path` wholesale-replaced `columns`). Gap A root fix (213-06) split structure (`columns`, always rendered) from content (`items_path` + `group_by` + `card_*`/`row_*`, mirroring `MediaCardGrid`); the renderer buckets a flat array by status. Live feat/207 Orders kanban now renders all 5 lanes with correct counts + cards bucketed by status. feat/208 Staff Browse + Gap D avatar `<img>` confirmed live; Gap B row-actions accepted on unit coverage (staff probe declares no actions — consumer-wiring gap). Both probe branches remain pristine/unmerged.
 
 #### Phase Details
 

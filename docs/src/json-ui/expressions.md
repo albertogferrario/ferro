@@ -178,12 +178,12 @@ With three orders, expansion produces `order_card-0` through `order_card-2`, eac
 
 ### Example: kanban cards from a data array
 
-`$each` can template the card elements inside a fixed `KanbanColumn`. This is distinct from `KanbanBoard.data_path` (documented in [components.md](components.md#dynamic-columns-via-data_path)), which varies the column set itself.
+`$each` can template the card elements inside a fixed `KanbanColumn`. This is distinct from [`KanbanBoard.items_path` + `group_by`](components.md#kanbanboard), which buckets a flat item array into fixed lanes and renders each item with the prescribed title/description card.
 
 | Pattern | Use when |
 |---------|----------|
-| `KanbanBoard.data_path` | The column set varies per request (one column per status); each column has the same `KanbanColumnProps` shape |
-| `$each` inside `KanbanColumn` | The column set is fixed, but card content varies per item in a data array |
+| `KanbanBoard.items_path` + `group_by` | Fixed lanes; each item rendered with the prescribed card (title, description, dropdown) — no custom card structure needed |
+| `$each` inside `KanbanColumn` | Fixed lanes, but cards need custom structure (badges, nested elements) templated per item in a data array |
 
 **Spec with `$each` inside a fixed column:**
 
@@ -235,7 +235,7 @@ Handler data:
 
 At resolve time, `pending_card` expands to `pending_card-0` and `pending_card-1`; `pending_card_badge` expands to correlated clones. The `KanbanBoard.columns[0].children` list is rewritten to reference the clone IDs.
 
-Use this pattern when the column structure is determined at design time (fixed set of statuses) and only the card content comes from runtime data. When the column set itself varies per request, use [`KanbanBoard.data_path`](components.md#dynamic-columns-via-data_path) instead.
+Use this pattern when the card needs custom structure (badges, nested elements). When the prescribed title/description card suffices, use [`KanbanBoard.items_path` + `group_by`](components.md#kanbanboard) — it buckets a flat item array into the fixed lanes with no per-card templating.
 
 ## $if
 

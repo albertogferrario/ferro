@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v13.2
 milestone_name: Projection Render Completeness
-status: verifying
-stopped_at: "Phase 213: Gaps B/A/C/D/E implemented + committed (ferro unit tests green). Gap A integration re-verify found a real bug — KanbanBoard conflates column structure vs content; renders blank when data_path empty. ROOT FIX scoped (structure/content split) in 213-HANDOFF-kanban-redesign.md. Resume there. feat/207+feat/208 re-verify pending."
-last_updated: "2026-06-12T21:28:19.646Z"
-last_activity: 2026-06-12
+status: complete
+stopped_at: "Phase 213 CLOSED — Gap A root fix (KanbanBoard structure/content split) implemented + integration-verified. Live feat/207 Orders kanban renders 5 lanes with correct per-lane counts + cards bucketed by status (blank-board bug gone). feat/208 Staff Browse + Gap D avatar <img> confirmed live; Gap B row-actions accepted on unit coverage (staff probe declares no actions — consumer-wiring gap logged in 213-06-SUMMARY). ferro-json-ui 608 + ferro-projections catalog 22 green, clippy clean. gestiscilo cleaned (test rows deleted, patch reverted, master, feat/207+208 pristine/unmerged). Consumer follow-ups (handler /data/order shape, staff actions) logged for the gestiscilo side."
+last_updated: "2026-06-13T00:30:00.000Z"
+last_activity: 2026-06-13
 progress:
   total_phases: 95
   completed_phases: 85
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Milestone: v13.2 Projection Render Completeness — 🚧 ACTIVE (Phase 213). [v13.0 Compressive Validation ⏸ PAUSED at 3/5 — 207/208/209 ✅, 210/211 deferred]
-Phase: 213 (projection-render-completeness) — EXECUTING
-Plan: 5 of 5
-Next: /gsd-plan-phase 213
+Phase: 213 (projection-render-completeness) — ✅ COMPLETE (integration-verified 2026-06-13)
+Plan: 5 of 5 + Gap A root fix (213-06)
+Next: commit Gap A fix; v13.2 ready to ship (publish 0.2.55 when batched)
 Prior: Phase 209 ✅ VALIDATED 2026-06-12 (projection render content-incomplete — weakness note + 2 unmerged gestiscilo probe branches); v12.7 shipped 2026-06-12 (202-203); 0.2.54 published 2026-06-12
-Status: Phase complete — ready for verification
+Status: Phase complete — Gap A root fix integration-verified on feat/207 (Orders kanban lanes+cards); feat/208 Browse+avatar live, row-actions on unit coverage
 
 Progress: v13.0 paused at 3/5 (207/208/209 ✅); v13.2 0/1 (213 scoped)
 

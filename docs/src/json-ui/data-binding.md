@@ -81,7 +81,7 @@ With data `{ "user": { "role": "admin" } }`, `label` resolves to `"admin"` (stri
 }
 ```
 
-Note: `data_path` in `DataTable`, `KanbanBoard`, `Input`, `Select`, `Checkbox`, and `Switch` is a plain string JSON Pointer — not a `$data` expression. The component reads rows, columns, or pre-fills values from that path at render time, but the path itself is literal.
+Note: data paths in `DataTable` (`data_path`), `KanbanBoard` (`items_path`), `Input`, `Select`, `Checkbox`, and `Switch` (`data_path`) are plain string JSON Pointers — not `$data` expressions. The component reads rows, items, or pre-fills values from that path at render time, but the path itself is literal.
 
 ### $template — string interpolation
 
@@ -271,40 +271,47 @@ Resolves to an array of row objects. Each row is one `<tr>`; column `key` fields
 
 Handler provides `{ "data": { "staff": [ ... ] } }`.
 
-### KanbanBoard — column array
+### KanbanBoard — fixed lanes, flat item array
 
 ```
-data_path: "/data/{service.name}/columns"
+items_path: "/data/{service.name}"
+group_by:   "<status field>"
 ```
 
-Resolves to an array of `KanbanColumnProps` objects (`{ id, title, count, children }`). The `/columns` suffix distinguishes the column array from the flat item array at `/data/{service.name}`.
+A kanban is fixed lanes plus items sorted into them by a status field. The
+spec's `columns` array (lane `id` + `title`, derived from the service's state
+machine under the projection renderer) is **structure** and is always rendered.
+`items_path` resolves the same flat entity array `DataTable` reads, and the
+renderer buckets each item into the lane whose `id` equals the item's
+`group_by` value — so handlers stay flat and need no per-lane grouping.
 
 ```json
 "order_kanban": {
   "type": "KanbanBoard",
   "props": {
-    "data_path": "/data/order/columns",
-    "columns": []
+    "columns": [
+      { "id": "draft",     "title": "Draft" },
+      { "id": "submitted", "title": "Submitted" }
+    ],
+    "items_path": "/data/order",
+    "group_by": "status",
+    "card_title_key": "name"
   }
 }
 ```
 
-Handler provides:
+Handler provides the flat array (same shape as the `DataTable` data path):
 
 ```json
 {
   "data": {
-    "order": {
-      "columns": [
-        { "id": "draft",     "title": "Draft",     "count": 2, "children": [] },
-        { "id": "submitted", "title": "Submitted", "count": 1, "children": [] }
-      ]
-    }
+    "order": [
+      { "id": 1, "name": "#1", "status": "draft" },
+      { "id": 2, "name": "#2", "status": "submitted" }
+    ]
   }
 }
 ```
-
-The static `columns` array in the spec (derived from the service's state machine when using the projection renderer) serves as the schema reference and render fallback when `data_path` fails to resolve. When `data_path` resolves, it takes precedence.
 
 ### StatCard — scalar value
 

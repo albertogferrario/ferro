@@ -409,7 +409,7 @@ fn template_url(template: &str, row: &Value, row_key_value: &str) -> String {
 /// Resolves the row key for a single row. Reads the value at
 /// `props.row_key` from the row when present and stringifiable, otherwise
 /// falls back to the row index.
-fn resolve_row_key(row: &Value, row_key_prop: Option<&str>, index: usize) -> String {
+pub(crate) fn resolve_row_key(row: &Value, row_key_prop: Option<&str>, index: usize) -> String {
     if let Some(rk) = row_key_prop {
         if let Some(v) = row.get(rk) {
             match v {
@@ -464,7 +464,7 @@ fn action_visible_for_row(action: &DropdownMenuAction, row: &Value) -> bool {
     }
 }
 
-fn template_actions(
+pub(crate) fn template_actions(
     actions: &[DropdownMenuAction],
     row: &Value,
     row_key_value: &str,
@@ -517,7 +517,7 @@ fn template_actions(
 /// panel under its trigger on open. The browser handles dismiss and lifts
 /// the panel into the top layer, so the surrounding DataTable overflow
 /// context cannot clip it.
-fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]) -> String {
+pub(crate) fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]) -> String {
     let id = html_escape(menu_id);
     let mut html = String::new();
     html.push_str(&format!(

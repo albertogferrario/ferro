@@ -13,12 +13,13 @@ use serde_json::Value;
 
 use crate::component::{
     ButtonGroupProps, CardProps, CardVariant, CollapsibleProps, DetailPageProps, FormMaxWidth,
-    FormSectionLayout, FormSectionProps, GapSize, GridProps, KanbanBoardProps, KanbanColumnProps,
-    ModalProps, PageHeaderProps, TabsProps,
+    FormSectionLayout, FormSectionProps, GapSize, GridProps, KanbanBoardProps, ModalProps,
+    PageHeaderProps, TabsProps,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
+use super::data::{render_inline_dropdown, resolve_row_key, template_actions};
 use super::{html_escape, render_element};
 
 // ── Multi-slot containers ────────────────────────────────────────────────
@@ -311,13 +312,82 @@ pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize)
     html
 }
 
-/// Renders a `KanbanBoard`. Reads `KanbanBoardProps.columns` (static) or
-/// `data_path` (dynamic) and emits one column per entry.
+/// Stringifies a JSON scalar for `group_by` matching and card field bindings.
+/// Objects, arrays, and null yield `None`.
+fn json_scalar_string(v: &Value) -> Option<String> {
+    match v {
+        Value::String(s) => Some(s.clone()),
+        Value::Number(n) => Some(n.to_string()),
+        Value::Bool(b) => Some(b.to_string()),
+        _ => None,
+    }
+}
+
+/// Renders one data-bound card from a kanban item using the `card_*` / `row_*`
+/// field bindings — the prescribed kanban card shape (title, optional
+/// description, optional dropdown of `row_actions`). Mirrors `MediaCardGrid`.
+fn render_kanban_card(item: &Value, props: &KanbanBoardProps, index: usize) -> String {
+    let title = props
+        .card_title_key
+        .as_deref()
+        .and_then(|k| item.get(k))
+        .and_then(json_scalar_string)
+        .unwrap_or_default();
+    let description = props
+        .card_description_key
+        .as_deref()
+        .and_then(|k| item.get(k))
+        .and_then(json_scalar_string);
+
+    let mut card = String::from(
+        "<div data-kanban-card class=\"cursor-pointer rounded-lg border border-border bg-card p-3 flex flex-col gap-1\">",
+    );
+    card.push_str("<div class=\"flex items-start justify-between gap-2\">");
+    card.push_str(&format!(
+        "<div class=\"text-sm font-medium text-text\">{}</div>",
+        html_escape(&title)
+    ));
+    if let Some(ref actions) = props.row_actions {
+        let row_key_value = resolve_row_key(item, props.row_key.as_deref(), index);
+        let templated = template_actions(actions, item, &row_key_value);
+        if !templated.is_empty() {
+            card.push_str(&render_inline_dropdown(
+                &format!("kanban-card-{row_key_value}"),
+                &templated,
+            ));
+        }
+    }
+    card.push_str("</div>");
+    if let Some(desc) = description {
+        card.push_str(&format!(
+            "<div class=\"text-xs text-text-muted\">{}</div>",
+            html_escape(&desc)
+        ));
+    }
+    card.push_str("</div>");
+    card
+}
+
+/// Pre-rendered content for a single kanban lane: header count plus the
+/// concatenated card HTML, computed once and consumed by both the desktop and
+/// mobile layouts.
+struct LaneRender {
+    id: String,
+    title: String,
+    count: u32,
+    cards_html: String,
+}
+
+/// Renders a `KanbanBoard`. `columns` is lane structure (always rendered);
+/// card content is data-bound from `items_path` + `group_by` — each item is
+/// bucketed into the column whose `id` equals the item's `group_by` value and
+/// rendered as a card via the `card_*` / `row_*` bindings. Static specs that
+/// set neither `items_path` nor `group_by` fall back to rendering each
+/// column's `children` element IDs.
 ///
 /// Responsive: horizontally-scrollable columns on desktop
 /// (`hidden md:block`), tab-based column switching on mobile
-/// (`block md:hidden`). Per-column children come from
-/// `KanbanColumnProps.children: Vec<String>`. Mobile default column honors
+/// (`block md:hidden`). Mobile default column honors
 /// `props.mobile_default_column` when set; otherwise falls back to the first
 /// column's id.
 pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
@@ -331,26 +401,70 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         }
     };
 
-    // When present, `data_path` takes precedence over static `columns`.
-    let columns: Vec<KanbanColumnProps> = if let Some(path) = props.data_path.as_deref() {
-        resolve_path(data, path)
-            .and_then(|v| v.as_array().cloned())
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|v| serde_json::from_value::<KanbanColumnProps>(v).ok())
-            .collect()
-    } else {
-        props.columns.clone()
-    };
-
-    if columns.is_empty() {
+    if props.columns.is_empty() {
         return String::new();
     }
+
+    // Data-bound path: bucket a flat array of items into lanes by `group_by`.
+    // Falls back to static `children` rendering when no `group_by` is set.
+    let lanes: Vec<LaneRender> = match props.group_by.as_deref() {
+        Some(group_by) => {
+            let items: Vec<Value> = props
+                .items_path
+                .as_deref()
+                .and_then(|p| resolve_path(data, p))
+                .and_then(|v| v.as_array().cloned())
+                .unwrap_or_default();
+            props
+                .columns
+                .iter()
+                .map(|col| {
+                    let cards: Vec<String> = items
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, item)| {
+                            item.get(group_by).and_then(json_scalar_string).as_deref()
+                                == Some(col.id.as_str())
+                        })
+                        .map(|(i, item)| render_kanban_card(item, &props, i))
+                        .collect();
+                    LaneRender {
+                        id: col.id.clone(),
+                        title: col.title.clone(),
+                        count: cards.len() as u32,
+                        cards_html: cards.concat(),
+                    }
+                })
+                .collect()
+        }
+        None => props
+            .columns
+            .iter()
+            .map(|col| {
+                let cards_html: String = col
+                    .children
+                    .iter()
+                    .map(|cid| {
+                        format!(
+                            "<div data-kanban-card class=\"cursor-pointer\">{}</div>",
+                            render_element(cid, spec, data, depth + 1)
+                        )
+                    })
+                    .collect();
+                LaneRender {
+                    id: col.id.clone(),
+                    title: col.title.clone(),
+                    count: col.count,
+                    cards_html,
+                }
+            })
+            .collect(),
+    };
 
     let default_id = props
         .mobile_default_column
         .as_deref()
-        .unwrap_or_else(|| &columns[0].id);
+        .unwrap_or_else(|| &lanes[0].id);
 
     let mut html = String::new();
 
@@ -367,7 +481,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     );
     html.push_str("<div class=\"flex gap-4\" style=\"min-width: min-content;\">");
 
-    for col in &columns {
+    for lane in &lanes {
         // Column is a flex-column capped at viewport height. Padding lives on
         // the inner sections (header + scroll viewport) instead of the outer
         // wrapper, so the scroll clip rectangle reaches the column's rounded
@@ -384,23 +498,23 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         html.push_str("<div class=\"flex items-center justify-between p-3 shrink-0\">");
         html.push_str(&format!(
             "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
-            html_escape(&col.title),
+            html_escape(&lane.title),
         ));
-        let badge_class = if col.count > 0 {
+        let badge_class = if lane.count > 0 {
             "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-primary text-primary-foreground"
         } else {
             "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-text-muted bg-surface"
         };
         html.push_str(&format!(
             "<span class=\"{}\">{}</span>",
-            badge_class, col.count,
+            badge_class, lane.count,
         ));
         html.push_str("</div>");
         html.push_str(
             "<div class=\"ferro-kanban-scroll space-y-2 flex-1 overflow-y-auto px-3 pb-3\" \
              style=\"scrollbar-width: none;\">",
         );
-        if col.children.is_empty() {
+        if lane.cards_html.is_empty() {
             if let Some(ref label) = props.empty_label {
                 html.push_str(&format!(
                     "<div class=\"flex items-center justify-center h-full min-h-40 text-sm text-text-muted text-center px-3\">{}</div>",
@@ -408,11 +522,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
                 ));
             }
         } else {
-            for cid in &col.children {
-                html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
-                html.push_str(&render_element(cid, spec, data, depth + 1));
-                html.push_str("</div>");
-            }
+            html.push_str(&lane.cards_html);
         }
         html.push_str("</div>");
         html.push_str("</div>");
@@ -425,8 +535,8 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     html.push_str("<div class=\"block md:hidden\" data-tabs>");
     html.push_str("<div class=\"flex border-b border-border mb-4\">");
 
-    for col in &columns {
-        let is_default = col.id == default_id;
+    for lane in &lanes {
+        let is_default = lane.id == default_id;
         let (border, text) = if is_default {
             ("border-primary", "text-primary font-semibold")
         } else {
@@ -434,19 +544,19 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         };
         html.push_str(&format!(
             "<button type=\"button\" data-tab=\"{}\" class=\"flex-1 px-3 py-2 text-sm border-b-2 {} {}\" aria-selected=\"{}\">{} <span class=\"ml-1 text-xs text-text-muted\">({})</span></button>",
-            html_escape(&col.id),
+            html_escape(&lane.id),
             border,
             text,
             is_default,
-            html_escape(&col.title),
-            col.count,
+            html_escape(&lane.title),
+            lane.count,
         ));
     }
 
     html.push_str("</div>");
 
-    for col in &columns {
-        let is_default = col.id == default_id;
+    for lane in &lanes {
+        let is_default = lane.id == default_id;
         let hidden = if is_default { "" } else { " hidden" };
         // Same viewport cap as desktop columns — single column scrolls
         // vertically rather than growing the page. Scrollbars hidden via
@@ -454,9 +564,9 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         html.push_str(&format!(
             "<div data-tab-panel=\"{}\" class=\"ferro-kanban-scroll space-y-3 overflow-y-auto{hidden}\" \
              style=\"max-height: calc(100vh - 14rem); scrollbar-width: none;\">",
-            html_escape(&col.id),
+            html_escape(&lane.id),
         ));
-        if col.children.is_empty() {
+        if lane.cards_html.is_empty() {
             if let Some(ref label) = props.empty_label {
                 html.push_str(&format!(
                     "<div class=\"flex items-center justify-center min-h-40 text-sm text-text-muted text-center px-3\">{}</div>",
@@ -464,11 +574,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
                 ));
             }
         } else {
-            for cid in &col.children {
-                html.push_str("<div data-kanban-card class=\"cursor-pointer\">");
-                html.push_str(&render_element(cid, spec, data, depth + 1));
-                html.push_str("</div>");
-            }
+            html.push_str(&lane.cards_html);
         }
         html.push_str("</div>");
     }
@@ -1681,68 +1787,102 @@ mod tests {
         );
     }
 
-    // ── KanbanBoard data_path tests ─────────────────────────────────────
+    // ── KanbanBoard structure/content tests ─────────────────────────────
+
+    fn kanban_data_bound(extra: Vec<(&str, Value)>) -> ElementBuilder {
+        let mut el = Element::new("KanbanBoard")
+            .prop(
+                "columns",
+                json!([
+                    {"title": "Open", "id": "open"},
+                    {"title": "Done", "id": "done"}
+                ]),
+            )
+            .prop("items_path", "/items")
+            .prop("group_by", "status")
+            .prop("card_title_key", "name");
+        for (k, v) in extra {
+            el = el.prop(k, v);
+        }
+        el
+    }
 
     #[test]
-    fn render_kanban_board_data_path_resolves_columns() {
-        let spec = build_spec(vec![(
-            "root",
-            Element::new("KanbanBoard").prop("data_path", "/cols"),
-        )]);
+    fn render_kanban_board_buckets_items_into_columns() {
+        let spec = build_spec(vec![("root", kanban_data_bound(vec![]))]);
         let el = spec.elements.get("root").unwrap();
-        let data = json!({"cols": [
-            {"title": "A", "id": "a", "count": 0},
-            {"title": "B", "id": "b", "count": 0}
+        let data = json!({"items": [
+            {"id": 1, "name": "Alpha", "status": "open"},
+            {"id": 2, "name": "Beta", "status": "done"},
+            {"id": 3, "name": "Gamma", "status": "open"}
         ]});
         let html = render_kanban_board(el, &spec, &data, 0);
-        assert!(html.contains(">A<"), "expected column A, got: {html}");
-        assert!(html.contains(">B<"), "expected column B, got: {html}");
-    }
-
-    #[test]
-    fn render_kanban_board_static_columns_fallback() {
-        let spec = build_spec(vec![(
-            "root",
-            Element::new("KanbanBoard").prop(
-                "columns",
-                json!([{"title": "Static", "id": "s", "count": 0}]),
-            ),
-        )]);
-        let el = spec.elements.get("root").unwrap();
-        let html = render_kanban_board(el, &spec, &serde_json::Value::Null, 0);
-        assert!(
-            html.contains(">Static<"),
-            "static columns should render, got: {html}"
+        // Both lanes render (structure always present).
+        assert!(html.contains(">Open<"), "lane Open missing: {html}");
+        assert!(html.contains(">Done<"), "lane Done missing: {html}");
+        // Cards land in their lanes.
+        assert!(html.contains("Alpha"), "Alpha card missing: {html}");
+        assert!(html.contains("Beta"), "Beta card missing: {html}");
+        assert!(html.contains("Gamma"), "Gamma card missing: {html}");
+        // Per-lane count badge: Open has 2 (desktop + mobile = 2 occurrences each).
+        assert_eq!(
+            html.matches(">2<").count(),
+            1,
+            "Open lane desktop count badge should read 2: {html}"
         );
     }
 
     #[test]
-    fn render_kanban_board_data_path_missing_renders_empty() {
-        let spec = build_spec(vec![(
-            "root",
-            Element::new("KanbanBoard").prop("data_path", "/absent"),
-        )]);
+    fn render_kanban_board_static_columns_always_render() {
+        // Columns present but no matching items → lanes still render (not blank).
+        let spec = build_spec(vec![("root", kanban_data_bound(vec![]))]);
         let el = spec.elements.get("root").unwrap();
-        let html = render_kanban_board(el, &spec, &serde_json::Value::Null, 0);
-        assert_eq!(html, "");
-    }
-
-    #[test]
-    fn render_kanban_board_data_path_wins_over_static() {
-        let spec = build_spec(vec![(
-            "root",
-            Element::new("KanbanBoard").prop("data_path", "/cols").prop(
-                "columns",
-                json!([{"title": "Static", "id": "s", "count": 0}]),
-            ),
-        )]);
-        let el = spec.elements.get("root").unwrap();
-        let data = json!({"cols": [{"title": "FromData", "id": "d", "count": 0}]});
+        let data = json!({"items": []});
         let html = render_kanban_board(el, &spec, &data, 0);
         assert!(
-            html.contains(">FromData<"),
-            "data_path must win, got: {html}"
+            html.contains(">Open<"),
+            "empty lane Open must render: {html}"
         );
-        assert!(!html.contains(">Static<"), "static must lose, got: {html}");
+        assert!(
+            html.contains(">Done<"),
+            "empty lane Done must render: {html}"
+        );
+    }
+
+    #[test]
+    fn render_kanban_board_empty_columns_renders_empty() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("KanbanBoard").prop("items_path", "/items"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_kanban_board(el, &spec, &json!({"items": []}), 0);
+        assert_eq!(html, "", "no columns → empty board; got: {html}");
+    }
+
+    #[test]
+    fn render_kanban_board_card_description_and_actions() {
+        let spec = build_spec(vec![(
+            "root",
+            kanban_data_bound(vec![
+                ("card_description_key", json!("customer")),
+                (
+                    "row_actions",
+                    json!([{"label": "View", "action": {"handler": "/orders/{row_key}"}}]),
+                ),
+                ("row_key", json!("id")),
+            ]),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({"items": [
+            {"id": 7, "name": "Alpha", "status": "open", "customer": "Acme"}
+        ]});
+        let html = render_kanban_board(el, &spec, &data, 0);
+        assert!(html.contains("Acme"), "card description missing: {html}");
+        assert!(html.contains("View"), "row action missing: {html}");
+        assert!(
+            html.contains("/orders/7"),
+            "row_key interpolation missing: {html}"
+        );
     }
 }

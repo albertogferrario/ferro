@@ -377,17 +377,25 @@ fn emit_card_root(
     el
 }
 
-/// Process root. KanbanBoard emits a single root element with columns in
-/// props — no child elements — so depth stays at 1 (Pitfall 3).
+/// Process root. KanbanBoard emits a single root element with lane structure
+/// in props — no child elements — so depth stays at 1 (Pitfall 3).
 ///
-/// When `service.state_machine` is present, one `KanbanColumnProps` is
-/// emitted per `StateDef` in declaration order, and `data_path` is set to
-/// `/data/{service.name}/columns` so the renderer binds runtime card counts
-/// and children from handler data. Static `columns` serve as the schema
-/// fallback when `data_path` fails to resolve.
+/// A kanban is fixed lanes plus items sorted into them by a status field. When
+/// `service.state_machine` is present, one `KanbanColumnProps` (id + title) is
+/// emitted per `StateDef` in declaration order — the lane structure — and the
+/// content bindings are set so the renderer buckets handler entities into
+/// lanes at render time:
+/// - `items_path = /data/{service.name}` — the flat entity array (same path
+///   `DataTable` reads), kept flat so handlers need no per-status bucketing.
+/// - `group_by` — the `FieldMeaning::Status` field whose value selects the lane
+///   (lane id == status value == state name).
+/// - `card_title_key` / `card_description_key` — `EntityName` (or identifier)
+///   and `Money` field bindings for the prescribed card shape.
+/// - `row_actions` / `row_key` — derived from `service.actions`, matching
+///   `emit_datatable_root`.
 ///
-/// When `state_machine` is `None` a single placeholder column (carrying the
-/// service display name) is emitted with `data_path: None`.
+/// When `state_machine` is `None` a single placeholder lane (carrying the
+/// service display name) is emitted with no content bindings.
 ///
 /// `ctx.current_state` marks the active column as `mobile_default_column`
 /// (Risk 3 option a — `KanbanColumnProps` has no `active` field; this is the
@@ -416,14 +424,60 @@ fn emit_kanban_root(service: &ServiceDef, ctx: &VisualContext) -> ElementBuilder
             }]
         });
 
-    // data_path binds runtime column data (counts + card children) when a
-    // state machine is present. Static `columns` are the schema/fallback used
-    // when data_path resolves empty (Pitfall 1). No data_path in the fallback
-    // single-column case.
-    let data_path = service
-        .state_machine
-        .as_ref()
-        .map(|_| format!("/data/{}/columns", service.name));
+    let field_name_by = |pred: fn(&FieldMeaning) -> bool| -> Option<String> {
+        service
+            .fields
+            .iter()
+            .find(|f| f.readable && pred(&f.meaning))
+            .map(|f| f.name.clone())
+    };
+
+    // Content bindings are emitted only alongside the state-machine lanes — the
+    // single placeholder lane has no status field to bucket by.
+    let has_state_machine = service.state_machine.is_some();
+
+    // items_path: the flat entity array (same path DataTable reads). Bucketing
+    // by `group_by` happens in the renderer, so handlers stay flat.
+    let items_path = has_state_machine.then(|| format!("/data/{}", service.name));
+
+    // group_by: the field whose value selects the lane (== state name).
+    let group_by = has_state_machine
+        .then(|| field_name_by(|m| matches!(m, FieldMeaning::Status)))
+        .flatten();
+
+    // Card title prefers a human label (EntityName), falling back to the
+    // identifier so a card is never blank.
+    let card_title_key = has_state_machine
+        .then(|| {
+            field_name_by(|m| matches!(m, FieldMeaning::EntityName))
+                .or_else(|| field_name_by(|m| matches!(m, FieldMeaning::Identifier)))
+        })
+        .flatten();
+
+    let card_description_key = has_state_machine
+        .then(|| field_name_by(|m| matches!(m, FieldMeaning::Money)))
+        .flatten();
+
+    // row_actions / row_key mirror emit_datatable_root — per-card dropdown of
+    // the service's actions, with `{row_key}` interpolated from `id`.
+    let row_actions: Option<Vec<DropdownMenuAction>> =
+        if !has_state_machine || service.actions.is_empty() {
+            None
+        } else {
+            Some(
+                service
+                    .actions
+                    .iter()
+                    .map(|a| DropdownMenuAction {
+                        label: a.display_name.as_deref().unwrap_or(&a.name).to_string(),
+                        action: Action::new(format!("/{}/{{row_key}}/{}", service.name, a.name)),
+                        destructive: false,
+                        visible_if: None,
+                    })
+                    .collect(),
+            )
+        };
+    let row_key = row_actions.as_ref().map(|_| "id".to_string());
 
     // current_state marks the active column on mobile (Risk 3 option a — no
     // KanbanColumnProps.active field exists; mobile_default_column is the
@@ -432,7 +486,12 @@ fn emit_kanban_root(service: &ServiceDef, ctx: &VisualContext) -> ElementBuilder
 
     let props = serde_json::to_value(KanbanBoardProps {
         columns,
-        data_path,
+        items_path,
+        group_by,
+        card_title_key,
+        card_description_key,
+        row_actions,
+        row_key,
         mobile_default_column,
         empty_label: None,
     })
@@ -1100,6 +1159,7 @@ mod tests {
         let built = el.build();
         let props: KanbanBoardProps =
             serde_json::from_value(built.props).expect("props decode as KanbanBoardProps");
+        // Lane structure: one column per state, in declaration order.
         assert_eq!(props.columns.len(), 3);
         assert_eq!(props.columns[0].id, "draft");
         assert_eq!(props.columns[0].title, "Draft");
@@ -1107,7 +1167,13 @@ mod tests {
         assert_eq!(props.columns[1].title, "Submitted");
         assert_eq!(props.columns[2].id, "done");
         assert_eq!(props.columns[2].title, "Done");
-        assert_eq!(props.data_path.as_deref(), Some("/data/order/columns"));
+        // Content bindings: flat array path + status grouping field. The
+        // fixture has no EntityName, so the card title falls back to the
+        // identifier; no Money field, so no description binding.
+        assert_eq!(props.items_path.as_deref(), Some("/data/order"));
+        assert_eq!(props.group_by.as_deref(), Some("status"));
+        assert_eq!(props.card_title_key.as_deref(), Some("id"));
+        assert!(props.card_description_key.is_none());
     }
 
     #[test]
@@ -1120,7 +1186,8 @@ mod tests {
         let props: KanbanBoardProps =
             serde_json::from_value(built.props).expect("props decode as KanbanBoardProps");
         assert_eq!(props.columns.len(), 1);
-        assert!(props.data_path.is_none());
+        assert!(props.items_path.is_none());
+        assert!(props.group_by.is_none());
     }
 
     // -- Gap B render tests (TDD RED added in Task 1; GREEN wired in Task 2) --
