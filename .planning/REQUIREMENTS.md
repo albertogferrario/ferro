@@ -11,7 +11,7 @@
 ### Compressive Validation
 
 - [ ] **COMP-01**: A real application (`gestiscilo`) is partially migrated to projection-driven rendering — **Slice A**: three entities spanning the Browse, Process, and Summarize intents, migrated one-per-merge with render equivalence checked against the existing views, and a single ferro publish at the end of the slice. This is the first real-world validation signal for the projection/intent abstraction. (Full gestiscilo migration — 130 views, 69 models — is explicitly out of scope for v13.0.)
-- [ ] **COMP-02**: A synthetic catalog of canonical app classes covering the seven structural intents exists with a regression harness that runs on every `derive_intents()` / projection change. The harness asserts **structural invariants** (e.g. the derived primary intent and at least one key signal per fixture; a Browse projection renders a table with the correct column count) rather than byte-for-byte renderer snapshots, and includes at least one fixture with competing signals proving the intended intent wins under competition.
+- [x] **COMP-02**: A synthetic catalog of canonical app classes covering the seven structural intents exists with a regression harness that runs on every `derive_intents()` / projection change. The harness asserts **structural invariants** (e.g. the derived primary intent and at least one key signal per fixture; a Browse projection renders a table with the correct column count) rather than byte-for-byte renderer snapshots, and includes at least one fixture with competing signals proving the intended intent wins under competition.
 - [ ] **COMP-03**: An agent-success-rate harness measures whether an agent reading `ferro-mcp` introspection can produce a working projection from a natural-language description. Pass criteria are **multi-tier** (structural validity → intent coverage → functional completeness → checkpoint pass) and **stated before any runs are collected**; each task runs ≥3 trials; a baseline (model version, prompt version, per-tier pass rates) is committed. The corpus spans all seven intents. The harness drives ferro-mcp developer tools as an in-process client (not `ferro-mcp-server`), and guards against training-data contamination.
 - [ ] **COMP-04**: A time-to-working-app benchmark measures `cargo new` → a running service with authentication, three entity types, and one background job. The published number includes at least one **cold-cache run** (no warm Cargo cache / pre-installed toolchain); the measurement apparatus is committed as a document. The benchmark target is gated (`FERRO_BENCH=1`) to avoid exhausting CI disk.
 - [ ] **COMP-05**: An intent-vocabulary cross-modality sketch takes one intent (e.g. `Process`) and expresses the same feature as a mobile flow, a voice interaction, and a CLI command, producing a **document** that analyzes whether the seven-intent vocabulary survives non-visual rendering. The deliverable is a v14.0 planning input only — it MUST NOT modify `intent.rs` or any renderer in v13.0. v14.0 Channel Projection depends on this analysis.
@@ -38,7 +38,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | COMP-01 | Phase 209 | Pending |
-| COMP-02 | Phase 207 | Pending |
+| COMP-02 | Phase 207 | Complete |
 | COMP-03 | Phase 210 | Pending |
 | COMP-04 | Phase 211 | Pending |
 | COMP-05 | Phase 208 | Pending |

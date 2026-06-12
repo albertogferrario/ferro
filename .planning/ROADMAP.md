@@ -2714,7 +2714,7 @@ Plans:
 
 #### Phases
 
-- [ ] **Phase 207: COMP-02 — Synthetic Regression Catalog** — `ferro-projections/tests/catalog.rs`; 7 canonical `ServiceDef` builders; structural-invariant assertions (not byte snapshots); `proptest` invariants; adversarial fixture per intent; `insta` snapshots only for named canonical shapes.
+- [x] **Phase 207: COMP-02 — Synthetic Regression Catalog** — `ferro-projections/tests/catalog.rs`; 7 canonical `ServiceDef` builders; structural-invariant assertions (not byte snapshots); `proptest` invariants; adversarial fixture per intent; `insta` snapshots only for named canonical shapes. (completed 2026-06-12)
 - [ ] **Phase 208: COMP-05 — Cross-Modality Vocabulary Sketch** — Three `pub(crate)` sketch renderers in `ferro-projections/src/render/`; written analysis covering all 7 intents across 3 non-visual modalities; at least one vocabulary gap identified; zero changes to `intent.rs` or `derive.rs`.
 - [ ] **Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)** — 3 gestiscilo entities migrated one-per-merge to projection-driven rendering; render equivalence documented; single ferro publish at slice end; "what the migration revealed" weakness note. Depends on Phase 207.
 - [ ] **Phase 210: COMP-03 — Agent-Success-Rate Harness** — `ferro-mcp/tests/agent_harness.rs`; 14+ tasks (2 per intent); 4-tier pass criteria defined before any agent run; ≥3 trials per case; `rmcp 0.12` in-process transport; committed baseline artifact (model version, prompt version, per-tier pass rates). Depends on Phase 207.
@@ -2722,7 +2722,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 207. COMP-02 Synthetic Regression Catalog | 0/1 | Not started | - |
+| 207. COMP-02 Synthetic Regression Catalog | 1/1 | Complete   | 2026-06-12 |
 | 208. COMP-05 Cross-Modality Vocabulary Sketch | 0/TBD | Not started | - |
 | 209. COMP-01 Slice A Gestiscilo Migration | 0/TBD | Not started | - |
 | 210. COMP-03 Agent-Success-Rate Harness | 0/TBD | Not started | - |
@@ -2745,8 +2745,8 @@ Plans:
   4. All seven catalog tests pass under `cargo test --all-features` and are integrated into the standard CI gate (no `#[ignore]`); a future change to `derive.rs` that breaks intent derivation for any canonical class causes a named, legible CI failure.
   5. A "discovered weaknesses" note in the phase verification names at least one real limitation surfaced by writing the catalog (e.g. a canonical class where derivation confidence is lower than expected, or a signal gap). An empty weaknesses section fails the phase close.
 
-**Plans:** 1 plan
-- [ ] 207-01-PLAN.md — Synthetic regression catalog: 7 canonical fixtures + per-intent identity/floor/margin tests, 4 adversarial confusable-pair fixtures, proptest engine invariants, insta snapshots (signals only), calibration, discovered-weaknesses note
+**Plans:** 1/1 plans complete
+- [x] 207-01-PLAN.md — Synthetic regression catalog: 7 canonical fixtures + per-intent identity/floor/margin tests, 4 adversarial confusable-pair fixtures, proptest engine invariants, insta snapshots (signals only), calibration, discovered-weaknesses note
 
 ### Phase 208: COMP-05 — Cross-Modality Vocabulary Sketch
 
