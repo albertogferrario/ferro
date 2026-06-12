@@ -20,8 +20,8 @@
 
 use ferro_projections::derive_intents;
 use ferro_projections::{
-    ActionDef, Cardinality, DataType, FieldMeaning, GuardDef, Intent, IntentScore, ServiceDef,
-    StateDef, StateMachine, Transition,
+    ActionDef, Cardinality, DataType, FieldMeaning, GuardDef, Intent, IntentHint, IntentScore,
+    ServiceDef, StateDef, StateMachine, Transition,
 };
 use proptest::prelude::*;
 
@@ -925,6 +925,136 @@ fn arb_service_def() -> impl Strategy<Value = ServiceDef> {
         }
         svc
     })
+}
+
+// ---------------------------------------------------------------------------
+// Real-world Slice A fixtures — gestiscilo canonical entities.
+//
+// These fixtures mirror the structural shape of three gestiscilo model fields
+// and assert that `derive_intents()` produces the expected primary intent for
+// each. The system under test (derive.rs/intent.rs) is READ-ONLY; if a fixture
+// does not derive the expected intent, fix the fixture (field meanings /
+// intent_hint), never derive.rs.
+// ---------------------------------------------------------------------------
+
+pub mod real_world_slice_a {
+    use super::*;
+
+    /// Staff list — Browse.
+    ///
+    /// bio + avatar_url pull toward Focus, so an explicit
+    /// `IntentHint::Primary(Intent::Browse)` is required.
+    pub fn staff_browse() -> ServiceDef {
+        ServiceDef::new("staff")
+            .display_name("Staff")
+            .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .optional_field("bio", DataType::String, FieldMeaning::FreeText)
+            .optional_field("avatar_url", DataType::String, FieldMeaning::ImageUrl)
+            .field("sort_order", DataType::Integer, FieldMeaning::Quantity)
+            .field("active", DataType::Boolean, FieldMeaning::Status)
+            .read_only_field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .intent_hint(IntentHint::Primary(Intent::Browse))
+    }
+
+    /// Orders kanban — Process.
+    ///
+    /// Guarded branching state machine is the primary Process driver.
+    /// States: Confermato → InCorso → Rientrato → Chiuso (forward),
+    /// Annullato (terminal from Confermato and InCorso).
+    /// Branching from Confermato (advance OR cancel) fires the Process signal.
+    pub fn orders_process() -> ServiceDef {
+        ServiceDef::new("order")
+            .display_name("Order")
+            .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("payment_state", DataType::String, FieldMeaning::Status)
+            .read_only_field("total_cents", DataType::Integer, FieldMeaning::Money)
+            .optional_field("customer_name", DataType::String, FieldMeaning::EntityName)
+            .state_machine(
+                StateMachine::new("order_lifecycle")
+                    .initial("confermato")
+                    .state(StateDef::new("confermato"))
+                    .state(StateDef::new("in_corso"))
+                    .state(StateDef::new("rientrato"))
+                    .state(StateDef::new("chiuso").final_state())
+                    .state(StateDef::new("annullato").final_state())
+                    // Confermato branches: advance OR cancel — this branching drives Process.
+                    .transition(
+                        Transition::new("confermato", "advance", "in_corso").guard("can_pay"),
+                    )
+                    .transition(
+                        Transition::new("confermato", "cancel", "annullato").guard("can_cancel"),
+                    )
+                    // InCorso also branches: advance OR revert OR cancel.
+                    .transition(
+                        Transition::new("in_corso", "advance", "rientrato").guard("is_editable"),
+                    )
+                    .transition(
+                        Transition::new("in_corso", "revert", "confermato").guard("is_editable"),
+                    )
+                    .transition(
+                        Transition::new("in_corso", "cancel", "annullato").guard("can_cancel"),
+                    )
+                    // Rientrato: forward to chiuso.
+                    .transition(
+                        Transition::new("rientrato", "advance", "chiuso").guard("is_editable"),
+                    ),
+            )
+    }
+
+    /// Statistics dashboard — Summarize.
+    ///
+    /// Money × 2 + Quantity, all read-only — Summarize wins decisively.
+    /// No intent_hint required.
+    pub fn stats_summarize() -> ServiceDef {
+        ServiceDef::new("summary_stats")
+            .display_name("Statistics")
+            .read_only_field(
+                "total_revenue_cents",
+                DataType::Integer,
+                FieldMeaning::Money,
+            )
+            .read_only_field("order_count", DataType::Integer, FieldMeaning::Quantity)
+            .read_only_field(
+                "average_order_cents",
+                DataType::Integer,
+                FieldMeaning::Money,
+            )
+    }
+
+    #[test]
+    fn staff_browse_intent() {
+        let scores = derive_intents(&staff_browse());
+        assert_eq!(
+            scores[0].intent,
+            Intent::Browse,
+            "Staff ServiceDef must derive Browse as primary (with IntentHint::Primary(Browse)); got {:?}",
+            scores[0].intent
+        );
+    }
+
+    #[test]
+    fn orders_process_intent() {
+        let scores = derive_intents(&orders_process());
+        assert_eq!(
+            scores[0].intent,
+            Intent::Process,
+            "Order ServiceDef must derive Process as primary (guarded branching state machine); got {:?}",
+            scores[0].intent
+        );
+    }
+
+    #[test]
+    fn stats_summarize_intent() {
+        let scores = derive_intents(&stats_summarize());
+        assert_eq!(
+            scores[0].intent,
+            Intent::Summarize,
+            "SummaryStats ServiceDef must derive Summarize as primary (Money+Quantity+read-only); got {:?}",
+            scores[0].intent
+        );
+    }
 }
 
 proptest! {
