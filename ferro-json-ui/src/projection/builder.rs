@@ -1196,4 +1196,50 @@ mod tests {
             "value_path must be None when no Money/Quantity field exists"
         );
     }
+
+    // -- Gap D render tests (TDD RED added in Plan 04 Task 1; GREEN wired below) --
+
+    #[test]
+    fn datatable_root_includes_image_url_column() {
+        // Gap D: an ImageUrl field must appear as a DataTable column (was excluded).
+        use crate::component::DataTableProps;
+        let service = ServiceDef::new("staff")
+            .display_name("Staff")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("avatar_url", DataType::String, FieldMeaning::ImageUrl);
+        let el = emit_datatable_root(&service);
+        let built = el.build();
+        let props: DataTableProps =
+            serde_json::from_value(built.props).expect("props decode as DataTableProps");
+        assert!(
+            props.columns.iter().any(|c| c.key == "avatar_url"),
+            "avatar_url column must appear in DataTable columns; got: {:?}",
+            props.columns.iter().map(|c| &c.key).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn image_column_has_image_format() {
+        // Gap D: the ImageUrl column must carry ColumnFormat::Image.
+        use crate::component::{ColumnFormat, DataTableProps};
+        let service = ServiceDef::new("staff")
+            .display_name("Staff")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("avatar_url", DataType::String, FieldMeaning::ImageUrl);
+        let el = emit_datatable_root(&service);
+        let built = el.build();
+        let props: DataTableProps =
+            serde_json::from_value(built.props).expect("props decode as DataTableProps");
+        let col = props
+            .columns
+            .iter()
+            .find(|c| c.key == "avatar_url")
+            .expect("avatar_url column must exist");
+        assert_eq!(
+            col.format,
+            Some(ColumnFormat::Image),
+            "ImageUrl column format must be Image"
+        );
+    }
 }

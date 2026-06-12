@@ -83,7 +83,7 @@ pub fn lookup_meaning(meaning: &FieldMeaning) -> ComponentChoice {
         FieldMeaning::ImageUrl => ComponentChoice {
             display: Some("Avatar"),
             input: Some("Input"),
-            column: None,
+            column: Some(()),
         },
         FieldMeaning::Money => ComponentChoice {
             display: Some("Text"),
@@ -279,6 +279,7 @@ pub fn build_column_for_field(field: &FieldDef) -> Column {
             Some(ColumnFormat::DateTime)
         }
         FieldMeaning::Boolean => Some(ColumnFormat::Boolean),
+        FieldMeaning::ImageUrl => Some(ColumnFormat::Image),
         _ => None,
     };
     Column {

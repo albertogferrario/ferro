@@ -135,6 +135,8 @@ pub enum ColumnFormat {
     Currency,
     Boolean,
     Badge,
+    /// Cell value is an image URL string; rendered as an `<img>` thumbnail.
+    Image,
 }
 
 /// Table column definition.
