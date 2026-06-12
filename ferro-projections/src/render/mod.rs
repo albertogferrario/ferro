@@ -5,6 +5,8 @@
 //! Concrete renderer implementations live in their respective output crates
 //! (e.g., `JsonUiRenderer` in ferro-json-ui).
 
+// Research sketch — not stable API
+pub(crate) mod sketch;
 pub mod template;
 
 use crate::error::Error;
