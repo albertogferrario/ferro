@@ -26,7 +26,8 @@ use crate::action::Action;
 use crate::catalog::{global_catalog, Catalog};
 use crate::component::{
     CardProps, CardVariant, Column, DataTableProps, DescriptionItem, DescriptionListProps,
-    FormProps, KanbanBoardProps, KanbanColumnProps, StatCardProps, Tab, TableProps, TabsProps,
+    DropdownMenuAction, DropdownMenuProps, FormProps, KanbanBoardProps, KanbanColumnProps,
+    StatCardProps, Tab, TableProps, TabsProps,
 };
 use crate::spec::{Element, ElementBuilder, Spec};
 
@@ -295,12 +296,33 @@ fn emit_datatable_root(service: &ServiceDef) -> ElementBuilder {
         .filter(|f| lookup_meaning(&f.meaning).column.is_some())
         .map(build_column_for_field)
         .collect();
+    let row_actions: Option<Vec<DropdownMenuAction>> = if service.actions.is_empty() {
+        None
+    } else {
+        Some(
+            service
+                .actions
+                .iter()
+                .map(|a| DropdownMenuAction {
+                    label: a.display_name.as_deref().unwrap_or(&a.name).to_string(),
+                    action: Action::new(format!("/{}/{{row_key}}/{}", service.name, a.name)),
+                    destructive: false,
+                    visible_if: None,
+                })
+                .collect(),
+        )
+    };
+    let row_key = if service.actions.is_empty() {
+        None
+    } else {
+        Some("id".to_string())
+    };
     let props = serde_json::to_value(DataTableProps {
         columns,
         data_path: format!("/data/{}", service.name),
-        row_actions: None,
+        row_actions,
         empty_message: None,
-        row_key: None,
+        row_key,
         row_href: None,
     })
     .expect("DataTableProps serialization cannot fail");
@@ -521,16 +543,39 @@ fn emit_relationships(
     }
 }
 
-/// `actions` slot placeholder. Full action wiring is deferred per
-/// CONTEXT.md Deferred Ideas; Phase 118+ will add Button elements that
-/// reference `service.actions: Vec<ActionDef>` with resolved handlers.
-#[allow(clippy::ptr_arg)] // kept for signature parity with live slot emitters
+/// `actions` slot. Emits a single `DropdownMenu` element carrying one item
+/// per `ServiceDef.action`. Action URLs follow the convention
+/// `POST /{service.name}/{action.name}` — `ActionDef` has no route field, so
+/// the consumer's route table must match this convention for the buttons to
+/// resolve (documented as the projection action-route contract, Risk 4).
 fn emit_actions_placeholder(
-    _service: &ServiceDef,
-    _aux: &mut Vec<(String, ElementBuilder)>,
-    _children_out: &mut Vec<String>,
+    service: &ServiceDef,
+    aux: &mut Vec<(String, ElementBuilder)>,
+    children_out: &mut Vec<String>,
 ) {
-    // Intentionally empty. Deferred to Phase 118+.
+    if service.actions.is_empty() {
+        return;
+    }
+    let items: Vec<DropdownMenuAction> = service
+        .actions
+        .iter()
+        .map(|a| DropdownMenuAction {
+            label: a.display_name.as_deref().unwrap_or(&a.name).to_string(),
+            action: Action::new(format!("/{}/{}", service.name, a.name)),
+            destructive: false,
+            visible_if: None,
+        })
+        .collect();
+    let props = serde_json::to_value(DropdownMenuProps {
+        menu_id: format!("actions_{}", service.name),
+        trigger_label: "Actions".to_string(),
+        items,
+        trigger_variant: None,
+    })
+    .expect("DropdownMenuProps serialization cannot fail");
+    let id = "actions_menu".to_string();
+    aux.push((id.clone(), element_with_props("DropdownMenu", props)));
+    children_out.push(id);
 }
 
 /// `metadata` slot — system fields (Identifier / CreatedAt / UpdatedAt)
