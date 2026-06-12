@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v12.7
 milestone_name: Passwordless MCP Auth
-status: verifying
-stopped_at: Phase 205 context gathered
-last_updated: "2026-06-12T00:06:04.194Z"
-last_activity: 2026-06-11
+status: executing
+stopped_at: Completed 205-01-PLAN.md
+last_updated: "2026-06-12T00:31:28.771Z"
+last_activity: 2026-06-12
 progress:
   total_phases: 87
   completed_phases: 80
-  total_plans: 343
-  completed_plans: 343
-  percent: 100
+  total_plans: 346
+  completed_plans: 344
+  percent: 99
 ---
 
 # Project State
@@ -20,20 +20,20 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 204 — ferro-storage provider-agnostic CDN configuration
+**Current focus:** Phase 205 — fix-ferro-mcp-server-tools-call-result-content-blocks-wrap-p
 
 ## Current Position
 
 Milestone: v12.7 — 🚧 in progress (Phases 202-203)
-Phase: 204
-Plan: Not started
+Phase: 205 (fix-ferro-mcp-server-tools-call-result-content-blocks-wrap-p) — EXECUTING
+Plan: 2 of 3
 Next: Phase 203 (OAuth Device Authorization Grant, RFC 8628) — `/gsd-discuss-phase 203`
 Prior: v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO); Phase 201 ✅ complete
-Status: Phase complete — ready for verification
+Status: Ready to execute
 
 Progress: [█████░░░░░] v12.7 (202 ✅ shipped, 203 pending)
 
-Last activity: 2026-06-11
+Last activity: 2026-06-12
 Workspace version: 0.2.53
 
 > **Operator actions pending:**
@@ -365,6 +365,7 @@ Progress: [██████████] 100%
 | Phase 204 P01 | 4m41s | 3 tasks | 3 files |
 | Phase 204 P02 | ~8m | 2 tasks | 1 files |
 | Phase 204 P03 | ~45m | 3 tasks | 5 files |
+| Phase 205-fix-ferro-mcp-server-tools-call-result-content-blocks-wrap-p P01 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -411,7 +412,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-12T00:06:04.149Z
-Stopped at: Phase 205 context gathered
-Resume file: .planning/phases/205-fix-ferro-mcp-server-tools-call-result-content-blocks-wrap-p/205-CONTEXT.md
+Last session: 2026-06-12T00:31:28.762Z
+Stopped at: Completed 205-01-PLAN.md
+Resume file: None
 Next action: `/gsd-discuss-phase 202` to start v12.7 (no active milestone yet — set milestone + 🚧 marker when beginning)
