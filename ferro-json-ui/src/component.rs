@@ -757,6 +757,12 @@ pub struct StatCardProps {
     /// SSE target key for live updates; maps to `data-sse-target` on the value element.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sse_target: Option<String>,
+    /// Resolves the initial displayed value from handler data at render time.
+    /// Format: `/segment/segment` (same JSON-pointer as `data::resolve_path`).
+    /// Falls back to `value` when missing or non-string. Mirrors
+    /// `ImageProps.data_path` / `DescriptionListProps.data_path`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_path: Option<String>,
 }
 
 /// Props for Checklist component.

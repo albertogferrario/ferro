@@ -685,11 +685,18 @@ pub(crate) fn render_empty_state(
 
 // ── 14. StatCard ─────────────────────────────────────────────────────────
 
-pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
+pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: StatCardProps = match decode_props(&el.props) {
         Ok(p) => p,
         Err(e) => return decode_diagnostic("StatCard", e),
     };
+    // Resolve the displayed value: value_path wins when it resolves against
+    // handler data; falls back to the static `props.value` otherwise.
+    let display_value = props
+        .value_path
+        .as_deref()
+        .and_then(|p| crate::data::resolve_path_string(data, p))
+        .unwrap_or_else(|| props.value.clone());
     let mut html =
         String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
     if let Some(ref icon) = props.icon {
@@ -707,12 +714,12 @@ pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, _data: &Value, _depth
         html.push_str(&format!(
             "<p class=\"text-2xl font-bold text-text\" data-sse-target=\"{}\" data-live-value>{}</p>",
             html_escape(sse),
-            html_escape(&props.value)
+            html_escape(&display_value)
         ));
     } else {
         html.push_str(&format!(
             "<p class=\"text-2xl font-bold text-text\">{}</p>",
-            html_escape(&props.value)
+            html_escape(&display_value)
         ));
     }
     if let Some(ref subtitle) = props.subtitle {
@@ -2309,6 +2316,43 @@ mod tests {
         assert!(
             !html.contains("<script>"),
             "raw <script> must be escaped; got: {html}"
+        );
+    }
+
+    // ── 14. StatCard value_path resolution ──────────────────────────────
+
+    #[test]
+    fn stat_card_value_path_resolves_from_data() {
+        // Gap C: when value_path is set and resolves against handler data,
+        // the resolved string is displayed instead of the static `value`.
+        let spec = spec_with_root(
+            Element::new("StatCard")
+                .prop("label", "Revenue")
+                .prop("value", "")
+                .prop("value_path", "/data/statistics/total_revenue"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({"data": {"statistics": {"total_revenue": "€12,450"}}});
+        let html = render_stat_card(el, &spec, &data, 1);
+        assert!(
+            html.contains("€12,450"),
+            "resolved value must appear in HTML; got: {html}"
+        );
+    }
+
+    #[test]
+    fn stat_card_value_path_fallback_to_static_value() {
+        // Gap C fallback: when value_path is None, the static `value` is displayed.
+        let spec = spec_with_root(
+            Element::new("StatCard")
+                .prop("label", "Revenue")
+                .prop("value", "static"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_stat_card(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("static"),
+            "static value must appear when value_path is absent; got: {html}"
         );
     }
 }
