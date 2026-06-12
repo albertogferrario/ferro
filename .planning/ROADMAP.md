@@ -2763,7 +2763,9 @@ Plans:
   4. The document includes a "v14.0 implications" section listing specific open questions for Channel Projection scope (e.g. whether `BaseContext` needs a `device_class` field, whether `Track` maps cleanly to voice).
   5. A "discovered weaknesses" note names at least one tension found: a place where the current intent vocabulary requires a workaround or an awkward output to satisfy the sketch. An empty section fails the phase close.
 
-**Plans:** TBD
+**Plans:** 2 plans
+- [ ] 208-01-PLAN.md — Three pub(crate) sketch renderers (CliSummary/Voice/MobileCard) against the shared Process anchor fixture + smoke tests
+- [ ] 208-02-PLAN.md — Cross-modality analysis document (7x3 matrix, vocabulary tension, v14.0 implications, discovered weaknesses) + intent.rs/derive.rs byte-freeze verification
 
 ### Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)
 
