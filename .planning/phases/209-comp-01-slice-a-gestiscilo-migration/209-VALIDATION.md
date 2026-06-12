@@ -43,16 +43,18 @@ created: 2026-06-12
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 209-01-xx | 01 | 1 | COMP-01 | — | N/A (read-only validation, no auth surface) | unit | `cargo test -p ferro-projections staff_browse_intent` | ❌ W0 | ⬜ pending |
-| 209-02-xx | 02 | 2 | COMP-01 | — | N/A | unit | `cargo test -p ferro-projections orders_process_intent` | ❌ W0 | ⬜ pending |
-| 209-03-xx | 03 | 3 | COMP-01 | — | N/A | unit | `cargo test -p ferro-projections stats_summarize_intent` | ❌ W0 | ⬜ pending |
-| 209-xx-xx | — | final | COMP-01 | — | N/A | manual | Human review: weakness note names ≥1 abstraction gap | ❌ W0 | ⬜ pending |
+| 209-01-01 | 01 | 1 | COMP-01 | — | N/A (read-only validation, no auth surface) | unit | `cargo test -p ferro-projections --test catalog real_world_slice_a` (all three intent assertions) | ❌ W0 | ⬜ pending |
+| 209-01-02 | 01 | 1 | COMP-01 | — | N/A | doc | `grep -q "Data fields shown" EQUIV-*.md` (three equivalence stubs) | ❌ W0 | ⬜ pending |
+| 209-02-01 | 02 | 2 | COMP-01 / SC#2 | — | N/A | manual | Chrome DevTools MCP before/after capture + functional checklist (per entity) | ❌ W0 | ⬜ pending |
+| 209-02-02 | 02 | 2 | COMP-01 / SC#5 | — | N/A | doc + manual | `grep -c '^### Gap' WEAKNESS-NOTE.md >= 1` + human review names ≥1 abstraction gap | ❌ W0 | ⬜ pending |
+| 209-02-03 | 02 | 2 | COMP-01 / SC#4 | — | N/A | manual | Human review: PUBLISH-DECISION.md records D-06 path + branch discipline | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
-*Plan/task IDs are placeholders pending the planner's wave assignment. Each of the three
-entity migrations is its own sequential gestiscilo merge (D-03); waves here reflect that
-strict ordering, not parallelism.*
+*Ferro 209 is validation-only: Plan 01 is the ferro-native abstraction proof (intent tests +
+equivalence stubs) and runs now; Plan 02 records the evidence and signs off, gated on the external
+gestiscilo migration phase (`GESTISCILO-MIGRATION-BRIEF.md`). The three entity migrations and their
+one-per-merge sequencing (D-03) belong to the gestiscilo phase, not to a ferro wave.*
 
 ---
 
@@ -70,9 +72,10 @@ Each migration's equivalence record (`EQUIV-{entity}.md` in this phase directory
 
 ## Wave 0 Requirements
 
-- [ ] `ferro-projections/tests/` — three canonical gestiscilo ServiceDef fixtures (staff/order/stats) with `derive_intents()` assertions. Live in `catalog.rs` as a `real_world_slice_a` sub-module OR a new `tests/gestiscilo.rs` (planner decides — open question 3).
-- [ ] gestiscilo `Cargo.toml` — enable `projections` feature: `ferro = { ..., features = ["json-ui", "theme", "projections"] }` (one-line; activates already-published 0.2.54 code, no ferro bump).
-- [ ] Three equivalence record stubs in this phase directory: `EQUIV-staff-browse.md`, `EQUIV-orders-process.md`, `EQUIV-stats-summarize.md`.
+- [ ] `ferro-projections/tests/catalog.rs` — three canonical ServiceDef fixtures (staff/order/stats) with `derive_intents()` assertions, in a `real_world_slice_a` sub-module (Plan 01 Task 1). Pure ferro-projections test code; needs no gestiscilo change.
+- [ ] Three equivalence record stubs in this phase directory: `EQUIV-staff-browse.md`, `EQUIV-orders-process.md`, `EQUIV-stats-summarize.md` (Plan 01 Task 2).
+
+*The gestiscilo `Cargo.toml` `projections` feature flag is a gestiscilo Wave 0 item, tracked in `GESTISCILO-MIGRATION-BRIEF.md` — not a ferro task.*
 
 ---
 

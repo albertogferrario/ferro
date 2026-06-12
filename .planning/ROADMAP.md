@@ -2770,9 +2770,11 @@ Plans:
 
 ### Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)
 
-**Goal:** Replace three gestiscilo views with projection-driven rendering via `ServiceDef` + `JsonUiRenderer`, delivering the first real-world validation signal. Each entity is migrated one-per-merge to gestiscilo master; no long-lived branch. A single ferro publish at the end of the slice.
+**Goal:** Deliver the first real-world validation signal for the projection/intent abstraction by migrating three gestiscilo views (one Browse, one Process, one Summarize) to `ServiceDef` + `JsonUiRenderer` and recording render-equivalence evidence. The migration is one-per-merge to gestiscilo master with no long-lived branch; a single ferro publish at slice end only if a discovered gap forces a fix.
 
-**Depends on:** Phase 207 (catalog baseline establishes the verified intent vocabulary these migrations compare against).
+**Repo split (validation-only ferro phase):** This ferro phase is **validation-only** — it owns the ferro-side intent-assertion tests (`ferro-projections/tests/catalog.rs`), the render-equivalence records, the weakness note, and the publish decision. The actual view migration (controller swaps, the `projections` feature flag, branches, merges, server, screenshots) is a **gestiscilo-repo phase**, executed in a gestiscilo GSD session from `GESTISCILO-MIGRATION-BRIEF.md`. Ferro 209 does not modify any gestiscilo file (CONTEXT D-09). The success criteria below remain the COMP-01 contract; SC#1 and the branch-discipline half of SC#3 are *executed* by the gestiscilo phase and *evidenced* by ferro 209.
+
+**Depends on:** Phase 207 (catalog baseline establishes the verified intent vocabulary these migrations compare against). External: the gestiscilo migration phase (`GESTISCILO-MIGRATION-BRIEF.md`) must merge the three entities before ferro 209 Plan 02 records its evidence.
 
 **Requirements:** COMP-01
 
@@ -2783,14 +2785,13 @@ Plans:
   4. A single ferro version is published at the end of the slice series (not mid-series); the ferro version published is the same version all three slices were migrated against.
   5. A "what the migration revealed" section in the phase verification names at least one real abstraction gap or friction point surfaced by working against a production codebase (e.g. a `ServiceDef` field that had no clean mapping, a renderer output that required a workaround). An empty section fails the phase close.
 
-**Phase-time calibration:** Entity selection (which Browse / Process / Summarize candidates) is resolved at phase planning time by reading gestiscilo `src/models/` and `src/controllers/` for entities with direct `JsonUi::render_file` calls. Do not pre-select now.
+**Phase-time calibration:** Entity selection is RESOLVED (RESEARCH §1): Staff list → Browse, Orders kanban → Process, Statistics dashboard → Summarize. Criteria and backups in RESEARCH §1; full migration spec in `GESTISCILO-MIGRATION-BRIEF.md`.
 
-**Plans:** 5 plans in 5 sequential waves (entity migrations are strictly one-per-merge — D-03)
-- [ ] 209-01-PLAN.md — Wave 0 prerequisites: enable gestiscilo `projections` feature; three `derive_intents()` intent-assertion fixtures (staff/order/stats) in `catalog.rs`; three EQUIV stubs
-- [ ] 209-02-PLAN.md — Browse: migrate Staff list to ServiceDef+JsonUiRenderer (IntentHint::Primary(Browse)); equivalence record; merge to gestiscilo master
-- [ ] 209-03-PLAN.md — Process: migrate Orders kanban (guarded state machine); equivalence record; merge to gestiscilo master
-- [ ] 209-04-PLAN.md — Summarize: migrate Statistics dashboard (stat cards via projection; SVG chart = abstraction gap); equivalence record; merge to gestiscilo master
-- [ ] 209-05-PLAN.md — Phase close: synthesize "what the migration revealed" weakness note (SC#5); record publish decision (D-06) + branch discipline (SC#3)
+**Plans:** 2 ferro plans (validation-only — the migration itself is the gestiscilo phase)
+- [ ] 209-01-PLAN.md — ferro abstraction proof: three `derive_intents()` intent-assertion fixtures (staff/order/stats) in `ferro-projections/tests/catalog.rs`; three EQUIV stubs. Autonomous, runs now.
+- [ ] 209-02-PLAN.md — evidence + sign-off: fill the three render-equivalence records from the gestiscilo migration outputs (SC#2); synthesize the "what the migration revealed" weakness note (SC#5); record the publish decision (SC#4 / D-06) + branch discipline (SC#1, SC#3). Gated on the external gestiscilo migration phase.
+
+**Gestiscilo migration (separate, in the gestiscilo repo):** see `GESTISCILO-MIGRATION-BRIEF.md` — the `projections` feature flag + three one-per-merge entity migrations, planned/executed in a gestiscilo GSD session.
 **UI hint**: yes
 
 ### Phase 210: COMP-03 — Agent-Success-Rate Harness

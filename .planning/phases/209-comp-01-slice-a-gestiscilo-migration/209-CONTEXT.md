@@ -9,11 +9,13 @@
 
 Migrate **three** gestiscilo entities — one Browse, one Process, one Summarize — from their existing `JsonUi::render_file` views to projection-driven rendering via `ServiceDef` + `JsonUiRenderer`. This is the first real-world validation signal for the projection/intent abstraction (v1.0 criterion #2, compressive beauty dimension).
 
-**In scope:** exactly 3 entities; one-per-merge to gestiscilo master; a render-equivalence record per entity; a single ferro publish at slice end (only if forced); a "what the migration revealed" weakness note.
+**Repo split (the load-bearing boundary — D-09):** this ferro phase is **validation-only**. It does NOT modify, build, or merge the gestiscilo tree. The actual view migration (controller edits, `Cargo.toml` feature flag, branches, merges, server, screenshots) is a **gestiscilo-repo phase**, planned and executed in a gestiscilo GSD session from `GESTISCILO-MIGRATION-BRIEF.md`. Ferro 209 *consumes* that work's outputs.
 
-**Out of scope (do not expand):** the rest of the gestiscilo migration (130 views, 69 models — explicitly deferred past v13.0); any change to the seven-intent vocabulary (`intent.rs`); any new ferro renderer; speculative ferro API additions. Entity *selection* is deferred to plan-time per ROADMAP ("Do not pre-select now") — see Decisions D-07.
+**In scope (ferro 209):** the ferro-side intent-assertion tests in `ferro-projections/tests/catalog.rs` (the abstraction proof); a render-equivalence record per migrated entity (filled from the gestiscilo outputs); the "what the migration revealed" weakness note; the publish decision (single ferro publish at slice end only if forced). Two ferro plans: 01 (intent fixtures + equivalence stubs), 02 (evidence + weakness note + publish sign-off).
 
-**Cross-repo nature:** the *code change* lives in the `gestiscilo-it/app` repo (greenfield projection adoption — gestiscilo has 67 `render_file` sites and currently zero `ServiceDef`/`JsonUiRenderer` usage). The *validation requirement* (COMP-01) is ferro's, so the validation artifacts live in this ferro phase directory.
+**In scope (gestiscilo phase, NOT here):** exactly 3 entity migrations; one-per-merge to gestiscilo master; the `projections` feature flag; before/after screenshots. Tracked via `GESTISCILO-MIGRATION-BRIEF.md`.
+
+**Out of scope (do not expand):** the rest of the gestiscilo migration (130 views, 69 models — explicitly deferred past v13.0); any change to the seven-intent vocabulary (`intent.rs`); any new ferro renderer; speculative ferro API additions; ferro editing any gestiscilo file. Entity *selection* was deferred to plan-time per ROADMAP and is now resolved in RESEARCH §1.
 
 </domain>
 
@@ -39,6 +41,9 @@ Migrate **three** gestiscilo entities — one Browse, one Process, one Summarize
 
 ### Deliverable location (cross-repo)
 - **D-08:** All COMP-01 validation artifacts — the three render-equivalence records and the "what the migration revealed" weakness note — live in **this ferro phase directory** (`.planning/phases/209-comp-01-slice-a-gestiscilo-migration/`), each linking to the corresponding gestiscilo migration commit/PR. The executable code change lives in gestiscilo history.
+
+### Repo boundary (validation-only ferro phase)
+- **D-09:** Ferro 209 is **validation-only** and modifies **no gestiscilo file**. The migration code (controller swaps, `Cargo.toml` `projections` flag, branches, merges, the running server, screenshot capture) is a **gestiscilo-repo phase**, planned/executed in a gestiscilo GSD session from `GESTISCILO-MIGRATION-BRIEF.md`. Rationale: the gestiscilo repo has its own GSD planning system (its own milestone, roadmap, phase numbering) — driving its code or roadmap from a ferro session is the same boundary violation the split exists to prevent. Ferro 209's plans (01, 02) only touch `ferro-projections/tests/catalog.rs` and this phase directory. The dependency is one-directional: the gestiscilo phase migrates → ferro 209 records the evidence + runs intent tests + signs off COMP-01. Ferro 209's Plan 02 carries an `external_depends_on` on the gestiscilo migration.
 
 ### Claude's Discretion
 - Exact screenshot tooling instance (chrome-devtools / -2 / -3), file naming for equivalence records, and the markdown shape of the weakness note are Claude's to decide at execution time, consistent with D-01/D-08.
