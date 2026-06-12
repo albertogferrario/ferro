@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v13.2
 milestone_name: Projection Render Completeness
-status: executing
-stopped_at: Phase 209 VALIDATED — projection render is content-incomplete (Process placeholder kanban, Summarize empty StatCard values, actions deferred; Browse data-binds). Migrations blocked, gestiscilo probe branches feat/207+feat/208 unmerged. Follow-up scoped: v13.2 Phase 213 (Projection Render Completeness).
-last_updated: "2026-06-12T19:10:00.000Z"
-last_activity: 2026-06-12 -- Phase 209 validated; v13.2/Phase 213 drafted
+status: planning
+stopped_at: Phase 213 context gathered
+last_updated: "2026-06-12T20:17:18.081Z"
+last_activity: 2026-06-12 -- Phase 209 validated; pivoted to v13.2/Phase 213, CONTEXT scoped
 progress:
-  total_phases: 93
+  total_phases: 95
   completed_phases: 84
   total_plans: 352
   completed_plans: 351
@@ -432,7 +432,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-12T18:35:52.744Z
-Stopped at: Completed 209-01-PLAN.md — real_world_slice_a intent fixtures + EQUIV stubs
-Resume file: None
+Last session: 2026-06-12T20:17:18.062Z
+Stopped at: Phase 213 context gathered
+Resume file: .planning/phases/213-projection-render-completeness/213-CONTEXT.md
 Next action: `/gsd-discuss-phase 202` to start v12.7 (no active milestone yet — set milestone + 🚧 marker when beginning)
