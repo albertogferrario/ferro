@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Between milestones — v12.7 shipped; next is v13.0 "Road to v1.0" (not started).
+**Current focus:** v13.0 Compressive Validation — defining requirements (COMP-01..05, projection/intent validation).
 
 ## Current Position
 
-Milestone: v12.7 — ✅ shipped 2026-06-12 (Phases 202-203)
-Phase: none active
+Milestone: v13.0 Compressive Validation — 🚧 starting (first slice of the Road to v1.0 program)
+Phase: Not started (defining requirements; roadmap will start at 207)
 Plan: —
-Next: Start v13.0 "Road to v1.0" — `/gsd-new-milestone` (no phases scaffolded yet)
-Prior: v12.7 ✅ shipped 2026-06-12 (202-203); out-of-band fixes 201/204/205/206 ✅ complete; v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO)
-Status: Milestone closed — release 0.2.54 pending (114 commits unpushed)
+Next: Research → requirements → roadmap (in progress via /gsd-new-milestone)
+Prior: v12.7 ✅ shipped 2026-06-12 (202-203); 0.2.54 ✅ published to crates.io 2026-06-12 (204/205/206 + json-ui fix); v12.6 ✅ shipped 2026-06-11 (197-200)
+Status: Defining requirements — Milestone v13.0 started
 
-Progress: [██████████] v12.7 shipped (202 ✅, 203 ✅)
+Progress: [░░░░░░░░░░] v13.0 (requirements being defined)
 
 Last activity: 2026-06-12
 Workspace version: 0.2.54
@@ -39,7 +39,7 @@ Workspace version: 0.2.54
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
 
 > **Operator actions pending:**
-> - **Release 0.2.53 + 0.2.54** — push `master` to origin to trigger the GH Actions publish wave (114 commits unpushed). Bundles Phase 204 (ferro-storage CDN quartet) + Phase 205 (ferro-mcp-server tools/call content-block fix, live dogfood GO) + the ferro-json-ui data-bound-absolute-URL action fix + Phase 206 (STORAGE_* rename) in one push. `ferro-stripe 0.9.0`, `ferro-mcp-server`, and `ferro-mcp-oauth` are ALREADY on crates.io at 0.2.52 — no bootstrap needed (the publish-update token updates existing crates; the wave skips already-published versions).
+> - ✅ **Released 0.2.54** (2026-06-12) — pushed master via HTTPS (gh credential helper; SSH still denied); Publish workflow GREEN (Check Version → full `--all-features` Test 10m26s → Publish to crates.io 5m44s). Bundled Phase 204 (CDN quartet) + Phase 205 (MCP tools/call content-block fix, dogfood GO) + ferro-json-ui absolute-URL action fix + Phase 206 (STORAGE_* rename). A pre-push `cargo fmt --check` caught uncommitted Phase 206 fmt drift (config.rs/s3.rs) that would have failed CI — fixed in commit before push.
 > - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
 > - Open consumer-side phase in gestiscilo-it/app to adopt STORAGE_* rename (mirrors gestiscilo Phase 205 shape).
 

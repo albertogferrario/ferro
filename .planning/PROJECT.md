@@ -46,8 +46,21 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 - **Pre-1.0.** Breaking changes acceptable across all 0.x.
 - Published on crates.io as `ferro-rs`. Repo public.
-- v0.2.33 shipped.
-- 26 workspace crates.
+- v0.2.54 shipped (2026-06-12).
+- ~26 workspace crates.
+
+## Current Milestone: v13.0 Compressive Validation
+
+**Goal:** Validate the projection / intent abstraction empirically — the first slice of the v13.0 "Road to v1.0" program, targeting the compressive dimension (substance-first priority #1) and v1.0 criterion #2 ("projection / intent validated through real applications and a synthetic catalog of canonical app classes").
+
+**Target requirements (COMP-01..05, carried from v11.7 planning):**
+- COMP-01 — Migrate `gestiscilo` to projection-driven rendering (first real-world validation).
+- COMP-02 — Synthetic catalog of canonical app classes covering the seven intents, with regression tests that run on every projection / intent change.
+- COMP-03 — Agent-success-rate measurement: can an agent reading `ferro-mcp` introspection produce a working projection from a natural-language description?
+- COMP-04 — Time-to-working-app benchmark (`cargo new` → running service with auth, three entity types, one background job).
+- COMP-05 — Intent vocabulary cross-modality sketch (one intent expressed as mobile / voice / CLI); informs any intent-vocabulary revision. v14.0 Channel Projection depends on this.
+
+**Key context:** These are validation / measurement work against ferro's own projection/intent system, not new ecosystem features. COMP-01 (gestiscilo migration) is a large cross-repo effort and may be sliced. Phase numbering continues from 206 (v13.0 starts at 207).
 
 ---
 
