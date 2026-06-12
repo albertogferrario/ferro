@@ -5,15 +5,18 @@
 **Renderers:** `CliSummaryRenderer`, `VoiceRenderer`, `MobileCardRenderer`  
 **Anchor fixture:** `approval_workflow` (Process intent)
 
-This document is the primary deliverable of Phase 208 Plan 01. It provides:
-(a) a 7-intent × 3-modality coverage matrix;
-(b) named vocabulary tensions;
-(c) v14.0 implications;
-(d) discovered weaknesses from the sketch implementation.
+This document is the COMP-05 deliverable and a v14.0 Channel Projection planning input. It
+analyzes whether the seven-intent vocabulary (Browse, Focus, Collect, Process, Summarize,
+Analyze, Track) survives non-visual rendering. The three `pub(crate)` sketch renderers
+(`cli.rs`, `voice.rs`, `mobile.rs`) are the forcing function — they are research artifacts,
+not shipped API.
+
+Sections: (a) anchor fixture with actual sketch output; (b) 7-intent × 3-modality coverage
+matrix; (c) vocabulary tensions; (d) v14.0 implications; (e) discovered weaknesses.
 
 ---
 
-## Anchor Fixture Summary
+## Anchor Fixture
 
 The `approval_workflow` `ServiceDef` (defined inline in each sketch test module) is the
 forcing-function fixture for all three renderers:
@@ -25,23 +28,95 @@ forcing-function fixture for all three renderers:
   branching (submit/approve/reject/cancel paths)
 - **Actions:** `submit`, `approve`, `reject`, `cancel` with preconditions and transition triggers
 
-`derive_intents()` resolves this fixture to **`Process`** as the primary intent (confidence
-highest among all intents). Evidence: guarded transitions, branching state machine, workflow
-actions with preconditions, `Status` + `Money` fields.
+`derive_intents()` resolves this fixture to **`Process`** as the primary intent. Evidence:
+guarded transitions, branching state machine, workflow actions with preconditions, `Status` +
+`Money` fields.
+
+### CLI Summary output (`CliSummaryRenderer`)
+
+```
+approval_workflow [process]
+Fields:
+  - Title (EntityName)
+  - Status (Status)
+  - Amount (Money)
+States (initial: draft):
+  - draft (draft)
+  - submitted (submitted)
+  - approved (approved) [final]
+  - rejected (rejected) [final]
+  - cancelled (cancelled) [final]
+Actions:
+  - submit (submit)
+  - approve (approve)
+  - reject (reject)
+  - cancel (cancel)
+```
+
+Guard conditions are absent from the action listing. A reader cannot determine from this output
+that `approve` requires the `is_approver` guard.
+
+### Voice output (`VoiceRenderer`, `ctx.current_state = None`)
+
+```
+The approval_workflow starts in the draft state. You can submit, approve, reject or cancel.
+```
+
+Four action verbs are narrated unconditionally. Guard conditions are invisible. A non-approver
+user would be told they can "approve" when they cannot.
+
+### Mobile card output (`MobileCardRenderer`)
+
+```json
+{
+  "intent": "process",
+  "service": "approval_workflow",
+  "cards": [
+    { "type": "header", "title": "approval_workflow", "intent": "process" },
+    { "type": "fields", "items": [
+        { "label": "Title", "name": "title", "meaning": "EntityName" },
+        { "label": "Status", "name": "status", "meaning": "Status" },
+        { "label": "Amount", "name": "amount", "meaning": "Money" }
+      ]
+    },
+    { "type": "status", "initial_state": "draft",
+      "states": [
+        { "name": "draft", "label": "draft", "is_final": false },
+        { "name": "submitted", "label": "submitted", "is_final": false },
+        { "name": "approved", "label": "approved", "is_final": true },
+        { "name": "rejected", "label": "rejected", "is_final": true },
+        { "name": "cancelled", "label": "cancelled", "is_final": true }
+      ]
+    },
+    { "type": "actions", "items": [
+        { "name": "submit", "label": "submit" },
+        { "name": "approve", "label": "approve" },
+        { "name": "reject", "label": "reject" },
+        { "name": "cancel", "label": "cancel" }
+      ]
+    }
+  ]
+}
+```
+
+All four actions are emitted without guard context. No chart card type exists in the spec.
 
 ---
 
 ## Intent × Modality Coverage Matrix
 
-| Intent | CLI Summary | Voice | Mobile Card |
-|--------|-------------|-------|-------------|
-| **Browse** | Lists entity names and related fields cleanly; state machine absent; no awkwardness | Narrates "Here are the available items" — natural for voice lists | Card per item with label/name; natural card-list shape |
-| **Focus** | Detail view fields map to key-value lines; image/URL fields appear as labeled strings | Image URL is meaningless as spoken text ("image_url: https://…"); must skip or paraphrase | `ImageUrl`/`Url` fields need special card type (link card, image card) that the current card spec does not define |
-| **Collect** | Fields map to "required: yes/no" prompt list; reasonable for CLI form scaffolding | Form fields map naturally to a dialog turn sequence; number of turns is unconstrained | Form cards (one field per card in a stepper) are a well-known mobile pattern; maps cleanly |
-| **Process** | (Anchor) State names, action list, guarded transitions render cleanly as text | (Anchor) State narration + action verb list works as spoken prose; guard context lost | (Anchor) header/fields/status/actions card structure is complete; guard conditions not surfaced |
-| **Summarize** | Read-only Money/Percentage/Quantity fields render as a stats block; clean | Verbal summary ("Total revenue: €12,400") is natural; works well | Stats cards with large numeric display are a native mobile pattern; maps cleanly |
-| **Analyze** | DateTime + numeric co-occurrence renders as a table of values; no chart representation | Time-series data as voice narration is deeply awkward — no natural spoken form for trends | Chart cards require a chart component not in the current card spec; gap |
-| **Track** | Linear state progression renders as a progress list; clean | Status narration ("The order is currently shipped") is the most natural voice pattern | Timeline/progress cards are a well-known mobile pattern; maps cleanly |
+All seven intents are analyzed below. Process is grounded in the actual sketch output above;
+the remaining six are analyzed structurally against the same three modalities.
+
+| Intent    | CLI Summary | Voice | Mobile Card |
+|-----------|-------------|-------|-------------|
+| Browse    | Clean — lists entity names and related fields; no state machine present | Natural — voice lists are well-established; "Here are the items" pattern works | Clean — card per item with label/name is the natural card-list shape |
+| Focus     | Lossy — `ImageUrl`/`Url` fields appear as labeled strings with no navigational value | Broken — reading a raw URL aloud is not useful; no alt-text in `FieldDef` to substitute | Incomplete — `ImageUrl`/`Url` fields need a link-card or image-card type not in the current spec |
+| Collect   | Functional — fields map to a "required: yes/no" prompt list; usable for CLI form scaffolding | Natural — form fields map to dialog turn sequence; step count is unconstrained but manageable | Clean — one-field-per-card stepper is a well-known mobile pattern |
+| Process   | Clean — state names, action list render as text; guard conditions not surfaced (see weaknesses) | Functional — state narration + action verb list works as prose; guard context lost | Functional — header/fields/status/actions card structure is complete; guard conditions not surfaced |
+| Summarize | Clean — read-only Money/Percentage/Quantity fields render as a stats block | Natural — verbal summary ("Total: €12,400") is idiomatic voice output | Clean — stats cards with large numeric display are a native mobile pattern |
+| Analyze   | Awkward — DateTime + numeric fields render as a table of values; no chart equivalent | Broken — no natural spoken form for time-series trends; must narrate raw values or skip | Incomplete — chart cards require a chart component not in the current card spec |
+| Track     | Clean — linear state progression renders as a progress list | Best fit — "The order is currently shipped" is the most natural voice pattern in the vocabulary | Clean — timeline/progress cards are a well-known mobile pattern |
 
 **Coverage summary:** Process, Browse, Collect, Summarize, and Track map cleanly to all three
 modalities. Focus and Analyze have modality-specific gaps.
