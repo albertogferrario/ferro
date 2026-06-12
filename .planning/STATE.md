@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 205 — fix-ferro-mcp-server-tools-call-result-content-blocks-wrap-p
+**Current focus:** Between milestones — v12.7 shipped; next is v13.0 "Road to v1.0" (not started).
 
 ## Current Position
 
-Milestone: v12.7 — 🚧 in progress (Phases 202-203)
-Phase: 206
-Plan: Not started
-Next: Phase 203 (OAuth Device Authorization Grant, RFC 8628) — `/gsd-discuss-phase 203`
-Prior: v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO); Phase 201 ✅ complete
-Status: Ready to execute
+Milestone: v12.7 — ✅ shipped 2026-06-12 (Phases 202-203)
+Phase: none active
+Plan: —
+Next: Start v13.0 "Road to v1.0" — `/gsd-new-milestone` (no phases scaffolded yet)
+Prior: v12.7 ✅ shipped 2026-06-12 (202-203); out-of-band fixes 201/204/205/206 ✅ complete; v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO)
+Status: Milestone closed — release 0.2.54 pending (114 commits unpushed)
 
-Progress: [█████░░░░░] v12.7 (202 ✅ shipped, 203 pending)
+Progress: [██████████] v12.7 shipped (202 ✅, 203 ✅)
 
 Last activity: 2026-06-12
 Workspace version: 0.2.54
@@ -39,9 +39,20 @@ Workspace version: 0.2.54
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
 
 > **Operator actions pending:**
-> - **Release 0.2.53 + 0.2.54** — push `master` to origin to trigger the GH Actions publish wave. Bundles Phase 204 (ferro-storage CDN quartet) + Phase 206 (STORAGE_* rename) in one push. `ferro-stripe 0.9.0`, `ferro-mcp-server`, and `ferro-mcp-oauth` are ALREADY on crates.io at 0.2.52 — no bootstrap needed (the publish-update token updates existing crates; the wave skips already-published versions).
+> - **Release 0.2.53 + 0.2.54** — push `master` to origin to trigger the GH Actions publish wave (114 commits unpushed). Bundles Phase 204 (ferro-storage CDN quartet) + Phase 205 (ferro-mcp-server tools/call content-block fix, live dogfood GO) + the ferro-json-ui data-bound-absolute-URL action fix + Phase 206 (STORAGE_* rename) in one push. `ferro-stripe 0.9.0`, `ferro-mcp-server`, and `ferro-mcp-oauth` are ALREADY on crates.io at 0.2.52 — no bootstrap needed (the publish-update token updates existing crates; the wave skips already-published versions).
 > - 4 fully-merged local branches safe to prune (backup/v12.0-…, feat/176-…, feat/180-…, v12.0/json-ui-v2).
 > - Open consumer-side phase in gestiscilo-it/app to adopt STORAGE_* rename (mirrors gestiscilo Phase 205 shape).
+
+## Shipped Milestone: v12.7 Passwordless MCP Auth (Phases 202-203)
+
+Shipped 2026-06-12. Passwordless and cross-device auth for the consumer-app MCP surface. A magic-link ferro app completes the OAuth/MCP browser-login flow by resuming the in-flight authorize request (Phase 202 login-resume contract: `oauth_resume_redirect` / `take_oauth_return_to`), and `ferro-mcp-oauth` gains the OAuth 2.0 Device Authorization Grant (RFC 8628) for passwordless/cross-device/headless MCP clients (Phase 203). Both reuse the v12.6 consent + tenant-scoping surfaces and the single existing token issuer — the device-code Approved arm mints through the same `build_claims` + `mint_token` path as the auth-code arm (no second token path). Milestone audit `v12.7-MILESTONE-AUDIT.md`: tech_debt status, no blockers, cross-phase integration 8/8 wired. Deferred: WR-02/WR-03 resume edge cases.
+
+| Phase | Status | Verification |
+|-------|--------|--------------|
+| 202. Login-resume contract + magic-link sample app | ✅ shipped | passed 5/5 |
+| 203. OAuth Device Authorization Grant (RFC 8628) | ✅ shipped | passed 5/5 (13-test SC-5 matrix) |
+
+Progress: [██████████] 100%
 
 ## Shipped Milestone: v12.6 Consumer App MCP (Browser Login) (Phases 197-200)
 

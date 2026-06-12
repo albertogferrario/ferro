@@ -1,5 +1,36 @@
 # Project Milestones: Ferro Framework
 
+## v12.7 Passwordless MCP Auth (Shipped: 2026-06-12)
+
+**Phases completed:** 2 phases (202–203), 10 plans
+
+**Delivered:** Passwordless and cross-device authentication for the consumer-app MCP
+surface. A magic-link (async) ferro app now completes the OAuth/MCP browser-login flow
+by resuming the in-flight authorize request, and `ferro-mcp-oauth` gains the OAuth 2.0
+Device Authorization Grant (RFC 8628) for passwordless, cross-device, and headless/CLI
+MCP clients — both reusing the v12.6 consent + tenant-scoping surfaces and the single
+existing token issuer (no second token path).
+
+**Key accomplishments:**
+
+- Phase 202 — Login-resume contract + magic-link sample app: a documented helper
+  (`oauth_resume_redirect` / `take_oauth_return_to`) any login handler calls to obtain
+  the post-login redirect target from the session `oauth_return_to`; the bundled sample
+  app login converted from password to magic-link as the golden-path exemplar, with an
+  async-flow acceptance test (unauthenticated `/authorize` → login → verify → resume →
+  consent). Verified 5/5.
+- Phase 203 — OAuth Device Authorization Grant (RFC 8628): `device_authorization`
+  endpoint returning RFC-8628 §3.2 fields, a user-code verification page bound to the
+  existing consent + `(user, tenant)` scoping (login-resume reused), and the §3.5
+  device-code token polling state machine whose Approved arm mints through the same
+  `build_claims` + `mint_token` path as the authorization-code arm. Discovery advertises
+  `device_authorization_endpoint` + the device-code grant. Verified 5/5 (13-test SC-5 matrix).
+
+**Verification:** both phases passed 5/5. Milestone audit `v12.7-MILESTONE-AUDIT.md`:
+status tech_debt (no blockers) — cross-phase integration 8/8 wired, single-token-issuer
+invariant held. Deferred edge cases: WR-02/WR-03 (resume not triggered for an
+already-authenticated tab clicking a magic-link mid-flow, or for `POST /auth/register`).
+
 ## v12.5 Projection Checkpoint (Shipped: 2026-06-10)
 
 **Phases completed:** 3 phases (194–196), 11 plans
