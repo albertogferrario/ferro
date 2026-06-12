@@ -1,167 +1,335 @@
-# Technology Stack — v12.5 Projection Checkpoint
+# Stack Research — v13.0 Compressive Validation
 
-**Project:** ferro / checkpoint_projection MCP tool
-**Researched:** 2026-06-09
-**Scope:** Incremental — what the NEW tool needs beyond the existing codebase.
-**Confidence:** HIGH (all findings from direct source reading; no training-data guesses)
-
----
-
-## Verdict: Zero new dependencies required
-
-Everything `checkpoint_projection` needs exists in the current `ferro-mcp` crate graph. The implementation is purely additive: a new tool file plus hooks into `generate_projection`, `json_ui_generate`, `application_info`, and `projection_coverage`.
+**Project:** ferro / v13.0 Compressive Validation (COMP-02, COMP-03, COMP-04)
+**Researched:** 2026-06-12
+**Scope:** Additive — what the three validation harnesses need beyond the existing workspace.
+**Confidence:** HIGH (insta 1.48.0 and criterion 0.8.2 verified via docs.rs; rmcp transport verified via docs.rs 0.12.0 features page; proptest 1.11.0 verified via docs.rs; existing workspace patterns confirmed by direct source read)
 
 ---
 
-## Field→Column Resolver — Reusable Primitives
+## Summary
 
-This is the only genuinely new check. Two source paths already exist for column names; use both in priority order.
+Three validation harnesses are being built:
 
-### Source 1 — Entity fields via `list_models` (static analysis, always available)
+| COMP | Goal | Key tooling need |
+|------|------|-----------------|
+| COMP-02 | Synthetic catalog of canonical app classes covering all 7 intents, regression-tested on every projection/intent change | Snapshot/golden testing for `Vec<IntentScore>` and rendered `Spec` output |
+| COMP-03 | Agent-success-rate measurement — can an agent reading ferro-mcp produce a working projection from a natural-language description? | In-process MCP client that calls tools/call against a live FerroMcpService |
+| COMP-04 | Time-to-working-app benchmark — `cargo new` → running service with auth + 3 entities + 1 job | Wall-clock timing with statistical confidence; multi-step setup/teardown |
 
-**Module:** `ferro-mcp/src/tools/list_models.rs`
-
-`list_models::execute(project_root)` scans `src/models/` and `src/entities/` with `syn` + `WalkDir`, parses `#[derive(DeriveEntityModel)]` structs, and returns `Vec<ModelDetails>` where each entry carries `Vec<FieldInfo> { name, field_type, is_primary_key, is_nullable }`.
-
-The `name` field on each `FieldInfo` is the entity column name (snake_case). This is exactly what the field→column check needs to assert that every `FieldDef.name` in the `ServiceDef` has a counterpart.
-
-**How to use it in `checkpoint_projection`:**
-1. Resolve the projection's source model name: `ServiceDef.name` (snake_case) matches the `service_name` extracted by `projection_coverage::execute` / `list_projections::execute`. The mapping is `projection.service_name.to_lowercase() == model.name.to_lowercase()` — the exact predicate already in `projection_coverage.rs:76-79`.
-2. Call `list_models::execute(project_root)` (already imported in `projection_coverage.rs` at line 51 as `super::list_models::execute`).
-3. Find the matching `ModelDetails` and build a `HashSet<&str>` of `FieldInfo.name` values.
-4. For each `FieldDef` in the `ServiceDef`, assert membership. Missing → seam-2 finding.
-
-No new dependency. `syn`, `walkdir`, and `quote` are already in `ferro-mcp/Cargo.toml`.
-
-### Source 2 — Live DB schema via `database_schema` (runtime, requires DATABASE_URL)
-
-**Module:** `ferro-mcp/src/tools/database_schema.rs`
-
-`database_schema::execute(project_root, table_filter)` connects to the live DB (SQLite/Postgres/MySQL via SeaORM) and returns `SchemaInfo { tables: Vec<TableInfo { name, columns: Vec<ColumnInfo { name, ... }> } }`.
-
-This gives the real applied-migration column set. Use it as a secondary check when the DB is reachable: if a column exists in the entity file but not in the live schema, that is a migration-pending finding (warn, not fail). If a projection field has no entity column AND no DB column, that is a fail.
-
-Preference: entity-file scan (Source 1) first. It is synchronous and works without a running database, matching the checkpoint's read-only, no-runtime requirement. DB schema is a strengthening pass, not a prerequisite.
-
-No new dependency. `sea-orm` is already in `ferro-mcp/Cargo.toml` with SQLite + Postgres features.
-
-### Source 3 — Migration source (static, lower fidelity) — DO NOT USE
-
-**Module:** `ferro-mcp/src/tools/list_migrations.rs`
-
-`scan_migration_files` lists migration filenames; there is no column-level parsing of migration source. Do not add migration AST parsing for v12.5 — the entity file (Source 1) already contains the column set SeaORM materializes from migrations. Parsing migration source would duplicate information at lower fidelity (migration source is imperative Rust, harder to parse than entity struct definitions).
+The workspace already has the infrastructure for most of this. The additions are minimal: one new dev-dependency for snapshot testing (insta), one for benchmarking (criterion), and one for property testing already present (proptest). MCP client testing uses existing rmcp `transport-async-rw` (a default rmcp 0.12 feature) via `tokio::io::duplex` — no new crate required.
 
 ---
 
-## ServiceDef Reconstruction — Reuse Exactly
+## Recommended Stack
 
-**Module:** `ferro-mcp/src/tools/render_projection.rs` → `reconstruct_service_def(service_name, display_name, content)`
+### COMP-02: Synthetic Catalog Regression Tests
 
-This is the canonical way all existing validators get their `ServiceDef` from source. It is already used by `validate_projection::execute_single`, `render_projection::execute`, and `projection_coverage::derive_primary_intent`. The checkpoint must use the same entry point to avoid divergence.
+#### Core: `insta` — Snapshot / Golden Testing
 
-`FieldDef.name` on the reconstructed `ServiceDef` is the authoritative field-name list to check against the column set from Source 1.
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `insta` | `1.48` | Snapshot-test `Vec<IntentScore>` output and rendered `Spec` JSON for each canonical app class | The `assert_json_snapshot!` macro serializes the full `IntentScore` vector (including `confidence`, `matching_signals`) to a committed `.snap` file. On every projection/intent change, the diff surfaces immediately; `cargo insta review` presents an interactive accept/reject UI. No external build tooling — pure Rust dev-dependency, zero runtime impact. |
+
+**Recommended Cargo.toml entry** (in `ferro-projections/Cargo.toml` dev-dependencies):
+
+```toml
+[dev-dependencies]
+insta = { version = "1.48", features = ["json", "redactions"] }
+
+# Optimize insta for faster test runs (insta's own recommendation)
+[profile.dev.package.insta]
+opt-level = 3
+[profile.dev.package.similar]
+opt-level = 3
+```
+
+`features = ["json"]` enables `assert_json_snapshot!` for `IntentScore` (already `Serialize`).
+`features = ["redactions"]` allows redacting `confidence` floats that may drift slightly across
+analyzer weight changes, keeping snapshots stable while still asserting intent ordering.
+
+**Why not hand-written `assert_eq!` + expected structs**: The seven-intent catalog will have
+30–40 canonical `ServiceDef` fixtures. Maintaining expected `Vec<IntentScore>` literals inline
+is brittle on any weight recalibration. Snapshot files are committed, diff on change, and updated
+in one `cargo insta test --accept` pass — they encode intent without the maintenance burden.
+
+**Why not `assert_yaml_snapshot!`**: JSON is already the `ServiceDef` wire format and `serde_json`
+is already a direct dependency of `ferro-projections`. No extra `serde_yaml` dependency needed.
+
+#### Fixture Organization
+
+Canonical app-class fixtures live inside `ferro-projections` as a new test module, not a separate
+crate. The fixtures are pure `ServiceDef` builder expressions — no database, no HTTP, no runtime.
+Each fixture maps to one canonical app class and is structured as:
+
+```
+ferro-projections/tests/
+  catalog/
+    mod.rs           -- loads all fixtures, runs derive_intents + snapshot
+    ecommerce.rs     -- Browse (product list), Focus (product detail), Collect (checkout)
+    saas.rs          -- Summarize (dashboard), Process (subscription workflow)
+    crm.rs           -- Browse (contact list), Track (activity log)
+    scheduling.rs    -- Process (booking state machine), Browse (calendar view)
+    content.rs       -- Focus (article), Analyze (analytics dashboard)
+    finance.rs        -- Summarize (balance sheet), Analyze (time-series)
+    logistics.rs     -- Process (shipment workflow), Track (status trail)
+```
+
+Each file contains one or more `ServiceDef` builder expressions and one `#[test]` per fixture
+that calls `derive_intents()` + `assert_json_snapshot!`. A single top-level regression test
+(`catalog/mod.rs`) iterates all fixtures and asserts: (1) top intent matches the expected intent
+for this app class; (2) confidence >= 0.5; (3) snapshot matches.
+
+Snapshot files are stored at `ferro-projections/tests/snapshots/` (insta default) and committed.
+They appear in PRs as diffs when any signal weight or analyzer changes.
+
+**Where the `Spec` render snapshot goes**: The `ferro-json-ui` crate already has `Spec::from_service_def()`.
+A second test layer in `ferro-json-ui/tests/catalog_render.rs` uses the same fixtures (imported
+from `ferro-projections`) to snapshot the rendered `Spec` JSON. This asserts that a `Browse`
+catalog fixture still produces a `DataTable` root, a `Collect` fixture produces a `Form` root,
+etc., on every commit.
+
+```toml
+# ferro-json-ui/Cargo.toml dev-dependencies
+insta = { version = "1.48", features = ["json"] }
+```
 
 ---
 
-## Aggregation and Verdict — Existing Primitives
+### COMP-03: Agent-Success-Rate Measurement Harness
 
-**serde / serde_json** — already in `ferro-mcp/Cargo.toml` (`serde = { version = "1", features = ["derive"] }`, `serde_json = "1"`). The verdict struct (`CheckpointVerdict`, `SeamResult`, `Finding`) is plain `#[derive(Serialize)]` data — no additional crate.
+#### Core: `rmcp` with `transport-async-rw` feature — In-Process MCP Client
 
-**HashSet** — standard library. No crate.
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `rmcp` | `0.12` (already in workspace) | Drive `FerroMcpService` in-process over a `tokio::io::duplex` pipe | `transport-async-rw` is a **default feature of rmcp 0.12** — it is already compiled into every crate that depends on `ferro-mcp`. No new crate, no version bump. The `tokio::io::duplex()` function creates an in-memory bidirectional pipe; the server runs in a tokio task; the test calls `peer().call_tool(...)` exactly as a real MCP client would. |
 
-**SeamStatus enum** (`pass | fail | warn | not_checked`) — plain enum, serializes with `#[serde(rename_all = "snake_case")]` following the existing convention in `ferro-projections`.
+**Pattern already proven in the workspace**: `ferro-api-mcp/tests/e2e.rs` uses
+`rmcp = { version = "0.12", features = ["client", "transport-child-process"] }` in dev-dependencies
+and calls `mcp.peer().call_tool(CallToolRequestParam { ... })` for end-to-end validation.
+COMP-03 adapts this to use an in-process transport (no subprocess overhead, no port conflicts).
+
+**Recommended Cargo.toml entry** (in a new `ferro-projections-harness` test binary or in
+`ferro-mcp/Cargo.toml` dev-dependencies):
+
+```toml
+[dev-dependencies]
+rmcp = { version = "0.12", features = ["client", "transport-async-rw"] }
+tokio = { version = "1", features = ["full"] }
+```
+
+`transport-async-rw` is already a default feature on the server side; the `client` feature adds
+`serve_client()` and the `RoleClient` API needed on the test side.
+
+**COMP-03 test structure** (`ferro-mcp/tests/agent_success_rate.rs`):
+
+Each test case encodes a natural-language scenario string (the "description" an agent would pass
+to `generate_projection`) plus an expected `ServiceDef` shape. The test:
+
+1. Boots `FerroMcpService` in-process via `tokio::io::duplex` transport.
+2. Calls the `generate_projection` MCP tool with the scenario string as input.
+3. Parses the returned JSON back into a `ServiceDef`.
+4. Asserts: (a) parse succeeds; (b) primary intent matches the scenario's expected intent;
+   (c) minimum required fields are present; (d) no validation errors from `validate_projection`.
+
+Success rate is reported as `N_passed / N_total` over the test corpus. Tests are `#[ignore]`
+by default and run explicitly as `cargo test -p ferro-mcp --test agent_success_rate -- --include-ignored`
+so they do not block the standard CI gate (they may require a running ferro application with
+`DATABASE_URL` set).
+
+**What "success" means**: A projection is successful when it round-trips `ServiceDef` from
+the tool output and passes `validate_projection`. This tests the MCP tool pipeline, not the LLM.
+The natural-language → `ServiceDef` AI path (from v12.1 `ferro ai:make`) is a separate concern
+and depends on an LLM API key; COMP-03 focuses on whether the MCP introspection layer provides
+sufficient context for a projection to be generated correctly.
+
+**Alternative considered — `transport-child-process`**: The existing e2e tests in `ferro-api-mcp`
+spawn a subprocess binary. For COMP-03, in-process is preferred because: (1) it does not require
+a compiled binary artifact to be staged before the test; (2) `FerroMcpService` can be instantiated
+directly with a `PathBuf` pointing to the test fixture directory; (3) no port allocation or
+timing loops needed.
 
 ---
 
-## Dispatch to Existing Validators
+### COMP-04: Time-to-Working-App Benchmark
 
-All wrapper seams (1, 3, 4, 5) call existing synchronous or async functions in other tool modules and repackage their output as `SeamResult`. No new logic, no new deps:
+#### Core: `criterion` — Wall-Clock Timing with Statistical Confidence
 
-| Seam | Existing entry point | Return type to repackage |
-|------|---------------------|--------------------------|
-| 1 — well-formed | `validate_projection::execute_single(root, name)` | `ValidationResult` |
-| 3 — action→route | `json_ui_verify_action::execute(...)` | existing result |
-| 4 — rendered view | `render_projection::execute(...)` + `json_ui_validate_spec::execute(...)` | `RenderResult` + spec validation |
-| 5 — props→contract | `validate_contracts::execute(...)` | existing result |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `criterion` | `0.8.2` | Measure multi-step scaffold workflow: `cargo new` → `ferro-cli` scaffold → build → server start | Criterion provides warm-up runs, statistical noise thresholds, HTML reports, and baseline comparison (`cargo bench -- --save-baseline before` / `--load-baseline before`). Stable-only (no nightly required). `iter_custom` supports externally-timed operations where Criterion does not control the loop — required here because each benchmark step is a subprocess invocation. |
+
+**Recommended Cargo.toml entry** (new `benches/` in `ferro-cli` or a dedicated `ferro-validation` crate):
+
+```toml
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false, features = ["rayon", "cargo_bench_support"] }
+
+[[bench]]
+name = "time_to_working_app"
+harness = false
+```
+
+`default-features = false` excludes the `plotters` feature which pulls in a large dependency
+tree. `rayon` is excluded by default in 0.8 — add only if parallelizing benchmark setup steps.
+`cargo_bench_support` is required for `criterion_group!` / `criterion_main!` macros.
+
+**What COMP-04 actually measures**: The benchmark does not run the full `cargo build` on every
+iteration (that would be minutes per sample). Instead it measures the scaffold layer — the
+time from `cargo new <name>` through `ferro new` template application through the point where
+a buildable `Cargo.toml` exists with the correct dependency graph. The _first_ full build is
+measured once separately as a warm-start artifact, recorded as a named annotation in the
+criterion baseline file.
+
+Full workflow breakdown:
+
+| Step | Measured how | Notes |
+|------|-------------|-------|
+| `cargo new ferro-test-app` | Subprocess in `iter_custom` wall-clock | Fast (< 100 ms) |
+| `ferro` CLI scaffold (auth + 3 entities + 1 job) | Subprocess in `iter_custom` | The substantive measurement — tests CLI generation speed |
+| First `cargo build` | Measured once, recorded as annotation | Too slow for criterion iteration; gates "buildable" |
+| Server starts, serves `/health` | Recorded once in a smoke test, not criterion | Gate: service reaches readiness |
+
+**Baseline usage**: Before a phase that touches `ferro-cli` generation, run:
+
+```bash
+cargo bench -p ferro-cli --bench time_to_working_app -- --save-baseline before
+```
+
+After the phase:
+
+```bash
+cargo bench -p ferro-cli --bench time_to_working_app -- --load-baseline before
+```
+
+Criterion reports percentage regressions at the configured noise threshold (2 % default).
+
+**Why not `hyperfine`**: hyperfine is a CLI-level benchmarking tool with no Rust API. It would
+require an external binary on CI, violating the no-external-build-tooling constraint. Criterion
+runs as a Rust test binary — `cargo bench` is sufficient. hyperfine would be appropriate for
+one-off developer analysis (e.g. comparing two branch builds at the command line), but as a CI
+gate it adds a non-cargo dependency.
 
 ---
 
-## Existing Dependencies That Cover Each Concern
+### Supporting: `proptest` — Property Testing (Already Present)
 
-| Concern | Crate | Version in Cargo.toml |
-|---------|-------|----------------------|
-| Source parsing (entities / models) | `syn` | 2 |
-| File traversal | `walkdir` | 2 |
-| Regex-based projection parsing | `regex` | 1 |
-| JSON serialization of verdict | `serde` + `serde_json` | 1 |
-| ServiceDef type | `ferro-projections` | workspace (0.2.49) |
-| Live DB schema | `sea-orm` | 1.0 |
-| Async runtime | `tokio` | 1 |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `proptest` | `1` (already in workspace) | Property-based tests for `derive_intents`: assert invariants over generated `ServiceDef` inputs | Already used in `ferro-reservation` and `ferro-projection`. For COMP-02, add proptest strategies to `ferro-projections` to verify: (1) `derive_intents` always returns at least one result; (2) all returned confidences are in [0.0, 1.0]; (3) a `Primary` hint always produces confidence 1.0 at position 0. These complement the snapshot tests — snapshots catch regressions on named fixtures; proptest catches invariant violations across the full input space. |
 
-All present. None need a version bump for this feature.
+**Recommended Cargo.toml entry** (in `ferro-projections/Cargo.toml`):
+
+```toml
+[dev-dependencies]
+proptest = "1"
+```
+
+Version `1.11.0` is current. Cargo semver `"1"` resolves to the latest 1.x automatically.
+No change needed if this is a new dependency; add it directly in `ferro-projections`.
 
 ---
 
 ## What NOT to Add
 
-| Item | Why not |
-|------|---------|
-| SeaORM entity-metadata reflection crate | Entity fields are already parsed statically by `list_models` via `syn`; no ORM-level reflection needed |
-| Migration AST parser | Entity struct is the ground truth for column names SeaORM materializes; migration source is derivative and harder to parse |
-| Any diff/comparison crate | Column membership check is a `HashSet::contains` — no library needed |
-| `indexmap` or ordered map | Verdict `next_steps` is a sorted `Vec<String>` built inline; no ordered-map crate needed |
-| `petgraph` or similar | Seam spine is a fixed five-element array, not a runtime graph |
-| Any new async executor | `tokio` already present; DB-schema branch reuses same async path as `database_schema.rs` |
-| New error-type crate | `thiserror` already in Cargo.toml; existing `McpError` is sufficient, or a local `CheckpointError` derives from it |
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| `hyperfine` | External binary, violates no-external-build-tooling rule | `criterion` with `iter_custom` for process timing |
+| `rmcp-in-process-transport` crate | Requires `rmcp >= 1.5`; workspace pins `0.12`; would force an rmcp major bump across all three crates that use it | Use `tokio::io::duplex` + rmcp 0.12's built-in `transport-async-rw` (default feature) |
+| `divan` | Newer benchmark crate, requires nightly for some measurement backends | `criterion` 0.8 is stable-only and already well-understood |
+| `assert_cmd` / `trycmd` | Useful for CLI snapshot testing but adds a dependency for a problem already handled by the combination of insta + criterion `iter_custom` subprocess | Keep as a potential addition if CLI command output regression testing becomes its own harness phase |
+| Golden file via hand-rolled JSON file comparison | Readable at first, becomes a maintenance burden as the catalog grows; no interactive review tooling | `insta` with `cargo insta review` |
+| Separate `ferro-validation` crate | Adds workspace member overhead for tests that belong in existing crates | Tests live in `ferro-projections`, `ferro-json-ui`, and `ferro-mcp`; benchmarks live in `ferro-cli` |
+| `criterion` `plotters` feature | Pulls in a large transitive dependency tree for HTML charts that are not needed in CI | Use `default-features = false`; charts are optional and can be enabled locally |
 
 ---
 
-## Implementation Entry Points
+## Integration with Existing cargo test Infrastructure
 
-```
-ferro-mcp/src/tools/checkpoint_projection.rs  (new file)
-  |
-  +-- list_models::execute(root)               // entity column set (Source 1)
-  +-- database_schema::execute(root, filter)   // live DB column set (Source 2, optional)
-  +-- render_projection::reconstruct_service_def(...)  // ServiceDef reconstruction
-  +-- validate_projection::execute_single(root, name)  // seam 1
-  +-- json_ui_verify_action::execute(...)      // seam 3
-  +-- render_projection::execute(...)          // seam 4 (render half)
-  +-- json_ui_validate_spec::execute(...)      // seam 4 (validate half)
-  +-- validate_contracts::execute(...)         // seam 5
+The validation harnesses integrate with the existing `cargo test --all-features` gate:
+
+| Harness | Where | Gate behavior |
+|---------|-------|--------------|
+| COMP-02 catalog snapshot tests | `ferro-projections/tests/catalog/` and `ferro-json-ui/tests/catalog_render.rs` | Run as part of `cargo test --all-features`; snapshot mismatch = CI fail |
+| COMP-02 proptest invariants | `ferro-projections/tests/catalog/proptest.rs` | Part of `cargo test --all-features` |
+| COMP-03 agent success rate | `ferro-mcp/tests/agent_success_rate.rs` (all tests `#[ignore]`) | Excluded from normal gate; run explicitly with `--include-ignored` |
+| COMP-04 scaffold benchmark | `ferro-cli/benches/time_to_working_app.rs` | `cargo bench` only; not `cargo test`; separate CI step |
+
+The `generate_schemas.rs` test in `ferro-projections/tests/` regenerates
+`docs/protocol/schemas/*.json` and dirties the tree. COMP-02 catalog tests must not regenerate
+anything — they only read `ferro_projections` types, so there is no tree-dirtying concern.
+
+---
+
+## Version Compatibility
+
+| Package | Compatible With | Notes |
+|---------|----------------|-------|
+| `insta 1.48` | `serde_json 1` (already in workspace) | JSON feature uses `serde_json`; no new transitive dep |
+| `insta 1.48` | `schemars 1` | No interaction; insta is dev-only |
+| `criterion 0.8.2` | Rust 1.88+ (workspace MSRV is 1.88.0) | criterion 0.8 targets the last three stable minors; workspace MSRV matches |
+| `proptest 1.11` | Rust 2021 edition | Compatible; no nightly features |
+| `rmcp 0.12` + `transport-async-rw` | `tokio 1` (already in workspace) | `transport-async-rw` default feature uses `tokio::io::{AsyncRead, AsyncWrite}` |
+
+---
+
+## Cargo.toml Changes Summary
+
+**`ferro-projections/Cargo.toml`** — add to `[dev-dependencies]`:
+
+```toml
+insta = { version = "1.48", features = ["json", "redactions"] }
+proptest = "1"
+
+[profile.dev.package.insta]
+opt-level = 3
+[profile.dev.package.similar]
+opt-level = 3
 ```
 
-Model→projection name resolution — copy the predicate from `projection_coverage.rs:76-79`:
-```rust
-p.service_name.as_ref().is_some_and(|sn| sn.to_lowercase() == model_lower)
+**`ferro-json-ui/Cargo.toml`** — add to `[dev-dependencies]`:
+
+```toml
+insta = { version = "1.48", features = ["json"] }
 ```
 
-Column set from entity fields (Source 1):
-```rust
-let columns: HashSet<&str> = model.fields.iter().map(|f| f.name.as_str()).collect();
+**`ferro-mcp/Cargo.toml`** — add to `[dev-dependencies]`:
+
+```toml
+rmcp = { version = "0.12", features = ["client", "transport-async-rw"] }
 ```
 
-Field→column seam check loop:
-```rust
-for field in &service.fields {
-    if !columns.contains(field.name.as_str()) {
-        // emit Finding { subject: field.name, detail: "...", fix: "..." }
-    }
-}
+**`ferro-cli/Cargo.toml`** — add bench target and dependency:
+
+```toml
+[[bench]]
+name = "time_to_working_app"
+harness = false
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 ```
 
-When `list_models` returns no match for the projection's `service_name`, seam 2 reports
-`not_checked` (never `pass`).
+The `profile.dev.package.insta` / `similar` optimization entries belong in the root
+`Cargo.toml` (workspace-level profile overrides), not in the crate-level `Cargo.toml`.
 
 ---
 
 ## Sources
 
-- `ferro-mcp/src/tools/list_models.rs` — direct read (entity field extraction via `syn`)
-- `ferro-mcp/src/tools/database_schema.rs` — direct read (live DB column query)
-- `ferro-mcp/src/tools/projection_coverage.rs` — direct read (model↔projection name matching)
-- `ferro-mcp/src/tools/render_projection.rs` — direct read (`reconstruct_service_def` entry point)
-- `ferro-mcp/src/tools/validate_projection.rs` — direct read (seam-1 dispatch)
-- `ferro-mcp/Cargo.toml` — direct read (all dependency versions)
-- `ferro-projections/src/service.rs` — direct read (`ServiceDef`, `FieldDef`, `validate()`)
-- `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md` — direct read (design spec)
+- `docs.rs/insta/latest/insta/` — version 1.48.0 confirmed; feature list verified (HIGH)
+- `docs.rs/criterion/latest/criterion/` — version 0.8.2 confirmed (HIGH)
+- `docs.rs/proptest/latest/proptest/` — version 1.11.0 confirmed (HIGH)
+- `docs.rs/rmcp/0.12.0/features` — `transport-async-rw` confirmed as default feature in 0.12 (HIGH)
+- `ferro-api-mcp/tests/e2e.rs` — existing `rmcp` client test pattern with `call_tool` verified by direct read (HIGH)
+- `ferro-projections/Cargo.toml` — no existing snapshot or benchmark deps confirmed by direct read (HIGH)
+- `ferro-mcp/Cargo.toml` — rmcp 0.12 with `server` + `transport-io` confirmed (HIGH)
+- Context7 `/mitsuhiko/insta` — `assert_json_snapshot!`, `cargo insta test`, workspace integration (HIGH)
+- Context7 `/bheisler/criterion.rs` — `iter_custom`, benchmark groups, `Criterion::default()` (HIGH)
+- [insta.rs](https://insta.rs/) — canonical docs (HIGH)
+- [criterion crates.io](https://crates.io/crates/criterion) — 0.8.2 latest confirmed (HIGH)
+- [rmcp transport docs](https://docs.rs/rmcp/latest/rmcp/transport/index.html) — transport-async-rw confirmed (HIGH)
+
+---
+*Stack research for: ferro v13.0 Compressive Validation (COMP-02, COMP-03, COMP-04)*
+*Researched: 2026-06-12*

@@ -1,307 +1,405 @@
-# Architecture Research: v12.5 Projection Checkpoint
+# Architecture Research
 
-**Domain:** ferro-mcp tool integration
-**Researched:** 2026-06-09
-**Confidence:** HIGH — based on direct source inspection of all relevant tools
+**Domain:** v13.0 Compressive Validation — integration of COMP-01..05 with existing ferro architecture
+**Researched:** 2026-06-12
+**Confidence:** HIGH (based on direct source inspection of all relevant crates)
 
 ---
 
 ## System Overview
 
-The checkpoint lives entirely within `ferro-mcp`. No new crates are needed.
+The existing projection/intent pipeline is:
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│  MCP Tool Entry Points                                                │
-│                                                                      │
-│  generate_projection     json_ui_generate                            │
-│       │                        │                                     │
-│       └──────────┬─────────────┘                                     │
-│                  ▼  (inline hook, P2)                                │
-│        checkpoint_projection  ◄──── NEW TOOL (P1)                   │
-│                  │                                                    │
-│       ┌──────────┼────────────────────────────────┐                 │
-│       ▼          ▼          ▼          ▼           ▼                 │
-│  validate_  json_ui_   render_   json_ui_    validate_               │
-│  projection verify_    projection validate_  contracts               │
-│  (seam 1)  action     (seam 4)  spec        (seam 5)                │
-│            (seam 3)             (seam 4b)                            │
-│                  │                                                    │
-│       field→column resolver ──── NEW LOGIC (seam 2, owned here)     │
-│       (reads: list_models, db_schema introspection)                  │
-│                                                                      │
-├──────────────────────────────────────────────────────────────────────┤
-│  Read-only status consumers                                          │
-│                                                                      │
-│  application_info    projection_coverage                             │
-│  (surfaces per-projection checkpoint_status: unverified/failing/    │
-│   clean as a new field — P2)                                         │
-└──────────────────────────────────────────────────────────────────────┘
+  ServiceDef (ferro-projections)
+      │ derive_intents()
+      ▼
+  Vec<IntentScore>
+      │
+      ▼ Renderer::render(&service, &intents, &ctx)
+  ┌───────────────┬──────────────────────┬─────────────────────┐
+  │ JsonUiRenderer│    McpRenderer        │  TemplateRenderer   │
+  │ (ferro-json-ui│ (ferro-mcp-server)    │  (ferro-projections │
+  │  Output=Spec) │  Output=rmcp::Tool)   │   Output=String)    │
+  └───────────────┴──────────────────────┴─────────────────────┘
 ```
 
----
-
-## Question 1: No-Duplication Dispatch Pattern
-
-### How existing tools are structured (observed)
-
-All tools in `ferro-mcp/src/tools/` follow the same pattern:
-
-- Each tool has a public `execute(project_root, ...)` function that is the external entry point.
-- Internal helpers are extracted as free functions or `pub(crate)` functions within the same module.
-- Tools compose each other by calling their `execute` functions directly — they do not invoke the MCP dispatch layer. Examples:
-  - `validate_projection::execute_single` calls `inspect_projection::execute` and `render_projection::reconstruct_service_def` directly.
-  - `projection_coverage::execute` calls `list_models::execute` and `list_projections::execute` directly.
-  - `application_info::execute` calls `list_resources::execute`, `list_policies::execute`, `list_rate_limiters::execute`, and `list_broadcast_channels::execute` directly.
-- `json_ui_verify_action` exposes `find_handler` as `pub(crate)` — a pure, testable inner function that takes pre-fetched route data, plus the `async execute` wrapper that fetches the route list first. This is the cleanest form of the pattern.
-
-### Recommended dispatch pattern for `checkpoint_projection`
-
-Call the `execute` functions of existing tools directly. Do not extract logic upward into a shared module; do not re-implement any existing check.
-
-The seam-dispatch table:
-
-| Seam | Call | Signature to reuse |
-|------|------|--------------------|
-| 1 (well-formed) | `validate_projection::execute_single(project_root, name)` | returns `Result<ValidationResult, String>` |
-| 2 (field→column) | owned by `checkpoint_projection` | new private fn `check_field_to_column(project_root, &service_def)` |
-| 3 (action→route) | `json_ui_verify_action::find_handler(&routes, handler, method)` after fetching routes once with `list_routes::execute` | returns `VerifyActionResult` |
-| 4 (rendered view) | `render_projection::execute(project_root, name, mode, intent_index)` | returns `Result<RenderResult, String>` |
-| 4b (spec valid) | `json_ui_validate_spec::execute(spec_json)` on the spec from seam 4 | returns `ValidateResponse` |
-| 5 (props→contract) | `validate_contracts::execute(project_root)` | returns `ContractValidationResult` |
-
-Seam 3 optimization: call `list_routes::execute` once and reuse the `RouteInfo` slice across all `ActionDef` handlers via `find_handler`. This avoids re-reading routes per action and matches the existing `find_handler` design intent (`pub(crate)` pure function for exactly this case).
-
-**Why call execute functions directly and not extract shared logic:**
-
-Extracting validation logic into a shared module would split single-responsibility modules and risk accumulating unrelated checks in a utility layer. The design spec explicitly requires the checkpoint to "own only the field→column seam + aggregation." All other logic stays in the tools that already own it. The checkpoint is an orchestrator, not a validator.
-
-**Seam 2 — field→column resolver:**
-
-`projection_coverage::execute` already performs the `src/projections/` to `src/models/` name-match using `list_models::execute`. The field→column check reuses the same path: call `list_models::execute`, find the model whose name matches `service_def.name` (lowercased), then compare `service_def.fields[*].name` against the model's column list (`ModelDetails.fields[*].name` — same struct `list_models` already returns). When no model matches, report `not_checked` for seam 2, never `pass`.
-
-`render_projection::reconstruct_service_def` is `pub(crate)` within `ferro-mcp` and can be called directly to get the `ServiceDef` from source before the seam walk begins.
+**Invariant:** ferro-projections owns the `Renderer` trait, `ServiceDef`, `derive_intents()`,
+`BaseContext`. It has zero rendering dependencies (Cargo.toml: only schemars, serde,
+serde_json, thiserror). All concrete `Renderer` impls live in output crates.
 
 ---
 
-## Question 2: Inline Hook Dependency Direction
+## COMP-01: Gestiscilo Migration
 
-The generators depend on the checkpoint; the checkpoint does not depend on the generators.
+**What it is:** Migrate a real external application (gestiscilo) from ad-hoc rendering to
+projection-driven rendering via `ServiceDef` builders.
 
-`generate_projection` and `json_ui_generate` are callers. After their generation logic completes, they call `checkpoint_projection::run_for(project_root, name)` and embed the returned `CheckpointVerdict` into their response under a `checkpoint` key.
+**Integration point:** No new ferro crate needed. The integration happens inside the gestiscilo
+repo, replacing its existing view code with `ServiceDef::new(...).field(...).intent_hint(...)` +
+`JsonUiRenderer`. The ferro workspace is a passive consumer.
 
-This is exactly the pattern `application_info` uses for `list_resources`, `list_policies`, etc.: the aggregator calls the leaf tool, never the reverse.
+**Validation artifact produced:** A set of `ServiceDef` builders that cover real production
+use cases. The relevant cross-repo verification gate is already established by prior friction
+loops (phases 162-164, 176, 181).
 
-**Concrete change in each generator:**
-
-- `generate_projection::execute` — after building `GenerateProjectionResult`, call `checkpoint_projection::run_for(project_root, &result.model_name)` and add `checkpoint: Option<CheckpointVerdict>` to `GenerateProjectionResult`. Set to `None` if the projection file does not yet exist on disk when the tool runs.
-
-- `json_ui_generate::execute` — same shape: after assembling `JsonUiGenerationContext`, call `run_for` if a `service_name` is provided as context, embed as `checkpoint: Option<CheckpointVerdict>`.
-
-**Why not the reverse:**
-
-The checkpoint is a read-only verifier. Having it call generators would introduce a side effect and create a generate-then-verify cycle where the checkpoint's output depends on generation having just occurred. Tools that produce artifacts are responsible for closing their own loop by running the check after producing.
+**New vs modified components:** No new ferro crates. No modification to ferro-projections
+or ferro-json-ui internals — only gestiscilo-side authoring work.
 
 ---
 
-## Question 3: Status Surfacing in `application_info` and `projection_coverage`
+## COMP-02: Synthetic App-Class Catalog
 
-Both tools are read-only consumers. The pattern mirrors `application_info::scan_feature_counts`, which calls multiple tool execute functions and assembles a summary struct from their results.
+### Where it lives
 
-### `projection_coverage`
+The catalog belongs in **`ferro-projections/tests/`** as a new integration test file —
+`tests/catalog.rs` (or `tests/app_classes/mod.rs` if split by intent domain).
 
-`projection_coverage::ModelCoverage` gains one new field:
+**Rationale for this location over alternatives:**
+
+| Option | Verdict | Reason |
+|--------|---------|--------|
+| New crate `ferro-catalog` | Reject | Adds a published crate for what is test-only data; violates "prefer editing existing files"; increases publish surface for no API gain |
+| `ferro-projections/tests/` corpus | Accept | `tests/generate_schemas.rs` already lives here and is the established pattern for integration-level validation against ferro-projections types; no new dependency, no new crate, runs under `cargo test --all-features` automatically |
+| Fixtures in `app/src/projections/` | Reject | `app/` is a sample application, not a catalog; mixing synthetic catalog entries into the live app distorts its role as a reference implementation |
+| Separate `examples/` directory | Reject | `cargo test` does not run examples by default; catalog must be in tests so CI gate covers it |
+
+### Corpus shape
+
+One `ServiceDef` builder function per app class, one test per intent assertion:
+
+```
+ferro-projections/
+  tests/
+    catalog.rs          # new: one function per canonical app class
+                        # one #[test] per (app_class, expected_primary_intent) pair
+```
+
+Each catalog entry is a free function returning `ServiceDef` (same pattern as `app/src/projections/*.rs`).
+The test asserts `derive_intents(&service)[0].intent == ExpectedIntent` and optionally
+`confidence >= threshold`.
+
+### Coverage requirement: all 7 intents
+
+| Canonical class | Expected primary intent | Structural signals that drive it |
+|-----------------|------------------------|----------------------------------|
+| Product catalog (name, category, price, stock) | Browse | EntityName + Category + collection relationships |
+| Article / blog post (title, body, hero image) | Focus | FreeText + ImageUrl + read-heavy |
+| Registration form (fields, write-only password) | Collect | high writable ratio + write_only |
+| Order fulfillment (guarded state machine) | Process | guarded transitions + branching states |
+| Revenue dashboard (read-only Money/Pct/Qty) | Summarize | >70% non-writable + money fields |
+| Sales analytics (DateTime + numeric measures) | Analyze | DateTime/numeric co-occurrence |
+| Shipment tracking (linear states, no guards) | Track | linear progression + unguarded |
+
+The `app/src/projections/` service defs (`order.rs`, `revenue_dashboard.rs`, etc.) are
+real-world examples that can guide catalog design but must not be used as the catalog itself
+— they live in a different crate and have app-specific concerns (tenant columns, MCP abilities).
+
+### CI hook
+
+`cargo test --all-features` already runs `ferro-projections/tests/`. No new CI step.
+The catalog tests run on every commit that touches ferro-projections (derive.rs, intent.rs,
+field.rs, service.rs) because the whole workspace test suite runs together.
+
+**Regression contract:** if any `derive_intents()` change breaks a catalog test, the CI
+gate fails. This is the desired behavior — the catalog is the regression baseline for the
+analyzers.
+
+---
+
+## COMP-03: Agent-Success-Rate Harness
+
+### Where it lives
+
+**`ferro-mcp/tests/agent_harness.rs`** — an integration test inside the existing `ferro-mcp`
+crate.
+
+**Rationale:**
+
+| Option | Verdict | Reason |
+|--------|---------|--------|
+| New crate `ferro-bench-agent` | Reject | Adds published crate overhead; this is a test, not a library API |
+| `ferro-mcp/tests/` | Accept | COMP-03 drives the MCP introspection tools as a client — it calls the same in-process server that `ferro-mcp` tests already exercise; keeping it here avoids a new cross-crate dependency |
+| External script | Reject | Not in the Rust test suite; not gated by `cargo test` |
+
+### What it does
+
+The harness instantiates an in-process MCP server (the same path `ferro-mcp::server` uses
+under `ferro mcp`), issues tool calls against `list_projections`, `inspect_projection`,
+`generate_projection`, and `checkpoint_projection`, then asserts that a given natural-language
+description can be round-tripped through the MCP surface to produce a valid `ServiceDef`
+without a runtime error.
+
+```
+test harness (in-process)
+    ↓ tool call: list_projections
+  ferro-mcp MCP server
+    ↓ tool call: generate_projection("order fulfillment with guarded approvals")
+  ferro-mcp → ferro-projections::ServiceDef
+    ↓ tool call: checkpoint_projection("order")
+  verdict: pass / warn / fail
+```
+
+**Agent-success-rate metric:** the fraction of `generate_projection` calls (over a fixed set
+of natural-language descriptions) that produce a `checkpoint_projection` verdict of `pass`
+or `warn` (not `fail`). Stored as a `#[test]` assertion with a floor threshold (e.g.,
+`assert!(rate >= 0.7)`).
+
+**Project-agnostic rule:** the harness must not embed gestiscilo-specific descriptions.
+Use generic domain descriptions ("a product catalog with name, price, and category",
+"an order with guarded approval workflow") that match the COMP-02 catalog classes.
+
+### Relationship to ferro-mcp (not ferro-mcp-server)
+
+`ferro-mcp` is the introspection library used by `ferro mcp` (the developer MCP subcommand).
+`ferro-mcp-server` is the separate output crate that hosts `McpRenderer` — it drives the
+application-served MCP endpoint (v12.6). COMP-03 is a client of `ferro-mcp` specifically,
+not of `ferro-mcp-server`. The harness exercises the developer introspection surface
+(generate_projection, checkpoint_projection, list_projections), not the per-tenant consumer
+surface (McpRenderer).
+
+### Dependency
+
+COMP-03 depends on COMP-02 catalog: the catalog provides the ground-truth intent for each
+domain description, making the success metric meaningful. Build COMP-02 first.
+
+---
+
+## COMP-04: Time-to-Working-App Benchmark
+
+### Where it lives
+
+**`ferro-cli/tests/benchmark_new_project.rs`** — integration test inside `ferro-cli`.
+
+**Rationale:** COMP-04 measures `cargo new` → running service with auth, three entity types,
+one background job. This is entirely about `ferro new` scaffolding and the CLI make commands.
+`ferro-cli` is the right crate; its existing `tests/` directory (currently has `tempfile`
+dev-dep, already used in other tests) supports file-system scaffolding tests.
+
+**What it measures:**
+
+```
+1. ferro new <tmpdir>           → scaffolded project compiles
+2. ferro make:auth              → auth routes + handler files created
+3. ferro make:model Product ... → 3 entity files created
+4. ferro make:job EmailJob      → job file created
+5. cargo build (in tmpdir)      → succeeds within N seconds (wall clock)
+```
+
+The test records step timings and asserts:
+- Each `make:*` command exits with code 0.
+- The scaffolded project compiles (`cargo build` exit 0).
+- Total wall clock <= threshold (e.g., 90 seconds) — or, if too slow for CI, the threshold
+  is only asserted when a `FERRO_BENCH` env var is set.
+
+**What COMP-04 does NOT do:** it does not run the server (avoids port conflicts in CI) and
+does not measure runtime throughput — only scaffolding and build time.
+
+**Note on CI disk:** `cargo test --all-features` already strains CI disk (see project memory
+`project_ferro_disk_full_test_gate.md`). COMP-04 spawns `cargo build` in a temp dir, which
+creates a second target directory. Gate it behind `#[cfg_attr(not(feature = "bench"), ignore)]`
+or a `FERRO_BENCH=1` env var check so it is skipped in default CI but runnable locally.
+
+---
+
+## COMP-05: Cross-Modality Intent Vocabulary Sketch
+
+### Where it lives
+
+**`ferro-projections/src/render/` (extend existing, add non-pub sketch modules) + docs.**
+
+No new crate. No new `Renderer` implementation that ships as production code at this phase.
+COMP-05 is a design sketch — it asks: for one intent (e.g., `Browse`), what would the
+output look like as mobile push notification, voice response, and CLI output?
+
+**Integration with the Renderer trait:**
+
+The v11.5 Renderer trait (`ferro-projections/src/render/mod.rs`) already uses associated
+types for `Output` and `Context`, making it modality-agnostic by construction:
 
 ```rust
-pub checkpoint_status: Option<CheckpointStatus>,
-```
-
-`CheckpointStatus` is a new type in `checkpoint_projection`:
-
-```rust
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CheckpointStatus {
-    Unverified,  // no checkpoint has ever run for this projection
-    Failing,     // last run had at least one seam fail
-    Clean,       // last run: all checked seams pass
+pub trait Renderer: Send + Sync {
+    type Output;
+    type Context: Default;
+    fn render(&self, service: &ServiceDef, intents: &[IntentScore], ctx: &Self::Context)
+        -> Result<Self::Output, Error>;
 }
 ```
 
-`projection_coverage::execute` calls `checkpoint_projection::last_status(project_root, &proj.name)` for each covered projection. `last_status` reads from a per-projection status file at `{project_root}/.ferro/checkpoints/{name}.json` (runtime artifact, gitignored). If absent, returns `Unverified`.
+COMP-05 produces three sketch renderers (not shipped, not published) that demonstrate the
+trait is sufficient for non-visual modalities:
 
-### `application_info`
+| Sketch renderer | Output type | Location |
+|-----------------|-------------|----------|
+| `CliSummaryRenderer` | `String` (table rows) | `ferro-projections/src/render/cli.rs` |
+| `VoiceRenderer` | `String` (SSML fragment) | `ferro-projections/src/render/voice.rs` |
+| `MobileCardRenderer` | `serde_json::Value` (push payload) | `ferro-projections/src/render/mobile.rs` |
 
-`ApplicationInfo` gains one new field:
+All three stay inside `ferro-projections` under `render/` as `pub(crate)` modules (or
+`#[cfg(test)]` if they have no non-test callers) and are documented as research sketches,
+not stable API. They inform vocabulary decisions before v14.0 Channel Projection, not after.
 
-```rust
-pub projection_checkpoint: ProjectionCheckpointSummary,
-```
+**Why not a new output crate:**
 
-```rust
-#[derive(Debug, Serialize)]
-pub struct ProjectionCheckpointSummary {
-    pub total_projections: usize,
-    pub clean: usize,
-    pub failing: usize,
-    pub unverified: usize,
-}
-```
+A new output crate (e.g., `ferro-voice`) is premature — COMP-05 is exploratory, not a
+shipped feature. Adding a published crate now binds v14.0 prematurely. The sketch belongs
+in `ferro-projections` as internal research code until v14.0 decides what to publish.
 
-Populated by iterating over `list_projections::execute` results and calling `checkpoint_projection::last_status` per projection. Direct parallel to how `scan_feature_counts` already aggregates counts from multiple list tools.
+**What COMP-05 informs for v14.0:**
 
----
+- Whether `BaseContext` needs new fields (e.g., `max_response_tokens`, `device_class`).
+- Whether the 7-intent vocabulary is complete for non-visual modalities (does `Track`
+  map cleanly to voice? does `Analyze` translate to mobile?).
+- Whether `IntentHint` overrides are needed for channel-specific suppression.
+- Whether output crates for v14.0 can share context via a `ChannelContext` that extends
+  `BaseContext` without modifying ferro-projections.
 
-## Question 4: Build Order Across 3 Phases
-
-### Phase 1 (P1): Tool + field→column seam + aggregation
-
-**Goal:** `checkpoint_projection` callable standalone; seam 2 operational.
-
-**New files:**
-- `ferro-mcp/src/tools/checkpoint_projection.rs`
-
-**Contents of the new module:**
-- `pub struct CheckpointVerdict` — `status`, `projection`, `seams: Vec<SeamResult>`, `next_steps: Vec<String>`
-- `pub struct SeamResult` — `seam: SeamName`, `status: SeamStatus`, `source: &'static str`, `findings: Vec<Finding>`
-- `pub struct Finding` — `subject: String`, `detail: String`, `fix: String`
-- `pub enum SeamStatus` — `Pass`, `Fail`, `Warn`, `NotChecked`
-- `pub enum SeamName` — `WellFormed`, `FieldToColumn`, `ActionToRoute`, `RenderedView`, `PropsContract`
-- `pub fn run_for(project_root: &Path, name: &str) -> CheckpointVerdict` — synchronous; see async boundary note below
-- `pub enum CheckpointStatus` — `Unverified`, `Failing`, `Clean`
-- `pub fn last_status(project_root: &Path, name: &str) -> CheckpointStatus`
-- `fn check_field_to_column(project_root: &Path, service: &ServiceDef) -> SeamResult` (private)
-- Aggregation logic: `status` = `Fail` if any seam fails, `Warn` if only warns, `Pass` if all checked seams pass. Unchecked seams do not raise status.
-- `next_steps` ranking: failures from earlier seams first, warnings after.
-- Status cache write: `.ferro/checkpoints/{name}.json` written at end of `run_for`.
-
-**Modified files:**
-- `ferro-mcp/src/tools/mod.rs` — add `pub mod checkpoint_projection;`
-- MCP tool dispatcher (wherever tools are registered as callable tools) — register `checkpoint_projection`
-
-**Tests in P1:**
-- `check_field_to_column` unit tests with temp fixtures: dangling field (seam 2 fail), clean slice (pass), absent model (not_checked)
-- Aggregation tests for mixed seam results producing correct overall `status`
-- Coverage-honesty: absent rendered view means seams 4/5 are `not_checked`, verdict is not `fail`
-
-### Phase 2 (P2): Inline hook + status surfacing
-
-**Goal:** Generators close the loop automatically; `application_info` and `projection_coverage` show checkpoint status.
-
-**Modified files:**
-- `ferro-mcp/src/tools/generate_projection.rs` — add `checkpoint: Option<CheckpointVerdict>` to `GenerateProjectionResult`, call `checkpoint_projection::run_for` after generation
-- `ferro-mcp/src/tools/json_ui_generate.rs` — same inline hook
-- `ferro-mcp/src/tools/projection_coverage.rs` — add `checkpoint_status: Option<CheckpointStatus>` to `ModelCoverage`, call `checkpoint_projection::last_status` per covered projection
-- `ferro-mcp/src/tools/application_info.rs` — add `projection_checkpoint: ProjectionCheckpointSummary` to `ApplicationInfo`, populate from `list_projections` + `last_status`
-
-**Tests in P2:**
-- `generate_projection` result contains a `checkpoint` key
-- `projection_coverage` per-model coverage includes `checkpoint_status`
-- `application_info` summary correctly counts clean/failing/unverified
-
-### Phase 3 (P3): Wrapper seams + dogfood acceptance
-
-**Goal:** Seams 1, 3, 4, 4b, 5 report real results; dogfood gate passes.
-
-P3 activates the dispatch calls for seams 1, 3, 4, 4b, 5 inside `run_for`. Each seam earns its place against dogfood results. A seam that does not catch a real defect in any real projection across the synthetic catalog and one live consumer may ship as `not_checked` rather than being forced active.
-
-**Dogfood gate:** Run `checkpoint_projection` against all projections in `app/src/projections/` and against at least one gestiscilo consumer projection. At least one real seam defect must surface. If none surfaces with all seams active, the design spec requires the design to be revisited rather than shipped.
-
-**Modified files (conditional):**
-- `ferro-mcp/src/tools/checkpoint_projection.rs` — activate wrapper seam dispatches as dogfood justifies
+The sketches produce a written analysis (in `docs/` or as module docs) documenting those
+answers before v14.0 starts.
 
 ---
 
-## Component List: New vs Modified
+## Component Map: New vs Modified
 
-### New
-
-| Component | Path | Phase |
-|-----------|------|-------|
-| `checkpoint_projection` module | `ferro-mcp/src/tools/checkpoint_projection.rs` | P1 |
-| `CheckpointVerdict`, `SeamResult`, `SeamStatus`, `SeamName`, `Finding` | inside the new module | P1 |
-| `check_field_to_column` private fn | inside the new module | P1 |
-| `CheckpointStatus` enum | inside the new module | P1 |
-| `last_status` public fn | inside the new module | P1 |
-| `.ferro/checkpoints/{name}.json` status cache | runtime artifact, gitignored | P1 write |
-
-### Modified
-
-| Component | Path | Change | Phase |
-|-----------|------|--------|-------|
-| `mod.rs` | `ferro-mcp/src/tools/mod.rs` | add `pub mod checkpoint_projection;` | P1 |
-| MCP tool dispatcher | `ferro-mcp/src/lib.rs` or equivalent | register `checkpoint_projection` as callable tool | P1 |
-| `GenerateProjectionResult` | `ferro-mcp/src/tools/generate_projection.rs` | add `checkpoint: Option<CheckpointVerdict>` field | P2 |
-| `generate_projection::execute` | same file | call `run_for` after generation | P2 |
-| `JsonUiGenerationContext` | `ferro-mcp/src/tools/json_ui_generate.rs` | add `checkpoint: Option<CheckpointVerdict>` field | P2 |
-| `json_ui_generate::execute` | same file | call `run_for` after generation | P2 |
-| `ModelCoverage` | `ferro-mcp/src/tools/projection_coverage.rs` | add `checkpoint_status: Option<CheckpointStatus>` field | P2 |
-| `projection_coverage::execute` | same file | call `last_status` per covered projection | P2 |
-| `ApplicationInfo` | `ferro-mcp/src/tools/application_info.rs` | add `projection_checkpoint: ProjectionCheckpointSummary` field | P2 |
-| `application_info::execute` | same file | populate summary from `list_projections` + `last_status` | P2 |
-| `checkpoint_projection::run_for` | checkpoint module | activate wrapper seam dispatches as dogfood justifies | P3 |
+| Component | Status | Crate | Notes |
+|-----------|--------|-------|-------|
+| `ferro-projections/tests/catalog.rs` | NEW file | ferro-projections | COMP-02 synthetic catalog corpus |
+| `ferro-mcp/tests/agent_harness.rs` | NEW file | ferro-mcp | COMP-03 agent success rate harness |
+| `ferro-cli/tests/benchmark_new_project.rs` | NEW file | ferro-cli | COMP-04 scaffolding benchmark |
+| `ferro-projections/src/render/cli.rs` | NEW file | ferro-projections | COMP-05 CliSummaryRenderer sketch (pub(crate)) |
+| `ferro-projections/src/render/voice.rs` | NEW file | ferro-projections | COMP-05 VoiceRenderer sketch (pub(crate)) |
+| `ferro-projections/src/render/mobile.rs` | NEW file | ferro-projections | COMP-05 MobileCardRenderer sketch (pub(crate)) |
+| `ferro-projections/src/render/mod.rs` | MODIFY | ferro-projections | Add mod declarations for sketch modules |
+| gestiscilo projections (external repo) | NEW files | gestiscilo | COMP-01 migration, not in ferro workspace |
+| No new published crates | — | — | COMP-01..05 are validation artifacts, not new public APIs |
 
 ---
 
-## Data Flow: Checkpoint Verdict
+## Build Order
+
+The dependency graph for the COMP phases:
 
 ```
-checkpoint_projection::run_for(project_root, "Booking")
+COMP-02 (catalog in ferro-projections/tests/)
     │
-    ├── validate_projection::execute_single(root, "Booking")
-    │       → SeamResult { seam: WellFormed, ... }
+    ├── feeds ground-truth → COMP-03 (agent harness domain descriptions)
     │
-    ├── render_projection::reconstruct_service_def(name, display, content)
-    │   then:
-    ├── check_field_to_column(root, &service_def)
-    │       uses list_models::execute + service_def.fields[*].name
-    │       → SeamResult { seam: FieldToColumn, ... }
-    │
-    ├── list_routes::execute(root).await  [fetch once]
-    │   for each ActionDef in service_def:
-    │       json_ui_verify_action::find_handler(&routes, handler, method)
-    │       → SeamResult { seam: ActionToRoute, ... }
-    │
-    ├── render_projection::execute(root, "Booking", None, None)
-    │   if Ok → json_ui_validate_spec::execute(&serialized_spec)
-    │       → SeamResult { seam: RenderedView, ... }
-    │
-    └── validate_contracts::execute(root)
-            → SeamResult { seam: PropsContract, ... }
+    └── informs vocabulary → COMP-05 (which intents need sketch coverage)
+
+COMP-04 (ferro-cli benchmark) — independent, no catalog dependency
+
+COMP-01 (gestiscilo migration) — independent, cross-repo
+    └── surfaces real-world vocab gaps → COMP-05 (informs BaseContext extensions)
+
+COMP-05 (cross-modality sketch in ferro-projections/src/render/)
+    └── required-before → v14.0 Channel Projection scope finalization
+```
+
+**Recommended phase order:**
+
+1. **COMP-02** first. It is the regression baseline and the ground-truth for COMP-03.
+   Pure test code, no production risk, fast to write, immediately improves CI coverage of
+   `derive_intents()`.
+
+2. **COMP-04** in parallel with COMP-02. Independent of catalog. Yields the time-to-working-app
+   metric early.
+
+3. **COMP-03** after COMP-02 is merged. Depends on catalog for domain descriptions and
+   ground-truth intent per class.
+
+4. **COMP-01** can start after COMP-02 establishes the intent vocabulary so gestiscilo
+   migrations have a verified baseline to compare against. Large cross-repo effort; likely
+   sliced across multiple phases.
+
+5. **COMP-05** after COMP-01 surfaces real-world vocab gaps and COMP-02 confirms the
+   7-intent system handles all canonical classes correctly. Non-blocking for other phases
+   but required before v14.0 scope work.
+
+---
+
+## Architectural Invariants to Preserve
+
+| Invariant | How enforced in COMP-01..05 |
+|-----------|----------------------------|
+| ferro-projections is renderer-free | `catalog.rs` only calls `derive_intents()` and asserts on `IntentScore` — no rendering calls; COMP-05 sketch modules are `pub(crate)`, not in Cargo.toml `[dependencies]` of any other crate |
+| No hardcoded app identity in ferro-* crates | Catalog entries use generic domain names ("product", "order", "article"); harness uses generic descriptions; no gestiscilo strings anywhere in ferro workspace |
+| COMP-05 sketches do not create premature public API | Sketch renderers are `pub(crate)` or `#[cfg(test)]` until v14.0 decides on scope |
+| CI disk constraints respected | COMP-04 benchmark gated behind env var / feature flag to avoid second target dir in default CI |
+| Renderer implementations live in output crates (production) | COMP-05 sketches in ferro-projections/src/render/ are acceptable as internal research code; any production Channel renderer goes into a new output crate at v14.0 |
+
+---
+
+## Data Flow: How COMP-02 Regression Tests Hook into Every Change
+
+```
+Developer edits ferro-projections/src/derive.rs
     │
     ▼
-aggregate: status = worst of seam statuses (not_checked seams excluded)
-           next_steps = failures first by seam order, then warnings
+cargo test --all-features
     │
-    ├── write .ferro/checkpoints/Booking.json
-    └── return CheckpointVerdict
+    ├── ferro-projections unit tests (derive.rs already has ~1050 lines of unit tests)
+    │
+    └── ferro-projections/tests/catalog.rs
+            ├── test_product_catalog_derives_browse()
+            ├── test_article_derives_focus()
+            ├── test_registration_form_derives_collect()
+            ├── test_order_workflow_derives_process()
+            ├── test_revenue_dashboard_derives_summarize()
+            ├── test_sales_analytics_derives_analyze()
+            └── test_shipment_tracking_derives_track()
+```
+
+Each test calls `derive_intents(&service)` and asserts on position [0] intent and
+confidence threshold. A regression in any analyzer immediately fails the specific test
+with a clear subject name.
+
+---
+
+## Data Flow: COMP-03 In-Process MCP Client
+
+```
+ferro-mcp/tests/agent_harness.rs
+    │
+    ├── in-process: ferro-mcp server bootstrap (same as `ferro mcp` subcommand path)
+    │
+    ├── tool call: list_projections(project_root=test_fixtures_dir)
+    │       → Vec<ProjectionInfo>
+    │
+    ├── for each domain_description in COMP-02-derived test cases:
+    │   ├── tool call: generate_projection(description)
+    │   │       → ServiceDef written to test fixtures dir
+    │   │
+    │   └── tool call: checkpoint_projection(name)
+    │           → Verdict { status: pass|warn|fail, seams, next_steps }
+    │
+    └── assert: passing_count / total_count >= 0.7
 ```
 
 ---
 
-## Async Boundary Note
+## Integration Points Summary
 
-`json_ui_verify_action::execute` is async (`async fn execute(...) -> Result<VerifyActionResult>`). All other tools in the projection stack are synchronous. Two options:
-
-1. Make `run_for` synchronous, call `find_handler` with pre-fetched routes (routes fetched once by the MCP dispatcher before calling `run_for`). Signature becomes `run_for(project_root, name, routes: &[RouteInfo])` or `run_for_with_context(...)`. This keeps the module sync-consistent.
-
-2. Make `run_for` async, matching the `json_ui_verify_action` pattern. Changes the calling signature in the generators and status consumers.
-
-Option 1 is preferred because: (a) all other projection tools are sync, (b) `find_handler` is already `pub(crate)` specifically to allow reuse without the async wrapper, (c) the MCP dispatcher can own the single async fetch. If the dispatcher context makes option 2 unavoidable (e.g. the dispatcher itself is already async), option 2 is acceptable.
-
----
-
-## Key Constraints
-
-**No duplicate control surface.** The checkpoint owns exactly one piece of logic that exists nowhere else: `check_field_to_column`. All other seams delegate to the tool that already owns that check. This is a hard coherence rule.
-
-**Dependency direction is fixed.** `checkpoint_projection` depends on: `validate_projection`, `json_ui_verify_action`, `render_projection`, `json_ui_validate_spec`, `validate_contracts`, `list_models`, `list_projections`, `list_routes`. None of those tools depend on `checkpoint_projection`. The generators and coverage tools depend on `checkpoint_projection` in P2. No reverse dependencies.
-
-**Read-only and no-cargo.** The checkpoint does not invoke the compiler, does not write code, and does not modify any projection source. The `.ferro/checkpoints/` status cache is the only write side effect.
-
-**Coverage honesty is structural.** `not_checked` must never be collapsed to `pass`. This is enforced by the `SeamStatus::NotChecked` variant being distinct from `Pass` in aggregation logic and in the output JSON.
+| COMP | Integrates With | Communication | New Cargo Dependency |
+|------|-----------------|---------------|---------------------|
+| COMP-01 | ferro-json-ui (JsonUiRenderer), ferro-projections (ServiceDef) | `Renderer::render()` | None in ferro workspace |
+| COMP-02 | ferro-projections (`derive_intents`, `ServiceDef`, `Intent`) | Direct function call in tests | None |
+| COMP-03 | ferro-mcp (in-process server + tool execute fns) | In-process MCP tool dispatch | None new; ferro-mcp already uses ferro-projections |
+| COMP-04 | ferro-cli (`ferro new`, `make:*` commands) | `std::process::Command` subprocess | `tempfile` already in dev-deps |
+| COMP-05 | ferro-projections (Renderer trait, BaseContext) | Implements `Renderer` trait directly | None |
 
 ---
 
-*Architecture research for: ferro-mcp v12.5 Projection Checkpoint*
-*Researched: 2026-06-09*
+## Sources
+
+- Direct source inspection: `ferro-projections/src/render/mod.rs`, `ferro-projections/Cargo.toml`, `ferro-projections/tests/generate_schemas.rs`
+- Direct source inspection: `ferro-mcp-server/src/renderer.rs`, `ferro-mcp-server/Cargo.toml`
+- Direct source inspection: `ferro-cli/Cargo.toml`, `ferro-cli/src/commands/` (50+ command files)
+- Direct source inspection: `app/src/projections/` (8 existing projection examples showing the ServiceDef builder pattern)
+- Direct source inspection: `ferro-mcp/src/tools/checkpoint_projection.rs` (established patterns for fixture-based tests, SeamStatus types)
+- `.planning/PROJECT.md` v13.0 milestone definition, COMP-01..05 requirements
+- `./CLAUDE.md` rendering architecture invariants, project-agnostic crate rule, workspace structure table
+- Project memory: `project_ferro_disk_full_test_gate.md` — CI disk constraints informing COMP-04 gating
+
+---
+*Architecture research for: v13.0 Compressive Validation (COMP-01..05)*
+*Researched: 2026-06-12*

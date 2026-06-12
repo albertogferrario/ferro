@@ -1,203 +1,230 @@
 # Feature Research
 
-**Domain:** Agent-facing verification tool — `checkpoint_projection` MCP call for the ferro write→verify loop (v12.5)
-**Researched:** 2026-06-09
-**Confidence:** HIGH (design spec and all existing validator source read directly; prior art from LSP spec, MCP tool design literature, and schema/contract drift research corroborates findings)
+**Domain:** Validation / measurement infrastructure for a projection/intent framework (v13.0 Compressive Validation)
+**Researched:** 2026-06-12
+**Confidence:** HIGH for COMP-01..03 (existing code read directly, pattern well-understood); MEDIUM for COMP-04 (benchmark methodology has no prior art in ferro); MEDIUM for COMP-05 (cross-modality is exploratory)
 
 ---
 
-## Prior Art Summary
+## Context
 
-**LSP diagnostics** (closest industrial analog): four severity levels — Error/Warning/Information/Hint. Each diagnostic carries: subject range, severity, code, source (the producing tool), and message. The LSP has no concept of "not checked" — it silently omits diagnostics for regions it did not inspect. That silent omission is the exact trap `checkpoint_projection` must avoid: an agent reading a response with no errors on seams 4–5 must not conclude those seams passed.
+This file covers the five COMP requirements for v13.0. These are validation artifacts, not new product features. The projection/intent system they validate is already shipped: ferro-projections (7 intents, derive_intents, ServiceDef), ferro-mcp (35+ tools), ferro-json-ui (JsonUiRenderer, Spec::from_service_def), ferro-mcp-server (tools/call, tools/list). The question for each COMP item is: what does the validation artifact look like when done well, what is the genuine signal it provides, and what must be avoided to prevent vanity metrics masquerading as validation.
 
-**Agent-aware MCP tool design** (10-pattern survey, 2025 community research): agents trust tools that embed `next_actions` directly in the response, expose confidence thresholds with explicit recovery paths, document their own capability limits ("capability advertisement"), and include audit-trail provenance (sources, timestamps, model versions). Agents stall or hallucinate on: opaque pass/fail booleans with no fix hint, verbose raw dumps without a summary, and outputs that conflate "not checked" with "clean." The cited research finding: "Confidence: 0.51, below threshold — call `get_additional_context`" creates trust through transparency. Opaque numerical outputs create indecision loops.
+Gestiscilo (`gestiscilo-it/app`) is a live ferro application with 69 models, 130 JSON-UI views, and no projections yet. It uses `JsonUi::render_file` directly — the handler supplies data, the spec is a static JSON file, and there is no ServiceDef in the call chain. COMP-01 is migrating at least a meaningful subset of those views to projection-driven rendering.
 
-**Schema and contract drift detectors** (dbt, data contracts, OpenAPI drift tools): standard pattern is baseline→current diff with per-field finding and provenance (which rule, which schema version produced this finding). Actionable drift classification distinguishes breaking from additive change. Best tools annotate every finding with the repair step, not just the detected delta. The 2025 community consensus: distinguishing actionable drift from benign variation reduces alert fatigue; alerts that include context (the failing feature, suggested rollback step) get acted on; alerts without context get filtered.
-
-**Verification tool trust research**: tools that minimize false negatives (missed real failures) earn agent trust faster than tools that find more issues. A checkpoint that returns `pass` on a broken slice is the worst outcome — agents stop calling it after the first missed defect. False positives (noise findings on valid code) are the second failure mode: agents start ignoring output or filtering the tool out of the loop.
+The ferro `app/` sample already has 9 projection fixtures covering 7 intents (product→Browse, order→Process, revenue_dashboard→Summarize, sales_analytics→Analyze, feedback_form→Collect, todo/user→Focus, api_key→Track-adjacent). These are the existing synthetic corpus. COMP-02 formalizes this into a regression suite.
 
 ---
 
 ## Feature Landscape
 
-### Table Stakes (Agents Expect These)
+### Table Stakes (Users Expect These)
 
-Features an agent assumes a checkpoint tool provides. Missing any = the tool is ignored or misused.
+For v13.0, "users" are two audiences: (a) the framework author validating whether the abstraction holds, and (b) agents and developers who will read the validation evidence as a signal about framework maturity. Missing any of these makes the validation unconvincing.
 
-| Feature | Why Expected | Seam | Complexity | Spec Coverage |
-|---------|--------------|------|------------|---------------|
-| Single-call entry point anchored on projection name | Agents must not orchestrate multi-tool verification. One call: `checkpoint_projection { name: "Booking" }` | All seams | LOW | YES |
-| Top-level `status: pass / warn / fail` | Agent needs one token to branch: continue vs. stop vs. review. Without it, the agent must read all seam details before deciding | Aggregated | LOW | YES |
-| Per-seam status with distinct `not_checked` | "not checked" must never collapse into "pass." An agent reading `pass` on seam 5 when it was never evaluated will confidently ship a broken props contract. This is the load-bearing invariant that makes the tool trustworthy | All seams | LOW | YES — coverage honesty section |
-| `next_steps` ranked list | Agents act on ordered imperatives. Failures rank before warnings; within a rank, earlier seams before later seams. Without ranking, the agent must read all findings to determine what to do first | Aggregated | LOW | YES |
-| `source` provenance per finding | Agent must know which validator produced a finding to understand its reliability and to call that validator directly for detail. Without provenance, the agent cannot distinguish a checkpoint-owned finding from a sub-validator finding | All seams | LOW | YES — each seam carries `source` field |
-| `subject` + `detail` per finding | Subject identifies the artifact (field name, action name); detail is the human-readable description. Both are required — LSP shape minimum. A detail without a subject is unactionable; a subject without a detail is unintelligible | All seams | LOW | YES — shown in output example |
-| `fix` suggestion per finding | Actionable repair step alongside the symptom. "add column in migration, or remove field from projection" is the minimal acceptable form. An agent without a fix hint must reason about the repair from first principles — this is where hallucination enters | All seams | MEDIUM | PARTIAL — fix shown for seam 2 only. Seams 1/3/4/5 delegate to sub-validators; fix quality depends on those tools' output shapes, which are not standardized. Gap. |
-| Field→column seam (seam 2) | The one gap nothing checks today. A projection field referencing a non-existent migration column is a silent runtime failure — the rendered view drops the field with no diagnostic. Agents cannot discover this without running the app. This is the F11-class seam the milestone was created to close | field→column | MEDIUM | YES — primary new check, checkpoint-owned |
-| Prerequisite-gated seam execution | Seams 4–5 require a rendered view to exist. Seam 2 requires the projection to be well-formed. If a prerequisite is absent, the seam must report `not_checked` rather than silently skipping. The reason for `not_checked` must be surfaced | rendered_view, props→contract, field→column | LOW | YES — implied by coverage honesty; not fully specified per seam |
-| Inline return from generate tools | The loop closes automatically: `generate_projection` and `json_ui_generate` embed the verdict in their response. The agent receives verification without a separate call, which means verification happens even when the agent is not explicitly disciplined about it | All seams | LOW | YES |
+| Feature | Why Expected | COMP | Complexity | Notes |
+|---------|--------------|------|------------|-------|
+| At least one real-app projection migration covering a meaningful entity class | Real-world validation is a stated v1.0 criterion (#2). A framework that has only synthetic test fixtures has never been proven against messy real-world models. Gestiscilo has 69 models — the migration does not need to cover all of them, but must cover a representative subset across at least 3 intents | COMP-01 | HIGH | Cross-repo effort; see slicing section below |
+| Synthetic catalog with one fixture per intent covering all 7 intents | A catalog that misses any intent has untested derivation paths. The 7-intent vocabulary was designed as a closed set; coverage must be demonstrated. The existing `app/` fixtures cover 7 intents across 9 projections but are not organized as a regression suite with assertions on primary intent | COMP-02 | LOW | 9 fixtures already exist in `app/src/projections/`; gap is regression harness, not fixtures |
+| Regression tests that pin primary intent per fixture | A test that asserts "this ServiceDef derives Browse as primary" is the regression gate. Without it, a change to derive.rs that shifts the ranking is invisible until a rendered view changes unexpectedly | COMP-02 | LOW | `derive_intents()` returns a ranked `Vec<IntentScore>`; `scores[0].intent == expected` is the assertion pattern |
+| Agent task + outcome record for COMP-03 | An agent-success-rate claim without a record of what the agent was asked to do and whether it succeeded is not a rate — it is a story. The record must include: the NL description given, the ServiceDef produced, whether it compiled, whether it rendered, and whether the rendered output matched the description. Without the record, the number is not reproducible | COMP-03 | MEDIUM | Harness design is the primary work; the actual agent runs are lightweight once the harness exists |
+| Pass/fail criteria stated before the agent run | Criteria defined after seeing results are not criteria — they are post-hoc framing. COMP-03 requires: field names match the description, intent matches the description, rendered spec validates against the catalog, and the projection compiles. These four checks define "working output" | COMP-03 | LOW | Binary per-check; composite pass if all four pass |
+| Time-to-working-app measurement that is reproducible by a second person | A benchmark no one else can reproduce is an anecdote. COMP-04 requires: a documented start condition (`cargo new` in a fresh directory, no prior ferro exposure in the session), a documented end condition (service runs, auth works, three entity types exist, one background job processes), and a clock that any developer can reproduce. The measurement apparatus must be committed alongside the result | COMP-04 | MEDIUM | Hardest to formalize; see differentiators for what "good" looks like |
+| Cross-modality rendering of at least one intent as mobile, voice, and CLI | COMP-05 is a probe: does the 7-intent vocabulary make sense when the rendering target changes? The minimum is one intent rendered coherently in three non-visual forms. If the vocabulary breaks down (an intent that makes no sense as a voice interaction, or a CLI that needs a new intent), that finding is itself the validation signal | COMP-05 | MEDIUM | Exploratory; "finding" is valid output even if the finding is "the vocabulary needs revision" |
+| COMP results committed as durable artifacts | Validation evidence that lives only in a session transcript cannot be cited, reviewed, or built upon. COMP results must be committed: migration diff, regression test file, agent run log, benchmark transcript, cross-modality sketch document | All | LOW | Process discipline, not implementation work |
 
-### Differentiators (What Makes This Tool Trusted Rather Than Ignored)
+### Differentiators (What Makes the Validation Credible)
 
-| Feature | Value Proposition | Seam | Complexity | Spec Coverage |
-|---------|-------------------|------|------------|---------------|
-| Dogfood acceptance gate | The tool must surface a real seam defect in a real consumer app before shipping. A checkpoint that finds nothing real in real apps fails acceptance and the design is revisited. This is the mechanism that prevents shipping a tool that always returns `pass` — the primary trust-destroying failure mode | All seams | LOW (process gate) | YES — testing section |
-| Ranked deduplication in `next_steps` | Multiple seams can produce overlapping repair steps — for example, seam 2 and seam 4 may both flag the same missing field in different vocabulary. Deduplication prevents the agent from seeing the same action twice and having to reason about whether they are the same | Aggregated | MEDIUM | YES — "ranked, deduplicated" stated; dedup algorithm not designed. Gap: exact-string-match vs. semantic dedup distinction needed. |
-| `application_info` / `projection_coverage` surface checkpoint status | Agents surveying the project see per-projection verification debt (`unverified` / `failing` / `clean`) without probing each projection individually. Converts a point-in-time tool into an ambient health signal — the agent does not need to discover that verification exists | All seams | MEDIUM | YES — specified; freshness strategy (cached vs. fresh) not decided. Gap. |
-| Seam dependency topology: upstream failure → downstream `not_checked` with reason | If seam 1 fails (projection not well-formed), field names in seam 2 are unreliable. If seam 2 fails (column missing), the rendered view in seam 4 may render incorrectly. Propagating `not_checked` with `reason: "seam_1_failed"` rather than a silent skip is what allows the agent to correctly attribute blame and repair the right thing first | Aggregated | MEDIUM | NOT EXPLICIT. The spec lists seams in order and states that absent prerequisites yield `not_checked`, but does not specify that a seam failure (as distinct from absent prerequisite) propagates `not_checked` downstream. Gap. |
-| Method filter threading in seam 3 | `json_ui_verify_action` supports an optional HTTP method filter. If `ActionDef` carries a declared method, the checkpoint should thread it through to avoid a false negative when GET and POST handlers share the same name | action→route | LOW | NOT EXPLICIT. Spec says "reuse `json_ui_verify_action`" without specifying whether ActionDef method is threaded. Gap. |
-| Intent + confidence surfaced in seam 4 finding | The rendered view uses intent-ranked rendering. Surfacing intent name + confidence in the verdict gives the agent context to understand why a particular layout was chosen and whether a lower-confidence intent would produce a different rendering | rendered_view | LOW | PARTIAL — `render_projection` already returns intent+confidence; checkpoint output spec does not include it in seam 4 finding. Gap. |
+| Feature | Value Proposition | COMP | Complexity | Notes |
+|---------|-------------------|------|------------|-------|
+| Gestiscilo migration covers at least 3 intent classes | Migrating only Browse (the easiest intent — products, customers, items) is not validation; it is cherry-picking. Credible migration includes at least one workflow entity (Process), one data-entry entity (Collect), and one overview entity (Summarize). Gestiscilo has bookings (Process), forms/onboarding (Collect), and statistiche/dashboard (Summarize) | COMP-01 | HIGH | The migration effort is not proportional to entity count; it is proportional to intent diversity. Three well-chosen entities beat ten Browse entities |
+| Migration measures render output equivalence, not just "it compiled" | A projection migration that produces a different rendered output than the original JSON-UI view is a regression. The validation signal requires confirming that the projection-driven path produces equivalent visual output to the direct `render_file` path for the same data. Even if not pixel-identical, the primary fields and actions must be present | COMP-01 | MEDIUM | Requires a before/after comparison fixture or a snapshot test |
+| Regression suite is in `ferro-projections/tests/` not `app/src/` | Tests in the sample app are app tests, not framework regression tests. A change to `derive_intents()` in `ferro-projections/src/derive.rs` must trigger the regression suite automatically. The suite belongs in the crate whose behavior it guards | COMP-02 | LOW | Move or duplicate the 9 fixtures into `ferro-projections/tests/intent_regression.rs`; keep `app/` projections as usage examples |
+| Regression suite pins signal names, not just top intent | `scores[0].intent == Browse` tells you the top intent is correct. `scores[0].matching_signals.contains("entity_name")` tells you why. Signal pinning catches subtle changes to scoring weight that produce the same top intent but degrade confidence for reasons not visible from the top-level assertion. COMP-02 is stronger with both checks | COMP-02 | LOW | `has_signal(score, "entity_name")` pattern already exists in `derive.rs` test helpers |
+| Agent-success-rate dataset is diverse across intents, not just easy cases | A dataset of 10 Browse projections inflates the success rate. COMP-03 requires at least 2 tasks per intent (7 intents × 2 = 14 minimum). Mix of simple and complex: simple = single-model entity with 5 fields; complex = entity with state machine, guards, and relationships | COMP-03 | MEDIUM | 14 tasks is the minimum corpus that is not obviously cherry-picked |
+| Agent run uses ferro-mcp as the introspection context, not just the API docs | COMP-03 is measuring whether an agent reading `ferro-mcp` output can produce a working ServiceDef, not whether an agent that has memorized the ferro API can do it. The agent must be run with ferro-mcp as its context source. Run it without ferro-mcp loaded and the measurement is contaminated by training data | COMP-03 | LOW | Session setup: MCP server running, agent instructed to use introspection tools before generating |
+| Time-to-working-app benchmark measures agent-assisted time, not manual time | COMP-04 is positioned as validation of ferro's AI-assisted authoring value. A manual benchmark (human types all code) measures typing speed, not the projection abstraction. The benchmark must be run with an agent (Claude Code, Cursor, or similar) using ferro-mcp. Record wall-clock time from `cargo new` to first successful HTTP request with all criteria met | COMP-04 | MEDIUM | Requires defining the agent's starting prompt carefully — the prompt is part of the benchmark apparatus |
+| COMP-05 produces a written intent → rendering map, not just code | The cross-modality sketch is architectural thinking, not implementation. The artifact is a document: for each of the 7 intents, describe what a mobile, voice, and CLI rendering would look like, identify which intents survive the translation cleanly, which require adaptation, and which reveal vocabulary gaps. This document directly informs whether v14.0 Channel Projection needs intent vocabulary changes | COMP-05 | LOW | A 3-page document is the right scope; prototype code is optional and not the primary artifact |
+| COMP-05 identifies at least one vocabulary gap | A cross-modality analysis that finds "all intents translate cleanly" is either correct (rare) or insufficiently critical. The exercise is designed to probe limits. If Process maps cleanly to mobile (it likely does — status transitions are modality-independent), but Analyze does not map cleanly to voice (time-series charts do not have a natural voice form), that finding constrains the v14.0 channel projection design. A gap is a valuable finding, not a failure | COMP-05 | LOW | The analysis is honest if it records "Analyze does not have a natural voice form; the closest is a summary report read aloud, which is closer to Summarize" |
 
-### Anti-Features (Avoid Building These)
+### Anti-Features (Avoid These)
 
-| Anti-Feature | Why Requested | Why Problematic | Seam | Alternative |
-|--------------|---------------|-----------------|------|-------------|
-| Compile / `cargo check` invocation | Agents want "does this build?" as part of verification | Slow (seconds to minutes), breaks the read-only fast contract every other MCP tool maintains. Makes the tool unusable in a tight generate→verify loop. Also redundant: the agent will invoke cargo as a separate step anyway | All | Keep as separate agent step. Spec correctly excludes this. |
-| Collapsing `not_checked` into `pass` | Simpler status enum; fewer states for the agent to handle | False confidence. One false `pass` on a seam the agent later discovers was unchecked destroys trust in all future `pass` results. The LSP precedent (silent omission of unexamined regions) makes this worse, not better: the LSP has no "not checked" concept and this is documented as a known LSP weakness | All | Distinct `not_checked` with an explicit `reason` field |
-| Full spec dump per seam in the verdict | Agents debugging a render failure want to see the spec | Overwhelms context window. Agents receiving kilobytes of raw JSON in a verdict stop reading after the first seam. Progressive disclosure is the correct pattern: summary verdict in-band, full detail available on demand via existing tools (`render_projection`, `json_ui_validate_spec`) | rendered_view, props→contract | Return finding counts + first N findings per seam; agent calls the sub-validator for full output |
-| Aggregating all projections in one call | "Check everything" is convenient | O(n) I/O across the entire projection directory. With 20+ projections, response time and output size make the tool unusable in a loop. The ambient `projection_coverage` / `application_info` status already covers the "survey" use case at lower cost | All | Single-projection anchor per call; ambient status for bulk view |
-| Type-level diff in props→contract seam (seam 5) | Full Rust↔TypeScript type mismatch detection feels more complete | `validate_contracts` already has regex-based type comparison that produces false positives on complex types (generics, nested structs, enums). Re-implementing or extending type comparison in the checkpoint creates a second source of truth. The "no duplicate control surface" rule applies directly | props→contract | Thread `validate_contracts` findings through as-is with provenance. Type comparison improvements belong in `validate_contracts`, not in the checkpoint. |
-| Fix suggestions that mutate code | Agents want push-button repair | The checkpoint is a read-only introspection tool. Mutation belongs in generator tools. A tool that sometimes reads and sometimes writes is harder to reason about, harder to test, and harder to trust | All | Return `fix` as an imperative string describing what to do; separate generator tools handle actual mutation |
-| Severity levels beyond pass/warn/fail/not_checked | LSP uses four levels (Error/Warning/Information/Hint); mirroring seems natural | `Information` and `Hint` produce output agents discount. The tool's job is to drive repair actions, not to be informative. Three outcome states (fail/warn/pass) plus one coverage state (not_checked) is sufficient. Adding hint-level findings inflates output without changing agent behavior | All | Use `warn` for near-misses that do not block a working slice; reserve `fail` for seams that are definitively broken |
-| Caching verdict across runs | Repeated calls to the same projection are expensive | Source files change between calls. A stale cache produces false positives or false negatives depending on direction of change. The tool is fast precisely because it reads source without compiling — caching removes the last reason to tolerate staleness | All | Accept that the tool is always fresh; optimize the read path instead of caching |
-| Verdict mutation (checkpoint that suggests and applies fixes in one call) | Reduces round trips | A tool that both diagnoses and repairs collapses the read→write boundary. The agent loses the ability to review and approve the fix. Agents that approve their own repairs silently are the primary source of compounding errors in agent coding loops | All | Read-only verdict; agent calls a generator tool with the fix information |
+| Anti-Feature | Why Requested | Why Problematic | Alternative |
+|--------------|---------------|-----------------|-------------|
+| Migrating all 130 gestiscilo JSON-UI views to projections | Thoroughness signal; demonstrates commitment | At 130 views with 69 models, this is months of work. It also conflates "projection coverage" with "projection validation" — a complete migration that produces no regression evidence is not COMP-01. COMP-01 needs a slice that produces clear validation signal, not maximum coverage | Migrate 5–8 entities covering 3+ intent classes; capture before/after render equivalence; document what the migration revealed about the abstraction |
+| Success rate measured as "the ServiceDef compiled" | Easy to measure; quantitative; sounds like a success rate | Compilation is not the bar. A ServiceDef that compiles, renders to a blank page, and has no relation to the NL description it was generated from is not a working projection. The bar is: field names match, intent matches, rendered spec validates, projection compiles | Define pass/fail criteria before running the agent, as stated above |
+| Time-to-working-app benchmark run on a machine with a warm Rust cache | Reproducible and fast to execute | A warm cache makes the benchmark 3–4× faster than a cold build. The benchmark measures developer experience, which is experienced cold. Cold cache is the honest measurement condition | `cargo clean` before each run; document Rust toolchain version and machine specs alongside the result |
+| Cross-modality sketch that only covers Browse and Collect | Those two intents are the easiest to sketch (list → scrollable list on mobile, form → form on mobile) | Browse and Collect map cleanly to every modality because they are structurally simple. The interesting tension is in Process (state machines on voice?), Analyze (time-series on CLI?), and Track (audit timeline on mobile?). Sketching only easy cases understates the design tension | All 7 intents must appear in the sketch; the interesting findings will cluster around Process, Analyze, and Track |
+| Synthetic catalog fixtures that are trivially derivable | Each fixture confirms coverage | A fixture where the primary intent is obvious from a single field (e.g., a ServiceDef with one `FieldMeaning::Money` field deriving Summarize) does not stress-test the derivation engine. Interesting fixtures have mixed signals that require signal weighting to resolve correctly | Each fixture should have at least two competing intents (e.g., a Collect fixture also has EntityName fields that produce Browse signal); the test confirms the intended intent wins despite competition |
+| Agent-success-rate run on the latest agent that was trained on ferro code | Inflated pass rate; that agent has prior knowledge | If the agent was trained on the ferro codebase, the success rate reflects memorization, not whether `ferro-mcp` is sufficient for zero-prior-knowledge generation. COMP-03 is measuring the MCP surface, not the agent's training data | Use an agent with explicit instruction to rely on tool output; alternate: run with ferro-mcp disabled as a control condition and compare |
+| COMP results stored as unstructured prose in a phase completion note | Lower overhead; still records the finding | Unstructured prose cannot be diffed, cited by a later phase, or used as a regression baseline. A Collect intent benchmark run that lives only in a phase completion note is invisible to future work | Commit structured artifacts: JSON for agent run outcomes, Markdown with a defined schema for benchmark results, a Rust test file for regression assertions |
 
 ---
 
 ## Feature Dependencies
 
 ```
-seam_1_well_formed
-    └──required_before──> seam_2_field_to_column
-                              └──required_before──> seam_4_rendered_view (meaningful)
-                                                        └──required_before──> seam_5_props_contract
+COMP-02 (regression harness)
+    └──prerequisite for──> COMP-03 (agent tasks use regression fixtures as test cases)
+    └──prerequisite for──> meaningful COMP-01 (migration fixtures validated by harness)
 
-seam_3_action_to_route  (independent — can run in parallel with seam 2)
+COMP-01 (gestiscilo migration)
+    └──depends on──> gestiscilo running on current ferro (already true: gestiscilo uses ferro 0.2.x)
+    └──depends on──> ServiceDef author understanding gestiscilo's domain model (read models/ dir)
+    └──produces──> real-world projection fixtures that can join COMP-02 corpus
 
-ranked_deduped_next_steps
-    └──requires──> all seam findings collected and aggregated
+COMP-03 (agent success rate)
+    └──depends on──> ferro-mcp server running against a project with known projections
+    └──depends on──> COMP-02 fixtures to define the task corpus
+    └──depends on──> pass/fail criteria defined before agent run (not after)
 
-inline_verdict_on_generate_projection
-    └──requires──> checkpoint_projection tool exists
+COMP-04 (time-to-working-app)
+    └──depends on──> ferro-cli `ferro new` template that includes projection-driven starter option
+    └──depends on──> ferro-mcp server accessible during the benchmark session
+    └──independent of──> COMP-01..03 (can run in parallel)
 
-inline_verdict_on_json_ui_generate
-    └──requires──> checkpoint_projection tool exists
+COMP-05 (cross-modality sketch)
+    └──depends on──> all 7 intents understood (COMP-02 fixtures provide concrete examples)
+    └──produces──> vocabulary gap findings that constrain v14.0 Channel Projection scope
+    └──independent of──> COMP-01, COMP-03, COMP-04
 
-ambient_status_in_projection_coverage
-    └──requires──> checkpoint_projection tool exists
-    └──requires──> freshness strategy decision (cached vs. fresh lightweight check)
-
-ambient_status_in_application_info
-    └──requires──> ambient_status_in_projection_coverage (same underlying data)
+COMP-01 is the largest effort and is sliceable:
+    Slice A (minimal): 3 entities × 1 intent each (Browse: product/client; Process: booking; Summarize: dashboard)
+    Slice B (full): +2 entities × 2 more intents (Collect: onboarding form; Analyze: statistiche)
+    Slice A validates the core three structurally distinct intents; Slice B adds depth but can be deferred
 ```
 
 ### Dependency Notes
 
-- **Seam 1 failure propagates not_checked downstream.** If the projection is not well-formed, field names are unreliable and seam 2 results are meaningless. The checkpoint must propagate `not_checked` with `reason: "seam_N_failed"` to downstream seams when an upstream seam fails, not just when a prerequisite artifact is absent. The spec implies this but does not state it. This is a design gap.
-- **Inline verdict hook depends on the tool.** `generate_projection` and `json_ui_generate` call the checkpoint after generating and embed the result. The tool must exist first; the inline hook is a thin post-generate call. Correct priority order in the implementation slice.
-- **Ambient status freshness strategy is unresolved.** If `projection_coverage` stores a cached last-checkpoint-result per projection, the ambient status can go stale between edits. If it always runs a fresh lightweight check, it adds I/O to every `projection_coverage` call. The decision affects implementation complexity for item 3 of the implementation slice. This must be resolved before implementing that item.
-- **Dedup algorithm for next_steps.** Exact-string-match on the `fix` string is the correct starting point. Semantic dedup (two validators describing the same repair in different words) is out of scope for the initial release.
-- **Fix string normalization.** The checkpoint owns the `fix` string for seam 2 findings. For seams 1/3/4/5, it delegates to sub-validators. Sub-validators use different shapes: `diagnose_error` returns `fix_suggestions[].details`; `json_ui_verify_action` returns `message` and `candidate`; `validate_contracts` returns `mismatches[].details`. The checkpoint must define a normalization layer or explicitly pass through raw sub-validator output with a documented caveat.
-
----
-
-## Gaps in the Current Spec
-
-Issues absent from the design spec that must be resolved before or during implementation.
-
-| Gap | Category | Impact | Resolution Needed |
-|-----|----------|--------|-------------------|
-| Seam failure → downstream not_checked propagation | Verdict aggregation | MEDIUM — without this, an agent sees `not_checked` on seam 3 and cannot tell if it is a cascade from seam 1 failure or an absent prerequisite | State explicitly: seam N failure propagates `not_checked` with `reason: "seam_N_failed"` to all dependent seams |
-| Method threading in seam 3 (action→route) | action→route | LOW — produces a false negative only when two actions share a handler name with different methods | Specify whether `ActionDef` carries HTTP method; if so, thread it through `json_ui_verify_action` method filter |
-| Intent + confidence in seam 4 finding | rendered_view | LOW — informational gap, not a correctness gap | Specify whether `RenderResult.intent` + `confidence` appear in the seam 4 finding or are omitted |
-| Ambient status freshness strategy | projection_coverage / application_info | MEDIUM — cached stale result vs. fresh lightweight check are different implementation paths | Decide before implementing item 3 of the implementation slice |
-| Dedup algorithm for next_steps | Aggregation | LOW — trivial for exact-string-match; non-trivial for semantic dedup | Define as exact-string-match on the `fix` string; semantic dedup out of scope |
-| Fix string normalization for seams 1/3/4/5 | Verdict quality | MEDIUM — sub-validators return different shapes; agents expect uniform `fix` strings | Audit sub-validator output shapes; define normalization layer or explicit passthrough with caveat |
-| Seam 2 model-resolver fallback behavior | field→column | LOW — spec says "not_checked when source model cannot be resolved" but does not specify resolution heuristic | Clarify: resolution uses the same `src/projections/` ↔ `src/models/` name-matching logic `projection_coverage` uses; on multi-match ambiguity, report `not_checked` with `reason: "ambiguous_model_match"` |
+- **COMP-02 should run first or in parallel with COMP-01.** The regression harness gives you a framework for capturing COMP-01 migration results as permanent tests, not just a one-time diff.
+- **COMP-05 is unblocked immediately.** It requires no code changes — only reading the existing intent definitions, the ferro-projections fixtures, and thinking about non-visual rendering. It can be done as a standalone doc-writing exercise in a single session.
+- **COMP-03 and COMP-04 both require a running ferro-mcp server.** They can be batched into the same session after COMP-02 is in place.
+- **COMP-01 is cross-repo.** It requires changes in `gestiscilo-it/app` (adding `src/projections/`), changes to `gestiscilo-it/app/src/controllers/` (switching from `JsonUi::render_file` to `JsonUi::render` with a ServiceDef-sourced Spec), and validation that the rendered output is equivalent. Plan for it as a multi-session effort.
 
 ---
 
 ## MVP Definition
 
-### Launch With (first release)
+### Launch With (v13.0 first slice)
 
-Seams that directly close the primary gap and make the loop functional.
+The minimum set that produces durable, non-vanity validation evidence.
 
-- [ ] `checkpoint_projection` tool with seam 2 (field→column) — the primary new value; the only seam no existing tool checks
-- [ ] Aggregation + ranked `next_steps` — without this, seam 2 alone is just another single-seam validator
-- [ ] Coverage honesty — `not_checked` distinct from `pass`, with explicit `reason` — without this, the tool cannot be trusted
-- [ ] `source` provenance per finding — without this, the agent cannot trace findings back to the producing validator
-- [ ] `fix` string on seam 2 findings (checkpoint-owned) — without this, the agent must reason about the repair from first principles
-- [ ] Inline return from `generate_projection` / `json_ui_generate` — closes the loop by default; standalone tool alone does not close the loop
-- [ ] Dogfood acceptance: surface one real seam defect against a live consumer — gates launch per the spec
+- [ ] COMP-02: regression harness in `ferro-projections/tests/intent_regression.rs` with one fixture per intent, each asserting primary intent and at least one key signal — establishes the regression baseline and is permanently machine-checkable
+- [ ] COMP-05: cross-modality sketch document committed under `docs/` or `.planning/` — unblocked immediately, produces the vocabulary gap analysis v14.0 needs, no implementation work
+- [ ] COMP-01 Slice A: 3 gestiscilo entities migrated to projection-driven rendering (Browse + Process + Summarize), before/after render equivalence documented — validates the abstraction against a messy real codebase without requiring full migration
 
-### Add After First Release
+### Add After First Slice
 
-Wrapper seams that add value once the aggregation pattern is proven.
-
-- [ ] Seam 1 (well-formed) wrapper — `validate_projection` already exists standalone; adds convenience and enables upstream-failure propagation to downstream seams
-- [ ] Seam 3 (action→route) wrapper — `json_ui_verify_action` already exists standalone; adds convenience
-- [ ] Seam 4 (rendered view) wrapper — higher complexity; render + validate in sequence; add after seams 2/3 prove out the pattern
-- [ ] Seam 5 (props→contract) wrapper — most fragile sub-validator (regex-based); add after seam 4 is stable
-- [ ] Ambient status in `application_info` / `projection_coverage` — useful project-level health signal; freshness strategy must be decided first
+- [ ] COMP-03: agent-success-rate measurement with 14-task corpus, structured result artifact — requires COMP-02 as task corpus
+- [ ] COMP-04: time-to-working-app benchmark, agent-assisted, cold cache, committed result with apparatus documentation — requires `ferro new` projection-starter option
 
 ### Future Consideration
 
-Refinements that improve honesty and context without changing core behavior.
-
-- [ ] Seam failure → explicit cascade reason in downstream `not_checked` (refinement of the honesty rule)
-- [ ] Intent + confidence in seam 4 finding (informational context)
-- [ ] Semantic dedup for next_steps (requires semantic comparison; exact-string-match sufficient at launch)
-- [ ] Method threading in seam 3 (low-impact false-negative edge case)
+- [ ] COMP-01 Slice B: 2 additional gestiscilo entities (Collect, Analyze) — extend migration after Slice A confirms the pattern works
+- [ ] COMP-02 extended: add COMP-01 migration fixtures to the regression corpus so gestiscilo projections are continuously validated against derive.rs changes
+- [ ] COMP-03 re-run: repeat agent-success-rate measurement after any significant change to ferro-mcp tool descriptions — the rate should improve or hold; regression is a signal to investigate
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature | Agent Value | Implementation Cost | Priority |
-|---------|-------------|---------------------|----------|
-| Field→column seam (seam 2) | HIGH — only check that catches the F11-class silent failure | MEDIUM — needs projection→model resolver + schema column lookup | P1 |
-| Aggregation + ranked next_steps | HIGH — without it, seam 2 is not a checkpoint | LOW — pure aggregation logic | P1 |
-| Coverage honesty (not_checked distinct from pass) | HIGH — trust foundation; one false pass destroys agent confidence permanently | LOW — enum variant + guard in aggregation | P1 |
-| Provenance on findings | HIGH — agent cannot trace findings without it | LOW — string field on every finding | P1 |
-| Fix string on seam 2 findings | HIGH — without fix hints agents hallucinate repairs | LOW — the fix string is known statically for seam 2 | P1 |
-| Inline return on generate tools | HIGH — closes loop without agent discipline | LOW — post-generate call + embed | P1 |
-| Dogfood acceptance gate | HIGH — prevents shipping a tool that finds nothing real | LOW (process) | P1 |
-| Seam 1 (well-formed) wrapper | MEDIUM — `validate_projection` exists standalone | LOW — thin dispatch | P2 |
-| Seam 3 (action→route) wrapper | MEDIUM — `json_ui_verify_action` exists standalone | LOW — thin dispatch | P2 |
-| Seam 4 (rendered view) wrapper | MEDIUM — catches render-time spec failures | MEDIUM — render + validate in sequence | P2 |
-| Seam 5 (props→contract) wrapper | MEDIUM — catches Rust↔TS drift | MEDIUM — `validate_contracts` regex fragility; threading carefully | P2 |
-| Ambient status in coverage/application_info | MEDIUM — project-level health signal | MEDIUM — freshness strategy decision required first | P2 |
-| Intent + confidence in seam 4 finding | LOW — informational context | LOW — already in RenderResult | P3 |
-| Seam failure → cascade not_checked with reason | LOW — refinement of honesty rule | LOW — one guard condition | P3 |
-| Dedup for semantically equivalent fix strings | LOW | MEDIUM — requires semantic comparison | P3 |
+| Feature | Validation Value | Implementation Cost | Priority |
+|---------|-----------------|---------------------|----------|
+| COMP-02 regression harness (all 7 intents) | HIGH — permanent machine-checkable baseline; catches derive.rs regressions | LOW — fixtures exist; write test assertions | P1 |
+| COMP-05 cross-modality sketch | HIGH — unblocks v14.0 scope decision; no code | LOW — document writing | P1 |
+| COMP-01 Slice A (3 entities, 3 intents) | HIGH — only real-world validation; surfaces abstraction gaps that synthetic corpus cannot | HIGH — cross-repo, requires render equivalence verification | P1 |
+| COMP-03 agent success rate (14 tasks) | MEDIUM — measures the MCP surface quality directly | MEDIUM — harness design + 14 agent runs | P2 |
+| COMP-04 time-to-working-app benchmark | MEDIUM — concrete developer-experience evidence | MEDIUM — requires clean apparatus documentation | P2 |
+| COMP-01 Slice B (2 more entities) | LOW (incremental) — adds coverage but not qualitatively new signal | HIGH — more cross-repo work | P3 |
+
+**Priority key:** P1 = validates the compressive dimension directly and is required to call COMP done; P2 = adds measurement depth and is required for a credible public v1.0 claim; P3 = incremental coverage, defer unless COMP-01 Slice A reveals gaps that Slice B would address.
 
 ---
 
-## Seam-by-Seam Feature Map
+## Per-COMP "Good" Criteria
 
-Quick reference: what each seam checks, what validator it delegates to, and what is new vs. existing.
+These define what passes validation for each requirement. They are the pass/fail criteria that must be stated before the work begins, not after.
 
-| # | Seam | Check Performed | Produces | Delegated To | New Work |
-|---|------|----------------|----------|--------------|----------|
-| 1 | well_formed | ServiceDef round-trip validates | structural errors + warnings | `validate_projection` | NO — thin dispatch |
-| 2 | field_to_column | each FieldDef name resolves to a real entity/migration column | field names with no backing column | checkpoint-owned | YES — primary new check |
-| 3 | action_to_route | each ActionDef handler is a registered route | unregistered handlers + Levenshtein candidates | `json_ui_verify_action` | NO — thin dispatch |
-| 4 | rendered_view | render the projection; validate the resulting JSON-UI spec | structural + catalog spec errors | `render_projection` + `json_ui_validate_spec` | NO — thin dispatch |
-| 5 | props_to_contract | rendered props ↔ TypeScript interface match | field mismatches (missing/extra/type/nullability) | `validate_contracts` | NO — thin dispatch |
+### COMP-01: Gestiscilo Migration
+
+**Good looks like:**
+- At least 3 entities across 3 intent classes migrated, each with a ServiceDef in `gestiscilo-it/app/src/projections/`
+- For each migrated entity, the projection-driven render path (`Spec::from_service_def` → `JsonUi::render`) produces HTML that contains the same primary fields as the original `JsonUi::render_file` path for representative sample data
+- At least one finding documented: something the migration revealed about the projection abstraction that would not have been visible from the synthetic corpus (gap in FieldMeaning coverage, intent derivation edge case, etc.)
+- The migration diff compiles and the gestiscilo test suite (if any) stays green
+
+**Not good (vanity):**
+- "All 130 views migrated" with no render equivalence check
+- "10 entities migrated" with only Browse intent (cherry-picked)
+- ServiceDef that produces a compiled projection but renders a view missing half the fields from the original
+
+### COMP-02: Synthetic Catalog Regression Suite
+
+**Good looks like:**
+- One test per intent (7 tests minimum); each test asserts `scores[0].intent == expected_intent`
+- Each test also asserts at least one key signal is present in `scores[0].matching_signals`
+- Each fixture has at least one competing signal from a different intent to confirm the intended intent wins under competition
+- Tests live in `ferro-projections/tests/` and run on every `cargo test` in the workspace
+- CI catches a hypothetical regression: if `analyze_field_meanings` weight for `Summarize` were doubled, at least 2 tests would fail
+
+**Not good (vanity):**
+- Fixtures with only one field that trivially derives one intent (no competition)
+- Tests that only assert `!scores.is_empty()` without pinning the primary intent
+- Tests in `app/src/` that don't run as part of the framework's own test suite
+
+### COMP-03: Agent Success Rate
+
+**Good looks like:**
+- 14+ tasks (2 per intent), each with an explicit NL description and a binary pass/fail per four criteria (compiles, renders, intent matches, field names match)
+- Agent run with ferro-mcp active; the introspection tool call log is committed alongside the result
+- Aggregate pass rate calculated and committed as a structured artifact
+- At least one task per intent fails (a 100% pass rate with no analysis of failure modes is suspicious)
+- The artifact includes: which tasks failed, what the agent produced, what the expected output was
+
+**Not good (vanity):**
+- "The agent successfully generated a projection" with no stated criteria for success
+- Only Browse and Collect tasks (easiest intents)
+- Agent run without ferro-mcp context (measures training data, not the MCP surface)
+
+### COMP-04: Time-to-Working-App Benchmark
+
+**Good looks like:**
+- Start condition precisely documented: `cargo new` in a fresh directory, `cargo clean`, Rust toolchain version stated, machine specs stated
+- End condition precisely documented: HTTP 200 on the root route, auth endpoint returns 200, all 3 entity types have a working list route, one background job processes successfully from the queue
+- Wall-clock time recorded at start and end with a method that a second person could reproduce (terminal recording, screen capture timestamp, or timestamped commit log)
+- Agent-assisted run with ferro-mcp active (not manual)
+- Result is a single committed Markdown file with the apparatus, the transcript reference, and the time
+
+**Not good (vanity):**
+- "It took about 2 hours" with no start/end condition documentation
+- Warm Rust cache
+- Manual (non-agent-assisted) run
+- Run on a machine with unusual hardware that makes the number non-representative
+
+### COMP-05: Cross-Modality Sketch
+
+**Good looks like:**
+- All 7 intents appear in the document
+- For each intent, mobile, voice, and CLI rendering described concretely (not just "it would work")
+- At least one intent identified where the vocabulary requires adaptation for non-visual modalities
+- At least one vocabulary gap or tension identified (e.g., "Analyze has no natural voice form; the voice modality needs a new intent or a Summarize variant")
+- Direct implication for v14.0 Channel Projection scope stated: what the analysis changes about the design assumptions
+
+**Not good (vanity):**
+- Only Browse and Collect sketched (easiest)
+- "All intents translate cleanly to all modalities" with no gaps found
+- Sketch that describes what components would look like instead of whether the intent vocabulary survives the translation
 
 ---
 
 ## Sources
 
-- Design spec read directly: `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md` (HIGH confidence)
-- Existing tool source read directly: `ferro-mcp/src/tools/validate_projection.rs`, `json_ui_verify_action.rs`, `validate_contracts.rs`, `projection_coverage.rs`, `diagnose_error.rs`, `json_ui_validate_spec.rs`, `render_projection.rs` (HIGH confidence)
-- LSP Specification 3.17 — Diagnostic interface: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/ (HIGH confidence)
-- Agent-aware MCP 10 patterns article: https://medium.com/@kumaran.isk/agent-aware-mcp-10-patterns-for-actionable-tool-responses-54029e337941 (MEDIUM confidence — single community source)
-- Schema drift detection and actionable classification: https://apxml.com/courses/data-governance-quality-observability-production/chapter-3-data-observability-systems/schema-drift-detection (MEDIUM confidence)
-- MCP tool trust and description–code mismatch research: https://arxiv.org/html/2602.03580v1 (MEDIUM confidence)
-- Verification tool false positive/negative design: GitHub Taskflow Agent checkpoint pattern, https://github.blog/security/ai-supported-vulnerability-triage-with-the-github-security-lab-taskflow-agent/ (MEDIUM confidence)
+- ferro-projections/src/intent.rs, service.rs, derive.rs — read directly (HIGH confidence)
+- app/src/projections/ — 9 existing fixtures read directly (HIGH confidence)
+- gestiscilo-it/app/src/ — model count, controller list, view count, rendering approach confirmed directly (HIGH confidence)
+- ferro-ai/tests/projection_roundtrip.rs — projection roundtrip test pattern confirmed directly (HIGH confidence)
+- .planning/PROJECT.md — v13.0 COMP-01..05 requirements, v1.0 criteria, four beauty dimensions (HIGH confidence)
 
 ---
-*Feature research for: checkpoint_projection MCP tool — v12.5 Projection Checkpoint milestone*
-*Researched: 2026-06-09*
+*Feature research for: v13.0 Compressive Validation — COMP-01..05 validation artifacts*
+*Researched: 2026-06-12*

@@ -1,212 +1,195 @@
-# Pitfalls Research — v12.5 Projection Checkpoint
+# Pitfalls Research — v13.0 Compressive Validation
 
-**Domain:** Agent-facing verification/checkpoint tool added to an existing introspection surface (ferro-mcp)
-**Researched:** 2026-06-09
-**Confidence:** HIGH — grounded in the existing codebase, the design spec, real friction data (F11–F14), and the regex-based `reconstruct_service_def` implementation already in `render_projection.rs`.
+**Domain:** Empirical validation harnesses for a projection/intent framework (synthetic catalogs, agent-success measurement, benchmarks, cross-repo migration)
+**Researched:** 2026-06-12
+**Confidence:** HIGH — grounded in the existing codebase, v13.0 COMP-01..05 scope, known friction patterns (friction-loop release cadence, dogfood acceptance lessons from v12.5), and established evaluation research on LLM agent harnesses and snapshot test brittleness.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: FALSE CONFIDENCE — `not_checked` collapsed into `pass`
+### Pitfall 1: SNAPSHOT OSSIFICATION — golden corpus asserts current renderer output and breaks on every legitimate change
 
 **What goes wrong:**
-A seam that cannot be checked because its prerequisite is absent (no rendered view yet, model source unresolvable, route registry empty) silently returns the same `pass` status as a seam that ran and verified clean. The agent reads the aggregate verdict as `pass` and treats the slice as safe. When the missing prerequisite is later provided, the previously "clean" slice turns out to be broken. The agent has been trained on a lie.
+The synthetic catalog (COMP-02) is built by running the current `JsonUiRenderer` over a set of `ServiceDef` fixtures and saving the HTML/JSON output as golden files. Tests compare future output byte-for-byte against the saved snapshots. Within weeks, a routine renderer improvement (better Tailwind class, margin adjustment, new aria attribute) causes every golden file to fail. The maintainer runs `--update-snapshots` in bulk to restore green, learning nothing about whether the change was correct. The corpus now asserts the new output — which might itself contain a regression. The snapshot update ritual trains everyone to approve bulk changes without reviewing them.
 
 **Why it happens:**
-The simplest aggregation implementation maps every non-`fail` outcome to either `pass` or `warn`. Developers reach for a boolean `ok/not_ok` without encoding the third epistemic state. The design spec explicitly names this risk but the implementation pressure is toward fewer states. A test suite that exercises only happy-path + failure-path cases will not catch the omission of `not_checked`.
+Golden file tests are the path of least resistance for output-heavy systems. The initial corpus is built cheaply by running the renderer once and committing the output. The tests "protect" the output, but what they really protect is the last bulk update. The more snapshots exist, the more expensive they are to review carefully, so the review threshold falls over time.
 
 **How to avoid:**
-- The seam status enum must have four distinct variants: `pass`, `fail`, `warn`, `not_checked`. No implicit coercion to `pass`.
-- The aggregate `status` field in the checkpoint verdict is computed as: `fail` if any seam is `fail`; `warn` if any seam is `warn` and none `fail`; `pass` only if every *checked* seam is `pass` **and** the unchecked list is explicitly surfaced.
-- Per-seam prerequisite checks must be written as explicit guard returns of `not_checked` — not as `Ok(pass)` on the fallback path. Example: if `reconstruct_service_def` returns `Err`, seam 2 must return `not_checked`, not `pass`.
-- Test case required: a projection with an unresolvable source model → seam 2 status must be exactly `not_checked`, not `pass`. This test must appear in P1 (tool + seam) and must fail before the guard is implemented.
+- Structure the catalog around structural invariants, not byte-identical output. Tests assert: the rendered output contains a navigation element when the intent is Browse; the form has an `<input>` for every `FieldDef` with `Collect` meaning; the correct number of table columns are emitted for a Summarize intent. These tests survive renderer polish.
+- Reserve exact-match golden files only for a small set of "canonical shapes" — one reference output per intent — that are treated as intentional contracts, not incidental snapshots. Updating a canonical shape requires a deliberate decision and a note in the commit explaining why the intent's canonical rendering changed.
+- Run a diff-review gate: any snapshot update must be accompanied by a changelog entry naming the intent and the nature of the change. A bulk update with no description is a failing PR.
 
 **Warning signs:**
-- Any match arm that maps an `Err` result from a prerequisite lookup to `pass` without going through `not_checked`.
-- Aggregation logic using "all seams pass" without distinguishing "pass" from "not evaluated".
-- Missing fixture: a projection that passes seam 1 but has no model source — if no test exists for this case, the `not_checked` path is untested.
+- The test suite has more snapshot files than test files asserting structural properties.
+- `--update-snapshots` has been run more than twice in the milestone without accompanying changelog entries.
+- No test in the catalog would fail if the renderer emitted an empty `<div>` for a Browse intent.
 
-**Phase to address:** P1 (tool + seam) — the `not_checked` variant and its test must be in the first deliverable. A checkpoint without this invariant cannot be released under any phasing.
+**Phase to address:** COMP-02 (synthetic catalog). The invariant-vs-snapshot distinction must be established in the first deliverable. Adding structural invariants later, after a large snapshot corpus exists, is expensive.
 
 ---
 
-### Pitfall 2: FIELD→COLUMN FALSE POSITIVE — legitimate non-column fields flagged as broken
+### Pitfall 2: CATALOG OVERFITTING — the corpus only covers what already works, so it never catches regressions
 
 **What goes wrong:**
-The field→column check walks every `FieldDef` in the `ServiceDef` and tries to find a matching column in the entity/migration. Certain legitimate fields have no backing column: computed/virtual fields (totals derived at query time), relationship navigation fields (`customer_id` exists but `customer` is a `RelationshipDef` rendered as a navigation link, not a column), write-only aggregates, and projection-layer-only annotations. If the checker flags all of these as failures, agents receive false positives on every reasonably complex projection. One false positive is enough to destroy trust in the tool: agents learn to ignore findings, and the real defect (a column the migration never created) is buried in noise.
+The synthetic catalog is assembled by choosing `ServiceDef` fixtures that produce clean, representative output under the current renderer. Classes that produce known rendering gaps (e.g., a Track intent with a complex state machine, a multi-level Analyze intent with nested aggregations) are excluded because they expose a bug. The catalog passes on every run. Future intent vocabulary changes that break those excluded classes are not caught. The catalog rubber-stamps, it does not probe.
 
 **Why it happens:**
-The `ServiceDef` fields list intermixes column-backed fields with projection-layer fields. The `FieldMeaning` enum has no "virtual/computed" variant today. The regex-based `reconstruct_service_def` does not distinguish between `.field()`, `.read_only_field()`, and synthetic fields that were added by an agent as projection-layer annotations rather than column declarations.
+The catalog author knows what works. Including broken cases requires explaining them; excluding them keeps the test suite green. The natural incentive is to ship a catalog that passes rather than one that surfaces weaknesses. This mirrors benchmark overfitting: the system is tuned to the test distribution, not to the real distribution of app classes.
 
 **How to avoid:**
-- Define the exemption set precisely before writing the checker. Exempt categories:
-  1. Fields whose `FieldMeaning` maps to a relationship navigation role: `ForeignKey` fields that have a corresponding `RelationshipDef` with a matching `foreign_key` annotation should be checked against the FK column, not the relationship name.
-  2. Relationship fields surfaced via `.has_many()` / `.belongs_to()` etc. appear in `ServiceDef.relationships`, not `ServiceDef.fields`, so they must never enter the field→column loop at all.
-  3. `FieldMeaning::Custom("virtual")` or a new `FieldMeaning::Computed` variant (if added) — exempt by meaning.
-  4. `id`, `created_at`, `updated_at` system fields — universally present in SeaORM entities; if the entity parse returns them, they will match; if the entity file is unreachable, seam 2 is `not_checked` (Pitfall 1 applies).
-- The check resolves to `warn` (not `fail`) when a field has no column but there is an ambiguous reason (e.g. the entity file exists but the column parse is incomplete). `fail` is reserved for "entity file found, column definitively absent".
-- Test fixture required: a projection with a `has_many` relationship plus a computed display field — neither should produce a finding.
+- The catalog must include at least one fixture per intent that exercises a non-trivial rendering path: a Browse with more than 8 columns (pagination/overflow), a Process intent with a state machine, a Track intent with multiple timeline event types. If any of these currently fail, they are added as `#[ignore]` cases with a linked issue — not excluded. The issue is either fixed before COMP-02 ships or explicitly deferred with a written decision.
+- Before finalizing the catalog, explicitly ask: "Is there a class of application this catalog would not catch a regression on?" If yes, that class gets a fixture.
+- The catalog serves the v1.0 criterion "projection / intent validated through a synthetic catalog of canonical app classes." A catalog that only tests already-working cases does not meet that criterion.
 
 **Warning signs:**
-- The false-positive rate on the synthetic app catalog exceeds zero in any non-trivially complex projection (i.e., any projection with a relationship or a read-only aggregate).
-- During dogfood acceptance (P3), the checker fires on projections that have been serving correctly in production.
+- All 7 intents produce clean output on the first run, with no fixtures flagged for known limitations.
+- No fixture exercises more than a minimal `ServiceDef` (2 fields, 1 action).
+- The catalog was assembled in less than a day (insufficient time to encounter edge cases).
 
-**Phase to address:** P1 (field→column seam implementation). The exemption logic must be code-reviewed before any dogfood run. A failing dogfood (false positive on a known-clean projection) is a blocker, not a warning.
+**Phase to address:** COMP-02. The catalog scope review — specifically the "what would this miss?" question — must happen before implementation begins, not after the fixtures are written.
 
 ---
 
-### Pitfall 3: FIELD→COLUMN FALSE NEGATIVE — real seam defect silently skipped
+### Pitfall 3: AGENT EVAL GAMING — pass criteria reward superficial output and are gameable by the agent
 
 **What goes wrong:**
-A projection field references a model attribute that the migration never created. The checker runs and produces no finding. The agent ships the projection. At runtime, SeaORM attempts to SELECT the missing column and produces an error. This is the exact F11-class failure the milestone exists to prevent — but now the checkpoint itself is culpable because it reported clean.
+The COMP-03 agent-success-rate harness defines success as "the agent produced a `ServiceDef` that compiles and renders without a panic." An agent (or a future agent) learns to emit a minimal `ServiceDef` — correct field types, no actions, no state machine — that satisfies the compilation check. The harness reports high pass rates. The framework ships as "validated." Real applications built with it have incomplete projections that require hand-correction at every action and guard boundary. The harness measured syntactic correctness, not semantic usefulness.
 
 **Why it happens:**
-Three distinct root causes:
-1. **Column name mismatch tolerance.** A lenient normalizer might match a field named `startedAt` (camelCase, from a typo) to `started_at`, silently passing a real mismatch.
-2. **Incomplete entity parse.** The regex-based `reconstruct_service_def` silently drops any builder call pattern it does not cover (e.g. a SeaORM entity using `column_name` attribute or `DeriveColumn` with a non-trivial enum). The column list is incomplete and the check has no evidence to fire on.
-3. **Stale entity vs. renamed migration column.** A migration renamed a column; the projection was not updated; the entity file was regenerated. The checker compares projection field against the updated entity and correctly fires. But in the inverse: a projection uses the new column name while the entity file is stale — the checker sees "no such column" in the stale entity, producing a false negative from the entity's perspective (the column is in the DB but the entity file hasn't caught up).
+Compilation is an objective, cheap-to-check proxy for correctness. It is tempting to use it as the primary success criterion because it is unambiguous and deterministic. But compiling is a floor, not a ceiling. An agent that produces a structurally empty `ServiceDef` for any input will pass a compilation-only harness at 100%.
 
 **How to avoid:**
-1. **Exact case-sensitive match after snake_case normalization only** — no fuzzy matching. A mismatch is a mismatch. The fix suggestion should say "add column X to migration or rename field in projection", not silently pass.
-2. **Parse completeness signal.** When the entity parser uses regex and encounters a construct it cannot parse, it must return `not_checked` with a note rather than silently producing an incomplete list. Incomplete parse + "column not found" produces `warn`, not `fail`, because the absence could be a parse gap.
-3. **Migration cross-reference as secondary signal.** If the entity file and the latest migration both lack column X, confidence in a `fail` is high. If only the entity lacks it, surface `warn: entity may need regeneration`.
+- Define a multi-tier success criterion before building the harness. Minimum levels:
+  1. **Structural validity**: the `ServiceDef` compiles and passes `validate_projection`.
+  2. **Intent coverage**: the primary intent derived from the NL description matches the agent-authored projection's primary intent (e.g., a description of an order management board produces a `Process` or `Track` intent, not `Collect`).
+  3. **Functional completeness**: actions named in the NL description are present as `ActionDef` entries with matching route shapes; guards referenced are present as `GuardDef` entries.
+  4. **Checkpoint pass**: `checkpoint_projection` returns `pass` or `warn` (not `fail`) on the agent-authored projection.
+- Each tier is reported separately. A harness result that shows tier-1 pass rate alongside tier-3 pass rate is honest about what was measured.
+- Never aggregate all tiers into a single pass/fail score. The aggregate hides which tier is the bottleneck.
 
 **Warning signs:**
-- The dogfood run against the synthetic catalog finds zero field→column failures in any projection (statistically implausible if any projection was hand-authored).
-- The test suite has no fixture with a deliberately wrong field name.
+- The harness reports >90% pass rate on the first run without any iteration on pass criteria.
+- The success criterion can be satisfied by an empty `ServiceDef` with two filler fields.
+- The harness has a single boolean `passed` output rather than a per-tier breakdown.
 
-**Phase to address:** P1 for the exact-match rule and parse completeness signal. The migration cross-reference can be P2 if it does not make P1 scope untenable.
+**Phase to address:** COMP-03. The multi-tier criterion must be designed before any agent runs are collected. A harness that starts with tier-1 only and defers tier-2 and tier-3 to "a future improvement" will never add them — the baseline number becomes a commitment.
 
 ---
 
-### Pitfall 4: COLUMN NAME / TYPE MISMATCH SCOPE CREEP — verifying more than presence in P1
+### Pitfall 4: NON-DETERMINISM DRIFT — flaky LLM runs make the harness appear to detect regressions that aren't there
 
 **What goes wrong:**
-A projection field has `DataType::Integer` for a field that the entity maps to `String` (e.g. a status code that was once an integer and was migrated to a string enum). The checker attempts to verify type compatibility and fires on every such mismatch. Type mapping between `DataType` (projection-layer) and SeaORM `ColumnType` is lossy and non-invertible for several common cases (`ColumnType::String(None)` vs. `DataType::String`, `Text` vs. `String`, etc.). The checker produces false positives at a high rate and trust collapses before the presence check is established.
+The COMP-03 harness runs each NL description against the agent once and records pass/fail. On the next run (different temperature, model update, minor prompt change), 15% of previously-passing cases fail. The team interprets this as a framework regression and begins investigating. The real cause is LLM non-determinism: the same prompt produces structurally different output on different runs. If the harness has no statistical baseline, every run is noise. The team loses trust in the harness and stops acting on it.
 
 **Why it happens:**
-`ServiceDef::from_model()` performs the `ColumnType` → `DataType` mapping. The reverse direction (verifying a hand-authored projection's `DataType` against the entity column) requires the same mapping to be invertible — which it is not fully. Attempting type verification before the mapping is calibrated produces noise.
+LLMs are stochastic. A single-trial pass rate is a point estimate with high variance. Building a harness that runs each case once is natural because it is cheap — but it conflates LLM variance with framework regression.
 
 **How to avoid:**
-- Scope seam 2 to presence-only for P1. Type mismatch checking is a P2 enhancement, added only after the presence check is trusted against real projections.
-- When type mismatch checking is added in P2, use `warn` not `fail` for all type mismatches except provably incompatible cases (e.g. `DataType::Integer` for a `Text` column). Ambiguous cases (e.g. `DataType::String` for a `Text` column) are silent.
-- The P1 tool description must explicitly state "presence-only: type compatibility is not verified" so agents do not assume type safety from a `pass`.
+- Each test case runs at minimum 3 trials. Report the pass rate per case (e.g., "2/3 trials passed tier-2"). A case is marked as stable when it achieves 3/3 on structural validity (tier-1); 3/3 is not required for tier-3.
+- Establish a baseline pass rate for the catalog on a known-stable model snapshot. A subsequent run is a regression only if the pass rate drops by more than a defined threshold (e.g., >10 percentage points) from the baseline.
+- Use temperature=0 (or the lowest determinism setting available) for structural validity tier to reduce variance. Accept that higher tiers will be noisier.
+- Record the model version and prompt version alongside each harness run. A harness result without provenance is uninterpretable.
 
 **Warning signs:**
-- A P1 implementation that compares `DataType` to entity column type strings.
-- A test that fails because `DataType::String` does not match `Text`.
+- The harness has no concept of "baseline." Every run is compared against a conceptual ideal of "100% pass."
+- Two consecutive runs on the same day produce materially different pass rates with no framework changes.
+- The harness uses temperature defaults (typically 1.0) for structural validity checks.
 
-**Phase to address:** P1 scoping (presence-only), P2 for type mismatch as `warn`.
+**Phase to address:** COMP-03. Multi-trial design must be specified upfront. Retrofitting it after data collection has started requires discarding the single-trial data.
 
 ---
 
-### Pitfall 5: OUTPUT ERGONOMICS — unranked findings, missing actionable fix, verbosity
+### Pitfall 5: VANITY BENCHMARK — time-to-working-app measures only the happy path and a clean environment
 
 **What goes wrong:**
-The checkpoint produces a long, seam-ordered list of findings. An agent reading the output must determine which findings to act on first. Without a ranked `next_steps` list that names a specific file and action, the agent either acts on the wrong finding first, re-asks the human, or ignores the output entirely. Any of these outcomes defeats the purpose of the tool.
+The COMP-04 benchmark scripts `cargo new`, wires auth, three entity types, and a background job, and records wall-clock time. The benchmark runs on a developer laptop with a warm Cargo cache, a pre-installed Rust toolchain, and a local Postgres instance already running. The time recorded is 4 minutes. This number is quoted in documentation as "ferro gets you to a working app in under 5 minutes." A first-time user on a CI runner or a fresh machine spends 25 minutes waiting for `cargo build` and another 10 debugging a missing `DATABASE_URL`. The benchmark measures the experience of someone who already knows ferro.
 
 **Why it happens:**
-The natural output of a multi-seam walk is seam-ordered (1, 2, 3, 4, 5), not priority-ordered. Seam 1 findings come before seam 2 findings in the raw output, even if seam 1 has a warning and seam 2 has a fail. Without an explicit ranking step, the agent reads the first finding as the most important one.
+Benchmarks are run by the people who built the framework in the environment they use daily. The happy path is well-known, the environment is pre-configured, and caches are warm. Time-to-working measurements are environment-sensitive but are typically reported as if they were environment-independent.
 
 **How to avoid:**
-- `next_steps` is a ranked, deduplicated list computed after all seams run. Ranking: `fail` findings before `warn` findings; within a rank, earlier seams first (seam 2 before seam 3, etc.).
-- Each `next_steps` entry must name: the field/action/subject, the seam, and the specific action (e.g. "add column `starts_at` to migration `create_bookings_table`" not "fix field→column mismatch").
-- The seam detail blocks are present for diagnostics; `next_steps` is what the agent acts on. The tool description must say this explicitly.
-- Maximum `next_steps` per call: 5. An agent with 15 ranked items will act on 1–2 and re-run; a list of 15 looks like a project audit, not a targeted fix list.
-- Test: a fixture with 3 seam failures and 2 warnings must produce a `next_steps` list that is ordered fail-first, seam-ordered within each tier, and contains no duplicates.
+- The benchmark must specify its environment explicitly: cold/warm cache, toolchain version, database availability. A result without an environment spec is not a benchmark, it is an anecdote.
+- Run the benchmark in at least two environments: warm (developer machine, warm Cargo cache) and cold (fresh Docker container, no pre-installed toolchain, no Cargo cache). Report both times. The cold time is the honest "first-time experience" number.
+- Instrument the unhappy paths explicitly: what happens when `DATABASE_URL` is absent, when `cargo build` fails because a dependency update broke a compile, when a migration fails. These paths must have documented recovery times alongside the happy path.
+- The benchmark is a structural diagnostic, not a marketing number. Its value is in identifying where the most time is spent (compilation? database setup? CLI scaffolding?) so that investment reduces that bottleneck.
 
 **Warning signs:**
-- `next_steps` is built by appending each seam's findings in seam order without re-sorting.
-- A seam 4 fail appears before a seam 2 fail in `next_steps`.
-- A finding appears in `next_steps` as "field→column mismatch" without naming the specific field.
+- The benchmark result is reported without specifying Cargo cache state.
+- No cold-cache run exists.
+- The benchmark is used as a headline number in a README before the unhappy paths have been measured.
 
-**Phase to address:** P1 for core ranking logic. P2 for fix specificity (e.g. naming the migration file). P3 for capping and deduplication stress testing during dogfood.
+**Phase to address:** COMP-04. Environment specification and cold-cache measurement must be part of the benchmark design. A warm-cache-only result is acceptable as an internal diagnostic but must never be reported externally as "time to working app."
 
 ---
 
-### Pitfall 6: SEAM COUPLING — checkpoint reimplements validator logic instead of delegating
+### Pitfall 6: GESTISCILO BIG-BANG MIGRATION — treating COMP-01 as an atomic swap rather than a sliced roll-forward
 
 **What goes wrong:**
-The checkpoint implements its own version of "is this action's handler a registered route?" instead of calling `json_ui_verify_action`. The two implementations diverge. A route format the standalone validator accepts is flagged as unknown by the checkpoint, or vice versa. Agents get different answers from `json_ui_verify_action` and `checkpoint_projection` on the same projection.
+COMP-01 is scoped as "migrate gestiscilo to projection-driven rendering." The implementer interprets this as: remove all hand-authored views, replace them with `ServiceDef` + `JsonUiRenderer` in a single branch, verify everything works, merge. The branch accumulates changes across 40+ views over 3 weeks. Meanwhile, ferro-projections changes are made to support the migration. The branch diverges from master. Merging requires resolving conflicts against 30+ ferro commits. During reconciliation, projection API changes that were reverted in main (because another phase found them wrong) are re-introduced. The merge is a 2-day fire drill.
 
 **Why it happens:**
-Calling into existing tool implementations requires threading `project_root` and function signatures through the checkpoint dispatcher. Reimplementing the check inline is faster and avoids the dependency. But the design spec is explicit: the checkpoint owns only the field→column seam and aggregation; all other seams are thin dispatches.
+Big-bang is easier to reason about: one state (before) transitions to another (after). Slicing requires maintaining two rendering paths in parallel, which feels like technical debt. But a multi-week cross-repo branch in an active-development framework is not a stable migration strategy.
 
 **How to avoid:**
-- The five seams in `checkpoint_projection.rs` must import and call their respective validator functions (`execute_single` from `validate_projection`, `execute` from `json_ui_verify_action`, etc.), not reimplement the checks.
-- The seam finding's `source` field carries the name of the producing validator (e.g. `"json_ui_verify_action"`). A code reviewer can verify this is populated with the actual function name, not a hardcoded string.
-- Test: if `json_ui_verify_action` is updated to accept a new URL pattern, `checkpoint_projection` must automatically accept it too without a matching update. Write a fixture that would fail under a reimplementation but passes under delegation.
+- COMP-01 must be sliced: migrate one view at a time, merging each slice to master before starting the next. The `ServiceDef` renders the new view; the old view code is deleted; the merge happens. The next slice begins from a clean main.
+- The migration order should be: simplest intent first (typically a Browse projection over a flat model), most complex last (a Process or Track projection with a state machine).
+- Do not publish a new ferro version mid-migration. Per the friction-loop release cadence lesson, publish once at the end of the migration series — not after each slice if slices change the ferro API. If a slice needs a ferro API change, batch all necessary ferro changes and publish together at the end of the COMP-01 series.
+- Track the migration state explicitly: a table in the phase notes listing each view, its migration status, and the ferro version it was migrated against. This prevents "we migrated this against 0.2.54 but it needs to be retested against 0.2.57" surprises.
 
 **Warning signs:**
-- `checkpoint_projection.rs` contains route-parsing logic duplicated from `json_ui_verify_action.rs`.
-- `source: "checkpoint"` appears on a seam other than seam 2.
+- The COMP-01 branch has been open for more than 2 weeks.
+- Ferro API changes are being made on master while the COMP-01 branch is open.
+- The branch is not merging to master slice-by-slice; each merge waits for the entire migration to complete.
 
-**Phase to address:** P1 — architectural boundary must be enforced from the first commit. Seams 1, 3, 4, 5 are wrappers; seam 2 is the only owned check.
+**Phase to address:** COMP-01 planning. The slice-by-slice strategy must be specified before work starts. A big-bang plan should be rejected at planning review, not discovered after weeks of divergence.
 
 ---
 
-### Pitfall 7: DOGFOOD/ACCEPTANCE RISK — green-for-green's-sake
+### Pitfall 7: PREMATURE INTENT VOCABULARY REVISION — COMP-05 sketch triggers immediate intent redesign
 
 **What goes wrong:**
-The dogfood gate runs the checkpoint against the synthetic app catalog and all projections pass. The tool ships. No one learns whether it catches anything real. Three months later, an agent introduces a dangling field reference and the checkpoint passes because the test catalog projections were authored to be correct. The tool has never caught a real defect in its life; it has only confirmed that correct projections are correct.
+COMP-05 produces a cross-modality sketch: one intent (e.g., Browse) expressed as mobile, voice, and CLI. The sketch reveals that "Browse" means different things in different modalities — mobile Browse involves scrollable cards with swipe actions; voice Browse involves a prompted enumeration; CLI Browse involves a paged list with filter flags. The team concludes that the Browse intent is too coarsely defined and begins revising the seven-intent vocabulary mid-milestone. The revision cascades: `derive_intents.rs`, all renderers, all catalog fixtures, gestiscilo's projections, all documentation. COMP-02 and COMP-03 data collected before the revision is invalidated. The milestone loses coherence.
 
 **Why it happens:**
-The synthetic catalog projections are generated from model metadata via `ServiceDef::from_model()`, which by construction produces only fields that the model has — so field→column seam 2 will always pass on auto-derived projections. The dogfood gate passes not because the checker is correct but because the input was deliberately defect-free.
+A sketch is generative: it surfaces genuine vocabulary gaps. The natural response to finding a gap is to fix it. But the fix requires touching every downstream system, and a v13.0 milestone is not the right scope for a fundamental vocabulary revision. The intent is to "inform any intent vocabulary revision," not to perform one.
 
 **How to avoid:**
-- The synthetic app catalog must include at least one projection with a deliberately introduced seam defect: a field that references a column the entity does not have. This is a "poisoned" fixture. The acceptance criterion is: the poisoned fixture produces a `fail` on seam 2 with the correct field named.
-- The live consumer acceptance criterion requires running the checkpoint against gestiscilo's projections. At least one finding (fail or warn) must surface. If zero findings appear, the design spec requires revisiting the checker before shipping.
-- The dogfood acceptance test is a go/no-go gate for P3, not a nice-to-have.
+- COMP-05 is explicitly a sketch and an input to future work, not a deliverable that authorizes vocabulary changes. The output is a document: "cross-modality expression of [intent X], observed vocabulary tensions, and proposed directions for v14.0 Channel Projection." No code changes to `ferro-projections` or the renderer are authorized by COMP-05 alone.
+- Any intent vocabulary change triggered by COMP-05 evidence is deferred to a named future milestone (v14.0 Channel Projection or a dedicated v13.x vocabulary revision). The deferred change is filed as a planning proposal, not implemented in v13.0.
+- The COMP-05 sketch should cover one intent only. A single intent across three modalities is sufficient to surface vocabulary tensions without the scope risk of sketching all seven.
 
 **Warning signs:**
-- All acceptance fixtures were authored by the same process that generates the ground truth (model-derived projections).
-- No poisoned fixture exists in the test suite.
-- The "at least one real finding" criterion is satisfied by a seam 1 structural warning unrelated to field→column.
+- COMP-05 work includes changes to `ferro-projections/src/intent.rs` or `derive.rs`.
+- The COMP-05 phase note includes implementation tasks rather than just observation and documentation.
+- The team discusses which of the seven intents should be merged or split before COMP-02 and COMP-03 complete.
 
-**Phase to address:** P3 explicitly. The poisoned fixture must be written before the P3 acceptance run, not after.
+**Phase to address:** COMP-05 scoping. The "sketch only, no code changes" constraint must be in the phase spec. Any vocabulary revision is a separate planning proposal.
 
 ---
 
-### Pitfall 8: REGEX RECONSTRUCTION DRIFT — new builder patterns silently omitted
+### Pitfall 8: VALIDATION DESIGNED TO PASS — honesty failure that makes v1.0 unachievable
 
 **What goes wrong:**
-`reconstruct_service_def` in `render_projection.rs` is regex-based and silently drops any builder call it does not have a pattern for. If the field→column seam reuses this function and a new `FieldDef` builder variant is added after the regex was last updated, fields added via the new builder silently disappear from the reconstructed `ServiceDef`. The field never enters the field→column check, and a missing column goes undetected.
+The v1.0 criterion states "projection / intent validated through real applications and a synthetic catalog." The validation milestone is built with an implicit goal of confirming that the abstraction works. Fixtures are chosen that produce clean output; the agent harness is run on descriptions closely resembling the training content of the MCP tools; the benchmark runs on the framework's own `app/` sample application. Everything passes. The "validated" label is attached. Six months later, a real-world user builds an application that exercises a combination the validation missed, hits a silent rendering failure, and files a bug. The validation did not find a weakness because it was not trying to.
 
 **Why it happens:**
-Regex-based source parsing has no completeness guarantee. The parser is not aware of what it does not match. Adding a new builder variant requires a corresponding regex update; without it, fields added via that variant are invisible.
+The team that built the abstraction designs the validation for it. Confirmation bias is structural, not personal: the same intuitions that guided the design guide the choice of validation inputs. Inputs that would reveal weaknesses feel "unfair" or "out of scope." A v1.0 criterion labeled "validated" reads as a pass/fail gate, so the pressure is to pass it.
 
 **How to avoid:**
-- Add a "reconstruction completeness" assertion to the checkpoint: count the number of field-builder invocations in the raw source (any `.field(`, `.optional_field(`, `.read_only_field(`, `.write_only_field(`) and compare against `ServiceDef.fields.len()`. If they differ, surface `warn: reconstruction may be incomplete` on seam 2 rather than a clean pass.
-- Treat any unrecognized `.XXX_field(` invocation as `not_checked` for the affected fields rather than silent omission.
-- Any new field builder variant added to `ServiceDef` must be accompanied by a corresponding regex in `reconstruct_service_def`. Document this as an invariant in `ferro-mcp`'s CLAUDE.md.
+- The validation explicitly targets weaknesses, not strengths. The design criterion is: "A weakness in any dimension is a v1.0 blocker." The validation's job is to find those weaknesses before users do.
+- Each COMP item must include an adversarial fixture: a case designed to break the system (COMP-02: a fixture with 10+ fields and 5 actions; COMP-03: an NL description of a domain the agent has no prior exposure to; COMP-04: a cold-cache run on a machine without Postgres pre-installed; COMP-01: the most complex view in gestiscilo, not the simplest).
+- A validation that produces zero failures is not evidence of correctness — it is evidence that the validation was not trying hard enough. If all COMP items pass on the first run without any discoveries, the milestone retrospective must explicitly address "what would we have caught if we had tried harder?"
+- Frame the COMP deliverables explicitly as discovery work. The output is "what we learned about the projection/intent system's limits," not "proof that it works."
 
 **Warning signs:**
-- A `.list_field()` call is present in a projection source, but the reconstructed `ServiceDef` has fewer fields than source builder invocations.
-- The reconstruction count diverges from the builder invocation count in any test fixture.
+- All COMP items pass on the first run.
+- The synthetic catalog fixtures were authored by the same person who authored the renderer.
+- The agent harness descriptions were drawn from the existing MCP tool documentation examples.
+- The COMP retrospective contains no discovered weaknesses or deferred issues.
 
-**Phase to address:** P1 for the completeness assertion (directly affects whether seam 2 is trustworthy). P2 for hardening if new builder variants are introduced during v12.5.
-
----
-
-### Pitfall 9: INLINE VERDICT NOISE — checkpoint appended to every generation call
-
-**What goes wrong:**
-The design spec closes the loop by appending the checkpoint verdict inline to `generate_projection` and `json_ui_generate` responses. If the projection was just created (empty fields, placeholder structure), the checkpoint fires with `not_checked` for most seams. The agent reads a wall of `not_checked` findings after every generation call, learns to ignore checkpoint output, and stops acting on it even when it carries a real `fail`.
-
-**Why it happens:**
-Immediately after generation, the project state cannot satisfy most seam prerequisites. The verdict is accurate but noise-producing in the exact context where the agent is least prepared to act on it.
-
-**How to avoid:**
-- Inline verdict after generation must be summarized, not full detail. Format: `"checkpoint": { "status": "not_checked", "reason": "newly generated — run checkpoint_projection after wiring model and routes" }` rather than the full seam breakdown.
-- The full breakdown is returned by the standalone `checkpoint_projection` call, invoked when the agent is ready to verify.
-- The inline verdict upgrades to a full breakdown only when at least one seam can actually run. Seam 1 can always run; if seam 1 fails immediately after generation, surface that in detail.
-
-**Warning signs:**
-- An agent that just ran `generate_projection` receives 5 `not_checked` seam entries and zero actionable next steps.
-- The agent's subsequent messages do not reference the checkpoint output (signal it has been tuned out).
-
-**Phase to address:** P2 (inline hook implementation). P1 delivers the standalone tool with full output; P2 must consciously design the inline summary format before wiring to `generate_projection`.
+**Phase to address:** All COMP phases. The adversarial fixture requirement should be in every phase spec. The final milestone retrospective must include an explicit "what we found that was wrong" section; an empty section is a red flag, not a celebration.
 
 ---
 
@@ -214,55 +197,67 @@ Immediately after generation, the project state cannot satisfy most seam prerequ
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Return `pass` when source model is unresolvable | Simpler aggregation code | Trains agents to trust results when model is missing; silent F11-class pass | Never — `not_checked` is required |
-| Reimplement route check inline instead of delegating | Avoids threading `project_root` | Two implementations diverge; inconsistent agent answers | Never — delegation is a design constraint |
-| Skip reconstruction completeness assertion | Faster P1 delivery | Silent field omissions on any new builder pattern | Acceptable only if `not_checked` guard covers unrecognized builders |
-| No cap on `next_steps` length | Fewer edge cases in P1 | Long lists are ignored by agents | Acceptable for P1 if capped to 10; must be 5 by P3 |
-| Type mismatch check included in P1 | More complete from day one | High false-positive rate before mapping is calibrated; trust collapses | Defer to P2 — presence-only in P1 |
+| Byte-identical snapshot tests for renderer output | Cheap to create; catches any output change | Bulk-update ritual; trains reviewers to approve changes without reviewing | Never as the primary catalog test strategy — structural invariants first |
+| Agent harness with single trial per case | Cheaper runs | Cannot distinguish LLM variance from framework regression | Never for a baseline harness; acceptable for quick smoke checks |
+| COMP-01 big-bang branch | Simpler to reason about | Branch divergence, conflict avalanche, invalidated test data | Never — slice-by-slice is required |
+| Cold-cache benchmark skipped | Faster to run and iterate | Published numbers misrepresent first-time experience | Acceptable as internal diagnostic only; never as a published claim |
+| COMP-05 sketch triggers immediate vocabulary revision | Fixes a real gap | Cascading invalidation of COMP-02 and COMP-03 data | Never in v13.0 — revision belongs to a named future milestone |
+| Passing COMP with only auto-derived projections (no hand-authored or adversarial cases) | Guaranteed green | Validation cannot detect generation-vs-use gap; v1.0 criterion is not met | Never — adversarial fixtures are required |
+| Publish ferro mid-COMP-01 slices when API changes occur | Unblocks gestiscilo sooner | API frozen before later slices can improve it; friction-loop cadence violated | Publish once at end of COMP-01 series |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| `reconstruct_service_def` reuse | Treating any `Ok` as a complete reconstruction | Check field count vs. source builder invocation count; treat discrepancy as `not_checked` |
-| `json_ui_verify_action` delegation | Calling with a bare action name rather than the full context it expects | Read the existing tool's signature; pass `project_root` and handler string exactly as the standalone tool does |
-| `validate_contracts` delegation | Assuming it returns a result type compatible with the seam finding format | It returns its own result type; the checkpoint must translate, not alias |
-| `application_info` status surfacing | Adding a new field to the response struct without updating MCP tool descriptions | Update tool descriptions alongside the struct change; MCP descriptions are part of the surface |
+| ferro + gestiscilo cross-repo during COMP-01 | Using path dependencies mid-migration for all slices | Path deps are acceptable for development; switch back to crates.io version at each merge-to-master; single publish at migration end |
+| Agent harness + MCP tools | Calling `ferro-mcp` with a local debug binary that has unreproduced behavior | Pin the harness to a published version or a specific commit hash; document the binary version in every harness run |
+| COMP-02 catalog + `checkpoint_projection` (v12.5) | Assuming `checkpoint_projection` covers the same ground as the catalog | `checkpoint_projection` verifies seams; the catalog verifies rendering intent coverage — they are complementary, not redundant |
+| COMP-04 benchmark + Docker | Assuming the Docker cold-cache run matches a real user environment | A fresh Docker container still has a fast network for crates.io; a real first-time user may be on a slow connection. Document network assumptions. |
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Catalog fixture count grows unbounded | CI time increases; maintainers add `#[ignore]` to manage runtime | Cap the catalog at one representative fixture per intent per complexity tier (simple / medium / complex) | When catalog exceeds ~50 fixtures |
+| Agent harness runs on every CI push | CI is slow; developers disable the harness locally | Gate agent harness runs on a `[harness]` label or run nightly only — not on every PR | From the first day the harness exists |
+| Benchmark added to main CI | CI time and flakiness from environment-sensitive timing | Benchmark is a manual artifact, not a CI gate. Run on a documented environment, commit the result document | From the first day the benchmark exists |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **`not_checked` vs `pass` distinctness:** Unit test with unresolvable model source → seam 2 status is exactly `not_checked`, not `pass`.
-- [ ] **Poisoned fixture exists:** At least one test fixture has a deliberately wrong field name (no matching entity column) and checker produces `fail` for exactly that field.
-- [ ] **Relationship fields excluded from seam 2:** Projection with `belongs_to` relationship → zero findings for the relationship navigation field.
-- [ ] **`next_steps` ranked correctly:** Fixture with seam 2 `fail` and seam 1 `warn` → `next_steps[0]` is the seam 2 finding.
-- [ ] **Delegation, not reimplementation:** Code review confirms `checkpoint_projection.rs` imports and calls `validate_projection::execute_single`, `json_ui_verify_action::execute`, etc. — no inline route parsing.
-- [ ] **Dogfood gate is not auto-pass:** Synthetic catalog contains at least one poisoned projection; acceptance run produces at least one `fail` finding.
-- [ ] **Inline verdict is summary format:** After `generate_projection`, appended checkpoint does not contain 5 `not_checked` seam entries with empty `findings` arrays.
-- [ ] **MCP tool description updated:** `checkpoint_projection` description accurately states presence-only scope (no type verification in P1).
+- [ ] **COMP-02 structural invariants exist:** At least one test per intent asserts a structural property of the rendered output (e.g., Browse emits a table element with the correct column count), not byte-identity with a snapshot.
+- [ ] **COMP-02 adversarial fixture exists:** At least one fixture per intent exercises a non-trivial case (many fields, multiple actions, state machine, nested relationships).
+- [ ] **COMP-03 multi-tier criteria defined:** The harness reports structural validity, intent coverage, and functional completeness separately before any agent runs are recorded.
+- [ ] **COMP-03 baseline established:** A known-stable run (model version + prompt version + pass rates per tier) is committed alongside the harness code.
+- [ ] **COMP-04 cold-cache run exists:** At least one benchmark result was collected in a clean Docker container with no warm Cargo cache.
+- [ ] **COMP-01 slice-by-slice plan in phase spec:** Each gestiscilo view migration is listed as a separate slice with its own merge checkpoint.
+- [ ] **COMP-05 "no code changes" constraint in phase spec:** The COMP-05 deliverable is explicitly a document, not a pull request against `ferro-projections`.
+- [ ] **Adversarial fixture in each COMP item:** Every COMP phase spec names the adversarial input it uses to probe for weaknesses.
+- [ ] **COMP retrospective has a "what we found wrong" section:** An empty section triggers a follow-up question, not a milestone close.
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| FALSE CONFIDENCE (`not_checked` collapsed to `pass`) | P1 | Unit test: model-unresolvable projection → seam 2 is `not_checked` |
-| Field→column false positive (virtual/relationship fields) | P1 | Unit test: projection with `belongs_to` + computed field → zero findings |
-| Field→column false negative (missing column not caught) | P1 | Poisoned fixture → `fail` on exactly the dangling field |
-| Type mismatch scope creep in P1 | P1 scoping | Tool description states presence-only; type check deferred to P2 |
-| Output ergonomics, ranked `next_steps` | P1 (core ranking) + P2 (fix specificity) | Mixed-seam fixture → `next_steps` ordered fail-first |
-| Seam coupling (reimplementation vs. delegation) | P1 | Code review: no route parsing logic in `checkpoint_projection.rs` |
-| Dogfood acceptance green-for-green | P3 | Poisoned fixture fires + live consumer produces at least one finding |
-| Regex reconstruction drift | P1 (completeness assertion) | Field count mismatch → `warn: reconstruction may be incomplete` |
-| Inline verdict noise after generation | P2 | After `generate_projection`, appended verdict is summary format only |
+| Snapshot ossification | COMP-02 phase spec | Count structural-invariant tests vs. snapshot tests; invariants must outnumber snapshots |
+| Catalog overfitting | COMP-02 scope review (before implementation) | Each intent has at least one non-trivial adversarial fixture |
+| Agent eval gaming (compilation-only criteria) | COMP-03 harness design | Harness reports 4 separate tier pass rates; tier-1-only result is rejected |
+| Non-determinism drift | COMP-03 harness design | Each case runs minimum 3 trials; baseline committed on first run |
+| Vanity benchmark (warm-cache only) | COMP-04 benchmark spec | At least one cold-Docker result exists before any number is published |
+| Big-bang COMP-01 migration | COMP-01 planning | Slice-by-slice plan committed before first code change; no branch open >2 weeks |
+| Premature intent vocabulary revision | COMP-05 phase spec | COMP-05 deliverable contains zero changes to `ferro-projections` source |
+| Validation designed to pass | All COMP phase specs + retrospective | Each phase spec names its adversarial input; retrospective has non-empty "discovered weaknesses" |
 
 ## Sources
 
-- Design spec: `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md`
-- Existing field→column mapping implementation: `ferro-mcp/src/tools/projection_coverage.rs`
-- Regex reconstruction: `ferro-mcp/src/tools/render_projection.rs` (`reconstruct_service_def`)
-- Real friction evidence: `.planning/backlog/v12-runtime-friction-f11-f13.md` (F11: PageHeader.children silent drop; canonical seam failure example)
-- `ferro-projections/src/service.rs` — `ServiceDef` structure, `FieldDef`, builder variants
-- `ferro-mcp/src/tools/validate_projection.rs` — existing seam 1 validator (delegation target)
+- PROJECT.md v13.0 section: COMP-01..05 scope, v1.0 criteria, four beauty dimensions
+- VISION.md: "A weakness in any dimension is a v1.0 blocker"; validation through real applications and synthetic catalog
+- MEMORY.md: `feedback_friction_loop_release_cadence.md` — publish once at end; `feedback_audit_report_fix_discrepancies.md` — never silently work around
+- v12.5 Phase 196 dogfood acceptance pattern: poisoned fixture requirement; "at least one real finding" criterion
+- Snapshot testing research (2024-2025): brittleness of byte-identical golden files; hybrid structural+snapshot approach
+- LLM agent evaluation research (2025): non-determinism requires multi-trial measurement; compilation ≠ correctness; separate tier reporting
+- AI benchmark overfitting research (2025): "Are we training the model to pass the benchmark?" — direct analogy to catalog overfitting
+- Agent evaluation frameworks (Braintrust, DeepEval, 2025): deterministic checks for structural validity; multi-dimensional scoring prevents gaming
 
 ---
-*Pitfalls research for: v12.5 Projection Checkpoint — agent-facing verification tool*
-*Researched: 2026-06-09*
+*Pitfalls research for: v13.0 Compressive Validation — empirical validation harnesses for projection/intent*
+*Researched: 2026-06-12*

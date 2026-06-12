@@ -1,188 +1,168 @@
 # Project Research Summary
 
-**Project:** ferro — v12.5 Projection Checkpoint (`checkpoint_projection` MCP tool)
-**Domain:** Agent-facing verification tool / ferro-mcp introspection layer
-**Researched:** 2026-06-09
+**Project:** ferro / v13.0 Compressive Validation (COMP-01..05)
+**Domain:** Empirical validation harnesses for a projection/intent framework
+**Researched:** 2026-06-12
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The `checkpoint_projection` tool closes the one gap in ferro's generate→verify loop that no existing tool covers: cross-artifact seam coherence anchored on a projection. Individual validators (`validate_projection`, `json_ui_verify_action`, `validate_contracts`) operate per-artifact; an agent authoring a full intent slice must today orchestrate all of them in the correct order, aggregate their results, and know which seam each applies to. The canonical failure (v12.0 friction F11: `PageHeader.children` silent drop) is a seam failure that produces a 200 response with missing content and zero diagnostics — exactly the class of defect this milestone exists to prevent.
+v13.0 is a validation milestone, not a feature milestone. Its target is v1.0 criterion #2 — "projection / intent validated through real applications and a synthetic catalog of canonical app classes" — and it addresses the compressive dimension first (substance-first priority order). Five discrete COMP items span: a real-app migration (COMP-01, gestiscilo), a synthetic regression catalog (COMP-02), an agent-success-rate harness (COMP-03), a time-to-working-app benchmark (COMP-04), and a cross-modality vocabulary sketch (COMP-05). The research files converge strongly on build order, tooling, placement, and integrity guardrails.
 
-The recommended approach is purely additive inside `ferro-mcp`, with zero new dependencies. Seam 2 (field→column) is the only genuinely new check — everything else is a thin dispatch over existing validators. The implementation follows a strict orchestrator pattern: `checkpoint_projection` owns seam 2 plus aggregation; all other seams delegate to the tool that already owns that check. No validation logic is reimplemented inside the checkpoint. This boundary is both a correctness constraint and a conceptual coherence rule — duplicating check logic across the codebase creates two sources of truth and erodes the principle that each seam is owned by exactly one place.
+The recommended approach is incremental and additive: no new published crates, no structural changes to the projection/intent vocabulary, no cross-crate refactors. COMP-02 (regression catalog) builds first because it establishes the ground-truth intent-per-class that COMP-03 consumes, uses existing test infrastructure (`ferro-projections/tests/`), and produces durable CI coverage immediately. COMP-05 (cross-modality sketch) is unblocked now — it is a document, not code — and should be done early to surface vocabulary gaps before v14.0 planning. COMP-01 (gestiscilo migration) is the highest-effort item and must be sliced one entity at a time; Slice A covers three entities (Browse, Process, Summarize) and is sufficient for meaningful real-world validation. COMP-03 and COMP-04 follow once the catalog ground-truth is in place.
 
-The load-bearing trust invariant is that `not_checked` must never collapse to `pass`. One false `pass` on an unchecked seam destroys agent confidence in all future results. The field→column false-positive risk (relationship fields, computed fields flagged as missing columns) is the primary quality threat in P1 — a false positive rate above zero in any non-trivially complex projection trains agents to ignore findings and buries real defects in noise. The dogfood gate (poisoned fixture that must fire, live consumer that must produce at least one real finding) is the mechanism that prevents shipping a tool that always reports clean.
+The main risk is vanity validation: harnesses designed to pass rather than to probe limits. Four structural guardrails from the research must carry into every phase spec: (1) structural-invariant assertions over byte-identical snapshots; (2) multi-tier pass criteria for COMP-03 stated before any agent run, with minimum 3 trials per case; (3) a cold-cache benchmark run for COMP-04; (4) at least one adversarial fixture per COMP item and a mandatory "discovered weaknesses" retrospective section. A validation that produces zero failures is evidence that it was not trying hard enough, not that the abstraction is correct.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Zero new dependencies required. All primitives needed for `checkpoint_projection` already exist in the `ferro-mcp` crate graph: `syn` + `walkdir` for entity parsing, `serde`/`serde_json` for verdict serialization, `sea-orm` for the optional live-schema branch, `regex` for projection source parsing, and `tokio` for the async boundary in seam 3. The only new file is `ferro-mcp/src/tools/checkpoint_projection.rs`.
+All tooling needs are minimal and additive. The existing workspace infrastructure handles almost everything; three dev-dependency additions cover the gaps. `insta 1.48` (with `json` and `redactions` features) provides snapshot testing for COMP-02 with an interactive `cargo insta review` workflow. `criterion 0.8.2` (`default-features = false, features = ["cargo_bench_support"]`) provides statistical wall-clock benchmarking for COMP-04 via `iter_custom` subprocess timing; `hyperfine` is rejected (external binary, violates no-external-tooling constraint). COMP-03 needs no new crate: `rmcp 0.12` already compiles `transport-async-rw` as a default feature; in-process `tokio::io::duplex` transport is the correct pattern, proven in `ferro-api-mcp/tests/e2e.rs`. `proptest 1` is already in the workspace and adds property-based invariant tests for COMP-02.
 
-**Core primitives and where they live:**
-- `list_models::execute(project_root)` — entity field extraction via `syn`; returns `Vec<ModelDetails>` where `FieldInfo.name` is the snake_case column name. Primary source for seam 2's column set.
-- `projection_coverage.rs:76-79` predicate — `p.service_name.as_ref().is_some_and(|sn| sn.to_lowercase() == model_lower)` — copy verbatim for projection→model name resolution.
-- `render_projection::reconstruct_service_def(service_name, display_name, content)` — `pub(crate)` canonical entry point for `ServiceDef` from source. Must be reused, not reimplemented.
-- `json_ui_verify_action::find_handler` — `pub(crate)` pure function; fetch routes once via `list_routes::execute`, call `find_handler` per action to avoid repeated I/O.
-- `validate_projection::execute_single`, `render_projection::execute`, `json_ui_validate_spec::execute`, `validate_contracts::execute` — existing validator entry points for seams 1, 4, 4b, 5.
-- `database_schema::execute` — optional secondary column source when `DATABASE_URL` available; strengthening pass, not prerequisite.
+**Core technologies:**
+- `insta 1.48` (dev-dep, `ferro-projections` + `ferro-json-ui`): snapshot/golden testing for `Vec<IntentScore>` and rendered `Spec` — `assert_json_snapshot!` over hand-rolled `assert_eq!` literals at catalog scale
+- `criterion 0.8.2` (dev-dep, `ferro-cli`, `default-features = false`): wall-clock benchmark via `iter_custom`; statistical noise thresholds; baseline comparison (`--save-baseline` / `--load-baseline`)
+- `rmcp 0.12` `transport-async-rw` + `client` features (add to `ferro-mcp` dev-deps only): in-process MCP client for COMP-03 via `tokio::io::duplex` — no subprocess, no port, no version bump
+- `proptest 1` (already in workspace; add to `ferro-projections` dev-deps): property invariants for `derive_intents` across generated `ServiceDef` inputs
 
-**Do not add:** SeaORM reflection crates, migration AST parsers, diff/comparison libraries, ordered map crates, graph libraries. Column membership is `HashSet::contains`.
+**Critical constraints:** criterion 0.8.2 requires Rust >= 1.88 (matches workspace MSRV). No rmcp upgrade — 0.12 is pinned across all three consuming crates.
 
 ### Expected Features
 
-**Must have (table stakes) — all P1:**
-- Single-call entry point `checkpoint_projection { name: "Booking" }` anchored on projection name.
-- Top-level `status: pass | warn | fail` for one-token agent branching.
-- Per-seam `status` with distinct `not_checked` variant — the trust foundation. Never collapses to `pass`.
-- Seam 2 (field→column, presence-only) — the only check no existing tool performs; primary new value.
-- Ranked `next_steps`: failures rank above warnings; earlier seams before later within a rank; capped at 10 for P1, 5 by P3.
-- `source` provenance per finding — identifies the producing validator.
-- `subject` + `detail` + `fix` per finding — LSP-shaped minimum; `fix` on seam 2 findings is checkpoint-owned.
+The five COMP items map to distinct validation audiences. COMP-02 and COMP-01 Slice A are required to meet the v1.0 criterion at all; COMP-03 and COMP-04 add measurement depth for a credible public claim; COMP-05 is required before v14.0 Channel Projection scope can be finalized.
 
-**Should have (differentiators) — P2:**
-- Inline return from `generate_projection` / `json_ui_generate` in summary format (not full seam breakdown) — closes the loop by default.
-- Wrapper seams 1, 3, 4, 5 — convenience dispatch; enables upstream-failure cascade.
-- Ambient status (`unverified` / `failing` / `clean`) in `projection_coverage` and `application_info` via `last_status` reading `.ferro/checkpoints/{name}.json`.
-- Seam failure → downstream `not_checked` with `reason: "seam_N_failed"` (distinct from absent-prerequisite `not_checked`).
+**Must have (table stakes):**
+- COMP-02 regression harness: one test per intent (7), each asserting primary intent + at least one key signal, with competing signals present — permanent machine-checkable baseline in `ferro-projections/tests/`
+- COMP-05 cross-modality sketch: all 7 intents mapped to mobile/voice/CLI, at least one vocabulary gap identified, v14.0 implications stated — document only, zero changes to `ferro-projections` source
+- COMP-01 Slice A: 3 gestiscilo entities across Browse + Process + Summarize, before/after render equivalence, at least one documented abstraction finding
 
-**Defer (v2+):**
-- Type compatibility checking in seam 2 — presence-only in P1; type mismatch as `warn` in P2 at earliest.
-- Semantic deduplication of `next_steps` — exact-string-match sufficient at launch.
-- Model-anchored fan-out (checkpoint every projection touching a given model).
-- `cargo check` integration — breaks the read-only fast contract; remains a separate agent step.
+**Should have (required for credible v1.0 claim):**
+- COMP-03 agent success rate: 14+ tasks (2 per intent), 4-tier pass criteria defined before any run, minimum 3 trials per case, committed baseline artifact
+- COMP-04 time-to-working-app benchmark: agent-assisted, cold-cache Docker run, fully specified start/end conditions, committed result document
+
+**Defer (post-v13.0):**
+- COMP-01 Slice B (Collect + Analyze, 2 more entities) — after Slice A confirms the pattern
+- COMP-03 re-run after significant ferro-mcp tool description changes
+- Extending COMP-02 corpus with Slice B migration fixtures
 
 ### Architecture Approach
 
-The checkpoint lives entirely within `ferro-mcp` as an orchestrator module. Dependency direction is fixed: `checkpoint_projection` depends on existing validator tools; generators and coverage tools depend on `checkpoint_projection` in P2; no reverse dependencies at any phase. The only write side effect is `.ferro/checkpoints/{name}.json` (runtime artifact, gitignored). Async boundary is managed by preferring `find_handler` (synchronous `pub(crate)`) over the async `json_ui_verify_action::execute` wrapper, keeping `run_for` synchronous-compatible.
+No new crates. All five COMP items land as new files in existing crates. `ferro-projections` remains renderer-free; no `ferro-*` crate embeds app identity; CI disk constraints are respected by gating COMP-04's `cargo build` behind `FERRO_BENCH=1`. COMP-03 drives `ferro-mcp` (developer introspection), not `ferro-mcp-server` (consumer application MCP endpoint) — this distinction is architectural and must be preserved.
 
 **Major components:**
-1. `checkpoint_projection::run_for(project_root, name)` — spine orchestrator; calls all seam functions, aggregates verdict, writes status cache.
-2. `check_field_to_column(project_root, &service_def)` — private fn; the only new logic; uses `list_models::execute` + `reconstruct_service_def`.
-3. `CheckpointVerdict` / `SeamResult` / `Finding` / `SeamStatus` / `CheckpointStatus` — plain `#[derive(Serialize)]` types; zero external dependency.
-4. `last_status(project_root, name)` — reads `.ferro/checkpoints/{name}.json`; returns `Unverified` when absent.
-5. Inline hooks in `generate_projection` and `json_ui_generate` — post-generation call to `run_for`; embed as `checkpoint: Option<CheckpointVerdict>` (P2).
-6. `projection_coverage::ModelCoverage.checkpoint_status` and `ApplicationInfo::ProjectionCheckpointSummary` — read-only ambient consumers of `last_status` (P2).
+1. `ferro-projections/tests/catalog.rs` — COMP-02: 7 canonical `ServiceDef` builders, structural invariant assertions + `insta` snapshots, `proptest` invariants; runs in `cargo test --all-features`
+2. `ferro-mcp/tests/agent_harness.rs` — COMP-03: in-process MCP server via `tokio::io::duplex`, 14-task corpus, 4-tier per-task verdict, 3 trials per case, `#[ignore]` in default CI
+3. `ferro-cli/benches/time_to_working_app.rs` — COMP-04: criterion `iter_custom` scaffold timing, gated `FERRO_BENCH=1` to protect CI disk
+4. `ferro-projections/src/render/{cli,voice,mobile}.rs` — COMP-05: `pub(crate)` research renderers implementing `Renderer` trait; no public API, no production callers
+5. `gestiscilo-it/app/src/projections/` (external) — COMP-01: `ServiceDef` builders replacing `JsonUi::render_file`, sliced one entity per merge to gestiscilo master
 
 ### Critical Pitfalls
 
-1. **`not_checked` collapsed to `pass`** — the trust-destroying invariant violation. Four-variant `SeamStatus` enum required; prerequisite-absent paths must explicitly return `not_checked`; aggregation excludes unchecked seams from `pass` determination. P1 unit test required: unresolvable model source → seam 2 is exactly `not_checked`, not `pass`. Must fail before the guard is implemented.
+1. **Snapshot ossification** — byte-identical golden files break on every legitimate renderer change. Use structural-invariant assertions (`scores[0].intent == Browse`, rendered HTML contains a table element) as the primary catalog tests; reserve `insta` snapshots only for a small set of named canonical intent shapes that require a deliberate decision to update.
 
-2. **Field→column false positives on relationship and computed fields** — `ServiceDef.relationships` contains relationship navigation fields; they must never enter the field→column loop. FK fields check the FK column, not the relationship name. Computed/virtual fields (`FieldMeaning::Custom("virtual")`) are exempt. False-positive rate on the synthetic catalog must be zero for any projection with a relationship or read-only aggregate before P3 dogfood runs. A failing dogfood (false positive on a known-clean projection) is a blocker, not a warning.
+2. **Agent eval gaming** — a compilation-only success criterion will be satisfied by an empty `ServiceDef` and report inflated pass rates. Define 4 tiers (structural validity / intent coverage / functional completeness / checkpoint verdict) before any agent run; report each tier separately; never aggregate into a single boolean passed/failed.
 
-3. **`reconstruct_service_def` completeness assertion missing** — regex-based reconstructor silently drops unrecognized builder patterns. P1 must count field-builder invocations in raw source (`.field(`, `.optional_field(`, `.read_only_field(`, `.write_only_field(`) and compare against `ServiceDef.fields.len()`. Discrepancy → `warn: reconstruction may be incomplete` on seam 2, never a silent clean result.
+3. **Non-determinism drift** — a single-trial harness cannot distinguish LLM variance from framework regression. Run each COMP-03 task minimum 3 trials, use temperature=0 for tier-1 checks, commit model version and prompt version alongside every run, set a regression threshold (>10 percentage points drop from baseline).
 
-4. **Dogfood gate is vacuous without a poisoned fixture** — projections derived from `ServiceDef::from_model()` always pass seam 2. The synthetic catalog must include at least one projection with a deliberately wrong field name. Acceptance criterion: poisoned fixture produces `fail` on exactly that field. Live consumer (gestiscilo) must produce at least one real finding. This is a go/no-go gate for P3, not a nice-to-have.
+4. **COMP-01 big-bang migration** — a multi-week cross-repo branch diverges catastrophically against an active-development framework. Slice one entity at a time, merge each slice to gestiscilo master before starting the next, publish a single ferro version at the end of the series.
 
-5. **Seam reimplementation instead of delegation** — the checkpoint must import and call existing validator functions, not reimplement their logic. `source: "checkpoint"` is valid only on seam 2 findings. Code review gate: no route-parsing logic inside `checkpoint_projection.rs`.
+5. **Validation designed to pass** — confirmation bias is structural when the builders design the validation. Every phase spec must name an adversarial fixture. The milestone retrospective must have a non-empty "discovered weaknesses" section; an empty section is a red flag, not a celebration.
 
 ## Implications for Roadmap
 
-### Phase 1: Tool + Seam 2 + Aggregation
+Based on research, suggested phase structure:
 
-**Rationale:** Seam 2 is the only check that does not exist anywhere today. The trust invariant and field→column exemption logic must both be correct before any wrapper seams are added — a false positive at this layer propagates through all downstream seams. Delivers a callable, trustworthy standalone tool.
+### Phase 1: COMP-02 — Synthetic Regression Catalog
+**Rationale:** The catalog is the dependency foundation for COMP-03 and the regression baseline for all future `derive_intents()` changes. Requires only existing infrastructure, no external dependencies, produces permanent CI value immediately.
+**Delivers:** `ferro-projections/tests/catalog.rs` (7 canonical builders, 7+ intent tests, structural invariant assertions, `proptest` invariants); `ferro-json-ui/tests/catalog_render.rs` (rendered `Spec` structure assertions); all tests in `cargo test --all-features`.
+**Addresses:** COMP-02 "good" criteria — all 7 intents covered, primary intent + key signal asserted per fixture, competing signals present, adversarial fixture per intent.
+**Avoids:** Snapshot ossification (structural invariants primary, `insta` snapshots only for canonical shapes); catalog overfitting (adversarial fixture per intent mandatory before implementation begins).
+**Research flag:** Standard patterns — `insta` well-documented, `proptest` already in workspace, `derive_intents()` internals directly readable.
 
-**Delivers:** `checkpoint_projection` tool registered in the MCP dispatcher; seam 2 (field→column, presence-only); aggregation with ranked `next_steps`; `not_checked` coverage honesty; `last_status` / status cache write; all verdict types.
+### Phase 2: COMP-05 — Cross-Modality Vocabulary Sketch
+**Rationale:** Unblocked immediately — no code dependencies, no implementation prerequisites. Produces vocabulary gap analysis v14.0 needs. No changes to `ferro-projections` source are authorized.
+**Delivers:** Three `pub(crate)` sketch renderers in `ferro-projections/src/render/`; written analysis covering all 7 intents across 3 non-visual modalities; at least one identified vocabulary gap with v14.0 implications; zero changes to `intent.rs` or `derive.rs`.
+**Addresses:** COMP-05 "good" criteria — all 7 intents appear, at least one gap identified.
+**Avoids:** Premature intent vocabulary revision (phase spec must explicitly state the "no code changes to ferro-projections source" constraint; any vocabulary change is filed as a v14.0 proposal).
+**Research flag:** Standard patterns — `Renderer` trait is modality-agnostic by construction; `pub(crate)` sketch modules require no new API decisions.
 
-**Addresses:** Single-call entry point, `not_checked` invariant, seam 2 (primary new value), ranked `next_steps`, provenance, `fix` strings on seam 2 findings, reconstruction completeness assertion.
+### Phase 3: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)
+**Rationale:** The only source of real-world validation. Slice A (3 entities, 3 structurally distinct intents) is sufficient to surface abstraction gaps the synthetic corpus cannot. Cross-repo effort requires careful slicing — one entity per merge, no open branch longer than 2 weeks.
+**Delivers:** 3 `ServiceDef` builders in `gestiscilo-it/app/src/projections/`, corresponding controller changes replacing `JsonUi::render_file`, before/after render equivalence documentation, at least one documented abstraction finding.
+**Addresses:** COMP-01 Slice A "good" criteria — 3 entities × 3 intents, render equivalence verified, one finding documented, gestiscilo test suite green.
+**Avoids:** Big-bang migration (slice-by-slice plan committed before first code change); mid-series ferro publish (single publish at COMP-01 series end).
+**Research flag:** Needs phase-time planning to select the 3 entities from gestiscilo's 69 models, verify current render output for before/after comparison, confirm ferro version pinned in gestiscilo.
 
-**Avoids:** Pitfall 1 (false confidence), Pitfall 2 (false positives on relationships), Pitfall 3 (false negatives), Pitfall 4 (type-mismatch scope creep — presence-only scope in tool description), Pitfall 6 (seam reimplementation).
+### Phase 4: COMP-03 — Agent-Success-Rate Harness
+**Rationale:** Depends on COMP-02 catalog for domain descriptions and ground-truth intent per class. Harness design (4-tier criteria, 3 trials, baseline commit) is the substantive deliverable; agent runs are fast once the harness exists.
+**Delivers:** `ferro-mcp/tests/agent_harness.rs` with 14+ tasks (2 per intent), 4-tier per-task reporting, 3 trials per case, `rmcp 0.12` in-process transport, committed baseline artifact (model version, prompt version, pass rates per tier). All tests `#[ignore]` in default CI.
+**Addresses:** COMP-03 "good" criteria — 4-tier criteria defined before any run, diverse task corpus, ferro-mcp active as context source.
+**Avoids:** Agent eval gaming (4-tier criterion mandatory before harness implementation); non-determinism drift (3-trial minimum in harness design, not retrofit).
+**Research flag:** Calibration open question — success-rate floor (e.g., `assert!(rate >= 0.7)`) must be set at phase time from a first baseline run, not now.
 
-**Spec gaps that must be resolved before P1 implementation begins:**
-- Seam failure → downstream `not_checked` propagation rule must be stated explicitly (spec implies but does not define): `reason: "seam_N_failed"` distinct from absent-prerequisite.
-- Reconstruction completeness assertion pattern list: specify exactly which builder call strings to count.
-- Seam 2 model-resolver fallback on multi-match ambiguity: `not_checked` with `reason: "ambiguous_model_match"`.
-- Fix string format for seam 2 findings: standardize before implementation so tests can assert exact string shape.
-
-**P1 unit tests required (all must exist before the guard code they test):**
-- Poisoned fixture: dangling field → seam 2 `fail` naming exactly that field.
-- Unresolvable model source → seam 2 `not_checked` (not `pass`).
-- Projection with `belongs_to` relationship + computed field → zero seam 2 findings.
-- Field-builder count mismatch → `warn: reconstruction may be incomplete`.
-- Mixed-seam fixture: seam 2 `fail` + seam 1 `warn` → `next_steps[0]` is the seam 2 finding.
-
-### Phase 2: Inline Hook + Ambient Status + Wrapper Seams
-
-**Rationale:** Once the standalone tool is trusted (P1 unit tests pass), the inline hook and ambient status consumers can be wired. Freshness strategy must be decided before implementation. Fix string normalization must be designed before wrapper seams are activated.
-
-**Delivers:** `generate_projection` / `json_ui_generate` embed checkpoint in summary format; `projection_coverage.checkpoint_status`; `ApplicationInfo::ProjectionCheckpointSummary`; wrapper seams 1, 3, 4, 4b, 5 activated; upstream-failure cascade `not_checked`.
-
-**Avoids:** Pitfall 9 (inline verdict noise — summary format only, not full seam breakdown, immediately post-generation).
-
-**Spec gaps to resolve before P2:**
-- Ambient status freshness strategy: cached (stale risk) vs. fresh lightweight check (I/O cost). Two different implementation paths; cannot be deferred past the P2 plan.
-- Fix string normalization: sub-validators return incompatible shapes (`fix_suggestions[].details`, `message`/`candidate`, `mismatches[].details`); define normalization layer or document explicit passthrough with caveat.
-- Intent + confidence in seam 4 finding: decide inclusion or omission.
-- Method threading in seam 3: whether `ActionDef` carries HTTP method to thread through `find_handler` filter.
-
-### Phase 3: Dogfood Gate + Hardening
-
-**Rationale:** Wrapper seams earn their place against real defects. A seam that finds nothing in real apps ships as `not_checked` rather than active. Poisoned fixture must be written before the acceptance run.
-
-**Delivers:** Dogfood acceptance against gestiscilo + synthetic catalog; `next_steps` capped to 5; seams conditionally demoted to `not_checked` if no real defect found; dedup stress testing.
-
-**Acceptance criterion:** Poisoned fixture produces `fail` on exactly the planted field. Live consumer produces at least one finding (fail or warn). Any wrapper seam producing zero findings across all dogfood inputs is demoted to `not_checked` rather than forced active.
+### Phase 5: COMP-04 — Time-to-Working-App Benchmark
+**Rationale:** Independent of catalog; benefits from COMP-03 having exercised the agent-assisted path. The benchmark is a manual artifact first, CI gate second (if at all). Primary deliverable is a committed result document with full apparatus specification.
+**Delivers:** `ferro-cli/benches/time_to_working_app.rs` with criterion `iter_custom` scaffold timing, `FERRO_BENCH=1` gate; at least one cold-cache Docker run with fully specified environment; committed Markdown result document with start/end conditions, agent-assisted wall-clock time, per-step breakdown.
+**Addresses:** COMP-04 "good" criteria — cold-cache run exists, start/end conditions precisely documented, agent-assisted, result committed.
+**Avoids:** Vanity benchmark (cold-cache run is mandatory; warm-cache result is internal diagnostic only).
+**Research flag:** Open question — wall-clock CI assertion threshold must be set after a first cold-cache run to measure variance. Decide at phase time whether to assert in CI or keep as manual-only artifact.
 
 ### Phase Ordering Rationale
 
-- P1 before P2: inline hook requires the tool to exist; ambient status requires the status cache; wrapper seams require the aggregation pattern proven first.
-- Seam 2 before wrapper seams: the only new check must be trusted before adding dispatches. A false positive before exemption logic is correct amplifies when all five seams fire simultaneously.
-- Type mismatch deferred: the `ColumnType` → `DataType` mapping is not invertible for all cases; attempting type verification in P1 before presence-check trust is established collapses confidence in both checks.
-- Dogfood in P3: poisoned fixtures and live consumer runs require a stable tool; running them before P1 tests pass is circular.
+- COMP-02 first: dependency foundation for COMP-03, immediate CI value, no external dependencies, no production risk
+- COMP-05 second: unblocked immediately, produces design artifacts v14.0 needs, single-session scope
+- COMP-01 third: highest-value signal but highest-effort; COMP-02 establishes the intent baseline gestiscilo migrations compare against
+- COMP-03 fourth: domain descriptions and ground-truth sourced from COMP-02; harness design is the work, agent runs are fast
+- COMP-04 last: independent, environment-sensitive, agent-assisted workflow already exercised in COMP-03
 
 ### Research Flags
 
-Phases needing spec resolution before planning:
-- **P1 — Seam failure cascade rule:** must be stated explicitly in the plan as a testable invariant.
-- **P1 — Reconstruction completeness pattern list:** builder call strings to count must be enumerated from the `ServiceDef` source before implementation.
-- **P2 — Ambient status freshness strategy:** two implementation paths; must be decided before any P2 code.
-- **P2 — Fix string normalization:** sub-validator output shapes must be audited and a normalization layer designed before wrapper seam implementations.
+Phases needing deeper research during planning:
+- **Phase 3 (COMP-01 Slice A):** Entity selection from gestiscilo's 69 models requires reading `src/models/` and `src/controllers/` at phase time. Confirm current ferro version pinned in gestiscilo. Verify render equivalence testing method.
+- **Phase 4 (COMP-03):** Success-rate floor threshold and the 14 specific NL task descriptions must be specified at phase time after reviewing COMP-02 fixtures. Threshold is empirical.
+- **Phase 5 (COMP-04):** Wall-clock CI assertion threshold (if any) must be set after a first cold-cache run.
 
-Phases with well-established patterns (no additional research needed):
-- **P1 — `not_checked` enum design:** trivial; the pattern and test shape are fully specified.
-- **P1 — Seam 2 column set:** `list_models::execute` already returns the right data; predicate is a verbatim copy.
-- **P2 — Inline hook wiring:** thin post-generate call following the `application_info` aggregator pattern exactly.
-- **P3 — Dogfood fixture authoring:** write one projection file with a field name not matching any entity column; mechanical.
+Phases with standard patterns (skip research-phase):
+- **Phase 1 (COMP-02):** `insta` and `proptest` well-documented and already understood; `derive_intents()` internals directly readable.
+- **Phase 2 (COMP-05):** `Renderer` trait is stable; `pub(crate)` sketch modules require no new API decisions.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All primitives verified by direct source read; Cargo.toml confirmed; no dependency gaps |
-| Features | HIGH | Design spec read directly; all validator source files read; LSP + MCP tool design literature corroborates |
-| Architecture | HIGH | All tool modules read directly; dispatch pattern observed across multiple existing tools; dependency direction verified |
-| Pitfalls | HIGH | Grounded in existing codebase, design spec, real friction data (F11–F14), and regex-based `reconstruct_service_def` implementation |
+| Stack | HIGH | All versions verified via docs.rs; rmcp transport pattern proven in existing `ferro-api-mcp/tests/e2e.rs`; workspace MSRV compatibility checked |
+| Features | HIGH | All COMP-01..05 requirements read directly from PROJECT.md and existing source; 9 projection fixtures confirmed; gestiscilo model/view counts verified |
+| Architecture | HIGH | All placement decisions grounded in direct source inspection of `ferro-projections/Cargo.toml`, `ferro-mcp/Cargo.toml`, `ferro-cli/Cargo.toml`, and existing test patterns |
+| Pitfalls | HIGH | Grounded in codebase patterns (friction-loop cadence, v12.5 dogfood acceptance), LLM evaluation research, snapshot testing brittleness research |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Seam failure → downstream cascade specification:** spec implies but does not state. Must be written as a testable rule in the P1 plan.
-- **Ambient status freshness strategy (P2):** cached vs. fresh. Two implementation paths. Cannot be deferred past P2 plan.
-- **Fix string normalization for seams 1/3/4/5 (P2):** incompatible sub-validator result shapes. Audit + normalization design required before wrapper seam implementations.
-- **Method threading in seam 3:** low impact (false negative only on handler name collision across HTTP methods), but must be decided before seam 3 implementation.
-- **Inline verdict format (P2):** summary key vs. full `CheckpointVerdict` with empty seam arrays; must be specified to avoid the agent noise pitfall.
+- **COMP-03 success-rate floor:** Empirical value; can only be set after a first baseline run. Handle at phase time: run harness once, observe distribution, set floor to flag genuine regression without being fragile to LLM variance.
+- **COMP-04 wall-clock threshold:** Whether to assert a timing threshold in CI depends on CI disk and time budget. Handle at phase time: run cold-cache benchmark once, measure variance across 3 runs, decide whether a CI assertion is feasible.
+- **COMP-01 entity selection:** The specific 3 gestiscilo entities for Slice A are not pre-determined. Handle at phase time: read gestiscilo's `src/models/` and `src/controllers/` to identify the most representative Browse, Process, and Summarize candidates with direct `JsonUi::render_file` calls.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `ferro-mcp/src/tools/list_models.rs` — entity field extraction via `syn`
-- `ferro-mcp/src/tools/projection_coverage.rs` — model↔projection name-match predicate (lines 76–79)
-- `ferro-mcp/src/tools/render_projection.rs` — `reconstruct_service_def` entry point
-- `ferro-mcp/src/tools/validate_projection.rs` — seam 1 delegation target
-- `ferro-mcp/src/tools/database_schema.rs` — live DB column query
-- `ferro-mcp/Cargo.toml` — dependency versions confirmed
-- `ferro-projections/src/service.rs` — `ServiceDef`, `FieldDef`, builder variants, `validate()`
-- `docs/superpowers/specs/2026-06-09-projection-checkpoint-design.md` — design spec (approved)
+- `ferro-projections/src/{intent,service,derive}.rs` — 7-intent vocabulary, `derive_intents()`, `ServiceDef` builder API
+- `app/src/projections/` — 9 existing projection fixtures (direct read)
+- `ferro-api-mcp/tests/e2e.rs` — proven `rmcp 0.12` in-process client pattern
+- `ferro-mcp/src/tools/checkpoint_projection.rs` — established test fixture patterns
+- `ferro-projections/tests/generate_schemas.rs` — existing integration test placement pattern
+- `docs.rs/insta/latest/insta/` — version 1.48.0, feature list verified
+- `docs.rs/criterion/latest/criterion/` — version 0.8.2 verified
+- `docs.rs/rmcp/0.12.0/features` — `transport-async-rw` confirmed as default feature in 0.12
+- `.planning/PROJECT.md` — v13.0 COMP-01..05 requirements, v1.0 criteria, four beauty dimensions
+- `./CLAUDE.md` — rendering architecture invariants, project-agnostic crate rule
 
 ### Secondary (MEDIUM confidence)
-- LSP Specification 3.17 Diagnostic interface — shaped the four-status enum
-- Agent-aware MCP 10 patterns (community research, 2025) — `next_actions` embedding, capability advertisement, confidence thresholds
-- Schema drift detection patterns (dbt, data contracts, OpenAPI drift tools) — per-field finding with provenance and repair step
-
-### Tertiary (LOW confidence)
-- GitHub Security Lab Taskflow Agent checkpoint pattern — verification tool false positive/negative design tradeoffs
+- Snapshot testing research (2024-2025) — brittleness of byte-identical golden files; hybrid structural+snapshot approach
+- LLM agent evaluation research (2025) — non-determinism requires multi-trial measurement; compilation != correctness; separate tier reporting
+- AI benchmark overfitting research (2025) — catalog overfitting analogy
+- Agent evaluation frameworks (Braintrust, DeepEval, 2025) — deterministic checks for structural validity; multi-dimensional scoring
 
 ---
-*Research completed: 2026-06-09*
+*Research completed: 2026-06-12*
 *Ready for roadmap: yes*
