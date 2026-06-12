@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v13.2
-milestone_name: Projection Render Completeness
-status: complete
-stopped_at: "Phase 213 CLOSED — Gap A root fix (KanbanBoard structure/content split) implemented + integration-verified. Live feat/207 Orders kanban renders 5 lanes with correct per-lane counts + cards bucketed by status (blank-board bug gone). feat/208 Staff Browse + Gap D avatar <img> confirmed live; Gap B row-actions accepted on unit coverage (staff probe declares no actions — consumer-wiring gap logged in 213-06-SUMMARY). ferro-json-ui 608 + ferro-projections catalog 22 green, clippy clean. gestiscilo cleaned (test rows deleted, patch reverted, master, feat/207+208 pristine/unmerged). Consumer follow-ups (handler /data/order shape, staff actions) logged for the gestiscilo side."
-last_updated: "2026-06-13T00:30:00.000Z"
+milestone: v13.0
+milestone_name: Compressive Validation
+status: in_progress
+stopped_at: "v13.2 (Phase 213) SHIPPED in 0.2.55 (published to crates.io 2026-06-13, Publish run 27446883130 green — full --all-features Test passed). Resuming v13.0 Compressive Validation: 207/208/209 ✅, now unblocked to run Phase 210 (COMP-03 agent-success-rate harness) + 211 (COMP-04 time-to-working-app benchmark). Consumer follow-ups for COMP-01 landing logged in 213-CONSUMER-HANDOFF-feat207-208.md (gestiscilo session). NEXT: /gsd-discuss-phase 210."
+last_updated: "2026-06-13T01:00:00.000Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 95
@@ -20,20 +20,20 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 213 — projection-render-completeness
+**Current focus:** v13.0 Compressive Validation — resume at Phase 210
 
 ## Current Position
 
-Milestone: v13.2 Projection Render Completeness — 🚧 ACTIVE (Phase 213). [v13.0 Compressive Validation ⏸ PAUSED at 3/5 — 207/208/209 ✅, 210/211 deferred]
-Phase: 213 (projection-render-completeness) — ✅ COMPLETE (integration-verified 2026-06-13)
-Plan: 5 of 5 + Gap A root fix (213-06)
-Next: commit Gap A fix; v13.2 ready to ship (publish 0.2.55 when batched)
-Prior: Phase 209 ✅ VALIDATED 2026-06-12 (projection render content-incomplete — weakness note + 2 unmerged gestiscilo probe branches); v12.7 shipped 2026-06-12 (202-203); 0.2.54 published 2026-06-12
-Status: Phase complete — Gap A root fix integration-verified on feat/207 (Orders kanban lanes+cards); feat/208 Browse+avatar live, row-actions on unit coverage
+Milestone: v13.0 Compressive Validation — 🚧 ACTIVE (resumed). [v13.2 Projection Render Completeness ✅ SHIPPED 0.2.55 2026-06-13]
+Phase: 210 (COMP-03 agent-success-rate harness) — next to discuss/plan
+Plan: none yet
+Next: /gsd-discuss-phase 210
+Prior: Phase 213 ✅ SHIPPED in 0.2.55 (Gap A kanban structure/content split, integration-verified); 209 ✅ VALIDATED 2026-06-12; v12.7 shipped 2026-06-12
+Status: v13.0 resumed — 207/208/209 ✅, 210/211 remaining (unblocked now the render is content-complete)
 
-Progress: v13.0 paused at 3/5 (207/208/209 ✅); v13.2 0/1 (213 scoped)
+Progress: v13.0 at 3/5 (207/208/209 ✅; 210/211 next); v13.2 ✅ shipped
 
-Last activity: 2026-06-12
+Last activity: 2026-06-13
 Workspace version: 0.2.54
 
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
