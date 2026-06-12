@@ -2875,11 +2875,11 @@ Plans:
 
 #### Phases
 
-- [ ] **Phase 213: Projection Render Completeness** — content binding for the projection builder: state-machine→kanban column derivation + card binding (`emit_kanban_root`), StatCard value binding (`emit_statcard_root`), action-slot wiring from `ServiceDef` actions (`emit_actions_placeholder`), `ImageUrl` column rendering, and an app-shell/layout context. May split into per-gap phases at planning time. Depends on Phase 209.
+- [x] **Phase 213: Projection Render Completeness** — content binding for the projection builder: state-machine→kanban column derivation + card binding (`emit_kanban_root`), StatCard value binding (`emit_statcard_root`), action-slot wiring from `ServiceDef` actions (`emit_actions_placeholder`), `ImageUrl` column rendering, and an app-shell/layout context. May split into per-gap phases at planning time. Depends on Phase 209. (completed 2026-06-12)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 213. Projection Render Completeness | 4/5 | In Progress|  |
+| 213. Projection Render Completeness | 5/5 | Complete   | 2026-06-12 |
 
 #### Phase Details
 
@@ -2901,9 +2901,9 @@ Plans:
 
 **Provenance:** Scoped from Phase 209 findings. The migration code already exists on the two gestiscilo probe branches; this phase makes the renderer worthy of merging them.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 - [x] 213-01-PLAN.md — Gap B (actions) + Wave 0 fixtures: `emit_actions_placeholder` DropdownMenu + DataTable `row_actions` from `service.actions`
 - [x] 213-02-PLAN.md — Gap A (kanban): `emit_kanban_root` derives columns from the state machine + `data_path` binding
 - [x] 213-03-PLAN.md — Gap C (statcard): `StatCardProps.value_path` extension + `render_stat_card` resolution + primary-stat emit
 - [x] 213-04-PLAN.md — Gap D (imageurl): `ColumnFormat::Image` + ImageUrl column inclusion + `<img>` cell render
-- [ ] 213-05-PLAN.md — Gap E doc (composition pattern) + full gate + gestiscilo probe-branch re-verification (checkpoints)
+- [x] 213-05-PLAN.md — Gap E doc (composition pattern) + full gate + gestiscilo probe-branch re-verification (checkpoints)
