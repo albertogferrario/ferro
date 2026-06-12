@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: Compressive Validation
-status: in_progress
-stopped_at: "v13.2 (Phase 213) SHIPPED in 0.2.55 (published to crates.io 2026-06-13, Publish run 27446883130 green — full --all-features Test passed). Resuming v13.0 Compressive Validation: 207/208/209 ✅, now unblocked to run Phase 210 (COMP-03 agent-success-rate harness) + 211 (COMP-04 time-to-working-app benchmark). Consumer follow-ups for COMP-01 landing logged in 213-CONSUMER-HANDOFF-feat207-208.md (gestiscilo session). NEXT: /gsd-discuss-phase 210."
-last_updated: "2026-06-13T01:00:00.000Z"
+status: completed
+stopped_at: Phase 210 context gathered (--auto)
+last_updated: "2026-06-12T23:03:01.858Z"
 last_activity: 2026-06-13
 progress:
-  total_phases: 95
-  completed_phases: 85
-  total_plans: 357
-  completed_plans: 356
+  total_phases: 93
+  completed_phases: 84
+  total_plans: 352
+  completed_plans: 351
   percent: 100
 ---
 
@@ -437,7 +437,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-12T21:28:19.634Z
-Stopped at: Phase 213: Gaps B/A/C/D/E implemented + committed (ferro unit tests green). Gap A integration re-verify found a real bug — KanbanBoard conflates column structure vs content; renders blank when data_path empty. ROOT FIX scoped (structure/content split) in 213-HANDOFF-kanban-redesign.md. Resume there. feat/207+feat/208 re-verify pending.
-Resume file: .planning/phases/213-projection-render-completeness/213-HANDOFF-kanban-redesign.md
+Last session: 2026-06-12T23:03:01.812Z
+Stopped at: Phase 210 context gathered (--auto)
+Resume file: .planning/phases/210-comp-03-agent-success-rate-harness/210-CONTEXT.md
 Next action: `/gsd-discuss-phase 202` to start v12.7 (no active milestone yet — set milestone + 🚧 marker when beginning)
