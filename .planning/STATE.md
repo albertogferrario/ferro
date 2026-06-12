@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
-milestone: v13.0
-milestone_name: Compressive Validation
+milestone: v13.2
+milestone_name: Projection Render Completeness
 status: executing
 stopped_at: Phase 209 VALIDATED — projection render is content-incomplete (Process placeholder kanban, Summarize empty StatCard values, actions deferred; Browse data-binds). Migrations blocked, gestiscilo probe branches feat/207+feat/208 unmerged. Follow-up scoped: v13.2 Phase 213 (Projection Render Completeness).
 last_updated: "2026-06-12T19:10:00.000Z"
@@ -20,20 +20,20 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 209 VALIDATED (projection render content-incomplete — see weakness note). Next: v13.2 Phase 213 (Projection Render Completeness) to unblock migration, and/or continue v13.0 (210 agent harness, 211 benchmark).
+**Current focus:** v13.2 Phase 213 — Projection Render Completeness (ACTIVE, scoped). The unblock surfaced by Phase 209: wire ServiceDef data (state machine→kanban columns, actions, stat values, ImageUrl) into the projection render. CONTEXT.md ready; plan next. v13.0 PAUSED at 3/5 (210 agent harness + 211 benchmark deferred until the render is usable — substance-first).
 
 ## Current Position
 
-Milestone: v13.0 Compressive Validation — 🚧 in progress (Phases 207-211)
-Phase: 209 — VALIDATED 2026-06-12 (goal met: first real-world validation signal; SC#2/#4/#5 met; SC#1 deliberately not met — render content-incomplete blocks migration)
-Plan: 2/2 executed (validation-only); WEAKNESS-NOTE.md + PUBLISH-DECISION.md filed
-Next: /gsd-discuss-phase 213 (projection render completeness — the unblock) OR /gsd-plan-phase 210 (agent harness, v13.0)
-Prior: v12.7 ✅ shipped 2026-06-12 (202-203); 0.2.54 ✅ published to crates.io 2026-06-12 (204/205/206 + json-ui fix); v12.6 ✅ shipped 2026-06-11 (197-200)
-Status: Phase 209 closed (validated with finding)
+Milestone: v13.2 Projection Render Completeness — 🚧 ACTIVE (Phase 213). [v13.0 Compressive Validation ⏸ PAUSED at 3/5 — 207/208/209 ✅, 210/211 deferred]
+Phase: 213 — scoped (CONTEXT.md written from Phase 209 weakness note; Gaps A–E)
+Plan: Not started
+Next: /gsd-plan-phase 213
+Prior: Phase 209 ✅ VALIDATED 2026-06-12 (projection render content-incomplete — weakness note + 2 unmerged gestiscilo probe branches); v12.7 shipped 2026-06-12 (202-203); 0.2.54 published 2026-06-12
+Status: v13.2 active — ready to plan Phase 213
 
-Progress: [░░░░░░░░░░] v13.0 (0/5 phases complete)
+Progress: v13.0 paused at 3/5 (207/208/209 ✅); v13.2 0/1 (213 scoped)
 
-Last activity: 2026-06-12 -- Phase 209 planning complete
+Last activity: 2026-06-12 -- Phase 209 validated; pivoted to v13.2/Phase 213, CONTEXT scoped
 Workspace version: 0.2.54
 
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
