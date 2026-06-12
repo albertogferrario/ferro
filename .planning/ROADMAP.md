@@ -2814,7 +2814,11 @@ Plans:
 
 **Phase-time calibration:** Success-rate floor threshold (e.g. `assert!(rate >= 0.7)`) is set after a first baseline run, not now. The tier-2 and tier-3 floor thresholds may differ.
 
-**Plans:** TBD
+**Plans:** 4 plans (4 waves, sequential — each wave builds up agent_harness.rs)
+- [ ] 210-01-PLAN.md — Foundation: dev-dep delta + 14-task contamination-guarded corpus + contamination test
+- [ ] 210-02-PLAN.md — Deterministic T1–T4 scorer + replay path (CI-green, no LLM; pitfall mitigations)
+- [ ] 210-03-PLAN.md — In-process rmcp duplex transport + gated complete_with_tools agent loop
+- [ ] 210-04-PLAN.md — First committed baseline (gated live run, manual) + replay-equals-baseline + SC#5 weakness finding
 
 ### Phase 211: COMP-04 — Time-to-Working-App Benchmark
 
