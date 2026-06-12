@@ -2577,6 +2577,16 @@ Plans:
 | 199. OAuth Browser Login | 5/5 | Complete    | 2026-06-10 |
 | 200. Per-Tenant Scoping, Policy Authorization & Dogfood Acceptance | 7/7 | Complete    | 2026-06-10 |
 
+### Phase 205: Fix ferro-mcp-server tools/call result content blocks — wrap projection rows as valid MCP content blocks (type:text / structuredContent) so real MCP clients parse the result; add a client-schema interop regression test; re-run the live :8090 browser-OAuth dogfood (alice@acme.test list_order). Defect isolated to result formatting; OAuth/login-resume/consent/token/tenant-scoping already verified working.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 204
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 205 to break down)
+
 ---
 
 ## v12.7 Passwordless MCP Auth (Phases 202–203)
