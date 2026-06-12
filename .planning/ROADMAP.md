@@ -2722,7 +2722,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 207. COMP-02 Synthetic Regression Catalog | 1/1 | Complete   | 2026-06-12 |
+| 207. COMP-02 Synthetic Regression Catalog | 1/1 | Complete    | 2026-06-12 |
 | 208. COMP-05 Cross-Modality Vocabulary Sketch | 0/TBD | Not started | - |
 | 209. COMP-01 Slice A Gestiscilo Migration | 0/TBD | Not started | - |
 | 210. COMP-03 Agent-Success-Rate Harness | 0/TBD | Not started | - |
