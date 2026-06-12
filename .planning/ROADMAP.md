@@ -2879,7 +2879,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 213. Projection Render Completeness | 0/TBD | Scoped (discuss-phase needed) | - |
+| 213. Projection Render Completeness | 0/5 | Planned | - |
 
 #### Phase Details
 
@@ -2889,7 +2889,7 @@ Plans:
 
 **Depends on:** Phase 209 (COMP-01 Slice A — the validation that scoped this; its WEAKNESS-NOTE.md is the requirements source).
 
-**Requirements:** TBD (projection/intent core; derived from Phase 209 Gaps A–E)
+**Requirements:** GAP-A, GAP-B, GAP-C, GAP-D, GAP-E (derived from Phase 209 WEAKNESS-NOTE Gaps A–E; one label per gap)
 
 **Success Criteria** (what must be TRUE) — draft, to refine in discuss-phase:
   1. Process render derives kanban columns from the `ServiceDef` state machine and binds card data — `emit_kanban_root` is no longer a single placeholder column. The gestiscilo `feat/207` branch's Orders kanban renders its columns + cards.
@@ -2901,4 +2901,9 @@ Plans:
 
 **Provenance:** Scoped from Phase 209 findings. The migration code already exists on the two gestiscilo probe branches; this phase makes the renderer worthy of merging them.
 
-**Plans:** TBD — `/gsd-discuss-phase 213` to scope (likely splits per gap).
+**Plans:** 5 plans (sequenced B→A→C→D→E; Plans 01-04 touch builder.rs so run as sequential waves).
+- [ ] 213-01-PLAN.md — Gap B (actions) + Wave 0 fixtures: `emit_actions_placeholder` DropdownMenu + DataTable `row_actions` from `service.actions`
+- [ ] 213-02-PLAN.md — Gap A (kanban): `emit_kanban_root` derives columns from the state machine + `data_path` binding
+- [ ] 213-03-PLAN.md — Gap C (statcard): `StatCardProps.value_path` extension + `render_stat_card` resolution + primary-stat emit
+- [ ] 213-04-PLAN.md — Gap D (imageurl): `ColumnFormat::Image` + ImageUrl column inclusion + `<img>` cell render
+- [ ] 213-05-PLAN.md — Gap E doc (composition pattern) + full gate + gestiscilo probe-branch re-verification (checkpoints)

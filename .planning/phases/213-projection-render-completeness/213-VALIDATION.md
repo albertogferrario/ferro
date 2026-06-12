@@ -1,8 +1,8 @@
 ---
 phase: 213
 slug: projection-render-completeness
-status: draft
-nyquist_compliant: false
+status: planned
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-12
 ---
@@ -42,16 +42,16 @@ created: 2026-06-12
 
 | Task | Gap | Requirement | Test Type | Automated Command | File Exists | Status |
 |------|-----|-------------|-----------|-------------------|-------------|--------|
-| 213-0x | B | Gap B (actions) | unit | `cargo test -p ferro-json-ui --lib actions_slot_emits_dropdown_from_service_actions` | ❌ W0 | ⬜ |
-| 213-0x | B | Gap B (row actions) | unit | `cargo test -p ferro-json-ui --lib datatable_root_has_row_actions_from_service_actions` | ❌ W0 | ⬜ |
-| 213-0x | A | Gap A (kanban cols) | unit | `cargo test -p ferro-json-ui --lib kanban_root_derives_columns_from_state_machine` | ❌ W0 | ⬜ |
-| 213-0x | A | Gap A (fallback) | unit | `cargo test -p ferro-json-ui --lib kanban_root_fallback_when_no_state_machine` | ❌ W0 | ⬜ |
-| 213-0x | C | Gap C (statcard bind) | unit | `cargo test -p ferro-json-ui --lib statcard_root_binds_primary_stat_field` | ❌ W0 | ⬜ |
-| 213-0x | C | Gap C (empty) | unit | `cargo test -p ferro-json-ui --lib statcard_root_empty_when_no_stat_field` | ❌ W0 | ⬜ |
-| 213-0x | D | Gap D (image col) | unit | `cargo test -p ferro-json-ui --lib datatable_root_includes_image_url_column` | ❌ W0 | ⬜ |
-| 213-0x | D | Gap D (image format) | unit | `cargo test -p ferro-json-ui --lib image_column_has_image_format` | ❌ W0 | ⬜ |
-| 213-0x | A/B | integration (Orders kanban + actions) | manual | gestiscilo feat/207 re-verify: `/dashboard/cassa/ordini` shows 4 columns + actions | ❌ W0 | ⬜ |
-| 213-0x | B/D | integration (Staff actions + avatar) | manual | gestiscilo feat/208 re-verify: `/dashboard/staff` shows row actions + avatar image | ❌ W0 | ⬜ |
+| 213-01 T2 | B | Gap B (actions) | unit | `cargo test -p ferro-json-ui --lib actions_slot_emits_dropdown_from_service_actions` | ❌ W0 | ⬜ |
+| 213-01 T2 | B | Gap B (row actions) | unit | `cargo test -p ferro-json-ui --lib datatable_root_has_row_actions_from_service_actions` | ❌ W0 | ⬜ |
+| 213-02 T1 | A | Gap A (kanban cols) | unit | `cargo test -p ferro-json-ui --lib kanban_root_derives_columns_from_state_machine` | ❌ W0 | ⬜ |
+| 213-02 T1 | A | Gap A (fallback) | unit | `cargo test -p ferro-json-ui --lib kanban_root_fallback_when_no_state_machine` | ❌ W0 | ⬜ |
+| 213-03 T2 | C | Gap C (statcard bind) | unit | `cargo test -p ferro-json-ui --lib statcard_root_binds_primary_stat_field` | ❌ W0 | ⬜ |
+| 213-03 T2 | C | Gap C (empty) | unit | `cargo test -p ferro-json-ui --lib statcard_root_empty_when_no_stat_field` | ❌ W0 | ⬜ |
+| 213-04 T1 | D | Gap D (image col) | unit | `cargo test -p ferro-json-ui --lib datatable_root_includes_image_url_column` | ❌ W0 | ⬜ |
+| 213-04 T1 | D | Gap D (image format) | unit | `cargo test -p ferro-json-ui --lib image_column_has_image_format` | ❌ W0 | ⬜ |
+| 213-05 T3 | A/B | integration (Orders kanban + actions) | manual | gestiscilo feat/207 re-verify: `/dashboard/cassa/ordini` shows 4 columns + actions | ❌ W0 | ⬜ |
+| 213-05 T4 | B/D | integration (Staff actions + avatar) | manual | gestiscilo feat/208 re-verify: `/dashboard/staff` shows row actions + avatar image | ❌ W0 | ⬜ |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky. Exact task IDs assigned at plan time (gaps sequenced B→A→C→D→E).*
 
@@ -89,4 +89,4 @@ Harness: `ferro serve --backend-only` (port 8080), magic-link dev auto-login (`j
 - [ ] Both gestiscilo probe branches re-verified end-to-end
 - [ ] `nyquist_compliant: true` set after the planner wires the automated commands into tasks
 
-**Approval:** pending
+**Approval:** planned 2026-06-12 — automated commands wired into Plans 01-04 task verifies; integration checkpoints in Plan 05; fixtures land in Plan 01 Task 1.
