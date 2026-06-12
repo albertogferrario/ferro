@@ -314,9 +314,19 @@ mod tests {
         let services = vec![order_service()];
         let result = handle_tools_call(call_params, &services, &db, Some(tenant_ctx.id)).await;
 
-        let rows = result["result"]["content"]
+        // Post-fix envelope: content is a valid text block, rows live in structuredContent.
+        let content = result["result"]["content"]
             .as_array()
             .expect("result.content must be an array");
+        assert_eq!(
+            content[0]["type"].as_str(),
+            Some("text"),
+            "content[0] must be a text block (type=text) — locks the post-fix shape"
+        );
+
+        let rows = result["result"]["structuredContent"]["rows"]
+            .as_array()
+            .expect("structuredContent.rows must be an array");
         assert!(
             !rows.is_empty(),
             "tenant 2 must have at least one order in the result"
