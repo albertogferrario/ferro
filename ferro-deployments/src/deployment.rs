@@ -95,7 +95,6 @@ impl Deployments {
     ) -> Result<Deployment, Error> {
         let identifier = uuid::Uuid::new_v4().to_string();
         let now = Utc::now();
-        let now_iso = now.to_rfc3339();
         let backend = self.db.get_database_backend();
 
         let (p1, p2, p3, p4) = (
@@ -120,7 +119,7 @@ impl Deployments {
                 source_ref.map_or(Value::String(None), |s| {
                     Value::String(Some(Box::new(s.to_string())))
                 }),
-                Value::String(Some(Box::new(now_iso.clone()))),
+                Value::ChronoDateTimeUtc(Some(Box::new(now))),
             ],
         );
 
@@ -160,7 +159,7 @@ impl Deployments {
         artifact_location: &str,
         byte_size: i64,
     ) -> Result<(), Error> {
-        let now_iso = Utc::now().to_rfc3339();
+        let now = Utc::now();
         let backend = self.db.get_database_backend();
         let (p1, p2, p3, p4) = (
             ph(backend, 1)?,
@@ -179,7 +178,7 @@ impl Deployments {
             [
                 Value::String(Some(Box::new(artifact_location.to_string()))),
                 Value::BigInt(Some(byte_size)),
-                Value::String(Some(Box::new(now_iso))),
+                Value::ChronoDateTimeUtc(Some(Box::new(now))),
                 Value::BigInt(Some(id)),
             ],
         );
@@ -207,7 +206,7 @@ impl Deployments {
             error = error,
             "deployment marked failed"
         );
-        let now_iso = Utc::now().to_rfc3339();
+        let now = Utc::now();
         let backend = self.db.get_database_backend();
         let (p1, p2) = (ph(backend, 1)?, ph(backend, 2)?);
         let sql = format!(
@@ -219,7 +218,7 @@ impl Deployments {
             backend,
             &sql,
             [
-                Value::String(Some(Box::new(now_iso))),
+                Value::ChronoDateTimeUtc(Some(Box::new(now))),
                 Value::BigInt(Some(id)),
             ],
         );
