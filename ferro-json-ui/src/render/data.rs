@@ -350,6 +350,24 @@ fn render_cell(col: &Column, value: Option<&Value>) -> String {
             }
         }
     }
+    if let Some(ColumnFormat::Image) = col.format {
+        // Cell value is an image URL string. Null or empty → empty cell (no broken img).
+        // The URL is html-escaped before interpolation to prevent src attribute injection
+        // (T-213-09).
+        match value {
+            None | Some(Value::Null) => return String::new(),
+            Some(_) => {
+                let url = cell_string(value);
+                if url.is_empty() {
+                    return String::new();
+                }
+                return format!(
+                    "<img src=\"{}\" alt=\"\" class=\"w-8 h-8 rounded-full object-cover\" />",
+                    html_escape(&url)
+                );
+            }
+        }
+    }
     html_escape(&cell_string(value))
 }
 
@@ -1573,6 +1591,68 @@ mod tests {
         assert!(
             !html.contains("/s/2"),
             "row 2 should not show send; got: {html}"
+        );
+    }
+
+    // ── ColumnFormat::Image ──────────────────────────────────────────────
+
+    #[test]
+    fn data_table_image_column_format_renders_img_tag() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "avatar_url", "label": "Avatar", "format": "image"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"avatar_url": "https://cdn.example/a.png"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(html.contains("<img"), "expected <img tag; got: {html}");
+        assert!(
+            html.contains("https://cdn.example/a.png"),
+            "expected URL in src; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_image_column_format_xss_escaped() {
+        // T-213-09: a URL containing `"` must not break out of the src attribute.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "avatar_url", "label": "Avatar", "format": "image"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"avatar_url": "https://x.com/a.png\" onload=\"alert(1)"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            !html.contains("\" onload=\""),
+            "unescaped quote must not break src attribute; got: {html}"
+        );
+        assert!(
+            html.contains("&quot;"),
+            "quote must be html-escaped; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_image_column_format_null_renders_empty_cell() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "avatar_url", "label": "Avatar", "format": "image"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"avatar_url": null}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            !html.contains("<img"),
+            "null must render empty cell, no <img; got: {html}"
         );
     }
 }
