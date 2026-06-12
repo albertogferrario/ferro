@@ -2579,13 +2579,15 @@ Plans:
 
 ### Phase 205: Fix ferro-mcp-server tools/call result content blocks — wrap projection rows as valid MCP content blocks (type:text / structuredContent) so real MCP clients parse the result; add a client-schema interop regression test; re-run the live :8090 browser-OAuth dogfood (alice@acme.test list_order). Defect isolated to result formatting; OAuth/login-resume/consent/token/tenant-scoping already verified working.
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** The ferro-mcp-server `tools/call` success result is a valid MCP `CallToolResult` (one `type:text` content block + `structuredContent` carrying `{rows,total,limit,offset}`), so a strict MCP client parses it without Zod errors; a client-schema interop regression test deserializes the emitted result with the client's own rmcp type; the live :8090 browser-OAuth dogfood (alice@acme.test → list_order) re-runs to GO with tenant scoping intact.
+**Requirements**: AMCP-03 (content fix), AMCP-10 (tenant scoping preserved)
 **Depends on:** Phase 204
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 205 to break down)
+- [ ] 205-01-PLAN.md — Fix the Ok arm (CallToolResult::structured) + inline D-04 interop regression test in jsonrpc.rs
+- [ ] 205-02-PLAN.md — Re-point tenant_a/tenant_b isolation tests to structuredContent.rows + assert content[0].type==text
+- [ ] 205-03-PLAN.md — Live :8090 browser-OAuth dogfood (D-06 acceptance gate, autonomous:false) + 205-ACCEPTANCE.md
 
 ---
 
