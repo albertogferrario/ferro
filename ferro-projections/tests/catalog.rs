@@ -15,31 +15,42 @@ use ferro_projections::{
 };
 
 // ---------------------------------------------------------------------------
-// Confidence floor + margin constants (calibrated in Task 2 after first run).
-// Values of 0.0 are placeholders — replaced with observed_primary - 0.15
-// (floor) and observed_primary - observed_runner_up - 0.10 (margin).
+// Confidence floor + margin constants — calibrated from first observed run.
+//
+// Calibration protocol (D-07):
+//   floor  = observed_primary - 0.15   (15pp cushion below observation)
+//   margin = observed_gap    - 0.10    (10pp cushion below observed gap)
+//
+// Observed values (2026-06-12):
+//   browse:    primary=1.0000  runner_up=0.2414  gap=0.7586
+//   focus:     primary=1.0000  runner_up=0.2593  gap=0.7407
+//   collect:   primary=1.0000  runner_up=0.4000  gap=0.6000
+//   process:   primary=1.0000  runner_up=0.1842  gap=0.8158
+//   summarize: primary=1.0000  runner_up=0.1000  gap=0.9000
+//   analyze:   primary=1.0000  runner_up=0.8571  gap=0.1429  ← thin margin (see doc weakness note)
+//   track:     primary=1.0000  runner_up=0.4667  gap=0.5333
 // ---------------------------------------------------------------------------
 
-const BROWSE_FLOOR: f64 = 0.0;
-const BROWSE_MARGIN: f64 = 0.0;
+const BROWSE_FLOOR: f64 = 0.85; // 1.00 - 0.15
+const BROWSE_MARGIN: f64 = 0.66; // 0.7586 - 0.10
 
-const FOCUS_FLOOR: f64 = 0.0;
-const FOCUS_MARGIN: f64 = 0.0;
+const FOCUS_FLOOR: f64 = 0.85; // 1.00 - 0.15
+const FOCUS_MARGIN: f64 = 0.64; // 0.7407 - 0.10
 
-const COLLECT_FLOOR: f64 = 0.0;
-const COLLECT_MARGIN: f64 = 0.0;
+const COLLECT_FLOOR: f64 = 0.85; // 1.00 - 0.15
+const COLLECT_MARGIN: f64 = 0.50; // 0.6000 - 0.10
 
-const PROCESS_FLOOR: f64 = 0.0;
-const PROCESS_MARGIN: f64 = 0.0;
+const PROCESS_FLOOR: f64 = 0.85; // 1.00 - 0.15
+const PROCESS_MARGIN: f64 = 0.72; // 0.8158 - 0.10
 
-const SUMMARIZE_FLOOR: f64 = 0.0;
-const SUMMARIZE_MARGIN: f64 = 0.0;
+const SUMMARIZE_FLOOR: f64 = 0.85; // 1.00 - 0.15
+const SUMMARIZE_MARGIN: f64 = 0.80; // 0.9000 - 0.10
 
-const ANALYZE_FLOOR: f64 = 0.0;
-const ANALYZE_MARGIN: f64 = 0.0;
+const ANALYZE_FLOOR: f64 = 0.85; // 1.00 - 0.15
+const ANALYZE_MARGIN: f64 = 0.04; // 0.1429 - 0.10  (thin — see Discovered weaknesses)
 
-const TRACK_FLOOR: f64 = 0.0;
-const TRACK_MARGIN: f64 = 0.0;
+const TRACK_FLOOR: f64 = 0.85; // 1.00 - 0.15
+const TRACK_MARGIN: f64 = 0.43; // 0.5333 - 0.10
 
 // ---------------------------------------------------------------------------
 // Canonical ServiceDef fixtures — ground truth for Phase 210's agent harness.
