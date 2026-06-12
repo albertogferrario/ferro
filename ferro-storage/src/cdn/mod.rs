@@ -22,6 +22,7 @@
 //! The `DIGITALOCEAN_ACCESS_TOKEN` is never logged or printed. [`DoSpacesCdnConfig`]
 //! implements a hand-written `Debug` that redacts the token field.
 
+use crate::env_helpers::env_with_fallback;
 use crate::Error;
 use async_trait::async_trait;
 use std::collections::VecDeque;
@@ -208,21 +209,6 @@ impl CdnProvider {
             other => Err(Error::cdn_invalid_provider(other)),
         }
     }
-}
-
-/// Read `primary`; if unset, try each `alias` in order, emitting one
-/// `tracing::warn!` naming the deprecated var (never its value) on first hit.
-fn env_with_fallback(primary: &str, aliases: &[&str]) -> Option<String> {
-    if let Ok(val) = std::env::var(primary) {
-        return Some(val);
-    }
-    for alias in aliases {
-        if let Ok(val) = std::env::var(alias) {
-            tracing::warn!("{alias} is deprecated; use {primary} instead");
-            return Some(val);
-        }
-    }
-    None
 }
 
 /// Provider-agnostic CDN configuration. Read via [`Config::from_env`];
