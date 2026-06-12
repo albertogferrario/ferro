@@ -51,8 +51,15 @@ async fn tools_call_returns_rows() {
         None,
     )
     .await;
+    // content is a single text block (CallToolResult::structured wraps the payload)
     let content = resp["result"]["content"].as_array().expect("content array");
-    assert_eq!(content.len(), 3);
+    assert_eq!(content.len(), 1);
+    assert_eq!(content[0]["type"].as_str(), Some("text"));
+    // rows are nested under structuredContent
+    let rows = resp["result"]["structuredContent"]["rows"]
+        .as_array()
+        .expect("structuredContent.rows array");
+    assert_eq!(rows.len(), 3);
 }
 
 #[tokio::test]

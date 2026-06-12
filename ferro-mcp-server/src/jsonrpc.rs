@@ -105,3 +105,105 @@ pub async fn handle_tools_call(
         Err(e) => json!({ "error": { "code": -32603, "message": e.to_string() } }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ferro_projections::{DataType, FieldMeaning, ServiceDef};
+    use rmcp::model::CallToolResult;
+    use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Statement};
+
+    // Copied verbatim from dispatch.rs:234-269 — identical in-memory orders fixture.
+    async fn setup_orders_db() -> sea_orm::DatabaseConnection {
+        let db = Database::connect("sqlite::memory:")
+            .await
+            .expect("sqlite connect");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT NOT NULL,
+                total REAL NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                tenant_id INTEGER NOT NULL
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create table");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "INSERT INTO orders (customer_name, total, status, tenant_id) VALUES
+                ('Alice', 100.0, 'pending', 1),
+                ('Bob',   200.0, 'shipped', 1),
+                ('Carol', 150.0, 'pending', 2),
+                ('Dave',  250.0, 'shipped', 2)"
+                .to_string(),
+        ))
+        .await
+        .expect("seed rows");
+        db
+    }
+
+    // Copied verbatim from dispatch.rs:271-282.
+    fn order_service_with_tenant() -> ServiceDef {
+        ServiceDef::new("order")
+            .mcp_exposed(true)
+            .tenant_column("tenant_id")
+            .mcp_ability("view-orders")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_name", DataType::String, FieldMeaning::EntityName)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("created_at", DataType::String, FieldMeaning::CreatedAt)
+            .field("tenant_id", DataType::Integer, FieldMeaning::ForeignKey)
+    }
+
+    /// D-04 interop regression: parse the EMITTED result with the MCP client's own
+    /// type (CallToolResult custom Deserialize, rmcp model.rs:1646). The prior unit
+    /// tests asserted the server's own broken shape and so missed the original bug.
+    #[tokio::test]
+    async fn tools_call_result_parses_as_valid_mcp_content() {
+        let db = setup_orders_db().await;
+        let services = vec![order_service_with_tenant()];
+        let call_params = serde_json::json!({
+            "name": "list_order",
+            "arguments": { "limit": 10 }
+        });
+
+        let response = handle_tools_call(call_params, &services, &db, Some(1)).await;
+
+        // The load-bearing assertion: the client's own type must deserialize it.
+        let parsed: CallToolResult = serde_json::from_value(response["result"].clone())
+            .expect("result must parse as CallToolResult (D-04 interop)");
+
+        assert_eq!(parsed.is_error, Some(false));
+        assert_eq!(
+            parsed.content.len(),
+            1,
+            "structured() produces exactly one content block (D-03)"
+        );
+
+        let content_json = serde_json::to_value(&parsed.content).unwrap();
+        assert_eq!(
+            content_json[0]["type"].as_str(),
+            Some("text"),
+            "content[0] must have type=text (was missing before fix)"
+        );
+
+        let sc = parsed
+            .structured_content
+            .expect("structuredContent must be present (D-02)");
+        assert!(sc.get("rows").is_some(), "structuredContent.rows present");
+        assert!(sc.get("total").is_some(), "structuredContent.total present");
+        assert!(sc.get("limit").is_some(), "structuredContent.limit present");
+        assert!(
+            sc.get("offset").is_some(),
+            "structuredContent.offset present"
+        );
+
+        let rows = sc["rows"].as_array().expect("rows is an array");
+        assert_eq!(rows.len(), 2, "tenant 1 has exactly 2 rows");
+    }
+}
