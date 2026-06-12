@@ -21,6 +21,16 @@ use crate::spec::{Element, Spec};
 /// references (F14, Phase 165). Binding-shape handlers resolve against the
 /// JSON pointer in `spec.data`; the resolved string is then treated as a
 /// literal handler (resolver lookup or `/path` pass-through).
+/// A handler literal that is already a navigable target — an app-relative
+/// `/path` or an absolute `http(s)://` URL — is used as the action URL
+/// verbatim. Anything else is treated as a named route for the resolver.
+/// Without the absolute-URL case, a data-bound full URL (e.g. a dev
+/// magic-link built from `APP_URL`) falls through to the resolver, fails to
+/// match any route, and the action renders `href="#"`.
+fn is_navigable_url(s: &str) -> bool {
+    s.starts_with('/') || s.starts_with("http://") || s.starts_with("https://")
+}
+
 fn resolve_action(
     action: &mut Action,
     data: &serde_json::Value,
@@ -40,7 +50,7 @@ fn resolve_action(
     };
     let Some(s) = literal else { return };
 
-    if s.starts_with('/') {
+    if is_navigable_url(&s) {
         action.url = Some(s);
         return;
     }
@@ -127,7 +137,7 @@ fn resolve_props_handler_to_url(
         }
         _ => return None,
     };
-    if literal.starts_with('/') {
+    if is_navigable_url(&literal) {
         Some(literal)
     } else {
         resolver(&literal)
@@ -615,6 +625,35 @@ mod tests {
             el.action.as_ref().unwrap().url.as_deref(),
             Some("/users/show"),
             "binding resolved to handler name flows through the resolver"
+        );
+    }
+
+    #[test]
+    fn resolve_actions_resolves_binding_to_absolute_url_verbatim() {
+        // A data-bound absolute URL (e.g. a dev magic-link built from APP_URL)
+        // is a navigable target and must become action.url as-is — not be
+        // treated as a route name (which would fail the resolver and render
+        // href="#").
+        let mut spec = Spec::builder()
+            .data(serde_json::json!({
+                "dev_link": "http://127.0.0.1:8090/auth/verify?token=abc123"
+            }))
+            .element(
+                "btn",
+                Element::new("Button").action(action_with_binding("/dev_link")),
+            )
+            .build()
+            .unwrap();
+
+        // Resolver returns None for everything — proves the URL passes through
+        // without any route lookup.
+        resolve_actions(&mut spec, |_| None);
+
+        let el = spec.elements.get("btn").unwrap();
+        assert_eq!(
+            el.action.as_ref().unwrap().url.as_deref(),
+            Some("http://127.0.0.1:8090/auth/verify?token=abc123"),
+            "a data-bound absolute http(s) URL becomes action.url verbatim"
         );
     }
 
