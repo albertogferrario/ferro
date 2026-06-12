@@ -37,8 +37,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMP-01 | TBD (roadmap) | Pending |
-| COMP-02 | TBD (roadmap) | Pending |
-| COMP-03 | TBD (roadmap) | Pending |
-| COMP-04 | TBD (roadmap) | Pending |
-| COMP-05 | TBD (roadmap) | Pending |
+| COMP-01 | Phase 209 | Pending |
+| COMP-02 | Phase 207 | Pending |
+| COMP-03 | Phase 210 | Pending |
+| COMP-04 | Phase 211 | Pending |
+| COMP-05 | Phase 208 | Pending |

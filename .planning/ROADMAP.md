@@ -61,7 +61,7 @@
 - ✅ **v12.7 Passwordless MCP Auth** — Phases 202-203 (shipped 2026-06-12). Source: field finding while validating v12.6 against the gestiscilo consumer — the OAuth browser-login flow assumed a synchronous password form, but passwordless (magic-link) apps break it two ways: (a) the post-login handler must resume the authorize request via `oauth_return_to`, which a magic-link `verify` handler does not do by default, and (b) email links open on any device, which the authorization-code-over-loopback flow cannot reconcile. (202) formalizes the login-resume contract in `ferro-mcp-oauth` (a helper any login handler calls to obtain the post-login redirect target) and converts the bundled sample app login to magic-link as the golden-path exemplar, with an async-flow acceptance test; consumer pairing: gestiscilo `verify_magic_link` adopts the contract (same-device path). (203) adds OAuth 2.0 Device Authorization Grant (RFC 8628) to `ferro-mcp-oauth` — `device_authorization` endpoint, a user-code verification page bound to the existing consent + tenant scoping, and device-code token polling — the auth path for passwordless, cross-device, and headless/CLI MCP clients. Reuses the v12.6 consent and tenant-scoping surfaces; no second token issuer. Detailed phase scope at the end of this file.
 - 📋 **v12.2 Frontend Performance Hardening** — Phases 182-184 (planned 2026-06-06). Source: gestiscilo-it jetskiadriatic startup-lifecycle audit. Three runtime/framework primitives, each paired 1:1 with a gestiscilo v6.6.1 phase that consumes the published primitive via crates.io bump (mirrors the Phase 181 ↔ gestiscilo Phase 176 pattern). (182) `ferro-json-ui` `data-lazy-hero` runtime primitive — IntersectionObserver promoting `<video preload="none">` → `preload="auto"` on viewport approach; (183) `ferro-bundle` new crate — in-memory immutable byte blobs with content-hashed immutable-cache serving; (184) `ferro::InlineBudget` + `ferro::RequestTelemetry` — request-scoped accumulator with inline/preload decision + per-key ring buffer.
 - 📋 **v12.3 Deployment Platform Primitives** — Phases 185-188 (planned 2026-06-07). Source: gestiscilo-it v7.1 Tenant Frontend Platform (locked design at gestiscilo `.planning/research/v7.1-ARCHITECTURE.md`, D-01..D-06). Four generic primitives, each paired 1:1 with a gestiscilo consumer phase that bumps the published crate (185 ↔ gestiscilo 188, 186 ↔ gestiscilo 188, 187 ↔ gestiscilo 189, 188 ↔ gestiscilo 190). (185) `ferro::queue` — DB-backed job queue replacing the Redis-only ferro-queue backend: `Job` trait, `WorkerLoop` in `ferro serve`, atomic claim (Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` + `UPDATE…RETURNING`), retry/backoff, stuck-job reaper; (186) `ferro-deployments` new crate — immutable `Deployment` model, `DeploymentStorage` trait, atomic `promote`/`rollback`, `preview_url` helper, artifact-shape agnostic; (187) `ferro-assets` new crate — `Pipeline` composer with content-type-aware transforms: `html_minify` (lol_html), `css_minify` (lightningcss), `js_minify` (swc_ecma_minifier), `image_transcode` (pure-Rust `image`+`ravif`, AVIF+JPEG responsive variants — libvips rejected for thread-safety), `inject_before_tag`; (188) `ferro-storage` extension — `cdn_url()`, `PurgeApi` trait, DO Spaces CDN adapter (feature-flagged Bunny/Cloudflare). Primitives stay consumer-agnostic: static HTML sites, JSON-UI spec bundles, and Inertia SSR manifests all fit the deployment abstraction. See "v12.3 Deployment Platform Primitives" phase details at the end of this file.
-- 📋 **v13.0 Road to v1.0** — sustained investment program across compressive / operational / conceptual / aesthetic dimensions. 19+ requirements (COMP-01..05, OPER-01..07, CONC-01..04, AEST-01..04) in `.planning/REQUIREMENTS.md`. Includes crate consolidation audit and ServiceDef derivation bridge. Phase numbering continues after v12.0. No target date.
+- 🚧 **v13.0 Compressive Validation** — Phases 207-211 (started 2026-06-12). First slice of the Road to v1.0 program: empirical validation of the projection/intent abstraction across five COMP items. COMP-02 synthetic regression catalog (Phase 207), COMP-05 cross-modality vocabulary sketch (Phase 208), COMP-01 gestiscilo migration Slice A (Phase 209), COMP-03 agent-success-rate harness (Phase 210), COMP-04 time-to-working-app benchmark (Phase 211). Targets v1.0 criterion #2 (projection/intent validated through real applications and a synthetic catalog) and the compressive beauty dimension (priority #1).
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
 
 ---
@@ -2696,3 +2696,128 @@ Plans:
 **Origin:** Operator-locked principle on 2026-06-12 after Phase 204/205 shipped — ferro env vars must name the *role* (CDN, STORAGE, MAIL), not the *vendor* (AWS, DO, RESEND), where the role is genuinely provider-agnostic. The AWS_* family was the next candidate identified during that conversation. Provider-specific names stay (Stripe / Resend / WhatsApp Cloud / Anthropic) because their values are stamped with one vendor's API contract.
 
 **Plans:** 1/1 complete (single-wave, mechanical rename — see `phases/206-ferro-storage-provider-agnostic-storage-env-vars/206-01-PLAN.md`)
+
+---
+
+## 🚧 v13.0 Compressive Validation (Phases 207–211, started 2026-06-12)
+
+**Milestone Goal:** Validate the projection / intent abstraction empirically — the first slice of the Road to v1.0 program. Targets v1.0 criterion #2 ("projection / intent validated through real applications and a synthetic catalog of canonical app classes") and the compressive beauty dimension (substance-first priority #1).
+
+**Scope:** Five COMP items — synthetic regression catalog, gestiscilo migration Slice A, agent-success-rate harness, time-to-working-app benchmark, cross-modality vocabulary sketch. Validation and measurement work against ferro's own projection/intent system; no new published crates; no changes to the seven-intent vocabulary (`ferro-projections/src/intent.rs`).
+
+**Honesty requirement (applies to every phase):** Validation must be able to fail and surface real weaknesses. Every phase names an adversarial fixture and includes a "discovered weaknesses" section in its verification. A phase that finds nothing wrong is a red flag, not a success.
+
+**Phase calibration notes (resolve at phase-time, not roadmap-time):**
+- Phase 209 entity selection: read gestiscilo `src/models/` and `src/controllers/` to identify the three most representative Browse, Process, and Summarize candidates with direct `JsonUi::render_file` calls.
+- Phase 210 success-rate floor: set after a first baseline run — threshold must flag genuine regression without being fragile to LLM variance.
+- Phase 211 wall-clock threshold: decide after a first cold-cache run whether to assert in CI or keep as a manual-only artifact.
+
+#### Phases
+
+- [ ] **Phase 207: COMP-02 — Synthetic Regression Catalog** — `ferro-projections/tests/catalog.rs`; 7 canonical `ServiceDef` builders; structural-invariant assertions (not byte snapshots); `proptest` invariants; adversarial fixture per intent; `insta` snapshots only for named canonical shapes.
+- [ ] **Phase 208: COMP-05 — Cross-Modality Vocabulary Sketch** — Three `pub(crate)` sketch renderers in `ferro-projections/src/render/`; written analysis covering all 7 intents across 3 non-visual modalities; at least one vocabulary gap identified; zero changes to `intent.rs` or `derive.rs`.
+- [ ] **Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)** — 3 gestiscilo entities migrated one-per-merge to projection-driven rendering; render equivalence documented; single ferro publish at slice end; "what the migration revealed" weakness note. Depends on Phase 207.
+- [ ] **Phase 210: COMP-03 — Agent-Success-Rate Harness** — `ferro-mcp/tests/agent_harness.rs`; 14+ tasks (2 per intent); 4-tier pass criteria defined before any agent run; ≥3 trials per case; `rmcp 0.12` in-process transport; committed baseline artifact (model version, prompt version, per-tier pass rates). Depends on Phase 207.
+- [ ] **Phase 211: COMP-04 — Time-to-Working-App Benchmark** — `ferro-cli/tests/benchmark_new_project.rs`; criterion 0.8.2 `iter_custom` scaffold timing; `FERRO_BENCH=1` gate; at least one cold-cache Docker run; committed Markdown result document with start/end conditions and per-step breakdown.
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 207. COMP-02 Synthetic Regression Catalog | 0/TBD | Not started | - |
+| 208. COMP-05 Cross-Modality Vocabulary Sketch | 0/TBD | Not started | - |
+| 209. COMP-01 Slice A Gestiscilo Migration | 0/TBD | Not started | - |
+| 210. COMP-03 Agent-Success-Rate Harness | 0/TBD | Not started | - |
+| 211. COMP-04 Time-to-Working-App Benchmark | 0/TBD | Not started | - |
+
+#### Phase Details
+
+### Phase 207: COMP-02 — Synthetic Regression Catalog
+
+**Goal:** A permanent, machine-checkable baseline asserts that `derive_intents()` produces the correct primary intent for each canonical app class. The catalog is the regression foundation for every future change to `ferro-projections/src/derive.rs` and `intent.rs`, and it is the ground-truth source that Phase 210 (agent harness) consumes.
+
+**Depends on:** Nothing (first phase, no prerequisites).
+
+**Requirements:** COMP-02
+
+**Success Criteria** (what must be TRUE):
+  1. Seven canonical `ServiceDef` builder functions exist in `ferro-projections/tests/catalog.rs`, one per structural intent (Browse / Focus / Collect / Process / Summarize / Analyze / Track); each has a test asserting `derive_intents(&service)[0].intent == ExpectedIntent` plus a confidence threshold.
+  2. Structural-invariant assertions outnumber `insta` snapshot assertions; at minimum one test per intent asserts a structural property of the rendered output (e.g. Browse produces a spec whose root element resolves to a table shape) — no test is satisfied by an empty or minimal `ServiceDef` producing empty output.
+  3. At least one fixture per intent exercises a non-trivial case (many fields, multiple actions, state machine, or competing signals), and at least one fixture is explicitly adversarial — designed to probe a known edge of the derivation logic (e.g. a fixture with competing Browse/Summarize signals that should resolve to Summarize) and documented as such in a comment.
+  4. All seven catalog tests pass under `cargo test --all-features` and are integrated into the standard CI gate (no `#[ignore]`); a future change to `derive.rs` that breaks intent derivation for any canonical class causes a named, legible CI failure.
+  5. A "discovered weaknesses" note in the phase verification names at least one real limitation surfaced by writing the catalog (e.g. a canonical class where derivation confidence is lower than expected, or a signal gap). An empty weaknesses section fails the phase close.
+
+**Plans:** TBD
+
+### Phase 208: COMP-05 — Cross-Modality Vocabulary Sketch
+
+**Goal:** Determine whether the seven-intent vocabulary is sufficient for non-visual rendering modalities before v14.0 Channel Projection begins. The deliverable is a document and three `pub(crate)` sketch renderers — not a shipped feature, not a vocabulary change, not a production API.
+
+**Depends on:** Nothing (independent, unblocked immediately).
+
+**Requirements:** COMP-05
+
+**Success Criteria** (what must be TRUE):
+  1. Three sketch renderers (`CliSummaryRenderer`, `VoiceRenderer`, `MobileCardRenderer`) exist as `pub(crate)` modules in `ferro-projections/src/render/`; each implements the `Renderer` trait with a non-trivial output (not empty strings); all are marked with a `// Research sketch — not stable API` comment.
+  2. `ferro-projections/src/intent.rs` and `ferro-projections/src/derive.rs` are unchanged: `grep -n` of both files before and after the phase produces identical line counts for all intent-vocabulary symbols (`Browse`, `Focus`, `Collect`, `Process`, `Summarize`, `Analyze`, `Track`). Any vocabulary change triggered by the sketch is filed as a named v14.0 proposal, not implemented here.
+  3. The analysis document (a module-level doc block or a file in `docs/`) covers all seven intents across the three non-visual modalities, and names at least one vocabulary tension — a case where the intent boundary is unclear or insufficient for non-visual rendering.
+  4. The document includes a "v14.0 implications" section listing specific open questions for Channel Projection scope (e.g. whether `BaseContext` needs a `device_class` field, whether `Track` maps cleanly to voice).
+  5. A "discovered weaknesses" note names at least one tension found: a place where the current intent vocabulary requires a workaround or an awkward output to satisfy the sketch. An empty section fails the phase close.
+
+**Plans:** TBD
+
+### Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)
+
+**Goal:** Replace three gestiscilo views with projection-driven rendering via `ServiceDef` + `JsonUiRenderer`, delivering the first real-world validation signal. Each entity is migrated one-per-merge to gestiscilo master; no long-lived branch. A single ferro publish at the end of the slice.
+
+**Depends on:** Phase 207 (catalog baseline establishes the verified intent vocabulary these migrations compare against).
+
+**Requirements:** COMP-01
+
+**Success Criteria** (what must be TRUE):
+  1. Three gestiscilo entities (one Browse, one Process, one Summarize) are migrated to `ServiceDef` + `JsonUiRenderer`; the old `JsonUi::render_file` call for each is deleted; each migration is committed and merged to gestiscilo master as a separate slice before the next begins.
+  2. A render-equivalence document per migrated entity shows side-by-side screenshots or HTML diffs of the before and after views, confirming the projection-driven view is functionally equivalent for the primary use case.
+  3. No open branch against gestiscilo has been alive for more than two weeks at any point in the slice series; no ferro API changes are made on master while a gestiscilo migration branch is open.
+  4. A single ferro version is published at the end of the slice series (not mid-series); the ferro version published is the same version all three slices were migrated against.
+  5. A "what the migration revealed" section in the phase verification names at least one real abstraction gap or friction point surfaced by working against a production codebase (e.g. a `ServiceDef` field that had no clean mapping, a renderer output that required a workaround). An empty section fails the phase close.
+
+**Phase-time calibration:** Entity selection (which Browse / Process / Summarize candidates) is resolved at phase planning time by reading gestiscilo `src/models/` and `src/controllers/` for entities with direct `JsonUi::render_file` calls. Do not pre-select now.
+
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 210: COMP-03 — Agent-Success-Rate Harness
+
+**Goal:** Measure whether an agent reading `ferro-mcp` introspection can produce a working projection from a natural-language description. The harness design — 4-tier criteria, ≥3 trials per case, committed baseline — is the substantive deliverable; the agent runs follow.
+
+**Depends on:** Phase 207 (catalog provides ground-truth intent per domain class, which the harness uses for tier-2 intent-coverage checks and to construct the 14 task descriptions).
+
+**Requirements:** COMP-03
+
+**Success Criteria** (what must be TRUE):
+  1. The harness exists at `ferro-mcp/tests/agent_harness.rs`; it drives `ferro-mcp` developer introspection tools (`list_projections`, `generate_projection`, `checkpoint_projection`) via an in-process `rmcp 0.12` `tokio::io::duplex` transport (the proven pattern from `ferro-api-mcp/tests/e2e.rs`) — not `ferro-mcp-server`, not a subprocess, not a new rmcp version.
+  2. Four-tier pass criteria are defined in the harness source code **before any agent run is collected**: (1) structural validity — `ServiceDef` compiles and passes `validate_projection`; (2) intent coverage — primary derived intent matches the NL description's expected intent from the COMP-02 catalog; (3) functional completeness — named actions and guards in the description are present as `ActionDef`/`GuardDef` entries; (4) checkpoint pass — `checkpoint_projection` returns `pass` or `warn`. Each tier is reported separately; no tier is collapsed into a boolean aggregate.
+  3. The corpus spans all seven intents with at least 14 task descriptions (2 per intent); descriptions use generic domain language matching COMP-02 catalog classes (e.g. "a product catalog with name, price, and category") — no gestiscilo-specific descriptions, no descriptions copied verbatim from MCP tool documentation examples.
+  4. Each task runs ≥3 trials; a committed baseline artifact (model version, prompt version, per-tier pass rates per task) is checked into the repository alongside the harness code; all harness tests are marked `#[ignore]` in default CI with a comment explaining that they require a live LLM API key.
+  5. A "discovered weaknesses" section in the phase verification names at least one real finding: a tier or task where pass rates are lower than expected, or a structural pattern the agent consistently gets wrong. An empty section fails the phase close.
+
+**Phase-time calibration:** Success-rate floor threshold (e.g. `assert!(rate >= 0.7)`) is set after a first baseline run, not now. The tier-2 and tier-3 floor thresholds may differ.
+
+**Plans:** TBD
+
+### Phase 211: COMP-04 — Time-to-Working-App Benchmark
+
+**Goal:** Measure `cargo new` → a running service with auth, three entity types, and one background job — producing a committed result document with full environment specification. The cold-cache run is the honest "first-time experience" number; the benchmark apparatus is the permanent artifact.
+
+**Depends on:** Nothing (independent of catalog; benefits from Phase 210 having exercised the agent-assisted path but does not depend on it).
+
+**Requirements:** COMP-04
+
+**Success Criteria** (what must be TRUE):
+  1. A benchmark scaffold exists at `ferro-cli/tests/benchmark_new_project.rs` using criterion 0.8.2 `iter_custom` (`default-features = false, features = ["cargo_bench_support"]`); the benchmark is gated behind a `FERRO_BENCH=1` env var check so it is skipped in default CI and does not create a second target directory on the standard CI disk budget.
+  2. The benchmark measures five steps: `ferro new <tmpdir>` → `ferro make:auth` → `ferro make:model <X>` × 3 → `ferro make:job <Y>` → `cargo build` in tmpdir; each step's wall-clock time is recorded individually; the scaffold compile step asserts exit code 0.
+  3. At least one cold-cache Docker run is executed and its result is committed: a clean container with no pre-installed Rust toolchain and no Cargo cache; the cold-cache time is the number reported in any external documentation.
+  4. A committed Markdown result document specifies: Rust toolchain version, `cargo` cache state (cold/warm), host machine class, agent-assistance level (manual commands vs agent-driven), per-step wall-clock breakdown, and total time. A result without an environment specification is not accepted.
+  5. A "discovered weaknesses" section in the phase verification names at least one real finding: a step that was slower than expected, an unhappy path that was not measured, or a CI-gate decision with a rationale. An empty section fails the phase close.
+
+**Phase-time calibration:** Whether to assert a wall-clock threshold in CI (and at what value) is decided after a first cold-cache run. If CI disk constraints make it infeasible, the benchmark remains a committed manual artifact.
+
+**Plans:** TBD

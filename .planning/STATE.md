@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v12.7
-milestone_name: Passwordless MCP Auth
+milestone: v13.0
+milestone_name: Compressive Validation
 status: executing
-stopped_at: Completed 205-02-PLAN.md
-last_updated: "2026-06-12T05:54:05.835Z"
+stopped_at: Roadmap created — Phase 207 not started
+last_updated: "2026-06-12T00:00:00.000Z"
 last_activity: 2026-06-12
 progress:
-  total_phases: 88
-  completed_phases: 82
+  total_phases: 93
+  completed_phases: 88
   total_plans: 347
   completed_plans: 347
-  percent: 100
+  percent: 0
 ---
 
 # Project State
@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v13.0 Compressive Validation — defining requirements (COMP-01..05, projection/intent validation).
+**Current focus:** v13.0 Compressive Validation — roadmap created; Phase 207 (COMP-02 Synthetic Regression Catalog) is next.
 
 ## Current Position
 
-Milestone: v13.0 Compressive Validation — 🚧 starting (first slice of the Road to v1.0 program)
-Phase: Not started (defining requirements; roadmap will start at 207)
+Milestone: v13.0 Compressive Validation — 🚧 in progress (Phases 207-211)
+Phase: Phase 207 — COMP-02 Synthetic Regression Catalog (not started)
 Plan: —
-Next: Research → requirements → roadmap (in progress via /gsd-new-milestone)
+Next: /gsd-plan-phase 207
 Prior: v12.7 ✅ shipped 2026-06-12 (202-203); 0.2.54 ✅ published to crates.io 2026-06-12 (204/205/206 + json-ui fix); v12.6 ✅ shipped 2026-06-11 (197-200)
-Status: Defining requirements — Milestone v13.0 started
+Status: Roadmap created — awaiting first phase plan
 
-Progress: [░░░░░░░░░░] v13.0 (requirements being defined)
+Progress: [░░░░░░░░░░] v13.0 (0/5 phases complete)
 
 Last activity: 2026-06-12
 Workspace version: 0.2.54
