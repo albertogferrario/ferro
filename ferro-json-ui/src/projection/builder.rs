@@ -106,7 +106,7 @@ impl Spec {
                 .and_then(|t| pick_intent_template(t, &intent_score.intent))
                 .cloned()
                 .unwrap_or_else(|| default_template(&intent_score.intent));
-            build_display_spec(service, &intent_score.intent, &template.display)?
+            build_display_spec(service, &intent_score.intent, &template.display, ctx)?
         };
 
         match catalog.validate(&spec) {
@@ -242,6 +242,7 @@ fn build_display_spec(
     service: &ServiceDef,
     intent: &Intent,
     template: &IntentSlotTemplate,
+    ctx: &VisualContext,
 ) -> Result<Spec, ProjectionError> {
     let layout = template.layout.as_deref().unwrap_or("Card");
 
@@ -255,7 +256,7 @@ fn build_display_spec(
             // Form always carries a required `action` prop (Pitfall 1).
             return build_input_spec(service);
         }
-        "KanbanBoard" => emit_kanban_root(service),
+        "KanbanBoard" => emit_kanban_root(service, ctx),
         "StatCard" => emit_statcard_root(service, &template.slots, &mut aux_elements),
         other => {
             return Err(ProjectionError::UnknownComponent {
@@ -377,20 +378,62 @@ fn emit_card_root(
 }
 
 /// Process root. KanbanBoard emits a single root element with columns in
-/// props — no child elements — so depth stays at 1 (Pitfall 3). Full
-/// state-machine awareness is a deferred idea (see CONTEXT.md); for now we
-/// emit a single placeholder column carrying the service's display name.
-fn emit_kanban_root(service: &ServiceDef) -> ElementBuilder {
-    let placeholder = KanbanColumnProps {
-        id: "default".to_string(),
-        title: resolve_title(service),
-        count: 0,
-        children: Vec::new(),
-    };
+/// props — no child elements — so depth stays at 1 (Pitfall 3).
+///
+/// When `service.state_machine` is present, one `KanbanColumnProps` is
+/// emitted per `StateDef` in declaration order, and `data_path` is set to
+/// `/data/{service.name}/columns` so the renderer binds runtime card counts
+/// and children from handler data. Static `columns` serve as the schema
+/// fallback when `data_path` fails to resolve.
+///
+/// When `state_machine` is `None` a single placeholder column (carrying the
+/// service display name) is emitted with `data_path: None`.
+///
+/// `ctx.current_state` marks the active column as `mobile_default_column`
+/// (Risk 3 option a — `KanbanColumnProps` has no `active` field; this is the
+/// documented approximation for mobile default tab selection).
+fn emit_kanban_root(service: &ServiceDef, ctx: &VisualContext) -> ElementBuilder {
+    let columns: Vec<KanbanColumnProps> = service
+        .state_machine
+        .as_ref()
+        .map(|sm| {
+            sm.states
+                .iter()
+                .map(|s| KanbanColumnProps {
+                    id: s.name.clone(),
+                    title: s.display_name.as_deref().unwrap_or(&s.name).to_string(),
+                    count: 0,
+                    children: Vec::new(),
+                })
+                .collect()
+        })
+        .unwrap_or_else(|| {
+            vec![KanbanColumnProps {
+                id: "default".to_string(),
+                title: resolve_title(service),
+                count: 0,
+                children: Vec::new(),
+            }]
+        });
+
+    // data_path binds runtime column data (counts + card children) when a
+    // state machine is present. Static `columns` are the schema/fallback used
+    // when data_path resolves empty (Pitfall 1). No data_path in the fallback
+    // single-column case.
+    let data_path = service
+        .state_machine
+        .as_ref()
+        .map(|_| format!("/data/{}/columns", service.name));
+
+    // current_state marks the active column on mobile (Risk 3 option a — no
+    // KanbanColumnProps.active field exists; mobile_default_column is the
+    // documented approximation).
+    let mobile_default_column = ctx.current_state.clone();
+
     let props = serde_json::to_value(KanbanBoardProps {
-        columns: vec![placeholder],
-        data_path: None,
-        mobile_default_column: None,
+        columns,
+        data_path,
+        mobile_default_column,
         empty_label: None,
     })
     .expect("KanbanBoardProps serialization cannot fail");
@@ -671,8 +714,6 @@ mod tests {
             .action(ActionDef::new("delete").display_name("Delete"))
     }
 
-    // Reserved for Gap A (kanban state-machine columns) tests in plan 02.
-    #[allow(dead_code)]
     fn service_with_state_machine() -> ServiceDef {
         ServiceDef::new("order")
             .display_name("Order")
@@ -1027,6 +1068,40 @@ mod tests {
             }
             other => panic!("expected IntentIndexOutOfBounds, got {other:?}"),
         }
+    }
+
+    // -- Gap A render tests (TDD RED added in Plan 02 Task 1; GREEN wired below) --
+
+    #[test]
+    fn kanban_root_derives_columns_from_state_machine() {
+        use crate::component::KanbanBoardProps;
+        let service = service_with_state_machine();
+        let ctx = VisualContext::default();
+        let el = emit_kanban_root(&service, &ctx);
+        let built = el.build();
+        let props: KanbanBoardProps =
+            serde_json::from_value(built.props).expect("props decode as KanbanBoardProps");
+        assert_eq!(props.columns.len(), 3);
+        assert_eq!(props.columns[0].id, "draft");
+        assert_eq!(props.columns[0].title, "Draft");
+        assert_eq!(props.columns[1].id, "submitted");
+        assert_eq!(props.columns[1].title, "Submitted");
+        assert_eq!(props.columns[2].id, "done");
+        assert_eq!(props.columns[2].title, "Done");
+        assert_eq!(props.data_path.as_deref(), Some("/data/order/columns"));
+    }
+
+    #[test]
+    fn kanban_root_fallback_when_no_state_machine() {
+        use crate::component::KanbanBoardProps;
+        let service = sample_service(); // no state machine
+        let ctx = VisualContext::default();
+        let el = emit_kanban_root(&service, &ctx);
+        let built = el.build();
+        let props: KanbanBoardProps =
+            serde_json::from_value(built.props).expect("props decode as KanbanBoardProps");
+        assert_eq!(props.columns.len(), 1);
+        assert!(props.data_path.is_none());
     }
 
     // -- Gap B render tests (TDD RED added in Task 1; GREEN wired in Task 2) --
