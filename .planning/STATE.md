@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v13.0
 milestone_name: Compressive Validation
 status: executing
-stopped_at: Completed 209-01-PLAN.md — real_world_slice_a intent fixtures + EQUIV stubs
-last_updated: "2026-06-12T18:35:52.754Z"
-last_activity: 2026-06-12 -- Phase 209 planning complete
+stopped_at: Phase 209 VALIDATED — projection render is content-incomplete (Process placeholder kanban, Summarize empty StatCard values, actions deferred; Browse data-binds). Migrations blocked, gestiscilo probe branches feat/207+feat/208 unmerged. Follow-up scoped: v13.2 Phase 213 (Projection Render Completeness).
+last_updated: "2026-06-12T19:10:00.000Z"
+last_activity: 2026-06-12 -- Phase 209 validated; v13.2/Phase 213 drafted
 progress:
   total_phases: 93
   completed_phases: 84
@@ -20,16 +20,16 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 208 — comp-05-cross-modality-vocabulary-sketch
+**Current focus:** Phase 209 VALIDATED (projection render content-incomplete — see weakness note). Next: v13.2 Phase 213 (Projection Render Completeness) to unblock migration, and/or continue v13.0 (210 agent harness, 211 benchmark).
 
 ## Current Position
 
 Milestone: v13.0 Compressive Validation — 🚧 in progress (Phases 207-211)
-Phase: 209
-Plan: Not started
-Next: /gsd-plan-phase 207
+Phase: 209 — VALIDATED 2026-06-12 (goal met: first real-world validation signal; SC#2/#4/#5 met; SC#1 deliberately not met — render content-incomplete blocks migration)
+Plan: 2/2 executed (validation-only); WEAKNESS-NOTE.md + PUBLISH-DECISION.md filed
+Next: /gsd-discuss-phase 213 (projection render completeness — the unblock) OR /gsd-plan-phase 210 (agent harness, v13.0)
 Prior: v12.7 ✅ shipped 2026-06-12 (202-203); 0.2.54 ✅ published to crates.io 2026-06-12 (204/205/206 + json-ui fix); v12.6 ✅ shipped 2026-06-11 (197-200)
-Status: Ready to execute
+Status: Phase 209 closed (validated with finding)
 
 Progress: [░░░░░░░░░░] v13.0 (0/5 phases complete)
 
