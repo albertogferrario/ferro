@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v12.7
 milestone_name: Passwordless MCP Auth
 status: executing
-stopped_at: Completed Phase 206 (ferro-storage STORAGE_* rename + workspace 0.2.54 — push pending)
-last_updated: "2026-06-12T06:00:00.000Z"
+stopped_at: Completed 205-02-PLAN.md
+last_updated: "2026-06-12T05:54:05.835Z"
 last_activity: 2026-06-12
 progress:
-  total_phases: 87
-  completed_phases: 80
-  total_plans: 346
-  completed_plans: 345
+  total_phases: 88
+  completed_phases: 82
+  total_plans: 347
+  completed_plans: 347
   percent: 100
 ---
 
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Milestone: v12.7 — 🚧 in progress (Phases 202-203)
-Phase: 205 (fix-ferro-mcp-server-tools-call-result-content-blocks-wrap-p) — EXECUTING
-Plan: 3 of 3
+Phase: 206
+Plan: Not started
 Next: Phase 203 (OAuth Device Authorization Grant, RFC 8628) — `/gsd-discuss-phase 203`
 Prior: v12.6 ✅ shipped 2026-06-11 (197-200, dogfood GO); Phase 201 ✅ complete
 Status: Ready to execute
@@ -80,7 +80,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 338
+- Total plans completed: 341
 - Average duration: —
 - Total execution time: —
 
@@ -141,6 +141,7 @@ Progress: [██████████] 100%
 | 200 | 7 | - | - |
 | 203 | 5 | - | - |
 | 204 | 3 | - | - |
+| 205 | 3 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
