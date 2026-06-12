@@ -2725,7 +2725,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 207. COMP-02 Synthetic Regression Catalog | 1/1 | Complete    | 2026-06-12 |
 | 208. COMP-05 Cross-Modality Vocabulary Sketch | 2/2 | Complete    | 2026-06-12 |
-| 209. COMP-01 Slice A Gestiscilo Migration | 0/TBD | Not started | - |
+| 209. COMP-01 Slice A Gestiscilo Migration | 1/2 | In Progress|  |
 | 210. COMP-03 Agent-Success-Rate Harness | 0/TBD | Not started | - |
 | 211. COMP-04 Time-to-Working-App Benchmark | 0/TBD | Not started | - |
 
@@ -2787,8 +2787,8 @@ Plans:
 
 **Phase-time calibration:** Entity selection is RESOLVED (RESEARCH §1): Staff list → Browse, Orders kanban → Process, Statistics dashboard → Summarize. Criteria and backups in RESEARCH §1; full migration spec in `GESTISCILO-MIGRATION-BRIEF.md`.
 
-**Plans:** 2 ferro plans (validation-only — the migration itself is the gestiscilo phase)
-- [ ] 209-01-PLAN.md — ferro abstraction proof: three `derive_intents()` intent-assertion fixtures (staff/order/stats) in `ferro-projections/tests/catalog.rs`; three EQUIV stubs. Autonomous, runs now.
+**Plans:** 1/2 plans executed
+- [x] 209-01-PLAN.md — ferro abstraction proof: three `derive_intents()` intent-assertion fixtures (staff/order/stats) in `ferro-projections/tests/catalog.rs`; three EQUIV stubs. Autonomous, runs now.
 - [ ] 209-02-PLAN.md — evidence + sign-off: fill the three render-equivalence records from the gestiscilo migration outputs (SC#2); synthesize the "what the migration revealed" weakness note (SC#5); record the publish decision (SC#4 / D-06) + branch discipline (SC#1, SC#3). Gated on the external gestiscilo migration phase.
 
 **Gestiscilo migration (separate, in the gestiscilo repo):** see `GESTISCILO-MIGRATION-BRIEF.md` — the `projections` feature flag + three one-per-merge entity migrations, planned/executed in a gestiscilo GSD session.
