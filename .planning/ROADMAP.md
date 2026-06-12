@@ -2723,7 +2723,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 207. COMP-02 Synthetic Regression Catalog | 1/1 | Complete    | 2026-06-12 |
-| 208. COMP-05 Cross-Modality Vocabulary Sketch | 0/TBD | Not started | - |
+| 208. COMP-05 Cross-Modality Vocabulary Sketch | 1/2 | In Progress|  |
 | 209. COMP-01 Slice A Gestiscilo Migration | 0/TBD | Not started | - |
 | 210. COMP-03 Agent-Success-Rate Harness | 0/TBD | Not started | - |
 | 211. COMP-04 Time-to-Working-App Benchmark | 0/TBD | Not started | - |
@@ -2763,8 +2763,8 @@ Plans:
   4. The document includes a "v14.0 implications" section listing specific open questions for Channel Projection scope (e.g. whether `BaseContext` needs a `device_class` field, whether `Track` maps cleanly to voice).
   5. A "discovered weaknesses" note names at least one tension found: a place where the current intent vocabulary requires a workaround or an awkward output to satisfy the sketch. An empty section fails the phase close.
 
-**Plans:** 2 plans
-- [ ] 208-01-PLAN.md — Three pub(crate) sketch renderers (CliSummary/Voice/MobileCard) against the shared Process anchor fixture + smoke tests
+**Plans:** 1/2 plans executed
+- [x] 208-01-PLAN.md — Three pub(crate) sketch renderers (CliSummary/Voice/MobileCard) against the shared Process anchor fixture + smoke tests
 - [ ] 208-02-PLAN.md — Cross-modality analysis document (7x3 matrix, vocabulary tension, v14.0 implications, discovered weaknesses) + intent.rs/derive.rs byte-freeze verification
 
 ### Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)
