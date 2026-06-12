@@ -2785,7 +2785,12 @@ Plans:
 
 **Phase-time calibration:** Entity selection (which Browse / Process / Summarize candidates) is resolved at phase planning time by reading gestiscilo `src/models/` and `src/controllers/` for entities with direct `JsonUi::render_file` calls. Do not pre-select now.
 
-**Plans:** TBD
+**Plans:** 5 plans in 5 sequential waves (entity migrations are strictly one-per-merge — D-03)
+- [ ] 209-01-PLAN.md — Wave 0 prerequisites: enable gestiscilo `projections` feature; three `derive_intents()` intent-assertion fixtures (staff/order/stats) in `catalog.rs`; three EQUIV stubs
+- [ ] 209-02-PLAN.md — Browse: migrate Staff list to ServiceDef+JsonUiRenderer (IntentHint::Primary(Browse)); equivalence record; merge to gestiscilo master
+- [ ] 209-03-PLAN.md — Process: migrate Orders kanban (guarded state machine); equivalence record; merge to gestiscilo master
+- [ ] 209-04-PLAN.md — Summarize: migrate Statistics dashboard (stat cards via projection; SVG chart = abstraction gap); equivalence record; merge to gestiscilo master
+- [ ] 209-05-PLAN.md — Phase close: synthesize "what the migration revealed" weakness note (SC#5); record publish decision (D-06) + branch discipline (SC#3)
 **UI hint**: yes
 
 ### Phase 210: COMP-03 — Agent-Success-Rate Harness
