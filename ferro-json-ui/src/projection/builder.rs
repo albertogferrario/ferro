@@ -18,7 +18,7 @@
 
 use ferro_projections::render::{field_display_name, is_system_field};
 use ferro_projections::{
-    FieldDef, Intent, IntentScore, NavigationHint, RelationshipDef, ServiceDef,
+    FieldDef, FieldMeaning, Intent, IntentScore, NavigationHint, RelationshipDef, ServiceDef,
 };
 use ferro_theme::IntentSlotTemplate;
 
@@ -469,9 +469,28 @@ fn emit_statcard_root(
         }
     }
 
+    // Single primary StatCard bound to the first Money/Quantity readable field
+    // (Risk 1: multi-stat Grid is deferred). value_path binds runtime data via
+    // render_stat_card → resolve_path_string. T-213-06: only readable fields
+    // are eligible; Sensitive/ForeignKey meanings are not Money/Quantity so
+    // they are structurally excluded.
+    let primary_field = service
+        .fields
+        .iter()
+        .find(|f| f.readable && matches!(f.meaning, FieldMeaning::Money | FieldMeaning::Quantity));
+    let (label, value_path) = primary_field
+        .map(|f| {
+            (
+                field_display_name(&f.name),
+                Some(format!("/data/{}/{}", service.name, f.name)),
+            )
+        })
+        .unwrap_or_else(|| (resolve_title(service), None));
+
     let props = serde_json::to_value(StatCardProps {
-        label: resolve_title(service),
+        label,
         value: String::new(),
+        value_path,
         icon: None,
         subtitle: None,
         sse_target: None,
@@ -1136,5 +1155,45 @@ mod tests {
             serde_json::from_value(built.props).expect("props decode as DataTableProps");
         let ra = props.row_actions.expect("row_actions must be populated");
         assert_eq!(ra.len(), service.actions.len());
+    }
+
+    // -- Gap C render tests (TDD RED added here; GREEN wired in Task 2) --
+
+    #[test]
+    fn statcard_root_binds_primary_stat_field() {
+        // Gap C: emit_statcard_root must bind value_path to the primary
+        // Money/Quantity readable field path.
+        use crate::component::StatCardProps;
+        let service = service_with_money_field();
+        let mut aux: Vec<(String, ElementBuilder)> = Vec::new();
+        let el = emit_statcard_root(&service, &[], &mut aux);
+        let built = el.build();
+        let props: StatCardProps =
+            serde_json::from_value(built.props).expect("props decode as StatCardProps");
+        assert_eq!(
+            props.value_path.as_deref(),
+            Some("/data/statistics/total_revenue"),
+            "value_path must bind to the primary Money field path"
+        );
+    }
+
+    #[test]
+    fn statcard_root_empty_when_no_stat_field() {
+        // Gap C: a service with no Money/Quantity readable field must emit
+        // a StatCard with value_path None (no data binding).
+        use crate::component::StatCardProps;
+        let service = ServiceDef::new("note")
+            .display_name("Note")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("body", DataType::String, FieldMeaning::FreeText);
+        let mut aux: Vec<(String, ElementBuilder)> = Vec::new();
+        let el = emit_statcard_root(&service, &[], &mut aux);
+        let built = el.build();
+        let props: StatCardProps =
+            serde_json::from_value(built.props).expect("props decode as StatCardProps");
+        assert!(
+            props.value_path.is_none(),
+            "value_path must be None when no Money/Quantity field exists"
+        );
     }
 }
