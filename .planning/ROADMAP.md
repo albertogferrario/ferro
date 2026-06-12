@@ -63,6 +63,7 @@
 - 📋 **v12.3 Deployment Platform Primitives** — Phases 185-188 (planned 2026-06-07). Source: gestiscilo-it v7.1 Tenant Frontend Platform (locked design at gestiscilo `.planning/research/v7.1-ARCHITECTURE.md`, D-01..D-06). Four generic primitives, each paired 1:1 with a gestiscilo consumer phase that bumps the published crate (185 ↔ gestiscilo 188, 186 ↔ gestiscilo 188, 187 ↔ gestiscilo 189, 188 ↔ gestiscilo 190). (185) `ferro::queue` — DB-backed job queue replacing the Redis-only ferro-queue backend: `Job` trait, `WorkerLoop` in `ferro serve`, atomic claim (Postgres `FOR UPDATE SKIP LOCKED` / SQLite `BEGIN IMMEDIATE` + `UPDATE…RETURNING`), retry/backoff, stuck-job reaper; (186) `ferro-deployments` new crate — immutable `Deployment` model, `DeploymentStorage` trait, atomic `promote`/`rollback`, `preview_url` helper, artifact-shape agnostic; (187) `ferro-assets` new crate — `Pipeline` composer with content-type-aware transforms: `html_minify` (lol_html), `css_minify` (lightningcss), `js_minify` (swc_ecma_minifier), `image_transcode` (pure-Rust `image`+`ravif`, AVIF+JPEG responsive variants — libvips rejected for thread-safety), `inject_before_tag`; (188) `ferro-storage` extension — `cdn_url()`, `PurgeApi` trait, DO Spaces CDN adapter (feature-flagged Bunny/Cloudflare). Primitives stay consumer-agnostic: static HTML sites, JSON-UI spec bundles, and Inertia SSR manifests all fit the deployment abstraction. See "v12.3 Deployment Platform Primitives" phase details at the end of this file.
 - 🚧 **v13.0 Compressive Validation** — Phases 207-211 (started 2026-06-12). First slice of the Road to v1.0 program: empirical validation of the projection/intent abstraction across five COMP items. COMP-02 synthetic regression catalog (Phase 207), COMP-05 cross-modality vocabulary sketch (Phase 208), COMP-01 gestiscilo migration Slice A (Phase 209), COMP-03 agent-success-rate harness (Phase 210), COMP-04 time-to-working-app benchmark (Phase 211). Targets v1.0 criterion #2 (projection/intent validated through real applications and a synthetic catalog) and the compressive beauty dimension (priority #1).
 - 📋 **v13.1 CRUD Handler Proc Macros** — Phase 212 (scoped 2026-06-12). Framework-ergonomics feature driven by the gestiscilo Phase 202 duplication survey: two route-attribute proc macros (`#[resource_get]`, `#[resource_post]`) that fold the recurring tenant-resolve + typed-param + tenant-scoped-lookup + 404-dispatch prelude (repeated 200+ times in a single consumer) into a macro, plus a `Validator::validate_or_redirect` helper. Scoped to ferro's framework-product axis, not one consumer's LoC. Originally mis-numbered 209 by the cross-repo gestiscilo evidence pass; relocated here to keep v13.0 purely Compressive Validation. Phase scope at `phases/212-crud-handler-proc-macros/212-CONTEXT.md`.
+- 📋 **v13.2 Projection Render Completeness** — Phase 213 (scoped 2026-06-12 from the COMP-01 Slice A findings). Make `JsonUiRenderer`'s projection render *content-complete* so real-world views actually migrate. Phase 209 confirmed the render is layout-complete but content-incomplete: Browse data-binds, but Process emits a placeholder kanban (`emit_kanban_root`, "state-machine awareness is a deferred idea"), Summarize emits empty StatCard values (`emit_statcard_root`, `value: String::new()`), the `actions` slot is an empty stub for every intent (`emit_actions_placeholder`, "Deferred to Phase 118+"), `ImageUrl` fields don't render in tables, and projections emit a standalone spec with no app-shell layout. This is the unblock for all future projection migration. Scope at `phases/213-projection-render-completeness/213-CONTEXT.md` (to be created). Depends on Phase 209 (the validation that scoped it).
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
 
 ---
@@ -2717,7 +2718,7 @@ Plans:
 
 - [x] **Phase 207: COMP-02 — Synthetic Regression Catalog** — `ferro-projections/tests/catalog.rs`; 7 canonical `ServiceDef` builders; structural-invariant assertions (not byte snapshots); `proptest` invariants; adversarial fixture per intent; `insta` snapshots only for named canonical shapes. (completed 2026-06-12)
 - [x] **Phase 208: COMP-05 — Cross-Modality Vocabulary Sketch** — Three `pub(crate)` sketch renderers in `ferro-projections/src/render/`; written analysis covering all 7 intents across 3 non-visual modalities; at least one vocabulary gap identified; zero changes to `intent.rs` or `derive.rs`. (completed 2026-06-12)
-- [ ] **Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)** — 3 gestiscilo entities migrated one-per-merge to projection-driven rendering; render equivalence documented; single ferro publish at slice end; "what the migration revealed" weakness note. Depends on Phase 207.
+- [x] **Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)** — VALIDATED 2026-06-12. Goal (first real-world validation signal) achieved decisively; SC#2/#4/#5 met. SC#1 (migrate+merge 3 entities) deliberately NOT met — the validation found the projection render is content-incomplete (Process placeholder kanban, Summarize empty values, actions deferred), so no entity reached merge-worthy parity; both probe branches left unmerged. Browse (Staff) is data-bound and works. Finding → v13.2 Phase 213. Depends on Phase 207.
 - [ ] **Phase 210: COMP-03 — Agent-Success-Rate Harness** — `ferro-mcp/tests/agent_harness.rs`; 14+ tasks (2 per intent); 4-tier pass criteria defined before any agent run; ≥3 trials per case; `rmcp 0.12` in-process transport; committed baseline artifact (model version, prompt version, per-tier pass rates). Depends on Phase 207.
 - [ ] **Phase 211: COMP-04 — Time-to-Working-App Benchmark** — `ferro-cli/tests/benchmark_new_project.rs`; criterion 0.8.2 `iter_custom` scaffold timing; `FERRO_BENCH=1` gate; at least one cold-cache Docker run; committed Markdown result document with start/end conditions and per-step breakdown.
 
@@ -2787,11 +2788,13 @@ Plans:
 
 **Phase-time calibration:** Entity selection is RESOLVED (RESEARCH §1): Staff list → Browse, Orders kanban → Process, Statistics dashboard → Summarize. Criteria and backups in RESEARCH §1; full migration spec in `GESTISCILO-MIGRATION-BRIEF.md`.
 
-**Plans:** 1/2 plans executed
-- [x] 209-01-PLAN.md — ferro abstraction proof: three `derive_intents()` intent-assertion fixtures (staff/order/stats) in `ferro-projections/tests/catalog.rs`; three EQUIV stubs. Autonomous, runs now.
-- [ ] 209-02-PLAN.md — evidence + sign-off: fill the three render-equivalence records from the gestiscilo migration outputs (SC#2); synthesize the "what the migration revealed" weakness note (SC#5); record the publish decision (SC#4 / D-06) + branch discipline (SC#1, SC#3). Gated on the external gestiscilo migration phase.
+**Plans:** 2/2 executed
+- [x] 209-01-PLAN.md — ferro abstraction proof: three `derive_intents()` intent-assertion fixtures (staff/order/stats) in `ferro-projections/tests/catalog.rs`; three EQUIV stubs. DONE (tests green).
+- [x] 209-02-PLAN.md — evidence + sign-off: EQUIV records filled from the Orders + Staff probe migrations + Stats source-assessment (SC#2); WEAKNESS-NOTE.md (SC#5, Gaps A–E); PUBLISH-DECISION.md (Path A, no publish, SC#4/D-06). DONE.
 
-**Gestiscilo migration (separate, in the gestiscilo repo):** see `GESTISCILO-MIGRATION-BRIEF.md` — the `projections` feature flag + three one-per-merge entity migrations, planned/executed in a gestiscilo GSD session.
+**Outcome (VALIDATED):** The projection abstraction derives intent and selects layout correctly for all three intents, but the render is **content-incomplete** at 0.2.54: Browse data-binds (Staff table works — `screenshots/after-staff-208-rows.png`), Process emits a placeholder kanban (Orders — `screenshots/after-orders-207.png`), Summarize emits empty StatCard values (Stats, source-confirmed), and the actions slot is deferred for every intent. Root cause in `ferro-json-ui/src/projection/builder.rs`. No entity reached merge-worthy parity → migrations blocked, both probe branches left unmerged. Follow-up: **v13.2 Phase 213 (Projection Render Completeness)**.
+
+**Gestiscilo migration (separate, in the gestiscilo repo):** roadmap phases 207–209 added there; spec is `GESTISCILO-MIGRATION-BRIEF.md`. Orders (207) + Staff (208) probed on branches `feat/207`/`feat/208`; both blocked on the ferro render gap above and preserved unmerged for re-verification after Phase 213.
 **UI hint**: yes
 
 ### Phase 210: COMP-03 — Agent-Success-Rate Harness
@@ -2863,3 +2866,39 @@ Plans:
 **Status:** Scoped — `/gsd-discuss-phase 212` to lock the seven open design questions, then plan-phase.
 
 **Plans:** TBD
+
+## 📋 v13.2 Projection Render Completeness (Phase 213, scoped 2026-06-12)
+
+**Milestone Goal:** Make the projection render content-complete. COMP-01 Slice A (Phase 209) was the first real-world migration of gestiscilo views to `ServiceDef` + `JsonUiRenderer` and it returned a precise, source-confirmed verdict: the projection pipeline is **layout-complete but content-incomplete**. Intent derivation and layout selection work across all seven intents; the gap is one level down, in `ferro-json-ui/src/projection/builder.rs`, where several content emitters are deliberate placeholders. This milestone closes those gaps so that migrating a real view to a projection produces a usable page, not a skeleton. It is the direct unblock for every future projection migration and the prerequisite for resuming gestiscilo Slice A.
+
+**Source:** Phase 209 `phases/209-comp-01-slice-a-gestiscilo-migration/WEAKNESS-NOTE.md` (Gaps A–E), with live evidence (`screenshots/after-orders-207.png` placeholder kanban; `screenshots/after-staff-208-rows.png` working Browse table) and the two unmerged probe branches in the gestiscilo repo (`feat/207-orders-projection-migration`, `feat/208-staff-projection-migration`) preserved for re-verification.
+
+#### Phases
+
+- [ ] **Phase 213: Projection Render Completeness** — content binding for the projection builder: state-machine→kanban column derivation + card binding (`emit_kanban_root`), StatCard value binding (`emit_statcard_root`), action-slot wiring from `ServiceDef` actions (`emit_actions_placeholder`), `ImageUrl` column rendering, and an app-shell/layout context. May split into per-gap phases at planning time. Depends on Phase 209.
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 213. Projection Render Completeness | 0/TBD | Scoped (discuss-phase needed) | - |
+
+#### Phase Details
+
+### Phase 213: Projection Render Completeness
+
+**Goal:** Close the content-binding gaps that Phase 209 surfaced so that Process, Summarize, and action-bearing views render usably from a `ServiceDef`, not as placeholders. Today (ferro 0.2.54) only Browse/DataTable is data-bound; the rest of the projection content emitters in `ferro-json-ui/src/projection/builder.rs` are intentional stubs.
+
+**Depends on:** Phase 209 (COMP-01 Slice A — the validation that scoped this; its WEAKNESS-NOTE.md is the requirements source).
+
+**Requirements:** TBD (projection/intent core; derived from Phase 209 Gaps A–E)
+
+**Success Criteria** (what must be TRUE) — draft, to refine in discuss-phase:
+  1. Process render derives kanban columns from the `ServiceDef` state machine and binds card data — `emit_kanban_root` is no longer a single placeholder column. The gestiscilo `feat/207` branch's Orders kanban renders its columns + cards.
+  2. Summarize render binds StatCard values to runtime data — `emit_statcard_root` no longer emits `value: String::new()`.
+  3. The `actions` slot emits action elements (Button/DropdownMenu) from `ServiceDef` actions — `emit_actions_placeholder` is replaced. The gestiscilo `feat/208` Staff table regains row actions.
+  4. `ImageUrl` fields render in a Browse `DataTable` (as an image column), or the exclusion is a documented, intentional contract.
+  5. A layout/app-shell context lets a projection render inside surrounding chrome, or a documented composition pattern covers it.
+  6. Re-verification: the two preserved gestiscilo probe branches reach functional parity for their primary use case under the matured renderer.
+
+**Provenance:** Scoped from Phase 209 findings. The migration code already exists on the two gestiscilo probe branches; this phase makes the renderer worthy of merging them.
+
+**Plans:** TBD — `/gsd-discuss-phase 213` to scope (likely splits per gap).
