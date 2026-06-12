@@ -1,13 +1,14 @@
 // Run with: cargo test -p ferro-storage --features s3-tests -- --test-threads=1
 //
-// Requires environment variables:
-//   AWS_ACCESS_KEY_ID
-//   AWS_SECRET_ACCESS_KEY
-//   AWS_BUCKET
-//   AWS_DEFAULT_REGION (default: us-east-1)
-//   AWS_URL (optional, for DigitalOcean Spaces / MinIO)
+// Requires environment variables (Phase 206 provider-agnostic naming;
+// AWS_* aliases still accepted with a deprecation warning):
+//   STORAGE_ACCESS_KEY_ID   (alias: AWS_ACCESS_KEY_ID)
+//   STORAGE_SECRET_KEY      (alias: AWS_SECRET_ACCESS_KEY)
+//   STORAGE_BUCKET          (alias: AWS_BUCKET)
+//   STORAGE_REGION          (alias: AWS_DEFAULT_REGION, default: us-east-1)
+//   STORAGE_ENDPOINT        (alias: AWS_URL — optional, for DigitalOcean Spaces / MinIO)
 //
-// Tests are skipped (not failed) when AWS_BUCKET is not set.
+// Tests are skipped (not failed) when neither STORAGE_BUCKET nor AWS_BUCKET is set.
 #![cfg(feature = "s3-tests")]
 
 use bytes::Bytes;
@@ -21,8 +22,8 @@ fn setup() -> Storage {
 
 /// Return the S3 disk, or `None` if env vars are not configured (skips the test).
 fn s3_disk_or_skip() -> Option<Disk> {
-    if std::env::var("AWS_BUCKET").is_err() {
-        eprintln!("Skipping S3 integration test: AWS_BUCKET not set");
+    if std::env::var("STORAGE_BUCKET").is_err() && std::env::var("AWS_BUCKET").is_err() {
+        eprintln!("Skipping S3 integration test: neither STORAGE_BUCKET nor AWS_BUCKET set");
         return None;
     }
     let storage = setup();
@@ -124,7 +125,9 @@ async fn test_url() {
     };
 
     let path = "integration-test/url-test.txt";
-    let bucket = std::env::var("AWS_BUCKET").unwrap_or_default();
+    let bucket = std::env::var("STORAGE_BUCKET")
+        .or_else(|_| std::env::var("AWS_BUCKET"))
+        .unwrap_or_default();
 
     disk.put(path, Bytes::from("url test")).await.unwrap();
 
@@ -132,7 +135,9 @@ async fn test_url() {
     assert!(!url.is_empty());
 
     // URL must contain either the bucket name or a configured url_base host
-    let url_base = std::env::var("AWS_URL").unwrap_or_default();
+    let url_base = std::env::var("STORAGE_ENDPOINT")
+        .or_else(|_| std::env::var("AWS_URL"))
+        .unwrap_or_default();
     if url_base.is_empty() {
         assert!(
             url.contains(&bucket),

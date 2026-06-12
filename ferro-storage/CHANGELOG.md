@@ -3,6 +3,42 @@
 All notable changes to `ferro-storage` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.2.54] - 2026-06-12
+
+### Changed
+
+- `StorageConfig::from_env` and `S3Driver::new` and the facade's S3 endpoint
+  read now source the six S3-style env vars through `env_with_fallback` —
+  `STORAGE_BUCKET` / `STORAGE_REGION` / `STORAGE_ENDPOINT` / `STORAGE_PUBLIC_URL`
+  / `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_KEY` are read primary; the
+  pre-0.2.54 `AWS_*` names continue to work for one release as deprecated
+  aliases emitting a `tracing::warn!` on first use.
+- `env_with_fallback` hoisted from `cdn::mod` private fn to crate-level
+  `env_helpers` so the same deprecation cushion applies uniformly across CDN,
+  config, drivers, and facade.
+
+### Deprecated
+
+The following environment variables are deprecated and will be removed in a future
+release. They remain as fallbacks for one release. Migrate to the provider-agnostic
+names above.
+
+| Deprecated var | Replacement | Notes |
+|---|---|---|
+| `AWS_ACCESS_KEY_ID` | `STORAGE_ACCESS_KEY_ID` | S3 access key |
+| `AWS_SECRET_ACCESS_KEY` | `STORAGE_SECRET_KEY` | S3 secret key |
+| `AWS_DEFAULT_REGION` | `STORAGE_REGION` | S3 region (default: `us-east-1`) |
+| `AWS_BUCKET` | `STORAGE_BUCKET` | bucket name; registers the `s3` disk when set |
+| `AWS_URL` | `STORAGE_ENDPOINT` | S3 API endpoint (for non-AWS S3-compatible backends) |
+| `AWS_PUBLIC_URL` | `STORAGE_PUBLIC_URL` | public URL base for generated file URLs |
+
+### Notes
+
+The rename makes the env-var surface match what ferro-storage already abstracts:
+the `s3` driver targets *any* S3-compatible backend (DO Spaces, Wasabi, R2,
+Backblaze B2, MinIO), so `STORAGE_*` is honest about the role while `FILESYSTEM_DISK`
+selects the driver. AWS-specific naming was a historical artifact, not a contract.
+
 ## [0.2.53] - 2026-06-11
 
 ### Added
