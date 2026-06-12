@@ -774,7 +774,12 @@ use ferro_projections::derive_intents;
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Both items are calibration-time observations, not design blockers. The plan closes them during
+> execution: Q1 via Task 2 Step 1b (assumption validation — adjust the Analyze *fixture*, never
+> `derive.rs`) and the two-step floor/margin calibration; Q2 via the plan pinning 256 cases with an
+> explicit reduce-to-128 fallback if the proptest exceeds the time budget.
 
 1. **Analyze fixture confidence margin over Summarize**
    - What we know: Analyze raw = 0.35 flat, Summarize raw = 0.3 × 1 Money = 0.30 (without mostly_read_only)
