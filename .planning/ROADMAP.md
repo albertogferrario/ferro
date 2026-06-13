@@ -3067,7 +3067,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 |-------|----------------|--------|-----------|
 | 217. Tenant Context + Per-Tenant API-Key Auth | 4/4 | Complete    | 2026-06-13 |
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
-| 219. Write Dispatch | 3/3 | Complete   | 2026-06-13 |
+| 219. Write Dispatch | 3/3 | Complete    | 2026-06-13 |
 | 220. Confirmation Gating for Destructive Actions | 0/TBD | Not started | - |
 | 221. Inbound NL Intent Loop | 0/TBD | Not started | - |
 

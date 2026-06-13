@@ -55,7 +55,7 @@ This plan wired the `app` sample application to the `dispatch_write` pipeline es
 - Implemented `check_is_manager(tenant_id, db)` — live SQL COUNT against `users` table; Postgres / SQLite backend dispatch via `ConnectionTrait::get_database_backend()`.
 - Implemented `make_write_dispatcher() -> WriteDispatcher`:
   - executor: parses `id` from inputs, calls `Entity::find_by_id(id).filter(Column::TenantId.eq(tenant_id))` (inlining the TenantScoped logic for direct db arg plumbing), returns denial error on `None`, otherwise applies submit/approve/ship state transition via SeaORM `ActiveModel`, records ferro-audit entry via `AuditEntry::record(...).write(db)`, stores idempotency key via `store_idempotency(...)`.
-  - guard_evaluator: `"is_manager"` → `check_is_manager(tenant_id, db)`; default → `Ok(true)`.
+  - guard_evaluator: `"is_manager"` → `check_is_manager(tenant_id, db)`; unknown guard → `Err(GuardFailed(...))` (fail-closed, per code-review fix CR-02 commit `127c3ada` — an earlier draft defaulted to `Ok(true)`, the fail-open bug the review caught).
 - Repaired the `handle_tools_call` call site (broken by Plan 01's new `dispatcher` param): `let dispatcher = make_write_dispatcher();` + passes `&dispatcher` as 6th arg.
 - Fixed `mcp_tenant_isolation.rs` (existing test file also calling `handle_tools_call`): added `noop_dispatcher()` helper returning a no-op `WriteDispatcher` and passed it at both call sites.
 
