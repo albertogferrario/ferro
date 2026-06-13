@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use ferro_projections::render::Renderer;
@@ -101,17 +101,26 @@ pub fn render_exposed_tools(
 /// and renaming — they are already unique per service (D-01 / ARCHITECTURE Decision (b)).
 fn disambiguate_write_tool_collisions(tagged: &mut [(String, Tool)]) {
     // Count how many distinct services each write tool name appears in.
-    let mut name_count: HashMap<String, usize> = HashMap::new();
-    for (_, tool) in tagged.iter() {
+    let mut name_to_services: HashMap<String, HashSet<String>> = HashMap::new();
+    for (service_name, tool) in tagged.iter() {
         if !tool.name.starts_with("list_") {
-            *name_count.entry(tool.name.to_string()).or_insert(0) += 1;
+            name_to_services
+                .entry(tool.name.to_string())
+                .or_default()
+                .insert(service_name.clone());
         }
     }
 
     // Rename colliding write tools: <action.name>_on_<service.name>.
+    // Only rename when the name appears in MORE THAN ONE distinct service —
+    // intra-service duplicate action names are an authoring error, not a
+    // cross-service collision, and cannot be disambiguated by this pass.
     for (service_name, tool) in tagged.iter_mut() {
         if !tool.name.starts_with("list_")
-            && name_count.get(tool.name.as_ref()).copied().unwrap_or(0) > 1
+            && name_to_services
+                .get(tool.name.as_ref())
+                .map_or(0, |s| s.len())
+                > 1
         {
             let new_name = format!("{}_on_{}", tool.name, service_name);
             tool.name = new_name.into();
@@ -449,6 +458,67 @@ mod tests {
         assert!(
             tools.iter().any(|t| t.name.as_ref() == "submit_order"),
             "submit_order must be present when guard key is absent"
+        );
+    }
+
+    /// WR-01 regression: cross-service collision renames both tools;
+    /// non-colliding tools from the same services are left untouched.
+    #[test]
+    fn test_collision_rename_across_services() {
+        let svc_invoice = ServiceDef::new("invoice")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .action(ActionDef::new("approve"));
+
+        let svc_refund = ServiceDef::new("refund")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .action(ActionDef::new("approve"))
+            .action(ActionDef::new("cancel")); // non-colliding, must not be renamed
+
+        let tools = render_exposed_tools(&[svc_invoice, svc_refund], &McpContext::default())
+            .expect("render ok");
+
+        let names: Vec<&str> = tools.iter().map(|t| t.name.as_ref()).collect();
+        assert!(
+            names.contains(&"approve_on_invoice"),
+            "invoice approve must be renamed; got: {names:?}"
+        );
+        assert!(
+            names.contains(&"approve_on_refund"),
+            "refund approve must be renamed; got: {names:?}"
+        );
+        assert!(
+            !names.contains(&"approve"),
+            "bare 'approve' must not appear after rename; got: {names:?}"
+        );
+        assert!(
+            names.contains(&"cancel"),
+            "non-colliding 'cancel' must not be renamed; got: {names:?}"
+        );
+    }
+
+    /// WR-01 regression: intra-service duplicate action names (authoring error)
+    /// are NOT renamed by the cross-service pass — one distinct service means
+    /// no cross-service collision by definition.
+    #[test]
+    fn test_intra_service_duplicate_not_renamed() {
+        // Two actions with the same name in ONE service — malformed projection,
+        // but the collision pass must not touch them (can't disambiguate).
+        let svc = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .action(ActionDef::new("submit"))
+            .action(ActionDef::new("submit")); // duplicate within same service
+
+        let tools = render_exposed_tools(&[svc], &McpContext::default()).expect("render ok");
+
+        let submit_count = tools.iter().filter(|t| t.name.as_ref() == "submit").count();
+        assert_eq!(
+            submit_count,
+            2,
+            "intra-service duplicates must remain unrenamed (both keep bare 'submit'); got: {:?}",
+            tools.iter().map(|t| t.name.as_ref()).collect::<Vec<_>>()
         );
     }
 }
