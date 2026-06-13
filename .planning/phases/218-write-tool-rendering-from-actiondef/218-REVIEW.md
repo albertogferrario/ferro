@@ -1,6 +1,6 @@
 ---
 phase: 218-write-tool-rendering-from-actiondef
-reviewed: 2026-06-13T00:00:00Z
+reviewed: 2026-06-13T23:30:00Z
 depth: standard
 files_reviewed: 4
 files_reviewed_list:
@@ -10,145 +10,82 @@ files_reviewed_list:
   - app/src/tests/mcp_tenant_isolation.rs
 findings:
   critical: 0
-  warning: 1
-  info: 3
-  total: 4
+  warning: 0
+  info: 2
+  total: 2
 status: issues_found
 ---
 
-# Phase 218: Code Review Report
+# Phase 218: Code Review Report (Re-Review)
 
-**Reviewed:** 2026-06-13
+**Reviewed:** 2026-06-13T23:30:00Z
 **Depth:** standard
 **Files Reviewed:** 4
 **Status:** issues_found
 
 ## Summary
 
-Phase 218 adds `build_action_input_schema`, the write-tool emission loop in `render_exposed_tools`, the `render_action_tool` function, and the `disambiguate_write_tool_collisions` pass. The overall architecture is correct: `data_type_to_json_schema` is promoted and shared (single source of truth confirmed), `FieldMeaning::Sensitive` is excluded from both `properties` and `required[]` (T-218-01 confirmed), the guard filter is explicitly documented as a visibility-only pass (T-218-02 confirmed), and `handle_tools_call` correctly returns `-32601` for write-tool calls in Phase 218 with no executor. The `idempotentHint` annotation is correctly absent.
+Re-review following commit 52232d5d (WR-01 fix). All four files were read in full.
 
-One warning: the collision-counter logic counts total tool occurrences rather than distinct services, which diverges from what the doc comment states and would misfire on an intra-service duplicate action name.
+**WR-01 confirmed fixed.** `disambiguate_write_tool_collisions` now uses `HashMap<String, HashSet<String>>` to accumulate distinct service names per action name. The rename fires only when `s.len() > 1`, i.e., when the name spans more than one distinct service. Intra-service duplicates (one distinct service) are left untouched. `list_*` tools are excluded from both the counting pass and the rename pass. The implementation matches the doc comment. No new clippy footguns: `or_default()` is idiomatic, `map_or(0, |s| s.len())` is correct.
 
-## Warnings
+**IN-03 confirmed fixed.** Two regression tests were added in the same commit: `test_collision_rename_across_services` verifies cross-service rename and non-rename of non-colliding tools; `test_intra_service_duplicate_not_renamed` verifies intra-service duplicates are untouched. Both tests exercise the paths described by the fix and are structurally sound.
 
-### WR-01: Collision counter counts total occurrences, not distinct services
+**Remaining findings from the prior review:**
 
-**File:** `ferro-mcp-server/src/renderer.rs:103-108`
+- IN-01 (scope rejection uses -32603) is unchanged. The code path is present and the issue is real but minor.
+- IN-02 (doc comment on `handle_tools_call` omits write-tool behavior) is unchanged. The inline comment at line 62–65 still explains the behavior, but the top-level doc does not.
 
-**Issue:** The function doc comment says "Count how many distinct services each write tool name appears in," but the implementation increments a single counter for every tool with that name regardless of which service emitted it. If one service had two `ActionDef`s with the same `name` (a data-model error, but not prevented by `ActionDef`'s API), the counter would reach 2 and both would be renamed to `<name>_on_<service>` as if they were a cross-service collision. The rename would be correct by coincidence, but the intent does not match the code. More importantly, a reader auditing the rename logic against the comment would conclude the logic is correct without noticing the gap.
+All critical and security focus areas are clean:
 
-**Fix:** Either align the code to the comment (count distinct service names per action name) or align the comment to the code (remove "distinct services" language):
-
-Option A — align code to comment (strict correctness):
-```rust
-// Count how many distinct services each write tool name appears in.
-let mut name_to_services: HashMap<String, std::collections::HashSet<String>> = HashMap::new();
-for (service_name, tool) in tagged.iter() {
-    if !tool.name.starts_with("list_") {
-        name_to_services
-            .entry(tool.name.to_string())
-            .or_default()
-            .insert(service_name.clone());
-    }
-}
-
-for (service_name, tool) in tagged.iter_mut() {
-    if !tool.name.starts_with("list_")
-        && name_to_services
-            .get(tool.name.as_ref())
-            .map_or(0, |s| s.len())
-            > 1
-    {
-        let new_name = format!("{}_on_{}", tool.name, service_name);
-        tool.name = new_name.into();
-    }
-}
-```
-
-Option B — align comment to code (acceptable if duplicate intra-service names are treated as equivalent to cross-service collisions):
-```rust
-// Count how many times each write tool name appears across all services.
-// A count > 1 means the name would be ambiguous in tools/list, regardless
-// of whether the duplicates come from one service or multiple.
-```
+- `build_action_input_schema` reuses `pub(crate) data_type_to_json_schema` — single source of truth confirmed.
+- `FieldMeaning::Identifier` injection is present and correct; no-Identifier case silently skips (documented, tested at `test_action_schema_no_identifier_field_is_silent_noop`).
+- `FieldMeaning::Sensitive` excluded from both `properties` and `required[]` (T-218-01, tested at `test_action_schema_excludes_sensitive_input`).
+- Guard filter is VISIBILITY-only, explicitly documented in `render_action_tool` doc comment (T-218-02).
+- `read_only(false)` set on all write tools; `destructive` tied to `action.transition_trigger.is_some()` (D-04).
+- `idempotent_hint` is correctly absent.
+- `handle_tools_call` returns -32601 for write-tool calls in Phase 218 — correct for no-executor state, documented inline.
+- No bare `.unwrap()` in production code paths (only in test helpers, which is acceptable).
 
 ## Info
 
-### IN-01: Scope-rejection uses -32603 (internal error) for an auth/permission failure
+### IN-01: Scope-rejection returns -32603 (internal error) for an auth-scope failure
 
-**File:** `ferro-mcp-server/src/jsonrpc.rs:74-82`
-
-**Issue:** When a read-scoped key calls a write tool, the function returns error code `-32603` (JSON-RPC Internal Error). `-32603` conventionally signals a server-side crash or unexpected state. A scope-gate failure is a predictable auth condition; returning `-32603` conflates it with server errors and makes client-side error handling harder.
-
-**Fix:** The MCP spec does not define an `Unauthorized` code, but `-32600` (Invalid Request) or `-32601` (Method not found / not permitted) are both closer to the semantics than `-32603`. Alternatively, define a crate-level constant and document the choice:
+**File:** `ferro-mcp-server/src/jsonrpc.rs:74`
+**Issue:** When a read-scoped key calls a write tool, the error code is `-32603` (Internal Error). That code conventionally signals a server-side crash or unexpected state. A predictable scope-gate failure returning `-32603` conflates auth errors with server errors, making client-side error handling harder.
+**Fix:** Use `-32600` (Invalid Request) or a documented crate-level constant instead:
 ```rust
-// MCP has no dedicated auth code; use -32600 (Invalid Request) for scope
-// failures so clients can distinguish auth errors from server crashes (-32603).
-const ERR_SCOPE: i64 = -32600;
-
+// MCP has no dedicated auth code; -32600 (Invalid Request) is closer than
+// -32603 (Internal Error) for a predictable scope failure.
 return json!({
     "error": {
-        "code": ERR_SCOPE,
+        "code": -32600,
         "message": "scope insufficient: read key cannot call write tools"
     }
 });
 ```
 
-### IN-02: `handle_tools_call` top-level doc comment omits write-tool behavior
+### IN-02: Top-level doc comment on `handle_tools_call` omits write-tool behavior
 
 **File:** `ferro-mcp-server/src/jsonrpc.rs:47-53`
-
-**Issue:** The doc comment describes only the read-tool path ("Strips the `list_` prefix from `name` to find the `ServiceDef`"). It does not mention that write-tool names (no `list_` prefix) fall through to the service lookup as the action name, fail to find a service match, and return `-32601`. The Phase 218 intent is explained by the in-line comment at line 62-65, but the top-level doc is misleading to a reader who starts there.
-
-**Fix:**
+**Issue:** The doc comment describes only the read-tool path ("Strips the `list_` prefix from `name` to find the `ServiceDef`"). It does not mention that write-tool calls fall through the service lookup to -32601. A reader starting from the doc comment gets an incomplete picture; the behavior is only explained by the inline comment at line 62-65.
+**Fix:** Extend the doc comment:
 ```rust
 /// Handle an MCP `tools/call` request.
 ///
 /// For read tools (`list_<svc>`): strips the `"list_"` prefix to find the `ServiceDef`,
-/// then delegates to `dispatch`.
+/// then delegates to `dispatch`. Pagination keys are removed from `arguments` before
+/// passing the remainder as filters.
 ///
 /// For write tools (Phase 218): no executor exists yet. The service lookup finds no service
 /// whose `.name` equals the action name, so this returns `-32601 Method not found`.
 /// Write-tool dispatch is implemented in Phase 219.
 ///
-/// Pagination keys are removed from `arguments` before passing the remainder as filters.
 /// The filter-key allowlist and limit clamp live in `dispatch` (Phase 197 WR-01/WR-02).
-```
-
-### IN-03: No direct unit test for cross-service collision rename
-
-**File:** `ferro-mcp-server/src/renderer.rs`
-
-**Issue:** `disambiguate_write_tool_collisions` is tested indirectly through the single-service fixture tests (which never trigger a rename). There is no test verifying that two services each declaring an action with the same name produce correctly renamed tools (`<name>_on_<service_a>`, `<name>_on_<service_b>`), and that non-colliding tools from those same services are left untouched.
-
-**Fix:** Add a unit test:
-```rust
-#[test]
-fn test_collision_rename_across_services() {
-    let svc_a = ServiceDef::new("invoice")
-        .mcp_exposed(true)
-        .field("id", DataType::Integer, FieldMeaning::Identifier)
-        .action(ActionDef::new("approve"));
-
-    let svc_b = ServiceDef::new("refund")
-        .mcp_exposed(true)
-        .field("id", DataType::Integer, FieldMeaning::Identifier)
-        .action(ActionDef::new("approve"))
-        .action(ActionDef::new("cancel")); // non-colliding, must not be renamed
-
-    let tools = render_exposed_tools(&[svc_a, svc_b], &McpContext::default())
-        .expect("render ok");
-
-    let names: Vec<&str> = tools.iter().map(|t| t.name.as_ref()).collect();
-    assert!(names.contains(&"approve_on_invoice"), "invoice approve must be renamed");
-    assert!(names.contains(&"approve_on_refund"), "refund approve must be renamed");
-    assert!(!names.contains(&"approve"), "bare 'approve' must not appear");
-    assert!(names.contains(&"cancel"), "non-colliding 'cancel' must not be renamed");
-}
 ```
 
 ---
 
-_Reviewed: 2026-06-13_
+_Reviewed: 2026-06-13T23:30:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
