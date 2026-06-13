@@ -312,7 +312,11 @@ mod tests {
     ) -> String {
         use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
         let (raw_key, key_hash) = generate_mcp_api_key();
-        let revoked_at = if revoked { "'2020-01-01T00:00:00Z'" } else { "NULL" };
+        let revoked_at = if revoked {
+            "'2020-01-01T00:00:00Z'"
+        } else {
+            "NULL"
+        };
         db.execute(Statement::from_string(
             DatabaseBackend::Sqlite,
             format!(

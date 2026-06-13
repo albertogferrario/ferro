@@ -194,7 +194,8 @@ mod tests {
             "arguments": { "limit": 10 }
         });
 
-        let response = handle_tools_call(call_params, &services, &db, Some(1), &McpContext::default()).await;
+        let response =
+            handle_tools_call(call_params, &services, &db, Some(1), &McpContext::default()).await;
 
         // The load-bearing assertion: the client's own type must deserialize it.
         let parsed: CallToolResult = serde_json::from_value(response["result"].clone())

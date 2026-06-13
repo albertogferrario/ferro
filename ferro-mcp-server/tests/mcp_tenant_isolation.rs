@@ -92,7 +92,11 @@ async fn seed_api_key(
 ) -> String {
     use ferro_mcp_oauth::validate::{generate_mcp_api_key, hash_mcp_api_key};
     let (raw_key, key_hash) = generate_mcp_api_key();
-    let revoked_at = if revoked { "'2020-01-01T00:00:00Z'" } else { "NULL" };
+    let revoked_at = if revoked {
+        "'2020-01-01T00:00:00Z'"
+    } else {
+        "NULL"
+    };
     db.execute(Statement::from_string(
         DatabaseBackend::Sqlite,
         format!(
@@ -147,7 +151,10 @@ async fn api_key_and_jwt_produce_same_tenant_id() {
         other => panic!("expected Authenticated from jwt, got {other:?}"),
     };
 
-    assert_eq!(api_tenant_id, jwt_tenant_id, "API key and JWT must resolve same tenant_id");
+    assert_eq!(
+        api_tenant_id, jwt_tenant_id,
+        "API key and JWT must resolve same tenant_id"
+    );
 }
 
 // ── SC#3: Scope enforcement ───────────────────────────────────────────────────
@@ -176,8 +183,7 @@ async fn read_scope_key_rejected_on_write_tool_name() {
     .await;
 
     assert_eq!(
-        resp["error"]["code"],
-        -32603,
+        resp["error"]["code"], -32603,
         "read-scoped key on write tool must return -32603, got: {resp}"
     );
     let msg = resp["error"]["message"].as_str().unwrap_or("");
