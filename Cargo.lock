@@ -2736,6 +2736,7 @@ dependencies = [
  "ferro-queue",
  "ferro-storage",
  "ferro-stripe",
+ "ferro-text",
  "ferro-theme",
  "ferro-whatsapp",
  "form_urlencoded",
@@ -2811,6 +2812,14 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "ferro-text"
+version = "0.2.56"
+dependencies = [
+ "ferro-projections",
+ "insta",
 ]
 
 [[package]]
