@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v13.1
 milestone_name: CRUD Handler Proc Macros
-status: ready
-stopped_at: Phase 214 complete (v13.3); milestone pointers reconciled; v13.1/Phase 212 next, not started
-last_updated: "2026-06-13T04:22:19.000Z"
+status: Between phases — v13.1 active, ready to discuss Phase 212
+stopped_at: Phase 212 context gathered
+last_updated: "2026-06-13T04:33:34.219Z"
 last_activity: 2026-06-13
 progress:
-  total_phases: 94
-  completed_phases: 87
-  total_plans: 360
-  completed_plans: 359
-  percent: 0
+  total_phases: 95
+  completed_phases: 86
+  total_plans: 358
+  completed_plans: 357
+  percent: 100
 ---
 
 # Project State
@@ -446,7 +446,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-13T04:22:19.000Z
-Stopped at: Phase 214 complete (v13.3 Scaffold↔Library Parity); milestone pointers reconciled — v13.0/v13.2/v13.3 ✅, v13.1 promoted to active 🚧
-Resume file: None
+Last session: 2026-06-13T04:33:34.209Z
+Stopped at: Phase 212 context gathered
+Resume file: .planning/phases/212-crud-handler-proc-macros/212-CONTEXT.md
 Next action: `/gsd-discuss-phase 212` to begin v13.1 CRUD Handler Proc Macros (the active milestone). Alternatively `/gsd-complete-milestone` to formally archive the completed v13.0/v13.2/v13.3 work first. Operator: push the local Phase 214 commits (incl. `ci.yml`/`publish.yml`, which need a manual `workflow`-scope push) before the next release.
