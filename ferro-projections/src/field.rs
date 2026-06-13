@@ -55,6 +55,20 @@ pub enum FieldMeaning {
     Custom(String),
 }
 
+/// Non-visual rendering hint for URL/ImageUrl fields.
+///
+/// Applied by non-visual renderers (e.g., `TextRenderer` in `ferro-text`) to
+/// handle fields that have no meaningful text representation without context.
+/// Absent hint (`None` on `FieldDef::render_hint`) preserves current behavior.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RenderHint {
+    /// Substitute this string in place of the raw URL/ImageUrl value.
+    AltText(String),
+    /// Omit this field entirely from non-visual output.
+    Skip,
+}
+
 /// A field definition within a service projection.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct FieldDef {
@@ -69,6 +83,18 @@ pub struct FieldDef {
     pub readable: bool,
     #[serde(default = "default_true")]
     pub writable: bool,
+    /// Non-visual rendering hint. `None` preserves current behavior
+    /// (renderers emit a `"(link)"`/`"(image)"` label for `Url`/`ImageUrl` fields).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub render_hint: Option<RenderHint>,
+}
+
+impl FieldDef {
+    /// Set the non-visual rendering hint (consuming builder).
+    pub fn with_render_hint(mut self, hint: RenderHint) -> Self {
+        self.render_hint = Some(hint);
+        self
+    }
 }
 
 fn default_true() -> bool {
@@ -300,6 +326,7 @@ mod tests {
             is_list: false,
             readable: true,
             writable: true,
+            render_hint: None,
         };
         let json = serde_json::to_string(&field).unwrap();
         let parsed: FieldDef = serde_json::from_str(&json).unwrap();
@@ -445,6 +472,7 @@ mod tests {
             is_list: false,
             readable: false,
             writable: true,
+            render_hint: None,
         };
         let json = serde_json::to_string(&field).unwrap();
         let parsed: FieldDef = serde_json::from_str(&json).unwrap();
@@ -463,6 +491,7 @@ mod tests {
             is_list: false,
             readable: true,
             writable: false,
+            render_hint: None,
         };
         let json = serde_json::to_string(&field).unwrap();
         let parsed: FieldDef = serde_json::from_str(&json).unwrap();
@@ -481,11 +510,64 @@ mod tests {
             is_list: false,
             readable: false,
             writable: false,
+            render_hint: None,
         };
         let json = serde_json::to_string(&field).unwrap();
         let parsed: FieldDef = serde_json::from_str(&json).unwrap();
         assert_eq!(field, parsed);
         assert!(!parsed.readable);
         assert!(!parsed.writable);
+    }
+
+    // -- render_hint tests (Phase 216-01) --
+
+    #[test]
+    fn render_hint_builder_sets_field() {
+        let field = FieldDef {
+            name: "photo".to_string(),
+            data_type: DataType::String,
+            meaning: FieldMeaning::ImageUrl,
+            required: false,
+            is_list: false,
+            readable: true,
+            writable: true,
+            render_hint: None,
+        }
+        .with_render_hint(RenderHint::AltText("Photo".into()));
+        assert_eq!(field.render_hint, Some(RenderHint::AltText("Photo".into())));
+    }
+
+    #[test]
+    fn render_hint_none_omitted_from_json_and_restores_on_deser() {
+        let field = FieldDef {
+            name: "total".to_string(),
+            data_type: DataType::Float,
+            meaning: FieldMeaning::Money,
+            required: true,
+            is_list: false,
+            readable: true,
+            writable: true,
+            render_hint: None,
+        };
+        let json = serde_json::to_string(&field).unwrap();
+        // `render_hint` key must be absent when None (skip_serializing_if)
+        assert!(
+            !json.contains("render_hint"),
+            "render_hint key must be absent when None, got: {json}"
+        );
+        // Deserializing JSON without the key must yield render_hint: None
+        let parsed: FieldDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.render_hint, None);
+    }
+
+    #[test]
+    fn render_hint_variants_serde_round_trip() {
+        let alt = RenderHint::AltText("x".into());
+        let skip = RenderHint::Skip;
+        for hint in [alt, skip] {
+            let json = serde_json::to_string(&hint).unwrap();
+            let parsed: RenderHint = serde_json::from_str(&json).unwrap();
+            assert_eq!(hint, parsed);
+        }
     }
 }

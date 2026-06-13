@@ -13,11 +13,11 @@ mod state;
 pub use action::{ActionDef, GuardDef, InputDef};
 pub use derive::derive_intents;
 pub use error::Error;
-pub use field::{infer_meaning, DataType, FieldDef, FieldMeaning};
+pub use field::{infer_meaning, DataType, FieldDef, FieldMeaning, RenderHint};
 pub use intent::{Intent, IntentHint, IntentScore};
 pub use relationship::{Cardinality, NavigationHint, RelationshipDef};
 pub use render::template::TemplateRenderer;
-pub use render::{BaseContext, Renderer};
+pub use render::{BaseContext, Renderer, Verbosity};
 
 pub use service::{FieldMetadata, ModelMetadata, ServiceDef};
 pub use state::{StateDef, StateMachine, Transition, Warning};
