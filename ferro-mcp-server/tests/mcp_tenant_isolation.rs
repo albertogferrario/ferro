@@ -270,10 +270,16 @@ async fn api_key_cross_tenant_isolation() {
 
     assert_eq!(rows.len(), 2, "tenant 1 has exactly 2 orders");
     for row in rows {
+        let row_tid = row["tenant_id"].as_i64();
         assert_eq!(
-            row["tenant_id"].as_i64(),
+            row_tid,
             Some(1),
             "all rows must belong to tenant 1, got: {row}"
+        );
+        assert_ne!(
+            row_tid,
+            Some(2),
+            "tenant 2 rows must never surface under tenant 1 key, got: {row}"
         );
     }
 }
