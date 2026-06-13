@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
 status: executing
-stopped_at: Phase 217 context gathered
-last_updated: "2026-06-13T18:45:56.161Z"
-last_activity: 2026-06-13 -- Phase 217 planning complete
+stopped_at: Completed 217-00-PLAN.md (Wave 0 skeleton + RED tests)
+last_updated: "2026-06-13T18:58:57.554Z"
+last_activity: 2026-06-13
 progress:
   total_phases: 101
   completed_phases: 89
   total_plans: 372
-  completed_plans: 367
+  completed_plans: 368
   percent: 99
 ---
 
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v15.0 Agent-Operable App (Consumer MCP) — roadmap defined, ready to plan Phase 217
+**Current focus:** Phase 217 — Tenant Context + Per-Tenant API-Key Auth
 
 ## Current Position
 
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ACTIVE (roadmap created 2026-06-13). Scope: extend the projection/intent abstraction to a write-and-act MCP surface. Per-tenant API-key auth (Phase 217), `ActionDef`-derived write tools (Phase 218), server-side guard-enforced write dispatch (Phase 219), `ferro-ai` confirmation gating for destructive actions (Phase 220), inbound NL intent loop with replay/smoke CI path (Phase 221). All work in `ferro-mcp-server`. Validated via synthetic fixtures.
 
-Phase: 217 (not started)
-Plan: —
+Phase: 217 (Tenant Context + Per-Tenant API-Key Auth) — EXECUTING
+Plan: 2 of 4
 Next: `/gsd-plan-phase 217`
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -35,7 +35,7 @@ Status: Ready to execute
 
 Progress: v15.0 — 0/5 phases. v14.0 ✅ shipped (215–216, 0.2.58).
 
-Last activity: 2026-06-13 -- Phase 217 planning complete
+Last activity: 2026-06-13
 Workspace version: 0.2.58
 
 > **Operator actions pending (from v14.0 / prior milestones):**
@@ -96,6 +96,7 @@ Progress: [██████████] 100%
 | 212 | 3 | - | - |
 
 *Updated after each plan completion*
+| Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -138,7 +139,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-13T18:14:23.176Z
-Stopped at: Phase 217 context gathered
-Resume file: .planning/phases/217-tenant-context-per-tenant-api-key-auth/217-CONTEXT.md
+Last session: 2026-06-13T18:58:57.545Z
+Stopped at: Completed 217-00-PLAN.md (Wave 0 skeleton + RED tests)
+Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth

@@ -3001,7 +3001,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   4. A request with an invalid or expired API key is rejected before any tool routing — identical to the existing OAuth invalid-token path.
   5. Cross-tenant isolation: a test authenticates as tenant A and asserts that no tool listing or call surfaces data owned by tenant B.
 **Plans**: 4 plans
-  - [ ] 217-00-PLAN.md — Wave 0: RED tests + compiling skeleton (ferro-mcp-oauth dep, extended McpContext, async resolve_tenant, Auth error, handle_tools_list ctx, scope gate)
+  - [x] 217-00-PLAN.md — Wave 0: RED tests + compiling skeleton (ferro-mcp-oauth dep, extended McpContext, async resolve_tenant, Auth error, handle_tools_list ctx, scope gate)
   - [ ] 217-01-PLAN.md — ferro-mcp-oauth: mcp_api_keys migration + generate_mcp_api_key + validate_api_key (GREEN oauth unit tests)
   - [ ] 217-02-PLAN.md — ferro-mcp-server: McpContext threading + scope gate + cross-tenant isolation tests GREEN
   - [ ] 217-03-PLAN.md — publish.yml wave-order fix + docs + full CI gate
@@ -3059,7 +3059,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 217. Tenant Context + Per-Tenant API-Key Auth | 0/TBD | Not started | - |
+| 217. Tenant Context + Per-Tenant API-Key Auth | 1/4 | In Progress|  |
 | 218. Write-Tool Rendering from ActionDef | 0/TBD | Not started | - |
 | 219. Write Dispatch | 0/TBD | Not started | - |
 | 220. Confirmation Gating for Destructive Actions | 0/TBD | Not started | - |
@@ -3098,7 +3098,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** TBD (likely 2 plans: bridge + tests; CHANGELOG + version bump folded into closeout).
+**Plans:** 1/4 plans executed
 
 ---
 

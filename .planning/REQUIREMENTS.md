@@ -10,8 +10,8 @@
 
 ### Tenant Context & Auth
 
-- [ ] **AMCP-01**: The MCP endpoint resolves the calling tenant and that tenant's evaluated guards into the render/call context, so every tool listing and tool call is tenant- and permission-scoped. (`McpContext` embeds `BaseContext` — `tenant_id` + `evaluated_guards`; today it is an empty struct and is the universal prerequisite for every other requirement.)
-- [ ] **AMCP-02**: A tenant authenticates to the MCP endpoint with a per-tenant API key (alongside the existing OAuth path), and the resolved principal scopes both the visible tool set and all data access to that tenant.
+- [x] **AMCP-01**: The MCP endpoint resolves the calling tenant and that tenant's evaluated guards into the render/call context, so every tool listing and tool call is tenant- and permission-scoped. (`McpContext` embeds `BaseContext` — `tenant_id` + `evaluated_guards`; today it is an empty struct and is the universal prerequisite for every other requirement.)
+- [x] **AMCP-02**: A tenant authenticates to the MCP endpoint with a per-tenant API key (alongside the existing OAuth path), and the resolved principal scopes both the visible tool set and all data access to that tenant.
 
 ### Write Tools
 
@@ -50,8 +50,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AMCP-01 | Phase 217 | Pending |
-| AMCP-02 | Phase 217 | Pending |
+| AMCP-01 | Phase 217 | Complete |
+| AMCP-02 | Phase 217 | Complete |
 | AMCP-03 | Phase 218 | Pending |
 | AMCP-04 | Phase 219 | Pending |
 | AMCP-05 | Phase 220 | Pending |
