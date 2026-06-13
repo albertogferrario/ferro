@@ -8,6 +8,10 @@ mod m20260611_create_oauth_clients_table;
 mod m20260611_create_orders_table;
 mod m20260611_create_sessions_table;
 mod m20260611_create_tenants_table;
+// MCP write-dispatch tables: local wrappers give unique version names derived
+// from the file stem, avoiding collisions with external crate "migration" stems.
+mod m20260614_create_mcp_idempotency_keys_table;
+mod m20260614_create_audit_log_table;
 
 pub struct Migrator;
 
@@ -23,9 +27,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20260611_add_tenant_id_to_users::Migration),
             Box::new(m20260611_create_orders_table::Migration),
             Box::new(m20260611_create_sessions_table::Migration),
-            // MCP write-dispatch tables: idempotency store + audit log
-            Box::new(ferro_mcp_oauth::CreateMcpIdempotencyKeysTable),
-            Box::new(ferro_audit::CreateAuditLogTable),
+            Box::new(m20260614_create_mcp_idempotency_keys_table::Migration),
+            Box::new(m20260614_create_audit_log_table::Migration),
         ]
     }
 }
