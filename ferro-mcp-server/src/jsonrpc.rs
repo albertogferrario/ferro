@@ -59,6 +59,10 @@ pub async fn handle_tools_call(
     ctx: &McpContext,
 ) -> Value {
     let tool_name = call_params["name"].as_str().unwrap_or("");
+    // For write-tool names (e.g. "submit_order"), strip_prefix("list_") returns None so
+    // service_name = "submit_order", the service lookup below fails, and this returns
+    // -32601 Method not found. That is the correct 218 behavior — no write executor exists
+    // yet. Write-tool dispatch (routing by action.name → ActionDef callback) is Phase 219.
     let service_name = tool_name.strip_prefix("list_").unwrap_or(tool_name);
 
     // Scope enforcement (D-06 / SC#3): re-check at call time, independent of listing filter.
