@@ -3016,7 +3016,10 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   3. A tool for an action whose guard evaluates to `false` for the calling tenant is absent from `tools/list`; a tenant whose guard evaluates to `true` sees it.
   4. `ToolAnnotations` carry `readOnlyHint: false` and `destructiveHint` derived from `ActionDef` attributes (not inferred per-tool in the renderer).
   5. The Phase 205 `CallToolResult` strict-deserialization regression test is extended to cover every write-path tool introduced in this phase.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 218-00-PLAN.md — Wave 0 RED tests (schema + renderer + SC#5 strict-deser)
+- [ ] 218-01-PLAN.md — build_action_input_schema (Identifier injection, Sensitive exclusion)
+- [ ] 218-02-PLAN.md — render_action_tool + collision pass + SC#5 GREEN + CI gate
 
 ### Phase 219: Write Dispatch
 **Goal**: An agent can invoke a write tool and the server executes the action tenant-scoped with guards re-evaluated at execution time, idempotency enforced, and an audit trail recorded.
