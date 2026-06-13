@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v13.0
-milestone_name: Compressive Validation
-status: verifying
-stopped_at: Completed 214-02-PLAN.md
-last_updated: "2026-06-13T04:12:47.567Z"
+milestone: v13.1
+milestone_name: CRUD Handler Proc Macros
+status: ready
+stopped_at: Phase 214 complete (v13.3); milestone pointers reconciled; v13.1/Phase 212 next, not started
+last_updated: "2026-06-13T04:22:19.000Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 94
-  completed_phases: 86
-  total_plans: 358
-  completed_plans: 357
-  percent: 100
+  completed_phases: 87
+  total_plans: 360
+  completed_plans: 359
+  percent: 0
 ---
 
 # Project State
@@ -20,21 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 214 — scaffold-library-parity
+**Current focus:** v13.1 CRUD Handler Proc Macros — Phase 212 (scoped, not started)
 
 ## Current Position
 
-Milestone: v13.0 Compressive Validation — 🚧 ACTIVE (resumed). [v13.2 Projection Render Completeness ✅ SHIPPED 0.2.55 2026-06-13]
-Phase: 214
+Milestone: v13.1 CRUD Handler Proc Macros — 🚧 ACTIVE (2026-06-13). [v13.0 Compressive Validation ✅ complete (207–211); v13.2 Render Completeness ✅ SHIPPED 0.2.55; v13.3 Scaffold↔Library Parity ✅ complete (214)]
+Phase: 212 (CRUD Handler Proc Macros) — scoped, not started
 Plan: Not started
-Next: /gsd-discuss-phase 210
-Prior: Phase 213 ✅ SHIPPED in 0.2.55 (Gap A kanban structure/content split, integration-verified); 209 ✅ VALIDATED 2026-06-12; v12.7 shipped 2026-06-12
-Status: Phase complete — ready for verification
+Next: /gsd-discuss-phase 212
+Prior: Phase 214 ✅ COMPLETE 2026-06-13 (v13.3 — scaffold↔library parity via `ferro` facade exports + corrected templates + two-layer CI guard; 10/10 verified; `ci.yml`/`publish.yml` await a manual `workflow`-scope push); Phase 213 ✅ SHIPPED 0.2.55; Phase 211 ✅ COMP-04
+Status: Between phases — v13.1 active, ready to discuss Phase 212
 
-Progress: v13.0 at 3/5 (207/208/209 ✅; 210/211 next); v13.2 ✅ shipped
+Progress: v13.0 ✅ 5/5 (207–211); v13.2 ✅ shipped (213); v13.3 ✅ (214); v13.1 0/1 (212 next)
 
 Last activity: 2026-06-13
-Workspace version: 0.2.54
+Workspace version: 0.2.55 (published); Phase 214 changes committed locally, not yet released
 
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
 
@@ -446,7 +446,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-13T03:54:44.408Z
-Stopped at: Completed 214-02-PLAN.md
+Last session: 2026-06-13T04:22:19.000Z
+Stopped at: Phase 214 complete (v13.3 Scaffold↔Library Parity); milestone pointers reconciled — v13.0/v13.2/v13.3 ✅, v13.1 promoted to active 🚧
 Resume file: None
-Next action: `/gsd-discuss-phase 202` to start v12.7 (no active milestone yet — set milestone + 🚧 marker when beginning)
+Next action: `/gsd-discuss-phase 212` to begin v13.1 CRUD Handler Proc Macros (the active milestone). Alternatively `/gsd-complete-milestone` to formally archive the completed v13.0/v13.2/v13.3 work first. Operator: push the local Phase 214 commits (incl. `ci.yml`/`publish.yml`, which need a manual `workflow`-scope push) before the next release.
