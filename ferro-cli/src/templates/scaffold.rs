@@ -624,9 +624,9 @@ use ferro::{{
     http::{{Request, Response, HttpResponse}},
     inertia::{{Inertia, SavedInertiaContext}},
     validation::Validatable,
-    ValidateRules,
+    ActiveValue, ValidateRules,
 }};
-use sea_orm::{{EntityTrait, ActiveModelTrait, ActiveValue}};
+use sea_orm::{{EntityTrait, ActiveModelTrait}};
 use serde::{{Deserialize, Serialize}};
 
 use crate::models::{snake_name}::{{self, Entity, Model as {name}}};
@@ -809,9 +809,9 @@ use ferro::{{
     http::{{Request, Response, HttpResponse}},
     inertia::{{Inertia, SavedInertiaContext}},
     validation::Validatable,
-    ValidateRules,
+    ActiveValue, ValidateRules,
 }};
-use sea_orm::{{EntityTrait, ActiveModelTrait, ActiveValue}};
+use sea_orm::{{EntityTrait, ActiveModelTrait}};
 use serde::{{Deserialize, Serialize}};
 
 use crate::models::{snake_name}::{{self, Entity, Model as {name}}};
@@ -979,12 +979,12 @@ pub fn api_controller_template(
 //!
 //! Generated with `ferro make:scaffold --api`
 
-use ferro::{{handler, json_response, Request, Response}};
+use ferro::{{handler, json_response, ActiveValue, Request, Response, ValidateRules}};
 use crate::models::{snake_name}::{{self, Column, Entity, Model as {name}}};
 use sea_orm::{{ColumnTrait, EntityTrait, QueryFilter}};
 
 /// Form data for creating/updating {name}
-#[derive(serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, ValidateRules)]
 pub struct {name}Form {{
 {form_fields}
 }}
@@ -1309,12 +1309,12 @@ pub fn api_controller_with_fk_template(
 //!
 //! Generated with `ferro make:scaffold --api`
 {unvalidated_comment}
-use ferro::{{handler, json_response, Request, Response}};
+use ferro::{{handler, json_response, ActiveValue, Request, Response, ValidateRules}};
 use crate::models::{snake_name}::{{self, Column, Entity, Model as {name}}};
 use sea_orm::{{ColumnTrait, EntityTrait, QueryFilter}};
 {fk_imports}
 /// Form data for creating/updating {name}
-#[derive(serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, ValidateRules)]
 pub struct {name}Form {{
 {form_fields}
 }}

@@ -336,7 +336,7 @@ pub fn job_template(file_name: &str, struct_name: &str) -> String {
 //!
 //! Created with `ferro make:job {file_name}`
 
-use ferro_queue::{{async_trait, Error, Job, Queueable}};
+use ferro::{{async_trait, queue::{{Error, Job, Queueable}}}};
 use serde::{{Deserialize, Serialize}};
 
 /// {struct_name} - A background job
