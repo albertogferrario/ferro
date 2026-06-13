@@ -1,5 +1,301 @@
 # Project Milestones: Ferro Framework
 
+## v14.0 Channel Projection — Non-Visual Rendering (Shipped: 2026-06-13)
+
+**Phases completed:** 99 phases, 373 plans, 307 tasks
+
+**Key accomplishments:**
+
+- Flat Spec/Element type foundation with parse-time structural validation (duplicate, ID format, root, dangling, cycle, depth) and an 18-fixture test corpus — additive alongside v1, zero regressions.
+- Strip v1 types (JsonUiView, Component enum, ComponentNode, PluginProps, ~200 LoC custom ser/de), replace render.rs/resolve.rs/projection internals with Spec-native equivalents, and enforce D-32's runtime JsonSchema contract with a 42-test schema_for! smoke suite.
+- Migrate the framework's JSON-UI integration from v1 (`JsonUiView` + `ComponentNode` + `Component` enum) to v2 (`Spec` + `Element`), port all 30 inline tests in `framework/src/json_ui/mod.rs`, and swap re-exports in `framework/src/lib.rs`. After this plan, any handler importing `ferro_rs::{JsonUi, Spec, Element}` compiles and renders against the v2 surface.
+- Signature-and-string-swap migration of ferro-mcp (8 files) and ferro-cli (3 files) against the ferro-json-ui v2 surface produced by Plan 02. All live-code `JsonUiView` / `ComponentNode` references removed; template strings across 6 files now emit `Spec::builder()` / `Element::new()`. Two v1 scanners (json_ui_inspect.rs, application_info.rs) kept as v1-only with `TODO(Phase 120)` markers per D-19 and the plan's Warning 3.
+- Phase 115 closes green: fmt + clippy + `cargo test --all-features` all zero-exit, 7/7 ROADMAP success criteria confirmed (SC-6 verified at runtime with 42 passing schema_for_ tests, well above the ≥14 floor), no v1 type leaks outside the documented Phase 120 scanner quarantine.
+- 23 atom renderers ported verbatim from v1 render.rs into the new (el, spec, data, depth) walker signature, with D-12 prop-decode diagnostics, D-15/D-16 action URL handling, and XSS regression coverage.
+- Ported all 9 container renderer bodies (Card, Modal, Tabs, KanbanBoard, PageHeader, Grid, Collapsible, FormSection, ButtonGroup) verbatim from v1 render.rs into the Phase 116 walker, routing child rendering through super::render_element for ID-keyed lookup per CONTEXT D-05/D-06.
+- 1. [Rule 1 — Plan wrong about value precedence] Input/Select default_value > data_path.
+- 1. [Rule 1 - Bug] Suppressed dead_code warning on Catalog struct fields
+- `ferro-json-ui/src/catalog.rs`
+- `ferro-json-ui/src/catalog.rs`
+- `ferro-json-ui/src/catalog.rs`
+- 1. [Rule 1 - Bug] Switched all new tests from `Catalog::build()` to `Catalog::build_builtins_only()`
+- `Catalog::prompt()`
+- Typed meaning→component dispatch with catalog drift-guard and intent-layout baseline for the Spec::from_service_def pipeline.
+- `Spec::from_service_def` realized — every output spec is validated against the catalog by construction (ROADMAP success criteria 1, 3, 4).
+- Legacy v1 mapping files deleted; JsonUiRenderer::render is a one-line delegate; ProjectionError exposed at crate root; full workspace quality gate is green.
+- Location:
+- `make_json_view.rs`
+- 1. [Rule 2 - Missing critical functionality] Updated generation_context.rs v1 reference
+- `JsonUiCatalog` struct additions
+- ai.rs additions:
+- getting-started.md
+- components.md
+- One-liner:
+- expressions.md
+- v2 JSON spec dashboard + data-only handler prove the render_file pipeline end-to-end in the sample app
+- 1. [Rule 3 - Blocker] Added `#![allow(dead_code)]` to project.rs
+- 1. [Rule 3 - Blocker] `deploy/mod.rs` re-exports trip `unused-imports` lint
+- `ferro-cli/src/templates/files/docker/Dockerfile.tpl`
+- `ferro-cli/src/main.rs`
+- `ferro-cli/src/templates/files/do/app.yaml.tpl`
+- Deleted (8 source files + golden suite):
+- Stripped the Phase 122 docker_init/do_init commands, their renderers, and Dockerfile/app.yaml templates down to compile-only stubs so Plans 06 and 07 can rewrite them against the new SCOPE design from a clean slate.
+- [Rule 3 - Blocker] Added `anyhow` dependency to ferro-cli.
+- [Rule 3 - Blocker] Promoted `templates::docker` from private to `pub mod`.
+- [Rule 3 - Blocker] Module ident `do_` mapped to file `do.rs` via `#[path]`.
+- 1. LOC accounting variance — methodology, not regression
+- ferro-cli side (public surface promotion):
+- New tool module `ferro-mcp/src/tools/deploy_check.rs`:
+- New tool module `ferro-mcp/src/tools/deploy_diff_env.rs`:
+- New tool module `ferro-mcp/src/tools/runtime_requirements.rs`:
+- Stable JSON schema emitter for `ferro generate-routes` consumed by ferro-mcp, with a documented additive-only contract and full serde round-trip test coverage.
+- 1. [Rule 3 - Blocker] Replaced YAML-parse test with structural-anchor test
+- `SLACK_WEBHOOK_URL` classifies as non-secret.
+- Dockerfile.tpl:
+- 1. [Rule 3 — Blocker] Renderer takes `AppYamlContext`, not `&Project`
+- `docker:init`
+- CheckCategory enum + category() default on DoctorCheck trait; single read_path_dep_version helper in deploy::mod replacing two private duplicates
+- Two deploy-specific doctor checks (`copy_dirs_dockerignore_collision`, `ferro_version_skew`) plus `--deploy` filter flag on `ferro doctor`; all three checks categorized as `CheckCategory::Deploy` and registered in `default_checks()` at positions 7-8 of 11.
+- Interactive `ferro deploy:init` command that writes `[package.metadata.ferro.deploy]` into root Cargo.toml via toml_edit, with --dry-run preview, --yes bypass, and Abort/Overwrite/Merge collision policy
+- `deploy_check` MCP tool registered on FerroMcpService (shells out to `ferro doctor --deploy --json`); doctor.md updated with all Phase 128 surfaces: 11-check table, `--deploy` filter, preflight check descriptions, `ferro deploy:init` section.
+- Library-change gate in check-version job: non-library pushes (ferro-cli, docs, CI config, planning) set should_publish=none and skip all downstream jobs
+- Deleted (3 files, net -1038 lines across both commits):
+- Gap 1: Comment header
+- Wave 0 finding confirmed:
+- S3Driver struct
+- VisualContext replaces RenderContext in ferro-mcp and framework re-exports, enabling full workspace compilation after the Renderer trait refactor in Plan 01.
+- JsonUiRenderer, VisualContext, RenderMode, field_map, and relationship_map relocated from ferro-projections into ferro-json-ui behind a `projections` feature flag, establishing the output-crate ownership pattern
+- ferro-projections stripped to renderer-trait-only: visual feature removed, three relocated files deleted, ferro-mcp and framework re-exports updated to ferro-json-ui.
+- Task 1 — DataType::from_column_type()
+- 1. [Rule 1 - Bug] Clippy uninlined format args
+- dashmap = "6" added to ferro-stripe/Cargo.toml
+- Mode enum
+- 1. [Rule 1 - Bug] testing.rs imported deleted SubscriptionInfo/SubscriptionStatus
+- 1. [Rule 3 - Blocker] framework/Cargo.toml had `ferro-stripe = "^0.2"` dependency constraint
+- 1. [Rule 1 - Bug] Invoice.id is String, not Option<String>
+- 1. [Rule 1 - Bug] mock_checkout_completed_event missing required CheckoutSession fields
+- 1. [Rule 1 - Bug] async-stripe 0.41 requires more fields than RESEARCH Pattern 4 documented
+- 1. [Rule 1 - Bug] ferro_queue::Error::JobFailed is a struct variant, not tuple
+- Commit:
+- Pure-string path-combination helper centralizing group-prefix + route-path semantics for both group implementations, with 8-row D-09 matrix test.
+- Five `pub(crate)` alias methods on Router plus full GroupDef::register_with_inherited reshape using the Plan 01 helper — fixes `get!("/", h)` inside a group reaching the handler at both `/prefix` and `/prefix/`.
+- Builder-API `Router::group()` now uses the Plan 01 helper to register canonical + optional alternate path pairs, matching the macro-based `group!()` behavior fixed in Plan 02 — restoring the D-11 lockstep invariant.
+- Five serial integration tests proving D-07/D-10 RouteInfo deduplication, T-144-12 Strategy A middleware coverage, gestiscilo URL-shape routing, and Pitfall 6 regression guard against the public ferro API.
+- Stable pure-function contracts (render_banner, classify_key(KeyCode, KeyModifiers), format_trigger_source, should_spawn_keyboard), 7-test inline skeleton with exact spec-banner literal oracle, 4-test integration scaffold, and a standalone-buildable minimal-serve fixture — all landing before any BackendSupervisor code is written.
+- Removed the external `cargo-watch` dependency from `ferro serve`, added the `--watch` opt-in flag on the clap surface, extracted `spawn_child_with_prefix` as a shared piping helper, and filled four pure-helper bodies (`render_banner` / `classify_key` / `format_trigger_source` / `should_spawn_keyboard`) against the spec-verbatim banner oracle — four unit tests un-ignored and passing.
+- `ferro serve` now runs an in-process BackendSupervisor that owns the backend `cargo run` child exclusively — kill/regenerate-types/respawn on every trigger (r key or debounced file save), shutdown ordering enforced via explicit JoinHandles, and all seven inline unit tests un-ignored and passing on every commit.
+- 1. [Rule 1 - Bug] Fixed missing `compact` field in 8 SwitchProps struct initializers
+- Wave-0 RED scaffold: 29 unit tests asserting DetailForm contract (EditMode parsing, DetailFormProps serde, render HTML invariants, resolver participation) + ferro-mcp catalog exhaustive-list bump 39→41 including KeyValueEditor backfill from Phase 146.
+- Gate design per 147-02-PLAN.md `<wave_1_green_expectation>`:
+- 1. [Rule 2 — Accessibility] aria-label wrapper inside Edit-mode `<dd>`
+- Locked-signature skeleton types for WhatsApp / InApp / Sms / Push channels in ferro-notifications, wired through channels/mod.rs and the crate's top-level re-exports — downstream plans 02-07 now compile their tests and adapter code against fixed contracts.
+- Public surface of `ferro-notifications` extended with `Channel::WhatsApp` + `Channel::InApp` (with explicit serde renames closing the lowercase-rule trap), four default-None `Notification` trait methods (D-02 + ARCH-FINDING-03), and three new `Error` variants (`WhatsApp(#[from])`, `Broadcast(String)`, `AttachmentTooLarge {..}`) — plans 03-06 now compile their dispatcher and adapter logic against locked types.
+- MailMessage gains `attachments: Vec<MailAttachment>` and a fallible `attachment()` builder enforcing the 25 MB per-attachment cap from CONTEXT.md D-11 — Plan 04's SMTP multipart and Resend base64 emitters now have the typed payload to consume.
+- Both mail drivers now ship MailMessage attachment support — SMTP via `MultiPart::mixed` + per-part `Attachment::new` + `ContentType::parse` fault-tolerance, Resend via a new `ResendAttachment` struct base64-encoding bytes through the standard alphabet — closing CONTEXT.md D-12 in one wave with zero regression on the no-attachment path.
+- `Channel::WhatsApp` dispatch is end-to-end functional and gated: `NotificationConfig::whatsapp_enabled` (default `false`, env-driven via `WHATSAPP_ENABLED`) controls a `send_whatsapp` adapter that calls `ferro_whatsapp::WhatsApp::send` directly through the static facade — no client injection, no panic risk for default configurations, full propagation of `ferro_whatsapp::Error` via the `#[from]` chain landed in Plan 02.
+- `Channel::InApp` dispatch is end-to-end functional: `NotificationConfig::in_app: Option<InAppConfig>` (combining `Arc<Broadcaster>` and `Arc<dyn DatabaseNotificationStore>`) gates `send_in_app`, which writes the DB-store leg first and broadcasts to `user.{id}` second — either failure bubbles up. `send_database` now routes through `DatabaseNotificationStore::store(...)` when `database_store` is configured, closing ARCH-FINDING-02 while preserving the placeholder log path for the unconfigured (backward-compat) case.
+- Phase 149 ships: every new public type from plans 01-06 (`WhatsAppMessage`, `InAppMessage`, `InAppSeverity`, `MailAttachment`, `InAppConfig`, `SmsMessage`, `PushMessage`) is re-exported from both `ferro_notifications` and the framework crate (with `WhatsAppRawMessage` rename resolving the cross-crate name collision); `ferro-notifications` moves to publish Wave 1b (ARCH-FINDING-05 closed); ROADMAP success criterion #3 reflects D-04 static-facade reality (ARCH-FINDING-01 closed); consumer docs cover all three new surfaces with end-to-end usage examples; and a default-skip Mailpit-backed SMTP integration test verifies binary attachment round-trip on demand. Final workspace `cargo fmt + clippy + test --all-features` all green — phase is publish-ready.
+- 1. [Rule 1 - Style] cargo fmt applied as separate commit
+- 1. [Rule 2 - Dead Code] Added `#[allow(dead_code)]` to four pub(crate) constants
+- 1. [Rule 3 - Blocking] resolve.rs needed RichTextEditor match arms
+- 1. [Rule 1 - Style] mod declaration alphabetical order
+- ferro-orm crate scaffolded as a Wave 1a leaf with GuardedError complete, GuardedUpdate forward-declared, and targeted SeaORM re-exports establishing the compile boundary for plans 02-06.
+- ferro-orm registered in publish.yml Wave 1a and CLAUDE.md Workspace Structure table; root Cargo.toml entry was already in place from plan 01's Rule 3 deviation (idempotent no-op, verified).
+- Race-free atomic conditional UPDATE primitive landed: GuardedUpdate<E> builder body with chainable filter/set/exec surface, EmptyUpdate guard against the sea-orm is_noop() short-circuit, and seven D-16 regression tests that lock the rows-affected → GuardedError mapping forever.
+- Integration test (`ten_tasks_against_capacity_three_exactly_three_succeed`) empirically demonstrates the GuardedUpdate race-free claim under real SQL-level contention — 10 tokio tasks vs counter K=3, exactly 3 Ok(()) + 7 NoRowsAffected, final quantity 0.
+- User-facing mdBook page for GuardedUpdate — walks the reader from the read → check → write anti-pattern through the builder API to the atomicity-per-statement contract, registered in the # Features sidebar.
+- Workspace pre-release gate green; `## ferro-orm` section opened in CHANGELOG at `[0.2.30] — 2026-05-13`; first publish to crates.io awaits a local-terminal bootstrap with a `publish-new`-scoped token (RESEARCH Pitfall 5).
+- Rule:
+- Cargo.toml
+- Chainable `AuditEntry::record(action).actor(…).target(…).write(&conn)` builder with mandatory post-INSERT UUID re-fetch for DB-stamped `created_at`, and 5 unit tests proving the write path end-to-end.
+- One-liner:
+- One-liner:
+- 1. [Rule 3 - Blocking] Added ferro-reservation to Cargo.toml [workspace.members] in plan 01
+- Workspace version bumped 0.2.31 → 0.2.32; ferro-reservation registered in WAVE1B_CRATES, CLAUDE.md table, and README.md crates list — cargo build -p ferro-reservation now works without --manifest-path workaround
+- 1. [Rule 1 - Bug] Missing JsonValue import in entity.rs
+- Resource trait, ReservationContext builder, ReservationEvent+ReleaseReason serde+Event impl, and ReservationHandle serde tests — the four pure-Rust foundation types plan 05 (kernel) will compose
+- ReservationKernel<R> with four race-free state-transition methods composing GuardedUpdate + AuditEntry + ferro_events, 8 unit tests green including audit smoke test
+- Full `run_sweep_once` body on `ReservationKernel<R>` + 3 test files proving the v11.11 correctness claim (D-48 concurrent invariant, D-49 property tests, D-50 cross-crate showcase) — 33 tests total, all green
+- ferro-reservation v0.2.32 published to crates.io — race-free resource reservation kernel composing GuardedUpdate + AuditEntry + domain events
+- 1. [Rule 3 - Blocking] Added ferro-projection to workspace Cargo.toml in plan 01
+- 1. [No-op] Workspace member registration already done by Plan 01
+- `ferro-projection/src/migration.rs`
+- key::tests (3):
+- 1. [Rule 1 - Bug] Removed unused imports (`self`, `ActiveModelTrait`)
+- 1. [Rule 1 - Bug] Clippy uninlined_format_args in test files
+- ferro-projection v0.2.33 documentation and CHANGELOG complete — first-publish pending operator manual action (Task 5)
+- Reference app generated TS files untracked from git, gitignore.tpl annotated as load-bearing, and generate_types.rs header corrected to point to frontend/src/lib/types/
+- One-liner:
+- `DockerContext.ferro_version: String`
+- `docker_init.rs` call site wired
+- One-liner:
+- One-liner:
+- One-liner:
+- `req.file("avatar").await?` and `req.multipart().await?` wired as consuming Request methods backed by 13 passing unit tests covering every behavior in the CONTEXT.md spec.
+- One-liner:
+- File:
+- Rewrote 30+ doc-comment sites across `render/{mod,atoms,containers,form,data}.rs`, `projection/builder.rs`, and `layout.rs` in present-tense voice, eliminating every `v1`, `Port of`, `Differences from v1`, `Phase 116`, `Per CONTEXT D-XX`, and `render.rs line-range` framing while preserving all documented behavior; deleted dead `_plan_02_reserved` placeholder.
+- ferro-mcp `code_templates` tool no longer advertises a v1→v2 migration category; 230 lines (registration + 7-template function + integration test) removed in a single coordinated diff.
+- `test_ignores_non_json_files` fixture renamed in-place from v1-coded names (`old_view.rs`, `// old v1 file`, `pub mod old;`) to neutral identifiers (`stale_artifact.rs`, `// non-JSON artifact`, `pub mod stale_artifact;`); scanner-ignores-non-JSON behavior assertion preserved unchanged.
+- Replaced the v1 JsonUiView/LayoutComponent README example with the v2 surface (Spec::builder + JsonUi::render_file), clearing the Phase 161 crates.io publish blocker.
+- Quick Start example in docs/src/features/projections.md rewritten to mirror ferro-json-ui/src/projection/mod.rs:79-97 — VisualContext replaces RenderContext, spec.schema/spec.elements replace json["$schema"]/json["components"], and the v1 schema string is gone.
+- Verification gate closes Phase 160: all D-10 grep gates clean, ferro workspace 2697/2697 tests green, gestiscilo build green and 530/538 tests green (the 8 failures triaged as gestiscilo-internal regressions unrelated to ferro), ferro-code descope recorded per OQ-2, no publish performed per D-11.
+- CheckboxListProps struct + render_checkbox_list with data-driven options and XSS-safe HTML, registered in BUILTIN_TYPES=40 and catalog
+- One-liner:
+- Re-added two blast-radius props (D-16/D-17): SwitchProps.compact emits scale-75/origin-left CSS, ImageProps.inline_svg emits verbatim SVG in an aria-labelled div with no img tag
+- 1. [Rule 1 - Bug] BUILTIN_SPECS catalog entry would break drift guard
+- AuthLayout card wrapper removed: layout is now structural only (centering + max-width), specs must declare their own Card root (D-05)
+- One-liner:
+- 1. [Rule 2 - Missing derives] Added Clone + PartialEq to RouteInfo
+- Migration guide (493 lines, 7 sections), plugins.md RichTextEditor + catalog docs, components.md v1→v2 banner + Card+children example + inline view/edit pattern, and 7 migration_v1_to_v2 code templates in ferro-mcp
+- Adds `EachDirective` struct and `Element.each: Option<EachDirective>` to `ferro-json-ui::spec`, enabling JSON specs to carry `"$each": { "path": "/orders", "as": "order" }` through serde round-trip; resolver expansion is the next step.
+- Adds `Element.if_: Option<Visibility>` to `ferro-json-ui::spec`, enabling JSON specs to carry `"$if": { "path": "/can_advance", "operator": "eq", "value": true }` (or compound `and`/`or`/`not` forms) through serde round-trip; resolve-time deletion is the next step (Plan 03).
+- Ships the killer feature for Phase 163: a single resolve-time pass that materializes `$each` directives into N concrete elements with auto-suffixed IDs and removes `$if`-falsy elements from the spec map entirely. Wired BEFORE `resolve_actions` / `resolve_expressions` in `JsonUi::resolve` so all downstream resolution operates on the expanded element set. The wire-format types from Plans 01 + 02 are no longer inert — they now do something.
+- 1. [Rule 1 - Bug] Fixed incorrect Visibility/Action type names in test 6
+- Four-quadrant decision rubric for spec construction (Static / `$each` / `$if` / `SpecBuilder`) and `$each` / `$if` directive reference in expressions.md, locking the `eq` operator name and the element-level vs prop-level namespace split.
+- One-liner:
+- One-liner:
+- One-liner:
+- `ferro-cli/tests/fixtures/migrate_v1/in_all_verbs.rs`
+- Task 1 (data_path on Image and DescriptionList):
+- 1. [Rule 1 - Bug] projection/builder.rs missing variant field
+- Task 1 (KanbanBoardProps serde):
+- Alert.variant="" gated by `visible` no longer blocks server startup: load_cached downgrades catalog validation to tracing::warn; per-request resolve() enforces after expand_directives via tracing::error + continue
+- One-liner:
+- 1. [Rule 1 - Bug] Stale depth-3 mention in migration guide
+- File:
+- One-liner:
+- 1. [Rule 1 - Dead Code] Removed is_permanent_error / is_transient_error from classifier/anthropic.rs
+- 1. [Rule 2 - Missing critical functionality] `Message` import placement
+- Task 1 — AiConfig::from_env() factory + lib.rs re-exports (SC#3, SC#6)
+- Verified schema shapes for Plan 02/03 closing algorithm:
+- Clean seam for Plan 03:
+- Two schemars anyOf shapes handled:
+- complete_with_tools as a separate trait method (D-14):
+- WAVE1B reorder, no wave promotion (Task 1):
+- `ferro_ai::cosine_similarity(a, b)`
+- `ferro_ai::pgvector::PgVectorStore`
+- `framework/src/http/body.rs`
+- `framework/src/http/sse.rs`
+- 1. [Rule 1 - Bug] rustfmt formatting diff
+- 1. [Rule 1 - Bug] catalog.rs count assertions still at 44
+- `ferro ai:make <description>` ships: loads ferro-mcp introspection in-process, lexically filters to description-relevant context, produces a typed ServiceDef via `complete_with::<ServiceDef>()`, and writes exactly one `src/projections/<name>.rs` builder file — the produce half of the milestone killer feature
+- `ferro ai:explain <target>` ships: resolves any route/model/service in-process, builds a projection-framed prompt from inspect_projection's parsed vocabulary when a ServiceDef projection exists, and produces prose via a raw schema:None LLM call — the consume half of the milestone killer feature
+- Task 2: Human-verify live ai:make and ai:explain quality (SC#6, SC#4)
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- 1. [Rule 1 - Bug] Unused import `ferro_json_ui::global_catalog`
+- 1. [Rule 1 - Bug] rustfmt formatting in projection_roundtrip.rs
+- CardProps extended with `badge: Option<String>` and `subtitle: Option<String>` slots — render_card emits Badge-styled span in flex title-row for badge and muted paragraph for subtitle, both html_escaped; eleven new tests pin slot semantics and serde round-trips
+- F9 closes as Outcome A (no-repro): three Grid visibility regression tests pass green on first run against current ferro master; visibility evaluator architecture is correct; consumer chip-strip Grid should render correctly when rebuilt against patched ferro runtime
+- Commit:
+- Commit:
+- Commit:
+- No clash.
+- Decision: raise `handle_action_result` to `pub #[doc(hidden)]`.
+- 1. [Rule 2 - Missing critical functionality] Cross-link added to controllers.md instead of handlers.md
+- Added new test
+- 1. [Rule 1 - Bug] cargo fmt failures from Wave 2 commits
+- 1. [Rule 1 - Bug] Incorrect `redirect_back` signature in plan template
+- 1. [Rule 1 - Bug] `runtime_contains_lazy_hero_setup` assertion literal mismatch
+- 1. [Rule 1 - Bug] Plan's verbatim content did not satisfy its own acceptance criteria for `data-lazy-hero-margin` count
+- New `ferro-bundle` workspace crate scaffolded with locked deps + Cargo.toml + lib.rs stub + bundle-vs-filesystem README; workspace bumped 0.2.42 -> 0.2.43; publish.yml Wave 3 renamed to framework-consumers and converted to a `ferro-cli ferro-bundle` for-loop.
+- Bundle struct + two OnceLock<DashMap<...>> registries + pub(crate) serve_inner dispatcher implementing content-hashed URLs, ETag-quoted 304 fast-path, and 301 alias redirects; 5 unit tests pin SHA-256 determinism and registration semantics.
+- Three single-test binaries under `ferro-bundle/tests/` verify BUNDLE-02 (cold 200 + 304 fast-path) and BUNDLE-03 (alias 301 redirect) against the Plan 02 dispatcher, reached through a new `#[doc(hidden)] pub mod __test_internals` wrapper that bridges integration-test binaries to the crate-private `serve_inner`.
+- Workspace-wide lint + test gate green; `cargo publish -p ferro-bundle --dry-run` exit 0; real publish to crates.io deferred to user (per explicit instruction); manual bootstrap command + recovery procedure + new-crate runbook recorded for the post-merge action.
+- Telemetry module foundation — Sample/Decision/InlineBudgetState types, OnceLock<DashMap> process-global ring buffer (cap 128), AppConfig inline_budget_threshold_bytes field, crate-root re-exports of Decision/RequestTelemetry/Sample (InlineBudget intentionally hidden).
+- Inline-budget state machine + Request integration — record_and_decide pure method, decide(req) thin wrapper with borrow-safe ordering, three Request methods (inline_budget / telemetry_record / telemetry_record_scoped). Pre-commit gate green.
+- Closes Phase 184: integration smoke test exercising both Phase 184 primitives via a real Request, public docs page for InlineBudget + RequestTelemetry under 'The Basics', workspace bump 0.2.43 to 0.2.44, ship-gate green (pre-commit + publish dry-run + cargo doc).
+- 1. [Rule 3 - Blocking] Removed Queue/worker from lib.rs to allow compilation
+- 1. [Rule 1 - Bug] Reaper park step used wrong placeholder index
+- DB-backed WorkerLoop with reaper/claim/spawn cycle, catch_unwind panic isolation, SIGTERM graceful shutdown with drain+requeue, and dispatcher wired to db::enqueue — ferro-queue is now fully Redis-free.
+- Namespaced `ferro::queue` module, WorkerLoop auto-start in `Application::run`, DB-backed debug endpoints, and corrected ferro-mcp failed-jobs query — the queue now "just works" with a single binary.
+- SC-1 SQLite race test proves two concurrent workers claim N=20 jobs exactly once on a shared NamedTempFile database; SC-4b shutdown test proves requeue_claimed_by resets claimed rows; docs rewritten for DB backend with spawn_blocking guidance and old→new migration table.
+- 1. [Rule 3 - Blocking] Stub modules required for Task 1 build
+- 1. [Rule 1 - Bug] promote_rejects_deleted_artifact test needed conn.clone()
+- 1. [Rule 1 - Bug] ferro-storage Memory driver double-slash breaks files() and delete_directory()
+- 1. [Rule 1 - Bug] DeploymentStorage trait not imported in doc-test hidden section
+- `swc = "66.0.0"`
+- 1. [Rule 3 - Blocking] lol_html text!() replace() requires ContentType argument
+- 1. [Rule 1 - Bug] ravif with_quality takes f32 not f64
+- 1. [Rule 1 - Bug] AVIF decode via image::load_from_memory fails under --all-features
+- 1. [Rule 1 - Bug] Partial-move compiler error in create()
+- `StripePaymentIntentAmountCapturableUpdated`
+- Task 1:
+- Task 1:
+- Task 1:
+- Task 1:
+- 1. [Rule 3 - Blocking] `sqlx::Error` not available as top-level name
+- SQLite integration suite proves the full ConstraintMap defensive-layer contract: TOCTOU simulation, message-parse identity, and passthrough, all against real in-memory SQLite driver errors.
+- One-liner:
+- One-liner:
+- 1. [Rule 1 - Bug] Updated framework/Cargo.toml ferro-stripe version pin
+- 1. [Rule 2 - Missing critical functionality] Implemented seam 2 and aggregation logic in Task 1
+- 1. [Rule 1 - Bug] DataType::Text is unknown; fixtures using it produced Warn instead of intended Fail/Pass
+- Task 1 — aggregate_status (4 tests):
+- Task 1 — Async conversion + seam-name reconciliation (source, tests, docs)
+- 1. [Rule 1 - Bug] Non-exhaustive match in action_to_route_seam
+- Files exist:
+- 1. [Rule 2 - Missing critical cleanup] Removed `#[allow(dead_code)]` from `read_ambient_status`
+- One-liner:
+- `ferro-mcp/src/service.rs`
+- 1. [Rule 1 - Bug] rmcp feature set adjusted from `["schemars"]` to `["server", "macros", "base64"]`
+- 1. [Rule 3 - Blocking] ferro_projections::field module is private
+- One-time manual bootstrap publish:
+- One-liner:
+- One-liner:
+- 1. [Rule 2 - Dead code warning] Suppressed `sanitized_app_url` dead_code for stub phase
+- 1. [Rule 3 - Blocking] ferro dependency must be aliased as 'ferro' for #[handler] macro
+- 1. [Rule 1 - Bug] Redundant guard pattern rejected by clippy -D warnings
+- 1. [Rule 1 - Bug] Test assertion used wrong string for HTML doctype check
+- 1. [Rule 1 - Bug] Task 1 and Task 2 could not be committed separately
+- 1. [Rule 3 - Blocking] Updated existing integration test call sites for new dispatch signature
+- BearerAuthMiddleware
+- Inline bearer validation removed.
+- Bidirectional two-tenant isolation (SC-1) and JwtClaimResolver middleware-chain parity (SC-3) proven by three integration tests against a real in-memory SQLite fixture with seeded acme/globex tenants.
+- Status:
+- 1. [Rule 2 - Missing critical functionality] Added `with_test_session` to framework
+- 1. [Rule 2 - Missing dependency] Added tracing as direct app dep
+- login_confirm.json corrected: dev_link Button visibility and navigation moved from unsupported Button props to element-level visible (is_true condition) + action (ActionHandler::Binding) so the verify URL is never in production HTML.
+- 1. [Rule 1 - Bug] Removed useless `.into()` on `Cache::get` return value
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- `ferro-storage/src/error.rs`
+- `ferro-storage/src/config.rs`
+- `Cargo.toml` (workspace root)
+- Replaced bare-row `content` array in `handle_tools_call` with `CallToolResult::structured(payload)`, yielding a valid MCP envelope (one `type:text` content block + `structuredContent` + `isError:false`) that strict MCP clients parse without Zod errors.
+- Plan:
+- `ferro-projections/tests/catalog.rs`
+- 1. [Rule 3 - Blocking] voice.rs and mobile.rs created before Task 1 commit
+- 1. [Rule 1 - Bug] Intent table used bold formatting, failing the plan's acceptance criterion grep
+- Task 1:
+- Dev-dependency delta (`ferro-mcp/Cargo.toml`):
+- `TierResult` struct:
+- Task 1 — In-process rmcp transport + tool dispatch:
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- `emit_actions_placeholder` (Focus / Process / Track — `actions` slot):
+- `StatCardProps.value_path: Option<String>`
+- `ColumnFormat::Image` added; ImageUrl fields render as html-escaped `<img>` thumbnails in DataTable columns instead of being excluded
+- One-liner:
+- Found during:
+- 1. [Rule 1 - Bug] 51 compile errors in scaffolded app detected by the test
+- File:
+- File:
+- 1. [Rule 1 - Bug] Test imports used private ferro-projections module paths
+- 1. [Rule 1 - Bug] rustfmt drift in ferro-text/src/lib.rs from Plan 02
+
+---
+
 ## v12.7 Passwordless MCP Auth (Shipped: 2026-06-12)
 
 **Phases completed:** 2 phases (202–203), 10 plans
@@ -19,6 +315,7 @@ existing token issuer (no second token path).
   app login converted from password to magic-link as the golden-path exemplar, with an
   async-flow acceptance test (unauthenticated `/authorize` → login → verify → resume →
   consent). Verified 5/5.
+
 - Phase 203 — OAuth Device Authorization Grant (RFC 8628): `device_authorization`
   endpoint returning RFC-8628 §3.2 fields, a user-code verification page bound to the
   existing consent + `(user, tenant)` scoping (login-resume reused), and the §3.5
@@ -48,11 +345,13 @@ closing by default after generation.
   deduplicated `next_steps`); the field→column seam resolves projection→model and
   flags dangling fields; `not_checked` is a distinct status never coerced to `pass`
   (coverage honesty).
+
 - Phase 195 — Close the loop by default: wrapper seams 1/3/4/5 dispatch to existing
   validators (no logic reimplemented; each finding names its source);
   `generate_projection`/`json_ui_generate` embed the verdict inline;
   `application_info`/`projection_coverage` surface per-projection checkpoint status
   from the cache.
+
 - Phase 196 — Dogfood acceptance + hardening: a deliberately-poisoned synthetic
   fixture proves the field→column seam; the in-repo `app/` live consumer produced
   20 findings (seam 3 `action_to_route` the genuine driver — unregistered actions);
