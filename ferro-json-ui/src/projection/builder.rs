@@ -64,9 +64,9 @@ impl Spec {
         if intents.is_empty() {
             return Err(ProjectionError::EmptyIntents);
         }
-        if ctx.intent_index >= intents.len() {
+        if ctx.base.intent_index >= intents.len() {
             return Err(ProjectionError::IntentIndexOutOfBounds {
-                requested: ctx.intent_index,
+                requested: ctx.base.intent_index,
                 available: intents.len(),
             });
         }
@@ -91,9 +91,9 @@ impl Spec {
         }
         let intent_score =
             intents
-                .get(ctx.intent_index)
+                .get(ctx.base.intent_index)
                 .ok_or(ProjectionError::IntentIndexOutOfBounds {
-                    requested: ctx.intent_index,
+                    requested: ctx.base.intent_index,
                     available: intents.len(),
                 })?;
 
@@ -482,7 +482,7 @@ fn emit_kanban_root(service: &ServiceDef, ctx: &VisualContext) -> ElementBuilder
     // current_state marks the active column on mobile (Risk 3 option a — no
     // KanbanColumnProps.active field exists; mobile_default_column is the
     // documented approximation).
-    let mobile_default_column = ctx.current_state.clone();
+    let mobile_default_column = ctx.base.current_state.clone();
 
     let props = serde_json::to_value(KanbanBoardProps {
         columns,
@@ -767,6 +767,7 @@ mod tests {
 
     use super::*;
     use crate::catalog::Catalog;
+    use ferro_projections::render::BaseContext;
     use ferro_projections::{
         derive_intents, ActionDef, DataType, FieldMeaning, ServiceDef, StateDef, StateMachine,
         Transition,
@@ -844,10 +845,13 @@ mod tests {
         let service = sample_service();
         let intents = derive_intents(&service);
         let ctx = VisualContext {
-            intent_index: intents
-                .iter()
-                .position(|i| matches!(i.intent, Intent::Browse))
-                .unwrap_or(0),
+            base: BaseContext {
+                intent_index: intents
+                    .iter()
+                    .position(|i| matches!(i.intent, Intent::Browse))
+                    .unwrap_or(0),
+                ..Default::default()
+            },
             mode: RenderMode::Display,
             ..Default::default()
         };
@@ -868,7 +872,10 @@ mod tests {
         let cat = clean_catalog();
         for idx in 0..intents.len() {
             let ctx = VisualContext {
-                intent_index: idx,
+                base: BaseContext {
+                    intent_index: idx,
+                    ..Default::default()
+                },
                 mode: RenderMode::Input,
                 ..Default::default()
             };
@@ -889,10 +896,13 @@ mod tests {
         let service = sample_service();
         let intents = derive_intents(&service);
         let ctx = VisualContext {
-            intent_index: intents
-                .iter()
-                .position(|i| matches!(i.intent, Intent::Browse))
-                .unwrap_or(0),
+            base: BaseContext {
+                intent_index: intents
+                    .iter()
+                    .position(|i| matches!(i.intent, Intent::Browse))
+                    .unwrap_or(0),
+                ..Default::default()
+            },
             mode: RenderMode::Display,
             ..Default::default()
         };
@@ -942,10 +952,13 @@ mod tests {
             track: None,
         };
         let ctx = VisualContext {
-            intent_index: intents
-                .iter()
-                .position(|i| matches!(i.intent, Intent::Browse))
-                .unwrap_or(0),
+            base: BaseContext {
+                intent_index: intents
+                    .iter()
+                    .position(|i| matches!(i.intent, Intent::Browse))
+                    .unwrap_or(0),
+                ..Default::default()
+            },
             mode: RenderMode::Display,
             templates: Some(templates),
             ..Default::default()
@@ -981,7 +994,10 @@ mod tests {
             .position(|i| matches!(i.intent, Intent::Browse))
             .unwrap_or(0);
         let browse_ctx = VisualContext {
-            intent_index: browse_idx,
+            base: BaseContext {
+                intent_index: browse_idx,
+                ..Default::default()
+            },
             mode: RenderMode::Display,
             ..Default::default()
         };
@@ -1009,7 +1025,10 @@ mod tests {
             .position(|i| matches!(i.intent, Intent::Focus))
             .unwrap_or(0);
         let focus_ctx = VisualContext {
-            intent_index: focus_idx,
+            base: BaseContext {
+                intent_index: focus_idx,
+                ..Default::default()
+            },
             mode: RenderMode::Display,
             ..Default::default()
         };
@@ -1091,10 +1110,13 @@ mod tests {
             track: None,
         };
         let ctx = VisualContext {
-            intent_index: intents
-                .iter()
-                .position(|i| matches!(i.intent, Intent::Browse))
-                .unwrap_or(0),
+            base: BaseContext {
+                intent_index: intents
+                    .iter()
+                    .position(|i| matches!(i.intent, Intent::Browse))
+                    .unwrap_or(0),
+                ..Default::default()
+            },
             mode: RenderMode::Display,
             templates: Some(templates),
             ..Default::default()
@@ -1131,7 +1153,10 @@ mod tests {
         let service = sample_service();
         let intents = derive_intents(&service);
         let ctx = VisualContext {
-            intent_index: intents.len() + 5,
+            base: BaseContext {
+                intent_index: intents.len() + 5,
+                ..Default::default()
+            },
             ..Default::default()
         };
         let cat = clean_catalog();

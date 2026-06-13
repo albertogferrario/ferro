@@ -7,6 +7,7 @@
 //! it cannot pass via a generic schema-normalization fallback (SC5).
 
 use ferro_json_ui::{global_catalog, VisualContext};
+use ferro_projections::render::BaseContext;
 use ferro_projections::{derive_intents, DataType, FieldMeaning, Intent, ServiceDef};
 
 fn invoice_fixture() -> ServiceDef {
@@ -31,7 +32,10 @@ fn servicedef_browse_projection_validates_and_pins_servicedef_path() {
         .position(|i| matches!(i.intent, Intent::Browse))
         .unwrap_or(0);
     let ctx = VisualContext {
-        intent_index: browse_idx,
+        base: BaseContext {
+            intent_index: browse_idx,
+            ..Default::default()
+        },
         ..VisualContext::default()
     };
 

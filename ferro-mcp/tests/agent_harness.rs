@@ -57,6 +57,7 @@ use std::panic::AssertUnwindSafe;
 
 use ferro_json_ui::projection::{RenderMode, VisualContext};
 use ferro_json_ui::{global_catalog, Spec};
+use ferro_projections::render::BaseContext;
 use ferro_projections::{derive_intents, Intent, ServiceDef};
 use serde::{Deserialize, Serialize};
 
@@ -273,8 +274,11 @@ fn score_t1_t3(agent_json: &serde_json::Value, target: &Intent) -> TierResult {
         RenderMode::Display
     };
     let ctx = VisualContext {
-        intent_index: 0,
-        current_state: None,
+        base: BaseContext {
+            intent_index: 0,
+            current_state: None,
+            ..Default::default()
+        },
         mode,
         templates: None,
     };

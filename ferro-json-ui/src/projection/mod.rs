@@ -19,7 +19,7 @@ pub use error::ProjectionError;
 
 use serde::{Deserialize, Serialize};
 
-use ferro_projections::render::Renderer;
+use ferro_projections::render::{BaseContext, Renderer};
 use ferro_projections::Error;
 use ferro_projections::IntentScore;
 use ferro_projections::ServiceDef;
@@ -43,10 +43,8 @@ pub enum RenderMode {
 /// visual-specific concerns: render mode and theme template overrides.
 #[derive(Debug, Clone)]
 pub struct VisualContext {
-    /// Which intent to render (0 = primary). Index into the `intents` slice.
-    pub intent_index: usize,
-    /// Current workflow state name (relevant for Process/Track intents).
-    pub current_state: Option<String>,
+    /// Modality-agnostic context (intent index, state, guards, verbosity).
+    pub base: BaseContext,
     /// Display or Input mode.
     pub mode: RenderMode,
     /// Optional theme template overrides. `None` means use built-in
@@ -59,8 +57,7 @@ pub struct VisualContext {
 impl Default for VisualContext {
     fn default() -> Self {
         Self {
-            intent_index: 0,
-            current_state: None,
+            base: BaseContext::default(),
             mode: RenderMode::Display,
             templates: None,
         }
@@ -127,6 +124,7 @@ mod tests {
     //!     `global_catalog()` is consulted (see `from_service_def` body), so
     //!     these assertions run cleanly without touching the global catalog.
     use super::*;
+    use ferro_projections::render::BaseContext;
     use ferro_projections::{derive_intents, DataType, FieldMeaning, ServiceDef};
 
     fn sample_service() -> ServiceDef {
@@ -161,8 +159,8 @@ mod tests {
     #[test]
     fn visual_context_default_has_sensible_values() {
         let ctx = VisualContext::default();
-        assert_eq!(ctx.intent_index, 0);
-        assert!(ctx.current_state.is_none());
+        assert_eq!(ctx.base.intent_index, 0);
+        assert!(ctx.base.current_state.is_none());
         assert_eq!(ctx.mode, RenderMode::Display);
         assert!(ctx.templates.is_none());
     }
@@ -172,7 +170,10 @@ mod tests {
         let service = sample_service();
         let intents = derive_intents(&service);
         let ctx = VisualContext {
-            intent_index: intents.len() + 5,
+            base: BaseContext {
+                intent_index: intents.len() + 5,
+                ..Default::default()
+            },
             ..Default::default()
         };
         let result = JsonUiRenderer.render(&service, &intents, &ctx);

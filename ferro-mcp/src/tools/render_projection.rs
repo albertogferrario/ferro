@@ -4,6 +4,7 @@ use serde::Serialize;
 use std::path::Path;
 
 use ferro_json_ui::{JsonUiRenderer, RenderMode, VisualContext};
+use ferro_projections::render::BaseContext;
 use ferro_projections::{
     derive_intents, ActionDef, Cardinality, DataType, FieldMeaning, GuardDef, InputDef, IntentHint,
     Renderer, ServiceDef, StateDef, StateMachine, Transition,
@@ -70,8 +71,11 @@ pub fn execute(
 
     let idx = intent_index.unwrap_or(0);
     let ctx = VisualContext {
-        intent_index: idx,
-        current_state: None,
+        base: BaseContext {
+            intent_index: idx,
+            current_state: None,
+            ..Default::default()
+        },
         mode: render_mode,
         templates: None,
     };
