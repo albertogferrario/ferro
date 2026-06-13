@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v14.0
 milestone_name: Channel Projection — Non-Visual Rendering
 status: verifying
-stopped_at: Completed 215-02-PLAN.md
-last_updated: "2026-06-13T15:03:18.035Z"
+stopped_at: Phase 216 context gathered
+last_updated: "2026-06-13T15:12:37.105Z"
 last_activity: 2026-06-13
 progress:
-  total_phases: 98
+  total_phases: 99
   completed_phases: 90
   total_plans: 370
   completed_plans: 369
@@ -453,7 +453,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-13T14:50:36.881Z
-Stopped at: Completed 215-02-PLAN.md
-Resume file: None
+Last session: 2026-06-13T15:12:37.096Z
+Stopped at: Phase 216 context gathered
+Resume file: .planning/phases/216-conversational-text-renderer-output-crate/216-CONTEXT.md
 Next action: `/gsd-complete-milestone` to archive the completed v13.x work, or scope a v14.0 Channel Projection phase to continue. Operator: the eventual release bundles the committed-not-released Phase 214 + 212 work (0.2.56) — push those commits, and 214's `ci.yml`/`publish.yml` need a manual `workflow`-scope push.
