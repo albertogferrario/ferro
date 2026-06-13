@@ -2727,7 +2727,7 @@ Plans:
 | 207. COMP-02 Synthetic Regression Catalog | 1/1 | Complete    | 2026-06-12 |
 | 208. COMP-05 Cross-Modality Vocabulary Sketch | 2/2 | Complete    | 2026-06-12 |
 | 209. COMP-01 Slice A Gestiscilo Migration | 1/2 | In Progress|  |
-| 210. COMP-03 Agent-Success-Rate Harness | 1/4 | In Progress|  |
+| 210. COMP-03 Agent-Success-Rate Harness | 2/4 | In Progress|  |
 | 211. COMP-04 Time-to-Working-App Benchmark | 0/TBD | Not started | - |
 
 #### Phase Details
@@ -2814,9 +2814,9 @@ Plans:
 
 **Phase-time calibration:** Success-rate floor threshold (e.g. `assert!(rate >= 0.7)`) is set after a first baseline run, not now. The tier-2 and tier-3 floor thresholds may differ.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 - [x] 210-01-PLAN.md — Foundation: dev-dep delta + 14-task contamination-guarded corpus + contamination test
-- [ ] 210-02-PLAN.md — Deterministic T1–T4 scorer + replay path (CI-green, no LLM; pitfall mitigations)
+- [x] 210-02-PLAN.md — Deterministic T1–T4 scorer + replay path (CI-green, no LLM; pitfall mitigations)
 - [ ] 210-03-PLAN.md — In-process rmcp duplex transport + gated complete_with_tools agent loop
 - [ ] 210-04-PLAN.md — First committed baseline (gated live run, manual) + replay-equals-baseline + SC#5 weakness finding
 
