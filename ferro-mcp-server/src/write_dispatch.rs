@@ -366,10 +366,20 @@ pub async fn handle_write_call(
                 "message": msg
             })) })
         }
-        Err(e) => {
+        // Agent-safe variants: pass message through (no internal state in these strings).
+        Err(ref e @ crate::Error::Validation(_))
+        | Err(ref e @ crate::Error::ActionNotFound(_)) => {
             json!({ "result": write_tool_error_result(json!({
                 "error_kind": "execution_error",
                 "message": e.to_string()
+            })) })
+        }
+        // All other variants (Database, Serialization, Auth, etc.) may contain SQL
+        // fragments, table names, column names, or constraint names — redact them.
+        Err(_) => {
+            json!({ "result": write_tool_error_result(json!({
+                "error_kind": "execution_error",
+                "message": "write operation failed"
             })) })
         }
     }
