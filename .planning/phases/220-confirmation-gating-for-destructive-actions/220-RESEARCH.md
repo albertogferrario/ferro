@@ -791,7 +791,7 @@ A three-plan split is appropriate given prior phase velocity (Phase 219: P00=15,
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`dispatch_write` signature for `is_confirmed`**
    - What we know: `dispatch_write` must be callable from both the bare path (D-08 seam active) and the confirmed path (seam bypassed).
