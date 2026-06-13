@@ -20,7 +20,7 @@
 
 ### Safety
 
-- [ ] **AMCP-05**: A destructive or irreversible action requires an explicit confirmation step before it executes — a two-tool confirm flow backed by the `ferro-ai` confirmation store with a TTL; an unconfirmed, mismatched, or expired attempt does not mutate data.
+- [x] **AMCP-05**: A destructive or irreversible action requires an explicit confirmation step before it executes — a two-tool confirm flow backed by the `ferro-ai` confirmation store with a TTL; an unconfirmed, mismatched, or expired attempt does not mutate data.
 
 ### Conversational Loop
 
@@ -54,7 +54,7 @@
 | AMCP-02 | Phase 217 | Complete |
 | AMCP-03 | Phase 218 | Complete |
 | AMCP-04 | Phase 219 | Complete |
-| AMCP-05 | Phase 220 | Pending |
+| AMCP-05 | Phase 220 | Complete |
 | AMCP-06 | Phase 221 | Pending |
 
 *Phase assignments filled by the roadmapper. Roadmap created 2026-06-13.*
