@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v13.1
 milestone_name: CRUD Handler Proc Macros
 status: executing
-stopped_at: Completed 212-01-PLAN.md
-last_updated: "2026-06-13T05:01:10.604Z"
+stopped_at: Completed 212-02-PLAN.md
+last_updated: "2026-06-13T05:20:56.414Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 95
   completed_phases: 86
   total_plans: 361
-  completed_plans: 358
+  completed_plans: 359
   percent: 99
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Milestone: v13.1 CRUD Handler Proc Macros — 🚧 ACTIVE (2026-06-13). [v13.0 Compressive Validation ✅ complete (207–211); v13.2 Render Completeness ✅ SHIPPED 0.2.55; v13.3 Scaffold↔Library Parity ✅ complete (214)]
 Phase: 212 (crud-handler-proc-macros) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: /gsd-discuss-phase 212
 Prior: Phase 214 ✅ COMPLETE 2026-06-13 (v13.3 — scaffold↔library parity via `ferro` facade exports + corrected templates + two-layer CI guard; 10/10 verified; `ci.yml`/`publish.yml` await a manual `workflow`-scope push); Phase 213 ✅ SHIPPED 0.2.55; Phase 211 ✅ COMP-04
 Status: Ready to execute
@@ -401,6 +401,7 @@ Progress: [██████████] 100%
 | Phase 214-scaffold-library-parity P01 | 416 | 3 tasks | 7 files |
 | Phase 214 P02 | 90m | 3 tasks | 12 files |
 | Phase 212 P01 | 276s | 2 tasks | 4 files |
+| Phase 212-crud-handler-proc-macros P02 | 17 | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -447,7 +448,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-13T05:01:10.594Z
-Stopped at: Completed 212-01-PLAN.md
+Last session: 2026-06-13T05:20:56.405Z
+Stopped at: Completed 212-02-PLAN.md
 Resume file: None
 Next action: `/gsd-discuss-phase 212` to begin v13.1 CRUD Handler Proc Macros (the active milestone). Alternatively `/gsd-complete-milestone` to formally archive the completed v13.0/v13.2/v13.3 work first. Operator: push the local Phase 214 commits (incl. `ci.yml`/`publish.yml`, which need a manual `workflow`-scope push) before the next release.
