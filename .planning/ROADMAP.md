@@ -2720,7 +2720,7 @@ Plans:
 - [x] **Phase 208: COMP-05 — Cross-Modality Vocabulary Sketch** — Three `pub(crate)` sketch renderers in `ferro-projections/src/render/`; written analysis covering all 7 intents across 3 non-visual modalities; at least one vocabulary gap identified; zero changes to `intent.rs` or `derive.rs`. (completed 2026-06-12)
 - [x] **Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)** — VALIDATED 2026-06-12. Goal (first real-world validation signal) achieved decisively; SC#2/#4/#5 met. SC#1 (migrate+merge 3 entities) deliberately NOT met — the validation found the projection render is content-incomplete (Process placeholder kanban, Summarize empty values, actions deferred), so no entity reached merge-worthy parity; both probe branches left unmerged. Browse (Staff) is data-bound and works. Finding → v13.2 Phase 213. Depends on Phase 207.
 - [x] **Phase 210: COMP-03 — Agent-Success-Rate Harness** — `ferro-mcp/tests/agent_harness.rs`; 14+ tasks (2 per intent); 4-tier pass criteria defined before any agent run; ≥3 trials per case; `rmcp 0.12` in-process transport; committed baseline artifact (model version, prompt version, per-tier pass rates). Depends on Phase 207. (completed 2026-06-13)
-- [ ] **Phase 211: COMP-04 — Time-to-Working-App Benchmark** — `ferro-cli/tests/benchmark_new_project.rs`; criterion 0.8.2 `iter_custom` scaffold timing; `FERRO_BENCH=1` gate; at least one cold-cache Docker run; committed Markdown result document with start/end conditions and per-step breakdown.
+- [x] **Phase 211: COMP-04 — Time-to-Working-App Benchmark** — `ferro-cli/tests/benchmark_new_project.rs`; criterion 0.8.2 `iter_custom` scaffold timing; `FERRO_BENCH=1` gate; at least one cold-cache Docker run; committed Markdown result document with start/end conditions and per-step breakdown. (completed 2026-06-13)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -2728,7 +2728,7 @@ Plans:
 | 208. COMP-05 Cross-Modality Vocabulary Sketch | 2/2 | Complete    | 2026-06-12 |
 | 209. COMP-01 Slice A Gestiscilo Migration | 1/2 | In Progress|  |
 | 210. COMP-03 Agent-Success-Rate Harness | 4/4 | Complete    | 2026-06-13 |
-| 211. COMP-04 Time-to-Working-App Benchmark | 1/2 | In Progress|  |
+| 211. COMP-04 Time-to-Working-App Benchmark | 2/2 | Complete    | 2026-06-13 |
 
 #### Phase Details
 
@@ -2837,9 +2837,9 @@ Plans:
 
 **Phase-time calibration:** Whether to assert a wall-clock threshold in CI (and at what value) is decided after a first cold-cache run. If CI disk constraints make it infeasible, the benchmark remains a committed manual artifact.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 - [x] 211-01-PLAN.md — Benchmark apparatus (autonomous): gated criterion `iter_custom` benchmark (5 steps, per-step Instants, build asserts exit 0), criterion dev-dep, cold-cache Dockerfile + RESULTS.md template with seeded weakness
-- [ ] 211-02-PLAN.md — Cold-cache run (human-action): developer runs the Docker benchmark, fills RESULTS.md with the real `cache: cold` row + full env spec, finalizes the SC#5 discovered-weaknesses finding
+- [x] 211-02-PLAN.md — Cold-cache run (human-action): developer runs the Docker benchmark, fills RESULTS.md with the real `cache: cold` row + full env spec, finalizes the SC#5 discovered-weaknesses finding
 
 ---
 
