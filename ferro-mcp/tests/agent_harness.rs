@@ -759,3 +759,125 @@ fn t1_invalid_spec_scores_fail_without_panic() {
         // Process survives — no panic, no abort. If we reach this assertion the test passed.
     }
 }
+
+// ---------------------------------------------------------------------------
+// Wave 3 (Plan 03): In-process rmcp transport + agent tool-use loop.
+//
+// The in-process client stands up FerroMcpService on one half of a
+// tokio::io::duplex pair and an rmcp RoleClient on the other half. The
+// transport-async-rw feature enables IntoTransport for DuplexStream (single
+// combined AsyncRead+AsyncWrite type — TransportAdapterAsyncCombinedRW).
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Wave 3: In-process rmcp client helpers.
+// ---------------------------------------------------------------------------
+
+use ferro_mcp::service::FerroMcpService;
+use rmcp::model::CallToolRequestParam;
+use rmcp::{RoleClient, ServiceExt};
+
+/// Stands up FerroMcpService over one half of a `tokio::io::duplex` pair and
+/// connects an rmcp RoleClient over the other half.
+///
+/// The server task is spawned via `tokio::spawn`; the `JoinHandle` is dropped
+/// (the server keeps running until the client disconnects or the process exits).
+/// Call `client.cancel().await.ok()` to shut down cleanly.
+///
+/// Transport mechanism: `DuplexStream` implements `AsyncRead + AsyncWrite +
+/// Send + 'static`, which satisfies `IntoTransport` via the
+/// `TransportAdapterAsyncCombinedRW` impl in rmcp's `transport/async_rw.rs`
+/// (confirmed against rmcp 0.12.0 source — A-rmcp resolved MEDIUM → HIGH).
+async fn spawn_in_process_client(
+    project_root: std::path::PathBuf,
+) -> rmcp::service::RunningService<RoleClient, ()> {
+    let (client_stream, server_stream) = tokio::io::duplex(64 * 1024);
+
+    // Server half: FerroMcpService implements ServerHandler + ServiceExt<RoleServer>.
+    let service = FerroMcpService::new(project_root);
+    tokio::spawn(async move {
+        // serve() is infallible for the server side once the handshake completes.
+        // Errors are expected when the client disconnects.
+        let _ = service.serve(server_stream).await;
+    });
+
+    // Client half: `()` implements ServiceExt<RoleClient> as the null handler.
+    // serve() drives the MCP initialize handshake and returns a RunningService.
+    ().serve(client_stream)
+        .await
+        .expect("in-process rmcp client handshake must succeed")
+}
+
+/// Dispatch a single tool call through the in-process rmcp client and return
+/// the concatenated text content of the result.
+///
+/// Tool inputs are supplied as a `serde_json::Value` (must be an Object or
+/// null). D-06 enforcement: this function is called with ONLY the 3 allowed
+/// tool names (`generation_context`, `json_ui_catalog`, `checkpoint_projection`).
+async fn call_dev_tool(
+    client: &rmcp::service::RunningService<RoleClient, ()>,
+    name: &str,
+    args: serde_json::Value,
+) -> String {
+    let arguments = args.as_object().cloned();
+    let result = client
+        .peer()
+        .call_tool(CallToolRequestParam {
+            name: name.to_owned().into(),
+            arguments,
+        })
+        .await
+        .unwrap_or_else(|e| panic!("call_tool({name}) failed: {e}"));
+
+    result
+        .content
+        .iter()
+        .filter_map(|c| c.raw.as_text())
+        .map(|t| t.text.as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+// ---------------------------------------------------------------------------
+// Wave 3: In-process rmcp smoke test (gated — no LLM needed, no API key).
+//
+// This test proves the duplex transport wiring works end-to-end without an
+// LLM call: stands up the in-process client, calls `json_ui_catalog`, and
+// asserts a non-empty text result. Gated so default CI does not depend on
+// rmcp client runtime behavior (the Wave 2 replay tests carry the CI signal).
+// ---------------------------------------------------------------------------
+
+/// Proves the in-process rmcp duplex transport: FerroMcpService serves over
+/// a `tokio::io::duplex` pair; the RoleClient calls `json_ui_catalog` and
+/// receives a non-empty text response.
+///
+/// Gated behind `FERRO_AGENT_EVAL=1` (same gate as the live LLM test).
+/// No API key or network required — the tool call is purely in-process.
+#[tokio::test]
+#[ignore = "in-process rmcp roundtrip; run with FERRO_AGENT_EVAL=1 (no API key needed)"]
+async fn smoke_in_process_rmcp_duplex() {
+    if std::env::var("FERRO_AGENT_EVAL").is_err() {
+        eprintln!("skipping: set FERRO_AGENT_EVAL=1 to run in-process rmcp smoke test");
+        return;
+    }
+
+    // Use the ferro workspace root as the project root so the MCP tools
+    // can locate source files (generation_context, json_ui_catalog are
+    // read-only and don't depend on DB state).
+    let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("ferro-mcp has a parent workspace dir")
+        .to_path_buf();
+
+    let client = spawn_in_process_client(project_root).await;
+
+    // Call json_ui_catalog with no filter (empty args object).
+    let result = call_dev_tool(&client, "json_ui_catalog", serde_json::json!({})).await;
+
+    assert!(
+        !result.is_empty(),
+        "json_ui_catalog must return non-empty text over the in-process transport"
+    );
+
+    client.cancel().await.ok();
+}
