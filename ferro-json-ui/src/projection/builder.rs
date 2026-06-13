@@ -1071,6 +1071,7 @@ mod tests {
             is_list: false,
             readable: true,
             writable: true,
+            render_hint: None,
         };
         let result = super::input_props_for("DatePicker", &field);
         match result {

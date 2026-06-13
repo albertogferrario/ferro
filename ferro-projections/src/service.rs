@@ -158,6 +158,7 @@ impl ServiceDef {
             is_list: false,
             readable: true,
             writable: true,
+            render_hint: None,
         });
         self
     }
@@ -177,6 +178,7 @@ impl ServiceDef {
             is_list: false,
             readable: true,
             writable: true,
+            render_hint: None,
         });
         self
     }
@@ -196,6 +198,7 @@ impl ServiceDef {
             is_list: true,
             readable: true,
             writable: true,
+            render_hint: None,
         });
         self
     }
@@ -217,6 +220,7 @@ impl ServiceDef {
             is_list: false,
             readable: true,
             writable: false,
+            render_hint: None,
         });
         self
     }
@@ -238,6 +242,7 @@ impl ServiceDef {
             is_list: false,
             readable: false,
             writable: true,
+            render_hint: None,
         });
         self
     }
@@ -320,6 +325,7 @@ impl ServiceDef {
                 is_list: false,
                 readable: true,
                 writable: !is_system,
+                render_hint: None,
             });
         }
 
