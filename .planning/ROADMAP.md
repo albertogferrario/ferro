@@ -64,6 +64,7 @@
 - 🚧 **v13.0 Compressive Validation** — Phases 207-211 (started 2026-06-12; paused at 3/5 after Phase 209, **RESUMED 2026-06-13** now v13.2 shipped 0.2.55 and made the render content-complete — 207/208/209 ✅, running 210 agent-success-rate harness + 211 time-to-working-app benchmark. Substance-first: the abstraction was fixed first, now measuring it). First slice of the Road to v1.0 program: empirical validation of the projection/intent abstraction across five COMP items. COMP-02 synthetic regression catalog (Phase 207), COMP-05 cross-modality vocabulary sketch (Phase 208), COMP-01 gestiscilo migration Slice A (Phase 209), COMP-03 agent-success-rate harness (Phase 210), COMP-04 time-to-working-app benchmark (Phase 211). Targets v1.0 criterion #2 (projection/intent validated through real applications and a synthetic catalog) and the compressive beauty dimension (priority #1).
 - 📋 **v13.1 CRUD Handler Proc Macros** — Phase 212 (scoped 2026-06-12). Framework-ergonomics feature driven by the gestiscilo Phase 202 duplication survey: two route-attribute proc macros (`#[resource_get]`, `#[resource_post]`) that fold the recurring tenant-resolve + typed-param + tenant-scoped-lookup + 404-dispatch prelude (repeated 200+ times in a single consumer) into a macro, plus a `Validator::validate_or_redirect` helper. Scoped to ferro's framework-product axis, not one consumer's LoC. Originally mis-numbered 209 by the cross-repo gestiscilo evidence pass; relocated here to keep v13.0 purely Compressive Validation. Phase scope at `phases/212-crud-handler-proc-macros/212-CONTEXT.md`.
 - ✅ **v13.2 Projection Render Completeness** — Phase 213 (SHIPPED in 0.2.55, 2026-06-13 — Gap A kanban structure/content split integration-verified live on gestiscilo feat/207; Gaps B–E unit+live where exercisable. Scoped 2026-06-12 from COMP-01 Slice A findings). Make `JsonUiRenderer`'s projection render *content-complete* so real-world views actually migrate. Phase 209 confirmed the render is layout-complete but content-incomplete: Browse data-binds, but Process emits a placeholder kanban (`emit_kanban_root`, "state-machine awareness is a deferred idea"), Summarize emits empty StatCard values (`emit_statcard_root`, `value: String::new()`), the `actions` slot is an empty stub for every intent (`emit_actions_placeholder`, "Deferred to Phase 118+"), `ImageUrl` fields don't render in tables, and projections emit a standalone spec with no app-shell layout. This is the unblock for all future projection migration. Scope at `phases/213-projection-render-completeness/213-CONTEXT.md` (to be created). Depends on Phase 209 (the validation that scoped it).
+- 📋 **v13.3 Scaffold↔Library Parity & Published-Artifact Smoke Test** — Phase 214 (scoped 2026-06-13). Source: COMP-04 (Phase 211) cold-cache benchmark, which found the **published 0.2.55 scaffold does not compile** — `cargo build` of a freshly scaffolded app fails with 52 errors (scaffold templates reference `ferro::error_response!`, `#[rule]`, `ferro::Queue`, and `ActiveValue` that the published `ferro` crate doesn't export, plus `make:job` emits `use ferro_queue::…` without adding `ferro-queue` to the generated `Cargo.toml`). Two parts: (1) align the `ferro-cli` scaffold templates with the published `ferro` surface so `ferro new → make:auth → make:scaffold ×3 → make:job → cargo build` compiles clean; (2) add a CI smoke test that scaffolds and builds against the *published* artifact so a non-compiling release can never ship silently again — the permanent guard COMP-04's apparatus enables. Framework-correctness, not a Compressive Validation item. Scope at `phases/214-scaffold-library-parity/214-CONTEXT.md`. Depends on Phase 211 (the validation that found it).
 - 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
 
 ---
@@ -2915,3 +2916,40 @@ Plans:
 - [x] 213-03-PLAN.md — Gap C (statcard): `StatCardProps.value_path` extension + `render_stat_card` resolution + primary-stat emit
 - [x] 213-04-PLAN.md — Gap D (imageurl): `ColumnFormat::Image` + ImageUrl column inclusion + `<img>` cell render
 - [x] 213-05-PLAN.md — Gap E doc (composition pattern) + full gate + gestiscilo probe-branch re-verification (checkpoints)
+
+## 📋 v13.3 Scaffold↔Library Parity & Published-Artifact Smoke Test (Phase 214, scoped 2026-06-13)
+
+**Milestone Goal:** Make a freshly scaffolded ferro app compile against the *published* `ferro` crate, and add a CI guard that keeps it that way. COMP-04 (Phase 211) ran the first cold-cache time-to-working-app benchmark and found the honest first-time experience is broken: the CLI scaffolding steps are sub-second, but `cargo build` of the generated app fails with **52 compile errors** — the published 0.2.55 `ferro-cli` scaffold templates reference APIs the published `ferro` crate does not expose. This is framework-correctness on ferro's framework-product axis, not a Compressive Validation item, which is why it sits in its own milestone.
+
+**Source:** Phase 211 `phases/211-comp-04-time-to-working-app-benchmark/211-WEAKNESSES.md` (Finding W1), with the committed cold-cache apparatus (`ferro-cli/tests/benchmark_new_project.rs`, `ferro-cli/tests/fixtures/benchmark/{Dockerfile,RESULTS.md}`) as both the evidence and the basis for the permanent CI guard. Because the generated `Cargo.toml` pins `ferro = { package = "ferro-rs", version = "0.2" }` from crates.io (not a path dep), scaffolding with the local workspace binary reproduces the failure — the published library, not the scaffolding binary, is the constraint.
+
+#### Phases
+
+- [ ] **Phase 214: Scaffold↔Library Parity & Smoke Test** — align the `ferro-cli` scaffold templates with the published `ferro` surface (export/`use` the symbols the templates emit, or change the templates to match what's exported): `error_response!` macro, `#[rule]` validation attribute, `ferro::Queue`/`QueueConfig`, the `make:job` `ferro_queue` dependency (add to generated `Cargo.toml` or re-export under `ferro`), `ActiveValue` import in scaffold controllers, `crate::models::users` resolution, `ferro::database::connection` usage. Then add a CI smoke test that scaffolds + `cargo build`s against the published artifact. May split into a parity-fix plan + a CI-guard plan at planning time. Depends on Phase 211.
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 214. Scaffold↔Library Parity & Smoke Test | 0/TBD | Scoped (discuss-phase needed) | - |
+
+#### Phase Details
+
+### Phase 214: Scaffold↔Library Parity & Published-Artifact Smoke Test
+
+**Goal:** A freshly scaffolded app (`ferro new → make:auth → make:scaffold ×3 → make:job → cargo build`) compiles clean against the published `ferro` crate, and a CI smoke test enforces this on every release so a non-compiling scaffold can never ship silently again.
+
+**Depends on:** Phase 211 (COMP-04 — the validation that found the defect; its 211-WEAKNESSES.md W1 is the requirements source, and its benchmark apparatus is the smoke-test basis).
+
+**Requirements:** TBD (framework-product axis; derive SCAF-* labels in discuss-phase from 211-WEAKNESSES W1).
+
+**Success Criteria** (what must be TRUE) — draft, to refine in discuss-phase:
+  1. The scaffold templates and the published `ferro` surface agree: every symbol a generated project references (`error_response!`, `#[rule]`, `ferro::Queue`/`QueueConfig`, `ActiveValue`, `crate::models::users`, `ferro::database::connection`) either resolves from the published crate or the template no longer emits it.
+  2. `make:job` produces a project whose `Cargo.toml` declares every crate its generated code imports (`ferro-queue` present, or the job code routes through a `ferro` re-export).
+  3. A clean scaffold (`ferro new → make:auth → make:scaffold ×3 → make:job`) `cargo build`s with exit 0 against the published `ferro-rs` — the assertion COMP-04's benchmark makes now passes.
+  4. A CI job scaffolds and builds against the published artifact (reusing the Phase 211 apparatus / a published-crate variant) and fails the pipeline on any scaffold↔library regression.
+  5. The decision on whether the smoke test runs per-PR vs per-release (cost/time) is recorded with a rationale.
+
+**Provenance:** Scoped from Phase 211 findings. COMP-04's value was catching this; this phase fixes it and makes the guard permanent.
+
+**Status:** Scoped — `/gsd-discuss-phase 214` to lock requirement labels + the per-PR-vs-per-release CI decision, then plan-phase.
+
+**Plans:** TBD
