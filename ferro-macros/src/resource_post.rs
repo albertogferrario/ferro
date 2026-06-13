@@ -6,7 +6,7 @@
 //! 1. Extract the resource id from the `"id"` path param as `<R as TenantScoped>::Id`.
 //! 2. Resolve the tenant via `::ferro::current_tenant()` (or a caller-supplied expr).
 //! 3. Look up the resource via `<R as TenantScoped>::find_for_tenant(id, tenant.id)`.
-//! 4. On miss: redirect (if `on_miss` given) or return `ActionError::not_found`.
+//! 4. On miss: 303 redirect (if `on_miss` given) or return a 404 `HttpResponse`.
 //! 5. Synthesize `__form_url` from `form_url` template (if given).
 //! 6. Delegate to `__<name>_inner` with typed params + `__form_url: &str`.
 //! 7. Dispatch the `ActionResult` via `handle_action_result`.
@@ -500,7 +500,7 @@ pub fn resource_post_impl(attr: TokenStream, input: TokenStream) -> TokenStream 
             // Step 3: tenant-scoped lookup — always passes tenant.id (T-212-01)
             #lookup
 
-            // Step 4: miss handling (D-05, POST shape: ActionError)
+            // Step 4: miss handling (D-05) — emits HttpResponse (303 redirect or 404)
             let __resource = match __resource_opt {
                 Some(r) => r,
                 #miss_arm
