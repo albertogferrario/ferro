@@ -19,4 +19,17 @@ pub enum Error {
     Database(String),
     #[error("serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+    /// The resolved action name is not found in any mcp_exposed ServiceDef.
+    /// Maps to JSON-RPC -32601 (method not found) at the jsonrpc layer.
+    #[error("action not found: {0}")]
+    ActionNotFound(String),
+    /// A precondition guard returned false or errored at execution time.
+    /// Maps to a structured tool error result (isError:true), NOT a -32603.
+    /// Never discloses which guard or what state it checked.
+    #[error("guard failed: {0}")]
+    GuardFailed(String),
+    /// Input validation failed (required field missing, wrong type, etc.).
+    /// Maps to a structured tool error result (isError:true).
+    #[error("validation error: {0}")]
+    Validation(String),
 }
