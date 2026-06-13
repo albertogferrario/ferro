@@ -13,7 +13,7 @@
 //! - **Live path** (`FERRO_AGENT_EVAL=1`): stands up an in-process rmcp client over
 //!   the real `FerroMcpService` dev tools, drives `claude-opus-4-8` through a
 //!   tool-use loop, captures final `ServiceDef` JSON into committed transcripts, and
-//!   writes a baseline artifact. Gated behind `#[ignore]` + env-var check so normal
+//!   writes a baseline artifact. Gated behind an ignore attribute + env-var check so normal
 //!   `cargo test` / CI skips it entirely (no API key, no network, no LLM flakiness).
 //!
 //! ## Tier definitions (stated before any run — D-07)
