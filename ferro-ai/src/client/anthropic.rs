@@ -78,7 +78,21 @@ impl AnthropicClient {
                 }
                 Role::User => serde_json::json!({"role": "user", "content": m.content}),
                 Role::Assistant => {
-                    serde_json::json!({"role": "assistant", "content": m.content})
+                    // In a tool-use loop, `assistant_content` (from
+                    // `CompletionResponse::ToolUse`) is the raw Anthropic content
+                    // blocks array, JSON-stringified — it carries the `tool_use`
+                    // blocks the next `tool_result` must reference. Spread it back
+                    // as structured content when it parses as an array; otherwise
+                    // send it as a plain text string (a normal assistant turn).
+                    // Without this, the array is sent as a single text block, the
+                    // `tool_use` block is lost, and Anthropic rejects the following
+                    // `tool_result` with "no corresponding tool_use block".
+                    match serde_json::from_str::<serde_json::Value>(&m.content) {
+                        Ok(content @ serde_json::Value::Array(_)) => {
+                            serde_json::json!({"role": "assistant", "content": content})
+                        }
+                        _ => serde_json::json!({"role": "assistant", "content": m.content}),
+                    }
                 }
             })
             .collect();
