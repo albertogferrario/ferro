@@ -1,13 +1,25 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use ferro_projections::render::Renderer;
 use ferro_projections::{Error as ProjError, IntentScore, ServiceDef};
 use rmcp::model::{Tool, ToolAnnotations};
 
-/// Context for MCP rendering. Carries no state in Phase 197;
-/// Phase 200 will extend with tenant/policy context.
+/// Per-request MCP context — tenant identity and evaluated permission guards.
+///
+/// `tenant_id`: resolved from the auth credential (JWT or API key); `None` =
+/// unauthenticated or single-tenant (dispatch fails closed if the projection
+/// requires a tenant).
+/// `evaluated_guards`: populated in Phase 218/219; absent key = allow,
+/// explicit `false` = deny (same semantics as `BaseContext`). Empty in 217.
+/// `scope`: credential scope. `None` = OAuth JWT path (full access);
+/// `"read"` = read-only key; `"read_write"` = full key.
 #[derive(Debug, Clone, Default)]
-pub struct McpContext;
+pub struct McpContext {
+    pub tenant_id: Option<i64>,
+    pub evaluated_guards: HashMap<String, bool>,
+    pub scope: Option<String>,
+}
 
 /// Renders a `ServiceDef` projection into an MCP tool definition.
 ///
@@ -83,7 +95,7 @@ mod tests {
         let renderer = McpRenderer;
         let intents = derive_intents(service);
         renderer
-            .render(service, &intents, &McpContext)
+            .render(service, &intents, &McpContext::default())
             .expect("render ok")
     }
 
@@ -134,7 +146,7 @@ mod tests {
         );
 
         let services = vec![exposed, hidden];
-        let tools = render_exposed_tools(&services, &McpContext).expect("render ok");
+        let tools = render_exposed_tools(&services, &McpContext::default()).expect("render ok");
 
         assert_eq!(
             tools.len(),

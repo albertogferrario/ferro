@@ -11,6 +11,10 @@ pub enum Error {
     /// distinct from an internal `Database` failure (`-32603` Internal error).
     #[error("invalid filter: {0}")]
     InvalidFilter(String),
+    /// Caller is not authenticated or their credential scope is insufficient.
+    /// Maps to JSON-RPC -32603 at the jsonrpc layer (same envelope as OAuth invalid-token).
+    #[error("auth error: {0}")]
+    Auth(String),
     #[error("database error: {0}")]
     Database(String),
     #[error("serialization error: {0}")]
