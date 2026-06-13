@@ -255,10 +255,10 @@ pub use ferro_whatsapp::{
 // Re-export ferro-projections for service projection definitions
 #[cfg(feature = "projections")]
 pub use ferro_projections::{
-    derive_intents, infer_meaning, ActionDef, Cardinality, DataType, Error as ProjectionsError,
-    FieldDef, FieldMeaning, GuardDef, InputDef, Intent, IntentHint, IntentScore, NavigationHint,
-    RelationshipDef, RenderHint, Renderer, ServiceDef, StateDef, StateMachine, Transition,
-    Verbosity, Warning as ProjectionsWarning,
+    derive_intents, infer_meaning, ActionDef, BaseContext, Cardinality, DataType,
+    Error as ProjectionsError, FieldDef, FieldMeaning, GuardDef, InputDef, Intent, IntentHint,
+    IntentScore, NavigationHint, RelationshipDef, RenderHint, Renderer, ServiceDef, StateDef,
+    StateMachine, Transition, Verbosity, Warning as ProjectionsWarning,
 };
 // Re-export visual renderer types from ferro-json-ui
 #[cfg(feature = "projections")]

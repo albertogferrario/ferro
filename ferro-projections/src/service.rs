@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::action::{ActionDef, GuardDef};
-use crate::field::{infer_meaning, DataType, FieldDef, FieldMeaning};
+use crate::field::{infer_meaning, DataType, FieldDef, FieldMeaning, RenderHint};
 use crate::intent::IntentHint;
 use crate::relationship::{Cardinality, RelationshipDef};
 use crate::state::{StateMachine, Warning};
@@ -159,6 +159,31 @@ impl ServiceDef {
             readable: true,
             writable: true,
             render_hint: None,
+        });
+        self
+    }
+
+    /// Adds a required read-write field carrying a non-visual [`RenderHint`].
+    ///
+    /// Use for `Url`/`ImageUrl` fields whose raw value has no useful text form:
+    /// `RenderHint::AltText(s)` substitutes `s`, `RenderHint::Skip` omits the
+    /// field from non-visual output. The visual renderer ignores the hint.
+    pub fn field_with_hint(
+        mut self,
+        name: impl Into<String>,
+        data_type: DataType,
+        meaning: FieldMeaning,
+        hint: RenderHint,
+    ) -> Self {
+        self.fields.push(FieldDef {
+            name: name.into(),
+            data_type,
+            meaning,
+            required: true,
+            is_list: false,
+            readable: true,
+            writable: true,
+            render_hint: Some(hint),
         });
         self
     }
@@ -565,6 +590,29 @@ mod tests {
         assert_eq!(service.fields[2].name, "price");
         assert_eq!(service.fields[3].name, "sku");
         assert_eq!(service.fields[4].name, "created_at");
+    }
+
+    #[test]
+    fn field_with_hint_attaches_render_hint() {
+        let service = ServiceDef::new("profile")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field_with_hint(
+                "avatar",
+                DataType::String,
+                FieldMeaning::ImageUrl,
+                RenderHint::AltText("User avatar".into()),
+            );
+
+        assert_eq!(service.fields[0].render_hint, None);
+        assert_eq!(
+            service.fields[1].render_hint,
+            Some(RenderHint::AltText("User avatar".into()))
+        );
+        // Mirrors `.field()`: required, read-write, not a list.
+        assert!(service.fields[1].required);
+        assert!(service.fields[1].readable);
+        assert!(service.fields[1].writable);
+        assert!(!service.fields[1].is_list);
     }
 
     #[test]
