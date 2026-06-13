@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v13.1
 milestone_name: CRUD Handler Proc Macros
-status: verifying
-stopped_at: Completed 212-crud-handler-proc-macros/212-03-PLAN.md
+status: complete — v13.x batch (v13.0/v13.1/v13.2/v13.3) all done; no active milestone (v14.0 is the next planned direction, not started)
+stopped_at: Phase 212 complete (v13.1); v13.x batch complete; milestone pointers reconciled
 last_updated: "2026-06-13T06:06:22.543Z"
 last_activity: 2026-06-13
 progress:
@@ -20,21 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 212 — crud-handler-proc-macros
+**Current focus:** None active — v13.x batch complete. Next: choose v14.0 or archive v13.x via `/gsd-complete-milestone`.
 
 ## Current Position
 
-Milestone: v13.1 CRUD Handler Proc Macros — 🚧 ACTIVE (2026-06-13). [v13.0 Compressive Validation ✅ complete (207–211); v13.2 Render Completeness ✅ SHIPPED 0.2.55; v13.3 Scaffold↔Library Parity ✅ complete (214)]
-Phase: 212
-Plan: Not started
-Next: /gsd-discuss-phase 212
-Prior: Phase 214 ✅ COMPLETE 2026-06-13 (v13.3 — scaffold↔library parity via `ferro` facade exports + corrected templates + two-layer CI guard; 10/10 verified; `ci.yml`/`publish.yml` await a manual `workflow`-scope push); Phase 213 ✅ SHIPPED 0.2.55; Phase 211 ✅ COMP-04
-Status: Phase complete — ready for verification
+Milestone: none active — the v13.x batch is complete [v13.0 Compressive Validation ✅ (207–211); v13.1 CRUD Handler Proc Macros ✅ (212); v13.2 Render Completeness ✅ SHIPPED 0.2.55 (213); v13.3 Scaffold↔Library Parity ✅ (214)]. v14.0 Channel Projection is the next 📋 planned direction (depends on COMP-05), not started.
+Phase: — (none in progress)
+Plan: —
+Next: `/gsd-complete-milestone` to archive the completed v13.x work, or `/gsd-discuss-phase` once a v14.0 phase is scoped
+Prior: Phase 212 ✅ COMPLETE 2026-06-13 (v13.1 — resource_get/resource_post macros + TenantScoped + validate_or_redirect; 12/12 verified, code review 0 critical/4 warn fixed; also fixed a Phase 214 stale-test regression); Phase 214 ✅ (v13.3); Phase 213 ✅ SHIPPED 0.2.55
+Status: v13.x batch complete — no active milestone
 
-Progress: v13.0 ✅ 5/5 (207–211); v13.2 ✅ shipped (213); v13.3 ✅ (214); v13.1 0/1 (212 next)
+Progress: v13.0 ✅ 5/5 (207–211); v13.1 ✅ (212); v13.2 ✅ shipped (213); v13.3 ✅ (214)
 
 Last activity: 2026-06-13
-Workspace version: 0.2.55 (published); Phase 214 changes committed locally, not yet released
+Workspace version: 0.2.55 (published); 0.2.56 bumped locally (Phase 212); Phase 214 + 212 committed-not-released — eventual publish bundles both and needs a manual `workflow`-scope push for 214's CI yaml
 
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
 
@@ -451,6 +451,6 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-06-13T05:41:38.096Z
-Stopped at: Completed 212-crud-handler-proc-macros/212-03-PLAN.md
+Stopped at: Phase 212 complete (v13.1). The v13.x batch (v13.0/v13.1/v13.2/v13.3) is complete; no active milestone.
 Resume file: None
-Next action: `/gsd-discuss-phase 212` to begin v13.1 CRUD Handler Proc Macros (the active milestone). Alternatively `/gsd-complete-milestone` to formally archive the completed v13.0/v13.2/v13.3 work first. Operator: push the local Phase 214 commits (incl. `ci.yml`/`publish.yml`, which need a manual `workflow`-scope push) before the next release.
+Next action: `/gsd-complete-milestone` to archive the completed v13.x work, or scope a v14.0 Channel Projection phase to continue. Operator: the eventual release bundles the committed-not-released Phase 214 + 212 work (0.2.56) — push those commits, and 214's `ci.yml`/`publish.yml` need a manual `workflow`-scope push.
