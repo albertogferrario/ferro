@@ -2929,7 +2929,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 214. Scaffold↔Library Parity & Smoke Test | 2/2 | Complete   | 2026-06-13 |
+| 214. Scaffold↔Library Parity & Smoke Test | 2/2 | Complete    | 2026-06-13 |
 
 #### Phase Details
 
