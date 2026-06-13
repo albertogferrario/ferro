@@ -251,7 +251,14 @@ mod tests {
         // Call dispatch with the resolved tenant_id (mirrors handler's current_tenant().map(|t| t.id)).
         let call_params = json!({"name": "list_order", "arguments": {"limit": 10}});
         let services = vec![order_service()];
-        let result = handle_tools_call(call_params, &services, &db, Some(tenant_ctx.id), &McpContext::default()).await;
+        let result = handle_tools_call(
+            call_params,
+            &services,
+            &db,
+            Some(tenant_ctx.id),
+            &McpContext::default(),
+        )
+        .await;
 
         // Post-fix envelope: content is a valid text block, rows live in structuredContent.
         let content = result["result"]["content"]
@@ -312,7 +319,14 @@ mod tests {
 
         let call_params = json!({"name": "list_order", "arguments": {"limit": 10}});
         let services = vec![order_service()];
-        let result = handle_tools_call(call_params, &services, &db, Some(tenant_ctx.id), &McpContext::default()).await;
+        let result = handle_tools_call(
+            call_params,
+            &services,
+            &db,
+            Some(tenant_ctx.id),
+            &McpContext::default(),
+        )
+        .await;
 
         // Post-fix envelope: content is a valid text block, rows live in structuredContent.
         let content = result["result"]["content"]

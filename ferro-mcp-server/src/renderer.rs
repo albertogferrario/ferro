@@ -76,7 +76,8 @@ pub fn render_exposed_tools(
 
     for service in services.iter().filter(|s| s.mcp_exposed) {
         // Read tool first (existing behavior, always named list_<service>).
-        let read_tool = renderer.render(service, &ferro_projections::derive_intents(service), ctx)?;
+        let read_tool =
+            renderer.render(service, &ferro_projections::derive_intents(service), ctx)?;
         tagged.push((service.name.clone(), read_tool));
 
         // Then one write tool per ActionDef, in declaration order, guard-filtered.
@@ -98,7 +99,7 @@ pub fn render_exposed_tools(
 ///
 /// Read tools (names starting with `list_`) are excluded from collision detection
 /// and renaming — they are already unique per service (D-01 / ARCHITECTURE Decision (b)).
-fn disambiguate_write_tool_collisions(tagged: &mut Vec<(String, Tool)>) {
+fn disambiguate_write_tool_collisions(tagged: &mut [(String, Tool)]) {
     // Count how many distinct services each write tool name appears in.
     let mut name_count: HashMap<String, usize> = HashMap::new();
     for (_, tool) in tagged.iter() {
@@ -109,11 +110,11 @@ fn disambiguate_write_tool_collisions(tagged: &mut Vec<(String, Tool)>) {
 
     // Rename colliding write tools: <action.name>_on_<service.name>.
     for (service_name, tool) in tagged.iter_mut() {
-        if !tool.name.starts_with("list_") {
-            if name_count.get(tool.name.as_ref()).copied().unwrap_or(0) > 1 {
-                let new_name = format!("{}_on_{}", tool.name, service_name);
-                tool.name = new_name.into();
-            }
+        if !tool.name.starts_with("list_")
+            && name_count.get(tool.name.as_ref()).copied().unwrap_or(0) > 1
+        {
+            let new_name = format!("{}_on_{}", tool.name, service_name);
+            tool.name = new_name.into();
         }
     }
 }
@@ -146,7 +147,11 @@ fn render_action_tool(
         .map_err(|e| ProjError::Render(e.to_string()))?;
     let schema_map = match schema_value {
         serde_json::Value::Object(m) => m,
-        _ => return Err(ProjError::Render("action inputSchema must be an object".into())),
+        _ => {
+            return Err(ProjError::Render(
+                "action inputSchema must be an object".into(),
+            ))
+        }
     };
 
     // NOTE: destructive_hint defaults to true when absent in rmcp — always set it explicitly (D-04).
