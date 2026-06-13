@@ -2929,7 +2929,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 214. Scaffold↔Library Parity & Smoke Test | 0/TBD | Scoped (discuss-phase needed) | - |
+| 214. Scaffold↔Library Parity & Smoke Test | 1/2 | In Progress|  |
 
 #### Phase Details
 
@@ -2952,8 +2952,8 @@ Plans:
 
 **Status:** Planned — 2 plans across 2 waves. `/gsd-execute-phase 214`.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 214-01-PLAN.md — Parity fix: `error_response!` macro + `ActiveValue` re-export (framework) + 5 template fixes (queue import, ValidateRules derive, model path, DB connection) + docs (Wave 1). Covers SCAF-01, SCAF-02.
+- [x] 214-01-PLAN.md — Parity fix: `error_response!` macro + `ActiveValue` re-export (framework) + 5 template fixes (queue import, ValidateRules derive, model path, DB connection) + docs (Wave 1). Covers SCAF-01, SCAF-02.
 - [ ] 214-02-PLAN.md — CI guard: `scaffold_builds_against_workspace_ferro` path-dep test + `ci.yml` scaffold-smoke job + Dockerfile `ARG FERRO_VERSION` + `publish.yml` post-publish release gate (Wave 2, depends_on 01). Covers SCAF-03, SCAF-04, SCAF-05.
