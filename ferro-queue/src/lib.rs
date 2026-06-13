@@ -56,8 +56,8 @@ mod worker;
 pub use config::QueueConfig;
 pub use db::{
     claim, delete_job, enqueue, fail_job, get_delayed_jobs, get_failed_jobs, get_pending_jobs,
-    get_stats, reaper, release_job, requeue_claimed_by, FailedJobInfo, JobInfo, JobRow, JobState,
-    Queue, QueueStats, SingleQueueStats,
+    get_stats, reap_startup_claims, reaper, release_job, requeue_claimed_by, FailedJobInfo,
+    JobInfo, JobRow, JobState, Queue, QueueStats, SingleQueueStats,
 };
 pub use dispatcher::{
     dispatch, dispatch_later, dispatch_to, register_tenant_capture_hook, PendingDispatch,

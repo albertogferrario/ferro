@@ -268,6 +268,19 @@ impl WorkerLoop {
         // Abort the signal task on any exit path from this function.
         let _signal_guard = AbortOnDrop(signal_task);
 
+        // Reap orphan `claimed` rows left behind by a previous worker that died
+        // mid-job (SIGKILL on deploy restart, OOM). Without this they linger
+        // until the visibility-timeout reaper catches them — up to
+        // `config.visibility_timeout` (default 300s) of stale "in progress" UI.
+        // Runs once before the claim loop starts. Scoped to this worker's
+        // queues so concurrent workers on disjoint queues don't clobber each
+        // other; the model assumed is single-worker-per-queue.
+        match crate::db::reap_startup_claims(conn, &self.config.queues).await {
+            Ok(0) => {}
+            Ok(n) => info!(worker_id = %self.worker_id, reaped = n, "reaped orphan claimed jobs at startup"),
+            Err(e) => error!(worker_id = %self.worker_id, error = %e, "startup orphan reap failed — continuing"),
+        }
+
         'outer: loop {
             // --- Shutdown gate ---
             if self.shutdown.load(Ordering::SeqCst) {

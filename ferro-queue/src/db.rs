@@ -637,6 +637,54 @@ pub async fn requeue_claimed_by(conn: &DatabaseConnection, worker_id: &str) -> R
     Ok(())
 }
 
+/// Park leftover `claimed` rows on `queues` as `failed` at worker startup.
+///
+/// Closes the orphan-claim window that the visibility-timeout reaper leaves
+/// open: when a worker is killed mid-job (SIGKILL from a deploy restart, OOM),
+/// its claimed rows stay `claimed` until `visibility_timeout` elapses
+/// (default 300s). Consumers reading `jobs.status` see those rows as Active
+/// for the full timeout window — UI labels like "in progress" stick until the
+/// row is reaped or manually cleared.
+///
+/// Called once per `WorkerLoop::run` before the claim loop starts. Operates
+/// only on the queues this worker handles, so concurrent workers on disjoint
+/// queues never clobber each other. Assumes the single-worker-per-queue model
+/// the rest of the worker is built around — multi-worker-per-queue setups
+/// should rely on `visibility_timeout` instead.
+///
+/// Returns the number of rows reaped.
+pub async fn reap_startup_claims(
+    conn: &DatabaseConnection,
+    queues: &[String],
+) -> Result<u64, Error> {
+    if queues.is_empty() {
+        return Ok(0);
+    }
+    let backend = conn.get_database_backend();
+    let now_iso = Utc::now().to_rfc3339();
+
+    // Numbered placeholders: $1..$N for queue names, $N+1 for failed_at.
+    let queue_phs: Vec<String> = (1..=queues.len()).map(|i| ph(backend, i)).collect();
+    let ts_ph = ph(backend, queues.len() + 1);
+    let sql = format!(
+        "UPDATE jobs SET status='failed', \
+         error='reaped on worker startup (orphan claim from previous worker)', \
+         failed_at={ts_ph} \
+         WHERE status='claimed' AND queue IN ({})",
+        queue_phs.join(", "),
+    );
+
+    let mut values: Vec<Value> = queues
+        .iter()
+        .map(|q| Value::String(Some(Box::new(q.clone()))))
+        .collect();
+    values.push(Value::String(Some(Box::new(now_iso))));
+
+    let stmt = Statement::from_sql_and_values(backend, &sql, values);
+    let result = conn.execute(stmt).await.map_err(Error::Db)?;
+    Ok(result.rows_affected())
+}
+
 // ---------------------------------------------------------------------------
 // Introspection / stat queries
 // ---------------------------------------------------------------------------
@@ -1105,6 +1153,100 @@ mod tests {
             attempts, 2,
             "parked job keeps its attempt count (no further requeue)"
         );
+    }
+
+    #[tokio::test]
+    async fn reap_startup_claims_marks_orphans_failed() {
+        // A worker killed mid-job leaves rows at status='claimed'. On the next
+        // worker boot, reap_startup_claims must park them as failed so consumers
+        // reading jobs.status no longer see them as Active.
+        let conn = setup().await;
+        let now = Utc::now().to_rfc3339();
+
+        // One orphan on "default", one orphan on "publish", one on an untouched
+        // queue, plus a pending row that must NOT be reaped.
+        let orphan_default =
+            insert_job(&conn, "default", "Orphan1", "claimed", 0, 3, Some(&now), &now).await;
+        let orphan_publish =
+            insert_job(&conn, "publish", "Orphan2", "claimed", 1, 3, Some(&now), &now).await;
+        let orphan_other =
+            insert_job(&conn, "other", "Orphan3", "claimed", 0, 3, Some(&now), &now).await;
+        let pending_default =
+            insert_job(&conn, "default", "Fresh", "pending", 0, 3, None, &now).await;
+
+        // Worker handles "default" and "publish" — must reap exactly those orphans.
+        let reaped = reap_startup_claims(
+            &conn,
+            &["default".to_string(), "publish".to_string()],
+        )
+        .await
+        .expect("reap_startup_claims failed");
+        assert_eq!(reaped, 2, "expected 2 orphan rows reaped (default + publish)");
+
+        // The two scoped orphans are now failed with a non-null error + failed_at.
+        for id in [orphan_default, orphan_publish] {
+            let row = conn
+                .query_one(Statement::from_string(
+                    DatabaseBackend::Sqlite,
+                    format!("SELECT status, error, failed_at FROM jobs WHERE id={id}"),
+                ))
+                .await
+                .expect("select after reap")
+                .expect("row after reap");
+            let status: String = row.try_get_by::<String, _>("status").expect("status");
+            let error: Option<String> =
+                row.try_get_by::<Option<String>, _>("error").expect("error");
+            let failed_at: Option<String> = row
+                .try_get_by::<Option<String>, _>("failed_at")
+                .expect("failed_at");
+            assert_eq!(status, "failed", "orphan must be parked as failed");
+            assert!(
+                error.as_deref().unwrap_or("").contains("orphan claim"),
+                "error must record reap reason, got: {error:?}"
+            );
+            assert!(failed_at.is_some(), "failed_at must be stamped");
+        }
+
+        // The untouched queue's orphan is left alone (not in this worker's queues).
+        let row = conn
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("SELECT status FROM jobs WHERE id={orphan_other}"),
+            ))
+            .await
+            .expect("select untouched")
+            .expect("row untouched");
+        let status: String = row.try_get_by::<String, _>("status").expect("status");
+        assert_eq!(
+            status, "claimed",
+            "orphan on a queue not handled by this worker must be left alone"
+        );
+
+        // The fresh pending row is untouched.
+        let row = conn
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("SELECT status FROM jobs WHERE id={pending_default}"),
+            ))
+            .await
+            .expect("select pending")
+            .expect("row pending");
+        let status: String = row.try_get_by::<String, _>("status").expect("status");
+        assert_eq!(status, "pending", "pending row must not be reaped");
+    }
+
+    #[tokio::test]
+    async fn reap_startup_claims_empty_queues_is_noop() {
+        // Defensive: an empty queue list (no queues configured) must short-circuit
+        // without building an invalid `IN ()` SQL clause.
+        let conn = setup().await;
+        let now = Utc::now().to_rfc3339();
+        insert_job(&conn, "default", "Orphan", "claimed", 0, 3, Some(&now), &now).await;
+
+        let reaped = reap_startup_claims(&conn, &[])
+            .await
+            .expect("reap on empty queues must succeed");
+        assert_eq!(reaped, 0);
     }
 
     #[tokio::test]
