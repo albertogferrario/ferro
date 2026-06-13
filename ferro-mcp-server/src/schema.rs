@@ -1,4 +1,4 @@
-use ferro_projections::{DataType, FieldDef, FieldMeaning, ServiceDef};
+use ferro_projections::{ActionDef, DataType, FieldDef, FieldMeaning, ServiceDef};
 
 /// Returns `true` if this field should appear as an equality filter in the
 /// MCP tool `inputSchema`.
@@ -41,7 +41,7 @@ pub fn is_filter_field(field: &FieldDef) -> bool {
 ///
 /// Returns a JSON object with at minimum a `"type"` key; date/time/uuid types
 /// also emit a `"format"` key.
-fn data_type_to_json_schema(dt: DataType) -> serde_json::Value {
+pub(crate) fn data_type_to_json_schema(dt: DataType) -> serde_json::Value {
     match dt {
         DataType::Integer => serde_json::json!({ "type": "integer" }),
         DataType::Float => serde_json::json!({ "type": "number" }),
@@ -101,10 +101,71 @@ pub fn build_input_schema(service: &ServiceDef) -> crate::Result<serde_json::Val
     Ok(serde_json::json!({ "type": "object", "properties": properties }))
 }
 
+/// Builds the MCP tool `inputSchema` for a write tool derived from `action`.
+///
+/// Injects the parent service's first `FieldMeaning::Identifier` field as a required
+/// parameter (the record to act on), then maps each `ActionDef.inputs` entry via
+/// [`data_type_to_json_schema`]. `FieldMeaning::Sensitive` inputs are excluded
+/// (mirrors [`is_filter_field`] gate 3 — PITFALLS §3). `action.preconditions` and
+/// `action.effects` are NOT rendered — preconditions drive the list-time guard filter only.
+pub fn build_action_input_schema(
+    action: &ActionDef,
+    service: &ServiceDef,
+) -> crate::Result<serde_json::Value> {
+    let mut properties = serde_json::Map::new();
+    let mut required_fields: Vec<String> = Vec::new();
+
+    // Inject the identifier field (the record to act on) — always required.
+    if let Some(id_field) = service
+        .fields
+        .iter()
+        .find(|f| matches!(f.meaning, FieldMeaning::Identifier))
+    {
+        let mut prop = data_type_to_json_schema(id_field.data_type);
+        if let serde_json::Value::Object(ref mut m) = prop {
+            m.insert(
+                "description".into(),
+                serde_json::Value::String(format!(
+                    "ID of the {} record to act on",
+                    service.display_name.as_deref().unwrap_or(&service.name)
+                )),
+            );
+        }
+        properties.insert(id_field.name.clone(), prop);
+        required_fields.push(id_field.name.clone());
+    }
+
+    // Map each InputDef; exclude Sensitive meanings (T-218-01 / PITFALLS §3).
+    for input in &action.inputs {
+        if matches!(input.meaning, FieldMeaning::Sensitive) {
+            continue;
+        }
+        let mut prop = data_type_to_json_schema(input.data_type);
+        if let serde_json::Value::Object(ref mut m) = prop {
+            if let Some(ref desc) = input.description {
+                m.insert(
+                    "description".into(),
+                    serde_json::Value::String(desc.clone()),
+                );
+            }
+        }
+        properties.insert(input.name.clone(), prop);
+        if input.required {
+            required_fields.push(input.name.clone());
+        }
+    }
+
+    Ok(serde_json::json!({
+        "type": "object",
+        "properties": properties,
+        "required": required_fields,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ferro_projections::{ActionDef, DataType, FieldMeaning, InputDef, ServiceDef};
+    use ferro_projections::InputDef;
 
     /// A service with a representative mix of field meanings.
     ///
