@@ -389,8 +389,7 @@ pub async fn handle_write_call(
             })) })
         }
         // Agent-safe variants: pass message through (no internal state in these strings).
-        Err(ref e @ crate::Error::Validation(_))
-        | Err(ref e @ crate::Error::ActionNotFound(_)) => {
+        Err(ref e @ crate::Error::Validation(_)) | Err(ref e @ crate::Error::ActionNotFound(_)) => {
             json!({ "result": write_tool_error_result(json!({
                 "error_kind": "execution_error",
                 "message": e.to_string()
@@ -405,6 +404,43 @@ pub async fn handle_write_call(
             })) })
         }
     }
+}
+
+// ── Confirmation stubs (Plan 01 implements; stubs let RED tests compile) ─────
+
+/// Stub: issues a confirmation token for a destructive action.
+/// Plan 01 implements the real handler.
+#[cfg(feature = "confirmation")]
+#[allow(clippy::too_many_arguments)]
+pub async fn handle_request_confirm(
+    _call_params: Value,
+    _services: &[ServiceDef],
+    _db: &DatabaseConnection,
+    _tenant_id: Option<i64>,
+    _ctx: &crate::McpContext,
+    _dispatcher: &WriteDispatcher,
+    _store: &dyn ferro_ai::ConfirmationStore,
+    _action_name: &str,
+    _ttl_secs: u64,
+) -> Value {
+    todo!("handle_request_confirm: implemented in Plan 01")
+}
+
+/// Stub: validates a confirmation token and executes the action.
+/// Plan 01 implements the real handler.
+#[cfg(feature = "confirmation")]
+#[allow(clippy::too_many_arguments)]
+pub async fn handle_confirm(
+    _call_params: Value,
+    _services: &[ServiceDef],
+    _db: &DatabaseConnection,
+    _tenant_id: Option<i64>,
+    _ctx: &crate::McpContext,
+    _dispatcher: &WriteDispatcher,
+    _store: &dyn ferro_ai::ConfirmationStore,
+    _action_name: &str,
+) -> Value {
+    todo!("handle_confirm: implemented in Plan 01")
 }
 
 // ── RED unit tests (Wave 0 — compile and FAIL; Wave 1 makes them GREEN) ──────
@@ -627,6 +663,541 @@ mod tests {
             parsed_deny.is_error,
             Some(true),
             "guard-denied result must have is_error=true"
+        );
+
+        // --- confirmation_required envelope (feature = "confirmation") ---
+        #[cfg(feature = "confirmation")]
+        {
+            let cfm_req_payload = write_tool_error_result(serde_json::json!({
+                "error_kind": "confirmation_required",
+                "message": "use request_confirm_approve first",
+                "request_tool": "request_confirm_approve"
+            }));
+            let parsed_cfm_req: CallToolResult = serde_json::from_value(cfm_req_payload)
+                .expect("confirmation_required envelope must parse");
+            assert_eq!(
+                parsed_cfm_req.is_error,
+                Some(true),
+                "confirmation_required must be isError:true"
+            );
+
+            let token_issued =
+                serde_json::to_value(CallToolResult::structured(serde_json::json!({
+                    "confirmation_token": "cfm_test",
+                    "expires_in_seconds": 300
+                })))
+                .unwrap();
+            let parsed_issued: CallToolResult =
+                serde_json::from_value(token_issued).expect("token-issued envelope must parse");
+            assert_eq!(
+                parsed_issued.is_error,
+                Some(false),
+                "token-issued must be isError:false"
+            );
+
+            let expired = write_tool_error_result(serde_json::json!({
+                "error_kind": "confirmation_expired",
+                "message": "confirmation token expired or not found"
+            }));
+            let parsed_expired: CallToolResult =
+                serde_json::from_value(expired).expect("confirmation_expired envelope must parse");
+            assert_eq!(
+                parsed_expired.is_error,
+                Some(true),
+                "confirmation_expired must be isError:true"
+            );
+
+            let mismatch = write_tool_error_result(serde_json::json!({
+                "error_kind": "confirmation_mismatch",
+                "message": "confirmation token is for a different action"
+            }));
+            let parsed_mismatch: CallToolResult = serde_json::from_value(mismatch)
+                .expect("confirmation_mismatch envelope must parse");
+            assert_eq!(
+                parsed_mismatch.is_error,
+                Some(true),
+                "confirmation_mismatch must be isError:true"
+            );
+
+            let guard_denied_cfm = write_tool_error_result(serde_json::json!({
+                "error_kind": "guard_denied",
+                "message": "precondition 'is_manager' not met at confirm time"
+            }));
+            let parsed_guard_cfm: CallToolResult = serde_json::from_value(guard_denied_cfm)
+                .expect("guard_denied-at-confirm envelope must parse");
+            assert_eq!(
+                parsed_guard_cfm.is_error,
+                Some(true),
+                "guard_denied-at-confirm must be isError:true"
+            );
+        }
+    }
+}
+
+// ── RED confirmation tests (SC#1–#4 + guard-at-confirm; GREEN in Plan 01) ────
+
+#[cfg(all(test, feature = "confirmation"))]
+mod confirmation_tests {
+    use super::*;
+    use ferro_ai::InMemoryConfirmationStore;
+    use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Statement};
+    use serde_json::json;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    async fn setup_db() -> sea_orm::DatabaseConnection {
+        let db = Database::connect("sqlite::memory:")
+            .await
+            .expect("in-memory SQLite connect failed");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS mcp_idempotency_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id INTEGER NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                result TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (tenant_id, idempotency_key)
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create mcp_idempotency_keys table");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS audit_log (
+                id TEXT PRIMARY KEY NOT NULL,
+                tenant_id TEXT,
+                actor_kind TEXT NOT NULL,
+                actor_id TEXT,
+                action TEXT NOT NULL,
+                target_kind TEXT,
+                target_id TEXT,
+                before TEXT,
+                after TEXT,
+                reason TEXT,
+                correlation_id TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create audit_log table");
+        db
+    }
+
+    fn approve_action() -> ActionDef {
+        ActionDef::new("approve")
+            .transition_trigger("approve")
+            .precondition("is_manager")
+    }
+
+    fn submit_action() -> ActionDef {
+        ActionDef::new("submit").transition_trigger("submit")
+    }
+
+    fn order_service() -> ServiceDef {
+        use ferro_projections::{DataType, FieldMeaning};
+        ServiceDef::new("order")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .action(approve_action())
+            .action(submit_action())
+    }
+
+    fn allow_dispatcher(exec_count: Arc<AtomicUsize>) -> WriteDispatcher {
+        WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new(move |_, _, _, _| {
+                exec_count.fetch_add(1, Ordering::SeqCst);
+                Box::pin(async { Ok(json!({ "status": "approved" })) })
+            }),
+        }
+    }
+
+    fn deny_guard_dispatcher() -> WriteDispatcher {
+        WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(false) })),
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async { panic!("executor must not run when guard fails") })
+            }),
+        }
+    }
+
+    // ── SC#1 — bare destructive write without token returns ConfirmationRequired ──
+
+    /// SC#1: Calling `dispatch_write` on a destructive action (transition_trigger
+    /// is_some) without a confirmation context returns `Err(ConfirmationRequired)`
+    /// and does NOT invoke the executor.
+    ///
+    /// RED in Plan 00 — the D-08 seam wiring lands in Plan 01.
+    #[tokio::test]
+    async fn sc1_bare_destructive_without_token() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count.clone());
+
+        let result = dispatch_write(&submit_action(), &json!({"id": 1}), 1, &db, &dispatcher).await;
+
+        assert!(
+            matches!(result, Err(crate::Error::ConfirmationRequired(_))),
+            "expected Err(ConfirmationRequired(_)), got: {result:?}"
+        );
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT run when confirmation is required"
+        );
+    }
+
+    // ── SC#2 — two-step flow executes exactly once ────────────────────────────
+
+    /// SC#2: request_confirm issues a token; confirm with that token executes
+    /// exactly once; a second confirm with the same token returns an error
+    /// (single-use), executor called exactly once.
+    ///
+    /// RED in Plan 00 — handle_request_confirm / handle_confirm stubs in Plan 01.
+    #[tokio::test]
+    async fn sc2_two_step_flow_executes_once() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count.clone());
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![order_service()];
+        let ctx = crate::McpContext::default();
+
+        // Step 1: request_confirm
+        let req_response = handle_request_confirm(
+            json!({ "name": "request_confirm_submit", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "submit",
+            300,
+        )
+        .await;
+
+        let token = req_response["result"]["structuredContent"]["confirmation_token"]
+            .as_str()
+            .expect("confirmation_token must be present in request_confirm response");
+
+        // Step 2: first confirm — must execute
+        let confirm_response = handle_confirm(
+            json!({ "name": "confirm_submit", "arguments": { "confirmation_token": token, "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "submit",
+        )
+        .await;
+
+        assert_eq!(
+            confirm_response["result"]["structuredContent"]["status"]
+                .as_str()
+                .unwrap_or(""),
+            "ok",
+            "first confirm must succeed with status=ok"
+        );
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            1,
+            "executor must fire exactly once"
+        );
+
+        // Step 3: second confirm with same token — must be rejected (single-use)
+        let second_confirm = handle_confirm(
+            json!({ "name": "confirm_submit", "arguments": { "confirmation_token": token, "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "submit",
+        )
+        .await;
+
+        let error_kind = second_confirm["result"]["structuredContent"]["error_kind"]
+            .as_str()
+            .unwrap_or("");
+        assert!(
+            error_kind == "confirmation_expired" || error_kind == "confirmation_mismatch",
+            "second confirm must return expired/not-found, got: {second_confirm:?}"
+        );
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            1,
+            "executor must still have fired only once"
+        );
+    }
+
+    // ── SC#3 — expired token rejected, not executed ───────────────────────────
+
+    /// SC#3: Advance clock past TTL; confirm returns confirmation_expired,
+    /// executor NOT called.
+    ///
+    /// Uses tokio paused-clock protocol from ferro-ai/src/confirmation/store.rs.
+    /// RED in Plan 00.
+    #[tokio::test(start_paused = true)]
+    async fn sc3_expired_token_rejected() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count.clone());
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![order_service()];
+        let ctx = crate::McpContext::default();
+
+        // Request with a 5-second TTL
+        let req_response = handle_request_confirm(
+            json!({ "name": "request_confirm_submit", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "submit",
+            5, // 5-second TTL for the test
+        )
+        .await;
+
+        let token = req_response["result"]["structuredContent"]["confirmation_token"]
+            .as_str()
+            .expect("confirmation_token must be present");
+
+        // Yield to let the TTL timer register
+        tokio::task::yield_now().await;
+
+        // Advance clock past TTL
+        tokio::time::advance(Duration::from_secs(10)).await;
+
+        // Yield to let the expiry task run
+        for _ in 0..5 {
+            tokio::task::yield_now().await;
+        }
+
+        // Confirm after TTL — must be rejected
+        let confirm_response = handle_confirm(
+            json!({ "name": "confirm_submit", "arguments": { "confirmation_token": token, "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "submit",
+        )
+        .await;
+
+        assert_eq!(
+            confirm_response["result"]["structuredContent"]["error_kind"]
+                .as_str()
+                .unwrap_or(""),
+            "confirmation_expired",
+            "expired token must return confirmation_expired, got: {confirm_response:?}"
+        );
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT run after TTL expiry"
+        );
+    }
+
+    // ── SC#4 — token mismatch (wrong action / wrong record) ──────────────────
+
+    /// SC#4a: Token bound to action "submit" used on action "approve" returns
+    /// confirmation_mismatch, executor NOT called.
+    ///
+    /// RED in Plan 00.
+    #[tokio::test]
+    async fn sc4_token_mismatch_action() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count.clone());
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![order_service()];
+        let ctx = crate::McpContext::default();
+
+        // Request confirm for "submit"
+        let req_response = handle_request_confirm(
+            json!({ "name": "request_confirm_submit", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "submit",
+            300,
+        )
+        .await;
+
+        let token = req_response["result"]["structuredContent"]["confirmation_token"]
+            .as_str()
+            .expect("token must be present");
+
+        // Try to confirm "approve" with a token issued for "submit"
+        let mismatch_response = handle_confirm(
+            json!({ "name": "confirm_approve", "arguments": { "confirmation_token": token, "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "approve", // different action
+        )
+        .await;
+
+        assert_eq!(
+            mismatch_response["result"]["structuredContent"]["error_kind"]
+                .as_str()
+                .unwrap_or(""),
+            "confirmation_mismatch",
+            "wrong-action token must return confirmation_mismatch, got: {mismatch_response:?}"
+        );
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT run on mismatch"
+        );
+    }
+
+    /// SC#4b: Token bound to record id=1 used with id=2 returns
+    /// confirmation_mismatch, executor NOT called.
+    ///
+    /// RED in Plan 00.
+    #[tokio::test]
+    async fn sc4_token_mismatch_record() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count.clone());
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![order_service()];
+        let ctx = crate::McpContext::default();
+
+        // Request confirm for record id=1
+        let req_response = handle_request_confirm(
+            json!({ "name": "request_confirm_submit", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "submit",
+            300,
+        )
+        .await;
+
+        let token = req_response["result"]["structuredContent"]["confirmation_token"]
+            .as_str()
+            .expect("token must be present");
+
+        // Try to confirm with a different record id
+        let mismatch_response = handle_confirm(
+            json!({ "name": "confirm_submit", "arguments": { "confirmation_token": token, "id": 2 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "submit",
+        )
+        .await;
+
+        assert_eq!(
+            mismatch_response["result"]["structuredContent"]["error_kind"]
+                .as_str()
+                .unwrap_or(""),
+            "confirmation_mismatch",
+            "wrong-record token must return confirmation_mismatch, got: {mismatch_response:?}"
+        );
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT run on record mismatch"
+        );
+    }
+
+    // ── Guard-at-confirm — guard denied at confirm time, not executed ─────────
+
+    /// Guard passes at request_confirm; guard denies at confirm (live state changed).
+    /// Confirm must return guard_denied without executing.
+    ///
+    /// RED in Plan 00.
+    #[tokio::test]
+    async fn sc_guard_denied_at_confirm_time() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![order_service()];
+        let ctx = crate::McpContext::default();
+
+        // Guard passes during request_confirm
+        let allow_dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new({
+                let count = exec_count.clone();
+                move |_, _, _, _| {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Box::pin(async { Ok(json!({ "status": "approved" })) })
+                }
+            }),
+        };
+
+        let req_response = handle_request_confirm(
+            json!({ "name": "request_confirm_approve", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &allow_dispatcher,
+            &store,
+            "approve",
+            300,
+        )
+        .await;
+
+        let token = req_response["result"]["structuredContent"]["confirmation_token"]
+            .as_str()
+            .expect("token must be present");
+
+        // Guard now denies at confirm time (live state changed)
+        let deny_dispatcher = deny_guard_dispatcher();
+
+        let confirm_response = handle_confirm(
+            json!({ "name": "confirm_approve", "arguments": { "confirmation_token": token, "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &deny_dispatcher,
+            &store,
+            "approve",
+        )
+        .await;
+
+        assert_eq!(
+            confirm_response["result"]["structuredContent"]["error_kind"]
+                .as_str()
+                .unwrap_or(""),
+            "guard_denied",
+            "guard-denied-at-confirm must return guard_denied, got: {confirm_response:?}"
+        );
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT run when guard denies at confirm"
         );
     }
 }

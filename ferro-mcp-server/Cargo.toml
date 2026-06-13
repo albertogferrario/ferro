@@ -32,4 +32,4 @@ sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtim
 confirmation = ["dep:ferro-ai"]
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full", "macros"] }
+tokio = { version = "1", features = ["full", "macros", "test-util"] }
