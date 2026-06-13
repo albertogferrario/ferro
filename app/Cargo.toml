@@ -21,6 +21,7 @@ clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 ferro-mcp-server = { path = "../ferro-mcp-server", version = "0.2" }
 ferro-mcp-oauth = { path = "../ferro-mcp-oauth" }
+ferro-audit = { path = "../ferro-audit", version = "0.2" }
 rand = "0.8"
 base64 = "0.22"
 tracing = "0.1"

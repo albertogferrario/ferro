@@ -14,7 +14,14 @@ mod tests {
         DbTenantLookup, JwtClaimResolver, Middleware, Next, TenantContext, TenantFailureMode,
         TenantMiddleware, TenantResolver,
     };
-    use ferro_mcp_server::{handle_tools_call, McpContext};
+    use ferro_mcp_server::{handle_tools_call, McpContext, WriteDispatcher};
+
+    fn noop_dispatcher() -> WriteDispatcher {
+        WriteDispatcher {
+            executor: Box::new(|_, _, _, _| Box::pin(async { Ok(ferro::serde_json::json!({})) })),
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+        }
+    }
     use sea_orm::{ActiveModelTrait, ActiveValue::Set, Database, DatabaseConnection};
     use sea_orm_migration::prelude::*;
     use std::sync::Arc;
@@ -257,6 +264,7 @@ mod tests {
             &db,
             Some(tenant_ctx.id),
             &McpContext::default(),
+            &noop_dispatcher(),
         )
         .await;
 
@@ -325,6 +333,7 @@ mod tests {
             &db,
             Some(tenant_ctx.id),
             &McpContext::default(),
+            &noop_dispatcher(),
         )
         .await;
 

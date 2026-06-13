@@ -8,12 +8,110 @@ use ferro::ServiceDef;
 use ferro::{handler, HttpResponse, Request, Response};
 use ferro_mcp_server::{
     handle_initialize, handle_tools_call, handle_tools_list, McpContext, McpServerConfig,
+    WriteDispatcher,
 };
 
 /// The MCP-exposed projections served at this endpoint.
 /// Phase 198: explicit slice; a registry can replace this later.
 fn exposed_services() -> Vec<ServiceDef> {
     vec![crate::projections::order::service_def()]
+}
+
+/// Perform a live DB check for the `is_manager` guard.
+///
+/// For the synthetic fixture, a tenant is treated as a "manager" when it has
+/// at least one associated user in the DB. This reads live DB state and
+/// never consults a cached map (D-02 / T-219-02).
+async fn check_is_manager(tenant_id: i64, db: &sea_orm::DatabaseConnection) -> bool {
+    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
+    let backend = db.get_database_backend();
+    let stmt = Statement::from_sql_and_values(
+        backend,
+        match backend {
+            DatabaseBackend::Postgres => {
+                "SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = $1"
+            }
+            _ => "SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = ?",
+        },
+        [Value::BigInt(Some(tenant_id))],
+    );
+    db.query_one(stmt)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|row| row.try_get::<i64>("", "cnt").ok())
+        .map(|cnt| cnt > 0)
+        .unwrap_or(false)
+}
+
+/// Build the concrete `WriteDispatcher` for the MCP endpoint.
+///
+/// Executor: find-then-mutate via `find_for_tenant` (cross-tenant denial, D-03).
+/// Guard evaluator: live DB `is_manager` check (D-02 — never reads ctx.evaluated_guards).
+///
+/// The closures capture no external state; `db` and `tenant_id` are passed as args
+/// to avoid the 'static borrow trap (PITFALLS §4).
+fn make_write_dispatcher() -> WriteDispatcher {
+    WriteDispatcher {
+        executor: Box::new(|action_name, inputs, tenant_id, db| {
+            // Convert borrowed args to owned values so the async block can move them.
+            let action_name = action_name.to_string();
+            let id_val = inputs["id"].as_i64();
+            let db = db.clone();
+            Box::pin(async move {
+                use crate::models::entities::orders::{ActiveModel as OrderActive, Column, Entity};
+                use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
+
+                let id: i64 = id_val
+                    .ok_or_else(|| ferro_mcp_server::Error::Validation("missing id".into()))?;
+
+                // find_for_tenant: filter by both id AND tenant_id — None → cross-tenant denial (D-03).
+                // Uses the explicit `db` arg (not the global connection) so tests work with in-memory DBs.
+                let order = Entity::find_by_id(id as i32)
+                    .filter(Column::TenantId.eq(tenant_id))
+                    .one(&db)
+                    .await
+                    .map_err(|e| ferro_mcp_server::Error::Database(e.to_string()))?
+                    .ok_or_else(|| {
+                        ferro_mcp_server::Error::Validation(
+                            "not found or cross-tenant access denied".into(),
+                        )
+                    })?;
+
+                let new_status = match action_name.as_str() {
+                    "submit" => "submitted",
+                    "approve" => "approved",
+                    "ship" => "shipped",
+                    _ => {
+                        return Err(ferro_mcp_server::Error::ActionNotFound(action_name))
+                    }
+                };
+
+                // Apply the state transition via SeaORM ActiveModel.
+                let mut active: OrderActive = order.into();
+                active.status = Set(new_status.to_string());
+                let updated = active
+                    .update(&db)
+                    .await
+                    .map_err(|e| ferro_mcp_server::Error::Database(e.to_string()))?;
+
+                Ok(json!({ "id": updated.id, "status": updated.status }))
+            })
+        }),
+        guard_evaluator: Box::new(|guard_name, tenant_id, _inputs, db| {
+            // Convert borrowed args to owned values so the async block can move them.
+            let guard_name = guard_name.to_string();
+            let db = db.clone();
+            Box::pin(async move {
+                match guard_name.as_str() {
+                    // Live DB check — never reads ctx.evaluated_guards (D-02 / T-219-02).
+                    "is_manager" => Ok(check_is_manager(tenant_id, &db).await),
+                    // Unknown guard names: allow (matches BaseContext absent-key semantics).
+                    _ => Ok(true),
+                }
+            })
+        }),
+    }
 }
 
 /// Build the RFC 9728 / RFC 6750 unauthenticated challenge response.
@@ -174,7 +272,8 @@ pub async fn handle(req: Request) -> Response {
                 scope: key_scope,
                 ..Default::default()
             };
-            handle_tools_call(params, &services, db.inner(), tenant_id, &ctx).await
+            let dispatcher = make_write_dispatcher();
+            handle_tools_call(params, &services, db.inner(), tenant_id, &ctx, &dispatcher).await
         }
         _ => json!({ "error": { "code": -32601, "message": "Method not found" } }),
     };

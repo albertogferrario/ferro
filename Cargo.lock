@@ -183,6 +183,7 @@ dependencies = [
  "chrono",
  "clap",
  "dotenvy",
+ "ferro-audit",
  "ferro-mcp-oauth",
  "ferro-mcp-server",
  "ferro-rs",
@@ -2589,6 +2590,7 @@ dependencies = [
 name = "ferro-mcp-server"
 version = "0.2.59"
 dependencies = [
+ "ferro-audit",
  "ferro-mcp-oauth",
  "ferro-projections",
  "rmcp",

@@ -23,6 +23,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20260611_add_tenant_id_to_users::Migration),
             Box::new(m20260611_create_orders_table::Migration),
             Box::new(m20260611_create_sessions_table::Migration),
+            // MCP write-dispatch tables: idempotency store + audit log
+            Box::new(ferro_mcp_oauth::CreateMcpIdempotencyKeysTable),
+            Box::new(ferro_audit::CreateAuditLogTable),
         ]
     }
 }
