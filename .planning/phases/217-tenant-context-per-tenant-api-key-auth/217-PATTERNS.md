@@ -545,7 +545,7 @@ async fn seed_api_key(
     revoked: bool,
 ) -> String {
     let (raw_key, key_hash) = ferro_mcp_oauth::validate::generate_mcp_api_key();
-    let revoked_at = if revoked { "2020-01-01T00:00:00Z" } else { "NULL" };
+    let revoked_at = if revoked { "'2020-01-01T00:00:00Z'" } else { "NULL" };
     db.execute(Statement::from_string(
         DatabaseBackend::Sqlite,
         format!(

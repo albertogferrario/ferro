@@ -692,13 +692,16 @@ Step 2.6: SKIPPED — Phase 217 is code-only changes in the ferro workspace. All
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **McpContext.scope field:** Should `McpContext` carry `scope: Option<String>` directly (populated from principal), or should `handle_tools_call` extract scope from the raw principal value? Adding it to `McpContext` is consistent with D-07 and avoids passing the full principal JSON through the call chain.
+   **RESOLVED: `scope: Option<String>` added to `McpContext` (Plan 00 Task 1).**
 
 2. **`mcp_api_keys` vs `api_keys` table name:** The existing general REST key table is `api_keys`. The new MCP key table should be `mcp_api_keys` to avoid collision, OR the Phase 217 migration can extend the general `api_keys` table by adding `tenant_id` and `scope` columns. The latter is NOT recommended because the general REST key table is app-managed (consumer's schema), not framework-managed. Using `mcp_api_keys` is cleaner.
+   **RESOLVED: using the `mcp_api_keys` table throughout (Plan 01 Task 1).**
 
 3. **`sub` field in API key principal:** The OAuth JWT `sub` is a user ID. For API keys, there is no user — the key IS the credential. Using `row.id.to_string()` as `sub` is a reasonable convention. Downstream code (`app/src/tests/mcp_tenant_isolation.rs` line 238) uses `principal["sub"]` for user identification — ensure the API key `sub` does not accidentally resolve to a user via `JwtClaimResolver` in the middleware chain.
+   **RESOLVED: `row.id.to_string()` used as `sub` (Plan 01 Task 2).**
 
 ---
 
