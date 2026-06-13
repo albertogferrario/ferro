@@ -1,335 +1,326 @@
-# Stack Research — v13.0 Compressive Validation
+# Stack Research: v15.0 Agent-Operable App (Consumer MCP)
 
-**Project:** ferro / v13.0 Compressive Validation (COMP-02, COMP-03, COMP-04)
-**Researched:** 2026-06-12
-**Scope:** Additive — what the three validation harnesses need beyond the existing workspace.
-**Confidence:** HIGH (insta 1.48.0 and criterion 0.8.2 verified via docs.rs; rmcp transport verified via docs.rs 0.12.0 features page; proptest 1.11.0 verified via docs.rs; existing workspace patterns confirmed by direct source read)
+**Domain:** Projection-derived consumer MCP endpoint with write/act capabilities and inbound NL intent loop
+**Researched:** 2026-06-13
+**Confidence:** HIGH (all findings sourced from in-codebase verification + Context7 rmcp docs)
 
 ---
 
-## Summary
+## What Already Exists — Do Not Re-Build
 
-Three validation harnesses are being built:
+Everything below is already shipping in the ferro workspace. v15.0 extends these; it does not replace them.
 
-| COMP | Goal | Key tooling need |
-|------|------|-----------------|
-| COMP-02 | Synthetic catalog of canonical app classes covering all 7 intents, regression-tested on every projection/intent change | Snapshot/golden testing for `Vec<IntentScore>` and rendered `Spec` output |
-| COMP-03 | Agent-success-rate measurement — can an agent reading ferro-mcp produce a working projection from a natural-language description? | In-process MCP client that calls tools/call against a live FerroMcpService |
-| COMP-04 | Time-to-working-app benchmark — `cargo new` → running service with auth + 3 entities + 1 job | Wall-clock timing with statistical confidence; multi-step setup/teardown |
+| Component | What It Provides | Crate |
+|-----------|-----------------|-------|
+| `ferro-mcp-server` (0.2.x) | `McpRenderer` (Renderer impl), `handle_initialize/tools_list/tools_call`, `dispatch` (read-only, tenant-scoped, SQL), JSON-RPC layer, `BearerOutcome` stub | `ferro-mcp-server` |
+| `ferro-mcp-oauth` | OAuth 2.1 authorization server (DCR, PKCE, authorize, consent, token, device), `validate_bearer` → `BearerCheck` (JWT sig + exp + audience + tenant), `McpTokenClaims` | `ferro-mcp-oauth` |
+| `rmcp` 0.12 | `Tool`, `ToolAnnotations`, `CallToolResult` (with `.structured()` constructor), JSON Schema `Arc<JsonObject>` input; `ToolAnnotations::{read_only, destructive, idempotent}` hints | `rmcp = "0.12"` |
+| `ferro-projections` | `ServiceDef` (fields, actions, guards, state_machine, mcp_exposed, tenant_column, mcp_ability), `ActionDef`/`InputDef`/`GuardDef`, `BaseContext` (evaluated_guards, verbosity), `Renderer` trait | `ferro-projections` |
+| `ferro-ai` | `Classifier<T>` (provider-agnostic structured JSON output), `AiConfig::from_env()`, `AnthropicProvider`/`OpenAiClient`/`OllamaClient`, `ToolRegistry`/`ToolDef` | `ferro-ai` |
+| `TenantScoped` trait | Typed tenant-scoped lookup, cross-tenant reads structurally impossible | `framework` |
 
-The workspace already has the infrastructure for most of this. The additions are minimal: one new dev-dependency for snapshot testing (insta), one for benchmarking (criterion), and one for property testing already present (proptest). MCP client testing uses existing rmcp `transport-async-rw` (a default rmcp 0.12 feature) via `tokio::io::duplex` — no new crate required.
+The v12.6 consumer-MCP OAuth endpoint provides the transport and auth shell. The v14.0 projection surface (`evaluated_guards`, `BaseContext`, `FieldDef.render_hint`) provides the guard-filtering substrate. v15.0 adds write and intent-loop capabilities on top.
+
+---
+
+## Capability Analysis: What v15.0 Must Add
+
+### (a) rmcp 0.12 API Surface for Dynamic Tool Registration
+
+**Confidence: HIGH** — verified from Context7 docs + direct codebase reads of `ferro-mcp-server/src/renderer.rs` and `jsonrpc.rs`.
+
+rmcp 0.12 is already used correctly in `ferro-mcp-server`. The projection→tools renderer (`McpRenderer`) already builds `Tool` objects at runtime from `ServiceDef` — this is dynamic by construction. The API surface required for v15.0's action tools is the same surface already in use.
+
+**Tool construction (verified API):**
+```rust
+// Already in use (renderer.rs) — read tools
+Tool::new(name, description, Arc::new(schema_map))
+    .annotate(ToolAnnotations::new().read_only(true))
+
+// For write/action tools: drop read_only, set destructive/idempotent hints
+Tool::new(name, description, Arc::new(schema_map))
+    .annotate(ToolAnnotations::new()
+        .destructive(true)   // state-transition actions
+        .read_only(false))   // or idempotent(true) for update-in-place
+```
+
+`Tool::new()` signature (verified via Context7):
+```
+Tool::new<N, D, S>(name: N, description: D, input_schema: S) -> Self
+where
+    N: Into<Cow<'static, str>>,
+    D: Into<Cow<'static, str>>,
+    S: Into<Arc<JsonObject>>,
+```
+
+No compile-time macro. Tools are registered at runtime by returning them from `handle_tools_list`. Dynamic registration is the current model; rmcp's `ToolRoute::new_dyn()` exists but is unused because `ferro-mcp-server` bypasses rmcp's built-in router entirely with a custom JSON-RPC dispatch.
+
+**`tools/list` for action tools:**
+`render_exposed_tools(services, &McpContext)` already returns `Vec<Tool>` (one per exposed `ServiceDef`, read tool). For v15.0, this function must be extended (or a sibling `render_action_tools()` added) to emit one additional `Tool` per guard-passing `ActionDef` on each exposed `ServiceDef`. Both lists are concatenated into the `tools` array in the `tools/list` response.
+
+**`tools/call` result shape — spec-compliant typed content:**
+The original bug (`content[]` without `type` field, which MCP clients Zod-reject) was fixed by Phase 197 by switching to `CallToolResult::structured(payload)`. This is verified by the interop test `tools_call_result_parses_as_valid_mcp_content` in `jsonrpc.rs`, which deserializes the emitted response through `CallToolResult`'s own custom `Deserialize`. Action tools must use the same pattern.
+
+`CallToolResult` structure (verified via Context7):
+```rust
+pub struct CallToolResult {
+    pub content: Vec<Content>,           // must contain typed blocks
+    pub structured_content: Option<Value>,
+    pub is_error: Option<bool>,
+    pub meta: Option<Meta>,
+}
+```
+
+`CallToolResult::structured(payload)` produces: `is_error: Some(false)`, one `content` block with `type: "text"`, `structured_content` = the payload JSON. This is the shape MCP clients expect.
+
+For action tool results: use `CallToolResult::structured(json!({"success": true, "message": "..."}))` on success, or `json!({"result": ...})` with entity data. On business-logic rejection (guard failed at execution time, wrong state, validation error): use `CallToolResult { content: vec![text_block], structured_content: Some(json!({"error": "..."})), is_error: Some(true), meta: None }` rather than a JSON-RPC `-32602` error, because the call succeeded but the action was refused — the distinction matters for agent error handling.
+
+**Do NOT upgrade rmcp:** No feature in v15.0 requires rmcp ≥1.5. The existing `Tool`, `ToolAnnotations`, `CallToolResult`, and `Arc<JsonObject>` input schema API is sufficient for both read and write tools. An upgrade would be a breaking change across three crates (`ferro-mcp`, `ferro-mcp-server`, `ferro-api-mcp`) and is not justified.
+
+---
+
+### (b) API-Key Auth for the MCP Endpoint
+
+**Confidence: HIGH** — verified from `ferro-mcp-oauth/src/validate.rs` and `ferro-mcp-server/src/auth.rs`.
+
+`ferro-mcp-oauth` ships a complete bearer-token validation stack: `validate_bearer(header, config, expected_tenant)` → `BearerCheck` with five cases (Unauthenticated, Invalid, Forbidden, Authenticated, Invalid). The current v12.6 flow issues OAuth JWTs with `tenant_id` claims. `BearerOutcome` in `ferro-mcp-server` is the application-seam stub.
+
+**What v15.0 adds:** API-key bearer tokens are structurally identical to OAuth JWTs from the MCP endpoint's perspective — both arrive as `Authorization: Bearer <token>`. The difference is validation:
+
+- **OAuth path (existing):** JWT decoded, `exp` + signature + audience + tenant checked via `validate_bearer`.
+- **API-key path (new):** SHA-256 hash of the raw key looked up in a `api_keys` DB table that stores `{hashed_key, tenant_id, abilities[], active}`. No JWT. The DB record is the source of truth for expiry (soft: `active = false`) and scope.
+
+The right addition is a second validation branch in `ferro-mcp-oauth/src/validate.rs`, not a second endpoint. The MCP HTTP handler reads the `Authorization: Bearer <token>` header and tries:
+1. If the token is a JWT (starts with `eyJ`): `validate_bearer` via the existing OAuth path.
+2. Otherwise: hash the token (SHA-256, then hex), lookup in `api_keys`, check `active = true`, extract `tenant_id` + ability scope.
+
+Both paths produce the same `BearerCheck::Authenticated(principal)` outcome. The application handler is unchanged.
+
+**What NOT to add:** A separate MCP endpoint for API-key auth. One endpoint, two validation branches, same downstream behavior.
+
+**Crate placement:** The API-key validator belongs in `ferro-mcp-oauth` (the auth crate for the consumer MCP), not in `ferro-mcp-server`. However, the `api_keys` schema should reuse whatever the v8.1 `ferro make:api-key` command generates (verified: v8.1 shipped `ferro make:api-key` CLI). Confirm whether `framework/src/` already has an `api_keys` model before designing a new schema.
+
+**New dependencies:** None. All required primitives are already in `ferro-mcp-oauth`:
+- `sha2 = "0.10"` — already present
+- `subtle = "2.5"` — already present (constant-time compare)
+- `sea-orm` — already present for the DB lookup
+
+---
+
+### (c) ferro-ai for the NL→Intent Classification Loop
+
+**Confidence: HIGH** — verified from `ferro-ai/src/classifier/mod.rs`, `ferro-ai/src/config.rs`, `ferro-ai/src/lib.rs`.
+
+**What exists:** `ferro-ai` provides a provider-agnostic `Classifier<T>` that calls an LLM with a system prompt + user message + JSON schema and returns a typed Rust struct. The default provider is Anthropic. Default model (Anthropic): `claude-sonnet-4-6` (verified in `config.rs` test line `assert_eq!(client.default_model(), "claude-sonnet-4-6")`). The classifier is provider-agnostic: `FERRO_AI_PROVIDER` env var selects Anthropic/OpenAI/Groq/Ollama.
+
+**What the inbound intent loop needs:**
+
+The NL→intent classification maps a tenant's natural-language message to one of:
+1. A named `ActionDef` on an exposed `ServiceDef` (message implies mutation / state transition).
+2. A read query on an exposed `ServiceDef` (message implies browsing/looking up data).
+3. Ambiguous / unrecognized (needs clarification).
+
+The classification output type is defined in `ferro-mcp-server` (not in `ferro-ai`, which stays generic):
+
+```rust
+#[derive(serde::Deserialize)]
+struct IntentClassification {
+    service: String,         // name of the exposed ServiceDef
+    action: Option<String>,  // None = read query; Some(name) = ActionDef name
+    confidence: f64,         // gates LowConfidence rejection in Classifier
+    arguments: serde_json::Value, // filter params (read) or action inputs (write)
+}
+```
+
+The system prompt embeds the exposed services + their actions + their descriptions. Keep prompts compact: list service names, display names, descriptions, and action names only — not full `ServiceDef` JSON — to stay within token budgets. The schema passed to `Classifier<IntentClassification>::classify()` is derived from the struct above.
+
+**No changes to ferro-ai itself** are needed for v15.0. The existing `Classifier<T>` API is sufficient. The loop logic (message → classify → dispatch → result) lives in `ferro-mcp-server/src/intent.rs` (new file).
+
+**New dependency in ferro-mcp-server:**
+```toml
+ferro-ai = { path = "../ferro-ai", version = "0.2" }
+```
+Currently `ferro-mcp-server` has no `ferro-ai` dependency. This is the only new Cargo.toml change required.
+
+**No circular dependency:** `ferro-ai` depends on `ferro-projections` (verified in `ferro-ai/Cargo.toml`). `ferro-mcp-server` depends on `ferro-projections`. Adding `ferro-ai` to `ferro-mcp-server` creates `ferro-mcp-server → ferro-ai → ferro-projections`. No cycle.
+
+**Classification latency:** Each NL→intent call makes an LLM API round trip (Anthropic: ~500ms–2s). The MCP transport handles this fine (it is async). For low-latency deployments, `FERRO_AI_PROVIDER=ollama` with a local model is available with zero code changes.
+
+---
+
+### (d) Crate Placement: Projection→MCP-Tools Renderer
+
+**Confidence: HIGH** — verified by CLAUDE.md v11.5 renderer-location rule + `ferro-mcp-server/src/renderer.rs` which already implements this pattern.
+
+The rule from v11.5: `ferro-projections` owns the `Renderer` trait only. Concrete renderers for specific output formats live in their output crate. `McpRenderer` is already in `ferro-mcp-server`, which is the MCP output crate. This is correct and must not change.
+
+**v15.0 does not need a new crate.** `ferro-mcp-server` is extended, not replaced:
+
+- The existing `McpRenderer` renders `ServiceDef → Tool` as a read (`list_<name>`) tool with `readOnlyHint = true`.
+- Write/action tools are rendered as additional `Tool` objects: one per guard-passing `ActionDef` on an exposed `ServiceDef`. These are produced in the same `render_exposed_tools` call (or a new `render_action_tools` sibling).
+- `schema.rs` gains `build_action_input_schema(action: &ActionDef) → Value` which maps `ActionDef.inputs: Vec<InputDef>` to JSON Schema properties, mirroring `build_input_schema` for reads.
+- `dispatch.rs` gains `execute_action(service, action_name, inputs, db, tenant_id)` for write dispatch, mirroring the existing read `dispatch()`.
+
+**Why NOT a new crate:** Creating a second output crate for write tools (e.g., `ferro-mcp-actions`) would mean two crates rendering to the same output format (MCP `Tool` / `CallToolResult`). This is the "duplicate control surface" anti-pattern from `feedback_no_duplicate_control_surface.md`. All projection→MCP-tool rendering lives in `ferro-mcp-server`.
+
+---
+
+## Stack Summary: Additions for v15.0
+
+| Addition | Type | Lives In | Why |
+|----------|------|----------|-----|
+| `build_action_input_schema(action)` | New function | `ferro-mcp-server/src/schema.rs` | Maps `ActionDef.inputs` to JSON Schema for tool input |
+| Extended `render_exposed_tools` (or sibling) | New/extended function | `ferro-mcp-server/src/renderer.rs` | Emits both read tools and guard-filtered action tools |
+| `execute_action(...)` | New function | `ferro-mcp-server/src/dispatch.rs` | Write dispatch: INSERT/UPDATE/state-transition via raw SQL or SeaORM |
+| `McpContext` extended with tenant + guards | Struct change | `ferro-mcp-server/src/renderer.rs` | Phase 197 left `McpContext` empty; v15.0 embeds `BaseContext` (evaluated_guards) |
+| Guard-filter in action tool listing | Logic | `ferro-mcp-server/src/renderer.rs` | `evaluated_guards.get(g).copied().unwrap_or(true)` — same rule as `TextRenderer` |
+| API-key validation branch | New function | `ferro-mcp-oauth/src/validate.rs` | Parallel to `validate_bearer` for non-JWT tokens |
+| `IntentClassification` struct + NL loop | New file | `ferro-mcp-server/src/intent.rs` | Coordinator: message → Classifier → dispatch |
+| `ferro-ai` dependency | Cargo dep | `ferro-mcp-server/Cargo.toml` | Intent loop needs the classifier |
 
 ---
 
 ## Recommended Stack
 
-### COMP-02: Synthetic Catalog Regression Tests
-
-#### Core: `insta` — Snapshot / Golden Testing
+### Core Technologies (unchanged)
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| `insta` | `1.48` | Snapshot-test `Vec<IntentScore>` output and rendered `Spec` JSON for each canonical app class | The `assert_json_snapshot!` macro serializes the full `IntentScore` vector (including `confidence`, `matching_signals`) to a committed `.snap` file. On every projection/intent change, the diff surfaces immediately; `cargo insta review` presents an interactive accept/reject UI. No external build tooling — pure Rust dev-dependency, zero runtime impact. |
+| `rmcp` | 0.12 (pin; do NOT upgrade) | MCP protocol types (`Tool`, `CallToolResult`, `ToolAnnotations`) | Already integrated; upgrade = breaking change across 3 crates with no required feature |
+| `ferro-projections` | workspace | `ServiceDef`, `ActionDef`, `GuardDef`, `BaseContext`, `Renderer` trait | The source of truth for all tool definitions; `evaluated_guards` is the guard-filter substrate |
+| `ferro-ai` | workspace (new dep in `ferro-mcp-server`) | `Classifier<T>` for NL→intent classification | Provider-agnostic; Anthropic `claude-sonnet-4-6` default; already in the workspace |
+| `ferro-mcp-oauth` | workspace | Bearer token validation for both OAuth JWT and API-key paths | Auth shell from v12.6; API-key branch is an additive extension |
+| `sea-orm` | 1.0 | Write dispatch (INSERT, UPDATE, state transition) for action tools | Already in `ferro-mcp-server`; action execution needs DB writes |
+| `schemars` | 1 | JSON Schema generation for action tool `inputSchema` | Already in `ferro-mcp-server`; action schema mirrors read schema pattern |
+| `serde_json` | 1.0 | JSON payloads for tool inputs/outputs | Already everywhere |
 
-**Recommended Cargo.toml entry** (in `ferro-projections/Cargo.toml` dev-dependencies):
+### Supporting Libraries (no version changes)
 
-```toml
-[dev-dependencies]
-insta = { version = "1.48", features = ["json", "redactions"] }
+| Library | Current location | Notes for v15.0 |
+|---------|-----------------|----------------|
+| `sha2 = "0.10"` | `ferro-mcp-oauth` | API-key hashing; already present |
+| `subtle = "2.5"` | `ferro-mcp-oauth` | Constant-time key comparison; already present |
+| `jsonwebtoken = "9"` | `ferro-mcp-oauth` | JWT decode for OAuth token path; already present |
+| `tokio = "1"` | everywhere | Async dispatch, LLM calls; already everywhere |
+| `thiserror = "1"` | `ferro-mcp-server` | Error types for new dispatch paths; already present |
+| `tracing = "0.1"` | `ferro-mcp-server` | Structured logging for dispatch/auth events; already present |
 
-# Optimize insta for faster test runs (insta's own recommendation)
-[profile.dev.package.insta]
-opt-level = 3
-[profile.dev.package.similar]
-opt-level = 3
-```
-
-`features = ["json"]` enables `assert_json_snapshot!` for `IntentScore` (already `Serialize`).
-`features = ["redactions"]` allows redacting `confidence` floats that may drift slightly across
-analyzer weight changes, keeping snapshots stable while still asserting intent ordering.
-
-**Why not hand-written `assert_eq!` + expected structs**: The seven-intent catalog will have
-30–40 canonical `ServiceDef` fixtures. Maintaining expected `Vec<IntentScore>` literals inline
-is brittle on any weight recalibration. Snapshot files are committed, diff on change, and updated
-in one `cargo insta test --accept` pass — they encode intent without the maintenance burden.
-
-**Why not `assert_yaml_snapshot!`**: JSON is already the `ServiceDef` wire format and `serde_json`
-is already a direct dependency of `ferro-projections`. No extra `serde_yaml` dependency needed.
-
-#### Fixture Organization
-
-Canonical app-class fixtures live inside `ferro-projections` as a new test module, not a separate
-crate. The fixtures are pure `ServiceDef` builder expressions — no database, no HTTP, no runtime.
-Each fixture maps to one canonical app class and is structured as:
-
-```
-ferro-projections/tests/
-  catalog/
-    mod.rs           -- loads all fixtures, runs derive_intents + snapshot
-    ecommerce.rs     -- Browse (product list), Focus (product detail), Collect (checkout)
-    saas.rs          -- Summarize (dashboard), Process (subscription workflow)
-    crm.rs           -- Browse (contact list), Track (activity log)
-    scheduling.rs    -- Process (booking state machine), Browse (calendar view)
-    content.rs       -- Focus (article), Analyze (analytics dashboard)
-    finance.rs        -- Summarize (balance sheet), Analyze (time-series)
-    logistics.rs     -- Process (shipment workflow), Track (status trail)
-```
-
-Each file contains one or more `ServiceDef` builder expressions and one `#[test]` per fixture
-that calls `derive_intents()` + `assert_json_snapshot!`. A single top-level regression test
-(`catalog/mod.rs`) iterates all fixtures and asserts: (1) top intent matches the expected intent
-for this app class; (2) confidence >= 0.5; (3) snapshot matches.
-
-Snapshot files are stored at `ferro-projections/tests/snapshots/` (insta default) and committed.
-They appear in PRs as diffs when any signal weight or analyzer changes.
-
-**Where the `Spec` render snapshot goes**: The `ferro-json-ui` crate already has `Spec::from_service_def()`.
-A second test layer in `ferro-json-ui/tests/catalog_render.rs` uses the same fixtures (imported
-from `ferro-projections`) to snapshot the rendered `Spec` JSON. This asserts that a `Browse`
-catalog fixture still produces a `DataTable` root, a `Collect` fixture produces a `Form` root,
-etc., on every commit.
-
-```toml
-# ferro-json-ui/Cargo.toml dev-dependencies
-insta = { version = "1.48", features = ["json"] }
-```
-
----
-
-### COMP-03: Agent-Success-Rate Measurement Harness
-
-#### Core: `rmcp` with `transport-async-rw` feature — In-Process MCP Client
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `rmcp` | `0.12` (already in workspace) | Drive `FerroMcpService` in-process over a `tokio::io::duplex` pipe | `transport-async-rw` is a **default feature of rmcp 0.12** — it is already compiled into every crate that depends on `ferro-mcp`. No new crate, no version bump. The `tokio::io::duplex()` function creates an in-memory bidirectional pipe; the server runs in a tokio task; the test calls `peer().call_tool(...)` exactly as a real MCP client would. |
-
-**Pattern already proven in the workspace**: `ferro-api-mcp/tests/e2e.rs` uses
-`rmcp = { version = "0.12", features = ["client", "transport-child-process"] }` in dev-dependencies
-and calls `mcp.peer().call_tool(CallToolRequestParam { ... })` for end-to-end validation.
-COMP-03 adapts this to use an in-process transport (no subprocess overhead, no port conflicts).
-
-**Recommended Cargo.toml entry** (in a new `ferro-projections-harness` test binary or in
-`ferro-mcp/Cargo.toml` dev-dependencies):
-
-```toml
-[dev-dependencies]
-rmcp = { version = "0.12", features = ["client", "transport-async-rw"] }
-tokio = { version = "1", features = ["full"] }
-```
-
-`transport-async-rw` is already a default feature on the server side; the `client` feature adds
-`serve_client()` and the `RoleClient` API needed on the test side.
-
-**COMP-03 test structure** (`ferro-mcp/tests/agent_success_rate.rs`):
-
-Each test case encodes a natural-language scenario string (the "description" an agent would pass
-to `generate_projection`) plus an expected `ServiceDef` shape. The test:
-
-1. Boots `FerroMcpService` in-process via `tokio::io::duplex` transport.
-2. Calls the `generate_projection` MCP tool with the scenario string as input.
-3. Parses the returned JSON back into a `ServiceDef`.
-4. Asserts: (a) parse succeeds; (b) primary intent matches the scenario's expected intent;
-   (c) minimum required fields are present; (d) no validation errors from `validate_projection`.
-
-Success rate is reported as `N_passed / N_total` over the test corpus. Tests are `#[ignore]`
-by default and run explicitly as `cargo test -p ferro-mcp --test agent_success_rate -- --include-ignored`
-so they do not block the standard CI gate (they may require a running ferro application with
-`DATABASE_URL` set).
-
-**What "success" means**: A projection is successful when it round-trips `ServiceDef` from
-the tool output and passes `validate_projection`. This tests the MCP tool pipeline, not the LLM.
-The natural-language → `ServiceDef` AI path (from v12.1 `ferro ai:make`) is a separate concern
-and depends on an LLM API key; COMP-03 focuses on whether the MCP introspection layer provides
-sufficient context for a projection to be generated correctly.
-
-**Alternative considered — `transport-child-process`**: The existing e2e tests in `ferro-api-mcp`
-spawn a subprocess binary. For COMP-03, in-process is preferred because: (1) it does not require
-a compiled binary artifact to be staged before the test; (2) `FerroMcpService` can be instantiated
-directly with a `PathBuf` pointing to the test fixture directory; (3) no port allocation or
-timing loops needed.
-
----
-
-### COMP-04: Time-to-Working-App Benchmark
-
-#### Core: `criterion` — Wall-Clock Timing with Statistical Confidence
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `criterion` | `0.8.2` | Measure multi-step scaffold workflow: `cargo new` → `ferro-cli` scaffold → build → server start | Criterion provides warm-up runs, statistical noise thresholds, HTML reports, and baseline comparison (`cargo bench -- --save-baseline before` / `--load-baseline before`). Stable-only (no nightly required). `iter_custom` supports externally-timed operations where Criterion does not control the loop — required here because each benchmark step is a subprocess invocation. |
-
-**Recommended Cargo.toml entry** (new `benches/` in `ferro-cli` or a dedicated `ferro-validation` crate):
-
-```toml
-[dev-dependencies]
-criterion = { version = "0.8", default-features = false, features = ["rayon", "cargo_bench_support"] }
-
-[[bench]]
-name = "time_to_working_app"
-harness = false
-```
-
-`default-features = false` excludes the `plotters` feature which pulls in a large dependency
-tree. `rayon` is excluded by default in 0.8 — add only if parallelizing benchmark setup steps.
-`cargo_bench_support` is required for `criterion_group!` / `criterion_main!` macros.
-
-**What COMP-04 actually measures**: The benchmark does not run the full `cargo build` on every
-iteration (that would be minutes per sample). Instead it measures the scaffold layer — the
-time from `cargo new <name>` through `ferro new` template application through the point where
-a buildable `Cargo.toml` exists with the correct dependency graph. The _first_ full build is
-measured once separately as a warm-start artifact, recorded as a named annotation in the
-criterion baseline file.
-
-Full workflow breakdown:
-
-| Step | Measured how | Notes |
-|------|-------------|-------|
-| `cargo new ferro-test-app` | Subprocess in `iter_custom` wall-clock | Fast (< 100 ms) |
-| `ferro` CLI scaffold (auth + 3 entities + 1 job) | Subprocess in `iter_custom` | The substantive measurement — tests CLI generation speed |
-| First `cargo build` | Measured once, recorded as annotation | Too slow for criterion iteration; gates "buildable" |
-| Server starts, serves `/health` | Recorded once in a smoke test, not criterion | Gate: service reaches readiness |
-
-**Baseline usage**: Before a phase that touches `ferro-cli` generation, run:
-
-```bash
-cargo bench -p ferro-cli --bench time_to_working_app -- --save-baseline before
-```
-
-After the phase:
-
-```bash
-cargo bench -p ferro-cli --bench time_to_working_app -- --load-baseline before
-```
-
-Criterion reports percentage regressions at the configured noise threshold (2 % default).
-
-**Why not `hyperfine`**: hyperfine is a CLI-level benchmarking tool with no Rust API. It would
-require an external binary on CI, violating the no-external-build-tooling constraint. Criterion
-runs as a Rust test binary — `cargo bench` is sufficient. hyperfine would be appropriate for
-one-off developer analysis (e.g. comparing two branch builds at the command line), but as a CI
-gate it adds a non-cargo dependency.
-
----
-
-### Supporting: `proptest` — Property Testing (Already Present)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `proptest` | `1` (already in workspace) | Property-based tests for `derive_intents`: assert invariants over generated `ServiceDef` inputs | Already used in `ferro-reservation` and `ferro-projection`. For COMP-02, add proptest strategies to `ferro-projections` to verify: (1) `derive_intents` always returns at least one result; (2) all returned confidences are in [0.0, 1.0]; (3) a `Primary` hint always produces confidence 1.0 at position 0. These complement the snapshot tests — snapshots catch regressions on named fixtures; proptest catches invariant violations across the full input space. |
-
-**Recommended Cargo.toml entry** (in `ferro-projections/Cargo.toml`):
-
-```toml
-[dev-dependencies]
-proptest = "1"
-```
-
-Version `1.11.0` is current. Cargo semver `"1"` resolves to the latest 1.x automatically.
-No change needed if this is a new dependency; add it directly in `ferro-projections`.
-
----
-
-## What NOT to Add
+### What NOT to Add
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `hyperfine` | External binary, violates no-external-build-tooling rule | `criterion` with `iter_custom` for process timing |
-| `rmcp-in-process-transport` crate | Requires `rmcp >= 1.5`; workspace pins `0.12`; would force an rmcp major bump across all three crates that use it | Use `tokio::io::duplex` + rmcp 0.12's built-in `transport-async-rw` (default feature) |
-| `divan` | Newer benchmark crate, requires nightly for some measurement backends | `criterion` 0.8 is stable-only and already well-understood |
-| `assert_cmd` / `trycmd` | Useful for CLI snapshot testing but adds a dependency for a problem already handled by the combination of insta + criterion `iter_custom` subprocess | Keep as a potential addition if CLI command output regression testing becomes its own harness phase |
-| Golden file via hand-rolled JSON file comparison | Readable at first, becomes a maintenance burden as the catalog grows; no interactive review tooling | `insta` with `cargo insta review` |
-| Separate `ferro-validation` crate | Adds workspace member overhead for tests that belong in existing crates | Tests live in `ferro-projections`, `ferro-json-ui`, and `ferro-mcp`; benchmarks live in `ferro-cli` |
-| `criterion` `plotters` feature | Pulls in a large transitive dependency tree for HTML charts that are not needed in CI | Use `default-features = false`; charts are optional and can be enabled locally |
+| rmcp upgrade to ≥1.5 | Breaking change across `ferro-mcp`, `ferro-mcp-server`, `ferro-api-mcp`; no feature in v15.0 requires it | Stay on 0.12 |
+| New output crate for write tools | "Duplicate control surface" — one output format, one output crate | Extend `ferro-mcp-server` |
+| Separate MCP endpoint for API keys | Two endpoints for one protocol surface increases client complexity | One endpoint, two validation branches in `ferro-mcp-oauth` |
+| Full OAuth scope redesign | v12.6 already ships OAuth scopes via `McpTokenClaims`; API keys reuse the same `mcp_ability` model from `ServiceDef` | Extend `mcp_ability` semantics to cover action scopes |
+| Hard-coding Anthropic in the intent loop | Breaks the provider-agnostic contract of `ferro-ai` | Use `AiConfig::from_env()` → `Classifier<IntentClassification>` |
 
 ---
 
-## Integration with Existing cargo test Infrastructure
+## Integration Points with Existing Surfaces
 
-The validation harnesses integrate with the existing `cargo test --all-features` gate:
+### ferro-projections → ferro-mcp-server (read tools, already working)
 
-| Harness | Where | Gate behavior |
-|---------|-------|--------------|
-| COMP-02 catalog snapshot tests | `ferro-projections/tests/catalog/` and `ferro-json-ui/tests/catalog_render.rs` | Run as part of `cargo test --all-features`; snapshot mismatch = CI fail |
-| COMP-02 proptest invariants | `ferro-projections/tests/catalog/proptest.rs` | Part of `cargo test --all-features` |
-| COMP-03 agent success rate | `ferro-mcp/tests/agent_success_rate.rs` (all tests `#[ignore]`) | Excluded from normal gate; run explicitly with `--include-ignored` |
-| COMP-04 scaffold benchmark | `ferro-cli/benches/time_to_working_app.rs` | `cargo bench` only; not `cargo test`; separate CI step |
+`ServiceDef.mcp_exposed = true` → `render_exposed_tools()` → one `Tool` per service named `list_<name>`, `readOnlyHint = true`, input schema from `is_filter_field` allowlist.
 
-The `generate_schemas.rs` test in `ferro-projections/tests/` regenerates
-`docs/protocol/schemas/*.json` and dirties the tree. COMP-02 catalog tests must not regenerate
-anything — they only read `ferro_projections` types, so there is no tree-dirtying concern.
+### ferro-projections → ferro-mcp-server (action tools, new for v15.0)
+
+`ServiceDef.actions: Vec<ActionDef>`, filtered by `McpContext.base.evaluated_guards` → one `Tool` per guard-passing `ActionDef`. Input schema from `ActionDef.inputs: Vec<InputDef>` via `build_action_input_schema`. Tool name: `<service_name>_<action_name>` (snake_case, avoids collisions with read tools). `ToolAnnotations` set to `destructive(true)` for state-transition actions, `idempotent(true)` for idempotent updates.
+
+Guard-filter logic (consistent with `TextRenderer`):
+```rust
+let guard_passes = |g: &str| {
+    ctx.base.evaluated_guards
+        .get(g)
+        .copied()
+        .unwrap_or(true) // absent = render (same rule as TextRenderer)
+};
+let visible_actions: Vec<&ActionDef> = service.actions.iter()
+    .filter(|a| a.preconditions.iter().all(|g| guard_passes(g)))
+    .collect();
+```
+
+### ferro-mcp-oauth → application handler seam
+
+OAuth path: `validate_bearer(header, &oauth_config, Some(tenant_id))` → `BearerCheck::Authenticated(principal)`.
+API-key path (new): `validate_api_key(header, &db, Some(tenant_id))` → same `BearerCheck::Authenticated(principal)`.
+
+Both paths check `ServiceDef.mcp_ability` against the principal's ability scope (from `McpTokenClaims.abilities` or `api_keys.abilities`).
+
+### ferro-ai → ferro-mcp-server (intent loop, new for v15.0)
+
+```rust
+// In ferro-mcp-server/src/intent.rs (new file)
+use ferro_ai::{AiConfig, Classifier, ClassifierConfig};
+
+pub async fn classify_message(
+    message: &str,
+    services: &[ServiceDef],   // exposed + guard-filtered per tenant
+) -> Result<IntentClassification, ferro_ai::Error> {
+    let client = Arc::new(AiConfig::from_env()?);
+    let classifier = Classifier::<IntentClassification>::new(
+        client,
+        ClassifierConfig::default(), // model from FERRO_AI_MODEL, provider from FERRO_AI_PROVIDER
+    );
+    let schema = build_intent_schema(services); // names + descriptions only, not full ServiceDef JSON
+    classifier.classify(INTENT_SYSTEM_PROMPT, message, &schema).await
+        .map(|r| r.value)
+}
+```
+
+---
+
+## Cargo.toml Changes Required
+
+**`ferro-mcp-server/Cargo.toml`** — add one dependency:
+```toml
+ferro-ai = { path = "../ferro-ai", version = "0.2" }
+```
+
+No other crate requires new external dependencies. All required libraries (`sha2`, `subtle`, `sea-orm`, `schemars`, `serde_json`, `rmcp`, `jsonwebtoken`) are already present in the relevant crates.
 
 ---
 
 ## Version Compatibility
 
-| Package | Compatible With | Notes |
-|---------|----------------|-------|
-| `insta 1.48` | `serde_json 1` (already in workspace) | JSON feature uses `serde_json`; no new transitive dep |
-| `insta 1.48` | `schemars 1` | No interaction; insta is dev-only |
-| `criterion 0.8.2` | Rust 1.88+ (workspace MSRV is 1.88.0) | criterion 0.8 targets the last three stable minors; workspace MSRV matches |
-| `proptest 1.11` | Rust 2021 edition | Compatible; no nightly features |
-| `rmcp 0.12` + `transport-async-rw` | `tokio 1` (already in workspace) | `transport-async-rw` default feature uses `tokio::io::{AsyncRead, AsyncWrite}` |
+| Package | Constraint | Note |
+|---------|-----------|------|
+| `rmcp` | pin at `"0.12"`, do NOT upgrade | ≥1.5 is a breaking change across 3 crates; no v15.0 feature requires it |
+| `ferro-ai` | workspace version | Provider-agnostic; `FERRO_AI_PROVIDER` selects Anthropic (default `claude-sonnet-4-6`) / OpenAI / Groq / Ollama |
+| `sea-orm` | 1.0 | Write dispatch needs `insert` + `update` operations; 1.0 API stable |
+| `schemars` | 1 | `build_action_input_schema` follows same pattern as `build_input_schema`; already in `ferro-mcp-server` |
 
 ---
 
-## Cargo.toml Changes Summary
+## Confidence Assessment
 
-**`ferro-projections/Cargo.toml`** — add to `[dev-dependencies]`:
-
-```toml
-insta = { version = "1.48", features = ["json", "redactions"] }
-proptest = "1"
-
-[profile.dev.package.insta]
-opt-level = 3
-[profile.dev.package.similar]
-opt-level = 3
-```
-
-**`ferro-json-ui/Cargo.toml`** — add to `[dev-dependencies]`:
-
-```toml
-insta = { version = "1.48", features = ["json"] }
-```
-
-**`ferro-mcp/Cargo.toml`** — add to `[dev-dependencies]`:
-
-```toml
-rmcp = { version = "0.12", features = ["client", "transport-async-rw"] }
-```
-
-**`ferro-cli/Cargo.toml`** — add bench target and dependency:
-
-```toml
-[[bench]]
-name = "time_to_working_app"
-harness = false
-
-[dev-dependencies]
-criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
-```
-
-The `profile.dev.package.insta` / `similar` optimization entries belong in the root
-`Cargo.toml` (workspace-level profile overrides), not in the crate-level `Cargo.toml`.
+| Area | Level | Reason |
+|------|-------|--------|
+| rmcp 0.12 API surface | HIGH | Verified from direct codebase read (renderer.rs, jsonrpc.rs) + Context7 docs confirming `Tool::new`, `ToolAnnotations`, `CallToolResult::structured` |
+| API-key auth pattern | HIGH | `ferro-mcp-oauth/src/validate.rs` read directly; extension point is clear; all required deps already present |
+| ferro-ai classifier integration | HIGH | `ferro-ai/src/classifier/mod.rs` and `config.rs` read directly; `Classifier<T>` API and provider model confirmed |
+| Crate placement decision | HIGH | v11.5 rule + `ferro-mcp-server/src/renderer.rs` is already the MCP output crate with `McpRenderer` |
+| Guard-filter in action tools | HIGH | v14.0 `BaseContext.evaluated_guards` + `TextRenderer` rule documented in ferro-text; `unwrap_or(true)` pattern confirmed |
+| Write dispatch SQL | MEDIUM | Read dispatch in `dispatch.rs` is a verified pattern; write (INSERT/UPDATE) follows the same `Statement::from_sql_and_values` approach but is not yet implemented |
 
 ---
 
 ## Sources
 
-- `docs.rs/insta/latest/insta/` — version 1.48.0 confirmed; feature list verified (HIGH)
-- `docs.rs/criterion/latest/criterion/` — version 0.8.2 confirmed (HIGH)
-- `docs.rs/proptest/latest/proptest/` — version 1.11.0 confirmed (HIGH)
-- `docs.rs/rmcp/0.12.0/features` — `transport-async-rw` confirmed as default feature in 0.12 (HIGH)
-- `ferro-api-mcp/tests/e2e.rs` — existing `rmcp` client test pattern with `call_tool` verified by direct read (HIGH)
-- `ferro-projections/Cargo.toml` — no existing snapshot or benchmark deps confirmed by direct read (HIGH)
-- `ferro-mcp/Cargo.toml` — rmcp 0.12 with `server` + `transport-io` confirmed (HIGH)
-- Context7 `/mitsuhiko/insta` — `assert_json_snapshot!`, `cargo insta test`, workspace integration (HIGH)
-- Context7 `/bheisler/criterion.rs` — `iter_custom`, benchmark groups, `Criterion::default()` (HIGH)
-- [insta.rs](https://insta.rs/) — canonical docs (HIGH)
-- [criterion crates.io](https://crates.io/crates/criterion) — 0.8.2 latest confirmed (HIGH)
-- [rmcp transport docs](https://docs.rs/rmcp/latest/rmcp/transport/index.html) — transport-async-rw confirmed (HIGH)
+- `ferro-mcp-server/src/renderer.rs` — existing `McpRenderer`, `Tool::new`, `ToolAnnotations` usage
+- `ferro-mcp-server/src/jsonrpc.rs` — `CallToolResult::structured()` usage, D-04 interop test verifying `type: "text"` content block
+- `ferro-mcp-server/src/dispatch.rs` — read dispatch pattern, tenant-scoping, filter allowlist
+- `ferro-mcp-server/src/schema.rs` — `build_input_schema`, `is_filter_field`
+- `ferro-mcp-server/Cargo.toml` — confirms `rmcp = "0.12"`, `ferro-ai` absence, existing deps
+- `ferro-mcp-oauth/src/validate.rs` — `validate_bearer`, `BearerCheck` enum, JWT + tenant validation logic
+- `ferro-mcp-oauth/Cargo.toml` — confirms `sha2`, `subtle`, `jsonwebtoken` already present
+- `ferro-projections/src/service.rs` — `ServiceDef` (mcp_exposed, tenant_column, mcp_ability, actions, guards)
+- `ferro-projections/src/action.rs` — `ActionDef`, `InputDef`, `GuardDef` structures
+- `ferro-ai/src/classifier/mod.rs` — `Classifier<T>`, `ClassifierConfig`, retry/confidence behavior
+- `ferro-ai/src/config.rs` — `AiConfig::from_env()`, default model `claude-sonnet-4-6`, provider selection
+- `ferro-ai/Cargo.toml` — confirms `ferro-projections` dependency (no circular dep when added to `ferro-mcp-server`)
+- Context7 `/websites/rs_rmcp` — `Tool::new` signature, `ToolAnnotations` fields, `CallToolResult` struct, `ToolRoute::new_dyn` for dynamic registration — HIGH confidence
 
 ---
-*Stack research for: ferro v13.0 Compressive Validation (COMP-02, COMP-03, COMP-04)*
-*Researched: 2026-06-12*
+*Stack research for: ferro v15.0 Agent-Operable App (Consumer MCP)*
+*Researched: 2026-06-13*

@@ -1,18 +1,8 @@
 # Feature Research
 
-**Domain:** Validation / measurement infrastructure for a projection/intent framework (v13.0 Compressive Validation)
-**Researched:** 2026-06-12
-**Confidence:** HIGH for COMP-01..03 (existing code read directly, pattern well-understood); MEDIUM for COMP-04 (benchmark methodology has no prior art in ferro); MEDIUM for COMP-05 (cross-modality is exploratory)
-
----
-
-## Context
-
-This file covers the five COMP requirements for v13.0. These are validation artifacts, not new product features. The projection/intent system they validate is already shipped: ferro-projections (7 intents, derive_intents, ServiceDef), ferro-mcp (35+ tools), ferro-json-ui (JsonUiRenderer, Spec::from_service_def), ferro-mcp-server (tools/call, tools/list). The question for each COMP item is: what does the validation artifact look like when done well, what is the genuine signal it provides, and what must be avoided to prevent vanity metrics masquerading as validation.
-
-Gestiscilo (`gestiscilo-it/app`) is a live ferro application with 69 models, 130 JSON-UI views, and no projections yet. It uses `JsonUi::render_file` directly — the handler supplies data, the spec is a static JSON file, and there is no ServiceDef in the call chain. COMP-01 is migrating at least a meaningful subset of those views to projection-driven rendering.
-
-The ferro `app/` sample already has 9 projection fixtures covering 7 intents (product→Browse, order→Process, revenue_dashboard→Summarize, sales_analytics→Analyze, feedback_form→Collect, todo/user→Focus, api_key→Track-adjacent). These are the existing synthetic corpus. COMP-02 formalizes this into a regression suite.
+**Domain:** Agent-operable consumer MCP endpoint for a Rust web framework
+**Researched:** 2026-06-13
+**Confidence:** HIGH (read-path and guard exposure); MEDIUM (write-path safety, NL loop — active community convergence, patterns clear but exact confirmation UX varies by client)
 
 ---
 
@@ -20,211 +10,274 @@ The ferro `app/` sample already has 9 projection fixtures covering 7 intents (pr
 
 ### Table Stakes (Users Expect These)
 
-For v13.0, "users" are two audiences: (a) the framework author validating whether the abstraction holds, and (b) agents and developers who will read the validation evidence as a signal about framework maturity. Missing any of these makes the validation unconvincing.
+Features that any agent-operable app endpoint must have. Missing these makes the endpoint unusable or unsafe.
 
-| Feature | Why Expected | COMP | Complexity | Notes |
-|---------|--------------|------|------------|-------|
-| At least one real-app projection migration covering a meaningful entity class | Real-world validation is a stated v1.0 criterion (#2). A framework that has only synthetic test fixtures has never been proven against messy real-world models. Gestiscilo has 69 models — the migration does not need to cover all of them, but must cover a representative subset across at least 3 intents | COMP-01 | HIGH | Cross-repo effort; see slicing section below |
-| Synthetic catalog with one fixture per intent covering all 7 intents | A catalog that misses any intent has untested derivation paths. The 7-intent vocabulary was designed as a closed set; coverage must be demonstrated. The existing `app/` fixtures cover 7 intents across 9 projections but are not organized as a regression suite with assertions on primary intent | COMP-02 | LOW | 9 fixtures already exist in `app/src/projections/`; gap is regression harness, not fixtures |
-| Regression tests that pin primary intent per fixture | A test that asserts "this ServiceDef derives Browse as primary" is the regression gate. Without it, a change to derive.rs that shifts the ranking is invisible until a rendered view changes unexpectedly | COMP-02 | LOW | `derive_intents()` returns a ranked `Vec<IntentScore>`; `scores[0].intent == expected` is the assertion pattern |
-| Agent task + outcome record for COMP-03 | An agent-success-rate claim without a record of what the agent was asked to do and whether it succeeded is not a rate — it is a story. The record must include: the NL description given, the ServiceDef produced, whether it compiled, whether it rendered, and whether the rendered output matched the description. Without the record, the number is not reproducible | COMP-03 | MEDIUM | Harness design is the primary work; the actual agent runs are lightweight once the harness exists |
-| Pass/fail criteria stated before the agent run | Criteria defined after seeing results are not criteria — they are post-hoc framing. COMP-03 requires: field names match the description, intent matches the description, rendered spec validates against the catalog, and the projection compiles. These four checks define "working output" | COMP-03 | LOW | Binary per-check; composite pass if all four pass |
-| Time-to-working-app measurement that is reproducible by a second person | A benchmark no one else can reproduce is an anecdote. COMP-04 requires: a documented start condition (`cargo new` in a fresh directory, no prior ferro exposure in the session), a documented end condition (service runs, auth works, three entity types exist, one background job processes), and a clock that any developer can reproduce. The measurement apparatus must be committed alongside the result | COMP-04 | MEDIUM | Hardest to formalize; see differentiators for what "good" looks like |
-| Cross-modality rendering of at least one intent as mobile, voice, and CLI | COMP-05 is a probe: does the 7-intent vocabulary make sense when the rendering target changes? The minimum is one intent rendered coherently in three non-visual forms. If the vocabulary breaks down (an intent that makes no sense as a voice interaction, or a CLI that needs a new intent), that finding is itself the validation signal | COMP-05 | MEDIUM | Exploratory; "finding" is valid output even if the finding is "the vocabulary needs revision" |
-| COMP results committed as durable artifacts | Validation evidence that lives only in a session transcript cannot be cited, reviewed, or built upon. COMP results must be committed: migration diff, regression test file, agent run log, benchmark transcript, cross-modality sketch document | All | LOW | Process discipline, not implementation work |
+| Feature | Why Expected | Complexity | Dependency on Existing Capability | Notes |
+|---------|--------------|------------|-----------------------------------|-------|
+| **tools/list returns projection-derived tools** | MCP protocol requires tools/list; tools must reflect what the tenant can actually do | LOW | `render_exposed_tools` + `ServiceDef.mcp_exposed` already in `ferro-mcp-server` (Phase 197) | Read tools exist; write tools are the v15.0 addition |
+| **tools/call for read (list/filter with pagination)** | Core query path; agents must retrieve data to act on it | LOW | `dispatch()` in `ferro-mcp-server` is complete with tenant isolation and filter allowlisting | Already built; v15.0 extends to write |
+| **tools/call for write — create record** | The primary agent action; without it the endpoint is read-only only | MEDIUM | `ActionDef` + `InputDef` in `ferro-projections`; `ActionDef.inputs` map directly to tool input schema | New in v15.0; requires `McpRenderer` to emit write-tool definitions |
+| **tools/call for write — update record** | Agents must be able to modify existing records, not only create | MEDIUM | Same as create; `ActionDef` with transition_trigger maps to update/state-transition actions | New in v15.0 |
+| **tools/call for write — state transition** | State machine actions (approve, reject, cancel) are the core of process workflows | MEDIUM | `StateMachine` + `Transition` in `ferro-projections`; `ActionDef.transition_trigger` links action to transition | New in v15.0 |
+| **Guard-filtered tool exposure** | An agent must not be offered tools it cannot invoke; presenting them invites confusion and errors | MEDIUM | `BaseContext.evaluated_guards` (v14.0) + `ServiceDef.guards` + `ActionDef.preconditions`; filter logic analogous to `TextRenderer` guard path | Guards already evaluated for visual/text renderers; `McpContext` must carry `evaluated_guards` for write tools |
+| **Tenant scoping: one API key = one tenant's toolset and data** | Cross-tenant access is a critical security property | LOW | `ServiceDef.tenant_column` + `dispatch()` fail-closed logic + `TenantScoped` trait (v13.1) + `ferro-mcp-oauth` bearer token carrying `(user, tenant)` | Already structurally enforced in read path; write path must inherit the same guarantee |
+| **Per-tenant API-key auth** | Callers must authenticate to a specific tenant before any tool is visible | LOW-MEDIUM | `ferro-mcp-oauth` OAuth 2.1 crate (v12.6 walking skeleton): bearer validation + `McpTokenClaims` carrying `(user, tenant)` | Auth transport exists; v15.0 reuses it and adds API-key as an alternative simpler auth path |
+| **Tool input schema derived from ServiceDef** | Agents need structured schemas to call tools correctly; hand-written schemas drift | LOW | `crate::schema::build_input_schema` in `ferro-mcp-server` already derives read-tool schemas from `ServiceDef.fields`; write tools add `ActionDef.inputs` as the input schema source | Already proven for read path; write path maps `InputDef` to JSON Schema properties |
+| **MCP protocol error envelopes (code, message)** | MCP clients expect well-formed JSON-RPC error objects on failure | LOW | `ferro-mcp-server` `jsonrpc.rs` already returns `-32601`/`-32602`/`-32603` envelopes | Must extend for new error cases (action failed, guard denied, confirmation pending) |
+| **Idempotency on write tools** | Agents retry on network failure; duplicate creates must not duplicate records | MEDIUM | `ferro-queue` has `idempotency_key()` hook; write dispatch needs an idempotency-key parameter in tool input schema | New in v15.0; map to a `UNIQUE` constraint or `INSERT OR IGNORE` pattern at dispatch time |
+| **Policy denial returns clean error, no data disclosure** | Leaking unauthorized data in error messages is a confidentiality violation | LOW | Existing pattern in `dispatch()` and `jsonrpc.rs`; error content must say what was denied, not what exists | Extend the same discipline to write-path denials |
+| **`readOnlyHint: false` + `destructiveHint` annotations on write tools** | MCP spec defines `ToolAnnotations`; clients use these to decide confirmation UI | LOW | `rmcp::model::ToolAnnotations` is already used for `readOnlyHint: true` on read tools (Phase 197); write tools must set `readOnlyHint: false`, state-transition and delete tools must set `destructiveHint: true` | Pure schema annotation; no new dependency |
 
-### Differentiators (What Makes the Validation Credible)
+### Differentiators (Competitive Advantage)
 
-| Feature | Value Proposition | COMP | Complexity | Notes |
-|---------|-------------------|------|------------|-------|
-| Gestiscilo migration covers at least 3 intent classes | Migrating only Browse (the easiest intent — products, customers, items) is not validation; it is cherry-picking. Credible migration includes at least one workflow entity (Process), one data-entry entity (Collect), and one overview entity (Summarize). Gestiscilo has bookings (Process), forms/onboarding (Collect), and statistiche/dashboard (Summarize) | COMP-01 | HIGH | The migration effort is not proportional to entity count; it is proportional to intent diversity. Three well-chosen entities beat ten Browse entities |
-| Migration measures render output equivalence, not just "it compiled" | A projection migration that produces a different rendered output than the original JSON-UI view is a regression. The validation signal requires confirming that the projection-driven path produces equivalent visual output to the direct `render_file` path for the same data. Even if not pixel-identical, the primary fields and actions must be present | COMP-01 | MEDIUM | Requires a before/after comparison fixture or a snapshot test |
-| Regression suite is in `ferro-projections/tests/` not `app/src/` | Tests in the sample app are app tests, not framework regression tests. A change to `derive_intents()` in `ferro-projections/src/derive.rs` must trigger the regression suite automatically. The suite belongs in the crate whose behavior it guards | COMP-02 | LOW | Move or duplicate the 9 fixtures into `ferro-projections/tests/intent_regression.rs`; keep `app/` projections as usage examples |
-| Regression suite pins signal names, not just top intent | `scores[0].intent == Browse` tells you the top intent is correct. `scores[0].matching_signals.contains("entity_name")` tells you why. Signal pinning catches subtle changes to scoring weight that produce the same top intent but degrade confidence for reasons not visible from the top-level assertion. COMP-02 is stronger with both checks | COMP-02 | LOW | `has_signal(score, "entity_name")` pattern already exists in `derive.rs` test helpers |
-| Agent-success-rate dataset is diverse across intents, not just easy cases | A dataset of 10 Browse projections inflates the success rate. COMP-03 requires at least 2 tasks per intent (7 intents × 2 = 14 minimum). Mix of simple and complex: simple = single-model entity with 5 fields; complex = entity with state machine, guards, and relationships | COMP-03 | MEDIUM | 14 tasks is the minimum corpus that is not obviously cherry-picked |
-| Agent run uses ferro-mcp as the introspection context, not just the API docs | COMP-03 is measuring whether an agent reading `ferro-mcp` output can produce a working ServiceDef, not whether an agent that has memorized the ferro API can do it. The agent must be run with ferro-mcp as its context source. Run it without ferro-mcp loaded and the measurement is contaminated by training data | COMP-03 | LOW | Session setup: MCP server running, agent instructed to use introspection tools before generating |
-| Time-to-working-app benchmark measures agent-assisted time, not manual time | COMP-04 is positioned as validation of ferro's AI-assisted authoring value. A manual benchmark (human types all code) measures typing speed, not the projection abstraction. The benchmark must be run with an agent (Claude Code, Cursor, or similar) using ferro-mcp. Record wall-clock time from `cargo new` to first successful HTTP request with all criteria met | COMP-04 | MEDIUM | Requires defining the agent's starting prompt carefully — the prompt is part of the benchmark apparatus |
-| COMP-05 produces a written intent → rendering map, not just code | The cross-modality sketch is architectural thinking, not implementation. The artifact is a document: for each of the 7 intents, describe what a mobile, voice, and CLI rendering would look like, identify which intents survive the translation cleanly, which require adaptation, and which reveal vocabulary gaps. This document directly informs whether v14.0 Channel Projection needs intent vocabulary changes | COMP-05 | LOW | A 3-page document is the right scope; prototype code is optional and not the primary artifact |
-| COMP-05 identifies at least one vocabulary gap | A cross-modality analysis that finds "all intents translate cleanly" is either correct (rare) or insufficiently critical. The exercise is designed to probe limits. If Process maps cleanly to mobile (it likely does — status transitions are modality-independent), but Analyze does not map cleanly to voice (time-series charts do not have a natural voice form), that finding constrains the v14.0 channel projection design. A gap is a valuable finding, not a failure | COMP-05 | LOW | The analysis is honest if it records "Analyze does not have a natural voice form; the closest is a summary report read aloud, which is closer to Summarize" |
+Features that are not table stakes but define the value of this endpoint over hand-written MCP tool servers.
 
-### Anti-Features (Avoid These)
+| Feature | Value Proposition | Complexity | Dependency on Existing Capability | Notes |
+|---------|-------------------|------------|-----------------------------------|-------|
+| **Tools auto-derived from ONE ServiceDef (single source of truth)** | The same definition the visual renderer (JsonUiRenderer) and text renderer (TextRenderer) consume produces the MCP tools. A field added to the ServiceDef appears immediately in the visual UI, the conversational text output, and the MCP tool schema without any additional authoring. Zero parallel maintenance. | MEDIUM | `Renderer` trait + `ServiceDef` in `ferro-projections`; `McpRenderer` implements `Renderer<Output=Tool, Context=McpContext>` mirroring `JsonUiRenderer` and `TextRenderer` | This is the architectural killer feature. Common baseline (Laravel MCP, generic MCP servers, `ferro-api-mcp`) all hand-write tools or map OpenAPI routes — none derive from a shared projection schema that also drives visual rendering. |
+| **Guard-filtered write tools via evaluated_guards** | An agent only sees (and can invoke) the actions its tenant's policy permits. The guard evaluation that filters the visual UI and conversational text output also filters which MCP write tools are emitted in `tools/list`. This is structural, not a per-tool permission check. | MEDIUM | `BaseContext.evaluated_guards` (v14.0); `ServiceDef.guards` + `ActionDef.preconditions`; `McpContext` must embed a guard map (Phase 200 stub identified in code as `// Phase 200 will extend with tenant/policy context`) | `McpContext` currently carries no state. This is the Phase 200 work. Guards already evaluated for visual and text renderers; MCP inherits the same evaluation path, not a new system. |
+| **Inbound NL intent loop (message → classify → elicit → confirm → execute)** | A tenant can issue a natural-language command and the endpoint maps it to an action, elicits missing parameters, optionally confirms, and executes — completing the listen/act half deferred from v14.0. | HIGH | `ferro-ai::Classifier` (structured classification) + `ConfirmationStore` (TTL-gated pending actions) + `ferro-ai::ToolRegistry` (tool dispatch) — all already built | The `Classifier` maps NL to a `ferro_projections` intent/action. The `ConfirmationStore` gates destructive actions. `ToolRegistry` dispatches. These are all built; the wiring into the MCP message path is new. Most complex v15.0 feature. |
+| **Dry-run/preview tool variant for destructive actions** | Before a delete or irreversible state transition executes, an agent can call a `preview_<action>` tool that returns what would change without committing. Closes the loop on human-in-the-loop without requiring a round-trip outside the MCP session. | MEDIUM-HIGH | `ActionDef.effects` lists the effects; preview needs a read-only shadow of the write dispatch path | Not in common baseline. Reduces the confirmation burden on the human by making the consequence visible to the agent before execution. Defer to a later phase if write-path confirmation via `ConfirmationStore` proves sufficient in practice. |
+| **Write-path confirmation via `ConfirmationStore` with TTL expiry** | When a write action is classified as destructive or money-moving, the tool call parks the payload behind a key instead of executing immediately. A second tool call with the key within the TTL window executes the action. Expiry dispatches `ConfirmationExpired` via `ferro-events`. | MEDIUM | `ferro-ai::ConfirmationStore` + `InMemoryConfirmationStore` + `ConfirmationExpired` event — all already built | The confirmation primitive is complete. v15.0 wires it to write-tool dispatch. The two-step interaction (propose then confirm) maps naturally to a conversational agent turn. |
 
-| Anti-Feature | Why Requested | Why Problematic | Alternative |
-|--------------|---------------|-----------------|-------------|
-| Migrating all 130 gestiscilo JSON-UI views to projections | Thoroughness signal; demonstrates commitment | At 130 views with 69 models, this is months of work. It also conflates "projection coverage" with "projection validation" — a complete migration that produces no regression evidence is not COMP-01. COMP-01 needs a slice that produces clear validation signal, not maximum coverage | Migrate 5–8 entities covering 3+ intent classes; capture before/after render equivalence; document what the migration revealed about the abstraction |
-| Success rate measured as "the ServiceDef compiled" | Easy to measure; quantitative; sounds like a success rate | Compilation is not the bar. A ServiceDef that compiles, renders to a blank page, and has no relation to the NL description it was generated from is not a working projection. The bar is: field names match, intent matches, rendered spec validates, projection compiles | Define pass/fail criteria before running the agent, as stated above |
-| Time-to-working-app benchmark run on a machine with a warm Rust cache | Reproducible and fast to execute | A warm cache makes the benchmark 3–4× faster than a cold build. The benchmark measures developer experience, which is experienced cold. Cold cache is the honest measurement condition | `cargo clean` before each run; document Rust toolchain version and machine specs alongside the result |
-| Cross-modality sketch that only covers Browse and Collect | Those two intents are the easiest to sketch (list → scrollable list on mobile, form → form on mobile) | Browse and Collect map cleanly to every modality because they are structurally simple. The interesting tension is in Process (state machines on voice?), Analyze (time-series on CLI?), and Track (audit timeline on mobile?). Sketching only easy cases understates the design tension | All 7 intents must appear in the sketch; the interesting findings will cluster around Process, Analyze, and Track |
-| Synthetic catalog fixtures that are trivially derivable | Each fixture confirms coverage | A fixture where the primary intent is obvious from a single field (e.g., a ServiceDef with one `FieldMeaning::Money` field deriving Summarize) does not stress-test the derivation engine. Interesting fixtures have mixed signals that require signal weighting to resolve correctly | Each fixture should have at least two competing intents (e.g., a Collect fixture also has EntityName fields that produce Browse signal); the test confirms the intended intent wins despite competition |
-| Agent-success-rate run on the latest agent that was trained on ferro code | Inflated pass rate; that agent has prior knowledge | If the agent was trained on the ferro codebase, the success rate reflects memorization, not whether `ferro-mcp` is sufficient for zero-prior-knowledge generation. COMP-03 is measuring the MCP surface, not the agent's training data | Use an agent with explicit instruction to rely on tool output; alternate: run with ferro-mcp disabled as a control condition and compare |
-| COMP results stored as unstructured prose in a phase completion note | Lower overhead; still records the finding | Unstructured prose cannot be diffed, cited by a later phase, or used as a regression baseline. A Collect intent benchmark run that lives only in a phase completion note is invisible to future work | Commit structured artifacts: JSON for agent run outcomes, Markdown with a defined schema for benchmark results, a Rust test file for regression assertions |
+### Anti-Features (Commonly Requested, Often Problematic)
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Separate MCP permission model (MCP-specific scopes beyond existing policies)** | Seems like fine-grained control per MCP tool | Dual control surface: existing policy layer plus MCP layer diverge over time, creating confusion about what is actually permitted. The v12.6 design spec explicitly rules this out. | Reuse the existing multi-tenant middleware and policy layer. An agent's reach equals the authenticated user's reach by construction. `ServiceDef.mcp_ability` provides an opt-in capability check without a second permission system. |
+| **Auto-exposure of all projections** | Convenient — "expose everything" | A projection authored for internal tooling or admin UI is silently public to any token holder. A data migration projection could be exposed accidentally. | `mcp_exposed: bool` explicit opt-in per `ServiceDef`. Only marked projections appear in `tools/list`. This field already exists in the codebase. |
+| **MCP-specific handler code per action** | Seems like flexibility | Defeats the single-source-of-truth property: the MCP tool and the HTTP handler diverge. Authorization logic may be duplicated or skipped. | Write tool dispatch runs the same action logic as the HTTP surface, gated by the same guards. `ActionDef` in the `ServiceDef` is the contract; the MCP endpoint is a rendering target, not a parallel implementation. |
+| **Streaming/SSE write results** | Low-latency feedback for long writes | Write actions in a projected service are expected to be fast (validation then DB write then response); streaming adds transport complexity without benefit for this case. SSE streaming exists for LLM token output, not action results. | Synchronous response with structured result envelope. If a write is genuinely long-running, route it through `ferro-queue` as a background job and return a job ID. |
+| **Refresh token rotation and long-session ergonomics in v15.0** | Convenient for persistent agent sessions | The auth transport (`ferro-mcp-oauth`, v12.6 walking skeleton) is not the focus of v15.0; spending design effort on token rotation before write-path action dispatch is proven correct is premature. | Short-lived access tokens (v12.6 baseline). Token refresh ergonomics are explicitly deferred per the v12.6 design spec non-goals. |
+| **Per-tool rate limiting beyond existing middleware** | Prevents abuse | A second rate limiting surface that diverges from the per-user/per-tenant limits already applied by the application middleware. Two surfaces that can contradict each other. | Reuse the existing `RateLimiter` middleware. It applies to the `/mcp` route group as it does to any other. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-COMP-02 (regression harness)
-    └──prerequisite for──> COMP-03 (agent tasks use regression fixtures as test cases)
-    └──prerequisite for──> meaningful COMP-01 (migration fixtures validated by harness)
+ServiceDef.mcp_exposed + ServiceDef.actions + ServiceDef.guards
+    └──required by──> McpRenderer (write tool generation)
+                          └──required by──> tools/list (write tools visible)
+                                               └──required by──> tools/call (write execution)
 
-COMP-01 (gestiscilo migration)
-    └──depends on──> gestiscilo running on current ferro (already true: gestiscilo uses ferro 0.2.x)
-    └──depends on──> ServiceDef author understanding gestiscilo's domain model (read models/ dir)
-    └──produces──> real-world projection fixtures that can join COMP-02 corpus
+BaseContext.evaluated_guards (v14.0)
+    └──required by──> McpContext with guard map (Phase 200 stub)
+                          └──required by──> Guard-filtered tool exposure
+                                               └──required by──> Write-path guard denial
 
-COMP-03 (agent success rate)
-    └──depends on──> ferro-mcp server running against a project with known projections
-    └──depends on──> COMP-02 fixtures to define the task corpus
-    └──depends on──> pass/fail criteria defined before agent run (not after)
+ferro-ai::ConfirmationStore (already built)
+    └──required by──> Write-path confirmation gate
+                          └──required by──> Inbound NL loop (confirm step)
+                                               └──required by──> NL to execute end-to-end
 
-COMP-04 (time-to-working-app)
-    └──depends on──> ferro-cli `ferro new` template that includes projection-driven starter option
-    └──depends on──> ferro-mcp server accessible during the benchmark session
-    └──independent of──> COMP-01..03 (can run in parallel)
+ferro-ai::Classifier (already built)
+    └──required by──> Inbound NL intent loop
+                          └──required by──> NL message to action dispatch
 
-COMP-05 (cross-modality sketch)
-    └──depends on──> all 7 intents understood (COMP-02 fixtures provide concrete examples)
-    └──produces──> vocabulary gap findings that constrain v14.0 Channel Projection scope
-    └──independent of──> COMP-01, COMP-03, COMP-04
+ferro-mcp-oauth bearer token carrying (user, tenant) (v12.6)
+    └──required by──> Per-tenant API-key auth
+                          └──required by──> All tool calls (read and write)
 
-COMP-01 is the largest effort and is sliceable:
-    Slice A (minimal): 3 entities × 1 intent each (Browse: product/client; Process: booking; Summarize: dashboard)
-    Slice B (full): +2 entities × 2 more intents (Collect: onboarding form; Analyze: statistiche)
-    Slice A validates the core three structurally distinct intents; Slice B adds depth but can be deferred
+dispatch() fail-closed tenant predicate (already built, Phase 197)
+    └──extends to──> Write dispatch (create/update/transition)
+                         └──required by──> Tenant scoping on write path
+
+ActionDef.preconditions + GuardDef (already in ServiceDef)
+    └──required by──> Guard-filtered write tool exposure
+                          └──enhances──> Write-path guard denial
+
+rmcp::model::ToolAnnotations (already used for readOnlyHint on read tools)
+    └──extends to──> destructiveHint on write/delete tools
 ```
 
 ### Dependency Notes
 
-- **COMP-02 should run first or in parallel with COMP-01.** The regression harness gives you a framework for capturing COMP-01 migration results as permanent tests, not just a one-time diff.
-- **COMP-05 is unblocked immediately.** It requires no code changes — only reading the existing intent definitions, the ferro-projections fixtures, and thinking about non-visual rendering. It can be done as a standalone doc-writing exercise in a single session.
-- **COMP-03 and COMP-04 both require a running ferro-mcp server.** They can be batched into the same session after COMP-02 is in place.
-- **COMP-01 is cross-repo.** It requires changes in `gestiscilo-it/app` (adding `src/projections/`), changes to `gestiscilo-it/app/src/controllers/` (switching from `JsonUi::render_file` to `JsonUi::render` with a ServiceDef-sourced Spec), and validation that the rendered output is equivalent. Plan for it as a multi-session effort.
+- **Guard-filtered tool exposure requires McpContext to carry evaluated_guards:** Phase 197 left `McpContext` as an empty struct with the comment "Phase 200 will extend with tenant/policy context." v15.0 is that work. The pattern is established in `TextRenderer` (uses `BaseContext.evaluated_guards`); `McpContext` adopts the same map, evaluated once per request by the HTTP middleware before `handle_tools_list`.
+- **Write dispatch requires ActionDef inputs to map to JSON Schema:** `InputDef` already has `name`, `data_type`, `required`, `description`. `build_input_schema` in `ferro-mcp-server` must be extended to handle `ActionDef.inputs` the same way it handles `FieldDef` filter parameters. Medium complexity; the mapping pattern exists in the read path.
+- **Inbound NL loop requires Classifier before ConfirmationStore:** Classification (NL to intent/action name) must succeed before the confirmation gate is reached. Low-confidence classification should return an error or elicitation prompt, not proceed to confirming the wrong action.
+- **ConfirmationStore TTL must match agent session expectations:** The default TTL in `InMemoryConfirmationStore` (60s in examples) may be too short for an interactive agent conversation. Configurable TTL via `McpServerConfig`. This is a configuration question, not a new API.
 
 ---
 
-## MVP Definition
+## Write-Path Safety and Confirmation Behavior
 
-### Launch With (v13.0 first slice)
+This is the highest-risk feature area and the most likely to need its own requirements.
 
-The minimum set that produces durable, non-vanity validation evidence.
+### What counts as "destructive or money-moving"
 
-- [ ] COMP-02: regression harness in `ferro-projections/tests/intent_regression.rs` with one fixture per intent, each asserting primary intent and at least one key signal — establishes the regression baseline and is permanently machine-checkable
-- [ ] COMP-05: cross-modality sketch document committed under `docs/` or `.planning/` — unblocked immediately, produces the vocabulary gap analysis v14.0 needs, no implementation work
-- [ ] COMP-01 Slice A: 3 gestiscilo entities migrated to projection-driven rendering (Browse + Process + Summarize), before/after render equivalence documented — validates the abstraction against a messy real codebase without requiring full migration
+The `ActionDef` on a `ServiceDef` has `effects: Vec<String>`. Effects like `"delete_record"`, `"charge_payment"`, `"send_email"`, `"cancel_subscription"` are irreversible or financially consequential. The framework cannot enumerate these exhaustively; instead, the classification is declarative:
 
-### Add After First Slice
+1. **State-transition actions** (`ActionDef.transition_trigger` is `Some`) that lead to a terminal `StateDef` (no outgoing transitions) are treated as destructive by default.
+2. **Any action whose `effects` list is non-empty** is treated as non-idempotent (set `idempotentHint: false` in `ToolAnnotations`).
+3. **Delete-category actions** (effect name matches `"delete"`, `"remove"`, `"cancel"`, `"terminate"` by convention, or tagged via a `ActionDef.destructive: bool` field if needed) set `destructiveHint: true` in `ToolAnnotations`.
+4. **Money-moving actions** (effect includes `"charge"`, `"refund"`, `"transfer"`) are treated as destructive for confirmation purposes.
 
-- [ ] COMP-03: agent-success-rate measurement with 14-task corpus, structured result artifact — requires COMP-02 as task corpus
-- [ ] COMP-04: time-to-working-app benchmark, agent-assisted, cold cache, committed result with apparatus documentation — requires `ferro new` projection-starter option
+### The two-step confirmation protocol via ConfirmationStore
 
-### Future Consideration
+When a write tool is called and its action is classified as requiring confirmation:
 
-- [ ] COMP-01 Slice B: 2 additional gestiscilo entities (Collect, Analyze) — extend migration after Slice A confirms the pattern works
-- [ ] COMP-02 extended: add COMP-01 migration fixtures to the regression corpus so gestiscilo projections are continuously validated against derive.rs changes
-- [ ] COMP-03 re-run: repeat agent-success-rate measurement after any significant change to ferro-mcp tool descriptions — the rate should improve or hold; regression is a signal to investigate
+**Step 1 — first tools/call:** The handler generates a `confirmation_key` (UUID), stores the action payload in `InMemoryConfirmationStore` with a TTL, and returns an MCP tool result with `isError: false` containing:
+
+```json
+{
+  "confirmation_required": true,
+  "confirmation_key": "<uuid>",
+  "action": "<action_name>",
+  "payload_summary": "<human-readable description of what will happen>",
+  "expires_in_seconds": 120
+}
+```
+
+**Step 2 — confirm tool call:** A second tool — `confirm_<action>` — accepts the `confirmation_key`. If the key is valid and not expired, the action executes and returns the result. If the key has expired, the caller receives a `ConfirmationExpired` error. If the key is not found, the caller receives `"confirmation_expired_or_invalid"` — never a silent proceed.
+
+The `ConfirmationExpired` event fires via `ferro-events` when TTL lapses without confirmation, enabling the application to clean up any pre-reserved state (for example, `ferro-reservation` holds).
+
+**Why two tools, not a `confirmed: bool` argument:** A single `tools/call` with a `confirmed: bool` argument would let an agent auto-confirm by setting `confirmed: true` without human oversight. The two-tool pattern forces a distinct conversational turn, making it structurally harder for an agent to skip the confirmation step in a single chain-of-thought execution.
+
+### Guard-denied vs confirmation-required: distinct failure modes
+
+- **Guard denied:** the action's preconditions are not met for the current tenant/state (`evaluated_guards` returns `false` for a guard named in `ActionDef.preconditions`). The tool is not emitted in `tools/list` in the first place (guard-filtered exposure). If called directly via a replayed request, `tools/call` returns `isError: true` with a clear message. No data disclosure.
+- **Confirmation required:** the action's preconditions pass, but the action is classified as destructive or money-moving. The tool is visible and callable; the first call parks the payload and returns the `confirmation_required` result; the confirm tool executes.
+
+These two must not be conflated. A tool that is both guard-denied and confirmation-required never reaches the confirmation step — the guard check is earlier in the chain.
+
+### Idempotency key
+
+Write tools include an optional `idempotency_key: String` parameter in their `inputSchema`. If provided and a write with the same key has already succeeded within a configurable window, the call returns the previous result without re-executing. Implementation: a `UNIQUE` constraint on an `idempotency_keys` table, analogous to `ferro-queue`'s idempotency hook. Required for safe agent retry loops on network failure.
+
+### Fail-closed defaults
+
+Matching the read-path discipline in `dispatch()`:
+- A write tool whose action's guard set cannot be evaluated (no `evaluated_guards` map in context) is denied, not permitted.
+- A write tool for a tenant-scoped service called without a `tenant_id` in context is denied, not permitted.
+- A write tool call with an unrecognized `confirmation_key` returns `isError: true` — never silently proceeds.
+
+---
+
+## Read Path — Behavior Specification
+
+### tools/list for read tools
+
+`tools/list` returns one tool per `mcp_exposed` projection:
+- Tool name: `list_<service.name>` (existing behavior, Phase 197)
+- `inputSchema`: filter fields from `ServiceDef.fields` where `is_filter_field(field)` returns true, plus `limit` and `offset` (existing behavior)
+- `ToolAnnotations.readOnlyHint: true` (existing)
+- Guards are not evaluated on read-tool exposure (read tools have no `preconditions`); guard filtering applies to write tools only
+
+### tools/call for read (list with filters)
+
+`tools/call` on `list_<entity>` applies the filter allowlist, injects the tenant predicate (fail-closed), and returns `{ rows, total, limit, offset }`. Already built and tested in Phase 197.
+
+A single-record fetch (`get_<entity>`) derived from a Focus-intent projection is a natural extension following the same dispatch pattern. It is a P2 feature for v15.x.
+
+---
+
+## Inbound NL Intent Loop — Behavior Specification
+
+The conversational turn sequence:
+
+1. **Receive message:** via a `natural_language_query` tool call carrying a free-text string.
+2. **Classify intent and action:** `ferro-ai::Classifier` maps the message to a `(ServiceDef name, ActionDef name)` pair using the projection catalog as the classification schema. Returns a `ClassificationResult` with a `confidence` score.
+3. **Low confidence:** if `confidence < threshold` (default `0.7` per existing `ClassifierConfig`), return a clarification prompt to the agent instead of proceeding.
+4. **Elicit missing parameters:** if the matched `ActionDef.inputs` have required fields not inferable from the message, return an elicitation request listing the missing fields and their expected types. MCP elicitation primitive (June 2025 spec draft) is the transport for this.
+5. **Confirm if destructive:** if the classified action is in the destructive category, proceed to the two-step `ConfirmationStore` protocol described above.
+6. **Execute:** call the write dispatch path with the collected parameters and the tenant context from the bearer token.
+7. **Render result:** serialize the action result using `TextRenderer` on the updated `ServiceDef` state, returning a human-readable summary as MCP tool content.
+
+**Dependency chain:** `ferro-ai::Classifier` (classify) → guard check (evaluate_guards) → `ferro-ai::ConfirmationStore` (if destructive) → write dispatch → `ferro-text::TextRenderer` (render result).
+
+---
+
+## Tenant Scoping — Behavior Specification
+
+One API key authenticates exactly one `(user, tenant)` pair:
+
+- The bearer token (from `ferro-mcp-oauth`) carries `McpTokenClaims { user_id, tenant_id, ... }`.
+- The `/mcp` middleware extracts `tenant_id` and injects it into the request context, exactly as the multi-tenant HTTP middleware does for web routes.
+- `tools/list` is evaluated in the context of that tenant: `ServiceDef.mcp_exposed` projections are filtered, guard maps are evaluated for that tenant's user, only permitted write tools are emitted.
+- `tools/call` executes with `tenant_id` as a bound parameter on every data query (fail-closed via existing `dispatch()` logic).
+- No tool in the session can return data belonging to a different tenant. This is structural, not a per-tool check.
+
+What the agent sees: a tool surface scoped to one operator's data and permissions. A second API key for a second tenant produces a second, fully independent session with its own guard evaluation and data scope.
+
+---
+
+## MVP Definition (v15.0 Scope)
+
+### Launch With (v15.0)
+
+- [ ] Write tools for Collect-intent actions (create record) — derived from `ActionDef` in `ServiceDef`
+- [ ] Write tools for Process-intent state-transition actions — derived from `ActionDef.transition_trigger`
+- [ ] Guard-filtered write-tool exposure via `evaluated_guards` in `McpContext`
+- [ ] Two-step confirmation gate for destructive/money-moving actions via `ConfirmationStore`
+- [ ] Idempotency-key parameter on all write tools
+- [ ] `destructiveHint` / `idempotentHint` annotations on write tools (annotation only, no new API)
+- [ ] Tenant scoping on write dispatch (fail-closed, mirrors read path)
+- [ ] Inbound NL classification via `ferro-ai::Classifier` wired to a `natural_language_query` tool
+- [ ] Per-tenant API-key auth (reusing `ferro-mcp-oauth` bearer validation)
+
+### Add After Validation (v15.x)
+
+- [ ] Single-record Focus tool (`get_<entity>`) — useful but not required for write-path validation
+- [ ] Update-record tool (modify existing record without state transition) — distinct from create and transition; defer if gestiscilo validation only needs create and transition
+- [ ] Elicitation flow for missing parameters — MCP elicitation spec is June 2025 draft; validate core write path first
+- [ ] Dry-run/preview tool variant — adds observability but increases API surface; defer until confirmation UX is validated in practice
+
+### Future Consideration (v2+)
+
+- [ ] Configurable MCP-specific capability scopes beyond existing policies
+- [ ] Streaming write results for long-running operations
+- [ ] Refresh-token rotation and persistent agent sessions
+- [ ] Cross-tenant aggregate views for multi-tenant admin agents
+- [ ] Voice/audio rendering of action results (separate channel milestone)
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature | Validation Value | Implementation Cost | Priority |
-|---------|-----------------|---------------------|----------|
-| COMP-02 regression harness (all 7 intents) | HIGH — permanent machine-checkable baseline; catches derive.rs regressions | LOW — fixtures exist; write test assertions | P1 |
-| COMP-05 cross-modality sketch | HIGH — unblocks v14.0 scope decision; no code | LOW — document writing | P1 |
-| COMP-01 Slice A (3 entities, 3 intents) | HIGH — only real-world validation; surfaces abstraction gaps that synthetic corpus cannot | HIGH — cross-repo, requires render equivalence verification | P1 |
-| COMP-03 agent success rate (14 tasks) | MEDIUM — measures the MCP surface quality directly | MEDIUM — harness design + 14 agent runs | P2 |
-| COMP-04 time-to-working-app benchmark | MEDIUM — concrete developer-experience evidence | MEDIUM — requires clean apparatus documentation | P2 |
-| COMP-01 Slice B (2 more entities) | LOW (incremental) — adds coverage but not qualitatively new signal | HIGH — more cross-repo work | P3 |
+| Feature | Agent/User Value | Implementation Cost | v15.0 Priority |
+|---------|-----------------|---------------------|----------------|
+| Write tools (create + transition) derived from ServiceDef | HIGH | MEDIUM | P1 |
+| Guard-filtered tool exposure via evaluated_guards | HIGH | MEDIUM | P1 |
+| Two-step confirmation for destructive actions | HIGH | MEDIUM | P1 — highest-risk area, must be correct before shipping |
+| Tenant scoping on write dispatch (fail-closed) | HIGH | LOW (extend existing pattern) | P1 |
+| destructiveHint + idempotentHint ToolAnnotations | MEDIUM | LOW | P1 (annotation only, low effort) |
+| Idempotency key on write tools | MEDIUM | MEDIUM | P1 |
+| Inbound NL intent loop (walking skeleton) | HIGH | HIGH | P1 (core differentiator) |
+| Single-record Focus tool (get) | MEDIUM | LOW | P2 |
+| Update-record tool | MEDIUM | MEDIUM | P2 |
+| MCP elicitation for missing parameters | LOW-MEDIUM | HIGH | P3 (spec still draft) |
+| Dry-run/preview tool | MEDIUM | MEDIUM-HIGH | P3 (defer to validation results) |
 
-**Priority key:** P1 = validates the compressive dimension directly and is required to call COMP done; P2 = adds measurement depth and is required for a credible public v1.0 claim; P3 = incremental coverage, defer unless COMP-01 Slice A reveals gaps that Slice B would address.
+**Priority key:** P1 = must have for v15.0 validation; P2 = add after core confirmed working; P3 = future consideration.
 
 ---
 
-## Per-COMP "Good" Criteria
+## Common Baseline (Industry Reference)
 
-These define what passes validation for each requirement. They are the pass/fail criteria that must be stated before the work begins, not after.
+The following patterns are observed across other frameworks exposing apps to agents and define the minimum bar ferro must meet or exceed:
 
-### COMP-01: Gestiscilo Migration
+- **Laravel MCP (September 2025):** Tools are hand-written as PHP `Tool` classes and registered on a server. Tools can be given per-route dynamic resolvers. No projection-derived schemas. No single source of truth shared with the visual renderer. Read and write tools are both supported.
+- **Generic OpenAPI-to-MCP bridges (e.g. `ferro-api-mcp`, `openapi-mcp`):** Map OpenAPI operation names to MCP tool names. Schemas come from OpenAPI parameter/request-body definitions. Tool schemas drift when the OpenAPI spec diverges from implementation.
+- **Common patterns all implementations share:** `tools/list` must return valid JSON Schema per input; `tools/call` must return MCP-spec content envelopes; auth via bearer token; tenant isolation via token claims; `readOnlyHint` on GET-equivalent tools; `destructiveHint` on delete-equivalent tools; confirmation flows for destructive operations (implementation varies — some use out-of-band approval, some a second tool call, some rely on the client's own confirmation UI); idempotency keys for retry safety.
 
-**Good looks like:**
-- At least 3 entities across 3 intent classes migrated, each with a ServiceDef in `gestiscilo-it/app/src/projections/`
-- For each migrated entity, the projection-driven render path (`Spec::from_service_def` → `JsonUi::render`) produces HTML that contains the same primary fields as the original `JsonUi::render_file` path for representative sample data
-- At least one finding documented: something the migration revealed about the projection abstraction that would not have been visible from the synthetic corpus (gap in FieldMeaning coverage, intent derivation edge case, etc.)
-- The migration diff compiles and the gestiscilo test suite (if any) stays green
-
-**Not good (vanity):**
-- "All 130 views migrated" with no render equivalence check
-- "10 entities migrated" with only Browse intent (cherry-picked)
-- ServiceDef that produces a compiled projection but renders a view missing half the fields from the original
-
-### COMP-02: Synthetic Catalog Regression Suite
-
-**Good looks like:**
-- One test per intent (7 tests minimum); each test asserts `scores[0].intent == expected_intent`
-- Each test also asserts at least one key signal is present in `scores[0].matching_signals`
-- Each fixture has at least one competing signal from a different intent to confirm the intended intent wins under competition
-- Tests live in `ferro-projections/tests/` and run on every `cargo test` in the workspace
-- CI catches a hypothetical regression: if `analyze_field_meanings` weight for `Summarize` were doubled, at least 2 tests would fail
-
-**Not good (vanity):**
-- Fixtures with only one field that trivially derives one intent (no competition)
-- Tests that only assert `!scores.is_empty()` without pinning the primary intent
-- Tests in `app/src/` that don't run as part of the framework's own test suite
-
-### COMP-03: Agent Success Rate
-
-**Good looks like:**
-- 14+ tasks (2 per intent), each with an explicit NL description and a binary pass/fail per four criteria (compiles, renders, intent matches, field names match)
-- Agent run with ferro-mcp active; the introspection tool call log is committed alongside the result
-- Aggregate pass rate calculated and committed as a structured artifact
-- At least one task per intent fails (a 100% pass rate with no analysis of failure modes is suspicious)
-- The artifact includes: which tasks failed, what the agent produced, what the expected output was
-
-**Not good (vanity):**
-- "The agent successfully generated a projection" with no stated criteria for success
-- Only Browse and Collect tasks (easiest intents)
-- Agent run without ferro-mcp context (measures training data, not the MCP surface)
-
-### COMP-04: Time-to-Working-App Benchmark
-
-**Good looks like:**
-- Start condition precisely documented: `cargo new` in a fresh directory, `cargo clean`, Rust toolchain version stated, machine specs stated
-- End condition precisely documented: HTTP 200 on the root route, auth endpoint returns 200, all 3 entity types have a working list route, one background job processes successfully from the queue
-- Wall-clock time recorded at start and end with a method that a second person could reproduce (terminal recording, screen capture timestamp, or timestamped commit log)
-- Agent-assisted run with ferro-mcp active (not manual)
-- Result is a single committed Markdown file with the apparatus, the transcript reference, and the time
-
-**Not good (vanity):**
-- "It took about 2 hours" with no start/end condition documentation
-- Warm Rust cache
-- Manual (non-agent-assisted) run
-- Run on a machine with unusual hardware that makes the number non-representative
-
-### COMP-05: Cross-Modality Sketch
-
-**Good looks like:**
-- All 7 intents appear in the document
-- For each intent, mobile, voice, and CLI rendering described concretely (not just "it would work")
-- At least one intent identified where the vocabulary requires adaptation for non-visual modalities
-- At least one vocabulary gap or tension identified (e.g., "Analyze has no natural voice form; the voice modality needs a new intent or a Summarize variant")
-- Direct implication for v14.0 Channel Projection scope stated: what the analysis changes about the design assumptions
-
-**Not good (vanity):**
-- Only Browse and Collect sketched (easiest)
-- "All intents translate cleanly to all modalities" with no gaps found
-- Sketch that describes what components would look like instead of whether the intent vocabulary survives the translation
+Ferro's differentiator versus the common baseline is the single `ServiceDef` source of truth. The visual renderer, conversational text renderer, and MCP tool renderer all consume the same definition. Changes to the projection propagate to all three surfaces simultaneously. This is not achievable in a hand-written tool approach.
 
 ---
 
 ## Sources
 
-- ferro-projections/src/intent.rs, service.rs, derive.rs — read directly (HIGH confidence)
-- app/src/projections/ — 9 existing fixtures read directly (HIGH confidence)
-- gestiscilo-it/app/src/ — model count, controller list, view count, rendering approach confirmed directly (HIGH confidence)
-- ferro-ai/tests/projection_roundtrip.rs — projection roundtrip test pattern confirmed directly (HIGH confidence)
-- .planning/PROJECT.md — v13.0 COMP-01..05 requirements, v1.0 criteria, four beauty dimensions (HIGH confidence)
+- MCP specification tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`): [Tool Annotations as Risk Vocabulary](https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/) — HIGH confidence
+- MCP elicitation (human-in-the-loop, June 2025 draft): [How Elicitation in MCP Brings Human-in-the-Loop to AI Tools](https://thenewstack.io/how-elicitation-in-mcp-brings-human-in-the-loop-to-ai-tools/) — MEDIUM confidence (spec still in draft)
+- Laravel MCP (consumer tool exposure, September 2025): [Laravel MCP blog](https://laravel.com/blog/introducing-laravel-mcp-build-with-the-universal-ai-standard) — HIGH confidence
+- MCP security confirmation requirements: [Securing MCP: A Control Plane for Agent Tool Execution](https://developer.microsoft.com/blog/securing-mcp-a-control-plane-for-agent-tool-execution) — MEDIUM confidence
+- `ferro-mcp-server/src/dispatch.rs`, `renderer.rs`, `jsonrpc.rs` — direct code inspection, HIGH confidence
+- `ferro-ai/src/confirmation/mod.rs`, `store.rs`, `events.rs` — direct code inspection, HIGH confidence
+- `ferro-projections` `ActionDef`, `GuardDef`, `ServiceDef`, `BaseContext.evaluated_guards` (v14.0) — direct code inspection, HIGH confidence
+- v12.6 consumer-MCP design spec: `docs/superpowers/specs/2026-06-10-consumer-app-mcp-browser-login-design.md` — direct read, HIGH confidence
 
 ---
-*Feature research for: v13.0 Compressive Validation — COMP-01..05 validation artifacts*
-*Researched: 2026-06-12*
+
+*Feature research for: v15.0 Agent-Operable App (Consumer MCP)*
+*Researched: 2026-06-13*
