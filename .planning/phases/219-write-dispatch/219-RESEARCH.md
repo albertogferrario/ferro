@@ -878,21 +878,19 @@ Step 2.6: SKIPPED — this is a pure code/config change phase. No external tools
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `ferro-mcp-server` need `async-trait` for the boxed-future WriteDispatcher pattern?**
    - What we know: `ferro-mcp-server/Cargo.toml` has no `async-trait` dep. The boxed-future approach (`Pin<Box<dyn Future<Output=...> + Send>>`) does not require it.
-   - What's unclear: Whether the compiler inference is smooth enough for the app closure syntax without async-trait.
-   - Recommendation: Start with boxed futures; if ergonomics are poor in practice, add `async-trait = "0.1"` and use `#[async_trait] trait ActionExecutor`.
+   - RESOLVED: boxed futures, no `async-trait`. The pattern is used throughout PATTERNS.md and Plan 00 Task 1 carries a `grep -qv "async-trait" ferro-mcp-server/Cargo.toml` acceptance criterion. Fallback (add the dep) only if ergonomics fail in practice.
 
 2. **Does the sample app's Order already have `TenantScoped` implemented?**
-   - What we know: `app/src/models/entities/orders.rs` is an auto-generated file (line 1: "AUTO-GENERATED FILE - DO NOT EDIT"). `app/src/models/orders.rs` is the extension file and currently only has `type Order = Model`.
-   - What's unclear: Whether a prior phase added a `TenantScoped` impl elsewhere.
-   - Recommendation: Check `app/src/models/orders.rs` at implementation time; add impl there (that file is the safe extension point).
+   - What we know: `app/src/models/entities/orders.rs` is auto-generated ("DO NOT EDIT"); `app/src/models/orders.rs` is the extension file with only `type Order = Model`.
+   - RESOLVED: no existing impl. Plan 02 Task 1 ADDS the `TenantScoped` impl in `app/src/models/orders.rs` (the safe extension point), per the verbatim impl in PATTERNS.md.
 
 3. **Where does `ferro-audit` sit in `publish.yml` wave order?**
    - What we know: Adding `ferro-audit` as a dep of `ferro-mcp-server` requires `ferro-audit` to publish in an earlier wave.
-   - Recommendation: Planner verifies `.github/workflows/publish.yml` and moves `ferro-mcp-server` after `ferro-audit` if needed.
+   - RESOLVED: no reordering needed. `ferro-audit` is Wave 1A (publish.yml line ~211); `ferro-mcp-server` is Wave 2 (line ~275) — already correctly ordered. Plan 00 Task 1 step 1 states this; a verification note is in the plan.
 
 ---
 
