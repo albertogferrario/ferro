@@ -90,6 +90,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-features
 
+  scaffold-smoke:
+    name: Scaffold compile smoke test
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88.0"
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p ferro-cli scaffold_builds_against_workspace_ferro -- --nocapture
+
   ferro-base-css-drift:
     name: ferro-base.css drift check
     runs-on: ubuntu-latest
