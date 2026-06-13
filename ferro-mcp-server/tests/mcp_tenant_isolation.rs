@@ -189,6 +189,10 @@ async fn read_scope_key_rejected_on_write_tool_name() {
         None,
         &ctx,
         &noop_dispatcher(),
+        #[cfg(feature = "confirmation")]
+        &ferro_ai::InMemoryConfirmationStore::new(),
+        #[cfg(feature = "confirmation")]
+        &ferro_mcp_server::McpServerConfig::default(),
     )
     .await;
 
@@ -225,6 +229,10 @@ async fn read_scope_key_allowed_on_read_tool() {
         Some(1),
         &ctx,
         &noop_dispatcher(),
+        #[cfg(feature = "confirmation")]
+        &ferro_ai::InMemoryConfirmationStore::new(),
+        #[cfg(feature = "confirmation")]
+        &ferro_mcp_server::McpServerConfig::default(),
     )
     .await;
 
@@ -273,6 +281,10 @@ async fn api_key_cross_tenant_isolation() {
         Some(tenant_id),
         &ctx,
         &noop_dispatcher(),
+        #[cfg(feature = "confirmation")]
+        &ferro_ai::InMemoryConfirmationStore::new(),
+        #[cfg(feature = "confirmation")]
+        &ferro_mcp_server::McpServerConfig::default(),
     )
     .await;
 

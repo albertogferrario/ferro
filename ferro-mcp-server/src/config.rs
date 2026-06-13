@@ -13,6 +13,10 @@ pub struct McpServerConfig {
     pub app_url: String,
     /// Crate version, sourced from `CARGO_PKG_VERSION` at compile time.
     pub version: String,
+    /// TTL for confirmation tokens in seconds.
+    /// Range: 300–600 (5–10 min). Default: 300.
+    /// Sourced from `CONFIRMATION_TTL_SECS` env var; clamped to 300–600 if out of range.
+    pub confirmation_ttl_seconds: u64,
 }
 
 /// Strip ASCII control characters (including CR and LF) from an env-sourced value.
@@ -36,6 +40,11 @@ impl Default for McpServerConfig {
                 std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost".to_string()),
             ),
             version: env!("CARGO_PKG_VERSION").to_string(),
+            confirmation_ttl_seconds: std::env::var("CONFIRMATION_TTL_SECS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .map(|v| v.clamp(300, 600))
+                .unwrap_or(300),
         }
     }
 }

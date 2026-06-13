@@ -21,6 +21,7 @@ fn test_config() -> McpServerConfig {
         app_name: "TestApp".to_string(),
         app_url: "https://test.example".to_string(),
         version: "0.0.0".to_string(),
+        confirmation_ttl_seconds: 300,
     }
 }
 
@@ -61,6 +62,10 @@ async fn tools_call_returns_rows() {
         None,
         &McpContext::default(),
         &noop_dispatcher(),
+        #[cfg(feature = "confirmation")]
+        &ferro_ai::InMemoryConfirmationStore::new(),
+        #[cfg(feature = "confirmation")]
+        &test_config(),
     )
     .await;
     // content is a single text block (CallToolResult::structured wraps the payload)
@@ -85,6 +90,10 @@ async fn tools_call_unknown_tool_is_method_not_found() {
         None,
         &McpContext::default(),
         &noop_dispatcher(),
+        #[cfg(feature = "confirmation")]
+        &ferro_ai::InMemoryConfirmationStore::new(),
+        #[cfg(feature = "confirmation")]
+        &test_config(),
     )
     .await;
     assert_eq!(resp["error"]["code"], -32601);
@@ -103,6 +112,10 @@ async fn tools_call_unknown_filter_is_invalid_params() {
         None,
         &McpContext::default(),
         &noop_dispatcher(),
+        #[cfg(feature = "confirmation")]
+        &ferro_ai::InMemoryConfirmationStore::new(),
+        #[cfg(feature = "confirmation")]
+        &test_config(),
     )
     .await;
     assert_eq!(resp["error"]["code"], -32602);

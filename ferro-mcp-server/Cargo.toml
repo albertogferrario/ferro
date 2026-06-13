@@ -18,6 +18,7 @@ ferro-audit = { path = "../ferro-audit", version = "0.2" }
 # default-features = false prevents the ferro-ai `llm` default from dragging
 # reqwest into ferro-mcp-server's dependency graph (D-06).
 ferro-ai = { path = "../ferro-ai", version = "0.2", optional = true, default-features = false, features = ["confirmation"] }
+rand = { version = "0.8", optional = true }
 rmcp = { version = "0.12", default-features = false, features = ["server", "macros", "base64"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -29,7 +30,7 @@ sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtim
 [features]
 # Enables confirmation gating for destructive actions.
 # Pulls in ferro-ai (confirmation module only — no reqwest, no LLM deps).
-confirmation = ["dep:ferro-ai"]
+confirmation = ["dep:ferro-ai", "dep:rand"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "macros", "test-util"] }

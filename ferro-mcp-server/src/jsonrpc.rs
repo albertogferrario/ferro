@@ -11,6 +11,9 @@ use ferro_projections::ServiceDef;
 use rmcp::model::CallToolResult;
 use serde_json::{json, Value};
 
+#[cfg(feature = "confirmation")]
+use ferro_ai::ConfirmationStore;
+
 /// Handle an MCP `initialize` request.
 ///
 /// Returns `protocolVersion: "2025-03-26"` (rmcp 0.12 `ProtocolVersion::LATEST`),
@@ -52,6 +55,7 @@ pub async fn handle_tools_list(
 /// delegates to `dispatch`. Pagination keys are removed from `arguments` before
 /// passing the remainder as filters — the filter-key allowlist and limit clamp
 /// live in `dispatch` (Phase 197 WR-01/WR-02) and are not re-implemented here.
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_tools_call(
     call_params: Value,
     services: &[ServiceDef],
@@ -59,6 +63,8 @@ pub async fn handle_tools_call(
     tenant_id: Option<i64>,
     ctx: &McpContext,
     dispatcher: &WriteDispatcher,
+    #[cfg(feature = "confirmation")] store: &dyn ConfirmationStore,
+    #[cfg(feature = "confirmation")] config: &McpServerConfig,
 ) -> Value {
     let tool_name = call_params["name"].as_str().unwrap_or("");
     let service_name = tool_name.strip_prefix("list_").unwrap_or(tool_name);
@@ -79,10 +85,22 @@ pub async fn handle_tools_call(
         });
     }
 
-    // Phase 219: route write-tool calls to the write dispatch path.
+    // Phase 219/220: route write-tool calls to the write dispatch path.
     // Scope gate above stays in front of this routing.
     if is_write_tool {
-        return handle_write_call(call_params, services, db, tenant_id, ctx, dispatcher).await;
+        return handle_write_call(
+            call_params,
+            services,
+            db,
+            tenant_id,
+            ctx,
+            dispatcher,
+            #[cfg(feature = "confirmation")]
+            store,
+            #[cfg(feature = "confirmation")]
+            config,
+        )
+        .await;
     }
 
     let service = match services
@@ -214,6 +232,10 @@ mod tests {
             Some(1),
             &McpContext::default(),
             &noop_dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &test_config(),
         )
         .await;
 
@@ -293,6 +315,7 @@ mod tests {
             app_name: "TestApp".to_string(),
             app_url: "https://test.example".to_string(),
             version: "0.0.0".to_string(),
+            confirmation_ttl_seconds: 300,
         }
     }
 

@@ -215,6 +215,30 @@ async fn store_idempotency(
 
 // ── Core pipeline ─────────────────────────────────────────────────────────────
 
+// ── Token generator (confirmation feature only) ───────────────────────────────
+
+/// Generate a server-side CSPRNG confirmation token.
+///
+/// Uses the same BASE62 + rand pattern as `generate_mcp_api_key` in
+/// `ferro-mcp-oauth`. Token format: `cfm_` prefix + 43 BASE62 chars (~256-bit
+/// entropy). The token is never agent-supplied; it is issued by
+/// `handle_request_confirm` and verified by `handle_confirm`.
+#[cfg(feature = "confirmation")]
+fn generate_confirmation_token() -> String {
+    use rand::Rng;
+    const BASE62: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    let mut rng = rand::thread_rng();
+    let random: String = (0..43)
+        .map(|_| {
+            let idx = rng.gen_range(0..62usize);
+            BASE62[idx] as char
+        })
+        .collect();
+    format!("cfm_{random}")
+}
+
+// ── Core pipeline ─────────────────────────────────────────────────────────────
+
 /// Execute a write action with guard re-evaluation, idempotency, and audit.
 ///
 /// Pipeline order (D-07):
@@ -222,16 +246,22 @@ async fn store_idempotency(
 ///    CRITICAL: `ctx.evaluated_guards` is the 218 list-time visibility cache and
 ///    is NEVER consulted here. Authorization at call time must use live DB state.
 /// 2. Idempotency check (D-04) — replay stored result without re-executing.
-/// 3. D-08 confirmation seam — pass-through in Phase 219.
+/// 3. D-08 confirmation seam — gate for destructive actions (Phase 220).
 /// 4. Execute callback (D-01).
 /// 5. Store idempotency result (D-04).
 /// 6. Audit via ferro-audit (D-05).
+///
+/// The `is_confirmed` parameter (confirmation feature only) signals that this
+/// call came from `handle_confirm` after token validation — the D-08 seam is
+/// bypassed when `true`. Bare callers always pass `false` (or omit when feature
+/// is off).
 pub async fn dispatch_write(
     action: &ActionDef,
     inputs: &Value,
     tenant_id: i64,
     db: &DatabaseConnection,
     dispatcher: &WriteDispatcher,
+    #[cfg(feature = "confirmation")] is_confirmed: bool,
 ) -> crate::Result<Value> {
     // 1. Guard re-evaluation (D-02, T-219-02 — load-bearing security gate).
     //
@@ -278,11 +308,20 @@ pub async fn dispatch_write(
         }
     }
 
-    // 3. D-08 SEAM: Phase 220 inserts confirmation gating here for destructive actions
-    //    (transition_trigger.is_some()). In 219: pass through directly.
-    //    Do NOT wire ferro-ai / ConfirmationStore here.
-    //    if action.transition_trigger.is_some() { /* Phase 220 will intercept */ }
-    let _ = &action.transition_trigger; // reference to avoid unused-field lint during seam
+    // 3. D-08 SEAM (Phase 220): confirmation gate for destructive actions.
+    //
+    // When the `confirmation` feature is on, a bare call to a destructive action
+    // (transition_trigger.is_some()) without a valid confirmation context returns
+    // Err(ConfirmationRequired) — the executor never fires. `handle_confirm` sets
+    // is_confirmed=true to bypass this seam after token validation.
+    //
+    // Feature-off: fall through to executor (Phase 219 behavior preserved).
+    #[cfg(feature = "confirmation")]
+    if action.transition_trigger.is_some() && !is_confirmed {
+        return Err(crate::Error::ConfirmationRequired(action.name.clone()));
+    }
+    #[cfg(not(feature = "confirmation"))]
+    let _ = &action.transition_trigger;
 
     // 4. Execute callback (D-01).
     //    The executor owns TenantScoped enforcement (D-03): find_for_tenant(id, tenant_id)
@@ -317,6 +356,10 @@ pub async fn dispatch_write(
 /// `handle_tools_call`, in front of this function):
 /// resolve ActionDef → validate inputs → dispatch_write (guard re-eval +
 /// idempotency + execute + audit) → structured result envelope.
+///
+/// When the `confirmation` feature is on, `store` and `config` are threaded
+/// from `handle_tools_call` for the `request_confirm_`/`confirm_` prefix routing.
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_write_call(
     call_params: Value,
     services: &[ServiceDef],
@@ -324,12 +367,49 @@ pub async fn handle_write_call(
     tenant_id: Option<i64>,
     ctx: &crate::McpContext,
     dispatcher: &WriteDispatcher,
+    #[cfg(feature = "confirmation")] store: &dyn ferro_ai::ConfirmationStore,
+    #[cfg(feature = "confirmation")] config: &crate::McpServerConfig,
 ) -> Value {
     // Scope check already ran in handle_tools_call; we are here for the write path.
     // Suppress unused ctx warning — ctx is available for future extensions (e.g. tracing).
     let _ = ctx;
 
-    let tool_name = call_params["name"].as_str().unwrap_or("");
+    let tool_name = call_params["name"].as_str().unwrap_or("").to_string();
+
+    // Phase 220: confirmation tool prefix routing.
+    // Check `request_confirm_` before `confirm_` (order matters — confirm_ is a
+    // shorter prefix that could shadow if checked first).
+    #[cfg(feature = "confirmation")]
+    if let Some(action_name) = tool_name.strip_prefix("request_confirm_") {
+        let action_name = action_name.to_string();
+        return handle_request_confirm(
+            call_params,
+            services,
+            db,
+            tenant_id,
+            ctx,
+            dispatcher,
+            store,
+            &action_name,
+            config.confirmation_ttl_seconds,
+        )
+        .await;
+    }
+    #[cfg(feature = "confirmation")]
+    if let Some(action_name) = tool_name.strip_prefix("confirm_") {
+        let action_name = action_name.to_string();
+        return handle_confirm(
+            call_params,
+            services,
+            db,
+            tenant_id,
+            ctx,
+            dispatcher,
+            store,
+            &action_name,
+        )
+        .await;
+    }
 
     // Fail-closed: writes always require an authenticated tenant.
     // tenant_id is the unwrapped authenticated principal — never from the payload.
@@ -341,7 +421,7 @@ pub async fn handle_write_call(
     };
 
     // Resolve the ActionDef by tool name across mcp-exposed services.
-    let (_svc, action) = match find_action(services, tool_name) {
+    let (_svc, action) = match find_action(services, &tool_name) {
         Some(pair) => pair,
         None => {
             return json!({ "error": { "code": -32601, "message": "Method not found" } });
@@ -362,7 +442,17 @@ pub async fn handle_write_call(
     }
 
     // Dispatch: guard re-eval → idempotency → seam → execute → store → audit.
-    match dispatch_write(action, &args, tid, db, dispatcher).await {
+    match dispatch_write(
+        action,
+        &args,
+        tid,
+        db,
+        dispatcher,
+        #[cfg(feature = "confirmation")]
+        false,
+    )
+    .await
+    {
         Ok(result) => {
             let payload = json!({
                 "status": "ok",
@@ -388,6 +478,15 @@ pub async fn handle_write_call(
                 "message": msg
             })) })
         }
+        // Confirmation required: agent must use request_confirm_<action> first.
+        #[cfg(feature = "confirmation")]
+        Err(crate::Error::ConfirmationRequired(ref action_name)) => {
+            json!({ "result": write_tool_error_result(json!({
+                "error_kind": "confirmation_required",
+                "message": format!("use request_confirm_{action_name} first"),
+                "request_tool": format!("request_confirm_{action_name}")
+            })) })
+        }
         // Agent-safe variants: pass message through (no internal state in these strings).
         Err(ref e @ crate::Error::Validation(_)) | Err(ref e @ crate::Error::ActionNotFound(_)) => {
             json!({ "result": write_tool_error_result(json!({
@@ -406,41 +505,247 @@ pub async fn handle_write_call(
     }
 }
 
-// ── Confirmation stubs (Plan 01 implements; stubs let RED tests compile) ─────
+// ── Confirmation handlers (Plan 01 implementation) ────────────────────────────
 
-/// Stub: issues a confirmation token for a destructive action.
-/// Plan 01 implements the real handler.
+/// Issues a confirmation token for a destructive action.
+///
+/// Flow: find action → validate inputs → re-evaluate guards (fail fast) →
+/// generate CSPRNG token → store binding payload → return token.
+///
+/// The token is bound to `(tenant_id, action_name, record_id)` so
+/// `handle_confirm` can reject cross-action/cross-record use (SC#4).
+/// Token is never agent-supplied — always server-generated here.
 #[cfg(feature = "confirmation")]
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_request_confirm(
-    _call_params: Value,
-    _services: &[ServiceDef],
-    _db: &DatabaseConnection,
-    _tenant_id: Option<i64>,
+    call_params: Value,
+    services: &[ServiceDef],
+    db: &DatabaseConnection,
+    tenant_id: Option<i64>,
     _ctx: &crate::McpContext,
-    _dispatcher: &WriteDispatcher,
-    _store: &dyn ferro_ai::ConfirmationStore,
-    _action_name: &str,
-    _ttl_secs: u64,
+    dispatcher: &WriteDispatcher,
+    store: &dyn ferro_ai::ConfirmationStore,
+    action_name: &str,
+    ttl_secs: u64,
 ) -> Value {
-    todo!("handle_request_confirm: implemented in Plan 01")
+    let tid = match tenant_id {
+        Some(t) => t,
+        None => {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "execution_error",
+                "message": "auth: tenant required"
+            })) });
+        }
+    };
+
+    let (_svc, action) = match find_action(services, action_name) {
+        Some(pair) => pair,
+        None => {
+            return json!({ "error": { "code": -32601, "message": "Method not found" } });
+        }
+    };
+
+    let args = call_params
+        .get("arguments")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+
+    if let Err(msg) = validate_action_inputs(action, &args) {
+        return json!({ "result": write_tool_error_result(json!({
+            "error_kind": "validation",
+            "message": msg
+        })) });
+    }
+
+    // Re-evaluate guards before issuing token (fail fast — Pitfall 4).
+    for guard_name in &action.preconditions {
+        let passes = match (dispatcher.guard_evaluator)(guard_name, tid, &args, db).await {
+            Ok(p) => p,
+            Err(e) => {
+                return json!({ "result": write_tool_error_result(json!({
+                    "error_kind": "guard_denied",
+                    "message": format!("precondition '{guard_name}' error: {e}")
+                })) });
+            }
+        };
+        if !passes {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "guard_denied",
+                "message": format!("precondition '{guard_name}' not met")
+            })) });
+        }
+    }
+
+    let token = generate_confirmation_token();
+    let record_id = args.get("id").cloned().unwrap_or(Value::Null);
+    let binding_payload = json!({
+        "_binding": {
+            "tenant_id": tid,
+            "action_name": action_name,
+            "record_id": record_id
+        },
+        "inputs": args
+    });
+
+    if let Err(e) = store
+        .request_confirmation(
+            &token,
+            binding_payload,
+            std::time::Duration::from_secs(ttl_secs),
+        )
+        .await
+    {
+        return json!({ "result": write_tool_error_result(json!({
+            "error_kind": "execution_error",
+            "message": format!("failed to store confirmation: {e}")
+        })) });
+    }
+
+    let tool_result = CallToolResult::structured(json!({
+        "confirmation_token": token,
+        "expires_in_seconds": ttl_secs
+    }));
+    json!({ "result": tool_result })
 }
 
-/// Stub: validates a confirmation token and executes the action.
-/// Plan 01 implements the real handler.
+/// Validates a confirmation token and executes the action exactly once.
+///
+/// Flow: read token from args → `store.confirm()` (single-use, None=expired) →
+/// verify binding (tenant, action, record) → re-evaluate guards (live state) →
+/// `dispatch_write(is_confirmed=true)` (bypasses D-08 seam) → return result.
 #[cfg(feature = "confirmation")]
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_confirm(
-    _call_params: Value,
-    _services: &[ServiceDef],
-    _db: &DatabaseConnection,
-    _tenant_id: Option<i64>,
+    call_params: Value,
+    services: &[ServiceDef],
+    db: &DatabaseConnection,
+    tenant_id: Option<i64>,
     _ctx: &crate::McpContext,
-    _dispatcher: &WriteDispatcher,
-    _store: &dyn ferro_ai::ConfirmationStore,
-    _action_name: &str,
+    dispatcher: &WriteDispatcher,
+    store: &dyn ferro_ai::ConfirmationStore,
+    action_name: &str,
 ) -> Value {
-    todo!("handle_confirm: implemented in Plan 01")
+    let tid = match tenant_id {
+        Some(t) => t,
+        None => {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "execution_error",
+                "message": "auth: tenant required"
+            })) });
+        }
+    };
+
+    let args = call_params
+        .get("arguments")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+
+    let confirmation_token = match args.get("confirmation_token").and_then(|v| v.as_str()) {
+        Some(t) => t.to_string(),
+        None => {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "validation",
+                "message": "required field 'confirmation_token' missing"
+            })) });
+        }
+    };
+
+    // Consume the token (single-use). None = expired or already used.
+    let stored_payload = match store.confirm(&confirmation_token).await {
+        Ok(Some(payload)) => payload,
+        Ok(None) => {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "confirmation_expired",
+                "message": "confirmation token expired or not found"
+            })) });
+        }
+        Err(e) => {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "execution_error",
+                "message": format!("confirmation store error: {e}")
+            })) });
+        }
+    };
+
+    // Verify binding: tenant_id, action_name, record_id.
+    let binding = &stored_payload["_binding"];
+
+    if binding["tenant_id"].as_i64() != Some(tid) {
+        return json!({ "result": write_tool_error_result(json!({
+            "error_kind": "confirmation_mismatch",
+            "message": "confirmation token does not belong to this tenant"
+        })) });
+    }
+
+    if binding["action_name"].as_str() != Some(action_name) {
+        return json!({ "result": write_tool_error_result(json!({
+            "error_kind": "confirmation_mismatch",
+            "message": "confirmation token is for a different action"
+        })) });
+    }
+
+    let call_record_id = args.get("id");
+    let stored_record_id = binding.get("record_id");
+    if call_record_id != stored_record_id {
+        return json!({ "result": write_tool_error_result(json!({
+            "error_kind": "confirmation_mismatch",
+            "message": "confirmation token is for a different record"
+        })) });
+    }
+
+    let stored_inputs = &stored_payload["inputs"];
+
+    // Find action for guard re-evaluation.
+    let (_svc, action) = match find_action(services, action_name) {
+        Some(pair) => pair,
+        None => {
+            return json!({ "error": { "code": -32601, "message": "Method not found" } });
+        }
+    };
+
+    // Re-evaluate guards at confirm time (live DB state — T-220-03).
+    for guard_name in &action.preconditions {
+        let passes = match (dispatcher.guard_evaluator)(guard_name, tid, stored_inputs, db).await {
+            Ok(p) => p,
+            Err(e) => {
+                return json!({ "result": write_tool_error_result(json!({
+                    "error_kind": "guard_denied",
+                    "message": format!("precondition '{guard_name}' error at confirm time: {e}")
+                })) });
+            }
+        };
+        if !passes {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "guard_denied",
+                "message": format!("precondition '{guard_name}' not met at confirm time")
+            })) });
+        }
+    }
+
+    // Execute via dispatch_write with is_confirmed=true (bypasses D-08 seam).
+    match dispatch_write(action, stored_inputs, tid, db, dispatcher, true).await {
+        Ok(result) => {
+            let payload = json!({
+                "status": "ok",
+                "action": action.name,
+                "result": result
+            });
+            let tool_result = CallToolResult::structured(payload);
+            json!({ "result": tool_result })
+        }
+        Err(crate::Error::GuardFailed(ref msg)) => {
+            json!({ "result": write_tool_error_result(json!({
+                "error_kind": "guard_denied",
+                "message": msg
+            })) })
+        }
+        Err(_) => {
+            json!({ "result": write_tool_error_result(json!({
+                "error_kind": "execution_error",
+                "message": "write operation failed"
+            })) })
+        }
+    }
 }
 
 // ── RED unit tests (Wave 0 — compile and FAIL; Wave 1 makes them GREEN) ──────
@@ -514,7 +819,13 @@ mod tests {
         ActionDef::new("submit").transition_trigger("submit")
     }
 
-    /// Build a minimal [`ServiceDef`] exposing both actions.
+    /// Build a synthetic non-destructive `ActionDef` (no transition_trigger).
+    /// Used in tests that need executor to run without the confirmation seam.
+    fn update_action() -> ActionDef {
+        ActionDef::new("update")
+    }
+
+    /// Build a minimal [`ServiceDef`] exposing all actions (including non-destructive `update`).
     fn order_service_with_actions() -> ServiceDef {
         use ferro_projections::{DataType, FieldMeaning};
         ServiceDef::new("order")
@@ -523,6 +834,7 @@ mod tests {
             .field("status", DataType::String, FieldMeaning::Status)
             .action(approve_action())
             .action(submit_action())
+            .action(update_action())
     }
 
     // ── SC#1 — T-219-02 ──────────────────────────────────────────────────────
@@ -542,8 +854,16 @@ mod tests {
             }),
         };
 
-        let result =
-            dispatch_write(&approve_action(), &json!({"id": 1}), 1, &db, &dispatcher).await;
+        let result = dispatch_write(
+            &approve_action(),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            false,
+        )
+        .await;
 
         assert!(
             matches!(result, Err(crate::Error::GuardFailed(_))),
@@ -574,8 +894,26 @@ mod tests {
 
         let args = json!({ "id": 1, "idempotency_key": "k-abc" });
 
-        let result1 = dispatch_write(&submit_action(), &args, 1, &db, &dispatcher).await;
-        let result2 = dispatch_write(&submit_action(), &args, 1, &db, &dispatcher).await;
+        let result1 = dispatch_write(
+            &update_action(),
+            &args,
+            1,
+            &db,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            false,
+        )
+        .await;
+        let result2 = dispatch_write(
+            &update_action(),
+            &args,
+            1,
+            &db,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            false,
+        )
+        .await;
 
         assert!(result1.is_ok(), "first call must succeed; got: {result1:?}");
         assert!(
@@ -615,7 +953,8 @@ mod tests {
                 Box::pin(async { Ok(json!({ "status": "submitted" })) })
             }),
         };
-        let success_params = json!({ "name": "submit", "arguments": { "id": 1 } });
+        // Use non-destructive "update" action — confirmation seam does not fire for it.
+        let success_params = json!({ "name": "update", "arguments": { "id": 1 } });
         let success_response = handle_write_call(
             success_params,
             &services,
@@ -623,6 +962,10 @@ mod tests {
             Some(1),
             &ctx,
             &success_dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &crate::McpServerConfig::default(),
         )
         .await;
 
@@ -654,8 +997,19 @@ mod tests {
             }),
         };
         let deny_params = json!({ "name": "approve", "arguments": { "id": 1 } });
-        let deny_response =
-            handle_write_call(deny_params, &services, &db, Some(1), &ctx, &deny_dispatcher).await;
+        let deny_response = handle_write_call(
+            deny_params,
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &deny_dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &crate::McpServerConfig::default(),
+        )
+        .await;
 
         let parsed_deny: CallToolResult = serde_json::from_value(deny_response["result"].clone())
             .expect("guard-denied result must parse as CallToolResult");
@@ -839,7 +1193,15 @@ mod confirmation_tests {
         let exec_count = Arc::new(AtomicUsize::new(0));
         let dispatcher = allow_dispatcher(exec_count.clone());
 
-        let result = dispatch_write(&submit_action(), &json!({"id": 1}), 1, &db, &dispatcher).await;
+        let result = dispatch_write(
+            &submit_action(),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &dispatcher,
+            false, // is_confirmed = false → triggers seam
+        )
+        .await;
 
         assert!(
             matches!(result, Err(crate::Error::ConfirmationRequired(_))),
@@ -944,16 +1306,23 @@ mod confirmation_tests {
     /// SC#3: Advance clock past TTL; confirm returns confirmation_expired,
     /// executor NOT called.
     ///
-    /// Uses tokio paused-clock protocol from ferro-ai/src/confirmation/store.rs.
-    /// RED in Plan 00.
-    #[tokio::test(start_paused = true)]
+    /// Uses tokio manual-pause protocol: DB is connected first (with real clock),
+    /// then clock is paused before the TTL timer is started (via request_confirm),
+    /// then advanced. This avoids the `start_paused=true` pool-connect hang where
+    /// the pool acquire timeout fires against a frozen clock.
+    #[tokio::test]
     async fn sc3_expired_token_rejected() {
+        // Connect DB BEFORE pausing the clock — pool acquire uses real tokio timers.
         let db = setup_db().await;
         let exec_count = Arc::new(AtomicUsize::new(0));
         let dispatcher = allow_dispatcher(exec_count.clone());
         let store = InMemoryConfirmationStore::new();
         let services = vec![order_service()];
         let ctx = crate::McpContext::default();
+
+        // Pause clock AFTER DB is ready — TTL timer in request_confirmation will
+        // register against the frozen clock and be controllable by advance().
+        tokio::time::pause();
 
         // Request with a 5-second TTL
         let req_response = handle_request_confirm(
