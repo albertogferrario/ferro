@@ -3046,7 +3046,10 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   3. A confirmation token that has expired (beyond the configured TTL) is rejected; the action is not executed.
   4. A confirmation token issued for one action or record cannot be used to authorize a different action or record — mismatch returns an error, not execution.
   5. Consumers that do not enable the `confirmation` feature flag compile successfully and their read tools are unaffected; only write tools for destructive actions require the feature.
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 220-00-PLAN.md — Wave 0: ferro-ai feature-split (default=llm, reqwest-free confirmation) + consumer audit + confirmation feature scaffolding + RED tests
+  - [ ] 220-01-PLAN.md — Wave 1: D-08 seam gate + request_confirm/confirm handlers + token binding/mismatch + guard re-eval + two-tool synthesis (GREEN)
+  - [ ] 220-02-PLAN.md — Wave 2: sample-app ConfirmationStore wiring + feature-off build-graph assertion (SC#5) + full --all-features CI gate
 
 ### Phase 221: Inbound NL Intent Loop
 **Goal**: A natural-language message is classified to a tool and arguments, guard-checked, confirmation-gated for write intents, dispatched, and the result returned — the full conversational turn. The loop is CI-testable without live-LLM spend.
