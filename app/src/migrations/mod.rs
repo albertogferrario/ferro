@@ -10,8 +10,8 @@ mod m20260611_create_sessions_table;
 mod m20260611_create_tenants_table;
 // MCP write-dispatch tables: local wrappers give unique version names derived
 // from the file stem, avoiding collisions with external crate "migration" stems.
-mod m20260614_create_mcp_idempotency_keys_table;
 mod m20260614_create_audit_log_table;
+mod m20260614_create_mcp_idempotency_keys_table;
 
 pub struct Migrator;
 

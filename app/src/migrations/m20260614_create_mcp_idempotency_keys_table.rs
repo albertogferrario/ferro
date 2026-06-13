@@ -12,10 +12,14 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        ferro_mcp_oauth::CreateMcpIdempotencyKeysTable.up(manager).await
+        ferro_mcp_oauth::CreateMcpIdempotencyKeysTable
+            .up(manager)
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        ferro_mcp_oauth::CreateMcpIdempotencyKeysTable.down(manager).await
+        ferro_mcp_oauth::CreateMcpIdempotencyKeysTable
+            .down(manager)
+            .await
     }
 }

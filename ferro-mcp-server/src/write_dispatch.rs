@@ -275,10 +275,7 @@ pub async fn dispatch_write(
 
     // 6. Audit (D-05, SC#4) — record after every successful execution.
     //    Denial audit (guard-failed path) is recorded in handle_write_call.
-    let record_id = inputs
-        .get("id")
-        .map(|v| v.to_string())
-        .unwrap_or_default();
+    let record_id = inputs.get("id").map(|v| v.to_string()).unwrap_or_default();
     AuditEntry::record(format!("mcp.action.{}", &action.name))
         .tenant(tenant_id.to_string())
         .actor(AuditActor::User(tenant_id.to_string()))

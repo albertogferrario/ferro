@@ -162,9 +162,8 @@ mod tests {
                 let id_val = inputs["id"].as_i64();
                 let db = db_exec.clone();
                 Box::pin(async move {
-                    let id = id_val.ok_or_else(|| {
-                        ferro_mcp_server::Error::Validation("missing id".into())
-                    })?;
+                    let id = id_val
+                        .ok_or_else(|| ferro_mcp_server::Error::Validation("missing id".into()))?;
 
                     // find_for_tenant inline: filter by id AND tenant_id (D-03 cross-tenant denial).
                     let order = Entity::find_by_id(id as i32)
@@ -182,9 +181,7 @@ mod tests {
                         "submit" => "submitted",
                         "approve" => "approved",
                         "ship" => "shipped",
-                        _ => {
-                            return Err(ferro_mcp_server::Error::ActionNotFound(action_name))
-                        }
+                        _ => return Err(ferro_mcp_server::Error::ActionNotFound(action_name)),
                     };
 
                     let mut active: OrderActive = order.into();
@@ -212,9 +209,7 @@ mod tests {
                                     DatabaseBackend::Postgres => {
                                         "SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = $1"
                                     }
-                                    _ => {
-                                        "SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = ?"
-                                    }
+                                    _ => "SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = ?",
                                 },
                                 [Value::BigInt(Some(tenant_id))],
                             );
@@ -271,13 +266,11 @@ mod tests {
         let dispatcher = make_test_write_dispatcher(db.clone());
 
         // Order id=3 belongs to tenant 2; call as tenant 1 → find_for_tenant → None → denial.
-        let result =
-            call_write_tool("submit", json!({"id": 3}), Some(1), &db, &dispatcher).await;
+        let result = call_write_tool("submit", json!({"id": 3}), Some(1), &db, &dispatcher).await;
 
         // Must be a tool-level error (isError:true in result, not a JSON-RPC -32xxx error).
         assert_eq!(
-            result["result"]["isError"],
-            true,
+            result["result"]["isError"], true,
             "cross-tenant write must return isError:true; got result: {result}"
         );
 
@@ -304,14 +297,12 @@ mod tests {
         let dispatcher = make_test_write_dispatcher(db.clone());
 
         // Call submit for order 1 (tenant 1 owns it).
-        let result =
-            call_write_tool("submit", json!({"id": 1}), Some(1), &db, &dispatcher).await;
+        let result = call_write_tool("submit", json!({"id": 1}), Some(1), &db, &dispatcher).await;
 
         // Call must succeed before we look for the audit trail.
         // CallToolResult::structured sets isError:false explicitly.
         assert_ne!(
-            result["result"]["isError"],
-            true,
+            result["result"]["isError"], true,
             "submit for owned order must succeed (isError must not be true); got: {result}"
         );
 
@@ -372,9 +363,8 @@ mod tests {
                 Box::pin(async move {
                     counter.fetch_add(1, Ordering::SeqCst);
 
-                    let id = id_val.ok_or_else(|| {
-                        ferro_mcp_server::Error::Validation("missing id".into())
-                    })?;
+                    let id = id_val
+                        .ok_or_else(|| ferro_mcp_server::Error::Validation("missing id".into()))?;
 
                     let order = Entity::find_by_id(id as i32)
                         .filter(Column::TenantId.eq(tenant_id))
@@ -391,9 +381,7 @@ mod tests {
                         "submit" => "submitted",
                         "approve" => "approved",
                         "ship" => "shipped",
-                        _ => {
-                            return Err(ferro_mcp_server::Error::ActionNotFound(action_name))
-                        }
+                        _ => return Err(ferro_mcp_server::Error::ActionNotFound(action_name)),
                     };
 
                     let mut active: OrderActive = order.into();
@@ -440,20 +428,17 @@ mod tests {
 
         // Both calls must succeed (not isError:true).
         assert_ne!(
-            result1["result"]["isError"],
-            true,
+            result1["result"]["isError"], true,
             "first call must succeed; got: {result1}"
         );
         assert_ne!(
-            result2["result"]["isError"],
-            true,
+            result2["result"]["isError"], true,
             "second call (replay) must succeed; got: {result2}"
         );
 
         // Idempotent replay: both structured content payloads must be equal.
         assert_eq!(
-            result1["result"]["structuredContent"],
-            result2["result"]["structuredContent"],
+            result1["result"]["structuredContent"], result2["result"]["structuredContent"],
             "idempotent replay must return identical structured content"
         );
 

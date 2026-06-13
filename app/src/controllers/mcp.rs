@@ -28,9 +28,7 @@ async fn check_is_manager(tenant_id: i64, db: &sea_orm::DatabaseConnection) -> b
     let stmt = Statement::from_sql_and_values(
         backend,
         match backend {
-            DatabaseBackend::Postgres => {
-                "SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = $1"
-            }
+            DatabaseBackend::Postgres => "SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = $1",
             _ => "SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = ?",
         },
         [Value::BigInt(Some(tenant_id))],
@@ -60,7 +58,9 @@ fn make_write_dispatcher() -> WriteDispatcher {
             let db = db.clone();
             Box::pin(async move {
                 use crate::models::entities::orders::{ActiveModel as OrderActive, Column, Entity};
-                use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
+                use sea_orm::{
+                    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter,
+                };
 
                 let id: i64 = id_val
                     .ok_or_else(|| ferro_mcp_server::Error::Validation("missing id".into()))?;
@@ -82,9 +82,7 @@ fn make_write_dispatcher() -> WriteDispatcher {
                     "submit" => "submitted",
                     "approve" => "approved",
                     "ship" => "shipped",
-                    _ => {
-                        return Err(ferro_mcp_server::Error::ActionNotFound(action_name))
-                    }
+                    _ => return Err(ferro_mcp_server::Error::ActionNotFound(action_name)),
                 };
 
                 // Apply the state transition via SeaORM ActiveModel.
