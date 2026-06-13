@@ -44,6 +44,21 @@ boilerplate (no nested attribute) and resolve the tenant via the existing `curre
 - [x] **CRUD-05**: IDE experience preserved — the body moves to a named `__{name}_inner` fn with the user's typed params; rustdoc carries `cargo expand` walkthroughs; covered by a trybuild harness (2+ pass, 4 compile-fail fixtures with `.stderr`).
 - [x] **CRUD-06**: Macros exported via the `ferro` facade; a `full_crud_reference` fixture uses both end-to-end; CHANGELOG entry + workspace version bump to 0.2.56.
 
+## v14.0 Requirements
+
+### Channel Projection — Non-Visual Rendering (text-renderer-first)
+
+Derived from COMP-05 (Phase 208) — the cross-modality vocabulary sketch and its "v14.0 implications"
+table. Scope: ONE production conversational-text renderer + the extensions it forces. Voice,
+structured-API, mobile `device_class`/chart-card, and inbound `ferro-ai` classification are deferred
+(see Future Requirements). The renderer lives in an output crate; `ferro-projections` stays
+renderer-free (v11.5 rule).
+
+- [ ] **CHAN-01**: `BaseContext` carries non-visual rendering context — `evaluated_guards` (a map/representation of guard→bool so a renderer shows an action only when its guard passes; today all actions render regardless of caller role) and `verbosity` (`Brief`/`Full`). Existing visual/MCP renderers compile unchanged.
+- [ ] **CHAN-02**: `Intent::label() -> &str` replaces the fragile `format!("{:?}", intent)` debug-derived label across renderers; an empty intent slice returns a render error/warning rather than a silent `"unknown"`.
+- [ ] **CHAN-03**: `FieldDef` carries a `render_hint` (e.g. `AltText(String)` / `Skip`) so a renderer handles `ImageUrl`/`Url` (Focus intent) fields without emitting a useless raw-URL label; absent hint preserves current behavior.
+- [ ] **CHAN-04**: A production conversational-text `Renderer` in its own output crate projects a `ServiceDef` to text for the cleanly-mapping intents (Browse, Collect, Process, Summarize, Track), guard-filtered (CHAN-01) and verbosity-aware, with a defined, tested fallback for the Focus/Analyze modality gaps. Re-exported via the `ferro` facade; covered by deterministic snapshot/string tests over the COMP-05 anchor fixture.
+
 ## Future Requirements (deferred)
 
 - **Rest of the Road to v1.0 program** — the operational (OPER-01..07), conceptual (CONC-01..04, incl. crate-consolidation audit + ServiceDef derivation bridge), and aesthetic (AEST-01..04) dimensions are subsequent v13.x milestones, prioritized after the compressive validation establishes baseline signal.
@@ -81,3 +96,7 @@ boilerplate (no nested attribute) and resolve the tenant via the existing `curre
 | CRUD-04 | Phase 212 | Complete |
 | CRUD-05 | Phase 212 | Complete |
 | CRUD-06 | Phase 212 | Complete |
+| CHAN-01 | Phase 215 | Pending |
+| CHAN-02 | Phase 215 | Pending |
+| CHAN-03 | Phase 216 | Pending |
+| CHAN-04 | Phase 216 | Pending |

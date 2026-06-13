@@ -52,18 +52,19 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - v13.3 Scaffold↔Library Parity complete (Phase 214, SCAF-01–05): the scaffold↔library drift COMP-04 found is fixed — `error_response!` macro and `ActiveValue` exported from the `ferro` facade, queue routed through `ferro::queue::*`, and the `--api` + full-stack controller, auth, and job templates corrected to emit only published-facade symbols. A two-layer CI guard (per-PR workspace path-dep `scaffold_builds_against_workspace_ferro` test + release-time published-artifact Docker smoke job) makes a non-compiling scaffold a pipeline failure. The full scaffold sequence now `cargo build`s exit 0.
 - v13.1 CRUD Handler Proc Macros complete (Phase 212, CRUD-01–06): `#[resource_get]` / `#[resource_post]` fold the tenant-scoped CRUD prelude (typed param + `current_tenant()` + tenant-scoped lookup + 404/303-on-miss) into one route attribute while keeping tenant + resource as real typed params; they inline the handler/action boilerplate (no nested attribute). Backed by a `TenantScoped` trait (cross-tenant reads impossible by construction) and `Validator::validate_or_redirect(url)`. trybuild suite (pass + compile-fail fixtures), facade exports, 0.2.56 bump. With this, the v13.x batch scoped so far (v13.0/v13.1/v13.2/v13.3) is complete; nothing in v13.x is published yet beyond v13.2's 0.2.55.
 
-## Current Milestone: v13.0 Compressive Validation
+## Current Milestone: v14.0 Channel Projection — Non-Visual Rendering
 
-**Goal:** Validate the projection / intent abstraction empirically — the first slice of the v13.0 "Road to v1.0" program, targeting the compressive dimension (substance-first priority #1) and v1.0 criterion #2 ("projection / intent validated through real applications and a synthetic catalog of canonical app classes").
+**Goal:** Ship the first production non-visual `Renderer` — a conversational-text channel — that projects the *same* `ServiceDef` the visual/MCP renderers use, proving the projection/intent abstraction renders to a non-screen modality. Plus the `BaseContext` / `FieldDef` / `Intent` extensions COMP-05 (Phase 208) found are required to render correctly. **Scope: text renderer first** (substance-first — validate the whole `ServiceDef → channel` pipeline on one real channel before fanning out to voice / structured-API / chart-card).
 
-**Target requirements (COMP-01..05, carried from v11.7 planning):**
-- COMP-01 — Migrate `gestiscilo` to projection-driven rendering (first real-world validation).
-- COMP-02 — Synthetic catalog of canonical app classes covering the seven intents, with regression tests that run on every projection / intent change.
-- COMP-03 — Agent-success-rate measurement: can an agent reading `ferro-mcp` introspection produce a working projection from a natural-language description?
-- COMP-04 — Time-to-working-app benchmark (`cargo new` → running service with auth, three entity types, one background job).
-- COMP-05 — Intent vocabulary cross-modality sketch (one intent expressed as mobile / voice / CLI); informs any intent-vocabulary revision. v14.0 Channel Projection depends on this. ✓ Phase 208 (analysis at `docs/research/comp-05-cross-modality-vocabulary-sketch.md`).
+**Target requirements (CHAN-*, derived from COMP-05's "v14.0 implications" + discovered weaknesses):**
+- CHAN-01 — `BaseContext` gains the non-visual rendering context the text renderer needs: `evaluated_guards` (filter guarded actions — today all actions leak regardless of caller role) + `verbosity` (Brief/Full).
+- CHAN-02 — `Intent::label()` replaces the fragile `format!("{:?}", intent)` debug-derived label; an empty intent slice returns a render error/warning, not a silent `"unknown"`.
+- CHAN-03 — `FieldDef.render_hint` (AltText / Skip) so the renderer handles `ImageUrl`/`Url` (Focus intent) gracefully instead of emitting a useless raw-URL label.
+- CHAN-04 — A production conversational-text `Renderer` in an **output crate** (`ferro-projections` stays renderer-free, per v11.5), projecting a `ServiceDef` to text for the clean intents (Browse/Collect/Process/Summarize/Track), guard-filtered + verbosity-aware, with a defined fallback for the Focus/Analyze modality gaps.
 
-**Key context:** These are validation / measurement work against ferro's own projection/intent system, not new ecosystem features. COMP-01 (gestiscilo migration) is a large cross-repo effort and may be sliced. Phase numbering continues from 206 (v13.0 starts at 207).
+**Deferred to a follow-up channel milestone:** voice renderer (Analyze has no natural spoken form; `summary_hint` needed), structured-API renderer, mobile `device_class` + chart-card type, and inbound intent classification via `ferro-ai` (the conversational *loop* — a channel-adapter concern distinct from the outbound renderer).
+
+**Key context:** Internal-architecture work, not new external ecosystem — grounded in the COMP-05 analysis (`docs/research/comp-05-cross-modality-vocabulary-sketch.md`) and the v11.5 modality-agnostic `Renderer` trait. The renderer lives in its output crate (mirrors `JsonUiRenderer` in ferro-json-ui / `McpRenderer` in ferro-mcp-server). Phase numbering continues from 214 (v14.0 starts at 215).
 
 ---
 

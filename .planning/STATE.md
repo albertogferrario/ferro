@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v13.1
-milestone_name: CRUD Handler Proc Macros
-status: complete — v13.x batch (v13.0/v13.1/v13.2/v13.3) all done; no active milestone (v14.0 is the next planned direction, not started)
-stopped_at: Phase 212 complete (v13.1); v13.x batch complete; milestone pointers reconciled
-last_updated: "2026-06-13T06:06:22.543Z"
+milestone: v14.0
+milestone_name: Channel Projection — Non-Visual Rendering
+status: Defining requirements
+stopped_at: v14.0 milestone started (text-renderer-first scope locked)
+last_updated: "2026-06-13T14:00:00.000Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 95
   completed_phases: 87
   total_plans: 361
   completed_plans: 360
-  percent: 100
+  percent: 0
 ---
 
 # Project State
@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** None active — v13.x batch complete. Next: choose v14.0 or archive v13.x via `/gsd-complete-milestone`.
+**Current focus:** v14.0 Channel Projection — Non-Visual Rendering — defining requirements (text-renderer-first).
 
 ## Current Position
 
-Milestone: none active — the v13.x batch is complete [v13.0 Compressive Validation ✅ (207–211); v13.1 CRUD Handler Proc Macros ✅ (212); v13.2 Render Completeness ✅ SHIPPED 0.2.55 (213); v13.3 Scaffold↔Library Parity ✅ (214)]. v14.0 Channel Projection is the next 📋 planned direction (depends on COMP-05), not started.
-Phase: — (none in progress)
+Milestone: v14.0 Channel Projection — Non-Visual Rendering — 🚧 ACTIVE (started 2026-06-13). Scope: ship the first production conversational-text `Renderer` + the `BaseContext`/`FieldDef`/`Intent` extensions COMP-05 found it needs. [v13.x batch all ✅: v13.0 (207–211), v13.1 (212), v13.2 SHIPPED 0.2.55 (213), v13.3 (214)]
+Phase: Not started (defining requirements)
 Plan: —
-Next: `/gsd-complete-milestone` to archive the completed v13.x work, or `/gsd-discuss-phase` once a v14.0 phase is scoped
-Prior: Phase 212 ✅ COMPLETE 2026-06-13 (v13.1 — resource_get/resource_post macros + TenantScoped + validate_or_redirect; 12/12 verified, code review 0 critical/4 warn fixed; also fixed a Phase 214 stale-test regression); Phase 214 ✅ (v13.3); Phase 213 ✅ SHIPPED 0.2.55
-Status: v13.x batch complete — no active milestone
+Next: define CHAN-* requirements → roadmap → `/gsd-discuss-phase 215`
+Prior: Phase 212 ✅ (v13.1 CRUD macros); Phase 214 ✅ (v13.3 scaffold parity); Phase 213 ✅ SHIPPED 0.2.55. COMP-05 (Phase 208) analysis is v14.0's seed.
+Status: v14.0 started — defining requirements
 
-Progress: v13.0 ✅ 5/5 (207–211); v13.1 ✅ (212); v13.2 ✅ shipped (213); v13.3 ✅ (214)
+Progress: v14.0 — defining requirements (0 phases). v13.x ✅ complete (207–214).
 
 Last activity: 2026-06-13
 Workspace version: 0.2.55 (published); 0.2.56 bumped locally (Phase 212); Phase 214 + 212 committed-not-released — eventual publish bundles both and needs a manual `workflow`-scope push for 214's CI yaml

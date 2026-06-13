@@ -65,7 +65,7 @@
 - ✅ **v13.1 CRUD Handler Proc Macros** — Phase 212 (complete 2026-06-13, CRUD-01–06; 12/12 verified, code review 0 critical). With this the v13.x batch scoped so far — v13.0/v13.1/v13.2/v13.3 — is complete; 0.2.56 bumped locally, not yet published. Framework-ergonomics feature driven by the gestiscilo Phase 202 duplication survey: two route-attribute proc macros (`#[resource_get]`, `#[resource_post]`) that fold the recurring tenant-resolve + typed-param + tenant-scoped-lookup + 404-dispatch prelude (repeated 200+ times in a single consumer) into a macro, plus a `Validator::validate_or_redirect` helper. Scoped to ferro's framework-product axis, not one consumer's LoC. Originally mis-numbered 209 by the cross-repo gestiscilo evidence pass; relocated here to keep v13.0 purely Compressive Validation. Phase scope at `phases/212-crud-handler-proc-macros/212-CONTEXT.md`.
 - ✅ **v13.2 Projection Render Completeness** — Phase 213 (SHIPPED in 0.2.55, 2026-06-13 — Gap A kanban structure/content split integration-verified live on gestiscilo feat/207; Gaps B–E unit+live where exercisable. Scoped 2026-06-12 from COMP-01 Slice A findings). Make `JsonUiRenderer`'s projection render *content-complete* so real-world views actually migrate. Phase 209 confirmed the render is layout-complete but content-incomplete: Browse data-binds, but Process emits a placeholder kanban (`emit_kanban_root`, "state-machine awareness is a deferred idea"), Summarize emits empty StatCard values (`emit_statcard_root`, `value: String::new()`), the `actions` slot is an empty stub for every intent (`emit_actions_placeholder`, "Deferred to Phase 118+"), `ImageUrl` fields don't render in tables, and projections emit a standalone spec with no app-shell layout. This is the unblock for all future projection migration. Scope at `phases/213-projection-render-completeness/213-CONTEXT.md` (to be created). Depends on Phase 209 (the validation that scoped it).
 - ✅ **v13.3 Scaffold↔Library Parity & Published-Artifact Smoke Test** — Phase 214 (complete 2026-06-13 — parity fixed via `ferro` facade exports + corrected scaffold templates, plus a two-layer CI guard; 10/10 must-haves verified; the `ci.yml`/`publish.yml` jobs await a manual `workflow`-scope push). Source: COMP-04 (Phase 211) cold-cache benchmark, which found the **published 0.2.55 scaffold does not compile** — `cargo build` of a freshly scaffolded app fails with 52 errors (scaffold templates reference `ferro::error_response!`, `#[rule]`, `ferro::Queue`, and `ActiveValue` that the published `ferro` crate doesn't export, plus `make:job` emits `use ferro_queue::…` without adding `ferro-queue` to the generated `Cargo.toml`). Two parts: (1) align the `ferro-cli` scaffold templates with the published `ferro` surface so `ferro new → make:auth → make:scaffold ×3 → make:job → cargo build` compiles clean; (2) add a CI smoke test that scaffolds and builds against the *published* artifact so a non-compiling release can never ship silently again — the permanent guard COMP-04's apparatus enables. Framework-correctness, not a Compressive Validation item. Scope at `phases/214-scaffold-library-parity/214-CONTEXT.md`. Depends on Phase 211 (the validation that found it).
-- 📋 **v14.0 Channel Projection — Non-Visual Rendering** — non-visual Renderer implementations (conversational text, voice, structured API). Reuses ferro-ai for inbound intent classification. 5 requirements (CHAN-01..05) in `.planning/REQUIREMENTS.md`. Depends on COMP-05 (intent vocabulary validation). v11.5 prerequisite (generalized Renderer trait) shipped 2026-04-17.
+- 🚧 **v14.0 Channel Projection — Non-Visual Rendering** — Phases 215-216 (started 2026-06-13, **text-renderer-first** scope). Ship the first production non-visual `Renderer` — a conversational-text channel projecting the same `ServiceDef` the visual/MCP renderers use — plus the `BaseContext`/`FieldDef`/`Intent` extensions COMP-05 (Phase 208) found it needs (guard-evaluation context, verbosity, `Intent::label()`, render hints). 4 requirements (CHAN-01..04) in `.planning/REQUIREMENTS.md`. Voice, structured-API, mobile `device_class`/chart-card, and inbound `ferro-ai` classification deferred to a follow-up channel milestone. Depends on COMP-05 ✅ (Phase 208) + the v11.5 modality-agnostic `Renderer` trait ✅.
 
 ---
 
@@ -2960,3 +2960,39 @@ Plans:
 Plans:
 - [x] 214-01-PLAN.md — Parity fix: `error_response!` macro + `ActiveValue` re-export (framework) + 5 template fixes (queue import, ValidateRules derive, model path, DB connection) + docs (Wave 1). Covers SCAF-01, SCAF-02.
 - [x] 214-02-PLAN.md — CI guard: `scaffold_builds_against_workspace_ferro` path-dep test + `ci.yml` scaffold-smoke job + Dockerfile `ARG FERRO_VERSION` + `publish.yml` post-publish release gate (Wave 2, depends_on 01). Covers SCAF-03, SCAF-04, SCAF-05.
+
+---
+
+## 🚧 v14.0 Channel Projection — Non-Visual Rendering (Phases 215-216, started 2026-06-13)
+
+**Milestone Goal:** Ship the first production non-visual `Renderer` — a conversational-text channel — that projects the same `ServiceDef` the visual/MCP renderers use, plus the `BaseContext`/`FieldDef`/`Intent` extensions COMP-05 (Phase 208) found are required to render correctly. Text-renderer-first: prove the `ServiceDef → channel` pipeline on one real non-screen modality before fanning out. The renderer lives in its own output crate (`ferro-projections` stays renderer-free, per v11.5).
+
+**Source:** `docs/research/comp-05-cross-modality-vocabulary-sketch.md` (Phase 208) — the 7×3 intent×modality matrix, the three vocabulary tensions, the "v14.0 implications" table, and three discovered weaknesses. Coverage finding: Browse/Collect/Process/Summarize/Track map cleanly to text; Focus and Analyze have real gaps.
+
+### Phase 215: Non-visual rendering context — BaseContext + Intent extensions
+
+**Goal:** Extend the modality-agnostic rendering surface so a non-visual renderer can filter guarded actions and label intents reliably, without touching the seven-intent vocabulary. `BaseContext` gains `evaluated_guards` (guard→bool) and `verbosity` (Brief/Full); `Intent` gains `label() -> &str` replacing the fragile `{:?}` debug-derived label; an empty intent slice returns a render error/warning, not silent `"unknown"`. Existing `JsonUiRenderer`/`McpRenderer` compile unchanged.
+
+**Depends on:** COMP-05 (Phase 208) ✅; the v11.5 generalized `Renderer` trait ✅.
+
+**Requirements:** CHAN-01, CHAN-02
+
+**Success Criteria (refine in discuss-phase):**
+  1. `BaseContext` exposes evaluated-guard results + a verbosity level; constructing it without them is a compile error or has a documented default that preserves current visual-renderer behavior.
+  2. `Intent::label()` returns a stable string independent of `#[derive(Debug)]`; a grep shows no renderer uses `format!("{:?}", intent)` for labels.
+  3. An empty intent slice produces a typed render error/warning (covered by a test), not `"unknown"`.
+  4. `ferro-json-ui` + `ferro-mcp-server` build and their tests pass unchanged.
+
+### Phase 216: Conversational-text Renderer (output crate)
+
+**Goal:** A production conversational-text `Renderer` projects a `ServiceDef` to text for the cleanly-mapping intents (Browse/Collect/Process/Summarize/Track), guard-filtered (CHAN-01) and verbosity-aware, with a defined fallback for Focus/Analyze. `FieldDef` gains a `render_hint` (AltText/Skip) so `ImageUrl`/`Url` fields render usefully instead of as raw labels. Lives in its own output crate; re-exported via the `ferro` facade; deterministic string/snapshot tests over the COMP-05 anchor fixture.
+
+**Depends on:** Phase 215 (consumes `evaluated_guards`/`verbosity`/`Intent::label()`).
+
+**Requirements:** CHAN-03, CHAN-04
+
+**Success Criteria (refine in discuss-phase):**
+  1. A text `Renderer` impl exists in an output crate (NOT `ferro-projections`); `grep` confirms `ferro-projections` adds no renderer.
+  2. Rendering the COMP-05 `approval_workflow` Process fixture produces text that lists only guard-passing actions and respects the verbosity level (snapshot-tested).
+  3. `ImageUrl`/`Url` fields with a `render_hint` render per the hint (alt-text or skipped), not as a raw URL; Focus/Analyze gaps have a defined, tested fallback.
+  4. The renderer is reachable from the `ferro` facade; `cargo test` for the new crate is green; `cargo doc -Dwarnings` clean.
