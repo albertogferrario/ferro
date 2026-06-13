@@ -334,6 +334,8 @@ pub use ferro_macros::inertia_response;
 pub use ferro_macros::injectable;
 pub use ferro_macros::redirect;
 pub use ferro_macros::request;
+pub use ferro_macros::resource_get;
+pub use ferro_macros::resource_post;
 pub use ferro_macros::service;
 pub use ferro_macros::ApiResource;
 pub use ferro_macros::FerroModel;

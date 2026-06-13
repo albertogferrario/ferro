@@ -21,6 +21,8 @@ mod model;
 mod redirect;
 mod request;
 mod resource;
+mod resource_get;
+mod resource_post;
 mod service;
 mod test_macro;
 mod utils;
@@ -571,4 +573,86 @@ pub fn derive_validate_rules(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(ApiResource, attributes(resource))]
 pub fn derive_api_resource(input: TokenStream) -> TokenStream {
     resource::api_resource_impl(input)
+}
+
+/// Attribute macro for GET handlers displaying a single tenant-scoped resource.
+///
+/// Folds id-extraction + tenant resolution + tenant-scoped lookup + 404-on-miss
+/// into a single attribute. Tenant and resource remain real typed function
+/// parameters; the user body moves to a named inner fn `__<name>_inner`.
+///
+/// # Required arguments
+///
+/// - First positional arg: the resource type implementing `TenantScoped`, e.g. `Customer`.
+///
+/// # Optional arguments
+///
+/// - `on_miss = "/url"` — redirect target on lookup miss; omitted → 404.
+///   Supports `{id}` placeholder (substituted with the extracted resource id).
+/// - `tenant = "expr"` — escape-hatch Rust expression for tenant resolution (default: `current_tenant()`).
+/// - `find = "path::fn"` — override the lookup function (default: `TenantScoped::find_for_tenant`).
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ferro::{resource_get, Response, Request, TenantContext};
+///
+/// #[resource_get(Customer, on_miss = "/dashboard/clienti")]
+/// pub async fn edit(req: &mut Request, tenant: &TenantContext, customer: &Customer) -> Response {
+///     // customer is guaranteed to exist and belong to tenant
+///     Ok(ferro::HttpResponse::new())
+/// }
+/// ```
+///
+/// # Security
+///
+/// The generated lookup always calls `TenantScoped::find_for_tenant(id, tenant.id)` —
+/// cross-tenant reads are structurally impossible through this macro. T-212-01.
+#[proc_macro_attribute]
+pub fn resource_get(attr: TokenStream, input: TokenStream) -> TokenStream {
+    resource_get::resource_get_impl(attr, input)
+}
+
+/// Attribute macro for POST handlers mutating a single tenant-scoped resource.
+///
+/// Folds the same prelude as `#[resource_get]` plus the validation-failure
+/// redirect envelope (via `handle_action_result`). Requires `redirect_to`.
+///
+/// # Required arguments
+///
+/// - First positional arg: the resource type implementing `TenantScoped`.
+/// - `redirect_to = "/url"` — default 303 redirect on success (and error fallback).
+///
+/// # Optional arguments
+///
+/// - `form_url = "/url/{id}/edit"` — the edit form URL, synthesized from extracted
+///   path params; injected as `__form_url: &str` in the inner fn body.
+/// - `on_miss = "/url"` — redirect on lookup miss; omitted → `ActionError::not_found`.
+/// - `tenant = "expr"` — escape-hatch expression for tenant resolution.
+/// - `find = "path::fn"` — override the lookup function.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ferro::{resource_post, ActionResult, Request, TenantContext};
+///
+/// #[resource_post(Customer,
+///     redirect_to = "/dashboard/clienti",
+///     form_url = "/dashboard/clienti/{id}/modifica")]
+/// pub async fn save(req: &mut Request, tenant: &TenantContext, customer: &Customer) -> ActionResult {
+///     let data = serde_json::json!({ "name": "test" });
+///     ferro::Validator::new(&data)
+///         .rules("name", ferro::rules![ferro::required()])
+///         .validate_or_redirect(&data, __form_url)?;
+///     Ok(())
+/// }
+/// ```
+///
+/// # Security
+///
+/// Same tenant-scoping guarantee as `#[resource_get]`: lookup always passes
+/// `tenant.id`. T-212-01.
+#[proc_macro_attribute]
+pub fn resource_post(attr: TokenStream, input: TokenStream) -> TokenStream {
+    resource_post::resource_post_impl(attr, input)
 }
