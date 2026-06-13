@@ -18,6 +18,7 @@ pub mod middleware;
 pub mod requires_plan;
 pub mod resolver;
 pub mod scope;
+pub mod scoped;
 #[cfg(feature = "stripe")]
 pub mod subscription;
 pub mod worker;
@@ -31,6 +32,7 @@ pub use resolver::{
     HeaderResolver, JwtClaimResolver, PathResolver, SubdomainResolver, TenantResolver,
 };
 pub use scope::TenantScope;
+pub use scoped::TenantScoped;
 pub use worker::FrameworkTenantScopeProvider;
 
 use crate::error::FrameworkError;

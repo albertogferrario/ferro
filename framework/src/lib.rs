@@ -132,7 +132,7 @@ pub use tenant::RequiresPlan;
 pub use tenant::{
     current_tenant, DbTenantLookup, FrameworkTenantScopeProvider, HeaderResolver, JwtClaimResolver,
     PathResolver, SubdomainResolver, TenantContext, TenantFailureMode, TenantLookup,
-    TenantMiddleware, TenantResolver, TenantScope,
+    TenantMiddleware, TenantResolver, TenantScope, TenantScoped,
 };
 #[cfg(feature = "theme")]
 pub use theme::{
