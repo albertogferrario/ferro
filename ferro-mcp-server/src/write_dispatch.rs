@@ -24,6 +24,17 @@ use std::pin::Pin;
 /// (never from the call payload), and a DB connection.
 /// Returns a JSON `Value` that becomes the `result` payload in the structured
 /// MCP response.
+///
+/// # Audit contract
+///
+/// The returned `Value` is stored **verbatim** in the append-only `audit_log`
+/// table via [`ferro_audit::AuditEntry`]. It MUST NOT contain secrets,
+/// credentials, PII, or any field that should not appear in a forensic log
+/// readable by audit reviewers. Executors are responsible for returning only
+/// audit-safe fields (typically identifiers and status values, e.g.
+/// `{"id": 42, "status": "approved"}`). A full PII scrub at the
+/// `dispatch_write` call site is not performed; the executor is the enforcement
+/// point.
 pub type ExecutorFn = Box<
     dyn Fn(
             &str,   // action_name
@@ -247,6 +258,17 @@ pub async fn dispatch_write(
     //
     // Lookup is scoped by BOTH tenant_id AND idempotency_key to prevent
     // cross-tenant replay (T-219-01). Absent key = no guard (key is optional).
+    //
+    // Length cap: idempotency_key is not declared in ActionDef.inputs so
+    // validate_action_inputs() never sees it. Reject keys longer than 128
+    // characters to prevent unbounded TEXT storage (storage DoS surface).
+    if let Some(key) = inputs.get("idempotency_key").and_then(|v| v.as_str()) {
+        if key.len() > 128 {
+            return Err(crate::Error::Validation(
+                "idempotency_key must not exceed 128 characters".into(),
+            ));
+        }
+    }
     let idempotency_key = inputs.get("idempotency_key").and_then(|v| v.as_str());
     if let Some(key) = idempotency_key {
         if let Some(stored_result) = lookup_idempotency(tenant_id, key, db).await? {
