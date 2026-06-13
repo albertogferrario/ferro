@@ -81,33 +81,34 @@ fn order_service() -> ServiceDef {
 
 /// Seed an API key into `mcp_api_keys` and return the raw key.
 ///
-/// When `revoked` is true the `revoked_at` value is a QUOTED date literal
-/// (`'2020-01-01T00:00:00Z'`). The NULL branch uses the bare SQL keyword so
-/// SQLite stores a proper NULL rather than the string "NULL".
+/// Uses parameterized statements so inputs are safe regardless of content.
 async fn seed_api_key(
     db: &sea_orm::DatabaseConnection,
     tenant_id: i64,
     scope: &str,
     revoked: bool,
 ) -> String {
-    use ferro_mcp_oauth::validate::{generate_mcp_api_key, hash_mcp_api_key};
+    use ferro_mcp_oauth::validate::generate_mcp_api_key;
+    use sea_orm::Value;
     let (raw_key, key_hash) = generate_mcp_api_key();
-    let revoked_at = if revoked {
-        "'2020-01-01T00:00:00Z'"
+    let revoked_at_value: Value = if revoked {
+        Value::String(Some(Box::new("2020-01-01T00:00:00Z".to_string())))
     } else {
-        "NULL"
+        Value::String(None)
     };
-    db.execute(Statement::from_string(
+    db.execute(Statement::from_sql_and_values(
         DatabaseBackend::Sqlite,
-        format!(
-            "INSERT INTO mcp_api_keys (tenant_id, key_hash, scope, revoked_at) \
-             VALUES ({tenant_id}, '{key_hash}', '{scope}', {revoked_at})"
-        ),
+        "INSERT INTO mcp_api_keys (tenant_id, key_hash, scope, revoked_at) \
+         VALUES (?, ?, ?, ?)",
+        [
+            Value::BigInt(Some(tenant_id)),
+            Value::String(Some(Box::new(key_hash))),
+            Value::String(Some(Box::new(scope.to_string()))),
+            revoked_at_value,
+        ],
     ))
     .await
     .expect("seed api key");
-    // hash_mcp_api_key imported for the seed helper — key_hash already computed above
-    let _ = hash_mcp_api_key; // suppress unused-import-like warning
     raw_key
 }
 
