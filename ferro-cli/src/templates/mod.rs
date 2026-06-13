@@ -826,8 +826,8 @@ mod tests {
             "post",
             "posts",
             "    pub title: String,\n    pub body: String,",
-            "        .set_title(form.title.clone())\n        .set_body(form.body.clone())\n",
-            "        title: sea_orm::ActiveValue::Set(form.title.clone()),\n        body: sea_orm::ActiveValue::Set(form.body.clone()),",
+            "    active.title = Set(form.title.clone());\n    active.body = Set(form.body.clone());\n",
+            "        title: ActiveValue::Set(form.title.clone()),\n        body: ActiveValue::Set(form.body.clone()),",
         );
         assert!(result.contains("Post API controller"));
         assert!(result.contains("pub async fn index"));
@@ -837,11 +837,14 @@ mod tests {
         assert!(result.contains("pub async fn destroy"));
         assert!(result.contains("json_response!"));
         assert!(!result.contains("Inertia"));
-        // Verify builder pattern is used in update handler
-        assert!(result.contains(".update()"));
-        assert!(result.contains(".set_title("));
-        assert!(result.contains(".save()"));
-        // Verify old ActiveModel pattern is NOT used in update handler
-        assert!(!result.contains("let mut post: post::ActiveModel"));
+        // The update handler builds an ActiveModel and calls Entity::update_one — Phase 214
+        // aligned the API template to the published `ferro` surface, replacing the old
+        // `.update()/.set_title()/.save()` builder pattern.
+        assert!(result.contains("let mut active: post::ActiveModel"));
+        assert!(result.contains("active.title = Set("));
+        assert!(result.contains("Entity::update_one("));
+        // The old builder pattern must be gone.
+        assert!(!result.contains(".set_title("));
+        assert!(!result.contains(".save()"));
     }
 }
