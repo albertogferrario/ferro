@@ -594,12 +594,45 @@ pub fn derive_api_resource(input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```ignore
 /// use ferro::{resource_get, Response, Request, TenantContext};
 ///
 /// #[resource_get(Customer, on_miss = "/dashboard/clienti")]
 /// pub async fn edit(req: &mut Request, tenant: &TenantContext, customer: &Customer) -> Response {
 ///     // customer is guaranteed to exist and belong to tenant
+///     Ok(ferro::HttpResponse::new())
+/// }
+/// ```
+///
+/// # Expands to (abridged)
+///
+/// The attribute is equivalent to the following expansion (shown via `cargo expand`):
+///
+/// ```ignore
+/// // Generated outer fn — accepts a raw Request, performs prelude, delegates.
+/// pub async fn edit(__ferro_req: ::ferro::Request) -> ::ferro::Response {
+///     let mut __ferro_req = __ferro_req;
+///     let __resource_id: <Customer as ::ferro::TenantScoped>::Id =
+///         __ferro_req.param_as("id").map_err(|_| ::ferro::HttpResponse::new().status(400))?;
+///     let __tenant: ::ferro::TenantContext = ::ferro::current_tenant()
+///         .ok_or_else(|| ::ferro::HttpResponse::new().status(400))?;
+///     let __resource_opt = <Customer as ::ferro::TenantScoped>::find_for_tenant(
+///         __resource_id, __tenant.id,
+///     ).await.map_err(|_| ::ferro::HttpResponse::new().status(500))?;
+///     let __resource = match __resource_opt {
+///         Some(r) => r,
+///         None => return Err(::ferro::HttpResponse::new().status(302).header("Location", "/dashboard/clienti")),
+///     };
+///     __edit_inner(&mut __ferro_req, &__tenant, &__resource).await
+/// }
+///
+/// // Named inner fn — tenant and resource are real typed parameters; IDE jump-to-def works.
+/// async fn __edit_inner(
+///     req: &mut ::ferro::Request,
+///     tenant: &::ferro::TenantContext,
+///     customer: &Customer,
+/// ) -> ::ferro::Response {
+///     // user body here
 ///     Ok(ferro::HttpResponse::new())
 /// }
 /// ```
@@ -633,7 +666,7 @@ pub fn resource_get(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```ignore
 /// use ferro::{resource_post, ActionResult, Request, TenantContext};
 ///
 /// #[resource_post(Customer,
@@ -644,6 +677,48 @@ pub fn resource_get(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     ferro::Validator::new(&data)
 ///         .rules("name", ferro::rules![ferro::required()])
 ///         .validate_or_redirect(&data, __form_url)?;
+///     Ok(())
+/// }
+/// ```
+///
+/// # Expands to (abridged)
+///
+/// The attribute is equivalent to the following expansion (shown via `cargo expand`):
+///
+/// ```ignore
+/// // Generated outer fn — same prelude as resource_get, plus form_url synthesis and
+/// // validation-redirect envelope via handle_action_result.
+/// pub async fn save(__ferro_req: ::ferro::Request) -> ::ferro::Response {
+///     let mut __ferro_req = __ferro_req;
+///     let __resource_id: <Customer as ::ferro::TenantScoped>::Id =
+///         __ferro_req.param_as("id").map_err(|_| ::ferro::HttpResponse::new().status(400))?;
+///     let __tenant: ::ferro::TenantContext = ::ferro::current_tenant()
+///         .ok_or_else(|| ::ferro::HttpResponse::new().status(400))?;
+///     let __resource_opt = <Customer as ::ferro::TenantScoped>::find_for_tenant(
+///         __resource_id, __tenant.id,
+///     ).await.map_err(|_| ::ferro::HttpResponse::new().status(500))?;
+///     let __resource = match __resource_opt {
+///         Some(r) => r,
+///         None => return Err(::ferro::HttpResponse::new().status(404)),
+///     };
+///     let __form_url_owned = format!("/dashboard/clienti/{}/modifica", __resource_id);
+///     let __form_url: &str = &__form_url_owned;
+///     // Inner fn borrow ends before handle_action_result borrows __ferro_req again (Pitfall 3).
+///     let __action_result: ::ferro::ActionResult =
+///         __save_inner(&mut __ferro_req, &__tenant, &__resource, __form_url).await;
+///     ::ferro::http::action::handle_action_result(
+///         __action_result, "/dashboard/clienti", "module::save", &mut __ferro_req,
+///     )
+/// }
+///
+/// // Named inner fn — tenant, resource, and __form_url are real typed parameters.
+/// async fn __save_inner(
+///     req: &mut ::ferro::Request,
+///     tenant: &::ferro::TenantContext,
+///     customer: &Customer,
+///     __form_url: &str,
+/// ) -> ::ferro::ActionResult {
+///     // user body here
 ///     Ok(())
 /// }
 /// ```
