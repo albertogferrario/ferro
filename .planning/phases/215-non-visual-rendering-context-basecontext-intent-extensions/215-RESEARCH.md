@@ -372,17 +372,19 @@ Note: `.to_string()` is needed because `IntentInfo.intent` is a `String`, not `&
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where exactly is `Error::NoIntents` checked and returned?**
    - What we know: `TemplateRenderer` ignores the intents slice entirely today (lines 70-75 of template.rs use `_intents`). The sketch renderers check `intents.get(ctx.intent_index)` and fall through to `"unknown"` (cli.rs:29). No current renderer returns an error on empty intents.
    - What's unclear: Does the CONTEXT.md D-08/D-09 mean (a) add a free function / entry-point wrapper that checks for empty and returns `Error::NoIntents` before dispatching to `Renderer::render`, or (b) add the check inside `TemplateRenderer::render` and each sketch renderer, or (c) just define the variant and write a standalone unit test that constructs the error directly?
    - Recommendation: Option (c) is the minimum to satisfy success criterion 3 ("tested"). The planner should spec `Error::NoIntents` as a well-documented, tested variant used by Phase 216's renderer. A single unit test constructing `Err(Error::NoIntents)` and asserting its `to_string()` message ("cannot render service with no intents") satisfies the SC. The sketch renderers can be updated to return it on empty intents for good hygiene, but that is not required by D-09.
+   - **RESOLVED:** Plan 01 Task 2 takes option (c) — `Error::NoIntents` is defined and unit-tested standalone (constructing the error and asserting its `to_string()` message), NOT wired into the visual render path (D-09 keeps `ProjectionError::EmptyIntents`).
 
 2. **Should `builder.rs` `emit_kanban_root` use `ctx.base.current_state` after embedding?**
    - What we know: `emit_kanban_root(service, ctx)` at line 403 takes `&VisualContext`. It uses `ctx.current_state.clone()` at line 485.
    - What's unclear: If the planner chooses the embedding path, `emit_kanban_root`'s signature could stay `&VisualContext` (and access `ctx.base.current_state`) or change to `&BaseContext` (since it only uses `current_state`). The first is simpler.
    - Recommendation: Keep the signature as `&VisualContext` and update the access to `ctx.base.current_state.clone()`. No signature change.
+   - **RESOLVED:** Plan 02 Task 1 keeps `emit_kanban_root`'s `&VisualContext` signature and migrates the access to `ctx.base.current_state.clone()` (no signature change).
 
 ---
 
