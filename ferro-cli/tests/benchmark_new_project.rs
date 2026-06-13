@@ -155,10 +155,16 @@ fn scaffold_builds_against_workspace_ferro() {
         .write_all(patch_block.as_bytes())
         .expect("write patch block");
 
-    // Step 5: cargo build — the scaffolded app must compile against workspace ferro
+    // Step 5: cargo build — the scaffolded app must COMPILE against workspace ferro.
+    // Clear RUSTFLAGS so the generated app does not inherit a parent `-Dwarnings`
+    // (CI sets it globally). A freshly scaffolded starter app legitimately carries
+    // unused-import / dead-code warnings (handlers not yet wired to routes, imports
+    // for code the developer will add) — this guard checks that it *compiles*, not
+    // that it is warning-clean.
     let status = Command::new("cargo")
         .args(["build"])
         .current_dir(&project_dir)
+        .env_remove("RUSTFLAGS")
         .status()
         .expect("cargo build failed to spawn");
     let code = status.code();
