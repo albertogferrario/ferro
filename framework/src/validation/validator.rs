@@ -208,6 +208,11 @@ impl<'a> Validator<'a> {
     pub fn passes(&self) -> bool {
         let mut errors = ValidationError::new();
 
+        // Pre-seeded errors (from `with_error`) always appear first.
+        for (field, message) in &self.pre_errors {
+            errors.add(field, message.clone());
+        }
+
         for (field, rules) in &self.rules {
             let value = self.get_value(field);
             let display_field = self.get_display_field(field);
