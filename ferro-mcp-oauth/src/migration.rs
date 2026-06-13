@@ -178,6 +178,98 @@ enum McpApiKeys {
     UpdatedAt,
 }
 
+// ── mcp_idempotency_keys migration ───────────────────────────────────────────
+
+/// Migration that creates the `mcp_idempotency_keys` table and its indexes.
+///
+/// Schema: `id`, `tenant_id`, `idempotency_key` (string), `result` (JSON text),
+/// `created_at`. The UNIQUE constraint is COMPOSITE on `(tenant_id,
+/// idempotency_key)` — not a single-column unique — preventing one tenant from
+/// replaying another tenant's stored result (cross-tenant idempotency leak).
+/// Exported as [`ferro_mcp_oauth::CreateMcpIdempotencyKeysTable`].
+#[derive(DeriveMigrationName)]
+pub struct MigrationMcpIdempotencyKeys;
+
+#[async_trait::async_trait]
+impl MigrationTrait for MigrationMcpIdempotencyKeys {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                Table::create()
+                    .table(McpIdempotencyKeys::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(McpIdempotencyKeys::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(McpIdempotencyKeys::TenantId)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(McpIdempotencyKeys::IdempotencyKey)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(McpIdempotencyKeys::Result).text().not_null())
+                    .col(
+                        ColumnDef::new(McpIdempotencyKeys::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        // Composite UNIQUE on (tenant_id, idempotency_key): the cross-tenant-safe
+        // enforcement primitive. Prevents tenant B from replaying tenant A's stored
+        // result when both use the same idempotency_key string.
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_mcp_idempotency_keys_tenant_key")
+                    .table(McpIdempotencyKeys::Table)
+                    .col(McpIdempotencyKeys::TenantId)
+                    .col(McpIdempotencyKeys::IdempotencyKey)
+                    .unique()
+                    .to_owned(),
+            )
+            .await?;
+
+        // Non-unique index on tenant_id alone for lookup performance.
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_mcp_idempotency_keys_tenant_id")
+                    .table(McpIdempotencyKeys::Table)
+                    .col(McpIdempotencyKeys::TenantId)
+                    .to_owned(),
+            )
+            .await
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(McpIdempotencyKeys::Table).to_owned())
+            .await
+    }
+}
+
+#[derive(DeriveIden)]
+enum McpIdempotencyKeys {
+    Table,
+    Id,
+    TenantId,
+    IdempotencyKey,
+    Result,
+    CreatedAt,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -327,6 +419,87 @@ mod tests {
         assert!(
             table_after_down.is_none(),
             "mcp_api_keys table should be dropped by down()"
+        );
+    }
+
+    // ── mcp_idempotency_keys migration test ───────────────────────────────────
+
+    struct TestMigratorMcpIdempotencyKeys;
+
+    #[async_trait::async_trait]
+    impl MigratorTrait for TestMigratorMcpIdempotencyKeys {
+        fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+            vec![Box::new(super::MigrationMcpIdempotencyKeys)]
+        }
+    }
+
+    #[tokio::test]
+    async fn mcp_idempotency_keys_migration_creates_table_and_indexes() {
+        let conn = Database::connect("sqlite::memory:")
+            .await
+            .expect("connect to in-memory sqlite");
+
+        TestMigratorMcpIdempotencyKeys::up(&conn, None)
+            .await
+            .expect("run mcp_idempotency_keys migration up");
+
+        // Verify the mcp_idempotency_keys table exists.
+        let table_row = conn
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='mcp_idempotency_keys'"
+                    .to_string(),
+            ))
+            .await
+            .expect("query sqlite_master for table");
+        assert!(
+            table_row.is_some(),
+            "mcp_idempotency_keys table not created by migration"
+        );
+
+        // Verify the composite unique index on (tenant_id, idempotency_key) exists.
+        let idx_composite_row = conn
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_mcp_idempotency_keys_tenant_key'"
+                    .to_string(),
+            ))
+            .await
+            .expect("query sqlite_master for composite unique index");
+        assert!(
+            idx_composite_row.is_some(),
+            "idx_mcp_idempotency_keys_tenant_key composite unique index not created by migration"
+        );
+
+        // Verify the non-unique index on tenant_id exists.
+        let idx_tenant_row = conn
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_mcp_idempotency_keys_tenant_id'"
+                    .to_string(),
+            ))
+            .await
+            .expect("query sqlite_master for tenant_id index");
+        assert!(
+            idx_tenant_row.is_some(),
+            "idx_mcp_idempotency_keys_tenant_id index not created by migration"
+        );
+
+        // Verify down() drops the table.
+        TestMigratorMcpIdempotencyKeys::down(&conn, None)
+            .await
+            .expect("run mcp_idempotency_keys migration down");
+        let table_after_down = conn
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='mcp_idempotency_keys'"
+                    .to_string(),
+            ))
+            .await
+            .expect("query sqlite_master after down");
+        assert!(
+            table_after_down.is_none(),
+            "mcp_idempotency_keys table should be dropped by down()"
         );
     }
 }
