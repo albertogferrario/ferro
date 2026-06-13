@@ -104,6 +104,29 @@ fn scaffold_builds_against_workspace_ferro() {
         "ferro make:scaffold Order exited non-zero: {code:?}"
     );
 
+    // Step 3d: ferro make:scaffold Post (full-stack, no --api)
+    // This exercises scaffold_controller_template and the Inertia page templates,
+    // which are NOT covered by the --api-only steps above. Without this step the
+    // non-api template family can silently regress (which is how CR-01 survived).
+    let status = Command::new(ferro_bin())
+        .args([
+            "make:scaffold",
+            "--no-smart-defaults",
+            "-q",
+            "-y",
+            "Post",
+            "title:string",
+            "body:text",
+        ])
+        .current_dir(&project_dir)
+        .status()
+        .expect("ferro make:scaffold Post failed to spawn");
+    let code = status.code();
+    assert!(
+        status.success(),
+        "ferro make:scaffold Post (full-stack) exited non-zero: {code:?}"
+    );
+
     // Step 4: ferro make:job EmailNotification
     let status = Command::new(ferro_bin())
         .args(["make:job", "EmailNotification"])
