@@ -549,12 +549,16 @@ The `expected_actions`/`expected_guards` give the scorer/diagnostics a reference
 | A4 | Forbidding `intent_hints` in the agent contract is the right call so T2 measures structural derivation | ServiceDef contract | Low — a policy decision for discuss/plan; either choice is defensible if stated up front. |
 | A5 | `complete_with_tools` on AnthropicClient honors `model_override="claude-opus-4-8"` and the loop reconstruction contract as documented | Pattern 2 | Low — verified the impl reads `model_override` and parses tool_use; the multi-turn history reconstruction is per the documented contract. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`generation_context` has no ServiceDef authoring guidance.** It returns handler/model/view conventions, not projection/ServiceDef guidance. The agent's only ServiceDef shape source is the harness prompt (recommend injecting `schemars::schema_for!(ServiceDef)`). Should the phase ALSO enrich `generation_context` with ServiceDef guidance? — Likely out of scope (would change a tool under test mid-measurement); recommend prompt-supplied schema only, and note the gap as a finding.
+   - **RESOLVED:** Out of scope for Phase 210. Enriching `generation_context` would mutate a tool *under measurement* mid-baseline (violates the CONTEXT phase boundary: no toolset/renderer changes). Decision: the harness prompt supplies `schemars::schema_for!(ServiceDef)` only; the "tool gives no ServiceDef guidance" gap becomes a candidate SC#5 discovered-weakness finding (Plan 04 Task 3), not a code change this phase.
 2. **T4 file-materialization vs direct-seam-call.** checkpoint_projection reads source files. Either render ServiceDef→Rust source into a temp project (faithful to the tool), or call the seam functions on the in-memory ServiceDef (faster, but bypasses the real tool entry point). Recommend file-materialization to honor "checkpoint_projection returns a verdict" (D-07) literally; plan a task for the ServiceDef→source renderer.
+   - **RESOLVED:** File-materialization chosen. Plan 02 Task 2 materializes the agent ServiceDef into `src/projections/<name>.rs` inside `tempfile::tempdir()` before invoking `checkpoint_projection::execute`, honoring D-07's literal "checkpoint_projection returns a verdict" and exercising the real tool entry point.
 3. **Forbid `intent_hints`?** They let the agent auto-pass T2. Recommend forbidding in the prompt + treating their presence as a T2 disqualifier; lock in discuss/plan.
+   - **RESOLVED:** Forbidden. Plan 02 Task 1 treats the presence of `intent_hints` in the agent's ServiceDef as a T2 disqualifier (so T2 measures structural intent derivation, not a self-declared hint); Plan 03's prompt instructs the agent not to emit them.
 4. **Exact in-process rmcp transport API** (A-rmcp) — confirm `serve(DuplexStream)` signature at plan time; this is the only mechanical unknown.
+   - **RESOLVED (verify-at-execute):** Assumption A-rmcp stands at MEDIUM confidence — `server.rs` proves `serve((stdin,stdout))` works, so an async-rw duplex pair is highly likely to work with the `transport-async-rw` feature. Plan 03 Task 1 requires the executor to confirm the exact `serve` signature against the live rmcp 0.12 source / Context7 before coding. No further pre-execution research needed; the unknown is bounded to one wiring task.
 
 ## Sources
 

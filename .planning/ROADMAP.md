@@ -2719,7 +2719,7 @@ Plans:
 - [x] **Phase 207: COMP-02 — Synthetic Regression Catalog** — `ferro-projections/tests/catalog.rs`; 7 canonical `ServiceDef` builders; structural-invariant assertions (not byte snapshots); `proptest` invariants; adversarial fixture per intent; `insta` snapshots only for named canonical shapes. (completed 2026-06-12)
 - [x] **Phase 208: COMP-05 — Cross-Modality Vocabulary Sketch** — Three `pub(crate)` sketch renderers in `ferro-projections/src/render/`; written analysis covering all 7 intents across 3 non-visual modalities; at least one vocabulary gap identified; zero changes to `intent.rs` or `derive.rs`. (completed 2026-06-12)
 - [x] **Phase 209: COMP-01 Slice A — Gestiscilo Migration (Browse + Process + Summarize)** — VALIDATED 2026-06-12. Goal (first real-world validation signal) achieved decisively; SC#2/#4/#5 met. SC#1 (migrate+merge 3 entities) deliberately NOT met — the validation found the projection render is content-incomplete (Process placeholder kanban, Summarize empty values, actions deferred), so no entity reached merge-worthy parity; both probe branches left unmerged. Browse (Staff) is data-bound and works. Finding → v13.2 Phase 213. Depends on Phase 207.
-- [ ] **Phase 210: COMP-03 — Agent-Success-Rate Harness** — `ferro-mcp/tests/agent_harness.rs`; 14+ tasks (2 per intent); 4-tier pass criteria defined before any agent run; ≥3 trials per case; `rmcp 0.12` in-process transport; committed baseline artifact (model version, prompt version, per-tier pass rates). Depends on Phase 207.
+- [x] **Phase 210: COMP-03 — Agent-Success-Rate Harness** — `ferro-mcp/tests/agent_harness.rs`; 14+ tasks (2 per intent); 4-tier pass criteria defined before any agent run; ≥3 trials per case; `rmcp 0.12` in-process transport; committed baseline artifact (model version, prompt version, per-tier pass rates). Depends on Phase 207. (completed 2026-06-13)
 - [ ] **Phase 211: COMP-04 — Time-to-Working-App Benchmark** — `ferro-cli/tests/benchmark_new_project.rs`; criterion 0.8.2 `iter_custom` scaffold timing; `FERRO_BENCH=1` gate; at least one cold-cache Docker run; committed Markdown result document with start/end conditions and per-step breakdown.
 
 | Phase | Plans Complete | Status | Completed |
@@ -2727,7 +2727,7 @@ Plans:
 | 207. COMP-02 Synthetic Regression Catalog | 1/1 | Complete    | 2026-06-12 |
 | 208. COMP-05 Cross-Modality Vocabulary Sketch | 2/2 | Complete    | 2026-06-12 |
 | 209. COMP-01 Slice A Gestiscilo Migration | 1/2 | In Progress|  |
-| 210. COMP-03 Agent-Success-Rate Harness | 3/4 | In Progress|  |
+| 210. COMP-03 Agent-Success-Rate Harness | 4/4 | Complete   | 2026-06-13 |
 | 211. COMP-04 Time-to-Working-App Benchmark | 0/TBD | Not started | - |
 
 #### Phase Details
@@ -2814,11 +2814,11 @@ Plans:
 
 **Phase-time calibration:** Success-rate floor threshold (e.g. `assert!(rate >= 0.7)`) is set after a first baseline run, not now. The tier-2 and tier-3 floor thresholds may differ.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 - [x] 210-01-PLAN.md — Foundation: dev-dep delta + 14-task contamination-guarded corpus + contamination test
 - [x] 210-02-PLAN.md — Deterministic T1–T4 scorer + replay path (CI-green, no LLM; pitfall mitigations)
 - [x] 210-03-PLAN.md — In-process rmcp duplex transport + gated complete_with_tools agent loop
-- [ ] 210-04-PLAN.md — First committed baseline (gated live run, manual) + replay-equals-baseline + SC#5 weakness finding
+- [x] 210-04-PLAN.md — First committed baseline (gated live run, manual) + replay-equals-baseline + SC#5 weakness finding
 
 ### Phase 211: COMP-04 — Time-to-Working-App Benchmark
 

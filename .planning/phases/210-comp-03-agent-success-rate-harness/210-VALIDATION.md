@@ -1,8 +1,8 @@
 ---
 phase: 210
 slug: comp-03-agent-success-rate-harness
-status: draft
-nyquist_compliant: false
+status: ready
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-13
 ---
@@ -43,9 +43,21 @@ created: 2026-06-13
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 210-01-01 | 01 | 1 | COMP-03 | T-210-01 / — | API key never logged/committed; sourced from env only | unit | `cargo test -p ferro-mcp --test agent_harness` | ❌ W0 | ⬜ pending |
+| 210-01-01 | 01 | 1 | COMP-03 | — | dev-deps test-only, no always-on dep added to ferro-mcp default build | build | `cargo build -p ferro-mcp --tests 2>&1 \| tail -5` | ❌ W0 | ⬜ pending |
+| 210-01-02 | 01 | 1 | COMP-03 | — | corpus uses invented domains, no app identity | unit | `python3 -c "import json; d=json.load(open('ferro-mcp/tests/fixtures/agent_harness/corpus.json')); assert len(d)==14; ..."` | ❌ W0 | ⬜ pending |
+| 210-01-03 | 01 | 1 | COMP-03 | T-210-13 / — | no corpus noun appears in catalog.rs/docs (contamination guard) | unit | `cargo test -p ferro-mcp --test agent_harness corpus_contamination_guard 2>&1 \| tail -10` | ❌ W0 | ⬜ pending |
+| 210-02-01 | 02 | 2 | COMP-03 | — | T1 scorer never aborts test run (catch_unwind / global_catalog().validate) | unit | `cargo test -p ferro-mcp --test agent_harness 2>&1 \| tail -15` | ❌ W0 | ⬜ pending |
+| 210-02-02 | 02 | 2 | COMP-03 | T-210-09 / — | T4 materializes ServiceDef into tempdir; no writes outside tempdir | unit | `cargo test -p ferro-mcp --test agent_harness 2>&1 \| tail -15` | ❌ W0 | ⬜ pending |
+| 210-02-03 | 02 | 2 | COMP-03 | — | replay path deterministic; tiers reported separately, never collapsed | unit | `cargo test -p ferro-mcp --test agent_harness 2>&1 \| tail -20` | ❌ W0 | ⬜ pending |
+| 210-03-01 | 03 | 3 | COMP-03 | — | in-process rmcp duplex; no `generate_projection` in agent toolset | integration | `cargo test -p ferro-mcp --test agent_harness 2>&1 \| tail -12 && cargo clippy -p ferro-mcp --all-targets -- -D warnings` | ❌ W0 | ⬜ pending |
+| 210-03-02 | 03 | 3 | COMP-03 | T-210-01 / — | API key from env only, never logged; live test `#[ignore]`+`FERRO_AGENT_EVAL` gated | integration | `cargo test -p ferro-mcp --test agent_harness 2>&1 \| tail -15 && cargo clippy -p ferro-mcp --all-targets -- -D warnings` | ❌ W0 | ⬜ pending |
+| 210-04-01 | 04 | 4 | COMP-03 | T-210-01 / — | gated live run; secrets never committed to baseline/transcripts | **manual** | MISSING — human gated live run (no API key in autonomous env). **Blocks 210-04-02** until baseline.json + transcripts committed. | ❌ W0 | ⬜ pending |
+| 210-04-02 | 04 | 4 | COMP-03 | — | replay equals committed baseline (determinism guard) | unit | `cargo test -p ferro-mcp --test agent_harness 2>&1 \| tail -20` | ❌ W0 | ⬜ pending |
+| 210-04-03 | 04 | 4 | COMP-03 | — | SC#5 weakness finding is non-empty, no TBD/placeholder | doc | `test -s .planning/phases/210-comp-03-agent-success-rate-harness/210-WEAKNESSES.md && wc -l .planning/phases/210-comp-03-agent-success-rate-harness/210-WEAKNESSES.md` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+> **210-04-01 is a `checkpoint:human-action`** (live gated run, no API key in autonomous env) — exempt from automated verify. Its automated coverage is indirect: **210-04-02's `agent_eval_replay_matches_baseline` cannot pass until 210-04-01 commits `baseline.json` + per-task transcripts.** The human gate necessarily precedes its automated verification.
 
 ---
 
@@ -82,11 +94,12 @@ created: 2026-06-13
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify (replay path) or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (test target, transcripts, dev-dep feature)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 20s (replay path)
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify (replay path) or Wave 0 dependencies — 10/11 auto; 210-04-01 is a human checkpoint covered indirectly by 210-04-02
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (test target, transcripts, dev-dep feature) — built in Plan 01 T1 + Plan 02 T3
+- [x] No watch-mode flags
+- [x] Feedback latency < 20s (replay path)
+- [x] `nyquist_compliant: true` set in frontmatter
+- [ ] `wave_0_complete: true` — flipped by the executor once the test target + fixtures exist (false at plan time)
 
-**Approval:** pending
+**Approval:** approved 2026-06-13 (planning-stage contract complete; wave_0_complete flips at execution)
