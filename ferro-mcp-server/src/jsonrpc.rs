@@ -30,8 +30,13 @@ pub async fn handle_initialize(_params: Value, config: &McpServerConfig) -> Valu
 /// Handle an MCP `tools/list` request.
 ///
 /// Returns only the `mcp_exposed` projections, each named `list_<service.name>`.
-pub async fn handle_tools_list(services: &[ServiceDef], _config: &McpServerConfig) -> Value {
-    match render_exposed_tools(services, &McpContext) {
+/// `ctx` carries the resolved tenant identity and scope for filtering.
+pub async fn handle_tools_list(
+    services: &[ServiceDef],
+    ctx: &McpContext,
+    _config: &McpServerConfig,
+) -> Value {
+    match render_exposed_tools(services, ctx) {
         Ok(tools) => json!({ "result": { "tools": tools } }),
         Err(e) => json!({ "error": { "code": -32603, "message": e.to_string() } }),
     }
@@ -51,6 +56,7 @@ pub async fn handle_tools_call(
     services: &[ServiceDef],
     db: &sea_orm::DatabaseConnection,
     tenant_id: Option<i64>,
+    ctx: &McpContext,
 ) -> Value {
     let tool_name = call_params["name"].as_str().unwrap_or("");
     let service_name = tool_name.strip_prefix("list_").unwrap_or(tool_name);
@@ -64,6 +70,21 @@ pub async fn handle_tools_call(
             return json!({ "error": { "code": -32601, "message": "Method not found" } });
         }
     };
+
+    // Scope enforcement (D-06 / SC#3): re-check at call time, independent of listing filter.
+    // Absent scope (OAuth JWT path) = full access. "read" key cannot call non-read tools.
+    let is_write_tool = !tool_name.starts_with("list_");
+    let key_scope = ctx.scope.as_deref().unwrap_or("read_write");
+    if is_write_tool && key_scope == "read" {
+        return json!({
+            "error": {
+                "code": -32603,
+                "message": crate::Error::Auth(
+                    "scope insufficient: read key cannot call write tools".to_string()
+                ).to_string()
+            }
+        });
+    }
 
     let args = call_params
         .get("arguments")
@@ -172,7 +193,7 @@ mod tests {
             "arguments": { "limit": 10 }
         });
 
-        let response = handle_tools_call(call_params, &services, &db, Some(1)).await;
+        let response = handle_tools_call(call_params, &services, &db, Some(1), &McpContext::default()).await;
 
         // The load-bearing assertion: the client's own type must deserialize it.
         let parsed: CallToolResult = serde_json::from_value(response["result"].clone())

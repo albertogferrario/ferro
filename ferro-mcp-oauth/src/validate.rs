@@ -24,6 +24,8 @@
 
 use crate::config::OAuthConfig;
 use crate::jwt::decode_token;
+use sea_orm::{ConnectionTrait, Statement};
+use sha2::{Digest, Sha256};
 
 /// Outcome of `validate_bearer`.
 ///
@@ -95,6 +97,67 @@ pub fn validate_bearer(
         "sub": claims.sub,
         "tenant_id": claims.tenant_id,
     }))
+}
+
+/// Hash a raw MCP API key to SHA-256 hex for storage lookup.
+pub fn hash_mcp_api_key(raw_key: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(raw_key.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+/// Generate a new MCP API key. Returns `(raw_key, key_hash)`.
+///
+/// `raw_key` starts with `ferro_` followed by 43 base62 characters (49 chars total).
+/// `key_hash` is the SHA-256 hex of `raw_key`. Store only the hash; show raw_key once.
+///
+/// SKELETON — Plan 01 replaces the body with real CSPRNG generation.
+pub fn generate_mcp_api_key() -> (String, String) {
+    // Placeholder: returns a fixed non-prefixed value so the prefix/round-trip test fails (RED).
+    (String::from("STUB"), String::from("STUB"))
+}
+
+/// Validate an MCP API key against the `mcp_api_keys` table.
+///
+/// Branches: header absent → `Unauthenticated`; hash not found or revoked → `Invalid`;
+/// tenant mismatch (when `expected_tenant` is `Some`) → `Forbidden`; valid → `Authenticated`.
+///
+/// SKELETON — Plan 01 replaces the body with a real SHA-256 lookup.
+pub async fn validate_api_key(
+    authorization_header: Option<&str>,
+    db: &sea_orm::DatabaseConnection,
+    expected_tenant: Option<i64>,
+) -> BearerCheck {
+    // Step 1: header presence + Bearer prefix (mirrors validate_bearer)
+    let header = match authorization_header {
+        None => return BearerCheck::Unauthenticated,
+        Some(h) => h,
+    };
+    let token = match header.strip_prefix("Bearer ") {
+        None | Some("") => return BearerCheck::Unauthenticated,
+        Some(t) => t,
+    };
+    // Step 2: ferro_ prefix guard (defensive — caller should have routed here already)
+    if !token.starts_with("ferro_") {
+        return BearerCheck::Unauthenticated;
+    }
+
+    // SKELETON: real SHA-256 lookup deferred to Plan 01.
+    // Hash the key and query the DB so the structure compiles; always returns Invalid
+    // until Plan 01 wires the real row-match and revocation check.
+    let key_hash = hash_mcp_api_key(token);
+    let stmt = Statement::from_sql_and_values(
+        db.get_database_backend(),
+        "SELECT id, tenant_id, scope, revoked_at FROM mcp_api_keys WHERE key_hash = ?",
+        [sea_orm::Value::String(Some(Box::new(key_hash)))],
+    );
+    let _row = match db.query_one(stmt).await {
+        Ok(r) => r,
+        Err(_) => return BearerCheck::Invalid,
+    };
+    // Placeholder: row found path not yet implemented — RED for valid-key tests.
+    let _ = expected_tenant;
+    BearerCheck::Invalid
 }
 
 #[cfg(test)]

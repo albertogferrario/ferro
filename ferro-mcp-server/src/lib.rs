@@ -11,7 +11,8 @@ pub mod jsonrpc;
 pub mod renderer;
 pub mod schema;
 
-pub use auth::BearerOutcome;
+pub use auth::resolve_tenant;
+pub use ferro_mcp_oauth::BearerCheck;
 pub use config::McpServerConfig;
 pub use dispatch::{dispatch, DispatchResult};
 pub use error::{Error, Result};

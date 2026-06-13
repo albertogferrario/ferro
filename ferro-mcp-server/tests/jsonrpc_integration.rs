@@ -3,6 +3,7 @@ mod common;
 use common::{item_service, setup_db};
 use ferro_mcp_server::config::McpServerConfig;
 use ferro_mcp_server::jsonrpc::{handle_initialize, handle_tools_call, handle_tools_list};
+use ferro_mcp_server::McpContext;
 use ferro_projections::{DataType, FieldMeaning, ServiceDef};
 use serde_json::json;
 
@@ -34,7 +35,7 @@ async fn tools_list_returns_only_exposed() {
         ),
         ServiceDef::new("internal").field("id", DataType::Integer, FieldMeaning::Identifier),
     ];
-    let resp = handle_tools_list(&services, &config).await;
+    let resp = handle_tools_list(&services, &McpContext::default(), &config).await;
     let tools = resp["result"]["tools"].as_array().expect("tools array");
     assert_eq!(tools.len(), 1);
     assert_eq!(tools[0]["name"], "list_order");
@@ -49,6 +50,7 @@ async fn tools_call_returns_rows() {
         &services,
         &db,
         None,
+        &McpContext::default(),
     )
     .await;
     // content is a single text block (CallToolResult::structured wraps the payload)
@@ -71,6 +73,7 @@ async fn tools_call_unknown_tool_is_method_not_found() {
         &services,
         &db,
         None,
+        &McpContext::default(),
     )
     .await;
     assert_eq!(resp["error"]["code"], -32601);
@@ -87,6 +90,7 @@ async fn tools_call_unknown_filter_is_invalid_params() {
         &services,
         &db,
         None,
+        &McpContext::default(),
     )
     .await;
     assert_eq!(resp["error"]["code"], -32602);

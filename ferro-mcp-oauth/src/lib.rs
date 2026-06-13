@@ -25,7 +25,7 @@ pub use error::OAuthError;
 pub use jwt::McpTokenClaims;
 pub use migration::Migration as CreateOauthClientsTable;
 pub use resume::{oauth_resume_redirect, store_oauth_return_to, take_oauth_return_to};
-pub use validate::{validate_bearer, BearerCheck};
+pub use validate::{validate_bearer, validate_api_key, generate_mcp_api_key, hash_mcp_api_key, BearerCheck};
 
 /// Route handler re-exports for mounting in `app/src/routes.rs`.
 pub mod handlers {
