@@ -1,6 +1,7 @@
 use ferro_projections::{DataType, FieldMeaning, ServiceDef};
 use sea_orm::{ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, Statement};
 
+#[allow(dead_code)]
 pub async fn setup_db() -> DatabaseConnection {
     let db = Database::connect("sqlite::memory:").await.expect("connect");
     db.execute(Statement::from_string(
@@ -29,6 +30,7 @@ pub async fn setup_db() -> DatabaseConnection {
 
 /// ServiceDef whose name "item" -> table "items" via the dispatch heuristic.
 /// Marked mcp_exposed(true) so tools/list + tools/call see it.
+#[allow(dead_code)]
 pub fn item_service() -> ServiceDef {
     ServiceDef::new("item")
         .mcp_exposed(true)

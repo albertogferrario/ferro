@@ -61,17 +61,8 @@ pub async fn handle_tools_call(
     let tool_name = call_params["name"].as_str().unwrap_or("");
     let service_name = tool_name.strip_prefix("list_").unwrap_or(tool_name);
 
-    let service = match services
-        .iter()
-        .find(|s| s.name == service_name && s.mcp_exposed)
-    {
-        Some(s) => s,
-        None => {
-            return json!({ "error": { "code": -32601, "message": "Method not found" } });
-        }
-    };
-
     // Scope enforcement (D-06 / SC#3): re-check at call time, independent of listing filter.
+    // Fires before service lookup so write-tool calls are rejected even for unknown tool names.
     // Absent scope (OAuth JWT path) = full access. "read" key cannot call non-read tools.
     let is_write_tool = !tool_name.starts_with("list_");
     let key_scope = ctx.scope.as_deref().unwrap_or("read_write");
@@ -85,6 +76,16 @@ pub async fn handle_tools_call(
             }
         });
     }
+
+    let service = match services
+        .iter()
+        .find(|s| s.name == service_name && s.mcp_exposed)
+    {
+        Some(s) => s,
+        None => {
+            return json!({ "error": { "code": -32601, "message": "Method not found" } });
+        }
+    };
 
     let args = call_params
         .get("arguments")

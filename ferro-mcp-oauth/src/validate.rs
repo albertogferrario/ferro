@@ -279,4 +279,123 @@ mod tests {
             "expected Forbidden when tenant absent but expected, got {result:?}"
         );
     }
+
+    // ── API key tests (Phase 217 RED suite) ──────────────────────────────────
+
+    async fn setup_api_keys_db() -> sea_orm::DatabaseConnection {
+        use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Statement};
+        let db = Database::connect("sqlite::memory:")
+            .await
+            .expect("sqlite connect");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE mcp_api_keys (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id  INTEGER NOT NULL,
+                key_hash   TEXT NOT NULL UNIQUE,
+                scope      TEXT NOT NULL DEFAULT 'read',
+                revoked_at TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create mcp_api_keys");
+        db
+    }
+
+    async fn seed_key(
+        db: &sea_orm::DatabaseConnection,
+        tenant_id: i64,
+        scope: &str,
+        revoked: bool,
+    ) -> String {
+        use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+        let (raw_key, key_hash) = generate_mcp_api_key();
+        let revoked_at = if revoked { "'2020-01-01T00:00:00Z'" } else { "NULL" };
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            format!(
+                "INSERT INTO mcp_api_keys (tenant_id, key_hash, scope, revoked_at) \
+                 VALUES ({tenant_id}, '{key_hash}', '{scope}', {revoked_at})"
+            ),
+        ))
+        .await
+        .expect("seed key");
+        raw_key
+    }
+
+    /// RED: stub returns ("STUB","STUB") — prefix and length checks will fail.
+    #[tokio::test]
+    async fn generate_mcp_api_key_is_prefixed_and_hash_matches() {
+        let (raw_key, key_hash) = generate_mcp_api_key();
+        assert!(
+            raw_key.starts_with("ferro_"),
+            "raw_key must start with ferro_, got {raw_key:?}"
+        );
+        assert_eq!(
+            raw_key.len(),
+            49,
+            "raw_key must be 49 chars (ferro_ + 43 base62), got {}",
+            raw_key.len()
+        );
+        assert_eq!(
+            key_hash,
+            hash_mcp_api_key(&raw_key),
+            "key_hash must equal SHA-256 of raw_key"
+        );
+    }
+
+    /// RED: skeleton returns Invalid — will pass once Plan 01 wires real lookup.
+    #[tokio::test]
+    async fn valid_api_key_returns_authenticated() {
+        let db = setup_api_keys_db().await;
+        let raw_key = seed_key(&db, 1, "read", false).await;
+        let header = format!("Bearer {raw_key}");
+        let result = validate_api_key(Some(&header), &db, None).await;
+        match result {
+            BearerCheck::Authenticated(principal) => {
+                assert_eq!(principal["tenant_id"], 1, "tenant_id must be 1");
+                assert_eq!(principal["scope"], "read", "scope must be read");
+            }
+            other => panic!("expected Authenticated, got {other:?}"),
+        }
+    }
+
+    /// Trivially passes against stub (stub always returns Invalid for unknown keys too).
+    #[tokio::test]
+    async fn unknown_api_key_returns_invalid() {
+        let db = setup_api_keys_db().await;
+        let result = validate_api_key(Some("Bearer ferro_unknownkey123"), &db, None).await;
+        assert!(
+            matches!(result, BearerCheck::Invalid),
+            "expected Invalid for unknown key, got {result:?}"
+        );
+    }
+
+    /// Trivially passes against stub (stub returns Invalid for all keys including revoked).
+    #[tokio::test]
+    async fn revoked_api_key_returns_invalid() {
+        let db = setup_api_keys_db().await;
+        let raw_key = seed_key(&db, 1, "read", true).await;
+        let header = format!("Bearer {raw_key}");
+        let result = validate_api_key(Some(&header), &db, None).await;
+        assert!(
+            matches!(result, BearerCheck::Invalid),
+            "expected Invalid for revoked key, got {result:?}"
+        );
+    }
+
+    /// RED: skeleton ignores expected_tenant — will return Forbidden once Plan 01 wires real lookup.
+    #[tokio::test]
+    async fn wrong_expected_tenant_returns_forbidden() {
+        let db = setup_api_keys_db().await;
+        let raw_key = seed_key(&db, 1, "read", false).await;
+        let header = format!("Bearer {raw_key}");
+        let result = validate_api_key(Some(&header), &db, Some(2)).await;
+        assert!(
+            matches!(result, BearerCheck::Forbidden),
+            "expected Forbidden for wrong expected_tenant, got {result:?}"
+        );
+    }
 }
