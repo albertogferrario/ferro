@@ -92,6 +92,48 @@ pub fn render_exposed_tools(
     // are renamed to <action.name>_on_<service.name>. Read tools (list_*) are never renamed.
     disambiguate_write_tool_collisions(&mut tagged);
 
+    // Phase 220: synthesize request_confirm_<name> + confirm_<name> for each
+    // destructive action AFTER the disambiguation pass, using the post-disambiguation
+    // name as base (Pitfall 3 fix — routing via strip_prefix must return a valid name).
+    #[cfg(feature = "confirmation")]
+    {
+        // Collect (service_name, base_name, action) for destructive tools.
+        // We snapshot after disambiguation so the confirm tools use the final names.
+        let destructive: Vec<(String, String, ferro_projections::ActionDef)> = tagged
+            .iter()
+            .filter_map(|(svc_name, tool)| {
+                // Find the original action via the post-disambiguation tool name.
+                // The disambiguated name is either bare or <action>_on_<service>;
+                // find_action_by_tool_name locates the ActionDef for routing.
+                // We need the ActionDef to build the inputSchema and description.
+                services
+                    .iter()
+                    .filter(|s| s.mcp_exposed && s.name == *svc_name)
+                    .flat_map(|s| s.actions.iter())
+                    .find(|a| {
+                        // Match by original name or disambiguated name.
+                        let disambiguated = format!("{}_on_{}", a.name, svc_name);
+                        tool.name.as_ref() == a.name || tool.name.as_ref() == disambiguated
+                    })
+                    .filter(|a| a.transition_trigger.is_some())
+                    .map(|a| (svc_name.clone(), tool.name.to_string(), a.clone()))
+            })
+            .collect();
+
+        for (svc_name, base_name, action) in destructive {
+            if let Some(req_tool) =
+                render_request_confirm_tool(&base_name, &action, services, &svc_name, ctx)?
+            {
+                tagged.push((svc_name.clone(), req_tool));
+            }
+            if let Some(cfm_tool) =
+                render_confirm_tool(&base_name, &action, services, &svc_name, ctx)?
+            {
+                tagged.push((svc_name.clone(), cfm_tool));
+            }
+        }
+    }
+
     Ok(tagged.into_iter().map(|(_, t)| t).collect())
 }
 
@@ -171,6 +213,116 @@ fn render_action_tool(
 
     Ok(Some(
         Tool::new(name, description, Arc::new(schema_map)).annotate(annotations),
+    ))
+}
+
+/// Renders the `request_confirm_<name>` tool for a destructive action.
+///
+/// Uses the post-disambiguation `base_name` (not `action.name` directly) so the
+/// `strip_prefix("request_confirm_")` routing in `handle_write_call` returns a
+/// valid action name (Pitfall 3). Schema is identical to the bare action tool.
+/// `destructiveHint=false` — this step only issues a token.
+#[cfg(feature = "confirmation")]
+fn render_request_confirm_tool(
+    base_name: &str,
+    action: &ferro_projections::ActionDef,
+    services: &[ferro_projections::ServiceDef],
+    service_name: &str,
+    ctx: &McpContext,
+) -> std::result::Result<Option<Tool>, ProjError> {
+    // Apply the same guard-visibility filter as the bare action tool.
+    for precondition in &action.preconditions {
+        if ctx.evaluated_guards.get(precondition) == Some(&false) {
+            return Ok(None);
+        }
+    }
+
+    // Find the owning service to build the full action schema (includes identifier field).
+    let service = services
+        .iter()
+        .find(|s| s.name == service_name && s.mcp_exposed)
+        .ok_or_else(|| ProjError::Render(format!("service '{service_name}' not found")))?;
+
+    let name = format!("request_confirm_{base_name}");
+    let description = format!(
+        "Request confirmation to: {}",
+        action
+            .description
+            .as_deref()
+            .or(action.display_name.as_deref())
+            .unwrap_or(&action.name)
+    );
+
+    let schema_value = crate::schema::build_action_input_schema(action, service)
+        .map_err(|e| ProjError::Render(e.to_string()))?;
+    let schema_map = match schema_value {
+        serde_json::Value::Object(m) => m,
+        _ => {
+            return Err(ProjError::Render(
+                "action inputSchema must be an object".into(),
+            ))
+        }
+    };
+
+    let annotations = ToolAnnotations::new().read_only(false).destructive(false); // request step issues token only, not destructive
+
+    Ok(Some(
+        Tool::new(name, description, Arc::new(schema_map)).annotate(annotations),
+    ))
+}
+
+/// Renders the `confirm_<name>` tool for a destructive action.
+///
+/// Schema: `{ "confirmation_token": string, "id": integer }` only — the agent
+/// supplies the token returned by `request_confirm_<name>` and the record id
+/// for the binding mismatch check. `destructiveHint=true` — this step executes.
+#[cfg(feature = "confirmation")]
+fn render_confirm_tool(
+    base_name: &str,
+    action: &ferro_projections::ActionDef,
+    _services: &[ferro_projections::ServiceDef],
+    _service_name: &str,
+    ctx: &McpContext,
+) -> std::result::Result<Option<Tool>, ProjError> {
+    // Apply the same guard-visibility filter.
+    for precondition in &action.preconditions {
+        if ctx.evaluated_guards.get(precondition) == Some(&false) {
+            return Ok(None);
+        }
+    }
+
+    let name = format!("confirm_{base_name}");
+    let description = format!(
+        "Confirm and execute: {}. Supply the confirmation_token from request_confirm_{base_name}.",
+        action
+            .description
+            .as_deref()
+            .or(action.display_name.as_deref())
+            .unwrap_or(&action.name)
+    );
+
+    // Minimal schema: token + record id for binding check.
+    let mut schema = serde_json::Map::new();
+    schema.insert("type".to_string(), serde_json::json!("object"));
+    let mut props = serde_json::Map::new();
+    props.insert(
+        "confirmation_token".to_string(),
+        serde_json::json!({ "type": "string", "description": "Token returned by request_confirm" }),
+    );
+    props.insert(
+        "id".to_string(),
+        serde_json::json!({ "type": "integer", "description": "Record id (must match the one used in request_confirm)" }),
+    );
+    schema.insert("properties".to_string(), serde_json::Value::Object(props));
+    schema.insert(
+        "required".to_string(),
+        serde_json::json!(["confirmation_token", "id"]),
+    );
+
+    let annotations = ToolAnnotations::new().read_only(false).destructive(true); // confirm step executes the destructive action
+
+    Ok(Some(
+        Tool::new(name, description, Arc::new(schema)).annotate(annotations),
     ))
 }
 
@@ -326,16 +478,28 @@ mod tests {
     }
 
     /// SC#1: render_exposed_tools must emit one write tool per ActionDef plus the
-    /// existing read tool (3 total for this fixture).
+    /// existing read tool. With the confirmation feature on, two extra confirm tools
+    /// are synthesized for the destructive `submit_order` action (5 total).
+    /// Without the confirmation feature, 3 tools.
     #[test]
     fn test_one_write_tool_per_action() {
         let tools = render_exposed_tools(&[order_service_with_actions()], &McpContext::default())
             .expect("render ok");
 
+        // Feature off: 1 read + 2 write = 3. Feature on: + request_confirm_ + confirm_ = 5.
+        #[cfg(not(feature = "confirmation"))]
         assert_eq!(
             tools.len(),
             3,
-            "expected list_order + submit_order + update_notes"
+            "expected list_order + submit_order + update_notes; got {}",
+            tools.len()
+        );
+        #[cfg(feature = "confirmation")]
+        assert_eq!(
+            tools.len(),
+            5,
+            "expected list_order + submit_order + update_notes + request_confirm_submit_order + confirm_submit_order; got {}",
+            tools.len()
         );
 
         assert!(
@@ -350,6 +514,21 @@ mod tests {
             tools.iter().any(|t| t.name.as_ref() == "update_notes"),
             "write tool 'update_notes' must be present"
         );
+        #[cfg(feature = "confirmation")]
+        {
+            assert!(
+                tools
+                    .iter()
+                    .any(|t| t.name.as_ref() == "request_confirm_submit_order"),
+                "request_confirm_submit_order must be present"
+            );
+            assert!(
+                tools
+                    .iter()
+                    .any(|t| t.name.as_ref() == "confirm_submit_order"),
+                "confirm_submit_order must be present"
+            );
+        }
     }
 
     /// SC#4: A write tool for an action with transition_trigger must carry

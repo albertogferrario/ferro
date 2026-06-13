@@ -338,11 +338,20 @@ mod tests {
             .as_array()
             .expect("tools must be an array");
 
-        // 1 read tool + 2 write tools = 3 total (RED: currently 1)
+        // 1 read tool + 2 write tools = 3 total; with confirmation feature, 2 extra
+        // confirmation tools are synthesised for submit_order (the only destructive action)
+        #[cfg(not(feature = "confirmation"))]
         assert_eq!(
             tools_json.len(),
             3,
             "expected list_order + submit_order + update_notes; got {}",
+            tools_json.len()
+        );
+        #[cfg(feature = "confirmation")]
+        assert_eq!(
+            tools_json.len(),
+            5,
+            "expected list_order + submit_order + update_notes + request_confirm_submit_order + confirm_submit_order; got {}",
             tools_json.len()
         );
 
