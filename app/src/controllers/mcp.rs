@@ -11,6 +11,22 @@ use ferro_mcp_server::{
     WriteDispatcher,
 };
 
+#[cfg(feature = "confirmation")]
+use std::sync::OnceLock;
+
+/// Process-wide `InMemoryConfirmationStore` for the MCP confirmation gate (Phase 220).
+///
+/// Initialised once on first `tools/call` dispatch; shared across all requests.
+/// Tenant binding inside each stored payload prevents cross-tenant token use
+/// (T-220-02e — mitigated upstream in the confirmation gate).
+#[cfg(feature = "confirmation")]
+static CONFIRMATION_STORE: OnceLock<ferro_ai::InMemoryConfirmationStore> = OnceLock::new();
+
+#[cfg(feature = "confirmation")]
+fn confirmation_store() -> &'static ferro_ai::InMemoryConfirmationStore {
+    CONFIRMATION_STORE.get_or_init(ferro_ai::InMemoryConfirmationStore::new)
+}
+
 /// The MCP-exposed projections served at this endpoint.
 /// Phase 198: explicit slice; a registry can replace this later.
 fn exposed_services() -> Vec<ServiceDef> {
@@ -294,7 +310,19 @@ pub async fn handle(req: Request) -> Response {
                 ..Default::default()
             };
             let dispatcher = make_write_dispatcher();
-            handle_tools_call(params, &services, db.inner(), tenant_id, &ctx, &dispatcher).await
+            handle_tools_call(
+                params,
+                &services,
+                db.inner(),
+                tenant_id,
+                &ctx,
+                &dispatcher,
+                #[cfg(feature = "confirmation")]
+                confirmation_store(),
+                #[cfg(feature = "confirmation")]
+                &config,
+            )
+            .await
         }
         _ => json!({ "error": { "code": -32601, "message": "Method not found" } }),
     };
@@ -333,6 +361,7 @@ mod tests {
             app_name: "x".into(),
             app_url: "http://localhost".into(),
             version: "0".into(),
+            confirmation_ttl_seconds: 300,
         };
         let resp = challenge_response(&config);
         assert_eq!(resp.status_code(), 401);
