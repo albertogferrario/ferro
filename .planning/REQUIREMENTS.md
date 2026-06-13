@@ -29,6 +29,21 @@ published `ferro-rs`). Framework-correctness, not a Compressive Validation item.
 - [x] **SCAF-04**: A release-time CI job scaffolds and builds against the *published* artifact (`publish.yml` `post-publish-scaffold-smoke`, `docker build --build-arg FERRO_VERSION`) and gates the pipeline on a scaffold↔library regression.
 - [x] **SCAF-05**: A per-PR CI job (`ci.yml` `scaffold-smoke`) runs the workspace path-dep scaffold-build test for fast pre-publish drift detection.
 
+## v13.1 Requirements
+
+### CRUD Handler Proc Macros (framework-ergonomics axis)
+
+Source: gestiscilo Phase 202 duplication survey (the tenant-scoped CRUD prelude repeated 200+ times
+in one consumer). Scoped to ferro's framework-product axis. Macros INLINE the handler/action
+boilerplate (no nested attribute) and resolve the tenant via the existing `current_tenant()` layer.
+
+- [x] **CRUD-01**: `#[resource_get]` folds typed path-param extraction + tenant resolution + tenant-scoped lookup + 404-on-miss into a single route attribute; tenant and resource remain real typed function parameters.
+- [x] **CRUD-02**: `#[resource_post]` folds the same prelude plus a validation-failure redirect envelope (303 on miss).
+- [x] **CRUD-03**: `Validator::validate_or_redirect(url) -> Result<(), ActionError>` composes the existing `with_old_input` + `into_action_error` chain (uses the data the validator already holds — no redundant `&data` arg).
+- [x] **CRUD-04**: A `TenantScoped` trait (`#[async_trait]`, assoc `Id: FromStr`, `find_for_tenant(id, tenant_id)`) with `find =` / `tenant =` macro overrides; the generated lookup always passes `tenant.id`, so a cross-tenant read is impossible by construction.
+- [x] **CRUD-05**: IDE experience preserved — the body moves to a named `__{name}_inner` fn with the user's typed params; rustdoc carries `cargo expand` walkthroughs; covered by a trybuild harness (2+ pass, 4 compile-fail fixtures with `.stderr`).
+- [x] **CRUD-06**: Macros exported via the `ferro` facade; a `full_crud_reference` fixture uses both end-to-end; CHANGELOG entry + workspace version bump to 0.2.56.
+
 ## Future Requirements (deferred)
 
 - **Rest of the Road to v1.0 program** — the operational (OPER-01..07), conceptual (CONC-01..04, incl. crate-consolidation audit + ServiceDef derivation bridge), and aesthetic (AEST-01..04) dimensions are subsequent v13.x milestones, prioritized after the compressive validation establishes baseline signal.
@@ -60,3 +75,9 @@ published `ferro-rs`). Framework-correctness, not a Compressive Validation item.
 | SCAF-03 | Phase 214 | Complete |
 | SCAF-04 | Phase 214 | Complete |
 | SCAF-05 | Phase 214 | Complete |
+| CRUD-01 | Phase 212 | Complete |
+| CRUD-02 | Phase 212 | Complete |
+| CRUD-03 | Phase 212 | Complete |
+| CRUD-04 | Phase 212 | Complete |
+| CRUD-05 | Phase 212 | Complete |
+| CRUD-06 | Phase 212 | Complete |
