@@ -61,7 +61,7 @@ pub async fn save(req: &mut Request, tenant: &TenantContext, customer: &Customer
     let data = ferro::serde_json::json!({ "name": "test" });
     ferro::Validator::new(&data)
         .rules("name", ferro::rules![ferro::required()])
-        .validate_or_redirect(&data, __form_url)?;
+        .validate_or_redirect(__form_url)?;
     Ok(())
 }
 

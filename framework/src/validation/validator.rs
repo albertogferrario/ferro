@@ -159,18 +159,21 @@ impl<'a> Validator<'a> {
     ///
     /// Composes the existing `with_old_input` + `into_action_error` chain so
     /// per-field errors and old input flash exactly as the modern form-error
-    /// idiom does today.
+    /// idiom does today. The validator already holds the data passed to
+    /// [`Validator::new`], so it is reused here without requiring the caller
+    /// to pass it again.
     ///
     /// ```ignore
     /// Validator::new(&data)
     ///     .rules("name", rules![required()])
-    ///     .validate_or_redirect(&data, &form_url)?;
+    ///     .validate_or_redirect(&form_url)?;
     /// ```
     pub fn validate_or_redirect(
         self,
-        data: &Value,
         url: impl Into<String>,
     ) -> Result<(), crate::http::action::ActionError> {
+        // Capture the data reference before `validate()` consumes `self`.
+        let data: &Value = self.data;
         self.validate()
             .map_err(|e| e.with_old_input(data).into_action_error(url))
     }
@@ -459,7 +462,7 @@ mod tests {
         let data = json!({"name": "Alice"});
         let result = Validator::new(&data)
             .rules("name", rules![required(), string()])
-            .validate_or_redirect(&data, "/form");
+            .validate_or_redirect("/form");
         assert!(result.is_ok());
     }
 
@@ -468,7 +471,7 @@ mod tests {
         let data = json!({"name": ""});
         let result = Validator::new(&data)
             .rules("name", rules![required()])
-            .validate_or_redirect(&data, "/form");
+            .validate_or_redirect("/form");
         assert!(result.is_err());
     }
 
@@ -480,7 +483,7 @@ mod tests {
 
         let result_via_helper = Validator::new(&data)
             .rules("name", rules![required()])
-            .validate_or_redirect(&data, "/form");
+            .validate_or_redirect("/form");
 
         // The manual chain produces the same error shape:
         let result_manual = Validator::new(&data)

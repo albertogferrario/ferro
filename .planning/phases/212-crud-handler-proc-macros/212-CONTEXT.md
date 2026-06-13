@@ -98,14 +98,18 @@ ferro surface where one exists, keeping the core small (continuous conceptual co
 - **D-07:** A **method on `Validator`** that consumes `self` and returns
   `Result<(), ferro::ActionError>`, composing the EXISTING error path — no new logic:
   ```rust
-  pub fn validate_or_redirect(self, data: &Value, url: impl Into<String>)
+  pub fn validate_or_redirect(self, url: impl Into<String>)
       -> Result<(), ActionError> {
+      let data: &Value = self.data;
       self.validate().map_err(|e| e.with_old_input(data).into_action_error(url))
   }
   ```
   It reuses `ValidationError::with_old_input` + `into_action_error`
   (`framework/src/validation/error.rs:160`) so per-field errors + old input flash exactly as the
-  modern chain does today. `&data` is passed because `with_old_input` needs the original payload.
+  modern chain does today. **Refined in review (IN-05):** the validator already holds `self.data`
+  (the value passed to `Validator::new`), so the redundant `&data` argument was dropped. Passing a
+  different value as old-input than was validated would silently flash the wrong form fields — the
+  single-argument form removes that footgun.
 
 ### Form-URL synthesis (Q6)
 - **D-08:** When `redirect_to` / `form_url` / `on_miss` is a fmt template with `{param}`

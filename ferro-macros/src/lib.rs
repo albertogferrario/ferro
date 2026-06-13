@@ -660,7 +660,7 @@ pub fn resource_get(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// - `form_url = "/url/{id}/edit"` — the edit form URL, synthesized from extracted
 ///   path params; injected as `__form_url: &str` in the inner fn body.
-/// - `on_miss = "/url"` — redirect on lookup miss; omitted → `ActionError::not_found`.
+/// - `on_miss = "/url"` — 303 redirect on lookup miss; omitted → 404 `HttpResponse`.
 /// - `tenant = "expr"` — escape-hatch expression for tenant resolution.
 /// - `find = "path::fn"` — override the lookup function.
 ///
@@ -676,7 +676,7 @@ pub fn resource_get(attr: TokenStream, input: TokenStream) -> TokenStream {
 ///     let data = serde_json::json!({ "name": "test" });
 ///     ferro::Validator::new(&data)
 ///         .rules("name", ferro::rules![ferro::required()])
-///         .validate_or_redirect(&data, __form_url)?;
+///         .validate_or_redirect(__form_url)?;
 ///     Ok(())
 /// }
 /// ```
