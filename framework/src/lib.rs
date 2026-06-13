@@ -120,8 +120,8 @@ pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedI
 pub use json_ui::JsonUi;
 pub use lang::{lang_choice, lang_init, locale, set_locale, t, trans, LangMiddleware};
 pub use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect,
+    ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
 };
 pub use session::{
     invalidate_all_for_user, session, session_mut, with_test_session, DatabaseSessionDriver,
@@ -384,6 +384,27 @@ macro_rules! json_response {
 macro_rules! text_response {
     ($text:expr) => {
         Ok($crate::HttpResponse::text($text))
+    };
+}
+
+/// Return an HTTP error response for use in handler error arms.
+///
+/// Produces a bare `HttpResponse` value (not `Result`) suitable for use in
+/// `.map_err(|e| ferro::error_response!(500, e.to_string()))` and
+/// `.ok_or_else(|| ferro::error_response!(404, "not found"))`.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// Entity::find_by_id(id).one(db).await
+///     .map_err(|e| ferro::error_response!(500, e.to_string()))?
+///     .ok_or_else(|| ferro::error_response!(404, "Not found"))?;
+/// ```
+#[macro_export]
+macro_rules! error_response {
+    ($status:expr, $msg:expr) => {
+        $crate::HttpResponse::json($crate::serde_json::json!({ "message": ($msg).to_string() }))
+            .status($status as u16)
     };
 }
 
