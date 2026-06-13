@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
 status: executing
-stopped_at: Completed 220-00-PLAN.md
-last_updated: "2026-06-13T23:37:24.826Z"
+stopped_at: Completed 220-01-PLAN.md
+last_updated: "2026-06-13T23:55:02.189Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 101
   completed_phases: 92
   total_plans: 381
-  completed_plans: 378
+  completed_plans: 379
   percent: 99
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ACTIVE (roadmap created 2026-06-13). Scope: extend the projection/intent abstraction to a write-and-act MCP surface. Per-tenant API-key auth (Phase 217), `ActionDef`-derived write tools (Phase 218), server-side guard-enforced write dispatch (Phase 219), `ferro-ai` confirmation gating for destructive actions (Phase 220), inbound NL intent loop with replay/smoke CI path (Phase 221). All work in `ferro-mcp-server`. Validated via synthetic fixtures.
 
 Phase: 220 (Confirmation Gating for Destructive Actions) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: `/gsd-plan-phase 217`
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -110,6 +110,7 @@ Progress: [██████████] 100%
 | Phase 219-write-dispatch P01 | 20 | 3 tasks | 4 files |
 | Phase 219-write-dispatch P02 | 120 | 3 tasks | 11 files |
 | Phase 220-confirmation-gating-for-destructive-actions P00 | 609 | 3 tasks | 5 files |
+| Phase 220-confirmation-gating-for-destructive-actions P01 | cross-session | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -152,7 +153,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-13T23:37:24.819Z
-Stopped at: Completed 220-00-PLAN.md
+Last session: 2026-06-13T23:55:02.171Z
+Stopped at: Completed 220-01-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth

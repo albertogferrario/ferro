@@ -3048,7 +3048,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   5. Consumers that do not enable the `confirmation` feature flag compile successfully and their read tools are unaffected; only write tools for destructive actions require the feature.
 **Plans**: 3 plans
   - [x] 220-00-PLAN.md — Wave 0: ferro-ai feature-split (default=llm, reqwest-free confirmation) + consumer audit + confirmation feature scaffolding + RED tests
-  - [ ] 220-01-PLAN.md — Wave 1: D-08 seam gate + request_confirm/confirm handlers + token binding/mismatch + guard re-eval + two-tool synthesis (GREEN)
+  - [x] 220-01-PLAN.md — Wave 1: D-08 seam gate + request_confirm/confirm handlers + token binding/mismatch + guard re-eval + two-tool synthesis (GREEN)
   - [ ] 220-02-PLAN.md — Wave 2: sample-app ConfirmationStore wiring + feature-off build-graph assertion (SC#5) + full --all-features CI gate
 
 ### Phase 221: Inbound NL Intent Loop
@@ -3071,7 +3071,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 | 217. Tenant Context + Per-Tenant API-Key Auth | 4/4 | Complete    | 2026-06-13 |
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
 | 219. Write Dispatch | 3/3 | Complete    | 2026-06-13 |
-| 220. Confirmation Gating for Destructive Actions | 1/3 | In Progress|  |
+| 220. Confirmation Gating for Destructive Actions | 2/3 | In Progress|  |
 | 221. Inbound NL Intent Loop | 0/TBD | Not started | - |
 
 ---
@@ -3107,7 +3107,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 ---
 
