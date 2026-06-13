@@ -1,0 +1,531 @@
+{
+  "task_id": "process-kiln-firing-batch",
+  "target_intent": "Process",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": null,
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "firing_batch_service"
+          },
+          "result_summary": "{\"error\": \"projection 'firing_batch_service' not found. Available: []\"}"
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Loads ceramic pieces into a new firing batch, placing it in the prepared state.",
+            "display_name": "Load Batch",
+            "effects": [
+              "create_batch_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Kiln assigned to fire this batch.",
+                "meaning": "foreign_key",
+                "name": "kiln_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Human-readable batch code.",
+                "meaning": "entity_name",
+                "name": "batch_code",
+                "required": true
+              },
+              {
+                "data_type": "integer",
+                "description": "Number of pieces loaded.",
+                "meaning": "quantity",
+                "name": "piece_count",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Target firing temperature in Celsius.",
+                "meaning": "quantity",
+                "name": "target_temperature_c",
+                "required": true
+              }
+            ],
+            "name": "load_batch",
+            "preconditions": [],
+            "transition_trigger": "load"
+          },
+          {
+            "description": "Quality inspector signs off on the loaded pieces, recording clearance.",
+            "display_name": "Inspect Batch",
+            "effects": [
+              "record_inspection"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Batch being inspected.",
+                "meaning": "identifier",
+                "name": "batch_id",
+                "required": true
+              },
+              {
+                "data_type": "integer",
+                "description": "Inspector performing the sign-off.",
+                "meaning": "foreign_key",
+                "name": "inspector_id",
+                "required": true
+              },
+              {
+                "data_type": "boolean",
+                "description": "Whether the inspector clears the batch.",
+                "meaning": "boolean",
+                "name": "cleared",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Inspector remarks.",
+                "meaning": "free_text",
+                "name": "inspection_notes",
+                "required": false
+              }
+            ],
+            "name": "inspect_batch",
+            "preconditions": []
+          },
+          {
+            "description": "Begins firing the batch. Gated on inspector clearance.",
+            "display_name": "Start Firing",
+            "effects": [
+              "ignite_kiln",
+              "notify_operators"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Batch to fire.",
+                "meaning": "identifier",
+                "name": "batch_id",
+                "required": true
+              }
+            ],
+            "name": "start_firing",
+            "preconditions": [
+              "inspector_cleared"
+            ],
+            "transition_trigger": "fire"
+          },
+          {
+            "description": "Marks firing complete and begins the cooling phase.",
+            "display_name": "Begin Cooling",
+            "effects": [
+              "shutdown_kiln"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Batch finishing firing.",
+                "meaning": "identifier",
+                "name": "batch_id",
+                "required": true
+              }
+            ],
+            "name": "begin_cooling",
+            "preconditions": [],
+            "transition_trigger": "cool"
+          },
+          {
+            "description": "Grader examines cooled pieces and records defect count and quality clearance.",
+            "display_name": "Grade Batch",
+            "effects": [
+              "record_grading"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Batch being graded.",
+                "meaning": "identifier",
+                "name": "batch_id",
+                "required": true
+              },
+              {
+                "data_type": "integer",
+                "description": "Grader examining the pieces.",
+                "meaning": "foreign_key",
+                "name": "grader_id",
+                "required": true
+              },
+              {
+                "data_type": "integer",
+                "description": "Number of defective pieces found.",
+                "meaning": "quantity",
+                "name": "defect_count",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Grader remarks.",
+                "meaning": "free_text",
+                "name": "grading_notes",
+                "required": false
+              }
+            ],
+            "name": "grade_batch",
+            "preconditions": []
+          },
+          {
+            "description": "Dispatches a batch that met the quality threshold.",
+            "display_name": "Dispatch Batch",
+            "effects": [
+              "notify_dispatch"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Batch to dispatch.",
+                "meaning": "identifier",
+                "name": "batch_id",
+                "required": true
+              }
+            ],
+            "name": "dispatch_batch",
+            "preconditions": [
+              "quality_cleared"
+            ],
+            "transition_trigger": "dispatch"
+          },
+          {
+            "description": "Quarantines a batch with defects for rework.",
+            "display_name": "Quarantine Batch",
+            "effects": [
+              "flag_for_rework"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Batch to quarantine.",
+                "meaning": "identifier",
+                "name": "batch_id",
+                "required": true
+              }
+            ],
+            "name": "quarantine_batch",
+            "preconditions": [
+              "quality_failed"
+            ],
+            "transition_trigger": "quarantine"
+          }
+        ],
+        "description": "Manages ceramic kiln firing batches through their lifecycle: loading, inspection, firing, cooling, grading, and dispatch or quarantine for rework.",
+        "display_name": "Firing Batch",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "batch_code",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "kiln_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "integer",
+            "meaning": "quantity",
+            "name": "piece_count",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "enum",
+            "meaning": "status",
+            "name": "status",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "target_temperature_c",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "boolean",
+            "meaning": "boolean",
+            "name": "inspector_cleared",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "inspector_id",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "inspection_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "boolean",
+            "meaning": "boolean",
+            "name": "quality_cleared",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "grader_id",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "quantity",
+            "name": "defect_count",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "percentage",
+            "name": "quality_threshold",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "grading_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "loaded_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "updated_at",
+            "name": "updated_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "A quality inspector must sign off on the loaded pieces before the batch can be fired.",
+            "display_name": "Inspector Cleared",
+            "name": "inspector_cleared"
+          },
+          {
+            "description": "The graded pieces meet the quality threshold (defect count within the acceptable limit).",
+            "display_name": "Quality Cleared",
+            "name": "quality_cleared"
+          },
+          {
+            "description": "The graded pieces fall below the quality threshold and require rework.",
+            "display_name": "Quality Failed",
+            "name": "quality_failed"
+          }
+        ],
+        "name": "firing_batch",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "The kiln in which this batch is fired.",
+            "foreign_key": "kiln_id",
+            "inverse": "firing_batches",
+            "name": "kiln",
+            "navigation": "link",
+            "target": "kiln"
+          },
+          {
+            "cardinality": "many_to_one",
+            "description": "Quality inspector who signed off before firing.",
+            "foreign_key": "inspector_id",
+            "inverse": "inspected_batches",
+            "name": "inspector",
+            "navigation": "inline",
+            "target": "user"
+          },
+          {
+            "cardinality": "many_to_one",
+            "description": "Grader who examined the pieces after cooling.",
+            "foreign_key": "grader_id",
+            "inverse": "graded_batches",
+            "name": "grader",
+            "navigation": "inline",
+            "target": "user"
+          },
+          {
+            "cardinality": "one_to_many",
+            "description": "Individual ceramic pieces loaded in this batch.",
+            "inverse": "firing_batch",
+            "name": "pieces",
+            "navigation": "nested",
+            "target": "ceramic_piece"
+          }
+        ],
+        "state_machine": {
+          "description": "Lifecycle of a kiln firing batch from loading through dispatch or quarantine.",
+          "display_name": "Firing Batch Lifecycle",
+          "initial_state": "prepared",
+          "name": "firing_batch_lifecycle",
+          "states": [
+            {
+              "description": "Pieces are loaded; awaiting quality inspector sign-off.",
+              "display_name": "Prepared",
+              "name": "prepared"
+            },
+            {
+              "description": "Batch is being fired in the kiln.",
+              "display_name": "Firing",
+              "name": "firing",
+              "on_enter": [
+                "ignite_kiln"
+              ]
+            },
+            {
+              "description": "Firing complete; batch is cooling before grading.",
+              "display_name": "Cooling",
+              "name": "cooling"
+            },
+            {
+              "description": "Pieces met the quality threshold and were dispatched.",
+              "display_name": "Dispatched",
+              "is_final": true,
+              "name": "dispatched"
+            },
+            {
+              "description": "Batch has defects and is held for rework.",
+              "display_name": "Quarantined",
+              "is_final": true,
+              "name": "quarantined"
+            }
+          ],
+          "transitions": [
+            {
+              "actions": [
+                "ignite_kiln",
+                "notify_operators"
+              ],
+              "description": "Move to firing once the quality inspector has cleared the batch.",
+              "event": "fire",
+              "from": "prepared",
+              "guard": "inspector_cleared",
+              "to": "firing"
+            },
+            {
+              "actions": [
+                "shutdown_kiln"
+              ],
+              "description": "Firing complete; begin cooling.",
+              "event": "cool",
+              "from": "firing",
+              "to": "cooling"
+            },
+            {
+              "actions": [
+                "notify_dispatch"
+              ],
+              "description": "Graded pieces meet the quality threshold and are dispatched.",
+              "event": "dispatch",
+              "from": "cooling",
+              "guard": "quality_cleared",
+              "to": "dispatched"
+            },
+            {
+              "actions": [
+                "flag_for_rework"
+              ],
+              "description": "Graded pieces have defects; quarantine for rework.",
+              "event": "quarantine",
+              "from": "cooling",
+              "guard": "quality_failed",
+              "to": "quarantined"
+            }
+          ]
+        }
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "firing_batch_service"
+          },
+          "result_summary": "{\"error\": \"projection 'firing_batch_service' not found. Available: []\"}"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "service_def": null,
+      "tool_calls": [],
+      "error": "credit_balance_too_low"
+    }
+  ]
+}

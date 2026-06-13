@@ -115,16 +115,38 @@ pub struct TrialRecord {
     /// Optional audit trace of tool calls (not used by scorer).
     #[serde(default)]
     pub tool_calls: Vec<serde_json::Value>,
+    /// Set when the trial did not produce a measurable outcome because the LLM
+    /// provider call itself failed (e.g. credit exhaustion, rate limit). An
+    /// errored trial is EXCLUDED from baseline rates — an API error is not an
+    /// agent failure. `None` for trials that ran to a genuine agent outcome
+    /// (including genuine failures where the agent produced no valid ServiceDef).
+    #[serde(default)]
+    pub error: Option<String>,
 }
 
 /// One transcript file — one task, one or more trials.
+///
+/// `target_intent` is a `String` (PascalCase in the corpus/transcripts, e.g.
+/// `"Browse"`) — parse it with [`parse_intent`] before scoring. Storing it as
+/// `Intent` would reject the PascalCase the live writer emits.
 #[derive(Debug, Deserialize)]
 pub struct Transcript {
     pub task_id: String,
-    pub target_intent: Intent,
+    pub target_intent: String,
     pub model: String,
     pub prompt_version: String,
     pub trials: Vec<TrialRecord>,
+}
+
+/// Parse a corpus/transcript `target_intent` string (PascalCase like `"Browse"`
+/// or snake_case like `"browse"`) into an [`Intent`]. The corpus uses PascalCase;
+/// `Intent`'s serde form is snake_case, so lowercase first, then fall back to the
+/// raw value for any custom intent.
+pub fn parse_intent(s: &str) -> Intent {
+    serde_json::from_value(serde_json::Value::String(s.to_lowercase())).unwrap_or_else(|_| {
+        serde_json::from_value(serde_json::Value::String(s.to_string()))
+            .expect("target_intent must be a valid Intent variant")
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -618,8 +640,9 @@ async fn agent_eval_replay_scores_are_deterministic() {
         serde_json::from_str(invalid_raw).expect("_fixture_invalid.json must parse as Transcript");
 
     // Score the valid fixture.
+    let valid_target = parse_intent(&valid_transcript.target_intent);
     for trial in &valid_transcript.trials {
-        let result = score(&trial.service_def, valid_transcript.target_intent.clone()).await;
+        let result = score(&trial.service_def, valid_target.clone()).await;
         assert!(
             result.t1,
             "fixture_valid trial {}: expected t1=true, got {result:?}",
@@ -639,8 +662,9 @@ async fn agent_eval_replay_scores_are_deterministic() {
     }
 
     // Score the invalid fixture — must fail at T1 deterministically.
+    let invalid_target = parse_intent(&invalid_transcript.target_intent);
     for trial in &invalid_transcript.trials {
-        let result = score(&trial.service_def, invalid_transcript.target_intent.clone()).await;
+        let result = score(&trial.service_def, invalid_target.clone()).await;
         assert_eq!(
             result,
             TierResult {
@@ -796,9 +820,15 @@ async fn spawn_in_process_client(
     // Server half: FerroMcpService implements ServerHandler + ServiceExt<RoleServer>.
     let service = FerroMcpService::new(project_root);
     tokio::spawn(async move {
-        // serve() is infallible for the server side once the handshake completes.
-        // Errors are expected when the client disconnects.
-        let _ = service.serve(server_stream).await;
+        // serve() performs the initialize handshake and RETURNS a RunningService
+        // whose message loop only runs while that handle is alive. Binding it to
+        // `_` would drop it immediately — the handshake would succeed but the very
+        // first tool call would then fail with "Transport closed". Hold the handle
+        // and drive it to completion via waiting(), which runs until the client
+        // disconnects. Errors are expected on client disconnect.
+        if let Ok(server) = service.serve(server_stream).await {
+            let _ = server.waiting().await;
+        }
     });
 
     // Client half: `()` implements ServiceExt<RoleClient> as the null handler.
@@ -890,8 +920,10 @@ async fn smoke_in_process_rmcp_duplex() {
 // The actual baseline-producing run is Wave 4 (autonomous: false).
 // ---------------------------------------------------------------------------
 
-use ferro_ai::client::{AnthropicClient, CompletionRequest, CompletionResponse, LlmClient,
-                       Message, Role, ToolChoice, ToolRequest as LlmToolRequest};
+use ferro_ai::client::{
+    AnthropicClient, CompletionRequest, CompletionResponse, LlmClient, Message, Role, ToolChoice,
+    ToolRequest as LlmToolRequest,
+};
 
 /// Prompt version string. Increment when the system/user prompt changes to
 /// invalidate previously-committed baselines.
@@ -973,8 +1005,7 @@ fn build_agent_tools() -> Vec<LlmToolRequest> {
 /// - Does NOT name the target intent or use ferro intent vocabulary (contamination discipline).
 fn build_system_prompt() -> String {
     let schema = schemars::schema_for!(ServiceDef);
-    let schema_str = serde_json::to_string_pretty(&schema)
-        .unwrap_or_else(|_| "{}".to_string());
+    let schema_str = serde_json::to_string_pretty(&schema).unwrap_or_else(|_| "{}".to_string());
 
     format!(
         "You are an expert at authoring Ferro framework service definitions (ServiceDef). \
@@ -1023,6 +1054,11 @@ struct TrialOutput {
     /// Optional audit trace — tool calls made during this trial.
     #[serde(default)]
     tool_calls: Vec<ToolCallRecord>,
+    /// Set when the provider call failed (credit exhaustion, rate limit, etc.).
+    /// Errored trials are excluded from baseline rates — an API error is not an
+    /// agent failure. Omitted from the JSON when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
 }
 
 /// Audit record of a single tool invocation during a trial.
@@ -1049,11 +1085,7 @@ fn extract_service_def_json(text: &str) -> Option<serde_json::Value> {
         .map(str::trim);
 
     // If no ```json fence, try plain ``` fence.
-    let fenced = fenced.or_else(|| {
-        text.split("```")
-            .nth(1)
-            .map(str::trim)
-    });
+    let fenced = fenced.or_else(|| text.split("```").nth(1).map(str::trim));
 
     // Parse whichever we found, or fall back to the raw text.
     let candidate = fenced.unwrap_or(text.trim());
@@ -1068,12 +1100,19 @@ fn extract_service_def_json(text: &str) -> Option<serde_json::Value> {
 /// appending `Message{role: Tool, content: result, tool_call_id: Some(block.id)}`.
 ///
 /// Iterations are capped at `MAX_ITERATIONS` to bound LLM cost.
+///
+/// Returns `(service_def, tool_calls, error)`. `error` is `Some` ONLY when the
+/// provider call itself failed (credit exhaustion, rate limit, transport) — such
+/// a trial is unmeasured and must be excluded from baseline rates. A genuine
+/// agent failure (no valid ServiceDef, iteration cap) returns `error == None`
+/// with a null/invalid `service_def`, which the scorer correctly counts as a
+/// tier failure.
 async fn run_agent_trial(
     llm: &AnthropicClient,
     rmcp_client: &rmcp::service::RunningService<RoleClient, ()>,
     task_description: &str,
     project_root: &std::path::Path,
-) -> (serde_json::Value, Vec<ToolCallRecord>) {
+) -> (serde_json::Value, Vec<ToolCallRecord>, Option<String>) {
     let _ = project_root; // Reserved for future checkpoint_projection calls with a real project.
 
     let tools = build_agent_tools();
@@ -1103,19 +1142,27 @@ async fn run_agent_trial(
         let response = match llm.complete_with_tools(request).await {
             Ok(r) => r,
             Err(e) => {
+                // Provider/transport error — NOT an agent failure. Mark the trial
+                // errored so the baseline excludes it instead of scoring it as a
+                // false. (This is the trap that silently corrupts a partial run:
+                // e.g. credit exhaustion mid-run scored every remaining trial as
+                // T1=false, polluting the rates.)
                 eprintln!("complete_with_tools error: {e}");
-                return (serde_json::Value::Null, tool_calls_log);
+                return (serde_json::Value::Null, tool_calls_log, Some(e.to_string()));
             }
         };
 
         match response {
             CompletionResponse::Text(text) => {
                 // Final answer — extract ServiceDef JSON and return.
-                let service_def = extract_service_def_json(&text)
-                    .unwrap_or(serde_json::Value::Null);
-                return (service_def, tool_calls_log);
+                let service_def =
+                    extract_service_def_json(&text).unwrap_or(serde_json::Value::Null);
+                return (service_def, tool_calls_log, None);
             }
-            CompletionResponse::ToolUse { blocks, assistant_content } => {
+            CompletionResponse::ToolUse {
+                blocks,
+                assistant_content,
+            } => {
                 // Push the assistant's turn BEFORE appending tool results.
                 messages.push(Message {
                     role: Role::Assistant,
@@ -1146,9 +1193,11 @@ async fn run_agent_trial(
         }
     }
 
-    // Iteration cap reached without a Text response.
+    // Iteration cap reached without a Text response. This is a genuine agent
+    // outcome (the agent never finalized), NOT a provider error — error is None
+    // so the scorer counts it as a real tier failure.
     eprintln!("run_agent_trial: iteration cap ({MAX_ITERATIONS}) reached without final answer");
-    (serde_json::Value::Null, tool_calls_log)
+    (serde_json::Value::Null, tool_calls_log, None)
 }
 
 /// Live agent eval — refreshes transcript and baseline artifacts.
@@ -1198,67 +1247,45 @@ async fn agent_eval_live_refresh_baseline() {
 
     // Transcript output directory.
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let transcripts_dir = manifest_dir
-        .join("tests/fixtures/agent_harness/transcripts");
-    std::fs::create_dir_all(&transcripts_dir)
-        .expect("transcript dir creation must succeed");
+    let transcripts_dir = manifest_dir.join("tests/fixtures/agent_harness/transcripts");
+    std::fs::create_dir_all(&transcripts_dir).expect("transcript dir creation must succeed");
 
-    // Baseline accumulation.
-    // tier_pass_counts[t] = number of (task × trial) pairs passing tier t (0-indexed).
-    let mut tier_pass_counts = [0u32; 4];
-    let mut total_trials = 0u32;
-    let mut per_intent: std::collections::HashMap<String, [u32; 5]> =
-        std::collections::HashMap::new(); // [t1,t2,t3,t4,count] per intent
-
+    // Run all tasks, writing one transcript per task. Scoring + baseline
+    // aggregation are deferred to `recompute_baseline_doc` so the COMMITTED
+    // baseline always matches the committed transcripts — the same function
+    // backs the offline regen and the CI replay assertion.
     for task in &corpus {
         eprintln!("=== Task: {} (target: {}) ===", task.id, task.target_intent);
-
-        // Parse target intent (PascalCase in corpus → snake_case for scorer).
-        let target_intent: Intent = serde_json::from_value(
-            serde_json::Value::String(task.target_intent.to_lowercase())
-        ).unwrap_or_else(|_| {
-            // Fallback: try PascalCase directly (serde rename may handle it).
-            serde_json::from_value(serde_json::Value::String(task.target_intent.clone()))
-                .expect("target_intent must be a valid Intent variant")
-        });
+        let target_intent = parse_intent(&task.target_intent);
 
         // Stand up a fresh in-process rmcp client for each task.
         let rmcp_client = spawn_in_process_client(project_root.clone()).await;
 
         let mut trial_outputs: Vec<TrialOutput> = Vec::new();
-        let entry = per_intent.entry(task.target_intent.clone()).or_insert([0u32; 5]);
-
         for trial_idx in 0..TRIALS_PER_TASK {
             eprintln!("  Trial {}/{TRIALS_PER_TASK}...", trial_idx + 1);
 
-            let (service_def_json, tool_calls) =
+            let (service_def_json, tool_calls, error) =
                 run_agent_trial(&llm, &rmcp_client, &task.description, &project_root).await;
 
-            // Score the trial.
-            let result = score(&service_def_json, target_intent.clone()).await;
-            eprintln!(
-                "    T1={} T2={} T3={} T4={}",
-                result.t1, result.t2, result.t3, result.t4
-            );
-
-            // Accumulate.
-            if result.t1 { tier_pass_counts[0] += 1; entry[0] += 1; }
-            if result.t2 { tier_pass_counts[1] += 1; entry[1] += 1; }
-            if result.t3 { tier_pass_counts[2] += 1; entry[2] += 1; }
-            if result.t4 { tier_pass_counts[3] += 1; entry[3] += 1; }
-            entry[4] += 1;
-            total_trials += 1;
+            if let Some(err) = &error {
+                eprintln!("    ERRORED (excluded from baseline): {err}");
+            } else {
+                // Progress only — authoritative scoring happens in recompute below.
+                let r = score(&service_def_json, target_intent.clone()).await;
+                eprintln!("    T1={} T2={} T3={} T4={}", r.t1, r.t2, r.t3, r.t4);
+            }
 
             trial_outputs.push(TrialOutput {
                 trial: trial_idx as u32,
                 service_def: service_def_json,
                 tool_calls,
+                error,
             });
         }
 
         rmcp_client.cancel().await.ok();
 
-        // Write per-task transcript.
         let transcript = TranscriptOutput {
             task_id: task.id.clone(),
             target_intent: task.target_intent.clone(),
@@ -1267,70 +1294,226 @@ async fn agent_eval_live_refresh_baseline() {
             trials: trial_outputs,
         };
         let transcript_path = transcripts_dir.join(format!("{}.json", task.id));
-        let transcript_json = serde_json::to_string_pretty(&transcript)
-            .expect("transcript serialization must succeed");
-        std::fs::write(&transcript_path, &transcript_json)
-            .expect("transcript write must succeed");
+        std::fs::write(
+            &transcript_path,
+            serde_json::to_string_pretty(&transcript).expect("transcript serialization"),
+        )
+        .expect("transcript write must succeed");
         eprintln!("  Wrote transcript: {}", transcript_path.display());
     }
 
-    // Compute per-tier pass rates (fractional — stored as pass counts + total for
-    // exact replay assertion).
-    let t1_rate = tier_pass_counts[0] as f64 / total_trials as f64;
-    let t2_rate = tier_pass_counts[1] as f64 / total_trials as f64;
-    let t3_rate = tier_pass_counts[2] as f64 / total_trials as f64;
-    let t4_rate = tier_pass_counts[3] as f64 / total_trials as f64;
+    // Recompute the baseline from the transcripts just written (single source of
+    // truth shared with the replay assertion; excludes provider-errored trials).
+    let transcripts = read_committed_transcripts(&transcripts_dir);
+    let mut baseline = recompute_baseline_doc(&transcripts).await;
+    baseline["generated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
 
+    let baseline_path = manifest_dir.join("tests/fixtures/agent_harness/baseline.json");
+    std::fs::write(
+        &baseline_path,
+        serde_json::to_string_pretty(&baseline).expect("baseline serialization"),
+    )
+    .expect("baseline write must succeed");
     eprintln!(
-        "\n=== Baseline ===\nT1={t1_rate:.2} T2={t2_rate:.2} T3={t3_rate:.2} T4={t4_rate:.2} (n={total_trials})"
+        "\n=== Baseline (measured-only) ===\n{}\nmeasured={} errored={}\nWrote baseline: {}",
+        baseline["tier_rates"],
+        baseline["measured_trials"],
+        baseline["errored_trials"],
+        baseline_path.display()
     );
+}
 
-    // Build per-intent breakdown.
-    let per_intent_rates: std::collections::HashMap<String, serde_json::Value> = per_intent
+// ---------------------------------------------------------------------------
+// Baseline recomputation — offline, shared by the live write, the regen path,
+// and the CI replay assertion. Provider-errored trials are EXCLUDED from rates.
+// ---------------------------------------------------------------------------
+
+/// Read all committed per-task transcripts (excludes `_fixture_*` helper files).
+fn read_committed_transcripts(transcripts_dir: &std::path::Path) -> Vec<Transcript> {
+    let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(transcripts_dir)
+        .expect("transcripts dir must exist")
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| {
+            p.extension().and_then(|s| s.to_str()) == Some("json")
+                && !p
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .starts_with('_')
+        })
+        .collect();
+    paths.sort();
+    paths
+        .into_iter()
+        .map(|path| {
+            let raw = std::fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+            serde_json::from_str::<Transcript>(&raw)
+                .unwrap_or_else(|e| panic!("parse {} as Transcript: {e}", path.display()))
+        })
+        .collect()
+}
+
+/// Score every NON-errored trial and aggregate per-tier + per-intent rates over
+/// MEASURED trials only. Errored trials (provider failures: credit exhaustion,
+/// rate limits) are excluded and reported as `errored`. Returns the baseline doc
+/// (without `generated_at`). Integer pass counts are stored alongside fractional
+/// rates so the replay assertion can compare exact integers, not fragile floats.
+async fn recompute_baseline_doc(transcripts: &[Transcript]) -> serde_json::Value {
+    let mut tier_pass = [0u32; 4];
+    let mut measured = 0u32;
+    let mut errored = 0u32;
+    // intent -> [t1, t2, t3, t4, measured, errored]
+    let mut per_intent: std::collections::BTreeMap<String, [u32; 6]> =
+        std::collections::BTreeMap::new();
+
+    let model = transcripts
+        .first()
+        .map(|t| t.model.clone())
+        .unwrap_or_else(|| "claude-opus-4-8".to_string());
+    let prompt_version = transcripts
+        .first()
+        .map(|t| t.prompt_version.clone())
+        .unwrap_or_else(|| PROMPT_VERSION.to_string());
+
+    for t in transcripts {
+        let target = parse_intent(&t.target_intent);
+        let entry = per_intent
+            .entry(t.target_intent.clone())
+            .or_insert([0u32; 6]);
+        for trial in &t.trials {
+            if trial.error.is_some() {
+                entry[5] += 1;
+                errored += 1;
+                continue;
+            }
+            let r = score(&trial.service_def, target.clone()).await;
+            if r.t1 {
+                tier_pass[0] += 1;
+                entry[0] += 1;
+            }
+            if r.t2 {
+                tier_pass[1] += 1;
+                entry[1] += 1;
+            }
+            if r.t3 {
+                tier_pass[2] += 1;
+                entry[2] += 1;
+            }
+            if r.t4 {
+                tier_pass[3] += 1;
+                entry[3] += 1;
+            }
+            entry[4] += 1;
+            measured += 1;
+        }
+    }
+
+    let rate = |n: u32| {
+        if measured == 0 {
+            0.0
+        } else {
+            n as f64 / measured as f64
+        }
+    };
+    let per_intent_doc: serde_json::Map<String, serde_json::Value> = per_intent
         .iter()
-        .map(|(intent, counts)| {
-            let n = counts[4] as f64;
-            let rates = serde_json::json!({
-                "t1": counts[0] as f64 / n,
-                "t2": counts[1] as f64 / n,
-                "t3": counts[2] as f64 / n,
-                "t4": counts[3] as f64 / n,
-                "trials": counts[4],
-            });
-            (intent.clone(), rates)
+        .map(|(intent, c)| {
+            let m = c[4];
+            let v = if m == 0 {
+                serde_json::json!({ "status": "unmeasured", "measured": 0, "errored": c[5] })
+            } else {
+                serde_json::json!({
+                    "status": "measured",
+                    "t1": c[0] as f64 / m as f64,
+                    "t2": c[1] as f64 / m as f64,
+                    "t3": c[2] as f64 / m as f64,
+                    "t4": c[3] as f64 / m as f64,
+                    "tier_pass_counts": { "t1": c[0], "t2": c[1], "t3": c[2], "t4": c[3] },
+                    "measured": m,
+                    "errored": c[5],
+                })
+            };
+            (intent.clone(), v)
         })
         .collect();
 
-    // Write baseline artifact. Stores integer pass counts alongside fractions
-    // so replay assertions can use exact equality on counts rather than floats.
-    let now = chrono::Utc::now().to_rfc3339();
-    let baseline = serde_json::json!({
-        "model": "claude-opus-4-8",
-        "prompt_version": PROMPT_VERSION,
-        "generated_at": now,
-        "tasks": corpus.len(),
+    serde_json::json!({
+        "model": model,
+        "prompt_version": prompt_version,
+        "tasks": transcripts.len(),
         "trials_per_task": TRIALS_PER_TASK,
-        "total_trials": total_trials,
+        "total_attempted": measured + errored,
+        "measured_trials": measured,
+        "errored_trials": errored,
         "tier_pass_counts": {
-            "t1": tier_pass_counts[0],
-            "t2": tier_pass_counts[1],
-            "t3": tier_pass_counts[2],
-            "t4": tier_pass_counts[3],
+            "t1": tier_pass[0], "t2": tier_pass[1], "t3": tier_pass[2], "t4": tier_pass[3],
         },
         "tier_rates": {
-            "t1": t1_rate,
-            "t2": t2_rate,
-            "t3": t3_rate,
-            "t4": t4_rate,
+            "t1": rate(tier_pass[0]), "t2": rate(tier_pass[1]),
+            "t3": rate(tier_pass[2]), "t4": rate(tier_pass[3]),
         },
-        "per_intent": per_intent_rates,
-    });
+        "per_intent": per_intent_doc,
+    })
+}
 
-    let baseline_path = manifest_dir
-        .join("tests/fixtures/agent_harness/baseline.json");
-    let baseline_json =
-        serde_json::to_string_pretty(&baseline).expect("baseline serialization must succeed");
-    std::fs::write(&baseline_path, &baseline_json)
-        .expect("baseline write must succeed");
-    eprintln!("Wrote baseline: {}", baseline_path.display());
+/// Path to the committed transcripts dir (offline tests).
+fn committed_transcripts_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/agent_harness/transcripts")
+}
+
+/// Offline regeneration of `baseline.json` from the committed transcripts — no
+/// LLM, no network. Gated behind `FERRO_AGENT_REGEN=1` so it never runs in CI
+/// (it WRITES the committed artifact). Use after editing the scorer or the
+/// transcripts to refresh the baseline deterministically:
+/// `FERRO_AGENT_REGEN=1 cargo test -p ferro-mcp --test agent_harness regen_baseline_from_transcripts -- --ignored`
+#[tokio::test]
+#[ignore = "regenerates committed baseline.json from transcripts; run with FERRO_AGENT_REGEN=1"]
+async fn regen_baseline_from_transcripts() {
+    if std::env::var("FERRO_AGENT_REGEN").is_err() {
+        eprintln!("skipping: set FERRO_AGENT_REGEN=1 to regenerate baseline.json");
+        return;
+    }
+    let dir = committed_transcripts_dir();
+    let transcripts = read_committed_transcripts(&dir);
+    let mut baseline = recompute_baseline_doc(&transcripts).await;
+    baseline["generated_at"] = serde_json::json!(chrono::Utc::now().to_rfc3339());
+    let path = dir.parent().unwrap().join("baseline.json");
+    std::fs::write(&path, serde_json::to_string_pretty(&baseline).unwrap())
+        .expect("baseline write");
+    eprintln!("Regenerated {}\n{}", path.display(), baseline["tier_rates"]);
+}
+
+/// Replay determinism guard (CI — no LLM, no network, no gate): recompute the
+/// baseline from the committed transcripts and assert it matches the committed
+/// `baseline.json` on the load-bearing integer counts. A mismatch means the
+/// scorer changed (regenerate via `FERRO_AGENT_REGEN=1`) or the transcripts
+/// drifted from the baseline.
+#[tokio::test]
+async fn agent_eval_replay_matches_baseline() {
+    let dir = committed_transcripts_dir();
+    let transcripts = read_committed_transcripts(&dir);
+    let recomputed = recompute_baseline_doc(&transcripts).await;
+
+    let committed: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/agent_harness/baseline.json"))
+            .expect("baseline.json must be valid JSON");
+
+    for key in ["tier_pass_counts", "measured_trials", "errored_trials"] {
+        assert_eq!(
+            recomputed[key], committed[key],
+            "replay mismatch on {key}: recomputed {} != committed {} \
+             (regenerate with FERRO_AGENT_REGEN=1 if the scorer changed)",
+            recomputed[key], committed[key]
+        );
+    }
+
+    // The committed baseline records the pinned model and a prompt version.
+    assert_eq!(committed["model"], "claude-opus-4-8");
+    assert!(committed["prompt_version"].is_string());
+
+    // Determinism: a second recompute yields identical counts.
+    let again = recompute_baseline_doc(&transcripts).await;
+    assert_eq!(again["tier_pass_counts"], recomputed["tier_pass_counts"]);
 }

@@ -1,0 +1,466 @@
+{
+  "task_id": "process-telescope-allocation-slots",
+  "target_intent": "Process",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "actions": [
+          {
+            "description": "An astronomer submits a new telescope scheduling request, creating a slot in the requested state.",
+            "display_name": "Submit Request",
+            "effects": [
+              "create_slot"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Astronomical target to observe.",
+                "meaning": "entity_name",
+                "name": "target_name",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Instrument requested for the observation.",
+                "meaning": "category",
+                "name": "instrument",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Number of observing hours requested.",
+                "meaning": "quantity",
+                "name": "requested_hours",
+                "required": true
+              }
+            ],
+            "name": "submit_request",
+            "preconditions": []
+          },
+          {
+            "description": "Allocator reviews a requested slot and, gated on reviewer sign-off, advances it to scheduled.",
+            "display_name": "Schedule Slot",
+            "effects": [
+              "assign_observing_window",
+              "notify_astronomer_scheduled"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Slot being scheduled.",
+                "meaning": "identifier",
+                "name": "slot_id",
+                "required": true
+              },
+              {
+                "data_type": "date_time",
+                "description": "Start of the assigned observing window.",
+                "meaning": "date_time",
+                "name": "window_start",
+                "required": true
+              },
+              {
+                "data_type": "date_time",
+                "description": "End of the assigned observing window.",
+                "meaning": "date_time",
+                "name": "window_end",
+                "required": true
+              }
+            ],
+            "name": "schedule_slot",
+            "preconditions": [
+              "reviewer_signed_off"
+            ],
+            "transition_trigger": "schedule"
+          },
+          {
+            "description": "Allocator declines an incomplete request at the review stage.",
+            "display_name": "Decline Request",
+            "effects": [
+              "notify_astronomer_declined"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Slot being declined.",
+                "meaning": "identifier",
+                "name": "slot_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Reason the request was declined.",
+                "meaning": "free_text",
+                "name": "review_notes",
+                "required": false
+              }
+            ],
+            "name": "decline_request",
+            "preconditions": [
+              "request_complete"
+            ],
+            "transition_trigger": "decline"
+          },
+          {
+            "description": "Requester withdraws a slot before it is scheduled.",
+            "display_name": "Withdraw Request",
+            "effects": [],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Slot being withdrawn.",
+                "meaning": "identifier",
+                "name": "slot_id",
+                "required": true
+              }
+            ],
+            "name": "withdraw_request",
+            "preconditions": [],
+            "transition_trigger": "withdraw"
+          },
+          {
+            "description": "Record that the observation window opened and the observation was carried out.",
+            "display_name": "Mark Observed",
+            "effects": [],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Slot being marked observed.",
+                "meaning": "identifier",
+                "name": "slot_id",
+                "required": true
+              }
+            ],
+            "name": "mark_observed",
+            "preconditions": [],
+            "transition_trigger": "observe"
+          },
+          {
+            "description": "Archive a slot once observation data has been retrieved.",
+            "display_name": "Archive Slot",
+            "effects": [
+              "link_archive_dataset"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Slot being archived.",
+                "meaning": "identifier",
+                "name": "slot_id",
+                "required": true
+              },
+              {
+                "data_type": "url",
+                "description": "Location of the archived observation dataset.",
+                "meaning": "url",
+                "name": "archive_url",
+                "required": true
+              }
+            ],
+            "name": "archive_slot",
+            "preconditions": [],
+            "transition_trigger": "archive"
+          }
+        ],
+        "description": "Registry of observatory telescope time allocation slots. Operators move each slot through its lifecycle from request submission through review, scheduling, observation, and archival. Scheduling is gated on a reviewer sign-off check; declined and withdrawn are alternative terminal outcomes at the review stage.",
+        "display_name": "Telescope Time Slot",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "slot_code",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "target_name",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "instrument",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "enum",
+            "meaning": "status",
+            "name": "status",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "requested_hours",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "date_time",
+            "name": "window_start",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "date_time",
+            "name": "window_end",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "boolean",
+            "meaning": "boolean",
+            "name": "reviewer_signoff",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "review_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "url",
+            "meaning": "url",
+            "name": "archive_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "astronomer_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "allocator_id",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "created_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "updated_at",
+            "name": "updated_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "The allocator's reviewer sign-off check must pass before a requested slot can advance to scheduled.",
+            "display_name": "Reviewer Signed Off",
+            "name": "reviewer_signed_off"
+          },
+          {
+            "description": "The scheduling request must contain all required fields; an incomplete request is declined at the review stage.",
+            "display_name": "Request Complete",
+            "name": "request_complete"
+          }
+        ],
+        "name": "telescope_slot",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "Astronomer who submitted the scheduling request for this slot.",
+            "foreign_key": "astronomer_id",
+            "inverse": "slots",
+            "name": "astronomer",
+            "navigation": "link",
+            "target": "astronomer"
+          },
+          {
+            "cardinality": "many_to_one",
+            "description": "Allocator who reviews and schedules this slot.",
+            "foreign_key": "allocator_id",
+            "inverse": "reviewed_slots",
+            "name": "allocator",
+            "navigation": "link",
+            "target": "allocator"
+          }
+        ],
+        "state_machine": {
+          "description": "Lifecycle of a telescope time allocation slot from request through archival, with a branching review outcome gated on reviewer sign-off.",
+          "display_name": "Telescope Slot Lifecycle",
+          "initial_state": "requested",
+          "name": "telescope_slot_lifecycle",
+          "states": [
+            {
+              "description": "An astronomer has submitted a scheduling request; awaiting allocator review.",
+              "display_name": "Requested",
+              "name": "requested"
+            },
+            {
+              "description": "The reviewed and signed-off request has been placed on the observing schedule.",
+              "display_name": "Scheduled",
+              "name": "scheduled",
+              "on_enter": [
+                "notify_astronomer_scheduled"
+              ]
+            },
+            {
+              "description": "The observation window has opened and the observation has been carried out.",
+              "display_name": "Observed",
+              "name": "observed"
+            },
+            {
+              "description": "Observation data has been retrieved and archived.",
+              "display_name": "Archived",
+              "is_final": true,
+              "name": "archived",
+              "on_enter": [
+                "link_archive_dataset"
+              ]
+            },
+            {
+              "description": "The request was rejected at the review stage because it was incomplete.",
+              "display_name": "Declined",
+              "is_final": true,
+              "name": "declined"
+            },
+            {
+              "description": "The requester withdrew the slot before it was scheduled.",
+              "display_name": "Withdrawn",
+              "is_final": true,
+              "name": "withdrawn"
+            }
+          ],
+          "transitions": [
+            {
+              "actions": [
+                "assign_observing_window"
+              ],
+              "description": "Allocator reviews the request and, once reviewer sign-off passes, schedules the slot.",
+              "event": "schedule",
+              "from": "requested",
+              "guard": "reviewer_signed_off",
+              "to": "scheduled"
+            },
+            {
+              "description": "Allocator declines an incomplete request at the review stage (branching outcome of the sign-off gate).",
+              "event": "decline",
+              "from": "requested",
+              "guard": "request_complete",
+              "to": "declined"
+            },
+            {
+              "description": "Requester withdraws the slot before it is scheduled.",
+              "event": "withdraw",
+              "from": "requested",
+              "to": "withdrawn"
+            },
+            {
+              "description": "The observation window opens and the observation is performed.",
+              "event": "observe",
+              "from": "scheduled",
+              "to": "observed"
+            },
+            {
+              "actions": [
+                "link_archive_dataset"
+              ],
+              "description": "Retrieved observation data is archived.",
+              "event": "archive",
+              "from": "observed",
+              "to": "archived"
+            }
+          ]
+        }
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "telescope_slot_service"
+          },
+          "result_summary": "{\"error\": \"projection 'telescope_slot_service' not found. Available: []\"}"
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "service_def": null,
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "service_def": null,
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    }
+  ]
+}

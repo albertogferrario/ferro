@@ -1,0 +1,26 @@
+{
+  "task_id": "analyze-aurora-event-log",
+  "target_intent": "Analyze",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": null,
+      "tool_calls": [],
+      "error": "credit_balance_too_low"
+    },
+    {
+      "trial": 1,
+      "service_def": null,
+      "tool_calls": [],
+      "error": "credit_balance_too_low"
+    },
+    {
+      "trial": 2,
+      "service_def": null,
+      "tool_calls": [],
+      "error": "credit_balance_too_low"
+    }
+  ]
+}

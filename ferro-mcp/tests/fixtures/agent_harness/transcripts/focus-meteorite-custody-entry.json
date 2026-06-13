@@ -1,0 +1,381 @@
+{
+  "task_id": "focus-meteorite-custody-entry",
+  "target_intent": "Focus",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Appends a curator note to the meteorite acquisition record.",
+            "display_name": "Append Curator Note",
+            "effects": [
+              "update_curator_notes"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the meteorite acquisition record.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Curator note text to append.",
+                "meaning": "free_text",
+                "name": "note",
+                "required": true
+              }
+            ],
+            "name": "append_curator_note"
+          }
+        ],
+        "description": "Detailed record of a single meteorite acquisition, showing its designation, provenance narrative, specimen photograph, acquisition certificate, and parent institution. Primarily read-focused with occasional curator notes appended.",
+        "display_name": "Meteorite Acquisition",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "designation",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "provenance_narrative",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "image_url",
+            "name": "specimen_photo_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "url",
+            "name": "certificate_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "institution_id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "curator_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          }
+        ],
+        "name": "meteorite_acquisition",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "Parent institution that owns this meteorite acquisition record.",
+            "foreign_key": "institution_id",
+            "inverse": "acquisitions",
+            "name": "institution",
+            "navigation": "inline",
+            "target": "institution"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Appends a curator's annotation to the acquisition record's notes.",
+            "display_name": "Append Curator Note",
+            "effects": [
+              "persist_curator_note"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the meteorite acquisition record.",
+                "meaning": "identifier",
+                "name": "acquisition_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "The curator note text to append.",
+                "meaning": "free_text",
+                "name": "note",
+                "required": true
+              }
+            ],
+            "name": "append_curator_note",
+            "preconditions": []
+          }
+        ],
+        "description": "A detailed record of a single meteorite specimen acquisition, presenting its designation, provenance narrative, specimen photograph, acquisition certificate, and the institution it belongs to. Read-oriented with occasional curator notes.",
+        "display_name": "Meteorite Acquisition",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "designation_name",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "provenance_narrative",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "image_url",
+            "name": "specimen_photo_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "url",
+            "name": "acquisition_certificate_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "curator_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "institution_id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [],
+        "name": "meteorite_acquisition",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "Parent institution that owns this meteorite acquisition.",
+            "foreign_key": "institution_id",
+            "inverse": "acquisitions",
+            "name": "institution",
+            "navigation": "inline",
+            "target": "institution"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "meteorite_acquisition_service"
+          },
+          "result_summary": "{\"error\": \"projection 'meteorite_acquisition_service' not found. Available: []\"}"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Appends a curator note to the acquisition record's running provenance commentary.",
+            "display_name": "Append Curator Note",
+            "effects": [
+              "append_to_curator_notes",
+              "stamp_note_timestamp"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the meteorite acquisition to annotate.",
+                "meaning": "identifier",
+                "name": "acquisition_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "The curator note text to append.",
+                "meaning": "free_text",
+                "name": "note",
+                "required": true
+              }
+            ],
+            "name": "append_curator_note",
+            "preconditions": [
+              "note_not_empty"
+            ]
+          }
+        ],
+        "description": "A single meteorite acquisition record, showing its designation, provenance narrative, specimen photograph, acquisition certificate, and parent institution. Primarily a read-focused detail view with occasional appended curator notes.",
+        "display_name": "Meteorite Acquisition",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "designation",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "provenance_narrative",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "image_url",
+            "name": "specimen_photo_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "url",
+            "name": "certificate_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "institution_id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "curator_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "acquired_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "The curator note text must be non-empty before it can be appended.",
+            "display_name": "Note Not Empty",
+            "name": "note_not_empty"
+          }
+        ],
+        "name": "meteorite_acquisition",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "The parent institution that this meteorite acquisition belongs to.",
+            "foreign_key": "institution_id",
+            "inverse": "acquisitions",
+            "name": "institution",
+            "navigation": "link",
+            "target": "institution"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    }
+  ]
+}
