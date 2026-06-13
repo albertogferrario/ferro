@@ -24,6 +24,7 @@ pub use config::{OAuthConfig, OAuthConfigError};
 pub use error::OAuthError;
 pub use jwt::McpTokenClaims;
 pub use migration::Migration as CreateOauthClientsTable;
+pub use migration::MigrationMcpApiKeys as CreateMcpApiKeysTable;
 pub use resume::{oauth_resume_redirect, store_oauth_return_to, take_oauth_return_to};
 pub use validate::{
     generate_mcp_api_key, hash_mcp_api_key, validate_api_key, validate_bearer, BearerCheck,
