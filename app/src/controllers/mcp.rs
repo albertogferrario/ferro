@@ -214,61 +214,79 @@ pub async fn handle(req: Request) -> Response {
                 }))
             })?;
 
-            // Resolve the target service by tool name before dispatching (D-04).
             let tool_name = params["name"].as_str().unwrap_or("");
-            let service_name = tool_name.strip_prefix("list_").unwrap_or(tool_name);
             let services = exposed_services();
-            let service = match services
-                .iter()
-                .find(|s| s.name == service_name && s.mcp_exposed)
-            {
-                Some(s) => s,
-                None => {
-                    return Ok(HttpResponse::json(json!({
-                        "jsonrpc": "2.0", "id": id,
-                        "error": { "code": -32601, "message": "Method not found" }
-                    })));
-                }
-            };
 
-            // Load the concrete User for Gate::authorize_for (Pitfall 7: Gate::authorize
-            // reads session Auth::id() which is absent on the MCP bearer path).
-            let user = crate::models::users::User::find_by_id(user_id)
-                .await
-                .map_err(|e| {
-                    HttpResponse::json(json!({
-                        "jsonrpc": "2.0", "id": id.clone(),
-                        "error": { "code": -32603, "message": e.to_string() }
-                    }))
-                })?
-                .ok_or_else(|| HttpResponse::new().status(401))?;
+            // Authorization boundary split:
+            //
+            // READ tools (name starts with "list_"):
+            //   Gate::authorize_for checks the service-level ability declared in ServiceDef.
+            //   Service is resolved by stripping "list_" to get the service name.
+            //
+            // WRITE tools (all other names):
+            //   Authorization is enforced by two layers already inside handle_tools_call:
+            //     1. Scope gate (Phase 217) — API-key "read_only" scope rejects write tools.
+            //     2. dispatch_write guard re-evaluation (D-02) — live DB guard checks.
+            //   The app Gate is service-oriented (reads ServiceDef.mcp_ability) and is not
+            //   applicable here because write tools do not map 1:1 to a service name.
+            //   Adding a Gate check for write tools would require resolving the owning service
+            //   via find_action; the scope gate + live guards cover the write authorization
+            //   surface (SC#1 / T-219-02), so Gate is intentionally skipped for write tools.
+            if let Some(service_name) = tool_name.strip_prefix("list_") {
+                // Read tool: apply Gate check before dispatching.
+                let service = match services
+                    .iter()
+                    .find(|s| s.name == service_name && s.mcp_exposed)
+                {
+                    Some(s) => s,
+                    None => {
+                        return Ok(HttpResponse::json(json!({
+                            "jsonrpc": "2.0", "id": id,
+                            "error": { "code": -32601, "message": "Method not found" }
+                        })));
+                    }
+                };
 
-            // Fail-closed (D-04, D-06, T-200-03b): mcp_ability = None → deny.
-            // An mcp_exposed projection with no declared ability is never callable.
-            let ability = match service.mcp_ability.as_deref() {
-                Some(a) => a,
-                None => {
-                    return Ok(HttpResponse::json(make_tool_deny_response(
-                        "Access denied. This resource requires an explicit ability declaration.",
-                        &id,
-                    )));
-                }
-            };
+                // Load the concrete User for Gate::authorize_for (Pitfall 7: Gate::authorize
+                // reads session Auth::id() which is absent on the MCP bearer path).
+                let user = crate::models::users::User::find_by_id(user_id)
+                    .await
+                    .map_err(|e| {
+                        HttpResponse::json(json!({
+                            "jsonrpc": "2.0", "id": id.clone(),
+                            "error": { "code": -32603, "message": e.to_string() }
+                        }))
+                    })?
+                    .ok_or_else(|| HttpResponse::new().status(401))?;
 
-            // Policy gate (T-200-03, AMCP-11): same policy layer as the web surface.
-            // Gate::authorize_for takes an explicit user — does NOT check session state.
-            match ferro::authorization::Gate::authorize_for(&user, ability, None) {
-                Ok(()) => {}
-                Err(_) => {
-                    // D-09: deny envelope discloses no rows, columns, or filter values.
-                    return Ok(HttpResponse::json(make_tool_deny_response(
-                        "Access denied. You do not have permission to view this resource.",
-                        &id,
-                    )));
+                // Fail-closed (D-04, D-06, T-200-03b): mcp_ability = None → deny.
+                // An mcp_exposed projection with no declared ability is never callable.
+                let ability = match service.mcp_ability.as_deref() {
+                    Some(a) => a,
+                    None => {
+                        return Ok(HttpResponse::json(make_tool_deny_response(
+                            "Access denied. This resource requires an explicit ability declaration.",
+                            &id,
+                        )));
+                    }
+                };
+
+                // Policy gate (T-200-03, AMCP-11): same policy layer as the web surface.
+                // Gate::authorize_for takes an explicit user — does NOT check session state.
+                match ferro::authorization::Gate::authorize_for(&user, ability, None) {
+                    Ok(()) => {}
+                    Err(_) => {
+                        // D-09: deny envelope discloses no rows, columns, or filter values.
+                        return Ok(HttpResponse::json(make_tool_deny_response(
+                            "Access denied. You do not have permission to view this resource.",
+                            &id,
+                        )));
+                    }
                 }
             }
 
             // Allowed — forward tenant context and resolved scope to dispatch (SC-1, D-06).
+            // For read tools: Gate passed above. For write tools: scope gate + guards enforce.
             let tenant_id = ferro::current_tenant().map(|t| t.id);
             let ctx = McpContext {
                 tenant_id,
