@@ -145,6 +145,13 @@ if user::Entity::exists_any().await? {
 
 ### Creating Records
 
+`ActiveValue` is re-exported from the ferro facade as `ferro::ActiveValue`, so generated and
+hand-written code can import it from `ferro` without a direct `sea_orm` dependency:
+
+```rust,ignore
+use ferro::ActiveValue; // equivalent to use sea_orm::ActiveValue
+```
+
 ```rust
 use sea_orm::Set;
 use ferro::models::user;

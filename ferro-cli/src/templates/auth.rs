@@ -86,12 +86,12 @@ pub fn auth_controller_template() -> String {
 //!
 //! Handles user registration, login, and logout.
 //!
-//! Tip: Use AuthUser<users::Model> to auto-extract the authenticated user:
+//! Tip: Use AuthUser<user::Model> to auto-extract the authenticated user:
 //!
 //!   use ferro::AuthUser;
 //!
 //!   #[handler]
-//!   pub async fn profile(user: AuthUser<users::Model>) -> Response {
+//!   pub async fn profile(user: AuthUser<user::Model>) -> Response {
 //!       Ok(HttpResponse::json(serde_json::json!({"user": user.name})))
 //!   }
 
@@ -99,10 +99,10 @@ use ferro::database::ModelMut;
 use ferro::http::{HttpResponse, Request, Response};
 use ferro::{handler, hash, json_response, rules, verify};
 use ferro::{Auth, Validator, required, string, email, min};
-use sea_orm::ActiveValue;
+use ferro::ActiveValue;
 use serde::Deserialize;
 
-use crate::models::users;
+use crate::models::user;
 
 #[derive(Deserialize)]
 struct RegisterInput {
@@ -147,7 +147,7 @@ pub async fn register(req: Request) -> Response {
     }
 
     // Check email uniqueness
-    if let Some(_existing) = users::Model::find_by_email(&input.email).await.map_err(|e| {
+    if let Some(_existing) = user::Model::find_by_email(&input.email).await.map_err(|e| {
         HttpResponse::json(serde_json::json!({
             "message": format!("Database error: {}", e)
         }))
@@ -173,7 +173,7 @@ pub async fn register(req: Request) -> Response {
     })?;
 
     // Create user
-    let user = users::ActiveModel {
+    let user = user::ActiveModel {
         name: ActiveValue::Set(input.name.clone()),
         email: ActiveValue::Set(input.email.clone()),
         password: ActiveValue::Set(password_hash),
@@ -181,8 +181,10 @@ pub async fn register(req: Request) -> Response {
         ..Default::default()
     };
 
-    let user = users::Entity::insert(user)
-        .exec_with_returning(&ferro::database::connection().await)
+    let db = ferro::DB::connection()
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
+    let user = user::Entity::insert(user)
+        .exec_with_returning(db.inner())
         .await
         .map_err(|e| {
             HttpResponse::json(serde_json::json!({
@@ -237,7 +239,7 @@ pub async fn login(req: Request) -> Response {
     let password = input.password.clone();
 
     let result = Auth::attempt(|| async {
-        let user = users::Model::find_by_email(&email).await?;
+        let user = user::Model::find_by_email(&email).await?;
         match user {
             Some(user) => {
                 if verify(&password, &user.password)? {
@@ -254,7 +256,7 @@ pub async fn login(req: Request) -> Response {
     match result {
         Ok(Some(_id)) => {
             // Re-fetch user for response
-            let user = users::Model::find_by_email(&input.email)
+            let user = user::Model::find_by_email(&input.email)
                 .await
                 .map_err(|e| {
                     HttpResponse::json(serde_json::json!({

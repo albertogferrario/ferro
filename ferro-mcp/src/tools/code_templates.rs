@@ -288,6 +288,35 @@ pub async fn destroy(req: Request, id: Path<i32>) -> Response {
             ],
         },
         CodeTemplate {
+            name: "error_response_arm".to_string(),
+            category: "handler".to_string(),
+            description: "Error-arm helper for handler Result chains. `ferro::error_response!(status, msg)` \
+expands to a bare HttpResponse (not Result), for use inside `.map_err(...)` and `.ok_or_else(...)` \
+where `?` unwraps the Err."
+                .to_string(),
+            code: r#"let {{entity_snake}} = {{Entity}}::find_by_id(id)
+    .one(db)
+    .await
+    .map_err(|e| ferro::error_response!(500, e.to_string()))?
+    .ok_or_else(|| ferro::error_response!(404, "{{Entity}} not found"))?;"#
+                .to_string(),
+            imports: vec![
+                "use ferro::error_response;".to_string(),
+            ],
+            placeholders: vec![
+                Placeholder {
+                    name: "{{Entity}}".to_string(),
+                    description: "Model name in PascalCase".to_string(),
+                    example: "User".to_string(),
+                },
+                Placeholder {
+                    name: "{{entity_snake}}".to_string(),
+                    description: "Model name in snake_case (local variable name)".to_string(),
+                    example: "user".to_string(),
+                },
+            ],
+        },
+        CodeTemplate {
             name: "action_handler".to_string(),
             category: "handler".to_string(),
             description: "POST action handler demonstrating the two-layer uniqueness pattern. \

@@ -281,6 +281,25 @@ pub async fn publish_by_id(req: Request, id: i64) -> ActionResult {
 Every failure is a 303 redirect to `/dashboard/pages` with a flash message
 and a back-compat query string. The browser does not strand at the POST URL.
 
+## error_response! macro
+
+For handlers that return `Response` (not `ActionResult`), the `error_response!` macro produces
+a bare `HttpResponse` suitable for use inside `.map_err(...)` and `.ok_or_else(...)` error arms:
+
+```rust,ignore
+use ferro::error_response;
+
+let record = Entity::find_by_id(id)
+    .one(db)
+    .await
+    .map_err(|e| ferro::error_response!(500, e.to_string()))?
+    .ok_or_else(|| ferro::error_response!(404, "Not found"))?;
+```
+
+The macro returns an `HttpResponse` with a JSON body `{"message": "..."}` and the given status
+code. It does not wrap the value in `Ok(...)` — the `?` operator in the error arm does the
+unwrapping.
+
 ## See also
 
 - [Controllers](./controllers.md) — for the routing layer that mounts handlers.
