@@ -532,22 +532,25 @@ Location: `ferro-cli/tests/fixtures/benchmark/RESULTS.md` [VERIFIED: D-05]
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **make:scaffold vs make:model naming**
    - What we know: ROADMAP and CONTEXT say `ferro make:model <X>` but no such subcommand exists; `make:scaffold --api` is the closest match.
    - What's unclear: Whether the planner should use `make:scaffold` exactly as-is or whether a thin `make:model` alias should be added to the CLI.
    - Recommendation: Use `make:scaffold --api` in the benchmark as-is. Document the naming discrepancy in "discovered weaknesses" — it is the kind of real finding COMP-04 should surface.
+   - **RESOLVED:** Plans use `ferro make:scaffold <Name> --no-smart-defaults -q -y --api`; `grep -c make:model == 0` is an acceptance criterion (Plan 01 Task 2). The naming discrepancy is seeded as the SC#5 weakness finding. No CLI alias added (out of scope — this phase does not modify the commands it measures).
 
 2. **Published ferro-rs version vs local workspace version**
    - What we know: The scaffolded project pulls `ferro-rs 0.2` from crates.io. The workspace is at `0.2.54`.
    - What's unclear: Whether `0.2.54` (or the next publish) is the current crates.io HEAD. If the bench runs before the next publish, the scaffold may pull a slightly older version; `cargo build` may still succeed if no breaking changes.
    - Recommendation: Document the exact published version in RESULTS.md. Run `cargo search ferro-rs` before the warm benchmark and add a note if version mismatch is detected.
+   - **RESOLVED:** Deferred to RESULTS.md as a recorded environment fact — the cold/warm run captures and commits the exact resolved `ferro-rs` version (SC#4 env spec). A version mismatch, if observed, is a candidate weakness. Not a code change this phase.
 
 3. **criterion `final_summary()` availability**
    - What we know: Criterion has a `final_summary()` method for programmatic use.
    - What's unclear: Whether `final_summary()` is part of the public API in 0.8.2 or was added later.
    - Recommendation: If `final_summary()` is not available, the benchmark can simply end after the `bench_function` call; criterion will flush output when `c` drops. Verify during Wave 0 compilation.
+   - **RESOLVED (verify-at-execute):** Plan 01 Task 2 acceptance criteria handle both cases — keep the call if public in 0.8.2, otherwise drop it and let `c` drop to flush. Bounded to one line in the Wave 0 compile; no further pre-execution research needed.
 
 ---
 
