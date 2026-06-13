@@ -1165,23 +1165,41 @@ mod tests {
 
         // One orphan on "default", one orphan on "publish", one on an untouched
         // queue, plus a pending row that must NOT be reaped.
-        let orphan_default =
-            insert_job(&conn, "default", "Orphan1", "claimed", 0, 3, Some(&now), &now).await;
-        let orphan_publish =
-            insert_job(&conn, "publish", "Orphan2", "claimed", 1, 3, Some(&now), &now).await;
+        let orphan_default = insert_job(
+            &conn,
+            "default",
+            "Orphan1",
+            "claimed",
+            0,
+            3,
+            Some(&now),
+            &now,
+        )
+        .await;
+        let orphan_publish = insert_job(
+            &conn,
+            "publish",
+            "Orphan2",
+            "claimed",
+            1,
+            3,
+            Some(&now),
+            &now,
+        )
+        .await;
         let orphan_other =
             insert_job(&conn, "other", "Orphan3", "claimed", 0, 3, Some(&now), &now).await;
         let pending_default =
             insert_job(&conn, "default", "Fresh", "pending", 0, 3, None, &now).await;
 
         // Worker handles "default" and "publish" — must reap exactly those orphans.
-        let reaped = reap_startup_claims(
-            &conn,
-            &["default".to_string(), "publish".to_string()],
-        )
-        .await
-        .expect("reap_startup_claims failed");
-        assert_eq!(reaped, 2, "expected 2 orphan rows reaped (default + publish)");
+        let reaped = reap_startup_claims(&conn, &["default".to_string(), "publish".to_string()])
+            .await
+            .expect("reap_startup_claims failed");
+        assert_eq!(
+            reaped, 2,
+            "expected 2 orphan rows reaped (default + publish)"
+        );
 
         // The two scoped orphans are now failed with a non-null error + failed_at.
         for id in [orphan_default, orphan_publish] {
@@ -1241,7 +1259,17 @@ mod tests {
         // without building an invalid `IN ()` SQL clause.
         let conn = setup().await;
         let now = Utc::now().to_rfc3339();
-        insert_job(&conn, "default", "Orphan", "claimed", 0, 3, Some(&now), &now).await;
+        insert_job(
+            &conn,
+            "default",
+            "Orphan",
+            "claimed",
+            0,
+            3,
+            Some(&now),
+            &now,
+        )
+        .await;
 
         let reaped = reap_startup_claims(&conn, &[])
             .await

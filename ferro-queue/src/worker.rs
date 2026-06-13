@@ -277,8 +277,12 @@ impl WorkerLoop {
         // other; the model assumed is single-worker-per-queue.
         match crate::db::reap_startup_claims(conn, &self.config.queues).await {
             Ok(0) => {}
-            Ok(n) => info!(worker_id = %self.worker_id, reaped = n, "reaped orphan claimed jobs at startup"),
-            Err(e) => error!(worker_id = %self.worker_id, error = %e, "startup orphan reap failed — continuing"),
+            Ok(n) => {
+                info!(worker_id = %self.worker_id, reaped = n, "reaped orphan claimed jobs at startup")
+            }
+            Err(e) => {
+                error!(worker_id = %self.worker_id, error = %e, "startup orphan reap failed — continuing")
+            }
         }
 
         'outer: loop {
