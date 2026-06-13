@@ -223,7 +223,12 @@ mod tests {
                                 .unwrap_or(false);
                             Ok(result)
                         }
-                        _ => Ok(true),
+                        // Fail-closed: unknown guard names deny, not allow.
+                        // Any ActionDef referencing an unregistered guard name is a
+                        // configuration error; silently passing it inverts fail-closed.
+                        _ => Err(ferro_mcp_server::Error::GuardFailed(format!(
+                            "unknown guard '{guard_name}': no evaluator registered"
+                        ))),
                     }
                 })
             }),

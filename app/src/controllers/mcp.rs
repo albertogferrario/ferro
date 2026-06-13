@@ -104,8 +104,13 @@ fn make_write_dispatcher() -> WriteDispatcher {
                 match guard_name.as_str() {
                     // Live DB check — never reads ctx.evaluated_guards (D-02 / T-219-02).
                     "is_manager" => Ok(check_is_manager(tenant_id, &db).await),
-                    // Unknown guard names: allow (matches BaseContext absent-key semantics).
-                    _ => Ok(true),
+                    // Fail-closed: unrecognized guard names are denied, not silently allowed.
+                    // An ActionDef referencing an unknown guard name is a configuration error;
+                    // allowing it would invert the fail-closed invariant and create a silent
+                    // privilege escalation path for future actions.
+                    _ => Err(ferro_mcp_server::Error::GuardFailed(format!(
+                        "unknown guard '{guard_name}': no evaluator registered"
+                    ))),
                 }
             })
         }),
