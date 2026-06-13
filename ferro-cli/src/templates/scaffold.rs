@@ -527,7 +527,7 @@ pub fn scaffold_controller_with_fk_template(
         .filter(|fk| fk.validated)
         .map(|fk| {
             format!(
-                "    let {} = {}Entity::find().all(db).await\n        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;\n",
+                "    let {} = {}Entity::find().all(db).await\n        .map_err(|e| ferro::error_response!(500, e.to_string()))?;\n",
                 fk.target_table,
                 fk.target_model
             )
@@ -554,7 +554,7 @@ pub fn scaffold_controller_with_fk_template(
         .filter(|fk| fk.validated)
         .map(|fk| {
             format!(
-                "    let {} = {}Entity::find().all(db).await\n        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;\n",
+                "    let {} = {}Entity::find().all(db).await\n        .map_err(|e| ferro::error_response!(500, e.to_string()))?;\n",
                 fk.target_table,
                 fk.target_model
             )
@@ -581,7 +581,7 @@ pub fn scaffold_controller_with_fk_template(
         .filter(|fk| fk.validated)
         .map(|fk| {
             format!(
-                "    let {} = {}Entity::find().all(db).await\n        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;\n",
+                "    let {} = {}Entity::find().all(db).await\n        .map_err(|e| ferro::error_response!(500, e.to_string()))?;\n",
                 fk.target_table,
                 fk.target_model
             )
@@ -622,7 +622,7 @@ pub fn scaffold_controller_with_fk_template(
 {unvalidated_comment}
 use ferro::{{
     database::{{Model as DatabaseModel, ModelMut}},
-    http::{{Request, Response, HttpResponse}},
+    http::{{Request, Response}},
     inertia::{{Inertia, SavedInertiaContext}},
     validation::Validatable,
     ActiveValue, ValidateRules,
@@ -661,7 +661,7 @@ pub struct {name}EditProps {{
 pub async fn index(req: Request) -> Response {{
     let {plural} = {snake_name}::Entity::all()
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
 
 {fk_index_fetches}
     Inertia::render(&req, "{plural_pascal}/Index", {plural_pascal}IndexProps {{ {plural}{fk_index_props_assign} }})
@@ -671,8 +671,8 @@ pub async fn index(req: Request) -> Response {{
 pub async fn show(req: Request, id: i64) -> Response {{
     let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
-        .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?
+        .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
     Inertia::render(&req, "{plural_pascal}/Show", {name}ShowProps {{ {snake} }})
 }}
@@ -687,7 +687,7 @@ pub async fn create(req: Request) -> Response {{
 pub async fn store(req: Request) -> Response {{
     let ctx = SavedInertiaContext::from(&req);
     let form: {name}Form = req.input().await.map_err(|e| {{
-        HttpResponse::bad_request(format!("Invalid form data: {{}}", e))
+        ferro::error_response!(400, format!("Invalid form data: {{}}", e))
     }})?;
 
     // Validate using derive macro
@@ -705,17 +705,17 @@ pub async fn store(req: Request) -> Response {{
 
     let result = {snake_name}::Entity::insert_one(model)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
 
-    HttpResponse::redirect(&format!("/{plural}/{{}}", result.id))
+    Inertia::redirect_ctx(&ctx, format!("/{plural}/{{}}", result.id))
 }}
 
 /// Show edit form
 pub async fn edit(req: Request, id: i64) -> Response {{
     let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
-        .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?
+        .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
 {fk_edit_fetches}
     Inertia::render(&req, "{plural_pascal}/Edit", {name}EditProps {{ {snake}, errors: None{fk_edit_props_assign} }})
@@ -725,13 +725,13 @@ pub async fn edit(req: Request, id: i64) -> Response {{
 pub async fn update(req: Request, id: i64) -> Response {{
     let ctx = SavedInertiaContext::from(&req);
     let form: {name}Form = req.input().await.map_err(|e| {{
-        HttpResponse::bad_request(format!("Invalid form data: {{}}", e))
+        ferro::error_response!(400, format!("Invalid form data: {{}}", e))
     }})?;
 
     let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
-        .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?
+        .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
     // Validate using derive macro
     if let Err(errors) = form.validate() {{
@@ -745,18 +745,18 @@ pub async fn update(req: Request, id: i64) -> Response {{
 {update_fields}
     {snake_name}::Entity::update_one(active)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
 
-    HttpResponse::redirect(&format!("/{plural}/{{}}", id))
+    Inertia::redirect_ctx(&ctx, format!("/{plural}/{{}}", id))
 }}
 
 /// Delete a {snake}
 pub async fn destroy(req: Request, id: i64) -> Response {{
     {snake_name}::Entity::delete_by_pk(id)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
 
-    HttpResponse::redirect("/{plural}")
+    Inertia::redirect(&req, "/{plural}")
 }}
 "#,
         name = name,
@@ -797,7 +797,7 @@ pub fn scaffold_controller_template(
 
 use ferro::{{
     database::{{Model as DatabaseModel, ModelMut}},
-    http::{{Request, Response, HttpResponse}},
+    http::{{Request, Response}},
     inertia::{{Inertia, SavedInertiaContext}},
     validation::Validatable,
     ActiveValue, ValidateRules,
@@ -836,7 +836,7 @@ pub struct {name}EditProps {{
 pub async fn index(req: Request) -> Response {{
     let {plural} = {snake_name}::Entity::all()
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
 
     Inertia::render(&req, "{plural_pascal}/Index", {plural_pascal}IndexProps {{ {plural} }})
 }}
@@ -845,8 +845,8 @@ pub async fn index(req: Request) -> Response {{
 pub async fn show(req: Request, id: i64) -> Response {{
     let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
-        .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?
+        .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
     Inertia::render(&req, "{plural_pascal}/Show", {name}ShowProps {{ {snake} }})
 }}
@@ -860,7 +860,7 @@ pub async fn create(req: Request) -> Response {{
 pub async fn store(req: Request) -> Response {{
     let ctx = SavedInertiaContext::from(&req);
     let form: {name}Form = req.input().await.map_err(|e| {{
-        HttpResponse::bad_request(format!("Invalid form data: {{}}", e))
+        ferro::error_response!(400, format!("Invalid form data: {{}}", e))
     }})?;
 
     // Validate using derive macro
@@ -878,17 +878,17 @@ pub async fn store(req: Request) -> Response {{
 
     let result = {snake_name}::Entity::insert_one(model)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
 
-    HttpResponse::redirect(&format!("/{plural}/{{}}", result.id))
+    Inertia::redirect_ctx(&ctx, format!("/{plural}/{{}}", result.id))
 }}
 
 /// Show edit form
 pub async fn edit(req: Request, id: i64) -> Response {{
     let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
-        .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?
+        .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
     Inertia::render(&req, "{plural_pascal}/Edit", {name}EditProps {{ {snake}, errors: None }})
 }}
@@ -897,13 +897,13 @@ pub async fn edit(req: Request, id: i64) -> Response {{
 pub async fn update(req: Request, id: i64) -> Response {{
     let ctx = SavedInertiaContext::from(&req);
     let form: {name}Form = req.input().await.map_err(|e| {{
-        HttpResponse::bad_request(format!("Invalid form data: {{}}", e))
+        ferro::error_response!(400, format!("Invalid form data: {{}}", e))
     }})?;
 
     let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
-        .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?
+        .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
     // Validate using derive macro
     if let Err(errors) = form.validate() {{
@@ -917,18 +917,18 @@ pub async fn update(req: Request, id: i64) -> Response {{
 {update_fields}
     {snake_name}::Entity::update_one(active)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
 
-    HttpResponse::redirect(&format!("/{plural}/{{}}", id))
+    Inertia::redirect_ctx(&ctx, format!("/{plural}/{{}}", id))
 }}
 
 /// Delete a {snake}
 pub async fn destroy(req: Request, id: i64) -> Response {{
     {snake_name}::Entity::delete_by_pk(id)
         .await
-        .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
+        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
 
-    HttpResponse::redirect("/{plural}")
+    Inertia::redirect(&req, "/{plural}")
 }}
 "#,
         name = name,
