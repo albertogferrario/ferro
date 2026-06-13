@@ -417,8 +417,8 @@ pub fn resource_get_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
             #inner_fn_name(&mut __ferro_req, &__tenant, &__resource).await
         }
 
+        #(#fn_attrs)*
         async fn #inner_fn_name #fn_generics(
-            #(#fn_attrs)*
             req: &mut #ferro::Request,
             #tenant_pat: #tenant_ty,
             #resource_pat: #resource_ty_param,
