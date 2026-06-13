@@ -12,7 +12,10 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
-use swc::{config::JsMinifyOptions, try_with_handler, BoolOrDataConfig, JsMinifyExtras};
+use swc::{
+    config::{IsModule, JsMinifyOptions},
+    try_with_handler, BoolOrDataConfig, JsMinifyExtras,
+};
 use swc_common::{FileName, SourceMap, GLOBALS};
 
 use crate::{map_matching, Asset, ContentType, Error};
@@ -75,6 +78,21 @@ fn minify_js(source: &str, filename: &str) -> Result<String, String> {
                     &JsMinifyOptions {
                         compress: BoolOrDataConfig::from_bool(true),
                         mangle: BoolOrDataConfig::from_bool(true),
+                        // Treat input as a classic script, not a module. Without
+                        // this, swc assumes module-scope safety and hoists inner
+                        // function/var declarations of any IIFE wrapper to the
+                        // top level. For a `<script src>` (non-module) consumer
+                        // that produces a global symbol collision the moment a
+                        // second minified script ships a same-named local — the
+                        // first one's `function fooBar()` (mangled to `t`) ends
+                        // up as a global, then a later script's `var t = false`
+                        // clobbers it, and any closure that captured the
+                        // original `t` dies with `TypeError: t is not a
+                        // function`. Witnessed in the gestiscilo asset pipeline
+                        // running over the jetskiadriatic tenant repo where
+                        // tenant-info.js's IIFE got unwrapped and info-strip.js's
+                        // hoisted `var t` overrode it.
+                        module: IsModule::Bool(false),
                         ..Default::default()
                     },
                     JsMinifyExtras::default(),
@@ -110,6 +128,38 @@ mod tests {
         let pipeline = Pipeline::new().add(JsMinify::new());
         let result = pipeline.run(assets).expect("must succeed");
         assert_eq!(result[0].bytes.as_ref(), json);
+    }
+
+    #[test]
+    fn iife_wrapper_survives_minification() {
+        // Regression guard for the IIFE-stripping bug that surfaced on
+        // jetskiadriatic.it: tenant-info.js (an IIFE that defines a private
+        // `applyTenantInfo()` and attaches event listeners) was being
+        // unwrapped by swc with default options, so `applyTenantInfo` —
+        // mangled to `t` — became a global, and a later script's hoisted
+        // `var t` clobbered it. With `module: IsModule::Bool(false)` the
+        // outer IIFE survives and no inner symbol leaks to the global scope.
+        let js = "(function(){var private = 42; function applyTenantInfo(){return private + 1;} window.__r = applyTenantInfo();})();";
+        let result = minify_js(js, "iife.js").expect("must succeed");
+        // The outer IIFE shape must survive: there must be at least one
+        // function expression that runs immediately. A simple heuristic that
+        // catches the regression: the minified output must NOT begin with a
+        // bare top-level `function NAME(` declaration — that's what the
+        // pre-fix output looked like (`async function t(){…}` first thing
+        // in the file).
+        let trimmed = result.trim_start();
+        assert!(
+            !trimmed.starts_with("function applyTenantInfo"),
+            "outer IIFE must be preserved, not unwrapped to top-level function; got: {result}"
+        );
+        // And the inner symbol name `applyTenantInfo` must not be at the
+        // very top level either — it can survive as a mangled local inside
+        // the preserved IIFE, but it must not be a global function
+        // declaration that would shadow other scripts.
+        assert!(
+            !trimmed.starts_with("function ") || trimmed.starts_with("function()"),
+            "no top-level named function declaration leaked: {result}"
+        );
     }
 
     #[test]
