@@ -2858,7 +2858,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 212. CRUD Handler Proc Macros | 0/TBD | Scoped (discuss-phase needed) | - |
+| 212. CRUD Handler Proc Macros | 1/3 | In Progress|  |
 
 #### Phase Details
 
@@ -2872,8 +2872,8 @@ Plans:
 
 **Status:** Planned — 3 plans across 3 waves. Execute with `/gsd-execute-phase 212`.
 
-**Plans:** 3 plans
-- [ ] 212-01-PLAN.md — Foundations: `Validator::validate_or_redirect` (CRUD-03) + `TenantScoped` trait (CRUD-04) + unit tests (Wave 1, no deps)
+**Plans:** 1/3 plans executed
+- [x] 212-01-PLAN.md — Foundations: `Validator::validate_or_redirect` (CRUD-03) + `TenantScoped` trait (CRUD-04) + unit tests (Wave 1, no deps)
 - [ ] 212-02-PLAN.md — Proc macros: `#[resource_get]` + `#[resource_post]` + trybuild harness/fixtures + facade re-exports (CRUD-01, CRUD-02, CRUD-05) (Wave 2, depends_on 01)
 - [ ] 212-03-PLAN.md — Reference + release: dual-macro reference fixture + cargo-expand rustdoc + CHANGELOG + version bump 0.2.56 (CRUD-06) (Wave 3, depends_on 02)
 
