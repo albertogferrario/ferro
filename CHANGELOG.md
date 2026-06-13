@@ -7,14 +7,31 @@ All notable changes to Ferro crates are documented here. Format loosely follows
 
 ### Added
 
-- `ferro_cache::register_invalidator::<E, F>(cache, key_fn)`: register a
-  cache-invalidation listener for events of type `E` in one call. When `E`
-  is dispatched, `key_fn(&event) -> Vec<String>` returns the tag set to
-  flush; each tag is flushed via `Cache::tags(...).flush()`. Multiple
-  invalidators per event type are allowed. Per-flush failures are logged
-  via `tracing::warn!` and swallowed at the dispatcher boundary so a
-  degraded cache cannot brick the write path that fired the event.
+- `ferro_cache::register_invalidator_on::<E, F>(&dispatcher, cache, key_fn)`:
+  register a cache-invalidation listener on an arbitrary `EventDispatcher`.
+  Use this overload when the consumer holds a non-global dispatcher
+  (isolated per-tenant context, per-test fixture, embedded library inside
+  a larger app).
+- `ferro_cache::register_invalidator::<E, F>(cache, key_fn)`: convenience
+  wrapper around `register_invalidator_on` that targets the process-wide
+  `global_dispatcher()`. Right entry point for app-boot wiring where
+  events are dispatched via the ergonomic `event.dispatch().await`
+  Laravel-style API. When `E` is dispatched, `key_fn(&event) -> Vec<String>`
+  returns the tag set to flush; each tag is flushed via
+  `Cache::tags(...).flush()`. Multiple invalidators per event type are
+  allowed. Per-flush failures are logged via `tracing::warn!` and
+  swallowed at the dispatcher boundary so a degraded cache cannot brick
+  the write path that fired the event.
 - `ferro-cache` now depends on `ferro-events` (small surface; not optional).
+
+### Known gaps (named, scoped as follow-up phases)
+
+- **Phase 223** — Redis pub/sub cross-replica fanout. Phase 222's
+  invalidation fires only on the dispatching replica; multi-replica
+  consumers need a broadcast channel.
+- **Phase 224** — Cache invalidator metrics + introspection. Phase 222
+  emits `tracing::warn!` on failure and nothing else — no counts, no
+  timings, no registry visibility.
 
 ---
 

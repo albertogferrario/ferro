@@ -3099,3 +3099,58 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
 **Plans:** TBD (likely 2 plans: bridge + tests; CHANGELOG + version bump folded into closeout).
+
+---
+
+## v13.5 Cache Invalidation Completeness (Phases 223–224, scoped 2026-06-13)
+
+**Milestone Goal:** Round out the cache-invalidation primitive shipped in Phase 222 with the two pieces deliberately deferred from v1: cross-replica fanout (Phase 223) and operator-grade observability (Phase 224). Both are real gaps for production consumers running multi-replica deploys or wanting SLO dashboards on cache hit-rate / invalidation-rate — neither blocks single-process consumers like gestiscilo today, which is why they live in their own milestone rather than re-opening Phase 222.
+
+**Source:** Scoped 2026-06-13 during the Phase 222 / gestiscilo Phase 210 discussion. The honest framing of Phase 222 ("v1 framework primitive — works for the stated use case, has bounded gaps") names exactly these two as the deferred work. Capturing them as named, plannable phases so they cannot be silently forgotten.
+
+### Phases
+
+- [ ] **Phase 223: Redis Pub/Sub Cross-Replica Invalidation Channel** — Make `register_invalidator` (and `register_invalidator_on`) work across replicas of a multi-instance deploy. Today the invalidation fires only on the dispatching instance; with a Redis-backed `CacheStore`, a write on replica A flushes A's local view of the tagged keys but not B's. Add a pub/sub channel + receiver loop so every instance reacts to every published invalidation.
+
+- [ ] **Phase 224: Cache Invalidator Metrics + Introspection** — Operators today see `tracing::warn!` on failure and nothing else. Add a metrics surface (counters: invalidations_fired, invalidations_failed, tags_flushed; histograms: time_to_flush) and an introspection API (list registered invalidators per event type, last-fire timestamp). Cross-references the same `tracing` subscriber chain so it composes with existing observability without forcing a metrics-crate dependency on every consumer.
+
+### Phase Details
+
+### Phase 223: Redis Pub/Sub Cross-Replica Invalidation Channel
+
+**Goal:** A `BookingCreated` dispatched on replica A flushes the matching cache tag on replicas A, B, C, … so a stale read on replica B is impossible. Today the bridge is single-process: the listener registered via `register_invalidator` runs on the dispatching replica only; other replicas' `MemoryStore` (or per-replica `RedisStore` view) never gets the flush signal.
+
+**Depends on:** Phase 222 (the registration surface) + `ferro-cache` already supporting `RedisStore`.
+
+**Success Criteria** (what must be TRUE) — draft, to refine in discuss-phase:
+  1. A new `register_invalidator` variant — or an opt-in flag on the existing one — publishes the tag set to a Redis pub/sub channel (e.g. `ferro-cache:invalidations`) instead of (or in addition to) the local `cache.tags(...).flush()` call.
+  2. A background receiver loop on every replica subscribes to the channel and runs the local flush when a payload arrives. Loop survives Redis disconnects (reconnect with exponential backoff; no crash on transient outage).
+  3. Pub/sub payload schema is documented (JSON: `{ tags: [..], origin: "replica-id" }`); origin field lets a replica skip flushing its own publish (it already flushed locally).
+  4. The pub/sub path is opt-in. Single-process consumers (gestiscilo today) keep the Phase 222 local-flush behaviour with zero config. Multi-replica consumers wire one extra line at boot.
+  5. Integration test: two `Cache` instances backed by the same Redis instance + the pub/sub channel; an invalidation on instance 1 evicts entries on instance 2 within (configurable) bounded latency.
+  6. Failure isolation: receiver loop failures (deserialization error, channel disconnect) are logged and do not propagate to the cache's data-plane reads/writes.
+
+**Provenance:** Named gap in Phase 222 honest-framing review. Operator-aware deferral; consumer phases that need it (e.g. gestiscilo when multi-replica) call this out as a dependency.
+
+**Status:** Not started — pending consumer demand. Re-open when a multi-replica deploy is on the table.
+
+**Plans:** TBD.
+
+### Phase 224: Cache Invalidator Metrics + Introspection
+
+**Goal:** An operator can answer "how many invalidations fired in the last hour for `BookingCreated`?" and "what invalidators are registered for `OrderCreated`?" without reading source. Today Phase 222 emits `tracing::warn!` on per-tag flush failure and nothing else — no counts, no timings, no registry visibility.
+
+**Depends on:** Phase 222.
+
+**Success Criteria** (what must be TRUE) — draft, to refine in discuss-phase:
+  1. `register_invalidator` (and the `_on` overload) emit `tracing` events at `info!` level on every fire with structured fields: `event_name`, `tags_flushed`, `duration_us`. Failures emit `warn!` with `error` field (preserves the Phase 222 behaviour as a special case).
+  2. An optional `metrics` feature flag wires the same counts/timings into the `metrics` crate (counters: `ferro_cache.invalidations.fired`, `ferro_cache.invalidations.failed`; histogram: `ferro_cache.invalidations.duration`) so operators using a Prometheus/OTLP exporter get them for free.
+  3. An introspection API (`ferro_cache::list_invalidators_for::<E>()` or similar) returns the count + last-fire timestamp of registered invalidators per event type. Counts only — not closures (no way to introspect a `Fn` closure body in Rust without runtime reflection).
+  4. Consumers that do not enable the `metrics` feature flag still get full `tracing` visibility — i.e. the metrics dependency is fully opt-in, not transitively required.
+  5. The introspection API is read-only and lock-cheap (one read on the dispatcher's internal `RwLock<HashMap<TypeId, …>>`).
+
+**Provenance:** Named gap in Phase 222 honest-framing review. Operator-aware deferral.
+
+**Status:** Not started — pending consumer demand. Re-open when an operator asks for SLO dashboards on cache behaviour.
+
+**Plans:** TBD.

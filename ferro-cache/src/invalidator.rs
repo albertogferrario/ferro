@@ -48,37 +48,41 @@
 //! error. A degraded cache must not brick the write path that fired the event.
 
 use crate::cache::Cache;
-use ferro_events::{global_dispatcher, Event};
+use ferro_events::{global_dispatcher, Event, EventDispatcher};
 use std::sync::Arc;
 
-/// Register a cache-invalidation listener for events of type `E`.
+/// Register a cache-invalidation listener on an arbitrary
+/// [`EventDispatcher`].
 ///
-/// When an event of type `E` is dispatched, `key_fn` is invoked with the event
-/// to compute the set of tags to flush. Each tag is flushed independently via
-/// [`Cache::tags`] + [`crate::TaggedCache::flush`]. Per-tag flush failures are
-/// logged and swallowed.
+/// When an event of type `E` is dispatched through `dispatcher`, `key_fn`
+/// is invoked with the event to compute the set of tags to flush. Each
+/// tag is flushed via [`Cache::tags`] + [`crate::TaggedCache::flush`];
+/// per-tag flush failures are `tracing::warn!`'d and swallowed at the
+/// dispatcher boundary so a degraded cache cannot brick the write path
+/// that fired the event.
 ///
-/// Multiple invalidators may be registered for the same event type — all run;
-/// order between them is unspecified.
+/// Multiple invalidators may be registered for the same event type on the
+/// same dispatcher — all run; order between them is unspecified.
+///
+/// Prefer [`register_invalidator`] for the common case of registering on
+/// the process-wide [`global_dispatcher`]. Use this overload when the
+/// consumer holds a non-global dispatcher (isolated per-tenant context,
+/// per-test fixture, embedded library inside a larger app, …).
 ///
 /// # Parameters
 ///
-/// - `cache`: an `Arc<Cache>` whose store will be used for tag flushing. The
-///   `Arc` is cloned into the closure so the cache outlives the listener
-///   registration.
-/// - `key_fn`: a closure `Fn(&E) -> Vec<String>` returning the tags to flush.
-///   Returning an empty `Vec` is a no-op (and skips the per-tag flush calls).
-///
-/// # Example
-///
-/// See the [module-level documentation](self) for a complete wiring example.
-pub fn register_invalidator<E, F>(cache: Arc<Cache>, key_fn: F)
+/// - `dispatcher`: the dispatcher to register the listener on.
+/// - `cache`: an `Arc<Cache>` whose store backs the tag flushing.
+/// - `key_fn`: a closure `Fn(&E) -> Vec<String>` returning the tags to
+///   flush. Returning an empty `Vec` is a no-op (and skips the per-tag
+///   flush calls).
+pub fn register_invalidator_on<E, F>(dispatcher: &EventDispatcher, cache: Arc<Cache>, key_fn: F)
 where
     E: Event,
     F: Fn(&E) -> Vec<String> + Send + Sync + 'static,
 {
     let key_fn = Arc::new(key_fn);
-    global_dispatcher().on::<E, _, _>(move |event: E| {
+    dispatcher.on::<E, _, _>(move |event: E| {
         let cache = cache.clone();
         let key_fn = Arc::clone(&key_fn);
         async move {
@@ -97,6 +101,25 @@ where
             Ok(())
         }
     });
+}
+
+/// Register a cache-invalidation listener on the process-wide
+/// [`global_dispatcher`].
+///
+/// Convenience wrapper around [`register_invalidator_on`]; see that
+/// function for the full behavioural contract. This is the right entry
+/// point for app-boot wiring where events are dispatched via the
+/// ergonomic `event.dispatch().await` Laravel-style API.
+///
+/// # Example
+///
+/// See the [module-level documentation](self) for a complete wiring example.
+pub fn register_invalidator<E, F>(cache: Arc<Cache>, key_fn: F)
+where
+    E: Event,
+    F: Fn(&E) -> Vec<String> + Send + Sync + 'static,
+{
+    register_invalidator_on::<E, F>(global_dispatcher(), cache, key_fn);
 }
 
 #[cfg(all(test, feature = "memory"))]
@@ -259,6 +282,65 @@ mod tests {
         assert!(
             cache.tags(&["t"]).has("k").await.unwrap(),
             "empty tag list must not flush anything"
+        );
+    }
+
+    #[derive(Clone)]
+    struct EvtLocalDispatcher {
+        product: i64,
+    }
+    impl Event for EvtLocalDispatcher {
+        fn name(&self) -> &'static str {
+            "EvtLocalDispatcher"
+        }
+    }
+
+    #[tokio::test]
+    async fn register_invalidator_on_arbitrary_dispatcher() {
+        use ferro_events::EventDispatcher;
+
+        // Two isolated dispatchers — only the one we wire the invalidator
+        // to should see the flush; the other must be untouched.
+        let wired_dispatcher = EventDispatcher::new();
+        let untouched_dispatcher = EventDispatcher::new();
+
+        let cache = Arc::new(Cache::memory());
+        cache
+            .tags(&["business:1:product:7"])
+            .put("k", &"v", Duration::from_secs(60))
+            .await
+            .unwrap();
+
+        register_invalidator_on::<EvtLocalDispatcher, _>(&wired_dispatcher, cache.clone(), |e| {
+            vec![format!("business:1:product:{}", e.product)]
+        });
+
+        // Dispatching through the OTHER dispatcher must not flush.
+        untouched_dispatcher
+            .dispatch(EvtLocalDispatcher { product: 7 })
+            .await
+            .unwrap();
+        assert!(
+            cache
+                .tags(&["business:1:product:7"])
+                .has("k")
+                .await
+                .unwrap(),
+            "untouched dispatcher must not trigger the invalidator"
+        );
+
+        // Dispatching through the WIRED dispatcher must flush.
+        wired_dispatcher
+            .dispatch(EvtLocalDispatcher { product: 7 })
+            .await
+            .unwrap();
+        assert!(
+            !cache
+                .tags(&["business:1:product:7"])
+                .has("k")
+                .await
+                .unwrap(),
+            "wired dispatcher must trigger the invalidator"
         );
     }
 }
