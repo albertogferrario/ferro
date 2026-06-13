@@ -26,5 +26,8 @@
   "workflow": {
     "_auto_chain_active": true,
     "research": true
+  },
+  "features": {
+    "global_learnings": true
   }
 }
