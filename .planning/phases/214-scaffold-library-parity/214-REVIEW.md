@@ -26,7 +26,7 @@ findings:
   warning: 2
   info: 3
   total: 6
-status: issues_found
+status: addressed
 ---
 
 # Phase 214: Code Review Report
