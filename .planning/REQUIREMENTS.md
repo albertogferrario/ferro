@@ -50,11 +50,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AMCP-01 | TBD | Pending |
-| AMCP-02 | TBD | Pending |
-| AMCP-03 | TBD | Pending |
-| AMCP-04 | TBD | Pending |
-| AMCP-05 | TBD | Pending |
-| AMCP-06 | TBD | Pending |
+| AMCP-01 | Phase 217 | Pending |
+| AMCP-02 | Phase 217 | Pending |
+| AMCP-03 | Phase 218 | Pending |
+| AMCP-04 | Phase 219 | Pending |
+| AMCP-05 | Phase 220 | Pending |
+| AMCP-06 | Phase 221 | Pending |
 
-*Phase assignments filled by the roadmapper.*
+*Phase assignments filled by the roadmapper. Roadmap created 2026-06-13.*
