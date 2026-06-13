@@ -1,8 +1,10 @@
 //! Bearer token authentication middleware for the MCP endpoint.
 //!
-//! Validates the JWT bearer token using ferro-mcp-oauth before TenantMiddleware
-//! resolves the tenant context. Inserts the validated principal as
-//! `serde_json::Value` so JwtClaimResolver can read it downstream.
+//! Validates the bearer token using ferro-mcp-server's `resolve_tenant` unifier,
+//! which branches on token shape: `ferro_`-prefixed API keys go through the async
+//! DB lookup path (`validate_api_key`); all other tokens are validated as JWTs
+//! (`validate_bearer`). Inserts the validated principal as `serde_json::Value` so
+//! `JwtClaimResolver` can read it downstream.
 //!
 //! Ordering requirement (Phase 200 D-01):
 //!   BearerAuthMiddleware → TenantMiddleware(JwtClaimResolver) → handler
@@ -12,11 +14,12 @@
 
 use ferro::serde_json;
 use ferro::{async_trait, HttpResponse, Middleware, Next, Request, Response};
-use ferro_mcp_oauth::{validate_bearer, BearerCheck, OAuthConfig};
-use ferro_mcp_server::McpServerConfig;
+use ferro_mcp_oauth::{BearerCheck, OAuthConfig};
+use ferro_mcp_server::{resolve_tenant, McpServerConfig};
 
 /// Middleware that validates the MCP bearer token and inserts claims into the request.
 ///
+/// Supports both JWT tokens and `ferro_`-prefixed API keys via `resolve_tenant`.
 /// Must be mounted BEFORE `TenantMiddleware` on the `/mcp` route group.
 /// On success inserts `serde_json::Value` (the principal) into request extensions
 /// so `JwtClaimResolver` can extract `tenant_id` from it.
@@ -32,9 +35,14 @@ impl Middleware for BearerAuthMiddleware {
         let oauth_config =
             OAuthConfig::from_env().map_err(|_| challenge_response(&self.mcp_config))?;
 
-        // expected_tenant: None — TenantMiddleware runs next and owns tenant validation.
-        // Pitfall 1: passing current_tenant() here would always be None (middleware ordering).
-        match validate_bearer(auth_header.as_deref(), &oauth_config, None) {
+        // Obtain the global DB connection for API-key lookup (ferro_ prefix path).
+        // Fail closed on connection error — same pattern as the controller's tools/call branch.
+        let db = ferro::DB::connection().map_err(|_| challenge_response(&self.mcp_config))?;
+
+        // resolve_tenant branches on token shape: ferro_ prefix → validate_api_key (async DB),
+        // otherwise → validate_bearer (sync JWT). expected_tenant: None — TenantMiddleware runs
+        // next and owns tenant validation (Pitfall 1: current_tenant() is None at this stage).
+        match resolve_tenant(auth_header.as_deref(), db.inner(), &oauth_config).await {
             BearerCheck::Unauthenticated => Err(challenge_response(&self.mcp_config)),
             BearerCheck::Invalid => Err(HttpResponse::new()
                 .status(401)
