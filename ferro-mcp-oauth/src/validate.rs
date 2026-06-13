@@ -27,6 +27,8 @@ use crate::jwt::decode_token;
 use sea_orm::{ConnectionTrait, Statement};
 use sha2::{Digest, Sha256};
 
+const BASE62: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
 /// Outcome of `validate_bearer`.
 ///
 /// Plan 05 maps this to `ferro_mcp_server::BearerOutcome`:
@@ -110,19 +112,28 @@ pub fn hash_mcp_api_key(raw_key: &str) -> String {
 ///
 /// `raw_key` starts with `ferro_` followed by 43 base62 characters (49 chars total).
 /// `key_hash` is the SHA-256 hex of `raw_key`. Store only the hash; show raw_key once.
-///
-/// SKELETON — Plan 01 replaces the body with real CSPRNG generation.
 pub fn generate_mcp_api_key() -> (String, String) {
-    // Placeholder: returns a fixed non-prefixed value so the prefix/round-trip test fails (RED).
-    (String::from("STUB"), String::from("STUB"))
+    let mut rng = rand::thread_rng();
+    let random: String = (0..43)
+        .map(|_| {
+            let idx = rand::Rng::gen_range(&mut rng, 0..62usize);
+            BASE62[idx] as char
+        })
+        .collect();
+    let raw_key = format!("ferro_{random}");
+    let key_hash = hash_mcp_api_key(&raw_key);
+    (raw_key, key_hash)
 }
 
 /// Validate an MCP API key against the `mcp_api_keys` table.
 ///
-/// Branches: header absent → `Unauthenticated`; hash not found or revoked → `Invalid`;
-/// tenant mismatch (when `expected_tenant` is `Some`) → `Forbidden`; valid → `Authenticated`.
-///
-/// SKELETON — Plan 01 replaces the body with a real SHA-256 lookup.
+/// Validation order:
+/// 1. Header absent / no `Bearer ` prefix → `Unauthenticated`.
+/// 2. Token does not start with `ferro_` → `Unauthenticated` (defensive; caller should route correctly).
+/// 3. SHA-256 hash lookup — row not found or DB error → `Invalid` (fail closed).
+/// 4. `revoked_at` is non-null → `Invalid`.
+/// 5. `expected_tenant` mismatch → `Forbidden`.
+/// 6. All checks pass → `Authenticated(principal)` with `sub`, `tenant_id`, `scope`.
 pub async fn validate_api_key(
     authorization_header: Option<&str>,
     db: &sea_orm::DatabaseConnection,
@@ -142,22 +153,52 @@ pub async fn validate_api_key(
         return BearerCheck::Unauthenticated;
     }
 
-    // SKELETON: real SHA-256 lookup deferred to Plan 01.
-    // Hash the key and query the DB so the structure compiles; always returns Invalid
-    // until Plan 01 wires the real row-match and revocation check.
+    // Step 3: SHA-256 hash lookup
     let key_hash = hash_mcp_api_key(token);
     let stmt = Statement::from_sql_and_values(
         db.get_database_backend(),
         "SELECT id, tenant_id, scope, revoked_at FROM mcp_api_keys WHERE key_hash = ?",
         [sea_orm::Value::String(Some(Box::new(key_hash)))],
     );
-    let _row = match db.query_one(stmt).await {
-        Ok(r) => r,
+    let row = match db.query_one(stmt).await {
+        Ok(Some(r)) => r,
+        Ok(None) => return BearerCheck::Invalid,
         Err(_) => return BearerCheck::Invalid,
     };
-    // Placeholder: row found path not yet implemented — RED for valid-key tests.
-    let _ = expected_tenant;
-    BearerCheck::Invalid
+
+    // Step 4: revocation check — revoked_at is TEXT in SQLite test fixtures
+    let revoked_at: Option<String> = row.try_get("", "revoked_at").unwrap_or(None);
+    if revoked_at.is_some() {
+        return BearerCheck::Invalid;
+    }
+
+    // Extract row fields
+    let id: i64 = match row.try_get("", "id") {
+        Ok(v) => v,
+        Err(_) => return BearerCheck::Invalid,
+    };
+    let tenant_id: i64 = match row.try_get("", "tenant_id") {
+        Ok(v) => v,
+        Err(_) => return BearerCheck::Invalid,
+    };
+    let scope: String = match row.try_get("", "scope") {
+        Ok(v) => v,
+        Err(_) => return BearerCheck::Invalid,
+    };
+
+    // Step 5: tenant check (mirrors validate_bearer step 4)
+    if let Some(expected) = expected_tenant {
+        if tenant_id != expected {
+            return BearerCheck::Forbidden;
+        }
+    }
+
+    // Step 6: authenticated
+    BearerCheck::Authenticated(serde_json::json!({
+        "sub": id.to_string(),
+        "tenant_id": tenant_id,
+        "scope": scope,
+    }))
 }
 
 #[cfg(test)]
