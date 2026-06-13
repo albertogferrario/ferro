@@ -13,6 +13,21 @@ use crate::error::Error;
 use crate::field::FieldMeaning;
 use crate::intent::IntentScore;
 use crate::service::ServiceDef;
+use std::collections::HashMap;
+
+/// Text detail level for non-visual rendering.
+///
+/// `Full` reproduces the current full-render behavior, so it is the
+/// backward-compatible default. `Brief` is consumed by non-visual renderers
+/// (e.g., the Phase 216 conversational-text renderer) to omit secondary detail.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Verbosity {
+    /// Full detail — preserves current visual render behavior. (default)
+    #[default]
+    Full,
+    /// Reduced detail for non-visual channels.
+    Brief,
+}
 
 /// Modality-agnostic rendering context shared by all `Renderer` implementations.
 ///
@@ -24,6 +39,14 @@ pub struct BaseContext {
     pub intent_index: usize,
     /// Current workflow state name (relevant for Process/Track intents).
     pub current_state: Option<String>,
+    /// Guard-name → evaluated result. Absent key = render the action
+    /// (guard not-yet-evaluated / unconstrained); only an explicit `false`
+    /// filters an action out. Keyed by the strings in `ActionDef::preconditions`
+    /// / `GuardDef::name`. Default = empty map = render everything. (D-03/D-04)
+    pub evaluated_guards: HashMap<String, bool>,
+    /// Text detail level. `Full` (default) preserves current full-render
+    /// behavior; `Brief` is consumed by non-visual renderers. (D-05)
+    pub verbosity: Verbosity,
 }
 
 /// Trait for rendering a service definition into output of an associated type.
@@ -99,6 +122,13 @@ mod tests {
         let ctx = BaseContext::default();
         assert_eq!(ctx.intent_index, 0);
         assert!(ctx.current_state.is_none());
+        assert!(ctx.evaluated_guards.is_empty());
+        assert_eq!(ctx.verbosity, Verbosity::Full);
+    }
+
+    #[test]
+    fn verbosity_default_is_full() {
+        assert_eq!(Verbosity::default(), Verbosity::Full);
     }
 
     #[test]
