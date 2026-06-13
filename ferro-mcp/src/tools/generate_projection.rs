@@ -86,7 +86,7 @@ pub async fn execute(
     let intent_infos: Vec<IntentInfo> = intents
         .iter()
         .map(|score| IntentInfo {
-            intent: format!("{:?}", score.intent),
+            intent: score.intent.label().to_string(),
             confidence: score.confidence,
             signals: score.matching_signals.clone(),
         })

@@ -170,7 +170,7 @@ fn derive_primary_intent(
     let intents = derive_intents(&service);
     if let Some(primary) = intents.first() {
         (
-            Some(format!("{:?}", primary.intent)),
+            Some(primary.intent.label().to_string()),
             Some(primary.confidence),
         )
     } else {

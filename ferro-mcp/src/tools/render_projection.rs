@@ -95,7 +95,7 @@ pub fn execute(
     let all_intents: Vec<IntentInfo> = intents
         .iter()
         .map(|is| IntentInfo {
-            intent: format!("{:?}", is.intent),
+            intent: is.intent.label().to_string(),
             confidence: is.confidence,
             signals: is.matching_signals.clone(),
         })
@@ -103,7 +103,7 @@ pub fn execute(
 
     Ok(RenderResult {
         service_name: detail.service_name,
-        intent: format!("{:?}", selected.intent),
+        intent: selected.intent.label().to_string(),
         confidence: selected.confidence,
         mode: match render_mode {
             RenderMode::Display => "display".to_string(),
@@ -485,12 +485,12 @@ mod tests {
     fn test_render_result_serialization() {
         let result = RenderResult {
             service_name: "user".to_string(),
-            intent: "Browse".to_string(),
+            intent: "browse".to_string(),
             confidence: 0.85,
             mode: "display".to_string(),
             json_ui: serde_json::json!({"$schema": "ferro-json-ui/v2"}),
             all_intents: vec![IntentInfo {
-                intent: "Browse".to_string(),
+                intent: "browse".to_string(),
                 confidence: 0.85,
                 signals: vec!["entity_name".to_string()],
             }],
@@ -501,7 +501,7 @@ mod tests {
 
         let json_str = json.unwrap();
         assert!(json_str.contains("user"));
-        assert!(json_str.contains("Browse"));
+        assert!(json_str.contains("browse"));
         assert!(json_str.contains("0.85"));
         assert!(json_str.contains("display"));
         assert!(json_str.contains("ferro-json-ui/v2"));
