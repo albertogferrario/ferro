@@ -961,7 +961,6 @@ mod tests {
             },
             mode: RenderMode::Display,
             templates: Some(templates),
-            ..Default::default()
         };
         let cat = clean_catalog();
         let spec = Spec::from_service_def_with_catalog(&service, &intents, &ctx, &cat)
@@ -1119,7 +1118,6 @@ mod tests {
             },
             mode: RenderMode::Display,
             templates: Some(templates),
-            ..Default::default()
         };
         let cat = clean_catalog();
         let spec = Spec::from_service_def_with_catalog(&service, &intents, &ctx, &cat)
