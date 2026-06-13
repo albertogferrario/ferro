@@ -154,6 +154,27 @@ impl<'a> Validator<'a> {
         self
     }
 
+    /// Validate and, on failure, flash per-field errors + old input and return
+    /// an [`crate::http::action::ActionError`] redirecting to `url`.
+    ///
+    /// Composes the existing `with_old_input` + `into_action_error` chain so
+    /// per-field errors and old input flash exactly as the modern form-error
+    /// idiom does today.
+    ///
+    /// ```ignore
+    /// Validator::new(&data)
+    ///     .rules("name", rules![required()])
+    ///     .validate_or_redirect(&data, &form_url)?;
+    /// ```
+    pub fn validate_or_redirect(
+        self,
+        data: &Value,
+        url: impl Into<String>,
+    ) -> Result<(), crate::http::action::ActionError> {
+        self.validate()
+            .map_err(|e| e.with_old_input(data).into_action_error(url))
+    }
+
     /// Run validation and return errors if any.
     pub fn validate(self) -> Result<(), ValidationError> {
         let mut errors = ValidationError::new();
@@ -429,5 +450,46 @@ mod tests {
         let validator = Validator::new(&data).rules("email", rules![email()]);
 
         assert!(validator.fails());
+    }
+
+    // ── Phase 212 tests: validate_or_redirect ────────────────────────────────
+
+    #[test]
+    fn test_validate_or_redirect_ok_when_all_rules_pass() {
+        let data = json!({"name": "Alice"});
+        let result = Validator::new(&data)
+            .rules("name", rules![required(), string()])
+            .validate_or_redirect(&data, "/form");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_or_redirect_err_when_rule_fails() {
+        let data = json!({"name": ""});
+        let result = Validator::new(&data)
+            .rules("name", rules![required()])
+            .validate_or_redirect(&data, "/form");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_or_redirect_chains_with_old_input() {
+        // Verify that the failure path composes with_old_input + into_action_error
+        // without panicking, and that the result matches the manual chain.
+        let data = json!({"name": ""});
+
+        let result_via_helper = Validator::new(&data)
+            .rules("name", rules![required()])
+            .validate_or_redirect(&data, "/form");
+
+        // The manual chain produces the same error shape:
+        let result_manual = Validator::new(&data)
+            .rules("name", rules![required()])
+            .validate()
+            .map_err(|e| e.with_old_input(&data).into_action_error("/form"));
+
+        // Both must be Err(ActionError).
+        assert!(result_via_helper.is_err());
+        assert!(result_manual.is_err());
     }
 }
