@@ -3031,7 +3031,10 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   3. Two calls with the same `idempotency_key` return the same result; the second call does not re-execute the action — verified by a test asserting exactly one write in the DB after two identical calls.
   4. Each write tool call produces an audit log entry containing tool name, tenant ID, action name, and relevant parameter IDs — recoverable after the fact.
   5. `CallToolResult::structured` is the result constructor for every write tool response; no bare `content[]` arrays are constructed by hand.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 219-00-PLAN.md — Wave 0: compiling skeleton (WriteDispatcher types, error variants, idempotency migration) + RED tests (SC#1/#3/#5)
+- [ ] 219-01-PLAN.md — Wave 1: framework machinery (dispatch_write guard re-eval + idempotency + audit, handle_write_call routing) — turns SC#1/#3/#5 green
+- [ ] 219-02-PLAN.md — Wave 2: sample-app wiring (TenantScoped Order, executor + guard evaluator) + SC#2/#4/#3 e2e fixtures + full CI gate
 
 ### Phase 220: Confirmation Gating for Destructive Actions
 **Goal**: A destructive or irreversible action cannot execute in a single tool call; it requires an explicit confirmation token issued by the server and validated at dispatch time.
@@ -3064,7 +3067,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 |-------|----------------|--------|-----------|
 | 217. Tenant Context + Per-Tenant API-Key Auth | 4/4 | Complete    | 2026-06-13 |
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
-| 219. Write Dispatch | 0/TBD | Not started | - |
+| 219. Write Dispatch | 0/3 | Planned | - |
 | 220. Confirmation Gating for Destructive Actions | 0/TBD | Not started | - |
 | 221. Inbound NL Intent Loop | 0/TBD | Not started | - |
 
