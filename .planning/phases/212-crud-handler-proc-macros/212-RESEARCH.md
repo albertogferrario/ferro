@@ -635,22 +635,22 @@ The first positional arg (`Customer` in `#[resource_get(Customer, ...)]`) arrive
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Path param name convention for the resource ID**
-   - What we know: `Request::param_as("id")` is the path param extraction. The macro must know what name to use.
-   - What's unclear: Is the path param always named `"id"`, or is it the resource param name (`"customer"`, `"booking"`, etc.)? The CONTEXT.md sketch shows `customer: &Customer` but the URL placeholder is `{id}`.
-   - Recommendation: Planner should decide between (a) always use `"id"` as the path param name convention, (b) infer from the resource param name, or (c) add an `id = "id"` macro arg. Option (a) is simplest and consistent with most REST conventions.
+All three were resolved at planning time; the resolutions are encoded in `212-02-PLAN.md`.
 
-2. **`form_url` binding visibility in user body**
-   - What we know: D-08 says `{param}` placeholders synthesize at codegen time. The user writes `validate_or_redirect(&data, /* form_url */)` inside the body.
-   - What's unclear: The synthesized URL string must be accessible in the user's body. Whether it's a hidden `let __form_url = ...` binding or an extra inner-fn parameter named `form_url:` is a planner choice.
-   - Recommendation: Planner introduces `form_url` as an invisible extra parameter to the inner fn (injected after the user's declared params) — consistent with D-09 (user doesn't write it, macro injects it).
+1. **Path param name convention for the resource ID — RESOLVED: always `"id"`.**
+   - The macro extracts the resource id via `Request::param_as("id")` (option (a)). Simplest,
+     consistent with REST conventions; the resource param's *name* is independent of the path key.
 
-3. **`TenantScoped::Id` default type**
-   - What we know: the assoc type is `Id: FromStr`. Most gestiscilo entities use `i64`.
-   - What's unclear: whether the macro needs a `#[resource_get(Customer, id_type = "i64")]` override or always infers from the `TenantScoped::Id` assoc type.
-   - Recommendation: Always infer from the trait impl. The macro emits `<Customer as TenantScoped>::Id` as the parse target. No extra macro arg needed.
+2. **`form_url` binding visibility in user body — RESOLVED: hidden extra inner-fn param.**
+   - The macro synthesizes the URL and injects `__form_url: &str` as an extra parameter on the
+     named inner fn (after the user's declared params); the user never writes it (consistent with
+     D-09).
+
+3. **`TenantScoped::Id` default type — RESOLVED: infer from the trait impl.**
+   - The macro emits `<#resource_ty as ::ferro::TenantScoped>::Id` as the `param_as` parse target.
+     No `id_type` macro arg.
 
 ---
 

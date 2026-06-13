@@ -80,10 +80,19 @@ ferro surface where one exists, keeping the core small (continuous conceptual co
   project-agnostic crate; consumers style the generic 404 via their own middleware.
 
 ### Macro composition (Q4)
-- **D-06:** `#[resource_get]` **emits `#[ferro::handler]`** internally; `#[resource_post]` **emits
-  `#[ferro::action]`** (`ferro-macros/src/lib.rs:232` and `:265`). The user writes a single
-  attribute at the call site. The user's original body moves into a clearly-named inner fn
+- **D-06 (refined by research):** `#[resource_get]` / `#[resource_post]` **inline the
+  handler/action boilerplate directly** — they do NOT emit a nested `#[ferro::handler]` /
+  `#[ferro::action]` attribute on the generated wrapper. The user still writes a single attribute
+  at the call site, and the original body still moves into a clearly-named inner fn
   (e.g. `__{name}_inner`) so `cargo expand` reads cleanly and rust-analyzer sees real types.
+  **Why the change from the discuss-phase default:** the discuss-phase guess was "emit
+  `#[handler]`/`#[action]` internally". Research (212-RESEARCH §D-06, Pitfall 1) found the
+  `action_impl`/`handler_impl` output for a single `Request` param is a ~10-line shell that is
+  trivial to inline, and that re-emitting the nested attribute risks a double param-extraction
+  interaction. Inlining is the recommended, self-contained, expand-readable approach. The
+  reference shape is `ferro-macros/src/http/action.rs:17-28` (`action_impl`) and the `handler`
+  fn at `ferro-macros/src/lib.rs:232`. This is a how-to-implement refinement; the user-observable
+  surface (one attribute → folded prelude → typed params) is unchanged.
 
 ### `validate_or_redirect` shape (Q5)
 - **D-07:** A **method on `Validator`** that consumes `self` and returns
