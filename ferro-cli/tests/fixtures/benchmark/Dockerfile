@@ -28,13 +28,18 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
+# FERRO_VERSION is injected at build time by CI (post-publish-scaffold-smoke job)
+# so the smoke image always tests the version that was just published.
+# Locally you can override: docker build --build-arg FERRO_VERSION=0.2.55 .
+ARG FERRO_VERSION=0.2.55
+
 # Install the ferro CLI from crates.io in a Docker layer (cached after first build).
 # This step is NOT part of the timed benchmark sequence — the benchmark measures
 # project scaffolding time, not CLI installation time.
 # Pin the version + --locked so the image stays in lockstep with the baseline
 # attested in RESULTS.md. An unpinned `cargo install ferro-cli` would silently
 # install whatever is latest on crates.io and diverge from the recorded numbers.
-RUN cargo install ferro-cli --version 0.2.55 --locked
+RUN cargo install ferro-cli --version ${FERRO_VERSION} --locked
 
 WORKDIR /bench
 

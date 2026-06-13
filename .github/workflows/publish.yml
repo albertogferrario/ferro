@@ -326,3 +326,49 @@ jobs:
             -f sha="$SHA"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  post-publish-scaffold-smoke:
+    name: Post-publish scaffold smoke (crates.io)
+    needs: [check-version, publish]
+    if: always() && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Pull latest changes
+        run: git pull origin master
+
+      - name: Get published version
+        id: version
+        run: |
+          VERSION=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Wait for crates.io to propagate ferro-cli
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Waiting for ferro-cli $VERSION to be available on crates.io..."
+          for i in $(seq 1 12); do
+            if cargo search ferro-cli 2>/dev/null | grep -q "ferro-cli = \"$VERSION\""; then
+              echo "ferro-cli $VERSION is available"
+              break
+            fi
+            echo "Not yet available, retrying in 30s ($i/12)..."
+            sleep 30
+          done
+
+      - name: Build Docker smoke image
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          docker build \
+            --build-arg FERRO_VERSION="$VERSION" \
+            -t ferro-scaffold-smoke:$VERSION \
+            ferro-cli/tests/fixtures/benchmark/
+
+      - name: Run scaffold smoke (cargo build inside container)
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          docker run --rm ferro-scaffold-smoke:$VERSION
