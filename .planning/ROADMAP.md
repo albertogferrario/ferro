@@ -2868,11 +2868,14 @@ Plans:
 
 **Depends on:** Nothing (independent framework feature; consumes existing `param_as` / `into_action_error` / `#[action]` surfaces).
 
-**Requirements:** TBD (framework-product axis; not a COMP requirement)
+**Requirements:** CRUD-01, CRUD-02, CRUD-03, CRUD-04, CRUD-05, CRUD-06 (defined in 212-CONTEXT.md D-10; established by this phase's plans).
 
-**Status:** Scoped — `/gsd-discuss-phase 212` to lock the seven open design questions, then plan-phase.
+**Status:** Planned — 3 plans across 3 waves. Execute with `/gsd-execute-phase 212`.
 
-**Plans:** TBD
+**Plans:** 3 plans
+- [ ] 212-01-PLAN.md — Foundations: `Validator::validate_or_redirect` (CRUD-03) + `TenantScoped` trait (CRUD-04) + unit tests (Wave 1, no deps)
+- [ ] 212-02-PLAN.md — Proc macros: `#[resource_get]` + `#[resource_post]` + trybuild harness/fixtures + facade re-exports (CRUD-01, CRUD-02, CRUD-05) (Wave 2, depends_on 01)
+- [ ] 212-03-PLAN.md — Reference + release: dual-macro reference fixture + cargo-expand rustdoc + CHANGELOG + version bump 0.2.56 (CRUD-06) (Wave 3, depends_on 02)
 
 ## 📋 v13.2 Projection Render Completeness (Phase 213, scoped 2026-06-12)
 
