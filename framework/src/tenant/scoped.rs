@@ -37,8 +37,5 @@ pub trait TenantScoped: Sized + Send + Sync {
     /// Implementations MUST include `AND tenant_id = ?` (or equivalent) in
     /// the query predicate — this is the load-bearing security property that
     /// prevents cross-tenant reads through the generated handler path.
-    async fn find_for_tenant(
-        id: Self::Id,
-        tenant_id: i64,
-    ) -> Result<Option<Self>, FrameworkError>;
+    async fn find_for_tenant(id: Self::Id, tenant_id: i64) -> Result<Option<Self>, FrameworkError>;
 }
