@@ -32,4 +32,11 @@ pub enum Error {
     /// Maps to a structured tool error result (isError:true).
     #[error("validation error: {0}")]
     Validation(String),
+    /// A destructive action was called without a valid confirmation token.
+    /// Maps to a structured tool error result (isError:true) pointing the agent
+    /// to `request_confirm_<action>`.
+    /// Feature-gated: only reachable when the `confirmation` feature is enabled.
+    #[cfg(feature = "confirmation")]
+    #[error("confirmation required for action: {0}")]
+    ConfirmationRequired(String),
 }
