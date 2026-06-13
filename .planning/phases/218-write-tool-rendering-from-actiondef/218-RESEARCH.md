@@ -551,22 +551,22 @@ This is the complete exclusion set. No other variant functions as a "secret" in 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Identifier injection when `service.fields` has no `FieldMeaning::Identifier`**
    - What we know: `build_action_input_schema` silently skips identifier injection if none found.
    - What's unclear: Should this be a `crate::Error` or a silent no-op?
-   - Recommendation: Silent no-op for 218 (some actions may not need a record ID, e.g., a "create" action). Phase 219 (dispatch) can validate at call time.
+   - RESOLVED: Recommendation: Silent no-op for 218 (some actions may not need a record ID, e.g., a "create" action). Phase 219 (dispatch) can validate at call time.
 
 2. **Name collision detection across services**
    - What we know: D-01 says disambiguate collisions as `<action.name>_on_<service.name>`.
    - What's unclear: When to detect collisions — at render time (in `render_exposed_tools`) or as a post-processing pass?
-   - Recommendation: Post-processing pass in `render_exposed_tools` after collecting all tools. Scan for duplicate names; rename only the colliding entries. This avoids two passes over the service list.
+   - RESOLVED: Recommendation: Post-processing pass in `render_exposed_tools` after collecting all tools. Scan for duplicate names; rename only the colliding entries. This avoids two passes over the service list.
 
 3. **`data_type_to_json_schema` for `DataType::Json` and `DataType::Binary`**
    - What we know: The existing function returns `{ "type": "string" }` for both (the `_` arm).
    - What's unclear: Should `Json`-typed `InputDef` fields be excluded from write schemas (as they are from filter schemas via `is_filter_field` gate 4)?
-   - Recommendation: For write tools, `Json`/`Binary` inputs should be allowed — an action may legitimately take a JSON payload as input. The `is_filter_field` exclusion is specific to equality-filter uselessness, not to writability. No exclusion needed for write schemas.
+   - RESOLVED: Recommendation: For write tools, `Json`/`Binary` inputs should be allowed — an action may legitimately take a JSON payload as input. The `is_filter_field` exclusion is specific to equality-filter uselessness, not to writability. No exclusion needed for write schemas.
 
 ---
 
