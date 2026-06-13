@@ -2997,10 +2997,10 @@ Plans:
 
 **Requirements:** CHAN-03, CHAN-04
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 - [x] 216-01-PLAN.md — FieldDef::render_hint schema extension (CHAN-03) + 11-site literal migration (compiles the tree)
 - [x] 216-02-PLAN.md — ferro-text crate + TextRenderer per-intent strategies, guard filter, verbosity, render_hint, Focus/Analyze fallback, tests (CHAN-04)
-- [ ] 216-03-PLAN.md — facade re-export + publish.yml Wave 1b + workspace members + full gate (CHAN-04)
+- [x] 216-03-PLAN.md — facade re-export + publish.yml Wave 1b + workspace members + full gate (CHAN-04)
 
 **Success Criteria (refine in discuss-phase):**
   1. A text `Renderer` impl exists in an output crate (NOT `ferro-projections`); `grep` confirms `ferro-projections` adds no renderer.
