@@ -47,21 +47,28 @@ fn benchmark_new_project() {
                     .status()
                     .expect("ferro make:auth failed to spawn");
                 let code = status.code();
-                assert!(status.success(), "ferro make:auth exited non-zero: {code:?}");
+                assert!(
+                    status.success(),
+                    "ferro make:auth exited non-zero: {code:?}"
+                );
                 let step2 = t.elapsed();
 
                 // Step 3a: ferro make:scaffold Article
                 let t = Instant::now();
                 let status = Command::new(ferro_bin())
+                    // Flags MUST precede the positional fields: `[FIELDS]...` is a greedy
+                    // trailing positional, so `--flags` placed after the fields are parsed
+                    // as field names ("Invalid field name: '--no-smart-defaults'"). Usage:
+                    // `make:scaffold [OPTIONS] <NAME> [FIELDS]...`. Discovered via the cold run.
                     .args([
                         "make:scaffold",
-                        "Article",
-                        "title:string",
-                        "body:text",
                         "--no-smart-defaults",
                         "-q",
                         "-y",
                         "--api",
+                        "Article",
+                        "title:string",
+                        "body:text",
                     ])
                     .current_dir(&project_dir)
                     .status()
@@ -78,13 +85,13 @@ fn benchmark_new_project() {
                 let status = Command::new(ferro_bin())
                     .args([
                         "make:scaffold",
-                        "Product",
-                        "name:string",
-                        "price:float",
                         "--no-smart-defaults",
                         "-q",
                         "-y",
                         "--api",
+                        "Product",
+                        "name:string",
+                        "price:float",
                     ])
                     .current_dir(&project_dir)
                     .status()
@@ -101,13 +108,13 @@ fn benchmark_new_project() {
                 let status = Command::new(ferro_bin())
                     .args([
                         "make:scaffold",
-                        "Order",
-                        "status:string",
-                        "total:float",
                         "--no-smart-defaults",
                         "-q",
                         "-y",
                         "--api",
+                        "Order",
+                        "status:string",
+                        "total:float",
                     ])
                     .current_dir(&project_dir)
                     .status()

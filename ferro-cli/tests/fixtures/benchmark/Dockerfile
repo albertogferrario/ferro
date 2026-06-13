@@ -11,8 +11,13 @@
 # reference (FROM debian:bookworm-slim@sha256:<digest>) for reproducible baselines.
 FROM debian:bookworm-slim
 
+# libssl-dev + pkg-config are required: ferro-cli depends (via native-tls) on
+# openssl-sys, whose build script needs the system OpenSSL headers and pkg-config
+# to locate them. A clean debian:bookworm-slim has neither, so `cargo install
+# ferro-cli` aborts with "Could not find directory of OpenSSL installation".
+# This is a discovered cold-cache / first-time-experience requirement (see RESULTS.md).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates build-essential git \
+    curl ca-certificates build-essential git libssl-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Rust toolchain via rustup.
@@ -44,11 +49,11 @@ CMD ["bash", "-c", "\
   cd bench-app && \
   ferro make:auth && \
   echo \"Step 2 make:auth: $((SECONDS - T0))s\" && T0=$SECONDS && \
-  ferro make:scaffold Article title:string body:text --no-smart-defaults -q -y --api && \
+  ferro make:scaffold --no-smart-defaults -q -y --api Article title:string body:text && \
   echo \"Step 3a make:scaffold Article: $((SECONDS - T0))s\" && T0=$SECONDS && \
-  ferro make:scaffold Product name:string price:float --no-smart-defaults -q -y --api && \
+  ferro make:scaffold --no-smart-defaults -q -y --api Product name:string price:float && \
   echo \"Step 3b make:scaffold Product: $((SECONDS - T0))s\" && T0=$SECONDS && \
-  ferro make:scaffold Order status:string total:float --no-smart-defaults -q -y --api && \
+  ferro make:scaffold --no-smart-defaults -q -y --api Order status:string total:float && \
   echo \"Step 3c make:scaffold Order: $((SECONDS - T0))s\" && T0=$SECONDS && \
   ferro make:job EmailNotification && \
   echo \"Step 4 make:job: $((SECONDS - T0))s\" && T0=$SECONDS && \
