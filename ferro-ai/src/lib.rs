@@ -41,36 +41,55 @@
 //! let confirmed = store.confirm("confirm-delete-42").await?;
 //! ```
 
+#[cfg(feature = "llm")]
 pub mod classifier;
+#[cfg(feature = "llm")]
 pub mod client;
+#[cfg(feature = "llm")]
 pub mod complete;
+#[cfg(feature = "llm")]
 pub mod config;
 pub mod confirmation;
+#[cfg(feature = "llm")]
 pub mod embed;
 pub mod error;
+#[cfg(feature = "llm")]
 pub mod schema;
+#[cfg(feature = "llm")]
 pub mod similarity;
+#[cfg(feature = "llm")]
 pub mod tools;
 
 #[cfg(feature = "pgvector")]
 pub mod pgvector;
 
+#[cfg(feature = "llm")]
 pub use classifier::anthropic::AnthropicProvider;
+#[cfg(feature = "llm")]
 pub use classifier::provider::ClassificationProvider;
+#[cfg(feature = "llm")]
 pub use classifier::{ClassificationResult, Classifier, ClassifierConfig};
+#[cfg(feature = "llm")]
 pub use client::{
     AnthropicClient, CompletionRequest, CompletionResponse, LlmClient, OllamaClient, OpenAiClient,
     TokenStream, ToolChoice, ToolRequest, ToolUseBlock,
 };
+#[cfg(feature = "llm")]
 pub use complete::{complete, complete_with, CompleteOptions};
+#[cfg(feature = "llm")]
 pub use config::AiConfig;
+// Confirmation re-exports — always available (reqwest-free).
 pub use confirmation::events::ConfirmationExpired;
 pub use confirmation::store::InMemoryConfirmationStore;
 pub use confirmation::{ConfirmationStore, PendingActionInfo};
+#[cfg(feature = "llm")]
 pub use embed::embed;
 pub use error::Error;
+#[cfg(feature = "llm")]
 pub use schema::for_structured_output;
+#[cfg(feature = "llm")]
 pub use similarity::cosine_similarity;
+#[cfg(feature = "llm")]
 pub use tools::{make_handler, ToolDef, ToolError, ToolRegistry};
 
 #[cfg(feature = "pgvector")]

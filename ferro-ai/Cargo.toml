@@ -10,10 +10,16 @@ categories = ["web-programming"]
 readme = "README.md"
 
 [dependencies]
-reqwest = { version = "0.12", features = ["json", "stream"] }
-reqwest-eventsource = { version = "0.6", default-features = false }
-futures = { version = "0.3", default-features = false, features = ["std"] }
-async-stream = "0.3"
+# LLM-only deps — optional behind the `llm` feature (default on).
+# DO NOT add these to the `confirmation` feature; the confirmation module
+# uses only async-trait, tokio, serde, dashmap, chrono, ferro-events.
+reqwest           = { version = "0.12", features = ["json", "stream"], optional = true }
+reqwest-eventsource = { version = "0.6", default-features = false, optional = true }
+futures           = { version = "0.3", default-features = false, features = ["std"], optional = true }
+async-stream      = { version = "0.3", optional = true }
+schemars          = { version = "1", features = ["derive"], optional = true }
+
+# Always-on deps (required by confirmation + error modules regardless of feature set).
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["time", "rt"] }
@@ -22,7 +28,6 @@ thiserror = "2"
 tracing = "0.1"
 ferro-events = { path = "../ferro-events", version = "0.2" }
 ferro-projections = { path = "../ferro-projections", version = "0.2" }
-schemars = { version = "1", features = ["derive"] }
 dashmap = "6"
 chrono = { version = "0.4", features = ["serde"] }
 
@@ -38,6 +43,24 @@ jsonschema = { version = "0.46", default-features = false }
 ferro-json-ui = { path = "../ferro-json-ui", version = "0.2", features = ["projections"] }
 
 [features]
+# Full LLM client (classification, completion, embeddings, tools).
+# Enables reqwest, reqwest-eventsource, futures, async-stream, schemars.
+# This is the default; consumers that only need the confirmation store
+# can use `default-features = false, features = ["confirmation"]`.
+default = ["llm"]
+llm = [
+    "dep:reqwest",
+    "dep:reqwest-eventsource",
+    "dep:futures",
+    "dep:async-stream",
+    "dep:schemars",
+]
+
+# Confirmation store only — no HTTP client, no LLM deps.
+# Safe to pull into ferro-mcp-server without reqwest in the graph.
+# dashmap + tokio + ferro-events are always-on; no extra deps needed here.
+confirmation = []
+
 # Vector persistence/search over raw sqlx. SC#4 reconciliation (D-12): the only NEW
 # vector-specific direct dependency is `pgvector 0.4`; `sqlx` is the transport the
 # public PgVectorStore API is defined over (pgvector 0.4 does not re-export PgPool).
