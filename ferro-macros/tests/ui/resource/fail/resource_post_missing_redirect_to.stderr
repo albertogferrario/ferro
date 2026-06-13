@@ -1,0 +1,15 @@
+error: #[resource_post]: `redirect_to` is required, e.g. #[resource_post(Customer, redirect_to = "/dashboard/foo")]
+  --> tests/ui/resource/fail/resource_post_missing_redirect_to.rs:26:1
+   |
+26 | #[resource_post(Model, form_url = "/x")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `resource_post` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused variable: `id`
+  --> tests/ui/resource/fail/resource_post_missing_redirect_to.rs:19:9
+   |
+19 |         id: i64,
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_id`
+   |
+   = note: `#[warn(unused_variables)]` on by default
