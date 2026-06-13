@@ -2925,11 +2925,11 @@ Plans:
 
 #### Phases
 
-- [ ] **Phase 214: Scaffold↔Library Parity & Smoke Test** — align the `ferro-cli` scaffold templates with the published `ferro` surface (export/`use` the symbols the templates emit, or change the templates to match what's exported): `error_response!` macro, `#[rule]` validation attribute, `ferro::Queue`/`QueueConfig`, the `make:job` `ferro_queue` dependency (add to generated `Cargo.toml` or re-export under `ferro`), `ActiveValue` import in scaffold controllers, `crate::models::users` resolution, `ferro::database::connection` usage. Then add a CI smoke test that scaffolds + `cargo build`s against the published artifact. May split into a parity-fix plan + a CI-guard plan at planning time. Depends on Phase 211.
+- [x] **Phase 214: Scaffold↔Library Parity & Smoke Test** — align the `ferro-cli` scaffold templates with the published `ferro` surface (export/`use` the symbols the templates emit, or change the templates to match what's exported): `error_response!` macro, `#[rule]` validation attribute, `ferro::Queue`/`QueueConfig`, the `make:job` `ferro_queue` dependency (add to generated `Cargo.toml` or re-export under `ferro`), `ActiveValue` import in scaffold controllers, `crate::models::users` resolution, `ferro::database::connection` usage. Then add a CI smoke test that scaffolds + `cargo build`s against the published artifact. May split into a parity-fix plan + a CI-guard plan at planning time. Depends on Phase 211. (completed 2026-06-13)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 214. Scaffold↔Library Parity & Smoke Test | 1/2 | In Progress|  |
+| 214. Scaffold↔Library Parity & Smoke Test | 2/2 | Complete   | 2026-06-13 |
 
 #### Phase Details
 
@@ -2952,8 +2952,8 @@ Plans:
 
 **Status:** Planned — 2 plans across 2 waves. `/gsd-execute-phase 214`.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 214-01-PLAN.md — Parity fix: `error_response!` macro + `ActiveValue` re-export (framework) + 5 template fixes (queue import, ValidateRules derive, model path, DB connection) + docs (Wave 1). Covers SCAF-01, SCAF-02.
-- [ ] 214-02-PLAN.md — CI guard: `scaffold_builds_against_workspace_ferro` path-dep test + `ci.yml` scaffold-smoke job + Dockerfile `ARG FERRO_VERSION` + `publish.yml` post-publish release gate (Wave 2, depends_on 01). Covers SCAF-03, SCAF-04, SCAF-05.
+- [x] 214-02-PLAN.md — CI guard: `scaffold_builds_against_workspace_ferro` path-dep test + `ci.yml` scaffold-smoke job + Dockerfile `ARG FERRO_VERSION` + `publish.yml` post-publish release gate (Wave 2, depends_on 01). Covers SCAF-03, SCAF-04, SCAF-05.
