@@ -2977,11 +2977,11 @@ Plans:
 
 **Requirements:** CHAN-01, CHAN-02
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 215-01-PLAN.md — ferro-projections surface: BaseContext.evaluated_guards + verbosity + Verbosity enum, Intent::label(), Error::NoIntents + unit tests (CHAN-01, CHAN-02)
-- [ ] 215-02-PLAN.md — downstream adoption: VisualContext embeds BaseContext + builder.rs migration + 4 ferro-mcp label-site migrations + test-expectation update (CHAN-01, CHAN-02)
+- [x] 215-02-PLAN.md — downstream adoption: VisualContext embeds BaseContext + builder.rs migration + 4 ferro-mcp label-site migrations + test-expectation update (CHAN-01, CHAN-02)
 
 **Success Criteria (refine in discuss-phase):**
   1. `BaseContext` exposes evaluated-guard results + a verbosity level; constructing it without them is a compile error or has a documented default that preserves current visual-renderer behavior.
