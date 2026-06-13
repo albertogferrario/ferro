@@ -2939,7 +2939,7 @@ Plans:
 
 **Depends on:** Phase 211 (COMP-04 — the validation that found the defect; its 211-WEAKNESSES.md W1 is the requirements source, and its benchmark apparatus is the smoke-test basis).
 
-**Requirements:** TBD (framework-product axis; derive SCAF-* labels in discuss-phase from 211-WEAKNESSES W1).
+**Requirements:** SCAF-01 (templates reference only the published `ferro` surface), SCAF-02 (`make:job` Cargo.toml declares every imported crate — queue via `ferro::queue`, no missing `ferro-queue`), SCAF-03 (clean scaffold `cargo build`s exit 0 against published `ferro-rs`), SCAF-04 (release-time CI gate against the published artifact), SCAF-05 (per-PR scaffold-build guard against the workspace path dep). Derived from 211-WEAKNESSES W1 (CONTEXT D-10).
 
 **Success Criteria** (what must be TRUE) — draft, to refine in discuss-phase:
   1. The scaffold templates and the published `ferro` surface agree: every symbol a generated project references (`error_response!`, `#[rule]`, `ferro::Queue`/`QueueConfig`, `ActiveValue`, `crate::models::users`, `ferro::database::connection`) either resolves from the published crate or the template no longer emits it.
@@ -2950,6 +2950,10 @@ Plans:
 
 **Provenance:** Scoped from Phase 211 findings. COMP-04's value was catching this; this phase fixes it and makes the guard permanent.
 
-**Status:** Scoped — `/gsd-discuss-phase 214` to lock requirement labels + the per-PR-vs-per-release CI decision, then plan-phase.
+**Status:** Planned — 2 plans across 2 waves. `/gsd-execute-phase 214`.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 214-01-PLAN.md — Parity fix: `error_response!` macro + `ActiveValue` re-export (framework) + 5 template fixes (queue import, ValidateRules derive, model path, DB connection) + docs (Wave 1). Covers SCAF-01, SCAF-02.
+- [ ] 214-02-PLAN.md — CI guard: `scaffold_builds_against_workspace_ferro` path-dep test + `ci.yml` scaffold-smoke job + Dockerfile `ARG FERRO_VERSION` + `publish.yml` post-publish release gate (Wave 2, depends_on 01). Covers SCAF-03, SCAF-04, SCAF-05.
