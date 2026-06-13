@@ -80,7 +80,9 @@ pub fn render_exposed_tools(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ferro_projections::{derive_intents, DataType, FieldMeaning, ServiceDef};
+    use ferro_projections::{
+        derive_intents, ActionDef, DataType, FieldMeaning, InputDef, ServiceDef,
+    };
 
     fn order_service() -> ServiceDef {
         ServiceDef::new("order")
@@ -187,6 +189,178 @@ mod tests {
         assert!(
             count_ext > count_base,
             "adding a filter field must increase inputSchema property count: base={count_base} ext={count_ext}"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 218 RED tests for write-tool emission (SC#1, SC#3, SC#4, T-218-02).
+    //
+    // These tests assert behaviour that the un-extended `render_exposed_tools`
+    // does NOT yet produce — currently it emits only the `list_order` read tool,
+    // so write-tool lookups return None and every assertion below fails.
+    // The renderer extension is implemented in Plan 02; these tests turn GREEN
+    // there.
+    // -------------------------------------------------------------------------
+
+    /// Fixture: one mcp_exposed service with two actions.
+    /// - submit_order: guarded by "has_items", has a transition_trigger (→ destructive).
+    /// - update_notes: no guard, no transition_trigger (→ non-destructive).
+    fn order_service_with_actions() -> ServiceDef {
+        ServiceDef::new("order")
+            .display_name("Order")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .action(
+                ActionDef::new("submit_order")
+                    .description("Submit an order for processing")
+                    .input(
+                        InputDef::new("notes", DataType::String, FieldMeaning::FreeText)
+                            .required(false),
+                    )
+                    .precondition("has_items")
+                    .transition_trigger("submit"),
+            )
+            .action(ActionDef::new("update_notes").input(InputDef::new(
+                "notes",
+                DataType::String,
+                FieldMeaning::FreeText,
+            )))
+    }
+
+    /// SC#1: render_exposed_tools must emit one write tool per ActionDef plus the
+    /// existing read tool (3 total for this fixture).
+    #[test]
+    fn test_one_write_tool_per_action() {
+        let tools = render_exposed_tools(&[order_service_with_actions()], &McpContext::default())
+            .expect("render ok");
+
+        assert_eq!(
+            tools.len(),
+            3,
+            "expected list_order + submit_order + update_notes"
+        );
+
+        assert!(
+            tools.iter().any(|t| t.name.as_ref() == "list_order"),
+            "read tool 'list_order' must be present"
+        );
+        assert!(
+            tools.iter().any(|t| t.name.as_ref() == "submit_order"),
+            "write tool 'submit_order' must be present"
+        );
+        assert!(
+            tools.iter().any(|t| t.name.as_ref() == "update_notes"),
+            "write tool 'update_notes' must be present"
+        );
+    }
+
+    /// SC#4: A write tool for an action with transition_trigger must carry
+    /// readOnlyHint=false and destructiveHint=true.
+    #[test]
+    fn test_write_tool_annotations_transition() {
+        let tools = render_exposed_tools(&[order_service_with_actions()], &McpContext::default())
+            .expect("render ok");
+
+        let submit = tools
+            .iter()
+            .find(|t| t.name.as_ref() == "submit_order")
+            .expect("submit_order tool must be present");
+
+        let ann = submit
+            .annotations
+            .as_ref()
+            .expect("annotations must be present on write tool");
+
+        assert_eq!(
+            ann.read_only_hint,
+            Some(false),
+            "write tool readOnlyHint must be false"
+        );
+        assert_eq!(
+            ann.destructive_hint,
+            Some(true),
+            "transition action destructiveHint must be true"
+        );
+    }
+
+    /// SC#4: A write tool for an action WITHOUT transition_trigger must carry
+    /// readOnlyHint=false and destructiveHint=false.
+    #[test]
+    fn test_write_tool_annotations_non_transition() {
+        let tools = render_exposed_tools(&[order_service_with_actions()], &McpContext::default())
+            .expect("render ok");
+
+        let update = tools
+            .iter()
+            .find(|t| t.name.as_ref() == "update_notes")
+            .expect("update_notes tool must be present");
+
+        let ann = update
+            .annotations
+            .as_ref()
+            .expect("annotations must be present on write tool");
+
+        assert_eq!(
+            ann.read_only_hint,
+            Some(false),
+            "write tool readOnlyHint must be false"
+        );
+        assert_eq!(
+            ann.destructive_hint,
+            Some(false),
+            "non-transition action destructiveHint must be false"
+        );
+    }
+
+    /// SC#3 / T-218-02: A tool whose precondition guard evaluates to explicit
+    /// false must be OMITTED from tools/list. (Visibility filter, not auth gate.)
+    #[test]
+    fn test_guard_false_omits_tool() {
+        let mut ctx = McpContext::default();
+        ctx.evaluated_guards.insert("has_items".to_string(), false);
+
+        let tools = render_exposed_tools(&[order_service_with_actions()], &ctx).expect("render ok");
+
+        assert!(
+            !tools.iter().any(|t| t.name.as_ref() == "submit_order"),
+            "submit_order must be omitted when has_items guard = false"
+        );
+        assert!(
+            tools.iter().any(|t| t.name.as_ref() == "update_notes"),
+            "update_notes (no guard) must still be present"
+        );
+        assert!(
+            tools.iter().any(|t| t.name.as_ref() == "list_order"),
+            "read tool list_order must still be present"
+        );
+    }
+
+    /// SC#3: A tool whose precondition guard evaluates to explicit true must be
+    /// present in tools/list.
+    #[test]
+    fn test_guard_true_includes_tool() {
+        let mut ctx = McpContext::default();
+        ctx.evaluated_guards.insert("has_items".to_string(), true);
+
+        let tools = render_exposed_tools(&[order_service_with_actions()], &ctx).expect("render ok");
+
+        assert!(
+            tools.iter().any(|t| t.name.as_ref() == "submit_order"),
+            "submit_order must be present when has_items guard = true"
+        );
+    }
+
+    /// SC#3: When the guard key is absent (McpContext::default()), the tool must
+    /// be present (absent key = allow, same semantics as BaseContext).
+    #[test]
+    fn test_guard_absent_includes_tool() {
+        let tools = render_exposed_tools(&[order_service_with_actions()], &McpContext::default())
+            .expect("render ok");
+
+        assert!(
+            tools.iter().any(|t| t.name.as_ref() == "submit_order"),
+            "submit_order must be present when guard key is absent"
         );
     }
 }

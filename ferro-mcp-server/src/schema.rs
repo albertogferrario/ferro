@@ -104,7 +104,7 @@ pub fn build_input_schema(service: &ServiceDef) -> crate::Result<serde_json::Val
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ferro_projections::{DataType, FieldMeaning, ServiceDef};
+    use ferro_projections::{ActionDef, DataType, FieldMeaning, InputDef, ServiceDef};
 
     /// A service with a representative mix of field meanings.
     ///
@@ -196,6 +196,138 @@ mod tests {
         assert!(
             !props.contains_key("name"),
             "EntityName field 'name' must be excluded by the meaning allowlist"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 218 RED tests for build_action_input_schema (SC#2, T-218-01).
+    //
+    // These tests reference `build_action_input_schema` which does NOT exist yet
+    // — this is the intentional compile-error RED state for Wave 0.
+    // The function is implemented in Plan 01; these tests turn GREEN there.
+    // -------------------------------------------------------------------------
+
+    /// Service fixture for action schema tests: has an Identifier field and a
+    /// Status field.
+    fn order_service_for_actions() -> ServiceDef {
+        ServiceDef::new("order")
+            .display_name("Order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+    }
+
+    /// SC#2: The parent service's Identifier field must be injected as a
+    /// required integer parameter in the action's inputSchema.
+    #[test]
+    fn test_action_schema_injects_identifier() {
+        let service = order_service_for_actions();
+        let action = ActionDef::new("submit_order");
+        let schema = build_action_input_schema(&action, &service).expect("schema ok");
+        assert_eq!(
+            schema["properties"]["id"]["type"], "integer",
+            "identifier field 'id' must be present as integer property"
+        );
+        let required = schema["required"]
+            .as_array()
+            .expect("required must be an array");
+        assert!(
+            required.iter().any(|v| v.as_str() == Some("id")),
+            "'id' must be in required[]"
+        );
+    }
+
+    /// SC#2: InputDef fields become schema properties with correct type and
+    /// description.
+    #[test]
+    fn test_action_schema_maps_inputs() {
+        let service = order_service_for_actions();
+        let action = ActionDef::new("submit_order").input(
+            InputDef::new("notes", DataType::String, FieldMeaning::FreeText)
+                .description("Order notes"),
+        );
+        let schema = build_action_input_schema(&action, &service).expect("schema ok");
+        assert_eq!(
+            schema["properties"]["notes"]["type"], "string",
+            "notes must be a string property"
+        );
+        assert_eq!(
+            schema["properties"]["notes"]["description"], "Order notes",
+            "description must be forwarded from InputDef"
+        );
+        let required = schema["required"]
+            .as_array()
+            .expect("required must be an array");
+        assert!(
+            required.iter().any(|v| v.as_str() == Some("notes")),
+            "'notes' (required=true by default) must appear in required[]"
+        );
+    }
+
+    /// SC#2 / T-218-01 boundary: an optional InputDef must appear in properties
+    /// but NOT in required[].
+    #[test]
+    fn test_action_schema_optional_input_not_required() {
+        let service = order_service_for_actions();
+        let action = ActionDef::new("submit_order")
+            .input(InputDef::new("memo", DataType::String, FieldMeaning::FreeText).required(false));
+        let schema = build_action_input_schema(&action, &service).expect("schema ok");
+        assert!(
+            schema["properties"]["memo"].is_object(),
+            "'memo' must appear in properties even when optional"
+        );
+        let required = schema["required"]
+            .as_array()
+            .expect("required must be an array");
+        assert!(
+            !required.iter().any(|v| v.as_str() == Some("memo")),
+            "'memo' (required=false) must NOT appear in required[]"
+        );
+    }
+
+    /// SC#2 / T-218-01 security mitigation: FieldMeaning::Sensitive inputs must
+    /// be excluded from the schema (properties AND required).
+    #[test]
+    fn test_action_schema_excludes_sensitive_input() {
+        let service = order_service_for_actions();
+        let action = ActionDef::new("submit_order").input(InputDef::new(
+            "secret_token",
+            DataType::String,
+            FieldMeaning::Sensitive,
+        ));
+        let schema = build_action_input_schema(&action, &service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+        assert!(
+            !props.contains_key("secret_token"),
+            "Sensitive input 'secret_token' must not appear in properties"
+        );
+        let required = schema["required"]
+            .as_array()
+            .expect("required must be an array");
+        assert!(
+            !required.iter().any(|v| v.as_str() == Some("secret_token")),
+            "Sensitive input 'secret_token' must not appear in required[]"
+        );
+    }
+
+    /// SC#2: When the service has no Identifier field, identifier injection is
+    /// silently skipped. The schema is still valid and contains any declared inputs.
+    #[test]
+    fn test_action_schema_no_identifier_field_is_silent_noop() {
+        let service =
+            ServiceDef::new("queue_item").field("status", DataType::String, FieldMeaning::Status);
+        let action = ActionDef::new("process_item").input(InputDef::new(
+            "priority",
+            DataType::Integer,
+            FieldMeaning::Custom("priority".into()),
+        ));
+        let schema = build_action_input_schema(&action, &service).expect("schema ok");
+        assert_eq!(
+            schema["type"], "object",
+            "schema must still be a JSON object when no identifier exists"
+        );
+        assert!(
+            schema["properties"]["priority"].is_object(),
+            "'priority' input must appear in properties"
         );
     }
 }
