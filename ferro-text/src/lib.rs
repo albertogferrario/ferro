@@ -385,13 +385,11 @@ fn render_analyze(service: &ServiceDef, _ctx: &BaseContext) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ferro_projections::action::{ActionDef, GuardDef};
-    use ferro_projections::derive::derive_intents;
-    use ferro_projections::field::{DataType, FieldMeaning};
     use ferro_projections::render::BaseContext;
-    use ferro_projections::service::ServiceDef;
-    use ferro_projections::state::{StateDef, StateMachine, Transition};
-    use ferro_projections::{Error, RenderHint, Verbosity};
+    use ferro_projections::{
+        derive_intents, ActionDef, DataType, Error, FieldMeaning, GuardDef, RenderHint, ServiceDef,
+        StateDef, StateMachine, Transition, Verbosity,
+    };
 
     // Copied verbatim from ferro-projections/src/render/sketch/cli.rs test module (D-15)
     fn approval_workflow_fixture() -> ServiceDef {
@@ -637,16 +635,7 @@ mod tests {
     // 6. Url with AltText hint renders the alt text
     #[test]
     fn url_alt_text_renders_alt() {
-        let svc = ServiceDef::new("article")
-            .display_name("Article")
-            .field("id", DataType::Integer, FieldMeaning::Identifier)
-            .field(
-                "photo_url",
-                DataType::String,
-                FieldMeaning::ImageUrl,
-            );
-        // Manually construct with render_hint since .field() doesn't set it
-        // We test via render_field_value directly for this case
+        // Test render_field_value directly since .field() builder does not set render_hint
         let f = ferro_projections::FieldDef {
             name: "photo_url".to_string(),
             data_type: DataType::String,
