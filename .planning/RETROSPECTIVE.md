@@ -115,6 +115,55 @@ live consumer (20 findings; acceptance GO).
 
 ---
 
+## Milestone: v14.0 — Channel Projection (Non-Visual Rendering)
+
+**Shipped:** 2026-06-13
+**Phases:** 2 (215, 216) | **Plans:** 5
+
+### What Was Built
+The first production non-visual `Renderer`. Phase 215 extended the renderer-free
+`ferro-projections` surface (`BaseContext.evaluated_guards` + `verbosity`, `Intent::label()`,
+`Error::NoIntents`); Phase 216 added `FieldDef.render_hint` and the new `ferro-text` crate,
+whose `TextRenderer` projects the same `ServiceDef` the visual/MCP renderers consume into
+deterministic conversational text — per-intent strategies, guard filtering, verbosity, and a
+defined Focus/Analyze fallback. Re-exported via the `ferro` facade behind the `projections`
+feature; `insta` snapshots over the COMP-05 `approval_workflow` anchor.
+
+### What Worked
+- **Surface-first split.** Landing the context/schema extensions (215) before the renderer
+  (216) meant the renderer was built against a stable, already-merged surface — no churn.
+- **The COMP-05 sketch as a forcing function.** Phase 208's `pub(crate)` sketch renderers had
+  already surfaced the exact gaps (guard visibility, `{:?}` labels, empty-intent fallback), so
+  215/216 were implementing a known design rather than discovering it mid-build.
+- **Compile-ordering discipline.** The `render_hint` schema change + the 11 `FieldDef {}`
+  literal-site migration were planned into the same wave, so the tree never broke.
+
+### What Was Inefficient
+- **Facade completeness wasn't verified end-to-end.** SC-4 ("reachable from the facade") was
+  checked with a grep for `TextRenderer`, which passed — but the renderer's `Context` type
+  (`BaseContext`) was not re-exported, leaving it reachable-but-uncallable. Surfaced only when
+  writing docs afterward. A "can a consumer actually call this from the facade?" compile check
+  would have caught it during verification.
+- **Feature authoring path not exercised.** `render_hint` shipped with no `ServiceDef` builder
+  to set it (`.field()` hardcoded `None`); the tests exercised the renderer helper directly and
+  never round-tripped a hint through a `ServiceDef`. Also caught during docs.
+
+### Patterns Established
+- A renderer's verification must include constructing and calling it **through the public
+  facade**, not just grepping the export — name-reachability ≠ usability.
+- When a schema field is added, add its **authoring builder** in the same phase; a `pub` field
+  is reachable but not an ergonomic contract.
+
+### Key Lessons
+- Writing the user docs is itself a verification pass: it forced real consumer code, which is
+  what exposed both facade gaps. Consider docs-as-acceptance for any new public surface.
+
+### Cost Observations
+- Model mix: planning on opus, execution/verification/review on sonnet.
+- Two clean phases, no gap-closure cycles; both passed verification first try.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
