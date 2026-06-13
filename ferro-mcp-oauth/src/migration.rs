@@ -104,7 +104,11 @@ impl MigrationTrait for MigrationMcpApiKeys {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(McpApiKeys::TenantId).big_integer().not_null())
+                    .col(
+                        ColumnDef::new(McpApiKeys::TenantId)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(McpApiKeys::KeyHash).string().not_null())
                     .col(
                         ColumnDef::new(McpApiKeys::Scope)
