@@ -30,10 +30,11 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install the ferro CLI from crates.io in a Docker layer (cached after first build).
 # This step is NOT part of the timed benchmark sequence — the benchmark measures
-# project scaffolding time, not CLI installation time. The ferro-cli version
-# installed here should match the ferro-rs version the scaffolded project will
-# resolve from crates.io during cargo build.
-RUN cargo install ferro-cli
+# project scaffolding time, not CLI installation time.
+# Pin the version + --locked so the image stays in lockstep with the baseline
+# attested in RESULTS.md. An unpinned `cargo install ferro-cli` would silently
+# install whatever is latest on crates.io and diverge from the recorded numbers.
+RUN cargo install ferro-cli --version 0.2.55 --locked
 
 WORKDIR /bench
 
@@ -42,6 +43,7 @@ WORKDIR /bench
 # "Cold" means no Cargo registry cache pre-warmed and no toolchain pre-installed —
 # not network isolation. Do NOT run with --network none.
 CMD ["bash", "-c", "\
+  set -euo pipefail && \
   echo '=== COMP-04 Cold-Cache Benchmark ===' && \
   SECONDS=0 && T0=$SECONDS && \
   ferro new bench-app --no-interaction --no-git && \
