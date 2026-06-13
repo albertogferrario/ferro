@@ -3,9 +3,18 @@ mod common;
 use common::{item_service, setup_db};
 use ferro_mcp_server::config::McpServerConfig;
 use ferro_mcp_server::jsonrpc::{handle_initialize, handle_tools_call, handle_tools_list};
+use ferro_mcp_server::write_dispatch::WriteDispatcher;
 use ferro_mcp_server::McpContext;
 use ferro_projections::{DataType, FieldMeaning, ServiceDef};
 use serde_json::json;
+
+/// Build a no-op WriteDispatcher for tests that exercise read-path tools only.
+fn noop_dispatcher() -> WriteDispatcher {
+    WriteDispatcher {
+        executor: Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
+        guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+    }
+}
 
 fn test_config() -> McpServerConfig {
     McpServerConfig {
@@ -51,6 +60,7 @@ async fn tools_call_returns_rows() {
         &db,
         None,
         &McpContext::default(),
+        &noop_dispatcher(),
     )
     .await;
     // content is a single text block (CallToolResult::structured wraps the payload)
@@ -74,6 +84,7 @@ async fn tools_call_unknown_tool_is_method_not_found() {
         &db,
         None,
         &McpContext::default(),
+        &noop_dispatcher(),
     )
     .await;
     assert_eq!(resp["error"]["code"], -32601);
@@ -91,6 +102,7 @@ async fn tools_call_unknown_filter_is_invalid_params() {
         &db,
         None,
         &McpContext::default(),
+        &noop_dispatcher(),
     )
     .await;
     assert_eq!(resp["error"]["code"], -32602);

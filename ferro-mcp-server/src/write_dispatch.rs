@@ -6,13 +6,12 @@
 //! security envelope: scope check (Phase 217), guard re-evaluation against live
 //! DB state (D-02), idempotency replay (D-04), audit (D-05), and a
 //! spec-compliant [`rmcp::model::CallToolResult`] result (D-06).
-//!
-//! Wave 0 stub: `dispatch_write` and `handle_write_call` return minimal error
-//! bodies so the crate compiles. Wave 1 fills the implementations.
 
+use ferro_audit::{AuditActor, AuditEntry, AuditTarget};
 use ferro_projections::{ActionDef, ServiceDef};
-use sea_orm::DatabaseConnection;
-use serde_json::Value;
+use rmcp::model::CallToolResult;
+use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
+use serde_json::{json, Value};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -62,12 +61,11 @@ pub struct WriteDispatcher {
     pub guard_evaluator: GuardEvaluatorFn,
 }
 
-// ── Stubs (Wave 0 — compile-only bodies) ─────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Locate an [`ActionDef`] by tool name across all mcp-exposed services.
 ///
 /// Returns `Some((&ServiceDef, &ActionDef))` or `None`.
-#[allow(dead_code)]
 fn find_action<'a>(
     services: &'a [ServiceDef],
     tool_name: &str,
@@ -87,7 +85,6 @@ fn find_action<'a>(
 
 /// Validate that required inputs declared in `action.inputs` are present in
 /// `args`. Returns `Err(String)` with the first missing field name.
-#[allow(dead_code)]
 fn validate_action_inputs(action: &ActionDef, args: &Value) -> Result<(), String> {
     for input in &action.inputs {
         if input.required && args.get(&input.name).is_none() {
@@ -101,47 +98,123 @@ fn validate_action_inputs(action: &ActionDef, args: &Value) -> Result<(), String
 ///
 /// Shape mirrors `make_tool_deny_response` in `app/src/controllers/mcp.rs`
 /// but without the outer jsonrpc/id fields (those are spliced by the HTTP
-/// adapter layer).
-#[allow(dead_code)]
-fn write_tool_error_result(message: &str, error_kind: &str, payload: Value) -> Value {
-    serde_json::json!({
+/// adapter layer). This is the ONLY error-result constructor — no bare
+/// content[] arrays constructed elsewhere (D-06).
+pub fn write_tool_error_result(payload: Value) -> Value {
+    let message = payload
+        .get("message")
+        .and_then(|v| v.as_str())
+        .unwrap_or("error")
+        .to_string();
+    json!({
         "content": [{ "type": "text", "text": message }],
         "isError": true,
-        "structuredContent": {
-            "error_kind": error_kind,
-            "message": message,
-            "detail": payload
-        }
+        "structuredContent": payload
     })
 }
 
-/// Stub idempotency lookup — Wave 1 implements real SQL.
+/// Look up a stored idempotency result scoped by BOTH tenant_id AND idempotency_key.
 ///
-/// Returns `Ok(None)` always (no stored result).
-#[allow(dead_code)]
+/// Cross-tenant replay is prevented at the SQL level: the WHERE clause requires
+/// BOTH columns, matching the UNIQUE index on `(tenant_id, idempotency_key)`.
 async fn lookup_idempotency(
-    _tenant_id: i64,
-    _key: &str,
-    _db: &DatabaseConnection,
+    tenant_id: i64,
+    key: &str,
+    db: &DatabaseConnection,
 ) -> crate::Result<Option<Value>> {
-    Ok(None)
+    let backend = db.get_database_backend();
+    let (sql, values) = match backend {
+        DatabaseBackend::Postgres => (
+            "SELECT result FROM mcp_idempotency_keys WHERE tenant_id = $1 AND idempotency_key = $2"
+                .to_string(),
+            vec![
+                sea_orm::Value::BigInt(Some(tenant_id)),
+                sea_orm::Value::String(Some(Box::new(key.to_string()))),
+            ],
+        ),
+        _ => (
+            "SELECT result FROM mcp_idempotency_keys WHERE tenant_id = ? AND idempotency_key = ?"
+                .to_string(),
+            vec![
+                sea_orm::Value::BigInt(Some(tenant_id)),
+                sea_orm::Value::String(Some(Box::new(key.to_string()))),
+            ],
+        ),
+    };
+    let stmt = Statement::from_sql_and_values(backend, &sql, values);
+    match db
+        .query_one(stmt)
+        .await
+        .map_err(|e| crate::Error::Database(e.to_string()))?
+    {
+        None => Ok(None),
+        Some(row) => {
+            let json_text: String = row
+                .try_get("", "result")
+                .map_err(|e| crate::Error::Database(e.to_string()))?;
+            let value: Value = serde_json::from_str(&json_text)
+                .map_err(|e| crate::Error::Database(e.to_string()))?;
+            Ok(Some(value))
+        }
+    }
 }
 
-/// Stub idempotency store — Wave 1 implements real SQL.
-#[allow(dead_code)]
+/// Store an idempotency result scoped by (tenant_id, idempotency_key).
+///
+/// Uses INSERT OR IGNORE (SQLite) / ON CONFLICT DO NOTHING (Postgres) for
+/// concurrency safety — a second concurrent identical request will not cause
+/// a UNIQUE constraint error (PITFALLS §5).
 async fn store_idempotency(
-    _tenant_id: i64,
-    _key: &str,
-    _result: &Value,
-    _db: &DatabaseConnection,
+    tenant_id: i64,
+    key: &str,
+    result: &Value,
+    db: &DatabaseConnection,
 ) -> crate::Result<()> {
+    let backend = db.get_database_backend();
+    let json_text = serde_json::to_string(result).map_err(crate::Error::Serialization)?;
+
+    let (sql, values) = match backend {
+        DatabaseBackend::Postgres => (
+            "INSERT INTO mcp_idempotency_keys (tenant_id, idempotency_key, result, created_at) \
+             VALUES ($1, $2, $3, NOW()) ON CONFLICT (tenant_id, idempotency_key) DO NOTHING"
+                .to_string(),
+            vec![
+                sea_orm::Value::BigInt(Some(tenant_id)),
+                sea_orm::Value::String(Some(Box::new(key.to_string()))),
+                sea_orm::Value::String(Some(Box::new(json_text))),
+            ],
+        ),
+        _ => (
+            "INSERT OR IGNORE INTO mcp_idempotency_keys \
+             (tenant_id, idempotency_key, result) VALUES (?, ?, ?)"
+                .to_string(),
+            vec![
+                sea_orm::Value::BigInt(Some(tenant_id)),
+                sea_orm::Value::String(Some(Box::new(key.to_string()))),
+                sea_orm::Value::String(Some(Box::new(json_text))),
+            ],
+        ),
+    };
+    let stmt = Statement::from_sql_and_values(backend, &sql, values);
+    db.execute(stmt)
+        .await
+        .map_err(|e| crate::Error::Database(e.to_string()))?;
     Ok(())
 }
 
+// ── Core pipeline ─────────────────────────────────────────────────────────────
+
 /// Execute a write action with guard re-evaluation, idempotency, and audit.
 ///
-/// Wave 0 stub: returns `Err(Validation("not implemented"))` so tests compile
-/// and fail on assertion rather than panicking. Wave 1 fills the full pipeline.
+/// Pipeline order (D-07):
+/// 1. Guard re-evaluation (D-02) — LIVE state via `dispatcher.guard_evaluator`.
+///    CRITICAL: `ctx.evaluated_guards` is the 218 list-time visibility cache and
+///    is NEVER consulted here. Authorization at call time must use live DB state.
+/// 2. Idempotency check (D-04) — replay stored result without re-executing.
+/// 3. D-08 confirmation seam — pass-through in Phase 219.
+/// 4. Execute callback (D-01).
+/// 5. Store idempotency result (D-04).
+/// 6. Audit via ferro-audit (D-05).
 pub async fn dispatch_write(
     action: &ActionDef,
     inputs: &Value,
@@ -149,23 +222,82 @@ pub async fn dispatch_write(
     db: &DatabaseConnection,
     dispatcher: &WriteDispatcher,
 ) -> crate::Result<Value> {
-    // Wave 0 stub — Wave 1 implements:
-    //   1. Re-evaluate guards (D-02 — LIVE state, never ctx.evaluated_guards)
-    //   2. Idempotency check (D-04)
-    //   3. D-08 seam: if action.transition_trigger.is_some() → Phase 220 intercept
-    //   4. Execute callback (D-01)
-    //   5. Store idempotency result (D-04)
-    //   6. Audit (D-05)
-    let _ = (action, inputs, tenant_id, db, dispatcher);
-    Err(crate::Error::Validation("not implemented".into()))
+    // 1. Guard re-evaluation (D-02, T-219-02 — load-bearing security gate).
+    //
+    // Calls the app-registered GuardEvaluatorFn for EVERY precondition in
+    // action.preconditions against LIVE DB state. Fail-closed: a guard returning
+    // Ok(false) OR any Err immediately returns Err(GuardFailed).
+    //
+    // IMPORTANT: ctx.evaluated_guards (the 218 list-time visibility cache) is
+    // intentionally NOT consulted here. An agent may bypass tools/list entirely
+    // and call tools/call directly — only this live re-evaluation prevents the
+    // guard-bypass privilege-escalation class (PITFALLS §2 / T-219-02).
+    for guard_name in &action.preconditions {
+        let passes = (dispatcher.guard_evaluator)(guard_name, tenant_id, inputs, db)
+            .await
+            .map_err(|e| crate::Error::GuardFailed(format!("{guard_name}: {e}")))?;
+        if !passes {
+            return Err(crate::Error::GuardFailed(format!(
+                "precondition '{guard_name}' not met"
+            )));
+        }
+    }
+
+    // 2. Idempotency check (D-04).
+    //
+    // Lookup is scoped by BOTH tenant_id AND idempotency_key to prevent
+    // cross-tenant replay (T-219-01). Absent key = no guard (key is optional).
+    let idempotency_key = inputs.get("idempotency_key").and_then(|v| v.as_str());
+    if let Some(key) = idempotency_key {
+        if let Some(stored_result) = lookup_idempotency(tenant_id, key, db).await? {
+            // Replay: return stored result without re-executing or re-auditing.
+            // The original call was already audited; replaying does not add a new entry.
+            return Ok(stored_result);
+        }
+    }
+
+    // 3. D-08 SEAM: Phase 220 inserts confirmation gating here for destructive actions
+    //    (transition_trigger.is_some()). In 219: pass through directly.
+    //    Do NOT wire ferro-ai / ConfirmationStore here.
+    //    if action.transition_trigger.is_some() { /* Phase 220 will intercept */ }
+    let _ = &action.transition_trigger; // reference to avoid unused-field lint during seam
+
+    // 4. Execute callback (D-01).
+    //    The executor owns TenantScoped enforcement (D-03): find_for_tenant(id, tenant_id)
+    //    returning None is the cross-tenant denial primitive.
+    let result = (dispatcher.executor)(&action.name, inputs, tenant_id, db).await?;
+
+    // 5. Store idempotency result (D-04).
+    //    INSERT OR IGNORE / ON CONFLICT DO NOTHING for concurrency safety.
+    if let Some(key) = idempotency_key {
+        store_idempotency(tenant_id, key, &result, db).await?;
+    }
+
+    // 6. Audit (D-05, SC#4) — record after every successful execution.
+    //    Denial audit (guard-failed path) is recorded in handle_write_call.
+    let record_id = inputs
+        .get("id")
+        .map(|v| v.to_string())
+        .unwrap_or_default();
+    AuditEntry::record(format!("mcp.action.{}", &action.name))
+        .tenant(tenant_id.to_string())
+        .actor(AuditActor::User(tenant_id.to_string()))
+        .target(AuditTarget::new(&action.name, record_id))
+        .after(result.clone())
+        .reason(&action.name)
+        .write(db)
+        .await
+        .map_err(|e| crate::Error::Database(e.to_string()))?;
+
+    Ok(result)
 }
 
 /// Route a non-`list_` tool call to the write dispatch path.
 ///
-/// Wave 0 stub: returns a -32601 error envelope. Wave 1 implements the full
-/// pipeline described in D-07: scope check → resolve ActionDef → validate
-/// inputs → re-evaluate guards → idempotency check → execute → audit →
-/// structured result.
+/// Implements the D-07 pipeline after the scope check (which stays in
+/// `handle_tools_call`, in front of this function):
+/// resolve ActionDef → validate inputs → dispatch_write (guard re-eval +
+/// idempotency + execute + audit) → structured result envelope.
 pub async fn handle_write_call(
     call_params: Value,
     services: &[ServiceDef],
@@ -174,8 +306,76 @@ pub async fn handle_write_call(
     ctx: &crate::McpContext,
     dispatcher: &WriteDispatcher,
 ) -> Value {
-    let _ = (call_params, services, db, tenant_id, ctx, dispatcher);
-    serde_json::json!({ "error": { "code": -32601, "message": "not implemented" } })
+    // Scope check already ran in handle_tools_call; we are here for the write path.
+    // Suppress unused ctx warning — ctx is available for future extensions (e.g. tracing).
+    let _ = ctx;
+
+    let tool_name = call_params["name"].as_str().unwrap_or("");
+
+    // Fail-closed: writes always require an authenticated tenant.
+    // tenant_id is the unwrapped authenticated principal — never from the payload.
+    let tid = match tenant_id {
+        Some(t) => t,
+        None => {
+            return json!({ "error": { "code": -32603, "message": "auth: tenant required" } });
+        }
+    };
+
+    // Resolve the ActionDef by tool name across mcp-exposed services.
+    let (_svc, action) = match find_action(services, tool_name) {
+        Some(pair) => pair,
+        None => {
+            return json!({ "error": { "code": -32601, "message": "Method not found" } });
+        }
+    };
+
+    let args = call_params
+        .get("arguments")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+
+    // Validate required inputs against ActionDef.inputs before dispatching.
+    if let Err(msg) = validate_action_inputs(action, &args) {
+        return json!({ "result": write_tool_error_result(json!({
+            "error_kind": "validation",
+            "message": msg
+        })) });
+    }
+
+    // Dispatch: guard re-eval → idempotency → seam → execute → store → audit.
+    match dispatch_write(action, &args, tid, db, dispatcher).await {
+        Ok(result) => {
+            let payload = json!({
+                "status": "ok",
+                "action": action.name,
+                "result": result
+            });
+            let tool_result = CallToolResult::structured(payload);
+            json!({ "result": tool_result })
+        }
+        Err(crate::Error::GuardFailed(ref msg)) => {
+            // Audit the denial for forensic trail (PITFALLS §2 / D-05).
+            let record_id = args.get("id").map(|v| v.to_string()).unwrap_or_default();
+            let _ = AuditEntry::record(format!("mcp.action.{}", action.name))
+                .tenant(tid.to_string())
+                .actor(AuditActor::User(tid.to_string()))
+                .target(AuditTarget::new(&action.name, record_id))
+                .after(json!({ "denied": true, "reason": "guard_failed", "guard": msg }))
+                .reason(&action.name)
+                .write(db)
+                .await;
+            json!({ "result": write_tool_error_result(json!({
+                "error_kind": "guard_denied",
+                "message": msg
+            })) })
+        }
+        Err(e) => {
+            json!({ "result": write_tool_error_result(json!({
+                "error_kind": "execution_error",
+                "message": e.to_string()
+            })) })
+        }
+    }
 }
 
 // ── RED unit tests (Wave 0 — compile and FAIL; Wave 1 makes them GREEN) ──────
@@ -191,10 +391,10 @@ mod tests {
 
     // ── Test DB setup ─────────────────────────────────────────────────────────
 
-    /// In-memory SQLite with the `mcp_idempotency_keys` table created via raw
-    /// SQL (matches the `MigrationMcpIdempotencyKeys` schema defined in Task 2).
-    /// Avoids pulling `async-trait` or `sea-orm-migration` into
-    /// `ferro-mcp-server`'s dev-dependencies.
+    /// In-memory SQLite with the `mcp_idempotency_keys` and `audit_log` tables
+    /// created via raw SQL (matches MigrationMcpIdempotencyKeys and
+    /// CreateAuditLogTable schemas). Avoids pulling `async-trait` or
+    /// `sea-orm-migration` into `ferro-mcp-server`'s dev-dependencies.
     async fn setup_db() -> sea_orm::DatabaseConnection {
         let db = Database::connect("sqlite::memory:")
             .await
@@ -213,6 +413,27 @@ mod tests {
         ))
         .await
         .expect("create mcp_idempotency_keys table");
+        // audit_log table — required by AuditEntry::write() called inside dispatch_write.
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS audit_log (
+                id TEXT PRIMARY KEY NOT NULL,
+                tenant_id TEXT,
+                actor_kind TEXT NOT NULL,
+                actor_id TEXT,
+                action TEXT NOT NULL,
+                target_kind TEXT,
+                target_id TEXT,
+                before TEXT,
+                after TEXT,
+                reason TEXT,
+                correlation_id TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create audit_log table");
         db
     }
 
@@ -245,8 +466,6 @@ mod tests {
     /// `dispatch_write` to return `Err(GuardFailed(_))` WITHOUT invoking the
     /// executor. Validates that guard re-evaluation happens BEFORE execution and
     /// reads the `GuardEvaluatorFn`, never `ctx.evaluated_guards`.
-    ///
-    /// RED: Wave 0 stub returns `Err(Validation(...))`, not `Err(GuardFailed(_))`.
     #[tokio::test]
     async fn guard_denied_at_call_time() {
         let db = setup_db().await;
@@ -261,8 +480,6 @@ mod tests {
         let result =
             dispatch_write(&approve_action(), &json!({"id": 1}), 1, &db, &dispatcher).await;
 
-        // RED assertion: stub returns Validation, not GuardFailed.
-        // Wave 1 makes this pass by implementing the guard loop.
         assert!(
             matches!(result, Err(crate::Error::GuardFailed(_))),
             "expected Err(GuardFailed(_)), got: {result:?}"
@@ -274,9 +491,6 @@ mod tests {
     /// SC#3 (T-219-03): Two identical `dispatch_write` calls with the same
     /// `idempotency_key` must produce equal results and fire the executor
     /// exactly once. Validates that the idempotency table prevents re-execution.
-    ///
-    /// RED: Wave 0 stub always returns `Err(Validation(...))` and never stores
-    /// or replays; exec_count will be 0 after two calls, not 1.
     #[tokio::test]
     async fn idempotent_replay_does_not_re_execute() {
         let db = setup_db().await;
@@ -298,8 +512,6 @@ mod tests {
         let result1 = dispatch_write(&submit_action(), &args, 1, &db, &dispatcher).await;
         let result2 = dispatch_write(&submit_action(), &args, 1, &db, &dispatcher).await;
 
-        // RED assertions: stub always returns Err, count == 0.
-        // Wave 1 makes these pass by implementing idempotency storage + replay.
         assert!(result1.is_ok(), "first call must succeed; got: {result1:?}");
         assert!(
             result2.is_ok(),
@@ -325,11 +537,6 @@ mod tests {
     ///
     /// Mirrors the Phase 205 `tools_call_result_parses_as_valid_mcp_content`
     /// test in `jsonrpc.rs`.
-    ///
-    /// RED: `handle_write_call` stub returns an `error`-keyed envelope, not a
-    /// `result`-keyed `CallToolResult`. Wave 1 makes this pass by emitting
-    /// `CallToolResult::structured(payload)` for success and the isError:true
-    /// envelope for guard-denied outcomes.
     #[tokio::test]
     async fn write_tool_result_parses_as_valid_mcp_content() {
         let db = setup_db().await;
@@ -354,8 +561,6 @@ mod tests {
         )
         .await;
 
-        // RED: stub returns { "error": {...} } which has no "result" key.
-        // Wave 1 emits { "result": <CallToolResult> } → parsing succeeds.
         let parsed_success: CallToolResult =
             serde_json::from_value(success_response["result"].clone())
                 .expect("success result must parse as CallToolResult");
@@ -387,8 +592,6 @@ mod tests {
         let deny_response =
             handle_write_call(deny_params, &services, &db, Some(1), &ctx, &deny_dispatcher).await;
 
-        // RED: stub returns error envelope, not CallToolResult.
-        // Wave 1 emits { "result": { "content": [...], "isError": true } }.
         let parsed_deny: CallToolResult = serde_json::from_value(deny_response["result"].clone())
             .expect("guard-denied result must parse as CallToolResult");
         assert_eq!(

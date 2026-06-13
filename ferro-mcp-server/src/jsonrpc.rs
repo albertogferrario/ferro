@@ -5,6 +5,7 @@
 //! from the request onto the returned object before writing the response.
 
 use crate::config::McpServerConfig;
+use crate::write_dispatch::{handle_write_call, WriteDispatcher};
 use crate::{dispatch, render_exposed_tools, McpContext};
 use ferro_projections::ServiceDef;
 use rmcp::model::CallToolResult;
@@ -57,12 +58,9 @@ pub async fn handle_tools_call(
     db: &sea_orm::DatabaseConnection,
     tenant_id: Option<i64>,
     ctx: &McpContext,
+    dispatcher: &WriteDispatcher,
 ) -> Value {
     let tool_name = call_params["name"].as_str().unwrap_or("");
-    // For write-tool names (e.g. "submit_order"), strip_prefix("list_") returns None so
-    // service_name = "submit_order", the service lookup below fails, and this returns
-    // -32601 Method not found. That is the correct 218 behavior — no write executor exists
-    // yet. Write-tool dispatch (routing by action.name → ActionDef callback) is Phase 219.
     let service_name = tool_name.strip_prefix("list_").unwrap_or(tool_name);
 
     // Scope enforcement (D-06 / SC#3): re-check at call time, independent of listing filter.
@@ -79,6 +77,12 @@ pub async fn handle_tools_call(
                 ).to_string()
             }
         });
+    }
+
+    // Phase 219: route write-tool calls to the write dispatch path.
+    // Scope gate above stays in front of this routing.
+    if is_write_tool {
+        return handle_write_call(call_params, services, db, tenant_id, ctx, dispatcher).await;
     }
 
     let service = match services
@@ -198,8 +202,20 @@ mod tests {
             "arguments": { "limit": 10 }
         });
 
-        let response =
-            handle_tools_call(call_params, &services, &db, Some(1), &McpContext::default()).await;
+        // No-op dispatcher: read-path test uses list_ tool, write path is not reached.
+        let noop_dispatcher = crate::write_dispatch::WriteDispatcher {
+            executor: Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+        };
+        let response = handle_tools_call(
+            call_params,
+            &services,
+            &db,
+            Some(1),
+            &McpContext::default(),
+            &noop_dispatcher,
+        )
+        .await;
 
         // The load-bearing assertion: the client's own type must deserialize it.
         let parsed: CallToolResult = serde_json::from_value(response["result"].clone())

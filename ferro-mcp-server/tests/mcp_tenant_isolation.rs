@@ -8,10 +8,18 @@ mod common;
 
 use ferro_mcp_oauth::validate::validate_api_key;
 use ferro_mcp_oauth::{validate_bearer, BearerCheck};
+use ferro_mcp_server::write_dispatch::WriteDispatcher;
 use ferro_mcp_server::{handle_tools_call, McpContext};
 use ferro_projections::{DataType, FieldMeaning, ServiceDef};
 use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Statement};
 use serde_json::json;
+
+fn noop_dispatcher() -> WriteDispatcher {
+    WriteDispatcher {
+        executor: Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
+        guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+    }
+}
 
 // ── Fixture helpers ──────────────────────────────────────────────────────────
 
@@ -180,6 +188,7 @@ async fn read_scope_key_rejected_on_write_tool_name() {
         &db,
         None,
         &ctx,
+        &noop_dispatcher(),
     )
     .await;
 
@@ -215,6 +224,7 @@ async fn read_scope_key_allowed_on_read_tool() {
         &db,
         Some(1),
         &ctx,
+        &noop_dispatcher(),
     )
     .await;
 
@@ -262,6 +272,7 @@ async fn api_key_cross_tenant_isolation() {
         &db,
         Some(tenant_id),
         &ctx,
+        &noop_dispatcher(),
     )
     .await;
 
