@@ -16,6 +16,19 @@
 - [x] **COMP-04**: A time-to-working-app benchmark measures `cargo new` → a running service with authentication, three entity types, and one background job. The published number includes at least one **cold-cache run** (no warm Cargo cache / pre-installed toolchain); the measurement apparatus is committed as a document. The benchmark target is gated (`FERRO_BENCH=1`) to avoid exhausting CI disk.
 - [x] **COMP-05**: An intent-vocabulary cross-modality sketch takes one intent (e.g. `Process`) and expresses the same feature as a mobile flow, a voice interaction, and a CLI command, producing a **document** that analyzes whether the seven-intent vocabulary survives non-visual rendering. The deliverable is a v14.0 planning input only — it MUST NOT modify `intent.rs` or any renderer in v13.0. v14.0 Channel Projection depends on this analysis.
 
+## v13.3 Requirements
+
+### Scaffold↔Library Parity (framework-product axis)
+
+Derived from Phase 211 COMP-04 Finding W1 (the published scaffold did not compile against the
+published `ferro-rs`). Framework-correctness, not a Compressive Validation item.
+
+- [x] **SCAF-01**: The `ferro-cli` scaffold templates reference only symbols the published `ferro` facade exposes — every symbol a generated project emits (`error_response!`, `ActiveValue`, `ferro::queue::*`, `ValidateRules`/`#[rule]`, `crate::models::user`, `DB::connection`) resolves from the published crate, across both the `--api` and full-stack (Inertia) controller templates.
+- [x] **SCAF-02**: `make:job` produces a project whose `Cargo.toml` declares every crate its generated code imports — the job template routes through `ferro::queue::*`, so no `ferro-queue` dependency is required.
+- [x] **SCAF-03**: A clean scaffold (`ferro new → make:auth → make:scaffold ×3 (incl. one non-`--api`) → make:job`) `cargo build`s with exit 0, asserted by a non-ignored `scaffold_builds_against_workspace_ferro` test that builds against the workspace `ferro` via `[patch.crates-io]`.
+- [x] **SCAF-04**: A release-time CI job scaffolds and builds against the *published* artifact (`publish.yml` `post-publish-scaffold-smoke`, `docker build --build-arg FERRO_VERSION`) and gates the pipeline on a scaffold↔library regression.
+- [x] **SCAF-05**: A per-PR CI job (`ci.yml` `scaffold-smoke`) runs the workspace path-dep scaffold-build test for fast pre-publish drift detection.
+
 ## Future Requirements (deferred)
 
 - **Rest of the Road to v1.0 program** — the operational (OPER-01..07), conceptual (CONC-01..04, incl. crate-consolidation audit + ServiceDef derivation bridge), and aesthetic (AEST-01..04) dimensions are subsequent v13.x milestones, prioritized after the compressive validation establishes baseline signal.
@@ -42,3 +55,8 @@
 | COMP-03 | Phase 210 | Complete |
 | COMP-04 | Phase 211 | Complete |
 | COMP-05 | Phase 208 | Complete |
+| SCAF-01 | Phase 214 | Complete |
+| SCAF-02 | Phase 214 | Complete |
+| SCAF-03 | Phase 214 | Complete |
+| SCAF-04 | Phase 214 | Complete |
+| SCAF-05 | Phase 214 | Complete |
