@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
 status: executing
-stopped_at: Completed 217-01-PLAN.md (mcp_api_keys migration + real validate_api_key)
-last_updated: "2026-06-13T19:04:44.020Z"
+stopped_at: "Completed 217-02-PLAN.md (McpContext threading + GREEN SC#3/SC#5 tests)"
+last_updated: "2026-06-13T19:09:25.839Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 101
   completed_phases: 89
   total_plans: 372
-  completed_plans: 369
+  completed_plans: 370
   percent: 99
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ACTIVE (roadmap created 2026-06-13). Scope: extend the projection/intent abstraction to a write-and-act MCP surface. Per-tenant API-key auth (Phase 217), `ActionDef`-derived write tools (Phase 218), server-side guard-enforced write dispatch (Phase 219), `ferro-ai` confirmation gating for destructive actions (Phase 220), inbound NL intent loop with replay/smoke CI path (Phase 221). All work in `ferro-mcp-server`. Validated via synthetic fixtures.
 
 Phase: 217 (Tenant Context + Per-Tenant API-Key Auth) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Next: `/gsd-plan-phase 217`
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -98,6 +98,7 @@ Progress: [██████████] 100%
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
 | Phase 217-tenant-context-per-tenant-api-key-auth P01 | 8 | 2 tasks | 3 files |
+| Phase 217-tenant-context-per-tenant-api-key-auth P02 | 5 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -140,7 +141,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-13T19:04:44.011Z
-Stopped at: Completed 217-01-PLAN.md (mcp_api_keys migration + real validate_api_key)
+Last session: 2026-06-13T19:09:25.825Z
+Stopped at: Completed 217-02-PLAN.md (McpContext threading + GREEN SC#3/SC#5 tests)
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth

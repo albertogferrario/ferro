@@ -3003,7 +3003,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 **Plans**: 4 plans
   - [x] 217-00-PLAN.md — Wave 0: RED tests + compiling skeleton (ferro-mcp-oauth dep, extended McpContext, async resolve_tenant, Auth error, handle_tools_list ctx, scope gate)
   - [x] 217-01-PLAN.md — ferro-mcp-oauth: mcp_api_keys migration + generate_mcp_api_key + validate_api_key (GREEN oauth unit tests)
-  - [ ] 217-02-PLAN.md — ferro-mcp-server: McpContext threading + scope gate + cross-tenant isolation tests GREEN
+  - [x] 217-02-PLAN.md — ferro-mcp-server: McpContext threading + scope gate + cross-tenant isolation tests GREEN
   - [ ] 217-03-PLAN.md — publish.yml wave-order fix + docs + full CI gate
 
 ### Phase 218: Write-Tool Rendering from ActionDef
@@ -3059,7 +3059,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 217. Tenant Context + Per-Tenant API-Key Auth | 2/4 | In Progress|  |
+| 217. Tenant Context + Per-Tenant API-Key Auth | 3/4 | In Progress|  |
 | 218. Write-Tool Rendering from ActionDef | 0/TBD | Not started | - |
 | 219. Write Dispatch | 0/TBD | Not started | - |
 | 220. Confirmation Gating for Destructive Actions | 0/TBD | Not started | - |
@@ -3098,7 +3098,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 ---
 
